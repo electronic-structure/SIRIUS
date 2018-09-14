@@ -132,7 +132,7 @@ exec_program(
   ARGS "describe --all"
   OUTPUT_VARIABLE GIT_BRANCHNAME
   RETURN_VALUE GIT_QUERY_BRANCH)
-configure_file("${PROJECT_SOURCE_DIR}/src/version.h.in" "${PROJECT_BINARY_DIR}/src/version.h")
+configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" "${PROJECT_BINARY_DIR}/src/version.hpp")
 include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
