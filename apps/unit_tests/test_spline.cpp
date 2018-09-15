@@ -154,8 +154,8 @@ void test_spline_5()
         }
     }
     double tval = t.stop();
-    DUMP("inner product time: %12.6f", tval);
-    DUMP("performance: %12.6f GFlops", 1e-9 * n * n * N * 85 / tval);
+    printf("inner product time: %12.6f", tval);
+    printf("performance: %12.6f GFlops", 1e-9 * n * n * N * 85 / tval);
 }
 
 void test_spline_6()
