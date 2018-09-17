@@ -9,7 +9,7 @@ void test_gpu(int N)
 
     for (size_t i = 0; i < buf.size(); i++) buf(i) = char(i % 255);
 
-    DUMP("hash(buf): %llX", buf.hash());
+    // DUMP("hash(buf): %llX", buf.hash());
 
     buf.allocate(memory_t::device);
     buf.copy_to_device();
@@ -19,7 +19,7 @@ void test_gpu(int N)
     void* ptr = cuda_malloc_host(N);
     void* ptr1 = std::malloc(N);
 
-    DUMP("hash(buf): %llX", buf.hash());
+    // DUMP("hash(buf): %llX", buf.hash());
 
     printf("test of GPU pointer: %i\n", cuda_check_device_ptr(buf.at<GPU>()));
     printf("test of CPU pointer: %i\n", cuda_check_device_ptr(ptr));
@@ -45,7 +45,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     cuda_device_info();
-    
+
     #ifdef __GPU
     test_gpu(N);
     #endif

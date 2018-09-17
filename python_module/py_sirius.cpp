@@ -239,7 +239,6 @@ py::class_<DFT_ground_state>(m, "DFT_ground_state")
     .def("initial_state", &DFT_ground_state::initial_state)
     .def("print_magnetic_moment", &DFT_ground_state::print_magnetic_moment)
     .def("total_energy", &DFT_ground_state::total_energy)
-    .def("band", &DFT_ground_state::band)
     .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
     .def("find", [](DFT_ground_state& dft, double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
                  {

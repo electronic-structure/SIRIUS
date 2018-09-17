@@ -167,15 +167,20 @@ class memory_pool
     template <memory_t mem_type>
     void reset()
     {
-        /* iterate over memory blocks */
-        for (auto it = memory_blocks_[mem_type].begin(); it != memory_blocks_[mem_type].end(); ++it) {
-            if (it->used_) {
-                remove_block<mem_type>(it);
+        auto mem_type_entry = memory_blocks_.find(mem_type);
+        if (mem_type_entry != memory_blocks_.end()) {
+            /* iterate over memory blocks */
+            auto it = mem_type_entry->second.begin();
+            while (it != mem_type_entry->second.end()) {
+                auto it1 = it++;
+                if (it1->used_) {
+                    remove_block<mem_type>(it1);
+                }
             }
-        }
-        auto it = memory_blocks_[mem_type].begin();
-        if (memory_blocks_[mem_type].size() != 1 || it->used_ || (it->size_ != it->buf_->size())) {
-            TERMINATE("error in memory_pool::reset()");
+            it = mem_type_entry->second.begin();
+            if (mem_type_entry->second.size() != 1 || it->used_ || (it->size_ != it->buf_->size())) {
+                TERMINATE("error in memory_pool::reset()");
+            }
         }
     }
 
