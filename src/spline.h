@@ -224,7 +224,12 @@ class Spline: public Radial_grid<U>
     {
         int j = this->index_of(x);
         if (j == -1) {
-            TERMINATE("point not found");
+            std::stringstream s;
+            s << "spline::at_point() index of point is not found\n"
+              << "  x           : " << x << "\n"
+              << "  first point : " << this->first() << "\n"
+              << "  last point  : " << this->last();
+            TERMINATE(s);
         }
         U dx = x - (*this)[j];
         return (*this)(j, dx);
