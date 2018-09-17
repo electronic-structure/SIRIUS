@@ -171,13 +171,15 @@ class memory_pool
         if (mem_type_entry != memory_blocks_.end()) {
             /* iterate over memory blocks */
             auto it = mem_type_entry->second.begin();
-            while(it != mem_type_entry->second.end()) {
-                if (it->used_) {
-                    auto it_prev = it++;
-                    remove_block<mem_type>(it_prev);
-                } else {
-                    it++;
+            while (it != mem_type_entry->second.end()) {
+                auto it1 = it++;
+                if (it1->used_) {
+                    remove_block<mem_type>(it1);
                 }
+            }
+            it = mem_type_entry->second.begin();
+            if (mem_type_entry->second.size() != 1 || it->used_ || (it->size_ != it->buf_->size())) {
+                TERMINATE("error in memory_pool::reset()");
             }
         }
     }
