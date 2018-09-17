@@ -1,6 +1,6 @@
 #!/bin/bash
 
-tests='test_init test_sht test_fft_correctness test_fft_real test_spline test_rot_ylm test_linalg test_wf_ortho test_serialize'
+tests='test_init test_sht test_fft_correctness test_fft_real test_spline test_rot_ylm test_linalg test_wf_ortho test_serialize test_mempool'
 
 for test in $tests; do
   echo "running '${test}'"
@@ -8,7 +8,7 @@ for test in $tests; do
   err=$?
 
   if [ ${err} == 0 ]; then
-    echo "OK"
+    echo "'${test}' passed"
   else
     echo "'${test}' failed"
     exit ${err}

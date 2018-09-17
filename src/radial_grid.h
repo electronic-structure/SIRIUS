@@ -214,6 +214,8 @@ class Radial_grid_pow: public Radial_grid<T>
             T t = static_cast<T>(i) / (this->num_points() - 1);
             this->x_[i] = rmin__ + (rmax__ - rmin__) * std::pow(t, p__);
         }
+        this->x_[0] = rmin__;
+        this->x_[num_points__ - 1] = rmax__;
         this->init();
         std::stringstream s;
         s << p__;
@@ -244,6 +246,8 @@ class Radial_grid_exp: public Radial_grid<T>
             T t = static_cast<T>(i) / (this->num_points() - 1);
             this->x_[i] = rmin__ * std::pow(rmax__ / rmin__, std::pow(t, p__));
         }
+        this->x_[0] = rmin__;
+        this->x_[num_points__ - 1] = rmax__;
         this->init();
         this->name_ = "exponential";
     }
@@ -272,6 +276,8 @@ class Radial_grid_lin_exp: public Radial_grid<T>
         //    this->x_[i] = rmin__ * (i + std::exp(beta * std::pow(t, 1)));
         //}
 
+        this->x_[0] = rmin__;
+        this->x_[num_points__ - 1] = rmax__;
         this->init();
         this->name_ = "linear_exponential";
     }

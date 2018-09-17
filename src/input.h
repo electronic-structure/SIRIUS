@@ -20,6 +20,8 @@
 /** \file input.h
  *
  *  \brief Contains input parameters structures.
+ *
+ *  \todo Some of the parameters belong to SCF ground state mini-app. Mini-app should parse this values itself.
  */
 
 #ifndef __INPUT_H__
@@ -353,14 +355,32 @@ struct Control_input
 
     /// Level of internal verification.
     int  verification_{0};
+
+    /// Number of eigen-values that are printed to the standard output.
     int  num_bands_to_print_{10};
+
+    /// If true then performance of some compute-intensive kernels will be printed to the standard output.
     bool print_performance_{false};
+
+    /// If true then memory usage will be printed to the standard output.
     bool print_memory_usage_{false};
+
+    /// If true then the checksums of some arrays will be printed (useful during debug).
     bool print_checksum_{false};
+
+    /// If true then the hashsums of some arrays will be printed.
     bool print_hash_{false};
+
+    /// If true then the stress tensor components are printed at the end of SCF run.
     bool print_stress_{false};
+
+    /// If true then the atomic forces are printed at the end of SCF run.
     bool print_forces_{false};
+
+    /// If true then the timer statistics is printed at the end of SCF run.
     bool print_timers_{true};
+
+    /// If true then the list of nearest neighbours for each atom is printed to the standard output.
     bool print_neighbors_{false};
 
     void read(json const& parser)
@@ -396,14 +416,21 @@ struct Control_input
     }
 };
 
+/// Parse parameters input section.
+/** Most of this parameters control the behavior of sirius::DFT_ground_state class. */
 struct Parameters_input
 {
     /// Electronic structure method.
     std::string electronic_structure_method_{"none"};
 
+    /// List of XC functions (typically contains exchange term and correlation term).
     std::vector<std::string> xc_functionals_;
-    std::string              core_relativity_{"dirac"};
-    std::string              valence_relativity_{"zora"};
+
+    /// Type of core-states relativity in full-potential LAPW case.
+    std::string core_relativity_{"dirac"};
+
+    /// Type of valence states relativity in full-potential LAPW case.
+    std::string valence_relativity_{"zora"};
 
     /// Number of bands.
     /** In spin-collinear case this is the number of bands for each spin channel. */
@@ -439,11 +466,20 @@ struct Parameters_input
     /// Scale muffin-tin radii automatically.
     int auto_rmt_{1};
 
+    /// Regular k-point grid for the SCF ground state.
     std::vector<int> ngridk_{1, 1, 1};
+
+    /// Shift in the k-point grid.
     std::vector<int> shiftk_{0, 0, 0};
-    int              num_dft_iter_{100};
-    double           energy_tol_{1e-5};
-    double           potential_tol_{1e-5};
+
+    /// Number of SCF iterations.
+    int num_dft_iter_{100};
+
+    /// Tolerance in total energy change.
+    double energy_tol_{1e-5};
+
+    /// Tolerance in potential RMS change.
+    double potential_tol_{1e-5};
 
     /// True if this is a molecule calculation.
     bool molecule_{false};
@@ -460,6 +496,7 @@ struct Parameters_input
     /// True if symmetry is used.
     bool use_symmetry_{true};
 
+    /// Radius on atom nearest-neighbour cluster.
     double nn_radius_{-1};
 
     /// Effective screening medium.
@@ -468,6 +505,7 @@ struct Parameters_input
     /// Type of periodic boundary conditions.
     std::string esm_bc_{"pbc"};
 
+    /// Reduction of the auxiliary magnetic field at each SCF step.
     double reduce_aux_bf_{0.0};
 
     void read(json const& parser)
@@ -590,12 +628,10 @@ struct Hubbard_input
         if (!parser.count("hubbard"))
             return;
 
-        orthogonalize_hubbard_orbitals_ = false;
         if (parser["hubbard"].count("orthogonalize_hubbard_wave_functions")) {
             orthogonalize_hubbard_orbitals_ = parser["hubbard"].value("orthogonalize_hubbard_wave_functions", orthogonalize_hubbard_orbitals_);
         }
 
-        normalize_hubbard_orbitals_ = false;
         if (parser["hubbard"].count("normalize_hubbard_wave_functions")) {
             normalize_hubbard_orbitals_ = parser["hubbard"].value("normalize_hubbard_wave_functions", normalize_hubbard_orbitals_);
         }
