@@ -173,6 +173,10 @@ class memory_pool
                 remove_block<mem_type>(it);
             }
         }
+        auto it = memory_blocks_[mem_type].begin();
+        if (memory_blocks_[mem_type].size() != 1 || it->used_ || (it->size_ != it->buf_->size())) {
+            TERMINATE("error in memory_pool::reset()");
+        }
     }
 
     template <memory_t mem_type>
