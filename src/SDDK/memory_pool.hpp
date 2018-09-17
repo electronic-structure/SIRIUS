@@ -54,13 +54,13 @@ class memory_pool
     size_t max_allocated_{0};
 
     template <memory_t mem_type>
-    void remove_block(std::list<memory_block_descriptor>::iterator& it__)
+    std::list<memory_block_descriptor>::iterator remove_block(std::list<memory_block_descriptor>::iterator it__)
     {
         (*it__->used_count_)--;
         size_allocated_ -= it__->size_;
         if (it__->buf_.use_count() > 1) {
             /* this is not the last sub-block: just remove it */
-            memory_blocks_[mem_type].erase(it__);
+            return memory_blocks_[mem_type].erase(it__);
         } else {
             /* this is the last sub-block in the series */
             it__->used_ = false;
@@ -92,6 +92,8 @@ class memory_pool
                 /* if next block is not used and its memory is not shared with other blocks */
                 merge_blocks(it1);
             }
+            it__++;
+            return it__;
         }
     }
 
@@ -172,14 +174,16 @@ class memory_pool
             /* iterate over memory blocks */
             auto it = mem_type_entry->second.begin();
             while (it != mem_type_entry->second.end()) {
-                auto it1 = it++;
-                if (it1->used_) {
-                    remove_block<mem_type>(it1);
-                }
+                it = remove_block<mem_type>(it);
             }
             it = mem_type_entry->second.begin();
             if (mem_type_entry->second.size() != 1 || it->used_ || (it->size_ != it->buf_->size())) {
-                TERMINATE("error in memory_pool::reset()");
+                std::stringstream s;
+                s << "error in memory_pool::reset()\n"
+                  << "  list size   : " << mem_type_entry->second.size() << " (expecting 1)\n"
+                  << "  used        : " << it->used_ << " (expecting false)\n"
+                  << "  buffer size : " << it->size_ << " " <<  it->buf_->size() << " (expecting equal)";
+                TERMINATE(s);
             }
         }
     }
