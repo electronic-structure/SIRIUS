@@ -1648,6 +1648,33 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                 for (int s = ispn0; s <= ispn1; s++) {
                     int tag = Communicator::get_tag(r, rank_with_jk[r]) + s;
                     Request req;
+
+                    /* make a check of send-recieve sizes */
+                    if (true) {
+                        int send_size;
+                        if (my_rank == rank_with_jk[r]) {
+                            auto kp = kset[this_jk];
+                            int gkvec_count = kp->gkvec().count();
+                            send_size = gkvec_count * sim_ctx.num_bands();
+                            req = kset.comm().isend(&send_size, 1, r, tag);
+                        }
+                        if (my_rank == r) {
+                            int gkvec_count = gkvec.count();
+                            kset.comm().recv(&send_size, 1, rank_with_jk[r], tag);
+                            if (send_size != gkvec_count * sim_ctx.num_bands()) {
+                                std::stringstream s;
+                                s << "wrong send-recieve buffer sizes\n"
+                                  << "     send size   : " << send_size << "\n"
+                                  << "  recieve size   : " << gkvec_count * sim_ctx.num_bands() << "\n"
+                                  << " number of bands : " << sim_ctx.num_bands();
+                                TERMINATE(s);
+                            }
+                        }
+                        if (my_rank == rank_with_jk[r]) {
+                            req.wait();
+                        }
+                    }
+
                     if (my_rank == rank_with_jk[r]) {
                         auto kp = kset[this_jk];
                         int gkvec_count = kp->gkvec().count();
