@@ -281,7 +281,11 @@ struct mdarray_mem_mgr
             /* check if the memory is host pinned */
             if ((mode_ & memory_t::host_pinned) == memory_t::host_pinned) {
 #ifdef __GPU
-                acc::deallocate_host(p__);
+                if (acc::num_devices() > 0) {
+                    acc::deallocate_host(p__);
+                } else {
+                    free(p__);
+                }
 #endif
             } else {
                 free(p__);
@@ -520,9 +524,20 @@ class mdarray_base
         }
 #ifndef __GPU
         if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
+            /* CPU only code, no point in using page-locked memory */
             memory__ = memory_t::host;
         }
+#else
+        /* GPU enabled code, check if there is a CUDA capable device */
+        if (memory__ == memory_t::host_pinned ) {
+            if (acc::num_devices() == 0) {
+                /* there is no cuda card, don't use page-locked memory */
+                memory__ = memory_t::host;
+            }
+        }
 #endif
+
+
         /* host allocation */
         if ((memory__ & memory_t::host) == memory_t::host) {
             /* page-locked memory */
