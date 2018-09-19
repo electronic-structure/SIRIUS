@@ -4,8 +4,8 @@ find_package(PkgConfig REQUIRED)
 pkg_search_module(_SCALAPACK scalapack)
 find_library(SCALAPACK_LIBRARIES NAMES scalapack
   HINTS
-  ${_SCALAPACK_LIBRARY_DIRS}
-  ENV SCALAPACKROOT
+#  ${_SCALAPACK_LIBRARY_DIRS}
+  ENV SALAPACKROOT
   /usr/lib
   PATH_SUFFIXES
   lib
@@ -15,9 +15,10 @@ find_path(SCALAPACK_INCLUDE_DIR
   pblas.h
   PATH_SUFFIXES
   include
+  src
   HINTS
   ENV SCALAPACKROOT
-  ${_SCALAPACK_INCLUDE_DIRS}
+#  ${_SCALAPACK_INCLUDE_DIRS}
   /usr/lib)
 
 find_package_handle_standard_args(ScaLAPACK DEFAULT_MSG SCALAPACK_LIBRARIES SCALAPACK_INCLUDE_DIR)
