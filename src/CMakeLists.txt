@@ -5,21 +5,20 @@
 if(USE_CUDA)
   file(GLOB_RECURSE CUFILES_SDDK "SDDK/*.cu")
   file(GLOB_RECURSE CUFILES_KERNELS "Kernels/*.cu")
-  add_library(sirius "sirius_api.cpp;${CUFILES_KERNELS};${CUFILES_SDDK}")
-  add_library(sirius_f "sirius.f90;sirius_api.cpp;${CUFILES_KERNELS};${CUFILES_SDDK}")
+  add_library(sirius "sirius_api.cpp;sirius.f90;${CUFILES_KERNELS};${CUFILES_SDDK}")
 else()
-  add_library(sirius "sirius_api.cpp")
-  add_library(sirius_f "sirius.f90;sirius_api.cpp")
+  add_library(sirius "sirius_api.cpp;sirius.f90;${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
 
-set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON
-  #CUDA_SEPARABLE_COMPILATION ON
-  )
- 
-install(TARGETS sirius LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" ARCHIVE DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(TARGETS sirius_f LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" ARCHIVE DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES "sirius.mod" DESTINATION "${CMAKE_INSTALL_PREFIX}/include")
+INSTALL (TARGETS sirius ARCHIVE DESTINATION
+  ${CMAKE_INSTALL_PREFIX}/lib/)
 
-# TODO: install headers with subdirectories
-#file(GLOB_RECURSE headers "*.h" "*.hpp")
-#install(FILES ${headers} DESTINATION "${CMAKE_INSTALL_PREFIX}/include" COMPONENT Headers)
+set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
+
+# ugly hack, path below contains ${PROJECT_BINARY_DIR}/src/mod_files. In case the name of the current directory is
+# changed, the path below needs to be adapted as well...
+INSTALL ( CODE
+  "EXECUTE_PROCESS (COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${PROJECT_BINARY_DIR}/src/mod_files\" \"${CMAKE_INSTALL_PREFIX}/fortran\")"
+)
+install(DIRECTORY ./ DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius" FILES_MATCHING REGEX ".*(hpp|h)$")

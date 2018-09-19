@@ -5,17 +5,12 @@ project(SIRIUS)
 enable_language(CXX Fortran)
 set(CMAKE_CXX_STANDARD 11)
 
-# optionally add CUDA support
-set(USE_CUDA OFF CACHE BOOL "use CUDA")
-if (USE_CUDA)
-  enable_language(CUDA)
-endif()
-
 # user variables
-set(CREATE_PYTHON_MODULE OFF CACHE BOOL "create sirius python module")
+set(CREATE_PYTHON_MODULE ON CACHE BOOL "create sirius python module")
 set(BUILD_DOCS OFF CACHE BOOL "build doxygen doc")
 set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
+set(USE_CUDA OFF CACHE BOOL "use CUDA")
 set(USE_MKL OFF CACHE BOOL "use Intel MKL")
 set(USE_ScaLAPACK OFF CACHE BOOL "use scalapack")
 set(BUILD_TESTS OFF CACHE BOOL "build tests")
@@ -33,13 +28,11 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -DNDEBUG")
-  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb -DDEBUG")
   set(CMAKE_CXX_FLAGS_RELEASE "-ftree-vectorize -O3 -DNDEBUG")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -O3")
-endif()
-
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -O1 -DDEBUG")
+elseif(${CMAKE_CXX_COMPILFER_ID} STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG")
   set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
@@ -48,35 +41,34 @@ endif()
 
 # include custom defined FindPackage modules
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
+include(GitSubmodule)
+list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 
 # generate compile_commands.json with compile commands for each target
 set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")
 
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
-
-if(USE_ScaLAPACK)
-  add_definitions("-D__SCALAPACK")
-endif()
-
 if(USE_MKL)
   set(USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
   find_package(MKL REQUIRED)
   include_directories(BEFORE ${MKL_INCLUDE_DIR})
+  add_definitions("-D__SCALAPACK")
 else()
   find_package(LAPACK REQUIRED)
   if(USE_ScaLAPACK)
     find_package(ScaLAPACK REQUIRED) # just sets scalapack_DIR
     include_directories(BEFORE ${SCALAPACK_INCLUDE_DIR})
     set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${SCALAPACK_LIBRARIES}")
+    add_definitions("-D__SCALAPACK")
   endif()
 endif(USE_MKL)
 
 find_package(FFTW REQUIRED)
 find_package(OpenMP REQUIRED)
-find_package(LibXC 4.2.3 REQUIRED)
-find_package(HDF5 REQUIRED C HL)
+find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
+find_package(HDF5 REQUIRED C HL)
 
 # cmake assumes spglib installed
 add_compile_options(-D__SPGLIB_STD_INCLUDE_PATH)
@@ -92,6 +84,7 @@ if(USE_ELPA)
 endif(USE_ELPA)
 
 if(USE_CUDA)
+  enable_language(CUDA)
   find_package(CUDA)
   add_definitions("-D__GPU")
   include_directories(BEFORE SYSTEM ${CUDA_INCLUDE_DIRS})
@@ -176,7 +169,7 @@ set(sirius_location $<TARGET_FILE:sirius>)
 add_subdirectory(apps/atoms)
 add_subdirectory(apps/dft_loop)
 if(BUILD_TESTS)
-  #add_subdirectory(apps/tests)
+  add_subdirectory(apps/tests)
   add_subdirectory(apps/unit_tests)
 endif(BUILD_TESTS)
 # add_subdirectory(apps/utils) # not compiling..
