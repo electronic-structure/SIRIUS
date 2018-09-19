@@ -36,6 +36,7 @@ loadDependencies()
 loadDependencies
 
 (
+    export OMP_NUM_THREADS=2
     module list
     echo "run-mc-verification: running on $(hostname)"
     cd ../verification
