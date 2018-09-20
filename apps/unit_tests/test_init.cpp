@@ -19,7 +19,7 @@ int main(int argn, char** argv)
     }
 
     sirius::initialize(1);
-    printf("%-30s", "testing init: ");
+    printf("running %-30s : ", argv[0]);
     int result = run_test();
     if (result) {
         printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
