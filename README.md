@@ -18,7 +18,7 @@ $ cd _build
 $ CXX=mpic++ CC=mpicc FC=mpif90 cmake /path/to/SIRIUS -DCMAKE_INSTALL_PREFIX=$HOME/local
 ```
 
-This will configure SIRIUS in a most simple way: CPU-only code without parallel linear algebra routines.
+This will configure SIRIUS in a most simple way: CPU-only mode without parallel linear algebra routines.
 
 3. Now you can build the whole project:
 ```console
