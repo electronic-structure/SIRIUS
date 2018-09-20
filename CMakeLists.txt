@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.6) # Intel C++11 support starts from 3.6 or even later version
 project(SIRIUS)
 
 # set language and standard
@@ -6,7 +6,7 @@ enable_language(CXX Fortran)
 set(CMAKE_CXX_STANDARD 11)
 
 # user variables
-set(CREATE_PYTHON_MODULE ON CACHE BOOL "create sirius python module")
+set(CREATE_PYTHON_MODULE OFF CACHE BOOL "create sirius python module")
 set(BUILD_DOCS OFF CACHE BOOL "build doxygen doc")
 set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
@@ -47,20 +47,22 @@ list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 # generate compile_commands.json with compile commands for each target
 set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")
 
+if(USE_ScaLAPACK)
+    add_definitions("-D__SCALAPACK")
+endif()
+
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
 if(USE_MKL)
   set(USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
   find_package(MKL REQUIRED)
   include_directories(BEFORE ${MKL_INCLUDE_DIR})
-  add_definitions("-D__SCALAPACK")
 else()
   find_package(LAPACK REQUIRED)
   if(USE_ScaLAPACK)
     find_package(ScaLAPACK REQUIRED) # just sets scalapack_DIR
     include_directories(BEFORE ${SCALAPACK_INCLUDE_DIR})
     set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${SCALAPACK_LIBRARIES}")
-    add_definitions("-D__SCALAPACK")
   endif()
 endif(USE_MKL)
 
