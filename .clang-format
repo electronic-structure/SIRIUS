@@ -18,6 +18,7 @@ BraceWrapping: {
 IndentCaseLabels: 'true'
 AccessModifierOffset: -2
 IndentWidth: 4
+ColumnLimit: 160
 UseTab: Never
 AllowShortFunctionsOnASingleLine: 'false'
 AllowShortIfStatementsOnASingleLine : 'false'
@@ -25,7 +26,6 @@ AllowShortLoopsOnASingleLine: 'false'
 AllowShortIfStatementsOnASingleLine: 'false'
 KeepEmptyLinesAtTheStartOfBlocks: 'true'
 AlwaysBreakTemplateDeclarations: 'true'
-ColumnLimit: 0
 PointerAlignment: Left
 AllowAllParametersOfDeclarationOnNextLine: 'true'
 AlignConsecutiveAssignments: 'true'
@@ -34,7 +34,6 @@ SortIncludes: 'false'
 BinPackParameters: 'true'
 BinPackArguments: 'true'
 MaxEmptyLinesToKeep: 1
-ColumnLimit: 0
 BreakConstructorInitializersBeforeComma: 'true'
 ConstructorInitializerIndentWidth: 4
 ...
