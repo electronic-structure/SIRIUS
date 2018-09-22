@@ -4,32 +4,24 @@
 
 using namespace sirius;
 
-int test3()
+int run_test(cmd_args& args)
 {
     int n{10};
 
     for (int i = 0; i < 20; i++) {
         double phi = type_wrapper<double>::random() * fourpi;
-        ///printf("phi=%f\n", phi);
         auto cosxn = SHT::cosxn(n, phi);
         auto sinxn = SHT::sinxn(n, phi);
         for (int l = 0; l < n; l++) {
             if (std::abs(cosxn[l] - std::cos((l + 1) * phi)) > 1e-12) {
-                //printf("wrong cosxn");
                 return 1;
             }
             if (std::abs(sinxn[l] - std::sin((l + 1) * phi)) > 1e-12) {
-                //printf("wrong sinxn");
-                return 1;
+                return 2;
             }
         }
     }
     return 0;
-}
-
-int run_test()
-{
-    return test3();
 }
 
 int main(int argn, char** argv)
@@ -45,7 +37,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(true);
     printf("running %-30s : ", argv[0]);
-    int result = run_test();
+    int result = run_test(args);
     if (result) {
         printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
     } else {
@@ -53,5 +45,5 @@ int main(int argn, char** argv)
     }
     sirius::finalize();
 
-    return 0;
+    return result;
 }

@@ -2,22 +2,16 @@
 
 using namespace sirius;
 
-void test_fft(double cutoff__, device_t pu__)
+int test_fft(cmd_args& args, device_t pu__)
 {
+    double cutoff = args.value<double>("cutoff", 10);
+
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    FFT3D fft(find_translations(cutoff__, M), Communicator::world(), pu__);
+    FFT3D fft(find_translations(cutoff, M), Communicator::world(), pu__);
 
-    Gvec gvec(M, cutoff__, Communicator::world(), false);
+    Gvec gvec(M, cutoff, Communicator::world(), false);
     Gvec_partition gvecp(gvec, Communicator::world(), Communicator::self());
-
-    if (Communicator::world().rank() == 0) {
-        printf("num_gvec: %i\n", gvec.num_gvec());
-    }
-    MPI_grid mpi_grid({Communicator::world().size()}, Communicator::world());
-
-    printf("num_gvec_fft: %i\n", gvecp.gvec_count_fft());
-    //printf("offset_gvec_fft: %i\n", gvecp.gvec_offset_fft());
 
     fft.prepare(gvecp);
 
@@ -27,13 +21,16 @@ void test_fft(double cutoff__, device_t pu__)
     }
     mdarray<double_complex, 1> ftmp(gvecp.gvec_count_fft());
 
+    int result{0};
+
     for (int ig = 0; ig < gvec.num_gvec(); ig++) {
         auto v = gvec.gvec(ig);
-        if (Communicator::world().rank() == 0) {
-            printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
-        }
+        //if (Communicator::world().rank() == 0) {
+        //    printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
+        //}
         f.zero();
         f[ig] = 1.0;
+        /* load local set of PW coefficients */
         for (int igloc = 0; igloc < gvecp.gvec_count_fft(); igloc++) {
             ftmp[igloc] = f[gvecp.idx_gvec(igloc)];
         }
@@ -43,7 +40,7 @@ void test_fft(double cutoff__, device_t pu__)
                 break;
             }
             case GPU: {
-                f.copy<memory_t::host, memory_t::device>();
+                //f.copy<memory_t::host, memory_t::device>();
                 //fft.transform<1, GPU>(gvec.partition(), f.at<GPU>(gvec.partition().gvec_offset_fft()));
                 fft.transform<1, CPU>(ftmp.at<CPU>(0));
                 fft.buffer().copy<memory_t::device, memory_t::host>();
@@ -62,23 +59,30 @@ void test_fft(double cutoff__, device_t pu__)
                                                double(fft.offset_z() + j2) / fft.size(2));
                     int idx = fft.index_by_coord(j0, j1, j2);
 
+                    /* compare value with the exponent */
                     diff += std::pow(std::abs(fft.buffer(idx) - std::exp(double_complex(0.0, twopi * dot(rl, v)))), 2);
                 }
             }
         }
         Communicator::world().allreduce(&diff, 1);
         diff = std::sqrt(diff / fft.size());
-        if (Communicator::world().rank() == 0) {
-            printf("error : %18.10e", diff);
-            if (diff < 1e-10) {
-                printf("\x1b[32m" " OK" "\x1b[0m" "\n");
-            } else {
-                printf("\x1b[31m" " Fail" "\x1b[0m" "\n");
-            }
+        if (diff > 1e-10) {
+            result++;
         }
     }
 
     fft.dismiss();
+
+    return result;
+}
+
+int run_test(cmd_args& args)
+{
+    int result = test_fft(args, CPU);
+#ifdef __GPU
+    result += test_fft(args, GPU);
+#endif
+    return result;
 }
 
 int main(int argn, char **argv)
@@ -93,19 +97,15 @@ int main(int argn, char **argv)
         return 0;
     }
 
-    double cutoff = args.value<double>("cutoff", 5);
-
-    sirius::initialize(1);
-
-    test_fft(cutoff, CPU);
-    #ifdef __GPU
-    test_fft(cutoff, GPU);
-    #endif
-    if (Communicator::world().rank() == 0) {
-        utils::timer::print();
+    sirius::initialize(true);
+    printf("running %-30s : ", argv[0]);
+    int result = run_test(args);
+    if (result) {
+        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+    } else {
+        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
     }
-    Communicator::world().barrier();
-    
     sirius::finalize();
-    return 0;
+
+    return result;
 }

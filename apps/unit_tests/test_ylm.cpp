@@ -2,6 +2,8 @@
 #include <math.h>
 #include <complex.h>
 
+/* test generation of complex spherical harmonics */
+
 #define Sin(x) std::sin(x)
 #define Cos(x) std::cos(x)
 #define Complex(x,y) double_complex(x,y)
@@ -259,25 +261,7 @@ void SphericalHarmonicY_(int* l, int* m, double* t, double* p, double_complex* v
 
 using namespace sirius;
 
-//void test1()
-//{
-//    double theta = 1.7;
-//    double phi = 2.2;
-//    int lmax = 4;
-//    std::vector<double_complex> ylm((lmax + 1) * (lmax + 1));
-//    SHT::spherical_harmonics(lmax, theta, phi, &ylm[0]);
-//
-//    for (int l = 0; l <= lmax; l++)
-//    {
-//        for (int m = -l; m <= l; m++)
-//        {
-//            int lm = utils::lm(l, m);
-//            printf("l: %2i m: %2i ylm: %18.12f %18.12f\n", l, m, ylm[lm].real(), ylm[lm].imag());
-//        }
-//    }
-//}
-
-int test2()
+int run_test(cmd_args& args)
 {
     int num_points = 500;
     mdarray<double, 2> tp(2, num_points);
@@ -301,27 +285,23 @@ int test2()
     for (int k = 0; k < num_points; k++) {
         double theta = tp(0, k);
         double phi = tp(1, k);
+        /* generate spherical harmonics */
         SHT::spherical_harmonics(lmax, theta, phi, &ylm[0]);
 
         double_complex val;
-        double diff = 0;
+        double diff{0};
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
+                /* compute spherical harmonics using their definition */
                 SphericalHarmonicY_(&l, &m, &theta, &phi, &val);
                 diff += std::abs(val - ylm[utils::lm(l, m)]);
             }
         }
-        //printf("theta, phi: %f, %f, diff: %f\n", theta, phi, diff);
         if (diff > 1e-10) {
             return 1;
         }
     }
     return 0;
-}
-
-int run_test()
-{
-    return test2();
 }
 
 int main(int argn, char** argv)
@@ -337,7 +317,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(true);
     printf("running %-30s : ", argv[0]);
-    int result = run_test();
+    int result = run_test(args);
     if (result) {
         printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
     } else {
@@ -345,5 +325,5 @@ int main(int argn, char** argv)
     }
     sirius::finalize();
 
-    return 0;
+    return result;
 }
