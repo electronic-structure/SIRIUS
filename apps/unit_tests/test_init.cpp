@@ -18,7 +18,7 @@ int main(int argn, char** argv)
         return 0;
     }
 
-    sirius::initialize(1);
+    sirius::initialize(true);
     printf("running %-30s : ", argv[0]);
     int result = run_test();
     if (result) {
