@@ -1,5 +1,7 @@
 #include <sirius.h>
 
+/* test FFT: tranfrom random function to real space, transfrom back and compare with the original function */
+
 using namespace sirius;
 
 int test_fft_complex(cmd_args& args, device_t fft_pu__)

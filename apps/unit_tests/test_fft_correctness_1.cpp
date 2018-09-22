@@ -1,5 +1,7 @@
 #include <sirius.h>
 
+/* test FFT: transform single harmonic and compare with plane wave exp(iGr) */
+
 using namespace sirius;
 
 int test_fft(cmd_args& args, device_t pu__)
