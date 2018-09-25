@@ -6,7 +6,6 @@ now = datetime.datetime.now()
 with open("version.hpp", "w") as f:
     f.write("/** \\file version.hpp\n")
     f.write(" *  \\brief Auto-generated version file.\n")
-    f.write(" *\n")
     f.write(" */\n")
     f.write("#ifndef __VERSION_HPP__\n")
     f.write("#define __VERSION_HPP__\n")

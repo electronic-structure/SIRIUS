@@ -1,6 +1,8 @@
 #include <sirius.h>
-#include<math.h>
-#include<complex.h>
+#include <math.h>
+#include <complex.h>
+
+/* test generation of complex spherical harmonics */
 
 #define Sin(x) std::sin(x)
 #define Cos(x) std::cos(x)
@@ -259,25 +261,7 @@ void SphericalHarmonicY_(int* l, int* m, double* t, double* p, double_complex* v
 
 using namespace sirius;
 
-void test1()
-{
-    double theta = 1.7;
-    double phi = 2.2;
-    int lmax = 4;
-    std::vector<double_complex> ylm((lmax + 1) * (lmax + 1));
-    SHT::spherical_harmonics(lmax, theta, phi, &ylm[0]);
-
-    for (int l = 0; l <= lmax; l++)
-    {
-        for (int m = -l; m <= l; m++)
-        {
-            int lm = utils::lm(l, m);
-            printf("l: %2i m: %2i ylm: %18.12f %18.12f\n", l, m, ylm[lm].real(), ylm[lm].imag());
-        }
-    }
-}
-
-void test2()
+int run_test(cmd_args& args)
 {
     int num_points = 500;
     mdarray<double, 2> tp(2, num_points);
@@ -285,66 +269,61 @@ void test2()
     tp(0, 0) = pi;
     tp(1, 0) = 0;
 
-    for (int k = 1; k < num_points - 1; k++)
-    {
+    for (int k = 1; k < num_points - 1; k++) {
         double hk = -1.0 + double(2 * k) / double(num_points - 1);
         tp(0, k) = std::acos(hk);
         double t = tp(1, k - 1) + 3.80925122745582 / std::sqrt(double(num_points)) / std::sqrt(1 - hk * hk);
         tp(1, k) = std::fmod(t, twopi);
     }
-    
+
     tp(0, num_points - 1) = 0;
     tp(1, num_points - 1) = 0;
 
-    int lmax = 10;
+    int lmax{10};
     std::vector<double_complex> ylm((lmax + 1) * (lmax + 1));
 
     for (int k = 0; k < num_points; k++) {
         double theta = tp(0, k);
         double phi = tp(1, k);
+        /* generate spherical harmonics */
         SHT::spherical_harmonics(lmax, theta, phi, &ylm[0]);
 
         double_complex val;
-        double diff = 0;
+        double diff{0};
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
+                /* compute spherical harmonics using their definition */
                 SphericalHarmonicY_(&l, &m, &theta, &phi, &val);
                 diff += std::abs(val - ylm[utils::lm(l, m)]);
             }
         }
-        printf("theta, phi: %f, %f, diff: %f\n", theta, phi, diff);
-        if (diff > 1e-10) exit(1);
-    }
-}
-
-void test3()
-{
-    int n{10};
-
-    for (int i = 0; i < 20; i++) {
-        double phi = type_wrapper<double>::random() * fourpi;
-        printf("phi=%f\n", phi);
-        auto cosxn = SHT::cosxn(n, phi);
-        auto sinxn = SHT::sinxn(n, phi);
-        for (int l = 0; l < n; l++) {
-            if (std::abs(cosxn[l] - std::cos((l + 1) * phi)) > 1e-12) {
-                printf("wrong cosxn");
-                exit(1);
-            }
-            if (std::abs(sinxn[l] - std::sin((l + 1) * phi)) > 1e-12) {
-                printf("wrong sinxn");
-                exit(1);
-            }
+        if (diff > 1e-10) {
+            return 1;
         }
     }
+    return 0;
 }
 
 int main(int argn, char** argv)
 {
-    sirius::initialize(1);
-    //test1();
-    test2();
-    test3();
+    cmd_args args;
+
+    args.parse_args(argn, argv);
+    if (args.exist("help")) {
+        printf("Usage: %s [options]\n", argv[0]);
+        args.print_help();
+        return 0;
+    }
+
+    sirius::initialize(true);
+    printf("running %-30s : ", argv[0]);
+    int result = run_test(args);
+    if (result) {
+        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+    } else {
+        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+    }
     sirius::finalize();
-    return 0;
+
+    return result;
 }
