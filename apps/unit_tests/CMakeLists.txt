@@ -1,5 +1,5 @@
 # FILE(GLOB _tests RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.cpp")
-set(unit_tests "test_init;test_nan;test_ylm;test_sinx_cosx;test_fft_correctness_1;test_fft_correctness_2;test_fft_real;test_spline;test_rot_ylm;test_linalg;test_wf_ortho;test_serialize;test_mempool")
+set(unit_tests "test_init;test_nan;test_ylm;test_sinx_cosx;test_gvec;test_fft_correctness_1;test_fft_correctness_2;test_fft_real_1;test_fft_real_2;test_fft_real_3;test_spline;test_rot_ylm;test_linalg;test_wf_ortho;test_serialize;test_mempool")
 
 foreach(name ${unit_tests})
   add_executable(${name} "${name}.cpp")
