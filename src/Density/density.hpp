@@ -466,28 +466,36 @@ class Density : public Field4D
 
     /// Generate full charge density (valence + core) and magnetization from the wave functions.
     /** This function calls generate_valence() and then in case of full-potential LAPW method adds a core density
-     *  to get the full charge density of the system. */
-    inline void generate(K_point_set& ks__)
+     *  to get the full charge density of the system. Density is generated in spectral representation, i.e. 
+     *  plane-wave coefficients in the interstitial and spherical harmonic components in the muffin-tins.
+     */
+    inline void generate(K_point_set& ks__, bool add_core__, bool transform_to_rg__)
     {
         PROFILE("sirius::Density::generate");
 
         generate_valence(ks__);
 
         if (ctx_.full_potential()) {
-            /* find the core states */
-            generate_core_charge_density();
-            /* add core contribution */
-            for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                int ia = unit_cell_.spl_num_atoms(ialoc);
-                for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
-                    rho().f_mt<index_domain_t::local>(0, ir, ialoc) +=
-                        unit_cell_.atom(ia).symmetry_class().ae_core_charge_density(ir) / y00;
+            if (add_core__) {
+                /* find the core states */
+                generate_core_charge_density();
+                /* add core contribution */
+                for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                    int ia = unit_cell_.spl_num_atoms(ialoc);
+                    for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
+                        rho().f_mt<index_domain_t::local>(0, ir, ialoc) +=
+                            unit_cell_.atom(ia).symmetry_class().ae_core_charge_density(ir) / y00;
+                    }
                 }
             }
             /* synchronize muffin-tin part */
-            rho().sync_mt();
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                magnetization(j).sync_mt();
+            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+                this->component(iv).sync_mt();
+            }
+        }
+        if (transform_to_rg__) {
+            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+                this->component(iv).fft_transform(1);
             }
         }
     }

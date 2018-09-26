@@ -1,11 +1,26 @@
 #include <sirius.h>
-
-/* template for unit tests */
+#include <math.h>
+#include <complex.h>
 
 using namespace sirius;
 
 int run_test(cmd_args& args)
 {
+    int n{10};
+
+    for (int i = 0; i < 20; i++) {
+        double phi = type_wrapper<double>::random() * fourpi;
+        auto cosxn = SHT::cosxn(n, phi);
+        auto sinxn = SHT::sinxn(n, phi);
+        for (int l = 0; l < n; l++) {
+            if (std::abs(cosxn[l] - std::cos((l + 1) * phi)) > 1e-12) {
+                return 1;
+            }
+            if (std::abs(sinxn[l] - std::sin((l + 1) * phi)) > 1e-12) {
+                return 2;
+            }
+        }
+    }
     return 0;
 }
 

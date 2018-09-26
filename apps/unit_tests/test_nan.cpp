@@ -1,12 +1,17 @@
 #include <sirius.h>
 
-/* template for unit tests */
+/* test for NaN and IEEE arithmetics */
 
 using namespace sirius;
 
 int run_test(cmd_args& args)
 {
-    return 0;
+    double val = std::nan("");
+    if (val != val) {
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 int main(int argn, char** argv)

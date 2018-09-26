@@ -22,8 +22,8 @@
  *  \brief Contains definition and partial implementation of sirius::DFT_ground_state class.
  */
 
-#ifndef __DFT_GROUND_STATE_H__
-#define __DFT_GROUND_STATE_H__
+#ifndef __DFT_GROUND_STATE_HPP__
+#define __DFT_GROUND_STATE_HPP__
 
 #include "K_point/k_point_set.hpp"
 #include "utils/json.hpp"
@@ -36,6 +36,11 @@ using json = nlohmann::json;
 namespace sirius {
 
 /// The whole DFT ground state implementation.
+/** The DFT cycle consists of four basic steps: solution of the Kohn-Sham equations, summation of the occupied states 
+ *  in order to get a system's charge density and magnetization, mixing and finally gneneration of the effective potential
+ *  and effective magnetic field.
+ *  \image html dft_cycle.png "DFT self-consistency cycle"
+ */
 class DFT_ground_state
 {
     private:
@@ -84,15 +89,19 @@ class DFT_ground_state
          *  we rewrite the first term as
          *  \f[
          *    \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta}
-         *      \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} =
-         *    \frac{1}{2} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta}  \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} -
+         *      \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - 
+         *        {\bf r}_{\beta} + {\bf T}|} = \frac{1}{2} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta}  
+         *       \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}
+         *            {|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} -
          *      \frac{1}{2} \sum_{\alpha} Z_{\alpha}^2 2 \sqrt{\frac{\lambda}{\pi}} = \\
-         *    \frac{1}{2} \sum_{\alpha \beta} Z_{\alpha} Z_{\beta} \frac{1}{\Omega} \sum_{\bf G} \int e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + {\bf r}|} d{\bf r}  -
+         *    \frac{1}{2} \sum_{\alpha \beta} Z_{\alpha} Z_{\beta} \frac{1}{\Omega} \sum_{\bf G} \int e^{i{\bf Gr}} 
+         *    \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + {\bf r}|} d{\bf r}  -
          *      \sum_{\alpha} Z_{\alpha}^2  \sqrt{\frac{\lambda}{\pi}}
          *  \f]
          *  The integral is computed using the \f$ \ell=0 \f$ term of the spherical expansion of the plane-wave:
          *  \f[
-         *    \int e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + {\bf r}|} d{\bf r} =
+         *    \int e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + 
+         *      {\bf r}|} d{\bf r} =
          *      \int e^{-i{\bf r}_{\alpha \beta}{\bf G}} e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}|)}{|{\bf r}|} d{\bf r} =
          *    e^{-i{\bf r}_{\alpha \beta}{\bf G}} 4 \pi \int_0^{\infty} \frac{\sin({G r})}{G} {\rm erf}(\sqrt{\lambda} r ) dr
          *  \f]
@@ -112,8 +121,8 @@ class DFT_ground_state
             \endverbatim
          *  The first term of the Ewald sum thus becomes:
          *  \f[
-         *    \frac{2 \pi}{\Omega} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 -
-         *       \sum_{\alpha} Z_{\alpha}^2 \sqrt{\frac{\lambda}{\pi}}
+         *    \frac{2 \pi}{\Omega} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} 
+         *      e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 - \sum_{\alpha} Z_{\alpha}^2 \sqrt{\frac{\lambda}{\pi}}
          *  \f]
          *  For \f$ G=0 \f$ the following is done:
          *  \f[
@@ -127,8 +136,9 @@ class DFT_ground_state
          *  Final expression for the Ewald energy:
          *  \f[
          *    E^{ion-ion} = \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta}
-         *      \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} +
-         *      \frac{2 \pi}{\Omega} \sum_{{\bf G}\neq 0} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 -
+         *      \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - 
+         *      {\bf r}_{\beta} + {\bf T}|} + \frac{2 \pi}{\Omega} \sum_{{\bf G}\neq 0}
+         *      \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 -
          *      \sum_{\alpha} Z_{\alpha}^2 \sqrt{\frac{\lambda}{\pi}} - \frac{2\pi}{\Omega}\frac{N_{el}^2}{4 \lambda}
          *  \f]
          */
@@ -160,7 +170,7 @@ class DFT_ground_state
                             for (int t0 = -1; t0 <= 1; t0++) {
                                 for (int t1 = -1; t1 <= 1; t1++) {
                                     for (int t2 = -1; t2 <= 1; t2++) {
-                                        vector3d<double> v1 = v0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
+                                        auto v1 = v0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
                                         auto r = unit_cell_.get_cartesian_coordinates(v1);
                                         auto a = r.length();
 
@@ -200,6 +210,7 @@ class DFT_ground_state
             }
         }
 
+        /// Generate initial densty, potential and a subspace of wave-functions.
         void initial_state()
         {
             density_.initial_density();
@@ -220,16 +231,40 @@ class DFT_ground_state
             density_.update();
         }
 
+        /// Return reference to a simulation context.
         Simulation_context const& ctx() const
         {
             return ctx_;
         }
 
+        /// Run the SCF ground state calculation and find a total energy minimum.
         json find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
 
+        /// Print the basic information (total energy, charges, moments, etc.).
         void print_info();
 
-        void print_magnetic_moment();
+        /// Print an estimation of magnetic moments in case of pseudopotential.
+        void print_magnetic_moment()
+        {
+            mdarray<double, 2> mmom;
+            if (!ctx_.full_potential() && ctx_.num_mag_dims()) {
+                mmom = density_.compute_atomic_mag_mom();
+            }
+
+            if (!ctx_.full_potential() && ctx_.num_mag_dims() && ctx_.comm().rank() == 0) {
+                printf("Magnetic moments\n");
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n");
+                printf("atom                 moment               |moment|");
+                printf("\n");
+                for (int i = 0; i < 80; i++) printf("-");
+                printf("\n");
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                    vector3d<double> v({mmom(1, ia), mmom(2, ia), mmom(0, ia)});
+                    printf("%4i    [%8.4f, %8.4f, %8.4f]  %10.6f\n", ia, v[0], v[1], v[2], v.length());
+                }
+            }
+        }
 
         /// Return nucleus energy in the electrostatic field.
         /** Compute energy of nucleus in the electrostatic potential generated by the total (electrons + nuclei)
@@ -402,7 +437,8 @@ class DFT_ground_state
          *  \f]
          *  we immediately obtain that
          *  \f[
-         *    \sum_{i} f_i \varepsilon_i = \sum_{i} f_i \sum_{\sigma \sigma'} \langle \psi_i^{\sigma'} | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} 
+         *    \sum_{i} f_i \varepsilon_i = \sum_{i} f_i \sum_{\sigma \sigma'} \langle \psi_i^{\sigma'} | 
+         *    \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} 
          *    \rangle D_{\xi \xi', \sigma' \sigma} \langle \beta_{\xi'} |\Big) | 
          *    \psi_i^{\sigma} \rangle + \sum_{\sigma \sigma}
          *     \int V^{eff}_{\sigma' \sigma}({\bf r})\rho^{ps}_{\sigma \sigma'}({\bf r})d{\bf r}  
@@ -622,7 +658,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
-        density_.generate(kset_);
+        density_.generate(kset_, true, false);
         /* symmetrize density and magnetization */
         if (ctx_.use_symmetry()) {
             density_.symmetrize();
@@ -748,30 +784,8 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
     return std::move(dict);
 }
 
-inline void DFT_ground_state::print_magnetic_moment()
+inline void DFT_ground_state::print_info()
 {
-    mdarray<double, 2> mmom;
-    if (!ctx_.full_potential() && ctx_.num_mag_dims()) {
-        mmom = density_.compute_atomic_mag_mom();
-    }
-
-    if (!ctx_.full_potential() && ctx_.num_mag_dims() && ctx_.comm().rank() == 0) {
-        printf("Magnetic moments\n");
-        for (int i = 0; i < 80; i++) printf("-");
-        printf("\n");
-        printf("atom                 moment               |moment|");
-        printf("\n");
-        for (int i = 0; i < 80; i++) printf("-");
-        printf("\n");
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            vector3d<double> v({mmom(1, ia), mmom(2, ia), mmom(0, ia)});
-            printf("%4i    [%8.4f, %8.4f, %8.4f]  %10.6f\n", ia, v[0], v[1], v[2], v.length());
-        }
-    }
-}
-
- inline void DFT_ground_state::print_info()
- {
     double evalsum1 = kset_.valence_eval_sum();
     double evalsum2 = core_eval_sum();
     double ekin = energy_kin();
@@ -893,7 +907,8 @@ inline void DFT_ground_state::print_magnetic_moment()
             printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
         }
         if(ctx_.hubbard_correction()) {
-            printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", hamiltonian_.U().hubbard_energy(), hamiltonian_.U().hubbard_energy() * 2.0);
+            printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", hamiltonian_.U().hubbard_energy(),
+                                                                             hamiltonian_.U().hubbard_energy() * 2.0);
         }
 
         printf("Total energy              : %18.8f (Ha), %18.8f (Ry)\n", etot, etot * 2);
@@ -929,7 +944,7 @@ inline void DFT_ground_state::print_magnetic_moment()
 
 } // namespace
 
-#endif // __DFT_GROUND_STATE_H__
+#endif // __DFT_GROUND_STATE_HPP__
 
 /** \page dft Spin-polarized DFT
  *  \section section1 Preliminary notes
@@ -1041,7 +1056,8 @@ inline void DFT_ground_state::print_magnetic_moment()
  *    \rho_{21}V_{12} &= \frac{1}{2}(m_x+im_y)\Big( \mu_{B}( B_x-iB_y) \Big) = \frac{\mu_B}{2}(m_xB_x-im_xB_y+im_yB_x+m_yB_y)
  *   \end{eqnarray}
  *  \f]
- *  The sum of this four terms will give exactly \f$ \int \rho({\bf r}) v^{ext}({\bf r}) + \mu_{B}{\bf m}({\bf r}) {\bf B}^{ext}({\bf r}) d{\bf r}\f$
+ *  The sum of this four terms will give exactly \f$ \int \rho({\bf r}) v^{ext}({\bf r}) + \mu_{B}{\bf m}({\bf r}) 
+ *   {\bf B}^{ext}({\bf r}) d{\bf r}\f$
  *
  *  \section section3 Total energy variation
  *
@@ -1058,7 +1074,8 @@ inline void DFT_ground_state::print_magnetic_moment()
  *  Hartree energy:
  *  \f[
  *    E^{H}[\rho_{\alpha\beta}]= \frac{1}{2} \iint \frac{\rho({\bf r})\rho({\bf r'})}{|{\bf r}-{\bf r'}|} d{\bf r} d{\bf r'} =
- *    \frac{1}{2} \iint \sum_{\alpha\beta}\delta_{\alpha\beta} \frac{\rho_{\alpha\beta}({\bf r}) \rho({\bf r'})}{|{\bf r}-{\bf r'}|} d{\bf r} d{\bf r'}
+ *    \frac{1}{2} \iint \sum_{\alpha\beta}\delta_{\alpha\beta} \frac{\rho_{\alpha\beta}({\bf r}) 
+ *     \rho({\bf r'})}{|{\bf r}-{\bf r'}|} d{\bf r} d{\bf r'}
  *  \f]
  *  where \f$ \rho({\bf r}) = Tr \rho_{\alpha\beta}({\bf r}) \f$.
  *
@@ -1070,8 +1087,8 @@ inline void DFT_ground_state::print_magnetic_moment()
  *  \f]
  *  Now we can write the total energy variation over auxiliary orbitals with constrain of orbital normalization:
  *  \f[
- *    \frac{\delta \Big( E^{tot}+\varepsilon_i \big( 1-\sum_{\alpha} \int \psi^{\alpha*}_{i}({\bf r})\psi^{\alpha}_{i}({\bf r})d{\bf r} \big) \Big)}
- *         {\delta \psi_{i}^{\gamma*}({\bf r})} = 0
+ *    \frac{\delta \Big( E^{tot}+\varepsilon_i \big( 1-\sum_{\alpha} \int \psi^{\alpha*}_{i}({\bf r})
+ *       \psi^{\alpha}_{i}({\bf r})d{\bf r} \big) \Big)} {\delta \psi_{i}^{\gamma*}({\bf r})} = 0
  *  \f]
  *  We will use the following chain rule:
  *  \f[
@@ -1084,8 +1101,8 @@ inline void DFT_ground_state::print_magnetic_moment()
  *  \f]
  *  Variation of the normalization integral:
  *  \f[
- *   \frac{\delta \sum_{\alpha} \int \psi_{i}^{\alpha*}({\bf r}) \psi_{i}^{\alpha}({\bf r}) d {\bf r} }{\delta \psi_{i}^{\gamma *}({\bf r})} =
- *     \psi_{i}^{\gamma}({\bf r})
+ *   \frac{\delta \sum_{\alpha} \int \psi_{i}^{\alpha*}({\bf r}) \psi_{i}^{\alpha}({\bf r}) 
+ *     d {\bf r} }{\delta \psi_{i}^{\gamma *}({\bf r})} =  \psi_{i}^{\gamma}({\bf r})
  *  \f]
  *  Variation of the kinetic energy functional:
  *  \f[
@@ -1101,23 +1118,24 @@ inline void DFT_ground_state::print_magnetic_moment()
  *  Variation of the external energy functional:
  *  \f[
  *    \frac{\delta E^{ext}[\rho_{\alpha\beta}]}{\delta \psi_{i}^{\gamma*}({\bf r}) } =
- *      \sum_{\alpha'} \sum_{\alpha\beta} V_{\beta\alpha}^{ext}({\bf r}) \delta_{\alpha\alpha'} \delta_{\beta\gamma} \psi_{i}^{\alpha'}({\bf r})=
- *      \sum_{\alpha} V_{\gamma\alpha}^{ext}({\bf r}) \psi_{i}^{\alpha}({\bf r})
+ *      \sum_{\alpha'} \sum_{\alpha\beta} V_{\beta\alpha}^{ext}({\bf r}) \delta_{\alpha\alpha'} \delta_{\beta\gamma} 
+ *      \psi_{i}^{\alpha'}({\bf r})= \sum_{\alpha} V_{\gamma\alpha}^{ext}({\bf r}) \psi_{i}^{\alpha}({\bf r})
  *  \f]
  *
  *  Variation of the exchange-correlation functional:
  *  \f[
  *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta \psi_{i}^{\gamma*}({\bf r}) } =
- *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta \rho({\bf r})} \frac{\delta \rho({\bf r})}{\delta \psi_{i}^{\gamma*}({\bf r})} +
- *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta m({\bf r})} \sum_{p=x,y,z} \frac{\delta m({\bf r})}{ \delta m_p({\bf r})}
+ *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta \rho({\bf r})} \frac{\delta \rho({\bf r})}{\delta 
+ *    \psi_{i}^{\gamma*}({\bf r})} + \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta m({\bf r})} \sum_{p=x,y,z} 
+ *    \frac{\delta m({\bf r})}{ \delta m_p({\bf r})}
  *    \frac{\delta m_p({\bf r})}{\delta \psi_{i}^{\gamma*}({\bf r})}
  *  \f]
  *  where \f$ m({\bf r}) = |{\bf  m}({\bf r})|\f$ is the length of magnetization vector.
  *
  *  First term:
  *  \f[
- *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta \rho({\bf r})} \frac{\delta \rho({\bf r})}{\delta \psi_{i}^{\gamma*}({\bf r})} =
- *      v^{XC}({\bf r}) \psi_{i}^{\gamma}({\bf r})
+ *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta \rho({\bf r})} \frac{\delta \rho({\bf r})}{\delta 
+ *     \psi_{i}^{\gamma*}({\bf r})} = v^{XC}({\bf r}) \psi_{i}^{\gamma}({\bf r})
  *  \f]
  *  Second term:
  *  \f[
@@ -1128,7 +1146,8 @@ inline void DFT_ground_state::print_magnetic_moment()
  *  where \f$ B^{XC}({\bf r}) = \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta m({\bf r})} \f$,
  *  \f$ \hat {\bf m}({\bf r}) = \frac{\delta m({\bf r})}{ \delta {\bf m}({\bf r})} \f$ is the unit vector,
  *  parallel to \f$ {\bf m}({\bf r}) \f$
- *  and \f$ {\bf m}({\bf r}) = \sum_{i} \sum_{\alpha \beta} \psi_{i}^{\alpha*}({\bf r}) {\boldsymbol \sigma}_{\alpha \beta} \psi_i^{\beta}({\bf r}) \f$
+ *  and \f$ {\bf m}({\bf r}) = \sum_{i} \sum_{\alpha \beta} \psi_{i}^{\alpha*}({\bf r}) {\boldsymbol 
+ *  \sigma}_{\alpha \beta} \psi_i^{\beta}({\bf r}) \f$
  *
  *  Similarly to external potential, exchange-correlation potential can be grouped into \f$ 2 \times 2 \f$ matrix::
  *  \f[
@@ -1184,9 +1203,12 @@ inline void DFT_ground_state::print_magnetic_moment()
  * The expression for second-variational Hamiltonian is simple:
  * \f[
  *   \langle \phi_{i'}|\hat H_{\alpha'\alpha} |\phi_{i} \rangle =
- *    \langle \phi_{i'} | \Big(-\frac{1}{2}\nabla^2 + v^{H}({\bf r}) + v^{ext}({\bf r}) + v^{XC}({\bf r}) \Big) \delta_{\alpha\alpha'}|\phi_{i}\rangle +
- *    \langle \phi_{i'} | {\boldsymbol \sigma}_{\alpha\alpha'} \Big( \mu_{B}{\bf B}^{ext}({\bf r})+{\bf B}^{XC}({\bf r})\Big) | \phi_{i}\rangle =\\
- *    \epsilon_{i}\delta_{i'i}\delta_{\alpha\alpha'} + {\boldsymbol \sigma}_{\alpha\alpha'} \langle \phi_{i'} | \Big( \mu_{B}{\bf B}^{ext}({\bf r}) +
+ *    \langle \phi_{i'} | \Big(-\frac{1}{2}\nabla^2 + v^{H}({\bf r}) + v^{ext}({\bf r}) + v^{XC}({\bf r}) \Big) 
+ *     \delta_{\alpha\alpha'}|\phi_{i}\rangle +
+ *    \langle \phi_{i'} | {\boldsymbol \sigma}_{\alpha\alpha'} \Big( \mu_{B}{\bf B}^{ext}({\bf r})+
+ *    {\bf B}^{XC}({\bf r})\Big) | \phi_{i}\rangle =\\
+ *    \epsilon_{i}\delta_{i'i}\delta_{\alpha\alpha'} + {\boldsymbol \sigma}_{\alpha\alpha'} \langle \phi_{i'} | 
+ *    \Big( \mu_{B}{\bf B}^{ext}({\bf r}) +
  *    {\bf B}^{XC}({\bf r})\Big) | \phi_{i}\rangle
  *  \f]
  */

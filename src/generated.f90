@@ -1200,18 +1200,32 @@ end subroutine sirius_generate_effective_potential
 
 !> @brief Generate charge density and magnetization.
 !> @param [in] gs_handler Ground state handler.
-subroutine sirius_generate_density(gs_handler)
+!> @param [in] add_core Add core charge density in the muffin-tins.
+!> @param [in] transform_to_rg If true, density and magnetization are transformed to real-space grid.
+subroutine sirius_generate_density(gs_handler,add_core,transform_to_rg)
 implicit none
 type(C_PTR), intent(in) :: gs_handler
+logical(C_BOOL), optional, target, intent(in) :: add_core
+logical(C_BOOL), optional, target, intent(in) :: transform_to_rg
+type(C_PTR) :: add_core_ptr
+type(C_PTR) :: transform_to_rg_ptr
 interface
-subroutine sirius_generate_density_aux(gs_handler)&
+subroutine sirius_generate_density_aux(gs_handler,add_core,transform_to_rg)&
 &bind(C, name="sirius_generate_density")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), value, intent(in) :: add_core
+type(C_PTR), value, intent(in) :: transform_to_rg
 end subroutine
 end interface
 
-call sirius_generate_density_aux(gs_handler)
+add_core_ptr = C_NULL_PTR
+if (present(add_core)) add_core_ptr = C_LOC(add_core)
+
+transform_to_rg_ptr = C_NULL_PTR
+if (present(transform_to_rg)) transform_to_rg_ptr = C_LOC(transform_to_rg)
+
+call sirius_generate_density_aux(gs_handler,add_core_ptr,transform_to_rg_ptr)
 end subroutine sirius_generate_density
 
 !> @brief Set band occupancies.

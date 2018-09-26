@@ -63,6 +63,7 @@ extern "C" void libsci_acc_finalize();
 /// Namespace of the SIRIUS library.
 namespace sirius {
 
+/// Return the status of the library (initialized or not).
 inline static bool& is_initialized()
 {
     static bool b{false};
