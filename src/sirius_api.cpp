@@ -1060,11 +1060,24 @@ void sirius_generate_effective_potential(void* const* handler__)
 
 /* @fortran begin function void sirius_generate_density    Generate charge density and magnetization.
    @fortran argument in  required void*   gs_handler       Ground state handler.
+   @fortran argument in  optional bool    add_core         Add core charge density in the muffin-tins.
+   @fortran argument in  optional bool    transform_to_rg  If true, density and magnetization are transformed to real-space grid.
    @fortran end */
-void sirius_generate_density(void* const* gs_handler__)
+void sirius_generate_density(void* const* gs_handler__,
+                             bool const*  add_core__,
+                             bool const*  transform_to_rg__)
 {
     GET_GS(gs_handler__)
-    gs.density().generate(gs.k_point_set());
+    bool add_core{false};
+    if (add_core__ != nullptr) {
+        add_core = *add_core__;
+    }
+    bool transform_to_rg{false};
+    if (transform_to_rg__ != nullptr) {
+        transform_to_rg = *transform_to_rg__;
+    }
+
+    gs.density().generate(gs.k_point_set(), add_core, transform_to_rg);
 }
 
 /* @fortran begin function void sirius_set_band_occupancies   Set band occupancies.

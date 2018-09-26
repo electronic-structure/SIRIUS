@@ -304,8 +304,6 @@ class Potential : public Field4D
     template <bool add_pseudo_core__>
     inline void xc_rg_magnetic(Density const& density__);
 
-    //inline void init();
-
   public:
     /// Constructor
     Potential(Simulation_context& ctx__)
@@ -400,6 +398,7 @@ class Potential : public Field4D
         update();
     }
 
+    /// Recompute some variables that depend on atomic positions or the muffin-tin radius.
     void update()
     {
         PROFILE("sirius::Potential::update");
@@ -484,7 +483,7 @@ class Potential : public Field4D
                 Spheric_function<function_domain_t::spectral, T> const& rho_mt__,
                 Spheric_function<function_domain_t::spectral, T>&       vha_mt__) const
     {
-        const bool use_r_prefact{false};
+        const bool use_r_prefact{true};
 
         int lmmax_rho = rho_mt__.angular_domain_size();
         int lmmax_pot = vha_mt__.angular_domain_size();

@@ -658,7 +658,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
-        density_.generate(kset_);
+        density_.generate(kset_, true, false);
         /* symmetrize density and magnetization */
         if (ctx_.use_symmetry()) {
             density_.symmetrize();
