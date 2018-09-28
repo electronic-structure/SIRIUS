@@ -195,7 +195,7 @@ class Spline: public Radial_grid<U>
     {
         return coeffs_(i, 0);
     }
-    
+
     /// Get value at the point x[i].
     inline T operator()(const int i) const
     {
