@@ -288,12 +288,33 @@ py::class_<Force>(m, "Force")
     .def("print_info", &Force::print_info);
 
 py::class_<Free_atom>(m, "Free_atom")
-    .def(py::init<Simulation_parameters&, std::string>())
-    .def(py::init<Simulation_parameters&, int>())
+    .def(py::init<std::string>())
+    .def(py::init<int>())
     .def("ground_state", [](Free_atom& atom, double energy_tol, double charge_tol, bool rel)
                          {
                              json js = atom.ground_state(energy_tol, charge_tol, rel);
                              return pj_convert(js);
-                         });
+                         })
+    .def("radial_grid_points", &Free_atom::radial_grid_points)
+    .def("num_atomic_levels", &Free_atom::num_atomic_levels)
+    .def("atomic_level", [](Free_atom& atom, int idx)
+                         {
+                            auto level = atom.atomic_level(idx);
+                            json js;
+                            js["n"]         = level.n;
+                            js["l"]         = level.l;
+                            js["k"]         = level.k;
+                            js["occupancy"] = level.occupancy;
+                            js["energy"]    = atom.atomic_level_energy(idx);
+                            return pj_convert(js);
+                         })
+    .def("free_atom_electronic_potential", [](Free_atom& atom)
+                                           {
+                                               return atom.free_atom_electronic_potential();
+                                           })
+    .def("free_atom_wave_function", [](Free_atom& atom, int idx)
+                                    {
+                                        return atom.free_atom_wave_function(idx);
+                                    });
 
 }
