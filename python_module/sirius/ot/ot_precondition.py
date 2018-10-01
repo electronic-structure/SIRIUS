@@ -108,3 +108,29 @@ class DiagonalPreconditioner(Preconditioner):
 
     def __getitem__(self, key):
         return self.D[key]
+
+
+class IdentityPreconditioner(Preconditioner):
+
+    def __init__(self, c0, _f=1):
+        super().__init__()
+        self.c0 = c0
+        self._f = _f
+
+    def __matmul__(self, other):
+        from .ot_transformations import lagrangeMult
+
+        ll = lagrangeMult(other, self.c0, self)
+        return self._f * other + ll
+
+    def __mul__(self, s):
+        return self._f * s
+
+    def __neg__(self):
+        return IdentityPreconditioner(self.c0, _f=-self._f)
+
+    def __getitem__(self, key):
+        return self._f
+
+    __lmul__ = __mul__
+    __rmul__ = __mul__

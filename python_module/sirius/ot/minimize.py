@@ -39,7 +39,7 @@ def beta_sd(dfnext, df, P=None):
     return 0
 
 
-def ls_qinterp(x0, p, f, dfx0, s=0.2):
+def ls_qinterp(x0, p, f, dfx0, f0, s=0.2):
     """
     Keyword Arguments:
     x0       -- starting point
@@ -47,7 +47,6 @@ def ls_qinterp(x0, p, f, dfx0, s=0.2):
     f        --f(x
     dfx0     -- grad f(x0)
     """
-    f0 = f(x0)
     b = np.real(2 * inner(p, dfx0))
     assert (b <= 0)
     f1 = f(x0 + s * p)
@@ -120,15 +119,16 @@ def gss(f, a, b, tol=1e-3):
         return (c, b)
 
 
-def ls_golden(x0, p, f, **kwargs):
+def ls_golden(x0, p, f, f0, **kwargs):
     """
     Golden-section search
     """
     t1, t2 = gss(lambda t: f(x0 + t * p), **kwargs, tol=1e-3)
     tmin = (t1 + t2) / 2
     x = x0 + tmin * p
-    # important for side-effects
     fn = f(x)
+    if not fn < f0 and np.abs(fn - f0) > 1e-10:
+        raise ValueError('golden-section search has failed to improve the solution')
     return x, fn
 
 
@@ -148,7 +148,6 @@ def ls_bracketing(x0, p, f, dfx0, tau=0.5, maxiter=40, **kwargs):
     m = 2 * inner(p, dfx0)
     assert (m < 0)
     ds = 5
-    print('bracketing: ds initial = ', ds)
     assert (maxiter >= 1)
 
     fn = f(x0 + ds * p)
@@ -165,7 +164,6 @@ def ls_bracketing(x0, p, f, dfx0, tau=0.5, maxiter=40, **kwargs):
             raise ValueError(
                 'failed to find a step length after maxiter=%d iterations.' %
                 maxiter)
-    # print('bracketing: step-length = : ', ds)
     return x0 + ds * p, fn
 
 
@@ -177,13 +175,12 @@ def minimize(x0,
              lstype='interp',
              mtype='FR',
              M=None,
-             c0=None,
              restart=None,
              verbose=False,
              log=False):
     """
     Keyword Arguments:
-    x0         -- np.ndarray
+    x0         -- np.narray
     f          -- function object
     df         -- function object
     maxiter    -- (default 100)
@@ -191,7 +188,8 @@ def minimize(x0,
     lstype     -- (default 'interp')
     mtype      -- (default 'FR')
     M          -- (default None) preconditioner
-    verbose    -- (default False) debug output
+    restart    -- (default None) restart interval
+    verbose    -- (default False) verbose output
     log        -- (default False) log values
 
     Returns: (x, iter, success)
@@ -223,21 +221,21 @@ def minimize(x0,
 
     x = x0
     pdfx, dfx = df(x)
-    if M is not None:
-        p = -M @ dfx
-    else:
-        p = -pdfx
+    p = -M @ dfx
 
     if log:
         histf = [f(x)]
 
+    fc = f(x)
+
     for i in range(maxiter):
         try:
-            xnext, fnext = linesearch(x, p, f, dfx)
+            xnext, fnext = linesearch(x, p, f, dfx, f0=fc)
         except ValueError:
             # fall back to bracketing line-search
             logger.print('%d line-search resort to fallback' % i)
-            xnext, fnext = ls_golden(x, p, f, a=0, b=5)
+            xnext, fnext = ls_golden(x, p, f, a=0, b=5, f0=fc)
+        fc = fnext
 
         pdfprev = pdfx
         pdfx, dfx = df(xnext)
@@ -256,24 +254,14 @@ def minimize(x0,
 
         # conjugate search direction for next iteration
         if restart is not None and i % restart == 0:
-            if M is not None:
-                p = -M @ dfx
-            else:
-                p = -pdfx
+            p = -M @ dfx
             assert (np.real(inner(p, dfx)) < 0)
         else:
             b = beta(pdfx, pdfprev, M)
-            if M is not None:
-                p = -M @ dfx + b * p
-            else:
-                p = -pdfx + b * p
+            p = -M @ dfx + b * p
             if (np.real(inner(p, dfx)) > 0):
-                if M is not None:
-                    p = -M @ dfx
-                else:
-                    p = -pdfx
+                p = -M @ dfx
                 assert (np.real(inner(p, dfx)) < 0)
-
     else:
         if log:
             return (x, maxiter, False, histf)
