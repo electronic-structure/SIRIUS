@@ -6,7 +6,7 @@ def save(fh5, name, obj):
     obj  --
     """
 
-    from .coefficient_array import CoefficientArray
+    from ..coefficient_array import CoefficientArray
 
     if isinstance(obj, CoefficientArray):
         grp = fh5.create_group(name)
@@ -26,7 +26,7 @@ def load(fh5, name, obj):
     obj  --
     """
 
-    from .coefficient_array import CoefficientArray
+    from ..coefficient_array import CoefficientArray
 
     out = type(obj)(dtype=obj.dtype)
     if isinstance(obj, CoefficientArray):
