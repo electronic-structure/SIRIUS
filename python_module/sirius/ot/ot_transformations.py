@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.linalg import eigh, solve
-from .coefficient_array import PwCoeffs
+from ..coefficient_array import PwCoeffs
 
 
 def matview(x):
@@ -13,7 +13,7 @@ def lagrangeMult(p, c0, P=None):
     p  --
     c0 --
     """
-    from .coefficient_array import CoefficientArray
+    from ..coefficient_array import CoefficientArray
     if isinstance(p, CoefficientArray):
         out = type(p)(dtype=p.dtype, ctype=p.ctype)
         for key, v in p.items():
