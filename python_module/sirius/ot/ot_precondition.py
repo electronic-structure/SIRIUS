@@ -6,7 +6,7 @@ def make_kinetic_precond(kpointset, c0, eps=0.1, asPwCoeffs=False):
     Keyword Arguments:
     kpointset --
     """
-    from .coefficient_array import PwCoeffs
+    from ..coefficient_array import PwCoeffs
     from scipy.sparse import dia_matrix
     import numpy as np
 
@@ -60,7 +60,7 @@ class DiagonalPreconditioner(Preconditioner):
     def __matmul__(self, other):
         """
         """
-        from .coefficient_array import CoefficientArray
+        from ..coefficient_array import CoefficientArray
         from .ot_transformations import lagrangeMult
 
         out = type(other)(dtype=other.dtype)
@@ -76,7 +76,7 @@ class DiagonalPreconditioner(Preconditioner):
         """
 
         """
-        from .coefficient_array import CoefficientArray
+        from ..coefficient_array import CoefficientArray
         import numpy as np
 
         if np.isscalar(s):
@@ -94,7 +94,7 @@ class DiagonalPreconditioner(Preconditioner):
     def __neg__(self):
         """
         """
-        from .coefficient_array import CoefficientArray
+        from ..coefficient_array import CoefficientArray
         if isinstance(self.D, CoefficientArray):
             out_data = type(self.D)(dtype=self.D.dtype, ctype=self.D.ctype)
             out = DiagonalPreconditioner(out_data, self.c0)

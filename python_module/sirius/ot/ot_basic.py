@@ -1,5 +1,5 @@
 from ..py_sirius import ewald_energy, energy_bxc, Wave_functions, DeviceEnum
-from .coefficient_array import PwCoeffs
+from ..coefficient_array import PwCoeffs
 import numpy as np
 
 
