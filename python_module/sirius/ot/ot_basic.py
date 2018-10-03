@@ -45,11 +45,14 @@ class Energy:
             self.ctx = ctx
 
     def __call__(self, cn, ki=None, ispn=0):
+
         """
         Keyword Arguments:
         cn  --
         ki -- the index of the k-point
         """
+        from ..coefficient_array import PwCoeffs
+
         if isinstance(cn, PwCoeffs):
             ispn = None
             assert (ki is None)
@@ -143,6 +146,8 @@ class ApplyHamiltonian:
         Keyword Arguments:
         cn -- input coefficient array
         """
+        from ..coefficient_array import PwCoeffs
+
         num_sc = self.hamiltonian.ctx().num_spins()
         if isinstance(cn, PwCoeffs):
             assert (ki is None)
@@ -189,6 +194,16 @@ class ApplyHamiltonian:
             return np.matrix(
                 np.array(Psi_y.pw_coeffs(ispn), copy=False) * bnd_occ * w,
                 copy=True)
+
+    def __matmul__(self, cn):
+        """
+
+        """
+        from ..coefficient_array import PwCoeffs
+
+        if not isinstance(cn, PwCoeffs):
+            raise TypeError('argument to ApplyHamiltonian.__matmul__ must be of type PwCoeffs')
+        return self.apply(cn)
 
     def __call__(self, cn, ki=None, ispn=None):
         return self.apply(cn=cn, ki=ki, ispn=ispn)
