@@ -194,6 +194,15 @@ class Radial_grid
         return std::move(r);
     }
 
+    std::vector<double> values() const
+    {
+        std::vector<double> v(num_points());
+        for (int i = 0; i < num_points(); i++) {
+            v[i] = x_[i];
+        }
+        return std::move(v);
+    }
+
     //uint64_t hash() const
     //{
     //    uint64_t h = Utils::hash(&x_(0), x_.size() * sizeof(double));

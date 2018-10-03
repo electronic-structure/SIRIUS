@@ -229,10 +229,10 @@ class Atom_type
     }
 
     /* forbid copy constructor */
-    Atom_type(const Atom_type& src) = delete;
+    Atom_type(Atom_type const& src) = delete;
 
     /* forbid assignment operator */
-    Atom_type& operator=(const Atom_type& src) = delete;
+    Atom_type& operator=(Atom_type const& src) = delete;
 
   protected:
     /// Radial grid of the muffin-tin sphere.
@@ -1873,4 +1873,4 @@ inline void Atom_type::read_hubbard_input()
 }
 } // namespace
 
-#endif // __ATOM_TYPE_H__
+#endif // __ATOM_TYPE_HPP__
