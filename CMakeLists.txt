@@ -134,7 +134,11 @@ include_directories(BEFORE src/SDDK)
 # configure version header
 exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR}
   ARGS "rev-parse HEAD"
-  OUTPUT_VARIABLE GIT_VERSION_SHA1)
+  OUTPUT_VARIABLE GIT_VERSION_SHA1
+  RETURN_VALUE exit_code)
+if(exit_code)
+  set(GIT_VERSION_SHA1 "")
+endif()
 exec_program("date"
   ARGS "+\"%a, %e %b %Y %H:%M:%S\""
   OUTPUT_VARIABLE BUILD_DATE)
@@ -143,7 +147,10 @@ exec_program(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ARGS "describe --all"
   OUTPUT_VARIABLE GIT_BRANCHNAME
-  RETURN_VALUE GIT_QUERY_BRANCH)
+  RETURN_VALUE exit_code)
+if(exit_code)
+  set(GIT_BRANCHNAME "")
+endif()
 configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" "${PROJECT_BINARY_DIR}/src/version.hpp")
 include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
