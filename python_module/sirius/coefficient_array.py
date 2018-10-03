@@ -83,8 +83,6 @@ class CoefficientArray:
         return out
 
     def __add__(self, other):
-        """
-        """
         out = type(self)(dtype=self.dtype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
@@ -95,17 +93,12 @@ class CoefficientArray:
         return out
 
     def __neg__(self):
-        """
-
-        """
         out = type(self)(dtype=self.dtype)
         for key, val in self._data.items():
             out[key] = -val
         return out
 
     def abs(self):
-        """
-        """
         out = type(self)(dtype=self.dtype)
         for key in self._data.keys():
             out[key] = np.abs(self._data[key])
@@ -115,13 +108,9 @@ class CoefficientArray:
         return self._data.keys()
 
     def __sub__(self, other):
-        """
-        """
         return self.__add__(-1 * other)
 
     def conjugate(self):
-        """
-        """
         out = type(self)(dtype=self.dtype)
         for key, val in self._data.items():
             out[key] = np.conj(val)
