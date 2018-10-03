@@ -1,12 +1,9 @@
-import numpy as np
-
-
 def matview(x):
     import numpy as np
     return np.matrix(x, copy=False)
 
 
-def stiefel_project_tangent(V, X):
+def _stiefel_project_tangent(V, X):
     """
     Keyword Arguments:
     V -- m times n
@@ -22,7 +19,24 @@ def stiefel_project_tangent(V, X):
     return (np.eye(n, n) - 0.5 * X @ X.H) @ V - 0.5 * X @ V.H @ X
 
 
-def stiefel_decompose_tangent(Y, X):
+def stiefel_project_tangent(V, X):
+    """
+
+    """
+    import numpy as np
+    from ..coefficient_array import CoefficientArray
+
+    if isinstance(X, CoefficientArray):
+        Y = type(X)(dtype=X.dtype, ctype=np.matrix)
+        for key, X_loc in X._data.items():
+            V_loc = V[key]
+            Y[key] = _stiefel_project_tangent(V_loc, X_loc)
+        return Y
+    else:
+        return _stiefel_project_tangent(V, X)
+
+
+def _stiefel_decompose_tangent(Y, X):
     """
 
     """
@@ -32,7 +46,6 @@ def stiefel_decompose_tangent(Y, X):
     Y = matview(Y)
 
     B = X.H @ Y
-    assert (np.isclose(B.H + B, 0).all())
 
     Z = Y - X @ B
     Q, R = np.linalg.qr(Z)
@@ -40,10 +53,28 @@ def stiefel_decompose_tangent(Y, X):
     return B, Q, R
 
 
-def stiefel_transport_operators(Y, X, tau):
+def stiefel_decompose_tangent(Y, X):
     """
-    Returns:
-    U(τ), W(τ)
+
+    """
+    import numpy as np
+    from ..coefficient_array import CoefficientArray
+
+    if isinstance(X, CoefficientArray):
+        B = type(X)(dtype=X.dtype, ctype=np.matrix)
+        Q = type(X)(dtype=X.dtype, ctype=np.matrix)
+        R = type(X)(dtype=X.dtype, ctype=np.matrix)
+        for key, X_loc in X._data.items():
+            Y_loc = Y[key]
+            B[key], Q[key], R[key] = _stiefel_decompose_tangent(Y_loc, X_loc)
+        return B, Q, R
+    else:
+        return _stiefel_decompose_tangent(Y, X)
+
+
+def _stiefel_transport_operators(Y, X, tau):
+    """
+
     """
     import numpy as np
 
@@ -57,7 +88,7 @@ def stiefel_transport_operators(Y, X, tau):
 
     # compute eigenvalues of exp_mat, which is skew-Hermitian
     w, V = np.linalg.eig(exp_mat)
-    # w must be purely imagin
+    # w must be purely imaginary
     D = np.diag(np.exp(tau*w))
     expm = V @ D @ V.H
 
@@ -67,3 +98,22 @@ def stiefel_transport_operators(Y, X, tau):
     W = np.eye(m) + XQ @ (expm - np.eye(2*n)) @ XQ.H
 
     return U, W
+
+
+def stiefel_transport_operators(Y, X, tau):
+    """
+    Returns:
+    U(τ), W(τ)
+    """
+    import numpy as np
+    from ..coefficient_array import CoefficientArray
+
+    if isinstance(X, CoefficientArray):
+        U = type(X)(dtype=X.dtype, ctype=np.matrix)
+        W = type(X)(dtype=X.dtype, ctype=np.matrix)
+        for key, X_loc in X._data.items():
+            Y_loc = Y[key]
+            U[key], W[key] = _stiefel_transport_operators(Y_loc, X_loc, tau)
+        return U, W
+    else:
+        return _stiefel_transport_operators(Y, X, tau)
