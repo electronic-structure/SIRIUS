@@ -154,9 +154,7 @@ class ApplyHamiltonian:
             assert (ispn is None)
             out = PwCoeffs(dtype=cn.dtype)
             cn._data.keys()
-            # print('ApplyHamiltonian for PwCoeffs')
             for k, ispn_coeffs in cn.by_k().items():
-                # print('ApplyHamiltonian: k =', k)
                 num_wf = ispn_coeffs[0][1].shape[1]
                 kpoint = self.kpointset[k]
                 w = kpoint.weight()
@@ -166,12 +164,9 @@ class ApplyHamiltonian:
                                        num_sc)
                 for i, val in ispn_coeffs:
                     Psi_x.pw_coeffs(i)[:] = val
-                # note: copy to device happens inside hamiltonian.apply
-
                 self.hamiltonian.apply_ref(self.kpointset[k], Psi_y, Psi_x)
                 # copy coefficients from Psi_y
                 for i, _ in ispn_coeffs:
-                    # print('ApplyHamiltonian: spin_comp', i)
                     bnd_occ = np.array(kpoint.band_occupancy(i))
                     assert(np.isclose(bnd_occ, (bnd_occ+1e-4).astype(int)).all())
                     out[(k, i)] = np.array(Psi_y.pw_coeffs(i), copy=False) * bnd_occ * w
@@ -179,7 +174,6 @@ class ApplyHamiltonian:
             return out
         else:
             assert (ki in self.kpointset)
-            # since assert(num_sc==1)
             kpoint = self.kpointset[ki]
             w = kpoint.weight()
             num_wf = cn.shape[1]
@@ -187,9 +181,6 @@ class ApplyHamiltonian:
             Psi_x = Wave_functions(kpoint.gkvec_partition(), num_wf, num_sc)
             bnd_occ = np.array(kpoint.band_occupancy(ispn))
             Psi_x.pw_coeffs(ispn)[:] = cn
-            # apply Hamiltonian
-            # TODO: note, applying to all ispn...
-            # hamiltonian.apply* copies to GPU
             self.hamiltonian.apply_ref(kpoint, Psi_y, Psi_x)
             return np.matrix(
                 np.array(Psi_y.pw_coeffs(ispn), copy=False) * bnd_occ * w,
