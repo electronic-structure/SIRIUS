@@ -28,8 +28,7 @@
 
 #include <array>
 #include <typeinfo>
-#include "radial_grid.h"
-#include "spline.h"
+#include "spline.hpp"
 #include "SHT/sht.hpp"
 
 namespace sirius {
