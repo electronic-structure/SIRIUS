@@ -26,8 +26,7 @@
 #define __RADIAL_SOLVER_H__
 
 #include <tuple>
-#include "radial_grid.h"
-#include "spline.h"
+#include "spline.hpp"
 #include "constants.h"
 #include "typedefs.h"
 
