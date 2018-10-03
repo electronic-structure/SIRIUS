@@ -128,9 +128,27 @@ class CoefficientArray:
         return out
 
     def conj(self):
-        """
-        """
         return self.conjugate()
+
+    @property
+    def H(self):
+        """
+        Hermitian conjugate
+        """
+        out = type(self)(dtype=self.dtype)
+        for key, val in self._data.items():
+            out[key] = val.H
+        return out
+
+    @property
+    def T(self):
+        """
+        Tranpose
+        """
+        out = type(self)(dtype=self.dtype)
+        for key, val in self._data.items():
+            out[key] = val.T
+        return out
 
     __lmul__ = __mul__
     __rmul__ = __mul__
