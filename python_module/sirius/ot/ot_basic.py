@@ -45,7 +45,6 @@ class Energy:
             self.ctx = ctx
 
     def __call__(self, cn, ki=None, ispn=0):
-
         """
         Keyword Arguments:
         cn  --
@@ -96,11 +95,6 @@ class Energy:
                 # scale columns by 1/bnd_occ
                 benergies = np.einsum('ij,ij,j->j', val, np.conj(cn[key]),
                                       1 / (bnd_occ * w))
-                # nn = val.shape[1]
-                # for j in range(nn):
-                #     ee = 1/bnd_occ[j] * val[:,j].H * cn[key][:,j]
-                #     assert(np.isclose(benergies[j], ee))
-                # print('warning: not setting band energy')
                 for j, ek in enumerate(benergies):
                     assert(np.abs(np.imag(ek)) < 1e-10)
                     self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
