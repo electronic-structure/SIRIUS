@@ -90,15 +90,18 @@ class Energy:
                     # print('WARNING: encountered unoccupied band')
                     # TODO: handle this properly
                     continue
-                elif np.isclose(bnd_occ, 0).any():
-                    raise Exception("encountered zero band occupation")
+                # elif np.isclose(bnd_occ, 0).any():
+                #     raise Exception("encountered zero band occupation")
                 # scale columns by 1/bnd_occ
                 benergies = np.einsum('ij,ij,j->j', val, np.conj(cn[key]),
                                       1 / (bnd_occ * w))
                 for j, ek in enumerate(benergies):
-                    assert(np.abs(np.imag(ek)) < 1e-10)
-                    self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
-                self.kpointset.sync_band_energies()
+                    if bnd_occ[j] > 1e-10:
+                        assert(np.abs(np.imag(ek)) < 1e-10)
+                        self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
+                    else:
+                        self.kpointset[k].set_band_energy(j, ispn, 0)
+                    self.kpointset.sync_band_energies()
             return pp_total_energy(self.potential, self.density,
                                    self.kpointset, self.ctx)
         else:
