@@ -115,12 +115,12 @@ class Energy:
             self.density.fft_transform(1)
             self.potential.generate(self.density)
             self.potential.fft_transform(1)
-            # after updating H to the new position, we can compute new band energies
+            # compute band energies
             bnd_occ = k.band_occupancy(ispn)
             assert (np.isclose(bnd_occ, (bnd_occ + 1e-4).astype(int)).all())
             w = k.weight()
             yn = self.H(cn, ki=ki, ispn=ispn)
-            # Hc is scaled by band occupancies, need to divide here to get correct band energies
+            # divide by band occupancies bnd_occ and kpoint-weight w
             yn = np.matrix(np.array(yn) / bnd_occ / w)
             HH = yn.H * cn
             ek = np.diag(HH)
