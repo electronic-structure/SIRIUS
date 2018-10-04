@@ -13,6 +13,19 @@ def inner(a, b):
         return np.sum(a * np.conj(b), copy=False)
 
 
+def einsum(expr, a, b):
+    """
+    map einsum over elements of CoefficientArray
+    """
+    try:
+        return np.einsum(expr, a, b)
+    except ValueError:
+        out = type(a)(dtype=a.dtype)
+        for key in a._data.keys():
+            out[key] = np.einsum(expr, a[key], b[key])
+        return out
+
+
 class CoefficientArray:
     def __init__(self, dtype=np.complex, ctype=np.matrix):
         """
