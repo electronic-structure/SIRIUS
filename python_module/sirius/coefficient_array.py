@@ -1,6 +1,18 @@
 import numpy as np
 
 
+def inner(a, b):
+    """
+    complex inner product
+    """
+    try:
+        return np.sum(
+            np.array(a, copy=False) * np.array(np.conj(b), copy=False))
+    except ValueError:
+        # is of type CoefficientArray (cannot convert to array)
+        return np.sum(a * np.conj(b), copy=False)
+
+
 class CoefficientArray:
     def __init__(self, dtype=np.complex, ctype=np.matrix):
         """

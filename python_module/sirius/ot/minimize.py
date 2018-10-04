@@ -1,17 +1,5 @@
 import numpy as np
-
-
-def inner(a, b):
-    """
-    complex inner product
-    """
-    # TODO: find a better solution, not try except
-    try:
-        return np.sum(
-            np.array(a, copy=False) * np.array(np.conj(b), copy=False))
-    except ValueError:
-        # is of type CoefficientArray (cannot convert to array)
-        return np.sum(a * np.conj(b), copy=False)
+from ..coefficient_array import inner
 
 
 def beta_fletcher_reves(dfnext, df, P=None):
