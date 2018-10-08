@@ -4,13 +4,13 @@
 
 # keep two libraries: libsirius and libsirius_f
 
-add_library(sirius "dummy.cpp")
 if(USE_CUDA)
   file(GLOB_RECURSE CUFILES_SDDK "SDDK/*.cu")
   file(GLOB_RECURSE CUFILES_KERNELS "Kernels/*.cu")
   add_library(sirius_f "sirius_api.cpp;sirius.f90;${CUFILES_KERNELS};${CUFILES_SDDK}")
   add_library(sirius "${CUFILES_KERNELS};${CUFILES_SDDK}")
 else()
+  add_library(sirius "dummy.cpp")
   add_library(sirius_f "sirius_api.cpp;sirius.f90")
 endif()
 
