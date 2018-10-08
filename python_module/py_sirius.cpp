@@ -112,11 +112,15 @@ PYBIND11_MODULE(py_sirius, m)
         int mpi_finalized_flag;
         MPI_Finalized(&mpi_finalized_flag);
         if(mpi_finalized_flag == true) {
-            std::cout << "pyAtExit:: MPI already finalized" << "\n";
             sirius::finalize(false);
         } else {
-            std::cout << "pyAtExit:: let SIRIUS call MPI finalize" << "\n";
-            sirius::finalize(true);
+            sirius::finalize(
+                /* call MPI_Finalize */
+                true,
+                /* reset device */
+                false,
+                /* fftw cleanup */
+                false);
         }
     }));
 
