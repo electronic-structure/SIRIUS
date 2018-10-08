@@ -17,16 +17,17 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file simulation_parameters.h
+/** \file simulation_parameters.hpp
  *
  *  \brief Contains definition and implementation of sirius::Simulation_parameters_base class.
  */
 
-#ifndef __SIMULATION_PARAMETERS_H__
-#define __SIMULATION_PARAMETERS_H__
+#ifndef __SIMULATION_PARAMETERS_HPP__
+#define __SIMULATION_PARAMETERS_HPP__
 
-#include "typedefs.h"
-#include "input.h"
+#include "config.h"
+#include "typedefs.hpp"
+#include "input.hpp"
 
 namespace sirius {
 

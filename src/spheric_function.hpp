@@ -17,14 +17,14 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file spheric_function.h
+/** \file spheric_function.hpp
  *   
  *  \brief Contains declaration and implementation of sirius::Spheric_function and 
  *         sirius::Spheric_function_gradient classes.
  */
 
-#ifndef __SPHERIC_FUNCTION_H__
-#define __SPHERIC_FUNCTION_H__
+#ifndef __SPHERIC_FUNCTION_HPP__
+#define __SPHERIC_FUNCTION_HPP__
 
 #include <array>
 #include <typeinfo>
@@ -236,18 +236,14 @@ Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& b__
 template <function_domain_t domain_t, typename T>
 T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> const& f2)
 {
-    /* check radial grid */
-    //if (f1.radial_grid().hash() != f2.radial_grid().hash()) {
-    //    TERMINATE("radial grids don't match");
-    //}
-
     Spline<T> s(f1.radial_grid());
 
     if (domain_t == spectral) {
         int lmmax = std::min(f1.angular_domain_size(), f2.angular_domain_size());
         for (int ir = 0; ir < s.num_points(); ir++) {
             for (int lm = 0; lm < lmmax; lm++) {
-                s(ir) += type_wrapper<T>::bypass(std::conj(f1(lm, ir))) * f2(lm, ir);
+                //s(ir) += type_wrapper<T>::bypass(std::conj(f1(lm, ir))) * f2(lm, ir);
+                s(ir) += utils::conj(f1(lm, ir)) * f2(lm, ir);
             }
         }
     } else {

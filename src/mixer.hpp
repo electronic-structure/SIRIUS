@@ -19,12 +19,12 @@
 
 /** \file mixer.h
  *
- *   \brief Contains definition and implementation of sirius::Mixer, sirius::Linear_mixer, sirius::Broyden1 and 
+ *   \brief Contains definition and implementation of sirius::Mixer, sirius::Linear_mixer, sirius::Broyden1 and
  *          sirius::Broyden2 classes.
  */
 
-#ifndef __MIXER_H__
-#define __MIXER_H__
+#ifndef __MIXER_HPP__
+#define __MIXER_HPP__
 
 namespace sirius {
 
@@ -94,7 +94,7 @@ class Mixer // TODO: review mixer implementation, it's too obscure
     double rms_deviation() const
     {
         double rms{0};
-        int    ipos = idx_hist(count_);
+        int ipos = idx_hist(count_);
 
         #pragma omp parallel for schedule(static) reduction(+:rms)
         for (int i = 0; i < local_size_; i++) {
@@ -120,15 +120,11 @@ class Mixer // TODO: review mixer implementation, it's too obscure
         T* ptr = (this->output_buffer_.size() == 0) ? nullptr : this->output_buffer_.template at<CPU>();
 
         /* collect shared data */
-        comm_.allgather(&vectors_(0, ipos), ptr, spl_shared_size_.global_offset(),
-                        spl_shared_size_.local_size());
+        comm_.allgather(&vectors_(0, ipos), ptr, spl_shared_size_.global_offset(), spl_shared_size_.local_size());
     }
 
   public:
-    Mixer(int                 shared_vector_size__,
-          int                 local_vector_size__,
-          int                 max_history__,
-          double              beta__,
+    Mixer(int shared_vector_size__, int local_vector_size__, int max_history__, double beta__,
           Communicator const& comm__)
         : shared_vector_size_(shared_vector_size__)
         , local_vector_size_(local_vector_size__)
@@ -222,10 +218,7 @@ class Linear_mixer : public Mixer<T>
 
   public:
     /// Constructor
-    Linear_mixer(int                 shared_vector_size__,
-                 int                 local_vector_size__,
-                 double              beta0__,
-                 Communicator const& comm__)
+    Linear_mixer(int shared_vector_size__, int local_vector_size__, double beta0__, Communicator const& comm__)
         : Mixer<T>(shared_vector_size__, local_vector_size__, 2, beta0__, comm__)
         , beta0_(beta0__)
     {
@@ -242,7 +235,7 @@ class Linear_mixer : public Mixer<T>
 
 /// Broyden mixer.
 /** First version of the Broyden mixer, which requres inversion of the Jacobian matrix.
- *  Reference paper: "Robust acceleration of self consistent field calculations for 
+ *  Reference paper: "Robust acceleration of self consistent field calculations for
  *  density functional theory", Baarman K, Eirola T, Havu V., J Chem Phys. 134, 134109 (2011)
  */
 template <typename T>
@@ -255,13 +248,8 @@ class Broyden1 : public Mixer<T>
     mdarray<T, 2> residuals_;
 
   public:
-    Broyden1(int                 shared_vector_size__,
-             int                 local_vector_size__,
-             int                 max_history__,
-             double              beta__,
-             double              beta0__,
-             double              beta_scaling_factor__,
-             Communicator const& comm__)
+    Broyden1(int shared_vector_size__, int local_vector_size__, int max_history__, double beta__, double beta0__,
+             double beta_scaling_factor__, Communicator const& comm__)
         : Mixer<T>(shared_vector_size__, local_vector_size__, max_history__, beta__, comm__)
         , beta0_(beta0__)
         , beta_scaling_factor_(beta_scaling_factor__)
@@ -289,15 +277,15 @@ class Broyden1 : public Mixer<T>
         /* exit if the vector has converged */
         if (this->rss_ < rss_min__) {
             /* Warning: if the vector has converged to this degree, it will not be mixed;
-                 * the output buffer will contain the vector of the previous step */
+             * the output buffer will contain the vector of the previous step */
 
-            //int i1 = this->idx_hist(this->count_);
+            // int i1 = this->idx_hist(this->count_);
             ///* copy input to output */
-            //for (int i = 0; i < this->local_size_; i++) {
+            // for (int i = 0; i < this->local_size_; i++) {
             //    this->vectors_(i, i1) = this->input_buffer_(i);
             //}
 
-            //this->comm_.allgather(&this->vectors_(0, i1), this->output_buffer_.template at<CPU>(),
+            // this->comm_.allgather(&this->vectors_(0, i1), this->output_buffer_.template at<CPU>(),
             //                      this->spl_shared_size_.global_offset(), this->spl_shared_size_.local_size());
             return 0.0;
         }
@@ -307,7 +295,7 @@ class Broyden1 : public Mixer<T>
         /* check for previous RMS values and adjust linear mixing parameter "beta" */
         if (this->rms_history_.size() >= (size_t)this->max_history_) {
             double rms_avg{0};
-            //double rms_max{0};
+            // double rms_max{0};
             std::vector<double> prev_rms;
             for (int i = 0; i < this->max_history_; i++) {
                 double v = this->rms_history_[this->rms_history_.size() - this->max_history_ + i];
@@ -322,8 +310,8 @@ class Broyden1 : public Mixer<T>
 
             if (rms > rms_avg) {
                 this->beta_ = std::max(beta0_, this->beta_ * beta_scaling_factor_);
-                //rms_history_.clear();
-                //this->count_ = 0;
+                // rms_history_.clear();
+                // this->count_ = 0;
             }
         }
 
@@ -342,8 +330,8 @@ class Broyden1 : public Mixer<T>
                 int i1 = this->idx_hist(this->count_ - j1);
                 int i2 = this->idx_hist(this->count_ - j1 - 1);
                 for (int j2 = 0; j2 <= j1; j2++) {
-                    int    i3 = this->idx_hist(this->count_ - j2);
-                    int    i4 = this->idx_hist(this->count_ - j2 - 1);
+                    int i3 = this->idx_hist(this->count_ - j2);
+                    int i4 = this->idx_hist(this->count_ - j2 - 1);
                     double t{0};
                     #pragma omp parallel for schedule(static) reduction(+:t)
                     for (int i = 0; i < this->local_size_; i++) {
@@ -383,8 +371,8 @@ class Broyden1 : public Mixer<T>
             mdarray<double, 1> c(N);
             c.zero();
             for (int j = 0; j < N; j++) {
-                int    i1 = this->idx_hist(this->count_ - j);
-                int    i2 = this->idx_hist(this->count_ - j - 1);
+                int i1 = this->idx_hist(this->count_ - j);
+                int i2 = this->idx_hist(this->count_ - j - 1);
                 double t{0};
                 #pragma omp parallel for schedule(static) reduction(+:t)
                 for (int i = 0; i < this->local_size_; i++) {
@@ -418,13 +406,14 @@ class Broyden1 : public Mixer<T>
         /* linear part */
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < this->local_size_; i++) {
-            this->vectors_(i, i1) = this->vectors_(i, ipos) + this->beta_ * residuals_(i, ipos) + this->input_buffer_(i);
+            this->vectors_(i, i1) =
+                this->vectors_(i, ipos) + this->beta_ * residuals_(i, ipos) + this->input_buffer_(i);
         }
 
         T* ptr = (this->output_buffer_.size() == 0) ? nullptr : this->output_buffer_.template at<CPU>();
 
-        this->comm_.allgather(&this->vectors_(0, i1), ptr,
-                              this->spl_shared_size_.global_offset(), this->spl_shared_size_.local_size());
+        this->comm_.allgather(&this->vectors_(0, i1), ptr, this->spl_shared_size_.global_offset(),
+                              this->spl_shared_size_.local_size());
 
         /* increment the history step */
         this->count_++;
@@ -435,7 +424,7 @@ class Broyden1 : public Mixer<T>
 
 /// Broyden mixer.
 /** Second version of the Broyden mixer, which doesn't requre inversion of the Jacobian matrix.
- *  Reference paper: "Robust acceleration of self consistent field calculations for 
+ *  Reference paper: "Robust acceleration of self consistent field calculations for
  *  density functional theory", Baarman K, Eirola T, Havu V., J Chem Phys. 134, 134109 (2011)
  */
 template <typename T>
@@ -449,14 +438,8 @@ class Broyden2 : public Mixer<T>
     mdarray<T, 2> residuals_;
 
   public:
-    Broyden2(int                 shared_vector_size__,
-             int                 local_vector_size__,
-             int                 max_history__,
-             double              beta__,
-             double              beta0__,
-             double              linear_mix_rms_tol__,
-             double              beta_scaling_factor__,
-             Communicator const& comm__)
+    Broyden2(int shared_vector_size__, int local_vector_size__, int max_history__, double beta__, double beta0__,
+             double linear_mix_rms_tol__, double beta_scaling_factor__, Communicator const& comm__)
         : Mixer<T>(shared_vector_size__, local_vector_size__, max_history__, beta__, comm__)
         , beta0_(beta0__)
         , beta_scaling_factor_(beta_scaling_factor__)
@@ -493,7 +476,7 @@ class Broyden2 : public Mixer<T>
         /* check for previous RMS values and adjust linear mixing parameter "beta" */
         if (this->rms_history_.size() >= (size_t)this->max_history_) {
             double rms_avg{0};
-            //double rms_max{0};
+            // double rms_max{0};
             std::vector<double> prev_rms;
             for (int i = 0; i < this->max_history_; i++) {
                 double v = this->rms_history_[this->rms_history_.size() - this->max_history_ + i];
@@ -508,8 +491,8 @@ class Broyden2 : public Mixer<T>
 
             if (rms > rms_avg) {
                 this->beta_ = std::max(beta0_, this->beta_ * beta_scaling_factor_);
-                //rms_history_.clear();
-                //this->count_ = 0;
+                // rms_history_.clear();
+                // this->count_ = 0;
             }
         }
 
@@ -529,7 +512,7 @@ class Broyden2 : public Mixer<T>
             for (int j1 = 0; j1 < N; j1++) {
                 int i1 = this->idx_hist(this->count_ - N + j1);
                 for (int j2 = 0; j2 <= j1; j2++) {
-                    int         i2 = this->idx_hist(this->count_ - N + j2);
+                    int i2 = this->idx_hist(this->count_ - N + j2);
                     long double t{0};
                     #pragma omp parallel for schedule(static) reduction(+:t)
                     for (int i = 0; i < this->local_size_; i++) {
@@ -593,13 +576,14 @@ class Broyden2 : public Mixer<T>
                 int i1 = this->idx_hist(this->count_ - N + j);
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < this->local_size_; i++) {
-                    this->input_buffer_(i) += ((double)v2[j] * residuals_(i, i1) + (double)v2[j + N] * this->vectors_(i, i1));
+                    this->input_buffer_(i) +=
+                        ((double)v2[j] * residuals_(i, i1) + (double)v2[j + N] * this->vectors_(i, i1));
                 }
             }
             /* mix last vector with the update vector \tilda x */
             this->mix_linear(this->beta_);
         } else {
-            //this->mix_linear(beta0_);
+            // this->mix_linear(beta0_);
             this->mix_linear(this->beta_);
         }
 
@@ -608,9 +592,7 @@ class Broyden2 : public Mixer<T>
 };
 
 template <typename T>
-inline std::unique_ptr<Mixer<T>> Mixer_factory(int                 shared_size__,
-                                               int                 local_size__,
-                                               Mixer_input         mix_cfg__,
+inline std::unique_ptr<Mixer<T>> Mixer_factory(int shared_size__, int local_size__, Mixer_input mix_cfg__,
                                                Communicator const& comm__)
 {
     std::unique_ptr<Mixer<T>> mixer;
@@ -619,12 +601,12 @@ inline std::unique_ptr<Mixer<T>> Mixer_factory(int                 shared_size__
         mixer = std::unique_ptr<Mixer<T>>(new Linear_mixer<T>(shared_size__, local_size__, mix_cfg__.beta_, comm__));
     } else if (mix_cfg__.type_ == "broyden1") {
         mixer = std::unique_ptr<Mixer<T>>(new Broyden1<T>(shared_size__, local_size__, mix_cfg__.max_history_,
-                                                          mix_cfg__.beta_, mix_cfg__.beta0_, mix_cfg__.beta_scaling_factor_,
-                                                          comm__));
+                                                          mix_cfg__.beta_, mix_cfg__.beta0_,
+                                                          mix_cfg__.beta_scaling_factor_, comm__));
     } else if (mix_cfg__.type_ == "broyden2") {
-        mixer = std::unique_ptr<Mixer<T>>(new Broyden2<T>(shared_size__, local_size__, mix_cfg__.max_history_, mix_cfg__.beta_,
-                                                          mix_cfg__.beta0_, mix_cfg__.linear_mix_rms_tol_, mix_cfg__.beta_scaling_factor_,
-                                                          comm__));
+        mixer = std::unique_ptr<Mixer<T>>(
+            new Broyden2<T>(shared_size__, local_size__, mix_cfg__.max_history_, mix_cfg__.beta_, mix_cfg__.beta0_,
+                            mix_cfg__.linear_mix_rms_tol_, mix_cfg__.beta_scaling_factor_, comm__));
     } else {
         TERMINATE("wrong type of mixer");
     }
@@ -633,4 +615,4 @@ inline std::unique_ptr<Mixer<T>> Mixer_factory(int                 shared_size__
 
 } // namespace sirius
 
-#endif // __MIXER_H__
+#endif // __MIXER_HPP__

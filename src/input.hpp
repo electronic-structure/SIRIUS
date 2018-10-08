@@ -17,15 +17,15 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file input.h
+/** \file input.hpp
  *
  *  \brief Contains input parameters structures.
  *
  *  \todo Some of the parameters belong to SCF ground state mini-app. Mini-app should parse this values itself.
  */
 
-#ifndef __INPUT_H__
-#define __INPUT_H__
+#ifndef __INPUT_HPP__
+#define __INPUT_HPP__
 
 #include "constants.h"
 #include "sddk.hpp"
@@ -354,10 +354,10 @@ struct Control_input
 #endif
 
     /// Level of internal verification.
-    int  verification_{0};
+    int verification_{0};
 
     /// Number of eigen-values that are printed to the standard output.
-    int  num_bands_to_print_{10};
+    int num_bands_to_print_{10};
 
     /// If true then performance of some compute-intensive kernels will be printed to the standard output.
     bool print_performance_{false};
@@ -511,8 +511,8 @@ struct Parameters_input
     void read(json const& parser)
     {
         if (parser.count("parameters")) {
-            electronic_structure_method_ = parser["parameters"].value("electronic_structure_method",
-                                                                      electronic_structure_method_);
+            electronic_structure_method_ =
+                parser["parameters"].value("electronic_structure_method", electronic_structure_method_);
             std::transform(electronic_structure_method_.begin(), electronic_structure_method_.end(),
                            electronic_structure_method_.begin(), ::tolower);
 
@@ -573,13 +573,13 @@ struct Parameters_input
 struct Settings_input
 {
     /// Number of points (per a.u.^-1) for radial integral interpolation for local part of pseudopotential.
-    int         nprii_vloc_{200};
-    int         nprii_beta_{20};
-    int         nprii_aug_{20};
-    int         nprii_rho_core_{20};
-    bool        always_update_wf_{true};
-    double      mixer_rss_min_{1e-12};
-    double      auto_enu_tol_{0};
+    int nprii_vloc_{200};
+    int nprii_beta_{20};
+    int nprii_aug_{20};
+    int nprii_rho_core_{20};
+    bool always_update_wf_{true};
+    double mixer_rss_min_{1e-12};
+    double auto_enu_tol_{0};
     std::string radial_grid_{"exponential, 1.0"};
 
     void read(json const& parser)
@@ -599,23 +599,23 @@ struct Settings_input
 
 struct Hubbard_input
 {
-    int  number_of_species{1};
+    int number_of_species{1};
     bool hubbard_correction_{false};
     bool simplified_hubbard_correction_{false};
     bool orthogonalize_hubbard_orbitals_{false};
     bool normalize_hubbard_orbitals_{false};
     bool hubbard_U_plus_V_{false};
-    int  projection_method_{0};
+    int projection_method_{0};
     struct hubbard_orbital_
     {
-        int                 l{-1};
-        int                 n{-1};
-        std::string         level;
+        int l{-1};
+        int n{-1};
+        std::string level;
         std::vector<double> coeff_;
-        double              occupancy_{0};
+        double occupancy_{0};
     };
 
-    std::string                                                  wave_function_file_;
+    std::string wave_function_file_;
     std::vector<std::pair<std::string, struct hubbard_orbital_>> species;
 
     bool hubbard_correction() const
@@ -629,16 +629,18 @@ struct Hubbard_input
             return;
 
         if (parser["hubbard"].count("orthogonalize_hubbard_wave_functions")) {
-            orthogonalize_hubbard_orbitals_ = parser["hubbard"].value("orthogonalize_hubbard_wave_functions", orthogonalize_hubbard_orbitals_);
+            orthogonalize_hubbard_orbitals_ =
+                parser["hubbard"].value("orthogonalize_hubbard_wave_functions", orthogonalize_hubbard_orbitals_);
         }
 
         if (parser["hubbard"].count("normalize_hubbard_wave_functions")) {
-            normalize_hubbard_orbitals_ = parser["hubbard"].value("normalize_hubbard_wave_functions", normalize_hubbard_orbitals_);
+            normalize_hubbard_orbitals_ =
+                parser["hubbard"].value("normalize_hubbard_wave_functions", normalize_hubbard_orbitals_);
         }
 
         if (parser["hubbard"].count("simplified_hubbard_correction")) {
-            simplified_hubbard_correction_ = parser["hubbard"].value("simplified_hubbard_correction",
-                                                                     simplified_hubbard_correction_);
+            simplified_hubbard_correction_ =
+                parser["hubbard"].value("simplified_hubbard_correction", simplified_hubbard_correction_);
         }
         std::vector<std::string> labels_;
         species.clear();
@@ -662,7 +664,8 @@ struct Hubbard_input
                     this->wave_function_file_ = parser["hubbard"]["wave_function_file"].get<std::string>();
                     this->projection_method_  = 1;
                 } else {
-                    TERMINATE("The hubbard projection method 'file' requires the option 'wave_function_file' to be defined");
+                    TERMINATE(
+                        "The hubbard projection method 'file' requires the option 'wave_function_file' to be defined");
                 }
             }
 
@@ -734,7 +737,8 @@ struct Hubbard_input
                     coef__.level = parser["hubbard"][label]["hubbard_orbital"].get<std::string>();
                 } else {
                     if (hubbard_correction_) {
-                        TERMINATE("you selected the hubbard correction for this atom but did not specify the atomic level");
+                        TERMINATE(
+                            "you selected the hubbard correction for this atom but did not specify the atomic level");
                     }
                 }
             }
@@ -742,7 +746,8 @@ struct Hubbard_input
             if (parser["hubbard"][label].count("occupancy")) {
                 coef__.occupancy_ = parser["hubbard"][label]["occupancy"].get<double>();
             } else {
-                TERMINATE("This atom has hubbard correction but the occupancy is not set up. Please check your input file");
+                TERMINATE(
+                    "This atom has hubbard correction but the occupancy is not set up. Please check your input file");
             }
 
             if (hubbard_correction_) {
@@ -755,6 +760,7 @@ struct Hubbard_input
         }
     }
 };
+
 }; // namespace sirius
 
-#endif // __INPUT_H__
+#endif // __INPUT_HPP__

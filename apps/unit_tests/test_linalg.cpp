@@ -10,7 +10,7 @@ void test1()
     matrix<double_complex> C(N, N);
     for (int i = 0; i < N; i++)
     {
-        for (int j = 0; j < N; j++) B(j, i) = type_wrapper<double_complex>::random(); 
+        for (int j = 0; j < N; j++) B(j, i) = utils::random<double_complex>();
     }
 
     for (int i = 0; i < N; i++)
@@ -64,7 +64,7 @@ void test2()
     matrix<T> C(N, N);
     for (int i = 0; i < N; i++)
     {
-        for (int j = 0; j < N; j++) A(j, i) = type_wrapper<T>::random(); 
+        for (int j = 0; j < N; j++) A(j, i) = utils::random<T>();
     }
     A >> B;
 
@@ -125,7 +125,7 @@ void test3()
     dmatrix<T> C(N, N, blacs_grid, bs, bs);
     for (int i = 0; i < N; i++)
     {
-        for (int j = 0; j < N; j++) A.set(j, i, type_wrapper<T>::random());
+        for (int j = 0; j < N; j++) A.set(j, i, utils::random<T>());
     }
     A >> B;
 

@@ -147,7 +147,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
 
     std::vector<double> tmp(4096);
     for (int i = 0; i < 4096; i++) {
-        tmp[i] = type_wrapper<double>::random();
+        tmp[i] = utils::random<double>();
     }
     int igk0 = (kp__->comm().rank() == 0) ? 1 : 0;
 

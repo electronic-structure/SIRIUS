@@ -28,7 +28,7 @@
 #include "field4d.hpp"
 #include "periodic_function.hpp"
 #include "K_point/k_point_set.hpp"
-#include "mixer.h"
+#include "mixer.hpp"
 
 #ifdef __GPU
 extern "C" void generate_dm_pw_gpu(int           num_atoms__,

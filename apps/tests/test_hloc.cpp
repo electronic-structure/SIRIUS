@@ -49,7 +49,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     Wave_functions phi(gvecp, 4 * num_bands__);
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
-            phi.pw_coeffs(0).prime(j, i) = type_wrapper<double_complex>::random();
+            phi.pw_coeffs(0).prime(j, i) = utils::random<double_complex>();
         }
         phi.pw_coeffs(0).prime(0, i) = 1.0;
     }

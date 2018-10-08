@@ -27,10 +27,10 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     Wave_functions hphi(gvecp, num_atoms, nmt, 2 * num_bands__);
     Wave_functions tmp(gvecp, num_atoms, nmt, num_bands__);
     
-    phi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    phi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    hphi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    hphi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
+    phi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
+    phi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
+    hphi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
+    hphi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
 
     dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
     

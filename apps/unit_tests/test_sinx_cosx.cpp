@@ -9,7 +9,7 @@ int run_test(cmd_args& args)
     int n{10};
 
     for (int i = 0; i < 20; i++) {
-        double phi = type_wrapper<double>::random() * fourpi;
+        double phi = utils::random<double>() * fourpi;
         auto cosxn = SHT::cosxn(n, phi);
         auto sinxn = SHT::sinxn(n, phi);
         for (int l = 0; l < n; l++) {

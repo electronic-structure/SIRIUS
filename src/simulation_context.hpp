@@ -17,18 +17,18 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file simulation_context.h
+/** \file simulation_context.hpp
  *
  *  \brief Contains definition and implementation of Simulation_context class.
  */
 
-#ifndef __SIMULATION_CONTEXT_BASE_H__
-#define __SIMULATION_CONTEXT_BASE_H__
+#ifndef __SIMULATION_CONTEXT_HPP__
+#define __SIMULATION_CONTEXT_HPP__
 
 #include <algorithm>
 
 #include "version.hpp"
-#include "simulation_parameters.h"
+#include "simulation_parameters.hpp"
 #include "mpi_grid.hpp"
 #include "radial_integrals.hpp"
 #include "utils/utils.hpp"

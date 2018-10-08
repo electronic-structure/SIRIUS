@@ -178,7 +178,7 @@ set(sirius_location $<TARGET_FILE:sirius>)
 add_subdirectory(apps/atoms)
 add_subdirectory(apps/dft_loop)
 if(BUILD_TESTS)
-#  add_subdirectory(apps/tests)
+  add_subdirectory(apps/tests)
   add_subdirectory(apps/unit_tests)
 endif(BUILD_TESTS)
 # add_subdirectory(apps/utils) # not compiling..

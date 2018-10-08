@@ -28,7 +28,7 @@
 #include <tuple>
 #include "spline.hpp"
 #include "constants.h"
-#include "typedefs.h"
+#include "typedefs.hpp"
 
 namespace sirius {
 
@@ -550,7 +550,7 @@ class Radial_solver
     //==             double q0 = q__[ir];
     //==             double p1 = p0 + h * (2 * q0 + p0 * x0inv);
     //==             double q1 = q0 + h * ((ve__[ir] + x0inv * (ll2 * x0inv - zn_) - enu__) * p0 - q0 * x0inv -
-    //mp__[ir]);
+    // mp__[ir]);
 
     //==             for (int step = 1; step < num_steps; step++)
     //==             {
@@ -651,7 +651,7 @@ class Radial_solver
     std::tuple<int, std::vector<double>, std::vector<double>, std::vector<double>, std::vector<double>>
     solve(relativity_t rel__, int dme__, int l__, int k__, double enu__) const
     {
-        int                              nr = num_points();
+        int nr = num_points();
         std::vector<std::vector<double>> p;
         std::vector<std::vector<double>> q;
         std::vector<std::vector<double>> dpdr;
@@ -767,7 +767,7 @@ class Radial_solver
               std::vector<double>& rdudr__, std::array<double, 2>& uderiv__) const
     {
         auto result = solve(rel__, dme__, l__, 0, enu__);
-        int  nr     = num_points();
+        int nr      = num_points();
 
         auto p0 = std::get<1>(result);
         auto p1 = std::get<2>(result);
@@ -1059,10 +1059,10 @@ class Enu_finder : public Radial_solver
         std::vector<double> dpdr(np);
         std::vector<double> dqdr(np);
 
-        double enu   = enu_start__;
-        double de    = 0.001;
-        bool   found = false;
-        int    nndp  = 0;
+        double enu = enu_start__;
+        double de  = 0.001;
+        bool found = false;
+        int nndp   = 0;
 
         /* We want to find enu such that the wave-function at the muffin-tin boundary is zero
          * and the number of nodes inside muffin-tin is equal to n-l-1. This will be the top
