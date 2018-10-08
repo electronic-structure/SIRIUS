@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 # user variables
 set(CREATE_PYTHON_MODULE OFF CACHE BOOL "create sirius python module")
+set(CREATE_FORTRAN_BINDINGS ON CACHE BOOL "build Fortran bindings")
 set(BUILD_DOCS OFF CACHE BOOL "build doxygen doc")
 set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
@@ -155,24 +156,29 @@ configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" "${PROJECT_BINARY_DIR}
 include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
-  add_dependencies(${_target} sirius)
+  if(USE_CUDA)
+    add_dependencies(${_target} sirius_cu)
+  endif()
+
   if(USE_MKL)
     # TODO: handle -lpthread properly
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-      target_link_libraries(${_target} PRIVATE "${sirius_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-Wl,--no-as-needed;${MKL_LIBRARIES};-lpthread -lm -ldl -lgomp")
+      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-Wl,--no-as-needed;${MKL_LIBRARIES};-lpthread -lm -ldl -lgomp")
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-      target_link_libraries(${_target} PRIVATE "${sirius_location};${SYSTEM_LIBRARIES};${MKL_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-lpthread")
+      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${MKL_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-lpthread")
     else()
       message(FATAL_ERROR "Unknown compiler")
     endif()
   else()
-    target_link_libraries(${_target} PRIVATE "${sirius_location};${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
+    target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
   endif()
 ENDMACRO()
 
 # sirius library
 add_subdirectory(src)
-set(sirius_location $<TARGET_FILE:sirius>)
+if(USE_CUDA)
+  set(sirius_cu_location $<TARGET_FILE:sirius_cu>)
+endif()
 
 # applications
 add_subdirectory(apps/atoms)
