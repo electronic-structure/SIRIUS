@@ -318,8 +318,16 @@ py::class_<Free_atom>(m, "Free_atom")
                                         return atom.free_atom_wave_function(idx);
                                     })
     .def("free_atom_wave_function_x", [](Free_atom& atom, int idx)
-                                    {
-                                        return atom.free_atom_wave_function_x(idx);
-                                    });
+                                      {
+                                          return atom.free_atom_wave_function_x(idx);
+                                      })
+    .def("free_atom_wave_function_x_deriv", [](Free_atom& atom, int idx)
+                                            {
+                                                return atom.free_atom_wave_function_x_deriv(idx);
+                                            })
+    .def("free_atom_wave_function_residual", [](Free_atom& atom, int idx)
+                                             {
+                                                 return atom.free_atom_wave_function_residual(idx);
+                                             });
 
 }

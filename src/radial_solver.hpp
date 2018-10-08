@@ -839,6 +839,8 @@ class Bound_state : public Radial_solver
 
     Spline<double> rho_;
 
+    std::vector<double> dpdr_;
+
     void solve(relativity_t rel__, double enu_start__)
     {
         int np = num_points();
@@ -848,9 +850,9 @@ class Bound_state : public Radial_solver
 
         std::vector<double> p(np);
         std::vector<double> q(np);
-        std::vector<double> dpdr(np);
         std::vector<double> dqdr(np);
         std::vector<double> rdudr(np);
+        dpdr_ = std::vector<double>(np);
 
         int s{1};
         int sp;
@@ -863,20 +865,21 @@ class Bound_state : public Radial_solver
 
             switch (rel__) {
                 case relativity_t::none: {
-                    nn = integrate_forward_rk4<relativity_t::none, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr, q, dqdr);
+                    nn = integrate_forward_rk4<relativity_t::none, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr);
                     break;
                 }
                 case relativity_t::koelling_harmon: {
-                    nn = integrate_forward_rk4<relativity_t::koelling_harmon, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr,
-                                                                                    q, dqdr);
+                    nn = integrate_forward_rk4<relativity_t::koelling_harmon, true>(enu_, l_, k_, chi_p, chi_q, p,
+                                                                                    dpdr_, q, dqdr);
                     break;
                 }
                 case relativity_t::zora: {
-                    nn = integrate_forward_rk4<relativity_t::zora, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr, q, dqdr);
+                    nn = integrate_forward_rk4<relativity_t::zora, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr);
                     break;
                 }
                 case relativity_t::dirac: {
-                    nn = integrate_forward_rk4<relativity_t::dirac, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr, q, dqdr);
+                    nn = integrate_forward_rk4<relativity_t::dirac, true>(enu_, l_, k_, chi_p, chi_q, p, dpdr_, q,
+                                                                          dqdr);
                     break;
                 }
                 default: {
@@ -905,7 +908,7 @@ class Bound_state : public Radial_solver
 
         /* compute r * u'(r) */
         for (int i = 0; i < num_points(); i++) {
-            rdudr[i] = dpdr[i] - p[i] / radial_grid(i);
+            rdudr[i] = dpdr_[i] - p[i] / radial_grid(i);
         }
 
         /* search for the turning point */
@@ -956,8 +959,9 @@ class Bound_state : public Radial_solver
         /* count number of nodes of the function */
         int nn{0};
         for (int i = 0; i < np - 1; i++) {
-            if (p_(i) * p_(i + 1) < 0.0)
+            if (p_(i) * p_(i + 1) < 0.0) {
                 nn++;
+            }
         }
 
         if (nn != (n_ - l_ - 1)) {
@@ -999,16 +1003,6 @@ class Bound_state : public Radial_solver
         , rho_(radial_grid__)
     {
         solve(rel__, enu_start__);
-        //= /* check residual */
-        //= auto& p = this->p();
-        //= Spline<double> s(radial_grid__);
-        //= for (int i = 0; i < radial_grid__.num_points(); i++) {
-        //=     double x = radial_grid__[i];
-        //=     s(i) = -0.5 * p.deriv(2, i) + (v__[i] + l_ * (l_ + 1) / x / x / 2) * p(i) - enu_ * p(i);
-        //=     s(i) = std::pow(s(i), 2);
-        //= }
-        //= double rtot = s.interpolate().integrate(0);
-        //= std::cout << "residual: " << rtot << "\n";
     }
 
     inline double enu() const
@@ -1032,6 +1026,11 @@ class Bound_state : public Radial_solver
     Spline<double> const& p() const
     {
         return p_;
+    }
+
+    std::vector<double> const& dpdr() const
+    {
+        return dpdr_;
     }
 };
 
