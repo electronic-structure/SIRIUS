@@ -108,7 +108,7 @@ inline void initialize(bool call_mpi_init__ = true)
 }
 
 /// Shut down the library.
-inline void finalize(bool call_mpi_fin__ = true)
+inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_cleanup__ = true)
 {
     if (!is_initialized()) {
         TERMINATE("SIRIUS library was not initialized");
@@ -129,10 +129,14 @@ inline void finalize(bool call_mpi_fin__ = true)
         acc::set_device();
         cublas::destroy_stream_handles();
         acc::destroy_streams();
-        acc::reset();
+        if (reset_device__) {
+            acc::reset();
+        }
     }
 #endif
-    fftw_cleanup();
+    if (fftw_cleanup__) {
+        fftw_cleanup();
+    }
 
     utils::stop_global_timer();
 #if defined(__APEX)
