@@ -390,6 +390,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("energy_fermi", &K_point_set::energy_fermi)
         .def("get_band_energies", &K_point_set::get_band_energies)
         .def("find_band_occupancies", &K_point_set::find_band_occupancies)
+        .def("band_gap", &K_point_set::band_gap)
         .def("sync_band_energies", &K_point_set::sync_band_energies)
         .def("valence_eval_sum", &K_point_set::valence_eval_sum)
         .def("__contains__", [](K_point_set& ks, int i) {
