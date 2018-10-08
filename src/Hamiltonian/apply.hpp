@@ -28,9 +28,7 @@
  *  \param [in]  n    Number of wave-functions to which H and S are applied.
  *  \param [in]  phi  Input wave-functions [storage: CPU && GPU].
  *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
- *  \param [out] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
- *  \param [in]  d_op D-operator representation.
- *  \param [in]  q_op Q-operator representation.
+ *  \param [out] sphi Overlap operator, applied to wave-functions [storage: CPU || GPU].
  *
  *  In non-collinear case (ispn = 2) the Hamiltonian and S operator are applied to both components of spinor
  *  wave-functions. Otherwise they are applied to a single component.

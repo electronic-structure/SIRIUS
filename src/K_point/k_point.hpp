@@ -203,7 +203,9 @@ class K_point
             if (ctx_.num_mag_dims() == 3) {
                 return band_occupancies_(j__, 0);
             } else {
-                if (!(ispn__ == 0 || ispn__ == 1)) {
+                if (!(ispn__ == 0 || ispn__ == 1) ||
+                    !(ispn__ <= ctx_.num_mag_dims())
+                   ) {
                     TERMINATE("wrong spin index");
                 }
                 return band_occupancies_(j__, ispn__);
@@ -394,8 +396,14 @@ class K_point
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
 
+        /// Get the number of bands
+        int num_bands() const
+        {
+            return ctx_.num_bands();
+        }
+
         /// Get the number of occupied bands for each spin channel.
-        int num_occupied_bands(int ispn__ = -1)
+        int num_occupied_bands(int ispn__ = -1) const
         {
             for (int j = ctx_.num_bands() - 1; j >= 0; j--) {
                 if (std::abs(band_occupancy(j, ispn__) * weight()) > 1e-14) {
@@ -480,11 +488,16 @@ class K_point
 
         inline Wave_functions& fv_states()
         {
+            assert(bool(fv_states_));
             return *fv_states_;
         }
 
         inline Wave_functions& spinor_wave_functions()
         {
+            if (!spinor_wave_functions_) {
+                throw std::runtime_error("K_point::spinor_wave_functions was not initialized\n");
+            }
+
             return *spinor_wave_functions_;
         }
 
@@ -767,6 +780,8 @@ class K_point
             assert(beta_projectors_ != nullptr);
             return *beta_projectors_col_;
         }
+
+        const Simulation_context& ctx() const;
 };
 
 //== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
@@ -1274,6 +1289,11 @@ inline void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
     }
 
     comm_.allreduce(sv_evec.at<CPU>(), (int)sv_evec.size());
+}
+
+inline const Simulation_context& K_point::ctx() const
+{
+    return ctx_;
 }
 
 #include "generate_fv_states.hpp"

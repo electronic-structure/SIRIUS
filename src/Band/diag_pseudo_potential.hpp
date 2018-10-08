@@ -76,7 +76,7 @@ int Band::diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const
 
     /* check residuals */
     if (ctx_.control().verification_ >= 1) {
-        check_residuals<T>(kp__, H__); 
+        check_residuals<T>(kp__, H__);
     }
 
     ctx_.fft_coarse().dismiss();
@@ -98,7 +98,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 
     hmlt.zero();
     ovlp.zero();
-    
+
     auto gen_solver = ctx_.gen_evp_solver<T>();
 
     for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
@@ -126,7 +126,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
             int ig_row    = kp__->igk_row(igk_row);
             auto gvec_row = kp__->gkvec().gvec(ig_row);
             auto ig12 = ctx_.gvec().index_g12_safe(gvec_row, gvec_col);
-            
+
             if (ispn__ == 0) {
                 if (ig12.second) {
                     hmlt(igk_row, igk_col) += std::conj(veff[ig12.first]);
@@ -147,7 +147,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     mdarray<double_complex, 2> qop(ctx_.unit_cell().max_mt_basis_size(), ctx_.unit_cell().max_mt_basis_size());
 
     mdarray<double_complex, 2> btmp(kp__->num_gkvec_row(), ctx_.unit_cell().max_mt_basis_size());
-    
+
     kp__->beta_projectors_row().prepare();
     kp__->beta_projectors_col().prepare();
     for (int ichunk = 0; ichunk <  kp__->beta_projectors_row().num_chunks(); ichunk++) {
@@ -164,6 +164,8 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
             int offs = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::offset, i);
             int ia   = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::ia, i);
 
+            const auto& augment_op = ctx_.augmentation_op(ctx_.unit_cell().atom(ia).type_id());
+
             for (int xi1 = 0; xi1 < nbf; xi1++) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     if (ctx_.num_mag_dims() == 1) {
@@ -175,8 +177,9 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
                     } else {
                         dop(xi1, xi2) = ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0);
                     }
-
-                    qop(xi1, xi2) = ctx_.augmentation_op(ctx_.unit_cell().atom(ia).type_id()).q_mtrx(xi1, xi2);
+                    if(augment_op.atom_type().augment()) {
+                        qop(xi1, xi2) = augment_op.q_mtrx(xi1, xi2);
+                    }
                 }
             }
             linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
@@ -189,11 +192,12 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
                               &beta_col(0, offs), beta_col.ld(),
                               linalg_const<double_complex>::one(),
                               &hmlt(0, 0), hmlt.ld());
-
-            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
-                              &beta_row(0, offs), beta_row.ld(),
-                              &qop(0, 0), qop.ld(),
-                              &btmp(0, 0), btmp.ld());
+            if(augment_op.atom_type().augment()) {
+                linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
+                                  &beta_row(0, offs), beta_row.ld(),
+                                  &qop(0, 0), qop.ld(),
+                                  &btmp(0, 0), btmp.ld());
+            }
             linalg<CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
                               linalg_const<double_complex>::one(),
                               &btmp(0, 0), btmp.ld(),
@@ -204,7 +208,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     }
     kp__->beta_projectors_row().dismiss();
     kp__->beta_projectors_col().dismiss();
-    
+
     if (gen_solver->solve(kp__->num_gkvec(), ctx_.num_bands(), hmlt, ovlp, eval.data(), evec)) {
         std::stringstream s;
         s << "error in full diagonalziation";
