@@ -33,7 +33,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "typedefs.h"
+#include "typedefs.hpp"
 #include "linalg.hpp"
 #include "lebedev_grids.hpp"
 

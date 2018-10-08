@@ -9,6 +9,7 @@
 #include <utility>
 #include <memory>
 #include "utils/json.hpp"
+#include "Unit_cell/free_atom.hpp"
 
 
 using namespace pybind11::literals; // to bring in the `_a` literal
@@ -315,6 +316,18 @@ py::class_<Free_atom>(m, "Free_atom")
     .def("free_atom_wave_function", [](Free_atom& atom, int idx)
                                     {
                                         return atom.free_atom_wave_function(idx);
-                                    });
+                                    })
+    .def("free_atom_wave_function_x", [](Free_atom& atom, int idx)
+                                      {
+                                          return atom.free_atom_wave_function_x(idx);
+                                      })
+    .def("free_atom_wave_function_x_deriv", [](Free_atom& atom, int idx)
+                                            {
+                                                return atom.free_atom_wave_function_x_deriv(idx);
+                                            })
+    .def("free_atom_wave_function_residual", [](Free_atom& atom, int idx)
+                                             {
+                                                 return atom.free_atom_wave_function_residual(idx);
+                                             });
 
 }

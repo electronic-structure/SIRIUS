@@ -81,9 +81,7 @@ int main(int argn, char **argv)
 
     bool rel = args.exist("rel");
 
-    Simulation_parameters param;
-
-    Free_atom fa(param, symbol);
+    Free_atom fa(symbol);
 
     fa.ground_state(1e-6, 1e-6, rel);
 

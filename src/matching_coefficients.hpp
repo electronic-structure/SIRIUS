@@ -17,34 +17,31 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file matching_coefficients.h
+/** \file matching_coefficients.hpp
  *
  *  \brief Contains definition and partial implementation of sirius::Matching_coefficients class.
  */
 
-#ifndef __MATCHING_COEFFICIENTS_H__
-#define __MATCHING_COEFFICIENTS_H__
+#ifndef __MATCHING_COEFFICIENTS_HPP__
+#define __MATCHING_COEFFICIENTS_HPP__
 
 namespace sirius {
 
 /** The following matching conditions must be fulfilled:
  *  \f[
- *      \frac{\partial^j}{\partial r^j} \sum_{L \nu} A_{L \nu}^{\bf k}({\bf G})u_{\ell \nu}(r) 
- *       Y_{L}(\hat {\bf r}) \bigg|_{R^{MT}}  = \frac{\partial^j}{\partial r^j} \frac{4 \pi}{\sqrt \Omega} 
- *       e^{i{\bf (G+k)\tau}} \sum_{L}i^{\ell} j_{\ell}(|{\bf G+k}|r) Y_{L}^{*}(\widehat {\bf G+k}) Y_{L}(\hat {\bf r}) \bigg|_{R^{MT}} 
- *  \f]
- *  where \f$ L = \{ \ell, m \} \f$. Dropping sum over L we arrive to the following system of linear equations:
- *  \f[
- *      \sum_{\nu} \frac{\partial^j u_{\ell \nu}(r)}{\partial r^j} \bigg|_{R^{MT}} A_{L \nu}^{\bf k}({\bf G}) =
- *      \frac{4 \pi}{\sqrt \Omega} e^{i{\bf (G+k)\tau}} i^{\ell} \frac{\partial^j j_{\ell}(|{\bf G+k}|r)}{\partial r^j}
- *      \bigg|_{R^{MT}} Y_{L}^{*}(\widehat {\bf G+k}) 
+ *      \frac{\partial^j}{\partial r^j} \sum_{L \nu} A_{L \nu}^{\bf k}({\bf G})u_{\ell \nu}(r)
+ *       Y_{L}(\hat {\bf r}) \bigg|_{R^{MT}}  = \frac{\partial^j}{\partial r^j} \frac{4 \pi}{\sqrt \Omega}
+ *       e^{i{\bf (G+k)\tau}} \sum_{L}i^{\ell} j_{\ell}(|{\bf G+k}|r) Y_{L}^{*}(\widehat {\bf G+k}) Y_{L}(\hat {\bf r})
+ * \bigg|_{R^{MT}} \f] where \f$ L = \{ \ell, m \} \f$. Dropping sum over L we arrive to the following system of linear
+ * equations: \f[ \sum_{\nu} \frac{\partial^j u_{\ell \nu}(r)}{\partial r^j} \bigg|_{R^{MT}} A_{L \nu}^{\bf k}({\bf G})
+ * = \frac{4 \pi}{\sqrt \Omega} e^{i{\bf (G+k)\tau}} i^{\ell} \frac{\partial^j j_{\ell}(|{\bf G+k}|r)}{\partial r^j}
+ *      \bigg|_{R^{MT}} Y_{L}^{*}(\widehat {\bf G+k})
  *  \f]
  *  The matching coefficients are then equal to:
  *  \f[
- *      A_{L \nu}^{\bf k}({\bf G}) = \sum_{j} \bigg[ \frac{\partial^j u_{\ell \nu}(r)}{\partial r^j} \bigg|_{R^{MT}} \bigg]_{\nu j}^{-1}
- *      \frac{\partial^j j_{\ell}(|{\bf G+k}|r)}{\partial r^j} \bigg|_{R^{MT}} \frac{4 \pi}{\sqrt \Omega} i^{\ell} 
- *      e^{i{\bf (G+k)\tau}} Y_{L}^{*}(\widehat {\bf G+k})  
- *  \f]
+ *      A_{L \nu}^{\bf k}({\bf G}) = \sum_{j} \bigg[ \frac{\partial^j u_{\ell \nu}(r)}{\partial r^j} \bigg|_{R^{MT}}
+ * \bigg]_{\nu j}^{-1} \frac{\partial^j j_{\ell}(|{\bf G+k}|r)}{\partial r^j} \bigg|_{R^{MT}} \frac{4 \pi}{\sqrt \Omega}
+ * i^{\ell} e^{i{\bf (G+k)\tau}} Y_{L}^{*}(\widehat {\bf G+k}) \f]
  */
 class Matching_coefficients
 {
@@ -66,23 +63,17 @@ class Matching_coefficients
 
     /// Generate matching coefficients for a specific \f$ \ell \f$ and order.
     /** \param [in] ngk Number of G+k vectors.
-         *  \param [in] ia Index of atom.
-         *  \param [in] iat Index of atom type.
-         *  \param [in] l Orbital quantum nuber.
-         *  \param [in] lm Composite l,m index.
-         *  \param [in] nu Order of radial function \f$ u_{\ell \nu}(r) \f$ for which coefficients are generated.
-         *  \param [inout] A Matrix of radial derivatives.
-         *  \param [out] alm Pointer to alm coefficients.
-         */
+     *  \param [in] ia Index of atom.
+     *  \param [in] iat Index of atom type.
+     *  \param [in] l Orbital quantum nuber.
+     *  \param [in] lm Composite l,m index.
+     *  \param [in] nu Order of radial function \f$ u_{\ell \nu}(r) \f$ for which coefficients are generated.
+     *  \param [inout] A Matrix of radial derivatives.
+     *  \param [out] alm Pointer to alm coefficients.
+     */
     template <int N>
-    inline void generate(int                                ngk,
-                         std::vector<double_complex> const& phase_factors__,
-                         int                                iat,
-                         int                                l,
-                         int                                lm,
-                         int                                nu,
-                         matrix3d<double>&                  A,
-                         double_complex*                    alm) const
+    inline void generate(int ngk, std::vector<double_complex> const& phase_factors__, int iat, int l, int lm, int nu,
+                         matrix3d<double>& A, double_complex* alm) const
     {
         /* invert matrix of radial derivatives */
         switch (N) {
@@ -90,7 +81,8 @@ class Matching_coefficients
                 if (unit_cell_.parameters().control().verification_ >= 1) {
                     if (std::abs(A(0, 0)) < 1.0 / std::sqrt(unit_cell_.omega())) {
                         std::stringstream s;
-                        s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l << std::endl
+                        s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
+                          << std::endl
                           << "  radial function value at the MT boundary : " << A(0, 0);
                         WARNING(s.str());
                     }
@@ -105,7 +97,8 @@ class Matching_coefficients
                 if (unit_cell_.parameters().control().verification_ >= 1) {
                     if (std::abs(det) < 1.0 / std::sqrt(unit_cell_.omega())) {
                         std::stringstream s;
-                        s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l << std::endl
+                        s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
+                          << std::endl
                           << "  radial function value at the MT boundary : " << A(0, 0);
                         WARNING(s.str());
                     }
@@ -133,13 +126,11 @@ class Matching_coefficients
                     break;
                 }
                 case 2: {
-                    zt = alm_b_(0, igk, l, iat) * A(nu, 0) +
-                         alm_b_(1, igk, l, iat) * A(nu, 1);
+                    zt = alm_b_(0, igk, l, iat) * A(nu, 0) + alm_b_(1, igk, l, iat) * A(nu, 1);
                     break;
                 }
                 case 3: {
-                    zt = alm_b_(0, igk, l, iat) * A(nu, 0) +
-                         alm_b_(1, igk, l, iat) * A(nu, 1) +
+                    zt = alm_b_(0, igk, l, iat) * A(nu, 0) + alm_b_(1, igk, l, iat) * A(nu, 1) +
                          alm_b_(2, igk, l, iat) * A(nu, 2);
                     break;
                 }
@@ -150,11 +141,8 @@ class Matching_coefficients
 
   public:
     /// Constructor
-    Matching_coefficients(Unit_cell const&  unit_cell__,
-                          int               lmax_apw__,
-                          int               num_gkvec__,
-                          std::vector<int>& igk__,
-                          Gvec const&       gkvec__)
+    Matching_coefficients(Unit_cell const& unit_cell__, int lmax_apw__, int num_gkvec__, std::vector<int>& igk__,
+                          Gvec const& gkvec__)
         : unit_cell_(unit_cell__)
         , num_gkvec_(num_gkvec__)
         , igk_(igk__)
@@ -199,17 +187,18 @@ class Matching_coefficients
 
                 double RGk = R * gkvec_len_[igk];
 
-                /* compute values and first and second derivatives of the spherical Bessel functions at the MT boundary */
+                /* compute values and first and second derivatives of the spherical Bessel functions at the MT boundary
+                 */
                 gsl_sf_bessel_jl_array(lmax_apw__ + 1, RGk, &sbessel_mt(0, 0));
 
                 /* Bessel function derivative: f_{{n}}^{{\prime}}(z)=-f_{{n+1}}(z)+(n/z)f_{{n}}(z)
-                     *
-                     * In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,1}]]
-                     * Out[]= (n SphericalBesselJ[n,a x])/x-a SphericalBesselJ[1+n,a x]
-                     *
-                     * In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,2}]]
-                     * Out[]= (((-1+n) n-a^2 x^2) SphericalBesselJ[n,a x]+2 a x SphericalBesselJ[1+n,a x])/x^2
-                     */
+                 *
+                 * In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,1}]]
+                 * Out[]= (n SphericalBesselJ[n,a x])/x-a SphericalBesselJ[1+n,a x]
+                 *
+                 * In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,2}]]
+                 * Out[]= (((-1+n) n-a^2 x^2) SphericalBesselJ[n,a x]+2 a x SphericalBesselJ[1+n,a x])/x^2
+                 */
                 for (int l = 0; l <= lmax_apw__; l++) {
                     sbessel_mt(l, 1) = -sbessel_mt(l + 1, 0) * gkvec_len_[igk] + (l / R) * sbessel_mt(l, 0);
                     sbessel_mt(l, 2) = 2 * gkvec_len_[igk] * sbessel_mt(l + 1, 0) / R +
@@ -218,7 +207,7 @@ class Matching_coefficients
 
                 for (int l = 0; l <= lmax_apw__; l++) {
                     double_complex z       = std::pow(double_complex(0, 1), l);
-                    double         f       = fourpi / std::sqrt(unit_cell_.omega());
+                    double f               = fourpi / std::sqrt(unit_cell_.omega());
                     alm_b_(0, igk, l, iat) = z * f * sbessel_mt(l, 0);
                     alm_b_(1, igk, l, iat) = z * f * sbessel_mt(l, 1);
                     alm_b_(2, igk, l, iat) = z * f * sbessel_mt(l, 2);
@@ -229,8 +218,8 @@ class Matching_coefficients
 
     /// Generate plane-wave matching coefficents for the radial solutions of a given atom.
     /** \param [in] ia Index of atom.
-         *  \param [out] alm Array of matching coefficients with dimension indices \f$ ({\bf G+k}, \xi) \f$.
-         */
+     *  \param [out] alm Array of matching coefficients with dimension indices \f$ ({\bf G+k}, \xi) \f$.
+     */
     void generate(int ia, mdarray<double_complex, 2>& alm) const
     {
         auto& atom = unit_cell_.atom(ia);
@@ -288,4 +277,4 @@ class Matching_coefficients
 
 } // namespace sirius
 
-#endif // __MATCHING_COEFFICIENTS_H__
+#endif // __MATCHING_COEFFICIENTS_HPP__

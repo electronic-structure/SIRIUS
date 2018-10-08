@@ -50,27 +50,27 @@ int main(int argn, char** argv)
     }
 
     std::vector<level_conf> levels;
-    for (int k = 0; k < 10; k++)
-    {
+    for (int k = 0; k < 10; k++) {
         int z = 1 + k * 10;
 
-        for (int n = 1; n <= 5 + k; n++)
-        {
-            for (int l = 0; l <= n - 1; l++) levels.push_back(level_conf(n, l, z));
+        for (int n = 1; n <= 5 + k; n++) {
+            for (int l = 0; l <= n - 1; l++) {
+                levels.push_back(level_conf(n, l, z));
+            }
         }
     }
 
-    {
-        auto r = Radial_grid_factory<double>(grid_type, num_points, rmin, 200.0, p);
+    //{
+    //    auto r = Radial_grid_factory<double>(grid_type, num_points, rmin, 200.0, p);
 
-        //Radial_grid r(grid_type, num_points, rmin, 200.0);
-        std::string fname = "grid_" + r.name() + ".txt";
-        FILE* fout = fopen(fname.c_str(), "w");
-        for (int i = 0; i < r.num_points(); i++) fprintf(fout,"%i %16.12e\n", i, r[i]);
-        fclose(fout);
+    //    //Radial_grid r(grid_type, num_points, rmin, 200.0);
+    //    std::string fname = "grid_" + r.name() + ".txt";
+    //    FILE* fout = fopen(fname.c_str(), "w");
+    //    for (int i = 0; i < r.num_points(); i++) fprintf(fout,"%i %16.12e\n", i, r[i]);
+    //    fclose(fout);
 
-        printf("radial grid: %s\n", r.name().c_str());
-    }
+    //    printf("radial grid: %s\n", r.name().c_str());
+    //}
 
     std::vector<double> err(levels.size());
     
@@ -85,7 +85,9 @@ int main(int argn, char** argv)
         auto radial_grid = Radial_grid_factory<double>(grid_type, num_points, rmin, 200.0 + z * 3.0, p);
 
         std::vector<double> v(radial_grid.num_points());
-        for (int i = 0; i < radial_grid.num_points(); i++) v[i] = -z / radial_grid[i];
+        for (int i = 0; i < radial_grid.num_points(); i++) {
+            v[i] = -z / radial_grid[i];
+        }
 
         double enu_exact = -0.5 * std::pow(double(z) / n, 2);
         
@@ -95,18 +97,28 @@ int main(int argn, char** argv)
 
         double rel_err = std::abs(1 - enu / enu_exact);
 
+        /* check residual */
+        auto& p = bound_state.p();
+
+        auto rg1 = radial_grid.segment(radial_grid.index_of(200));
+
+        Spline<double> s(rg1);
+        for (int i = 0; i < rg1.num_points(); i++) {
+            double x = rg1[i];
+            s(i) = -0.5 * p.deriv(2, i) + (v[i] + l * (l + 1) / x / x / 2) * p(i) - enu * p(i);
+            s(i) = std::pow(s(i), 2);
+        }
+        double rtot = s.interpolate().integrate(0);
+
         #pragma omp critical
         {
-            if (rel_err > 1e-10) 
-            {
+            if (rel_err > 1e-10) {
                 printf("Fail! ");
-            }
-            else
-            {
+            } else {
                 printf("OK! ");
             }
 
-            printf("z = %2i n = %2i l = %2i, enu: %12.6e, enu_exact: %12.6e, relative error: %12.6e\n", z, n, l, enu, enu_exact, rel_err);
+            printf("z = %2i n = %2i l = %2i, enu: %12.6e, enu_exact: %12.6e, relative error: %12.6e, residual: %12.6e\n", z, n, l, enu, enu_exact, rel_err, rtot);
         }
         err[j] = rel_err;
     }

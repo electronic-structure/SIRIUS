@@ -26,12 +26,10 @@
 #define __ATOM_TYPE_HPP__
 
 #include "atomic_data.hpp"
-#include "descriptors.h"
 #include "geometry3d.hpp"
-#include "radial_grid.h"
-#include "radial_solver.h"
+#include "radial_solver.hpp"
 #include "Potential/xc_functional.hpp"
-#include "simulation_parameters.h"
+#include "simulation_parameters.hpp"
 #include "radial_functions_index.hpp"
 #include "basis_functions_index.hpp"
 #include "hubbard_orbitals_descriptor.hpp"

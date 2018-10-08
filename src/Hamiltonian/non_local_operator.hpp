@@ -26,7 +26,6 @@
 #define __NON_LOCAL_OPERATOR_HPP__
 
 #include "Beta_projectors/beta_projectors.hpp"
-#include "simulation_context.h"
 
 namespace sirius {
 
@@ -382,7 +381,8 @@ class D_operator : public Non_local_operator<T>
                             int idx = xi2 * nbf + xi1;
                             for (int s = 0; s < 4; s++) {
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, s) =
-                                    type_wrapper<T>::bypass(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
+                                    //type_wrapper<T>::bypass(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
+                                    utils::zero_if_not_complex<T>(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
                             }
                         }
                     }
@@ -395,28 +395,30 @@ class D_operator : public Non_local_operator<T>
                         for (int xi1 = 0; xi1 < nbf; xi1++) {
                             int idx = xi2 * nbf + xi1;
                             switch (this->ctx__.num_mag_dims()) {
-                            case 3: {
-                                double bx = uc.atom(ia).d_mtrx(xi1, xi2, 2);
-                                double by = uc.atom(ia).d_mtrx(xi1, xi2, 3);
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 2) =
-                                    type_wrapper<T>::bypass(double_complex(bx, -by));
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 3) =
-                                    type_wrapper<T>::bypass(double_complex(bx, by));
-                            }
-                            case 1: {
-                                double v  = uc.atom(ia).d_mtrx(xi1, xi2, 0);
-                                double bz = uc.atom(ia).d_mtrx(xi1, xi2, 1);
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = v + bz;
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 1) = v - bz;
-                                break;
-                            }
-                            case 0: {
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = uc.atom(ia).d_mtrx(xi1, xi2, 0);
-                                break;
-                            }
-                            default: {
-                                TERMINATE("wrong number of magnetic dimensions");
-                            }
+                                case 3: {
+                                    double bx = uc.atom(ia).d_mtrx(xi1, xi2, 2);
+                                    double by = uc.atom(ia).d_mtrx(xi1, xi2, 3);
+                                    this->op_(this->packed_mtrx_offset_(ia) + idx, 2) =
+                                        //type_wrapper<T>::bypass(double_complex(bx, -by));
+                                        utils::zero_if_not_complex<T>(double_complex(bx, -by));
+                                    this->op_(this->packed_mtrx_offset_(ia) + idx, 3) =
+                                        //type_wrapper<T>::bypass(double_complex(bx, by));
+                                        utils::zero_if_not_complex<T>(double_complex(bx, by));
+                                }
+                                case 1: {
+                                    double v  = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+                                    double bz = uc.atom(ia).d_mtrx(xi1, xi2, 1);
+                                    this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = v + bz;
+                                    this->op_(this->packed_mtrx_offset_(ia) + idx, 1) = v - bz;
+                                    break;
+                                }
+                                case 0: {
+                                    this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+                                    break;
+                                }
+                                default: {
+                                    TERMINATE("wrong number of magnetic dimensions");
+                                }
                             }
                         }
                     }
@@ -498,7 +500,8 @@ class Q_operator : public Non_local_operator<T>
                                        ind = 2 if si = down and sj = up
                                        ind = 3 if si = up and sj = down */
                                     this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, ind) =
-                                        type_wrapper<T>::bypass(result);
+                                        //type_wrapper<T>::bypass(result);
+                                        utils::zero_if_not_complex<T>(result);
                                 }
                             }
                         } else {

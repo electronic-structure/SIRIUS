@@ -49,9 +49,10 @@ void test1_angular_radial()
 
     srand((int)time(NULL));
 
-    for (int ir = 0; ir < r.num_points(); ir++) 
-    {
-        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<T>::random();
+    for (int ir = 0; ir < r.num_points(); ir++) {
+        for (int lm = 0; lm < lmmax; lm++) {
+            f1(lm, ir) = utils::random<T>();
+        }
     }
     auto f2 = convert(f1);
     auto f3 = convert(f2);
@@ -76,7 +77,7 @@ void test2(int lmax, int nr)
 
     for (int ir = 0; ir < nr; ir++)
     {
-        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<T>::random();
+        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = utils::random<T>();
     }
     auto f2 = transform(&sht, f1);
     auto f3 = transform(&sht, f2);
@@ -104,7 +105,7 @@ void test3(int lmax, int nr)
 
     for (int ir = 0; ir < nr; ir++)
     {
-        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = type_wrapper<double>::random();
+        for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = utils::random<double>();
     }
     auto f2 = transform(&sht, f1);
     for (int ir = 0; ir < nr; ir++)
@@ -441,12 +442,10 @@ void test10()
     Spheric_function<spectral, double> rho_up_lm(64, rgrid);
     Spheric_function<spectral, double> rho_dn_lm(64, rgrid);
 
-    for (int ir = 0; ir < rgrid.num_points(); ir++)
-    {
-        for (int lm = 0; lm < 64; lm++)
-        {
-            rho_up_lm(lm, ir) = type_wrapper<double>::random();
-            rho_dn_lm(lm, ir) = type_wrapper<double>::random();
+    for (int ir = 0; ir < rgrid.num_points(); ir++) {
+        for (int lm = 0; lm < 64; lm++) {
+            rho_up_lm(lm, ir) = utils::random<double>();
+            rho_dn_lm(lm, ir) = utils::random<double>();
         }
     }
 
@@ -455,14 +454,12 @@ void test10()
     Spheric_function_gradient<spatial, double> grad_rho_up_tp(sht.num_points(), rgrid);
     Spheric_function_gradient<spatial, double> grad_rho_dn_tp(sht.num_points(), rgrid);
 
-
     /* compute gradient in Rlm spherical harmonics */
     auto grad_rho_up_lm = gradient(rho_up_lm);
     auto grad_rho_dn_lm = gradient(rho_dn_lm);
 
     /* backward transform gradient from Rlm to (theta, phi) */
-    for (int x = 0; x < 3; x++)
-    {
+    for (int x = 0; x < 3; x++) {
         grad_rho_up_tp[x] = transform(&sht, grad_rho_up_lm[x]);
         grad_rho_dn_tp[x] = transform(&sht, grad_rho_dn_lm[x]);
     }

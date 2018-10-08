@@ -20,6 +20,9 @@
 /** \file utils.hpp
  *
  *  \brief A collection of utility functions.
+ *
+ *  General purpose header file containing various helper utility functions. This file should only include
+ *  standard headers without any code-specific headers.
  */
 
 #ifndef __UTILS_HPP__
@@ -98,6 +101,7 @@ inline int lm(int l, int m)
     return (l * l + l + m);
 }
 
+/// Get maximum orbital quantum number by the maximum lm index.
 inline int lmax(int lmmax__)
 {
     assert(lmmax__ >= 0);
@@ -110,10 +114,11 @@ inline int lmax(int lmmax__)
     return lmax;
 }
 
-inline std::vector<int> l_by_lm(int lmax)
+/// Get array of orbital quantum numbers for each lm component.
+inline std::vector<int> l_by_lm(int lmax__)
 {
-    std::vector<int> v(lmmax(lmax));
-    for (int l = 0; l <= lmax; l++) {
+    std::vector<int> v(lmmax(lmax__));
+    for (int l = 0; l <= lmax__; l++) {
         for (int m = -l; m <= l; m++) {
             v[lm(l, m)] = l;
         }
@@ -121,6 +126,10 @@ inline std::vector<int> l_by_lm(int lmax)
     return std::move(v);
 }
 
+/// Check if file exists.
+/** \param[in] file_name Full path to the file being checked.
+ *  \return True if file exists, false otherwise. 
+ */
 inline bool file_exists(std::string file_name)
 {
     std::ifstream ifs(file_name.c_str());
@@ -128,8 +137,8 @@ inline bool file_exists(std::string file_name)
 }
 
 /// Return the timestamp string in a specified format.
-/** Typical format strings: "%Y%m%d_%H%M%S", "%Y-%m-%d %H:%M:%S", "%H:%M:%S"
-  */
+/** Typical format strings: "%Y%m%d_%H%M%S", "%Y-%m-%d %H:%M:%S", "%H:%M:%S" 
+ */
 inline std::string timestamp(std::string fmt)
 {
     timeval t;
@@ -142,6 +151,7 @@ inline std::string timestamp(std::string fmt)
     return std::string(buf);
 }
 
+/// Wall-clock time in seconds.
 inline double wtime()
 {
     timeval t;
@@ -149,6 +159,7 @@ inline double wtime()
     return double(t.tv_sec) + double(t.tv_usec) / 1e6;
 }
 
+/// Sign of the variable.
 template <typename T>
 inline int sign(T val)
 {
@@ -175,6 +186,7 @@ inline int packed_index(int i__, int j__)
     return j__ * (j__ + 1) / 2 + i__;
 }
 
+/// Convert double to a string with a given precision.
 inline std::string double_to_string(double val, int precision = -1)
 {
     char buf[100];
@@ -205,6 +217,7 @@ inline std::string double_to_string(double val, int precision = -1)
     return std::string(buf);
 }
 
+/// Return angle phi in the range [0, 2Pi) by its values of sin(phi) and cos(phi).
 inline double phi_by_sin_cos(double sinp, double cosp)
 {
     const double twopi = 6.2831853071795864769;
@@ -215,6 +228,7 @@ inline double phi_by_sin_cos(double sinp, double cosp)
     return phi;
 }
 
+/// Compute a factorial.
 template <typename T>
 inline T factorial(int n)
 {
@@ -397,7 +411,59 @@ inline std::string hostname()
     return std::string(nm);
 }
 
+inline double conj(double x__)
+{
+    return x__;
 }
+
+inline std::complex<double> conj(std::complex<double> x__)
+{
+    return std::conj(x__);
+}
+
+template <typename T>
+inline T zero_if_not_complex(std::complex<double> x__);
+
+template<>
+inline double zero_if_not_complex<double>(std::complex<double> x__)
+{
+    return 0;
+}
+
+template<>
+inline std::complex<double> zero_if_not_complex<std::complex<double>>(std::complex<double> x__)
+{
+    return x__;
+}
+
+/// Simple random number generator.
+inline uint32_t rnd()
+{
+    static uint32_t a = 123456;
+    a                 = (a ^ 61) ^ (a >> 16);
+    a                 = a + (a << 3);
+    a                 = a ^ (a >> 4);
+    a                 = a * 0x27d4eb2d;
+    a                 = a ^ (a >> 15);
+    return a;
+}
+
+template <typename T>
+inline T random();
+
+template <>
+inline double random<double>()
+{
+    return static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
+}
+
+template <>
+inline std::complex<double> random<std::complex<double>>()
+{
+    return std::complex<double>(random<double>(), random<double>());
+}
+
+} // namespace
 
 template <typename T>
 inline std::ostream& operator<<(std::ostream& out, std::vector<T>& v)
@@ -425,7 +491,7 @@ inline std::string& rtrim(std::string& str, const std::string& chars = "\t\n\v\f
     str.erase(str.find_last_not_of(chars) + 1);
     return str;
 }
- 
+
 inline std::string& trim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
 {
     return ltrim(rtrim(str, chars), chars);

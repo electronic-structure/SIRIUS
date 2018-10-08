@@ -25,8 +25,8 @@
 #ifndef __PERIODIC_FUNCTION_HPP__
 #define __PERIODIC_FUNCTION_HPP__
 
-#include "simulation_context.h"
-#include "spheric_function.h"
+#include "simulation_context.hpp"
+#include "spheric_function.hpp"
 #include "smooth_periodic_function.hpp"
 
 namespace sirius {
@@ -347,7 +347,9 @@ class Periodic_function : public Smooth_periodic_function<T>
                                       static_cast<Smooth_periodic_function<T> const&>(g__));
         } else {
             for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                result_rg += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__.f_rg(irloc) *
+                //result_rg += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__.f_rg(irloc) *
+                //             this->ctx_.theta(irloc);
+                result_rg += utils::conj(this->f_rg(irloc)) * g__.f_rg(irloc) *
                              this->ctx_.theta(irloc);
             }
             result_rg *= (unit_cell_.omega() / this->fft_->size());

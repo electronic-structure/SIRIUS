@@ -25,9 +25,8 @@
 #ifndef __ATOM_SYMMETRY_CLASS_HPP__
 #define __ATOM_SYMMETRY_CLASS_HPP__
 
-#include "runtime.h"
+#include "runtime.hpp"
 #include "atom_type.hpp"
-#include "communicator.hpp"
 #include "eigenproblem.h"
 
 namespace sirius {

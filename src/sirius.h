@@ -32,22 +32,16 @@
 #include "utils/json.hpp"
 using json = nlohmann::json;
 
-#include "input.h"
-#include "cmd_args.h"
+#include "input.hpp"
+#include "cmd_args.hpp"
 #include "constants.h"
 #include "spline.hpp"
-#include "radial_solver.h"
+#include "radial_solver.hpp"
 #include "SHT/sht.hpp"
 #include "SHT/gaunt.hpp"
 #include "sddk.hpp"
 #include "hdf5_tree.hpp"
-#include "Potential/xc_functional.hpp"
-#include "descriptors.h"
-#include "mixer.h"
-#include "Unit_cell/free_atom.hpp"
-#include "Unit_cell/unit_cell.hpp"
 #include "Band/band.hpp"
-#include "Potential/potential.hpp"
 #include "dft_ground_state.hpp"
 
 #if defined(__PLASMA)

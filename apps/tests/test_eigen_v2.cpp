@@ -9,7 +9,7 @@ dmatrix<T> random_symmetric(int N__, int bs__, BLACS_grid const& blacs_grid__)
     dmatrix<T> B(N__, N__, blacs_grid__, bs__, bs__);
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
-            A(i, j) = type_wrapper<T>::random();
+            A(i, j) = utils::random<T>();
         }
     }
 
@@ -18,7 +18,7 @@ dmatrix<T> random_symmetric(int N__, int bs__, BLACS_grid const& blacs_grid__)
 #else
     for (int i = 0; i < N__; i++) {
         for (int j = 0; j < N__; j++) {
-            B(i, j) = type_wrapper<T>::bypass(std::conj(A(j, i)));
+            B(i, j) = utils::conj(A(j, i)));
         }
     }
 #endif
@@ -44,7 +44,7 @@ dmatrix<T> random_positive_definite(int N__, int bs__, BLACS_grid const& blacs_g
     dmatrix<T> B(N__, N__, blacs_grid__, bs__, bs__);
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
-            A(i, j) = p * type_wrapper<T>::random();
+            A(i, j) = p * utils::random<T>();
         }
     }
 

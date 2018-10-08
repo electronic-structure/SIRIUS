@@ -26,7 +26,7 @@
 #define __HAMILTONIAN_HPP__
 
 #include <typeinfo>
-#include "simulation_context.h"
+#include "simulation_context.hpp"
 #include "Hubbard/hubbard.hpp"
 #include "Potential/potential.hpp"
 #include "K_point/k_point.hpp"
