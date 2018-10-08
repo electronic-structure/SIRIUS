@@ -61,8 +61,15 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
 
     dft_gs.initial_state()
 
-    potential_tol = siriusJson['parameters']['potential_tol']
-    energy_tol = siriusJson['parameters']['energy_tol']
+    if 'potential_tol' not in siriusJson['parameters']:
+        potential_tol = 1e-5
+    else:
+        potential_tol = siriusJson['parameters']['potential_tol']
+
+    if 'energy_tol' not in siriusJson['parameters']:
+        energy_tol = 1e-5
+    else:
+        energy_tol = siriusJson['parameters']['energy_tol']
     write_status = False
 
     dft_gs.find(potential_tol, energy_tol, num_dft_iter, write_status)
