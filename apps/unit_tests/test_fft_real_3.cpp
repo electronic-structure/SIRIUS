@@ -27,8 +27,8 @@ int run_test(cmd_args& args, device_t pu__)
     mdarray<double_complex, 1> phi2_rg(fft.local_size());
 
     for (int i = 0; i < gvecp_r.gvec_count_fft(); i++) {
-        phi1(i) = type_wrapper<double_complex>::random();
-        phi2(i) = type_wrapper<double_complex>::random();
+        phi1(i) = utils::random<double_complex>();
+        phi2(i) = utils::random<double_complex>();
     }
     phi1(0) = 1.0;
     phi2(0) = 1.0;

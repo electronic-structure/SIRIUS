@@ -27,7 +27,7 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include "simulation_context.h"
+#include "simulation_context.hpp"
 #include "K_point/k_point.hpp"
 #include "wave_functions.hpp"
 #include "Hamiltonian/non_local_operator.hpp"
@@ -35,7 +35,7 @@
 #include "Beta_projectors/beta_projectors_gradient.hpp"
 #include "Beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "radial_integrals.hpp"
-#include "mixer.h"
+#include "mixer.hpp"
 
 namespace sirius {
 

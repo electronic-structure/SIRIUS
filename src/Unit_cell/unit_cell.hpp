@@ -26,11 +26,10 @@
 #define __UNIT_CELL_HPP__
 
 #include <algorithm>
-#include "descriptors.h"
 #include "atom.hpp"
 #include "mpi_grid.hpp"
 #include "unit_cell_symmetry.hpp"
-#include "simulation_parameters.h"
+#include "simulation_parameters.hpp"
 #include "utils/json.hpp"
 
 namespace sirius {

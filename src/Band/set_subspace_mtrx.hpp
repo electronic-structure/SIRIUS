@@ -73,15 +73,15 @@ inline void Band::set_subspace_mtrx(int N__,
             #pragma omp parallel for
             for (int i = 0; i < N__; i++) {
                 for (int j = N__; j < N__ + n__; j++) {
-                    mtrx__(j, i) = type_wrapper<T>::bypass(std::conj(mtrx__(i, j)));
+                    mtrx__(j, i) = utils::conj(mtrx__(i, j));
                 }
             }
         } else {
-            #ifdef __SCALAPACK
+#ifdef __SCALAPACK
             linalg<CPU>::tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
-            #else
+#else
             TERMINATE_NO_SCALAPACK
-            #endif
+#endif
         }
     }
 

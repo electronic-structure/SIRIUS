@@ -17,28 +17,16 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file runtime.h
+/** \file runtime.hpp
  *
  *  \brief Several run-time functions and runtime::pstdout class.
- *
- *  \todo Merge with something.
  */
 
-#ifndef __RUNTIME_H__
-#define __RUNTIME_H__
+#ifndef __RUNTIME_HPP__
+#define __RUNTIME_HPP__
 
-#include <signal.h>
-#include <sys/time.h>
-#include <map>
-#include <fstream>
-#include <chrono>
-#include <omp.h>
-#include <unistd.h>
-#include <cstring>
 #include <cstdarg>
-#include "config.h"
 #include "communicator.hpp"
-#include "utils/json.hpp"
 #include "utils/utils.hpp"
 #ifdef __GPU
 #include "GPU/cuda.hpp"
@@ -117,8 +105,6 @@ class pstdout
     }
 };
 
-} // namespace runtime
-
 inline void print_memory_usage(const char* file__, int line__)
 {
     size_t VmRSS, VmHWM;
@@ -128,7 +114,8 @@ inline void print_memory_usage(const char* file__, int line__)
 
     int n = snprintf(&str[0], 2048, "[rank%04i at line %i of file %s]", Communicator::world().rank(), line__, file__);
 
-    n += snprintf(&str[n], 2048, " VmHWM: %i Mb, VmRSS: %i Mb", static_cast<int>(VmHWM >> 20), static_cast<int>(VmRSS >> 20));
+    n += snprintf(&str[n], 2048, " VmHWM: %i Mb, VmRSS: %i Mb", static_cast<int>(VmHWM >> 20),
+                  static_cast<int>(VmRSS >> 20));
 
 #ifdef __GPU
     size_t gpu_mem = acc::get_free_mem();
@@ -138,6 +125,8 @@ inline void print_memory_usage(const char* file__, int line__)
     printf("%s\n", &str[0]);
 }
 
-#define MEMORY_USAGE_INFO() print_memory_usage(__FILE__, __LINE__);
+#define MEMORY_USAGE_INFO() runtime::print_memory_usage(__FILE__, __LINE__);
 
-#endif // __RUNTIME_H__
+} // namespace runtime
+
+#endif // __RUNTIME_HPP__

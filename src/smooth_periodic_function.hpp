@@ -358,7 +358,8 @@ T inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> cons
 
     #pragma omp parallel for schedule(static) reduction(+:result_rg)
     for (int irloc = 0; irloc < f__.fft().local_size(); irloc++) {
-        result_rg += type_wrapper<T>::bypass(std::conj(f__.f_rg(irloc))) * g__.f_rg(irloc);
+        //result_rg += type_wrapper<T>::bypass(std::conj(f__.f_rg(irloc)) * g__.f_rg(irloc));
+        result_rg += utils::conj(f__.f_rg(irloc)) * g__.f_rg(irloc);
     }
 
     result_rg *= (f__.gvec().omega() / f__.fft().size());

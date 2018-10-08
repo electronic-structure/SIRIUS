@@ -20,7 +20,7 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
 
     mdarray<double_complex, 1> f(gvp.gvec_count_fft());
     for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
-        f[ig] = type_wrapper<double_complex>::random();
+        f[ig] = utils::random<double_complex>();
     }
     mdarray<double_complex, 1> g(gvp.gvec_count_fft());
 
