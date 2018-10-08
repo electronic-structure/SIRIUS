@@ -145,6 +145,20 @@ class CoefficientArray:
         return self.conjugate()
 
     @property
+    def real(self):
+        out = type(self)(dtype=np.double)
+        for key, val in self._data.items():
+            out[key] = np.real(val)
+        return out
+
+    @property
+    def imag(self):
+        out = type(self)(dtype=np.double)
+        for key, val in self._data.items():
+            out[key] = np.imag(val)
+        return out
+
+    @property
     def H(self):
         """
         Hermitian conjugate
