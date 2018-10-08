@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,16 +17,71 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file descriptors.h
+/** \file typedefs.hpp
  *
- *  \brief Descriptors for various data structures
+ *  \brief Contains typedefs, enums and simple descriptors.
  */
 
-#ifndef __DESCRIPTORS_H__
-#define __DESCRIPTORS_H__
+#ifndef __TYPEDEFS_HPP__
+#define __TYPEDEFS_HPP__
 
-#include <vector>
-#include <array>
+#include <cstdlib>
+#include <assert.h>
+#include <complex>
+#include <limits>
+
+using double_complex = std::complex<double>;
+
+/// Spin-blocks of the Hamiltonian.
+enum class spin_block_t
+{
+    /// Non-magnetic case.
+    nm,
+
+    /// Up-up block.
+    uu,
+
+    /// Down-donw block.
+    dd,
+
+    ///Up-down block.
+    ud,
+
+    /// Down-up block.
+    du
+};
+
+/// Type of electronic structure methods.
+enum class electronic_structure_method_t
+{
+    /// Full potential linearized augmented plane waves with local orbitals.
+    full_potential_lapwlo,
+
+    /// Pseudopotential (ultrasoft, norm-conserving, PAW).
+    pseudopotential
+};
+
+/// Type of a function domain.
+enum function_domain_t
+{
+    /// Spatial domain.
+    spatial,
+    /// Spectral domain.
+    spectral
+};
+
+enum class relativity_t
+{
+    none,
+
+    koelling_harmon,
+
+    zora,
+
+    iora,
+
+    dirac
+};
 
 /// Describes radial solution.
 struct radial_solution_descriptor
@@ -112,4 +167,4 @@ struct lo_basis_descriptor
     uint8_t idxrf;
 };
 
-#endif
+#endif // __TYPEDEFS_HPP__
