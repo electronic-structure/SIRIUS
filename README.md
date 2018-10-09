@@ -9,7 +9,7 @@ SIRIUS depends on the following libraries: MPI, BLAS, LAPACK, GSL, LibXC, HDF5, 
 ```console
 $ mkdir _build
 $ cd _build
-$ CXX=mpic++ CC=mpicc FC=mpif90 cmake /path/to/SIRIUS -DCMAKE_INSTALL_PREFIX=$HOME/local
+$ CXX=mpic++ CC=mpicc FC=mpif90 cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/local
 $ make
 $ make install
 ```
