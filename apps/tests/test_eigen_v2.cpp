@@ -18,7 +18,7 @@ dmatrix<T> random_symmetric(int N__, int bs__, BLACS_grid const& blacs_grid__)
 #else
     for (int i = 0; i < N__; i++) {
         for (int j = 0; j < N__; j++) {
-            B(i, j) = utils::conj(A(j, i)));
+            B(i, j) = utils::conj(A(j, i));
         }
     }
 #endif
@@ -28,11 +28,11 @@ dmatrix<T> random_symmetric(int N__, int bs__, BLACS_grid const& blacs_grid__)
             A(i, j) = 0.5 * (A(i, j) + B(i, j));
         }
     }
-    
+
     for (int i = 0; i < N__; i++) {
         A.set(i, i, 50.0);
     }
-    
+
     return std::move(A);
 }
 
@@ -53,7 +53,7 @@ dmatrix<T> random_positive_definite(int N__, int bs__, BLACS_grid const& blacs_g
 #else
     for (int i = 0; i < N__; i++) {
         for (int j = 0; j < N__; j++) {
-            B(i, j) = type_wrapper<T>::bypass(std::conj(A(j, i)));
+          B(i, j) = utils::conj(A(j, i));
         }
     }
 #endif
@@ -99,7 +99,7 @@ void test_diag(BLACS_grid const& blacs_grid__,
     };
 
     auto solver = Eigensolver_factory<T>(map_name_to_type[name__]);
-    
+
     std::vector<double> eval(nev__);
 
     if (blacs_grid__.comm().rank() == 0) {
@@ -134,7 +134,7 @@ void test_diag(BLACS_grid const& blacs_grid__,
         }
     }
     double t = t1.stop();
-    
+
     if (blacs_grid__.comm().rank() == 0) {
         printf("eigen-values (min, max): %18.12f %18.12f\n", eval.front(), eval.back());
         printf("time: %f sec.\n", t);
@@ -194,7 +194,7 @@ void test_diag2(BLACS_grid const& blacs_grid__,
     };
 
     auto solver = Eigensolver_factory<double_complex>(map_name_to_type[name__]);
-    
+
     matrix<double_complex> full_mtrx;
     int n;
     if (blacs_grid__.comm().rank() == 0) {
@@ -217,7 +217,7 @@ void test_diag2(BLACS_grid const& blacs_grid__,
     if (blacs_grid__.comm().rank() == 0) {
         printf("matrix size: %i\n", n);
     }
-    
+
     std::vector<double> eval(n);
     dmatrix<double_complex> A(n, n, blacs_grid__, bs__, bs__);
     dmatrix<double_complex> Z(n, n, blacs_grid__, bs__, bs__);
