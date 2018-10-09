@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file residuals.hpp
+ *
+ *  \brief Compute wave-function residuals.
+ */
+
 #ifdef __GPU
 extern "C" void residuals_aux_gpu(int num_gvec_loc__,
                                   int num_res_local__,
@@ -375,7 +399,7 @@ inline int Band::residuals(K_point*             kp__,
             printf("number of residuals : %i\n", n);
         }
     }
-                                        
+
     /* prevent numerical noise */
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
     if (std::is_same<T, double>::value && kp__->comm().rank() == 0 && n != 0) {
@@ -395,7 +419,7 @@ inline int Band::residuals(K_point*             kp__,
             }
         }
     }
-    
+
     /* print checksums */
     if (ctx_.control().print_checksum_ && n != 0) {
         int s0 = (ispn__ == 2) ? 0 : ispn__;
@@ -407,13 +431,13 @@ inline int Band::residuals(K_point*             kp__,
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "res_" << ispn;
-                print_checksum(s.str(), cs);
+                utils::print_checksum(s.str(), cs);
                 s.str("");
                 s << "hpsi_" << ispn;
-                print_checksum(s.str(), cs1);
+                utils::print_checksum(s.str(), cs1);
                 s.str("");
                 s << "opsi_" << ispn;
-                print_checksum(s.str(), cs2);
+                utils::print_checksum(s.str(), cs2);
             }
         }
     }
@@ -440,13 +464,13 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
         if (nc_mag) {
             /* apply Hamiltonian and S operators to the wave-functions */
-            H__.apply_h_s<T>(kp__, 2, 0, ctx_.num_bands(), psi, hpsi, spsi);
+            H__.apply_h_s<T>(kp__, 2, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
         } else {
             Wave_functions phi(&psi.pw_coeffs(ispin_step).prime(0, 0), kp__->gkvec_partition(), ctx_.num_bands(), 1);
             /* apply Hamiltonian and S operators to the wave-functions */
-            H__.apply_h_s<T>(kp__, ispin_step, 0, ctx_.num_bands(), phi, hpsi, spsi);
+            H__.apply_h_s<T>(kp__, ispin_step, 0, ctx_.num_bands(), phi, &hpsi, &spsi);
         }
-        
+
         for (int ispn = 0; ispn < num_sc; ispn++) {
             #pragma omp parallel for schedule(static)
             for (int j = 0; j < ctx_.num_bands(); j++) {

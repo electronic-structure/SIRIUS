@@ -1,31 +1,47 @@
 #include <sirius.h>
+#include <numeric>
 
 using namespace sirius;
 
-void test_mixer(Mixer<double>& mixer)
+std::vector<double> get_values(int N__)
 {
-    int N = 10;
-    std::vector<double> a(N), b(N);
-    for (int i = 0; i < N; i++)
-    {
-        a[i] = i + 1;
-        b[i] = i + 2;
+    std::vector<double> a(N__);
+    std::generate(a.begin(), a.end(), [](){return type_wrapper<double>::random();});
+    double norm = std::accumulate(a.begin(), a.end(), 0.0);
+    std::transform(a.begin(), a.end(), a.begin(), [&](double v){return v / norm;});
+    return std::move(a);
+}
+
+void test1_mixer(int N, Mixer<double>& mixer)
+{
+    auto a = get_values(N);
+    for (int i = 0; i < N; i++) {
+        mixer.input_shared(i, a[i]);
     }
-
-    double beta = mixer.beta();
-    printf("beta: %f\n", beta);
-
-    for (int i = 0; i < N; i++) mixer.input_shared(i, a[i]);
     mixer.initialize();
 
-    for (int i = 0; i < N; i++) mixer.input_shared(i, b[i]);
+    auto b = get_values(N);
+    for (int i = 0; i < N; i++) {
+        mixer.input_shared(i, b[i]);
+    }
 
-    mixer.mix(1e-16);
+    double rms = mixer.mix(1e-16);
+    std::cout << "rms = " << rms << "\n";
     std::vector<double> c(N);
 
-    for (int i = 0; i < N; i++) c[i] = mixer.output_shared(i);
+    for (int i = 0; i < N; i++) {
+        c[i] = mixer.output_shared(i);
+    }
+    double norm = std::accumulate(c.begin(), c.end(), 0.0);
+    std::cout << "norm of mixed vector = " << norm << "\n";
 
-    for (int i = 0; i < N; i++) printf("diff: %18.12f\n", std::abs(c[i] - (beta * b[i] + (1 - beta) * a[i])));
+    for (int i = 0; i < N; i++) {
+        if (c[i] != a[i]) {
+            std::stringstream s;
+            s << "a = " << a[i] << ", b = " << b[i] << ", c = " << c[i];
+            TERMINATE(s);
+        }
+    }
 }
 
 int main(int argn, char** argv)
@@ -43,16 +59,25 @@ int main(int argn, char** argv)
     sirius::initialize(1);
 
     int N = 10;
-    double beta = 0.05;
-    
-    Linear_mixer<double> mixer1(N, 0, beta, Communicator::world());
-    test_mixer(mixer1);
-    
-    Broyden1<double> mixer2(N, 0, 8, beta, Communicator::world());
-    test_mixer(mixer2);
 
-    Broyden2<double> mixer3(N, 0, 8, beta, 0.15, 100.0, Communicator::world());
-    test_mixer(mixer3);
+    printf("testing linear mixer\n");
+    Mixer_input mix_cfg;
+    mix_cfg.type_ = "linear";
+    mix_cfg.beta_ = 0.0;
+    auto mixer = Mixer_factory<double>(N, 0, mix_cfg, Communicator::world());
+    test1_mixer(N, *mixer);
+
+    printf("testing broyden1 mixer\n");
+    mix_cfg.type_ = "broyden1";
+    mix_cfg.beta_ = 0.0;
+    mixer = Mixer_factory<double>(N, 0, mix_cfg, Communicator::world());
+    test1_mixer(N, *mixer);
+
+    printf("testing broyden2 mixer\n");
+    mix_cfg.type_ = "broyden2";
+    mix_cfg.beta_ = 0.0;
+    mixer = Mixer_factory<double>(N, 0, mix_cfg, Communicator::world());
+    test1_mixer(N, *mixer);
 
     sirius::finalize();
 }

@@ -18,8 +18,8 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file splindex.hpp
- *   
- *  \brief Contains definition of splindex_base and specialization of splindex classes.
+ *
+ *  \brief Contains definition of sddk::splindex_base and sddk::specialization of splindex classes.
  */
 
 #ifndef __SPLINDEX_HPP__
@@ -32,16 +32,23 @@
 
 namespace sddk {
 
+/// Type of split index.
 enum splindex_t // TODO: enum class
 {
+    /// Block distribution.
     block,
+    /// Block-cyclic distribution.
     block_cyclic,
+    /// Custom distribution in continuous chunks of arbitrary size.
     chunk
 };
 
+/// Type of index domain.
 enum class index_domain_t
 {
+    /// Global index.
     global,
+    /// Local index.
     local
 };
 
@@ -64,6 +71,7 @@ class splindex_base
     {
     }
 
+    /// Pair of <local index, rank> describing the location of a global index.
     struct location_t
     {
         T local_index;
@@ -76,11 +84,13 @@ class splindex_base
     };
 
   public:
+    /// Rank id.
     inline int rank() const
     {
         return rank_;
     }
 
+    /// Number of ranks that are participating in the distribution of an index.
     inline int num_ranks() const
     {
         return num_ranks_;

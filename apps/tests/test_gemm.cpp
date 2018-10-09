@@ -41,17 +41,14 @@ int const nop_gemm = 8;
 
 double test_gemm(int M, int N, int K, int transa)
 {
-    sddk::timer t("test_gemm"); 
+    utils::timer t("test_gemm"); 
     
     mdarray<gemm_type, 2> a, b, c;
     int imax, jmax;
-    if (transa == 0)
-    {
+    if (transa == 0) {
         imax = M;
         jmax = K;
-    }
-    else
-    {
+    } else {
         imax = K;
         jmax = M;
     }
@@ -59,14 +56,16 @@ double test_gemm(int M, int N, int K, int transa)
     b = matrix<gemm_type>(K, N);
     c = matrix<gemm_type>(M, N);
 
-    for (int j = 0; j < jmax; j++)
-    {
-        for (int i = 0; i < imax; i++) a(i, j) = type_wrapper<gemm_type>::random();
+    for (int j = 0; j < jmax; j++) {
+        for (int i = 0; i < imax; i++) {
+            a(i, j) = utils::random<gemm_type>();
+        }
     }
 
-    for (int j = 0; j < N; j++)
-    {
-        for (int i = 0; i < K; i++) b(i, j) = type_wrapper<gemm_type>::random();
+    for (int j = 0; j < N; j++) {
+        for (int i = 0; i < K; i++) {
+            b(i, j) = utils::random<gemm_type>();
+        }
     }
 
     c.zero();
@@ -75,7 +74,7 @@ double test_gemm(int M, int N, int K, int transa)
     printf("a.ld() = %i\n", a.ld());
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
-    sddk::timer t1("gemm_only"); 
+    utils::timer t1("gemm_only"); 
     linalg<CPU>::gemm(transa, 0, M, N, K, a.at<CPU>(), a.ld(), b.at<CPU>(), b.ld(), c.at<CPU>(), c.ld());
     double tval = t1.stop();
     double perf = nop_gemm * 1e-9 * M * N * K / tval;
@@ -107,24 +106,25 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     b.allocate(memory_t::host);
     c.allocate(memory_t::host);
 
-    for (int ic = 0; ic < a.num_cols_local(); ic++)
-    {
-        for (int ir = 0; ir < a.num_rows_local(); ir++) a(ir, ic) = type_wrapper<gemm_type>::random();
+    for (int ic = 0; ic < a.num_cols_local(); ic++) {
+        for (int ir = 0; ir < a.num_rows_local(); ir++) {
+            a(ir, ic) = utils::random<gemm_type>();
+        }
     }
 
-    for (int ic = 0; ic < b.num_cols_local(); ic++)
-    {
-        for (int ir = 0; ir < b.num_rows_local(); ir++) b(ir, ic) = type_wrapper<gemm_type>::random();
+    for (int ic = 0; ic < b.num_cols_local(); ic++) {
+        for (int ir = 0; ir < b.num_rows_local(); ir++) {
+            b(ir, ic) = utils::random<gemm_type>();
+        }
     }
 
     c.zero();
 
-    if (Communicator::world().rank() == 0)
-    {
+    if (Communicator::world().rank() == 0) {
         printf("testing parallel gemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
         printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
     }
-    sddk::timer t1("gemm_only");
+    utils::timer t1("gemm_only");
     gemm_type one = 1;
     gemm_type zero = 0;
     linalg<CPU>::gemm(transa, 0, M, N - n, K, one, a, 0, 0, b, 0, n, zero, c, 0, 0);

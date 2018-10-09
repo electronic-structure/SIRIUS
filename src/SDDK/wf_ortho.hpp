@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file wf_ortho.hpp
+ *
+ *  \brief Wave-function orthonormalization.
+ */
+
 /// Orthogonalize n new wave-functions to the N old wave-functions
 template <typename T, int idx_bra__, int idx_ket__>
 inline void orthogonalize(device_t                     pu__,
@@ -15,6 +39,11 @@ inline void orthogonalize(device_t                     pu__,
 
     auto& comm = wfs__[0]->comm();
 
+#ifdef __GPU
+    if (pu__ == GPU) {
+        acc::set_device();
+    }
+#endif
     int K{0};
     if (sddk_pp) {
         K = wfs__[0]->gkvec().num_gvec() + wfs__[0]->num_mt_coeffs();
@@ -239,7 +268,7 @@ inline void orthogonalize(device_t                     pu__,
             #endif
         }
     } else { /* parallel transformation */
-        sddk::timer t1("sddk::Wave_functions::orthogonalize|potrf");
+        utils::timer t1("sddk::Wave_functions::orthogonalize|potrf");
         mdarray<T, 1> diag;
         o__.make_real_diag(n__);
         if (sddk_debug >= 1) {
@@ -255,7 +284,7 @@ inline void orthogonalize(device_t                     pu__,
         }
         t1.stop();
 
-        sddk::timer t2("sddk::Wave_functions::orthogonalize|trtri");
+        utils::timer t2("sddk::Wave_functions::orthogonalize|trtri");
         if (linalg<CPU>::trtri(n__, o__)) {
             TERMINATE("error in inversion");
         }

@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file generate_valence.hpp
+ *
+ *  \brief Generate valence charge density (sum of occupied bands).
+ */
+
 inline void Density::generate_valence(K_point_set& ks__)
 {
     PROFILE("sirius::Density::generate_valence");
@@ -97,27 +121,27 @@ inline void Density::generate_valence(K_point_set& ks__)
             auto cs = mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()).checksum();
             ctx_.fft_coarse().comm().allreduce(&cs, 1);
             if (ctx_.comm().rank() == 0) {
-                print_checksum("rho_mag_coarse_rg", cs);
+                utils::print_checksum("rho_mag_coarse_rg", cs);
             }
         }
         /* transform to PW domain */
         rho_mag_coarse_[j]->fft_transform(-1);
         /* map to fine G-vector grid */
         for (int igloc = 0; igloc < ctx_.gvec_coarse().count(); igloc++) {
-            rho_vec_[j]->f_pw_local(ctx_.gvec().gvec_base_mapping(igloc)) = rho_mag_coarse_[j]->f_pw_local(igloc);
+            component(j).f_pw_local(ctx_.gvec().gvec_base_mapping(igloc)) = rho_mag_coarse_[j]->f_pw_local(igloc);
         }
     }
     ctx_.fft_coarse().dismiss();
 
     if (!ctx_.full_potential()) {
         augment(ks__);
-        
+
         if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
-            auto h = mdarray<double_complex, 1>(&rho_->f_pw_local(0), ctx_.gvec().count()).hash();
-            print_hash("rho", h);
+            auto h = mdarray<double_complex, 1>(&rho().f_pw_local(0), ctx_.gvec().count()).hash();
+            utils::print_hash("rho", h);
         }
 
-        double nel = rho_->f_0().real() * unit_cell_.omega();
+        double nel = rho().f_0().real() * unit_cell_.omega();
         /* check the number of electrons */
         if (std::abs(nel - unit_cell_.num_electrons()) > 1e-8 && ctx_.comm().rank() == 0) {
             std::stringstream s;

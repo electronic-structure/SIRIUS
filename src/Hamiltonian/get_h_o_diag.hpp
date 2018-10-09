@@ -1,8 +1,34 @@
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file get_h_o_diag.hpp
+ *
+ *  \brief Get diagonal values of Hamiltonian and overlap matrices.
+ */
+
 inline mdarray<double, 2>
 Hamiltonian::get_h_diag(K_point* kp__,
                         double   v0__,
                         double   theta0__) const
 {
+    PROFILE("sirius::Hamiltonian::get_h_diag");
+
     // TODO: code is replicated in o_diag
     splindex<block> spl_num_atoms(unit_cell_.num_atoms(), kp__->comm().size(), kp__->comm().rank());
     int nlo{0};
@@ -13,9 +39,9 @@ Hamiltonian::get_h_diag(K_point* kp__,
 
     mdarray<double, 2> h_diag(kp__->num_gkvec_loc() + nlo, 1);
     for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
-        int ig = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igloc;
+        auto gvc = kp__->gkvec().gkvec_cart<index_domain_t::local>(igloc);
 
-        double ekin = 0.5 * dot(kp__->gkvec().gkvec_cart(ig), kp__->gkvec().gkvec_cart(ig));
+        double ekin = 0.5 * dot(gvc, gvc);
         h_diag[igloc] = v0__ + ekin * theta0__;
     }
 
@@ -62,6 +88,8 @@ inline mdarray<double, 1>
 Hamiltonian::get_o_diag(K_point* kp__,
                         double   theta0__) const
 {
+    PROFILE("sirius::Hamiltonian::get_o_diag");
+
     splindex<block> spl_num_atoms(unit_cell_.num_atoms(), kp__->comm().size(), kp__->comm().rank());
     int nlo{0};
     for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
@@ -102,7 +130,7 @@ template <typename T>
 inline mdarray<double, 2>
 Hamiltonian::get_h_diag(K_point* kp__) const
 {
-    PROFILE("sirius::Band::get_h_diag");
+    PROFILE("sirius::Hamiltonian::get_h_diag");
 
     mdarray<double, 2> h_diag(kp__->num_gkvec_loc(), ctx_.num_spins());
 
@@ -110,8 +138,7 @@ Hamiltonian::get_h_diag(K_point* kp__) const
 
         /* local H contribution */
         for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++) {
-            int ig = kp__->igk_loc(ig_loc);
-            auto vgk = kp__->gkvec().gkvec_cart(ig);
+            auto vgk = kp__->gkvec().gkvec_cart<index_domain_t::local>(ig_loc);
             h_diag(ig_loc, ispn) = 0.5 * dot(vgk, vgk) + this->local_op().v0(ispn);
         }
 
@@ -163,9 +190,9 @@ Hamiltonian::get_h_diag(K_point* kp__) const
 
 template <typename T>
 inline mdarray<double, 1>
-Hamiltonian::get_o_diag(K_point*       kp__) const
+Hamiltonian::get_o_diag(K_point* kp__) const
 {
-    PROFILE("sirius::Band::get_o_diag");
+    PROFILE("sirius::Hamiltonian::get_o_diag");
 
     mdarray<double, 1> o_diag(kp__->num_gkvec_loc());
     for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {

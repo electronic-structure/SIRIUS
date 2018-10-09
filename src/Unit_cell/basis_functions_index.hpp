@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file basis_functions_index.hpp
+ *
+ *  \brief Contains definitiona and implementation of sirius::basis_functions_index class.
+ */
+
 #ifndef __BASIS_FUNCTIONS_INDEX_HPP__
 #define __BASIS_FUNCTIONS_INDEX_HPP__
 
@@ -15,15 +39,15 @@ struct basis_function_index_descriptor
     double j;
     /// Order of the radial function for a given l (j).
     int order;
-    /// indice of local orbital
+    /// Indice of local orbital.
     int idxlo;
-    /// index of the radial function or beta projector in the case of
-    /// pseudo potential
+    /// Index of the radial function or beta projector in the case of pseudo potential.
     int idxrf;
 
     basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf)
         : l(l)
         , m(m)
+        , lm(utils::lm(l, m))
         , order(order)
         , idxlo(idxlo)
         , idxrf(idxrf)
@@ -32,13 +56,12 @@ struct basis_function_index_descriptor
         assert(m >= -l && m <= l);
         assert(order >= 0);
         assert(idxrf >= 0);
-
-        lm = Utils::lm_by_l_m(l, m);
     }
 
     basis_function_index_descriptor(int l, int m, double j, int order, int idxlo, int idxrf)
         : l(l)
         , m(m)
+        , lm(utils::lm(l, m))
         , j(j)
         , order(order)
         , idxlo(idxlo)
@@ -48,8 +71,6 @@ struct basis_function_index_descriptor
         assert(m >= -l && m <= l);
         assert(order >= 0);
         assert(idxrf >= 0);
-
-        lm = Utils::lm_by_l_m(l, m);
     }
 };
 
@@ -76,27 +97,30 @@ class basis_functions_index
     /// Number of local orbital basis functions.
     int size_lo_{0};
 
+    /// Maximum l of the radial basis functions.
+    int lmax_{-1};
+
   public:
 
-    void init(radial_functions_index& indexr)
+    void init(radial_functions_index& indexr__)
     {
         basis_function_index_descriptors_.clear();
 
-        index_by_idxrf_ = mdarray<int, 1>(indexr.size());
+        index_by_idxrf_ = mdarray<int, 1>(indexr__.size());
 
-        for (int idxrf = 0; idxrf < indexr.size(); idxrf++) {
-            int l     = indexr[idxrf].l;
-            int order = indexr[idxrf].order;
-            int idxlo = indexr[idxrf].idxlo;
+        for (int idxrf = 0; idxrf < indexr__.size(); idxrf++) {
+            int l     = indexr__[idxrf].l;
+            int order = indexr__[idxrf].order;
+            int idxlo = indexr__[idxrf].idxlo;
 
             index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
 
             for (int m = -l; m <= l; m++) {
                 basis_function_index_descriptors_.push_back(
-                    basis_function_index_descriptor(l, m, indexr[idxrf].j, order, idxlo, idxrf));
+                    basis_function_index_descriptor(l, m, indexr__[idxrf].j, order, idxlo, idxrf));
             }
         }
-        index_by_lm_order_ = mdarray<int, 2>(Utils::lmmax(indexr.lmax()), indexr.max_num_rf());
+        index_by_lm_order_ = mdarray<int, 2>(utils::lmmax(indexr__.lmax()), indexr__.max_num_rf());
 
         for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++) {
             int lm    = basis_function_index_descriptors_[i].lm;
@@ -110,6 +134,8 @@ class basis_functions_index
         }
 
         size_lo_ = (int)basis_function_index_descriptors_.size() - size_aw_;
+
+        lmax_ = indexr__.lmax();
 
         assert(size_aw_ >= 0);
         assert(size_lo_ >= 0);
@@ -133,7 +159,7 @@ class basis_functions_index
 
     inline int index_by_l_m_order(int l, int m, int order) const
     {
-        return index_by_lm_order_(Utils::lm_by_l_m(l, m), order);
+        return index_by_lm_order_(utils::lm(l, m), order);
     }
 
     inline int index_by_lm_order(int lm, int order) const

@@ -1,6 +1,25 @@
-/*
- *  Created on: May 3, 2016
- *      Author: isivkov
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Ilia Sivkov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file paw_potential.hpp
+ *
+ *  \brief Generate PAW potential.
  */
 
 inline void Potential::init_PAW()
@@ -19,7 +38,7 @@ inline void Potential::init_PAW()
         auto& atom_type = atom.type();
 
         int l_max = 2 * atom_type.indexr().lmax_lo();
-        int lm_max_rho = Utils::lmmax(l_max);
+        int lm_max_rho = utils::lmmax(l_max);
 
         paw_potential_data_t ppd;
 
@@ -45,7 +64,7 @@ inline void Potential::init_PAW()
         int bs = unit_cell_.atom(ia).mt_basis_size();
         max_paw_basis_size_ = std::max(max_paw_basis_size_, bs);
     }
-    
+
     /* initialize dij matrix */
     paw_dij_ = mdarray<double, 4>(max_paw_basis_size_, max_paw_basis_size_, ctx_.num_mag_dims() + 1, unit_cell_.num_paw_atoms(),
                                   memory_t::host, "paw_dij_");
@@ -94,7 +113,7 @@ inline void Potential::generate_PAW_effective_potential(Density const& density)
 
     if (ctx_.control().print_checksum_ && comm_.rank() == 0) {
         auto cs = paw_dij_.checksum();
-        print_checksum("paw_dij", cs);
+        utils::print_checksum("paw_dij", cs);
     }
 
     // add paw Dij to uspp Dij
@@ -293,15 +312,13 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
         }
     }
 
-    // transform back in lm
+    /* transform back to lm- domain */
     for(size_t i = 0; i < density.size(); i++){
         potential[i] += transform(sht_.get(), vxc_tp[i]);
     }
 
-    //------------------------
-    //--- calculate energy ---
-    //------------------------
-    Spheric_function<spectral,double> exc_lm = transform(sht_.get(), exc_tp );
+    /* transform to lm- domain */
+    Spheric_function<spectral, double> exc_lm = transform(sht_.get(), exc_tp);
 
     return inner(exc_lm, rho_u_lm + rho_d_lm);
 }
@@ -315,7 +332,7 @@ inline double Potential::calc_PAW_hartree_potential(Atom& atom,
 
     const Radial_grid<double>& grid = full_density.radial_grid();
 
-    // array passed to poisson solver
+    /* array passed to poisson solver */
     Spheric_function<spectral, double> atom_pot_sf(lmsize_rho, grid);
     atom_pot_sf.zero();
 
@@ -324,23 +341,22 @@ inline double Potential::calc_PAW_hartree_potential(Atom& atom,
     /* add hartree contribution */
     full_potential += atom_pot_sf;
 
-    //---------------------
-    //--- calc energy ---
-    //---------------------
-    auto l_by_lm = Utils::l_by_lm( Utils::lmax_by_lmmax(lmsize_rho) );
+    /* calculate energy */
 
-    // create array for integration
+    auto l_by_lm = utils::l_by_lm(utils::lmax(lmsize_rho));
+
+    /* create array for integration */
     std::vector<double> intdata(grid.num_points(),0);
 
-    double hartree_energy=0.0;
+    double hartree_energy{0};
 
     for (int lm=0; lm < lmsize_rho; lm++){
-        // fill data to integrate
+        /* fill data to integrate */
         for (int irad = 0; irad < grid.num_points(); irad++){
             intdata[irad] = full_density(lm,irad) * full_potential(lm, irad) * grid[irad] * grid[irad];
         }
 
-        // create spline from the data
+        /* create spline from the data */
         Spline<double> h_spl(grid,intdata);
         hartree_energy += 0.5 * h_spl.integrate(0);
     }
@@ -352,10 +368,7 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
                                                 std::vector<Spheric_function<spectral, double>> const& ae_density,
                                                 std::vector<Spheric_function<spectral, double>> const& ps_density)
 {
-    //-----------------------------------------
-    //---- Calculation of Hartree potential ---
-    //-----------------------------------------
-
+    /* calculation of Hartree potential */
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         ppd.ae_potential_[i].zero();
         ppd.ps_potential_[i].zero();
@@ -371,9 +384,7 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
 
     ppd.hartree_energy_ = ae_hartree_energy - ps_hartree_energy;
 
-    //-----------------------------------------
-    //---- Calculation of XC potential ---
-    //-----------------------------------------
+    /* calculation of XC potential */
     auto& ps_core = ppd.atom_->type().ps_core_charge_density();
     auto& ae_core = ppd.atom_->type().paw_ae_core_charge_density();
 
@@ -414,14 +425,14 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<dou
 
     auto& atom_type = pdd.atom_->type();
 
-    auto& paw_ae_wfs = atom_type.paw_ae_wfs();
-    auto& paw_ps_wfs = atom_type.paw_ps_wfs();
+    auto& paw_ae_wfs = atom_type.ae_paw_wfs_array();
+    auto& paw_ps_wfs = atom_type.ps_paw_wfs_array();
 
     /* get lm size for density */
     int lmax = atom_type.indexr().lmax_lo();
-    int lmsize_rho = Utils::lmmax(2 * lmax);
+    int lmsize_rho = utils::lmmax(2 * lmax);
 
-    auto l_by_lm = Utils::l_by_lm(2 * lmax);
+    auto l_by_lm = utils::l_by_lm(2 * lmax);
 
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rlm);
 

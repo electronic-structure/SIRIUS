@@ -46,7 +46,7 @@ all: log $(OBJ) sirius.o
 	ar -r libsirius.a $(OBJ)
 	ar -r libsirius_f.a $(OBJ) sirius.o
 
-sirius.o: sirius.f90 sirius_api.cpp
+sirius.o: sirius.f90 generated.f90 sirius_api.cpp
 
 debug: CXX_OPT=$(CXX_OPT_DBG)
 debug: $(OBJ_DBG) sirius_api.o sirius.o
@@ -54,13 +54,8 @@ debug: $(OBJ_DBG) sirius_api.o sirius.o
 	ar -r libsirius_f.a $(OBJ_DBG) sirius_api.o sirius.o
 
 
-# TODO: platform-independent python script
 log:
-	@echo "#ifndef __VERSION_H__" > version.h
-	@echo "#define __VERSION_H__" >> version.h
-	@echo "const char* const git_hash = \"$(shell git rev-parse HEAD)\";" >> version.h
-	@echo "const char* const build_date = \"$(shell date +"%a, %e %b %Y %H:%M:%S")\";" >> version.h
-	@echo "#endif" >> version.h
+	python gen_version.py
 
 clean:
 	rm -f $(OBJ) *.o *.a *.mod

@@ -21,7 +21,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     
     FFT3D_grid fft_box(find_translations(2 * cutoff__, M));
 
-    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), pu);
+    FFT3D fft(find_translations(2 * cutoff__, M), mpi_grid.communicator(1 << 0), pu);
 
     Communicator comm_ortho_fft = Communicator::world().split(fft.comm().rank());
 
@@ -41,7 +41,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     fft.prepare(gvecp);
 
-    Simulation_parameters params;
+    Simulation_context params;
     params.set_processing_unit(pu);
     
     Local_operator hloc(params, fft, gvecp);
@@ -49,7 +49,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     Wave_functions phi(gvecp, 4 * num_bands__);
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
-            phi.pw_coeffs(0).prime(j, i) = type_wrapper<double_complex>::random();
+            phi.pw_coeffs(0).prime(j, i) = utils::random<double_complex>();
         }
         phi.pw_coeffs(0).prime(0, i) = 1.0;
     }
@@ -64,7 +64,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     #endif
     hloc.prepare(gvecp); 
     Communicator::world().barrier();
-    sddk::timer t1("h_loc");
+    utils::timer t1("h_loc");
     for (int i = 0; i < 4; i++) {
         hloc.apply_h(0, phi, hphi, i * num_bands__, num_bands__);
     }
@@ -87,7 +87,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
             int ig = gvec.offset() + j;
-            auto gc = gvec.gvec_cart(ig);
+            auto gc = gvec.gvec_cart<index_domain_t::global>(ig);
             diff += std::pow(std::abs((2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(0).prime(j, i) - hphi.pw_coeffs(0).prime(j, i)), 2);
         }
     }
@@ -137,7 +137,7 @@ int main(int argn, char** argv)
     }
     Communicator::world().barrier();
     if (Communicator::world().rank() == 0) {
-        sddk::timer::print();
+        utils::timer::print();
     }
     Communicator::world().barrier();
     //runtime::Timer::print_all();

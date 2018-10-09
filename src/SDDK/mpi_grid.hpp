@@ -19,13 +19,12 @@
 
 /** \file mpi_grid.hpp
  *
- *  \brief Contains declaration and implementation of MPI_grid class.
+ *  \brief Contains declaration and implementation of sddk::MPI_grid class.
  */
 
 #ifndef __MPI_GRID_HPP__
 #define __MPI_GRID_HPP__
 
-#include "sddk_internal.hpp"
 #include "communicator.hpp"
 
 namespace sddk {

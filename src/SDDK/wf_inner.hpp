@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file wf_inner.hpp
- *   
+ *
  *  \brief Contains implementation of inner product for wave-functions.
  */
 
@@ -60,15 +60,15 @@ inline void inner(device_t        pu__,
     PROFILE("sddk::Wave_functions::inner");
 
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
-    
-    //assert(&bra__.comm() == &ket__.comm());
-    //assert(bra__.pw_coeffs().num_rows_loc() == ket__.pw_coeffs().num_rows_loc());
-    //if (bra__.has_mt()) {
-    //    assert(bra__.mt_coeffs().num_rows_loc() == ket__.mt_coeffs().num_rows_loc());
-    //}
 
     auto& comm = bra__.comm();
-    
+
+#ifdef __GPU
+    if (pu__ == GPU) {
+        acc::set_device();
+    }
+#endif
+
     const char* sddk_pp_raw = std::getenv("SDDK_PRINT_PERFORMANCE");
     int sddk_pp = (sddk_pp_raw == NULL) ? 0 : std::atoi(sddk_pp_raw);
 
@@ -87,8 +87,6 @@ inline void inner(device_t        pu__,
         comm.barrier();
     }
     double time = -omp_get_wtime();
-
-    //result__.zero(i0__, j0__, m__, n__);
 
     T alpha = (std::is_same<T, double_complex>::value) ? 1 : 2;
     T beta = 0;
@@ -285,7 +283,7 @@ inline void inner(device_t        pu__,
     std::array<std::array<int, 4>, 2> dims;
     
     if (pu__ == GPU) {
-        #ifdef __GPU
+#ifdef __GPU
         /* state of the buffers:
          * state = 0: buffer is free
          * state = 1: buffer stores result of local zgemm */
@@ -306,10 +304,10 @@ inline void inner(device_t        pu__,
 
         #pragma omp parallel num_threads(2) shared(buf_state)
         {
-            if (omp_get_thread_num() == 0) {
-                /* thread 0 spawns as many threads as possible */
-                omp_set_num_threads(nt - 1);
-            }
+            //if (omp_get_thread_num() == 0) {
+            //    /* thread 0 spawns as many threads as possible */
+            //    omp_set_num_threads(nt - 1);
+            //}
 
             /* this rotates the buffers and the CUDA stream numbers in a round robin way */
             int s{0};
@@ -361,7 +359,7 @@ inline void inner(device_t        pu__,
                         /* store panel: go over the elements of the window and add the elements 
                          * to the resulting array; the .add() method skips the elements that are 
                          * not part of the local result matrix. */
-                        #pragma omp parallel for
+                        #pragma omp parallel for num_threads(nt - 1)
                         for (int jcol = 0; jcol < ncol; jcol++) {
                             for (int irow = 0; irow < nrow; irow++) {
                                 /* .add() method takes the global (row, column) indices */
@@ -379,8 +377,8 @@ inline void inner(device_t        pu__,
             }
         }
         omp_set_nested(0);
-        omp_set_num_threads(nt);
-        #endif
+        //omp_set_num_threads(nt);
+#endif
     }
     
     if (pu__ == CPU) {

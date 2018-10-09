@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file initialize_subspace.hpp
+ *
+ *  \brief Initialize subspace for iterative diagonalization.
+ */
+
 inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::initialize_subspace");
@@ -73,7 +97,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
         phi.pw_coeffs(ispn).prime().zero();
     }
 
-    sddk::timer t1("sirius::Band::initialize_subspace|kp|wf");
+    utils::timer t1("sirius::Band::initialize_subspace|kp|wf");
     /* get proper lmax */
     int lmax{0};
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -83,7 +107,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     lmax = std::max(lmax, unit_cell_.lmax());
 
     if (num_ao__ > 0) {
-        kp__->generate_atomic_centered_wavefunctions(num_ao__, phi);
+        kp__->generate_atomic_wave_functions(num_ao__, phi);
     }
 
     /* fill remaining wave-functions with pseudo-random guess */
@@ -123,7 +147,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
 
     std::vector<double> tmp(4096);
     for (int i = 0; i < 4096; i++) {
-        tmp[i] = type_wrapper<double>::random();
+        tmp[i] = utils::random<double>();
     }
     int igk0 = (kp__->comm().rank() == 0) ? 1 : 0;
 
@@ -201,14 +225,15 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "initial_phi" << ispn;
-                print_checksum(s.str(), cs);
+                utils::print_checksum(s.str(), cs);
             }
         }
     }
 
     for (int ispn_step = 0; ispn_step < ctx_.num_spin_dims(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        H__.apply_h_s<T>(kp__, (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, 0, num_phi_tot, phi, hphi, ophi);
+        H__.apply_h_s<T>(kp__, (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, 0, num_phi_tot, phi, &hphi, &ophi);
+
 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
@@ -228,7 +253,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
             auto std_solver = Eigensolver_factory<T>(ctx_.std_evp_solver_type());
             if (std_solver->solve(num_phi_tot, num_phi_tot, hmlt, eo.data(), evec)) {
                 std::stringstream s;
-                s << "error in diagonalziation";
+                s << "error in diagonalization";
                 TERMINATE(s);
             }
             if (kp__->comm().rank() == 0) {
@@ -263,8 +288,8 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
                 cs1 += eval[i];
             }
             if (kp__->comm().rank() == 0) {
-                print_checksum("evec", cs);
-                print_checksum("eval", cs1);
+                utils::print_checksum("evec", cs);
+                utils::print_checksum("eval", cs1);
             }
         }
 
@@ -290,7 +315,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
             std::stringstream s;
             s << "initial_spinor_wave_functions_" << ispn;
             if (kp__->comm().rank() == 0) {
-                print_checksum(s.str(), cs);
+                utils::print_checksum(s.str(), cs);
             }
         }
     }

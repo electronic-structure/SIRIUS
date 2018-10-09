@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file xc.hpp
+ *
+ *  \brief Generate XC potential.
+ */
+
 inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
                                          std::vector<XC_functional>& xc_func,
                                          Spheric_function<spectral, double> const& rho_lm, 
@@ -24,7 +48,7 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
 
         /* compute density gradient product */
         grad_rho_grad_rho_tp = grad_rho_tp * grad_rho_tp;
-        
+
         /* compute Laplacian in Rlm spherical harmonics */
         auto lapl_rho_lm = laplacian(rho_lm);
 
@@ -407,12 +431,16 @@ inline void Potential::xc_mt(Density const& density__)
                     vxc_tp(itp, ir) = 0.5 * (vxc_up_tp(itp, ir) + vxc_dn_tp(itp, ir));
                 }       
             }
+            /* z, x, y order */
+            std::array<int, 3> comp_map = {2, 0, 1};
             /* convert magnetic field back to Rlm */
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                 auto bxcrlm = transform(sht_.get(), vecmagtp[j]);
                 for (int ir = 0; ir < nmtp; ir++) {
+                    /* add auxiliary magnetic field antiparallel to starting magnetization */
+                    bxcrlm(0, ir) -= aux_bf_(j, ia) * ctx_.unit_cell().atom(ia).vector_field()[comp_map[j]]; 
                     for (int lm = 0; lm < ctx_.lmmax_pot(); lm++) {
-                        effective_magnetic_field_[j]->f_mt<index_domain_t::local>(lm, ir, ialoc) = bxcrlm(lm, ir);
+                        effective_magnetic_field(j).f_mt<index_domain_t::local>(lm, ir, ialoc) = bxcrlm(lm, ir);
                     }
                 }
             }
@@ -470,7 +498,7 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
     if (ctx_.control().print_hash_) {
         auto h = rho.hash_f_rg();
         if (ctx_.comm().rank() == 0) {
-            print_hash("rho", h);
+            utils::print_hash("rho", h);
         }
     }
     
@@ -501,8 +529,8 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
             auto h1 = lapl_rho.hash_f_rg();
             auto h2 = grad_rho_grad_rho.hash_f_rg();
             if (ctx_.comm().rank() == 0) {
-                print_hash("lapl_rho", h1);
-                print_hash("grad_rho_grad_rho", h2);
+                utils::print_hash("lapl_rho", h1);
+                utils::print_hash("grad_rho_grad_rho", h2);
             }
         }
     }
@@ -617,6 +645,7 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
     Smooth_periodic_function<double> rho_up(ctx_.fft(), ctx_.gvec_partition());
     Smooth_periodic_function<double> rho_dn(ctx_.fft(), ctx_.gvec_partition());
 
+    utils::timer t1("sirius::Potential::xc_rg_magnetic|up_dn");
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin{0};
     for (int ir = 0; ir < num_points; ir++) {
@@ -643,6 +672,7 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         rho_up.f_rg(ir) = 0.5 * (rho + mag);
         rho_dn.f_rg(ir) = 0.5 * (rho - mag);
     }
+    t1.stop();
 
     if (rhomin < 0.0) {
         std::stringstream s;
@@ -655,8 +685,8 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         auto h1 = rho_up.hash_f_rg();
         auto h2 = rho_dn.hash_f_rg();
         if (ctx_.comm().rank() == 0) {
-            print_hash("rho_up", h1);
-            print_hash("rho_dn", h2);
+            utils::print_hash("rho_up", h1);
+            utils::print_hash("rho_dn", h2);
         }
     }
 
@@ -669,6 +699,7 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
     Smooth_periodic_function<double> grad_rho_dn_grad_rho_dn;
 
     if (is_gga) {
+        utils::timer t2("sirius::Potential::xc_rg_magnetic|grad1");
         /* get plane-wave coefficients of densities */
         rho_up.fft_transform(-1);
         rho_dn.fft_transform(-1);
@@ -703,11 +734,11 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
             auto h5 = grad_rho_dn_grad_rho_dn.hash_f_rg();
 
             if (ctx_.comm().rank() == 0) {
-                print_hash("lapl_rho_up", h1);
-                print_hash("lapl_rho_dn", h2);
-                print_hash("grad_rho_up_grad_rho_up", h3);
-                print_hash("grad_rho_up_grad_rho_dn", h4);
-                print_hash("grad_rho_dn_grad_rho_dn", h5);
+                utils::print_hash("lapl_rho_up", h1);
+                utils::print_hash("lapl_rho_dn", h2);
+                utils::print_hash("grad_rho_up_grad_rho_up", h3);
+                utils::print_hash("grad_rho_up_grad_rho_dn", h4);
+                utils::print_hash("grad_rho_dn_grad_rho_dn", h5);
             }
         }
     }
@@ -736,6 +767,7 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         vsigma_dd_tmp.zero();
     }
 
+    utils::timer t3("sirius::Potential::xc_rg_magnetic|libxc");
     /* loop over XC functionals */
     for (auto& ixc: xc_func_) {
         #pragma omp parallel
@@ -803,8 +835,10 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
             }
         }
     }
+    t3.stop();
 
     if (is_gga) {
+        utils::timer t4("sirius::Potential::xc_rg_magnetic|grad2");
         /* gather vsigma */
         Smooth_periodic_function<double> vsigma_uu(ctx_.fft(), ctx_.gvec_partition());
         Smooth_periodic_function<double> vsigma_ud(ctx_.fft(), ctx_.gvec_partition());
@@ -853,15 +887,14 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         if (m > 1e-8) {
             double b = 0.5 * (vxc_up_tmp(irloc) - vxc_dn_tmp(irloc));
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-               effective_magnetic_field_[j]->f_rg(irloc) = b * density__.magnetization(j).f_rg(irloc) / m;
+               effective_magnetic_field(j).f_rg(irloc) = b * density__.magnetization(j).f_rg(irloc) / m;
             }
         } else {
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                effective_magnetic_field_[j]->f_rg(irloc) = 0.0;
+                effective_magnetic_field(j).f_rg(irloc) = 0.0;
             }
         }
     }
-
 }
 
 template <bool add_pseudo_core__>
@@ -873,7 +906,7 @@ inline void Potential::xc(Density const& density__)
         xc_potential_->zero();
         xc_energy_density_->zero();
         for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-            effective_magnetic_field_[i]->zero();
+            effective_magnetic_field(i).zero();
         }
         return;
     }
@@ -891,7 +924,7 @@ inline void Potential::xc(Density const& density__)
     if (ctx_.control().print_hash_) {
         auto h = xc_energy_density_->hash_f_rg();
         if (ctx_.comm().rank() == 0) {
-            print_hash("Exc", h);
+            utils::print_hash("Exc", h);
         }
     }
 }

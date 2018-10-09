@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file generate_valence_mt.hpp
+ *
+ *  \brief Generate LAPW valence density in the muffin-tins.
+ */
+
 inline void Density::generate_valence_mt(K_point_set& ks)
 {
     PROFILE("sirius::Density::generate_valence_mt");
@@ -77,7 +101,7 @@ inline void Density::generate_valence_mt(K_point_set& ks)
         int nmtp = atom_type.num_mt_points();
         int num_rf_pairs = atom_type.mt_radial_basis_size() * (atom_type.mt_radial_basis_size() + 1) / 2;
         
-        sddk::timer t1("sirius::Density::generate|sum_zdens");
+        utils::timer t1("sirius::Density::generate|sum_zdens");
         switch (ctx_.num_mag_dims()) {
             case 3: {
                 reduce_density_matrix<3>(atom_type, ia, density_matrix_, *gaunt_coefs_, mt_density_matrix);
@@ -94,7 +118,7 @@ inline void Density::generate_valence_mt(K_point_set& ks)
         }
         t1.stop();
         
-        sddk::timer t2("sirius::Density::generate|expand_lm");
+        utils::timer t2("sirius::Density::generate|expand_lm");
         /* collect radial functions */
         for (int idxrf2 = 0; idxrf2 < atom_type.mt_radial_basis_size(); idxrf2++) {
             int offs = idxrf2 * (idxrf2 + 1) / 2;
@@ -116,20 +140,20 @@ inline void Density::generate_valence_mt(K_point_set& ks)
         int sz = static_cast<int>(ctx_.lmmax_rho() * nmtp * sizeof(double));
         switch (ctx_.num_mag_dims()) {
             case 3: {
-                std::memcpy(&magnetization_[1]->f_mt<index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 2), sz); 
-                std::memcpy(&magnetization_[2]->f_mt<index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 3), sz);
+                std::memcpy(&magnetization(1).f_mt<index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 2), sz); 
+                std::memcpy(&magnetization(2).f_mt<index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 3), sz);
             }
             case 1: {
                 for (int ir = 0; ir < nmtp; ir++) {
                     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-                        rho_->f_mt<index_domain_t::local>(lm, ir, ialoc) = dlm(lm, ir, 0) + dlm(lm, ir, 1);
-                        magnetization_[0]->f_mt<index_domain_t::local>(lm, ir, ialoc) = dlm(lm, ir, 0) - dlm(lm, ir, 1);
+                        rho().f_mt<index_domain_t::local>(lm, ir, ialoc) = dlm(lm, ir, 0) + dlm(lm, ir, 1);
+                        magnetization(0).f_mt<index_domain_t::local>(lm, ir, ialoc) = dlm(lm, ir, 0) - dlm(lm, ir, 1);
                     }
                 }
                 break;
             }
             case 0: {
-                std::memcpy(&rho_->f_mt<index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 0), sz);
+                std::memcpy(&rho().f_mt<index_domain_t::local>(0, 0, ialoc), &dlm(0, 0, 0), sz);
             }
         }
     }

@@ -1,5 +1,5 @@
 #include <sirius.h>
-#include <json.hpp>
+#include <utils/json.hpp>
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -36,10 +36,10 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     ctx.set_mpi_grid_dims(mpi_grid_dims);
 
     auto std_evp_solver_name = args__.value<std::string>("std_evp_solver_name", ctx.control().std_evp_solver_name_);
-    ctx.set_std_evp_solver_name(std_evp_solver_name);
+    ctx.std_evp_solver_name(std_evp_solver_name);
 
     auto gen_evp_solver_name = args__.value<std::string>("gen_evp_solver_name", ctx.control().gen_evp_solver_name_);
-    ctx.set_gen_evp_solver_name(gen_evp_solver_name);
+    ctx.gen_evp_solver_name(gen_evp_solver_name);
 
     auto pu = args__.value<std::string>("processing_unit", ctx.control().processing_unit_);
     if (pu == "") {
@@ -70,7 +70,8 @@ double ground_state(Simulation_context& ctx,
     /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
 
-    DFT_ground_state dft(ctx);
+    K_point_set kset(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
+    DFT_ground_state dft(kset);
 
     if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
@@ -79,8 +80,11 @@ double ground_state(Simulation_context& ctx,
     auto& potential = dft.potential();
     auto& density = dft.density();
 
+    density.allocate();
+    potential.allocate();
+
     if (task == task_t::ground_state_restart) {
-        if (!Utils::file_exists(storage_file_name)) {
+        if (!utils::file_exists(storage_file_name)) {
             TERMINATE("storage file is not found");
         }
         density.load();
@@ -103,18 +107,18 @@ double ground_state(Simulation_context& ctx,
 
         if (std::abs(e1 - e2) > 1e-6) {
             printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
-            sirius::terminate(1);
+            ctx.comm().abort(1);
         }
     }
 
     if (!ctx.full_potential()) {
         if (ctx.control().print_stress_) {
-            Stress s(ctx, dft.k_point_set(), density, potential);
+            Stress& s = dft.stress();
             s.calc_stress_total();
             s.print_info();
         }
         if (ctx.control().print_forces_) {
-            Force f(ctx, density, potential, dft.hamiltonian(), dft.k_point_set());
+            Force& f = dft.forces();
             f.calc_forces_total();
             f.print_info();
         }
@@ -126,7 +130,7 @@ double ground_state(Simulation_context& ctx,
 
         dict["task"] = static_cast<int>(task);
         dict["ground_state"] = result;
-        dict["timers"] = sddk::timer::serialize_timers();
+        dict["timers"] = utils::timer::serialize();
         dict["counters"] = json::object();
         dict["counters"]["local_operator_num_applied"] = Local_operator::num_applied();
         dict["counters"]["band_evp_work_count"] = Band::evp_work_count();
@@ -161,10 +165,6 @@ double ground_state(Simulation_context& ctx,
     /* wait for all */
     ctx.comm().barrier();
 
-    if (ctx.control().print_timers_ && ctx.comm().rank() == 0)  {
-        sddk::timer::print();
-    }
-
     return dft.total_energy();
 }
 
@@ -175,7 +175,7 @@ void run_tasks(cmd_args const& args)
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
-    if (!Utils::file_exists(fname)) {
+    if (!utils::file_exists(fname)) {
         if (Communicator::world().rank() == 0) {
             printf("input file does not exist\n");
         }
@@ -319,6 +319,18 @@ int main(int argn, char** argv)
 
     run_tasks(args);
 
+    int my_rank = Communicator::world().rank();
+
     sirius::finalize(1);
+
+    if (my_rank == 0)  {
+        utils::timer::print();
+        json dict;
+        dict["flat"] = utils::timer::serialize();
+        dict["tree"] = utils::timer::serialize_tree();
+        std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
+        ofs << dict.dump(4);
+    }
+
     return 0;
 }

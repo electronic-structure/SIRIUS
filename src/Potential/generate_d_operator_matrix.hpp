@@ -36,18 +36,11 @@ inline void Potential::generate_D_operator_matrix()
 {
     PROFILE("sirius::Potential::generate_D_operator_matrix");
 
-    /* store effective potential and magnetic field in a vector */
-    std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);
-    veff_vec[0] = effective_potential_.get();
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        veff_vec[1 + j] = effective_magnetic_field_[j];
-    }
-
     mdarray<double_complex, 1> veff_tmp(nullptr, ctx_.gvec().count());
     if (ctx_.processing_unit() == GPU) {
         veff_tmp.allocate(memory_t::device);
     }
-    
+
     if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
         ctx_.augmentation_op(0).prepare(0);
     }
@@ -99,7 +92,7 @@ inline void Potential::generate_D_operator_matrix()
                         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                             int ig = ctx_.gvec().offset() + igloc;
                             /* V(G) * exp(i * G * r_{alpha}) */
-                            auto z = veff_vec[iv]->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia);
+                            auto z = component(iv).f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia);
                             veff_a(2 * igloc, i)     = z.real();
                             veff_a(2 * igloc + 1, i) = z.imag();
                         }
@@ -112,7 +105,7 @@ inline void Potential::generate_D_operator_matrix()
                 case GPU: {
 #ifdef __GPU
                     /* copy plane wave coefficients of effective potential to GPU */
-                    mdarray<double_complex, 1> veff(&veff_vec[iv]->f_pw_local(0), veff_tmp.at<GPU>(),
+                    mdarray<double_complex, 1> veff(&component(iv).f_pw_local(0), veff_tmp.at<GPU>(),
                                                     ctx_.gvec().count());
                     veff.copy<memory_t::host, memory_t::device>();
 
@@ -121,7 +114,7 @@ inline void Potential::generate_D_operator_matrix()
                     d_tmp.allocate(memory_t::device);
 
                     mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ctx_.gvec().count(), veff.at<GPU>(),
-                                                    ctx_.gvec_coord().at<GPU>(), ctx_.atom_coord(iat).at<GPU>(),
+                                                    ctx_.gvec_coord().at<GPU>(), ctx_.unit_cell().atom_coord(iat).at<GPU>(),
                                                     veff_a.at<GPU>(), 1);
 
                     linalg<GPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
@@ -138,7 +131,7 @@ inline void Potential::generate_D_operator_matrix()
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         for (int j = 0; j < nbf * (nbf + 1) / 2; j++) {
                             d_tmp(j, i) = 2 * d_tmp(j, i) -
-                                          veff_vec[iv]->f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
+                                          component(iv).f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
                     }
                 } else {
@@ -157,10 +150,10 @@ inline void Potential::generate_D_operator_matrix()
                     std::stringstream s;
                     s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
                     auto cs = mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
-                    print_checksum(s.str(), cs);
+                    utils::print_checksum(s.str(), cs);
                 }
                 //auto cs = d_tmp.checksum();
-                //print_checksum("D_mtrx_valence", cs);
+                //utils::print_checksum("D_mtrx_valence", cs);
             }
 
             #pragma omp parallel for schedule(static)
@@ -308,7 +301,7 @@ inline void Potential::generate_D_operator_matrix()
             auto cs = unit_cell_.atom(ia).d_mtrx().checksum();
             std::stringstream s;
             s << "D_mtrx_tot(atom_" << ia << ")";
-            print_checksum(s.str(), cs);
+            utils::print_checksum(s.str(), cs);
         }
     }
 }

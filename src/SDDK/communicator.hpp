@@ -19,7 +19,7 @@
 
 /** \file communicator.hpp
  *
- *  \brief Contains declaration and implementation of Communicator class.
+ *  \brief Contains declaration and implementation of sddk::Communicator class.
  */
 
 #ifndef __COMMUNICATOR_HPP__
@@ -277,18 +277,15 @@ class Communicator
     }
 
     /// MPI initialization.
-    static void initialize()
+    static void initialize(int required__)
     {
-        int required = MPI_THREAD_MULTIPLE;
         int provided;
 
-        // MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
-        MPI_Init_thread(NULL, NULL, required, &provided);
+        MPI_Init_thread(NULL, NULL, required__, &provided);
 
         MPI_Query_thread(&provided);
-        if (provided < required) {
-            // printf("Warning! MPI_THREAD_FUNNELED level of thread support is not provided.\n");
-            printf("Warning! MPI_THREAD_MULTIPLE level of thread support is not provided.\n");
+        if (provided < required__) {
+            printf("Warning! Required level of thread support is not provided.\n");
         }
     }
 
@@ -314,6 +311,11 @@ class Communicator
     {
         static Communicator comm(MPI_COMM_NULL);
         return comm;
+    }
+
+    void abort(int errcode__) const
+    {
+        CALL_MPI(MPI_Abort, (mpi_comm(), errcode__));
     }
 
     inline Communicator cart_create(int ndims__, int const* dims__, int const* periods__) const
@@ -361,7 +363,7 @@ class Communicator
             //fcomm_map[fcomm__] = std::unique_ptr<Communicator>(new Communicator(MPI_Comm_f2c(fcomm__)));
             fcomm_map[fcomm__] = Communicator(MPI_Comm_f2c(fcomm__));
         }
-    
+
         auto& comm = fcomm_map[fcomm__];
         return comm;
     }
@@ -379,7 +381,7 @@ class Communicator
         }
         return (j__ * (j__ + 1) / 2 + i__ + 1) << 6;
     }
-    
+
     /// Rank of MPI process inside communicator.
     inline int rank() const
     {
@@ -390,7 +392,7 @@ class Communicator
         return r;
     }
 
-    /// Size of the communicator (number of ranks). 
+    /// Size of the communicator (number of ranks).
     inline int size() const
     {
         assert(mpi_comm() != MPI_COMM_NULL);

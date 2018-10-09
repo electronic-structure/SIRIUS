@@ -4,7 +4,7 @@ using namespace sirius;
 
 void test_radial_solver()
 {
-    Radial_grid rgrid(lin_exp_grid, 1500, 1e-7, 2.0);
+    Radial_grid_lin_exp<double> rgrid(1500, 1e-7, 2.0);
     int zn{38};
     std::vector<double> v(rgrid.num_points());
     for (int ir = 0; ir < rgrid.num_points(); ir++) {

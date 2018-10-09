@@ -19,7 +19,7 @@
 
 /** \file blacs_grid.hpp
  *
- *  \brief Contains declaration and implementation of BLACS_grid class.
+ *  \brief Contains declaration and implementation of sddk::BLACS_grid class.
  */
 
 #ifndef __BLACS_GRID_HPP__

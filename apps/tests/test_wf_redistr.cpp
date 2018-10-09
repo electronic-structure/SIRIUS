@@ -37,7 +37,7 @@ void test_wf_redistr(double alat, double pw_cutoff, double wf_cutoff, int num_ba
     dmatrix<double_complex> psi(gv_wf.num_gvec_, num_bands, blacs_grid, (int)spl_gv_wf.block_size(), 1);
     psi.zero();
 
-    for (int i = 0; i < num_bands; i++) 
+    for (int i = 0; i < num_bands; i++)
     {
         for (int ig = 0; ig < gv_wf.num_gvec_; ig++)
         {
@@ -67,13 +67,13 @@ void test_wf_redistr(double alat, double pw_cutoff, double wf_cutoff, int num_ba
     {
         printf("time to swap %li Mb: %f sec.", (sizeof(double_complex) * gv_wf.num_gvec_ * num_bands) >> 20, tval);
     }
-    
+
     psi.zero();
     linalg<CPU>::gemr2d(gv_wf.num_gvec_, num_bands, psi_slab, 0, 0, psi, 0, 0, blacs_grid.context());
-    if (h != psi.panel().hash())
-    {
-        DUMP("wrong hash");
-    }
+    // if (h != psi.panel().hash())
+    // {
+    //     DUMP("wrong hash");
+    // }
 }
 
 int main(int argn, char **argv)

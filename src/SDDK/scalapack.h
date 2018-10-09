@@ -1,3 +1,8 @@
+/** \file scalapack.h
+ *
+ *  \brief Interface to some ScaLAPACK functions.
+ */
+
 #ifndef __SCALAPACK_H__
 #define __SCALAPACK_H__
 

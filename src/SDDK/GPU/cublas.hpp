@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file cublas.hpp
- *   
+ *
  *  \brief Interface to cuBLAS related functions.
  */
 
@@ -26,8 +26,6 @@
 #define __CUBLAS__HPP__
 
 #include <unistd.h>
-//#include <cublas.h>
-//#include <cublas_v2.h>
 #include "cuda.hpp"
 
 extern "C" cublasStatus_t cublasGetError();
@@ -58,7 +56,6 @@ inline void error_message(cublasStatus_t status)
         }
     }
 }
-
 
 #ifdef NDEBUG
 #define CALL_CUBLAS(func__, args__)                                                 \
@@ -105,6 +102,7 @@ inline std::vector<cublasHandle_t>& stream_handles()
 
 inline void create_stream_handles()
 {
+    acc::set_device();
     CALL_CUBLAS(cublasCreate, (&null_stream_handle()));
     
     stream_handles() = std::vector<cublasHandle_t>(acc::num_streams());
@@ -117,6 +115,7 @@ inline void create_stream_handles()
 
 inline void destroy_stream_handles()
 {
+    acc::set_device();
     CALL_CUBLAS(cublasDestroy, (null_stream_handle()));
     for (int i = 0; i < acc::num_streams(); i++) {
         CALL_CUBLAS(cublasDestroy, (stream_handles()[i]));
@@ -132,7 +131,7 @@ inline void zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDo
                   cuDoubleComplex* x, int32_t incx, cuDoubleComplex* beta, cuDoubleComplex* y, int32_t incy, int stream_id)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
-
+    acc::set_device();
     CALL_CUBLAS(cublasZgemv, (stream_handle(stream_id), trans[transa], m, n, alpha, a, lda, x, incx, beta, y, incy));
 }
 
@@ -141,7 +140,7 @@ inline void zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k,
                   int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
-    
+    acc::set_device();
     CALL_CUBLAS(cublasZgemm, (stream_handle(stream_id), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
@@ -150,7 +149,7 @@ inline void dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k,
                   int32_t ldb, double const* beta, double* c, int32_t ldc, int stream_id)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
-    
+    acc::set_device();
     CALL_CUBLAS(cublasDgemm, (stream_handle(stream_id), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
@@ -186,7 +185,7 @@ inline void dtrmm(char side__, char uplo__, char transa__, char diag__, int m__,
         exit(-1);
     }
     cublasDiagType_t diag = (diag__ == 'N') ? CUBLAS_DIAG_NON_UNIT : CUBLAS_DIAG_UNIT;
-
+    acc::set_device();
     CALL_CUBLAS(cublasDtrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
 }
 
@@ -231,7 +230,7 @@ inline void ztrmm(char             side__,
         exit(-1);
     }
     cublasDiagType_t diag = (diag__ == 'N') ? CUBLAS_DIAG_NON_UNIT : CUBLAS_DIAG_UNIT;
-
+    acc::set_device();
     CALL_CUBLAS(cublasZtrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
 }
 
@@ -246,6 +245,7 @@ inline void dger(int           m,
                  int           lda,
                  int           stream_id)
 {
+    acc::set_device();
     CALL_CUBLAS(cublasDger, (stream_handle(stream_id), m, n, alpha, x, incx, y, incy, A, lda));
 }
 
@@ -260,6 +260,7 @@ inline void zgeru(int                    m,
                   int                    lda, 
                   int                    stream_id)
 {
+    acc::set_device();
     CALL_CUBLAS(cublasZgeru, (stream_handle(stream_id), m, n, alpha, x, incx, y, incy, A, lda));
 }
 
@@ -270,6 +271,7 @@ inline void zaxpy(int                    n__,
                   cuDoubleComplex*       y__,
                   int                    incy__)
 {
+    acc::set_device();
     CALL_CUBLAS(cublasZaxpy, (null_stream_handle(), n__, alpha__, x__, incx__, y__, incy__));
 }
 

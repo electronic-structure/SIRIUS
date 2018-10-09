@@ -18,22 +18,23 @@ BraceWrapping: {
 IndentCaseLabels: 'true'
 AccessModifierOffset: -2
 IndentWidth: 4
+ColumnLimit: 120
 UseTab: Never
-AllowShortFunctionsOnASingleLine: 'false'
+AllowShortFunctionsOnASingleLine: 'None'
+AllowShortIfStatementsOnASingleLine : 'false'
 AllowShortLoopsOnASingleLine: 'false'
-AllowShortIfStatementsOnASingleLine: 'false'
 KeepEmptyLinesAtTheStartOfBlocks: 'true'
 AlwaysBreakTemplateDeclarations: 'true'
-ColumnLimit: 0
 PointerAlignment: Left
 AllowAllParametersOfDeclarationOnNextLine: 'true'
 AlignConsecutiveAssignments: 'true'
+AlignConsecutiveDeclarations: 'false'
 SortIncludes: 'false'
 BinPackParameters: 'true'
 BinPackArguments: 'true'
 MaxEmptyLinesToKeep: 1
-ColumnLimit: 140
 BreakConstructorInitializersBeforeComma: 'true'
+#BreakConstructorInitializersStyle: 'BeforeComma'
 ConstructorInitializerIndentWidth: 4
-BinPackParameters: 'false'
+Cpp11BracedListStyle: 'true'
 ...

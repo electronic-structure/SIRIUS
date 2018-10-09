@@ -86,7 +86,8 @@ inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian_
 
     /* check residuals */
     if (ctx_.control().verification_ >= 1) {
-        check_residuals<T>(&kp__, hamiltonian__); 
+        check_residuals<T>(&kp__, hamiltonian__);
+        check_wave_functions<T>(kp__, hamiltonian__);
     }
 
     ctx_.fft_coarse().dismiss();
@@ -103,12 +104,10 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
         unit_cell_.generate_radial_functions();
         unit_cell_.generate_radial_integrals();
     }
-    
+
     /* map local potential to a coarse grid */
-    if (ctx_.full_potential()) {
-        hamiltonian__.local_op().prepare(hamiltonian__.potential(), ctx_.step_function());
-    } else {
-        hamiltonian__.local_op().prepare(hamiltonian__.potential());
+    hamiltonian__.local_op().prepare(hamiltonian__.potential());
+    if (!ctx_.full_potential()) {
         /* prepare non-local operators */
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
             hamiltonian__.prepare<double>();
@@ -138,7 +137,7 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
         }
     }
     kset__.comm().allreduce(&num_dav_iter, 1);
-    if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
+    if (ctx_.comm().rank() == 0 && !ctx_.full_potential() && ctx_.control().verbosity_ >= 1) {
         printf("Average number of iterations: %12.6f\n", static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 
@@ -150,7 +149,7 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
     /* synchronize eigen-values */
     kset__.sync_band_energies();
 
-    if (ctx_.control().verbosity_ >= 1 && ctx_.comm().rank() == 0) {
+    if (ctx_.control().verbosity_ >= 2 && ctx_.comm().rank() == 0) {
         printf("Lowest band energies\n");
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             printf("ik : %2i, ", ik);

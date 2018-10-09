@@ -1,8 +1,10 @@
 #include <sirius.h>
 
+/* template for unit tests */
+
 using namespace sirius;
 
-int run_test()
+int run_test(cmd_args& args)
 {
     return 0;
 }
@@ -18,9 +20,9 @@ int main(int argn, char** argv)
         return 0;
     }
 
-    sirius::initialize(1);
-    printf("%-30s", "testing init: ");
-    int result = run_test();
+    sirius::initialize(true);
+    printf("running %-30s : ", argv[0]);
+    int result = run_test(args);
     if (result) {
         printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
     } else {
@@ -28,5 +30,5 @@ int main(int argn, char** argv)
     }
     sirius::finalize();
 
-    return 0;
+    return result;
 }
