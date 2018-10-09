@@ -7,11 +7,11 @@
 if(USE_CUDA)
   file(GLOB_RECURSE CUFILES_SDDK "SDDK/*.cu")
   file(GLOB_RECURSE CUFILES_KERNELS "Kernels/*.cu")
-  add_library(sirius_f "sirius_api.cpp;sirius.f90;${CUFILES_KERNELS};${CUFILES_SDDK}")
   add_library(sirius_cu "${CUFILES_KERNELS};${CUFILES_SDDK}")
   set_target_properties(sirius_cu PROPERTIES POSITION_INDEPENDENT_CODE ON)
   INSTALL (TARGETS sirius_cu ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/)
-elseif(CREATE_FORTRAN_BINDINGS)
+endif()
+if(CREATE_FORTRAN_BINDINGS)
   add_library(sirius_f "sirius_api.cpp;sirius.f90")
   INSTALL (TARGETS sirius_f ARCHIVE DESTINATION
     ${CMAKE_INSTALL_PREFIX}/lib/)
