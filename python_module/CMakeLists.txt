@@ -11,7 +11,9 @@ if(CREATE_PYTHON_MODULE)
 
   set(libname py_sirius)
   pybind11_add_module(${libname} py_sirius.cpp)
-  add_dependencies(${libname} sirius)
+  if(USE_CUDA)
+    add_dependencies(${libname} sirius_cu)
+  endif()
   message("in python_module, h5libs: ${HDF5_C_LIBRARIES}")
   SIRIUS_SETUP_TARGET(${libname})
 
