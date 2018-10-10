@@ -46,6 +46,45 @@ def _df_fermi_entropy(fn, dd):
                                    (2 - fn)) - np.log(2 - fn + dd * fn)
 
 
+def _constrain_occupancy_gradient(fn):
+    """
+
+    """
+    from scipy.optimize import minimize, Bounds
+    import numpy as np
+    s = 100
+    lb = -s * np.ones_like(fn)
+    ub = s * np.ones_like(fn)
+    ub[fn == 2] = 0
+    lb[fn == 0] = 0
+
+    bounds = Bounds(lb, ub)
+    x0 = fn
+    res = minimize(
+        lambda x: np.linalg.norm(x - fn),
+        x0,
+        bounds=bounds,
+        constraints={
+            'fun': lambda y: np.sum(y),
+            "type": "eq"
+        })
+    y = res['x']
+    return y
+
+
+def constrain_occupancy_gradient(fn):
+    from ..coefficient_array import CoefficientArray
+    import numpy as np
+
+    if isinstance(fn, CoefficientArray):
+        out = CoefficientArray(dtype=np.double, ctype=np.array)
+        for key, val in fn._data.items():
+            out[key] = _constrain_occupancy_gradient(val)
+        return out
+    else:
+        return _constrain_occupancy_gradient(fn)
+
+
 class FreeEnergy:
     def __init__(self, energy, temperature):
         self.energy = energy
@@ -81,17 +120,15 @@ class FreeEnergy:
         dAdC -- gradient with respect to pw coeffs
         dAdf -- gradient with respect to occupation numbers
         """
-        from .stiefel import stiefel_project_tangent
         from ..coefficient_array import einsum
         import numpy as np
 
         # Compute dAdC
         self.energy.kpointset.fn = fn
-        gn = self.energy.H @ cn
-        # project gn
-        proj_dAdC = stiefel_project_tangent(gn, cn)
+        dAdC = self.energy.H @ cn
 
         # Compute dAdf
         # TODO: k-point weights missing?
-        dAdfn = np.real(einsum('ij,ij->j', cn.conj(), gn)) - self.temperature * df_fermi_entropy(fn)
-        return proj_dAdC, dAdfn
+        dAdfn = np.real(einsum('ij,ij->j', cn.conj(),
+                               dAdC)) - self.temperature * df_fermi_entropy(fn)
+        return dAdC, dAdfn.flatten(ctype=np.array)
