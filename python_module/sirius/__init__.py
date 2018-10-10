@@ -27,4 +27,15 @@ class OccupancyDescriptor(object):
         return out
 
 
+class PWDescriptor(object):
+    def __set__(self, instance, value):
+        from .helpers import store_pw_coeffs
+        store_pw_coeffs(instance, value)
+
+    def __get__(self, instance, owner):
+        from .coefficient_array import PwCoeffs
+        return PwCoeffs(instance)
+
+
 K_point_set.fn = OccupancyDescriptor()
+K_point_set.C = PWDescriptor()
