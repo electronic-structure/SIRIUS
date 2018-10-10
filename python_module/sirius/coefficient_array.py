@@ -178,6 +178,19 @@ class CoefficientArray:
             out[key] = val.T
         return out
 
+    def __str__(self):
+        return '\n'.join([
+            '\n'.join(map(str, [key, val, '---']))
+            for key, val in self._data.items()
+        ])
+
+    def _repr_pretty_(self, p, cycle):
+        for key, val in self._data.items():
+            p.text('key: ')
+            p.pretty(key)
+            p.text('\n')
+            p.pretty(val)
+
     __lmul__ = __mul__
     __rmul__ = __mul__
     __radd__ = __add__
