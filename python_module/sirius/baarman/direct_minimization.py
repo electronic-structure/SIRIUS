@@ -46,7 +46,7 @@ def _df_fermi_entropy(fn, dd):
                                    (2 - fn)) - np.log(2 - fn + dd * fn)
 
 
-def _constrain_occupancy_gradient(fn):
+def _constrain_occupancy_gradient(dfn, fn):
     """
 
     """
@@ -59,9 +59,9 @@ def _constrain_occupancy_gradient(fn):
     lb[fn == 0] = 0
 
     bounds = Bounds(lb, ub)
-    x0 = fn
+    x0 = dfn
     res = minimize(
-        lambda x: np.linalg.norm(x - fn),
+        lambda x: np.linalg.norm(x - dfn),
         x0,
         bounds=bounds,
         constraints={
