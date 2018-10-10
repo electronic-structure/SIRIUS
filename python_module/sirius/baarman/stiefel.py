@@ -81,10 +81,10 @@ def _stiefel_transport_operators(Y, X, tau):
     B, Q, R = stiefel_decompose_tangent(Y, X)
     m, n = Q.shape
 
-    exp_mat = np.vstack(
-        np.hstack((B, -R.H)),
-        np.hstack((R, np.zeros(n, n)))
-    )
+    exp_mat = np.vstack([
+        np.hstack([B, -R.H]),
+        np.hstack([R, np.zeros_like(R)])
+    ])
 
     # compute eigenvalues of exp_mat, which is skew-Hermitian
     w, V = np.linalg.eig(exp_mat)
