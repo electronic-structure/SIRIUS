@@ -66,13 +66,13 @@ class CoefficientArray:
         """
         """
         from mpi4py import MPI
-        loc_sum = np.array(sum([np.sum(v) for _, v in self.items()]), dtype=np.complex128)
+        loc_sum = np.array(
+            sum([np.sum(v) for _, v in self.items()]), dtype=np.complex128)
         rcvBuf = np.array(0.0, dtype=np.complex128)
 
-        MPI.COMM_WORLD.Allreduce(
-            [loc_sum, MPI.DOUBLE_COMPLEX],
-            [rcvBuf, MPI.DOUBLE_COMPLEX],
-                op=MPI.SUM)
+        MPI.COMM_WORLD.Allreduce([loc_sum, MPI.DOUBLE_COMPLEX],
+                                 [rcvBuf, MPI.DOUBLE_COMPLEX],
+                                 op=MPI.SUM)
         return np.asscalar(rcvBuf)
 
     def __mul__(self, other):
@@ -82,7 +82,8 @@ class CoefficientArray:
         out = type(self)(dtype=self.dtype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
-                out[key] = np.einsum('ij,ij->ij', self._data[key], other._data[key])
+                out[key] = np.einsum('ij,ij->ij', self._data[key],
+                                     other._data[key])
         elif np.isscalar(other):
             for key in self._data.keys():
                 out[key] = self._data[key] * other
@@ -96,7 +97,7 @@ class CoefficientArray:
         """
         # TODO: complex | double -> complex, double | double -> double
         out = type(self)(dtype=np.complex)
-        assert(self.ctype is np.matrix)
+        assert (self.ctype is np.matrix)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
                 out[key] = self._data[key] * other._data[key]
