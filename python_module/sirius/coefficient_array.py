@@ -145,6 +145,14 @@ class CoefficientArray:
     def conj(self):
         return self.conjugate()
 
+    def flatten(self, ctype=None):
+        if ctype is None:
+            ctype = self.ctype
+        out = type(self)(dtype=np.double, ctype=ctype)
+        for key, val in self._data.items():
+            out[key] = ctype(val).flatten()
+        return out
+
     @property
     def real(self):
         out = type(self)(dtype=np.double)
