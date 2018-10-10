@@ -82,7 +82,7 @@ class CoefficientArray:
         out = type(self)(dtype=self.dtype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
-                out[key] = np.einsum('ij,ij->ij', self._data[key],
+                out[key] = np.einsum('...,...->...', self._data[key],
                                      other._data[key])
         elif np.isscalar(other):
             for key in self._data.keys():
@@ -90,6 +90,21 @@ class CoefficientArray:
         else:
             raise TypeError('wrong type')
         return out
+
+    def __truediv__(self, other):
+        out = type(self)(dtype=self.dtype)
+        if isinstance(other, CoefficientArray):
+            for key in other._data.keys():
+                out[key] = np.einsum('...,...->...', self._data[key],
+                                     1 / other._data[key])
+        elif np.isscalar(other):
+            for key in self._data.keys():
+                out[key] = self._data[key] / other
+        else:
+            raise TypeError('wrong type')
+        return out
+
+
 
     def __matmul__(self, other):
         """
