@@ -107,9 +107,10 @@ struct Unit_cell_input
             exist_ = true;
 
             auto section = parser["unit_cell"];
-            auto a0      = section["lattice_vectors"][0].get<std::vector<double>>();
-            auto a1      = section["lattice_vectors"][1].get<std::vector<double>>();
-            auto a2      = section["lattice_vectors"][2].get<std::vector<double>>();
+
+            auto a0 = section["lattice_vectors"][0].get<std::vector<double>>();
+            auto a1 = section["lattice_vectors"][1].get<std::vector<double>>();
+            auto a2 = section["lattice_vectors"][2].get<std::vector<double>>();
 
             if (a0.size() != 3 || a1.size() != 3 || a2.size() != 3) {
                 TERMINATE("wrong lattice vectors");
