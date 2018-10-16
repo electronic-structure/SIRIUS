@@ -92,8 +92,11 @@ class Energy:
                 # elif np.isclose(bnd_occ, 0).any():
                 #     raise Exception("encountered zero band occupation")
                 # scale columns by 1/bnd_occ
-                benergies = np.einsum('ij,ij,j->j', val, np.conj(cn[key]),
-                                      1 / (bnd_occ * w))
+                benergies = np.zeros_like(bnd_occ, dtype=np.complex)
+                benergies[bnd_occ > 0] = np.einsum(
+                    'ij,ij,j->j', val[:, bnd_occ > 0],
+                    np.conj(cn[key][:, bnd_occ > 0]),
+                    1 / (bnd_occ[bnd_occ > 0] * w))
                 for j, ek in enumerate(benergies):
                     if bnd_occ[j] > 1e-10:
                         assert (np.abs(np.imag(ek)) < 1e-10)
@@ -117,11 +120,12 @@ class Energy:
             self.potential.fft_transform(1)
             # compute band energies
             bnd_occ = k.band_occupancy(ispn)
-            assert (np.isclose(bnd_occ, (bnd_occ + 1e-4).astype(int)).all())
+            # assert (np.isclose(bnd_occ, (bnd_occ + 1e-4).astype(int)).all())
             w = k.weight()
             yn = self.H(cn, ki=ki, ispn=ispn)
             # divide by band occupancies bnd_occ and kpoint-weight w
-            yn = np.matrix(np.array(yn) / bnd_occ / w)
+            yn[:, bnd_occ > 0] = np.matrix(
+                np.array(yn)[:, bnd_occ > 0] / (bnd_occ * w)[bnd_occ > 0])
             HH = yn.H * cn
             ek = np.diag(HH)
             for i, ek in enumerate(ek):
@@ -164,8 +168,8 @@ class ApplyHamiltonian:
                 # copy coefficients from Psi_y
                 for i, _ in ispn_coeffs:
                     bnd_occ = np.array(kpoint.band_occupancy(i))
-                    assert (np.isclose(bnd_occ,
-                                       (bnd_occ + 1e-4).astype(int)).all())
+                    # assert (np.isclose(bnd_occ,
+                    #                    (bnd_occ + 1e-4).astype(int)).all())
                     out[(k, i)] = np.array(
                         Psi_y.pw_coeffs(i), copy=False) * bnd_occ * w
             # end for
