@@ -214,6 +214,7 @@ class CoefficientArray:
             p.pretty(key)
             p.text('\n')
             p.pretty(val)
+            p.text('\n')
 
     __lmul__ = __mul__
     __rmul__ = __mul__
