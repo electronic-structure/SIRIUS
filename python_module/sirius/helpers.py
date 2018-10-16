@@ -55,7 +55,6 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     use_symmetry = siriusJson['parameters']['use_symmetry']
 
     kPointSet = K_point_set(ctx, gridk, shiftk, use_symmetry)
-    print('num k-points: ', len(kPointSet))
 
     dft_gs = DFT_ground_state(kPointSet)
 
