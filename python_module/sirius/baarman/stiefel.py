@@ -11,8 +11,8 @@ def _stiefel_project_tangent(V, X):
     """
     import numpy as np
 
-    X = matview(X)
-    V = matview(V)
+    # X = matview(X)
+    # V = matview(V)
 
     n, m = X.shape
 
@@ -88,8 +88,10 @@ def _stiefel_transport_operators(Y, X, tau):
 
     # compute eigenvalues of exp_mat, which is skew-Hermitian
     w, V = np.linalg.eig(exp_mat)
+    assert((~np.isclose(np.diff(w), 0, atol=1e-12)).all())
     # w must be purely imaginary
     D = np.diag(np.exp(tau*w))
+    assert(np.isclose(V.H@V, np.eye(2*n, 2*n)).all())
     expm = V @ D @ V.H
 
     XQ = np.hstack((X, Q))
