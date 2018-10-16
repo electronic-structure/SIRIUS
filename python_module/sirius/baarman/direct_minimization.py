@@ -1,7 +1,8 @@
 def _fermi_entropy(fn, dd):
     import numpy as np
-    return -np.sum(fn * np.log(fn + dd * (2 - fn)) +
-                   (2 - fn) * np.log(2 - fn + dd * fn))
+    fn = np.array(fn).flatten()
+    return np.sum(-fn * np.log(fn + dd * (1 - fn)) +
+                  (1 - fn) * np.log(1 - fn + dd * fn))
 
 
 def fermi_entropy(fn, dd=1e-4):
@@ -41,22 +42,72 @@ def df_fermi_entropy(fn, dd=1e-4):
 
 def _df_fermi_entropy(fn, dd):
     import numpy as np
-    return -fn * (1 - dd) / (fn + dd * (2 - fn)) + (2 - fn) * (-1 + dd) / (
-        2 - fn + dd * fn) - np.log(fn + dd *
-                                   (2 - fn)) - np.log(2 - fn + dd * fn)
+    fn = np.array(fn).flatten()
+    return -fn * (1 - dd) / (fn + dd * (1 - fn)) + (1 - fn) * (-1 + dd) / (
+        1 - fn + dd * fn) - np.log(fn + dd *
+                                   (1 - fn)) - np.log(1 - fn + dd * fn)
 
 
-def _constrain_occupancy_gradient(dfn, fn):
+def _occupancy_admissible_ds(y, fn, mag):
+    import numpy as np
+
+    if mag:
+        fmax = 1
+    else:
+        fmax = 2
+
+    d1 = np.ma.masked_array(
+        -fn / y, mask=np.logical_or(y >= 0,
+                                    np.abs(fn) < 1e-10)
+        # mask=y>=0
+    )
+    d2 = np.ma.masked_array(
+        (fmax - fn) / y,
+        mask=np.logical_or(y <= 0,
+                           np.abs(fmax - fn) < 1e-10)
+        # mask = y <=0
+    )
+    both = np.ma.hstack((d1, d2))
+    assert (both.count() > 0)
+    return np.min(both)
+
+
+def occupancy_admissible_ds(y, fn, mag=False):
+    """
+    Computes maximal admissible step length
+
+    Keyword Arguments:
+    y  -- direction
+    fn -- band occupancy
+    mag -- (Default False) magnetization
+    """
+    from functools import reduce
+    from ..coefficient_array import CoefficientArray
+
+    if isinstance(fn, CoefficientArray):
+        return reduce(
+            min, [_occupancy_admissible_ds(y[k], fn[k], mag) for k in y.keys()])
+    else:
+        return _occupancy_admissible_ds(y, fn, mag)
+
+
+def _constrain_occupancy_gradient(dfn, fn, mag):
     """
 
     """
     from scipy.optimize import minimize, Bounds
     import numpy as np
+
+    if mag:
+        fmax = 1
+    else:
+        fmax = 2
+
     s = 100
     lb = -s * np.ones_like(fn)
     ub = s * np.ones_like(fn)
-    ub[fn == 2] = 0
-    lb[fn == 0] = 0
+    ub[np.isclose(fn, fmax)] = 0
+    lb[np.isclose(fn, 0)] = 0
 
     bounds = Bounds(lb, ub)
     x0 = dfn
@@ -72,23 +123,32 @@ def _constrain_occupancy_gradient(dfn, fn):
     return y
 
 
-def constrain_occupancy_gradient(fn):
+def constrain_occupancy_gradient(dfn, fn, mag=False):
     from ..coefficient_array import CoefficientArray
     import numpy as np
 
     if isinstance(fn, CoefficientArray):
+        fn = fn.flatten(ctype=np.array)
         out = CoefficientArray(dtype=np.double, ctype=np.array)
         for key, val in fn._data.items():
-            out[key] = _constrain_occupancy_gradient(val)
+            out[key] = _constrain_occupancy_gradient(dfn[key], val, mag)
         return out
     else:
-        return _constrain_occupancy_gradient(fn)
+        return _constrain_occupancy_gradient(dfn, fn, mag)
 
 
 class FreeEnergy:
-    def __init__(self, energy, temperature):
+    def __init__(self, energy, temperature, H):
         self.energy = energy
         self.temperature = temperature
+        self.omega_k = self.energy.kpointset.w
+        self.H = H
+        # assert (isinstance(H, ApplyHamiltonian))
+
+        if self.H.hamiltonian.ctx().num_mag_dims() == 0:
+            self.scale = 0.5
+        else:
+            self.scale = 1
 
     def __call__(self, cn, fn):
         """
@@ -100,14 +160,10 @@ class FreeEnergy:
 
         self.energy.kpointset.fn = fn
         E = self.energy(cn)
-        S = fermi_entropy(fn)
+        S = fermi_entropy(self.scale * fn)
 
-        omega_k = np.array([
-            self.energy.kpointset[k].weight()
-            for k in range(len(self.energy.kpointset))
-        ])
-
-        return E - self.temperature * np.sum(omega_k * np.array(list(S._data)))
+        return E - self.temperature * np.sum(
+            np.array(list((self.omega_k * S)._data.values())))
 
     def grad(self, cn, fn):
         """
@@ -115,6 +171,8 @@ class FreeEnergy:
         self --
         cn   -- planewave coefficients
         fn   -- occupation numbers
+
+        Note: It does not update density, potential
 
         Returns:
         dAdC -- gradient with respect to pw coeffs
@@ -125,10 +183,12 @@ class FreeEnergy:
 
         # Compute dAdC
         self.energy.kpointset.fn = fn
-        dAdC = self.energy.H @ cn
+        dAdC = self.omega_k * self.H(cn, scale=False)
 
         # Compute dAdf
         # TODO: k-point weights missing?
-        dAdfn = np.real(einsum('ij,ij->j', cn.conj(),
-                               dAdC)) - self.temperature * df_fermi_entropy(fn)
-        return dAdC, dAdfn.flatten(ctype=np.array)
+        dAdfn = np.real(
+            einsum('ij,ij->j', cn.conj(), dAdC)
+        ) - self.temperature * self.omega_k * self.scale * df_fermi_entropy(
+            self.scale * fn)
+        return dAdC * fn, dAdfn.flatten(ctype=np.array)

@@ -10,9 +10,10 @@ from .py_sirius import K_point_set
 
 class OccupancyDescriptor(object):
     def __set__(self, instance, value):
+        from numpy import array
         for key, v in value._data.items():
             k, ispn = key
-            instance[k].set_band_occupancy(ispn, v)
+            instance[k].set_band_occupancy(ispn, list(array(v).flatten()))
 
     def __get__(self, instance, owner):
         from .coefficient_array import CoefficientArray
@@ -37,5 +38,41 @@ class PWDescriptor(object):
         return PwCoeffs(instance)
 
 
+class KPointWeightDescriptor(object):
+    def __get__(self, instance, owner):
+        from .coefficient_array import CoefficientArray
+        import numpy as np
+
+        out = CoefficientArray(dtype=np.double, ctype=np.array)
+
+        for k in range(len(instance)):
+            for ispn in range(instance.ctx().num_spins()):
+                key = k, ispn
+                out[key] = instance[k].weight()
+        return out
+
+
+class BandEnergiesDescriptor(object):
+    def __get__(self, instance, owner):
+        from .coefficient_array import CoefficientArray
+        import numpy as np
+
+        out = CoefficientArray(dtype=np.double, ctype=np.array)
+
+        for k in range(len(instance)):
+            for ispn in range(instance.ctx().num_spins()):
+                key = k, ispn
+                out[key] = instance[k].band_energies(ispn)
+        return out
+
+    def __set__(self, instance, value):
+        for key, val in value._data.items():
+            k, ispn = key
+            for j, v in enumerate(val):
+                instance[k].set_band_energy(j, ispn, v)
+
+
 K_point_set.fn = OccupancyDescriptor()
 K_point_set.C = PWDescriptor()
+K_point_set.w = KPointWeightDescriptor()
+K_point_set.e = BandEnergiesDescriptor()
