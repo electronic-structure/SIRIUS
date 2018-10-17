@@ -79,7 +79,7 @@ class CoefficientArray:
         """
         Returns a new object of type type(self)
         """
-        out = type(self)(dtype=self.dtype)
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
                 out[key] = np.einsum('...,...->...', self._data[key],
