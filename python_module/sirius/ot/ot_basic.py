@@ -58,8 +58,7 @@ class Energy:
             # update coefficients for all items in PwCoeffs
             for key, val in cn.items():
                 k, ispn = key
-                self.kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[:] = val
-                assert(np.isclose(matview(val).H*val, np.eye(val.shape[1])).all())
+                self.kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[:, :val.shape[1]] = val
             # copy to device (if needed)
             for ki in cn.kvalues():
                 psi = self.kpointset[ki].spinor_wave_functions()
@@ -80,30 +79,19 @@ class Energy:
             self.potential.fft_transform(1)
 
             # update band energies
-            yn = self.H(cn)
+            yn = self.H(cn, scale=False)
             for key, val in yn.items():
                 k, ispn = key
-                w = self.kpointset[k].weight()
-                bnd_occ = np.array(self.kpointset[k].band_occupancy(ispn))
-                if np.isclose(bnd_occ, 0).all():
-                    # print('WARNING: encountered unoccupied band')
-                    # TODO: handle this properly
-                    continue
-                # elif np.isclose(bnd_occ, 0).any():
-                #     raise Exception("encountered zero band occupation")
-                # scale columns by 1/bnd_occ
-                benergies = np.zeros_like(bnd_occ, dtype=np.complex)
-                benergies[bnd_occ > 0] = np.einsum(
-                    'ij,ij,j->j', val[:, bnd_occ > 0],
-                    np.conj(cn[key][:, bnd_occ > 0]),
-                    1 / (bnd_occ[bnd_occ > 0] * w))
+                benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex)
+                benergies[:val.shape[1]] = np.einsum('ij,ij->j',
+                                                    val,
+                                                    np.conj(cn[key]))
+
                 for j, ek in enumerate(benergies):
-                    if bnd_occ[j] > 1e-10:
-                        assert (np.abs(np.imag(ek)) < 1e-10)
-                        self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
-                    else:
-                        self.kpointset[k].set_band_energy(j, ispn, 0)
-                    self.kpointset.sync_band_energies()
+                    self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
+
+                self.kpointset.sync_band_energies()
+
             return pp_total_energy(self.potential, self.density,
                                    self.kpointset, self.ctx)
         else:
@@ -119,13 +107,9 @@ class Energy:
             self.potential.generate(self.density)
             self.potential.fft_transform(1)
             # compute band energies
-            bnd_occ = k.band_occupancy(ispn)
-            # assert (np.isclose(bnd_occ, (bnd_occ + 1e-4).astype(int)).all())
-            w = k.weight()
-            yn = self.H(cn, ki=ki, ispn=ispn)
+            yn = self.H(cn, scale=False, ki=ki, ispn=ispn)
             # divide by band occupancies bnd_occ and kpoint-weight w
-            yn[:, bnd_occ > 0] = np.matrix(
-                np.array(yn)[:, bnd_occ > 0] / (bnd_occ * w)[bnd_occ > 0])
+            yn = np.matrix(yn, copy=False)
             HH = yn.H * cn
             ek = np.diag(HH)
             for i, ek in enumerate(ek):
@@ -141,7 +125,7 @@ class ApplyHamiltonian:
         self.hamiltonian = hamiltonian
         self.kpointset = kpointset
 
-    def apply(self, cn, ki=None, ispn=None):
+    def apply(self, cn, scale=True, ki=None, ispn=None):
         """
         Keyword Arguments:
         cn -- input coefficient array
@@ -167,12 +151,14 @@ class ApplyHamiltonian:
                 self.hamiltonian.apply_ref(self.kpointset[k], Psi_y, Psi_x)
                 # copy coefficients from Psi_y
                 for i, _ in ispn_coeffs:
-                    bnd_occ = np.array(kpoint.band_occupancy(i))
-                    # assert (np.isclose(bnd_occ,
-                    #                    (bnd_occ + 1e-4).astype(int)).all())
-                    out[(k, i)] = np.array(
-                        Psi_y.pw_coeffs(i), copy=False) * bnd_occ * w
-            # end for
+                    if scale:
+                        bnd_occ = np.array(kpoint.band_occupancy(i))
+                        out[(k, i)] = np.array(
+                            Psi_y.pw_coeffs(i), copy=False) * bnd_occ * w
+                    else:
+                        out[(k, i)] = np.array(
+                            Psi_y.pw_coeffs(i), copy=False)
+                # end for
             return out
         else:
             assert (ki in self.kpointset)
@@ -184,9 +170,14 @@ class ApplyHamiltonian:
             bnd_occ = np.array(kpoint.band_occupancy(ispn))
             Psi_x.pw_coeffs(ispn)[:] = cn
             self.hamiltonian.apply_ref(kpoint, Psi_y, Psi_x)
-            return np.matrix(
-                np.array(Psi_y.pw_coeffs(ispn), copy=False) * bnd_occ * w,
-                copy=True)
+            if scale:
+                return np.matrix(
+                    np.array(Psi_y.pw_coeffs(ispn), copy=False) * bnd_occ * w,
+                    copy=True)
+            else:
+                return np.matrix(
+                    np.array(Psi_y.pw_coeffs(ispn), copy=False),
+                    copy=True)
 
     def __matmul__(self, cn):
         """
@@ -200,5 +191,5 @@ class ApplyHamiltonian:
             )
         return self.apply(cn)
 
-    def __call__(self, cn, ki=None, ispn=None):
-        return self.apply(cn=cn, ki=ki, ispn=ispn)
+    def __call__(self, cn, scale=True, ki=None, ispn=None):
+        return self.apply(cn=cn, scale=scale, ki=ki, ispn=ispn)

@@ -18,14 +18,14 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
             n, m = v.shape
             assert (np.isclose(matview(v).H * v, np.eye(m, m)).all())
             psi = kpointset[k].spinor_wave_functions()
-            psi.pw_coeffs(ispn)[:] = v
+            psi.pw_coeffs(ispn)[:, :v.shape[1]] = v
             on_device = psi.preferred_memory_t() == MemoryEnum.device
             if on_device:
                 psi.copy_to_gpu()
     else:
         psi = kpointset[ki].spinor_wave_functions()
         on_device = psi.preferred_memory_t() == MemoryEnum.device
-        psi.pw_coeffs(ispn)[:] = cn
+        psi.pw_coeffs(ispn)[:, :cn.shape[1]] = cn
         if on_device:
             psi.copy_to_gpu()
 

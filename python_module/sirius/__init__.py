@@ -10,10 +10,15 @@ from .py_sirius import K_point_set
 
 class OccupancyDescriptor(object):
     def __set__(self, instance, value):
-        from numpy import array
+        from numpy import array, zeros
         for key, v in value._data.items():
             k, ispn = key
-            instance[k].set_band_occupancy(ispn, list(array(v).flatten()))
+            # append with zeros if necessary
+            nb = instance.ctx().num_bands()
+            f = zeros(nb)
+            ll = list(array(v).flatten())
+            f[:len(ll)] = ll
+            instance[k].set_band_occupancy(ispn, f)
 
     def __get__(self, instance, owner):
         from .coefficient_array import CoefficientArray
