@@ -29,11 +29,11 @@
 #include <apex_api.hpp>
 #endif
 
+#include "utils/cmd_args.hpp"
 #include "utils/json.hpp"
 using json = nlohmann::json;
 
 #include "input.hpp"
-#include "cmd_args.hpp"
 #include "constants.h"
 #include "spline.hpp"
 #include "radial_solver.hpp"
