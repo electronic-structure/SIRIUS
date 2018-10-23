@@ -174,7 +174,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         }
     }
 
-    T integrate(std::vector<T>& mt_val, T& it_val)
+    T integrate(std::vector<T>& mt_val, T& it_val) const
     {
         PROFILE("sirius::Periodic_function::integrate");
 

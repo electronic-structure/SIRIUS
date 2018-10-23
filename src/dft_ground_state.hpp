@@ -391,7 +391,7 @@ class DFT_ground_state
      * \rangle + \int V^{ion}({\bf r})\rho({\bf r})d{\bf r} + \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} +
      *      E^{XC}[\rho + \rho_{core}, |{\bf m}|]
      *  \f]
-     *  Ionic contrihution to the non-local part of pseudopotential is diagonal in spin. The following rearrangement
+     *  Ionic contribution to the non-local part of pseudopotential is diagonal in spin. The following rearrangement
      *  is performed next:
      *  \f[
      *     \int \rho({\bf r}) \Big( V^{ion}({\bf r}) + \frac{1}{2} V^{H}({\bf r}) \Big) d{\bf r} = \\

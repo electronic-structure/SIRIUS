@@ -11,7 +11,9 @@ if(CREATE_PYTHON_MODULE)
 
   set(libname py_sirius)
   pybind11_add_module(${libname} py_sirius.cpp)
-  add_dependencies(${libname} sirius)
+  if(USE_CUDA)
+    add_dependencies(${libname} sirius_cu)
+  endif()
   message("in python_module, h5libs: ${HDF5_C_LIBRARIES}")
   SIRIUS_SETUP_TARGET(${libname})
 
@@ -21,7 +23,11 @@ if(CREATE_PYTHON_MODULE)
   install(TARGETS ${libname}
     LIBRARY
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
-  install(FILES ${_pyfiles}
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
+  install(DIRECTORY sirius
+    DESTINATION
+    ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/
+    FILES_MATCHING REGEX
+    ".*py"
+    )
 
 endif(CREATE_PYTHON_MODULE)

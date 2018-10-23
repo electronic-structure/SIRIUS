@@ -231,9 +231,9 @@ class Simulation_parameters
         std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
         control_input_.processing_unit_ = name__;
         if (name__ == "cpu") {
-            processing_unit_ = CPU;
+            this->set_processing_unit(device_t::CPU);
         } else if (name__ == "gpu") {
-            processing_unit_ = GPU;
+            this->set_processing_unit(device_t::GPU);
         } else {
             TERMINATE("wrong processing unit");
         }
@@ -241,7 +241,15 @@ class Simulation_parameters
 
     inline void set_processing_unit(device_t pu__)
     {
-        processing_unit_ = pu__;
+        #ifdef __GPU
+        if (acc::num_devices() == 0) {
+            processing_unit_ = device_t::CPU;
+        } else {
+            processing_unit_ = pu__;
+        }
+        #else
+        processing_unit_ = device_t::CPU;
+        #endif
     }
 
     inline void set_molecule(bool molecule__)

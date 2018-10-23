@@ -287,7 +287,7 @@ class Density : public Field4D
     inline void add_k_point_contribution_rg(K_point* kp__);
 
     /// Generate valence density in the muffin-tins
-    void generate_valence_mt(K_point_set& ks);
+    void generate_valence_mt();
 
     /// Generate charge density of core states
     void generate_core_charge_density()
@@ -390,7 +390,7 @@ class Density : public Field4D
     }
 
     /// Find the total leakage of the core states out of the muffin-tins
-    double core_leakage()
+    double core_leakage() const
     {
         double sum = 0.0;
         for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
@@ -400,7 +400,7 @@ class Density : public Field4D
     }
 
     /// Return core leakage for a specific atom symmetry class
-    double core_leakage(int ic)
+    double core_leakage(int ic) const
     {
         return unit_cell_.atom_symmetry_class(ic).core_leakage();
     }
@@ -435,7 +435,7 @@ class Density : public Field4D
     }
 
     /// Check total density for the correct number of electrons.
-    inline void check_num_electrons()
+    inline bool check_num_electrons() const
     {
         double nel{0};
         if (ctx_.full_potential()) {
@@ -461,6 +461,9 @@ class Density : public Field4D
                 }
             }
             WARNING(s);
+            return false;
+        } else {
+            return true;
         }
     }
 
@@ -469,7 +472,7 @@ class Density : public Field4D
      *  to get the full charge density of the system. Density is generated in spectral representation, i.e. 
      *  plane-wave coefficients in the interstitial and spherical harmonic components in the muffin-tins.
      */
-    inline void generate(K_point_set& ks__, bool add_core__, bool transform_to_rg__)
+    inline void generate(K_point_set const& ks__, bool add_core__, bool transform_to_rg__)
     {
         PROFILE("sirius::Density::generate");
 
@@ -504,7 +507,7 @@ class Density : public Field4D
     /** The interstitial density is generated on the coarse FFT grid and then transformed to the PW domain.
      *  After symmetrization and mixing and before the generation of the XC potential density is transformted to the
      *  real-space domain and checked for the number of electrons. */
-    inline void generate_valence(K_point_set& ks__);
+    inline void generate_valence(K_point_set const& ks__);
 
     /// Add augmentation charge Q(r).
     /** Restore valence density by adding the Q-operator constribution.
@@ -529,7 +532,7 @@ class Density : public Field4D
      *      d_{\xi \xi'}^{A}({\bf G}) = \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} 
      *  \f]
      */
-    void augment(K_point_set& ks__)
+    void augment()
     {
         PROFILE("sirius::Density::augment");
 
@@ -941,7 +944,7 @@ class Density : public Field4D
         return rms;
     }
 
-    inline double dr2()
+    inline double dr2() const
     {
         return lf_mixer_->rss();
     }
