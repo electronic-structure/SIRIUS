@@ -207,20 +207,20 @@ def minimize(x0,
     else:
         raise Exception('invalid argument for `lstype`')
 
+    # compute initial energy
     x = x0
+    fc = f(x)
     pdfx, dfx = df(x)
     p = -M @ dfx
 
     if log:
-        histf = [f(x)]
-
-    fc = f(x)
+        histf = [fc]
 
     for i in range(maxiter):
         try:
             xnext, fnext = linesearch(x, p, f, dfx, f0=fc)
         except ValueError:
-            # fall back to bracketing line-search
+            # linsearch failed, resort to fallback method
             logger.print('%d line-search resort to fallback' % i)
             xnext, fnext = ls_golden(x, p, f, a=0, b=5, f0=fc)
         fc = fnext
