@@ -71,10 +71,11 @@ void sirius_initialize(bool const* call_mpi_init__)
 
 /* @fortran begin function void sirius_finalize         Shut down the SIRIUS library
    @fortran argument in required bool call_mpi_fin      If .true. then MPI_Finalize must be called after the shutdown.
+   @fortran argument in required bool call_fftw_fin      If .true. then fft_cleanup must be called after the shutdown.
    @fortran end */
-void sirius_finalize(bool const* call_mpi_fin__)
+void sirius_finalize(bool const* call_mpi_fin__, bool const* call_fftw_fin__)
 {
-    sirius::finalize(*call_mpi_fin__);
+    sirius::finalize(*call_mpi_fin__, *call_mpi_fin__);
 }
 
 /* @fortran begin function void sirius_start_timer      Start the timer.

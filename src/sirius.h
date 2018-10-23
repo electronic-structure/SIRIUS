@@ -108,7 +108,7 @@ inline void initialize(bool call_mpi_init__ = true)
 }
 
 /// Shut down the library.
-inline void finalize(bool call_mpi_fin__ = true)
+inline void finalize(bool call_mpi_fin__ = true, bool call__fftw_fin__ = true)
 {
     if (!is_initialized()) {
         TERMINATE("SIRIUS library was not initialized");
@@ -132,8 +132,10 @@ inline void finalize(bool call_mpi_fin__ = true)
         acc::reset();
     }
 #endif
-    fftw_cleanup();
 
+    if (call_fftw_fin__) {
+        fftw_cleanup();
+    }
     utils::stop_global_timer();
 #if defined(__APEX)
     apex::finalize();
