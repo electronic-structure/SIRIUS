@@ -25,7 +25,7 @@
 #ifndef __EIGENPROBLEM_H__
 #define __EIGENPROBLEM_H__
 
-#include "constants.h"
+//#include "constants.hpp"
 #include "linalg.hpp"
 
 #ifdef __ELPA

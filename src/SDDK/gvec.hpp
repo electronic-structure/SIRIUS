@@ -633,6 +633,12 @@ class Gvec
         return gvec_offset(comm().rank());
     }
 
+    /// Local starting index of G-vectors if G=0 is not counted.
+    inline int skip_g0() const
+    {
+        return (comm().rank() == 0) ? 1 : 0;
+    }
+
     /// Return number of G-vector shells.
     inline int num_shells() const
     {
@@ -971,6 +977,7 @@ class Gvec_partition
         }
     }
 
+    /// Stack together the G-vector slabs to make a larger ("fat") slab for a FFT driver.
     inline void pile_gvec()
     {
         /* build a table of {offset, count} values for G-vectors in the swapped distribution;

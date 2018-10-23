@@ -897,6 +897,7 @@ class mdarray_base
 #endif
     }
 
+    /// Zero the entire array.
     template <memory_t mem_type__ = memory_t::host>
     inline void zero()
     {

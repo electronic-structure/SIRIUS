@@ -25,26 +25,54 @@
 #ifndef __CMD_ARGS_HPP__
 #define __CMD_ARGS_HPP__
 
-#include "geometry3d.hpp"
+#include <vector>
+#include <string>
+#include <map>
+#include <sstream>
 
 /// Simple command line arguments handler.
 class cmd_args
 {
   private:
+    /// Helper string for each key.
     std::vector<std::pair<std::string, std::string>> key_desc_;
 
+    /// Mapping between a key and its kind (with or without value).
     std::map<std::string, int> known_keys_;
 
-    /// key->value mapping
+    /// Key to value mapping.
     std::map<std::string, std::string> keys_;
 
+    template <typename T>
+    std::vector<T> get_vector(std::string const key__) const
+    {
+        std::istringstream iss(keys_.at(key__));
+        std::vector<T> v;
+        while (!iss.eof()) {
+            T k;
+            iss >> k;
+            v.push_back(k);
+        }
+        return std::move(v);
+    }
+
+    void check_for_key(std::string const key__) const
+    {
+        if (!exist(key__)) {
+            std::stringstream s;
+            s << "command line parameter --" << key__ << " was not specified";
+            throw std::runtime_error(s.str());
+        }
+    }
+
   public:
+    /// Constructor.
     cmd_args()
     {
         register_key("--help", "print this help and exit");
     }
 
-    void register_key(const std::string key__, const std::string description__)
+    void register_key(std::string const key__, std::string const description__)
     {
         key_desc_.push_back(std::pair<std::string, std::string>(key__, description__));
 
@@ -56,8 +84,9 @@ class cmd_args
             key_type = 1;
         }
 
-        if (known_keys_.count(key) != 0)
-            TERMINATE("key is already added");
+        if (known_keys_.count(key) != 0) {
+            throw std::runtime_error("key is already added");
+        }
 
         known_keys_[key] = key_type;
     }
@@ -69,7 +98,7 @@ class cmd_args
             if (str.length() < 3 || str[0] != '-' || str[1] != '-') {
                 std::stringstream s;
                 s << "wrong key: " << str;
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
 
             size_t k = str.find("=");
@@ -85,19 +114,20 @@ class cmd_args
             if (known_keys_.count(key) != 1) {
                 std::stringstream s;
                 s << "key " << key << " is not found";
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
 
             if (known_keys_[key] == 0 && k != std::string::npos) {
-                TERMINATE("this key must not have a value");
+                throw std::runtime_error("this key must not have a value");
             }
 
             if (known_keys_[key] == 1 && k == std::string::npos) {
-                TERMINATE("this key must have a value");
+                throw std::runtime_error("this key must have a value");
             }
 
-            if (keys_.count(key) != 0)
-                TERMINATE("key is already added");
+            if (keys_.count(key) != 0) {
+                throw std::runtime_error("key is already added");
+            }
 
             keys_[key] = val;
         }
@@ -106,8 +136,9 @@ class cmd_args
     void print_help()
     {
         int max_key_width = 0;
-        for (int i = 0; i < (int)key_desc_.size(); i++)
+        for (int i = 0; i < (int)key_desc_.size(); i++) {
             max_key_width = std::max(max_key_width, (int)key_desc_[i].first.length());
+        }
 
         printf("Options:\n");
 
@@ -115,8 +146,9 @@ class cmd_args
             printf("  %s", key_desc_[i].first.c_str());
             int k = (int)key_desc_[i].first.length();
 
-            for (int j = 0; j < max_key_width - k + 1; j++)
+            for (int j = 0; j < max_key_width - k + 1; j++) {
                 printf(" ");
+            }
 
             printf("%s\n", key_desc_[i].second.c_str());
         }
@@ -127,69 +159,88 @@ class cmd_args
         return keys_.count(key__);
     }
 
+    /// Get a value or terminate if key is not found.
     template <typename T>
-    inline T value(const std::string key__) const;
+    inline T value(std::string const key__) const
+    {
+        check_for_key(key__);
+        T v;
+        std::istringstream(keys_.at(key__)) >> v;
+        return v;
+    }
 
+    /// Get a value if key exists or return a default value.
     template <typename T>
-    inline T value(const std::string key__, T default_val__) const;
+    inline T value(std::string const key__, T default_val__) const
+    {
+        if (!exist(key__)) {
+            return default_val__;
+        }
+        T v;
+        std::istringstream(keys_.at(key__)) >> v;
+        return v;
+    }
+
+    //template <typename T>
+    //inline T value(std::string const key__, T default_val__) const;
 
     std::string operator[](const std::string key__) const
     {
         return keys_.at(key__);
     }
 };
+//
+//template <>
+//inline int cmd_args::value<int>(const std::string key__) const
+//{
+//    int v;
+//
+//    if (!exist(key__)) {
+//        std::stringstream s;
+//        s << "command line parameter --" << key__ << " was not specified";
+//        TERMINATE(s);
+//    }
+//
+//    std::istringstream(keys_.at(key__)) >> v;
+//    return v;
+//}
 
-template <>
-inline int cmd_args::value<int>(const std::string key__) const
-{
-    int v;
+//template <>
+//inline int cmd_args::value<int>(const std::string key__, int default_val__) const
+//{
+//    if (!exist(key__)) {
+//        return default_val__;
+//    }
+//    int v;
+//    std::istringstream(keys_.at(key__)) >> v;
+//    return v;
+//}
 
-    if (!exist(key__)) {
-        std::stringstream s;
-        s << "command line parameter --" << key__ << " was not specified";
-        TERMINATE(s);
-    }
+//template <>
+//inline double cmd_args::value<double>(const std::string key__) const
+//{
+//    double v;
+//
+//    if (!exist(key__)) {
+//        std::stringstream s;
+//        s << "command line parameter --" << key__ << " was not specified";
+//        TERMINATE(s);
+//    }
+//
+//    std::istringstream(keys_.at(key__)) >> v;
+//    return v;
+//}
 
-    std::istringstream(keys_.at(key__)) >> v;
-    return v;
-}
-
-template <>
-inline int cmd_args::value<int>(const std::string key__, int default_val__) const
-{
-    if (!exist(key__))
-        return default_val__;
-
-    int v;
-    std::istringstream(keys_.at(key__)) >> v;
-    return v;
-}
-
-template <>
-inline double cmd_args::value<double>(const std::string key__) const
-{
-    double v;
-
-    if (!exist(key__)) {
-        std::stringstream s;
-        s << "command line parameter --" << key__ << " was not specified";
-        TERMINATE(s);
-    }
-
-    std::istringstream(keys_.at(key__)) >> v;
-    return v;
-}
-
-template <>
-inline double cmd_args::value<double>(const std::string key__, double default_val__) const
-{
-    if (!exist(key__))
-        return default_val__;
-
-    double v;
-    std::istringstream(keys_.at(key__)) >> v;
-    return v;
-}
+//template <>
+//inline double cmd_args::value<double>(const std::string key__, double default_val__) const
+//{
+//    if (!exist(key__)) {
+//        return default_val__;
+//    }
+//    double v;
+//    std::istringstream(keys_.at(key__)) >> v;
+//    return v;
+//}
 
 template <>
 inline std::string cmd_args::value<std::string>(const std::string key__) const
@@ -200,63 +251,34 @@ inline std::string cmd_args::value<std::string>(const std::string key__) const
 template <>
 inline std::string cmd_args::value<std::string>(const std::string key__, const std::string default_val__) const
 {
-    if (!exist(key__))
+    if (!exist(key__)) {
         return default_val__;
+    }
     return keys_.at(key__);
 }
 
 template <>
-inline vector3d<double> cmd_args::value<vector3d<double>>(const std::string key__) const
+inline std::vector<double> cmd_args::value<std::vector<double>>(const std::string key__) const
 {
-    vector3d<double> v;
-
-    if (!exist(key__)) {
-        std::stringstream s;
-        s << "command line parameter --" << key__ << " was not specified";
-        TERMINATE(s);
-    }
-
-    std::istringstream iss(keys_.at(key__));
-    for (int x : {0, 1, 2}) {
-        iss >> v[x];
-    }
-    return v;
+    check_for_key(key__);
+    return get_vector<double>(key__);
 }
 
 template <>
-inline vector3d<int> cmd_args::value<vector3d<int>>(const std::string key__) const
+inline std::vector<int> cmd_args::value<std::vector<int>>(const std::string key__) const
 {
-    vector3d<int> v;
-
-    if (!exist(key__)) {
-        std::stringstream s;
-        s << "command line parameter --" << key__ << " was not specified";
-        TERMINATE(s);
-    }
-
-    std::istringstream iss(keys_.at(key__));
-    for (int x : {0, 1, 2}) {
-        iss >> v[x];
-    }
-    return v;
+    check_for_key(key__);
+    return get_vector<int>(key__);
 }
 
 template <>
 inline std::vector<int> cmd_args::value<std::vector<int>>(std::string const key__,
                                                           std::vector<int> const default_val__) const
 {
-    if (!exist(key__))
+    if (!exist(key__)) {
         return default_val__;
-
-    std::istringstream iss(keys_.at(key__));
-    std::vector<int> v;
-    while (!iss.eof()) {
-        int k;
-        iss >> k;
-        v.push_back(k);
     }
-
-    return v;
+    return get_vector<int>(key__);
 }
 
 #endif // __CMD_ARGS_HPP__

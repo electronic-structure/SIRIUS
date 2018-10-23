@@ -25,7 +25,6 @@
 #ifndef __SIMULATION_PARAMETERS_HPP__
 #define __SIMULATION_PARAMETERS_HPP__
 
-#include "config.h"
 #include "typedefs.hpp"
 #include "input.hpp"
 
@@ -69,7 +68,6 @@ class Simulation_parameters
     Hubbard_input hubbard_input_;
 
   public:
-
     /// Import parameters from a file or a serialized json string.
     void import(std::string const& str__)
     {
@@ -142,7 +140,7 @@ class Simulation_parameters
 
     inline void set_hubbard_correction(bool hubbard_correction__)
     {
-        parameters_input_.hubbard_correction_ = hubbard_correction__;
+        parameters_input_.hubbard_correction_         = hubbard_correction__;
         hubbard_input_.simplified_hubbard_correction_ = false;
     }
 
@@ -182,8 +180,7 @@ class Simulation_parameters
 
         std::map<std::string, electronic_structure_method_t> m = {
             {"full_potential_lapwlo", electronic_structure_method_t::full_potential_lapwlo},
-            {"pseudopotential", electronic_structure_method_t::pseudopotential}
-        };
+            {"pseudopotential", electronic_structure_method_t::pseudopotential}};
 
         if (m.count(name__) == 0) {
             std::stringstream s;
@@ -202,10 +199,7 @@ class Simulation_parameters
     {
         parameters_input_.core_relativity_ = name__;
 
-        std::map<std::string, relativity_t> m = {
-            {"none", relativity_t::none},
-            {"dirac", relativity_t::dirac}
-        };
+        std::map<std::string, relativity_t> m = {{"none", relativity_t::none}, {"dirac", relativity_t::dirac}};
 
         if (m.count(name__) == 0) {
             std::stringstream s;
@@ -219,12 +213,10 @@ class Simulation_parameters
     {
         parameters_input_.valence_relativity_ = name__;
 
-        std::map<std::string, relativity_t> m = {
-            {"none", relativity_t::none},
-            {"zora", relativity_t::zora},
-            {"iora", relativity_t::iora},
-            {"koelling_harmon", relativity_t::koelling_harmon}
-        };
+        std::map<std::string, relativity_t> m = {{"none", relativity_t::none},
+                                                 {"zora", relativity_t::zora},
+                                                 {"iora", relativity_t::iora},
+                                                 {"koelling_harmon", relativity_t::koelling_harmon}};
 
         if (m.count(name__) == 0) {
             std::stringstream s;

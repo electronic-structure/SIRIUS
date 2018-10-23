@@ -992,11 +992,10 @@ class Density : public Field4D
         return std::move(dm);
     }
 
-    /// Calculate magnetic moment of the atoms
-    /// Compute approximate atomic magnetic moments in case of PW-PP.
+    /// Calculate approximate atomic magnetic moments in case of PP-PW.
     mdarray<double, 2> compute_atomic_mag_mom() const
     {
-        PROFILE("sirius::DFT_ground_state::compute_atomic_mag_mom");
+        PROFILE("sirius::Density::compute_atomic_mag_mom");
 
         mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
         mmom.zero();
@@ -1004,7 +1003,7 @@ class Density : public Field4D
         #pragma omp parallel for
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
 
-            auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map()[ia];
+            auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map(ia);
 
             for (auto coord : atom_to_grid_map) {
                 int ir = coord.first;
