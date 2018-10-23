@@ -72,32 +72,74 @@ def stiefel_decompose_tangent(Y, X):
         return _stiefel_decompose_tangent(Y, X)
 
 
+class Geodesic:
+    def __init__(self, M, N, Q):
+        self.M = M
+        self.N = N
+        self.Q = Q
+        m = Q.shape[0]
+        self.shape = (m, m)
+
+    def __matmul__(self, X):
+        return X @ self.M + self.Q @ self.N
+
+
+class ParallelTransport:
+    def __init__(self, X, expm, Q, R, B):
+        import numpy as np
+
+        self.Q = Q
+        self.R = R
+        self.B = B
+        n = expm.shape[0] // 2
+        G00 = expm[:n, :n] - np.eye(n)
+        G01 = expm[:n, n:]
+        G10 = expm[n:, :n]
+        G11 = expm[n:, n:] - np.eye(n)
+
+        self.RX = G00 @ B + G01 @ R
+        self.RQ = G10 @ B + G11 @ R
+        self.X = X
+
+    def __matmul__(self, Y):
+        """
+        """
+        return Y + self.X @ self.RX + self.Q @ self.RQ
+
+
 def _stiefel_transport_operators(Y, X, tau):
     """
 
     """
     import numpy as np
 
+    _, ss, _ = np.linalg.svd(Y)
+
     B, Q, R = stiefel_decompose_tangent(Y, X)
     m, n = Q.shape
 
-    exp_mat = np.vstack([
-        np.hstack([B, -R.H]),
-        np.hstack([R, np.zeros_like(R)])
-    ])
+    exp_mat = np.vstack(
+        [np.hstack([B, -R.H]),
+         np.hstack([R, np.zeros_like(R)])])
 
     # compute eigenvalues of exp_mat, which is skew-Hermitian
-    w, V = np.linalg.eig(exp_mat)
-    assert((~np.isclose(np.diff(w), 0, atol=1e-12)).all())
+    w, V = np.linalg.eigh(1j * exp_mat)
+    assert ((~np.isclose(np.diff(w), 0, atol=1e-12)).all())
+    w = -1j * np.real(w)
     # w must be purely imaginary
-    D = np.diag(np.exp(tau*w))
-    assert(np.isclose(V.H@V, np.eye(2*n, 2*n)).all())
+    D = np.diag(np.exp(tau * w))
+    # assert(np.isclose(V.H@V, np.eye(2*n, 2*n), atol=1e-8).all())
     expm = V @ D @ V.H
 
     XQ = np.hstack((X, Q))
 
-    U = XQ @ expm @ XQ.H
-    W = np.eye(m) + XQ @ (expm - np.eye(2*n)) @ XQ.H
+    # U = XQ @ expm @ XQ.H
+    MN = expm @ np.eye(2 * n, n)
+    M = MN[:n, :]
+    N = MN[n:, :]
+    U = Geodesic(M, N, Q)
+    # W = np.eye(m) + XQ @ (expm - np.eye(2 * n)) @ XQ.H
+    W = ParallelTransport(X, expm, Q, R, B)
 
     return U, W
 

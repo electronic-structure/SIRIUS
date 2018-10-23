@@ -68,8 +68,11 @@ def _occupancy_admissible_ds(y, fn, mag):
         # mask = y <=0
     )
     both = np.ma.hstack((d1, d2))
-    assert (both.count() > 0)
-    return np.min(both)
+    ds = np.min(both)
+    if isinstance(ds, np.ma.core.MaskedConstant):
+        ds = 0
+
+    return ds
 
 
 def occupancy_admissible_ds(y, fn, mag=False):
