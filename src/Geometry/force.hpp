@@ -72,7 +72,7 @@ class Force
         {
             Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.igk_loc(), kpoint.beta_projectors());
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
                 int nbnd = ctx_.num_bands();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* allocate GPU memory */
@@ -85,7 +85,7 @@ class Force
 
             nlf.add_k_point_contribution(kpoint, forces__);
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* deallocate GPU memory */
                     kpoint.spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();

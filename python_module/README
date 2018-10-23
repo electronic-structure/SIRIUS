@@ -1,9 +1,1 @@
-pip-3.6 install pybind11 --user
-
-PYTHONPATH=/path/to/SIRIUS/python_module jupyter-3.6 notebook
-
-or
-
-PYTHONPATH=/path/to/SIRIUS/python_module ipython-3.6
-
-
+TODO

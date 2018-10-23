@@ -27,7 +27,7 @@
 #ifndef __INPUT_HPP__
 #define __INPUT_HPP__
 
-#include "constants.h"
+#include "constants.hpp"
 #include "sddk.hpp"
 
 using namespace geometry3d;
@@ -107,9 +107,10 @@ struct Unit_cell_input
             exist_ = true;
 
             auto section = parser["unit_cell"];
-            auto a0      = section["lattice_vectors"][0].get<std::vector<double>>();
-            auto a1      = section["lattice_vectors"][1].get<std::vector<double>>();
-            auto a2      = section["lattice_vectors"][2].get<std::vector<double>>();
+
+            auto a0 = section["lattice_vectors"][0].get<std::vector<double>>();
+            auto a1 = section["lattice_vectors"][1].get<std::vector<double>>();
+            auto a2 = section["lattice_vectors"][2].get<std::vector<double>>();
 
             if (a0.size() != 3 || a1.size() != 3 || a2.size() != 3) {
                 TERMINATE("wrong lattice vectors");
@@ -346,12 +347,8 @@ struct Control_input
      *    - 0: silent mode (no output is printed) \n
      *    - 1: basic output (low level of output) \n
      *    - 2: extended output (medium level of output) \n
-     *    - 3: extensive output (hi level of output) */
-#if defined(__VERBOSITY)
-    int verbosity_{__VERBOSITY};
-#else
+     *    - 3: extensive output (high level of output) */
     int verbosity_{0};
-#endif
 
     /// Level of internal verification.
     int verification_{0};
@@ -382,6 +379,13 @@ struct Control_input
 
     /// If true then the list of nearest neighbours for each atom is printed to the standard output.
     bool print_neighbors_{false};
+
+    /// If true wave-functions stay in the device memory during the entire run.
+    /** This may lead to a better performance at a cost of high memory consumption on the device. */
+    bool keep_wf_on_device_{false};
+
+    /// True if second-variational diagonalization is used in LAPW method.
+    bool use_second_variation_{true};
 
     void read(json const& parser)
     {

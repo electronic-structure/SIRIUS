@@ -86,7 +86,7 @@ inline void Density::initial_density_pseudo()
 
     /* initialize the magnetization */
     if (ctx_.num_mag_dims()) {
-        double R = ctx_.av_atom_radius();
+        double R = ctx_.control().rmt_max_;
 
         auto w = [R](double x)
         {
@@ -107,7 +107,7 @@ inline void Density::initial_density_pseudo()
 
         #pragma omp parallel for
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map()[ia];
+            auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map(ia);
             vector3d<double> v = unit_cell_.atom(ia).vector_field();
 
             for (auto coord: atom_to_grid_map) {
