@@ -29,7 +29,7 @@ class OccupancyDescriptor(object):
         for k in range(len(instance)):
             for ispn in range(instance.ctx().num_spins()):
                 key = k, ispn
-                out[key] = instance[k].band_occupancy(ispn)
+                out[key] = np.array(instance[k].band_occupancy(ispn))
         return out
 
 
