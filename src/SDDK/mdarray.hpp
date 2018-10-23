@@ -730,6 +730,12 @@ class mdarray_base
         return at_idx<pu>(idx(i0, i1, i2, i3, i4, i5));
     }
 
+    template <device_t pu>
+    typename std::enable_if<pu==device_t::CPU, T*>::type data()
+    {
+        return raw_ptr_;
+    }
+
     /// Return total size (number of elements) of the array.
     inline size_t size() const
     {
@@ -897,6 +903,7 @@ class mdarray_base
 #endif
     }
 
+    /// Zero the entire array.
     template <memory_t mem_type__ = memory_t::host>
     inline void zero()
     {

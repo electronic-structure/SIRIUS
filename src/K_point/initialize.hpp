@@ -35,7 +35,7 @@ inline void K_point::initialize()
 
     int bs = ctx_.cyclic_block_size();
 
-    if (use_second_variation && ctx_.full_potential()) {
+    if (ctx_.control().use_second_variation_ && ctx_.full_potential()) {
         assert(ctx_.num_fv_states() > 0);
         fv_eigen_values_.resize(ctx_.num_fv_states());
     }
@@ -72,7 +72,7 @@ inline void K_point::initialize()
     generate_gklo_basis();
 
     if (ctx_.full_potential()) {
-        if (use_second_variation) {
+        if (ctx_.control().use_second_variation_) {
             if (ctx_.need_sv()) {
                 /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
                 for (int is = 0; is < ctx_.num_spin_dims(); is++) {
@@ -158,7 +158,7 @@ inline void K_point::initialize()
         spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(), nst, ctx_.num_spins()));
     }
 
-    if (ctx_.processing_unit() == GPU && keep_wf_on_gpu) {
+    if (ctx_.processing_unit() == GPU && ctx_.control().keep_wf_on_device_) {
         /* allocate GPU memory */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             spinor_wave_functions_->pw_coeffs(ispn).prime().allocate(memory_t::device);

@@ -43,11 +43,11 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
 
     auto pu = args__.value<std::string>("processing_unit", ctx.control().processing_unit_);
     if (pu == "") {
-        #ifdef __GPU
+#ifdef __GPU
         pu = "gpu";
-        #else
+#else
         pu = "cpu";
-        #endif
+#endif
     }
     ctx.set_processing_unit(pu);
 
@@ -195,12 +195,16 @@ void run_tasks(cmd_args const& args)
         ctx->initialize();
 
         Potential potential(*ctx);
-        potential.allocate();
+        if (ctx->full_potential()) {
+            potential.allocate();
+        }
 
         Hamiltonian H(*ctx, potential);
 
         Density density(*ctx);
-        density.allocate();
+        if (ctx->full_potential()) {
+            density.allocate();
+        }
 
         K_point_set ks(*ctx);
 
