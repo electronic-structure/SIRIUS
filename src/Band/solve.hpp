@@ -24,7 +24,7 @@
 
 inline void Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
 {
-    if (use_second_variation) {
+    if (ctx_.control().use_second_variation_) {
         /* solve non-magnetic Hamiltonian (so-called first variation) */
         auto& itso = ctx_.iterative_solver_input();
         if (itso.type_ == "exact") {

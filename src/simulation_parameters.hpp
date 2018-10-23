@@ -25,7 +25,6 @@
 #ifndef __SIMULATION_PARAMETERS_HPP__
 #define __SIMULATION_PARAMETERS_HPP__
 
-#include "config.h"
 #include "typedefs.hpp"
 #include "input.hpp"
 

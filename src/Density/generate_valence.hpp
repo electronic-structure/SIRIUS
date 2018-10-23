@@ -71,7 +71,7 @@ inline void Density::generate_valence(K_point_set& ks__)
             int nbnd = kp->num_occupied_bands(ispn);
             
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
                 /* allocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
                 kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd); // TODO: copy this asynchronously
@@ -98,7 +98,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         add_k_point_contribution_rg(kp);
 
 #ifdef __GPU
-        if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+        if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();

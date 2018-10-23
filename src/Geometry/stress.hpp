@@ -218,7 +218,7 @@ class Stress {
             int ik = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
                 int nbnd = ctx_.num_bands();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* allocate GPU memory */
@@ -233,7 +233,7 @@ class Stress {
 
             nlf.add_k_point_contribution(*kp, collect_result);
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* deallocate GPU memory */
                     kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
@@ -244,7 +244,7 @@ class Stress {
 
         #pragma omp parallel
         {
-            matrix3d<double> tmp_stress;
+            matrix3d<double> tmp_stress; // TODO: test pragma omp paralell for reduction(+:stress)
 
             #pragma omp for
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {

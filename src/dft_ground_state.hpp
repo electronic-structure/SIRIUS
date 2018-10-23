@@ -201,54 +201,6 @@ class DFT_ground_state
         return (ewald_g + ewald_r);
     }
 
-    ///// Compute approximate atomic magnetic moments in case of PP-PW.
-    //mdarray<double, 2> compute_atomic_mag_mom() const
-    //{
-    //    PROFILE("sirius::DFT_ground_state::compute_atomic_mag_mom");
-
-    //    /* radius of spheres around each atom where "atomic" magnetic moment is calculated */
-    //    double const R = 2.0;
-
-    //    mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
-    //    mmom.zero();
-
-    //    #pragma omp parallel for
-    //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-    //        for (int j0 = 0; j0 < ctx_.fft().size(0); j0++) {
-    //            for (int j1 = 0; j1 < ctx_.fft().size(1); j1++) {
-    //                for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++) {
-    //                    /* get real space fractional coordinate */
-    //                    auto v0 = vector3d<double>(double(j0) / ctx_.fft().size(0), double(j1) / ctx_.fft().size(1),
-    //                                               double(ctx_.fft().offset_z() + j2) / ctx_.fft().size(2));
-    //                    /* index of real space point */
-    //                    int ir = ctx_.fft().index_by_coord(j0, j1, j2);
-
-    //                    for (int t0 = -1; t0 <= 1; t0++) {
-    //                        for (int t1 = -1; t1 <= 1; t1++) {
-    //                            for (int t2 = -1; t2 <= 1; t2++) {
-    //                                auto v1 = v0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
-    //                                auto r  = unit_cell_.get_cartesian_coordinates(v1);
-    //                                auto a  = r.length();
-
-    //                                if (a <= R) {
-    //                                    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-    //                                        mmom(j, ia) += density_.magnetization(j).f_rg(ir);
-    //                                    }
-    //                                }
-    //                            }
-    //                        }
-    //                    }
-    //                }
-    //            }
-    //        }
-    //        for (int j : {0, 1, 2}) {
-    //            mmom(j, ia) *= (unit_cell_.omega() / ctx_.fft().size());
-    //        }
-    //    }
-    //    ctx_.fft().comm().allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
-    //    return std::move(mmom);
-    //}
-
   public:
     /// Constructor.
     DFT_ground_state(K_point_set& kset__)

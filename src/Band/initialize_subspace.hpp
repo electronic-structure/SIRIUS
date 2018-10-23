@@ -197,7 +197,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
 
 #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        if (!keep_wf_on_gpu) {
+        if (!ctx_.control().keep_wf_on_device_) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 kp__->spinor_wave_functions().pw_coeffs(ispn).allocate_on_device();
             }
@@ -324,7 +324,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             kp__->spinor_wave_functions().pw_coeffs(ispn).copy_to_host(0, num_bands);
-            if (!keep_wf_on_gpu) {
+            if (!ctx_.control().keep_wf_on_device_) {
                 kp__->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
             }
         }

@@ -26,15 +26,11 @@
 #define __UNIT_CELL_SYMMETRY_HPP__
 
 extern "C" {
-//#ifdef __SPGLIB_STD_INCLUDE_PATH
 #include <spglib/spglib.h>
-//#else
-//#include <spglib.h>
-//#endif
 }
 
 #include "geometry3d.hpp"
-#include "constants.h"
+#include "constants.hpp"
 #include "gvec.hpp"
 
 namespace sirius {
@@ -77,7 +73,6 @@ struct magnetic_group_symmetry_descriptor
     matrix3d<double> spin_rotation;
     /// inverse of proper spin rotation matrix in Cartesian coordinates.
     matrix3d<double> spin_rotation_inv;
-
 };
 
 class Unit_cell_symmetry
