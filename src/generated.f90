@@ -21,18 +21,37 @@ end subroutine sirius_initialize
 
 !> @brief Shut down the SIRIUS library
 !> @param [in] call_mpi_fin If .true. then MPI_Finalize must be called after the shutdown.
-subroutine sirius_finalize(call_mpi_fin)
+!> @param [in] call_device_reset If .true. then cuda device is reset after shutdown.
+!> @param [in] call_fftw_fin If .true. then fft_cleanup must be called after the shutdown.
+subroutine sirius_finalize(call_mpi_fin,call_device_reset,call_fftw_fin)
 implicit none
-logical(C_BOOL), intent(in) :: call_mpi_fin
+logical(C_BOOL), optional, target, intent(in) :: call_mpi_fin
+logical(C_BOOL), optional, target, intent(in) :: call_device_reset
+logical(C_BOOL), optional, target, intent(in) :: call_fftw_fin
+type(C_PTR) :: call_mpi_fin_ptr
+type(C_PTR) :: call_device_reset_ptr
+type(C_PTR) :: call_fftw_fin_ptr
 interface
-subroutine sirius_finalize_aux(call_mpi_fin)&
+subroutine sirius_finalize_aux(call_mpi_fin,call_device_reset,call_fftw_fin)&
 &bind(C, name="sirius_finalize")
 use, intrinsic :: ISO_C_BINDING
-logical(C_BOOL), intent(in) :: call_mpi_fin
+type(C_PTR), value, intent(in) :: call_mpi_fin
+type(C_PTR), value, intent(in) :: call_device_reset
+type(C_PTR), value, intent(in) :: call_fftw_fin
 end subroutine
 end interface
 
-call sirius_finalize_aux(call_mpi_fin)
+call_mpi_fin_ptr = C_NULL_PTR
+if (present(call_mpi_fin)) call_mpi_fin_ptr = C_LOC(call_mpi_fin)
+
+call_device_reset_ptr = C_NULL_PTR
+if (present(call_device_reset)) call_device_reset_ptr = C_LOC(call_device_reset)
+
+call_fftw_fin_ptr = C_NULL_PTR
+if (present(call_fftw_fin)) call_fftw_fin_ptr = C_LOC(call_fftw_fin)
+
+call sirius_finalize_aux(call_mpi_fin_ptr,call_device_reset_ptr,call_fftw_fin_pt&
+&r)
 end subroutine sirius_finalize
 
 !> @brief Start the timer.
