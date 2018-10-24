@@ -70,11 +70,31 @@ void sirius_initialize(bool const* call_mpi_init__)
 }
 
 /* @fortran begin function void sirius_finalize         Shut down the SIRIUS library
-   @fortran argument in required bool call_mpi_fin      If .true. then MPI_Finalize must be called after the shutdown.
+   @fortran argument in optional bool call_mpi_fin      If .true. then MPI_Finalize must be called after the shutdown.
+   @fortran argument in optional bool call_device_reset      If .true. then cuda device is reset after shutdown.
+   @fortran argument in optional bool call_fftw_fin      If .true. then fft_cleanup must be called after the shutdown.
    @fortran end */
-void sirius_finalize(bool const* call_mpi_fin__)
+
+void sirius_finalize(bool const* call_mpi_fin__, bool const *call_device_reset__, bool const* call_fftw_fin__)
 {
-    sirius::finalize(*call_mpi_fin__);
+
+    bool mpi_fin = true;
+    bool device_reset = true;
+    bool fftw_fin = true;
+    
+    if (call_mpi_fin__!= nullptr) {
+        mpi_fin = call_mpi_fin__;
+    }
+
+    if (call_device_reset__ != nullptr) {
+        device_reset = call_device_reset__;
+    }
+
+    if (call_fftw_fin__ != nullptr) {
+        fftw_fin = call_fftw_fin__;
+    }
+
+    sirius::finalize(mpi_fin, device_reset, fftw_fin);
 }
 
 /* @fortran begin function void sirius_start_timer      Start the timer.
