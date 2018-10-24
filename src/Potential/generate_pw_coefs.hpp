@@ -69,7 +69,7 @@ inline void Potential::generate_pw_coefs()
     }
 
     /* for full diagonalization we also need Beff(G) */
-    if (!use_second_variation) {
+    if (!ctx_.control().use_second_variation_) {
         TERMINATE_NOT_IMPLEMENTED
     }
 }

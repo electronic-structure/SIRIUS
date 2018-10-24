@@ -320,12 +320,16 @@ class Local_operator
         num_applied(n__);
 
         /* remap wave-functions */
-        for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
-
-            phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), n__, idx0__);
-
-            hphi__.pw_coeffs(ispn).set_num_extra(CPU, n__, idx0__);
-            hphi__.pw_coeffs(ispn).extra().zero<memory_t::host | memory_t::device>();
+        if (ispn__ == 2) {
+            for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
+                phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), n__, idx0__);
+                hphi__.pw_coeffs(ispn).set_num_extra(CPU, n__, idx0__);
+                hphi__.pw_coeffs(ispn).extra().zero<memory_t::host | memory_t::device>();
+            }
+        } else {
+            phi__.pw_coeffs(ispn__).remap_forward(fft_coarse_.pu(), n__, idx0__);
+            hphi__.pw_coeffs(ispn__).set_num_extra(CPU, n__, idx0__);
+            hphi__.pw_coeffs(ispn__).extra().zero<memory_t::host | memory_t::device>();
         }
 
 #ifdef __GPU
@@ -634,9 +638,12 @@ class Local_operator
                 add_to_hphi(i, ispn__);
             }
         }
-
-        for (int ispn = 0; ispn < hphi__.num_sc(); ispn++) {
-            hphi__.pw_coeffs(ispn).remap_backward(ctx_.processing_unit(), n__, idx0__);
+        if (ispn__ == 2) {
+            for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
+                hphi__.pw_coeffs(ispn).remap_backward(ctx_.processing_unit(), n__, idx0__);
+            }
+        } else {
+            hphi__.pw_coeffs(ispn__).remap_backward(ctx_.processing_unit(), n__, idx0__);
         }
     }
 

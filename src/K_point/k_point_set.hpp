@@ -178,7 +178,7 @@ class K_point_set
         create_k_mesh(k_grid__, k_shift__, use_symmetry__);
     }
 
-    K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> vec__)
+    K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> const& vec__)
         : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
     {
@@ -188,8 +188,13 @@ class K_point_set
         initialize();
     }
 
+    K_point_set(Simulation_context& ctx__, std::initializer_list<std::initializer_list<double>> vec__)
+        : K_point_set(ctx__, std::vector<vector3d<double>>(vec__.begin(), vec__.end()))
+    {
+    }
+
     /// Initialize the k-point set
-    void initialize(std::vector<int> counts)
+    void initialize(std::vector<int> const& counts = {})
     {
         PROFILE("sirius::K_point_set::initialize");
         /* distribute k-points along the 1-st dimension of the MPI grid */
@@ -213,11 +218,6 @@ class K_point_set
         }
     }
 
-    void initialize()
-    {
-        initialize(std::vector<int>());
-    }
-
     void update()
     {
         /* update k-points */
@@ -228,13 +228,13 @@ class K_point_set
     }
 
     /// Get a list of band energies for a given k-point index.
-    std::vector<double> get_band_energies(int ik__, int ispn__)
+    std::vector<double> get_band_energies(int ik__, int ispn__) const
     {
         std::vector<double> bnd_e(ctx_.num_bands());
         for (int j = 0; j < ctx_.num_bands(); j++) {
             bnd_e[j] = (*this)[ik__]->band_energy(j, ispn__);
         }
-        return std::move(bnd_e);
+        return bnd_e;
     }
 
     /// Find Fermi energy and band occupation numbers
@@ -246,10 +246,11 @@ class K_point_set
         double eval_sum{0};
 
         for (int ik = 0; ik < num_kpoints(); ik++) {
-            double wk = kpoints_[ik]->weight();
+            const auto& kp = kpoints_[ik];
+            double wk = kp->weight();
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
-                    eval_sum += wk * kpoints_[ik]->band_energy(j, ispn) * kpoints_[ik]->band_occupancy(j, ispn);
+                    eval_sum += wk * kp->band_energy(j, ispn) * kp->band_occupancy(j, ispn);
                 }
             }
         }
@@ -291,6 +292,12 @@ class K_point_set
     }
 
     inline K_point* operator[](int i)
+    {
+        assert(i >= 0 && i < (int)kpoints_.size());
+        return kpoints_[i].get();
+    }
+
+    inline K_point* operator[](int i) const
     {
         assert(i >= 0 && i < (int)kpoints_.size());
 
@@ -356,6 +363,11 @@ class K_point_set
     inline Simulation_context& ctx()
     {
         return ctx_;
+    }
+
+    const Unit_cell& unit_cell()
+    {
+        return unit_cell_;
     }
 
     /// Send G+k vectors of k-point jk to a given rank.

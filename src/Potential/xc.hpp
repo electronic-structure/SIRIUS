@@ -352,7 +352,7 @@ inline void Potential::xc_mt(Density const& density__)
             }
         }
 
-        if (rhomin < 0.0) {
+        if (rhomin < 0.0 && std::abs(rhomin) > 1e-9) {
             std::stringstream s;
             s << "Charge density for atom " << ia << " has negative values" << std::endl
               << "most negatve value : " << rhomin << std::endl
@@ -488,7 +488,7 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
         rhomin = std::min(rhomin, d);
         rho.f_rg(ir) = std::max(d, 0.0);
     }
-    if (rhomin < 0.0) {
+    if (rhomin < 0.0 && std::abs(rhomin) > 1e-9) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
@@ -674,7 +674,7 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
     }
     t1.stop();
 
-    if (rhomin < 0.0) {
+    if (rhomin < 0.0 && std::abs(rhomin) > 1e-9) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
