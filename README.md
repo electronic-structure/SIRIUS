@@ -1,3 +1,5 @@
+[![GitHub Releases](https://img.shields.io/badge/release-5.8.3-brightgreen.svg)](https://github.com/electronic-structure/SIRIUS/releases)]
+
 <p align="center">
 <img src="doc/images/sirius_logo.png" width="500">
 </p>
