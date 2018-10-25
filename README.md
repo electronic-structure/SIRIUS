@@ -1,8 +1,8 @@
-[![GitHub Releases](https://img.shields.io/badge/release-5.8.3-brightgreen.svg)](https://github.com/electronic-structure/SIRIUS/releases)]
-
 <p align="center">
 <img src="doc/images/sirius_logo.png" width="500">
 </p>
+[![GitHub Releases](https://img.shields.io/badge/release-5.8.3-brightgreen.svg)](https://github.com/electronic-structure/SIRIUS/releases)
+
 SIRIUS is a domain specific library for electronic structure calculations. It is designed to work with codes such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++11 with MPI, OpenMP and CUDA programming models. Up-to-date source code documantation is available here: https://electronic-structure.github.io/SIRIUS-doc.
 
 ## How to compile
