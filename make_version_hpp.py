@@ -25,8 +25,9 @@ def get_sha(vstr):
     sha_str = ""
 
     try:
-        p = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, check=True)
+        p = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         sha_str = p.communicate()[0].strip()
+        if p.returncode != 0: raise
     except:
         # python2 and python3 handle URL requests differently
         if sys.version_info < (3, 0):
@@ -50,8 +51,9 @@ def get_branch(sha_str, vstr):
     """
     branch_name = ""
     try:
-        p = subprocess.Popen(["git", "describe", "--all"], stdout=subprocess.PIPE, check=True)
+        p = subprocess.Popen(["git", "describe", "--all"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         branch_name = p.communicate()[0].strip()
+        if p.returncode != 0: raise
     except:
         if sha_str:
             branch_name = 'release tag v%s'%vstr
@@ -73,13 +75,14 @@ def main():
             version_str = vf.readline().strip()
     except:
        pass
-
+    print(version_str)
     sha_str = get_sha(version_str)
+    print(sha_str)
     branch_name = get_branch(sha_str, version_str)
 
     print("const char* const git_hash = \"%s\";"%sha_str)
-    print("const char* const git_branchname = \"%s\";"%to_string(branch_name))
-    print("const char* const build_date = \"%s\";"%(now.strftime("%a, %e %b %Y %H:%M:%S")))
+    print("const char* const git_branchname = \"%s\";"%branch_name)
+    #print("const char* const build_date = \"%s\";"%(now.strftime("%a, %e %b %Y %H:%M:%S")))
     print("#endif")
 
 if __name__ == "__main__":
