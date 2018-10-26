@@ -75,9 +75,7 @@ def main():
             version_str = vf.readline().strip()
     except:
        pass
-    print(version_str)
     sha_str = get_sha(version_str)
-    print(sha_str)
     branch_name = get_branch(sha_str, version_str)
 
     print("const char* const git_hash = \"%s\";"%sha_str)
