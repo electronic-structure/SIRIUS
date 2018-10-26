@@ -150,7 +150,6 @@ add_custom_command(
 )
 
 add_custom_target(generate_version_hpp DEPENDS ${version_hpp_path})
-#add_dependencies(arbor-public-headers generate_version_hpp)
 
 
 ## configure version header
@@ -180,6 +179,8 @@ MACRO(SIRIUS_SETUP_TARGET _target)
   if(USE_CUDA)
     add_dependencies(${_target} sirius_cu)
   endif()
+
+  add_dependencies(${_target} generate_version_hpp)
 
   if(USE_MKL)
     # TODO: handle -lpthread properly
