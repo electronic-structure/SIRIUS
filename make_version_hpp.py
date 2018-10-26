@@ -3,33 +3,31 @@ import subprocess
 import datetime
 import json
 
-now = datetime.datetime.now()
-
+# Use github REST API to query the tags
 request_str = 'https://api.github.com/repos/electronic-structure/SIRIUS/tags'
 
 def to_string(s):
+    """
+    Convert to ASCII sring.
+    """
     if isinstance(s, str):
         return s
     else:
         return s.decode('utf-8')
 
-with open("version.hpp", "w") as f:
-    f.write("/** \\file version.hpp\n")
-    f.write(" *  \\brief Auto-generated version file.\n")
-    f.write(" */\n")
-    f.write("#ifndef __VERSION_HPP__\n")
-    f.write("#define __VERSION_HPP__\n")
+def get_sha(vstr):
+    """
+    Get SHA hash of the code.
+    Try to call git. If git command is not found or this is not a git repository, try to read
+    the file VERSION to get the tag name. If none found, return an empty string.
+    """
 
-    vstr = ''
+    sha_str = ""
 
-    sha_str = ''
     try:
-        p = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE)
+        p = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, check=True)
         sha_str = p.communicate()[0].strip()
     except:
-        # get version string from the file
-        with open('VERSION') as vf:
-            vstr = vf.readline().strip()
         # python2 and python3 handle URL requests differently
         if sys.version_info < (3, 0):
             import urllib2
@@ -44,16 +42,45 @@ with open("version.hpp", "w") as f:
                 sha_str = e['commit']['sha']
                 break
 
-    f.write("const char* const git_hash = \"%s\";\n"%to_string(sha_str))
+    return to_string(sha_str)
 
-    branch_name = ''
+def get_branch(sha_str, vstr):
+    """
+    Get name of the branch. If git command failed but SHA is found, this is a release version
+    """
+    branch_name = ""
     try:
-        p = subprocess.Popen(["git", "describe", "--all"], stdout=subprocess.PIPE)
+        p = subprocess.Popen(["git", "describe", "--all"], stdout=subprocess.PIPE, check=True)
         branch_name = p.communicate()[0].strip()
     except:
-        branch_name = 'release tag v%s'%vstr
-    f.write("const char* const git_branchname = \"%s\";\n"%to_string(branch_name))
+        if sha_str:
+            branch_name = 'release tag v%s'%vstr
+    return to_string(branch_name)
 
-    f.write("const char* const build_date = \"%s\";\n"%(now.strftime("%a, %e %b %Y %H:%M:%S")))
-    f.write("#endif\n")
+def main():
+    print("/** \\file version.hpp")
+    print(" *  \\brief Auto-generated version file.")
+    print(" */\n")
+    print("#ifndef __VERSION_HPP__")
+    print("#define __VERSION_HPP__")
 
+    now = datetime.datetime.now()
+
+    version_str = ""
+    # get version string from the file
+    try:
+        with open(sys.argv[1]) as vf:
+            version_str = vf.readline().strip()
+    except:
+       pass
+
+    sha_str = get_sha(version_str)
+    branch_name = get_branch(sha_str, version_str)
+
+    print("const char* const git_hash = \"%s\";"%sha_str)
+    print("const char* const git_branchname = \"%s\";"%to_string(branch_name))
+    print("const char* const build_date = \"%s\";"%(now.strftime("%a, %e %b %Y %H:%M:%S")))
+    print("#endif")
+
+if __name__ == "__main__":
+    main()
