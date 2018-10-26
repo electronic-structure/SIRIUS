@@ -1264,10 +1264,9 @@ inline void Simulation_context::print_info()
     strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
 
     printf("\n");
-    printf("SIRIUS version : %i.%i\n", major_version, minor_version);
+    printf("SIRIUS version : %i.%i.%i\n", major_version, minor_version, revision);
     printf("git hash       : %s\n", git_hash);
     printf("git branch     : %s\n", git_branchname);
-    printf("build date     : %s\n", build_date);
     printf("start time     : %s\n", buf);
     printf("\n");
     printf("number of MPI ranks           : %i\n", comm_.size());

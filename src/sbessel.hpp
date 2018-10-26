@@ -26,7 +26,6 @@
 #define __SBESSEL_HPP__
 
 #include <gsl/gsl_sf_bessel.h>
-#include "Unit_cell/unit_cell.hpp"
 
 namespace sirius {
 

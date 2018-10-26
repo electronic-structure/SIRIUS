@@ -74,7 +74,7 @@ find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C HL)
 
 # cmake assumes spglib installed
-add_compile_options(-D__SPGLIB_STD_INCLUDE_PATH)
+#add_compile_options(-D__SPGLIB_STD_INCLUDE_PATH)
 
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
@@ -131,33 +131,56 @@ include_directories(${MPI_INCLUDE_DIR})
 include_directories(BEFORE src)
 include_directories(BEFORE src/SDDK)
 
-# configure version header
-exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR}
-  ARGS "rev-parse HEAD"
-  OUTPUT_VARIABLE GIT_VERSION_SHA1
-  RETURN_VALUE exit_code)
-if(exit_code)
-  set(GIT_VERSION_SHA1 "")
-endif()
-exec_program("date"
-  ARGS "+\"%a, %e %b %Y %H:%M:%S\""
-  OUTPUT_VARIABLE BUILD_DATE)
-exec_program(
-  "git"
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ARGS "describe --all"
-  OUTPUT_VARIABLE GIT_BRANCHNAME
-  RETURN_VALUE exit_code)
-if(exit_code)
-  set(GIT_BRANCHNAME "")
-endif()
-configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" "${PROJECT_BINARY_DIR}/src/version.hpp")
+# configure generation of the version header
+add_custom_command(
+  OUTPUT _always_rebuild
+  COMMAND true
+)
+add_custom_command(
+    OUTPUT version.hpp-test
+    DEPENDS _always_rebuild
+    COMMAND python ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
+)
+
+set(version_hpp_path src/version.hpp)
+add_custom_command(
+    OUTPUT ${version_hpp_path}
+    DEPENDS version.hpp-test
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different version.hpp-test ${version_hpp_path}
+)
+
+add_custom_target(generate_version_hpp DEPENDS ${version_hpp_path})
+
+
+## configure version header
+#exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR}
+#  ARGS "rev-parse HEAD"
+#  OUTPUT_VARIABLE GIT_VERSION_SHA1
+#  RETURN_VALUE exit_code)
+#if(exit_code)
+#  set(GIT_VERSION_SHA1 "")
+#endif()
+#exec_program("date"
+#  ARGS "+\"%a, %e %b %Y %H:%M:%S\""
+#  OUTPUT_VARIABLE BUILD_DATE)
+#exec_program(
+#  "git"
+#  ${CMAKE_CURRENT_SOURCE_DIR}
+#  ARGS "describe --all"
+#  OUTPUT_VARIABLE GIT_BRANCHNAME
+#  RETURN_VALUE exit_code)
+#if(exit_code)
+#  set(GIT_BRANCHNAME "")
+#endif()
+#configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" "${PROJECT_BINARY_DIR}/src/version.hpp")
 include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
   if(USE_CUDA)
     add_dependencies(${_target} sirius_cu)
   endif()
+
+  add_dependencies(${_target} generate_version_hpp)
 
   if(USE_MKL)
     # TODO: handle -lpthread properly
