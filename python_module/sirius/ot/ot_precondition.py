@@ -7,6 +7,7 @@ def make_kinetic_precond(kpointset, c0, eps=0.1, asPwCoeffs=False):
     kpointset --
     """
     from ..coefficient_array import PwCoeffs
+    import scipy
     from scipy.sparse import dia_matrix
     import numpy as np
 
