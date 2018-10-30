@@ -58,9 +58,12 @@ class CoefficientArray:
                 x[:] = self.ctype(item, copy=False)
             except TypeError:
                 # not a view, make a copy
-                x = self.ctype(item, copy=True)
+                self._data[key] = self.ctype(item)
         else:
-            self._data[key] = self.ctype(item, dtype=self.dtype, copy=True)
+            if isinstance(item, np.ndarray):
+                self._data[key] = self.ctype(item, dtype=self.dtype, copy=True)
+            else:
+                self._data[key] = item
 
     def sum(self, **kwargs):
         """
@@ -104,21 +107,18 @@ class CoefficientArray:
             raise TypeError('wrong type')
         return out
 
-
-
     def __matmul__(self, other):
         """
         TODO
         """
         # TODO: complex | double -> complex, double | double -> double
         out = type(self)(dtype=np.complex)
-        assert (self.ctype is np.matrix)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
-                out[key] = self._data[key] * other._data[key]
+                out[key] = self._data[key] @ other._data[key]
         elif np.isscalar(other):
             for key in self._data.keys():
-                out[key] = self._data[key] * other
+                out[key] = self._data[key] @ other
         else:
             raise TypeError('wrong type')
         return out
@@ -168,6 +168,30 @@ class CoefficientArray:
             out[key] = ctype(val).flatten()
         return out
 
+    def cols(self, indices):
+        """
+
+        """
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for k, jj in indices._data.items():
+            out[k] = self[k][:, jj]
+        return out
+
+    def __len__(self):
+        """
+        """
+        return len(self._data)
+
+    def items(self):
+        """
+        """
+        return self._data.items()
+
+    def __contains__(self, key):
+        """
+        """
+        return self._data.__contains(key)
+
     @property
     def real(self):
         out = type(self)(dtype=np.double)
@@ -215,6 +239,7 @@ class CoefficientArray:
             p.text('\n')
             p.pretty(val)
             p.text('\n')
+
 
     __lmul__ = __mul__
     __rmul__ = __mul__
@@ -270,21 +295,6 @@ class PwCoeffs(CoefficientArray):
         for k, ispn in self._data:
             sdict[k].append((ispn, self._data[(k, ispn)]))
         return sdict
-
-    def __len__(self):
-        """
-        """
-        return len(self._data)
-
-    def items(self):
-        """
-        """
-        return self._data.items()
-
-    def __contains__(self, key):
-        """
-        """
-        return self._data.__contains(key)
 
 
 if __name__ == '__main__':
