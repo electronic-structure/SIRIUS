@@ -124,7 +124,7 @@ class CoefficientArray:
         return out
 
     def __add__(self, other):
-        out = type(self)(dtype=self.dtype)
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
                 out[key] = self._data[key] + other._data[key]
