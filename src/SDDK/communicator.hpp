@@ -665,6 +665,35 @@ class Communicator
 #endif
     }
 
+    /// Gather data on a given rank.
+    template <typename T>
+    void gather(T const* sendbuf__, T* recvbuf__, int offset__, int count__, int root__) const
+    {
+
+#if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Gatherv");
+#endif
+        std::vector<int> v(size() * 2);
+        v[2 * rank()]     = count__;
+        v[2 * rank() + 1] = offset__;
+
+        CALL_MPI(MPI_Allgather,
+                 (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, mpi_type_wrapper<int>::kind(), mpi_comm()));
+
+        std::vector<int> counts(size());
+        std::vector<int> offsets(size());
+
+        for (int i = 0; i < size(); i++) {
+            counts[i]  = v[2 * i];
+            offsets[i] = v[2 * i + 1];
+        }
+        CALL_MPI(MPI_Gatherv, (sendbuf__, count__, mpi_type_wrapper<T>::kind(), recvbuf__, counts.data(),
+                               offsets.data(), mpi_type_wrapper<T>::kind(), root__, mpi_comm()));
+#if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+#endif
+    }
+
     template <typename T>
     void scatter(T const* sendbuf__, T* recvbuf__, int const* sendcounts__, int const* displs__, int root__) const
     {

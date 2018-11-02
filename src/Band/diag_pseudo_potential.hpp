@@ -216,7 +216,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     }
 
     for (int j = 0; j < ctx_.num_bands(); j++) {
-        kp__->band_energy(j, ispn__) = eval[j];
+        kp__->band_energy(j, ispn__, eval[j]);
     }
 
     kp__->spinor_wave_functions().pw_coeffs(ispn__).remap_from(evec, 0);
@@ -458,7 +458,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                                  {&psi}, 0, num_bands);
                     /* update eigen-values */
                     for (int j = 0; j < num_bands; j++) {
-                        kp__->band_energy(j, ispin_step) = eval[j];
+                        kp__->band_energy(j, ispin_step, eval[j]);
                     }
                 } else {
                     if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {

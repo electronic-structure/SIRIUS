@@ -59,6 +59,7 @@ struct z_column_descriptor
     }
 };
 
+/// Serialize a single z-column descriptor.
 inline void serialize(serializer& s__, z_column_descriptor const& zcol__)
 {
     serialize(s__, zcol__.x);
@@ -66,6 +67,7 @@ inline void serialize(serializer& s__, z_column_descriptor const& zcol__)
     serialize(s__, zcol__.z);
 }
 
+/// Deserialize a single z-column descriptor.
 inline void deserialize(serializer& s__, z_column_descriptor& zcol__)
 {
     deserialize(s__, zcol__.x);
@@ -73,6 +75,7 @@ inline void deserialize(serializer& s__, z_column_descriptor& zcol__)
     deserialize(s__, zcol__.z);
 }
 
+/// Serialize a vector of z-column descriptors.
 inline void serialize(serializer& s__, std::vector<z_column_descriptor> const& zcol__)
 {
     serialize(s__, zcol__.size());
@@ -81,6 +84,7 @@ inline void serialize(serializer& s__, std::vector<z_column_descriptor> const& z
     }
 }
 
+/// Deserialize a vector of z-column descriptors.
 inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol__)
 {
     size_t sz;
@@ -93,7 +97,8 @@ inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol_
 
 /// A set of G-vectors for FFTs and G+k basis functions.
 /** Current implemntation supports up to 2^12 (4096) z-dimension of the FFT grid and 2^20 (1048576) number of
- *  z-columns. */
+ *  z-columns. The order of z-sticks and G-vectors is not fixed and depends on the number of MPI ranks used
+ *  for the parallelization. */
 class Gvec
 {
   private:
@@ -131,6 +136,7 @@ class Gvec
     /// Index of the shell to which the given G-vector belongs.
     mdarray<int, 1> gvec_shell_;
 
+    /// Number of G-vector shalles (groups of G-vectors with the same length).
     int num_gvec_shells_;
 
     mdarray<double, 1> gvec_shell_len_;
@@ -337,14 +343,15 @@ class Gvec
         PROFILE("sddk::Gvec::find_gvec_shells");
 
         /* list of pairs (length, index of G-vector) */
-        std::vector<std::pair<size_t, int>> tmp(num_gvec_);
+        std::vector<std::pair<uint64_t, int>> tmp(num_gvec_);
         #pragma omp parallel for schedule(static)
         for (int ig = 0; ig < num_gvec(); ig++) {
             /* take G+k */
             auto gk = gkvec_cart<index_domain_t::global>(ig);
             /* make some reasonable roundoff */
-            size_t len = size_t(gk.length() * 1e8);
-            tmp[ig]    = std::pair<size_t, int>(len, ig);
+            uint64_t len = static_cast<uint64_t>(gk.length() * 1e8);
+
+            tmp[ig] = std::make_pair(len, ig);
         }
         /* sort by first element in pair (length) */
         std::sort(tmp.begin(), tmp.end());
@@ -520,6 +527,7 @@ class Gvec
         init();
     }
 
+    /// Constructor for empty set of G-vectors.
     Gvec(Communicator const& comm__)
         : comm_(comm__)
     {
@@ -575,6 +583,7 @@ class Gvec
         return lattice_vectors_;
     }
 
+    /// Retrn a const reference to the reciprocal lattice vectors.
     inline matrix3d<double> const& lattice_vectors() const
     {
         return lattice_vectors_;
@@ -599,6 +608,7 @@ class Gvec
         return zcol_distr_.counts[rank__];
     }
 
+    /// Offset in the global index of z-columns for a given rank.
     inline int zcol_offset(int rank__) const
     {
         assert(rank__ < comm().size());
@@ -809,46 +819,58 @@ class Gvec
         return gvec_base_mapping_(igloc_base__);
     }
 
+    /// Serialize to a string of bytes.
+    void pack(serializer& s__) const
+    {
+        serialize(s__, vk_);
+        serialize(s__, Gmax_);
+        serialize(s__, lattice_vectors_);
+        serialize(s__, reduce_gvec_);
+        serialize(s__, bare_gvec_);
+        serialize(s__, num_gvec_);
+        serialize(s__, num_gvec_shells_);
+        serialize(s__, gvec_full_index_);
+        serialize(s__, gvec_shell_);
+        serialize(s__, gvec_shell_len_);
+        serialize(s__, gvec_index_by_xy_);
+        serialize(s__, z_columns_);
+        serialize(s__, gvec_distr_);
+        serialize(s__, zcol_distr_);
+        serialize(s__, gvec_base_mapping_);
+    }
+
+    /// Deserialize from a string of bytes.
+    void unpack(serializer& s__, Gvec& gv__) const
+    {
+        deserialize(s__, gv__.vk_);
+        deserialize(s__, gv__.Gmax_);
+        deserialize(s__, gv__.lattice_vectors_);
+        deserialize(s__, gv__.reduce_gvec_);
+        deserialize(s__, gv__.bare_gvec_);
+        deserialize(s__, gv__.num_gvec_);
+        deserialize(s__, gv__.num_gvec_shells_);
+        deserialize(s__, gv__.gvec_full_index_);
+        deserialize(s__, gv__.gvec_shell_);
+        deserialize(s__, gv__.gvec_shell_len_);
+        deserialize(s__, gv__.gvec_index_by_xy_);
+        deserialize(s__, gv__.z_columns_);
+        deserialize(s__, gv__.gvec_distr_);
+        deserialize(s__, gv__.zcol_distr_);
+        deserialize(s__, gv__.gvec_base_mapping_);
+    }
+
     inline void send_recv(Communicator const& comm__, int source__, int dest__, Gvec& gv__) const
     {
         serializer s;
 
         if (comm__.rank() == source__) {
-            serialize(s, vk_);
-            serialize(s, Gmax_);
-            serialize(s, lattice_vectors_);
-            serialize(s, reduce_gvec_);
-            serialize(s, bare_gvec_);
-            serialize(s, num_gvec_);
-            serialize(s, num_gvec_shells_);
-            serialize(s, gvec_full_index_);
-            serialize(s, gvec_shell_);
-            serialize(s, gvec_shell_len_);
-            serialize(s, gvec_index_by_xy_);
-            serialize(s, z_columns_);
-            serialize(s, gvec_distr_);
-            serialize(s, zcol_distr_);
-            serialize(s, gvec_base_mapping_);
+            this->pack(s);
         }
 
         s.send_recv(comm__, source__, dest__);
 
         if (comm__.rank() == dest__) {
-            deserialize(s, gv__.vk_);
-            deserialize(s, gv__.Gmax_);
-            deserialize(s, gv__.lattice_vectors_);
-            deserialize(s, gv__.reduce_gvec_);
-            deserialize(s, gv__.bare_gvec_);
-            deserialize(s, gv__.num_gvec_);
-            deserialize(s, gv__.num_gvec_shells_);
-            deserialize(s, gv__.gvec_full_index_);
-            deserialize(s, gv__.gvec_shell_);
-            deserialize(s, gv__.gvec_shell_len_);
-            deserialize(s, gv__.gvec_index_by_xy_);
-            deserialize(s, gv__.z_columns_);
-            deserialize(s, gv__.gvec_distr_);
-            deserialize(s, gv__.zcol_distr_);
-            deserialize(s, gv__.gvec_base_mapping_);
+            this->unpack(s, gv__);
         }
     }
 
@@ -916,6 +938,7 @@ class Gvec_partition
     /// Communicator for the FFT.
     Communicator const& fft_comm_;
 
+    /// Communicator which is orthogonal to FFT communicator.
     Communicator const& comm_ortho_fft_;
 
     /// Distribution of G-vectors for FFT.
@@ -931,6 +954,7 @@ class Gvec_partition
     /** Global index of z-column is expected */
     mdarray<int, 1> zcol_offs_;
 
+    /// Mapping of MPI ranks used to split G-vectors to a 2D grid.
     mdarray<int, 2> rank_map_;
 
     /// Global index of z-column in new (fat-slab) distrubution.
