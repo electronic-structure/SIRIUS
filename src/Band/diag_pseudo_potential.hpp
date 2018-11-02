@@ -298,7 +298,11 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     t1.stop();
 
     utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
-    auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type = memory_t::host;
+    if (ctx_.processing_unit() == GPU && 
+        (ctx_.std_evp_solver_type() == ev_solver_t::magma || ctx_.blacs_grid().comm().size() == 1)) {
+        mem_type = memory_t::host_pinned;
+    }
 
     const int bs = ctx_.cyclic_block_size();
 
@@ -310,7 +314,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     kp__->beta_projectors().prepare();
 
-    #ifdef __GPU
+#ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         if (!ctx_.control().keep_wf_on_device_) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -335,7 +339,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             hmlt.allocate(memory_t::device);
         }
     }
-    #endif
+#endif
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
