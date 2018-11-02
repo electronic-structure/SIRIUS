@@ -19,6 +19,7 @@ class OccupancyDescriptor(object):
             ll = list(array(v).flatten())
             f[:len(ll)] = ll
             instance[k].set_band_occupancy(ispn, f)
+        instance.sync_band_occupancies()
 
     def __get__(self, instance, owner):
         from .coefficient_array import CoefficientArray
