@@ -20,8 +20,15 @@ set(BUILD_TESTS OFF CACHE BOOL "build tests")
 set(GPU_MODEL "none" CACHE STRING "The target GPU architecture; one of {none,P100,V100,G10x0}")
 set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
 set(USE_OPENMP ON CACHE BOOL "use OpenMP")
+set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
+
+if(PYTHON2)
+  set(PYBIND11_PYTHON_VERSION 2.7)
+endif()
+
+# TODO: mkl provides scalapack, make sure not both options turned on
 
 # Set release as the default build type.
 if (NOT CMAKE_BUILD_TYPE)
