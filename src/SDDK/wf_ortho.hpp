@@ -32,7 +32,7 @@ inline void orthogonalize(device_t                     pu__,
                           dmatrix<T>&                  o__,
                           Wave_functions&              tmp__)
 {
-    PROFILE("sddk::Wave_functions::orthogonalize");
+    PROFILE("sddk::orthogonalize");
 
     const char* sddk_pp_raw = std::getenv("SDDK_PRINT_PERFORMANCE");
     int sddk_pp = (sddk_pp_raw == NULL) ? 0 : std::atoi(sddk_pp_raw);
@@ -152,14 +152,15 @@ inline void orthogonalize(device_t                     pu__,
     /* single MPI rank */
     if (o__.comm().size() == 1) {
         bool use_magma{false};
-        #if defined(__GPU) && defined(__MAGMA)
+#if defined(__GPU) && defined(__MAGMA)
         if (pu__ == GPU) {
             use_magma = true;
         }
-        #endif
+#endif
 
+        utils::timer t1("sddk::orthogonalize|tmtrx");
         if (use_magma) {
-            #ifdef __GPU
+#ifdef __GPU
             /* Cholesky factorization */
             if (int info = linalg<GPU>::potrf(n__, o__.template at<GPU>(), o__.ld())) {
                 std::stringstream s;
@@ -170,7 +171,7 @@ inline void orthogonalize(device_t                     pu__,
             if (linalg<GPU>::trtri(n__, o__.template at<GPU>(), o__.ld())) {
                 TERMINATE("error in inversion");
             }
-            #endif
+#endif
         } else { /* CPU version */
             /* Cholesky factorization */
             if (int info = linalg<CPU>::potrf(n__, &o__(0, 0), o__.ld())) {
@@ -187,12 +188,14 @@ inline void orthogonalize(device_t                     pu__,
                 TERMINATE("error in inversion");
             }
             if (pu__ == GPU) {
-                #ifdef __GPU
+#ifdef __GPU
                 acc::copyin(o__.template at<GPU>(), o__.ld(), o__.template at<CPU>(), o__.ld(), n__, n__);
-                #endif
+#endif
             }
         }
-        
+        t1.stop();
+
+        utils::timer t2("sddk::orthogonalize|transform");
         int s0{0};
         int s1{1};
         if (ispn__ != 2) {
@@ -229,7 +232,7 @@ inline void orthogonalize(device_t                     pu__,
                     }
                 }
             }
-            #ifdef __GPU
+#ifdef __GPU
             if (pu__ == GPU) {
                 /* multiplication by triangular matrix */
                 for (auto& e: wfs__) {
@@ -265,10 +268,11 @@ inline void orthogonalize(device_t                     pu__,
                 }
                 acc::sync_stream(-1);
             }
-            #endif
+#endif
         }
+        t2.stop();
     } else { /* parallel transformation */
-        utils::timer t1("sddk::Wave_functions::orthogonalize|potrf");
+        utils::timer t1("sddk::orthogonalize|potrf");
         mdarray<T, 1> diag;
         o__.make_real_diag(n__);
         if (sddk_debug >= 1) {
@@ -284,7 +288,7 @@ inline void orthogonalize(device_t                     pu__,
         }
         t1.stop();
 
-        utils::timer t2("sddk::Wave_functions::orthogonalize|trtri");
+        utils::timer t2("sddk::orthogonalize|trtri");
         if (linalg<CPU>::trtri(n__, o__)) {
             TERMINATE("error in inversion");
         }
