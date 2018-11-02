@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -186,32 +186,6 @@ class K_point
         /// Test orthonormalization of first-variational states.
         inline void test_fv_states();
 
-        inline double& band_energy_aux(int j__, int ispn__)
-        {
-            if (ctx_.num_mag_dims() == 3) {
-                return band_energies_(j__, 0);
-            } else {
-                if (!(ispn__ == 0 || ispn__ == 1)) {
-                    TERMINATE("wrong spin index");
-                }
-                return band_energies_(j__, ispn__);
-            }
-        }
-
-        inline double& band_occupancy_aux(int j__, int ispn__)
-        {
-            if (ctx_.num_mag_dims() == 3) {
-                return band_occupancies_(j__, 0);
-            } else {
-                if (!(ispn__ == 0 || ispn__ == 1) ||
-                    !(ispn__ <= ctx_.num_mag_dims())
-                   ) {
-                    TERMINATE("wrong spin index");
-                }
-                return band_occupancies_(j__, ispn__);
-            }
-        }
-
         /// Find G+k vectors within the cutoff.
         inline void generate_gkvec(double gk_cutoff__)
         {
@@ -277,8 +251,9 @@ class K_point
         }
 
         /// Initialize the k-point related arrays and data.
-        inline void initialize();
+        inline void initialize(); // TODO: initialize from HDF5
 
+        /// Update the reciprocal lattice vectors of the G+k array.
         inline void update()
         {
             PROFILE("sirius::K_point::update");
@@ -353,73 +328,6 @@ class K_point
         }
 
         /// Generate first-variational states from eigen-vectors.
-        /** First-variational states are obtained from the first-variational eigen-vectors and
-         *  LAPW matching coefficients.
-         *
-         *  APW part:
-         *  \f[
-         *      \psi_{\xi j}^{\bf k} = \sum_{{\bf G}} Z_{{\bf G} j}^{\bf k} * A_{\xi}({\bf G+k})
-         *  \f]
-         */
-        void generate_fv_states();
-
-        #ifdef __GPU
-        void generate_fv_states_aw_mt_gpu();
-        #endif
-
-        /// Generate two-component spinor wave functions
-        inline void generate_spinor_wave_functions();
-
-        inline void generate_atomic_wave_functions(const int num_ao__, Wave_functions &phi);
-
-        inline void generate_atomic_wave_functions_aux(const int num_ao__, Wave_functions &phi, std::vector<int> &offset, bool hubbard);
-
-        void compute_gradient_wave_functions(Wave_functions &phi,
-                                             const int starting_position_i,
-                                             const int num_wf,
-                                             Wave_functions &dphi,
-                                             const int starting_position_j,
-                                             const int direction);
-
-        void save(int id);
-
-        void load(HDF5_tree h5in, int id);
-
-        //== void save_wave_functions(int id);
-
-        //== void load_wave_functions(int id);
-
-        void get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec);
-
-        void get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec);
-
-        /// Test orthonormalization of spinor wave-functions
-        void test_spinor_wave_functions(int use_fft);
-
-        /// Get the number of bands
-        int num_bands() const
-        {
-            return ctx_.num_bands();
-        }
-
-        /// Get the number of occupied bands for each spin channel.
-        int num_occupied_bands(int ispn__ = -1) const
-        {
-            for (int j = ctx_.num_bands() - 1; j >= 0; j--) {
-                if (std::abs(band_occupancy(j, ispn__) * weight()) > 1e-14) {
-                    return j + 1;
-                }
-            }
-            return 0;
-        }
-
-        /// Total number of G+k vectors within the cutoff distance
-        inline int num_gkvec() const
-        {
-            return gkvec_->num_gvec();
-        }
-
-        /// Total number of muffin-tin and plane-wave expansion coefficients for the wave-functions.
         /** APW+lo basis \f$ \varphi_{\mu {\bf k}}({\bf r}) = \{ \varphi_{\bf G+k}({\bf r}),
          *  \varphi_{j{\bf k}}({\bf r}) \} \f$ is used to expand first-variational wave-functions:
          *
@@ -439,36 +347,104 @@ class K_point
          *
          *  Thus, the total number of coefficients representing a wave-funstion is equal
          *  to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r)
-         *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. */
-        //inline int wf_size() const // TODO: better name for this
-        //{
-        //    if (ctx_.full_potential()) {
-        //        return unit_cell_.mt_basis_size() + num_gkvec();
-        //    } else {
-        //        return num_gkvec();
-        //    }
-        //}
+         *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves.
+         *  First-variational states are obtained from the first-variational eigen-vectors and
+         *  LAPW matching coefficients.
+         *
+         *  APW part:
+         *  \f[
+         *      \psi_{\xi j}^{\bf k} = \sum_{{\bf G}} Z_{{\bf G} j}^{\bf k} * A_{\xi}({\bf G+k})
+         *  \f]
+         */
+        void generate_fv_states();
 
-        inline double& band_energy(int j__, int ispn__)
+        /// Generate two-component spinor wave functions
+        inline void generate_spinor_wave_functions();
+
+        inline void generate_atomic_wave_functions(const int num_ao__, Wave_functions &phi);
+
+        inline void generate_atomic_wave_functions_aux(const int num_ao__, Wave_functions &phi, std::vector<int> &offset, bool hubbard);
+
+        void compute_gradient_wave_functions(Wave_functions &phi,
+                                             const int starting_position_i,
+                                             const int num_wf,
+                                             Wave_functions &dphi,
+                                             const int starting_position_j,
+                                             const int direction);
+
+        /// Save data to HDF5 file.
+        void save(std::string const& name__, int id__) const;
+
+        void load(HDF5_tree h5in, int id);
+
+        //== void save_wave_functions(int id);
+
+        //== void load_wave_functions(int id);
+
+        void get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec);
+
+        void get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec);
+
+        /// Test orthonormalization of spinor wave-functions
+        void test_spinor_wave_functions(int use_fft);
+
+        /// Get the number of bands
+        inline int num_bands() const
         {
-            return band_energy_aux(j__, ispn__);
+            return ctx_.num_bands();
         }
 
+        /// Get the number of occupied bands for each spin channel.
+        inline int num_occupied_bands(int ispn__ = -1) const
+        {
+            for (int j = ctx_.num_bands() - 1; j >= 0; j--) {
+                if (std::abs(band_occupancy(j, ispn__) * weight()) > 1e-14) {
+                    return j + 1;
+                }
+            }
+            return 0;
+        }
+
+        /// Total number of G+k vectors within the cutoff distance
+        inline int num_gkvec() const
+        {
+            return gkvec_->num_gvec();
+        }
+
+        /// Get band energy.
         inline double band_energy(int j__, int ispn__) const
         {
-            auto const& e = const_cast<K_point*>(this)->band_energy_aux(j__, ispn__);
-            return e;
+            if (ctx_.num_mag_dims() == 3) {
+                ispn__ = 0;
+            }
+            return band_energies_(j__, ispn__);
         }
 
-        inline double& band_occupancy(int j__, int ispn__)
+        /// Set band energy.
+        inline void band_energy(int j__, int ispn__, double e__)
         {
-            return band_occupancy_aux(j__, ispn__);
+            if (ctx_.num_mag_dims() == 3) {
+                ispn__ = 0;
+            }
+            band_energies_(j__, ispn__) = e__;
         }
 
+        /// Get band occupancy.
         inline double band_occupancy(int j__, int ispn__) const
         {
-            auto const& e = const_cast<K_point*>(this)->band_occupancy_aux(j__, ispn__);
-            return e;
+            if (ctx_.num_mag_dims() == 3) {
+                ispn__ = 0;
+            }
+            return band_occupancies_(j__, ispn__);
+        }
+
+        /// Set band occupancy.
+        inline void band_occupancy(int j__, int ispn__, double occ__)
+        {
+            if (ctx_.num_mag_dims() == 3) {
+                ispn__ = 0;
+            }
+            band_occupancies_(j__, ispn__) = occ__;
         }
 
         inline double fv_eigen_value(int i) const
@@ -481,6 +457,7 @@ class K_point
             std::memcpy(&fv_eigen_values_[0], eval, ctx_.num_fv_states() * sizeof(double));
         }
 
+        /// Return weight of k-point.
         inline double weight() const
         {
             return weight_;
@@ -488,26 +465,25 @@ class K_point
 
         inline Wave_functions& fv_states()
         {
-            assert(bool(fv_states_));
+            assert(fv_states_ != nullptr);
             return *fv_states_;
         }
 
         inline Wave_functions& spinor_wave_functions()
         {
-            if (!spinor_wave_functions_) {
-                throw std::runtime_error("K_point::spinor_wave_functions was not initialized\n");
-            }
-
+            assert(spinor_wave_functions_ != nullptr);
             return *spinor_wave_functions_;
         }
 
         inline Wave_functions& hubbard_wave_functions()
         {
+            assert(hubbard_wave_functions_ != nullptr);
             return *hubbard_wave_functions_;
         }
 
         inline Wave_functions const& hubbard_wave_functions() const
         {
+            assert(hubbard_wave_functions_ != nullptr);
             return *hubbard_wave_functions_;
         }
 
@@ -781,7 +757,10 @@ class K_point
             return *beta_projectors_col_;
         }
 
-        const Simulation_context& ctx() const;
+        Simulation_context const& ctx() const
+        {
+            return ctx_;
+        }
 };
 
 //== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
@@ -1128,43 +1107,76 @@ inline void K_point::test_spinor_wave_functions(int use_fft)
 //==     std :: cout << "maximum error = " << maxerr << std::endl;
 }
 
-inline void K_point::save(int id)
+/** The following HDF5 data structure is created:
+  \verbatim
+  /K_point_set/ik/vk
+  /K_point_set/ik/band_energies
+  /K_point_set/ik/band_occupancies
+  /K_point_set/ik/gkvec
+  /K_point_set/ik/gvec
+  /K_point_set/ik/bands/ibnd/spinor_wave_function/ispn/pw
+  /K_point_set/ik/bands/ibnd/spinor_wave_function/ispn/mt
+  \endverbatim
+*/
+inline void K_point::save(std::string const& name__, int id__) const
 {
-    if (num_ranks() > 1) TERMINATE("writing of distributed eigen-vectors is not implemented");
+    /* rank 0 creates placeholders in the HDF5 file */
+    if (comm().rank() == 0) {
+        /* open file with write access */
+        HDF5_tree fout(name__, hdf5_access_t::read_write);
+        /* create /K_point_set/ik */
+        fout["K_point_set"].create_node(id__);
+        fout["K_point_set"][id__].write("vk", &vk_[0], 3);
+        fout["K_point_set"][id__].write("band_energies", band_energies_);
+        fout["K_point_set"][id__].write("band_occupancies", band_occupancies_);
 
-    STOP();
+        /* save the entire G+k object */
+        //TODO: only the list of z-columns is probably needed to recreate the G+k vectors
+        serializer s;
+        gkvec().pack(s);
+        fout["K_point_set"][id__].write("gkvec", s.stream());
 
-    //if (ctx_.mpi_grid().root(1 << _dim_col_))
-    //{
-    //    HDF5_tree fout(storage_file_name, false);
+        /* save the order of G-vectors */
+        mdarray<int, 2> gv(3, num_gkvec());
+        for (int i = 0; i < num_gkvec(); i++) {
+            auto v = gkvec().gvec(i);
+            for (int x: {0, 1, 2}) {
+                gv(x, i) = v[x];
+            }
+        }
+        fout["K_point_set"][id__].write("gvec", gv);
+        fout["K_point_set"][id__].create_node("bands");
+        for (int i = 0; i < ctx_.num_bands(); i++) {
+            fout["K_point_set"][id__]["bands"].create_node(i);
+            fout["K_point_set"][id__]["bands"][i].create_node("spinor_wave_function");
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                fout["K_point_set"][id__]["bands"][i]["spinor_wave_function"].create_node(ispn);
+            }
+        }
+    }
+    /* wait for rank 0 */
+    comm().barrier();
+    int gkvec_count = gkvec().count();
+    int gkvec_offset = gkvec().offset();
+    std::vector<double_complex> wf_tmp(num_gkvec());
 
-    //    fout["K_set"].create_node(id);
-    //    fout["K_set"][id].create_node("spinor_wave_functions");
-    //    fout["K_set"][id].write("coordinates", &vk_[0], 3);
-    //    fout["K_set"][id].write("band_energies", band_energies_);
-    //    fout["K_set"][id].write("band_occupancies", band_occupancies_);
-    //    if (num_ranks() == 1)
-    //    {
-    //        fout["K_set"][id].write("fv_eigen_vectors", fv_eigen_vectors_panel_.data());
-    //        fout["K_set"][id].write("sv_eigen_vectors", sv_eigen_vectors_[0].data());
-    //    }
-    //}
-    //
-    //comm_col_.barrier();
-    //
-    //mdarray<double_complex, 2> wfj(NULL, wf_size(), ctx_.num_spins()); 
-    //for (int j = 0; j < ctx_.num_bands(); j++)
-    //{
-    //    int rank = ctx_.spl_spinor_wf().local_rank(j);
-    //    int offs = (int)ctx_.spl_spinor_wf().local_index(j);
-    //    if (ctx_.mpi_grid().coordinate(_dim_col_) == rank)
-    //    {
-    //        HDF5_tree fout(storage_file_name, false);
-    //        wfj.set_ptr(&spinor_wave_functions_(0, 0, offs));
-    //        fout["K_set"][id]["spinor_wave_functions"].write(j, wfj);
-    //    }
-    //    comm_col_.barrier();
-    //}
+    std::unique_ptr<HDF5_tree> fout;
+    /* rank 0 opens a file */
+    if (comm().rank() == 0) {
+        fout = std::unique_ptr<HDF5_tree>(new HDF5_tree(name__, hdf5_access_t::read_write));
+    }
+
+    /* store wave-functions */
+    for (int i = 0; i < ctx_.num_bands(); i++) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            /* gather full column of PW coefficients on rank 0 */
+            comm().gather(&spinor_wave_functions_->pw_coeffs(ispn).prime(0, i), wf_tmp.data(), gkvec_offset, gkvec_count, 0);
+            if (comm().rank() == 0) {
+                (*fout)["K_point_set"][id__]["bands"][i]["spinor_wave_function"][ispn].write("pw", wf_tmp);
+            }
+        }
+        comm().barrier();
+    }
 }
 
 inline void K_point::load(HDF5_tree h5in, int id)
@@ -1291,17 +1303,12 @@ inline void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
     comm_.allreduce(sv_evec.at<CPU>(), (int)sv_evec.size());
 }
 
-inline const Simulation_context& K_point::ctx() const
-{
-    return ctx_;
-}
-
+#include "initialize.hpp"
 #include "generate_fv_states.hpp"
 #include "generate_spinor_wave_functions.hpp"
 #include "generate_gklo_basis.hpp"
-#include "initialize.hpp"
-#include "test_fv_states.hpp"
 #include "generate_atomic_wave_functions.hpp"
+#include "test_fv_states.hpp"
 
 }
 
