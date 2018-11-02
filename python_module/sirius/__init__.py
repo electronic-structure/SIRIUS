@@ -1,11 +1,8 @@
-from .bands import *
+# from .bands import *
 from .helpers import *
-from .baarman import *
+# from .baarman import *
 from .py_sirius import *
-from .coefficient_array import *
-from . import ot
-
-from .py_sirius import K_point_set
+# from . import ot
 
 
 class OccupancyDescriptor(object):

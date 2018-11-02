@@ -1,3 +1,6 @@
+from __future__ import print_function
+
+
 def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
     """
     kpoint -- K_point
@@ -195,13 +198,13 @@ class Logger:
         else:
             self.comm = comm
 
-    def print(self, *args):
+    def log(self, arg1, *args):
         """
 
         """
         if self.comm.rank == 0 or self._all_print:
             if self.fout is not None:
                 with open(self.fout, 'a') as fh:
-                    print(*args, file=fh)
+                    print(arg1, *args, file=fh)
             else:
-                print(*args)
+                print(arg1, *args)
