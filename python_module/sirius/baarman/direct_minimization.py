@@ -186,7 +186,7 @@ class FreeEnergy:
 
         # Compute dAdC
         self.energy.kpointset.fn = fn
-        dAdC = self.omega_k * self.H(cn, scale=False)
+        dAdC = self.H(cn, scale=False) * self.omega_k
 
         # Compute dAdf
         # TODO: k-point weights missing?
