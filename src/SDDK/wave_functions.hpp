@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -532,13 +532,13 @@ class Wave_functions
     /// Compute the overlap matrix between two sets of wave functions
     /// and return the result in an 2D array
     /// \f[ O_{ij} = \left< phi_i | psi_j\right> \f]
-
-    template <typename T> inline mdarray<T, 2> overlap(device_t pu,
-                                                       Wave_functions &phi_,
-                                                       const int start_idx_psi_,
-                                                       const int num_of_wf_psi_,
-                                                       const int start_idx_phi_,
-                                                       const int num_of_wf_phi_)
+    template <typename T>  // TODO: merge with inner()
+    inline mdarray<T, 2> overlap(device_t pu,
+                                 Wave_functions &phi_,
+                                 const int start_idx_psi_,
+                                 const int num_of_wf_psi_,
+                                 const int start_idx_phi_,
+                                 const int num_of_wf_phi_)
     {
         assert(((start_idx_phi_ + num_of_wf_phi_) <= phi_.num_wf())&&(num_of_wf_phi_ > 0));
         assert(start_idx_phi_ >= 0);
