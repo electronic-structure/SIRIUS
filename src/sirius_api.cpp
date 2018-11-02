@@ -1114,7 +1114,7 @@ void sirius_set_band_occupancies(void*  const* ks_handler__,
     GET_KS(ks_handler__)
     int ik = *ik__ - 1;
     for (int i = 0; i < ks.ctx().num_bands(); i++) {
-        ks[ik]->band_occupancy(i, *ispn__) = band_occupancies__[i];
+        ks[ik]->band_occupancy(i, *ispn__, band_occupancies__[i]);
     }
 }
 

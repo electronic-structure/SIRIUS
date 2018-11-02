@@ -777,7 +777,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
 #endif
     for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
         for (int j = 0; j < ctx_.num_bands(); j++) {
-            kp__.band_energy(j, ispn) = band_energies(j, ispn);
+            kp__.band_energy(j, ispn, band_energies(j, ispn));
         }
     }
 }
