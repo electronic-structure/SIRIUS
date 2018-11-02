@@ -594,6 +594,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Communicator between k-points.
+    /** This communicator is used to split k-points */
     Communicator const& comm_k() const
     {
         /* 1st dimension of the MPI grid is used for k-point distribution */
