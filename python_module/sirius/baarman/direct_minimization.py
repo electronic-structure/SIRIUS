@@ -86,17 +86,25 @@ def occupancy_admissible_ds(y, fn, mag=False):
     """
     from functools import reduce
     from ..coefficient_array import CoefficientArray
+    from mpi4py import MPI
+    import numpy as np
 
     if isinstance(fn, CoefficientArray):
-        return reduce(
+        lmin = reduce(
             min, [_occupancy_admissible_ds(y[k], fn[k], mag) for k in y.keys()])
+        loc = np.array(lmin, dtype=np.float64)
+        rcvBuf = np.array(0.0, dtype=np.float64)
+
+        MPI.COMM_WORLD.Allreduce([loc, MPI.DOUBLE],
+                                 [rcvBuf, MPI.DOUBLE],
+                                 op=MPI.MIN)
+        return np.asscalar(rcvBuf)
     else:
         return _occupancy_admissible_ds(y, fn, mag)
 
 
 def _constrain_occupancy_gradient(dfn, fn, mag):
     """
-
     """
     from scipy.optimize import minimize, Bounds
     import numpy as np
@@ -160,13 +168,21 @@ class FreeEnergy:
         fn   -- occupations numbers
         """
         import numpy as np
+        from mpi4py import MPI
 
         self.energy.kpointset.fn = fn
         E = self.energy(cn)
         S = fermi_entropy(self.scale * fn)
-
-        return E - self.temperature * np.sum(
+        entropy_loc = self.temperature * np.sum(
             np.array(list((self.omega_k * S)._data.values())))
+
+        loc = np.array(entropy_loc, dtype=np.float64)
+        entropy = np.array(0.0, dtype=np.float64)
+        MPI.COMM_WORLD.Allreduce([loc, MPI.DOUBLE],
+                                 [entropy, MPI.DOUBLE],
+                                 op=MPI.SUM)
+
+        return E - np.asscalar(entropy)
 
     def grad(self, cn, fn):
         """
