@@ -56,9 +56,6 @@ class matrix_storage<T, matrix_storage_t::slab>
     /// G-vector partitioning.
     Gvec_partition const* gvp_{nullptr};
 
-    /// Communicator for column distribution in extra storage.
-    //Communicator const& comm_col_;
-
     /// Local number of rows.
     int num_rows_loc_{0};
 
