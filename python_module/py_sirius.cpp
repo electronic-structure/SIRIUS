@@ -338,6 +338,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("k_point_set", &DFT_ground_state::k_point_set, py::return_value_policy::reference_internal)
         .def("hamiltonian", &DFT_ground_state::hamiltonian, py::return_value_policy::reference_internal)
         .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference_internal)
+        .def("forces", &DFT_ground_state::forces, py::return_value_policy::refernce_internal)
         .def("update", &DFT_ground_state::update);
 
     py::class_<K_point>(m, "K_point")
