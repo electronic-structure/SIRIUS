@@ -8,7 +8,6 @@
 
 ### Table of contents
 1. [Introduction](#introduction)
-
 2. [Installation](#installation)
 3. [Examples](#examples)
 
