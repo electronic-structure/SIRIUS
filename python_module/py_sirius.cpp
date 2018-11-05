@@ -16,6 +16,7 @@
 #include "utils/json.hpp"
 #include "Unit_cell/free_atom.hpp"
 #include "energy.hpp"
+#include "set_atom_positions.hpp"
 
 
 using namespace pybind11::literals;
@@ -549,6 +550,20 @@ py::class_<Free_atom>(m, "Free_atom")
 
     py::class_<dmatrix<complex_double>, mdarray<complex_double,2>>(m, "dmatrix");
 
+    py::class_<mdarray<double, 2>>(m, "mdarray2")
+        .def("on_device", &mdarray<double, 2>::on_device)
+        .def("copy_to_host", [](mdarray<double, 2>& mdarray) {
+                               mdarray.copy<memory_t::device, memory_t::host>(mdarray.size(1));
+                             })
+        .def("__array__", [](py::object& obj) {
+                            mdarray<double, 2>& arr = obj.cast<mdarray<double, 2>&>();
+                            int nrows = arr.size(0);
+                            int ncols = arr.size(1);
+                            return py::array_t<double>({nrows, ncols},
+                                                               {1 * sizeof(double), nrows * sizeof(double)},
+                                                               arr.data<CPU>(), obj);
+                          });
+
     py::enum_<sddk::device_t>(m, "DeviceEnum")
         .value("CPU", sddk::device_t::CPU)
         .value("GPU", sddk::device_t::GPU);
@@ -617,6 +632,7 @@ py::class_<Free_atom>(m, "Free_atom")
 
     /* TODO: group this kind of functions somewhere */
     m.def("ewald_energy", &ewald_energy);
+    m.def("set_atom_positions", &set_atom_positions)
     m.def("energy_bxc", &energy_bxc);
     m.def("omp_set_num_threads", &omp_set_num_threads);
     m.def("omp_get_num_threads", &omp_get_num_threads);
