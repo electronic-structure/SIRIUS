@@ -6,7 +6,7 @@
 [![Documentation](https://img.shields.io/badge/docs-doxygen-blue.svg)](https://electronic-structure.github.io/SIRIUS-doc)
 [![Licence](https://img.shields.io/badge/license-BSD-blue.svg)](https://raw.githubusercontent.com/electronic-structure/SIRIUS/master/LICENSE)
 
-### Table of contents
+## Table of contents
 1. [Introduction](#introduction)
 2. [Installation](#installation)
 3. [Examples](#examples)
