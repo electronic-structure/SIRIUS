@@ -360,6 +360,13 @@ PYBIND11_MODULE(py_sirius, m)
                  }
                  return occ;
              })
+        .def("set_band_occupancy",
+             [](K_point& kpoint, int ispn, const std::vector<double>& fn) {
+                 assert(fn.size() == kpoint.num_bands());
+                 for (size_t i = 0; i < fn.size(); ++i) {
+                     kpoint.band_occupancy(i, ispn, fn[i]);
+                 }
+             }, "ispn"_a, "fn"_a)
         .def("gkvec_partition", &K_point::gkvec_partition, py::return_value_policy::reference_internal)
         .def("gkvec", &K_point::gkvec, py::return_value_policy::reference_internal)
         .def("fv_states", &K_point::fv_states, py::return_value_policy::reference_internal)
