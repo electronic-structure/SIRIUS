@@ -3,6 +3,7 @@ from .helpers import *
 # from .baarman import *
 from .py_sirius import *
 # from . import ot
+__all__ = ["ot", "baarman", "bands"]
 
 
 class OccupancyDescriptor(object):
