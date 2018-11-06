@@ -1318,7 +1318,7 @@ inline void Unit_cell::generate_radial_functions()
     }
 
     if (parameters_.control().verbosity_ >= 1) {
-        runtime::pstdout pout(comm_);
+        pstdout pout(comm_);
 
         for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
             int ic = spl_num_atom_symmetry_classes(icloc);

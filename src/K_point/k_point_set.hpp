@@ -552,7 +552,7 @@ inline void K_point_set::print_info()
     }
 
     if (ctx_.comm_band().rank() == 0) {
-        runtime::pstdout pout(comm());
+        pstdout pout(comm());
         for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
             pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i",

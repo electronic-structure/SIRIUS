@@ -25,7 +25,6 @@
 #ifndef __ATOM_SYMMETRY_CLASS_HPP__
 #define __ATOM_SYMMETRY_CLASS_HPP__
 
-#include "runtime.hpp"
 #include "atom_type.hpp"
 #include "eigenproblem.h"
 
@@ -165,19 +164,19 @@ class Atom_symmetry_class
 
     inline void find_enu(relativity_t rel__);
 
-    inline void write_enu(runtime::pstdout& pout) const;
+    inline void write_enu(pstdout& pout) const;
 
     /// Generate radial overlap and SO integrals
     /** In the case of spin-orbit interaction the following integrals are computed:
-         *  \f[
-         *      \int f_{p}(r) \Big( \frac{1}{(2 M c)^2} \frac{1}{r} \frac{d V}{d r} \Big) f_{p'}(r) r^2 dr
-         *  \f]
-         *  
-         *  Relativistic mass M is defined as
-         *  \f[
-         *      M = 1 - \frac{1}{2 c^2} V
-         *  \f]
-         */
+     *  \f[
+     *      \int f_{p}(r) \Big( \frac{1}{(2 M c)^2} \frac{1}{r} \frac{d V}{d r} \Big) f_{p'}(r) r^2 dr
+     *  \f]
+     *
+     *  Relativistic mass M is defined as
+     *  \f[
+     *      M = 1 - \frac{1}{2 c^2} V
+     *  \f]
+     */
     inline void generate_radial_integrals(relativity_t rel__);
 
     /// Compute m-th order radial derivative at the MT surface.
@@ -914,7 +913,7 @@ inline void Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
     }
 }
 
-inline void Atom_symmetry_class::write_enu(runtime::pstdout& pout) const
+inline void Atom_symmetry_class::write_enu(pstdout& pout) const
 {
     pout.printf("Atom : %s, class id : %i\n", atom_type_.symbol().c_str(), id_);
     pout.printf("augmented waves\n");
