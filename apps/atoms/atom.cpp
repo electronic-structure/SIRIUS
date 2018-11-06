@@ -648,7 +648,7 @@ void generate_atom_file(Free_atom&         a,
     sirius::Atom_symmetry_class atom_class(0, a);
     atom_class.set_spherical_potential(veff);
     atom_class.generate_radial_functions(relativity_t::none);
-    runtime::pstdout pout(Communicator::self());
+    pstdout pout(Communicator::self());
     atom_class.write_enu(pout);
     pout.flush();
 
