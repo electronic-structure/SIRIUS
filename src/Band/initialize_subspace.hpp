@@ -69,8 +69,8 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
     for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
         for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
             for (int i = 0; i < ctx_.num_bands(); i++) {
-                kset__[ik]->band_energy(i, ispn)    = 0;
-                kset__[ik]->band_occupancy(i, ispn) = ctx_.max_occupancy();
+                kset__[ik]->band_energy(i, ispn, 0);
+                kset__[ik]->band_occupancy(i, ispn, ctx_.max_occupancy());
             }
         }
     }
@@ -305,7 +305,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
                     {&kp__->spinor_wave_functions()}, 0, num_bands);
 
         for (int j = 0; j < num_bands; j++) {
-            kp__->band_energy(j, ispn_step) = eval[j];
+            kp__->band_energy(j, ispn_step, eval[j]);
         }
     }
 

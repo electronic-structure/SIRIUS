@@ -44,6 +44,29 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, 
 
 namespace sirius {
 
+/// Utility function to print a CPU and GPU memory utilization.
+inline void print_memory_usage(const char* file__, int line__)
+{
+    size_t VmRSS, VmHWM;
+    utils::get_proc_status(&VmHWM, &VmRSS);
+
+    std::vector<char> str(2048);
+
+    int n = snprintf(&str[0], 2048, "[rank%04i at line %i of file %s]", Communicator::world().rank(), line__, file__);
+
+    n += snprintf(&str[n], 2048, " VmHWM: %i Mb, VmRSS: %i Mb", static_cast<int>(VmHWM >> 20),
+                  static_cast<int>(VmRSS >> 20));
+
+#ifdef __GPU
+    size_t gpu_mem = acc::get_free_mem();
+    n += snprintf(&str[n], 2048, ", GPU free memory: %i Mb", static_cast<int>(gpu_mem >> 20));
+#endif
+
+    printf("%s\n", &str[0]);
+}
+
+#define MEMORY_USAGE_INFO() print_memory_usage(__FILE__, __LINE__);
+
 /// Simulation context is a set of parameters and objects describing a single simulation.
 /** The order of initialization of the simulation context is the following: first, the default parameter
  *  values are set in the constructor, then (optionally) import() method is called and the parameters are
@@ -594,6 +617,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Communicator between k-points.
+    /** This communicator is used to split k-points */
     Communicator const& comm_k() const
     {
         /* 1st dimension of the MPI grid is used for k-point distribution */
@@ -1240,7 +1264,7 @@ inline void Simulation_context::initialize()
     }
 
     if (control().verbosity_ >= 3) {
-        runtime::pstdout pout(comm());
+        pstdout pout(comm());
         if (comm().rank() == 0) {
             pout.printf("--- MPI rank placement ---\n");
         }
@@ -1264,10 +1288,9 @@ inline void Simulation_context::print_info()
     strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
 
     printf("\n");
-    printf("SIRIUS version : %i.%i\n", major_version, minor_version);
+    printf("SIRIUS version : %i.%i.%i\n", major_version, minor_version, revision);
     printf("git hash       : %s\n", git_hash);
     printf("git branch     : %s\n", git_branchname);
-    printf("build date     : %s\n", build_date);
     printf("start time     : %s\n", buf);
     printf("\n");
     printf("number of MPI ranks           : %i\n", comm_.size());

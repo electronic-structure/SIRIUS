@@ -71,7 +71,7 @@ inline void initialize(bool call_mpi_init__ = true)
         Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
     if (Communicator::world().rank() == 0) {
-        printf("SIRIUS %i.%i, git hash: %s\n", major_version, minor_version, git_hash);
+        printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version, minor_version, revision, git_hash);
     }
 #if defined(__APEX)
     apex::init("sirius", Communicator::world().rank(), Communicator::world().size());

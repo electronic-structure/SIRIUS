@@ -216,7 +216,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     }
 
     for (int j = 0; j < ctx_.num_bands(); j++) {
-        kp__->band_energy(j, ispn__) = eval[j];
+        kp__->band_energy(j, ispn__, eval[j]);
     }
 
     kp__->spinor_wave_functions().pw_coeffs(ispn__).remap_from(evec, 0);
@@ -298,7 +298,15 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     t1.stop();
 
     utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
-    auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type = memory_t::host;
+    /* MAGMA library requires a pinned memory allocation; however the matrices are relatively small and the
+       effect of pinned memory is canceled by the expensive pinned memory allocation; the lines below
+       are commented during the debug of performance on CUDA9.1 and MAGMA-2.4 */
+    //if (ctx_.processing_unit() == GPU && 
+    //    (ctx_.std_evp_solver_type() == ev_solver_t::magma || ctx_.blacs_grid().comm().size() == 1)) {
+    //    mem_type = memory_t::host_pinned;
+    //}
+    // TODO: add a control variable to switch between MAGMA and Lapack depending, for example, on the matrix size
 
     const int bs = ctx_.cyclic_block_size();
 
@@ -310,7 +318,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     kp__->beta_projectors().prepare();
 
-    #ifdef __GPU
+#ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         if (!ctx_.control().keep_wf_on_device_) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -335,7 +343,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             hmlt.allocate(memory_t::device);
         }
     }
-    #endif
+#endif
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
@@ -458,7 +466,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                                  {&psi}, 0, num_bands);
                     /* update eigen-values */
                     for (int j = 0; j < num_bands; j++) {
-                        kp__->band_energy(j, ispin_step) = eval[j];
+                        kp__->band_energy(j, ispin_step, eval[j]);
                     }
                 } else {
                     if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
