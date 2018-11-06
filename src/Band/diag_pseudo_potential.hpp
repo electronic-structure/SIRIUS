@@ -299,10 +299,14 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
     auto mem_type = memory_t::host;
-    if (ctx_.processing_unit() == GPU && 
-        (ctx_.std_evp_solver_type() == ev_solver_t::magma || ctx_.blacs_grid().comm().size() == 1)) {
-        mem_type = memory_t::host_pinned;
-    }
+    /* MAGMA library requires a pinned memory allocation; however the matrices are relatively small and the
+       effect of pinned memory is canceled by the expensive pinned memory allocation; the lines below
+       are commented during the debug of performance on CUDA9.1 and MAGMA-2.4 */
+    //if (ctx_.processing_unit() == GPU && 
+    //    (ctx_.std_evp_solver_type() == ev_solver_t::magma || ctx_.blacs_grid().comm().size() == 1)) {
+    //    mem_type = memory_t::host_pinned;
+    //}
+    // TODO: add a control variable to switch between MAGMA and Lapack depending, for example, on the matrix size
 
     const int bs = ctx_.cyclic_block_size();
 
