@@ -15,7 +15,7 @@ void test_allgather()
     }
 
     {
-        runtime::pstdout pout(Communicator::world());
+        sddk::pstdout pout(Communicator::world());
         if (Communicator::world().rank() == 0) pout.printf("before\n");
         pout.printf("rank : %i array : ", Communicator::world().rank());
         for (int i = 0; i < N; i++)

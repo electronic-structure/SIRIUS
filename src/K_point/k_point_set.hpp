@@ -44,10 +44,13 @@ struct kq
 class K_point_set
 {
   private:
+    /// Context of a simulation.
     Simulation_context& ctx_;
 
+    /// List of k-points.
     std::vector<std::unique_ptr<K_point>> kpoints_;
 
+    /// Split index of k-points.
     splindex<chunk> spl_num_kpoints_;
 
     double energy_fermi_{0};
@@ -218,6 +221,7 @@ class K_point_set
         }
     }
 
+    /// Update k-points after moving atoms or changing the lattice vectors.
     void update()
     {
         /* update k-points */
@@ -262,11 +266,13 @@ class K_point_set
 
     void sync_band_energies();
 
-    void save();
+    /// Save k-point set to HDF5 file.
+    void save(std::string const& name__) const;
 
     void load();
 
-    int max_num_gkvec()
+    /// Return maximum number of G+k vectors among all k-points.
+    int max_num_gkvec() const
     {
         int max_num_gkvec{0};
         for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
@@ -417,7 +423,7 @@ inline void K_point_set::sync_band_energies()
     for (int ik = 0; ik < num_kpoints(); ik++) {
         for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                kpoints_[ik]->band_energy(j, ispn) = band_energies(j, ispn, ik);
+                kpoints_[ik]->band_energy(j, ispn, band_energies(j, ispn, ik));
             }
         }
     }
@@ -484,7 +490,7 @@ inline void K_point_set::find_band_occupancies()
     for (int ik = 0; ik < num_kpoints(); ik++) {
         for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                kpoints_[ik]->band_occupancy(j, ispn) = bnd_occ(j, ispn, ik);
+                kpoints_[ik]->band_occupancy(j, ispn, bnd_occ(j, ispn, ik));
             }
         }
     }
@@ -546,7 +552,7 @@ inline void K_point_set::print_info()
     }
 
     if (ctx_.comm_band().rank() == 0) {
-        runtime::pstdout pout(comm());
+        pstdout pout(comm());
         for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
             pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i",
@@ -562,30 +568,25 @@ inline void K_point_set::print_info()
     }
 }
 
-inline void K_point_set::save()
+inline void K_point_set::save(std::string const& name__) const
 {
-    TERMINATE("fix me");
-    STOP();
-
-    //==if (comm_.rank() == 0)
-    //=={
-    //==    HDF5_tree fout(storage_file_name, false);
-    //==    fout.create_node("K_point_set");
-    //==    fout["K_point_set"].write("num_kpoints", num_kpoints());
-    //==}
-    //==comm_.barrier();
-    //==
-    //==if (ctx_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
-    //=={
-    //==    for (int ik = 0; ik < num_kpoints(); ik++)
-    //==    {
-    //==        int rank = spl_num_kpoints_.local_rank(ik);
-    //==
-    //==        if (ctx_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save(ik);
-    //==
-    //==        ctx_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
-    //==    }
-    //==}
+    if (ctx_.comm().rank() == 0) {
+        if (!utils::file_exists(name__)) {
+            HDF5_tree(name__, hdf5_access_t::truncate);
+        }
+        HDF5_tree fout(name__, hdf5_access_t::read_write);
+        fout.create_node("K_point_set");
+        fout["K_point_set"].write("num_kpoints", num_kpoints());
+    }
+    ctx_.comm().barrier();
+    for (int ik = 0; ik < num_kpoints(); ik++) {
+        /* check if this ranks stores the k-point */
+        if (ctx_.comm_k().rank() == spl_num_kpoints_.local_rank(ik)) {
+            kpoints_[ik]->save(name__, ik);
+        }
+        /* wait for all */
+        ctx_.comm().barrier();
+    }
 }
 
 /// \todo check parameters of saved data in a separate function

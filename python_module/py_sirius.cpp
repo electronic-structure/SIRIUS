@@ -338,26 +338,27 @@ PYBIND11_MODULE(py_sirius, m)
         .def("update", &DFT_ground_state::update);
 
     py::class_<K_point>(m, "K_point")
-        .def("band_energy", py::overload_cast<int, int>(&K_point::band_energy))
+        .def("band_energy", py::overload_cast<int, int>(&K_point::band_energy, py::const_))
         .def_property_readonly("vk", &K_point::vk, py::return_value_policy::copy)
         .def("generate_fv_states", &K_point::generate_fv_states)
-        .def("set_band_energy", [](K_point& kpoint, int j, int ispn, double val) {
-            kpoint.band_energy(j, ispn) = val;
-        })
-        .def("band_energies", [](K_point const& kpoint, int ispn) {
-            std::vector<double> energies(kpoint.num_bands());
-            for (int i = 0; i < kpoint.num_bands(); ++i) {
-                energies[i] = kpoint.band_energy(i, ispn);
-            }
-            return energies;
-        }, py::return_value_policy::copy)
-        .def("band_occupancy", [](K_point const& kpoint, int ispn) {
-            std::vector<double> occ(kpoint.num_bands());
-            for (int i = 0; i < kpoint.num_bands(); ++i) {
-                occ[i] = kpoint.band_occupancy(i, ispn);
-            }
-            return occ;
-        })
+        .def("set_band_energy", [](K_point& kpoint, int j, int ispn, double val) { kpoint.band_energy(j, ispn, val); })
+        .def("band_energies",
+             [](K_point const& kpoint, int ispn) {
+                 std::vector<double> energies(kpoint.num_bands());
+                 for (int i = 0; i < kpoint.num_bands(); ++i) {
+                     energies[i] = kpoint.band_energy(i, ispn);
+                 }
+                 return energies;
+             },
+             py::return_value_policy::copy)
+        .def("band_occupancy",
+             [](K_point const& kpoint, int ispn) {
+                 std::vector<double> occ(kpoint.num_bands());
+                 for (int i = 0; i < kpoint.num_bands(); ++i) {
+                     occ[i] = kpoint.band_occupancy(i, ispn);
+                 }
+                 return occ;
+             })
         .def("gkvec_partition", &K_point::gkvec_partition, py::return_value_policy::reference_internal)
         .def("gkvec", &K_point::gkvec, py::return_value_policy::reference_internal)
         .def("fv_states", &K_point::fv_states, py::return_value_policy::reference_internal)

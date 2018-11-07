@@ -56,9 +56,6 @@ class matrix_storage<T, matrix_storage_t::slab>
     /// G-vector partitioning.
     Gvec_partition const* gvp_{nullptr};
 
-    /// Communicator for column distribution in extra storage.
-    //Communicator const& comm_col_;
-
     /// Local number of rows.
     int num_rows_loc_{0};
 
@@ -137,6 +134,8 @@ class matrix_storage<T, matrix_storage_t::slab>
                               int      n__,
                               int      idx0__ = 0)
     {
+        PROFILE("sddk::matrix_storage::set_num_extra");
+
         auto& comm_col = gvp_->comm_ortho_fft();
 
         /* this is how n columns of the matrix will be distributed between columns of the MPI grid */
@@ -182,7 +181,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
         extra_ = mdarray<T, 2>(ptr, ptr_d, gvp_->gvec_count_fft(), ncol, "matrix_storage.extra_");
     }
-    
+
     /// Remap data from prime to extra storage.
     /** \param [in] pu        Target processing unit.
      *  \param [in] row_distr Distribution of rows of prime matrix in the extra matrix storage. 

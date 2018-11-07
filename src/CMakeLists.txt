@@ -13,6 +13,7 @@ if(USE_CUDA)
 endif()
 if(CREATE_FORTRAN_BINDINGS)
   add_library(sirius_f "sirius_api.cpp;sirius.f90")
+  add_dependencies(sirius_f generate_version_hpp)
   INSTALL (TARGETS sirius_f ARCHIVE DESTINATION
     ${CMAKE_INSTALL_PREFIX}/lib/)
   set_target_properties(sirius_f PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -23,3 +24,4 @@ if(CREATE_FORTRAN_BINDINGS)
 endif()
 
 install(DIRECTORY ./ DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius" FILES_MATCHING REGEX ".*(hpp|h)$")
+install(FILES ${PROJECT_BINARY_DIR}/src/version.hpp DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")

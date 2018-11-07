@@ -45,6 +45,9 @@ struct memory_block_descriptor
     std::shared_ptr<int> used_count_;
 };
 
+/// Memory pool.
+/** This class stores list of allocated memory blocks. When block is deallocated it is merged with previous or next
+ *  free block. */
 class memory_pool
 {
   private:
@@ -67,6 +70,7 @@ class memory_pool
             it__->ptr_  = it__->buf_->at<device<mem_type>::type>();
             it__->size_ = it__->buf_->size();
 
+            /* try to merge block pointed by it0 with the block pointed by it__ */
             auto merge_blocks = [&](std::list<memory_block_descriptor>::iterator& it0)
             {
                 if (!it0->used_ && it0->buf_.use_count() == 1) {

@@ -2,13 +2,15 @@ include(FindPackageHandleStandardArgs)
 
 find_path(FFTW_INCLUDE_DIR
   NAMES fftw3.h
-  PATH_SUFFIXES include/fftw
+  PATH_SUFFIXES include include/fftw
   HINTS ENV MKLROOT
   HINTS ENV FFTWROOT
   HINTS ENV FFTW_INC
   )
 
-find_library(FFTW_LIBRARIES NAMES fftw3
+find_library(FFTW_LIBRARIES 
+  NAMES fftw3
+  PATH_SUFFIXES lib
   HINTS ENV MKLROOT
   HINTS ENV FFTW_DIR
   HINTS ENV FFTWROOT

@@ -29,6 +29,7 @@
 #include <cassert>
 #include <vector>
 #include <complex>
+#include <cstdarg>
 #ifdef __GPU
 #include <GPU/cuda.hpp>
 #endif
@@ -665,6 +666,35 @@ class Communicator
 #endif
     }
 
+    /// Gather data on a given rank.
+    template <typename T>
+    void gather(T const* sendbuf__, T* recvbuf__, int offset__, int count__, int root__) const
+    {
+
+#if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Gatherv");
+#endif
+        std::vector<int> v(size() * 2);
+        v[2 * rank()]     = count__;
+        v[2 * rank() + 1] = offset__;
+
+        CALL_MPI(MPI_Allgather,
+                 (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, mpi_type_wrapper<int>::kind(), mpi_comm()));
+
+        std::vector<int> counts(size());
+        std::vector<int> offsets(size());
+
+        for (int i = 0; i < size(); i++) {
+            counts[i]  = v[2 * i];
+            offsets[i] = v[2 * i + 1];
+        }
+        CALL_MPI(MPI_Gatherv, (sendbuf__, count__, mpi_type_wrapper<T>::kind(), recvbuf__, counts.data(),
+                               offsets.data(), mpi_type_wrapper<T>::kind(), root__, mpi_comm()));
+#if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+#endif
+    }
+
     template <typename T>
     void scatter(T const* sendbuf__, T* recvbuf__, int const* sendcounts__, int const* displs__, int root__) const
     {
@@ -780,6 +810,73 @@ class Communicator
 
     //==    return a2a;
     //==}
+};
+
+/// Parallel standard output.
+/** Proveides an ordered standard output from multiple MPI ranks. */
+class pstdout
+{
+  private:
+    std::vector<char> buffer_;
+
+    int count_{0};
+
+    Communicator const& comm_;
+
+  public:
+    pstdout(Communicator const& comm__)
+        : comm_(comm__)
+    {
+    }
+
+    ~pstdout()
+    {
+        flush();
+    }
+
+    void printf(const char* fmt, ...)
+    {
+        std::vector<char> str(1024); // assume that one printf will not output more than this
+
+        std::va_list arg;
+        va_start(arg, fmt);
+        int n = vsnprintf(&str[0], str.size(), fmt, arg);
+        va_end(arg);
+
+        n = std::min(n, (int)str.size());
+
+        if ((int)buffer_.size() - count_ < n) {
+            buffer_.resize(buffer_.size() + str.size());
+        }
+        std::memcpy(&buffer_[count_], &str[0], n);
+        count_ += n;
+    }
+
+    void flush()
+    {
+        std::vector<int> counts(comm_.size());
+        comm_.allgather(&count_, counts.data(), comm_.rank(), 1);
+
+        int offset{0};
+        for (int i = 0; i < comm_.rank(); i++) {
+            offset += counts[i];
+        }
+
+        /* total size of the output buffer */
+        int sz = count_;
+        comm_.allreduce(&sz, 1);
+
+        if (sz != 0) {
+            std::vector<char> outb(sz + 1);
+            comm_.allgather(&buffer_[0], &outb[0], offset, count_);
+            outb[sz] = 0;
+
+            if (comm_.rank() == 0) {
+                std::printf("%s", &outb[0]);
+            }
+        }
+        count_ = 0;
+    }
 };
 
 } // namespace sddk

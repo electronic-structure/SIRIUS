@@ -6,7 +6,7 @@ void test_grid(std::vector<int> grid__)
 {
     MPI_grid mpi_grid(grid__, Communicator::world());
 
-    runtime::pstdout pout(Communicator::world());
+    pstdout pout(Communicator::world());
 
     if (Communicator::world().rank() == 0) {
         pout.printf("dimensions: %i %i %i\n", mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size(),

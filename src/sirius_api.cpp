@@ -78,20 +78,20 @@ void sirius_initialize(bool const* call_mpi_init__)
 void sirius_finalize(bool const* call_mpi_fin__, bool const *call_device_reset__, bool const* call_fftw_fin__)
 {
 
-    bool mpi_fin = true;
-    bool device_reset = true;
-    bool fftw_fin = true;
-    
+    bool mpi_fin{true};
+    bool device_reset{true};
+    bool fftw_fin{true};
+
     if (call_mpi_fin__!= nullptr) {
-        mpi_fin = call_mpi_fin__;
+        mpi_fin = *call_mpi_fin__;
     }
 
     if (call_device_reset__ != nullptr) {
-        device_reset = call_device_reset__;
+        device_reset = *call_device_reset__;
     }
 
     if (call_fftw_fin__ != nullptr) {
-        fftw_fin = call_fftw_fin__;
+        fftw_fin = *call_fftw_fin__;
     }
 
     sirius::finalize(mpi_fin, device_reset, fftw_fin);
@@ -1114,7 +1114,7 @@ void sirius_set_band_occupancies(void*  const* ks_handler__,
     GET_KS(ks_handler__)
     int ik = *ik__ - 1;
     for (int i = 0; i < ks.ctx().num_bands(); i++) {
-        ks[ik]->band_occupancy(i, *ispn__) = band_occupancies__[i];
+        ks[ik]->band_occupancy(i, *ispn__, band_occupancies__[i]);
     }
 }
 

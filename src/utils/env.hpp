@@ -17,51 +17,41 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file constants.hpp
+/** \file env.hpp
  *
- *  \brief Various constants
+ *  \brief Get the environment variables
  */
 
-#ifndef __CONSTANTS_HPP__
-#define __CONSTANTS_HPP__
+#ifndef __ENV_HPP__
+#define __ENV_HPP__
 
-#include <complex>
+#include <cstdlib>
 
-const int major_version = 5;
-const int minor_version = 8;
-const int revision      = 6;
+namespace utils {
 
-/// NIST value for the inverse fine structure (http://physics.nist.gov/cuu/Constants/index.html)
-const double speed_of_light = 137.035999139;
+/// Check for environment variable and return a pointer to a stored value if found or a null-pointer if not.
+template <typename T>
+inline T const* get_env(std::string name__)
+{
+    static std::map<std::string, std::pair<bool, T>> map_name;
+    if (map_name.count(name__) == 0) {
+        /* first time the function is called */
+        const char* raw_str = std::getenv(name__.c_str());
+        if (raw_str == NULL) {
+            map_name[name__] = std::make_pair(false, T());
+        } else {
+            T var;
+            std::istringstream(std::string(raw_str)) >> var;
+            map_name[name__] = std::make_pair(true, var);
+        }
+    }
+    if (map_name[name__].first == false) {
+        return nullptr;
+    } else {
+        return &map_name[name__].second;
+    }
+}
 
-// This value reproduces NIST ScRLDA total energy much better.
-// const double speed_of_light = 137.0359895;
+} // namespace utils
 
-/// Bohr radius in angstroms.
-const double bohr_radius = 0.52917721067;
-
-/// \f$ \pi \f$
-const double pi = 3.1415926535897932385;
-
-/// \f$ 2\pi \f$
-const double twopi = 6.2831853071795864769;
-
-/// \f$ 4\pi \f$
-const double fourpi = 12.566370614359172954;
-
-/// First spherical harmonic \f$ Y_{00} = \frac{1}{\sqrt{4\pi}} \f$.
-const double y00 = 0.28209479177387814347;
-
-/// Hartree in electron-volt units.
-const double ha2ev = 27.21138505;
-
-const char* const storage_file_name = "sirius.h5";
-
-/// Pauli matrices in {I, Z, X, Y} order.
-const std::complex<double> pauli_matrix[4][2][2] = {
-    {{1.0, 0.0}, {0.0, 1.0}},
-    {{1.0, 0.0}, {0.0, -1.0}},
-    {{0.0, 1.0}, {1.0, 0.0}},
-    {{0.0, std::complex<double>(0, -1)}, {std::complex<double>(0, 1), 0.0}}};
-
-#endif // __CONSTANTS_HPP__
+#endif
