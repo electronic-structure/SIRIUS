@@ -186,7 +186,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("add_atom_type", static_cast<void (Unit_cell::*)(const std::string, const std::string)>(&Unit_cell::add_atom_type))
         .def("add_atom", py::overload_cast<const std::string, std::vector<double>>(&Unit_cell::add_atom))
         .def("atom_type", py::overload_cast<int>(&Unit_cell::atom_type), py::return_value_policy::reference)
-        .def("set_lattice_vectors", static_cast<void (Unit_cell::*)(matrix3d<double>)>(&Unit_cell::set_lattice_vectors))
+        .def("set_lattice_vectors", py::overload_cast<vector3d<double>, vector3d<double>, vector3d<double>>(&Unit_cell::set_lattice_vectors))
         .def("lattice_vectors", &Unit_cell::lattice_vectors)
         .def("get_symmetry", &Unit_cell::get_symmetry)
         .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
@@ -338,7 +338,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("k_point_set", &DFT_ground_state::k_point_set, py::return_value_policy::reference_internal)
         .def("hamiltonian", &DFT_ground_state::hamiltonian, py::return_value_policy::reference_internal)
         .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference_internal)
-        .def("forces", &DFT_ground_state::forces, py::return_value_policy::refernce_internal)
+        .def("forces", &DFT_ground_state::forces, py::return_value_policy::reference_internal)
         .def("update", &DFT_ground_state::update);
 
     py::class_<K_point>(m, "K_point")
@@ -365,7 +365,7 @@ PYBIND11_MODULE(py_sirius, m)
              })
         .def("set_band_occupancy",
              [](K_point& kpoint, int ispn, const std::vector<double>& fn) {
-                 assert(fn.size() == kpoint.num_bands());
+                 assert(static_cast<int>(fn.size()) == kpoint.num_bands());
                  for (size_t i = 0; i < fn.size(); ++i) {
                      kpoint.band_occupancy(i, ispn, fn[i]);
                  }
@@ -633,7 +633,7 @@ py::class_<Free_atom>(m, "Free_atom")
 
     /* TODO: group this kind of functions somewhere */
     m.def("ewald_energy", &ewald_energy);
-    m.def("set_atom_positions", &set_atom_positions)
+    m.def("set_atom_positions", &set_atom_positions);
     m.def("energy_bxc", &energy_bxc);
     m.def("omp_set_num_threads", &omp_set_num_threads);
     m.def("omp_get_num_threads", &omp_get_num_threads);
