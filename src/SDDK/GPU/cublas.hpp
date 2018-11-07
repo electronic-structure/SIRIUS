@@ -297,6 +297,24 @@ inline void destroy_handle()
     CALL_CUBLAS(cublasXtDestroy, (cublasxt_handle()));
 }
 
+inline void zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+                  cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, cuDoubleComplex* b, 
+                  int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc)
+{
+    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+    acc::set_device();
+    CALL_CUBLAS(cublasXtZgemm, (cublasxt_handle(), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+}
+
+inline void dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+                  double const* alpha, double const* a, int32_t lda, double const* b, 
+                  int32_t ldb, double const* beta, double* c, int32_t ldc)
+{
+    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+    acc::set_device();
+    CALL_CUBLAS(cublasXtDgemm, (cublasxt_handle(), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+}
+
 } // namespace xt
 
 } // namespace cublas

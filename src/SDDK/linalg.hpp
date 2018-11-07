@@ -209,7 +209,7 @@ class linalg<CPU>: public linalg_base
 
 #ifdef __GPU
 template<>
-class linalg<GPU>: public linalg_base
+class linalg<GPU, memory_t::device>: public linalg_base
 {
     public:
 
@@ -260,6 +260,17 @@ class linalg<GPU>: public linalg_base
 
         template <typename T>
         static void axpy(int n__, T const* alpha__, T const* x__, int incx__, T* y__, int incy__);
+};
+
+template<>
+class linalg<GPU, memory_t::host>: public linalg_base
+{
+  public:
+    template <typename T>
+    static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* alpha, T const* A, ftn_int lda,
+                     T const* B, ftn_int ldb, T const* beta, T* C, ftn_int ldc);
+
+
 };
 #endif
 
@@ -1103,6 +1114,38 @@ inline void linalg<GPU>::axpy<ftn_double_complex>(ftn_int n__,
                                                   ftn_int incy__)
 {
     cublas::zaxpy(n__, (cuDoubleComplex const*)alpha__, (cuDoubleComplex*)x__, incx__, (cuDoubleComplex*)y__, incy__);
+}
+
+// Generic interface to zgemm
+template<>
+inline void linalg<GPU, memory_t::host>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                                  ftn_double_complex const* alpha, ftn_double_complex const* A, ftn_int lda,
+                                                  ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const* beta,
+                                                  ftn_double_complex* C, ftn_int ldc)
+{
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
+    cublas::xt::zgemm(transa, transb, m, n, k, (cuDoubleComplex*)alpha, (cuDoubleComplex*)A, lda, (cuDoubleComplex*)B, ldb, (cuDoubleComplex*)beta, (cuDoubleComplex*)C, ldc);
+}
+
+// Generic interface to dgemm
+template<>
+inline void linalg<GPU>::gemm<ftn_double, memory_t::host>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                          ftn_double const* alpha, ftn_double const* A, ftn_int lda,
+                                          ftn_double const* B, ftn_int ldb, ftn_double const* beta,
+                                          ftn_double* C, ftn_int ldc)
+{
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
+    cublas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 #endif // __GPU
 
