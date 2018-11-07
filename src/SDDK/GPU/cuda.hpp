@@ -27,6 +27,7 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
 #include <cublas_v2.h>
+#include <cublasXt.h>
 #include <execinfo.h>
 #include <unistd.h>
 #include <signal.h>
