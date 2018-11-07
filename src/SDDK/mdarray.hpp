@@ -117,6 +117,7 @@ inline constexpr bool on_device(memory_t mem_type__) noexcept
     return (mem_type__ & memory_t::device) == memory_t::device ? true : false;
 }
 
+/// Mapping between a memory type and a device type.
 template <memory_t mem_type>
 struct device;
 
@@ -135,26 +136,20 @@ struct device<memory_t::device> {
     static const device_t type{device_t::GPU};
 };
 
-//template <memory_t mem_type>
-//inline constexpr device_t get_device_t() noexcept;
-//
-//template<>
-//inline constexpr device_t get_device_t<memory_t::host>() noexcept
-//{
-//    return device_t::CPU;
-//}
-//
-//template<>
-//inline constexpr device_t get_device_t<memory_t::host_pinned>() noexcept
-//{
-//    return device_t::CPU;
-//}
-//
-//template<>
-//inline constexpr device_t get_device_t<memory_t::device>() noexcept
-//{
-//    return device_t::GPU;
-//}
+/// Mapping between a device type and a memory type.
+template <device_t dev_type>
+struct memory;
+
+template<>
+struct memory<device_t::CPU> {
+    static const memory_t type{memory_t::host};
+};
+
+
+template<>
+struct memory<device_t::GPU> {
+    static const memory_t type{memory_t::device};
+};
 
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor

@@ -88,12 +88,14 @@ inline void error_message(cublasStatus_t status)
 }
 #endif
 
+/// Store the default (null) stream handler.
 inline cublasHandle_t& null_stream_handle()
 {
     static cublasHandle_t null_stream_handle_;
     return null_stream_handle_;
 }
 
+/// Store the cublas handlers associated with cuda streams.
 inline std::vector<cublasHandle_t>& stream_handles()
 {
     static std::vector<cublasHandle_t> stream_handles_;
@@ -274,6 +276,28 @@ inline void zaxpy(int                    n__,
     acc::set_device();
     CALL_CUBLAS(cublasZaxpy, (null_stream_handle(), n__, alpha__, x__, incx__, y__, incy__));
 }
+
+namespace xt {
+
+inline cublasXtHandle_t& cublasxt_handle()
+{
+    static cublasXtHandle_t handle;
+    return handle;
+}
+
+inline void create_handle()
+{
+    int device_id[] = {0};
+    CALL_CUBLAS(cublasXtCreate, (&cublasxt_handle()));
+    CALL_CUBLAS(cublasXtDeviceSelect, (cublasxt_handle(), 1, device_id));
+}
+
+inline void destroy_handle()
+{
+    CALL_CUBLAS(cublasXtDestroy, (cublasxt_handle()));
+}
+
+} // namespace xt
 
 } // namespace cublas
 
