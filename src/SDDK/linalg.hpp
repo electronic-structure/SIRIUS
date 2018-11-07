@@ -1134,7 +1134,7 @@ inline void linalg<GPU, memory_t::host>::gemm<ftn_double_complex>(int transa, in
 
 // Generic interface to dgemm
 template<>
-inline void linalg<GPU>::gemm<ftn_double, memory_t::host>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+inline void linalg<GPU, memory_t::host>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                           ftn_double const* alpha, ftn_double const* A, ftn_int lda,
                                           ftn_double const* B, ftn_int ldb, ftn_double const* beta,
                                           ftn_double* C, ftn_int ldc)
