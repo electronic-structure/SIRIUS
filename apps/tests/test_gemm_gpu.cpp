@@ -1,34 +1,4 @@
-#include <sirius.h>
-
-class Measurement: public std::vector<double>
-{
-    public:
-
-        inline double val(size_t i)
-        {
-            return (*this)[i];
-        }
-
-        double average()
-        {
-            double d = 0;
-            for (size_t i = 0; i < this->size(); i++)
-                d += val(i);
-            d /= static_cast<double>(this->size());
-            return d;
-        }
-
-        double sigma()
-        {
-            double avg = average();
-            double variance = 0;
-            for (size_t i = 0; i < this->size(); i++)
-                variance += std::pow(val(i) - avg, 2);
-            variance /= static_cast<double>(this->size());
-            return std::sqrt(variance);
-        }
-};
-
+#include "test.hpp"
 
 #ifdef __TEST_REAL
 typedef double gemm_type;
