@@ -866,8 +866,8 @@ class Stress {
         /* check if the core atomic wave functions are set up or not */
         /* if not then the core correction is simply ignored */
 
-        for (int ia = 0; (ia < ctx_.unit_cell.num_atoms()) && empty; ia++) {
-            Atom& atom = ctx_.unit_cell.atom(ia);
+        for (int ia = 0; (ia < ctx_.unit_cell().num_atoms()) && empty; ia++) {
+            Atom& atom = ctx_.unit_cell().atom(ia);
             if (!atom.type().ps_core_charge_density().empty()) {
                 empty = false;
            }
