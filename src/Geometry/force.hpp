@@ -516,7 +516,9 @@ class Force
             #pragma omp parallel for
             for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
                 Atom& atom = unit_cell.atom(ia);
-
+                if (atom.type().ps_core_charge_density().empty()) {
+                    continue;
+                }
                 int iat = atom.type_id();
 
                 for (int igloc = 0; igloc < gvec_count; igloc++) {
