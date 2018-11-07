@@ -39,7 +39,7 @@
 namespace sddk {
 
 /// Linear algebra interface class.
-template <device_t pu>
+template <device_t pu, memory_t mem = memory<pu>::type>
 class linalg;
 
 template<>
