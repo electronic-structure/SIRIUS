@@ -1,6 +1,9 @@
-#include <sirius.h>
+#include <utils/cmd_args.hpp>
+#include <memory_pool.hpp>
+#include <complex>
 
-using namespace sirius;
+using double_complex = std::complex<double>;
+using namespace sddk;
 
 void test1()
 {
@@ -77,7 +80,6 @@ int main(int argn, char** argv)
         return 0;
     }
 
-    sirius::initialize(1);
     printf("%-30s", "testing memory pool: ");
     int result = run_test();
     if (result) {
@@ -85,7 +87,6 @@ int main(int argn, char** argv)
     } else {
         printf("\x1b[32m" "OK" "\x1b[0m" "\n");
     }
-    sirius::finalize();
 
     return 0;
 }
