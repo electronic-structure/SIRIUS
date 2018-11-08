@@ -40,6 +40,9 @@
 #include "GPU/cuda.hpp"
 #endif
 
+// TODO: now .at() method is templated over the device type; it would make more sense to template over
+//       the memory type, i.e. instead of array.at<GPU>() we would write array.at<memory_t::device>()
+
 namespace sddk {
 
 //#ifdef __GPU
@@ -66,6 +69,7 @@ namespace sddk {
     }
 #endif
 
+// TODO: change to enum class
 /// Type of the main processing unit.
 enum device_t
 {
@@ -144,7 +148,6 @@ template<>
 struct memory<device_t::CPU> {
     static const memory_t type{memory_t::host};
 };
-
 
 template<>
 struct memory<device_t::GPU> {
@@ -524,15 +527,13 @@ class mdarray_base
         }
 #else
         /* GPU enabled code, check if there is a CUDA capable device */
-        if (memory__ == memory_t::host_pinned ) {
+        if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
             if (acc::num_devices() == 0) {
                 /* there is no cuda card, don't use page-locked memory */
                 memory__ = memory_t::host;
             }
         }
 #endif
-
-
         /* host allocation */
         if ((memory__ & memory_t::host) == memory_t::host) {
             /* page-locked memory */
