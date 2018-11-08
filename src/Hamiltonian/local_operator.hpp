@@ -299,16 +299,16 @@ class Local_operator
 
     /// Apply local part of Hamiltonian to wave-functions.
     /** \param [in]  ispn Index of spin.
-         *  \param [in]  phi  Input wave-functions.
-         *  \param [out] hphi Hamiltonian applied to wave-function.
-         *  \param [in]  idx0 Starting index of wave-functions.
-         *  \param [in]  n    Number of wave-functions to which H is applied.
-         *
-         *  Index of spin can take the following values:
-         *    - 0: apply H_{uu} to the up- component of wave-functions
-         *    - 1: apply H_{dd} to the dn- component of wave-functions
-         *    - 2: apply full Hamiltonian to the spinor wave-functions
-         */
+     *  \param [in]  phi  Input wave-functions.
+     *  \param [out] hphi Hamiltonian applied to wave-function.
+     *  \param [in]  idx0 Starting index of wave-functions.
+     *  \param [in]  n    Number of wave-functions to which H is applied.
+     *
+     *  Index of spin can take the following values:
+     *    - 0: apply H_{uu} to the up- component of wave-functions
+     *    - 1: apply H_{dd} to the dn- component of wave-functions
+     *    - 2: apply full Hamiltonian to the spinor wave-functions
+     */
     void apply_h(int ispn__, Wave_functions& phi__, Wave_functions& hphi__, int idx0__, int n__)
     {
         PROFILE("sirius::Local_operator::apply_h");
@@ -345,25 +345,27 @@ class Local_operator
 #endif
 
         /* transform one or two wave-functions to real space; the result of
-             * transformation is stored in the FFT buffer */
+         * transformation is stored in the FFT buffer */
         auto phi_to_r = [&](int i, int ispn, bool gamma = false) {
             switch (fft_coarse_.pu()) {
                 case CPU: {
                     if (gamma) {
-                        fft_coarse_.transform<1, CPU>(phi__.pw_coeffs(ispn).extra().at<CPU>(0, 2 * i),
-                                                      phi__.pw_coeffs(ispn).extra().at<CPU>(0, 2 * i + 1));
+                        fft_coarse_.transform<1, memory_t::host>(phi__.pw_coeffs(ispn).extra().at<CPU>(0, 2 * i),
+                                                                 phi__.pw_coeffs(ispn).extra().at<CPU>(0, 2 * i + 1));
 
                     } else {
-                        fft_coarse_.transform<1, CPU>(phi__.pw_coeffs(ispn).extra().at<CPU>(0, i));
+                        fft_coarse_.transform<1, memory_t::host>(phi__.pw_coeffs(ispn).extra().at<CPU>(0, i));
                     }
                     break;
                 }
                 case GPU: {
+                    /* parallel FFT starting from device pointer is not implemented */
+                    assert(fft_coarse_.comm().size() == 1);
                     if (gamma) { /* warning: GPU pointer works only in case of serial FFT */
-                        fft_coarse_.transform<1, GPU>(phi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i),
-                                                      phi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i + 1));
+                        fft_coarse_.transform<1, memory_t::device>(phi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i),
+                                                                   phi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i + 1));
                     } else {
-                        fft_coarse_.transform<1, GPU>(phi__.pw_coeffs(ispn).extra().at<GPU>(0, i));
+                        fft_coarse_.transform<1, memory_t::device>(phi__.pw_coeffs(ispn).extra().at<GPU>(0, i));
                     }
                     break;
                 }
@@ -403,17 +405,17 @@ class Local_operator
             switch (fft_coarse_.pu()) {
                 case CPU: {
                     if (gamma) {
-                        fft_coarse_.transform<-1, CPU>(vphi1_.at<CPU>(), vphi2_.at<CPU>());
+                        fft_coarse_.transform<-1, memory_t::host>(vphi1_.at<CPU>(), vphi2_.at<CPU>());
                     } else {
-                        fft_coarse_.transform<-1, CPU>(vphi1_.at<CPU>());
+                        fft_coarse_.transform<-1, memory_t::host>(vphi1_.at<CPU>());
                     }
                     break;
                 }
                 case GPU: {
                     if (gamma) {
-                        fft_coarse_.transform<-1, GPU>(vphi1_.at<GPU>(), vphi2_.at<GPU>());
+                        fft_coarse_.transform<-1, memory_t::device>(vphi1_.at<GPU>(), vphi2_.at<GPU>());
                     } else {
-                        fft_coarse_.transform<-1, GPU>(vphi1_.at<GPU>());
+                        fft_coarse_.transform<-1, memory_t::device>(vphi1_.at<GPU>());
                     }
                     break;
                 }
@@ -421,9 +423,9 @@ class Local_operator
         };
 
         /* store the resulting hphi
-               spin block (ispn_block) is used as a bit mask: 
-                - first bit: spin component which is updated
-                - second bit: add or not kinetic energy term */
+           spin block (ispn_block) is used as a bit mask: 
+            - first bit: spin component which is updated
+            - second bit: add or not kinetic energy term */
         auto add_to_hphi = [&](int i, int ispn_block, bool gamma = false) {
             int ispn = ispn_block & 1;
             int ekin = (ispn_block & 2) ? 0 : 1;
@@ -498,8 +500,8 @@ class Local_operator
 
         int first{0};
         /* If G-vectors are reduced, wave-functions are real and we can transform two of them at once.
-             * Non-collinear case is not treated here because nc wave-functions are complex and G+k vectors 
-             * can't be reduced */
+           Non-collinear case is not treated here because nc wave-functions are complex and G+k vectors 
+           can't be reduced */
         if (gkvec_p_->gvec().reduced()) {
             int npairs = num_wf_loc / 2;
             /* Gamma-point case can only be non-magnetic or spin-collinear */
@@ -522,26 +524,26 @@ class Local_operator
 
             /* non-collinear case */
             /* 2x2 Hamiltonian in applied to spinor wave-functions
-                 * .--------.--------.   .-----.   .------.
-                 * |        |        |   |     |   |      |
-                 * | H_{uu} | H_{ud} |   |phi_u|   |hphi_u|
-                 * |        |        |   |     |   |      |
-                 * .--------.--------. x .-----. = .------.
-                 * |        |        |   |     |   |      |
-                 * | H_{du} | H_{dd} |   |phi_d|   |hphi_d|
-                 * |        |        |   |     |   |      |
-                 * .--------.--------.   .-----.   .------.
-                 *
-                 * hphi_u = H_{uu} phi_u + H_{ud} phi_d
-                 * hphi_d = H_{du} phi_u + H_{dd} phi_d
-                 *
-                 * The following indexing scheme will be used for spin-blocks
-                 * .---.---.
-                 * | 0 | 2 |
-                 * .---.---.
-                 * | 3 | 1 |
-                 * .---.---.
-                 */
+               .--------.--------.   .-----.   .------.
+               |        |        |   |     |   |      |
+               | H_{uu} | H_{ud} |   |phi_u|   |hphi_u|
+               |        |        |   |     |   |      |
+               .--------.--------. x .-----. = .------.
+               |        |        |   |     |   |      |
+               | H_{du} | H_{dd} |   |phi_d|   |hphi_d|
+               |        |        |   |     |   |      |
+               .--------.--------.   .-----.   .------.
+
+               hphi_u = H_{uu} phi_u + H_{ud} phi_d
+               hphi_d = H_{du} phi_u + H_{dd} phi_d
+
+               The following indexing scheme will be used for spin-blocks
+               .---.---.
+               | 0 | 2 |
+               .---.---.
+               | 3 | 1 |
+               .---.---.
+             */
             if (ispn__ == 2) {
                 /* phi_u(G) -> phi_u(r) */
                 phi_to_r(i, 0);
@@ -828,8 +830,8 @@ class Local_operator
 
     /// Apply magnetic field to the wave-functions.
     /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
-         *  <tt>bphi</tt>. In case of non-collinear magnetims Bx-iBy is also applied and stored in the third
-         *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. */
+     *  <tt>bphi</tt>. In case of non-collinear magnetims Bx-iBy is also applied and stored in the third
+     *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. */
     void apply_b(int                          N__,
                  int                          n__,
                  Wave_functions&              phi__,
