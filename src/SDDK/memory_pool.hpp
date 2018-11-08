@@ -26,6 +26,7 @@
 #define __MEMORY_POOL_HPP__
 
 #include <list>
+#include <iostream>
 #include "mdarray.hpp"
 
 namespace sddk {
@@ -188,7 +189,7 @@ class memory_pool
                   << "  list size   : " << mem_type_entry->second.size() << " (expecting 1)\n"
                   << "  used        : " << it->used_ << " (expecting false)\n"
                   << "  buffer size : " << it->size_ << " " <<  it->buf_->size() << " (expecting equal)";
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
         }
     }
