@@ -42,6 +42,7 @@
 
 // TODO: now .at() method is templated over the device type; it would make more sense to template over
 //       the memory type, i.e. instead of array.at<GPU>() we would write array.at<memory_t::device>()
+//       Later,  move device_t to typedefs.hpp or to a SDDK namespace or to linear algebra and FFT backends.
 
 namespace sddk {
 
@@ -55,22 +56,23 @@ namespace sddk {
 #ifdef NDEBUG
 #define mdarray_assert(condition__)
 #else
-#define mdarray_assert(condition__)                                 \
-    {                                                               \
-        if (!(condition__)) {                                       \
-            printf("Assertion (%s) failed ", #condition__);         \
-            printf("at line %i of file %s\n", __LINE__, __FILE__);  \
-            printf("array label: %s\n", label_.c_str());            \
-            for (int i = 0; i < N; i++)                             \
-                printf("dim[%i].size = %li\n", i, dims_[i].size()); \
-            raise(SIGTERM);                                         \
-            exit(-13);                                              \
-        }                                                           \
-    }
+#define mdarray_assert(condition__)                             \
+{                                                               \
+    if (!(condition__)) {                                       \
+        printf("Assertion (%s) failed ", #condition__);         \
+        printf("at line %i of file %s\n", __LINE__, __FILE__);  \
+        printf("array label: %s\n", label_.c_str());            \
+        for (int i = 0; i < N; i++)                             \
+            printf("dim[%i].size = %li\n", i, dims_[i].size()); \
+        raise(SIGTERM);                                         \
+        exit(-13);                                              \
+    }                                                           \
+}
 #endif
 
 // TODO: change to enum class
 /// Type of the main processing unit.
+/** List the processing units on which the code can run. */
 enum device_t
 {
     /// CPU device.
@@ -81,7 +83,8 @@ enum device_t
 };
 
 /// Type of memory.
-/** Various combinations of flags can be used. To check for any host memory (pinned or non-pinned):
+/** List the types of memory on which the code can store data.
+    Various combinations of flags can be used. To check for any host memory (pinned or non-pinned):
     \code{.cpp}
     mem_type & memory_t::host == memory_t::host
     \endcode

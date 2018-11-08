@@ -170,6 +170,7 @@ class memory_pool
         throw std::runtime_error("wrong pointer");
     }
 
+    /// Free all the allocated blocks and merge them into one big piece of free memory.
     template <memory_t mem_type>
     void reset()
     {
