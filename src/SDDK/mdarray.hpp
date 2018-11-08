@@ -109,6 +109,7 @@ enum class memory_t : unsigned int
     device      = 0b100
 };
 
+// TODO: remove operator|() and operator&(): their usage is very limited and complicates the code
 inline constexpr memory_t operator&(memory_t a__, memory_t b__) noexcept
 {
     return static_cast<memory_t>(static_cast<unsigned int>(a__) & static_cast<unsigned int>(b__));
@@ -238,6 +239,69 @@ struct mdarray_mem_count
         return allocated_max_;
     }
 };
+
+/// Allocate n elements in a specified memory.
+/** Allocate a memory block of the memory_t type. Return a nullptr if this memory is not available, otherwise
+ *  return a pointer to an allocated block. */
+template <typename T, memory_t M>
+inline T* allocate(size_t n__)
+{
+    switch (M) {
+        case memory_t::none: {
+            return nullptr;
+        }
+        case memory_t::host: {
+            return static_cast<T*>(std::malloc(n__ * sizeof(T)));
+        }
+        case memory_t::host_pinned: {
+#ifdef __GPU
+            return acc::allocate_host<T>(n__);
+#else
+            return nullptr;
+#endif
+        }
+        case memory_t::device: {
+#ifdef __GPU
+            return acc::allocate<T>(n__);
+#else
+            return nullptr;
+#endif
+        }
+        default: {
+            throw std::runtime_error("unknown memory type");
+        }
+    }
+}
+
+/// Deallocate pointer.
+template <typename T, memory_t M>
+inline void deallocate(T* ptr__)
+{
+    switch (M) {
+        case memory_t::none: {
+            break;
+        }
+        case memory_t::host: {
+            std::free(ptr__);
+            break;
+        }
+        case memory_t::host_pinned: {
+#ifdef __GPU
+            acc::deallocate_host(ptr__);
+#endif
+            break;
+        }
+        case memory_t::device: {
+#ifdef __GPU
+            acc::deallocate(ptr__);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error("unknown memory type");
+        }
+    }
+}
 
 /// Simple memory manager handler which keeps track of allocated and deallocated memory.
 template <typename T>
