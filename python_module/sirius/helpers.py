@@ -142,35 +142,24 @@ def get_c0_x(kpointset, eps=0):
     return c0, x
 
 
+def kpoint_index(kp, ctx):
+    """
+    Returns tuple (idx, idy, idz), which corresponds
+    to the position of the kpoint in the K-point grid
 
-def make_dict(ctx, ks, x_ticks, x_axis):
-    dict = {}
-    dict["header"] = {}
-    dict["header"]["x_axis"] = x_axis
-    dict["header"]["x_ticks"] = []
-    dict["header"]["num_bands"] = ctx.num_bands()
-    dict["header"]["num_mag_dims"] = ctx.num_mag_dims()
+    Keyword Arguments:
+    kp -- K point
+    ctx -- simulation context
+    """
+    import numpy as np
 
-    for e in enumerate(x_ticks):
-        j = {}
-        j["x"] = e[1][0]
-        j["label"] = e[1][1]
-        dict["header"]["x_ticks"].append(j)
-
-    dict["bands"] = []
-
-    for ik in range(len(ks)):
-        bnd_k = {}
-        bnd_k["kpoint"] = [0.0, 0.0, 0.0]
-        for x in range(3):
-            bnd_k["kpoint"][x] = ks(ik).vk()(x)
-        bnd_e = []
-
-        bnd_e = ks.get_band_energies(ik, 0)
-
-        bnd_k["values"] = bnd_e
-        dict["bands"].append(bnd_k)
-    return dict
+    pm = ctx.parameters_input()
+    shiftk = np.array(pm.shiftk, dtype=np.int)
+    ngridk = np.array(pm.ngridk, dtype=np.int)
+    ik = np.array(kp.vk) * ngridk - shiftk/2
+    assert np.isclose(ik-ik.astype(np.int), 0).all()
+    ik = ik.astype(np.int)
+    return tuple(ik)
 
 
 class Singleton(type):
@@ -207,4 +196,9 @@ class Logger:
                 with open(self.fout, 'a') as fh:
                     print(arg1, *args, file=fh)
             else:
-                print(arg1, *args)
+                print(*args)
+        elif self._all_print:
+            print(*args)
+
+    def __call__(self, *args):
+        self.print(*args)
