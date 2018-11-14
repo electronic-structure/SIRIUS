@@ -606,10 +606,10 @@ inline std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double
         }
 
         std::vector<double> eval(ilo.size());
-        dmatrix<double>     evec(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
-        dmatrix<double>     tmp(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
-        for (size_t j1 = 0; j1 < ilo.size(); j1++) {
-            for (size_t j2 = 0; j2 < ilo.size(); j2++) {
+        dmatrix<double> evec(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
+        dmatrix<double> tmp(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
+        for (int j1 = 0; j1 < (int)ilo.size(); j1++) {
+            for (int j2 = 0; j2 < (int)ilo.size(); j2++) {
                 tmp(j1, j2) = ovlp(ilo[j1], ilo[j2]);
             }
         }

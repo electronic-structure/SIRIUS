@@ -65,8 +65,6 @@ class Hamiltonian
 
     std::type_info const* type_of_T_{nullptr};
 
-    memory_pool memory_pool_;
-
   public:
     /// Constructor.
     Hamiltonian(Simulation_context& ctx__, Potential& potential__)

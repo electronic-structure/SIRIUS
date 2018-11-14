@@ -564,7 +564,7 @@ void Hubbard::compute_occupancies(K_point&                    kp,
         if (atom.type().hubbard_correction()) {
             const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                const size_t ispn_offset = ispn * this->number_of_hubbard_orbitals() + this->offset[ia1];
+                const int ispn_offset = ispn * this->number_of_hubbard_orbitals() + this->offset[ia1];
                 for (int m2 = 0; m2 < lmax_at; m2++) {
                     for (int m1 = 0; m1 < lmax_at; m1++) {
                         dn__(m1, m2, ispn, ia1, index) = dm(ispn_offset + m1, ispn_offset + m2);

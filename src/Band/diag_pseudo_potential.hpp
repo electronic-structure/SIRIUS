@@ -269,7 +269,9 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     /* total memory size of all wave-functions */
     const size_t size = num_sc * kp__->num_gkvec_loc() * (3 * num_phi + 3 * num_bands);
     /* get preallocatd memory buffer */
-    double_complex* mem_buf_ptr = ctx_.mem_pool().allocate<double_complex, memory_t::host>(size);
+    auto mem_buf = ctx_.mem_pool(memory_t::host).get_unique_ptr<double_complex>(size);
+    
+    auto mem_buf_ptr = mem_buf.get();
 
     /* allocate wave-functions */
 
@@ -624,7 +626,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     //==         }
     //==     }
     //== }
-    ctx_.mem_pool().reset<memory_t::host>();
 
     return niter;
 }

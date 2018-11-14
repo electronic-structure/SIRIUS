@@ -172,7 +172,7 @@ class Simulation_context : public Simulation_parameters
     std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
     /// Storage for various memory pools.
-    memory_pool memory_pool_;
+    std::map<memory_t, memory_pool> memory_pool_;
 
     /// Plane wave expansion coefficients of the step function.
     mdarray<double_complex, 1> theta_pw_;
@@ -868,25 +868,21 @@ class Simulation_context : public Simulation_parameters
         matrix<double_complex> phase_factors;
         matrix<double_complex> zm;
         matrix<double_complex> tmp;
+
         switch (processing_unit()) {
             case CPU: {
-                phase_factors = matrix<double_complex>(
-                    mem_pool().allocate<double_complex, memory_t::host>(ngv_loc * na_max), ngv_loc, na_max);
-                zm = matrix<double_complex>(mem_pool().allocate<double_complex, memory_t::host>(lmmax * ngv_loc), lmmax,
-                                            ngv_loc);
-                tmp = matrix<double_complex>(mem_pool().allocate<double_complex, memory_t::host>(lmmax * na_max), lmmax,
-                                             na_max);
+                auto& mp = mem_pool(memory_t::host);
+                phase_factors = matrix<double_complex>(mp, ngv_loc, na_max);
+                zm = matrix<double_complex>(mp, lmmax, ngv_loc);
+                tmp = matrix<double_complex>(mp, lmmax, na_max);
                 break;
             }
             case GPU: {
-                phase_factors = matrix<double_complex>(
-                    nullptr, mem_pool().allocate<double_complex, memory_t::device>(ngv_loc * na_max), ngv_loc, na_max);
-                zm  = matrix<double_complex>(mem_pool().allocate<double_complex, memory_t::host>(lmmax * ngv_loc),
-                                            mem_pool().allocate<double_complex, memory_t::device>(lmmax * ngv_loc),
-                                            lmmax, ngv_loc);
-                tmp = matrix<double_complex>(mem_pool().allocate<double_complex, memory_t::host>(lmmax * na_max),
-                                             mem_pool().allocate<double_complex, memory_t::device>(lmmax * na_max),
-                                             lmmax, na_max);
+                auto& mp = mem_pool(memory_t::host);
+                auto& mpd = mem_pool(memory_t::device);
+                phase_factors = matrix<double_complex>(nullptr, mpd, ngv_loc, na_max);
+                zm  = matrix<double_complex>(mp, mpd, lmmax, ngv_loc);
+                tmp = matrix<double_complex>(mp, mpd, lmmax, na_max);
                 break;
             }
         }
@@ -937,10 +933,6 @@ class Simulation_context : public Simulation_parameters
 
         comm().allreduce(&flm(0, 0), (int)flm.size());
 
-        mem_pool().reset<memory_t::host>();
-        if (processing_unit() == GPU) {
-            mem_pool().reset<memory_t::device>();
-        }
         return std::move(flm);
     }
 
@@ -1033,9 +1025,12 @@ class Simulation_context : public Simulation_parameters
         return sym_phase_factors_;
     }
 
-    memory_pool& mem_pool()
+    memory_pool& mem_pool(memory_t M__)
     {
-        return memory_pool_;
+        if (memory_pool_.count(M__) == 0) {
+            memory_pool_.emplace(M__, std::move(memory_pool(M__)));
+        }
+        return memory_pool_.at(M__);
     }
 
     inline bool initialized() const

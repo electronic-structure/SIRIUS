@@ -1144,7 +1144,7 @@ inline void Atom_type::init(int offset_lo__)
             }
         }
         idx_radial_integrals_ = mdarray<int, 2>(2, non_zero_elements.size());
-        for (size_t j = 0; j < non_zero_elements.size(); j++) {
+        for (int j = 0; j < (int)non_zero_elements.size(); j++) {
             idx_radial_integrals_(0, j) = non_zero_elements[j].first;
             idx_radial_integrals_(1, j) = non_zero_elements[j].second;
         }
