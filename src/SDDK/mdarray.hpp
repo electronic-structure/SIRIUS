@@ -893,7 +893,7 @@ class mdarray
         this->raw_ptr_ = this->unique_pool_ptr_.get();
 #ifdef __GPU
         this->unique_pool_ptr_device_ = mpd__.get_unique_ptr<T>(size());
-        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get()
+        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get();
 #endif
     }
 
@@ -909,7 +909,7 @@ class mdarray
         this->raw_ptr_ = ptr__;
 #ifdef __GPU
         this->unique_pool_ptr_device_ = mpd__.get_unique_ptr<T>(size());
-        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get()
+        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get();
 #endif
     }
 
@@ -969,7 +969,7 @@ class mdarray
         this->raw_ptr_ = this->unique_pool_ptr_.get();
 #ifdef __GPU
         this->unique_pool_ptr_device_ = mpd__.get_unique_ptr<T>(size());
-        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get()
+        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get();
 #endif
     }
 
@@ -986,7 +986,7 @@ class mdarray
         this->raw_ptr_ = ptr__;
 #ifdef __GPU
         this->unique_pool_ptr_device_ = mpd__.get_unique_ptr<T>(size());
-        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get()
+        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get();
 #endif
     }
 
