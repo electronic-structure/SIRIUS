@@ -191,7 +191,7 @@ class Wave_functions
     }
 
     /// Constructor for PW wave-functions.
-    Wave_functions(double_complex* ptr__, Gvec_partition const& gkvecp__, int num_wf__, int num_sc__ = 1)
+    Wave_functions(memory_pool& mp__, Gvec_partition const& gkvecp__, int num_wf__, int num_sc__ = 1)
         : comm_(gkvecp__.gvec().comm())
         , gkvecp_(gkvecp__)
         , num_wf_(num_wf__)
@@ -203,8 +203,7 @@ class Wave_functions
 
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(ptr__, gkvecp_, num_wf_));
-            ptr__ += gkvecp_.gvec().count() * num_wf_;
+                new matrix_storage<double_complex, matrix_storage_t::slab>(mp__, gkvecp_, num_wf_));
         }
     }
 

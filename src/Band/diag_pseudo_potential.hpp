@@ -265,38 +265,28 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         s << "subspace size is too large!";
         TERMINATE(s);
     }
-
-    /* total memory size of all wave-functions */
-    const size_t size = num_sc * kp__->num_gkvec_loc() * (3 * num_phi + 3 * num_bands);
-    /* get preallocatd memory buffer */
-    auto mem_buf = ctx_.mem_pool(memory_t::host).get_unique_ptr<double_complex>(size);
-    
-    auto mem_buf_ptr = mem_buf.get();
+    /* alias for memory pool */
+    auto& mp = ctx_.mem_pool(memory_t::host);
 
     /* allocate wave-functions */
 
     /* auxiliary wave-functions */
-    Wave_functions phi(mem_buf_ptr, kp__->gkvec_partition(), num_phi, num_sc);
-    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi * num_sc;
+    Wave_functions phi(mp, kp__->gkvec_partition(), num_phi, num_sc);
 
     /* Hamiltonian, applied to auxiliary wave-functions */
-    Wave_functions hphi(mem_buf_ptr, kp__->gkvec_partition(), num_phi, num_sc);
-    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi * num_sc;
+    Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi, num_sc);
 
     /* S operator, applied to auxiliary wave-functions */
-    Wave_functions sphi(mem_buf_ptr, kp__->gkvec_partition(), num_phi, num_sc);
-    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi * num_sc;
+    Wave_functions sphi(mp, kp__->gkvec_partition(), num_phi, num_sc);
 
     /* Hamiltonain, applied to new Psi wave-functions */
-    Wave_functions hpsi(mem_buf_ptr, kp__->gkvec_partition(), num_bands, num_sc);
-    mem_buf_ptr += kp__->num_gkvec_loc() * num_bands * num_sc;
+    Wave_functions hpsi(mp, kp__->gkvec_partition(), num_bands, num_sc);
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions spsi(mem_buf_ptr, kp__->gkvec_partition(), num_bands, num_sc);
-    mem_buf_ptr += kp__->num_gkvec_loc() * num_bands * num_sc;
+    Wave_functions spsi(mp, kp__->gkvec_partition(), num_bands, num_sc);
 
     /* residuals */
-    Wave_functions res(mem_buf_ptr, kp__->gkvec_partition(), num_bands, num_sc);
+    Wave_functions res(mp, kp__->gkvec_partition(), num_bands, num_sc);
     t1.stop();
 
     utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");

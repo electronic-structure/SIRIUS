@@ -319,16 +319,18 @@ class Local_operator
 
         num_applied(n__);
 
+        auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(memory_t::host);
+
         /* remap wave-functions */
         if (ispn__ == 2) {
             for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
-                phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), n__, idx0__);
-                hphi__.pw_coeffs(ispn).set_num_extra(CPU, n__, idx0__);
+                phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), n__, idx0__, &mp);
+                hphi__.pw_coeffs(ispn).set_num_extra(n__, idx0__, &mp);
                 hphi__.pw_coeffs(ispn).extra().zero<memory_t::host | memory_t::device>();
             }
         } else {
-            phi__.pw_coeffs(ispn__).remap_forward(fft_coarse_.pu(), n__, idx0__);
-            hphi__.pw_coeffs(ispn__).set_num_extra(CPU, n__, idx0__);
+            phi__.pw_coeffs(ispn__).remap_forward(fft_coarse_.pu(), n__, idx0__, &mp);
+            hphi__.pw_coeffs(ispn__).set_num_extra(n__, idx0__, &mp);
             hphi__.pw_coeffs(ispn__).extra().zero<memory_t::host | memory_t::device>();
         }
 
@@ -679,14 +681,16 @@ class Local_operator
         //    }
         //}
 
-        phi__.pw_coeffs(0).remap_forward(CPU, n__, N__);
+        auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(memory_t::host);
+
+        phi__.pw_coeffs(0).remap_forward(CPU, n__, N__, &mp);
 
         if (hphi__ != nullptr) {
-            hphi__->pw_coeffs(0).set_num_extra(CPU, n__, N__);
+            hphi__->pw_coeffs(0).set_num_extra(n__, N__, &mp);
         }
 
         if (ophi__ != nullptr) {
-            ophi__->pw_coeffs(0).set_num_extra(CPU, n__, N__);
+            ophi__->pw_coeffs(0).set_num_extra(n__, N__, &mp);
         }
 
         for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
@@ -851,10 +855,11 @@ class Local_operator
             iv.push_back(2);
         }
 
-        //phi__.pw_coeffs(0).remap_forward(ctx_.processing_unit(), n__, N__);
-        phi__.pw_coeffs(0).remap_forward(CPU, n__, N__);
+        auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(memory_t::host);
+
+        phi__.pw_coeffs(0).remap_forward(CPU, n__, N__, &mp);
         for (int i : iv) {
-            bphi__[i].pw_coeffs(0).set_num_extra(CPU, n__, N__);
+            bphi__[i].pw_coeffs(0).set_num_extra(n__, N__, &mp);
         }
 
         for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {

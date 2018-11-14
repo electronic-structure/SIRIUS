@@ -138,10 +138,12 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                     H__.apply_h_s<T>(&kp__, 2, 0, ctx_.num_bands(), psi, nullptr, &spsi);
                     inner<T>(CPU, 2, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
                 } else {
-                    Wave_functions phi(&psi.pw_coeffs(ispin_step).prime(0, 0), kp__.gkvec_partition(), ctx_.num_bands(), 1);
+                    //Wave_functions phi(&psi.pw_coeffs(ispin_step).prime(0, 0), kp__.gkvec_partition(), ctx_.num_bands(), 1);
                     /* apply Hamiltonian and S operators to the wave-functions */
-                    H__.apply_h_s<T>(&kp__, ispin_step, 0, ctx_.num_bands(), phi, 0, &spsi);
-                    inner<T>(CPU, 0, phi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
+                    //H__.apply_h_s<T>(&kp__, ispin_step, 0, ctx_.num_bands(), phi, 0, &spsi);
+                    H__.apply_h_s<T>(&kp__, ispin_step, 0, ctx_.num_bands(), psi, 0, &spsi);
+                    //inner<T>(CPU, 0, phi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
+                    inner<T>(CPU, 0, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
                 }
                 double diff = check_identity(ovlp, ctx_.num_bands());
 

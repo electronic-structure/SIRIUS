@@ -53,7 +53,7 @@ inline void Density::generate_valence(K_point_set const& ks__)
           << "  difference : " << std::abs(occ_val - unit_cell_.num_valence_electrons());
         WARNING(s);
     }
-    
+
     density_matrix_.zero();
 
     /* zero density and magnetization */
@@ -61,7 +61,7 @@ inline void Density::generate_valence(K_point_set const& ks__)
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         rho_mag_coarse_[i]->zero();
     }
-    
+
     /* start the main loop over k-points */
     for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++) {
         int ik = ks__.spl_num_kpoints(ikloc);
@@ -69,7 +69,6 @@ inline void Density::generate_valence(K_point_set const& ks__)
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
-            
 #ifdef __GPU
             if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
                 /* allocate GPU memory */
@@ -79,13 +78,13 @@ inline void Density::generate_valence(K_point_set const& ks__)
 #endif
             /* swap wave functions for the FFT transformation */
             //kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(ctx_.processing_unit(), kp->gkvec().partition().gvec_fft_slab(), nbnd);
-            kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(CPU, nbnd);
+            kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(CPU, nbnd, 0, &ctx_.mem_pool(memory_t::host));
         }
-        
+
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::full_potential_lapwlo) {
             add_k_point_contribution_dm<double_complex>(kp, density_matrix_);
         }
-        
+
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
                 add_k_point_contribution_dm<double>(kp, density_matrix_);
