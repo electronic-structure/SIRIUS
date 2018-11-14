@@ -36,6 +36,7 @@
 #include <sstream>
 #include <sys/time.h>
 #include <unistd.h>
+#include <complex>
 
 /// Namespace for simple utility functions.
 namespace utils {
