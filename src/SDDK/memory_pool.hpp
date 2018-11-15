@@ -320,6 +320,7 @@ class memory_pool
     {
     }
 
+    /// Return a pointer to a memory block for n elements of type T.
     template <typename T>
     T* allocate(size_t num_elements__)
     {
@@ -356,6 +357,7 @@ class memory_pool
         return reinterpret_cast<T*>(ptr);
     }
 
+    /// Delete a pointer and add its memory back to the pool.
     void free(void* ptr__)
     {
         uint8_t* ptr = reinterpret_cast<uint8_t*>(ptr__);

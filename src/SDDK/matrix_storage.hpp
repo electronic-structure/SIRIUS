@@ -178,8 +178,7 @@ class matrix_storage<T, matrix_storage_t::slab>
      *  \param [in] n         Number of matrix columns to distribute.
      *  \param [in] idx0      Starting column of the matrix.
      *
-     *  Prime storage is expected on the CPU (for the MPI a2a communication). If the target processing unit is GPU
-     *  extra storage will be copied to the device memory. */
+     *  Prime storage is expected on the CPU (for the MPI a2a communication). */
     inline void remap_forward(device_t pu__, int n__, int idx0__, memory_pool* mp__)
     {
         PROFILE("sddk::matrix_storage::remap_forward");
@@ -223,18 +222,14 @@ class matrix_storage<T, matrix_storage_t::slab>
                 }
             }
         }
-        ///*  copy extra storage to the device if needed */
-        //if (pu__ == GPU && extra_.on_device()) {
-        //    extra_.template copy<memory_t::host, memory_t::device>();
-        //}
     }
 
     /// Remap data from extra to prime storage.
     /** \param [in] n         Number of matrix columns to collect.
      *  \param [in] idx0      Starting column of the matrix.
      *
-     *  Extra storage is expected on the CPU (for the MPI a2a communication). If the target processing unit is GPU
-     *  prime storage will be copied to the device memory. */
+     *  Extra storage is expected on the CPU (for the MPI a2a communication). If the prime storage is allocated on GPU
+     *  remapped data will be copied to GPU. */
     inline void remap_backward(int n__, int idx0__)
     {
         PROFILE("sddk::matrix_storage::remap_backward");

@@ -72,13 +72,15 @@ void Hamiltonian::apply_h_s(K_point* kp__,
     if (hphi__ != NULL) {
         /* apply local part of Hamiltonian */
         local_op_->apply_h(ispn__, phi__, *hphi__, N__, n__);
-        //#ifdef __GPU
-        //if (ctx_.processing_unit() == GPU && ctx_.fft_coarse().pu() == CPU) {
-        //    for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
-        //        hphi__->pw_coeffs(ispn).copy_to_device(N__, n__);
-        //    }
-        //}
-        //#endif
+
+// remap_backward() will copy the data on device if prime storage was allocated on device
+//#ifdef __GPU
+//        if (ctx_.processing_unit() == GPU && ctx_.fft_coarse().pu() == CPU) {
+//            for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
+//                hphi__->pw_coeffs(ispn).copy_to_device(N__, n__);
+//            }
+//        }
+//#endif
     }
 
     t1 += omp_get_wtime();

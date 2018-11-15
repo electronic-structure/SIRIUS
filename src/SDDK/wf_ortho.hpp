@@ -152,11 +152,13 @@ inline void orthogonalize(device_t                     pu__,
     /* single MPI rank */
     if (o__.comm().size() == 1) {
         bool use_magma{false};
-#if defined(__GPU) && defined(__MAGMA)
-        if (pu__ == GPU) {
-            use_magma = true;
-        }
-#endif
+
+// MAGMA performance for Choleski and inversion is not good enough; use lapack for the moment
+//#if defined(__GPU) && defined(__MAGMA)
+//        if (pu__ == GPU) {
+//            use_magma = true;
+//        }
+//#endif
 
         utils::timer t1("sddk::orthogonalize|tmtrx");
         if (use_magma) {
