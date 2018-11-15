@@ -77,6 +77,7 @@ class Local_operator
     Smooth_periodic_function<double> theta_;
 
     /// Temporary array to store psi_{up}(r).
+    /** The size of the array is equal to the size of FFT buffer. */
     mdarray<double_complex, 1> buf_rg_;
 
     /// V(G=0) matrix elements.
@@ -119,7 +120,7 @@ class Local_operator
         return num_applied_;
     }
 
-    /// Map effective potential and magnetic field to a coarse FFT mesh in case of PP-PW.
+    /// Map effective potential and magnetic field to a coarse FFT mesh.
     /** \param [in] potential      \f$ V_{eff}({\bf r}) \f$ and \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine grid FFT grid.
      *
      *  This function should be called prior to the band diagonalziation. In case of GPU execution all
@@ -317,32 +318,62 @@ class Local_operator
             TERMINATE("Local operator is not prepared");
         }
 
+        /* increment the counter by the number of wave-functions */
         num_applied(n__);
 
         auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(memory_t::host);
+        auto& mpd = const_cast<Simulation_context&>(ctx_).mem_pool(memory_t::device);
+        /* alias array for wave functions */
+        std::array<mdarray<double_complex, 2>, 2> phi;
+        /* alias array for hphi */
+        std::array<mdarray<double_complex, 2>, 2> hphi;
 
-        /* remap wave-functions */
-        if (ispn__ == 2) {
-            for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
-                phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), n__, idx0__, &mp);
-                hphi__.pw_coeffs(ispn).set_num_extra(n__, idx0__, &mp);
-                hphi__.pw_coeffs(ispn).extra().zero<memory_t::host | memory_t::device>();
+        auto spins = (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
+
+        /* remap wave-functions to FFT friendly distribution */
+        for (int ispn: spins) {
+            phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), n__, idx0__, &mp);
+            hphi__.pw_coeffs(ispn).set_num_extra(n__, idx0__, &mp);
+            /* in the current implementation FFT is done sequentially, thus the wave functions have to be on GPU
+               if it is used for FFTs */
+            switch (fft_coarse_.pu()) {
+                case GPU: {
+                    phi[ispn] = mdarray<double_complex, 2>(phi__.pw_coeffs(ispn).extra().at<CPU>(), mpd,
+                                                           phi__.pw_coeffs(ispn).extra().size(0),
+                                                           phi__.pw_coeffs(ispn).extra().size(1));
+                    phi[ispn].copy<memory_t::host, memory_t::device>();
+                    hphi[ispn] = mdarray<double_complex, 2>(hphi__.pw_coeffs(ispn).extra().at<CPU>(), mpd,
+                                                            hphi__.pw_coeffs(ispn).extra().size(0),
+                                                            hphi__.pw_coeffs(ispn).extra().size(1));
+                    hphi[ispn].zero<memory_t::host | memory_t::device>();
+                    break;
+                }
+                case CPU: {
+                    phi[ispn] = mdarray<double_complex, 2>(phi__.pw_coeffs(ispn).extra().at<CPU>(),
+                                                           phi__.pw_coeffs(ispn).extra().size(0),
+                                                           phi__.pw_coeffs(ispn).extra().size(1));
+                    hphi[ispn] = mdarray<double_complex, 2>(hphi__.pw_coeffs(ispn).extra().at<CPU>(),
+                                                            hphi__.pw_coeffs(ispn).extra().size(0),
+                                                            hphi__.pw_coeffs(ispn).extra().size(1));
+                    hphi[ispn].zero<memory_t::host>();
+                    break;
+                }
             }
-        } else {
-            phi__.pw_coeffs(ispn__).remap_forward(fft_coarse_.pu(), n__, idx0__, &mp);
-            hphi__.pw_coeffs(ispn__).set_num_extra(n__, idx0__, &mp);
-            hphi__.pw_coeffs(ispn__).extra().zero<memory_t::host | memory_t::device>();
         }
 
 #ifdef __GPU
         memory_t vptr_mem = acc::num_devices() > 0 ? memory_t::host | memory_t::device : memory_t::host;
         mdarray<double*, 1> vptr(4, vptr_mem);
         vptr.zero();
-        if (fft_coarse_.pu() == GPU) {
-            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                vptr[j] = veff_vec_[j].f_rg().at<GPU>();
+        switch (fft_coarse_.pu()) {
+            case GPU: {
+                for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                    vptr[j] = veff_vec_[j].f_rg().at<GPU>();
+                }
+                vptr.copy<memory_t::host, memory_t::device>();
+                break;
             }
-            vptr.copy<memory_t::host, memory_t::device>();
+            case CPU: break;
         }
 #endif
 
@@ -352,11 +383,11 @@ class Local_operator
             switch (fft_coarse_.pu()) {
                 case CPU: {
                     if (gamma) {
-                        fft_coarse_.transform<1, memory_t::host>(phi__.pw_coeffs(ispn).extra().at<CPU>(0, 2 * i),
-                                                                 phi__.pw_coeffs(ispn).extra().at<CPU>(0, 2 * i + 1));
+                        fft_coarse_.transform<1, memory_t::host>(phi[ispn].at<CPU>(0, 2 * i),
+                                                                 phi[ispn].at<CPU>(0, 2 * i + 1));
 
                     } else {
-                        fft_coarse_.transform<1, memory_t::host>(phi__.pw_coeffs(ispn).extra().at<CPU>(0, i));
+                        fft_coarse_.transform<1, memory_t::host>(phi[ispn].at<CPU>(0, i));
                     }
                     break;
                 }
@@ -364,23 +395,24 @@ class Local_operator
                     /* parallel FFT starting from device pointer is not implemented */
                     assert(fft_coarse_.comm().size() == 1);
                     if (gamma) { /* warning: GPU pointer works only in case of serial FFT */
-                        fft_coarse_.transform<1, memory_t::device>(phi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i),
-                                                                   phi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i + 1));
+                        fft_coarse_.transform<1, memory_t::device>(phi[ispn].at<GPU>(0, 2 * i),
+                                                                   phi[ispn].at<GPU>(0, 2 * i + 1));
                     } else {
-                        fft_coarse_.transform<1, memory_t::device>(phi__.pw_coeffs(ispn).extra().at<GPU>(0, i));
+                        fft_coarse_.transform<1, memory_t::device>(phi[ispn].at<GPU>(0, i));
                     }
                     break;
                 }
             }
         };
 
+        /* multiply by effective potential */
         auto mul_by_veff = [&](mdarray<double_complex, 1>& buf, int ispn_block) {
-            /* multiply by effective potential */
             switch (fft_coarse_.pu()) {
                 case CPU: {
                     if (ispn_block < 2) {
                         #pragma omp parallel for schedule(static)
                         for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                            /* multiply by V+Bz or V-Bz */
                             buf[ir] *= veff_vec_[ispn_block].f_rg(ir);
                         }
                     } else {
@@ -429,7 +461,9 @@ class Local_operator
             - first bit: spin component which is updated
             - second bit: add or not kinetic energy term */
         auto add_to_hphi = [&](int i, int ispn_block, bool gamma = false) {
+            /* index of spin component */
             int ispn = ispn_block & 1;
+            /* add kinetic energy if this is a diagonal block */
             int ekin = (ispn_block & 2) ? 0 : 1;
 
             if (!phi__.pw_coeffs(ispn).is_remapped() && fft_coarse_.pu() == GPU) {
@@ -439,22 +473,22 @@ class Local_operator
                     add_pw_ekin_gpu(gkvec_p_->gvec_count_fft(),
                                     alpha,
                                     pw_ekin_.at<GPU>(),
-                                    phi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i),
+                                    phi[ispn].at<GPU>(0, 2 * i),
                                     vphi1_.at<GPU>(),
-                                    hphi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i));
+                                    hphi[ispn].at<GPU>(0, 2 * i));
                     add_pw_ekin_gpu(gkvec_p_->gvec_count_fft(),
                                     alpha,
                                     pw_ekin_.at<GPU>(),
-                                    phi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i + 1),
+                                    phi[ispn].at<GPU>(0, 2 * i + 1),
                                     vphi2_.at<GPU>(),
-                                    hphi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i + 1));
+                                    hphi[ispn].at<GPU>(0, 2 * i + 1));
                 } else {
                     add_pw_ekin_gpu(gkvec_p_->gvec_count_fft(),
                                     alpha,
                                     pw_ekin_.at<GPU>(),
-                                    phi__.pw_coeffs(ispn).extra().at<GPU>(0, i),
+                                    phi[ispn].at<GPU>(0, i),
                                     vphi1_.at<GPU>(),
-                                    hphi__.pw_coeffs(ispn).extra().at<GPU>(0, i));
+                                    hphi[ispn].at<GPU>(0, i));
                 }
 #else
                 TERMINATE_NO_GPU
@@ -473,26 +507,26 @@ class Local_operator
                 if (ekin) {
                     #pragma omp parallel for schedule(static)
                     for (int ig = 0; ig < gkvec_p_->gvec_count_fft(); ig++) {
-                        hphi__.pw_coeffs(ispn).extra()(ig, 2 * i) += (phi__.pw_coeffs(ispn).extra()(ig, 2 * i) * pw_ekin_[ig] + vphi1_[ig]);
-                        hphi__.pw_coeffs(ispn).extra()(ig, 2 * i + 1) += (phi__.pw_coeffs(ispn).extra()(ig, 2 * i + 1) * pw_ekin_[ig] + vphi2_[ig]);
+                        hphi[ispn](ig, 2 * i) += (phi[ispn](ig, 2 * i) * pw_ekin_[ig] + vphi1_[ig]);
+                        hphi[ispn](ig, 2 * i + 1) += (phi[ispn](ig, 2 * i + 1) * pw_ekin_[ig] + vphi2_[ig]);
                     }
                 } else {
                     #pragma omp parallel for schedule(static)
                     for (int ig = 0; ig < gkvec_p_->gvec_count_fft(); ig++) {
-                        hphi__.pw_coeffs(ispn).extra()(ig, 2 * i) += vphi1_[ig];
-                        hphi__.pw_coeffs(ispn).extra()(ig, 2 * i + 1) += vphi2_[ig];
+                        hphi[ispn](ig, 2 * i) += vphi1_[ig];
+                        hphi[ispn](ig, 2 * i + 1) += vphi2_[ig];
                     }
                 }
             } else { /* update single wave function */
                 if (ekin) {
                     #pragma omp parallel for schedule(static)
                     for (int ig = 0; ig < gkvec_p_->gvec_count_fft(); ig++) {
-                        hphi__.pw_coeffs(ispn).extra()(ig, i) += (phi__.pw_coeffs(ispn).extra()(ig, i) * pw_ekin_[ig] + vphi1_[ig]);
+                        hphi[ispn](ig, i) += (phi[ispn](ig, i) * pw_ekin_[ig] + vphi1_[ig]);
                     }
                 } else {
                     #pragma omp parallel for schedule(static)
                     for (int ig = 0; ig < gkvec_p_->gvec_count_fft(); ig++) {
-                        hphi__.pw_coeffs(ispn).extra()(ig, i) += vphi1_[ig];
+                        hphi[ispn](ig, i) += vphi1_[ig];
                     }
                 }
             }
@@ -642,12 +676,17 @@ class Local_operator
                 add_to_hphi(i, ispn__);
             }
         }
-        if (ispn__ == 2) {
-            for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
-                hphi__.pw_coeffs(ispn).remap_backward(ctx_.processing_unit(), n__, idx0__);
+
+        /* remap hphi backward */
+        for (int ispn: spins) {
+            switch (fft_coarse_.pu()) {
+                case GPU: {
+                    hphi[ispn].copy<memory_t::device, memory_t::host>();
+                    break;
+                }
+                case CPU: break;
             }
-        } else {
-            hphi__.pw_coeffs(ispn__).remap_backward(ctx_.processing_unit(), n__, idx0__);
+            hphi__.pw_coeffs(ispn).remap_backward(ctx_.processing_unit(), n__, idx0__);
         }
     }
 

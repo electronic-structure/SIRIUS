@@ -28,6 +28,7 @@
 #include <list>
 #include <iostream>
 #include <map>
+#include <memory>
 #ifdef __GPU
 #include "GPU/cuda.hpp"
 #endif
@@ -179,6 +180,8 @@ struct memory_block_descriptor
                 free_subblocks_.front().second == size_);
     }
 
+    /// Try to allocate a subblock of memory.
+    /** Return a valid pointer in case of success and nullptr if empty space can't be found in this memory block */
     uint8_t* allocate_subblock(size_t size__)
     {
         uint8_t* ptr{nullptr};
@@ -198,31 +201,54 @@ struct memory_block_descriptor
         return ptr;
     }
 
+    /// Free the pointer and its memory to the list of free subblocks.
     void free_subblock(uint8_t* ptr__, size_t size__)
     {
         /* offset from the beginning of the memory buffer */
         size_t offset = static_cast<size_t>(ptr__ - buffer_.get());
+        auto check_free_subblocks = [&]()
+        {
+#ifndef NDEBUG
+            if (free_subblocks_.size() <= 1) {
+                return;
+            }
+            auto it = free_subblocks_.begin();
+            auto it1 = it;
+            it1++;
+            for (; it1 != free_subblocks_.end(); it1++) {
+                /* if offse + size of the previous free block is larger than the offset of next block
+                   this is an error */
+                if (it->first + it->second > it1->first) {
+                    throw std::runtime_error("wrong order of free memory blocks");
+                }
+            }
+#endif
+        };
 
         for (auto it = free_subblocks_.begin(); it != free_subblocks_.end(); it++) {
             /* check if we can attach released subblock before this subblock */
             if (it->first == offset + size__) {
                 it->first = offset;
                 it->second += size__;
+                check_free_subblocks();
                 return;
             }
             /* check if we can attach released subblock after this subblock */
             if (it->first + it->second == offset) {
                 it->second += size__;
+                check_free_subblocks();
                 return;
             }
             /* finally, check if the released subblock is before this subblock, but not touching it */
             if (offset + size__ < it->first) {
                 free_subblocks_.insert(it, std::make_pair(offset, size__));
+                check_free_subblocks();
                 return;
             }
         }
         /* otherwise this is the tail subblock */
         free_subblocks_.push_back(std::make_pair(offset, size__));
+        check_free_subblocks();
     }
 
     /// Return the total size of the free subblocks.
@@ -338,6 +364,7 @@ class memory_pool
         /* merge memory blocks; this is not strictly necessary but can lead to a better performance */
         auto it = msb.first;
         if (it->is_empty()) {
+            /* try the previous block */
             if (it != memory_blocks_.begin()) {
                 auto it0 = it;
                 it0--;
@@ -347,6 +374,7 @@ class memory_pool
                     memory_blocks_.erase(it0);
                 }
             }
+            /* try the next block */
             auto it0 = it;
             it0++;
             if (it0 != memory_blocks_.end()) {
