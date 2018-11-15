@@ -415,6 +415,12 @@ class memory_pool
             i++;
         }
     }
+
+    /// Return the type of memory this pool is managing.
+    inline memory_t memory_type() const
+    {
+        return M_;
+    }
 };
 
 }

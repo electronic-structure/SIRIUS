@@ -275,6 +275,7 @@ struct mdarray_mem_mgr
 };
 
 /// Multidimensional array with the column-major (Fortran) order.
+/** The implementation supports two memory pointers: one is accessible by CPU and second is accessible by a device. */
 template <typename T, int N>
 class mdarray
 {
@@ -493,6 +494,7 @@ class mdarray
         if ((memory__ & memory_t::host) == memory_t::host) {
             if (unique_ptr_) {
                 unique_ptr_.reset(nullptr);
+                unique_pool_ptr_.reset(nullptr);
                 raw_ptr_ = nullptr;
             }
         }
@@ -500,10 +502,33 @@ class mdarray
         if ((memory__ & memory_t::device) == memory_t::device) {
             if (unique_ptr_device_) {
                 unique_ptr_device_.reset(nullptr);
+                unique_pool_ptr_device_.reset(nullptr);
                 raw_ptr_device_ = nullptr;
             }
         }
 #endif
+    }
+
+    inline void allocate(memory_pool& mp__)
+    {
+        switch (mp__.memory_type()) {
+            case memory_t::host:
+            case memory_t::host_pinned: {
+                this->unique_pool_ptr_ = mp__.get_unique_ptr<T>(size());
+                this->raw_ptr_ = this->unique_pool_ptr_.get();
+                break;
+            }
+            case memory_t::device: {
+#ifdef __GPU
+                this->unique_pool_ptr_device_ = mp__.get_unique_ptr<T>(size());
+                this->raw_ptr_device_ = this->unique_pool_ptr_device_.get();
+#endif
+                break;
+            }
+            default: {
+                throw std::runtime_error("unsupported memory type");
+            }
+        }
     }
 
     template <typename... Args>

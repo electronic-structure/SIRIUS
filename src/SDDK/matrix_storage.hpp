@@ -223,20 +223,19 @@ class matrix_storage<T, matrix_storage_t::slab>
                 }
             }
         }
-        /*  copy extra storage to the device if needed */
-        if (pu__ == GPU && extra_.on_device()) {
-            extra_.template copy<memory_t::host, memory_t::device>();
-        }
+        ///*  copy extra storage to the device if needed */
+        //if (pu__ == GPU && extra_.on_device()) {
+        //    extra_.template copy<memory_t::host, memory_t::device>();
+        //}
     }
 
     /// Remap data from extra to prime storage.
-    /** \param [in] pu        Target processing unit.
-     *  \param [in] n         Number of matrix columns to collect.
+    /** \param [in] n         Number of matrix columns to collect.
      *  \param [in] idx0      Starting column of the matrix.
      *
      *  Extra storage is expected on the CPU (for the MPI a2a communication). If the target processing unit is GPU
      *  prime storage will be copied to the device memory. */
-    inline void remap_backward(device_t pu__, int n__, int idx0__)
+    inline void remap_backward(int n__, int idx0__)
     {
         PROFILE("sddk::matrix_storage::remap_backward");
 
@@ -248,7 +247,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         auto& comm_col = gvp_->comm_ortho_fft();
 
         auto& row_distr = gvp_->gvec_fft_slab();
-        
+
         assert(n__ == spl_num_col_.global_index_size());
 
         /* local number of columns */
@@ -281,7 +280,7 @@ class matrix_storage<T, matrix_storage_t::slab>
                            rd.counts.data(), rd.offsets.data());
 
         /* move data back to device */
-        if (pu__ == GPU && prime_.on_device()) {
+        if (prime_.on_device()) {
             prime_.template copy<memory_t::host, memory_t::device>(idx0__ * num_rows_loc(), n__ * num_rows_loc());
         }
     }
@@ -449,21 +448,26 @@ class matrix_storage<T, matrix_storage_t::slab>
             }
         }
     }
-        
+
     #ifdef __GPU
     /// Allocate prime storage on device.
     void allocate_on_device()
     {
         prime_.allocate(memory_t::device);
     }
-    
+
+    void allocate(memory_pool& mp__)
+    {
+        prime_.allocate(mp__);
+    }
+
     /// Deallocate storage on device.
     void deallocate_on_device()
     {
         prime_.deallocate(memory_t::device);
         extra_buf_.deallocate(memory_t::device);
     }
-    
+
     /// Copy prime storage to device memory.
     void copy_to_device(int i0__, int n__)
     {

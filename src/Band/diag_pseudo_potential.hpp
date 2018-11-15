@@ -300,6 +300,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     //}
     // TODO: add a control variable to switch between MAGMA and Lapack depending, for example, on the matrix size
 
+    // TODO: add memory pool to dmatrix class
+
     const int bs = ctx_.cyclic_block_size();
 
     dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
@@ -312,27 +314,28 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
 #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
+        auto& mpd = ctx_.mem_pool(memory_t::device);
         if (!ctx_.control().keep_wf_on_device_) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                psi.pw_coeffs(ispn).allocate_on_device();
+                psi.pw_coeffs(ispn).allocate(mpd);
                 psi.pw_coeffs(ispn).copy_to_device(0, num_bands);
             }
         }
         for (int i = 0; i < num_sc; i++) {
-            phi.pw_coeffs(i).allocate_on_device();
-            res.pw_coeffs(i).allocate_on_device();
+            phi.pw_coeffs(i).allocate(mpd);
+            res.pw_coeffs(i).allocate(mpd);
 
-            hphi.pw_coeffs(i).allocate_on_device();
-            sphi.pw_coeffs(i).allocate_on_device();
+            hphi.pw_coeffs(i).allocate(mpd);
+            sphi.pw_coeffs(i).allocate(mpd);
 
-            hpsi.pw_coeffs(i).allocate_on_device();
-            spsi.pw_coeffs(i).allocate_on_device();
+            hpsi.pw_coeffs(i).allocate(mpd);
+            spsi.pw_coeffs(i).allocate(mpd);
         }
 
         if (ctx_.blacs_grid().comm().size() == 1) {
-            evec.allocate(memory_t::device);
-            ovlp.allocate(memory_t::device);
-            hmlt.allocate(memory_t::device);
+            evec.allocate(mpd);
+            ovlp.allocate(mpd);
+            hmlt.allocate(mpd);
         }
     }
 #endif
@@ -590,7 +593,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     //    }
     //}
 
-    #ifdef __GPU
+#ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             psi.pw_coeffs(ispn).copy_to_host(0, num_bands);
@@ -599,7 +602,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             }
         }
     }
-    #endif
+#endif
 
     //== std::cout << "checking psi" << std::endl;
     //== for (int i = 0; i < ctx_.num_bands(); i++) {

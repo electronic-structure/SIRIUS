@@ -328,6 +328,7 @@ class Local_operator
         /* alias array for hphi */
         std::array<mdarray<double_complex, 2>, 2> hphi;
 
+        /* spin component to which H is applied */
         auto spins = (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
 
         /* remap wave-functions to FFT friendly distribution */
@@ -686,7 +687,7 @@ class Local_operator
                 }
                 case CPU: break;
             }
-            hphi__.pw_coeffs(ispn).remap_backward(ctx_.processing_unit(), n__, idx0__);
+            hphi__.pw_coeffs(ispn).remap_backward(n__, idx0__);
         }
     }
 
@@ -843,10 +844,10 @@ class Local_operator
         }
 
         if (hphi__ != nullptr) {
-            hphi__->pw_coeffs(0).remap_backward(CPU, n__, N__);
+            hphi__->pw_coeffs(0).remap_backward(n__, N__);
         }
         if (ophi__ != nullptr) {
-            ophi__->pw_coeffs(0).remap_backward(CPU, n__, N__);
+            ophi__->pw_coeffs(0).remap_backward(n__, N__);
         }
 
         fft_coarse_.dismiss();
@@ -946,8 +947,7 @@ class Local_operator
         }
 
         for (int i : iv) {
-            //bphi__[i].pw_coeffs(0).remap_backward(ctx_.processing_unit(), n__, N__);
-            bphi__[i].pw_coeffs(0).remap_backward(CPU, n__, N__);
+            bphi__[i].pw_coeffs(0).remap_backward(n__, N__);
         }
 
         fft_coarse_.dismiss();
