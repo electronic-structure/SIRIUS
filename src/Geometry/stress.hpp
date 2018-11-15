@@ -607,27 +607,34 @@ class Stress {
             int ik = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
 
-            for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-                auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
+            #pragma omp parallel
+            {
+                matrix3d<double> tmp;
+                #pragma omp for schedule(static)
+                for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
+                    auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
 
-                double d{0};
-                for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
-                    for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
-                        double f = kp->band_occupancy(i, ispin);
-                        auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
-                        d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                    double d{0};
+                    for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
+                        for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
+                            double f = kp->band_occupancy(i, ispin);
+                            auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
+                            d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                        }
                     }
-                }
-                d *= kp->weight();
-                if (kp->gkvec().reduced()) {
-                    d *= 2;
-                }
-                for (int mu: {0, 1, 2}) {
-                    for (int nu: {0, 1, 2}) {
-                        stress_kin_(mu, nu) += Gk[mu] * Gk[nu] * d;
+                    d *= kp->weight();
+                    if (kp->gkvec().reduced()) {
+                        d *= 2;
                     }
-                }
-            } // igloc
+                    for (int mu: {0, 1, 2}) {
+                        for (int nu: {0, 1, 2}) {
+                            tmp(mu, nu) += Gk[mu] * Gk[nu] * d;
+                        }
+                    }
+                } // igloc
+                #pragma omp critical
+                stress_kin_ += tmp;
+            }
         } // ikloc
 
         ctx_.comm().allreduce(&stress_kin_(0, 0), 9);

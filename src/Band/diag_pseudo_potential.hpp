@@ -312,34 +312,38 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     kp__->beta_projectors().prepare();
 
+    switch (ctx_.processing_unit()) {
+        case GPU: {
 #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|alloc_pool");
-        auto& mpd = ctx_.mem_pool(memory_t::device);
-        if (!ctx_.control().keep_wf_on_device_) {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                psi.pw_coeffs(ispn).allocate(mpd);
-                psi.pw_coeffs(ispn).copy_to_device(0, num_bands);
+            utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|alloc_pool");
+            auto& mpd = ctx_.mem_pool(memory_t::device);
+            if (!ctx_.control().keep_wf_on_device_) {
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    psi.pw_coeffs(ispn).allocate(mpd);
+                    psi.pw_coeffs(ispn).copy_to_device(0, num_bands);
+                }
             }
-        }
-        for (int i = 0; i < num_sc; i++) {
-            phi.pw_coeffs(i).allocate(mpd);
-            res.pw_coeffs(i).allocate(mpd);
+            for (int i = 0; i < num_sc; i++) {
+                phi.pw_coeffs(i).allocate(mpd);
+                res.pw_coeffs(i).allocate(mpd);
 
-            hphi.pw_coeffs(i).allocate(mpd);
-            sphi.pw_coeffs(i).allocate(mpd);
+                hphi.pw_coeffs(i).allocate(mpd);
+                sphi.pw_coeffs(i).allocate(mpd);
 
-            hpsi.pw_coeffs(i).allocate(mpd);
-            spsi.pw_coeffs(i).allocate(mpd);
-        }
+                hpsi.pw_coeffs(i).allocate(mpd);
+                spsi.pw_coeffs(i).allocate(mpd);
+            }
 
-        if (ctx_.blacs_grid().comm().size() == 1) {
-            evec.allocate(mpd);
-            ovlp.allocate(mpd);
-            hmlt.allocate(mpd);
-        }
-    }
+            if (ctx_.blacs_grid().comm().size() == 1) {
+                evec.allocate(mpd);
+                ovlp.allocate(mpd);
+                hmlt.allocate(mpd);
+            }
 #endif
+            break;
+        }
+        case CPU: break;
+    }
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
@@ -594,16 +598,20 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     //    }
     //}
 
+    switch (ctx_.processing_unit()) {
+        case GPU: {
 #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            psi.pw_coeffs(ispn).copy_to_host(0, num_bands);
-            if (!ctx_.control().keep_wf_on_device_) {
-                psi.pw_coeffs(ispn).deallocate_on_device();
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                psi.pw_coeffs(ispn).copy_to_host(0, num_bands);
+                if (!ctx_.control().keep_wf_on_device_) {
+                    psi.pw_coeffs(ispn).deallocate_on_device();
+                }
             }
-        }
-    }
 #endif
+            break;
+        }
+        case CPU: break;
+    }
 
     //== std::cout << "checking psi" << std::endl;
     //== for (int i = 0; i < ctx_.num_bands(); i++) {
