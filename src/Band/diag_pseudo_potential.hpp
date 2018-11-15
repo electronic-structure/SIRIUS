@@ -314,6 +314,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
 #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
+        utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|alloc_pool");
         auto& mpd = ctx_.mem_pool(memory_t::device);
         if (!ctx_.control().keep_wf_on_device_) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {

@@ -101,7 +101,7 @@ inline void orthogonalize(device_t                     pu__,
             printf("check eigen-values, matrix size : %i\n", n__);
         }
         inner(pu__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
-        
+
         //if (sddk_debug >= 3) {
         //    save_to_hdf5("nxn_overlap.h5", o__, n__);
         //}
@@ -153,7 +153,7 @@ inline void orthogonalize(device_t                     pu__,
     if (o__.comm().size() == 1) {
         bool use_magma{false};
 
-// MAGMA performance for Choleski and inversion is not good enough; use lapack for the moment
+// MAGMA performance for Cholesky and inversion is not good enough; use lapack for the moment
 //#if defined(__GPU) && defined(__MAGMA)
 //        if (pu__ == GPU) {
 //            use_magma = true;
