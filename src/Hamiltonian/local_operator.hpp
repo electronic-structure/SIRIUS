@@ -333,6 +333,16 @@ class Local_operator
         /* spin component to which H is applied */
         auto spins = (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
 
+#ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            for (int ispn: spins) {
+                if (phi__.pw_coeffs(ispn).is_remapped() || fft_coarse_.pu() == CPU) {
+                    phi__.pw_coeffs(ispn).copy_to_host(idx0__, n__);
+                }
+            }
+        }
+#endif
+
         /* remap wave-functions to FFT friendly distribution */
         for (int ispn: spins) {
             phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), n__, idx0__, &mp);

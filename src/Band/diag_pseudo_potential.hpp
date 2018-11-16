@@ -395,6 +395,16 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         for (int ispn = 0; ispn < num_sc; ispn++) {
             phi.copy_from(ctx_.processing_unit(), num_bands, psi, nc_mag ? ispn : ispin_step, 0, ispn, 0);
         }
+        if (ctx_.control().print_checksum_) {
+            for (int ispn = 0; ispn < num_sc; ispn++) {
+                auto cs = psi.checksum_pw(ctx_.processing_unit(), ispn, 0, num_bands);
+                std::stringstream s;
+                s << "input phi" << ispn;
+                if (kp__->comm().rank() == 0) {
+                    utils::print_checksum(s.str(), cs);
+                }
+            }
+        }
 
         /* fisrt phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
          * this is done before the main itertive loop */

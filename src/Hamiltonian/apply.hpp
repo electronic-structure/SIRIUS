@@ -58,16 +58,16 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
     double t1 = -omp_get_wtime();
 
-    /* for the data remapping we need phi on CPU */
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
-            if (phi__.pw_coeffs(ispn).is_remapped() || ctx_.fft_coarse().pu() == CPU) {
-                phi__.pw_coeffs(ispn).copy_to_host(N__, n__);
-            }
-        }
-    }
-    #endif
+//    /* for the data remapping we need phi on CPU */
+//    #ifdef __GPU
+//    if (ctx_.processing_unit() == GPU) {
+//        for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
+//            if (phi__.pw_coeffs(ispn).is_remapped() || ctx_.fft_coarse().pu() == CPU) {
+//                phi__.pw_coeffs(ispn).copy_to_host(N__, n__);
+//            }
+//        }
+//    }
+//    #endif
 
     if (hphi__ != NULL) {
         /* apply local part of Hamiltonian */
