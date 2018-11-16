@@ -283,7 +283,10 @@ class PwCoeffs(CoefficientArray):
         """
         TODO: make an iterator
         """
-        ks, _ = zip(*self._data.keys())
+        if len(self._data.keys()) > 0:
+            ks, _ = zip(*self._data.keys())
+        else:
+            ks = []
         return ks
 
     def by_k(self):
