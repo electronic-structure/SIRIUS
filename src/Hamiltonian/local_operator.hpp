@@ -341,14 +341,28 @@ class Local_operator
                if it is used for FFTs */
             switch (fft_coarse_.pu()) {
                 case GPU: {
-                    phi[ispn] = mdarray<double_complex, 2>(phi__.pw_coeffs(ispn).extra().at<CPU>(), mpd,
-                                                           phi__.pw_coeffs(ispn).extra().size(0),
-                                                           phi__.pw_coeffs(ispn).extra().size(1));
+                    if (phi__.pw_coeffs(ispn).is_remapped()) {
+                        phi[ispn] = mdarray<double_complex, 2>(phi__.pw_coeffs(ispn).extra().at<CPU>(), mpd,
+                                                               phi__.pw_coeffs(ispn).extra().size(0),
+                                                               phi__.pw_coeffs(ispn).extra().size(1));
+                    } else {
+                        phi[ispn] = mdarray<double_complex, 2>(phi__.pw_coeffs(ispn).extra().at<CPU>(),
+                                                               phi__.pw_coeffs(ispn).extra().at<GPU>(),
+                                                               phi__.pw_coeffs(ispn).extra().size(0),
+                                                               phi__.pw_coeffs(ispn).extra().size(1));
+                    }
                     /* copy remapped wave-functions to GPU; FFT driver will start from a device pointer */
                     phi[ispn].copy<memory_t::host, memory_t::device>();
-                    hphi[ispn] = mdarray<double_complex, 2>(hphi__.pw_coeffs(ispn).extra().at<CPU>(), mpd,
-                                                            hphi__.pw_coeffs(ispn).extra().size(0),
-                                                            hphi__.pw_coeffs(ispn).extra().size(1));
+                    if (hphi__.pw_coeffs(ispn).is_remapped()) {
+                        hphi[ispn] = mdarray<double_complex, 2>(hphi__.pw_coeffs(ispn).extra().at<CPU>(), mpd,
+                                                                hphi__.pw_coeffs(ispn).extra().size(0),
+                                                                hphi__.pw_coeffs(ispn).extra().size(1));
+                    } else {
+                        hphi[ispn] = mdarray<double_complex, 2>(hphi__.pw_coeffs(ispn).extra().at<CPU>(),
+                                                                hphi__.pw_coeffs(ispn).extra().at<GPU>(),
+                                                                hphi__.pw_coeffs(ispn).extra().size(0),
+                                                                hphi__.pw_coeffs(ispn).extra().size(1));
+                    }
                     hphi[ispn].zero<memory_t::host | memory_t::device>();
                     break;
                 }

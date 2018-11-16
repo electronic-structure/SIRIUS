@@ -91,8 +91,10 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
 
     int num_phi_tot = (ctx_.num_mag_dims() == 3) ? num_phi * 2 : num_phi;
 
+    auto& mp = ctx_.mem_pool(memory_t::host);
+
     /* initial basis functions */
-    Wave_functions phi(kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions phi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
         phi.pw_coeffs(ispn).prime().zero();
     }
@@ -172,19 +174,20 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     H__.local_op().prepare(kp__->gkvec_partition());
 
     /* allocate wave-functions */
-    Wave_functions hphi(kp__->gkvec_partition(), num_phi_tot, num_sc);
-    Wave_functions ophi(kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions ophi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
     /* temporary wave-functions required as a storage during orthogonalization */
     Wave_functions wf_tmp(kp__->gkvec_partition(), num_phi_tot, num_sc);
 
-    int bs        = ctx_.cyclic_block_size();
+    int bs = ctx_.cyclic_block_size();
+
     auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
 
     auto gen_solver = Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
 
-    dmatrix<T> hmlt(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<T> ovlp(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<T> evec(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
+    dmatrix<T> hmlt(ctx_.mem_pool(mem_type), num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp(ctx_.mem_pool(mem_type), num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> evec(ctx_.mem_pool(mem_type), num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> hmlt_old;
 
     std::vector<double> eval(num_bands);
@@ -195,25 +198,30 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
         MEMORY_USAGE_INFO();
     }
 
+    switch (ctx_.processing_unit()) {
+        case GPU: {
 #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        if (!ctx_.control().keep_wf_on_device_) {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                kp__->spinor_wave_functions().pw_coeffs(ispn).allocate_on_device();
+            auto& mpd = ctx_.mem_pool(memory_t::device);
+            if (!ctx_.control().keep_wf_on_device_) {
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    kp__->spinor_wave_functions().pw_coeffs(ispn).allocate(mpd);
+                }
             }
-        }
-        for (int ispn = 0; ispn < num_sc; ispn++) {
-            phi.pw_coeffs(ispn).allocate_on_device();
-            phi.pw_coeffs(ispn).copy_to_device(0, num_phi_tot);
-            hphi.pw_coeffs(ispn).allocate_on_device();
-            ophi.pw_coeffs(ispn).allocate_on_device();
-            wf_tmp.pw_coeffs(ispn).allocate_on_device();
-        }
-        evec.allocate(memory_t::device);
-        hmlt.allocate(memory_t::device);
-        ovlp.allocate(memory_t::device);
-    }
+            for (int ispn = 0; ispn < num_sc; ispn++) {
+                phi.pw_coeffs(ispn).allocate(mpd);
+                phi.pw_coeffs(ispn).copy_to_device(0, num_phi_tot);
+                hphi.pw_coeffs(ispn).allocate(mpd);
+                ophi.pw_coeffs(ispn).allocate(mpd);
+                wf_tmp.pw_coeffs(ispn).allocate(mpd);
+            }
+            evec.allocate(mpd);
+            hmlt.allocate(mpd);
+            ovlp.allocate(mpd);
 #endif
+            break;
+        }
+        case CPU: break;
+    }
 
     if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
@@ -233,7 +241,6 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     for (int ispn_step = 0; ispn_step < ctx_.num_spin_dims(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         H__.apply_h_s<T>(kp__, (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, 0, num_phi_tot, phi, &hphi, &ophi);
-
 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
@@ -320,16 +327,20 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
         }
     }
 
+    switch (ctx_.processing_unit()) {
+        case GPU: {
 #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            kp__->spinor_wave_functions().pw_coeffs(ispn).copy_to_host(0, num_bands);
-            if (!ctx_.control().keep_wf_on_device_) {
-                kp__->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                kp__->spinor_wave_functions().pw_coeffs(ispn).copy_to_host(0, num_bands);
+                if (!ctx_.control().keep_wf_on_device_) {
+                    kp__->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+                }
             }
-        }
-    }
 #endif
+            break;
+        }
+        case CPU: break;
+    }
 
     kp__->beta_projectors().dismiss();
     ctx_.fft_coarse().dismiss();

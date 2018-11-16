@@ -77,7 +77,6 @@ inline void Density::generate_valence(K_point_set const& ks__)
             }
 #endif
             /* swap wave functions for the FFT transformation */
-            //kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(ctx_.processing_unit(), kp->gkvec().partition().gvec_fft_slab(), nbnd);
             kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(CPU, nbnd, 0, &ctx_.mem_pool(memory_t::host));
         }
 

@@ -129,8 +129,8 @@ class matrix_storage<T, matrix_storage_t::slab>
      *  The extra storage is always created in the CPU memory. If the data distribution doesn't 
      *  change (no swapping between comm_col ranks is performed) – then the extra storage will mirror 
      *  the prime storage (both on CPU and GPU) irrespective of the target processing unit. If
-     *  data remapping is necessary and target processing unit is GPU then the extra storage will be 
-     *  allocated on the GPU as well.
+     *  data remapping is necessary extra storage is allocated only in the host memory because MPI is done using the
+     *  host pointers.
      */
     inline void set_num_extra(int n__, int idx0__, memory_pool* mp__)
     {
@@ -170,6 +170,7 @@ class matrix_storage<T, matrix_storage_t::slab>
             }
             ptr = extra_buf_.template at<CPU>();
         }
+        /* create the extra storage */
         extra_ = mdarray<T, 2>(ptr, ptr_d, gvp_->gvec_count_fft(), ncol, "matrix_storage.extra_");
     }
 

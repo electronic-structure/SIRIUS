@@ -1224,6 +1224,38 @@ inline double check_identity(dmatrix<T>& mtrx__, int n__)
     return max_diff;
 }
 
+namespace experimental {
+class linalg2
+{
+  private:
+    linalg_t la_;
+  public:
+    linalg2(linalg_t la__)
+        : la_(la__)
+    {
+    }
+
+    template <typename T>
+    inline void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, T const* A, ftn_int lda,
+                     T const* B, ftn_int ldb, T beta, T* C, ftn_int ldc) const;
+};
+template <>
+inline void linalg2::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double alpha,
+                                      ftn_double const* A, ftn_int lda, ftn_double const* B, ftn_int ldb,
+                                      ftn_double beta, ftn_double* C, ftn_int ldc) const
+{
+    switch (la_) {
+        case linalg_t::blas: {
+            break;
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+        }
+    }
+}
+
+}
+
 } // namespace sddk
 
 #endif // __LINALG_HPP__
