@@ -32,6 +32,7 @@
 #ifdef __GPU
 #include "GPU/cuda.hpp"
 #endif
+#include "utils/timer.hpp"
 
 namespace sddk {
 
@@ -324,6 +325,8 @@ class memory_pool
     template <typename T>
     T* allocate(size_t num_elements__)
     {
+        utils::timer t0("sddk::memory_pool::allocate");
+
         /* size of the memory block in bytes */
         size_t size = num_elements__ * sizeof(T);
 
@@ -360,6 +363,8 @@ class memory_pool
     /// Delete a pointer and add its memory back to the pool.
     void free(void* ptr__)
     {
+        utils::timer t0("sddk::memory_pool::free");
+
         uint8_t* ptr = reinterpret_cast<uint8_t*>(ptr__);
         auto& msb = map_ptr_.at(ptr);
         msb.first->free_subblock(ptr, msb.second);

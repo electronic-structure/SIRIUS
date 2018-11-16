@@ -62,12 +62,12 @@ class dmatrix : public matrix<T>
 
     void init()
     {
-        #ifdef __SCALAPACK
+#ifdef __SCALAPACK
         if (blacs_grid_ != nullptr) {
             linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0, blacs_grid_->context(),
                                   spl_row_.local_size());
         }
-        #endif
+#endif
     }
 
     /* forbid copy constructor */
@@ -112,7 +112,6 @@ class dmatrix : public matrix<T>
         , spl_row_(num_rows_, 1, 0, bs_row_)
         , spl_col_(num_cols_, 1, 0, bs_col_)
     {
-        init();
     }
 
     dmatrix(T* ptr__,
@@ -122,6 +121,26 @@ class dmatrix : public matrix<T>
             int bs_row__,
             int bs_col__)
         : matrix<T>(ptr__,
+                    splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
+                    splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size())
+        , num_rows_(num_rows__)
+        , num_cols_(num_cols__)
+        , bs_row_(bs_row__)
+        , bs_col_(bs_col__)
+        , blacs_grid_(&blacs_grid__)
+        , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
+        , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
+    {
+        init();
+    }
+
+    dmatrix(memory_pool& mp__,
+            int num_rows__,
+            int num_cols__,
+            BLACS_grid const& blacs_grid__,
+            int bs_row__,
+            int bs_col__)
+        : matrix<T>(mp__,
                     splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
                     splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size())
         , num_rows_(num_rows__)
@@ -162,21 +181,25 @@ class dmatrix : public matrix<T>
         return -1;
     }
 
+    /// Return number of rows in the global matrix.
     inline int num_rows() const
     {
         return num_rows_;
     }
 
+    /// Return local number of rows for this MPI rank.
     inline int num_rows_local() const
     {
         return spl_row_.local_size();
     }
 
+    /// Return local number of rows for a given MPI rank.
     inline int num_rows_local(int rank) const
     {
         return spl_row_.local_size(rank);
     }
 
+    /// Return global row index in the range [0, num_rows) by the local index in the range [0, num_rows_local).
     inline int irow(int irow_loc) const
     {
         return spl_row_[irow_loc];

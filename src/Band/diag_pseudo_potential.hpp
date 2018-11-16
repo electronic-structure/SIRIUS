@@ -294,21 +294,19 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     /* MAGMA library requires a pinned memory allocation; however the matrices are relatively small and the
        effect of pinned memory is canceled by the expensive pinned memory allocation; the lines below
        are commented during the debug of performance on CUDA9.1 and MAGMA-2.4 */
-    //if (ctx_.processing_unit() == GPU && 
+    if (ctx_.processing_unit() == GPU && ctx_.std_evp_solver_type() == ev_solver_t::magma) {
     //    (ctx_.std_evp_solver_type() == ev_solver_t::magma || ctx_.blacs_grid().comm().size() == 1)) {
-    //    mem_type = memory_t::host_pinned;
-    //}
+        mem_type = memory_t::host_pinned;
+    }
     // TODO: add a control variable to switch between MAGMA and Lapack depending, for example, on the matrix size
-
-    // TODO: add memory pool to dmatrix class
 
     const int bs = ctx_.cyclic_block_size();
 
-    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<T> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt(ctx_.mem_pool(mem_type), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp(ctx_.mem_pool(mem_type), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> evec(ctx_.mem_pool(mem_type), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt_old(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp_old(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 
     kp__->beta_projectors().prepare();
 

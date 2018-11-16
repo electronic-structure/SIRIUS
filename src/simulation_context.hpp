@@ -544,11 +544,22 @@ class Simulation_context : public Simulation_parameters
 
         if (!full_potential()) {
             augmentation_op_.clear();
+            memory_pool* mp{nullptr};
+            switch (processing_unit()) {
+                case CPU: {
+                    mp = &mem_pool(memory_t::host);
+                    break;
+                }
+                case GPU: {
+                    mp = &mem_pool(memory_t::host_pinned);
+                    break;
+                }
+            }
             /* create augmentation operator Q_{xi,xi'}(G) here */
             for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
                 augmentation_op_.push_back(
                     std::move(Augmentation_operator(unit_cell().atom_type(iat), gvec(), comm())));
-                augmentation_op_.back().generate_pw_coeffs(aug_ri());
+                augmentation_op_.back().generate_pw_coeffs(aug_ri(), *mp);
             }
         }
     }
