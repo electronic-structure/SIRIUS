@@ -124,14 +124,11 @@ def _stiefel_transport_operators(Y, X, tau):
 
     # compute eigenvalues of exp_mat, which is skew-Hermitian
     w, V = np.linalg.eigh(1j * exp_mat)
-    assert ((~np.isclose(np.diff(w), 0, atol=1e-12)).all())
     w = -1j * np.real(w)
     # w must be purely imaginary
     D = np.diag(np.exp(tau * w))
     # assert(np.isclose(V.H@V, np.eye(2*n, 2*n), atol=1e-8).all())
     expm = V @ D @ V.H
-
-    XQ = np.hstack((X, Q))
 
     # U = XQ @ expm @ XQ.H
     MN = expm @ np.eye(2 * n, n)
