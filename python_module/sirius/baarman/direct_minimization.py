@@ -56,13 +56,13 @@ def _occupancy_admissible_ds(y, fn, mag):
     else:
         fmax = 2
 
-    d1 = np.ma.masked_array(
-        -fn / y, mask=np.logical_or(y >= 0,
-                                    np.abs(fn) < 1e-10)
+    d1 = -fn / np.ma.masked_array(
+        y, mask=np.logical_or(y >= 0,
+                              np.abs(fn) < 1e-10)
         # mask=y>=0
     )
-    d2 = np.ma.masked_array(
-        (fmax - fn) / y,
+    d2 = (fmax - fn) / np.ma.masked_array(
+        y,
         mask=np.logical_or(y <= 0,
                            np.abs(fmax - fn) < 1e-10)
         # mask = y <=0
@@ -91,12 +91,12 @@ def occupancy_admissible_ds(y, fn, mag=False):
 
     if isinstance(fn, CoefficientArray):
         lmin = reduce(
-            min, [_occupancy_admissible_ds(y[k], fn[k], mag) for k in y.keys()])
+            min,
+            [_occupancy_admissible_ds(y[k], fn[k], mag) for k in y.keys()])
         loc = np.array(lmin, dtype=np.float64)
         rcvBuf = np.array(0.0, dtype=np.float64)
 
-        MPI.COMM_WORLD.Allreduce([loc, MPI.DOUBLE],
-                                 [rcvBuf, MPI.DOUBLE],
+        MPI.COMM_WORLD.Allreduce([loc, MPI.DOUBLE], [rcvBuf, MPI.DOUBLE],
                                  op=MPI.MIN)
         return np.asscalar(rcvBuf)
     else:
@@ -178,8 +178,7 @@ class FreeEnergy:
 
         loc = np.array(entropy_loc, dtype=np.float64)
         entropy = np.array(0.0, dtype=np.float64)
-        MPI.COMM_WORLD.Allreduce([loc, MPI.DOUBLE],
-                                 [entropy, MPI.DOUBLE],
+        MPI.COMM_WORLD.Allreduce([loc, MPI.DOUBLE], [entropy, MPI.DOUBLE],
                                  op=MPI.SUM)
 
         return E - np.asscalar(entropy)
