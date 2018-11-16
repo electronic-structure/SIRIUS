@@ -398,7 +398,7 @@ class Local_operator
         mdarray<double*, 1> vptr(4, vptr_mem);
         vptr.zero();
         switch (fft_coarse_.pu()) {
-            case device::GPU: {
+            case device_t::GPU: {
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     vptr[j] = veff_vec_[j].f_rg().at<GPU>();
                 }
