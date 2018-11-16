@@ -237,6 +237,16 @@ struct memory_block_descriptor
             /* check if we can attach released subblock after this subblock */
             if (it->first + it->second == offset) {
                 it->second += size__;
+                /* now check if we can attach this subblock to the top of the next one */
+                auto it1 = it;
+                it1++;
+                if (it1 != free_subblocks_.end()) {
+                    if (it->first + it->second == it1->first) {
+                        /* merge second block into first and erase it */
+                        it->second += it1->second;
+                        free_subblocks_.erase(it1);
+                    }
+                }
                 check_free_subblocks();
                 return;
             }
@@ -439,6 +449,24 @@ class memory_pool
         size_t s{0};
         for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
             s += it->size_;
+        }
+        return s;
+    }
+
+    size_t free_size() const
+    {
+        size_t s{0};
+        for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
+            s += it->get_free_size();
+        }
+        return s;
+    }
+
+    size_t num_blocks() const
+    {
+        size_t s{0};
+        for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
+            s += it->free_subblocks_.size();
         }
         return s;
     }

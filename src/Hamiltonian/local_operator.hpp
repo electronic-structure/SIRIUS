@@ -333,23 +333,28 @@ class Local_operator
         /* spin component to which H is applied */
         auto spins = (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
 
-#ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            for (int ispn: spins) {
-                if (phi__.pw_coeffs(ispn).is_remapped() || fft_coarse_.pu() == CPU) {
-                    phi__.pw_coeffs(ispn).copy_to_host(idx0__, n__);
-                }
-            }
-        }
-#endif
         /* remap wave-functions to FFT friendly distribution */
         for (int ispn: spins) {
+            switch (ctx_.processing_unit()) {
+                case device_t::GPU: {
+                    /* for the GPU device the default location of wave functions is on GPU;
+                       if the wave functions are remapped or the FFT driver starts from the host memory pointer
+                       we have to copy the wave functions to host memory */
+                    if (phi__.pw_coeffs(ispn).is_remapped() || fft_coarse_.pu() == device_t::CPU) {
+#ifdef __GPU
+                        phi__.pw_coeffs(ispn).copy_to_host(idx0__, n__);
+#endif
+                    }
+                    break;
+                }
+                case device_t::CPU: break;
+            }
             phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), n__, idx0__, &mp);
             hphi__.pw_coeffs(ispn).set_num_extra(n__, idx0__, &mp);
             /* in the current implementation FFT is done sequentially, thus the wave functions have to be on GPU
                if it is used for FFTs */
             switch (fft_coarse_.pu()) {
-                case GPU: {
+                case device_t::GPU: {
                     if (phi__.pw_coeffs(ispn).is_remapped()) {
                         phi[ispn] = mdarray<double_complex, 2>(phi__.pw_coeffs(ispn).extra().at<CPU>(), mpd,
                                                                phi__.pw_coeffs(ispn).extra().size(0),
@@ -375,7 +380,7 @@ class Local_operator
                     hphi[ispn].zero<memory_t::host | memory_t::device>();
                     break;
                 }
-                case CPU: {
+                case device_t::CPU: {
                     phi[ispn] = mdarray<double_complex, 2>(phi__.pw_coeffs(ispn).extra().at<CPU>(),
                                                            phi__.pw_coeffs(ispn).extra().size(0),
                                                            phi__.pw_coeffs(ispn).extra().size(1));
@@ -393,21 +398,21 @@ class Local_operator
         mdarray<double*, 1> vptr(4, vptr_mem);
         vptr.zero();
         switch (fft_coarse_.pu()) {
-            case GPU: {
+            case device::GPU: {
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     vptr[j] = veff_vec_[j].f_rg().at<GPU>();
                 }
                 vptr.copy<memory_t::host, memory_t::device>();
                 break;
             }
-            case CPU: break;
+            case device_t::CPU: break;
         }
 #endif
         /* transform one or two wave-functions to real space; the result of
          * transformation is stored in the FFT buffer */
         auto phi_to_r = [&](int i, int ispn, bool gamma = false) {
             switch (fft_coarse_.pu()) {
-                case CPU: {
+                case device_t::CPU: {
                     if (gamma) {
                         fft_coarse_.transform<1, memory_t::host>(phi[ispn].at<CPU>(0, 2 * i),
                                                                  phi[ispn].at<CPU>(0, 2 * i + 1));
@@ -417,7 +422,7 @@ class Local_operator
                     }
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
                     /* parallel FFT starting from device pointer is not implemented */
                     assert(fft_coarse_.comm().size() == 1);
                     if (gamma) { /* warning: GPU pointer works only in case of serial FFT */
@@ -434,7 +439,7 @@ class Local_operator
         /* multiply by effective potential */
         auto mul_by_veff = [&](mdarray<double_complex, 1>& buf, int ispn_block) {
             switch (fft_coarse_.pu()) {
-                case CPU: {
+                case device_t::CPU: {
                     if (ispn_block < 2) {
                         #pragma omp parallel for schedule(static)
                         for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
@@ -451,7 +456,7 @@ class Local_operator
                     }
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
 #ifdef __GPU
                     mul_by_veff_gpu(ispn_block, fft_coarse_.local_size(), vptr.at<GPU>(), buf.at<GPU>());
 #endif
@@ -463,7 +468,7 @@ class Local_operator
         /* transform one or two functions to PW domain */
         auto vphi_to_G = [&](bool gamma = false) {
             switch (fft_coarse_.pu()) {
-                case CPU: {
+                case device_t::CPU: {
                     if (gamma) {
                         fft_coarse_.transform<-1, memory_t::host>(vphi1_.at<CPU>(), vphi2_.at<CPU>());
                     } else {
@@ -471,7 +476,7 @@ class Local_operator
                     }
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
                     if (gamma) {
                         fft_coarse_.transform<-1, memory_t::device>(vphi1_.at<GPU>(), vphi2_.at<GPU>());
                     } else {
@@ -493,7 +498,7 @@ class Local_operator
             int ekin = (ispn_block & 2) ? 0 : 1;
 
             switch (fft_coarse_.pu()) {
-                case CPU: {
+                case device_t::CPU: {
                     /* CPU case */
                     if (gamma) { /* update two wave functions */
                         if (ekin) {
@@ -524,7 +529,7 @@ class Local_operator
                     }
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
 #ifdef __GPU
                     double alpha = static_cast<double>(ekin);
                     if (gamma) {

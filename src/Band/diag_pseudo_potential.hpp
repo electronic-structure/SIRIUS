@@ -230,9 +230,9 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
-        printf("pool size of memory_t::host:        %li (MB)", ctx_.mem_pool(memory_t::host).total_size() >> 20);
-        printf("pool size of memory_t::host_pinned: %li (MB)", ctx_.mem_pool(memory_t::host_pinned).total_size() >> 20);
-        printf("pool size of memory_t::device:      %li (MB)", ctx_.mem_pool(memory_t::device).total_size() >> 20);
+        //printf("pool size of memory_t::host:        %li (MB)\n", ctx_.mem_pool(memory_t::host).total_size() >> 20);
+        //printf("pool size of memory_t::host_pinned: %li (MB)\n", ctx_.mem_pool(memory_t::host_pinned).total_size() >> 20);
+        //printf("pool size of memory_t::device:      %li (MB)\n", ctx_.mem_pool(memory_t::device).total_size() >> 20);
     }
 
     auto& itso = ctx_.iterative_solver_input();
