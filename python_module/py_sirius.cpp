@@ -154,9 +154,11 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Parameters_input>(m, "Parameters_input")
         .def(py::init<>())
-        .def_readwrite("potential_tol_", &Parameters_input::potential_tol_)
-        .def_readwrite("energy_tol_", &Parameters_input::energy_tol_)
-        .def_readwrite("num_dft_iter_", &Parameters_input::num_dft_iter_);
+        .def_readonly("potential_tol", &Parameters_input::potential_tol_)
+        .def_readonly("energy_tol", &Parameters_input::energy_tol_)
+        .def_readonly("num_dft_iter", &Parameters_input::num_dft_iter_)
+        .def_readonly("shiftk", &Parameters_input::shiftk_)
+        .def_readonly("ngridk", &Parameters_input::ngridk_);
 
     py::class_<Communicator>(m, "Communicator");
 
