@@ -342,7 +342,6 @@ class Local_operator
             }
         }
 #endif
-
         /* remap wave-functions to FFT friendly distribution */
         for (int ispn: spins) {
             phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), n__, idx0__, &mp);
@@ -355,14 +354,14 @@ class Local_operator
                         phi[ispn] = mdarray<double_complex, 2>(phi__.pw_coeffs(ispn).extra().at<CPU>(), mpd,
                                                                phi__.pw_coeffs(ispn).extra().size(0),
                                                                phi__.pw_coeffs(ispn).extra().size(1));
+                        /* copy remapped wave-functions to GPU; FFT driver will start from a device pointer */
+                        phi[ispn].copy<memory_t::host, memory_t::device>();
                     } else {
                         phi[ispn] = mdarray<double_complex, 2>(phi__.pw_coeffs(ispn).extra().at<CPU>(),
                                                                phi__.pw_coeffs(ispn).extra().at<GPU>(),
                                                                phi__.pw_coeffs(ispn).extra().size(0),
                                                                phi__.pw_coeffs(ispn).extra().size(1));
                     }
-                    /* copy remapped wave-functions to GPU; FFT driver will start from a device pointer */
-                    phi[ispn].copy<memory_t::host, memory_t::device>();
                     if (hphi__.pw_coeffs(ispn).is_remapped()) {
                         hphi[ispn] = mdarray<double_complex, 2>(hphi__.pw_coeffs(ispn).extra().at<CPU>(), mpd,
                                                                 hphi__.pw_coeffs(ispn).extra().size(0),
