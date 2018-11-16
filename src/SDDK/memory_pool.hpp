@@ -432,6 +432,16 @@ class memory_pool
     {
         return M_;
     }
+
+    /// Return the total capacity of the memory pool.
+    size_t total_size() const
+    {
+        size_t s{0};
+        for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
+            s += it->size_;
+        }
+        return s;
+    }
 };
 
 }
