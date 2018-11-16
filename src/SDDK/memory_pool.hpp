@@ -267,8 +267,10 @@ struct memory_block_descriptor
 using memory_subblock_descriptor = std::pair<std::list<memory_block_descriptor>::iterator, size_t>;
 
 /// Memory pool.
-/** This class stores list of allocated memory blocks. When block is deallocated it is merged with previous or next
- *  free block. */
+/** This class stores list of allocated memory blocks. Each of the blocks can be devided into subblocks. When subblock
+ *  is deallocated it is merged with previous or next free subblock in the memory block. If this was the last subblock 
+ *  in the block of memory, the (now) free block of memory is merged with the neighbours (if any are available).
+ */
 class memory_pool
 {
   private:
@@ -312,6 +314,7 @@ class memory_pool
 
   public:
 
+    /// Alias for the unique pointer that is managed by the memory pool.
     template <typename T>
     using unique_ptr = std::unique_ptr<T, deleter>;
 
@@ -342,7 +345,7 @@ class memory_pool
                 break;
             }
         }
-        /* if memory block was not found, add another one */
+        /* if memory chunk was not found in the list of available blocks, add a new memory block with enough capacity */
         if (!ptr) {
             memory_blocks_.push_back(memory_block_descriptor(size, M_));
             it = memory_blocks_.end();
@@ -403,6 +406,7 @@ class memory_pool
     }
 
     /// Free all the allocated blocks.
+    /** All pointers and smart pointers, allocated by the pool are invalidated. */
     void reset()
     {
         for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {

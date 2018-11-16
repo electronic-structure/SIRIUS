@@ -77,8 +77,7 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
 }
 
 template <typename T>
-inline void
-Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
+inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
@@ -151,11 +150,9 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     for (int i = 0; i < 4096; i++) {
         tmp[i] = utils::random<double>();
     }
-    int igk0 = (kp__->comm().rank() == 0) ? 1 : 0;
-
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < num_phi; i++) {
-        for (int igk_loc = igk0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+        for (int igk_loc = kp__->gkvec().skip_g0(); igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->idxgk(igk_loc);
             phi.pw_coeffs(0).prime(igk_loc, i) += tmp[igk & 0xFFF] * 1e-5;
@@ -163,7 +160,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     }
 
     if (ctx_.num_mag_dims() == 3) {
-        phi.copy_from(CPU, num_phi, phi, 0, 0, 1, num_phi);
+        phi.copy_from(device_t::CPU, num_phi, phi, 0, 0, 1, num_phi);
     }
     t1.stop();
 
@@ -177,7 +174,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
     Wave_functions ophi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
     /* temporary wave-functions required as a storage during orthogonalization */
-    Wave_functions wf_tmp(kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions wf_tmp(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
 
     int bs = ctx_.cyclic_block_size();
 
@@ -199,7 +196,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     }
 
     switch (ctx_.processing_unit()) {
-        case GPU: {
+        case device_t::GPU: {
 #ifdef __GPU
             auto& mpd = ctx_.mem_pool(memory_t::device);
             if (!ctx_.control().keep_wf_on_device_) {
@@ -220,7 +217,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
 #endif
             break;
         }
-        case CPU: break;
+        case device_t::CPU: break;
     }
 
     if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
@@ -328,7 +325,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     }
 
     switch (ctx_.processing_unit()) {
-        case GPU: {
+        case device_t::GPU: {
 #ifdef __GPU
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 kp__->spinor_wave_functions().pw_coeffs(ispn).copy_to_host(0, num_bands);
@@ -339,7 +336,17 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
 #endif
             break;
         }
-        case CPU: break;
+        case device_t::CPU: break;
+    }
+    if (ctx_.control().print_checksum_) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            auto cs = kp__->spinor_wave_functions().checksum_pw(device_t::CPU, ispn, 0, num_bands);
+            std::stringstream s;
+            s << "initial_spinor_wave_functions_" << ispn;
+            if (kp__->comm().rank() == 0) {
+                utils::print_checksum(s.str(), cs);
+            }
+        }
     }
 
     kp__->beta_projectors().dismiss();

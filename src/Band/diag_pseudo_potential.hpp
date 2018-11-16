@@ -366,6 +366,17 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     auto std_solver = ctx_.std_evp_solver<T>();
     auto gen_solver = ctx_.gen_evp_solver<T>();
 
+    if (ctx_.control().print_checksum_) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            auto cs = psi.checksum_pw(ctx_.processing_unit(), ispn, 0, num_bands);
+            std::stringstream s;
+            s << "input spinor_wave_functions_" << ispn;
+            if (kp__->comm().rank() == 0) {
+                utils::print_checksum(s.str(), cs);
+            }
+        }
+    }
+
     int niter{0};
 
     utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
