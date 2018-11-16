@@ -427,6 +427,8 @@ PYBIND11_MODULE(py_sirius, m)
             return (i >= 0 && i < ks.spl_num_kpoints().local_size());
         })
         .def("__getitem__", [](K_point_set& ks, int i) -> K_point& {
+            if (i >= ks.spl_num_kpoints().local_size())
+                throw pybind11::index_error("out of bounds");
             return *ks[ks.spl_num_kpoints(i)];
         }, py::return_value_policy::reference_internal)
         .def("__len__", [](K_point_set const& ks) {
