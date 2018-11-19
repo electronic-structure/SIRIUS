@@ -1261,13 +1261,16 @@ inline void linalg2::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int
         case linalg_t::cublas: {
 #ifdef __GPU
             cublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+#else
+            throw std::runtime_error("not compiled with cublas");
 #endif
             break;
-
         }
         case linalg_t::cublasxt: {
 #ifdef __GPU
             cublas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+#else
+            throw std::runtime_error("not compiled with cublasxt");
 #endif
             break;
 
@@ -1303,6 +1306,8 @@ inline void linalg2::gemm<ftn_double_complex>(int transa, int transb, ftn_int m,
             cublas::zgemm(transa, transb, m, n, k, reinterpret_cast<cuDoubleComplex const*>(alpha),
                           reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex const*>(B), 
                           ldb, reinterpret_cast<cuDoubleComplex const*>(beta), reinterpret_cast<cuDoubleComplex*>(C), ldc, stream_id);
+#else
+            throw std::runtime_error("not compiled with cublas");
 #endif
             break;
 
@@ -1314,6 +1319,8 @@ inline void linalg2::gemm<ftn_double_complex>(int transa, int transb, ftn_int m,
                               reinterpret_cast<cuDoubleComplex const*>(B), ldb,
                               reinterpret_cast<cuDoubleComplex const*>(beta),
                               reinterpret_cast<cuDoubleComplex*>(C), ldc);
+#else
+            throw std::runtime_error("not compiled with cublasxt");
 #endif
             break;
 

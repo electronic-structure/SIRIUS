@@ -68,9 +68,10 @@ class Non_local_functor
 
             for(int ispn = 0; ispn < ctx_.num_spins(); ispn++){
                 int nbnd = kpoint__.num_occupied_bands(ispn);
-                auto beta_phi_tmp = bp.inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
-                beta_phi_chunks[ispn] = matrix<T>(beta_phi_tmp.size(0), beta_phi_tmp.size(1)) ;
-                beta_phi_tmp >> beta_phi_chunks[ispn];
+                //auto beta_phi_tmp = bp.inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
+                //beta_phi_chunks[ispn] = matrix<T>(beta_phi_tmp.size(0), beta_phi_tmp.size(1)) ;
+                //beta_phi_tmp >> beta_phi_chunks[ispn];
+                beta_phi_chunks[ispn] = bp.inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
             }
 
             for (int x = 0; x < N; x++) {

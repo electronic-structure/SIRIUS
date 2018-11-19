@@ -157,29 +157,6 @@ class Beta_projectors_base
         }
     }
 
-    /// A buffer for <beta|phi> product, shared between instances of Beta_projectors_base class.
-    /** Stored as double to handle both gamma- and general k-point cases */
-    static mdarray<double, 1>& beta_phi_shared(size_t size__, memory_t mem_type__)
-    {
-        static mdarray<double, 1> a;
-        /* reallocate buffer */
-        if (a.size() < size__) {
-            a = mdarray<double, 1>(size__, mem_type__, "beta_phi_shared");
-        }
-        return a;
-    }
-
-    /// A buffer for beta projectors for a chunk of atoms.
-    static mdarray<double_complex, 1>& pw_coeffs_a_shared(size_t size__, memory_t mem_type__)
-    {
-        static mdarray<double_complex, 1> a;
-        /* reallocate buffer */
-        if (a.size() < size__) {
-            a = mdarray<double_complex, 1>(size__, mem_type__, "pw_coeffs_a_shared");
-        }
-        return a;
-    }
-
   public:
     Beta_projectors_base(Simulation_context&     ctx__,
                          Gvec const&             gkvec__,
@@ -210,11 +187,6 @@ class Beta_projectors_base
             }
             gkvec_coord_.copy<memory_t::host, memory_t::device>();
         }
-    }
-
-    ~Beta_projectors_base()
-    {
-        beta_phi_shared(0, memory_t::none) = mdarray<double, 1>();
     }
 
     inline int num_gkvec_loc() const
@@ -250,31 +222,29 @@ class Beta_projectors_base
         PROFILE("sirius::Beta_projectors_base::inner");
 
         assert(num_gkvec_loc() == phi__.pw_coeffs(ispn__).num_rows_loc());
-        
+
         int nbeta = chunk(chunk__).num_beta_;
 
         static_assert(std::is_same<T, double_complex>::value || std::is_same<T, double>::value, "wrong type");
 
-        int tsz = std::is_same<T, double_complex>::value ? 2 : 1;
-
-        auto& buf = beta_phi_shared(tsz * nbeta * n__, ctx_.dual_memory_t());
-
         matrix<T> beta_phi;
 
         switch (ctx_.processing_unit()) {
-            case CPU: {
-                beta_phi = matrix<T>(reinterpret_cast<T*>(buf.template at<CPU>()), nbeta, n__);
+            case device_t::CPU: {
+                beta_phi = matrix<T>(ctx_.mem_pool(ctx_.beta_projectors_host_memory_t()), nbeta, n__);
                 break;
             }
-            case GPU: {
-                beta_phi = matrix<T>(reinterpret_cast<T*>(buf.template at<CPU>()), reinterpret_cast<T*>(buf.template at<GPU>()), nbeta, n__);
+            case device_t::GPU: {
+                beta_phi = matrix<T>(ctx_.mem_pool(ctx_.beta_projectors_host_memory_t()),
+                                     ctx_.mem_pool(memory_t::device),
+                                     nbeta, n__);
                 break;
             }
         }
 
         if (std::is_same<T, double_complex>::value) {
             switch (ctx_.processing_unit()) {
-                case CPU: {
+                case device_t::CPU: {
                     /* compute <beta|phi> */
                     linalg<CPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc(),
                                       pw_coeffs_a().template at<CPU>(), num_gkvec_loc(),
@@ -282,7 +252,7 @@ class Beta_projectors_base
                                       reinterpret_cast<double_complex*>(beta_phi.template at<CPU>()), nbeta);
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
                     #ifdef __GPU
                     linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc(),
                                       pw_coeffs_a().template at<GPU>(), num_gkvec_loc(),
@@ -323,7 +293,7 @@ class Beta_projectors_base
                     break;
                 }
                 case GPU: {
-                    #ifdef __GPU
+#ifdef __GPU
                     linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc(),
                                       &a,
                                       reinterpret_cast<double*>(pw_coeffs_a().template at<GPU>()), 2 * num_gkvec_loc(),
@@ -341,14 +311,14 @@ class Beta_projectors_base
                                          reinterpret_cast<double*>(beta_phi.template at<GPU>()), nbeta);
                     }
                     beta_phi.template copy<memory_t::device, memory_t::host>();
-                    #else
+#else
                     TERMINATE_NO_GPU
-                    #endif
+#endif
                     break;
                 }
             }
         }
-        
+
         gkvec_.comm().allreduce(beta_phi.template at<CPU>(), static_cast<int>(beta_phi.size()));
 
         if (ctx_.processing_unit() == GPU) {
@@ -409,16 +379,16 @@ class Beta_projectors_base
     {
         PROFILE("sirius::Beta_projectors_base::prepare");
 
-        auto& buf = pw_coeffs_a_shared(num_gkvec_loc() * max_num_beta(), ctx_.dual_memory_t());
-
         switch (ctx_.processing_unit()) {
             case CPU: {
-                pw_coeffs_a_ = matrix<double_complex>(buf.template at<CPU>(), num_gkvec_loc(), max_num_beta());
+                pw_coeffs_a_ = matrix<double_complex>(ctx_.mem_pool(ctx_.beta_projectors_host_memory_t()),
+                                                      num_gkvec_loc(), max_num_beta());
                 break;
             }
             case GPU: {
-                pw_coeffs_a_ = matrix<double_complex>(buf.template at<CPU>(), buf.template at<GPU>(), num_gkvec_loc(),
-                                                      max_num_beta());
+                pw_coeffs_a_ = matrix<double_complex>(ctx_.mem_pool(ctx_.beta_projectors_host_memory_t()),
+                                                      ctx_.mem_pool(memory_t::device),
+                                                      num_gkvec_loc(), max_num_beta());
                 break;
             }
         }
@@ -440,12 +410,6 @@ class Beta_projectors_base
                 pw_coeffs_t_[i].deallocate(memory_t::device);
             }
         }
-    }
-
-    static void cleanup()
-    {
-        beta_phi_shared(0, memory_t::host | memory_t::device) = mdarray<double, 1>();
-        pw_coeffs_a_shared(0, memory_t::host|memory_t::device) = mdarray<double_complex, 1>();
     }
 
     inline int num_beta_t() const

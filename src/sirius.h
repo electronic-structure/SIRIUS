@@ -119,10 +119,6 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     libsci_acc_finalize();
 #endif
 
-    Beta_projectors_base<1>::cleanup();
-    Beta_projectors_base<3>::cleanup();
-    Beta_projectors_base<9>::cleanup();
-
 #if defined(__GPU)
     if (acc::num_devices()) {
         acc::set_device();

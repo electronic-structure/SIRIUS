@@ -932,12 +932,13 @@ class Force
             mdarray<double, 2> forcehf(3, uc.num_atoms());
 
             forcehf.zero();
-            for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++)
-                {
-                    int ia = uc.spl_num_atoms(ialoc);
-                    auto g = gradient(potential__->hartree_potential_mt(ialoc));
-                    for (int x = 0; x < 3; x++) forcehf(x, ia) = uc.atom(ia).zn() * g[x](0, 0) * y00;
+            for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++) {
+                int ia = uc.spl_num_atoms(ialoc);
+                auto g = gradient(potential__->hartree_potential_mt(ialoc));
+                for (int x = 0; x < 3; x++) {
+                    forcehf(x, ia) = uc.atom(ia).zn() * g[x](0, 0) * y00;
                 }
+            }
             ctx_.comm().allreduce(&forcehf(0, 0), (int)forcehf.size());
 
             if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
@@ -949,12 +950,13 @@ class Force
 
             mdarray<double, 2> forcerho(3, uc.num_atoms());
             forcerho.zero();
-            for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++)
-                {
-                    int ia = uc.spl_num_atoms(ialoc);
-                    auto g = gradient(density__->density_mt(ialoc));
-                    for (int x = 0; x < 3; x++) forcerho(x, ia) = inner(potential__->effective_potential_mt(ialoc), g[x]);
+            for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++) {
+                int ia = uc.spl_num_atoms(ialoc);
+                auto g = gradient(density__->density_mt(ialoc));
+                for (int x = 0; x < 3; x++) {
+                    forcerho(x, ia) = inner(potential__->effective_potential_mt(ialoc), g[x]);
                 }
+            }
             ctx_.comm().allreduce(&forcerho(0, 0), (int)forcerho.size());
 
             if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {

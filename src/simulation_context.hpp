@@ -1061,15 +1061,50 @@ class Simulation_context : public Simulation_parameters
         return theta_[ir__];
     }
 
+    /// Returns a constant reference to the augmentation operator of a given atom type.
     inline Augmentation_operator const& augmentation_op(int iat__) const
     {
         return augmentation_op_[iat__];
     }
 
+    /// Returns a reference to the augmentation operator of a given atom type.
     inline Augmentation_operator& augmentation_op(int iat__)
     {
         return augmentation_op_[iat__];
     }
+
+    /// Type of the host memory for beta-projectors and related arrays.
+    inline memory_t beta_projectors_host_memory_t() const
+    {
+        switch (processing_unit()) {
+            case device_t::CPU: {
+                return memory_t::host;
+            }
+            case device_t::GPU: {
+                return memory_t::host_pinned;
+            }
+        }
+        return memory_t::none; // make compiler happy
+    }
+
+    inline memory_t wave_functions_host_memory_t() const
+    {
+        switch (processing_unit()) {
+            case device_t::CPU: {
+                return memory_t::host;
+            }
+            case device_t::GPU: {
+                return memory_t::host_pinned;
+            }
+        }
+        return memory_t::none; // make compiler happy
+
+    }
+
+    //inline linalg_t blas_linalg_t() const
+    //{
+
+    //}
 };
 
 inline void Simulation_context::initialize()
