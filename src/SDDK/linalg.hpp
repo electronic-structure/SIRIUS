@@ -1300,14 +1300,20 @@ inline void linalg2::gemm<ftn_double_complex>(int transa, int transb, ftn_int m,
         }
         case linalg_t::cublas: {
 #ifdef __GPU
-            cublas::zgemm(transa, transb, m, n, k, const_cast<cuDoubleComplex*>(alpha), A, lda, B, ldb, beta, C, ldc, stream_id);
+            cublas::zgemm(transa, transb, m, n, k, reinterpret_cast<cuDoubleComplex const*>(alpha),
+                          reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex const*>(B), 
+                          ldb, reinterpret_cast<cuDoubleComplex const*>(beta), reinterpret_cast<cuDoubleComplex*>(C), ldc, stream_id);
 #endif
             break;
 
         }
         case linalg_t::cublasxt: {
 #ifdef __GPU
-            cublas::xt::zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+            cublas::xt::zgemm(transa, transb, m, n, k, reinterpret_cast<cuDoubleComplex const*>(alpha),
+                              reinterpret_cast<cuDoubleComplex const*>(A), lda,
+                              reinterpret_cast<cuDoubleComplex const*>(B), ldb,
+                              reinterpret_cast<cuDoubleComplex const*>(beta),
+                              reinterpret_cast<cuDoubleComplex*>(C), ldc);
 #endif
             break;
 
