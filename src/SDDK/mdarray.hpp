@@ -42,6 +42,9 @@
 //       the memory type, i.e. instead of array.at<GPU>() we would write array.at<memory_t::device>()
 //       Later,  move device_t to typedefs.hpp or to a SDDK namespace or to linear algebra and FFT backends.
 
+// TODO: now .at() method is templated over the device type; it would make more sense to template over
+//       the memory type, i.e. instead of array.at<GPU>() we would write array.at<memory_t::device>()
+
 namespace sddk {
 
 //#ifdef __GPU
