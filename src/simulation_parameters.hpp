@@ -495,6 +495,7 @@ class Simulation_parameters
         return parameters_input_.molecule_;
     }
 
+    // TODO: this is horrible, refactor this out
     inline memory_t main_memory_t() const
     {
         if (processing_unit_ == GPU) {
@@ -503,6 +504,7 @@ class Simulation_parameters
         return memory_t::host;
     }
 
+    // TODO: this is horrible, refactor this out
     inline memory_t dual_memory_t() const
     {
         if (processing_unit_ == GPU) {

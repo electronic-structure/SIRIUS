@@ -34,6 +34,8 @@
 #include "GPU/fft_kernels.hpp"
 #endif
 
+// TODO: review the size of cufft_work_buf and fft_buffer_aux
+
 namespace sddk {
 
 /// Implementation of FFT3D.
