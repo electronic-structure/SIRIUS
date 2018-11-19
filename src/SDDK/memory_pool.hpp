@@ -65,6 +65,27 @@ enum class memory_t : unsigned int
     managed     = 0b1000
 };
 
+inline memory_t get_memory_t(std::string name__)
+{
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+
+    static const std::map<std::string, memory_t> map_to_type = {
+        {"none",        memory_t::none},
+        {"host",        memory_t::host},
+        {"host_pinned", memory_t::host_pinned},
+        {"device",      memory_t::device},
+        {"managed",     memory_t::managed},
+    };
+
+    if (map_to_type.count(name__) == 0) {
+        std::stringstream s;
+        s << "wrong label of memory type: " << name__;
+        throw std::runtime_error(s.str());
+    }
+
+    return map_to_type.at(name__);
+}
+
 /// Allocate n elements in a specified memory.
 /** Allocate a memory block of the memory_t type. Return a nullptr if this memory is not available, otherwise
  *  return a pointer to an allocated block. */
