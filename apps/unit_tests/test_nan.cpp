@@ -1,8 +1,7 @@
-#include <sirius.h>
+#include <cmath>
+#include "utils/cmd_args.hpp"
 
 /* test for NaN and IEEE arithmetics */
-
-using namespace sirius;
 
 int run_test(cmd_args& args)
 {
@@ -25,7 +24,6 @@ int main(int argn, char** argv)
         return 0;
     }
 
-    sirius::initialize(true);
     printf("running %-30s : ", argv[0]);
     int result = run_test(args);
     if (result) {
@@ -33,7 +31,6 @@ int main(int argn, char** argv)
     } else {
         printf("\x1b[32m" "OK" "\x1b[0m" "\n");
     }
-    sirius::finalize();
 
     return result;
 }

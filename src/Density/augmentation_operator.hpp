@@ -57,7 +57,7 @@ class Augmentation_operator
     {
     }
 
-    void generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__)
+    void generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__, memory_pool& mp__)
     {
         if (!atom_type_.augment()) {
             return;
@@ -98,7 +98,7 @@ class Augmentation_operator
         int nbf = atom_type_.mt_basis_size();
 
         /* array of plane-wave coefficients */
-        q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, memory_t::host_pinned, "q_pw_");
+        q_pw_ = mdarray<double, 2>(mp__, nbf * (nbf + 1) / 2, 2 * gvec_count, "q_pw_");
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             int    ig = gvec_offset + igloc;
@@ -292,7 +292,8 @@ class Augmentation_operator_gvec_deriv
     void generate_pw_coeffs(Atom_type                   const& atom_type__,
                             Radial_integrals_aug<false> const& ri__,
                             Radial_integrals_aug<true>  const& ri_dq__,
-                            int                                nu__)
+                            int                                nu__,
+                            memory_pool&                       mp__)
     {
         PROFILE("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs");
 
@@ -317,7 +318,7 @@ class Augmentation_operator_gvec_deriv
         int nbf = atom_type__.mt_basis_size();
 
         /* array of plane-wave coefficients */
-        q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, memory_t::host_pinned, "q_pw_dg_");
+        q_pw_ = mdarray<double, 2>(mp__, nbf * (nbf + 1) / 2, 2 * gvec_count, "q_pw_dg_");
         utils::timer t2("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|qpw");
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_count; igloc++) {

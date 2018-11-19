@@ -36,9 +36,14 @@
 #include <initializer_list>
 #include <type_traits>
 #include <functional>
-#ifdef __GPU
-#include "GPU/cuda.hpp"
-#endif
+#include "memory_pool.hpp"
+
+// TODO: now .at() method is templated over the device type; it would make more sense to template over
+//       the memory type, i.e. instead of array.at<GPU>() we would write array.at<memory_t::device>()
+//       Later,  move device_t to typedefs.hpp or to a SDDK namespace or to linear algebra and FFT backends.
+
+// TODO: now .at() method is templated over the device type; it would make more sense to template over
+//       the memory type, i.e. instead of array.at<GPU>() we would write array.at<memory_t::device>()
 
 namespace sddk {
 
@@ -52,21 +57,23 @@ namespace sddk {
 #ifdef NDEBUG
 #define mdarray_assert(condition__)
 #else
-#define mdarray_assert(condition__)                                 \
-    {                                                               \
-        if (!(condition__)) {                                       \
-            printf("Assertion (%s) failed ", #condition__);         \
-            printf("at line %i of file %s\n", __LINE__, __FILE__);  \
-            printf("array label: %s\n", label_.c_str());            \
-            for (int i = 0; i < N; i++)                             \
-                printf("dim[%i].size = %li\n", i, dims_[i].size()); \
-            raise(SIGTERM);                                         \
-            exit(-13);                                              \
-        }                                                           \
-    }
+#define mdarray_assert(condition__)                             \
+{                                                               \
+    if (!(condition__)) {                                       \
+        printf("Assertion (%s) failed ", #condition__);         \
+        printf("at line %i of file %s\n", __LINE__, __FILE__);  \
+        printf("array label: %s\n", label_.c_str());            \
+        for (int i = 0; i < N; i++)                             \
+            printf("dim[%i].size = %li\n", i, dims_[i].size()); \
+        raise(SIGTERM);                                         \
+        exit(-13);                                              \
+    }                                                           \
+}
 #endif
 
+// TODO: change to enum class
 /// Type of the main processing unit.
+/** List the processing units on which the code can run. */
 enum device_t
 {
     /// CPU device.
@@ -76,32 +83,7 @@ enum device_t
     GPU = 1
 };
 
-/// Type of memory.
-/** Various combinations of flags can be used. To check for any host memory (pinned or non-pinned):
-    \code{.cpp}
-    mem_type & memory_t::host == memory_t::host
-    \endcode
-    To check for pinned memory:
-    \code{.cpp}
-    mem_type & memory_t::host_pinned == memory_t::host_pinned
-    \endcode
-    To check for device memory:
-    \code{.cpp}
-    mem_type & memory_t::device == memory_t::device
-    \endcode
-*/
-enum class memory_t : unsigned int
-{
-    /// Nothing.
-    none        = 0b000,
-    /// Host memory.
-    host        = 0b001,
-    /// Pinned host memory. This is host memory + extra bit flag.
-    host_pinned = 0b011,
-    /// Device memory.
-    device      = 0b100
-};
-
+// TODO: remove operator|() and operator&(): their usage is very limited and complicates the code
 inline constexpr memory_t operator&(memory_t a__, memory_t b__) noexcept
 {
     return static_cast<memory_t>(static_cast<unsigned int>(a__) & static_cast<unsigned int>(b__));
@@ -117,6 +99,7 @@ inline constexpr bool on_device(memory_t mem_type__) noexcept
     return (mem_type__ & memory_t::device) == memory_t::device ? true : false;
 }
 
+/// Mapping between a memory type and a device type.
 template <memory_t mem_type>
 struct device;
 
@@ -135,32 +118,26 @@ struct device<memory_t::device> {
     static const device_t type{device_t::GPU};
 };
 
-//template <memory_t mem_type>
-//inline constexpr device_t get_device_t() noexcept;
-//
-//template<>
-//inline constexpr device_t get_device_t<memory_t::host>() noexcept
-//{
-//    return device_t::CPU;
-//}
-//
-//template<>
-//inline constexpr device_t get_device_t<memory_t::host_pinned>() noexcept
-//{
-//    return device_t::CPU;
-//}
-//
-//template<>
-//inline constexpr device_t get_device_t<memory_t::device>() noexcept
-//{
-//    return device_t::GPU;
-//}
+/// Mapping between a device type and a memory type.
+template <device_t dev_type>
+struct memory;
+
+template<>
+struct memory<device_t::CPU> {
+    static const memory_t type{memory_t::host};
+};
+
+template<>
+struct memory<device_t::GPU> {
+    static const memory_t type{memory_t::device};
+};
 
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
 {
   public:
-    typedef int64_t index_type;
+    //typedef int64_t index_type;
+    using index_type = int64_t;
 
   private:
     /// Beginning of index.
@@ -300,37 +277,43 @@ struct mdarray_mem_mgr
     }
 };
 
-/// Base class of multidimensional array.
+/// Multidimensional array with the column-major (Fortran) order.
+/** The implementation supports two memory pointers: one is accessible by CPU and second is accessible by a device. */
 template <typename T, int N>
-class mdarray_base
+class mdarray
 {
   public:
     typedef mdarray_index_descriptor::index_type index_type;
 
-  protected:
+  private:
     /// Optional array label.
     std::string label_;
 
     /// Unique pointer to the allocated memory.
     std::unique_ptr<T[], mdarray_mem_mgr<T>> unique_ptr_{nullptr};
 
+    /// Unique pointer in case of memory pool allocation.
+    memory_pool::unique_ptr<T> unique_pool_ptr_{nullptr};
+
     /// Raw pointer.
     T* raw_ptr_{nullptr};
-
 #ifdef __GPU
     /// Unique pointer to the allocated GPU memory.
     std::unique_ptr<T[], mdarray_mem_mgr<T>> unique_ptr_device_{nullptr};
 
+    /// Unique pointer in case of memory pool allocation.
+    memory_pool::unique_ptr<T> unique_pool_ptr_device_{nullptr};
+
     /// Raw pointer to GPU memory
     T* raw_ptr_device_{nullptr};
 #endif
-
     /// Array dimensions.
     std::array<mdarray_index_descriptor, N> dims_;
 
     /// List of offsets to compute the element location by dimension indices.
     std::array<index_type, N> offsets_;
 
+    /// Initialize the offsets used to compute the index of the elements.
     void init_dimensions(std::array<mdarray_index_descriptor, N> const dims__)
     {
         dims_ = dims__;
@@ -344,74 +327,22 @@ class mdarray_base
         }
     }
 
-  private:
-    inline index_type idx(index_type const i0) const
+    template <typename... Args>
+    inline index_type idx(Args... args) const
     {
-        static_assert(N == 1, "wrong number of dimensions");
-        mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-        size_t i = offsets_[0] + i0;
-        mdarray_assert(i >= 0 && i < size());
-        return i;
-    }
+        static_assert(N == sizeof...(args), "wrong number of dimensions");
+        std::array<index_type, N> i = {args...};
 
-    inline index_type idx(index_type const i0, index_type const i1) const
-    {
-        static_assert(N == 2, "wrong number of dimensions");
-        mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-        mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
-        size_t i = offsets_[0] + i0 + i1 * offsets_[1];
-        mdarray_assert(i >= 0 && i < size());
-        return i;
-    }
+        for (int j = 0; j < N; j++) {
+            mdarray_assert(i[j] >= dims_[j].begin() && i[j] <= dims_[j].end());
+        }
 
-    inline index_type idx(index_type const i0, index_type const i1, index_type const i2) const
-    {
-        static_assert(N == 3, "wrong number of dimensions");
-        mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-        mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
-        mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
-        size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2];
-        mdarray_assert(i >= 0 && i < size());
-        return i;
-    }
-
-    inline index_type idx(index_type const i0, index_type const i1, index_type const i2, index_type const i3) const
-    {
-        static_assert(N == 4, "wrong number of dimensions");
-        mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-        mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
-        mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
-        mdarray_assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
-        size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2] + i3 * offsets_[3];
-        mdarray_assert(i >= 0 && i < size());
-        return i;
-    }
-
-    inline index_type idx(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4) const
-    {
-        static_assert(N == 5, "wrong number of dimensions");
-        mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-        mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
-        mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
-        mdarray_assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
-        mdarray_assert(i4 >= dims_[4].begin() && i4 <= dims_[4].end());
-        size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2] + i3 * offsets_[3] + i4 * offsets_[4];
-        mdarray_assert(i >= 0 && i < size());
-        return i;
-    }
-
-    inline index_type idx(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4, index_type const i5) const
-    {
-        static_assert(N == 6, "wrong number of dimensions");
-        mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
-        mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
-        mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
-        mdarray_assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
-        mdarray_assert(i4 >= dims_[4].begin() && i4 <= dims_[4].end());
-        mdarray_assert(i5 >= dims_[5].begin() && i5 <= dims_[5].end());
-        size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2] + i3 * offsets_[3] + i4 * offsets_[4] + offsets_[5] * i5;
-        mdarray_assert(i >= 0 && i < size());
-        return i;
+        size_t idx = offsets_[0] + i[0];
+        for (int j = 1; j < N; j++) {
+            idx += i[j] * offsets_[j];
+        }
+        mdarray_assert(idx >= 0 && idx < size());
+        return idx;
     }
 
     template <device_t pu>
@@ -457,29 +388,22 @@ class mdarray_base
     }
 
     /// Copy constructor is forbidden
-    mdarray_base(mdarray_base<T, N> const& src) = delete;
+    mdarray(mdarray<T, N> const& src) = delete;
 
     /// Assignment operator is forbidden
-    mdarray_base<T, N>& operator=(mdarray_base<T, N> const& src) = delete;
+    mdarray<T, N>& operator=(mdarray<T, N> const& src) = delete;
 
   public:
-    /// Constructor of an empty array.
-    mdarray_base()
-    {
-    }
-
-    /// Destructor.
-    ~mdarray_base()
-    {
-    }
 
     /// Move constructor
-    mdarray_base(mdarray_base<T, N>&& src)
+    mdarray(mdarray<T, N>&& src)
         : label_(src.label_)
         , unique_ptr_(std::move(src.unique_ptr_))
+        , unique_pool_ptr_(std::move(src.unique_pool_ptr_))
         , raw_ptr_(src.raw_ptr_)
 #ifdef __GPU
         , unique_ptr_device_(std::move(src.unique_ptr_device_))
+        , unique_pool_ptr_device_(std::move(src.unique_pool_ptr_device_))
         , raw_ptr_device_(src.raw_ptr_device_)
 #endif
     {
@@ -494,17 +418,19 @@ class mdarray_base
     }
 
     /// Move assigment operator
-    inline mdarray_base<T, N>& operator=(mdarray_base<T, N>&& src)
+    inline mdarray<T, N>& operator=(mdarray<T, N>&& src)
     {
         if (this != &src) {
-            label_       = src.label_;
-            unique_ptr_  = std::move(src.unique_ptr_);
-            raw_ptr_     = src.raw_ptr_;
-            src.raw_ptr_ = nullptr;
+            label_           = src.label_;
+            unique_ptr_      = std::move(src.unique_ptr_);
+            unique_pool_ptr_ = std::move(src.unique_pool_ptr_);
+            raw_ptr_         = src.raw_ptr_;
+            src.raw_ptr_     = nullptr;
 #ifdef __GPU
-            unique_ptr_device_  = std::move(src.unique_ptr_device_);
-            raw_ptr_device_     = src.raw_ptr_device_;
-            src.raw_ptr_device_ = nullptr;
+            unique_ptr_device_      = std::move(src.unique_ptr_device_);
+            unique_pool_ptr_device_ = std::move(src.unique_pool_ptr_device_);
+            raw_ptr_device_         = src.raw_ptr_device_;
+            src.raw_ptr_device_     = nullptr;
 #endif
             for (int i = 0; i < N; i++) {
                 dims_[i]    = src.dims_[i];
@@ -529,15 +455,13 @@ class mdarray_base
         }
 #else
         /* GPU enabled code, check if there is a CUDA capable device */
-        if (memory__ == memory_t::host_pinned ) {
+        if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
             if (acc::num_devices() == 0) {
                 /* there is no cuda card, don't use page-locked memory */
                 memory__ = memory_t::host;
             }
         }
 #endif
-
-
         /* host allocation */
         if ((memory__ & memory_t::host) == memory_t::host) {
             /* page-locked memory */
@@ -573,6 +497,7 @@ class mdarray_base
         if ((memory__ & memory_t::host) == memory_t::host) {
             if (unique_ptr_) {
                 unique_ptr_.reset(nullptr);
+                unique_pool_ptr_.reset(nullptr);
                 raw_ptr_ = nullptr;
             }
         }
@@ -580,82 +505,47 @@ class mdarray_base
         if ((memory__ & memory_t::device) == memory_t::device) {
             if (unique_ptr_device_) {
                 unique_ptr_device_.reset(nullptr);
+                unique_pool_ptr_device_.reset(nullptr);
                 raw_ptr_device_ = nullptr;
             }
         }
 #endif
     }
 
-    inline T& operator()(index_type const i0)
+    inline void allocate(memory_pool& mp__)
     {
-        mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0)];
+        switch (mp__.memory_type()) {
+            case memory_t::host:
+            case memory_t::host_pinned: {
+                this->unique_pool_ptr_ = mp__.get_unique_ptr<T>(size());
+                this->raw_ptr_ = this->unique_pool_ptr_.get();
+                break;
+            }
+            case memory_t::device: {
+#ifdef __GPU
+                this->unique_pool_ptr_device_ = mp__.get_unique_ptr<T>(size());
+                this->raw_ptr_device_ = this->unique_pool_ptr_device_.get();
+#endif
+                break;
+            }
+            default: {
+                throw std::runtime_error("unsupported memory type");
+            }
+        }
     }
 
-    inline T const& operator()(index_type const i0) const
+    template <typename... Args>
+    inline T& operator()(Args... args)
     {
         mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0)];
+        return raw_ptr_[idx(args...)];
     }
 
-    inline T& operator()(index_type const i0, index_type const i1)
+    template <typename... Args>
+    inline T const& operator()(Args... args) const
     {
         mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0, i1)];
-    }
-
-    inline T const& operator()(index_type const i0, index_type const i1) const
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0, i1)];
-    }
-
-    inline T& operator()(index_type const i0, index_type const i1, index_type const i2)
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0, i1, i2)];
-    }
-
-    inline T const& operator()(index_type const i0, index_type const i1, index_type const i2) const
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0, i1, i2)];
-    }
-
-    inline T& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3)
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0, i1, i2, i3)];
-    }
-
-    inline T const& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3) const
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0, i1, i2, i3)];
-    }
-
-    inline T& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4)
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0, i1, i2, i3, i4)];
-    }
-
-    inline T const& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4) const
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0, i1, i2, i3, i4)];
-    }
-
-    inline T const& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4, index_type const i5) const
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0, i1, i2, i3, i4, i5)];
-    }
-
-    inline T& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4, index_type const i5)
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(i0, i1, i2, i3, i4, i5)];
+        return raw_ptr_[idx(args...)];
     }
 
     inline T& operator[](size_t const idx__)
@@ -682,56 +572,20 @@ class mdarray_base
         return at_idx<pu>(0);
     }
 
-    template <device_t pu>
-    inline T* at(index_type const i0)
+    template <device_t pu, typename... Args>
+    inline T* at(Args... args)
     {
-        return at_idx<pu>(idx(i0));
+        return at_idx<pu>(idx(args...));
+    }
+
+    template <device_t pu, typename... Args>
+    inline T const* at(Args... args) const
+    {
+        return at_idx<pu>(idx(args...));
     }
 
     template <device_t pu>
-    inline T const* at(index_type const i0) const
-    {
-        return at_idx<pu>(idx(i0));
-    }
-
-    template <device_t pu>
-    inline T* at(index_type const i0, index_type const i1)
-    {
-        return at_idx<pu>(idx(i0, i1));
-    }
-
-    template <device_t pu>
-    inline T const* at(index_type const i0, index_type const i1) const
-    {
-        return at_idx<pu>(idx(i0, i1));
-    }
-
-    template <device_t pu>
-    inline T* at(index_type const i0, index_type const i1, index_type const i2)
-    {
-        return at_idx<pu>(idx(i0, i1, i2));
-    }
-
-    template <device_t pu>
-    inline T* at(index_type const i0, index_type const i1, index_type const i2, index_type const i3)
-    {
-        return at_idx<pu>(idx(i0, i1, i2, i3));
-    }
-
-    template <device_t pu>
-    inline T* at(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4)
-    {
-        return at_idx<pu>(idx(i0, i1, i2, i3, i4));
-    }
-
-    template <device_t pu>
-    inline T* at(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4, index_type const i5)
-    {
-        return at_idx<pu>(idx(i0, i1, i2, i3, i4, i5));
-    }
-
-    template <device_t pu>
-    typename std::enable_if<pu==device_t::CPU, T*>::type data()
+    typename std::enable_if<pu == device_t::CPU, T*>::type data()
     {
         return raw_ptr_;
     }
@@ -823,7 +677,7 @@ class mdarray_base
     //== }
 
     /// Copy the content of the array to dest
-    void operator>>(mdarray_base<T, N>& dest__) const
+    void operator>>(mdarray<T, N>& dest__) const
     {
         for (int i = 0; i < N; i++) {
             if (dest__.dims_[i].begin() != dims_[i].begin() || dest__.dims_[i].end() != dims_[i].end()) {
@@ -918,19 +772,12 @@ class mdarray_base
         return false;
 #endif
     }
-};
-
-/// Multidimensional array with the column-major (Fortran) order.
-template <typename T, int N>
-class mdarray : public mdarray_base<T, N>
-{
-  public:
-    typedef mdarray_index_descriptor::index_type index_type;
 
     mdarray()
     {
     }
 
+    /// N-dimensional array with index bounds.
     mdarray(std::array<mdarray_index_descriptor, N> const dims__,
             memory_t memory__   = memory_t::host,
             std::string label__ = "")
@@ -940,6 +787,7 @@ class mdarray : public mdarray_base<T, N>
         this->allocate(memory__);
     }
 
+    /// 1D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
             memory_t memory__   = memory_t::host,
             std::string label__ = "")
@@ -951,6 +799,7 @@ class mdarray : public mdarray_base<T, N>
         this->allocate(memory__);
     }
 
+    /// 2D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
             mdarray_index_descriptor const& d1,
             memory_t memory__   = memory_t::host,
@@ -1032,6 +881,18 @@ class mdarray : public mdarray_base<T, N>
         this->raw_ptr_ = ptr__;
     }
 
+    mdarray(memory_pool& mp__,
+            mdarray_index_descriptor const& d0,
+            std::string label__ = "")
+    {
+        static_assert(N == 1, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0});
+        this->unique_pool_ptr_ = mp__.get_unique_ptr<T>(size());
+        this->raw_ptr_ = this->unique_pool_ptr_.get();
+    }
+
     mdarray(T* ptr__,
             T* ptr_device__,
             mdarray_index_descriptor const& d0,
@@ -1047,6 +908,40 @@ class mdarray : public mdarray_base<T, N>
 #endif
     }
 
+    mdarray(memory_pool& mp__,
+            memory_pool& mpd__,
+            mdarray_index_descriptor const& d0,
+            std::string label__ = "")
+    {
+        static_assert(N == 1, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0});
+        this->unique_pool_ptr_ = mp__.get_unique_ptr<T>(size());
+        this->raw_ptr_ = this->unique_pool_ptr_.get();
+#ifdef __GPU
+        this->unique_pool_ptr_device_ = mpd__.get_unique_ptr<T>(size());
+        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get();
+#endif
+    }
+
+    mdarray(T* ptr__,
+            memory_pool& mpd__,
+            mdarray_index_descriptor const& d0,
+            std::string label__ = "")
+    {
+        static_assert(N == 1, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0});
+        this->raw_ptr_ = ptr__;
+#ifdef __GPU
+        this->unique_pool_ptr_device_ = mpd__.get_unique_ptr<T>(size());
+        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get();
+#endif
+    }
+
+    /// Wrap a pointer into 2D array.
     mdarray(T* ptr__,
             mdarray_index_descriptor const& d0,
             mdarray_index_descriptor const& d1,
@@ -1057,6 +952,19 @@ class mdarray : public mdarray_base<T, N>
         this->label_ = label__;
         this->init_dimensions({d0, d1});
         this->raw_ptr_ = ptr__;
+    }
+
+    mdarray(memory_pool& mp__,
+            mdarray_index_descriptor const& d0,
+            mdarray_index_descriptor const& d1,
+            std::string label__ = "")
+    {
+        static_assert(N == 2, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0, d1});
+        this->unique_pool_ptr_ = std::move(mp__.get_unique_ptr<T>(size()));
+        this->raw_ptr_ = this->unique_pool_ptr_.get();
     }
 
     mdarray(T* ptr__,
@@ -1072,6 +980,41 @@ class mdarray : public mdarray_base<T, N>
         this->raw_ptr_ = ptr__;
 #ifdef __GPU
         this->raw_ptr_device_ = ptr_device__;
+#endif
+    }
+
+    mdarray(memory_pool& mp__,
+            memory_pool& mpd__,
+            mdarray_index_descriptor const& d0,
+            mdarray_index_descriptor const& d1,
+            std::string label__ = "")
+    {
+        static_assert(N == 2, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0, d1});
+        this->unique_pool_ptr_ = mp__.get_unique_ptr<T>(size());
+        this->raw_ptr_ = this->unique_pool_ptr_.get();
+#ifdef __GPU
+        this->unique_pool_ptr_device_ = mpd__.get_unique_ptr<T>(size());
+        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get();
+#endif
+    }
+
+    mdarray(T* ptr__,
+            memory_pool& mpd__,
+            mdarray_index_descriptor const& d0,
+            mdarray_index_descriptor const& d1,
+            std::string label__ = "")
+    {
+        static_assert(N == 2, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0, d1});
+        this->raw_ptr_ = ptr__;
+#ifdef __GPU
+        this->unique_pool_ptr_device_ = mpd__.get_unique_ptr<T>(size());
+        this->raw_ptr_device_ = this->unique_pool_ptr_device_.get();
 #endif
     }
 

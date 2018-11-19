@@ -87,6 +87,7 @@ inline void initialize(bool call_mpi_init__ = true)
         }
         acc::create_streams(omp_get_max_threads() + 1);
         cublas::create_stream_handles();
+        cublas::xt::create_handle();
     }
 #endif
 #if defined(__MAGMA)
@@ -126,6 +127,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     if (acc::num_devices()) {
         acc::set_device();
         cublas::destroy_stream_handles();
+        cublas::xt::destroy_handle();
         acc::destroy_streams();
         if (reset_device__) {
             acc::reset();

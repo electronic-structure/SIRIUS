@@ -58,6 +58,15 @@ struct linalg_const
     }
 };
 
+enum class linalg_t
+{
+    blas,
+    lapack,
+    cublas,
+    cublasxt,
+    magma
+};
+
 extern "C" {
 
 ftn_int FORTRAN(ilaenv)(ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n1, ftn_int* n2, ftn_int* n3,

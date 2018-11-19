@@ -292,7 +292,7 @@ class K_point_set
     void add_kpoints(mdarray<double, 2> const& kpoints__, double const* weights__)
     {
         PROFILE("sirius::K_point_set::add_kpoints");
-        for (size_t ik = 0; ik < kpoints__.size(1); ik++) {
+        for (int ik = 0; ik < (int)kpoints__.size(1); ik++) {
             add_kpoint(&kpoints__(0, ik), weights__[ik]);
         }
     }

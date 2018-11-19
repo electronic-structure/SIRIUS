@@ -466,9 +466,10 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
             /* apply Hamiltonian and S operators to the wave-functions */
             H__.apply_h_s<T>(kp__, 2, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
         } else {
-            Wave_functions phi(&psi.pw_coeffs(ispin_step).prime(0, 0), kp__->gkvec_partition(), ctx_.num_bands(), 1);
+            //Wave_functions phi(&psi.pw_coeffs(ispin_step).prime(0, 0), kp__->gkvec_partition(), ctx_.num_bands(), 1);
             /* apply Hamiltonian and S operators to the wave-functions */
-            H__.apply_h_s<T>(kp__, ispin_step, 0, ctx_.num_bands(), phi, &hpsi, &spsi);
+            //H__.apply_h_s<T>(kp__, ispin_step, 0, ctx_.num_bands(), phi, &hpsi, &spsi);
+            H__.apply_h_s<T>(kp__, ispin_step, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
         }
 
         for (int ispn = 0; ispn < num_sc; ispn++) {

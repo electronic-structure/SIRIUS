@@ -88,12 +88,14 @@ inline void error_message(cublasStatus_t status)
 }
 #endif
 
+/// Store the default (null) stream handler.
 inline cublasHandle_t& null_stream_handle()
 {
     static cublasHandle_t null_stream_handle_;
     return null_stream_handle_;
 }
 
+/// Store the cublas handlers associated with cuda streams.
 inline std::vector<cublasHandle_t>& stream_handles()
 {
     static std::vector<cublasHandle_t> stream_handles_;
@@ -136,8 +138,8 @@ inline void zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDo
 }
 
 inline void zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                  cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, cuDoubleComplex* b, 
-                  int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id)
+                  cuDoubleComplex const* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
+                  int32_t ldb, cuDoubleComplex const* beta, cuDoubleComplex* c, int32_t ldc, int stream_id)
 {
     const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
     acc::set_device();
@@ -274,6 +276,47 @@ inline void zaxpy(int                    n__,
     acc::set_device();
     CALL_CUBLAS(cublasZaxpy, (null_stream_handle(), n__, alpha__, x__, incx__, y__, incy__));
 }
+
+namespace xt {
+
+inline cublasXtHandle_t& cublasxt_handle()
+{
+    static cublasXtHandle_t handle;
+    return handle;
+}
+
+inline void create_handle()
+{
+    int device_id[] = {0};
+    CALL_CUBLAS(cublasXtCreate, (&cublasxt_handle()));
+    CALL_CUBLAS(cublasXtDeviceSelect, (cublasxt_handle(), 1, device_id));
+}
+
+inline void destroy_handle()
+{
+    CALL_CUBLAS(cublasXtDestroy, (cublasxt_handle()));
+}
+
+inline void zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+                  cuDoubleComplex const* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b,
+                  int32_t ldb, cuDoubleComplex const* beta, cuDoubleComplex* c, int32_t ldc)
+{
+    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+    acc::set_device();
+    CALL_CUBLAS(cublasXtZgemm, (cublasxt_handle(), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta,
+                                c, ldc));
+}
+
+inline void dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+                  double const* alpha, double const* a, int32_t lda, double const* b, 
+                  int32_t ldb, double const* beta, double* c, int32_t ldc)
+{
+    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
+    acc::set_device();
+    CALL_CUBLAS(cublasXtDgemm, (cublasxt_handle(), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+}
+
+} // namespace xt
 
 } // namespace cublas
 

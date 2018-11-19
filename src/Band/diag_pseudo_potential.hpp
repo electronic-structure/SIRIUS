@@ -230,6 +230,9 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
+        //printf("pool size of memory_t::host:        %li (MB)\n", ctx_.mem_pool(memory_t::host).total_size() >> 20);
+        //printf("pool size of memory_t::host_pinned: %li (MB)\n", ctx_.mem_pool(memory_t::host_pinned).total_size() >> 20);
+        //printf("pool size of memory_t::device:      %li (MB)\n", ctx_.mem_pool(memory_t::device).total_size() >> 20);
     }
 
     auto& itso = ctx_.iterative_solver_input();
@@ -265,36 +268,28 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         s << "subspace size is too large!";
         TERMINATE(s);
     }
-
-    /* total memory size of all wave-functions */
-    const size_t size = num_sc * kp__->num_gkvec_loc() * (3 * num_phi + 3 * num_bands);
-    /* get preallocatd memory buffer */
-    double_complex* mem_buf_ptr = ctx_.mem_pool().allocate<double_complex, memory_t::host>(size);
+    /* alias for memory pool */
+    auto& mp = ctx_.mem_pool(memory_t::host);
 
     /* allocate wave-functions */
 
     /* auxiliary wave-functions */
-    Wave_functions phi(mem_buf_ptr, kp__->gkvec_partition(), num_phi, num_sc);
-    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi * num_sc;
+    Wave_functions phi(mp, kp__->gkvec_partition(), num_phi, num_sc);
 
     /* Hamiltonian, applied to auxiliary wave-functions */
-    Wave_functions hphi(mem_buf_ptr, kp__->gkvec_partition(), num_phi, num_sc);
-    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi * num_sc;
+    Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi, num_sc);
 
     /* S operator, applied to auxiliary wave-functions */
-    Wave_functions sphi(mem_buf_ptr, kp__->gkvec_partition(), num_phi, num_sc);
-    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi * num_sc;
+    Wave_functions sphi(mp, kp__->gkvec_partition(), num_phi, num_sc);
 
     /* Hamiltonain, applied to new Psi wave-functions */
-    Wave_functions hpsi(mem_buf_ptr, kp__->gkvec_partition(), num_bands, num_sc);
-    mem_buf_ptr += kp__->num_gkvec_loc() * num_bands * num_sc;
+    Wave_functions hpsi(mp, kp__->gkvec_partition(), num_bands, num_sc);
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions spsi(mem_buf_ptr, kp__->gkvec_partition(), num_bands, num_sc);
-    mem_buf_ptr += kp__->num_gkvec_loc() * num_bands * num_sc;
+    Wave_functions spsi(mp, kp__->gkvec_partition(), num_bands, num_sc);
 
     /* residuals */
-    Wave_functions res(mem_buf_ptr, kp__->gkvec_partition(), num_bands, num_sc);
+    Wave_functions res(mp, kp__->gkvec_partition(), num_bands, num_sc);
     t1.stop();
 
     utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
@@ -302,48 +297,54 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     /* MAGMA library requires a pinned memory allocation; however the matrices are relatively small and the
        effect of pinned memory is canceled by the expensive pinned memory allocation; the lines below
        are commented during the debug of performance on CUDA9.1 and MAGMA-2.4 */
-    //if (ctx_.processing_unit() == GPU && 
+    if (ctx_.processing_unit() == GPU && ctx_.std_evp_solver_type() == ev_solver_t::magma) {
     //    (ctx_.std_evp_solver_type() == ev_solver_t::magma || ctx_.blacs_grid().comm().size() == 1)) {
-    //    mem_type = memory_t::host_pinned;
-    //}
+        mem_type = memory_t::host_pinned;
+    }
     // TODO: add a control variable to switch between MAGMA and Lapack depending, for example, on the matrix size
 
     const int bs = ctx_.cyclic_block_size();
 
-    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<T> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt(ctx_.mem_pool(mem_type), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp(ctx_.mem_pool(mem_type), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> evec(ctx_.mem_pool(mem_type), num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt_old(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp_old(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 
     kp__->beta_projectors().prepare();
 
+    switch (ctx_.processing_unit()) {
+        case GPU: {
 #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        if (!ctx_.control().keep_wf_on_device_) {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                psi.pw_coeffs(ispn).allocate_on_device();
-                psi.pw_coeffs(ispn).copy_to_device(0, num_bands);
+            utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|alloc_pool");
+            auto& mpd = ctx_.mem_pool(memory_t::device);
+            if (!ctx_.control().keep_wf_on_device_) {
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    psi.pw_coeffs(ispn).allocate(mpd);
+                    psi.pw_coeffs(ispn).copy_to_device(0, num_bands);
+                }
             }
-        }
-        for (int i = 0; i < num_sc; i++) {
-            phi.pw_coeffs(i).allocate_on_device();
-            res.pw_coeffs(i).allocate_on_device();
+            for (int i = 0; i < num_sc; i++) {
+                phi.pw_coeffs(i).allocate(mpd);
+                res.pw_coeffs(i).allocate(mpd);
 
-            hphi.pw_coeffs(i).allocate_on_device();
-            sphi.pw_coeffs(i).allocate_on_device();
+                hphi.pw_coeffs(i).allocate(mpd);
+                sphi.pw_coeffs(i).allocate(mpd);
 
-            hpsi.pw_coeffs(i).allocate_on_device();
-            spsi.pw_coeffs(i).allocate_on_device();
-        }
+                hpsi.pw_coeffs(i).allocate(mpd);
+                spsi.pw_coeffs(i).allocate(mpd);
+            }
 
-        if (ctx_.blacs_grid().comm().size() == 1) {
-            evec.allocate(memory_t::device);
-            ovlp.allocate(memory_t::device);
-            hmlt.allocate(memory_t::device);
-        }
-    }
+            if (ctx_.blacs_grid().comm().size() == 1) {
+                evec.allocate(mpd);
+                ovlp.allocate(mpd);
+                hmlt.allocate(mpd);
+            }
 #endif
+            break;
+        }
+        case CPU: break;
+    }
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
@@ -368,6 +369,17 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     auto std_solver = ctx_.std_evp_solver<T>();
     auto gen_solver = ctx_.gen_evp_solver<T>();
 
+    if (ctx_.control().print_checksum_) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            auto cs = psi.checksum_pw(ctx_.processing_unit(), ispn, 0, num_bands);
+            std::stringstream s;
+            s << "input spinor_wave_functions_" << ispn;
+            if (kp__->comm().rank() == 0) {
+                utils::print_checksum(s.str(), cs);
+            }
+        }
+    }
+
     int niter{0};
 
     utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
@@ -385,6 +397,16 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         /* trial basis functions */
         for (int ispn = 0; ispn < num_sc; ispn++) {
             phi.copy_from(ctx_.processing_unit(), num_bands, psi, nc_mag ? ispn : ispin_step, 0, ispn, 0);
+        }
+        if (ctx_.control().print_checksum_) {
+            for (int ispn = 0; ispn < num_sc; ispn++) {
+                auto cs = psi.checksum_pw(ctx_.processing_unit(), ispn, 0, num_bands);
+                std::stringstream s;
+                s << "input phi" << ispn;
+                if (kp__->comm().rank() == 0) {
+                    utils::print_checksum(s.str(), cs);
+                }
+            }
         }
 
         /* fisrt phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
@@ -598,16 +620,20 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     //    }
     //}
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            psi.pw_coeffs(ispn).copy_to_host(0, num_bands);
-            if (!ctx_.control().keep_wf_on_device_) {
-                psi.pw_coeffs(ispn).deallocate_on_device();
+    switch (ctx_.processing_unit()) {
+        case GPU: {
+#ifdef __GPU
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                psi.pw_coeffs(ispn).copy_to_host(0, num_bands);
+                if (!ctx_.control().keep_wf_on_device_) {
+                    psi.pw_coeffs(ispn).deallocate_on_device();
+                }
             }
+#endif
+            break;
         }
+        case CPU: break;
     }
-    #endif
 
     //== std::cout << "checking psi" << std::endl;
     //== for (int i = 0; i < ctx_.num_bands(); i++) {
@@ -624,7 +650,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     //==         }
     //==     }
     //== }
-    ctx_.mem_pool().reset<memory_t::host>();
 
     return niter;
 }

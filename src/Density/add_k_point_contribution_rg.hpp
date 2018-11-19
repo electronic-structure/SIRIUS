@@ -32,9 +32,9 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     double omega = unit_cell_.omega();
 
     auto& fft = ctx_.fft_coarse();
-    
+
     /* get preallocated memory */
-    mdarray<double, 2> density_rg(ctx_.mem_pool().allocate<double, memory_t::host>(fft.local_size() * (ctx_.num_mag_dims() + 1)),
+    mdarray<double, 2> density_rg(ctx_.mem_pool(memory_t::host).allocate<double>(fft.local_size() * (ctx_.num_mag_dims() + 1)),
                                   fft.local_size(), ctx_.num_mag_dims() + 1, "density_rg");
     density_rg.zero();
 
@@ -186,6 +186,6 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     }
 
     fft.dismiss();
-    ctx_.mem_pool().reset<memory_t::host>();
+    ctx_.mem_pool(memory_t::host).free(density_rg.at<CPU>());
 }
 
