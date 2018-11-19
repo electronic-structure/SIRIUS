@@ -1236,25 +1236,90 @@ class linalg2
     }
 
     template <typename T>
-    inline void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, T const* A, ftn_int lda,
-                     T const* B, ftn_int ldb, T beta, T* C, ftn_int ldc) const;
+    inline linalg2& gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, T const* A, ftn_int lda,
+                         T const* B, ftn_int ldb, T beta, T* C, ftn_int ldc, int stream_id = -1) const;
 };
+
 template <>
-inline void linalg2::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double alpha,
-                                      ftn_double const* A, ftn_int lda, ftn_double const* B, ftn_int ldb,
-                                      ftn_double beta, ftn_double* C, ftn_int ldc) const
+inline linalg2& linalg2::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, ftn_double alpha,
+                                          ftn_double const* A, ftn_int lda, ftn_double const* B, ftn_int ldb,
+                                          ftn_double beta, ftn_double* C, ftn_int ldc, int stream_id) const
 {
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
     switch (la_) {
         case linalg_t::blas: {
+            const char *trans[] = {"N", "T", "C"};
+            FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, const_cast<double*>(A), &lda,
+                           const_cast<double*>(B), &ldb, &beta, C, &ldc, (ftn_len)1, (ftn_len)1);
             break;
+        }
+        case linalg_t::cublas: {
+#ifdef __GPU
+            cublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+#endif
+            break;
+
+        }
+        case linalg_t::cublasxt: {
+#ifdef __GPU
+            cublas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+#endif
+            break;
+
         }
         default: {
             throw std::runtime_error("wrong type of linear algebra library");
         }
     }
+    return *this;
 }
 
+template <>
+inline linalg2& linalg2::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                                  ftn_double_complex alpha, ftn_double_complex const* A, ftn_int lda,
+                                                  ftn_double_complex const* B, ftn_int ldb, ftn_double_complex beta,
+                                                  ftn_double_complex* C, ftn_int ldc, int stream_id) const
+{
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
+    switch (la_) {
+        case linalg_t::blas: {
+            const char *trans[] = {"N", "T", "C"};
+            FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, const_cast<ftn_double_complex*>(A), &lda,
+                           const_cast<ftn_double_complex*>(B), &ldb, &beta, C, &ldc, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        case linalg_t::cublas: {
+#ifdef __GPU
+            cublas::zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+#endif
+            break;
+
+        }
+        case linalg_t::cublasxt: {
+#ifdef __GPU
+            cublas::xt::zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+#endif
+            break;
+
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+        }
+    }
+    return *this;
 }
+
+} // experimental
 
 } // namespace sddk
 
