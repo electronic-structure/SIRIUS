@@ -29,6 +29,7 @@
 
 namespace sirius {
 
+/// Non-local part of the Hamiltonian in the pseudopotential method.
 template <typename T>
 class Non_local_operator
 {
