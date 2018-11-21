@@ -495,7 +495,7 @@ inline void transform(memory_t                     mem__,
             if (std::is_same<T, double_complex>::value) {
                 /* transform plane-wave part */
                 experimental::linalg2(la__).gemm(0, 0, wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
-                                                 reinterpret_cast<double_complex*>(&alpha),
+                                                 reinterpret_cast<double_complex*>(alpha),
                                                  wf_in__->pw_coeffs(in_s).prime().at(mem__, 0, i0__),
                                                  wf_in__->pw_coeffs(in_s).prime().ld(),
                                                  reinterpret_cast<double_complex*>(ptr__), ld__,
@@ -506,7 +506,7 @@ inline void transform(memory_t                     mem__,
                 /* transform muffin-tin part */
                 if (wf_in__->has_mt()) {
                     experimental::linalg2(la__).gemm(0, 0, wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__,
-                                          reinterpret_cast<double_complex*>(&alpha),
+                                          reinterpret_cast<double_complex*>(alpha),
                                           wf_in__->mt_coeffs(in_s).prime().at(mem__, 0, i0__),
                                           wf_in__->mt_coeffs(in_s).prime().ld(),
                                           reinterpret_cast<double_complex*>(ptr__), ld__,
@@ -519,7 +519,7 @@ inline void transform(memory_t                     mem__,
             if (std::is_same<T, double>::value) {
                 /* transform plane-wave part */
                 experimental::linalg2(la__).gemm(0, 0, 2 * wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
-                                                 reinterpret_cast<double*>(&alpha),
+                                                 reinterpret_cast<double*>(alpha),
                                                  reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at(mem__, 0, i0__)),
                                                  2 * wf_in__->pw_coeffs(in_s).prime().ld(),
                                                  reinterpret_cast<double*>(ptr__), ld__,
