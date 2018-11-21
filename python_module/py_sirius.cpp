@@ -182,11 +182,18 @@ PYBIND11_MODULE(py_sirius, m)
         .def("preferred_memory_t", &Simulation_context::preferred_memory_t)
         .def("set_iterative_solver_tolerance", &Simulation_context::set_iterative_solver_tolerance);
 
+    py::class_<Atom>(m, "Atom")
+        .def("position", &Atom::position)
+        .def("set_position", &Atom::set_position);
+
     py::class_<Unit_cell>(m, "Unit_cell")
-        .def("add_atom_type", static_cast<void (Unit_cell::*)(const std::string, const std::string)>(&Unit_cell::add_atom_type))
+        .def("add_atom_type",
+             static_cast<void (Unit_cell::*)(const std::string, const std::string)>(&Unit_cell::add_atom_type))
         .def("add_atom", py::overload_cast<const std::string, std::vector<double>>(&Unit_cell::add_atom))
+        .def("atom", py::overload_cast<int>(&Unit_cell::atom), py::return_value_policy::reference)
         .def("atom_type", py::overload_cast<int>(&Unit_cell::atom_type), py::return_value_policy::reference)
-        .def("set_lattice_vectors", py::overload_cast<vector3d<double>, vector3d<double>, vector3d<double>>(&Unit_cell::set_lattice_vectors))
+        .def("set_lattice_vectors",
+             py::overload_cast<vector3d<double>, vector3d<double>, vector3d<double>>(&Unit_cell::set_lattice_vectors))
         .def("lattice_vectors", &Unit_cell::lattice_vectors)
         .def("get_symmetry", &Unit_cell::get_symmetry)
         .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
@@ -339,6 +346,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("hamiltonian", &DFT_ground_state::hamiltonian, py::return_value_policy::reference_internal)
         .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference_internal)
         .def("forces", &DFT_ground_state::forces, py::return_value_policy::reference_internal)
+        .def("stress", &DFT_ground_state::stress, py::return_value_policy::reference_internal)
         .def("update", &DFT_ground_state::update);
 
     py::class_<K_point>(m, "K_point")
