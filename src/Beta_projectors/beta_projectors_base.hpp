@@ -83,6 +83,8 @@ class Beta_projectors_base
 
     matrix<double_complex> pw_coeffs_a_;
 
+    mdarray<double_complex, 1> pw_coeffs_a_g0_;
+
     std::vector<beta_chunk_t> beta_chunks_;
 
     int max_num_beta_;
@@ -229,106 +231,197 @@ class Beta_projectors_base
 
         matrix<T> beta_phi;
 
+        /* location of the beta-projectors is always on the memory of the processing unit being used */
+        memory_t mem{memory_t::none};
+
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
-                beta_phi = matrix<T>(ctx_.mem_pool(ctx_.beta_projectors_host_memory_t()), nbeta, n__);
+                beta_phi = matrix<T>(ctx_.mem_pool(ctx_.host_memory_t()), nbeta, n__);
+                mem = memory_t::host;
                 break;
             }
             case device_t::GPU: {
-                beta_phi = matrix<T>(ctx_.mem_pool(ctx_.beta_projectors_host_memory_t()),
-                                     ctx_.mem_pool(memory_t::device),
+                beta_phi = matrix<T>(ctx_.mem_pool(ctx_.host_memory_t()), ctx_.mem_pool(memory_t::device),
                                      nbeta, n__);
+                mem = memory_t::device;
                 break;
             }
         }
 
         if (std::is_same<T, double_complex>::value) {
-            switch (ctx_.processing_unit()) {
-                case device_t::CPU: {
-                    /* compute <beta|phi> */
-                    linalg<CPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc(),
-                                      pw_coeffs_a().template at<CPU>(), num_gkvec_loc(),
-                                      phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__), phi__.pw_coeffs(ispn__).prime().ld(),
-                                      reinterpret_cast<double_complex*>(beta_phi.template at<CPU>()), nbeta);
-                    break;
-                }
-                case device_t::GPU: {
-                    #ifdef __GPU
-                    linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc(),
-                                      pw_coeffs_a().template at<GPU>(), num_gkvec_loc(),
-                                      phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__), phi__.pw_coeffs(ispn__).prime().ld(),
-                                      reinterpret_cast<double_complex*>(beta_phi.template at<GPU>()), nbeta);
-                    beta_phi.template copy<memory_t::device, memory_t::host>();
-                    #else
-                    TERMINATE_NO_GPU
-                    #endif
-                    break;
-                }
-            }
+
+            experimental::linalg2(ctx_.blas_linalg_t()).gemm(2, 0, nbeta, n__, num_gkvec_loc(),
+                                  &linalg_const<double_complex>::one(),
+                                  pw_coeffs_a().at(mem),
+                                  num_gkvec_loc(),
+                                  phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
+                                  phi__.pw_coeffs(ispn__).prime().ld(),
+                                  &linalg_const<double_complex>::zero(),
+                                  reinterpret_cast<double_complex*>(beta_phi.at(ctx_.preferred_memory_t())),
+                                  nbeta);
+
+//            switch (ctx_.processing_unit()) {
+//                case device_t::CPU: {
+//                    /* compute <beta|phi> */
+//                    linalg<CPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc(),
+//                                      pw_coeffs_a().template at<CPU>(), num_gkvec_loc(),
+//                                      phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__), phi__.pw_coeffs(ispn__).prime().ld(),
+//                                      reinterpret_cast<double_complex*>(beta_phi.template at<CPU>()), nbeta);
+//                    break;
+//                }
+//                case device_t::GPU: {
+//#ifdef __GPU
+//                    linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc(),
+//                                      pw_coeffs_a().template at<GPU>(), num_gkvec_loc(),
+//                                      phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__), phi__.pw_coeffs(ispn__).prime().ld(),
+//                                      reinterpret_cast<double_complex*>(beta_phi.template at<GPU>()), nbeta);
+//                    beta_phi.template copy<memory_t::device, memory_t::host>();
+//#else
+//                    TERMINATE_NO_GPU
+//#endif
+//                    break;
+//                }
+//            }
         }
         if (std::is_same<T, double>::value) {
-            double a{2};
-            double a1{-1};
-            double b{0};
-
-            switch (ctx_.processing_unit()) {
-                case CPU: {
-                    /* compute <beta|phi> */
-                    linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc(),
-                                      a,
-                                      reinterpret_cast<double*>(pw_coeffs_a().template at<CPU>()), 2 * num_gkvec_loc(),
-                                      reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__)),
-                                      2 * phi__.pw_coeffs(ispn__).prime().ld(),
-                                      b,
-                                      reinterpret_cast<double*>(beta_phi.template at<CPU>()), nbeta);
-
-                    if (gkvec_.comm().rank() == 0) {
-                        /* subtract one extra G=0 contribution */
-                        linalg<CPU>::ger(nbeta, n__, a1,
-                                         reinterpret_cast<double*>(pw_coeffs_a().template at<CPU>()), 2 * num_gkvec_loc(),
-                                         reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__)), 
-                                         2 * phi__.pw_coeffs(ispn__).prime().ld(),
-                                         reinterpret_cast<double*>(beta_phi.template at<CPU>()), nbeta);
+            experimental::linalg2(ctx_.blas_linalg_t()).gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc(),
+                                  &linalg_const<double>::two(),
+                                  reinterpret_cast<double const*>(pw_coeffs_a().at(mem)),
+                                  2 * num_gkvec_loc(),
+                                  reinterpret_cast<double const*>(phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__)),
+                                  2 * phi__.pw_coeffs(ispn__).prime().ld(),
+                                  &linalg_const<double>::zero(),
+                                  reinterpret_cast<double*>(beta_phi.at(ctx_.preferred_memory_t())),
+                                  nbeta);
+            if (gkvec_.comm().rank() == 0) {
+                memory_t mem{memory_t::none};
+                double* x;
+                int incx;
+                linalg_t la{linalg_t::none};
+                /* both wave-functions and beta-projectors are on GPU */
+                if (!is_host_memory(ctx_.preferred_memory_t())) {
+                    mem = memory_t::device;
+                    x = reinterpret_cast<double*>(pw_coeffs_a().at(mem));
+                    incx = 2 * num_gkvec_loc();
+                    la = linalg_t::cublas;
+                } else { /* wave-functions are on CPU but the beta-projectors are in the memory of main device */
+                    mem = memory_t::host;
+                    switch (ctx_.processing_unit()) {
+                        case device_t::CPU: {
+                            x = reinterpret_cast<double*>(pw_coeffs_a().at(mem));
+                            incx = 2 * num_gkvec_loc();
+                            break;
+                        }
+                        case device_t::GPU: {
+                            x = reinterpret_cast<double*>(pw_coeffs_a_g0_.at(mem));
+                            incx = 1;
+                            break;
+                        }
                     }
-                    break;
+                    la = linalg_t::blas;
                 }
-                case GPU: {
-#ifdef __GPU
-                    linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc(),
-                                      &a,
-                                      reinterpret_cast<double*>(pw_coeffs_a().template at<GPU>()), 2 * num_gkvec_loc(),
-                                      reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__)),
-                                      2 * phi__.pw_coeffs(ispn__).prime().ld(),
-                                      &b,
-                                      reinterpret_cast<double*>(beta_phi.template at<GPU>()), nbeta);
-
-                    if (gkvec_.comm().rank() == 0) {
-                        /* subtract one extra G=0 contribution */
-                        linalg<GPU>::ger(nbeta, n__, &a1, 
-                                         reinterpret_cast<double*>(pw_coeffs_a().template at<GPU>()), 2 * num_gkvec_loc(),
-                                         reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().template at<GPU>(0, idx0__)),
-                                         2 * phi__.pw_coeffs(ispn__).prime().ld(),
-                                         reinterpret_cast<double*>(beta_phi.template at<GPU>()), nbeta);
-                    }
-                    beta_phi.template copy<memory_t::device, memory_t::host>();
-#else
-                    TERMINATE_NO_GPU
-#endif
-                    break;
-                }
+                experimental::linalg2(la).ger(nbeta, n__,
+                                 &linalg_const<double>::m_one(),
+                                 x, incx,
+                                 reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at(mem, 0, idx0__)), 
+                                 2 * phi__.pw_coeffs(ispn__).prime().ld(),
+                                 reinterpret_cast<double*>(beta_phi.at(mem)), nbeta);
             }
+
+
+            //}
+
+            //    /* subtract one extra G=0 contribution */
+            //    linalg<CPU>::ger(nbeta, n__, linalg_const<double>::mone(),
+            //                     reinterpret_cast<double*>(pw_coeffs_a().template at<CPU>()), 2 * num_gkvec_loc(),
+            //                     reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__)), 
+            //                     2 * phi__.pw_coeffs(ispn__).prime().ld(),
+            //                     reinterpret_cast<double*>(beta_phi.template at<CPU>()), nbeta);
+
+            //}
+
+//            double a{2};
+//            double a1{-1};
+//            double b{0};
+//
+//            switch (ctx_.processing_unit()) {
+//                case device_t::CPU: {
+//                    /* compute <beta|phi> */
+//                    linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc(),
+//                                      a,
+//                                      reinterpret_cast<double*>(pw_coeffs_a().template at<CPU>()), 2 * num_gkvec_loc(),
+//                                      reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__)),
+//                                      2 * phi__.pw_coeffs(ispn__).prime().ld(),
+//                                      b,
+//                                      reinterpret_cast<double*>(beta_phi.template at<CPU>()), nbeta);
+//
+//                    if (gkvec_.comm().rank() == 0) {
+//                        /* subtract one extra G=0 contribution */
+//                        linalg<CPU>::ger(nbeta, n__, a1,
+//                                         reinterpret_cast<double*>(pw_coeffs_a().template at<CPU>()), 2 * num_gkvec_loc(),
+//                                         reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__)), 
+//                                         2 * phi__.pw_coeffs(ispn__).prime().ld(),
+//                                         reinterpret_cast<double*>(beta_phi.template at<CPU>()), nbeta);
+//                    }
+//                    break;
+//                }
+//                case device_t::GPU: {
+//#ifdef __GPU
+//                    linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc(),
+//                                      &a,
+//                                      reinterpret_cast<double*>(pw_coeffs_a().template at<GPU>()), 2 * num_gkvec_loc(),
+//                                      reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__)),
+//                                      2 * phi__.pw_coeffs(ispn__).prime().ld(),
+//                                      &b,
+//                                      reinterpret_cast<double*>(beta_phi.template at<GPU>()), nbeta);
+//
+//                    if (gkvec_.comm().rank() == 0) {
+//                        /* subtract one extra G=0 contribution */
+//                        linalg<GPU>::ger(nbeta, n__, &a1, 
+//                                         reinterpret_cast<double*>(pw_coeffs_a().template at<GPU>()), 2 * num_gkvec_loc(),
+//                                         reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().template at<GPU>(0, idx0__)),
+//                                         2 * phi__.pw_coeffs(ispn__).prime().ld(),
+//                                         reinterpret_cast<double*>(beta_phi.template at<GPU>()), nbeta);
+//                    }
+//                    beta_phi.template copy<memory_t::device, memory_t::host>();
+//#else
+//                    TERMINATE_NO_GPU
+//#endif
+//                    break;
+//                }
+//            }
         }
 
-        gkvec_.comm().allreduce(beta_phi.template at<CPU>(), static_cast<int>(beta_phi.size()));
 
-        if (ctx_.processing_unit() == GPU) {
-            beta_phi.template copy<memory_t::host, memory_t::device>();
+        if (gkvec_.comm().size() > 1) {
+            /* copy to host for MPI reduction */
+            if (!is_host_memory(ctx_.preferred_memory_t())) {
+                beta_phi.template copy<memory_t::device, memory_t::host>();
+            }
+            /* MPI reduction on the host */
+            gkvec_.comm().allreduce(beta_phi.template at(memory_t::host), static_cast<int>(beta_phi.size()));
+        }
+
+        /* copy back to GPU */
+        switch (ctx_.processing_unit()) {
+            case device_t::GPU: {
+                if (gkvec_.comm().size() > 1 || is_host_memory(ctx_.preferred_memory_t())) {
+                    beta_phi.template copy<memory_t::host, memory_t::device>();
+                }
+                break;
+            }
+            case device_t::CPU: break;
         }
 
         return std::move(beta_phi);
     }
 
     /// Generate beta-projectors for a chunk of atoms.
+    /** Beta-projectors are always generated and stored in the memory of a processing unit.
+     *
+     *  \param [in] ichunk Index of a chunk of atoms for which beta-projectors are generated.
+     *  \param [in] j index of the component (up to 9 components are used for the strain derivative) 
+     */
     void generate(int ichunk__, int j__)
     {
         PROFILE("sirius::Beta_projectors_base::generate");
@@ -336,7 +429,7 @@ class Beta_projectors_base
         auto& pw_coeffs = pw_coeffs_a();
 
         switch (ctx_.processing_unit()) {
-            case CPU: {
+            case device_t::CPU: {
                 #pragma omp for
                 for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
                     int ia = chunk(ichunk__).desc_(beta_desc_idx::ia, i);
@@ -359,8 +452,8 @@ class Beta_projectors_base
                 }
                 break;
             }
-            case GPU: {
-                #ifdef __GPU
+            case device_t::GPU: {
+#ifdef __GPU
                 auto& desc = chunk(ichunk__).desc_;
                 create_beta_gk_gpu(chunk(ichunk__).num_atoms_,
                                    num_gkvec_loc(),
@@ -369,10 +462,22 @@ class Beta_projectors_base
                                    gkvec_coord_.template at<GPU>(),
                                    chunk(ichunk__).atom_pos_.template at<GPU>(),
                                    pw_coeffs.template at<GPU>());
-                #endif
+#endif
+                /* wave-functions are on CPU but the beta-projectors are on GPU */
+                if (gkvec_.comm().rank() == 0 && is_host_memory(ctx_.preferred_memory_t())) {
+                    /* make beta-projectors for G=0 on the CPU */
+                    #pragma omp for
+                    for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
+                        for (int xi = 0; xi < chunk(ichunk__).desc_(beta_desc_idx::nbf, i); xi++) {
+                            pw_coeffs_a_g0_(chunk(ichunk__).desc_(beta_desc_idx::offset, i) + xi) =
+                                pw_coeffs_t_[j__](0, chunk(ichunk__).desc_(beta_desc_idx::offset_t, i) + xi);
+                        }
+                    }
+                }
                 break;
             }
         }
+
     }
 
     void prepare()
@@ -380,20 +485,23 @@ class Beta_projectors_base
         PROFILE("sirius::Beta_projectors_base::prepare");
 
         switch (ctx_.processing_unit()) {
-            case CPU: {
-                pw_coeffs_a_ = matrix<double_complex>(ctx_.mem_pool(ctx_.beta_projectors_host_memory_t()),
+            case device_t::CPU: {
+                pw_coeffs_a_ = matrix<double_complex>(ctx_.mem_pool(ctx_.host_memory_t()),
                                                       num_gkvec_loc(), max_num_beta());
+                pw_coeffs_a_g0_ = mdarray<double_complex, 1>(ctx_.mem_pool(memory_t::host), max_num_beta());
                 break;
             }
-            case GPU: {
-                pw_coeffs_a_ = matrix<double_complex>(ctx_.mem_pool(ctx_.beta_projectors_host_memory_t()),
+            case device_t::GPU: {
+                pw_coeffs_a_ = matrix<double_complex>(ctx_.mem_pool(ctx_.host_memory_t()),
                                                       ctx_.mem_pool(memory_t::device),
                                                       num_gkvec_loc(), max_num_beta());
+                pw_coeffs_a_g0_ = mdarray<double_complex, 1>(ctx_.mem_pool(memory_t::host),
+                                                             ctx_.mem_pool(memory_t::device), max_num_beta());
                 break;
             }
         }
 
-        if (ctx_.processing_unit() == GPU && reallocate_pw_coeffs_t_on_gpu_) {
+        if (ctx_.processing_unit() == device_t::GPU && reallocate_pw_coeffs_t_on_gpu_) {
             for (int i = 0; i < N; i++) {
                 pw_coeffs_t_[i].allocate(memory_t::device);
                 pw_coeffs_t_[i].template copy<memory_t::host, memory_t::device>();

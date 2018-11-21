@@ -81,16 +81,18 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
-    int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() / 2 : ctx_.num_bands();
-
-    /* number of basis functions */
-    int num_phi = std::max(num_ao__, nbnd);
-
+    /* number of non-zero spin components */
     const int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
 
-    int num_phi_tot = (ctx_.num_mag_dims() == 3) ? num_phi * 2 : num_phi;
+    /* short notation for number of target wave-functions */
+    int num_bands = ctx_.num_bands();
 
-    auto& mp = ctx_.mem_pool(memory_t::host);
+    /* number of basis functions */
+    int num_phi = std::max(num_ao__, num_bands / num_sc);
+
+    int num_phi_tot = num_phi * num_sc;
+
+    auto& mp = ctx_.mem_pool(ctx_.host_memory_t());
 
     /* initial basis functions */
     Wave_functions phi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
@@ -160,12 +162,10 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
     }
 
     if (ctx_.num_mag_dims() == 3) {
+        /* make pure spinor up- and dn- wave functions */
         phi.copy_from(device_t::CPU, num_phi, phi, 0, 0, 1, num_phi);
     }
     t1.stop();
-
-    /* short notation for number of target wave-functions */
-    int num_bands = ctx_.num_bands();
 
     ctx_.fft_coarse().prepare(kp__->gkvec_partition());
     H__.local_op().prepare(kp__->gkvec_partition());
@@ -178,13 +178,11 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
 
     int bs = ctx_.cyclic_block_size();
 
-    auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
-
     auto gen_solver = Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
 
-    dmatrix<T> hmlt(ctx_.mem_pool(mem_type), num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp(ctx_.mem_pool(mem_type), num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(ctx_.mem_pool(mem_type), num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> evec(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> hmlt_old;
 
     std::vector<double> eval(num_bands);
@@ -195,18 +193,17 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
         MEMORY_USAGE_INFO();
     }
 
-    switch (ctx_.processing_unit()) {
+    switch (get_device_t(ctx_.preferred_memory_t())) {
         case device_t::GPU: {
-#ifdef __GPU
             auto& mpd = ctx_.mem_pool(memory_t::device);
-            if (!ctx_.control().keep_wf_on_device_) {
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    kp__->spinor_wave_functions().pw_coeffs(ispn).allocate(mpd);
-                }
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                kp__->spinor_wave_functions().pw_coeffs(ispn).allocate(mpd);
             }
             for (int ispn = 0; ispn < num_sc; ispn++) {
                 phi.pw_coeffs(ispn).allocate(mpd);
+#ifdef __GPU
                 phi.pw_coeffs(ispn).copy_to_device(0, num_phi_tot);
+#endif
                 hphi.pw_coeffs(ispn).allocate(mpd);
                 ophi.pw_coeffs(ispn).allocate(mpd);
                 wf_tmp.pw_coeffs(ispn).allocate(mpd);
@@ -214,7 +211,6 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
             evec.allocate(mpd);
             hmlt.allocate(mpd);
             ovlp.allocate(mpd);
-#endif
             break;
         }
         case device_t::CPU: break;
@@ -226,7 +222,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
-            auto cs = phi.checksum_pw(ctx_.processing_unit(), ispn, 0, num_phi_tot);
+            auto cs = phi.checksum_pw(get_device_t(ctx_.preferred_memory_t()), ispn, 0, num_phi_tot);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "initial_phi" << ispn;
@@ -315,7 +311,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            auto cs = kp__->spinor_wave_functions().checksum_pw(ctx_.processing_unit(), ispn, 0, num_bands);
+            auto cs = kp__->spinor_wave_functions().checksum_pw(get_device_t(ctx_.preferred_memory_t()), ispn, 0, num_bands);
             std::stringstream s;
             s << "initial_spinor_wave_functions_" << ispn;
             if (kp__->comm().rank() == 0) {
@@ -324,20 +320,19 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
         }
     }
 
-    switch (ctx_.processing_unit()) {
+    switch (get_device_t(ctx_.preferred_memory_t())) {
         case device_t::GPU: {
 #ifdef __GPU
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 kp__->spinor_wave_functions().pw_coeffs(ispn).copy_to_host(0, num_bands);
-                if (!ctx_.control().keep_wf_on_device_) {
-                    kp__->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
-                }
+                kp__->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
             }
 #endif
             break;
         }
         case device_t::CPU: break;
     }
+
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             auto cs = kp__->spinor_wave_functions().checksum_pw(device_t::CPU, ispn, 0, num_bands);

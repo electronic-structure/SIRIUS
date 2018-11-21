@@ -83,6 +83,23 @@ enum device_t
     GPU = 1
 };
 
+inline device_t get_device_t(memory_t mem__)
+{
+    switch (mem__) {
+        case memory_t::host:
+        case memory_t::host_pinned: {
+            return device_t::CPU;
+        }
+        case memory_t::device: {
+            return device_t::GPU;
+        }
+        default: {
+            throw std::runtime_error("get_device_t(): wrong memory type");
+        }
+    }
+    return device_t::CPU; // make compiler happy
+}
+
 // TODO: remove operator|() and operator&(): their usage is very limited and complicates the code
 inline constexpr memory_t operator&(memory_t a__, memory_t b__) noexcept
 {
@@ -327,6 +344,7 @@ class mdarray
         }
     }
 
+    /// Return linear index in the range [0, size) by the N-dimensional indices.(i0, i1, ...)
     template <typename... Args>
     inline index_type idx(Args... args) const
     {
@@ -345,25 +363,35 @@ class mdarray
         return idx;
     }
 
-    template <device_t pu>
-    inline T* at_idx(index_type const idx__)
+    /// Return cosnt pointer to an element at a given index.
+    inline T const* at_idx(memory_t mem__, index_type const idx__) const
     {
-        switch (pu) {
-            case CPU: {
+        switch (mem__) {
+            case memory_t::host:
+            case memory_t::host_pinned: {
                 mdarray_assert(raw_ptr_ != nullptr);
                 return &raw_ptr_[idx__];
             }
-            case GPU: {
+            case memory_t::device: {
 #ifdef __GPU
                 mdarray_assert(raw_ptr_device_ != nullptr);
                 return &raw_ptr_device_[idx__];
 #else
                 printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
-                exit(0);
+                throw std::runtime_error("");
 #endif
             }
+            default: {
+                throw std::runtime_error("mdarray::at_idx(): wrong memory type");
+            }
         }
-        return nullptr;
+        return nullptr; // make compiler happy;
+    }
+
+    /// Return pointer to an element at a given index.
+    inline T* at_idx(memory_t mem__, index_type const idx__)
+    {
+        return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at_idx(mem__, idx__));
     }
 
     template <device_t pu>
@@ -385,6 +413,12 @@ class mdarray
             }
         }
         return nullptr;
+    }
+
+    template <device_t pu>
+    inline T* at_idx(index_type const idx__)
+    {
+        return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).template at_idx<pu>(idx__));
     }
 
     /// Copy constructor is forbidden
@@ -529,18 +563,12 @@ class mdarray
                 break;
             }
             default: {
-                throw std::runtime_error("unsupported memory type");
+                throw std::runtime_error("mdarray::allocate(): unsupported memory type");
             }
         }
     }
 
-    template <typename... Args>
-    inline T& operator()(Args... args)
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        return raw_ptr_[idx(args...)];
-    }
-
+    /// Access operator() for the elements of multidimensional array.
     template <typename... Args>
     inline T const& operator()(Args... args) const
     {
@@ -548,16 +576,24 @@ class mdarray
         return raw_ptr_[idx(args...)];
     }
 
-    inline T& operator[](size_t const idx__)
+    /// Access operator() for the elements of multidimensional array.
+    template <typename... Args>
+    inline T& operator()(Args... args)
     {
-        mdarray_assert(idx__ >= 0 && idx__ < size());
-        return raw_ptr_[idx__];
+        return const_cast<T&>(static_cast<mdarray<T, N> const&>(*this)(args...));
     }
 
+    /// Access operator[] for the elements of multidimensional array using a linear index in the range [0, size).
     inline T const& operator[](size_t const idx__) const
     {
         assert(idx__ >= 0 && idx__ < size());
         return raw_ptr_[idx__];
+    }
+
+    /// Access operator[] for the elements of multidimensional array using a linear index in the range [0, size).
+    inline T& operator[](size_t const idx__)
+    {
+        return const_cast<T&>(static_cast<mdarray<T, N> const&>(*this)[idx__]);
     }
 
     template <device_t pu>
@@ -582,6 +618,28 @@ class mdarray
     inline T const* at(Args... args) const
     {
         return at_idx<pu>(idx(args...));
+    }
+
+    template <typename... Args>
+    inline T const* at(memory_t mem__, Args... args) const
+    {
+        return at_idx(mem__, idx(args...));
+    }
+
+    template <typename... Args>
+    inline T* at(memory_t mem__, Args... args)
+    {
+        return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at(mem__, args...));
+    }
+
+    inline T const* at(memory_t mem__) const
+    {
+        return at_idx(mem__, 0);
+    }
+
+    inline T* at(memory_t mem__)
+    {
+        return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at(mem__));
     }
 
     template <device_t pu>

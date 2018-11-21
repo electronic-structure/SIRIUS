@@ -59,11 +59,17 @@ enum class memory_t : unsigned int
     host        = 0b0001,
     /// Pinned host memory. This is host memory + extra bit flag.
     host_pinned = 0b0011,
-    /// Device memory.
-    device      = 0b0100,
     /// Managed memory (accessible from both host and device).
-    managed     = 0b1000
+    managed     = 0b0101,
+    /// Device memory.
+    device      = 0b1000
 };
+
+/// Check if this is a valid host memory (memory, accessible by the host).
+inline bool is_host_memory(memory_t mem__)
+{
+    return static_cast<unsigned int>(mem__) & 1;
+}
 
 inline memory_t get_memory_t(std::string name__)
 {
@@ -73,8 +79,8 @@ inline memory_t get_memory_t(std::string name__)
         {"none",        memory_t::none},
         {"host",        memory_t::host},
         {"host_pinned", memory_t::host_pinned},
-        {"device",      memory_t::device},
         {"managed",     memory_t::managed},
+        {"device",      memory_t::device}
     };
 
     if (map_to_type.count(name__) == 0) {

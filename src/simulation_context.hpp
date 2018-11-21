@@ -1073,8 +1073,8 @@ class Simulation_context : public Simulation_parameters
         return augmentation_op_[iat__];
     }
 
-    /// Type of the host memory for beta-projectors and related arrays.
-    inline memory_t beta_projectors_host_memory_t() const
+    /// Type of the host memory for arrays used in linear algebra operations.
+    inline memory_t host_memory_t() const
     {
         switch (processing_unit()) {
             case device_t::CPU: {
@@ -1087,24 +1087,24 @@ class Simulation_context : public Simulation_parameters
         return memory_t::none; // make compiler happy
     }
 
-    inline memory_t wave_functions_host_memory_t() const
+    /// Type of preferred memory for the storage of wave-functions and related arrays.
+    inline memory_t preferred_memory_t() const
+    {
+        return host_memory_t();
+    }
+
+    inline linalg_t blas_linalg_t() const
     {
         switch (processing_unit()) {
             case device_t::CPU: {
-                return memory_t::host;
+                return linalg_t::blas;
             }
             case device_t::GPU: {
-                return memory_t::host_pinned;
+                return linalg_t::cublasxt;
             }
         }
-        return memory_t::none; // make compiler happy
-
+        return linalg_t::blas; // make compiler happy
     }
-
-    //inline linalg_t blas_linalg_t() const
-    //{
-
-    //}
 };
 
 inline void Simulation_context::initialize()
@@ -1136,12 +1136,13 @@ inline void Simulation_context::initialize()
     set_processing_unit(pu);
 
     /* check if we can use a GPU device */
-    if (processing_unit() == GPU) {
+    if (processing_unit() == device_t::GPU) {
 #if !defined(__GPU)
         TERMINATE_NO_GPU;
 #endif
     }
 
+    /* initialize MPI communicators */
     init_comm();
 
     /* can't use reduced G-vectors in LAPW code */
@@ -1157,7 +1158,7 @@ inline void Simulation_context::initialize()
         }
     }
 
-    /* initialize variables, related to the unit cell */
+    /* initialize variables related to the unit cell */
     unit_cell_.initialize();
 
     /* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and minimum MT radius) */
@@ -1460,19 +1461,17 @@ inline void Simulation_context::print_info()
 
     printf("processing unit                    : ");
     switch (processing_unit()) {
-        case CPU: {
+        case device_t::CPU: {
             printf("CPU\n");
             break;
         }
-        case GPU: {
+        case device_t::GPU: {
             printf("GPU\n");
+#ifdef __GPU
+            acc::print_device_info(0);
+#endif
             break;
         }
-    }
-    if (processing_unit() == GPU) {
-#ifdef __GPU
-        acc::print_device_info(0);
-#endif
     }
 
     int i{1};

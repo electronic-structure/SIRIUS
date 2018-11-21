@@ -101,9 +101,9 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
 
             for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
                 auto& atom_type = ctx_.unit_cell().atom_type(iat);
-                
-                auto ri0 = beta_ri0.values(iat, gvs[0]);  
-                auto ri1 = beta_ri1.values(iat, gvs[0]);  
+
+                auto ri0 = beta_ri0.values(iat, gvs[0]);
+                auto ri1 = beta_ri1.values(iat, gvs[0]);
 
                 for (int nu = 0; nu < 3; nu++) {
                     for (int mu = 0; mu < 3; mu++) {

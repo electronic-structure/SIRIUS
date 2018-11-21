@@ -58,29 +58,9 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
     double t1 = -omp_get_wtime();
 
-//    /* for the data remapping we need phi on CPU */
-//    #ifdef __GPU
-//    if (ctx_.processing_unit() == GPU) {
-//        for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
-//            if (phi__.pw_coeffs(ispn).is_remapped() || ctx_.fft_coarse().pu() == CPU) {
-//                phi__.pw_coeffs(ispn).copy_to_host(N__, n__);
-//            }
-//        }
-//    }
-//    #endif
-
     if (hphi__ != NULL) {
         /* apply local part of Hamiltonian */
         local_op_->apply_h(ispn__, phi__, *hphi__, N__, n__);
-
-// remap_backward() will copy the data on device if prime storage was allocated on device
-//#ifdef __GPU
-//        if (ctx_.processing_unit() == GPU && ctx_.fft_coarse().pu() == CPU) {
-//            for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
-//                hphi__->pw_coeffs(ispn).copy_to_device(N__, n__);
-//            }
-//        }
-//#endif
     }
 
     t1 += omp_get_wtime();
@@ -93,8 +73,8 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
     if (ctx_.control().print_checksum_ && (hphi__ != NULL)) {
         for (int ispn = 0; ispn < nsc; ispn++) {
-            auto cs1 = phi__.checksum(ctx_.processing_unit(), ispn, N__, n__);
-            auto cs2 = hphi__->checksum(ctx_.processing_unit(), ispn, N__, n__);
+            auto cs1 = phi__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
+            auto cs2 = hphi__->checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "phi_" << ispn;
@@ -108,7 +88,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
     /* set intial sphi */
     for (int ispn = 0; (ispn < nsc) && (sphi__ != NULL); ispn++) {
-        sphi__->copy_from(ctx_.processing_unit(), n__, phi__, ispn, N__, ispn, N__);
+        sphi__->copy_from(get_device_t(ctx_.preferred_memory_t()), n__, phi__, ispn, N__, ispn, N__);
     }
 
     /* return if there are no beta-projectors */
@@ -168,19 +148,19 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         // functions on GPU (if needed)
         this->U().apply_hubbard_potential(*kp__, ispn__, N__, n__, phi__, *hphi__);
 
-        #ifdef __GPU
+#ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 kp__->hubbard_wave_functions().deallocate_on_device(ispn);
             }
         }
-        #endif
+#endif
     }
 
     if ((ctx_.control().print_checksum_) && (hphi__ != NULL) && (sphi__ != NULL)) {
         for (int ispn = 0; ispn < nsc; ispn++) {
-            auto cs1 = hphi__->checksum(ctx_.processing_unit(), ispn, N__, n__);
-            auto cs2 = sphi__->checksum(ctx_.processing_unit(), ispn, N__, n__);
+            auto cs1 = hphi__->checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
+            auto cs2 = sphi__->checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "hphi_" << ispn;

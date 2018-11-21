@@ -149,9 +149,9 @@ class matrix_storage<T, matrix_storage_t::slab>
         if (!is_remapped()) {
             assert(num_rows_loc_ == gvp_->gvec_count_fft());
             ncol = n__;
-            ptr = prime_.template at<CPU>(0, idx0__);
+            ptr = prime_.template at<device_t::CPU>(0, idx0__);
             if (prime_.on_device()) {
-                ptr_d = prime_.template at<GPU>(0, idx0__);
+                ptr_d = prime_.template at<device_t::GPU>(0, idx0__);
             }
         } else {
             /* maximum local number of matrix columns */
@@ -175,12 +175,11 @@ class matrix_storage<T, matrix_storage_t::slab>
     }
 
     /// Remap data from prime to extra storage.
-    /** \param [in] pu        Target processing unit.
-     *  \param [in] n         Number of matrix columns to distribute.
+    /** \param [in] n         Number of matrix columns to distribute.
      *  \param [in] idx0      Starting column of the matrix.
      *
      *  Prime storage is expected on the CPU (for the MPI a2a communication). */
-    inline void remap_forward(device_t pu__, int n__, int idx0__, memory_pool* mp__)
+    inline void remap_forward(int n__, int idx0__, memory_pool* mp__)
     {
         PROFILE("sddk::matrix_storage::remap_forward");
 
@@ -403,7 +402,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     {
         return extra_;
     }
-    
+
     template <memory_t mem_type>
     inline void zero(int i0__, int n__)
     {
@@ -436,25 +435,25 @@ class matrix_storage<T, matrix_storage_t::slab>
                 break;
             }
             case memory_t::device: {
-                #ifdef __GPU
+#ifdef __GPU
                 scale_matrix_elements_gpu(reinterpret_cast<cuDoubleComplex*>(prime().template at<GPU>(0, i0__)),
                                           prime().ld(), num_rows_loc(), n__, beta__);
-                #endif
+#endif
                 break;
             }
         }
     }
 
-    #ifdef __GPU
+    void allocate(memory_pool& mp__)
+    {
+        prime_.allocate(mp__);
+    }
+
+#ifdef __GPU
     /// Allocate prime storage on device.
     void allocate_on_device()
     {
         prime_.allocate(memory_t::device);
-    }
-
-    void allocate(memory_pool& mp__)
-    {
-        prime_.allocate(mp__);
     }
 
     /// Deallocate storage on device.
@@ -479,7 +478,7 @@ class matrix_storage<T, matrix_storage_t::slab>
             acc::copyout(prime_.template at<CPU>(0, i0__), prime_.template at<GPU>(0, i0__), n__ * num_rows_loc());
         }
     }
-    #endif
+#endif
 
     inline double_complex checksum(device_t pu__,
                                    int      i0__,

@@ -60,6 +60,7 @@ struct linalg_const
 
 enum class linalg_t
 {
+    none,
     blas,
     lapack,
     cublas,

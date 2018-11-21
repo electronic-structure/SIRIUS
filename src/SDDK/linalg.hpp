@@ -1238,6 +1238,10 @@ class linalg2
     template <typename T>
     inline void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* alpha, T const* A, ftn_int lda,
                      T const* B, ftn_int ldb, T const* beta, T* C, ftn_int ldc, int stream_id = -1) const;
+
+    template<typename T>
+    void ger(ftn_int m, ftn_int n, T const* alpha, T const* x, ftn_int incx, T const* y, ftn_int incy, T* A, ftn_int lda,
+             int stream_id = -1) const;
 };
 
 template <>
@@ -1324,6 +1328,33 @@ inline void linalg2::gemm<ftn_double_complex>(int transa, int transb, ftn_int m,
 #endif
             break;
 
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+        }
+    }
+}
+
+template<>
+inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alpha, ftn_double const* x, ftn_int incx,
+                                     ftn_double const* y, ftn_int incy, ftn_double* A, ftn_int lda, int stream_id) const
+{
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(dger)(&m, &n, const_cast<ftn_double*>(alpha), const_cast<ftn_double*>(x), &incx,
+                          const_cast<ftn_double*>(y), &incy, A, &lda);
+            break;
+        }
+        case  linalg_t::cublas: {
+#ifdef __GPU
+            cublas::dger(m, n, alpha, x, incx, y, incy, A, lda, stream_id);
+#else
+            throw std::runtime_error("not compiled with cublas");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+            throw std::runtime_error("(d,z)ger is not implemented in cublasxt");
         }
         default: {
             throw std::runtime_error("wrong type of linear algebra library");
