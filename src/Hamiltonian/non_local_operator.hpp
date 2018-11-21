@@ -345,7 +345,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
 
     if (static_cast<size_t>(nbeta * n__) > work_.size()) {
         work_ = mdarray<double, 1>(nbeta * n__);
-        if (pu_ == GPU) {
+        if (pu_ == device_t::GPU) {
             work_.allocate(memory_t::device);
         }
     }
@@ -574,7 +574,7 @@ class Q_operator : public Non_local_operator<T>
                 utils::print_checksum("Q_operator", cs);
             }
 
-            if (this->pu_ == GPU) {
+            if (this->pu_ == device_t::GPU) {
                 this->op_.allocate(memory_t::device);
                 this->op_.template copy<memory_t::host, memory_t::device>();
             }
