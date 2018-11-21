@@ -301,8 +301,8 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
 
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-        transform<T>(ctx_.processing_unit(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, {&phi}, 0, num_phi_tot, evec, 0, 0,
-                    {&kp__->spinor_wave_functions()}, 0, num_bands);
+        transform<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step,
+                     {&phi}, 0, num_phi_tot, evec, 0, 0, {&kp__->spinor_wave_functions()}, 0, num_bands);
 
         for (int j = 0; j < num_bands; j++) {
             kp__->band_energy(j, ispn_step, eval[j]);
@@ -320,17 +320,13 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
         }
     }
 
-    switch (get_device_t(ctx_.preferred_memory_t())) {
-        case device_t::GPU: {
+    if (is_device_memory(ctx_.preferred_memory_t())) {
 #ifdef __GPU
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                kp__->spinor_wave_functions().pw_coeffs(ispn).copy_to_host(0, num_bands);
-                kp__->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
-            }
-#endif
-            break;
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            kp__->spinor_wave_functions().pw_coeffs(ispn).copy_to_host(0, num_bands);
+            kp__->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
         }
-        case device_t::CPU: break;
+#endif
     }
 
     if (ctx_.control().print_checksum_) {
