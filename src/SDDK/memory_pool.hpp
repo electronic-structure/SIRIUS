@@ -71,6 +71,11 @@ inline bool is_host_memory(memory_t mem__)
     return static_cast<unsigned int>(mem__) & 1;
 }
 
+inline bool is_device_memory(memory_t mem__)
+{
+    return static_cast<unsigned int>(mem__) & 0b1000;
+}
+
 inline memory_t get_memory_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);

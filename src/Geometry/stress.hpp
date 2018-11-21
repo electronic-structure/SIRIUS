@@ -218,7 +218,7 @@ class Stress {
             int ik = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
+            if (is_device_memory(ctx_.preferred_memory_t())) {
                 int nbnd = ctx_.num_bands();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* allocate GPU memory */
@@ -233,7 +233,7 @@ class Stress {
 
             nlf.add_k_point_contribution(*kp, collect_result);
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
+            if (is_device_memory(ctx_.preferred_memory_t())) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* deallocate GPU memory */
                     kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
