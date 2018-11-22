@@ -234,7 +234,7 @@ inline void dtrmm(char side__, char uplo__, char transa__, char diag__, int m__,
                   double const* alpha__, double const* A__, int lda__, double* B__, int ldb__)
 {
     cublasSideMode_t side = get_cublasSideMode_t(side__);
-    cublasFillMode_t uplo = get_cublasFillMode_t(uplo);
+    cublasFillMode_t uplo = get_cublasFillMode_t(uplo__);
     cublasOperation_t transa = get_cublasOperation_t(transa__);
     cublasDiagType_t diag = get_cublasDiagType_t(diag__);
     acc::set_device();
@@ -254,7 +254,7 @@ inline void ztrmm(char             side__,
                   int              ldb__)
 {
     cublasSideMode_t side = get_cublasSideMode_t(side__);
-    cublasFillMode_t uplo = get_cublasFillMode_t(uplo);
+    cublasFillMode_t uplo = get_cublasFillMode_t(uplo__);
     cublasOperation_t transa = get_cublasOperation_t(transa__);
     cublasDiagType_t diag = get_cublasDiagType_t(diag__);
     acc::set_device();
