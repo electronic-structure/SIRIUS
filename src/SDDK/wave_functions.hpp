@@ -41,6 +41,11 @@ const int sddk_default_block_size = 256;
 
 namespace sddk {
 
+inline std::vector<int> get_spins(int ispn__)
+{
+    return (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
+}
+
 /// Wave-functions representation.
 /** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
  *  with the slab distribution. Wave-functions have one or two spin components. In case of collinear magnetism
