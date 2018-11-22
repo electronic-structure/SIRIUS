@@ -54,7 +54,14 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 
         /* convert to real matrix */
         auto dm = density_matrix_aux(iat);
-        
+
+        if (ctx_.control().print_checksum_) {
+             auto cs = dm.checksum();
+             if (ctx_.comm().rank() == 0) {
+                utils::print_checksum("density_matrix_aux", cs);
+             }
+        }
+
         if (pu == CPU) {
             utils::timer t2("sirius::Density::generate_rho_aug|phase_fac");
             /* treat phase factors as real array with x2 size */
@@ -148,7 +155,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
     if (pu == GPU) {
         rho_aug__.copy<memory_t::device, memory_t::host>();
     }
-    
+
     if (ctx_.control().print_checksum_) {
          auto cs = rho_aug__.checksum();
          ctx_.comm().allreduce(&cs, 1);

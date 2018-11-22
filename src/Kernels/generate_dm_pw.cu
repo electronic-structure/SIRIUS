@@ -77,16 +77,17 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
         gvec__, 
         (cuDoubleComplex*)phase_factors__
     );
-    
+
     double alpha = 1;
     double beta = 0;
 
     cublas::dgemm('N', 'T', nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
-                  &alpha, 
+                  &alpha,
                   dm__, nbf__ * (nbf__ + 1) / 2,
                   phase_factors__, num_gvec_loc__ * 2,
-                 &beta,
-                 dm_pw__, nbf__ * (nbf__ + 1) / 2,
-                 stream_id__);
+                  &beta,
+                  dm_pw__, nbf__ * (nbf__ + 1) / 2,
+                  stream_id__);
+   acc::sync_stream(stream_id__);
 }
 
