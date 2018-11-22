@@ -50,6 +50,9 @@ namespace sddk {
     \code{.cpp}
     mem_type & memory_t::device == memory_t::device
     \endcode
+
+    All memory types can be divided into two (possibly overlapping) groups: accessible by the CPU and accessible by the
+    device.
 */
 enum class memory_t : unsigned int
 {
@@ -59,18 +62,19 @@ enum class memory_t : unsigned int
     host        = 0b0001,
     /// Pinned host memory. This is host memory + extra bit flag.
     host_pinned = 0b0011,
-    /// Managed memory (accessible from both host and device).
-    managed     = 0b0101,
     /// Device memory.
-    device      = 0b1000
+    device      = 0b1000,
+    /// Managed memory (accessible from both host and device).
+    managed     = 0b1101,
 };
 
 /// Check if this is a valid host memory (memory, accessible by the host).
 inline bool is_host_memory(memory_t mem__)
 {
-    return static_cast<unsigned int>(mem__) & 1;
+    return static_cast<unsigned int>(mem__) & 0b0001;
 }
 
+/// Check if this is a valid device memory (memory, accessible by the device).
 inline bool is_device_memory(memory_t mem__)
 {
     return static_cast<unsigned int>(mem__) & 0b1000;

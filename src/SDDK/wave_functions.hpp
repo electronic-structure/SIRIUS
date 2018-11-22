@@ -41,6 +41,7 @@ const int sddk_default_block_size = 256;
 
 namespace sddk {
 
+/// Helper function: get a list of spin-indices.
 inline std::vector<int> get_spins(int ispn__)
 {
     return (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
