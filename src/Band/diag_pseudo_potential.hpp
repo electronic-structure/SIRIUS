@@ -365,7 +365,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            auto cs = psi.checksum_pw(ctx_.processing_unit(), ispn, 0, num_bands);
+            auto cs = psi.checksum_pw(get_device_t(ctx_.preferred_memory_t()), ispn, 0, num_bands);
             std::stringstream s;
             s << "input spinor_wave_functions_" << ispn;
             if (kp__->comm().rank() == 0) {
@@ -394,7 +394,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         }
         if (ctx_.control().print_checksum_) {
             for (int ispn = 0; ispn < num_sc; ispn++) {
-                auto cs = psi.checksum_pw(ctx_.processing_unit(), ispn, 0, num_bands);
+                auto cs = psi.checksum_pw(get_device_t(ctx_.preferred_memory_t()), ispn, 0, num_bands);
                 std::stringstream s;
                 s << "input phi" << ispn;
                 if (kp__->comm().rank() == 0) {
