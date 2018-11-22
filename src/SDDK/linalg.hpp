@@ -1242,6 +1242,9 @@ class linalg2
     template<typename T>
     void ger(ftn_int m, ftn_int n, T const* alpha, T const* x, ftn_int incx, T const* y, ftn_int incy, T* A, ftn_int lda,
              int stream_id = -1) const;
+
+    template <typename T>
+    void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T const* aplha, T const* A, ftn_int lda, T* B, ftn_int ldb);
 };
 
 template <>
@@ -1362,6 +1365,36 @@ inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alp
     }
 }
 
+template <>
+inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double const* alpha,
+                                      ftn_double const* A, ftn_int lda, ftn_double* B, ftn_int ldb)
+{
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(dtrmm)(&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_double*>(alpha),
+                           const_cast<ftn_double*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        case  linalg_t::cublas: {
+#ifdef __GPU
+            cublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+#else
+            throw std::runtime_error("not compiled with cublas");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+#ifdef __GPU
+            cublas::xt::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+#else
+            throw std::runtime_error("not compiled with cublasxt");
+#endif
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+        }
+    }
+}
 } // experimental
 
 } // namespace sddk
