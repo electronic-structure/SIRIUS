@@ -1242,6 +1242,7 @@ inline void linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_i
         }
         default: {
             throw std::runtime_error("wrong type of linear algebra library");
+            break;
         }
     }
 }
@@ -1291,6 +1292,7 @@ inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int 
         }
         default: {
             throw std::runtime_error("wrong type of linear algebra library");
+            break;
         }
     }
 }
@@ -1315,9 +1317,11 @@ inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alp
         }
         case linalg_t::cublasxt: {
             throw std::runtime_error("(d,z)ger is not implemented in cublasxt");
+            break;
         }
         default: {
             throw std::runtime_error("wrong type of linear algebra library");
+            break;
         }
     }
 }
@@ -1346,9 +1350,11 @@ inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
+            break;
         }
         default: {
             throw std::runtime_error("wrong type of linear algebra library");
+            break;
         }
     }
 }
@@ -1380,9 +1386,11 @@ inline void linalg2::trmm<ftn_double_complex>(char side, char uplo, char transa,
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
+            break;
         }
         default: {
             throw std::runtime_error("wrong type of linear algebra library");
+            break;
         }
     }
 }

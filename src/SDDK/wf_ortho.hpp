@@ -357,7 +357,7 @@ inline void orthogonalize(device_t        pu__,
 template <typename T, int idx_bra__, int idx_ket__>
 inline void orthogonalize(memory_t                     mem__,
                           linalg_t                     la__,
-                          int                          ispn__, 
+                          int                          ispn__,
                           std::vector<Wave_functions*> wfs__,
                           int                          N__,
                           int                          n__,
