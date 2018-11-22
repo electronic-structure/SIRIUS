@@ -238,6 +238,10 @@ class DFT_ground_state
         kset_.update();
         potential_.update();
         density_.update();
+
+        if (!ctx_.full_potential()) {
+            ewald_energy_ = ewald_energy();
+        }
     }
 
     /// Return reference to a simulation context.
