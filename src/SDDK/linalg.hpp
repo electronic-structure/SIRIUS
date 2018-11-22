@@ -1219,8 +1219,7 @@ inline void linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_i
     assert(k > 0);
     switch (la_) {
         case linalg_t::blas: {
-            const char *trans[] = {"N", "T", "C"};
-            FORTRAN(dgemm)(trans[transa], trans[transb], &m, &n, &k, const_cast<double*>(alpha), const_cast<double*>(A), &lda,
+            FORTRAN(dgemm)(&transa, &transb, &m, &n, &k, const_cast<double*>(alpha), const_cast<double*>(A), &lda,
                            const_cast<double*>(B), &ldb, const_cast<double*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
             break;
         }
@@ -1261,8 +1260,7 @@ inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int 
     assert(k > 0);
     switch (la_) {
         case linalg_t::blas: {
-            const char *trans[] = {"N", "T", "C"};
-            FORTRAN(zgemm)(trans[transa], trans[transb], &m, &n, &k, const_cast<ftn_double_complex*>(alpha),
+            FORTRAN(zgemm)(&transa, &transb, &m, &n, &k, const_cast<ftn_double_complex*>(alpha),
                            const_cast<ftn_double_complex*>(A), &lda, const_cast<ftn_double_complex*>(B), &ldb,
                            const_cast<ftn_double_complex*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
             break;

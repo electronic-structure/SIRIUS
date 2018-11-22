@@ -390,7 +390,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
         /* trial basis functions */
         for (int ispn = 0; ispn < num_sc; ispn++) {
-            phi.copy_from(ctx_.processing_unit(), num_bands, psi, nc_mag ? ispn : ispin_step, 0, ispn, 0);
+            phi.copy_from(get_device_t(ctx_.preferred_memory_t()), num_bands, psi, nc_mag ? ispn : ispin_step, 0, ispn, 0);
         }
         if (ctx_.control().print_checksum_) {
             for (int ispn = 0; ispn < num_sc; ispn++) {
@@ -478,7 +478,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
                 if (ctx_.settings().always_update_wf_ || k + n > 0) {
                     /* in case of non-collinear magnetism transform two components */
-                    transform<T>(ctx_.processing_unit(), nc_mag ? 2 : ispin_step, {&phi}, 0, N, evec, 0, 0,
+                    transform<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, {&phi}, 0, N, evec, 0, 0,
                                  {&psi}, 0, num_bands);
                     /* update eigen-values */
                     for (int j = 0; j < num_bands; j++) {
@@ -510,16 +510,16 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (converge_by_energy) {
-                        transform<T>(ctx_.processing_unit(), nc_mag ? 2 : ispin_step, 1.0,
+                        transform<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
                                      std::vector<Wave_functions*>({&hphi, &sphi}), 0, N, evec, 0, 0, 0.0,
                                      {&hpsi, &spsi}, 0, num_bands);
                     }
 
                     /* update basis functions, hphi and ophi */
                     for (int ispn = 0; ispn < num_sc; ispn++) {
-                        phi.copy_from(ctx_.processing_unit(), num_bands, psi, nc_mag ? ispn : ispin_step, 0, nc_mag ? ispn : 0, 0);
-                        hphi.copy_from(ctx_.processing_unit(), num_bands, hpsi, ispn, 0, ispn, 0);
-                        sphi.copy_from(ctx_.processing_unit(), num_bands, spsi, ispn, 0, ispn, 0);
+                        phi.copy_from(get_device_t(ctx_.preferred_memory_t()), num_bands, psi, nc_mag ? ispn : ispin_step, 0, nc_mag ? ispn : 0, 0);
+                        hphi.copy_from(get_device_t(ctx_.preferred_memory_t()), num_bands, hpsi, ispn, 0, ispn, 0);
+                        sphi.copy_from(get_device_t(ctx_.preferred_memory_t()), num_bands, spsi, ispn, 0, ispn, 0);
                     }
                     /* number of basis functions that we already have */
                     N = num_bands;
@@ -528,14 +528,14 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
             /* expand variational subspace with new basis vectors obtatined from residuals */
             for (int ispn = 0; ispn < num_sc; ispn++) {
-                phi.copy_from(ctx_.processing_unit(), n, res, ispn, 0, ispn, N);
+                phi.copy_from(get_device_t(ctx_.preferred_memory_t()), n, res, ispn, 0, ispn, N);
             }
 
             /* apply Hamiltonian and S operators to the new basis functions */
             H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, N, n, phi, &hphi, &sphi);
 
             if (itso.orthogonalize_) {
-                orthogonalize<T>(ctx_.processing_unit(), nc_mag ? 2 : 0, phi, hphi, sphi, N, n, ovlp, res);
+                orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, N, n, ovlp, res);
             }
 
             /* setup eigen-value problem
