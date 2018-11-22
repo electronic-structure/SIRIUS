@@ -416,9 +416,9 @@ inline int Band::residuals(K_point*             kp__,
     /* print checksums */
     if (ctx_.control().print_checksum_ && n != 0) {
         for (int ispn: spins) {
-            auto cs = res__.checksum(ctx_.processing_unit(), ispn, 0, n);
-            auto cs1 = hpsi__.checksum(ctx_.processing_unit(), ispn, 0, n);
-            auto cs2 = opsi__.checksum(ctx_.processing_unit(), ispn, 0, n);
+            auto cs = res__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, 0, n);
+            auto cs1 = hpsi__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, 0, n);
+            auto cs2 = opsi__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, 0, n);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "res_" << ispn;
