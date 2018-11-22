@@ -553,7 +553,7 @@ inline void transform(memory_t                     mem__,
     /* trivial case */
     if (comm.size() == 1) {
 #ifdef __GPU
-        if (is_device_memory(mem__) {
+        if (is_device_memory(mem__)) {
             acc::copyin(mtrx__.template at<GPU>(irow0__, jcol0__), mtrx__.ld(),
                         mtrx__.template at<CPU>(irow0__, jcol0__), mtrx__.ld(), m__, n__, 0);
         }
