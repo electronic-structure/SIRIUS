@@ -501,21 +501,21 @@ inline void inner(memory_t        mem__,
         for (int s: spins) {
             /* wave-functions are complex and inner product is complex */
             if (std::is_same<T, double_complex>::value) {
-                experimental::linalg2(la__).gemm(2, 0, m__, n__, bra__.pw_coeffs(s).num_rows_loc(),
-                                                 &linalg_const<double_complex>::one(),
-                                                 bra__.pw_coeffs(s).prime().at(mem__, 0, i0__), bra__.pw_coeffs(s).prime().ld(),
-                                                 ket__.pw_coeffs(s).prime().at(mem__, 0, j0__), ket__.pw_coeffs(s).prime().ld(),
-                                                 reinterpret_cast<double_complex*>(&beta),
-                                                 reinterpret_cast<double_complex*>(buf__), ld__,
-                                                 stream_id);
+                linalg2(la__).gemm('C', 'N', m__, n__, bra__.pw_coeffs(s).num_rows_loc(),
+                                   &linalg_const<double_complex>::one(),
+                                   bra__.pw_coeffs(s).prime().at(mem__, 0, i0__), bra__.pw_coeffs(s).prime().ld(),
+                                   ket__.pw_coeffs(s).prime().at(mem__, 0, j0__), ket__.pw_coeffs(s).prime().ld(),
+                                   reinterpret_cast<double_complex*>(&beta),
+                                   reinterpret_cast<double_complex*>(buf__), ld__,
+                                   stream_id);
                 if (bra__.has_mt()) {
-                    experimental::linalg2(la__).gemm(2, 0, m__, n__, bra__.mt_coeffs(s).num_rows_loc(),
-                                                     &linalg_const<double_complex>::one(),
-                                                     bra__.mt_coeffs(s).prime().at(mem__, 0, i0__), bra__.mt_coeffs(s).prime().ld(),
-                                                     ket__.mt_coeffs(s).prime().at(mem__, 0, j0__), ket__.mt_coeffs(s).prime().ld(),
-                                                     &linalg_const<double_complex>::one(),
-                                                     reinterpret_cast<double_complex*>(buf__), ld__,
-                                                     stream_id);
+                    linalg2(la__).gemm('C', 'N', m__, n__, bra__.mt_coeffs(s).num_rows_loc(),
+                                       &linalg_const<double_complex>::one(),
+                                       bra__.mt_coeffs(s).prime().at(mem__, 0, i0__), bra__.mt_coeffs(s).prime().ld(),
+                                       ket__.mt_coeffs(s).prime().at(mem__, 0, j0__), ket__.mt_coeffs(s).prime().ld(),
+                                       &linalg_const<double_complex>::one(),
+                                       reinterpret_cast<double_complex*>(buf__), ld__,
+                                       stream_id);
                 }
             }
             /* wave-functions are real and inner product is also real */
@@ -524,24 +524,24 @@ inline void inner(memory_t        mem__,
                     TERMINATE("not implemented");
                 }
 
-                experimental::linalg2(la__).gemm(2, 0, m__, n__, 2 * bra__.pw_coeffs(s).num_rows_loc(),
-                                                 &linalg_const<double>::two(),
-                                                 reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(mem__, 0, i0__)),
-                                                 2 * bra__.pw_coeffs(s).prime().ld(),
-                                                 reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(mem__, 0, j0__)),
-                                                 2 * ket__.pw_coeffs(s).prime().ld(),
-                                                 reinterpret_cast<double*>(&beta),
-                                                 reinterpret_cast<double*>(buf__), ld__,
-                                                 stream_id);
+                linalg2(la__).gemm('C', 'N', m__, n__, 2 * bra__.pw_coeffs(s).num_rows_loc(),
+                                   &linalg_const<double>::two(),
+                                   reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(mem__, 0, i0__)),
+                                   2 * bra__.pw_coeffs(s).prime().ld(),
+                                   reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(mem__, 0, j0__)),
+                                   2 * ket__.pw_coeffs(s).prime().ld(),
+                                   reinterpret_cast<double*>(&beta),
+                                   reinterpret_cast<double*>(buf__), ld__,
+                                   stream_id);
                 /* subtract one extra G=0 contribution */
                 if (comm.rank() == 0) {
                     linalg_t la = is_host_memory(mem__) ? linalg_t::blas : linalg_t::cublas;
-                    experimental::linalg2(la).ger(m__, n__, &linalg_const<double>::m_one(),
-                                             reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(mem__, 0, i0__)),
-                                             2 * bra__.pw_coeffs(s).prime().ld(),
-                                             reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(mem__, 0, j0__)),
-                                             2 * ket__.pw_coeffs(s).prime().ld(),
-                                             reinterpret_cast<double*>(buf__), ld__);
+                    linalg2(la).ger(m__, n__, &linalg_const<double>::m_one(),
+                                    reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(mem__, 0, i0__)),
+                                    2 * bra__.pw_coeffs(s).prime().ld(),
+                                    reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(mem__, 0, j0__)),
+                                    2 * ket__.pw_coeffs(s).prime().ld(),
+                                    reinterpret_cast<double*>(buf__), ld__);
                 }
 
             }

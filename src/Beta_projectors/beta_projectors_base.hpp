@@ -250,15 +250,15 @@ class Beta_projectors_base
 
         if (std::is_same<T, double_complex>::value) {
 
-            experimental::linalg2(ctx_.blas_linalg_t()).gemm(2, 0, nbeta, n__, num_gkvec_loc(),
-                                  &linalg_const<double_complex>::one(),
-                                  pw_coeffs_a().at(mem),
-                                  num_gkvec_loc(),
-                                  phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
-                                  phi__.pw_coeffs(ispn__).prime().ld(),
-                                  &linalg_const<double_complex>::zero(),
-                                  reinterpret_cast<double_complex*>(beta_phi.at(ctx_.preferred_memory_t())),
-                                  nbeta);
+            linalg2(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta, n__, num_gkvec_loc(),
+                    &linalg_const<double_complex>::one(),
+                    pw_coeffs_a().at(mem),
+                    num_gkvec_loc(),
+                    phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
+                    phi__.pw_coeffs(ispn__).prime().ld(),
+                    &linalg_const<double_complex>::zero(),
+                    reinterpret_cast<double_complex*>(beta_phi.at(ctx_.preferred_memory_t())),
+                    nbeta);
 
 //            switch (ctx_.processing_unit()) {
 //                case device_t::CPU: {
@@ -284,15 +284,15 @@ class Beta_projectors_base
 //            }
         }
         if (std::is_same<T, double>::value) {
-            experimental::linalg2(ctx_.blas_linalg_t()).gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc(),
-                                  &linalg_const<double>::two(),
-                                  reinterpret_cast<double const*>(pw_coeffs_a().at(mem)),
-                                  2 * num_gkvec_loc(),
-                                  reinterpret_cast<double const*>(phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__)),
-                                  2 * phi__.pw_coeffs(ispn__).prime().ld(),
-                                  &linalg_const<double>::zero(),
-                                  reinterpret_cast<double*>(beta_phi.at(ctx_.preferred_memory_t())),
-                                  nbeta);
+            linalg2(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta, n__, 2 * num_gkvec_loc(),
+                    &linalg_const<double>::two(),
+                    reinterpret_cast<double const*>(pw_coeffs_a().at(mem)),
+                    2 * num_gkvec_loc(),
+                    reinterpret_cast<double const*>(phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__)),
+                    2 * phi__.pw_coeffs(ispn__).prime().ld(),
+                    &linalg_const<double>::zero(),
+                    reinterpret_cast<double*>(beta_phi.at(ctx_.preferred_memory_t())),
+                    nbeta);
             if (gkvec_.comm().rank() == 0) {
                 memory_t mem{memory_t::none};
                 double* x;
@@ -320,12 +320,12 @@ class Beta_projectors_base
                     }
                     la = linalg_t::blas;
                 }
-                experimental::linalg2(la).ger(nbeta, n__,
-                                 &linalg_const<double>::m_one(),
-                                 x, incx,
-                                 reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at(mem, 0, idx0__)), 
-                                 2 * phi__.pw_coeffs(ispn__).prime().ld(),
-                                 reinterpret_cast<double*>(beta_phi.at(mem)), nbeta);
+                linalg2(la).ger(nbeta, n__,
+                                &linalg_const<double>::m_one(),
+                                x, incx,
+                                reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at(mem, 0, idx0__)), 
+                                2 * phi__.pw_coeffs(ispn__).prime().ld(),
+                                reinterpret_cast<double*>(beta_phi.at(mem)), nbeta);
             }
 
 

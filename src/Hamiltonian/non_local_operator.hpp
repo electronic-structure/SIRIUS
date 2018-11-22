@@ -164,11 +164,11 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
         int nbf  = beta_.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
         int offs = beta_.chunk(chunk__).desc_(beta_desc_idx::offset, i);
         int ia   = beta_.chunk(chunk__).desc_(beta_desc_idx::ia, i);
-        experimental::linalg2(la).gemm(0, 0, nbf, n__, nbf, &linalg_const<double_complex>::one(),
-                                       op_.at(mem, packed_mtrx_offset_(ia), ispn_block__), nbf,
-                                       beta_phi__.at(mem, offs, 0), nbeta,
-                                       &linalg_const<double_complex>::zero(),
-                                       work_.at(mem, offs), nbeta, omp_get_thread_num());
+        linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
+                         op_.at(mem, packed_mtrx_offset_(ia), ispn_block__), nbf,
+                         beta_phi__.at(mem, offs, 0), nbeta,
+                         &linalg_const<double_complex>::zero(),
+                         work_.at(mem, offs), nbeta, omp_get_thread_num());
 
         //switch (pu_) {
         //    case CPU: {
@@ -200,13 +200,13 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
     }
 
     /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-    experimental::linalg2(ctx_.blas_linalg_t()).gemm(0, 0, num_gkvec_loc, n__, nbeta,
-                                                     &linalg_const<double_complex>::one(),
-                                                     beta_gk.at(mem), num_gkvec_loc,
-                                                     work_.at(mem), nbeta,
-                                                     &linalg_const<double_complex>::one(),
-                                                     op_phi__.pw_coeffs(jspn).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
-                                                     op_phi__.pw_coeffs(jspn).prime().ld());
+    linalg2(ctx_.blas_linalg_t()).gemm('N', 'N', num_gkvec_loc, n__, nbeta,
+                                       &linalg_const<double_complex>::one(),
+                                       beta_gk.at(mem), num_gkvec_loc,
+                                       work_.at(mem), nbeta,
+                                       &linalg_const<double_complex>::one(),
+                                       op_phi__.pw_coeffs(jspn).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
+                                       op_phi__.pw_coeffs(jspn).prime().ld());
 
     switch (pu_) {
         case device_t::GPU: {
