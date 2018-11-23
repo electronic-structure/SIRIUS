@@ -48,6 +48,8 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t mem__)
     if (mem__ == memory_t::device) {
     }
 
+    char TA[] = {'N', 'T', 'C'};
+
     printf("testing serial gemm with M, N, K = %i, %i, %i, opA = %i\n", M, N, K, transa);
     printf("a.ld() = %i\n", a.ld());
     printf("b.ld() = %i\n", b.ld());
@@ -56,7 +58,7 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t mem__)
     switch (mem__) {
         case memory_t::host:
         case memory_t::host_pinned: {
-            linalg2(la__).gemm(transa, 0, M, N, K, &linalg_const<gemm_type>::one(), a.at<CPU>(), a.ld(), 
+            linalg2(la__).gemm(TA[transa], 'N', M, N, K, &linalg_const<gemm_type>::one(), a.at<CPU>(), a.ld(), 
                                              b.at<CPU>(), b.ld(), &linalg_const<gemm_type>::zero(), c.at<CPU>(), c.ld());
             break;
         }
@@ -66,7 +68,7 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t mem__)
             c.allocate(memory_t::device);
             a.copy<memory_t::host, memory_t::device>();
             b.copy<memory_t::host, memory_t::device>();
-            linalg2(la__).gemm(transa, 0, M, N, K, &linalg_const<gemm_type>::one(), a.at<GPU>(), a.ld(), 
+            linalg2(la__).gemm(TA[transa], 'N', M, N, K, &linalg_const<gemm_type>::one(), a.at<GPU>(), a.ld(), 
                                              b.at<GPU>(), b.ld(), &linalg_const<gemm_type>::zero(), c.at<GPU>(), c.ld());
             c.copy<memory_t::device, memory_t::host>();
             break;
