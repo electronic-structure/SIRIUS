@@ -1,4 +1,5 @@
 #include <utils/cmd_args.hpp>
+#include <utils/utils.hpp>
 #include <memory_pool.hpp>
 #include <complex>
 #include <sys/time.h>
@@ -167,6 +168,33 @@ void test6a()
     mp.print();
 }
 
+void test7()
+{
+    memory_pool mp(memory_t::host);
+
+    int N = 10000;
+    std::vector<double*> v(N);
+    for (int k = 0; k < 30; k++) {
+        for (int i = 0; i < N; i++) {
+            auto n = (utils::rand() & 0b1111111111) + 1;
+            v[i] = mp.allocate<double>(n);
+        }
+        std::random_shuffle(v.begin(), v.end());
+        for (int i = 0; i < N; i++) {
+            mp.free(v[i]);
+        }
+        if (mp.free_size() != mp.total_size()) {
+            throw std::runtime_error("wrong free size");
+        }
+        if (mp.num_blocks() != 1) {
+            throw std::runtime_error("wrong number of blocks");
+        }
+        if (mp.num_stored_ptr() != 0) {
+            throw std::runtime_error("wrong number of stored pointers");
+        }
+    }
+}
+
 int run_test()
 {
     test1();
@@ -178,6 +206,7 @@ int run_test()
     test5();
     //test6();
     //test6a();
+    test7();
     return 0;
 }
 

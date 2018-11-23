@@ -173,6 +173,16 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
 
     std::vector<double> eval(num_bands);
 
+    ctx_.print_memory_usage(__FILE__, __LINE__);
+
+    kp__->beta_projectors().prepare();
+
+    ctx_.print_memory_usage(__FILE__, __LINE__);
+
+    kp__->beta_projectors().dismiss();
+
+    ctx_.print_memory_usage(__FILE__, __LINE__);
+
     kp__->beta_projectors().prepare();
 
     ctx_.print_memory_usage(__FILE__, __LINE__);

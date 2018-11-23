@@ -37,6 +37,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <complex>
+#include "json.hpp"
 
 /// Namespace for simple utility functions.
 namespace utils {
@@ -305,9 +306,9 @@ inline double confined_polynomial(double r, double R, int p1, int p2, int dm)
 
 /// Read json dictionary from file or string.
 /** Terminate if file doesn't exist. */
-inline json read_json_from_file_or_string(std::string const& str__)
+inline nlohmann::json read_json_from_file_or_string(std::string const& str__)
 {
-    json dict = {};
+    nlohmann::json dict = {};
     if (str__.size() == 0) {
         return std::move(dict);
     }

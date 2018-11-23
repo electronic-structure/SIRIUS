@@ -388,6 +388,7 @@ class Beta_projectors_base
             pw_coeffs_t_.deallocate(memory_t::device);
         }
         pw_coeffs_a_.deallocate(memory_t::device);
+        pw_coeffs_a_g0_.deallocate(memory_t::device);
     }
 
     inline int num_beta_t() const
