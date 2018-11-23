@@ -387,6 +387,7 @@ class Beta_projectors_base
         if (ctx_.processing_unit() == GPU && reallocate_pw_coeffs_t_on_gpu_) {
             pw_coeffs_t_.deallocate(memory_t::device);
         }
+        pw_coeffs_a_.deallocate(memory_t::device);
     }
 
     inline int num_beta_t() const
