@@ -280,7 +280,7 @@ class Unit_cell
     }
 
     /// Print basic info.
-    inline void print_info(int verbosity_);
+    inline void print_info(int verbosity__) const;
 
     inline unit_cell_parameters_descriptor unit_cell_parameters();
 
@@ -968,7 +968,7 @@ inline bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
     return false;
 }
 
-inline void Unit_cell::print_info(int verbosity_)
+inline void Unit_cell::print_info(int verbosity__) const
 {
     printf("\n");
     printf("Unit cell\n");
@@ -1006,7 +1006,7 @@ inline void Unit_cell::print_info(int verbosity_)
     if (!parameters_.full_potential()) {
         printf("number of PAW atoms : %i\n", num_paw_atoms());
     }
-    if (verbosity_ >= 2) {
+    if (verbosity__ >= 2) {
         printf("\n");
         printf("atom id              position                    vector_field        type id    class id\n");
         printf("----------------------------------------------------------------------------------------\n");
@@ -1062,7 +1062,7 @@ inline void Unit_cell::print_info(int verbosity_)
         auto t = symmetry_->origin_shift();
         printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
 
-        if (verbosity_ >= 2) {
+        if (verbosity__ >= 2) {
             printf("symmetry operations  : \n");
             for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
                 auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;

@@ -94,6 +94,8 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
 
     auto& mp = ctx_.mem_pool(ctx_.host_memory_t());
 
+    ctx_.print_memory_usage(__FILE__, __LINE__);
+
     /* initial basis functions */
     Wave_functions phi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
@@ -173,9 +175,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
 
     kp__->beta_projectors().prepare();
 
-    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);
@@ -196,9 +196,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
         ovlp.allocate(mpd);
     }
 
-    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
@@ -287,6 +285,8 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
         for (int j = 0; j < num_bands; j++) {
             kp__->band_energy(j, ispn_step, eval[j]);
         }
+
+        ctx_.print_memory_usage(__FILE__, __LINE__);
     }
 
     if (ctx_.control().print_checksum_) {
@@ -322,4 +322,6 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
 
     kp__->beta_projectors().dismiss();
     ctx_.fft_coarse().dismiss();
+
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 }

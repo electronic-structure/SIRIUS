@@ -42,9 +42,6 @@
 //       the memory type, i.e. instead of array.at<GPU>() we would write array.at<memory_t::device>()
 //       Later,  move device_t to typedefs.hpp or to a SDDK namespace or to linear algebra and FFT backends.
 
-// TODO: now .at() method is templated over the device type; it would make more sense to template over
-//       the memory type, i.e. instead of array.at<GPU>() we would write array.at<memory_t::device>()
-
 namespace sddk {
 
 //#ifdef __GPU
@@ -356,6 +353,7 @@ class mdarray
         return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at_idx(mem__, idx__));
     }
 
+    /// TODO: remove in future
     template <device_t pu>
     inline T const* at_idx(index_type const idx__) const
     {
@@ -377,6 +375,7 @@ class mdarray
         return nullptr;
     }
 
+    /// TODO: remove in future
     template <device_t pu>
     inline T* at_idx(index_type const idx__)
     {

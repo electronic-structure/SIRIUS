@@ -460,6 +460,25 @@ class Simulation_context : public Simulation_parameters
     /// Initialize the similation (can only be called once).
     void initialize();
 
+    void print_info() const;
+
+    /// Print the memory usage.
+    inline void print_memory_usage(const char* file__, int line__)
+    {
+        if (comm().rank() == 0 && control().print_memory_usage_) {
+            sirius::print_memory_usage(file__, line__);
+            printf("memory_t::host pool:        %li %li %li\n", mem_pool(memory_t::host).total_size() >> 20,
+                                                                mem_pool(memory_t::host).free_size() >> 20,
+                                                                mem_pool(memory_t::host).num_blocks());
+            printf("memory_t::host_pinned pool: %li %li %li\n", mem_pool(memory_t::host_pinned).total_size() >> 20,
+                                                                mem_pool(memory_t::host_pinned).free_size() >> 20,
+                                                                mem_pool(memory_t::host_pinned).num_blocks());
+            printf("memory_t::device pool:      %li %li %li\n", mem_pool(memory_t::device).total_size() >> 20,
+                                                                mem_pool(memory_t::device).free_size() >> 20,
+                                                                mem_pool(memory_t::device).num_blocks());
+        }
+    }
+
     /// Update context after setting new lattice vectors or atomic coordinates.
     void update()
     {
@@ -568,8 +587,6 @@ class Simulation_context : public Simulation_parameters
     {
         return atoms_to_grid_idx_[ia__];
     };
-
-    void print_info();
 
     Unit_cell& unit_cell()
     {
@@ -1334,7 +1351,7 @@ inline void Simulation_context::initialize()
     initialized_ = true;
 }
 
-inline void Simulation_context::print_info()
+inline void Simulation_context::print_info() const
 {
     tm const* ptm = localtime(&start_time_.tv_sec);
     char buf[100];
