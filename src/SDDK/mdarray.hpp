@@ -490,19 +490,15 @@ class mdarray
     void deallocate(memory_t memory__)
     {
         if ((memory__ & memory_t::host) == memory_t::host) {
-            if (unique_ptr_) {
-                unique_ptr_.reset(nullptr);
-                unique_pool_ptr_.reset(nullptr);
-                raw_ptr_ = nullptr;
-            }
+            unique_ptr_.reset(nullptr);
+            unique_pool_ptr_.reset(nullptr);
+            raw_ptr_ = nullptr;
         }
 #ifdef __GPU
         if ((memory__ & memory_t::device) == memory_t::device) {
-            if (unique_ptr_device_) {
-                unique_ptr_device_.reset(nullptr);
-                unique_pool_ptr_device_.reset(nullptr);
-                raw_ptr_device_ = nullptr;
-            }
+            unique_ptr_device_.reset(nullptr);
+            unique_pool_ptr_device_.reset(nullptr);
+            raw_ptr_device_ = nullptr;
         }
 #endif
     }

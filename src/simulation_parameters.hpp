@@ -495,15 +495,6 @@ class Simulation_parameters
         return parameters_input_.molecule_;
     }
 
-    // TODO: this is horrible, refactor this out
-    inline memory_t dual_memory_t() const
-    {
-        if (processing_unit_ == GPU) {
-            return (memory_t::host | memory_t::device);
-        }
-        return memory_t::host;
-    }
-
     inline bool use_symmetry() const
     {
         return parameters_input_.use_symmetry_;

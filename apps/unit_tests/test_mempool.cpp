@@ -3,6 +3,7 @@
 #include <memory_pool.hpp>
 #include <complex>
 #include <sys/time.h>
+#include <mdarray.hpp>
 
 using double_complex = std::complex<double>;
 using namespace sddk;
@@ -195,6 +196,27 @@ void test7()
     }
 }
 
+void test8()
+{
+    memory_pool mp(memory_t::host);
+    mdarray<double_complex, 2> aa(mp, 100, 100);
+    aa.deallocate(memory_t::host);
+    //memory_pool::unique_ptr<double> up;
+    //up = mp.get_unique_ptr<double>(100);
+    //up.reset(nullptr);
+
+    if (mp.free_size() != mp.total_size()) {
+        throw std::runtime_error("wrong free size");
+    }
+    if (mp.num_blocks() != 1) {
+        throw std::runtime_error("wrong number of blocks");
+    }
+    if (mp.num_stored_ptr() != 0) {
+        throw std::runtime_error("wrong number of stored pointers");
+    }
+
+}
+
 int run_test()
 {
     test1();
@@ -207,6 +229,7 @@ int run_test()
     //test6();
     //test6a();
     test7();
+    test8();
     return 0;
 }
 

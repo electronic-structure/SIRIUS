@@ -549,7 +549,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                 int naw = type.mt_aw_basis_size();
                 int nlo = type.mt_lo_basis_size();
 
-                matrix<double_complex> hmt(naw, nlo, ctx_.dual_memory_t());
+                matrix<double_complex> hmt(naw, nlo);
                 #pragma omp parallel for schedule(static)
                 for (int ilo = 0; ilo < nlo; ilo++) {
                     int xi_lo = naw + ilo;
@@ -573,6 +573,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                     }
                     case GPU: {
 #if defined(__GPU)
+                        hmt.allocate(memory_t::device);
                         hmt.copy<memory_t::host, memory_t::device>();
                         linalg<GPU>::gemm(0, 0, ngv, nlo, naw,
                                           alm_block.at<GPU>(0, offsets_aw[ialoc]), alm_block.ld(),
@@ -619,7 +620,6 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                 int naw = type.mt_aw_basis_size();
                 int nlo = type.mt_lo_basis_size();
 
-                matrix<double_complex> hmt(naw, nlo, ctx_.dual_memory_t());
                 #pragma omp parallel for schedule(static)
                 for (int ilo = 0; ilo < nlo; ilo++) {
                     int xi_lo = naw + ilo;
@@ -699,7 +699,10 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
 
         if (!apw_only__) {
             /* local orbital coefficients for a block of atoms and all states */
-            matrix<double_complex> phi_lo_block(num_mt_lo, n__, ctx_.dual_memory_t());
+            matrix<double_complex> phi_lo_block(num_mt_lo, n__);
+            if (ctx_.processing_unit() == device_t::GPU) {
+                phi_lo_block.allocate(memory_t::device);
+            }
             collect_lo(atom_begin, atom_end, offsets_lo, phi_lo_block);
 
             compute_apw_lo(atom_begin, atom_end, num_mt_lo, offsets_aw, offsets_lo, phi_lo_block);

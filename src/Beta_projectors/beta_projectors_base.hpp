@@ -186,7 +186,8 @@ class Beta_projectors_base
         pw_coeffs_t_ = mdarray<double_complex, 3>(num_gkvec_loc(), num_beta_t(), N__, memory_t::host, "pw_coeffs_t_");
 
         if (ctx_.processing_unit() == GPU) {
-            gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc(), ctx__.dual_memory_t());
+            gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc());
+            gkvec_coord_.allocate(memory_t::device);
             /* copy G+k vectors */
             for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
                 auto vgk = gkvec_.gkvec(igk_[igk_loc]);
