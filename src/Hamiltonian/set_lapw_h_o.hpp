@@ -150,10 +150,12 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
 
     utils::timer t2("sirius::Hamiltonian::set_fv_h_o|alloc");
     h__.allocate(memory_t::device);
-    h__.zero<memory_t::host | memory_t::device>();
+    h__.zero(memory_t::host);
+    h__.zero(memory_t::device);
 
     o__.allocate(memory_t::device);
-    o__.zero<memory_t::host | memory_t::device>();
+    o__.zero(memory_t::host);
+    o__.zero(memory_t::device);
 
     int num_atoms_in_block = 2 * omp_get_max_threads();
     int nblk = unit_cell_.num_atoms() / num_atoms_in_block +

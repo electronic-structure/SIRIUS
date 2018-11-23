@@ -339,7 +339,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 #endif
     }
 
-    ctx_.print_memory_usage();
+    ctx_.print_memory_usage(__FILE__, __LINE__);
     t2.stop();
 
     /* get diagonal elements for preconditioning */
