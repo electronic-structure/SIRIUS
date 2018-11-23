@@ -24,6 +24,7 @@
 
 #ifndef __BETA_PROJECTORS_BASE_HPP__
 #define __BETA_PROJECTORS_BASE_HPP__
+#include "utils/env.hpp"
 
 namespace sirius {
 
@@ -418,6 +419,7 @@ inline void Beta_projectors_base::local_inner_aux<double_complex>(double_complex
                                                                   Wave_functions& phi__, int ispn__, int idx0__, int n__,
                                                                   matrix<double_complex>& beta_phi__) const
 {
+    utils::timer t1("sirius::Beta_projectors_base::local_inner_aux");
     linalg2(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta__, n__, num_gkvec_loc(),
             &linalg_const<double_complex>::one(),
             beta_pw_coeffs_a_ptr__,
@@ -426,6 +428,12 @@ inline void Beta_projectors_base::local_inner_aux<double_complex>(double_complex
             phi__.pw_coeffs(ispn__).prime().ld(),
             &linalg_const<double_complex>::zero(),
             beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
+    auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
+    if (pp && gkvec_.comm().rank() == 0) {
+        double t = t1.stop();
+        printf("Beta_projectors_base::local_inner performance: %12.6f GFlops [m,n,k=%i %i %i, time=%f (sec)]\n",
+               8e-9 * nbeta__ * n__ * num_gkvec_loc() / t, nbeta__, n__, num_gkvec_loc(), t);
+    }
 }
 
 template<>

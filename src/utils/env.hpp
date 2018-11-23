@@ -31,7 +31,7 @@ namespace utils {
 
 /// Check for environment variable and return a pointer to a stored value if found or a null-pointer if not.
 template <typename T>
-inline T const* get_env(std::string name__)
+inline T const* get_env(std::string const& name__)
 {
     static std::map<std::string, std::pair<bool, T>> map_name;
     if (map_name.count(name__) == 0) {
