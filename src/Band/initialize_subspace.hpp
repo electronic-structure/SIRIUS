@@ -130,22 +130,6 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
                 phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 0.25;
             }
         }
-        // for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-        //    /* global index of G+k vector */
-        //    int igk = kp__->idxgk(igk_loc);
-        //    /* G-vector */
-        //    auto G = kp__->gkvec().gvec(igk);
-        //    /* index of G-vector */
-        //    int ig = ctx_.gvec().index_by_gvec(G);
-
-        //    if (ig == -1) {
-        //        ig = ctx_.gvec().index_by_gvec(G * (-1));
-        //    }
-
-        //    if (ig >= 0 && ctx_.gvec().shell(ig) == i + 1) {
-        //        phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
-        //    }
-        //}
     }
 
     std::vector<double> tmp(4096);
@@ -193,27 +177,23 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
         MEMORY_USAGE_INFO();
     }
 
-    switch (get_device_t(ctx_.preferred_memory_t())) {
-        case device_t::GPU: {
-            auto& mpd = ctx_.mem_pool(memory_t::device);
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                kp__->spinor_wave_functions().pw_coeffs(ispn).allocate(mpd);
-            }
-            for (int ispn = 0; ispn < num_sc; ispn++) {
-                phi.pw_coeffs(ispn).allocate(mpd);
-#ifdef __GPU
-                phi.pw_coeffs(ispn).copy_to_device(0, num_phi_tot);
-#endif
-                hphi.pw_coeffs(ispn).allocate(mpd);
-                ophi.pw_coeffs(ispn).allocate(mpd);
-                wf_tmp.pw_coeffs(ispn).allocate(mpd);
-            }
-            evec.allocate(mpd);
-            hmlt.allocate(mpd);
-            ovlp.allocate(mpd);
-            break;
+    if (is_device_memory(ctx_.preferred_memory_t())) {
+        auto& mpd = ctx_.mem_pool(memory_t::device);
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            kp__->spinor_wave_functions().pw_coeffs(ispn).allocate(mpd);
         }
-        case device_t::CPU: break;
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            phi.pw_coeffs(ispn).allocate(mpd);
+#ifdef __GPU
+            phi.pw_coeffs(ispn).copy_to_device(0, num_phi_tot);
+#endif
+            hphi.pw_coeffs(ispn).allocate(mpd);
+            ophi.pw_coeffs(ispn).allocate(mpd);
+            wf_tmp.pw_coeffs(ispn).allocate(mpd);
+        }
+        evec.allocate(mpd);
+        hmlt.allocate(mpd);
+        ovlp.allocate(mpd);
     }
 
     if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {

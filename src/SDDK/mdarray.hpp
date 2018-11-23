@@ -111,44 +111,6 @@ inline constexpr memory_t operator|(memory_t a__, memory_t b__) noexcept
     return static_cast<memory_t>(static_cast<unsigned int>(a__) | static_cast<unsigned int>(b__));
 }
 
-inline constexpr bool on_device(memory_t mem_type__) noexcept
-{
-    return (mem_type__ & memory_t::device) == memory_t::device ? true : false;
-}
-
-/// Mapping between a memory type and a device type.
-template <memory_t mem_type>
-struct device;
-
-template<>
-struct device<memory_t::host> {
-    static const device_t type{device_t::CPU};
-};
-
-template<>
-struct device<memory_t::host_pinned> {
-    static const device_t type{device_t::CPU};
-};
-
-template<>
-struct device<memory_t::device> {
-    static const device_t type{device_t::GPU};
-};
-
-/// Mapping between a device type and a memory type.
-template <device_t dev_type>
-struct memory;
-
-template<>
-struct memory<device_t::CPU> {
-    static const memory_t type{memory_t::host};
-};
-
-template<>
-struct memory<device_t::GPU> {
-    static const memory_t type{memory_t::device};
-};
-
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
 {
@@ -837,7 +799,7 @@ class mdarray
 
     /// N-dimensional array with index bounds.
     mdarray(std::array<mdarray_index_descriptor, N> const dims__,
-            memory_t memory__   = memory_t::host,
+            memory_t memory__ = memory_t::host,
             std::string label__ = "")
     {
         this->label_ = label__;
