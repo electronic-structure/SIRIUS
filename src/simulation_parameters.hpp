@@ -496,15 +496,6 @@ class Simulation_parameters
     }
 
     // TODO: this is horrible, refactor this out
-    inline memory_t main_memory_t() const
-    {
-        if (processing_unit_ == GPU) {
-            return memory_t::device;
-        }
-        return memory_t::host;
-    }
-
-    // TODO: this is horrible, refactor this out
     inline memory_t dual_memory_t() const
     {
         if (processing_unit_ == GPU) {

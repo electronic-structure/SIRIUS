@@ -58,21 +58,8 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                 int j = kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col()[i];
                 double w = kp__->band_occupancy(j, ispn) * kp__->weight() / omega;
 
-                ///* transform to real space; in case of GPU wave-function stays in GPU memory */
+                /* transform to real space; in case of GPU wave-function stays in GPU memory */
                 fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(ispn).extra().template at<CPU>(0, i));
-                //switch (fft.pu()) {
-                //    case CPU: {
-                //        fft.transform<1>(kp__->gkvec().partition(),
-                //                         kp__->spinor_wave_functions(ispn).pw_coeffs().extra().template at<CPU>(0, i));
-                //        break;
-                //    }
-                //    case GPU: {
-                //        fft.transform<1, GPU>(kp__->gkvec().partition(),
-                //                              kp__->spinor_wave_functions(ispn).pw_coeffs().extra().template at<GPU>(0, i));
-                //        break;
-                //    }
-                //}
-                
                 /* add to density */
                 switch (fft.pu()) {
                     case CPU: {
@@ -99,7 +86,8 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                kp__->spinor_wave_functions().pw_coeffs(1).spl_num_col().local_size());
         
         /* allocate on CPU or GPU */
-        mdarray<double_complex, 1> psi_r(fft.local_size(), ctx_.main_memory_t());
+        mdarray<double_complex, 1> psi_r(ctx_.mem_pool(memory_t::host), ctx_.mem_pool(memory_t::device),
+                                         fft.local_size());
 
         for (int i = 0; i < kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col().local_size(); i++) {
             int j    = kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col()[i];
@@ -109,11 +97,11 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
             fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(0).extra().template at<CPU>(0, i));
             /* save in auxiliary buffer */
             switch (fft.pu()) {
-                case CPU: {
+                case device_t::CPU: {
                     fft.output(&psi_r[0]);
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
 #ifdef __GPU
                     acc::copyout(psi_r.at<GPU>(), fft.buffer().at<GPU>(), fft.local_size());
 #endif

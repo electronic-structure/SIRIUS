@@ -213,6 +213,8 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
         /* apply Hamiltonian and overlap operators to the new basis functions */
         H__.apply_h_s<T>(kp__, (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, 0, num_phi_tot, phi, &hphi, &ophi);
 
+        ctx_.print_memory_usage(__FILE__, __LINE__);
+
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
 

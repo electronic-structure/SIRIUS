@@ -506,6 +506,12 @@ class memory_pool
         }
         return s;
     }
+
+    /// Get the number of stored pointers.
+    size_t num_stored_ptr() const
+    {
+        return map_ptr_.size();
+    }
 };
 
 }

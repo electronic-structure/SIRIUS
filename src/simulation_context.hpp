@@ -467,15 +467,21 @@ class Simulation_context : public Simulation_parameters
     {
         if (comm().rank() == 0 && control().print_memory_usage_) {
             sirius::print_memory_usage(file__, line__);
-            printf("memory_t::host pool:        %li %li %li\n", mem_pool(memory_t::host).total_size() >> 20,
-                                                                mem_pool(memory_t::host).free_size() >> 20,
-                                                                mem_pool(memory_t::host).num_blocks());
-            printf("memory_t::host_pinned pool: %li %li %li\n", mem_pool(memory_t::host_pinned).total_size() >> 20,
-                                                                mem_pool(memory_t::host_pinned).free_size() >> 20,
-                                                                mem_pool(memory_t::host_pinned).num_blocks());
-            printf("memory_t::device pool:      %li %li %li\n", mem_pool(memory_t::device).total_size() >> 20,
-                                                                mem_pool(memory_t::device).free_size() >> 20,
-                                                                mem_pool(memory_t::device).num_blocks());
+
+            printf("memory_t::host pool:        %li %li %li %li\n", mem_pool(memory_t::host).total_size() >> 20,
+                                                                    mem_pool(memory_t::host).free_size() >> 20,
+                                                                    mem_pool(memory_t::host).num_blocks(),
+                                                                    mem_pool(memory_t::host).num_stored_ptr());
+
+            printf("memory_t::host_pinned pool: %li %li %li %li\n", mem_pool(memory_t::host_pinned).total_size() >> 20,
+                                                                    mem_pool(memory_t::host_pinned).free_size() >> 20,
+                                                                    mem_pool(memory_t::host_pinned).num_blocks(),
+                                                                    mem_pool(memory_t::host_pinned).num_stored_ptr());
+
+            printf("memory_t::device pool:      %li %li %li %li\n", mem_pool(memory_t::device).total_size() >> 20,
+                                                                    mem_pool(memory_t::device).free_size() >> 20,
+                                                                    mem_pool(memory_t::device).num_blocks(),
+                                                                    mem_pool(memory_t::device).num_stored_ptr());
         }
     }
 
@@ -1059,6 +1065,22 @@ class Simulation_context : public Simulation_parameters
             memory_pool_.emplace(M__, std::move(memory_pool(M__)));
         }
         return memory_pool_.at(M__);
+    }
+
+    /// Get a defalt memory pool for a given device.
+    memory_pool& mem_pool(device_t dev__)
+    {
+        switch (dev__) {
+            case device_t::CPU: {
+                return mem_pool(memory_t::host);
+                break;
+            }
+            case device_t::GPU: {
+                return mem_pool(memory_t::device);
+                break;
+            }
+        }
+        return mem_pool(memory_t::host); // make compiler happy
     }
 
     inline bool initialized() const
