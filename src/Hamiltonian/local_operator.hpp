@@ -376,7 +376,8 @@ class Local_operator
                                                                 hphi__.pw_coeffs(ispn).extra().size(0),
                                                                 hphi__.pw_coeffs(ispn).extra().size(1));
                     }
-                    hphi[ispn].zero<memory_t::host | memory_t::device>();
+                    hphi[ispn].zero(memory_t::host);
+                    hphi[ispn].zero(memory_t::device);
                     break;
                 }
                 case device_t::CPU: {
@@ -386,7 +387,7 @@ class Local_operator
                     hphi[ispn] = mdarray<double_complex, 2>(hphi__.pw_coeffs(ispn).extra().at<CPU>(),
                                                             hphi__.pw_coeffs(ispn).extra().size(0),
                                                             hphi__.pw_coeffs(ispn).extra().size(1));
-                    hphi[ispn].zero<memory_t::host>();
+                    hphi[ispn].zero();
                     break;
                 }
             }

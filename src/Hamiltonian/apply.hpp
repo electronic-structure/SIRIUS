@@ -192,11 +192,11 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
     if (!apw_only__) {
         if (hphi__ != nullptr) {
             /* zero the local-orbital part */
-            hphi__->mt_coeffs(0).zero<memory_t::host>(N__, n__);
+            hphi__->mt_coeffs(0).zero(memory_t::host, N__, n__);
         }
         if (ophi__ != nullptr) {
             /* zero the local-orbital part */
-            ophi__->mt_coeffs(0).zero<memory_t::host>(N__, n__);
+            ophi__->mt_coeffs(0).zero(memory_t::host, N__, n__);
         }
     }
 
@@ -206,21 +206,21 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
     } else {
         /* zero the APW part */
         switch (ctx_.processing_unit()) {
-            case CPU: {
+            case device_t::CPU: {
                 if (hphi__ != nullptr) {
-                    hphi__->pw_coeffs(0).zero<memory_t::host>(N__, n__);
+                    hphi__->pw_coeffs(0).zero(memory_t::host, N__, n__);
                 }
                 if (ophi__ != nullptr) {
-                    ophi__->pw_coeffs(0).zero<memory_t::host>(N__, n__);
+                    ophi__->pw_coeffs(0).zero(memory_t::host, N__, n__);
                 }
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
                 if (hphi__ != nullptr) {
-                    hphi__->pw_coeffs(0).zero<memory_t::device>(N__, n__);
+                    hphi__->pw_coeffs(0).zero(memory_t::device, N__, n__);
                 }
                 if (ophi__ != nullptr) {
-                    ophi__->pw_coeffs(0).zero<memory_t::device>(N__, n__);
+                    ophi__->pw_coeffs(0).zero(memory_t::device, N__, n__);
                 }
                 break;
             }

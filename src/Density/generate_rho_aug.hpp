@@ -27,8 +27,8 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 {
     PROFILE("sirius::Density::generate_rho_aug");
 
-    rho_aug__.zero<(pu == CPU) ? memory_t::host : memory_t::device>();
-    
+    rho_aug__.zero((pu == CPU) ? memory_t::host : memory_t::device);
+
     if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
         ctx_.augmentation_op(0).prepare(0);
     }

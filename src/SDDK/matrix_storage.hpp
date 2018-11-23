@@ -403,10 +403,9 @@ class matrix_storage<T, matrix_storage_t::slab>
         return extra_;
     }
 
-    template <memory_t mem_type>
-    inline void zero(int i0__, int n__)
+    inline void zero(memory_t mem__, int i0__, int n__)
     {
-        prime_.template zero<mem_type>(i0__ * num_rows_loc(), n__ * num_rows_loc());
+        prime_.zero(mem__, i0__ * num_rows_loc(), n__ * num_rows_loc());
     }
 
     /// Local number of rows in prime matrix.
@@ -487,7 +486,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         double_complex cs(0, 0);
 
         switch (pu__) {
-            case CPU: {
+            case device_t::CPU: {
                 for (int i = 0; i < n__; i++) {
                     for (int j = 0; j < num_rows_loc(); j++) {
                         cs += prime(j, i0__ + i);
@@ -495,14 +494,14 @@ class matrix_storage<T, matrix_storage_t::slab>
                 }
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
                 mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
-                cs1.zero<memory_t::device>();
-                #ifdef __GPU
+                cs1.zero(memory_t::device);
+#ifdef __GPU
                 add_checksum_gpu(prime().template at<GPU>(0, i0__), num_rows_loc(), n__, cs1.at<GPU>());
                 cs1.copy<memory_t::device, memory_t::host>();
                 cs = cs1.checksum();
-                #endif
+#endif
                 break;
             }
         }

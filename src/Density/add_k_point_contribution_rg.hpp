@@ -38,9 +38,9 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                                   fft.local_size(), ctx_.num_mag_dims() + 1, "density_rg");
     density_rg.zero();
 
-    if (fft.pu() == GPU) {
+    if (fft.pu() == device_t::GPU) {
         density_rg.allocate(memory_t::device);
-        density_rg.zero<memory_t::device>();
+        density_rg.zero(memory_t::device);
     }
 
     fft.prepare(kp__->gkvec_partition());

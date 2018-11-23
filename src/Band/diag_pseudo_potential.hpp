@@ -315,7 +315,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
 #ifdef __GPU
-        utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|alloc_pool");
         auto& mpd = ctx_.mem_pool(memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             psi.pw_coeffs(ispn).allocate(mpd);
@@ -340,9 +339,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 #endif
     }
 
-    if (kp__->comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx_.print_memory_usage();
     t2.stop();
 
     /* get diagonal elements for preconditioning */

@@ -756,16 +756,15 @@ class mdarray
     }
 
     /// Zero n elements starting from idx0.
-    template <memory_t mem_type__>
-    inline void zero(size_t idx0__, size_t n__)
+    inline void zero(memory_t mem__, size_t idx0__, size_t n__)
     {
         mdarray_assert(idx0__ + n__ <= size());
-        if (((mem_type__ & memory_t::host) == memory_t::host) && n__) {
+        if (n__ && is_host_memory(mem__)) {
             mdarray_assert(raw_ptr_ != nullptr);
             std::memset(&raw_ptr_[idx0__], 0, n__ * sizeof(T));
         }
 #ifdef __GPU
-        if (((mem_type__ & memory_t::device) == memory_t::device) && on_device() && n__) {
+        if (n__ && on_device() && is_device_memory(mem__)) {
             mdarray_assert(raw_ptr_device_ != nullptr);
             acc::zero(&raw_ptr_device_[idx0__], n__);
         }
@@ -773,12 +772,12 @@ class mdarray
     }
 
     /// Zero the entire array.
-    template <memory_t mem_type__ = memory_t::host>
-    inline void zero()
+    inline void zero(memory_t mem__ = memory_t::host)
     {
-        zero<mem_type__>(0, size());
+        zero(mem__, 0, size());
     }
 
+    /// Check if device pointer is available.
     inline bool on_device() const
     {
 #ifdef __GPU

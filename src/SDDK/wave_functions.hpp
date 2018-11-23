@@ -128,14 +128,14 @@ class Wave_functions
     {
         mdarray<double, 1> s(n__, memory_t::host, "sumsqr");
         s.zero();
-        if (pu__ == GPU) {
+        if (pu__ == device_t::GPU) {
             s.allocate(memory_t::device);
-            s.zero<memory_t::device>();
+            s.zero(memory_t::device);
         }
 
         for (int is = s0(ispn__); is <= s1(ispn__); is++) {
             switch (pu__) {
-                case CPU: {
+                case device_t::CPU: {
                     #pragma omp parallel for
                     for (int i = 0; i < n__; i++) {
                         for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
@@ -158,7 +158,7 @@ class Wave_functions
                     }
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
 #ifdef __GPU
                     add_square_sum_gpu(pw_coeffs(is).prime().at<GPU>(), pw_coeffs(is).num_rows_loc(), n__,
                                        gkvecp_.gvec().reduced(), comm_.rank(), s.at<GPU>());
@@ -171,7 +171,7 @@ class Wave_functions
                 }
             }
         }
-        if (pu__ == GPU) {
+        if (pu__ == device_t::GPU) {
             s.copy<memory_t::device, memory_t::host>();
         }
         comm_.allreduce(s.at<CPU>(), n__);
@@ -398,23 +398,23 @@ class Wave_functions
         return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
     }
 
-    inline void zero_pw(device_t pu__, int ispn__, int i0__, int n__)
+    inline void zero_pw(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
     {
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
             switch (pu__) {
                 case CPU: {
-                    pw_coeffs(s).zero<memory_t::host>(i0__, n__);
+                    pw_coeffs(s).zero(memory_t::host, i0__, n__);
                     break;
                 }
                 case GPU: {
-                    pw_coeffs(s).zero<memory_t::device>(i0__, n__);
+                    pw_coeffs(s).zero(memory_t::device, i0__, n__);
                     break;
                 }
             }
         }
     }
 
-    inline void zero_mt(device_t pu__, int ispn__, int i0__, int n__)
+    inline void zero_mt(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
     {
         if (!has_mt()) {
             return;
@@ -422,18 +422,18 @@ class Wave_functions
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
             switch (pu__) {
                 case CPU: {
-                    mt_coeffs(s).zero<memory_t::host>(i0__, n__);
+                    mt_coeffs(s).zero(memory_t::host, i0__, n__);
                     break;
                 }
                 case GPU: {
-                    mt_coeffs(s).zero<memory_t::device>(i0__, n__);
+                    mt_coeffs(s).zero(memory_t::device, i0__, n__);
                     break;
                 }
             }
         }
     }
 
-    inline void zero(device_t pu__, int ispn__, int i0__, int n__)
+    inline void zero(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
     {
         zero_pw(pu__, ispn__, i0__, n__);
         zero_mt(pu__, ispn__, i0__, n__);
