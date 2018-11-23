@@ -83,22 +83,20 @@ class Non_local_operator
         {
         }
 
-        template <int N>
         inline void apply(int chunk__,
                           int ispn_block__,
                           Wave_functions& op_phi__,
                           int idx0__,
                           int n__,
-                          Beta_projectors_base<N>& beta_,
+                          Beta_projectors_base& beta_,
                           matrix<T>& beta_phi__);
 
-        template <int N>
         inline void apply_one_atom(int chunk__,
                                    int ispn_block__,
                                    Wave_functions& op_phi__,
                                    int idx0__,
                                    int n__,
-                                   Beta_projectors_base<N>& beta_,
+                                   Beta_projectors_base& beta_,
                                    matrix<T>& beta_phi__,
                                    int i);
 
@@ -114,13 +112,13 @@ class Non_local_operator
         }
 };
 
-template<> template <int N>
+template<>
 inline void Non_local_operator<double_complex>::apply(int chunk__,
                                                       int ispn_block__,
                                                       Wave_functions& op_phi__,
                                                       int idx0__,
                                                       int n__,
-                                                      Beta_projectors_base<N>& beta_,
+                                                      Beta_projectors_base& beta_,
                                                       matrix<double_complex>& beta_phi__)
 {
     PROFILE("sirius::Non_local_operator::apply");
@@ -245,13 +243,13 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
     //}
 }
 
-template<> template<int N>
+template<>
 inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
                                                                int ispn_block__,
                                                                Wave_functions& op_phi__,
                                                                int idx0__,
                                                                int n__,
-                                                               Beta_projectors_base<N>& beta_,
+                                                               Beta_projectors_base& beta_,
                                                                matrix<double_complex>& beta_phi__,
                                                                const int i)
 {
@@ -323,13 +321,13 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
     }
 }
 
-template<> template <int N>
+template<>
 inline void Non_local_operator<double>::apply(int chunk__,
                                               int ispn_block__,
                                               Wave_functions& op_phi__,
                                               int idx0__,
                                               int n__,
-                                              Beta_projectors_base<N>& beta_,
+                                              Beta_projectors_base& beta_,
                                               matrix<double>& beta_phi__)
 {
     PROFILE("sirius::Non_local_operator::apply");
@@ -402,16 +400,17 @@ inline void Non_local_operator<double>::apply(int chunk__,
     }
 }
 
-template<> template<int N>
+template<>
 inline void Non_local_operator<double>::apply_one_atom(int chunk__,
                                                        int ispn_block__,
                                                        Wave_functions& op_phi__,
                                                        int idx0__,
                                                        int n__,
-                                                       Beta_projectors_base<N>& beta_,
+                                                       Beta_projectors_base& beta_,
                                                        matrix<double>& beta_phi__,
                                                        const int i)
 {
+    TERMINATE_NOT_IMPLEMENTED;
 }
 
 template <typename T>

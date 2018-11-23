@@ -31,7 +31,7 @@
 namespace sirius {
 
 /// Compute gradient of beta-projectors over atomic positions \f$ d \langle {\bf G+k} | \beta \rangle / d \tau_{\alpha} \f$.
-class Beta_projectors_gradient: public Beta_projectors_base<3>
+class Beta_projectors_gradient: public Beta_projectors_base
 {
   private:
     void generate_pw_coefs_t(Beta_projectors& beta__, std::vector<int> const& igk__)
@@ -46,7 +46,7 @@ class Beta_projectors_gradient: public Beta_projectors_base<3>
                 for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
                     int igk = igk__[igkloc];
                     auto vgc = gkvec_.gkvec_cart<index_domain_t::global>(igk);
-                    pw_coeffs_t_[x](igkloc, i) = double_complex(0, -vgc[x]) * beta__.pw_coeffs_t(0)(igkloc, i);
+                    pw_coeffs_t_(igkloc, i, x) = double_complex(0, -vgc[x]) * beta__.pw_coeffs_t(igkloc, i, 0);
                 }
             }
         }
@@ -57,7 +57,7 @@ class Beta_projectors_gradient: public Beta_projectors_base<3>
                              Gvec const&             gkvec__,
                              std::vector<int> const& igk__,
                              Beta_projectors&        beta__)
-        : Beta_projectors_base<3>(ctx__, gkvec__, igk__)
+        : Beta_projectors_base(ctx__, gkvec__, igk__, 3)
     {
         generate_pw_coefs_t(beta__, igk__);
     }

@@ -136,6 +136,7 @@ class Unit_cell
     int mt_aw_basis_size_{0};
 
     /// Total number of local orbital basis functions.
+    /** This also counts the total number of beta-projectors in case of pseudopotential method. */
     int mt_lo_basis_size_{0};
 
     /// Maximum AW basis size among all atoms.

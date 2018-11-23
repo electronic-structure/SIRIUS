@@ -1090,18 +1090,19 @@ class Simulation_context : public Simulation_parameters
     /// Type of preferred memory for the storage of wave-functions and related arrays.
     inline memory_t preferred_memory_t() const
     {
-        //return host_memory_t();
         switch (processing_unit()) {
             case device_t::CPU: {
                 return memory_t::host;
             }
             case device_t::GPU: {
-                return memory_t::device;
+                //return memory_t::device;
+                return memory_t::host_pinned;
             }
         }
         return memory_t::none; // make compiler happy;
     }
 
+    /// Linear algebra driver for the BLAS operations.
     inline linalg_t blas_linalg_t() const
     {
         switch (processing_unit()) {
@@ -1109,8 +1110,8 @@ class Simulation_context : public Simulation_parameters
                 return linalg_t::blas;
             }
             case device_t::GPU: {
-                //return linalg_t::cublasxt;
-                return linalg_t::cublas;
+                return linalg_t::cublasxt;
+                //return linalg_t::cublas;
             }
         }
         return linalg_t::none; // make compiler happy

@@ -29,7 +29,7 @@
 
 namespace sirius {
 
-class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
+class Beta_projectors_strain_deriv : public Beta_projectors_base
 {
   private:
 
@@ -88,9 +88,9 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
 
                                     auto d1 = beta_ri0.value<int, int>(idxrf, iat, gvs[0]) * (-p * y00);
 
-                                    pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) = z * d1;
+                                    pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) = z * d1;
                                 } else {
-                                    pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) = 0;
+                                    pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) = 0;
                                 }
                             }
                         }
@@ -120,7 +120,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
 
                             auto d2 = ri1(idxrf) * rlm_g(lm, igkloc) * (-gvc[mu] * gvc[nu] / gvs[0]);
 
-                            pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) = z * (d1 + d2);
+                            pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) = z * (d1 + d2);
                         }
                     }
                 }
@@ -223,7 +223,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
     Beta_projectors_strain_deriv(Simulation_context&     ctx__,
                                  Gvec const&             gkvec__,
                                  std::vector<int> const& igk__)
-        : Beta_projectors_base<9>(ctx__, gkvec__, igk__)
+        : Beta_projectors_base(ctx__, gkvec__, igk__, 9)
     {
         generate_pw_coefs_t(igk__);
         //generate_pw_coefs_t_v2();
