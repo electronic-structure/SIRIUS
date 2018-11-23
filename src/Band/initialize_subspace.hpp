@@ -173,19 +173,8 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
 
     std::vector<double> eval(num_bands);
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
-
     kp__->beta_projectors().prepare();
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
-
-    kp__->beta_projectors().dismiss();
-
-    ctx_.print_memory_usage(__FILE__, __LINE__);
-
-    kp__->beta_projectors().prepare();
-
-    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);
@@ -222,8 +211,6 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
     for (int ispn_step = 0; ispn_step < ctx_.num_spin_dims(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         H__.apply_h_s<T>(kp__, (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, 0, num_phi_tot, phi, &hphi, &ophi);
-
-        ctx_.print_memory_usage(__FILE__, __LINE__);
 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
@@ -297,8 +284,6 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_a
         for (int j = 0; j < num_bands; j++) {
             kp__->band_energy(j, ispn_step, eval[j]);
         }
-
-        ctx_.print_memory_usage(__FILE__, __LINE__);
     }
 
     if (ctx_.control().print_checksum_) {
