@@ -31,17 +31,15 @@
 
 namespace sirius {
 
-template <typename T, int N>
+template <typename T>
 class Non_local_functor
 {
   private:
     Simulation_context& ctx_;
     Beta_projectors_base& bp_base_;
-
   public:
 
-    Non_local_functor(Simulation_context& ctx__,
-                      Beta_projectors_base& bp_base__)
+    Non_local_functor(Simulation_context& ctx__, Beta_projectors_base& bp_base__)
         : ctx_(ctx__)
         , bp_base_(bp_base__)
     {
@@ -50,16 +48,15 @@ class Non_local_functor
     /// collect summation result in an array
     void add_k_point_contribution(K_point& kpoint__, mdarray<double, 2>& collect_res__)
     {
-        Unit_cell& unit_cell = ctx_.unit_cell();
+        auto& unit_cell = ctx_.unit_cell();
 
-        Beta_projectors& bp = kpoint__.beta_projectors();
+        auto& bp = kpoint__.beta_projectors();
 
-        double main_two_factor = -2.0;
-
-        bp_base_.prepare();
-        bp.prepare();
+        double main_two_factor{-2};
 
         for (int icnk = 0; icnk < bp_base_.num_chunks(); icnk++) {
+
+            bp.prepare();
             /* generate chunk for inner product of beta */
             bp.generate(icnk);
 
@@ -68,13 +65,12 @@ class Non_local_functor
 
             for(int ispn = 0; ispn < ctx_.num_spins(); ispn++){
                 int nbnd = kpoint__.num_occupied_bands(ispn);
-                //auto beta_phi_tmp = bp.inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
-                //beta_phi_chunks[ispn] = matrix<T>(beta_phi_tmp.size(0), beta_phi_tmp.size(1)) ;
-                //beta_phi_tmp >> beta_phi_chunks[ispn];
                 beta_phi_chunks[ispn] = bp.inner<T>(icnk, kpoint__.spinor_wave_functions(), ispn, 0, nbnd);
             }
+            bp.dismiss();
 
-            for (int x = 0; x < N; x++) {
+            bp_base_.prepare();
+            for (int x = 0; x < bp_base_.num_comp(); x++) {
                 /* generate chunk for inner product of beta gradient */
                 bp_base_.generate(icnk, x);
 
@@ -139,7 +135,7 @@ class Non_local_functor
                                     }
                                 }
 
-                                /* add non-magnetic or diagonal spin components ( or collinear part) */
+                                /* add non-magnetic or diagonal spin components (or collinear part) */
                                 for_bnd(ibf, jbf, dij, double_complex(qij, 0.0), beta_phi_chunks[ispn]);
 
                                 /* for non-collinear case*/
@@ -156,7 +152,7 @@ class Non_local_functor
             } // x
         }
 
-        bp.dismiss();
+        //bp.dismiss();
         bp_base_.dismiss();
     }
 };

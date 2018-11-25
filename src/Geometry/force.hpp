@@ -81,7 +81,7 @@ class Force
                 }
             }
 #endif
-            Non_local_functor<T, 3> nlf(ctx_, bp_grad);
+            Non_local_functor<T> nlf(ctx_, bp_grad);
 
             nlf.add_k_point_contribution(kpoint, forces__);
 #ifdef __GPU

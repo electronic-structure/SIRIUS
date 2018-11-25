@@ -229,7 +229,7 @@ class Stress {
 #endif
             Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
 
-            Non_local_functor<T, 9> nlf(ctx_, bp_strain_deriv);
+            Non_local_functor<T> nlf(ctx_, bp_strain_deriv);
 
             nlf.add_k_point_contribution(*kp, collect_result);
 #ifdef __GPU
