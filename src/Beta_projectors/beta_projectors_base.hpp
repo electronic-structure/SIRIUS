@@ -436,6 +436,11 @@ inline void Beta_projectors_base::local_inner_aux<double_complex>(double_complex
 
     auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
     if (pp && gkvec_.comm().rank() == 0) {
+#ifdef __GPU
+        if (ctx_.blas_linalg_t() == linalg_t::cublas) {
+            acc::sync_stram(-1);
+        }
+#endif
         double t = t1.stop();
         printf("Beta_projectors_base::local_inner performance: %12.6f GFlops [m,n,k=%i %i %i, time=%f (sec)]\n",
                8e-9 * nbeta__ * n__ * num_gkvec_loc() / t, nbeta__, n__, num_gkvec_loc(), t);

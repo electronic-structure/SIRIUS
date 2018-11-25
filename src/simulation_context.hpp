@@ -1134,8 +1134,8 @@ class Simulation_context : public Simulation_parameters
                 return memory_t::host;
             }
             case device_t::GPU: {
-                //return memory_t::device;
-                return memory_t::host_pinned;
+                return memory_t::device;
+                //return memory_t::host_pinned;
             }
         }
         return memory_t::none; // make compiler happy;
@@ -1149,8 +1149,8 @@ class Simulation_context : public Simulation_parameters
                 return linalg_t::blas;
             }
             case device_t::GPU: {
-                return linalg_t::cublasxt;
-                //return linalg_t::cublas;
+                //return linalg_t::cublasxt;
+                return linalg_t::cublas;
             }
         }
         return linalg_t::none; // make compiler happy
