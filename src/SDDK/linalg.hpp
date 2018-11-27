@@ -33,7 +33,7 @@
 #include "GPU/magma.hpp"
 #endif
 #include "blas_lapack.h"
-#include "mdarray.hpp"
+#include "memory.hpp"
 #include "dmatrix.hpp"
 
 namespace sddk {

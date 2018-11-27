@@ -56,7 +56,7 @@ namespace sddk {
 #include "mpi_grid.hpp"
 #include "blacs_grid.hpp"
 #include "splindex.hpp"
-#include "mdarray.hpp"
+#include "memory.hpp"
 #include "dmatrix.hpp"
 #include "matrix_storage.hpp"
 #include "gvec.hpp"

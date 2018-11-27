@@ -59,9 +59,6 @@ void f3()
             mdarray<double_complex, 2> a(100, 100);
             a(0, 0) = double_complex(tid, tid);
         }
-        if (mdarray_mem_count::allocated().load() != 0) {
-            printf("oops! mdarray_mem_count class is not thread safe\n");
-        }
     }
 }
 
@@ -69,9 +66,9 @@ void f4()
 {
     mdarray<int, 1> buf;
 
-    buf = mdarray<int, 1>(100, memory_t::host | memory_t::device, "buf");
+    buf = mdarray<int, 1>(100, memory_t::host, "buf");
 
-    buf = mdarray<int, 1>(200, memory_t::host | memory_t::device, "buf");
+    buf = mdarray<int, 1>(200, memory_t::host, "buf");
     
     //buf = mdarray<int, 1>(300, memory_t::host | memory_t::device, "buf");
 

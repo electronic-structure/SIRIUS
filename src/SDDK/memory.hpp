@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,17 +17,20 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file mdarray.hpp
+/** \file memory.hpp
  *
- *  \brief Contains implementation of multidimensional array class.
+ *  \brief Memory management functions and classes.
  */
 
-#ifndef __MDARRAY_HPP__
-#define __MDARRAY_HPP__
+#ifndef __MEMORY_HPP__
+#define __MEMORY_HPP__
 
+#include <list>
+#include <iostream>
+#include <map>
+#include <memory>
 #include <signal.h>
 #include <cassert>
-#include <memory>
 #include <string>
 #include <atomic>
 #include <vector>
@@ -36,38 +39,62 @@
 #include <initializer_list>
 #include <type_traits>
 #include <functional>
-#include "memory_pool.hpp"
-
-// TODO: now .at() method is templated over the device type; it would make more sense to template over
-//       the memory type, i.e. instead of array.at<GPU>() we would write array.at<memory_t::device>()
-//       Later,  move device_t to typedefs.hpp or to a SDDK namespace or to linear algebra and FFT backends.
+#ifdef __GPU
+#include "GPU/cuda.hpp"
+#endif
 
 namespace sddk {
 
-//#ifdef __GPU
-//extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
-//                                 int num_rows_loc__,
-//                                 int nwf__,
-//                                 cuDoubleComplex* result__);
-//#endif
+/// Memory types where the code can store data.
+/** All memory types can be divided into two (possibly overlapping) groups: accessible by the CPU and accessible by the
+ *  device. */
+enum class memory_t : unsigned int
+{
+    /// Nothing.
+    none        = 0b0000,
+    /// Host memory.
+    host        = 0b0001,
+    /// Pinned host memory. This is host memory + extra bit flag.
+    host_pinned = 0b0011,
+    /// Device memory.
+    device      = 0b1000,
+    /// Managed memory (accessible from both host and device).
+    managed     = 0b1101,
+};
 
-#ifdef NDEBUG
-#define mdarray_assert(condition__)
-#else
-#define mdarray_assert(condition__)                             \
-{                                                               \
-    if (!(condition__)) {                                       \
-        printf("Assertion (%s) failed ", #condition__);         \
-        printf("at line %i of file %s\n", __LINE__, __FILE__);  \
-        printf("array label: %s\n", label_.c_str());            \
-        for (int i = 0; i < N; i++) {                           \
-            printf("dim[%i].size = %li\n", i, dims_[i].size()); \
-        }                                                       \
-        raise(SIGTERM);                                         \
-        exit(-13);                                              \
-    }                                                           \
+/// Check if this is a valid host memory (memory, accessible by the host).
+inline bool is_host_memory(memory_t mem__)
+{
+    return static_cast<unsigned int>(mem__) & 0b0001;
 }
-#endif
+
+/// Check if this is a valid device memory (memory, accessible by the device).
+inline bool is_device_memory(memory_t mem__)
+{
+    return static_cast<unsigned int>(mem__) & 0b1000;
+}
+
+/// Get a memory type from a string.
+inline memory_t get_memory_t(std::string name__)
+{
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+
+    static const std::map<std::string, memory_t> map_to_type = {
+        {"none",        memory_t::none},
+        {"host",        memory_t::host},
+        {"host_pinned", memory_t::host_pinned},
+        {"managed",     memory_t::managed},
+        {"device",      memory_t::device}
+    };
+
+    if (map_to_type.count(name__) == 0) {
+        std::stringstream s;
+        s << "wrong label of memory type: " << name__;
+        throw std::runtime_error(s.str());
+    }
+
+    return map_to_type.at(name__);
+}
 
 // TODO: change to enum class
 /// Type of the main processing unit.
@@ -98,6 +125,439 @@ inline device_t get_device_t(memory_t mem__)
     }
     return device_t::CPU; // make compiler happy
 }
+
+/// Allocate n elements in a specified memory.
+/** Allocate a memory block of the memory_t type. Return a nullptr if this memory is not available, otherwise
+ *  return a pointer to an allocated block. */
+template <typename T>
+inline T* allocate(size_t n__, memory_t M__)
+{
+    switch (M__) {
+        case memory_t::none: {
+            return nullptr;
+        }
+        case memory_t::host: {
+            return static_cast<T*>(std::malloc(n__ * sizeof(T)));
+        }
+        case memory_t::host_pinned: {
+#ifdef __GPU
+            return acc::allocate_host<T>(n__);
+#else
+            return nullptr;
+#endif
+        }
+        case memory_t::device: {
+#ifdef __GPU
+            return acc::allocate<T>(n__);
+#else
+            return nullptr;
+#endif
+        }
+        default: {
+            throw std::runtime_error("unknown memory type");
+        }
+    }
+}
+
+/// Deallocate pointer.
+inline void deallocate(void* ptr__, memory_t M__)
+{
+    switch (M__) {
+        case memory_t::none: {
+            break;
+        }
+        case memory_t::host: {
+            std::free(ptr__);
+            break;
+        }
+        case memory_t::host_pinned: {
+#ifdef __GPU
+            acc::deallocate_host(ptr__);
+#endif
+            break;
+        }
+        case memory_t::device: {
+#ifdef __GPU
+            acc::deallocate(ptr__);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error("unknown memory type");
+        }
+    }
+}
+
+/* forward declaration */
+class memory_pool;
+
+/// Deleter for the smart pointers.
+class memory_t_deleter
+{
+  private:
+    memory_t M_{memory_t::none};
+    memory_pool* mp_{nullptr};
+
+  public:
+    memory_t_deleter()
+    {
+    }
+    memory_t_deleter(memory_t M__)
+        : M_(M__)
+    {
+    }
+    memory_t_deleter(memory_pool* mp__)
+        : mp_(mp__)
+    {
+    }
+    memory_t_deleter(memory_t_deleter&& src__)
+    {
+        this->M_  = src__.M_;
+        this->mp_ = src__.mp_;
+        src__.M_  = memory_t::none;
+        src__.mp_ = nullptr;
+    }
+    inline memory_t_deleter& operator=(memory_t_deleter&& src__)
+    {
+        if (this != &src__) {
+            this->M_  = src__.M_;
+            this->mp_ = src__.mp_;
+            src__.M_  = memory_t::none;
+            src__.mp_ = nullptr;
+        }
+        return *this;
+    }
+    inline void operator()(void* ptr__);
+};
+
+template <typename T>
+inline std::unique_ptr<T, memory_t_deleter> get_unique_ptr(size_t n__, memory_t M__)
+{
+    return std::move(std::unique_ptr<T, memory_t_deleter>(allocate<T>(n__, M__), M__));
+}
+
+/// Descriptor of the allocated memory block.
+struct memory_block_descriptor
+{
+    /// Storage buffer for the memory blocks.
+    std::unique_ptr<uint8_t, memory_t_deleter> buffer_;
+    /// Size of the storage buffer.
+    size_t size_{0};
+    /// List of <offset, size> pairs of the free subblocks.
+    /** The list is ordered, i.e. offset of the next free block is greater or equal to the offset + size of the
+     *  previous block. */
+    std::list<std::pair<size_t, size_t>> free_subblocks_;
+
+    /// Create a new empty memory block.
+    memory_block_descriptor(size_t size__, memory_t M__)
+        : buffer_(get_unique_ptr<uint8_t>(size__, M__))
+        , size_(size__)
+    {
+        free_subblocks_.push_back(std::make_pair(0, size_));
+    }
+
+    /// Check if the memory block is empty.
+    inline bool is_empty() const
+    {
+        return (free_subblocks_.size() == 1 &&
+                free_subblocks_.front().first == 0 &&
+                free_subblocks_.front().second == size_);
+    }
+
+    /// Try to allocate a subblock of memory.
+    /** Return a valid pointer in case of success and nullptr if empty space can't be found in this memory block */
+    uint8_t* allocate_subblock(size_t size__)
+    {
+        uint8_t* ptr{nullptr};
+         for (auto it = free_subblocks_.begin(); it != free_subblocks_.end(); it++) {
+            /* if this free subblock can fit the "size" elements */
+            if (size__ <= it->second) {
+                /* pointer to the beginning of subblock */
+                ptr = buffer_.get() + it->first;
+                it->first += size__;
+                it->second -= size__;
+                if (it->second == 0) {
+                    free_subblocks_.erase(it);
+                }
+                break;
+            }
+        }
+        return ptr;
+    }
+
+    /// Free the pointer and its memory to the list of free subblocks.
+    void free_subblock(uint8_t* ptr__, size_t size__)
+    {
+        /* offset from the beginning of the memory buffer */
+        size_t offset = static_cast<size_t>(ptr__ - buffer_.get());
+        auto check_free_subblocks = [&]()
+        {
+#ifndef NDEBUG
+            if (free_subblocks_.size() <= 1) {
+                return;
+            }
+            auto it = free_subblocks_.begin();
+            auto it1 = it;
+            it1++;
+            for (; it1 != free_subblocks_.end(); it1++) {
+                /* if offse + size of the previous free block is larger than the offset of next block
+                   this is an error */
+                if (it->first + it->second > it1->first) {
+                    throw std::runtime_error("wrong order of free memory blocks");
+                }
+            }
+#endif
+        };
+
+        for (auto it = free_subblocks_.begin(); it != free_subblocks_.end(); it++) {
+            /* check if we can attach released subblock before this subblock */
+            if (it->first == offset + size__) {
+                it->first = offset;
+                it->second += size__;
+                check_free_subblocks();
+                return;
+            }
+            /* check if we can attach released subblock after this subblock */
+            if (it->first + it->second == offset) {
+                it->second += size__;
+                /* now check if we can attach this subblock to the top of the next one */
+                auto it1 = it;
+                it1++;
+                if (it1 != free_subblocks_.end()) {
+                    if (it->first + it->second == it1->first) {
+                        /* merge second block into first and erase it */
+                        it->second += it1->second;
+                        free_subblocks_.erase(it1);
+                    }
+                }
+                check_free_subblocks();
+                return;
+            }
+            /* finally, check if the released subblock is before this subblock, but not touching it */
+            if (offset + size__ < it->first) {
+                free_subblocks_.insert(it, std::make_pair(offset, size__));
+                check_free_subblocks();
+                return;
+            }
+        }
+        /* otherwise this is the tail subblock */
+        free_subblocks_.push_back(std::make_pair(offset, size__));
+        check_free_subblocks();
+    }
+
+    /// Return the total size of the free subblocks.
+    size_t get_free_size() const
+    {
+        size_t sz{0};
+        for (auto& e: free_subblocks_) {
+            sz += e.second;
+        }
+        return sz;
+    }
+};
+
+/// Store information about the allocated subblock: iterator in the list of memory blocks and subblock size;
+using memory_subblock_descriptor = std::pair<std::list<memory_block_descriptor>::iterator, size_t>;
+
+/// Memory pool.
+/** This class stores list of allocated memory blocks. Each of the blocks can be devided into subblocks. When subblock
+ *  is deallocated it is merged with previous or next free subblock in the memory block. If this was the last subblock 
+ *  in the block of memory, the (now) free block of memory is merged with the neighbours (if any are available).
+ */
+class memory_pool
+{
+  private:
+    memory_t M_;
+    /// List of blocks of allocated memory.
+    std::list<memory_block_descriptor> memory_blocks_;
+    /// Mapping between an allocated pointer and a subblock descriptor.
+    std::map<uint8_t*, memory_subblock_descriptor> map_ptr_;
+
+  public:
+
+    /// Constructor
+    memory_pool(memory_t M__)
+        : M_(M__)
+    {
+    }
+
+    /// Return a pointer to a memory block for n elements of type T.
+    template <typename T>
+    T* allocate(size_t num_elements__)
+    {
+        /* size of the memory block in bytes */
+        size_t size = num_elements__ * sizeof(T);
+
+        uint8_t* ptr{nullptr};
+
+        /* iterate over existing blocks */
+        auto it = memory_blocks_.begin();
+        for (; it != memory_blocks_.end(); it++) {
+            /* try to allocate a block */
+            ptr = it->allocate_subblock(size);
+            /* break if this memory block can store the subblock */
+            if (ptr) {
+                break;
+            }
+        }
+        /* if memory chunk was not found in the list of available blocks, add a new memory block with enough capacity */
+        if (!ptr) {
+            memory_blocks_.push_back(memory_block_descriptor(size, M_));
+            it = memory_blocks_.end();
+            it--;
+            ptr = it->allocate_subblock(size);
+        }
+        if (!ptr) {
+            throw std::runtime_error("memory allocation failed");
+        }
+        memory_subblock_descriptor msb;
+        msb.first = it;
+        msb.second = size;
+        /* add to the hash table */
+        map_ptr_[ptr] = msb;
+        return reinterpret_cast<T*>(ptr);
+    }
+
+    /// Delete a pointer and add its memory back to the pool.
+    void free(void* ptr__)
+    {
+        uint8_t* ptr = reinterpret_cast<uint8_t*>(ptr__);
+        auto& msb = map_ptr_.at(ptr);
+        msb.first->free_subblock(ptr, msb.second);
+        /* merge memory blocks; this is not strictly necessary but can lead to a better performance */
+        auto it = msb.first;
+        if (it->is_empty()) {
+            /* try the previous block */
+            if (it != memory_blocks_.begin()) {
+                auto it0 = it;
+                it0--;
+                if (it0->is_empty()) {
+                    size_t size = it->size_ + it0->size_;
+                    (*it) = memory_block_descriptor(size, M_);
+                    memory_blocks_.erase(it0);
+                }
+            }
+            /* try the next block */
+            auto it0 = it;
+            it0++;
+            if (it0 != memory_blocks_.end()) {
+                if (it0->is_empty()) {
+                    size_t size = it->size_ + it0->size_;
+                    (*it) = memory_block_descriptor(size, M_);
+                    memory_blocks_.erase(it0);
+                }
+            }
+        }
+        /* remove this pointer from the hash table */
+        map_ptr_.erase(ptr);
+    }
+
+    template <typename T>
+    std::unique_ptr<T, memory_t_deleter> get_unique_ptr(size_t n__)
+    {
+        return std::move(std::unique_ptr<T, memory_t_deleter>(allocate<T>(n__), this));
+    }
+
+    /// Free all the allocated blocks.
+    /** All pointers and smart pointers, allocated by the pool are invalidated. */
+    void reset()
+    {
+        for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
+            it->free_subblocks_.clear();
+            it->free_subblocks_.push_back(std::make_pair(0, it->size_));
+        }
+        map_ptr_.clear();
+    }
+
+    void print()
+    {
+        std::cout << "--- memory pool status ---\n";
+        int i{0};
+        for (auto& e: memory_blocks_) {
+            std::cout << "memory block: " << i << ", capacity: " << e.size_
+                      << ", free size: " << e.get_free_size() << "\n";
+            i++;
+        }
+    }
+
+    /// Return the type of memory this pool is managing.
+    inline memory_t memory_type() const
+    {
+        return M_;
+    }
+
+    /// Return the total capacity of the memory pool.
+    size_t total_size() const
+    {
+        size_t s{0};
+        for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
+            s += it->size_;
+        }
+        return s;
+    }
+
+    size_t free_size() const
+    {
+        size_t s{0};
+        for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
+            s += it->get_free_size();
+        }
+        return s;
+    }
+
+    size_t num_blocks() const
+    {
+        size_t s{0};
+        for (auto it = memory_blocks_.begin(); it != memory_blocks_.end(); it++) {
+            s += it->free_subblocks_.size();
+        }
+        return s;
+    }
+
+    /// Get the number of stored pointers.
+    size_t num_stored_ptr() const
+    {
+        return map_ptr_.size();
+    }
+};
+
+inline void memory_t_deleter::operator()(void* ptr__)
+{
+    if (M_ != memory_t::none && mp_) {
+        throw std::runtime_error("wrong pointer");
+    }
+    if (mp_) {
+        mp_->free(ptr__);
+    }
+    if (M_ != memory_t::none) {
+        sddk::deallocate(ptr__, M_);
+    }
+}
+
+//#ifdef __GPU
+//extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
+//                                 int num_rows_loc__,
+//                                 int nwf__,
+//                                 cuDoubleComplex* result__);
+//#endif
+
+#ifdef NDEBUG
+#define mdarray_assert(condition__)
+#else
+#define mdarray_assert(condition__)                             \
+{                                                               \
+    if (!(condition__)) {                                       \
+        printf("Assertion (%s) failed ", #condition__);         \
+        printf("at line %i of file %s\n", __LINE__, __FILE__);  \
+        printf("array label: %s\n", label_.c_str());            \
+        for (int i = 0; i < N; i++) {                           \
+            printf("dim[%i].size = %li\n", i, dims_[i].size()); \
+        }                                                       \
+        raise(SIGTERM);                                         \
+        exit(-13);                                              \
+    }                                                           \
+}
+#endif
 
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
@@ -172,14 +632,19 @@ class mdarray_index_descriptor
     \code{.cpp}
     // wrap a host memory pointer and create 2D array 10 x 20.
     mdarray<T, 2>(ptr, 10, 20);
+
     // wrap a host and device pointers
     mdarray<T, 2>(ptr, ptr_d, 10, 20);
+
     // wrap a device pointers only
     mdarray<T, 2>(nullptr, ptr_d, 10, 20);
+
     // create 10 x 20 2D array in main memory
     mdarray<T, 2>(10, 20);
+
     // create 10 x 20 2D array in device memory
     mdarray<T, 2>(10, 20, memory_t::device);
+
     // create from the pool memory (pool of any memory type is allowed)
     memory_pool mp(memory_t::host);
     mdarray<T, 2>(mp, 10, 20);
@@ -697,6 +1162,12 @@ class mdarray
     {
     }
 
+    ~mdarray()
+    {
+        deallocate(memory_t::host);
+        deallocate(memory_t::device);
+    }
+
     /// N-dimensional array with index bounds.
     mdarray(std::array<mdarray_index_descriptor, N> const dims__,
             memory_t memory__ = memory_t::host,
@@ -984,6 +1455,6 @@ std::ostream& operator<<(std::ostream& out, mdarray<T, N>& v)
     return out;
 }
 
-} // namespace sddk
+}
 
-#endif // __MDARRAY_HPP__
+#endif  // __MEMORY_HPP__

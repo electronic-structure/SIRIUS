@@ -32,7 +32,6 @@
 #include "mpi_grid.hpp"
 #include "radial_integrals.hpp"
 #include "utils/utils.hpp"
-#include "memory_pool.hpp"
 #include "Density/augmentation_operator.hpp"
 
 #ifdef __GPU
