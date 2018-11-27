@@ -248,19 +248,17 @@ class Beta_projectors_base
 
         //static_assert(std::is_same<T, double_complex>::value || std::is_same<T, double>::value, "wrong type");
 
-        matrix<T> beta_phi;
+        matrix<T> beta_phi(ctx_.mem_pool(ctx_.host_memory_t()), nbeta, n__);
 
         /* location of the beta-projectors is always on the memory of the processing unit being used */
         T* pw_coeffs_a_ptr{nullptr};
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
-                beta_phi = matrix<T>(ctx_.mem_pool(ctx_.host_memory_t()), nbeta, n__);
                 pw_coeffs_a_ptr = reinterpret_cast<T*>(pw_coeffs_a().at(memory_t::host));
                 break;
             }
             case device_t::GPU: {
-                beta_phi = matrix<T>(ctx_.mem_pool(ctx_.host_memory_t()), ctx_.mem_pool(memory_t::device),
-                                     nbeta, n__);
+                beta_phi.allocate(ctx_.mem_pool(memory_t::device));
                 pw_coeffs_a_ptr = reinterpret_cast<T*>(pw_coeffs_a().at(memory_t::device));
                 break;
             }
@@ -275,7 +273,7 @@ class Beta_projectors_base
                 beta_phi.template copy<memory_t::device, memory_t::host>();
             }
             /* MPI reduction on the host */
-            gkvec_.comm().allreduce(beta_phi.template at(memory_t::host), static_cast<int>(beta_phi.size()));
+            gkvec_.comm().allreduce(beta_phi.at(memory_t::host), static_cast<int>(beta_phi.size()));
         }
 
         switch (ctx_.processing_unit()) {
@@ -369,14 +367,10 @@ class Beta_projectors_base
                 break;
             }
             case device_t::GPU: {
-                //pw_coeffs_a_ = matrix<double_complex>(ctx_.mem_pool(ctx_.host_memory_t()),
-                //                                      ctx_.mem_pool(memory_t::device),
-                //                                      num_gkvec_loc(), max_num_beta());
-                pw_coeffs_a_ = matrix<double_complex>(nullptr,
-                                                      ctx_.mem_pool(memory_t::device),
-                                                      num_gkvec_loc(), max_num_beta());
-                pw_coeffs_a_g0_ = mdarray<double_complex, 1>(ctx_.mem_pool(memory_t::host),
-                                                             ctx_.mem_pool(memory_t::device), max_num_beta());
+                pw_coeffs_a_ = matrix<double_complex>(nullptr, num_gkvec_loc(), max_num_beta());
+                pw_coeffs_a_.allocate(ctx_.mem_pool(memory_t::device));
+                pw_coeffs_a_g0_ = mdarray<double_complex, 1>(ctx_.mem_pool(memory_t::host), max_num_beta());
+                pw_coeffs_a_g0_.allocate(ctx_.mem_pool(memory_t::device));
                 break;
             }
         }

@@ -355,9 +355,10 @@ class Local_operator
             switch (fft_coarse_.pu()) {
                 case device_t::GPU: {
                     if (phi__.pw_coeffs(ispn).is_remapped() || !use_device_ptr) {
-                        phi[ispn] = mdarray<double_complex, 2>(phi__.pw_coeffs(ispn).extra().at<CPU>(), mpd,
+                        phi[ispn] = mdarray<double_complex, 2>(phi__.pw_coeffs(ispn).extra().at<CPU>(),
                                                                phi__.pw_coeffs(ispn).extra().size(0),
                                                                phi__.pw_coeffs(ispn).extra().size(1));
+                        phi[ispn].allocate(mpd);
                         /* copy remapped wave-functions to GPU; FFT driver will start from a device pointer */
                         phi[ispn].copy<memory_t::host, memory_t::device>();
                     } else {
@@ -367,9 +368,10 @@ class Local_operator
                                                                phi__.pw_coeffs(ispn).extra().size(1));
                     }
                     if (hphi__.pw_coeffs(ispn).is_remapped() || !use_device_ptr) {
-                        hphi[ispn] = mdarray<double_complex, 2>(hphi__.pw_coeffs(ispn).extra().at<CPU>(), mpd,
+                        hphi[ispn] = mdarray<double_complex, 2>(hphi__.pw_coeffs(ispn).extra().at<CPU>(),
                                                                 hphi__.pw_coeffs(ispn).extra().size(0),
                                                                 hphi__.pw_coeffs(ispn).extra().size(1));
+                        hphi[ispn].allocate(mpd);
                     } else {
                         hphi[ispn] = mdarray<double_complex, 2>(hphi__.pw_coeffs(ispn).extra().at<CPU>(),
                                                                 hphi__.pw_coeffs(ispn).extra().at<GPU>(),

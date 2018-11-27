@@ -36,24 +36,9 @@
 
 namespace sddk {
 
-/// Type of memory.
-/** List the types of memory on which the code can store data.
-    Various combinations of flags can be used. To check for any host memory (pinned or non-pinned):
-    \code{.cpp}
-    mem_type & memory_t::host == memory_t::host
-    \endcode
-    To check for pinned memory:
-    \code{.cpp}
-    mem_type & memory_t::host_pinned == memory_t::host_pinned
-    \endcode
-    To check for device memory:
-    \code{.cpp}
-    mem_type & memory_t::device == memory_t::device
-    \endcode
-
-    All memory types can be divided into two (possibly overlapping) groups: accessible by the CPU and accessible by the
-    device.
-*/
+/// Memory types where the code can store data.
+/** All memory types can be divided into two (possibly overlapping) groups: accessible by the CPU and accessible by the
+ *  device. */
 enum class memory_t : unsigned int
 {
     /// Nothing.
@@ -80,6 +65,7 @@ inline bool is_device_memory(memory_t mem__)
     return static_cast<unsigned int>(mem__) & 0b1000;
 }
 
+/// Get a memory type from a string.
 inline memory_t get_memory_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
@@ -163,30 +149,52 @@ inline void deallocate(void* ptr__, memory_t M__)
     }
 }
 
+/* forward declaration */
+class memory_pool;
+
 /// Deleter for the smart pointers.
-struct memory_t_deleter
+class memory_t_deleter
 {
+  private:
     memory_t M_{memory_t::none};
+    memory_pool* mp_{nullptr};
+
+  public:
+    memory_t_deleter()
+    {
+    }
     memory_t_deleter(memory_t M__)
         : M_(M__)
     {
     }
-    inline void operator()(void* ptr__)
+    memory_t_deleter(memory_pool* mp__)
+        : mp_(mp__)
     {
-        sddk::deallocate(ptr__, M_);
     }
+    memory_t_deleter(memory_t_deleter&& src__)
+    {
+        this->M_  = src__.M_;
+        this->mp_ = src__.mp_;
+        src__.M_  = memory_t::none;
+        src__.mp_ = nullptr;
+    }
+    inline memory_t_deleter& operator=(memory_t_deleter&& src__)
+    {
+        if (this != &src__) {
+            this->M_  = src__.M_;
+            this->mp_ = src__.mp_;
+            src__.M_  = memory_t::none;
+            src__.mp_ = nullptr;
+        }
+        return *this;
+    }
+    inline void operator()(void* ptr__);
 };
 
 template <typename T>
 inline std::unique_ptr<T, memory_t_deleter> get_unique_ptr(size_t n__, memory_t M__)
 {
     return std::move(std::unique_ptr<T, memory_t_deleter>(allocate<T>(n__, M__), M__));
-}
-
-template <typename T>
-inline std::shared_ptr<T> get_shared_ptr(size_t n__, memory_t M__)
-{
-    return std::move(std::shared_ptr<T>(allocate<T>(n__, M__), M__));
 }
 
 /// Descriptor of the allocated memory block.
@@ -326,43 +334,7 @@ class memory_pool
     /// Mapping between an allocated pointer and a subblock descriptor.
     std::map<uint8_t*, memory_subblock_descriptor> map_ptr_;
 
-    /// Deleter for the smart pointers when memory_pool was used for allocation.
-    struct deleter
-    {
-        memory_pool* mp_{nullptr};
-        deleter()
-        {
-        }
-        deleter(memory_pool& mp__)
-            : mp_(&mp__)
-        {
-        }
-        deleter(deleter&& src__)
-        {
-            this->mp_ = src__.mp_;
-            src__.mp_ = nullptr;
-        }
-        inline deleter& operator=(deleter&& src__)
-        {
-            if (this != &src__) {
-                this->mp_ = src__.mp_;
-                src__.mp_ = nullptr;
-            }
-            return *this;
-        }
-        inline void operator()(void* ptr__)
-        {
-            if (mp_) {
-                mp_->free(ptr__);
-            }
-        }
-    };
-
   public:
-
-    /// Alias for the unique pointer that is managed by the memory pool.
-    template <typename T>
-    using unique_ptr = std::unique_ptr<T, deleter>;
 
     /// Constructor
     memory_pool(memory_t M__)
@@ -446,9 +418,9 @@ class memory_pool
     }
 
     template <typename T>
-    unique_ptr<T> get_unique_ptr(size_t n__)
+    std::unique_ptr<T, memory_t_deleter> get_unique_ptr(size_t n__)
     {
-        return std::move(unique_ptr<T>(allocate<T>(n__), *this));
+        return std::move(std::unique_ptr<T, memory_t_deleter>(allocate<T>(n__), this));
     }
 
     /// Free all the allocated blocks.
@@ -513,6 +485,19 @@ class memory_pool
         return map_ptr_.size();
     }
 };
+
+inline void memory_t_deleter::operator()(void* ptr__)
+{
+    if (M_ != memory_t::none && mp_) {
+        throw std::runtime_error("wrong pointer");
+    }
+    if (mp_) {
+        mp_->free(ptr__);
+    }
+    if (M_ != memory_t::none) {
+        sddk::deallocate(ptr__, M_);
+    }
+}
 
 }
 

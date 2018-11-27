@@ -495,10 +495,11 @@ class matrix_storage<T, matrix_storage_t::slab>
                 break;
             }
             case device_t::GPU: {
-                mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
+                mdarray<double_complex, 1> cs1(n__, memory_t::host, "checksum");
+                cs1.allocate(memory_t::device);
                 cs1.zero(memory_t::device);
 #ifdef __GPU
-                add_checksum_gpu(prime().template at<GPU>(0, i0__), num_rows_loc(), n__, cs1.at<GPU>());
+                add_checksum_gpu(prime().at(memory_t::device, 0, i0__), num_rows_loc(), n__, cs1.at(memory_t::device));
                 cs1.copy<memory_t::device, memory_t::host>();
                 cs = cs1.checksum();
 #endif

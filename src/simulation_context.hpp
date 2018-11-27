@@ -914,9 +914,12 @@ class Simulation_context : public Simulation_parameters
             case GPU: {
                 auto& mp = mem_pool(memory_t::host);
                 auto& mpd = mem_pool(memory_t::device);
-                phase_factors = matrix<double_complex>(nullptr, mpd, ngv_loc, na_max);
-                zm  = matrix<double_complex>(mp, mpd, lmmax, ngv_loc);
-                tmp = matrix<double_complex>(mp, mpd, lmmax, na_max);
+                phase_factors = matrix<double_complex>(nullptr, ngv_loc, na_max);
+                phase_factors.allocate(mpd);
+                zm = matrix<double_complex>(mp, lmmax, ngv_loc);
+                zm.allocate(mpd);
+                tmp = matrix<double_complex>(mp, lmmax, na_max);
+                tmp.allocate(mpd);
                 break;
             }
         }
