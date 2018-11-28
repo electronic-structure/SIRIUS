@@ -495,8 +495,9 @@ inline void inner(memory_t        mem__,
                            int n__,
                            T*  buf__,
                            int ld__,
-                           int stream_id) {
-        auto spins = (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
+                           stream_id sid) {
+
+        auto spins = get_spins(ispn__);
 
         for (int s: spins) {
             /* wave-functions are complex and inner product is complex */
@@ -507,7 +508,7 @@ inline void inner(memory_t        mem__,
                                    ket__.pw_coeffs(s).prime().at(mem__, 0, j0__), ket__.pw_coeffs(s).prime().ld(),
                                    reinterpret_cast<double_complex*>(&beta),
                                    reinterpret_cast<double_complex*>(buf__), ld__,
-                                   stream_id);
+                                   sid);
                 if (bra__.has_mt()) {
                     linalg2(la__).gemm('C', 'N', m__, n__, bra__.mt_coeffs(s).num_rows_loc(),
                                        &linalg_const<double_complex>::one(),
@@ -515,7 +516,7 @@ inline void inner(memory_t        mem__,
                                        ket__.mt_coeffs(s).prime().at(mem__, 0, j0__), ket__.mt_coeffs(s).prime().ld(),
                                        &linalg_const<double_complex>::one(),
                                        reinterpret_cast<double_complex*>(buf__), ld__,
-                                       stream_id);
+                                       sid);
                 }
             }
             /* wave-functions are real and inner product is also real */
@@ -532,7 +533,7 @@ inline void inner(memory_t        mem__,
                                    2 * ket__.pw_coeffs(s).prime().ld(),
                                    reinterpret_cast<double*>(&beta),
                                    reinterpret_cast<double*>(buf__), ld__,
-                                   stream_id);
+                                   sid);
                 /* subtract one extra G=0 contribution */
                 if (comm.rank() == 0) {
                     linalg_t la = is_host_memory(mem__) ? linalg_t::blas : linalg_t::cublas;
@@ -552,7 +553,7 @@ inline void inner(memory_t        mem__,
     /* single MPI rank */
     if (comm.size() == 1) {
         T* buf = result__.at(mem__, irow0__, jcol0__);
-        local_inner(i0__, m__, j0__, n__, buf, result__.ld(), -1);
+        local_inner(i0__, m__, j0__, n__, buf, result__.ld(), stream_id(-1));
 #ifdef __GPU
         if (is_device_memory(mem__)) {
             acc::copyout(result__.template at(memory_t::host, irow0__, jcol0__), result__.ld(),
@@ -572,7 +573,7 @@ inline void inner(memory_t        mem__,
             tmp.allocate(memory_t::device);
         }
         T* buf = tmp.at(mem__);
-        local_inner(i0__, m__, j0__, n__, buf, m__, -1);
+        local_inner(i0__, m__, j0__, n__, buf, m__, stream_id(-1));
         if (is_device_memory(mem__)) {
             tmp.template copy<memory_t::device, memory_t::host>();
         }
@@ -763,7 +764,7 @@ inline void inner(memory_t        mem__,
                 dims[s % 2][3] = ncol;
 
                 T* buf = c_tmp.at(mem__, 0, s % 2);
-                local_inner(i0__ + i0, nrow, j0__ + j0, ncol, buf, nrow, -1);
+                local_inner(i0__ + i0, nrow, j0__ + j0, ncol, buf, nrow, stream_id(-1));
 
                 comm.iallreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol, &req[s % 2]);
 

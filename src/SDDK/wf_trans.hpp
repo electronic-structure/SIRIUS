@@ -482,7 +482,7 @@ inline void transform(memory_t                     mem__,
                                Wave_functions* wf_out__,
                                int             j0__,
                                int             n__,
-                               int             stream_id__)
+                               stream_id       sid__)
     {
         auto spins = (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
 
@@ -502,7 +502,7 @@ inline void transform(memory_t                     mem__,
                                    &linalg_const<double_complex>::one(),
                                    wf_out__->pw_coeffs(s).prime().at(mem__, 0, j0__),
                                    wf_out__->pw_coeffs(s).prime().ld(),
-                                   stream_id__);
+                                   sid__);
                 /* transform muffin-tin part */
                 if (wf_in__->has_mt()) {
                     linalg2(la__).gemm('N', 'N', wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__,
@@ -513,7 +513,7 @@ inline void transform(memory_t                     mem__,
                                        &linalg_const<double_complex>::one(),
                                        wf_out__->mt_coeffs(s).prime().at(mem__, 0, j0__),
                                        wf_out__->mt_coeffs(s).prime().ld(),
-                                       stream_id__);
+                                       sid__);
                     }
             }
             if (std::is_same<T, double>::value) {
@@ -526,7 +526,7 @@ inline void transform(memory_t                     mem__,
                                    &linalg_const<double>::one(),
                                    reinterpret_cast<double*>(wf_out__->pw_coeffs(s).prime().at(mem__, 0, j0__)),
                                    2 * wf_out__->pw_coeffs(s).prime().ld(),
-                                   stream_id__);
+                                   sid__);
                 if (wf_in__->has_mt()) {
                     TERMINATE("not implemented");
                 }
@@ -561,7 +561,7 @@ inline void transform(memory_t                     mem__,
         T* ptr = mtrx__.at(mem__, irow0__, jcol0__);
 
         for (int iv = 0; iv < nwf; iv++) {
-            local_transform(&alpha, wf_in__[iv], i0__, m__, ptr, mtrx__.ld(), wf_out__[iv], j0__, n__, 0);
+            local_transform(&alpha, wf_in__[iv], i0__, m__, ptr, mtrx__.ld(), wf_out__[iv], j0__, n__, stream_id(0));
         }
 #ifdef __GPU
         if (is_device_memory(mem__)) {
@@ -688,7 +688,8 @@ inline void transform(memory_t                     mem__,
             T* ptr = submatrix.at(mem__, 0, 0, s % num_streams);
 
             for (int iv = 0; iv < nwf; iv++) {
-                local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, ptr, BS, wf_out__[iv], j0__ + j0, ncol, s % num_streams);
+                local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, ptr, BS, wf_out__[iv], j0__ + j0, ncol,
+                                stream_id(s % num_streams));
             }
             s++;
         } /* loop over ibc */

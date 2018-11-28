@@ -166,7 +166,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
                          op_.at(mem, packed_mtrx_offset_(ia), ispn_block__), nbf,
                          beta_phi__.at(mem, offs, 0), nbeta,
                          &linalg_const<double_complex>::zero(),
-                         work_.at(mem, offs), nbeta, omp_get_thread_num());
+                         work_.at(mem, offs), nbeta, stream_id(omp_get_thread_num()));
 
         //switch (pu_) {
         //    case CPU: {

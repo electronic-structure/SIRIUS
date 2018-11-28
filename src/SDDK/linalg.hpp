@@ -35,6 +35,7 @@
 #include "blas_lapack.h"
 #include "memory.hpp"
 #include "dmatrix.hpp"
+#include "GPU/stream_id.hpp"
 
 namespace sddk {
 
@@ -1196,11 +1197,11 @@ class linalg2
 
     template <typename T>
     inline void gemm(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, T const* alpha, T const* A, ftn_int lda,
-                     T const* B, ftn_int ldb, T const* beta, T* C, ftn_int ldc, int stream_id = -1) const;
+                     T const* B, ftn_int ldb, T const* beta, T* C, ftn_int ldc, stream_id sid = stream_id(-1)) const;
 
     template<typename T>
     void ger(ftn_int m, ftn_int n, T const* alpha, T const* x, ftn_int incx, T const* y, ftn_int incy, T* A, ftn_int lda,
-             int stream_id = -1) const;
+             stream_id sid = stream_id(-1)) const;
 
     template <typename T>
     void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T const* aplha, T const* A, ftn_int lda, T* B, ftn_int ldb);
@@ -1209,7 +1210,7 @@ class linalg2
 template <>
 inline void linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_double const* alpha,
                                       ftn_double const* A, ftn_int lda, ftn_double const* B, ftn_int ldb,
-                                      ftn_double const* beta, ftn_double* C, ftn_int ldc, int stream_id) const
+                                      ftn_double const* beta, ftn_double* C, ftn_int ldc, stream_id sid) const
 {
     assert(lda > 0);
     assert(ldb > 0);
@@ -1225,7 +1226,7 @@ inline void linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_i
         }
         case linalg_t::cublas: {
 #ifdef __GPU
-            cublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+            cublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid.id());
 #else
             throw std::runtime_error("not compiled with cublas");
 #endif
@@ -1251,7 +1252,7 @@ template <>
 inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k,
                                               ftn_double_complex const* alpha, ftn_double_complex const* A, ftn_int lda,
                                               ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const *beta,
-                                              ftn_double_complex* C, ftn_int ldc, int stream_id) const
+                                              ftn_double_complex* C, ftn_int ldc, stream_id sid) const
 {
     assert(lda > 0);
     assert(ldb > 0);
@@ -1270,7 +1271,8 @@ inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int 
 #ifdef __GPU
             cublas::zgemm(transa, transb, m, n, k, reinterpret_cast<cuDoubleComplex const*>(alpha),
                           reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex const*>(B), 
-                          ldb, reinterpret_cast<cuDoubleComplex const*>(beta), reinterpret_cast<cuDoubleComplex*>(C), ldc, stream_id);
+                          ldb, reinterpret_cast<cuDoubleComplex const*>(beta),
+                          reinterpret_cast<cuDoubleComplex*>(C), ldc, sid.id());
 #else
             throw std::runtime_error("not compiled with cublas");
 #endif
@@ -1299,7 +1301,7 @@ inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int 
 
 template<>
 inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alpha, ftn_double const* x, ftn_int incx,
-                                     ftn_double const* y, ftn_int incy, ftn_double* A, ftn_int lda, int stream_id) const
+                                     ftn_double const* y, ftn_int incy, ftn_double* A, ftn_int lda, stream_id sid) const
 {
     switch (la_) {
         case linalg_t::blas: {
@@ -1309,7 +1311,7 @@ inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alp
         }
         case  linalg_t::cublas: {
 #ifdef __GPU
-            cublas::dger(m, n, alpha, x, incx, y, incy, A, lda, stream_id);
+            cublas::dger(m, n, alpha, x, incx, y, incy, A, lda, sid.id());
 #else
             throw std::runtime_error("not compiled with cublas");
 #endif
