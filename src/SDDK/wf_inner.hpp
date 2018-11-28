@@ -564,7 +564,8 @@ inline void inner(memory_t        mem__,
         if (sddk_pp) {
             time += omp_get_wtime();
             int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();
-            printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n", ngop * m__ * n__ * k / time, m__, n__, k, time);
+            printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
+                   ngop * m__ * n__ * k / time, m__, n__, k, time);
         }
         return;
     } else if (result__.comm().size() == 1) { /* parallel wave-functions distribution but sequential diagonalization */
@@ -575,7 +576,7 @@ inline void inner(memory_t        mem__,
         T* buf = tmp.at(mem__);
         local_inner(i0__, m__, j0__, n__, buf, m__, stream_id(-1));
         if (is_device_memory(mem__)) {
-            tmp.template copy<memory_t::device, memory_t::host>();
+            tmp.copy_to(memory_t::host);
         }
         comm.allreduce(&tmp[0], static_cast<int>(tmp.size()));
         for (int j = 0; j < n__; j++) {
@@ -594,7 +595,8 @@ inline void inner(memory_t        mem__,
             time += omp_get_wtime();
             int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();
             if (comm.rank() == 0) {
-                printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n", ngop * m__ * n__ * k / time / comm.size(), m__, n__, k, time);
+                printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
+                       ngop * m__ * n__ * k / time / comm.size(), m__, n__, k, time);
             }
         }
         return;
