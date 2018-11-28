@@ -688,7 +688,8 @@ inline void inner(memory_t        mem__,
                             state = buf_state[s % num_streams];
                         }
                         /* enqueue the gemm kernel */
-                        local_inner(i0__ + i0, nrow, j0__ + j0, ncol, c_tmp.template at<GPU>(0, s % num_streams), nrow, s % num_streams);
+                        local_inner(i0__ + i0, nrow, j0__ + j0, ncol, c_tmp.template at<GPU>(0, s % num_streams),
+                                    nrow, stream_id(s % num_streams));
                         /* enqueue a copyout operation */
                         acc::copyout(c_tmp.template at<CPU>(0, s % num_streams), 
                                      c_tmp.template at<GPU>(0, s % num_streams),
