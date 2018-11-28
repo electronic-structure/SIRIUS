@@ -79,6 +79,15 @@ def configure_package(package_name, prefix):
     new_env = os.environ.copy()
     if 'FC' in new_env:
         new_env['F77'] = new_env['FC']
+    # python modules needs position independent code
+    if not 'CCFLAGS' in new_env:
+        new_env['CCFLAGS'] = '-fPIC'
+    else:
+        new_env['CCFLAGS'] += ' -fPIC'
+    if not 'CFLAGS' in new_env:
+        new_env['CFLAGS'] = '-fPIC'
+    else:
+        new_env['CFLAGS'] += ' -fPIC'
 
     # spglib requires a special care
     if package_name == 'spg':
@@ -132,7 +141,7 @@ def main():
               "will download, configure and install all the packages into $HOME/local\n")
 
         sys.exit(0)
-    
+
     prefix = sys.argv[1]
     print("Installation prefix: %s"%prefix)
     for pkg in sys.argv[2:]:
