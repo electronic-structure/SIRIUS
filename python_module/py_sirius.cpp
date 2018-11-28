@@ -12,11 +12,13 @@
 #include <memory>
 #include <stdexcept>
 #include <omp.h>
+#include <mpi.h>
 
 #include "utils/json.hpp"
 #include "Unit_cell/free_atom.hpp"
 #include "energy.hpp"
-#include "set_atom_positions.hpp"
+#include "unit_cell_setters.hpp"
+#include "make_sirius_comm.hpp"
 
 
 using namespace pybind11::literals;
@@ -24,6 +26,7 @@ namespace py = pybind11;
 using namespace sirius;
 using namespace geometry3d;
 using json = nlohmann::json;
+
 using nlohmann::basic_json;
 
 //inspired by: https://github.com/mdcb/python-jsoncpp11/blob/master/extension.cpp
@@ -101,7 +104,8 @@ using complex_double      = std::complex<double>;
 
 PYBIND11_MODULE(py_sirius, m)
 {
-
+    // this is needed to be able to pass MPI_Comm from Python->C++
+    if (import_mpi4py() < 0) return; /* Python 2.X */
     // MPI_Init/Finalize
     int mpi_init_flag;
     MPI_Initialized(&mpi_init_flag);
@@ -154,9 +158,12 @@ PYBIND11_MODULE(py_sirius, m)
         .def_readwrite("energy_tol_", &Parameters_input::energy_tol_)
         .def_readwrite("num_dft_iter_", &Parameters_input::num_dft_iter_);
 
+    py::class_<Communicator>(m, "Communicator");
+
     py::class_<Simulation_context>(m, "Simulation_context")
         .def(py::init<>())
         .def(py::init<std::string const&>())
+        .def(py::init<std::string const&, Communicator const&>())
         .def("initialize", &Simulation_context::initialize)
         .def("num_bands", py::overload_cast<>(&Simulation_context::num_bands, py::const_))
         .def("num_bands", py::overload_cast<int>(&Simulation_context::num_bands))
@@ -192,9 +199,9 @@ PYBIND11_MODULE(py_sirius, m)
         .def("add_atom", py::overload_cast<const std::string, std::vector<double>>(&Unit_cell::add_atom))
         .def("atom", py::overload_cast<int>(&Unit_cell::atom), py::return_value_policy::reference)
         .def("atom_type", py::overload_cast<int>(&Unit_cell::atom_type), py::return_value_policy::reference)
-        .def("set_lattice_vectors",
-             py::overload_cast<vector3d<double>, vector3d<double>, vector3d<double>>(&Unit_cell::set_lattice_vectors))
         .def("lattice_vectors", &Unit_cell::lattice_vectors)
+        .def("set_lattice_vectors",
+             [](Unit_cell& obj, py::buffer l1, py::buffer l2, py::buffer l3) { set_lattice_vectors(obj, l1, l2, l3); })
         .def("get_symmetry", &Unit_cell::get_symmetry)
         .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
         .def("generate_radial_functions", &Unit_cell::generate_radial_functions);
@@ -537,6 +544,14 @@ py::class_<Free_atom>(m, "Free_atom")
     py::class_<Force>(m, "Force")
         .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
         .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal)
+        .def_property_readonly("ewald", &Force::forces_ewald)
+        .def_property_readonly("hubbard", &Force::forces_hubbard)
+        .def_property_readonly("vloc", &Force::forces_vloc)
+        .def_property_readonly("nonloc", &Force::forces_nonloc)
+        .def_property_readonly("core", &Force::forces_core)
+        .def_property_readonly("scf_corr", &Force::forces_scf_corr)
+        .def_property_readonly("us", &Force::forces_us)
+        .def_property_readonly("total", &Force::forces_total)
         .def("print_info", &Force::print_info);
 
     py::class_<matrix_storage_slab<complex_double>>(m, "MatrixStorageSlabC")
@@ -638,12 +653,11 @@ py::class_<Free_atom>(m, "Free_atom")
         })
         .def("pw_coeffs_obj", py::overload_cast<int>(&Wave_functions::pw_coeffs, py::const_), py::return_value_policy::reference_internal);
 
-
-    /* TODO: group this kind of functions somewhere */
     m.def("ewald_energy", &ewald_energy);
     m.def("set_atom_positions", &set_atom_positions);
     m.def("energy_bxc", &energy_bxc);
     m.def("omp_set_num_threads", &omp_set_num_threads);
     m.def("omp_get_num_threads", &omp_get_num_threads);
+    m.def("make_sirius_comm", &make_sirius_comm);
     // m.def("pseudopotential_hmatrix", &pseudopotential_hmatrix<complex_double>, "kpoint"_a, "ispn"_a, "H"_a);
 }

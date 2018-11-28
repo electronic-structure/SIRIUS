@@ -8,15 +8,15 @@ if(CREATE_PYTHON_MODULE)
   endif()
 
   add_subdirectory(pybind11)
-
+  find_package(mpi4py REQUIRED)
   set(libname py_sirius)
   pybind11_add_module(${libname} py_sirius.cpp)
   if(USE_CUDA)
     add_dependencies(${libname} sirius_cu)
   endif()
-  message("in python_module, h5libs: ${HDF5_C_LIBRARIES}")
-  SIRIUS_SETUP_TARGET(${libname})
+  target_include_directories(${libname} PRIVATE ${MPI4PY_INCLUDE_DIR})
 
+  SIRIUS_SETUP_TARGET(${libname})
   # collect python files in module dir
   file(GLOB_RECURSE _pyfiles "sirius/*.py")
   # install to cmake prefix
