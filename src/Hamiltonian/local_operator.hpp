@@ -381,15 +381,15 @@ class Local_operator
         }
 
 #ifdef __GPU
-        memory_t vptr_mem = acc::num_devices() > 0 ? memory_t::host | memory_t::device : memory_t::host;
-        mdarray<double*, 1> vptr(4, vptr_mem);
+        mdarray<double*, 1> vptr(4);
         vptr.zero();
         switch (fft_coarse_.pu()) {
             case device_t::GPU: {
+                vptr.allocate(memory_t::device);
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     vptr[j] = veff_vec_[j].f_rg().at<GPU>();
                 }
-                vptr.copy<memory_t::host, memory_t::device>();
+                vptr.copy_to(memory_t::device);
                 break;
             }
             case device_t::CPU: break;

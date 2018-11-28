@@ -82,6 +82,21 @@ inline void stack_backtrace()
 
 namespace acc {
 
+class stream_id
+{
+  private:
+    int id_;
+  public:
+    explicit stream_id(int id__)
+        : id_(id__)
+    {
+    }
+    inline int id() const
+    {
+        return id_;
+    }
+};
+
 /// Return the GPU id.
 inline int& device_id()
 {
