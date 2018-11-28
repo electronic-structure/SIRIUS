@@ -424,6 +424,7 @@ class Local_operator
                             hphi1[ispn] = mdarray<double_complex, 2>(buff.get() + o, ngv_fft, p);
                             o += ngv_fft * p;
                         }
+                        hphi1[ispn].zero(memory_t::host);
                         break;
                     }
                     case device_t::GPU: { /* FFT is done on GPU */
@@ -448,11 +449,10 @@ class Local_operator
                             hphi1[ispn] = mdarray<double_complex, 2>(nullptr, hphi[ispn].at(memory_t::device, 0, i * p),
                                                                      ngv_fft, p);
                         }
+                        hphi1[ispn].zero(memory_t::device);
                         break;
                     }
                 }
-                hphi1[ispn].zero(memory_t::host);
-                hphi1[ispn].zero(memory_t::device);
             }
         };
 
