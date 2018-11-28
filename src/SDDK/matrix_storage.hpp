@@ -111,7 +111,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     }
 
     /// Check if data needs to be remapped.
-    /** Data does not need to be remapped when communicator which is orthogonal to FFT communicator is trivial.
+    /** Data is not remapped when communicator that is orthogonal to FFT communicator is trivial.
      *  In this case the FFT communicator coincides with the entire communicator used to distribute wave functions
      *  and the data is ready for FFT transformations. */
     inline bool is_remapped() const
@@ -149,9 +149,9 @@ class matrix_storage<T, matrix_storage_t::slab>
         if (!is_remapped()) {
             assert(num_rows_loc_ == gvp_->gvec_count_fft());
             ncol = n__;
-            ptr = prime_.template at<device_t::CPU>(0, idx0__);
+            ptr = prime_.at(memory_t::host, 0, idx0__);
             if (prime_.on_device()) {
-                ptr_d = prime_.template at<device_t::GPU>(0, idx0__);
+                ptr_d = prime_.at(memory_t::device, 0, idx0__);
             }
         } else {
             /* maximum local number of matrix columns */
@@ -206,9 +206,9 @@ class matrix_storage<T, matrix_storage_t::slab>
         sd.calc_offsets();
         rd.calc_offsets();
 
-        T* send_buf = (num_rows_loc_ == 0) ? nullptr : prime_.template at<CPU>(0, idx0__);
+        T* send_buf = (num_rows_loc_ == 0) ? nullptr : prime_.at(memory_t::host, 0, idx0__);
 
-        comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf_.template at<CPU>(),
+        comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf_.at(memory_t::host),
                           rd.counts.data(), rd.offsets.data());
 
         /* reorder recieved blocks */
@@ -495,10 +495,11 @@ class matrix_storage<T, matrix_storage_t::slab>
                 break;
             }
             case device_t::GPU: {
-                mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
+                mdarray<double_complex, 1> cs1(n__, memory_t::host, "checksum");
+                cs1.allocate(memory_t::device);
                 cs1.zero(memory_t::device);
 #ifdef __GPU
-                add_checksum_gpu(prime().template at<GPU>(0, i0__), num_rows_loc(), n__, cs1.at<GPU>());
+                add_checksum_gpu(prime().at(memory_t::device, 0, i0__), num_rows_loc(), n__, cs1.at(memory_t::device));
                 cs1.copy<memory_t::device, memory_t::host>();
                 cs = cs1.checksum();
 #endif

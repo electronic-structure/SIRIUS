@@ -47,22 +47,25 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
         mdarray<double_complex, 2> qapf;
 
         switch (ctx_.processing_unit()) {
-            case CPU: {
+            case device_t::CPU: {
                 auto& mp = ctx_.mem_pool(memory_t::host);
                 pf = mdarray<double_complex, 2>(mp, ngv, na);
                 qa = mdarray<double_complex, 2>(mp, lmmax, na);
                 qapf = mdarray<double_complex, 2>(mp, lmmax, ngv);
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
                 auto& mp = ctx_.mem_pool(memory_t::host);
                 auto& mpd = ctx_.mem_pool(memory_t::device);
                 /* allocate on GPU */
-                pf = mdarray<double_complex, 2>(nullptr, mpd, ngv, na);
+                pf = mdarray<double_complex, 2>(nullptr, ngv, na);
+                pf.allocate(mpd);
                 /* allocate on CPU & GPU */
-                qa = mdarray<double_complex, 2>(mp, mpd, lmmax, na);
+                qa = mdarray<double_complex, 2>(mp, lmmax, na);
+                qa.allocate(mpd);
                 /* allocate on CPU & GPU */
-                qapf = mdarray<double_complex, 2>(mp, mpd, lmmax, ngv);
+                qapf = mdarray<double_complex, 2>(mp, lmmax, ngv);
+                qapf.allocate(mpd);
                 break;
             }
         }

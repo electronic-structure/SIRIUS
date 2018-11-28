@@ -1,9 +1,8 @@
 #include <utils/cmd_args.hpp>
 #include <utils/utils.hpp>
-#include <memory_pool.hpp>
+#include <memory.hpp>
 #include <complex>
 #include <sys/time.h>
-#include <mdarray.hpp>
 
 using double_complex = std::complex<double>;
 using namespace sddk;

@@ -84,11 +84,10 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     } else { /* non-collinear case */
         assert(kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col().local_size() ==
                kp__->spinor_wave_functions().pw_coeffs(1).spl_num_col().local_size());
-        
-        /* allocate on CPU or GPU */
-        mdarray<double_complex, 1> psi_r(ctx_.mem_pool(memory_t::host), ctx_.mem_pool(memory_t::device),
-                                         fft.local_size());
 
+        /* allocate on CPU or GPU */
+        mdarray<double_complex, 1> psi_r(ctx_.mem_pool(memory_t::host), fft.local_size());
+        psi_r.allocate(ctx_.mem_pool(memory_t::device));
         for (int i = 0; i < kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col().local_size(); i++) {
             int j    = kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col()[i];
             double w = kp__->band_occupancy(j, 0) * kp__->weight() / omega;
