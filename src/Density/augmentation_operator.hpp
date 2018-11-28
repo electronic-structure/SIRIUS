@@ -133,7 +133,11 @@ class Augmentation_operator
             }
         }
 
-        sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, memory_t::host_pinned, "sym_weight_");
+        memory_t mem{memory_t::host};
+        if (atom_type_.parameters().processing_unit() == device_t::GPU) {
+            mem = memory_t::host_pinned;
+        }
+        sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, mem, "sym_weight_");
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             for (int xi1 = 0; xi1 <= xi2; xi1++) {
                 /* packed orbital index */
@@ -358,7 +362,11 @@ class Augmentation_operator_gvec_deriv
         }
         t2.stop();
 
-        sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, memory_t::host_pinned, "sym_weight_");
+        memory_t mem{memory_t::host};
+        if (atom_type__.parameters().processing_unit() == device_t::GPU) {
+            mem = memory_t::host_pinned;
+        }
+        sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, mem, "sym_weight_");
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             for (int xi1 = 0; xi1 <= xi2; xi1++) {
                 /* packed orbital index */
@@ -391,11 +399,6 @@ class Augmentation_operator_gvec_deriv
     //    #endif
     //}
 
-    //mdarray<double, 2> const& q_pw() const
-    //{
-    //    return q_pw_;
-    //}
-
     mdarray<double, 2> const& q_pw() const
     {
         return q_pw_;
@@ -405,12 +408,6 @@ class Augmentation_operator_gvec_deriv
     {
         return q_pw_(i__, ig__);
     }
-
-    //inline mdarray<double, 1> const& sym_weight() const
-    //{
-    //    return sym_weight_;
-    //}
-    //
 
     /// Weight of Q_{\xi,\xi'}.
     /** 2 if off-diagonal (xi != xi'), 1 if diagonal (xi=xi') */

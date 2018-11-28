@@ -37,7 +37,7 @@ inline void K_point::generate_fv_states()
     }
     #endif
 
-    mdarray<double_complex, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), memory_t::host_pinned);
+    mdarray<double_complex, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), memory_t::host);
     mdarray<double_complex, 2> tmp(unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
 
     #ifdef __GPU
