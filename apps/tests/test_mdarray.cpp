@@ -44,10 +44,6 @@ void f2()
     a4 = std::move(a3);
 
     a4 = mdarray<int, 1>(20);
-    
-    #ifndef NDEBUG
-    std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;
-    #endif
 }
 
 void f3()
@@ -110,10 +106,6 @@ int main(int argn, char **argv)
     
     mdarray<double, 2> a;
     f6(a);
-
-    #ifndef NDEBUG
-    std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;
-    #endif
 
     sirius::finalize();
 }
