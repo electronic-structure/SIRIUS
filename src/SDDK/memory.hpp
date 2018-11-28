@@ -42,6 +42,7 @@
 #ifdef __GPU
 #include "GPU/cuda.hpp"
 #endif
+#include "GPU/stream_id.hpp"
 
 namespace sddk {
 
@@ -1407,7 +1408,7 @@ class mdarray
     }
 
     /// Copy n elements starting from idx0 from one memory type to another.
-    inline void copy_to(memory_t mem__, size_t idx0__, size_t n__, int stream_id__ = -1)
+    inline void copy_to(memory_t mem__, size_t idx0__, size_t n__, stream_id sid = stream_id(-1))
     {
 #ifdef __GPU
         mdarray_assert(raw_ptr_ != nullptr);
@@ -1440,9 +1441,15 @@ class mdarray
     }
 
     /// Copy entire array from one memory type to another.
-    inline void copy_to(memory_t mem__, int stream_id__ = -1)
+    inline void copy_to(memory_t mem__, stream_id sid = stream_id(-1))
     {
-        this->copy_to(mem__, 0, size(), stream_id__);
+        this->copy_to(mem__, 0, size(), sid);
+    }
+
+    /// Copy entire array from one memory type to another.
+    inline void copy_to(memory_t mem__, size_t n__, stream_id sid = stream_id(-1))
+    {
+        this->copy_to(mem__, 0, n__, sid);
     }
 
     /// Check if device pointer is available.

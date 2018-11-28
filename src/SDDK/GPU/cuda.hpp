@@ -37,6 +37,7 @@
 #include <complex>
 #include <vector>
 #include <stdio.h>
+#include "stream_id.hpp"
 
 inline void stack_backtrace()
 {
@@ -81,21 +82,6 @@ inline void stack_backtrace()
 #endif
 
 namespace acc {
-
-class stream_id
-{
-  private:
-    int id_;
-  public:
-    explicit stream_id(int id__)
-        : id_(id__)
-    {
-    }
-    inline int id() const
-    {
-        return id_;
-    }
-};
 
 /// Return the GPU id.
 inline int& device_id()
