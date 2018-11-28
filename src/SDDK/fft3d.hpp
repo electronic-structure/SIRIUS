@@ -427,7 +427,7 @@ class FFT3D : public FFT3D_grid
                                    &recv.counts[0], &recv.offsets[0]);
                 }
 #ifdef __GPU
-                if ((mem & memory_t::device) == memory_t::device && is_gpu_direct_) {
+                if (is_device_memory(mem) && is_gpu_direct_) {
                     /* copy auxiliary buffer because it will be use as the output buffer in the following mpi_a2a */
                     acc::copy<double_complex>(fft_buffer_.at<GPU>(), fft_buffer_aux__.at<GPU>(),
                                               gvec_partition_->gvec().num_zcol() * local_size_z_);
@@ -437,9 +437,8 @@ class FFT3D : public FFT3D_grid
                 }
 
                 /* buffer is on CPU after mpi_a2a and has to be copied to GPU */
-                if ((mem & memory_t::device) == memory_t::device && !is_gpu_direct_) {
-                    fft_buffer_aux__.copy<memory_t::host, memory_t::device>(gvec_partition_->zcol_count_fft() *
-                                                                            size(2));
+                if (is_device_memory(mem) && !is_gpu_direct_) {
+                    fft_buffer_aux__.copy_to(memory_t::device, gvec_partition_->zcol_count_fft() * size(2));
                 }
 #endif
             }
@@ -452,9 +451,8 @@ class FFT3D : public FFT3D_grid
             if (comm_.size() > 1) {
                 utils::timer t("sddk::FFT3D::transform_z|comm");
 #ifdef __GPU
-                if ((mem & memory_t::device) == memory_t::device && !is_gpu_direct_) {
-                    fft_buffer_aux__.copy<memory_t::device, memory_t::host>(gvec_partition_->zcol_count_fft() *
-                                                                            size(2));
+                if (is_device_memory(mem) && !is_gpu_direct_) {
+                    fft_buffer_aux__.copy_to(memory_t::host, gvec_partition_->zcol_count_fft() * size(2));
                 }
 #endif
                 block_data_descriptor send(comm_.size());
@@ -476,7 +474,7 @@ class FFT3D : public FFT3D_grid
                 }
 
 #ifdef __GPU
-                if ((mem & memory_t::device) == memory_t::device && is_gpu_direct_) {
+                if (is_device_memory(mem) && is_gpu_direct_) {
                     /* scatter z-columns */
                     comm_.alltoall(fft_buffer_aux__.at<GPU>(), &send.counts[0], &send.offsets[0], fft_buffer_.at<GPU>(),
                                    &recv.counts[0], &recv.offsets[0]);

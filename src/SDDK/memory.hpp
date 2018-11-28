@@ -1107,7 +1107,7 @@ class mdarray
 #ifdef __GPU
         /* device allocation */
         if (is_device_memory(memory__)) {
-            unique_ptr_device_ = get_unique_ptr<T>(sz, memory__);
+            unique_ptr_device_ = get_unique_ptr<T>(this->size(), memory__);
             raw_ptr_device_    = unique_ptr_device_.get();
         }
 #endif
@@ -1129,7 +1129,7 @@ class mdarray
 #ifdef __GPU
         /* device allocation */
         if (is_device_memory(mp__.memory_type())) {
-            unique_ptr_device_ = mp__.get_unique_ptr<T>(sz);
+            unique_ptr_device_ = mp__.get_unique_ptr<T>(this->size());
             raw_ptr_device_    = unique_ptr_device_.get();
         }
 #endif
@@ -1349,7 +1349,7 @@ class mdarray
         mdarray_assert(raw_ptr_device_ != nullptr);
         mdarray_assert(idx0__ + n__ <= size());
 
-        if ((from__ & memory_t::host) == memory_t::host && (to__ & memory_t::device) == memory_t::device) {
+        if (is_host_memory(from__) && is_device_memory(to__)) {
             if (stream_id__ == -1) {
                 acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);
             } else {
@@ -1357,7 +1357,7 @@ class mdarray
             }
         }
 
-        if ((from__ & memory_t::device) == memory_t::device && (to__ & memory_t::host) == memory_t::host) {
+        if (is_device_memory(from__) && is_host_memory(to__)) {
             if (stream_id__ == -1) {
                 acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__);
             } else {
@@ -1419,22 +1419,22 @@ class mdarray
         }
         /* copy to device memory */
         if (is_device_memory(mem__)) {
-            if (stream_id__ == -1) {
+            if (sid.id() == -1) {
                 /* synchronous (blocking) copy */
                 acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);
             } else {
                 /* asynchronous (non-blocking) copy */
-                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__, stream_id__);
+                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__, sid.id());
             }
         }
         /* copy back from device to host */
         if (is_host_memory(mem__)) {
-            if (stream_id__ == -1) {
+            if (sid.id() == -1) {
                 /* synchronous (blocking) copy */
                 acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__);
             } else {
                 /* asynchronous (non-blocking) copy */
-                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__, stream_id__);
+                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__, sid.id());
             }
         }
 #endif

@@ -163,11 +163,14 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
 
     int max_mt_aw = num_atoms_in_block * unit_cell_.max_mt_aw_basis_size();
 
-    mdarray<double_complex, 3> alm_row(kp__->num_gkvec_row(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
+    mdarray<double_complex, 3> alm_row(kp__->num_gkvec_row(), max_mt_aw, 2, memory_t::host_pinned);
+    alm_row.allocate(memory_t::device);
 
-    mdarray<double_complex, 3> alm_col(kp__->num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
+    mdarray<double_complex, 3> alm_col(kp__->num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned);
+    alm_col.allocate(memory_t::device);
 
-    mdarray<double_complex, 3> halm_col(kp__->num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
+    mdarray<double_complex, 3> halm_col(kp__->num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned);
+    halm_col.allocate(memory_t::device);
     t2.stop();
 
     if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
