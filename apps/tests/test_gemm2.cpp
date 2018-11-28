@@ -98,7 +98,7 @@ int main(int argn, char **argv)
     args.register_key("--memory_t=", "{string} type of the memory");
 
     args.parse_args(argn, argv);
-    if (argn == 1) {
+    if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         return 0;

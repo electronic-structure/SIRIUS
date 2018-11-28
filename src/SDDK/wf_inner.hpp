@@ -280,11 +280,11 @@ inline void inner(device_t        pu__,
     int nbr = m__ / BS + std::min(1, m__ % BS);
     /* number of blocks to cover columns of the output matrix */
     int nbc = n__ / BS + std::min(1, n__ % BS);
-    
+
     /* A double buffer method is used in case of CPU */    
     std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
     std::array<std::array<int, 4>, 2> dims;
-    
+
     if (pu__ == GPU) {
 #ifdef __GPU
         /* state of the buffers:
@@ -292,7 +292,7 @@ inline void inner(device_t        pu__,
          * state = 1: buffer stores result of local zgemm */
         std::array<int, num_streams> buf_state;
         buf_state.fill(0);
-        
+
         /* The real computation here is done by GPUs.
          * This is to leave the interaction with the GPUs
          * to 1 OMP thread and the MPI compunication
@@ -307,11 +307,6 @@ inline void inner(device_t        pu__,
 
         #pragma omp parallel num_threads(2) shared(buf_state)
         {
-            //if (omp_get_thread_num() == 0) {
-            //    /* thread 0 spawns as many threads as possible */
-            //    omp_set_num_threads(nt - 1);
-            //}
-
             /* this rotates the buffers and the CUDA stream numbers in a round robin way */
             int s{0};
             /* loop over BS sized windows: columns */
@@ -380,10 +375,9 @@ inline void inner(device_t        pu__,
             }
         }
         omp_set_nested(0);
-        //omp_set_num_threads(nt);
 #endif
     }
-    
+
     if (pu__ == CPU) {
         auto store_panel = [&req, &result__, &dims, &c_tmp, irow0__, jcol0__](int s)
         {

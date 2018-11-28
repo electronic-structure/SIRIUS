@@ -5,38 +5,36 @@ using namespace sirius;
 void test_wf_inner(std::vector<int> mpi_grid_dims__,
                    double cutoff__,
                    int num_bands__,
-                   int use_gpu__,
-                   int bs__)
+                   int bs__,
+                   linalg_t la__,
+                   memory_t mem__)
 {
-    device_t pu = static_cast<device_t>(use_gpu__);
+    std::unique_ptr<BLACS_grid> blacs_grid;
+    if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
+        blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
+    } else {
+        blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
 
-    int nsp = 1;
-
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
-    //BLACS_grid blacs_grid(mpi_comm_self(), 1, 1);
+    }
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    
-    /* create G-vectors */
-    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
 
-    if (mpi_comm_world().rank() == 0) {
+    /* create G-vectors */
+    Gvec gvec(M, cutoff__, Communicator::world(), false);
+
+    Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
+
+    if (Communicator::world().rank() == 0) {
+        printf("number of bands          : %i\n", num_bands__);
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
         printf("local number of G-vectors: %i\n", gvec.count());
-    //    printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
     }
 
-    experimental::Wave_functions phi(gvec, num_bands__, nsp);
-    
-   // for (int ispn = 0; ispn < nsp; ispn++) {
-   //     phi.pw_coeffs(ispn).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-   // }
-    
-    for (int i = 0; i < nsp; i++) {
-        phi.zero(CPU, i, 0, num_bands__);
-    }
+    int nsp{1};
+    Wave_functions phi(gvp, num_bands__, nsp);
 
     for (int is = 0; is < nsp; is++) {
+        phi.zero(device_t::CPU, is, 0, num_bands__);
         for (int i = 0; i < num_bands__; i++) {
             for (int igloc = 0; igloc < gvec.count(); igloc++) {
                 if (igloc + gvec.offset() == i) {
@@ -46,17 +44,33 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
         }
     }
 
-    dmatrix<double_complex> ovlp(num_bands__, num_bands__, blacs_grid, bs__, bs__);
-    
-    experimental::inner(pu, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
-    mpi_comm_world().barrier();
+#ifdef __GPU
+    if (is_device_memory(mem__)) {
+        for (int ispn = 0; ispn < nsp; ispn++) {
+            phi.allocate_on_device(ispn);
+            phi.copy_to_device(ispn, 0, num_bands__);
+        }
+    }
+#endif
+
+    dmatrix<double_complex> ovlp(num_bands__, num_bands__, *blacs_grid, bs__, bs__);
+
+    /* warmup call */
+    inner(mem__, la__, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
+    Communicator::world().barrier();
 
 
-    sddk::timer t1("inner");
-    experimental::inner(pu, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
-    mpi_comm_world().barrier();
-    t1.stop();
-    
+    utils::timer t1("inner");
+    inner(mem__, la__, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
+    Communicator::world().barrier();
+    double t = t1.stop();
+
+    double perf = 8e-9 * num_bands__ * num_bands__ *  gvec.num_gvec() / t;
+    if (Communicator::world().rank() == 0) {
+        printf("execution time (sec) : %12.6f\n", t);
+        printf("performance (GFlops) : %12.6f\n", perf);
+    }
+
     int err{0};
     for (int j = 0; j < ovlp.num_cols_local(); j++) {
         for (int i = 0; i < ovlp.num_rows_local(); i++) {
@@ -69,10 +83,13 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
             }
         }
     }
-    if (err) {
-        printf("\x1b[31m" "OK\n" "\x1b[0m" "\n");
-    } else {
-        printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+    Communicator::world().reduce<int, mpi_op_t::max>(&err, 1, 0);
+    if (Communicator::world().rank() == 0) {
+        if (err) {
+            printf("\x1b[31m" "OK\n" "\x1b[0m" "\n");
+        } else {
+            printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+        }
     }
 }
 
@@ -83,7 +100,8 @@ int main(int argn, char** argv)
     args.register_key("--cutoff=", "{double} wave-functions cutoff");
     args.register_key("--bs=", "{int} block size");
     args.register_key("--num_bands=", "{int} number of bands");
-    args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
+    args.register_key("--linalg_t=", "{string} type of the linear algebra driver");
+    args.register_key("--memory_t=", "{string} type of the memory");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -93,15 +111,18 @@ int main(int argn, char** argv)
     }
     auto mpi_grid_dims = args.value<std::vector<int>>("mpi_grid_dims", {1, 1});
     auto cutoff = args.value<double>("cutoff", 8.0);
-    auto use_gpu = args.value<int>("use_gpu", 0);
     auto bs = args.value<int>("bs", 32);
     auto num_bands = args.value<int>("num_bands", 100);
+    std::string linalg_t_str = args.value<std::string>("linalg_t", "blas");
+    std::string memory_t_str = args.value<std::string>("memory_t", "host");
 
     sirius::initialize(1);
 
-    test_wf_inner(mpi_grid_dims, cutoff, num_bands, use_gpu, bs);
+    test_wf_inner(mpi_grid_dims, cutoff, num_bands, bs, get_linalg_t(linalg_t_str), get_memory_t(memory_t_str));
 
-    mpi_comm_world().barrier();
-    sddk::timer::print();
+    Communicator::world().barrier();
+    if (Communicator::world().rank() == 0) {
+        utils::timer::print();
+    }
     sirius::finalize();
 }
