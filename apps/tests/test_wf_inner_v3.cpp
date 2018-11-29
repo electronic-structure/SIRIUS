@@ -14,7 +14,6 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
         blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
     } else {
         blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
-
     }
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
@@ -59,7 +58,6 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     inner(mem__, la__, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
     Communicator::world().barrier();
 
-
     utils::timer t1("inner");
     inner(mem__, la__, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
     Communicator::world().barrier();
@@ -71,22 +69,18 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
         printf("performance (GFlops) : %12.6f\n", perf);
     }
 
-    int err{0};
+    double max_diff{0};
     for (int j = 0; j < ovlp.num_cols_local(); j++) {
         for (int i = 0; i < ovlp.num_rows_local(); i++) {
             double_complex z = (ovlp.irow(i) == ovlp.icol(j)) ? ovlp(i, j) - 1.0 : ovlp(i, j);
-            if (std::abs(z) > 1e-12) {
-                err = 1;
-                //std::stringstream s;
-                //s << "overlap matrix is wrong, error: " << z;
-                //TERMINATE(s);
-            }
+            max_diff = std::max(max_diff, std::abs(z));
         }
     }
-    Communicator::world().reduce<int, mpi_op_t::max>(&err, 1, 0);
+    Communicator::world().reduce<double, mpi_op_t::max>(&max_diff, 1, 0);
     if (Communicator::world().rank() == 0) {
-        if (err) {
-            printf("\x1b[31m" "OK\n" "\x1b[0m" "\n");
+        printf("maximum difference: %18.12f\n", max_diff);
+        if (max_diff > 1e-12) {
+            printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
         } else {
             printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
         }

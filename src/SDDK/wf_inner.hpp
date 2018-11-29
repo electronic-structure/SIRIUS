@@ -230,13 +230,13 @@ inline void inner(device_t        pu__,
                 result__(irow0__ + i, jcol0__ + j) = tmp(i, j);
             }
         }
-        #ifdef __GPU
+#ifdef __GPU
         if (pu__ == GPU) {
             acc::copyin(result__.template at<GPU>(irow0__, jcol0__), result__.ld(),
                         result__.template at<CPU>(irow0__, jcol0__), result__.ld(),
                         m__, n__);
         }
-        #endif
+#endif
         if (sddk_pp) {
             time += omp_get_wtime();
             int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();
@@ -253,9 +253,12 @@ inline void inner(device_t        pu__,
 
     const int num_streams{4};
 
-    mdarray<T, 2> c_tmp(BS * BS, num_streams, memory_t::host_pinned, "inner::c_tmp");
-    if (pu__ == GPU) {
+    mdarray<T, 2> c_tmp;
+    if (pu__ == device_t::GPU) {
+        c_tmp = mdarray<T, 2>(BS * BS, num_streams, memory_t::host_pinned, "inner::c_tmp");
         c_tmp.allocate(memory_t::device);
+    } else {
+        c_tmp = mdarray<T, 2>(BS * BS, num_streams, memory_t::host, "inner::c_tmp");
     }
 
     /* compute the number of movements of the windows needed to cover the whole matrix size.
@@ -450,7 +453,7 @@ inline void inner(memory_t        mem__,
                   int             irow0__,
                   int             jcol0__)
 {
-    PROFILE("sddk::Wave_functions::inner");
+    PROFILE("sddk::inner");
 
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
 
@@ -481,7 +484,7 @@ inline void inner(memory_t        mem__,
     }
     double time = -omp_get_wtime();
 
-    T beta = 0;
+    T beta;
 
     auto local_inner = [&](int i0__,
                            int m__,
@@ -489,9 +492,13 @@ inline void inner(memory_t        mem__,
                            int n__,
                            T*  buf__,
                            int ld__,
-                           stream_id sid) {
+                           stream_id sid)
+    {
+        utils::timer t1("sddk::inner|local");
 
         auto spins = get_spins(ispn__);
+
+        beta = 0;
 
         for (int s: spins) {
             /* wave-functions are complex and inner product is complex */
@@ -550,8 +557,8 @@ inline void inner(memory_t        mem__,
         local_inner(i0__, m__, j0__, n__, buf, result__.ld(), stream_id(-1));
 #ifdef __GPU
         if (is_device_memory(mem__)) {
-            acc::copyout(result__.template at(memory_t::host, irow0__, jcol0__), result__.ld(),
-                         result__.template at(memory_t::device, irow0__, jcol0__), result__.ld(),
+            acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
+                         result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
                          m__, n__);
         }
 #endif
@@ -602,10 +609,14 @@ inline void inner(memory_t        mem__,
 
     const int num_streams{4};
 
-    mdarray<T, 2> c_tmp(BS * BS, num_streams, memory_t::host_pinned, "inner::c_tmp");
+    mdarray<T, 2> c_tmp;
     if (is_device_memory(mem__)) {
+        c_tmp = mdarray<T, 2>(BS * BS, num_streams, memory_t::host_pinned, "inner::c_tmp");
         c_tmp.allocate(memory_t::device);
+    } else {
+        c_tmp = mdarray<T, 2>(BS * BS, num_streams, memory_t::host, "inner::c_tmp");
     }
+
 
     /* compute the number of movements of the windows needed to cover the whole matrix size.
      * If m__  is not divided by BS, you need to cover the remaining border; the same for n__
@@ -630,7 +641,7 @@ inline void inner(memory_t        mem__,
     /* number of blocks to cover columns of the output matrix */
     int nbc = n__ / BS + std::min(1, n__ % BS);
 
-    /* A double buffer method is used in case of CPU */    
+    /* A double buffer method is used in case of CPU */
     std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
     std::array<std::array<int, 4>, 2> dims;
 
@@ -731,9 +742,12 @@ inline void inner(memory_t        mem__,
     if (is_host_memory(mem__)) {
         auto store_panel = [&req, &result__, &dims, &c_tmp, irow0__, jcol0__](int s)
         {
+            utils::timer t1("sddk::inner|store");
+            utils::timer t2("sddk::inner|store|mpi");
             MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
+            t2.stop();
 
-            #pragma omp parallel for
+            #pragma omp parallel for schedule(static)
             for (int jcol = 0; jcol < dims[s % 2][3]; jcol++) {
                 for (int irow = 0; irow < dims[s % 2][2]; irow++) {
                     result__.set(irow0__ + irow +  dims[s % 2][0], jcol0__ + jcol +  dims[s % 2][1],
@@ -763,7 +777,7 @@ inline void inner(memory_t        mem__,
                 T* buf = c_tmp.at(mem__, 0, s % 2);
                 local_inner(i0__ + i0, nrow, j0__ + j0, ncol, buf, nrow, stream_id(-1));
 
-                comm.iallreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol, &req[s % 2]);
+                comm.iallreduce(c_tmp.at(memory_t::host, 0, s % 2), nrow * ncol, &req[s % 2]);
 
                 s++;
             }
