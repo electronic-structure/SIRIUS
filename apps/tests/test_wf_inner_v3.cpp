@@ -43,16 +43,17 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
         }
     }
 
+    dmatrix<double_complex> ovlp(num_bands__, num_bands__, *blacs_grid, bs__, bs__);
+
 #ifdef __GPU
     if (is_device_memory(mem__)) {
         for (int ispn = 0; ispn < nsp; ispn++) {
             phi.allocate_on_device(ispn);
             phi.copy_to_device(ispn, 0, num_bands__);
         }
+        ovlp.allocate(memory_t::device);
     }
 #endif
-
-    dmatrix<double_complex> ovlp(num_bands__, num_bands__, *blacs_grid, bs__, bs__);
 
     /* warmup call */
     inner(mem__, la__, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
