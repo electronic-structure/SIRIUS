@@ -592,8 +592,8 @@ inline void inner(memory_t        mem__,
         t2.stop();
 #ifdef __GPU
         if (is_device_memory(mem__)) {
-            acc::copyin(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
-                        result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
+            acc::copyin(result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
+                        result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
                         m__, n__);
         }
 #endif
