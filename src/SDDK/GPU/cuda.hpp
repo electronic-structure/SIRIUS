@@ -111,9 +111,9 @@ inline std::vector<cudaStream_t>& streams()
 }
 
 /// Return a single CUDA stream.
-inline cudaStream_t stream(int id__)
+inline cudaStream_t stream(stream_id sid__)
 {
-    return (id__ == -1) ? NULL : streams()[id__];
+    return (sid__.id() == -1) ? NULL : streams()[sid__.id()];
 }
 
 /// Reset device.

@@ -172,14 +172,14 @@ class Augmentation_operator
         }
     }
 
-    void prepare(int stream_id__)
+    void prepare(stream_id sid)
     {
-        if (atom_type_.parameters().processing_unit() == GPU && atom_type_.augment()) {
+        if (atom_type_.parameters().processing_unit() == device_t::GPU && atom_type_.augment()) {
             sym_weight_.allocate(memory_t::device);
-            sym_weight_.async_copy<memory_t::host, memory_t::device>(stream_id__);
+            sym_weight_.copy_to(memory_t::device, sid);
 
             q_pw_.allocate(memory_t::device);
-            q_pw_.async_copy<memory_t::host, memory_t::device>(stream_id__);
+            q_pw_.copy_to(memory_t::device, sid);
         }
     }
 

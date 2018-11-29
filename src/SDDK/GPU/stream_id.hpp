@@ -3,9 +3,9 @@
 
 class stream_id
 {
-    private:
+  private:
     int id_;
-    public:
+  public:
     explicit stream_id(int id__)
         : id_(id__)
     {

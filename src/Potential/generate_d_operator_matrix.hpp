@@ -37,12 +37,12 @@ inline void Potential::generate_D_operator_matrix()
     PROFILE("sirius::Potential::generate_D_operator_matrix");
 
     mdarray<double_complex, 1> veff_tmp(nullptr, ctx_.gvec().count());
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         veff_tmp.allocate(memory_t::device);
     }
 
     if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
-        ctx_.augmentation_op(0).prepare(0);
+        ctx_.augmentation_op(0).prepare(stream_id(0));
     }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {

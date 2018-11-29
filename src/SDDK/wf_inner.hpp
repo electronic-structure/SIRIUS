@@ -576,11 +576,14 @@ inline void inner(memory_t        mem__,
         //}
         T* buf = result__.at(mem__, irow0__, jcol0__);
         local_inner(i0__, m__, j0__, n__, buf, result__.ld(), stream_id(-1));
+#ifdef __GPU
         if (is_device_memory(mem__)) {
+            utils::timer t1("sddk::inner|device_copy");
             acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
                          result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
                          m__, n__);
         }
+#endif
         utils::timer t1("sddk::inner|mpi");
         for (int j = 0; j < n__; j++) {
             comm.allreduce(&result__(irow0__, jcol0__ + j), m__);
@@ -596,6 +599,7 @@ inline void inner(memory_t        mem__,
         //t2.stop();
 #ifdef __GPU
         if (is_device_memory(mem__)) {
+            utils::timer t1("sddk::inner|device_copy");
             acc::copyin(result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
                         result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
                         m__, n__);

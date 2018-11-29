@@ -1,4 +1,3 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -1379,11 +1378,11 @@ class mdarray
         copy<from__, to__>(0, size());
     }
 
-    template <memory_t from__, memory_t to__>
-    inline void async_copy(int stream_id__)
-    {
-        copy<from__, to__>(0, size(), stream_id__);
-    }
+    ///template <memory_t from__, memory_t to__>
+    ///inline void async_copy(int stream_id__)
+    ///{
+    ///    copy<from__, to__>(0, size(), stream_id__);
+    ///}
 
     /// Zero n elements starting from idx0.
     inline void zero(memory_t mem__, size_t idx0__, size_t n__)
