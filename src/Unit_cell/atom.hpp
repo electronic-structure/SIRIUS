@@ -243,7 +243,7 @@ class Atom
                     v_spline[i].interpolate();
                 }
             }
-            rf_coef.async_copy<memory_t::host, memory_t::device>(-1);
+            rf_coef.copy_to(memory_t::device, stream_id(-1));
 
             #pragma omp parallel for
             for (int lm = 0; lm < lmmax; lm++) {

@@ -351,14 +351,14 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                     }
 #if defined(__GPU)
                     if (ctx_.processing_unit() == GPU) {
-                        alm_tmp.async_copy<memory_t::host, memory_t::device>(tid);
+                        alm_tmp.copy_to(memory_t::device, stream_id(tid));
                     }
 #endif
                     if (hphi__ != nullptr) {
                         apply_hmt_to_apw<spin_block_t::nm>(atom, ngv, alm_tmp, halm_tmp);
 #if defined(__GPU)
                         if (ctx_.processing_unit() == GPU) {
-                            halm_tmp.async_copy<memory_t::host, memory_t::device>(tid);
+                            halm_tmp.copy_to(memory_t::device, stream_id(tid));
                         }
 #endif
                     }

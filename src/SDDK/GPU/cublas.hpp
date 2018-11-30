@@ -187,7 +187,7 @@ inline void create_stream_handles()
     for (int i = 0; i < acc::num_streams(); i++) {
         CALL_CUBLAS(cublasCreate, (&stream_handles()[i]));
 
-        CALL_CUBLAS(cublasSetStream, (stream_handles()[i], acc::stream(i)));
+        CALL_CUBLAS(cublasSetStream, (stream_handles()[i], acc::stream(stream_id(i))));
     }
 }
 

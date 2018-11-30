@@ -55,7 +55,7 @@ inline void Potential::generate_D_operator_matrix()
             acc::sync_stream(0);
             if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment() &&
                 ctx_.unit_cell().atom_type(iat + 1).num_atoms() > 0) {
-                ctx_.augmentation_op(iat + 1).prepare(0);
+                ctx_.augmentation_op(iat + 1).prepare(stream_id(0));
             }
         }
 #endif
