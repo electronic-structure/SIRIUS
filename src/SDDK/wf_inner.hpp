@@ -459,17 +459,17 @@ inline void inner(memory_t        mem__,
 
     auto& comm = bra__.comm();
 
-//#ifdef __GPU
-//    if (pu__ == device_t::GPU) {
-//        acc::set_device();
-//    }
-//#endif
+#ifdef __GPU
+    if (pu__ == device_t::GPU) {
+        acc::set_device();
+    }
+#endif
 
-    const char* sddk_pp_raw = std::getenv("SDDK_PRINT_PERFORMANCE");
-    int sddk_pp = (sddk_pp_raw == NULL) ? 0 : std::atoi(sddk_pp_raw);
+    auto sddk_pp = utils::get_env<int>("SDDK_PRINT_PERFORMANCE");
 
-    const char* sddk_bs_raw = std::getenv("SDDK_BLOCK_SIZE");
-    int sddk_block_size = (sddk_bs_raw == NULL) ? sddk_default_block_size : std::atoi(sddk_bs_raw);
+    auto* sddk_bs_raw = utils::get_env<int>("SDDK_BLOCK_SIZE");
+
+    int sddk_block_size = (sddk_bs_raw == nullptr) ? sddk_default_block_size : *sddk_bs_raw;
 
     double ngop{0};
     if (std::is_same<T, double>::value) {
@@ -570,39 +570,54 @@ inline void inner(memory_t        mem__,
         }
         return;
     } else if (result__.comm().size() == 1) { /* parallel wave-functions distribution but sequential diagonalization */
-        //mdarray<T, 2> tmp(m__, n__);
-        //if (is_device_memory(mem__)) {
-        //    tmp.allocate(memory_t::device);
-        //}
-        T* buf = result__.at(mem__, irow0__, jcol0__);
-        local_inner(i0__, m__, j0__, n__, buf, result__.ld(), stream_id(-1));
+        mdarray<T, 2> tmp(m__, n__);
+        if (is_device_memory(mem__)) {
+            tmp.allocate(memory_t::device);
+        }
+        //T* buf = result__.at(mem__, irow0__, jcol0__);
+        local_inner(i0__, m__, j0__, n__, tmp.at(mem__), tmp.ld(), stream_id(-1));
 #ifdef __GPU
         if (is_device_memory(mem__)) {
+
             utils::timer t1("sddk::inner|device_copy");
-            acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
-                         result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
-                         m__, n__);
+            //acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
+            //             result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
+            //             m__, n__);
+            tmp.copy_to(memory_t::host);
+            if (sddk_pp) {
+                double t = t1.stop();
+                if (comm.rank() == 0) {
+                    printf("inner() copyout speed: %12.6 GiB/s", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
+                }
+            }
         }
 #endif
         utils::timer t1("sddk::inner|mpi");
-        for (int j = 0; j < n__; j++) {
-            comm.allreduce(&result__(irow0__, jcol0__ + j), m__);
-        }
-        t1.stop();
-        //utils::timer t2("sddk::inner|store");
-        //#pragma omp parallel for schedule(static)
         //for (int j = 0; j < n__; j++) {
-        //    for (int i = 0; i < m__; i++) {
-        //        result__(irow0__ + i, jcol0__ + j) = tmp(i, j);
-        //    }
+        //    comm.allreduce(&result__(irow0__, jcol0__ + j), m__);
         //}
-        //t2.stop();
+        comm.allreduce(tmp.at(memory_t::host), m__ * n__);
+        t1.stop();
+        utils::timer t2("sddk::inner|store");
+        #pragma omp parallel for schedule(static)
+        for (int j = 0; j < n__; j++) {
+            for (int i = 0; i < m__; i++) {
+                result__(irow0__ + i, jcol0__ + j) = tmp(i, j);
+            }
+        }
+        t2.stop();
 #ifdef __GPU
         if (is_device_memory(mem__)) {
             utils::timer t1("sddk::inner|device_copy");
             acc::copyin(result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
                         result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
                         m__, n__);
+            if (sddk_pp) {
+                double t = t1.stop();
+                if (comm.rank() == 0) {
+                    printf("inner() copyin speed: %12.6 GiB/s", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
+                }
+            }
         }
 #endif
         if (sddk_pp) {

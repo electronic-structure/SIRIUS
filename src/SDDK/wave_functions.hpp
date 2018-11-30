@@ -30,6 +30,7 @@
 #include "linalg.hpp"
 #include "eigenproblem.h"
 #include "hdf5_tree.hpp"
+#include "utils/env.hpp"
 #ifdef __GPU
 extern "C" void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, int reduced__,
                                    int mpi_rank__, double* result__);
