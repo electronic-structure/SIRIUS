@@ -438,7 +438,7 @@ class FFT3D : public FFT3D_grid
 
                 /* buffer is on CPU after mpi_a2a and has to be copied to GPU */
                 if (is_device_memory(mem) && !is_gpu_direct_) {
-                    fft_buffer_aux__.copy_to(memory_t::device, gvec_partition_->zcol_count_fft() * size(2));
+                    fft_buffer_aux__.copy_to(memory_t::device, 0, gvec_partition_->zcol_count_fft() * size(2));
                 }
 #endif
             }
@@ -452,7 +452,7 @@ class FFT3D : public FFT3D_grid
                 utils::timer t("sddk::FFT3D::transform_z|comm");
 #ifdef __GPU
                 if (is_device_memory(mem) && !is_gpu_direct_) {
-                    fft_buffer_aux__.copy_to(memory_t::host, gvec_partition_->zcol_count_fft() * size(2));
+                    fft_buffer_aux__.copy_to(memory_t::host, 0, gvec_partition_->zcol_count_fft() * size(2));
                 }
 #endif
                 block_data_descriptor send(comm_.size());

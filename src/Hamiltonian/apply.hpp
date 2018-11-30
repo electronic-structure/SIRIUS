@@ -647,7 +647,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                 }
                 case GPU: {
 #if defined(__GPU)
-                    halm_block.copy_to(memory_t::device, ngv * num_mt_lo);
+                    halm_block.copy_to(memory_t::device, 0, ngv * num_mt_lo);
                     linalg<GPU>::gemm(0, 0, ngv, n__, num_mt_lo,
                                       &linalg_const<double_complex>::one(),
                                       halm_block.at<GPU>(), halm_block.ld(),
