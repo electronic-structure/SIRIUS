@@ -42,6 +42,7 @@
 #include "GPU/cuda.hpp"
 #endif
 #include "GPU/stream_id.hpp"
+#include "utils/timer.hpp"
 
 namespace sddk {
 
@@ -191,56 +192,88 @@ inline void deallocate(void* ptr__, memory_t M__)
 /* forward declaration */
 class memory_pool;
 
-/// Deleter for the smart pointers.
-class memory_t_deleter
+/// Base class for smart pointer deleters.
+class memory_t_deleter_base
 {
-  private:
-    memory_t M_{memory_t::none};
-    memory_pool* mp_{nullptr};
+  protected:
+    class memory_t_deleter_base_impl
+    {
+      public:
+        virtual void free(void* ptr__) = 0;
+    };
+    std::unique_ptr<memory_t_deleter_base_impl> impl_;
 
   public:
-    memory_t_deleter()
+    memory_t_deleter_base()
     {
     }
-    memory_t_deleter(memory_t M__)
-        : M_(M__)
+    void operator()(void* ptr__)
     {
+        impl_->free(ptr__);
     }
-    memory_t_deleter(memory_pool* mp__)
-        : mp_(mp__)
+};
+
+/// Deleter for the allocated memory pointer of a given type.
+class memory_t_deleter: public memory_t_deleter_base
+{
+  protected:
+    class memory_t_deleter_impl: public memory_t_deleter_base_impl
     {
-    }
-    memory_t_deleter(memory_t_deleter&& src__)
-    {
-        this->M_  = src__.M_;
-        this->mp_ = src__.mp_;
-        src__.M_  = memory_t::none;
-        src__.mp_ = nullptr;
-    }
-    inline memory_t_deleter& operator=(memory_t_deleter&& src__)
-    {
-        if (this != &src__) {
-            this->M_  = src__.M_;
-            this->mp_ = src__.mp_;
-            src__.M_  = memory_t::none;
-            src__.mp_ = nullptr;
+      protected:
+        memory_t M_{memory_t::none};
+      public:
+        memory_t_deleter_impl(memory_t M__)
+            : M_(M__)
+        {
         }
-        return *this;
+        inline void free(void* ptr__)
+        {
+            if (M_ != memory_t::none) {
+                sddk::deallocate(ptr__, M_);
+            }
+        }
+    };
+  public:
+    explicit memory_t_deleter(memory_t M__)
+    {
+        impl_ = std::unique_ptr<memory_t_deleter_base_impl>(new memory_t_deleter_impl(M__));
     }
-    inline void operator()(void* ptr__);
+};
+
+/// Deleter for the allocated memory pointer from a given memory pool.
+class memory_pool_deleter: public memory_t_deleter_base
+{
+  protected:
+    class memory_pool_deleter_impl: public memory_t_deleter_base_impl
+    {
+      protected:
+        memory_pool* mp_{nullptr};
+      public:
+        memory_pool_deleter_impl(memory_pool* mp__)
+            : mp_(mp__)
+        {
+        }
+        inline void free(void* ptr__);
+    };
+
+  public:
+    explicit memory_pool_deleter(memory_pool* mp__)
+    {
+        impl_ = std::unique_ptr<memory_t_deleter_base_impl>(new memory_pool_deleter_impl(mp__));
+    }
 };
 
 template <typename T>
-inline std::unique_ptr<T, memory_t_deleter> get_unique_ptr(size_t n__, memory_t M__)
+inline std::unique_ptr<T, memory_t_deleter_base> get_unique_ptr(size_t n__, memory_t M__)
 {
-    return std::move(std::unique_ptr<T, memory_t_deleter>(allocate<T>(n__, M__), M__));
+    return std::move(std::unique_ptr<T, memory_t_deleter_base>(allocate<T>(n__, M__), memory_t_deleter(M__)));
 }
 
 /// Descriptor of the allocated memory block.
 struct memory_block_descriptor
 {
     /// Storage buffer for the memory blocks.
-    std::unique_ptr<uint8_t, memory_t_deleter> buffer_;
+    std::unique_ptr<uint8_t, memory_t_deleter_base> buffer_;
     /// Size of the storage buffer.
     size_t size_{0};
     /// List of <offset, size> pairs of the free subblocks.
@@ -385,6 +418,8 @@ class memory_pool
     template <typename T>
     T* allocate(size_t num_elements__)
     {
+        utils::timer t1("sddk::memory_pool::allocate");
+
         /* size of the memory block in bytes */
         size_t size = num_elements__ * sizeof(T);
 
@@ -421,6 +456,8 @@ class memory_pool
     /// Delete a pointer and add its memory back to the pool.
     void free(void* ptr__)
     {
+        utils::timer t1("sddk::memory_pool::free");
+
         uint8_t* ptr = reinterpret_cast<uint8_t*>(ptr__);
         auto& msb = map_ptr_.at(ptr);
         msb.first->free_subblock(ptr, msb.second);
@@ -453,9 +490,9 @@ class memory_pool
     }
 
     template <typename T>
-    std::unique_ptr<T, memory_t_deleter> get_unique_ptr(size_t n__)
+    std::unique_ptr<T, memory_t_deleter_base> get_unique_ptr(size_t n__)
     {
-        return std::move(std::unique_ptr<T, memory_t_deleter>(allocate<T>(n__), this));
+        return std::move(std::unique_ptr<T, memory_t_deleter_base>(allocate<T>(n__), memory_pool_deleter(this)));
     }
 
     /// Free all the allocated blocks.
@@ -521,17 +558,9 @@ class memory_pool
     }
 };
 
-inline void memory_t_deleter::operator()(void* ptr__)
+void memory_pool_deleter::memory_pool_deleter_impl::free(void* ptr__)
 {
-    if (M_ != memory_t::none && mp_) {
-        throw std::runtime_error("wrong pointer");
-    }
-    if (mp_) {
-        mp_->free(ptr__);
-    }
-    if (M_ != memory_t::none) {
-        sddk::deallocate(ptr__, M_);
-    }
+    mp_->free(ptr__);
 }
 
 //#ifdef __GPU
@@ -663,13 +692,13 @@ class mdarray
     std::string label_;
 
     /// Unique pointer to the allocated memory.
-    std::unique_ptr<T, memory_t_deleter> unique_ptr_{nullptr};
+    std::unique_ptr<T, memory_t_deleter_base> unique_ptr_{nullptr};
 
     /// Raw pointer.
     T* raw_ptr_{nullptr};
 #ifdef __GPU
     /// Unique pointer to the allocated GPU memory.
-    std::unique_ptr<T, memory_t_deleter> unique_ptr_device_{nullptr};
+    std::unique_ptr<T, memory_t_deleter_base> unique_ptr_device_{nullptr};
 
     /// Raw pointer to GPU memory
     T* raw_ptr_device_{nullptr};
