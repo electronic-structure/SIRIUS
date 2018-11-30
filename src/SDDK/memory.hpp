@@ -1445,11 +1445,11 @@ class mdarray
         this->copy_to(mem__, 0, size(), sid);
     }
 
-    /// Copy entire array from one memory type to another.
-    inline void copy_to(memory_t mem__, size_t n__, stream_id sid = stream_id(-1))
-    {
-        this->copy_to(mem__, 0, n__, sid);
-    }
+    ///// Copy entire array from one memory type to another.
+    //inline void copy_to(memory_t mem__, size_t n__, stream_id sid = stream_id(-1))
+    //{
+    //    this->copy_to(mem__, 0, n__, sid);
+    //}
 
     /// Check if device pointer is available.
     inline bool on_device() const

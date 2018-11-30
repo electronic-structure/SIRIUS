@@ -1,6 +1,7 @@
 #ifndef __STREAM_ID_HPP__
 #define __STREAM_ID_HPP__
 
+/// Helper class to wrap stream id (integer number).
 class stream_id
 {
   private:
