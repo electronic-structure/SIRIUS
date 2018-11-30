@@ -20,6 +20,8 @@
 /** \file cuda.hpp
  *
  *  \brief Interface to CUDA related functions.
+ *
+ *  \todo Make it visible to the main (host) code; modify for ROCm (add -D__CUDA or -D__ROCM)
  */
 #ifndef __CUDA_HPP__
 #define __CUDA_HPP__

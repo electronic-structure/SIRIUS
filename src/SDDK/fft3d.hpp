@@ -401,7 +401,7 @@ class FFT3D : public FFT3D_grid
             */
             if ((is_host_memory(mem) && pu_ == device_t::GPU) ||
                 (is_device_memory(mem) && !is_gpu_direct_ && comm_.size() > 1)) {
-                fft_buffer_aux__.copy_to(memory_t::host, local_size_z_ * gvec_partition_->gvec().num_zcol());
+                fft_buffer_aux__.copy_to(memory_t::host, 0, local_size_z_ * gvec_partition_->gvec().num_zcol());
             }
 
             /* collect full sticks */
@@ -487,7 +487,7 @@ class FFT3D : public FFT3D_grid
             /* copy back to device memory */
             if ((is_host_memory(mem) && pu_ == device_t::GPU) ||
                 (is_device_memory(mem) && !is_gpu_direct_ && comm_.size() > 1)) {
-                fft_buffer_aux__.copy_to(memory_t::device, local_size_z_ * gvec_partition_->gvec().num_zcol());
+                fft_buffer_aux__.copy_to(memory_t::device, 0, local_size_z_ * gvec_partition_->gvec().num_zcol());
             }
         }
     }
