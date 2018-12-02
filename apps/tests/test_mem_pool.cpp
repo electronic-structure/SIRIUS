@@ -17,6 +17,7 @@ void test(int nGb, memory_t M__)
     }
 
     std::cout << "number of memory blocks: " << sizes.size() << "\n";
+    std::cout << "total size: " << tot_size << "\n";
 
     utils::timer t1("alloc");
     std::vector<mdarray<char, 1>> v;
@@ -25,11 +26,14 @@ void test(int nGb, memory_t M__)
         v.clear();
         for (auto s: sizes) {
             v.push_back(std::move(mdarray<char, 1>(mpool, s)));
-            v.back().zero();
+            v.back().zero(M__);
         }
         std::random_shuffle(v.begin(), v.end());
         for (auto& e: v) {
             e.deallocate(M__);
+        }
+        if (mpool.total_size() != tot_size) {
+            throw std::runtime_error("wrong total size");
         }
         if (mpool.free_size() != mpool.total_size()) {
             throw std::runtime_error("wrong free size");
@@ -45,7 +49,6 @@ void test(int nGb, memory_t M__)
     }
     t1.stop();
     utils::timer::print();
-
 }
 
 int main(int argn, char** argv)

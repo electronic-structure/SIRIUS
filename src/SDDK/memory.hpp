@@ -465,6 +465,7 @@ class memory_pool
                 it0--;
                 if (it0->is_empty()) {
                     size_t size = it->size_ + it0->size_;
+                    (*it).buffer_ = nullptr;
                     (*it) = memory_block_descriptor(size, M_);
                     memory_blocks_.erase(it0);
                 }
@@ -475,6 +476,7 @@ class memory_pool
             if (it0 != memory_blocks_.end()) {
                 if (it0->is_empty()) {
                     size_t size = it->size_ + it0->size_;
+                    (*it).buffer_ = nullptr;
                     (*it) = memory_block_descriptor(size, M_);
                     memory_blocks_.erase(it0);
                 }
