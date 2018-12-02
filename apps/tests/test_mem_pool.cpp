@@ -2,7 +2,7 @@
 
 using namespace sirius;
 
-void test(int nGb, memory_t M__)
+void test(int nGb, int gran, memory_t M__)
 {
     memory_pool mpool(M__);
 
@@ -10,8 +10,7 @@ void test(int nGb, memory_t M__)
     size_t tot_size{0};
 
     while (tot_size < size_t(nGb) * (1 << 30)) {
-        auto s = std::max(utils::rnd(), uint32_t(1));
-        s &= (1 << 24) - 1;
+        auto s = std::max(utils::rnd() % (size_t(gran) * (1 << 20)), size_t(1));
         sizes.push_back(s);
         tot_size += s;
     }
@@ -56,6 +55,7 @@ int main(int argn, char** argv)
     cmd_args args;
     args.register_key("--memory_t=", "{string} type of the memory");
     args.register_key("--nGb=", "{int} total number of Gigabytes to allocate");
+    args.register_key("--gran=", "{int} block granularity in Mb");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -65,6 +65,6 @@ int main(int argn, char** argv)
     }
 
     sirius::initialize(1);
-    test(args.value<int>("nGb", 2), get_memory_t(args.value<std::string>("memory_t", "host")));
+    test(args.value<int>("nGb", 2), args.value<int>("gran", 32), get_memory_t(args.value<std::string>("memory_t", "host")));
     sirius::finalize();
 }
