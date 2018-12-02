@@ -220,6 +220,70 @@ void test6a()
 //
 //}
 //
+
+
+
+double test_alloc_array(size_t n)
+{
+    utils::timer tt("test_alloc|std");
+    double t0 = wtime();
+    /* time to allocate + fill */
+    mdarray<char, 1> p(n);
+    p.zero();
+    double t1 = wtime();
+    /* time fo fill */
+    p.zero();
+    double t2 = wtime();
+    /* harmless: add zero to t0 to prevent full optimization of the code with GCC */
+    t0 += p[0];
+    p.deallocate(memory_t::host);
+    double t3 = wtime();
+
+    //return (t1 - t0) - (t2 - t1);
+    return (t3 - t0) - 2 * (t2 - t1);
+}
+
+double test_alloc_array(size_t n, memory_pool& mp)
+{
+    utils::timer tt("test_alloc|mp");
+    double t0 = wtime();
+    /* time to allocate + fill */
+    mdarray<char, 1> p(mp, n);
+    p.zero();
+    double t1 = wtime();
+    /* time fo fill */
+    p.zero();
+    double t2 = wtime();
+    /* harmless: add zero to t0 to prevent full optimization of the code with GCC */
+    t0 += p[0];
+    p.deallocate(memory_t::host);
+    double t3 = wtime();
+
+    //return (t1 - t0) - (t2 - t1);
+    return (t3 - t0) - 2 * (t2 - t1);
+}
+
+void test9()
+{
+    double t0{0};
+    for (int k = 0; k < 500; k++) {
+        for (int i = 2; i < 1024; i++) {
+            size_t sz = i;
+            t0 += test_alloc_array(sz);
+        }
+    }
+    memory_pool mp(memory_t::host);
+    double t1{0};
+    for (int k = 0; k < 500; k++) {
+        for (int i = 2; i < 1024; i++) {
+            size_t sz = i;
+            t1 += test_alloc_array(sz, mp);
+        }
+    }
+    std::cout << "std::malloc time: " << t0 << ", sddk::memory_pool time: " << t1 << "\n";
+    utils::timer::print();
+}
+
 int run_test()
 {
     //test1();
@@ -230,9 +294,10 @@ int run_test()
     //test4();
     //test5();
     //test6();
-    test6a();
+    //test6a();
     //test7();
     //test8();
+    test9();
     return 0;
 }
 

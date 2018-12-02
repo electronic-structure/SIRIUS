@@ -1,6 +1,7 @@
 set(_tests "test_hdf5;test_allgather;mt_function;splindex;hydrogen;\
 read_atom;test_mdarray;test_xc;test_hloc;\
-test_mpi_grid;test_enu;test_eigen_v2;test_gemm;test_gemm2;test_wf_inner_v3")
+test_mpi_grid;test_enu;test_eigen_v2;test_gemm;test_gemm2;test_wf_inner_v3;test_memop;\
+test_mem_pool")
 
 foreach(_test ${_tests})
   add_executable(${_test} "${_test}.cpp")
