@@ -470,6 +470,21 @@ inline std::complex<double> random<std::complex<double>>()
     return std::complex<double>(random<double>(), random<double>());
 }
 
+inline long get_page_size()
+{
+    return sysconf(_SC_PAGESIZE);
+}
+
+inline long get_num_pages()
+{
+    return sysconf(_SC_PHYS_PAGES);
+}
+
+inline long get_total_memory()
+{
+    return get_page_size() * get_num_pages();
+}
+
 } // namespace
 
 template <typename T>

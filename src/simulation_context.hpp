@@ -1062,10 +1062,16 @@ class Simulation_context : public Simulation_parameters
         return sym_phase_factors_;
     }
 
+    /// Return a reference to a memory pool.
+    /** A memory pool is created when this function called for the first time. */
     memory_pool& mem_pool(memory_t M__)
     {
         if (memory_pool_.count(M__) == 0) {
-            memory_pool_.emplace(M__, std::move(memory_pool(M__)));
+            if (M__ == memory_t::host_pinned) {
+                memory_pool_.emplace(M__, std::move(memory_pool(M__, utils::get_total_memory() / num_ranks_per_node() / 4)));
+            } else {
+                memory_pool_.emplace(M__, std::move(memory_pool(M__)));
+            }
         }
         return memory_pool_.at(M__);
     }
@@ -1397,6 +1403,10 @@ inline void Simulation_context::print_info() const
         printf("\n");
     }
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
+    printf("number of MPI ranks per node  : %i\n", num_ranks_per_node());
+    printf("page size (Kb)                : %li\n", utils::get_page_size() >> 10);
+    printf("number of pages               : %li\n", utils::get_num_pages());
+    printf("available memory (GB)         : %li\n", utils::get_total_memory() >> 30);
 
     std::string headers[]         = {"FFT context for density and potential", "FFT context for coarse grid"};
     double cutoffs[]              = {pw_cutoff(), 2 * gk_cutoff()};

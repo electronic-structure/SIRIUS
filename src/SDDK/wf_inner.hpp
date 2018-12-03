@@ -587,7 +587,7 @@ inline void inner(memory_t        mem__,
             if (sddk_pp) {
                 double t = t1.stop();
                 if (comm.rank() == 0) {
-                    printf("inner() copyout speed: %12.6 GiB/s", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
+                    printf("inner() copyout speed: %12.6f GiB/s", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
                 }
             }
         }
@@ -615,7 +615,7 @@ inline void inner(memory_t        mem__,
             if (sddk_pp) {
                 double t = t1.stop();
                 if (comm.rank() == 0) {
-                    printf("inner() copyin speed: %12.6 GiB/s", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
+                    printf("inner() copyin speed: %12.6f GiB/s", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
                 }
             }
         }
