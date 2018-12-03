@@ -155,7 +155,10 @@ inline T* allocate(size_t n__, memory_t M__)
         }
         case memory_t::host_pinned: {
 #ifdef __GPU
+            auto t = -utils::wtime();
             return acc::allocate_host<T>(n__);
+            t += utils::wtime();
+            std::cout << "host_pinned allocation of " << n__ << " bytes took " << t << "sec.\n";
 #else
             return nullptr;
 #endif
@@ -186,7 +189,10 @@ inline void deallocate(void* ptr__, memory_t M__)
         }
         case memory_t::host_pinned: {
 #ifdef __GPU
+            auto t = -utils::wtime();
             acc::deallocate_host(ptr__);
+            t += utils::wtime();
+            std::cout << "host_pinned deallocation took " << t << "sec.\n";
 #endif
             break;
         }
@@ -471,6 +477,19 @@ class memory_pool
         uint8_t* ptr = reinterpret_cast<uint8_t*>(ptr__);
         auto& msb = map_ptr_.at(ptr);
         msb.first->free_subblock(ptr, msb.second);
+
+        auto merge_blocks = [&](std::list<memory_block_descriptor>::iterator it0,
+                                std::list<memory_block_descriptor>::iterator it)
+        {
+            if (it0->is_empty()) {
+                size_t size = it->size_ + it0->size_;
+                it->buffer_ = nullptr;
+                it0->buffer_ = nullptr;
+                (*it) = memory_block_descriptor(size, M_);
+                memory_blocks_.erase(it0);
+            }
+        };
+
         /* merge memory blocks; this is not strictly necessary but can lead to a better performance */
         auto it = msb.first;
         if (it->is_empty()) {
@@ -478,31 +497,13 @@ class memory_pool
             if (it != memory_blocks_.begin()) {
                 auto it0 = it;
                 it0--;
-                if (it0->is_empty()) {
-                    size_t size = it->size_ + it0->size_;
-                    it->buffer_ = nullptr;
-                    it0->buffer_ = nullptr;
-                    allocate_count(-it0->size_);
-                    allocate_count(-it->size_);
-                    (*it) = memory_block_descriptor(size, M_);
-                    allocate_count(size);
-                    memory_blocks_.erase(it0);
-                }
+                merge_blocks(it0, it);
             }
             /* try the next block */
             auto it0 = it;
             it0++;
             if (it0 != memory_blocks_.end()) {
-                if (it0->is_empty()) {
-                    size_t size = it->size_ + it0->size_;
-                    it->buffer_ = nullptr;
-                    it0->buffer_ = nullptr;
-                    allocate_count(-it0->size_);
-                    allocate_count(-it->size_);
-                    (*it) = memory_block_descriptor(size, M_);
-                    allocate_count(size);
-                    memory_blocks_.erase(it0);
-                }
+                merge_blocks(it0, it);
             }
         }
         /* remove this pointer from the hash table */
