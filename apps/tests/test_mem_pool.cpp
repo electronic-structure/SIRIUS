@@ -20,17 +20,23 @@ void test(int nGb, int gran, memory_t M__)
 
     utils::timer t1("alloc");
     std::vector<mdarray<char, 1>> v;
-    for (int k = 0; k < 30; k++) {
+    for (int k = 0; k < 4; k++) {
         auto t = -utils::wtime();
         v.clear();
         for (auto s: sizes) {
             v.push_back(std::move(mdarray<char, 1>(mpool, s)));
             v.back().zero(M__);
         }
+        auto c = allocate_count();
+        std::cout << "allocate_count before: " << c.first << " " << c.second << "\n";
         std::random_shuffle(v.begin(), v.end());
         for (auto& e: v) {
             e.deallocate(M__);
         }
+
+        c = allocate_count();
+        std::cout << "allocate_count after: " << c.first << " " << c.second << "\n";
+
         if (mpool.total_size() != tot_size) {
             throw std::runtime_error("wrong total size");
         }
@@ -45,10 +51,30 @@ void test(int nGb, int gran, memory_t M__)
         }
         t += utils::wtime();
         std::cout << "pass : " << k << ", time : " << t << "\n";
+        print_memory_usage(__FILE__, __LINE__);
     }
     t1.stop();
-    print_memory_usage(__FILE__, __LINE__);
     utils::timer::print();
+}
+
+void test1(memory_t M__)
+{
+    memory_pool mpool(M__);
+
+    auto c = allocate_count();
+    std::cout << "allocate_count before: " << c.first << " " << c.second << "\n";
+
+    mdarray<char, 1> a(mpool, 100);
+    a.deallocate(M__);
+
+    mdarray<char, 1> b(mpool, 200);
+    b.deallocate(M__);
+
+    c = allocate_count();
+    std::cout << "allocate_count after: " << c.first << " " << c.second << "\n";
+
+    std::cout << mpool.total_size() << "\n";
+
 }
 
 int main(int argn, char** argv)
@@ -67,5 +93,6 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     test(args.value<int>("nGb", 2), args.value<int>("gran", 32), get_memory_t(args.value<std::string>("memory_t", "host")));
+    //test1(get_memory_t(args.value<std::string>("memory_t", "host")));
     sirius::finalize();
 }

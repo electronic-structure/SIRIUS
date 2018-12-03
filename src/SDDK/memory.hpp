@@ -126,6 +126,20 @@ inline device_t get_device_t(memory_t mem__)
     return device_t::CPU; // make compiler happy
 }
 
+inline std::pair<int64_t, int64_t> allocate_count(int64_t n = 0)
+{
+    static int64_t allocate_bytes_count_{0};
+    static int64_t allocate_num_count_{0};
+    allocate_bytes_count_ += n;
+    if (n > 0) {
+        allocate_num_count_++;
+    }
+    if (n < 0) {
+        allocate_num_count_--;
+    }
+    return std::pair<int64_t, int64_t>(allocate_bytes_count_, allocate_num_count_);
+}
+
 /// Allocate n elements in a specified memory.
 /** Allocate a memory block of the memory_t type. Return a nullptr if this memory is not available, otherwise
  *  return a pointer to an allocated block. */
@@ -391,7 +405,7 @@ struct memory_block_descriptor
 /// Store information about the allocated subblock: iterator in the list of memory blocks and subblock size;
 using memory_subblock_descriptor = std::pair<std::list<memory_block_descriptor>::iterator, size_t>;
 
-/// Memory pool.
+//// Memory pool.
 /** This class stores list of allocated memory blocks. Each of the blocks can be devided into subblocks. When subblock
  *  is deallocated it is merged with previous or next free subblock in the memory block. If this was the last subblock 
  *  in the block of memory, the (now) free block of memory is merged with the neighbours (if any are available).
@@ -434,6 +448,7 @@ class memory_pool
         }
         /* if memory chunk was not found in the list of available blocks, add a new memory block with enough capacity */
         if (!ptr) {
+            allocate_count(size);
             memory_blocks_.push_back(memory_block_descriptor(size, M_));
             it = memory_blocks_.end();
             it--;
@@ -465,8 +480,12 @@ class memory_pool
                 it0--;
                 if (it0->is_empty()) {
                     size_t size = it->size_ + it0->size_;
-                    (*it).buffer_ = nullptr;
+                    it->buffer_ = nullptr;
+                    it0->buffer_ = nullptr;
+                    allocate_count(-it0->size_);
+                    allocate_count(-it->size_);
                     (*it) = memory_block_descriptor(size, M_);
+                    allocate_count(size);
                     memory_blocks_.erase(it0);
                 }
             }
@@ -476,8 +495,12 @@ class memory_pool
             if (it0 != memory_blocks_.end()) {
                 if (it0->is_empty()) {
                     size_t size = it->size_ + it0->size_;
-                    (*it).buffer_ = nullptr;
+                    it->buffer_ = nullptr;
+                    it0->buffer_ = nullptr;
+                    allocate_count(-it0->size_);
+                    allocate_count(-it->size_);
                     (*it) = memory_block_descriptor(size, M_);
+                    allocate_count(size);
                     memory_blocks_.erase(it0);
                 }
             }
@@ -1404,12 +1427,6 @@ class mdarray
         copy<from__, to__>(0, size());
     }
 
-    ///template <memory_t from__, memory_t to__>
-    ///inline void async_copy(int stream_id__)
-    ///{
-    ///    copy<from__, to__>(0, size(), stream_id__);
-    ///}
-
     /// Zero n elements starting from idx0.
     inline void zero(memory_t mem__, size_t idx0__, size_t n__)
     {
@@ -1470,12 +1487,6 @@ class mdarray
     {
         this->copy_to(mem__, 0, size(), sid);
     }
-
-    ///// Copy entire array from one memory type to another.
-    //inline void copy_to(memory_t mem__, size_t n__, stream_id sid = stream_id(-1))
-    //{
-    //    this->copy_to(mem__, 0, n__, sid);
-    //}
 
     /// Check if device pointer is available.
     inline bool on_device() const
