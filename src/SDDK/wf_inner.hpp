@@ -570,9 +570,12 @@ inline void inner(memory_t        mem__,
         }
         return;
     } else if (result__.comm().size() == 1) { /* parallel wave-functions distribution but sequential diagonalization */
-        mdarray<T, 2> tmp(m__, n__);
+        mdarray<T, 2> tmp;
         if (is_device_memory(mem__)) {
+            tmp = mdarray<T, 2>(m__, m__, memory_t::host_pinned);
             tmp.allocate(memory_t::device);
+        } else {
+            tmp = mdarray<T, 2>(m__, m__, memory_t::host);
         }
         //T* buf = result__.at(mem__, irow0__, jcol0__);
         local_inner(i0__, m__, j0__, n__, tmp.at(mem__), tmp.ld(), stream_id(-1));
@@ -587,7 +590,7 @@ inline void inner(memory_t        mem__,
             if (sddk_pp) {
                 double t = t1.stop();
                 if (comm.rank() == 0) {
-                    printf("inner() copyout speed: %12.6f GiB/s", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
+                    printf("inner() copyout speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
                 }
             }
         }
@@ -615,7 +618,7 @@ inline void inner(memory_t        mem__,
             if (sddk_pp) {
                 double t = t1.stop();
                 if (comm.rank() == 0) {
-                    printf("inner() copyin speed: %12.6f GiB/s", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
+                    printf("inner() copyin speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
                 }
             }
         }

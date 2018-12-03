@@ -1129,7 +1129,8 @@ class Simulation_context : public Simulation_parameters
                 return memory_t::host;
             }
             case device_t::GPU: {
-                return memory_t::host_pinned;
+                return memory_t::host;
+                //return memory_t::host_pinned;
             }
         }
         return memory_t::none; // make compiler happy
