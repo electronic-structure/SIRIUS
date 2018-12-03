@@ -126,19 +126,19 @@ inline device_t get_device_t(memory_t mem__)
     return device_t::CPU; // make compiler happy
 }
 
-inline std::pair<int64_t, int64_t> allocate_count(int64_t n = 0)
-{
-    static int64_t allocate_bytes_count_{0};
-    static int64_t allocate_num_count_{0};
-    allocate_bytes_count_ += n;
-    if (n > 0) {
-        allocate_num_count_++;
-    }
-    if (n < 0) {
-        allocate_num_count_--;
-    }
-    return std::pair<int64_t, int64_t>(allocate_bytes_count_, allocate_num_count_);
-}
+//inline std::pair<int64_t, int64_t> allocate_count(int64_t n = 0)
+//{
+//    static int64_t allocate_bytes_count_{0};
+//    static int64_t allocate_num_count_{0};
+//    allocate_bytes_count_ += n;
+//    if (n > 0) {
+//        allocate_num_count_++;
+//    }
+//    if (n < 0) {
+//        allocate_num_count_--;
+//    }
+//    return std::pair<int64_t, int64_t>(allocate_bytes_count_, allocate_num_count_);
+//}
 
 /// Allocate n elements in a specified memory.
 /** Allocate a memory block of the memory_t type. Return a nullptr if this memory is not available, otherwise
@@ -155,10 +155,7 @@ inline T* allocate(size_t n__, memory_t M__)
         }
         case memory_t::host_pinned: {
 #ifdef __GPU
-            auto t = -utils::wtime();
             return acc::allocate_host<T>(n__);
-            t += utils::wtime();
-            std::cout << "host_pinned allocation of " << n__ << " bytes took " << t << "sec.\n";
 #else
             return nullptr;
 #endif
@@ -189,10 +186,7 @@ inline void deallocate(void* ptr__, memory_t M__)
         }
         case memory_t::host_pinned: {
 #ifdef __GPU
-            auto t = -utils::wtime();
             acc::deallocate_host(ptr__);
-            t += utils::wtime();
-            std::cout << "host_pinned deallocation took " << t << "sec.\n";
 #endif
             break;
         }
@@ -428,9 +422,12 @@ class memory_pool
   public:
 
     /// Constructor
-    memory_pool(memory_t M__)
+    memory_pool(memory_t M__, size_t initial_size__ = 0)
         : M_(M__)
     {
+        if (initial_size__) {
+            memory_blocks_.push_back(memory_block_descriptor(initial_size__, M_));
+        }
     }
 
     /// Return a pointer to a memory block for n elements of type T.
@@ -454,7 +451,6 @@ class memory_pool
         }
         /* if memory chunk was not found in the list of available blocks, add a new memory block with enough capacity */
         if (!ptr) {
-            allocate_count(size);
             memory_blocks_.push_back(memory_block_descriptor(size, M_));
             it = memory_blocks_.end();
             it--;

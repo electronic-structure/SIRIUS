@@ -4,7 +4,13 @@ using namespace sirius;
 
 void test(int nGb, int gran, memory_t M__)
 {
-    memory_pool mpool(M__);
+    std::unique_ptr<memory_pool> mp;
+    if (M__ == memory_t::host_pinned) {
+        mp = std::unique_ptr<memory_pool>(new memory_pool(M__, size_t(4) * (1 << 30)));
+    } else {
+        mp = std::unique_ptr<memory_pool>(new memory_pool(M__, size_t(0) * (1 << 30)));
+    }
+    memory_pool& mpool = *mp;
 
     std::vector<uint32_t> sizes;
     size_t tot_size{0};
@@ -27,15 +33,10 @@ void test(int nGb, int gran, memory_t M__)
             v.push_back(std::move(mdarray<char, 1>(mpool, s)));
             v.back().zero(M__);
         }
-        auto c = allocate_count();
-        std::cout << "allocate_count before: " << c.first << " " << c.second << "\n";
         std::random_shuffle(v.begin(), v.end());
         for (auto& e: v) {
             e.deallocate(M__);
         }
-
-        c = allocate_count();
-        std::cout << "allocate_count after: " << c.first << " " << c.second << "\n";
 
         if (mpool.total_size() != tot_size) {
             throw std::runtime_error("wrong total size");
@@ -61,17 +62,11 @@ void test1(memory_t M__)
 {
     memory_pool mpool(M__);
 
-    auto c = allocate_count();
-    std::cout << "allocate_count before: " << c.first << " " << c.second << "\n";
-
     mdarray<char, 1> a(mpool, 100);
     a.deallocate(M__);
 
     mdarray<char, 1> b(mpool, 200);
     b.deallocate(M__);
-
-    c = allocate_count();
-    std::cout << "allocate_count after: " << c.first << " " << c.second << "\n";
 
     std::cout << mpool.total_size() << "\n";
 
