@@ -228,12 +228,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 {
     PROFILE("sirius::Band::diag_pseudo_potential_davidson");
 
-    if (kp__->comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-        //printf("pool size of memory_t::host:        %li (MB)\n", ctx_.mem_pool(memory_t::host).total_size() >> 20);
-        //printf("pool size of memory_t::host_pinned: %li (MB)\n", ctx_.mem_pool(memory_t::host_pinned).total_size() >> 20);
-        //printf("pool size of memory_t::device:      %li (MB)\n", ctx_.mem_pool(memory_t::device).total_size() >> 20);
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     auto& itso = ctx_.iterative_solver_input();
 
@@ -258,8 +253,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     /* short notation for target wave-functions */
     auto& psi = kp__->spinor_wave_functions();
 
-    utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|wf");
-
     /* maximum subspace size */
     int num_phi = itso.subspace_size_ * num_bands;
 
@@ -272,6 +265,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     auto& mp = ctx_.mem_pool(ctx_.host_memory_t());
 
     /* allocate wave-functions */
+    utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
 
     /* auxiliary wave-functions */
     Wave_functions phi(mp, kp__->gkvec_partition(), num_phi, num_sc);
@@ -290,9 +284,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     /* residuals */
     Wave_functions res(mp, kp__->gkvec_partition(), num_bands, num_sc);
-    t1.stop();
-
-    utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
 
     const int bs = ctx_.cyclic_block_size();
 

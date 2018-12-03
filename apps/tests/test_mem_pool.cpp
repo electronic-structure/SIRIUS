@@ -5,12 +5,13 @@ using namespace sirius;
 void test(int nGb, int gran, memory_t M__)
 {
     std::unique_ptr<memory_pool> mp;
+    size_t initial_size{0};
     if (M__ == memory_t::host_pinned) {
-        mp = std::unique_ptr<memory_pool>(new memory_pool(M__, size_t(4) * (1 << 30)));
+        initial_size = size_t(4) * (1 << 30);
     } else {
-        mp = std::unique_ptr<memory_pool>(new memory_pool(M__, size_t(2) * (1 << 30)));
+        initial_size = size_t(0) * (1 << 30);
     }
-    memory_pool& mpool = *mp;
+    memory_pool mpool(M__, initial_size);
 
     std::vector<uint32_t> sizes;
     size_t tot_size{0};
@@ -38,9 +39,9 @@ void test(int nGb, int gran, memory_t M__)
             e.deallocate(M__);
         }
 
-        //if (mpool.total_size() != tot_size) {
-        //    throw std::runtime_error("wrong total size");
-        //}
+        if (initial_size == 0 && (mpool.total_size() != tot_size)) {
+            throw std::runtime_error("wrong total size");
+        }
         if (mpool.free_size() != mpool.total_size()) {
             throw std::runtime_error("wrong free size");
         }
@@ -52,24 +53,9 @@ void test(int nGb, int gran, memory_t M__)
         }
         t += utils::wtime();
         std::cout << "pass : " << k << ", time : " << t << "\n";
-        print_memory_usage(__FILE__, __LINE__);
     }
     t1.stop();
     utils::timer::print();
-}
-
-void test1(memory_t M__)
-{
-    memory_pool mpool(M__);
-
-    mdarray<char, 1> a(mpool, 100);
-    a.deallocate(M__);
-
-    mdarray<char, 1> b(mpool, 200);
-    b.deallocate(M__);
-
-    std::cout << mpool.total_size() << "\n";
-
 }
 
 int main(int argn, char** argv)
@@ -88,6 +74,5 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     test(args.value<int>("nGb", 2), args.value<int>("gran", 32), get_memory_t(args.value<std::string>("memory_t", "host")));
-    //test1(get_memory_t(args.value<std::string>("memory_t", "host")));
     sirius::finalize();
 }

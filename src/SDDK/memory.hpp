@@ -126,20 +126,6 @@ inline device_t get_device_t(memory_t mem__)
     return device_t::CPU; // make compiler happy
 }
 
-//inline std::pair<int64_t, int64_t> allocate_count(int64_t n = 0)
-//{
-//    static int64_t allocate_bytes_count_{0};
-//    static int64_t allocate_num_count_{0};
-//    allocate_bytes_count_ += n;
-//    if (n > 0) {
-//        allocate_num_count_++;
-//    }
-//    if (n < 0) {
-//        allocate_num_count_--;
-//    }
-//    return std::pair<int64_t, int64_t>(allocate_bytes_count_, allocate_num_count_);
-//}
-
 /// Allocate n elements in a specified memory.
 /** Allocate a memory block of the memory_t type. Return a nullptr if this memory is not available, otherwise
  *  return a pointer to an allocated block. */
@@ -173,7 +159,7 @@ inline T* allocate(size_t n__, memory_t M__)
     }
 }
 
-/// Deallocate pointer.
+/// Deallocate pointer of a given memory type.
 inline void deallocate(void* ptr__, memory_t M__)
 {
     switch (M__) {
@@ -550,6 +536,7 @@ class memory_pool
         return s;
     }
 
+    /// Get the total free size of the memory pool.
     size_t free_size() const
     {
         size_t s{0};
@@ -559,6 +546,7 @@ class memory_pool
         return s;
     }
 
+    /// Get the number of free memory blocks.
     size_t num_blocks() const
     {
         size_t s{0};
