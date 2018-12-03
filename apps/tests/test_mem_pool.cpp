@@ -47,6 +47,7 @@ void test(int nGb, int gran, memory_t M__)
         std::cout << "pass : " << k << ", time : " << t << "\n";
     }
     t1.stop();
+    print_memory_usage(__FILE__, __LINE__);
     utils::timer::print();
 }
 
