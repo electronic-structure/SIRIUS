@@ -45,6 +45,18 @@
 
 namespace sddk {
 
+template <typename T>
+struct is_complex
+{
+    constexpr static bool value{false};
+};
+
+template<typename T>
+struct is_complex<std::complex<T>>
+{
+    constexpr static bool value{true};
+};
+
 /// Memory types where the code can store data.
 /** All memory types can be divided into two (possibly overlapping) groups: accessible by the CPU and accessible by the
  *  device. */
@@ -810,9 +822,18 @@ class mdarray
     inline void call_constructor()
     {
         /* call constructor on non-trivial data */
-        if (!std::is_pod<T>::value) {
+        if (!(std::is_trivial<T>::value || is_complex<T>::value)) {
             for (size_t i = 0; i < size(); i++) {
                 new (raw_ptr_ + i) T();
+            }
+        }
+    }
+
+    inline void call_destructor()
+    {
+        if (!(std::is_trivial<T>::value || is_complex<T>::value)) {
+            for (size_t i = 0; i < this->size(); i++) {
+                (raw_ptr_ + i)->~T();
             }
         }
     }
@@ -1173,10 +1194,8 @@ class mdarray
     {
         if (is_host_memory(memory__)) {
             /* call destructor for non-primitive objects */
-            if (unique_ptr_ && !std::is_pod<T>::value) {
-                for (size_t i = 0; i < this->size(); i++) {
-                    (raw_ptr_ + i)->~T();
-                }
+            if (unique_ptr_) {
+                call_destructor();
             }
             unique_ptr_.reset(nullptr);
             raw_ptr_ = nullptr;
