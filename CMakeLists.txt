@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.6) # Intel C++11 support starts from 3.6 or even later version
+cmake_minimum_required(VERSION 3.9) # Intel C++11 support starts from 3.6 or even later version
 project(SIRIUS)
 
 # set language and standard
@@ -39,8 +39,8 @@ endif()
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -g -ggdb -DDEBUG")
-  set(CMAKE_CXX_FLAGS_RELEASE "-ftree-vectorize -O3 -DNDEBUG")
+  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb -DDEBUG")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -O2")
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
@@ -94,9 +94,6 @@ find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C HL)
 
-
-# cmake assumes spglib installed
-#add_compile_options(-D__SPGLIB_STD_INCLUDE_PATH)
 
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
@@ -214,19 +211,23 @@ MACRO(SIRIUS_SETUP_TARGET _target)
   endif()
 
   add_dependencies(${_target} generate_version_hpp)
-
   if(USE_MKL)
     # TODO: handle -lpthread properly
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-Wl,--no-as-needed;${MKL_LIBRARIES};-lpthread -lm -ldl -lgomp")
+      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-Wl,--no-as-needed;${MKL_LIBRARIES}")
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${MKL_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-lpthread")
+      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${MKL_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
     else()
       message(FATAL_ERROR "Unsupported compiler")
     endif()
   else()
     target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
   endif()
+
+    if(OpenMP_CXX_FOUND)
+    target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
+  endif()
+
 ENDMACRO()
 
 # sirius library
