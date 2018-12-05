@@ -315,7 +315,7 @@ class Local_operator
         num_applied(n__);
 
         /* this memory pool will be used to allocate extra storage in the host memory*/
-        auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(memory_t::host);
+        auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(ctx_.host_memory_t());
         /* this memory pool will be used to allocate extra storage in the device memory */
 #ifdef __GPU
         auto& mpd = const_cast<Simulation_context&>(ctx_).mem_pool(memory_t::device);
