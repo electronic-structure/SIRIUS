@@ -459,11 +459,11 @@ inline void inner(memory_t        mem__,
 
     auto& comm = bra__.comm();
 
-#ifdef __GPU
-    if (pu__ == device_t::GPU) {
-        acc::set_device();
-    }
-#endif
+//#ifdef __GPU
+//    if (pu__ == device_t::GPU) {
+//        acc::set_device();
+//    }
+//#endif
 
     auto sddk_pp = utils::get_env<int>("SDDK_PRINT_PERFORMANCE");
 
