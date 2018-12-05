@@ -440,6 +440,35 @@ inline void inner(device_t        pu__,
 }
 
 template <typename T>
+static void inner_local();
+
+template<>
+void inner_local<double>()
+{
+}
+
+template<>
+void inner_local<double_complex>()
+{
+    linalg2(la__).gemm('C', 'N', m__, n__, bra__.pw_coeffs(s).num_rows_loc(),
+                       &linalg_const<double_complex>::one(),
+                       bra__.pw_coeffs(s).prime().at(mem__, 0, i0__), bra__.pw_coeffs(s).prime().ld(),
+                       ket__.pw_coeffs(s).prime().at(mem__, 0, j0__), ket__.pw_coeffs(s).prime().ld(),
+                       reinterpret_cast<double_complex*>(&beta),
+                       reinterpret_cast<double_complex*>(buf__), ld__,
+                       sid);
+    if (bra__.has_mt()) {
+        linalg2(la__).gemm('C', 'N', m__, n__, bra__.mt_coeffs(s).num_rows_loc(),
+                           &linalg_const<double_complex>::one(),
+                           bra__.mt_coeffs(s).prime().at(mem__, 0, i0__), bra__.mt_coeffs(s).prime().ld(),
+                           ket__.mt_coeffs(s).prime().at(mem__, 0, j0__), ket__.mt_coeffs(s).prime().ld(),
+                           &linalg_const<double_complex>::one(),
+                           reinterpret_cast<double_complex*>(buf__), ld__,
+                           sid);
+    }
+}
+
+template <typename T>
 inline void inner(memory_t        mem__,
                   linalg_t        la__,
                   int             ispn__,
