@@ -570,23 +570,13 @@ inline void inner(memory_t        mem__,
         }
         return;
     } else if (result__.comm().size() == 1) { /* parallel wave-functions distribution but sequential diagonalization */
-        mdarray<T, 2> tmp;
-        if (is_device_memory(mem__)) {
-            tmp = mdarray<T, 2>(m__, m__, memory_t::host_pinned);
-            tmp.allocate(memory_t::device);
-        } else {
-            tmp = mdarray<T, 2>(m__, m__, memory_t::host);
-        }
-        //T* buf = result__.at(mem__, irow0__, jcol0__);
-        local_inner(i0__, m__, j0__, n__, tmp.at(mem__), tmp.ld(), stream_id(-1));
+        local_inner(i0__, m__, j0__, n__, result__.at(mem__, irow0__, jcol0__), result__.ld(), stream_id(-1));
 #ifdef __GPU
         if (is_device_memory(mem__)) {
-
             utils::timer t1("sddk::inner|device_copy");
-            //acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
-            //             result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
-            //             m__, n__);
-            tmp.copy_to(memory_t::host);
+            acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
+                         result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
+                         m__, n__);
             if (sddk_pp) {
                 double t = t1.stop();
                 if (comm.rank() == 0) {
@@ -595,10 +585,16 @@ inline void inner(memory_t        mem__,
             }
         }
 #endif
+        utils::timer t3("sddk::inner|store");
+        mdarray<T, 2> tmp(m__, n__);
+        #pragma omp parallel for schedule(static)
+        for (int j = 0; j < n__; j++) {
+            for (int i = 0; i < m__; i++) {
+                tmp(i, j) = result__(irow0__ + i, jcol0__ + j);
+            }
+        }
+        t3.stop();
         utils::timer t1("sddk::inner|mpi");
-        //for (int j = 0; j < n__; j++) {
-        //    comm.allreduce(&result__(irow0__, jcol0__ + j), m__);
-        //}
         comm.allreduce(tmp.at(memory_t::host), m__ * n__);
         t1.stop();
         utils::timer t2("sddk::inner|store");
