@@ -360,6 +360,7 @@ class Potential : public Field4D
         if (!ctx_.full_potential()) {
             local_potential_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
             dveff_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
+            dveff_->zero();
         }
 
         vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
