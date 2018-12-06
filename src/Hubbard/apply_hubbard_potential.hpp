@@ -32,7 +32,7 @@ void Hubbard::apply_hubbard_potential(K_point&        kp__,
                                       const int       idx__,
                                       const int       n__,
                                       Wave_functions& phi,
-                                      Wave_functions& ophi)
+                                      Wave_functions& hphi)
 {
     auto& hub_wf = kp__.hubbard_wave_functions();
 
@@ -48,7 +48,8 @@ void Hubbard::apply_hubbard_potential(K_point&        kp__,
     // First calculate the local part of the projections
     // dm(i, n)  = <S phi_i | psi_{nk}>
 
-    inner(ctx_.processing_unit(),
+    inner(ctx_.preferred_memory_t(),
+          ctx_.blas_linalg_t(),
           ispn__,
           hub_wf,
           0,
@@ -126,17 +127,18 @@ void Hubbard::apply_hubbard_potential(K_point&        kp__,
     }
     #endif
 
-    transform<double_complex>(ctx_.processing_unit(),
+    transform<double_complex>(ctx_.preferred_memory_t(),
+                              ctx_.blas_linalg_t(),
                               ispn__,
                               1.0,
-                              hub_wf,
+                              {&hub_wf},
                               0,
                               this->number_of_hubbard_orbitals(),
                               Up,
                               0,
                               0,
                               1.0,
-                              ophi,
+                              {&hphi},
                               idx__,
                               n__);
 
