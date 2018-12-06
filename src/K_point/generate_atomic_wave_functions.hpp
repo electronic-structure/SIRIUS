@@ -42,6 +42,10 @@ inline void K_point::generate_atomic_wave_functions_aux(const int         num_ao
     }
     lmax = std::max(lmax, unit_cell_.lmax());
 
+    for (int ispn = 0; ispn < phi.num_sc(); ispn++) {
+        phi.pw_coeffs(ispn).prime().zero();
+    }
+
     #pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
         /* global index of G+k vector */
