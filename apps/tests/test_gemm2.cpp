@@ -9,7 +9,7 @@ int const nop_gemm = 8;
 #endif
 
 
-double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t mem__)
+double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t memA__, memory_t memB__, memory_t memC__)
 {
     utils::timer t("test_gemm"); 
 
@@ -22,30 +22,30 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t mem__)
         imax = K;
         jmax = M;
     }
-    memory_t mem{memory_t::none};
-    if (mem__ == memory_t::device) {
-        mem = memory_t::host;
-    } else {
-        mem = mem__;
-    }
-    a = matrix<gemm_type>(imax, jmax, mem);
-    b = matrix<gemm_type>(K, N, mem);
-    c = matrix<gemm_type>(M, N, mem);
 
-    for (int j = 0; j < jmax; j++) {
-        for (int i = 0; i < imax; i++) {
-            a(i, j) = utils::random<gemm_type>();
-        }
+    a = matrix<gemm_type>(imax, jmax, memA__);
+    b = matrix<gemm_type>(K, N, memB__);
+    c = matrix<gemm_type>(M, N, memC__);
+
+    if (!is_host_memory(memA__)) {
+        a.allocate(memory_t::host);
+    }
+    a = [](int64_t i, int64_t j){return utils::random<gemm_type>();};
+    if (!is_host_memory(memA__)) {
+        a.copy_to(memory_t::device);
     }
 
-    for (int j = 0; j < N; j++) {
-        for (int i = 0; i < K; i++) {
-            b(i, j) = utils::random<gemm_type>();
-        }
+    if (!is_host_memory(memB__)) {
+        b.allocate(memory_t::host);
     }
-    c.zero();
+    b = [](int64_t i, int64_t j){return utils::random<gemm_type>();};
+    if (!is_host_memory(memB__)) {
+        b.copy_to(memory_t::device);
+    }
 
-    if (mem__ == memory_t::device) {
+    c.zero(memC__);
+    if (!is_host_memory(memC__)) {
+        c.allocate(memory_t::host);
     }
 
     char TA[] = {'N', 'T', 'C'};
@@ -55,27 +55,12 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t mem__)
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
     utils::timer t1("gemm_only");
-    switch (mem__) {
-        case memory_t::host:
-        case memory_t::host_pinned: {
-            linalg2(la__).gemm(TA[transa], 'N', M, N, K, &linalg_const<gemm_type>::one(), a.at<CPU>(), a.ld(), 
-                                             b.at<CPU>(), b.ld(), &linalg_const<gemm_type>::zero(), c.at<CPU>(), c.ld());
-            break;
-        }
-        case memory_t::device: {
-            a.allocate(memory_t::device);
-            b.allocate(memory_t::device);
-            c.allocate(memory_t::device);
-            a.copy<memory_t::host, memory_t::device>();
-            b.copy<memory_t::host, memory_t::device>();
-            linalg2(la__).gemm(TA[transa], 'N', M, N, K, &linalg_const<gemm_type>::one(), a.at<GPU>(), a.ld(), 
-                                             b.at<GPU>(), b.ld(), &linalg_const<gemm_type>::zero(), c.at<GPU>(), c.ld());
-            c.copy<memory_t::device, memory_t::host>();
-            break;
-        }
-        default: {
-            throw std::runtime_error("wrong memory type");
-        }
+    linalg2(la__).gemm(TA[transa], 'N', M, N, K, &linalg_const<gemm_type>::one(),
+                       a.at(memA__), a.ld(), b.at(memB__), b.ld(),
+                       &linalg_const<gemm_type>::zero(),
+                       c.at(memC__), c.ld());
+    if (is_device_memory(memC__)) {
+        c.copy_to(memory_t::host);
     }
 
     double tval = t1.stop();
@@ -95,7 +80,9 @@ int main(int argn, char **argv)
     args.register_key("--opA=", "{0|1|2} 0: op(A) = A, 1: op(A) = A', 2: op(A) = conjg(A')");
     args.register_key("--repeat=", "{int} repeat test number of times");
     args.register_key("--linalg_t=", "{string} type of the linear algebra driver");
-    args.register_key("--memory_t=", "{string} type of the memory");
+    args.register_key("--memA=", "{string} type of memory of matrix A");
+    args.register_key("--memB=", "{string} type of memory of matrix B");
+    args.register_key("--memC=", "{string} type of memory of matrix C");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -104,22 +91,24 @@ int main(int argn, char **argv)
         return 0;
     }
 
-    int M = args.value<int>("M");
-    int N = args.value<int>("N");
-    int K = args.value<int>("K");
+    int M = args.value<int>("M", 512);
+    int N = args.value<int>("N", 512);
+    int K = args.value<int>("K", 512);
 
     int transa = args.value<int>("opA", 0);
 
     int repeat = args.value<int>("repeat", 5);
 
     std::string linalg_t_str = args.value<std::string>("linalg_t", "blas");
-    std::string memory_t_str = args.value<std::string>("memory_t", "host");
+    auto memA = get_memory_t(args.value<std::string>("memA", "host"));
+    auto memB = get_memory_t(args.value<std::string>("memB", "host"));
+    auto memC = get_memory_t(args.value<std::string>("memC", "host"));
 
     sirius::initialize(true);
 
     Measurement perf;
     for (int i = 0; i < repeat; i++) {
-        perf.push_back(test_gemm(M, N, K, transa, get_linalg_t(linalg_t_str), get_memory_t(memory_t_str)));
+        perf.push_back(test_gemm(M, N, K, transa, get_linalg_t(linalg_t_str), memA, memB, memC));
     }
     printf("average performance: %12.6f GFlops, sigma: %12.6f\n", perf.average(), perf.sigma());
 

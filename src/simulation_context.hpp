@@ -1067,11 +1067,7 @@ class Simulation_context : public Simulation_parameters
     memory_pool& mem_pool(memory_t M__)
     {
         if (memory_pool_.count(M__) == 0) {
-            if (M__ == memory_t::host_pinned) {
-                memory_pool_.emplace(M__, std::move(memory_pool(M__, utils::get_total_memory() / num_ranks_per_node() / 4)));
-            } else {
-                memory_pool_.emplace(M__, std::move(memory_pool(M__)));
-            }
+            memory_pool_.emplace(M__, std::move(memory_pool(M__)));
         }
         return memory_pool_.at(M__);
     }
