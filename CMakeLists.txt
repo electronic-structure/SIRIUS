@@ -224,7 +224,7 @@ MACRO(SIRIUS_SETUP_TARGET _target)
     target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
   endif()
 
-    if(OpenMP_CXX_FOUND)
+  if(OpenMP_CXX_FOUND)
     target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
   endif()
 
