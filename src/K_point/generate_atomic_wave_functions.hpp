@@ -82,7 +82,7 @@ inline void K_point::generate_atomic_wave_functions_aux(const int         num_ao
                         // one channel only now
                         for (int i = 0; i < 2; i++) {
                             auto &orb = atom_type.hubbard_orbital(i);
-                            const int l = std::abs(orb.hubbard_l());
+                            const int l = std::abs(orb.l());
                             auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                             for (int m = -l; m <= l; m++) {
                                 int lm = utils::lm(l, m);
@@ -94,7 +94,7 @@ inline void K_point::generate_atomic_wave_functions_aux(const int         num_ao
                         // add the loop over different channels. need to compute the offsets accordingly
                         for (int channel = 0, offset__ = 0; channel < atom_type.number_of_hubbard_channels(); channel++) {
                             auto &orb = atom_type.hubbard_orbital(channel);
-                            const int l = std::abs(orb.hubbard_l());
+                            const int l = std::abs(orb.l());
                             auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                             for (int m = -l; m <= l; m++) {
                                 int lm = utils::lm(l, m);

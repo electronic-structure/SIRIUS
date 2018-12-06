@@ -206,34 +206,37 @@ class Force
 
         void hubbard_force_add_k_contribution_colinear(K_point &kp__, mdarray<double, 2>& forceh_)
         {
-            mdarray<double_complex, 6> dn_(2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                           2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                           2,
-                                           ctx_.unit_cell().num_atoms(),
-                                           3,
-                                           ctx_.unit_cell().num_atoms());
+            mdarray<double_complex, 6> dn(2 * hamiltonian_.U().hubbard_lmax() + 1,
+                                          2 * hamiltonian_.U().hubbard_lmax() + 1,
+                                          2,
+                                          ctx_.unit_cell().num_atoms(),
+                                          3,
+                                          ctx_.unit_cell().num_atoms());
 
             hamiltonian_.U().compute_occupancies_derivatives(kp__,
                                                              hamiltonian_.Q<double_complex>(),
-                                                             dn_);
+                                                             dn);
 
+            #pragma omp parallel for
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                // compute the derivative of the occupancies numbers
+                /* compute the derivative of the occupancies numbers */
                 for (int dir = 0; dir < 3; dir++) {
+                    double d{0};
                     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
-                        const auto& atom = ctx_.unit_cell().atom(ia1);
+                        auto const& atom = ctx_.unit_cell().atom(ia1);
                         if (atom.type().hubbard_correction()) {
-                            const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
+                            int const lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
                             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                                 for (int m1 = 0; m1 < lmax_at; m1++) {
                                     for (int m2 = 0; m2 < lmax_at; m2++) {
-                                        forceh_(dir, ia) -= (hamiltonian_.U().U(m2, m1, ispn, ia1) *
-                                                             dn_(m1, m2, ispn, ia1, dir, ia)).real();
+                                        d += (hamiltonian_.U().U(m2, m1, ispn, ia1) *
+                                              dn(m1, m2, ispn, ia1, dir, ia)).real();
                                     }
                                 }
                             }
                         }
                     }
+                    forceh_(dir, ia) -= d;
                 }
             }
         }
