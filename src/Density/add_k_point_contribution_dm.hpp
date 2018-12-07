@@ -108,6 +108,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                     /* number of beta projectors */
                     int nbeta = kp__->beta_projectors().chunk(chunk).num_beta_;
 
+                    /* use communicator of the k-point to split band index */
                     splindex<block> spl_nbnd(nbnd, kp__->comm().size(), kp__->comm().rank());
 
                     int nbnd_loc = spl_nbnd.local_size();

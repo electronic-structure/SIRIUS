@@ -472,8 +472,8 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
 
     /* add pure local orbitals to the basis */
     if (nlo) {
-        phi.pw_coeffs(0).zero<memory_t::host>(0, nlo);
-        phi.mt_coeffs(0).zero<memory_t::host>(0, nlo);
+        phi.pw_coeffs(0).zero(memory_t::host, 0, nlo);
+        phi.mt_coeffs(0).zero(memory_t::host, 0, nlo);
         for (int ialoc = 0; ialoc < phi.spl_num_atoms().local_size(); ialoc++) {
             int ia = phi.spl_num_atoms()[ialoc];
             for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++) {
@@ -484,7 +484,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
 
     /* add singular components to the basis */
     if (ncomp != 0) {
-        phi.mt_coeffs(0).zero<memory_t::host>(nlo, ncomp);
+        phi.mt_coeffs(0).zero(memory_t::host, nlo, ncomp);
         for (int j = 0; j < ncomp; j++) {
             std::memcpy(phi.pw_coeffs(0).prime().at<CPU>(0, nlo + j),
                         kp__.singular_components().pw_coeffs(0).prime().at<CPU>(0, j),
@@ -493,7 +493,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
     }
 
 #if defined(__GPU)
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         psi.allocate_on_device(0);
         psi.copy_to_device(0, 0, num_bands);
 

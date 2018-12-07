@@ -65,10 +65,9 @@ static void compute_res(device_t            pu__,
                         Wave_functions&     opsi__,
                         Wave_functions&     res__)
 {
-    int s0 = (ispn__ == 2) ? 0 : ispn__;
-    int s1 = (ispn__ == 2) ? 1 : ispn__;
+    auto spins = get_spins(ispn__);
 
-    for (int ispn = s0; ispn <= s1; ispn++) {
+    for (int ispn: spins) {
         switch (pu__) {
             case CPU: {
                 /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
@@ -174,10 +173,9 @@ static void normalize_res(device_t            pu__,
                           Wave_functions&     res__,
                           mdarray<double, 1>& p_norm__)
 {
-    int s0 = (ispn__ == 2) ? 0 : ispn__;
-    int s1 = (ispn__ == 2) ? 1 : ispn__;
+    auto spins = get_spins(ispn__);
 
-    for (int ispn = s0; ispn <= s1; ispn++) {
+    for (int ispn: spins) {
         switch (pu__) {
             case CPU: {
             #pragma omp parallel for schedule(static)
@@ -228,10 +226,10 @@ Band::residuals_aux(K_point*             kp__,
 
     assert(num_bands__ != 0);
 
-    auto pu = ctx_.processing_unit();
+    auto pu = get_device_t(ctx_.preferred_memory_t());
 
     mdarray<double, 1> eval(eval__.data(), num_bands__, "residuals_aux::eval");
-    if (pu == GPU) {
+    if (pu == device_t::GPU) {
         eval.allocate(memory_t::device);
         eval.copy<memory_t::host, memory_t::device>();
     }
@@ -248,7 +246,7 @@ Band::residuals_aux(K_point*             kp__,
     for (int i = 0; i < num_bands__; i++) {
         p_norm[i] = 1.0 / p_norm[i];
     }
-    if (pu == GPU) {
+    if (pu == device_t::GPU) {
         p_norm.copy<memory_t::host, memory_t::device>();
     }
 
@@ -293,6 +291,8 @@ inline int Band::residuals(K_point*             kp__,
 
     auto& itso = ctx_.iterative_solver_input();
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
+
+    auto spins = get_spins(ispn__);
 
     int n{0};
     if (converge_by_energy) {
@@ -345,7 +345,8 @@ inline int Band::residuals(K_point*             kp__,
                 evec_tmp.allocate(memory_t::device);
             }
             /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-            transform<T>(ctx_.processing_unit(), ispn__, {&hphi__, &ophi__}, 0, N__, evec_tmp, 0, 0, {&hpsi__, &opsi__}, 0, n);
+            transform<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), ispn__, {&hphi__, &ophi__}, 0, N__,
+                         evec_tmp, 0, 0, {&hpsi__, &opsi__}, 0, n);
 
             auto res_norm = residuals_aux(kp__, ispn__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
@@ -356,12 +357,8 @@ inline int Band::residuals(K_point*             kp__,
                 if (res_norm[i] > itso.residual_tolerance_) {
                     /* shift unconverged residuals to the beginning of array */
                     if (n != i) {
-                        int s0{0}, s1{1};
-                        if (ispn__ != 2) {
-                            s0 = s1 = ispn__;
-                        }
-                        for (int ispn = s0; ispn <= s1; ispn++) {
-                            res__.copy_from(ctx_.processing_unit(), 1, res__, ispn, i, ispn, n);
+                        for (int ispn: spins) {
+                            res__.copy_from(get_device_t(ctx_.preferred_memory_t()), 1, res__, ispn, i, ispn, n);
                         }
                     }
                     n++;
@@ -373,23 +370,19 @@ inline int Band::residuals(K_point*             kp__,
         }
     } else {
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        transform<T>(ctx_.processing_unit(), ispn__, {&hphi__, &ophi__}, 0, N__, evec__, 0, 0, {&hpsi__, &opsi__}, 0, num_bands__);
+        transform<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), ispn__, {&hphi__, &ophi__}, 0, N__,
+                     evec__, 0, 0, {&hpsi__, &opsi__}, 0, num_bands__);
 
         auto res_norm = residuals_aux(kp__, ispn__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
         for (int i = 0; i < num_bands__; i++) {
-            //int s = ispn__ == 2 ? 0 : ispn__;
             double tol = itso.residual_tolerance_;// + 1e-3 * std::abs(kp__->band_occupancy(i + s * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
             /* take the residual if its norm is above the threshold */
             if (res_norm[i] > tol) {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) {
-                    int s0{0}, s1{1};
-                    if (ispn__ != 2) {
-                        s0 = s1 = ispn__;
-                    }
-                    for (int ispn = s0; ispn <= s1; ispn++) {
-                        res__.copy_from(ctx_.processing_unit(), 1, res__, ispn, i, ispn, n);
+                    for (int ispn: spins) {
+                        res__.copy_from(get_device_t(ctx_.preferred_memory_t()), 1, res__, ispn, i, ispn, n);
                     }
                 }
                 n++;
@@ -422,12 +415,10 @@ inline int Band::residuals(K_point*             kp__,
 
     /* print checksums */
     if (ctx_.control().print_checksum_ && n != 0) {
-        int s0 = (ispn__ == 2) ? 0 : ispn__;
-        int s1 = (ispn__ == 2) ? 1 : ispn__;
-        for (int ispn = s0; ispn <= s1; ispn++) {
-            auto cs = res__.checksum(ctx_.processing_unit(), ispn, 0, n);
-            auto cs1 = hpsi__.checksum(ctx_.processing_unit(), ispn, 0, n);
-            auto cs2 = opsi__.checksum(ctx_.processing_unit(), ispn, 0, n);
+        for (int ispn: spins) {
+            auto cs = res__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, 0, n);
+            auto cs1 = hpsi__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, 0, n);
+            auto cs2 = opsi__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, 0, n);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "res_" << ispn;
@@ -466,9 +457,7 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
             /* apply Hamiltonian and S operators to the wave-functions */
             H__.apply_h_s<T>(kp__, 2, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
         } else {
-            //Wave_functions phi(&psi.pw_coeffs(ispin_step).prime(0, 0), kp__->gkvec_partition(), ctx_.num_bands(), 1);
             /* apply Hamiltonian and S operators to the wave-functions */
-            //H__.apply_h_s<T>(kp__, ispin_step, 0, ctx_.num_bands(), phi, &hpsi, &spsi);
             H__.apply_h_s<T>(kp__, ispin_step, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
         }
 

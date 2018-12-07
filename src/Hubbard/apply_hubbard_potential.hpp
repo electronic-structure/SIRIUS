@@ -32,23 +32,21 @@ void Hubbard::apply_hubbard_potential(K_point&        kp__,
                                       const int       idx__,
                                       const int       n__,
                                       Wave_functions& phi,
-                                      Wave_functions& ophi)
+                                      Wave_functions& hphi)
 {
     auto& hub_wf = kp__.hubbard_wave_functions();
 
     dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(), n__);
     dm.zero();
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         dm.allocate(memory_t::device);
     }
-    #endif
 
-    // First calculate the local part of the projections
-    // dm(i, n)  = <S phi_i | psi_{nk}>
-
-    inner(ctx_.processing_unit(),
+    /* First calculate the local part of the projections
+       dm(i, n) = <phi_i| S |psi_{nk}> */
+    inner(ctx_.preferred_memory_t(),
+          ctx_.blas_linalg_t(),
           ispn__,
           hub_wf,
           0,
@@ -60,32 +58,19 @@ void Hubbard::apply_hubbard_potential(K_point&        kp__,
           0,
           0);
 
-// free memory on GPU
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        dm.copy<memory_t::device, memory_t::host>();
-    }
-    #endif
+    // this should be taken care by inner() itself
+    //if (ctx_.processing_unit() == GPU) {
+    //    dm.copy_to(memory_t::host);
+    //}
 
-    dmatrix<double_complex> Up;
-
-    Up = dmatrix<double_complex>(this->number_of_hubbard_orbitals(), n__);
+    dmatrix<double_complex> Up(this->number_of_hubbard_orbitals(), n__);
     Up.zero();
-
-    #ifdef __GPU
-    // the communicator is always of size 1.  I need to allocate memory
-    // on the device manually
-
-    if (ctx_.processing_unit() == GPU) {
-        Up.allocate(memory_t::device);
-    }
-    #endif
 
     #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto& atom = ctx_.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
-            const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
+            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
             // we apply the hubbard correction. For now I have no papers
             // giving me the formula for the SO case so I rely on QE for it
             // but I do not like it at all
@@ -120,29 +105,23 @@ void Hubbard::apply_hubbard_potential(K_point&        kp__,
         }
     }
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        Up.copy<memory_t::host, memory_t::device>();
+    if (ctx_.processing_unit() == device_t::GPU) {
+        Up.allocate(memory_t::device);
+        Up.copy_to(memory_t::device);
     }
-    #endif
 
-    transform<double_complex>(ctx_.processing_unit(),
+    transform<double_complex>(ctx_.preferred_memory_t(),
+                              ctx_.blas_linalg_t(),
                               ispn__,
                               1.0,
-                              hub_wf,
+                              {&hub_wf},
                               0,
                               this->number_of_hubbard_orbitals(),
                               Up,
                               0,
                               0,
                               1.0,
-                              ophi,
+                              {&hphi},
                               idx__,
                               n__);
-
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        Up.deallocate(memory_t::device);
-    }
-    #endif
 }

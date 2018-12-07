@@ -143,7 +143,7 @@ Hamiltonian::get_h_diag(K_point* kp__) const
         }
 
         /* non-local H contribution */
-        auto& beta_gk_t = kp__->beta_projectors().pw_coeffs_t(0);
+        auto beta_gk_t = kp__->beta_projectors().pw_coeffs_t(0);
         matrix<double_complex> beta_gk_tmp(unit_cell_.max_mt_basis_size(), kp__->num_gkvec_loc());
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -200,7 +200,7 @@ Hamiltonian::get_o_diag(K_point* kp__) const
     }
 
     /* non-local O contribution */
-    auto& beta_gk_t = kp__->beta_projectors().pw_coeffs_t(0);
+    auto beta_gk_t = kp__->beta_projectors().pw_coeffs_t(0);
     matrix<double_complex> beta_gk_tmp(unit_cell_.max_mt_basis_size(), kp__->num_gkvec_loc());
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {

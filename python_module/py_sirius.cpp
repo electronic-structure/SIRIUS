@@ -637,7 +637,7 @@ py::class_<Free_atom>(m, "Free_atom")
     py::class_<mdarray<complex_double, 2>>(m, "mdarray2c")
         .def("on_device", &mdarray<complex_double, 2>::on_device)
         .def("copy_to_host", [](mdarray<complex_double, 2>& mdarray) {
-            mdarray.copy<memory_t::device, memory_t::host>(mdarray.size(1));
+            mdarray.copy<memory_t::device, memory_t::host>();
         })
         .def("__array__", [](py::object& obj) {
             mdarray<complex_double, 2>& arr = obj.cast<mdarray<complex_double, 2>&>();

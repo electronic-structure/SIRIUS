@@ -72,7 +72,7 @@ class Force
         {
             Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.igk_loc(), kpoint.beta_projectors());
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
+            if (is_device_memory(ctx_.preferred_memory_t())) {
                 int nbnd = ctx_.num_bands();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* allocate GPU memory */
@@ -81,11 +81,11 @@ class Force
                 }
             }
 #endif
-            Non_local_functor<T, 3> nlf(ctx_, bp_grad);
+            Non_local_functor<T> nlf(ctx_, bp_grad);
 
             nlf.add_k_point_contribution(kpoint, forces__);
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
+            if (is_device_memory(ctx_.preferred_memory_t())) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* deallocate GPU memory */
                     kpoint.spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
@@ -206,34 +206,37 @@ class Force
 
         void hubbard_force_add_k_contribution_colinear(K_point &kp__, mdarray<double, 2>& forceh_)
         {
-            mdarray<double_complex, 6> dn_(2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                           2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                           2,
-                                           ctx_.unit_cell().num_atoms(),
-                                           3,
-                                           ctx_.unit_cell().num_atoms());
+            mdarray<double_complex, 6> dn(2 * hamiltonian_.U().hubbard_lmax() + 1,
+                                          2 * hamiltonian_.U().hubbard_lmax() + 1,
+                                          2,
+                                          ctx_.unit_cell().num_atoms(),
+                                          3,
+                                          ctx_.unit_cell().num_atoms());
 
             hamiltonian_.U().compute_occupancies_derivatives(kp__,
                                                              hamiltonian_.Q<double_complex>(),
-                                                             dn_);
+                                                             dn);
 
+            #pragma omp parallel for
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                // compute the derivative of the occupancies numbers
+                /* compute the derivative of the occupancies numbers */
                 for (int dir = 0; dir < 3; dir++) {
+                    double d{0};
                     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
-                        const auto& atom = ctx_.unit_cell().atom(ia1);
+                        auto const& atom = ctx_.unit_cell().atom(ia1);
                         if (atom.type().hubbard_correction()) {
-                            const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
+                            int const lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
                             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                                 for (int m1 = 0; m1 < lmax_at; m1++) {
                                     for (int m2 = 0; m2 < lmax_at; m2++) {
-                                        forceh_(dir, ia) -= (hamiltonian_.U().U(m2, m1, ispn, ia1) *
-                                                             dn_(m1, m2, ispn, ia1, dir, ia)).real();
+                                        d += (hamiltonian_.U().U(m2, m1, ispn, ia1) *
+                                              dn(m1, m2, ispn, ia1, dir, ia)).real();
                                     }
                                 }
                             }
                         }
                     }
+                    forceh_(dir, ia) -= d;
                 }
             }
         }
@@ -932,12 +935,13 @@ class Force
             mdarray<double, 2> forcehf(3, uc.num_atoms());
 
             forcehf.zero();
-            for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++)
-                {
-                    int ia = uc.spl_num_atoms(ialoc);
-                    auto g = gradient(potential__->hartree_potential_mt(ialoc));
-                    for (int x = 0; x < 3; x++) forcehf(x, ia) = uc.atom(ia).zn() * g[x](0, 0) * y00;
+            for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++) {
+                int ia = uc.spl_num_atoms(ialoc);
+                auto g = gradient(potential__->hartree_potential_mt(ialoc));
+                for (int x = 0; x < 3; x++) {
+                    forcehf(x, ia) = uc.atom(ia).zn() * g[x](0, 0) * y00;
                 }
+            }
             ctx_.comm().allreduce(&forcehf(0, 0), (int)forcehf.size());
 
             if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
@@ -949,12 +953,13 @@ class Force
 
             mdarray<double, 2> forcerho(3, uc.num_atoms());
             forcerho.zero();
-            for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++)
-                {
-                    int ia = uc.spl_num_atoms(ialoc);
-                    auto g = gradient(density__->density_mt(ialoc));
-                    for (int x = 0; x < 3; x++) forcerho(x, ia) = inner(potential__->effective_potential_mt(ialoc), g[x]);
+            for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++) {
+                int ia = uc.spl_num_atoms(ialoc);
+                auto g = gradient(density__->density_mt(ialoc));
+                for (int x = 0; x < 3; x++) {
+                    forcerho(x, ia) = inner(potential__->effective_potential_mt(ialoc), g[x]);
                 }
+            }
             ctx_.comm().allreduce(&forcerho(0, 0), (int)forcerho.size());
 
             if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {

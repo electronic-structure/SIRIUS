@@ -73,6 +73,8 @@ inline void initialize(bool call_mpi_init__ = true)
     if (Communicator::world().rank() == 0) {
         printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version, minor_version, revision, git_hash);
     }
+    /* get number of ranks per node during the global call to sirius::initialize() */
+    sddk::num_ranks_per_node();
 #if defined(__APEX)
     apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
 #endif
@@ -118,10 +120,6 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 #if defined(__LIBSCI_ACC)
     libsci_acc_finalize();
 #endif
-
-    Beta_projectors_base<1>::cleanup();
-    Beta_projectors_base<3>::cleanup();
-    Beta_projectors_base<9>::cleanup();
 
 #if defined(__GPU)
     if (acc::num_devices()) {

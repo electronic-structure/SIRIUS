@@ -42,6 +42,10 @@ inline void K_point::generate_atomic_wave_functions_aux(const int         num_ao
     }
     lmax = std::max(lmax, unit_cell_.lmax());
 
+    for (int ispn = 0; ispn < phi.num_sc(); ispn++) {
+        phi.pw_coeffs(ispn).prime().zero();
+    }
+
     #pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
         /* global index of G+k vector */
@@ -78,7 +82,7 @@ inline void K_point::generate_atomic_wave_functions_aux(const int         num_ao
                         // one channel only now
                         for (int i = 0; i < 2; i++) {
                             auto &orb = atom_type.hubbard_orbital(i);
-                            const int l = std::abs(orb.hubbard_l());
+                            const int l = std::abs(orb.l());
                             auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                             for (int m = -l; m <= l; m++) {
                                 int lm = utils::lm(l, m);
@@ -90,7 +94,7 @@ inline void K_point::generate_atomic_wave_functions_aux(const int         num_ao
                         // add the loop over different channels. need to compute the offsets accordingly
                         for (int channel = 0, offset__ = 0; channel < atom_type.number_of_hubbard_channels(); channel++) {
                             auto &orb = atom_type.hubbard_orbital(channel);
-                            const int l = std::abs(orb.hubbard_l());
+                            const int l = std::abs(orb.l());
                             auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                             for (int m = -l; m <= l; m++) {
                                 int lm = utils::lm(l, m);

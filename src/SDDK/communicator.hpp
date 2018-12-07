@@ -30,6 +30,7 @@
 #include <vector>
 #include <complex>
 #include <cstdarg>
+#include <functional>
 #ifdef __GPU
 #include <GPU/cuda.hpp>
 #endif
@@ -811,6 +812,41 @@ class Communicator
     //==    return a2a;
     //==}
 };
+
+/// Get number of ranks per node.
+inline int num_ranks_per_node()
+{
+    static int num_ranks{-1};
+    if (num_ranks == -1) {
+        char name[MPI_MAX_PROCESSOR_NAME];
+        int len;
+        CALL_MPI(MPI_Get_processor_name, (name, &len));
+        std::vector<size_t> hash(Communicator::world().size());
+        hash[Communicator::world().rank()] = std::hash<std::string>{}(std::string(name, len));
+        Communicator::world().allgather(hash.data(), Communicator::world().rank(), 1);
+        std::sort(hash.begin(), hash.end());
+
+        int n{1};
+        for (int i = 1; i < (int)hash.size(); i++) {
+            if (hash[i] == hash.front()) {
+                n++;
+            } else {
+                break;
+            }
+        }
+        int m{1};
+        for (int i = (int)hash.size() - 2; i >= 0; i--) {
+            if (hash[i] == hash.back()) {
+                m++;
+            } else {
+                break;
+            }
+        }
+        num_ranks = std::max(n, m);
+    }
+
+    return num_ranks;
+}
 
 /// Parallel standard output.
 /** Proveides an ordered standard output from multiple MPI ranks. */

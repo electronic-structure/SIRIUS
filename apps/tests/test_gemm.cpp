@@ -1,6 +1,6 @@
 #include "test.hpp"
 
-#ifdef _TEST_REAL_
+#ifdef __TEST_REAL
 typedef double gemm_type;
 int const nop_gemm = 2;
 #else

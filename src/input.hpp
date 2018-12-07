@@ -380,10 +380,6 @@ struct Control_input
     /// If true then the list of nearest neighbours for each atom is printed to the standard output.
     bool print_neighbors_{false};
 
-    /// If true wave-functions stay in the device memory during the entire run.
-    /** This may lead to a better performance at a cost of high memory consumption on the device. */
-    bool keep_wf_on_device_{false};
-
     /// True if second-variational diagonalization is used in LAPW method.
     bool use_second_variation_{true};
 

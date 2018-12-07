@@ -115,14 +115,14 @@ class Hubbard
                 if (ctx_.num_mag_dims() == 3) {
                     for (auto&& orb : atom.type().hubbard_orbital()) {
                         if (atom.type().spin_orbit_coupling()) {
-                            counter += (2 * orb.hubbard_l() + 1);
+                            counter += (2 * orb.l() + 1);
                         } else {
-                            counter += 2 * (2 * orb.hubbard_l() + 1);
+                            counter += 2 * (2 * orb.l() + 1);
                         }
                     }
                 } else {
                     for (auto&& orb : atom.type().hubbard_orbital()) {
-                        counter += (2 * orb.hubbard_l() + 1);
+                        counter += (2 * orb.l() + 1);
                     }
                 }
             }
@@ -289,7 +289,7 @@ class Hubbard
             auto& atom_type = ctx_.unit_cell().atom(ia).type();
             if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
                 for (int channel = 0; channel < atom_type.number_of_hubbard_channels(); channel++) {
-                    this->lmax_ = std::max(this->lmax_, atom_type.hubbard_orbital(channel).hubbard_l());
+                    this->lmax_ = std::max(this->lmax_, atom_type.hubbard_orbital(channel).l());
                 }
             }
         }

@@ -27,7 +27,7 @@
 
 #include <fstream>
 #include <hdf5.h>
-#include "mdarray.hpp"
+#include "memory.hpp"
 
 namespace sddk {
 
