@@ -181,28 +181,6 @@ add_custom_command(
 
 add_custom_target(generate_version_hpp DEPENDS ${version_hpp_path})
 
-
-## configure version header
-#exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR}
-#  ARGS "rev-parse HEAD"
-#  OUTPUT_VARIABLE GIT_VERSION_SHA1
-#  RETURN_VALUE exit_code)
-#if(exit_code)
-#  set(GIT_VERSION_SHA1 "")
-#endif()
-#exec_program("date"
-#  ARGS "+\"%a, %e %b %Y %H:%M:%S\""
-#  OUTPUT_VARIABLE BUILD_DATE)
-#exec_program(
-#  "git"
-#  ${CMAKE_CURRENT_SOURCE_DIR}
-#  ARGS "describe --all"
-#  OUTPUT_VARIABLE GIT_BRANCHNAME
-#  RETURN_VALUE exit_code)
-#if(exit_code)
-#  set(GIT_BRANCHNAME "")
-#endif()
-#configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" "${PROJECT_BINARY_DIR}/src/version.hpp")
 include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
@@ -212,7 +190,6 @@ MACRO(SIRIUS_SETUP_TARGET _target)
 
   add_dependencies(${_target} generate_version_hpp)
   if(USE_MKL)
-    # TODO: handle -lpthread properly
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
       target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-Wl,--no-as-needed;${MKL_LIBRARIES}")
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
