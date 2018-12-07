@@ -222,7 +222,7 @@ inline void inner(device_t        pu__,
         T* buf = (pu__ == CPU) ? tmp.template at<CPU>(0, 0) : tmp.template at<GPU>(0, 0);
         local_inner(i0__, m__, j0__, n__, buf, m__, -1);
         if (pu__ == GPU) {
-            tmp.template copy<memory_t::device, memory_t::host>();
+            tmp.copy_to(memory_t::host);
         }
         comm.allreduce(&tmp[0], static_cast<int>(tmp.size()));
         for (int j = 0; j < n__; j++) {

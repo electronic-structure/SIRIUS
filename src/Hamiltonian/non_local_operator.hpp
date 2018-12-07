@@ -72,7 +72,7 @@ class Non_local_operator
             switch (pu_) {
                 case device_t::GPU: {
                     packed_mtrx_offset_.allocate(memory_t::device);
-                    packed_mtrx_offset_.template copy<memory_t::host, memory_t::device>();
+                    packed_mtrx_offset_.copy_to(memory_t::device);
                     break;
                 }
                 case device_t::CPU: break;
@@ -487,8 +487,7 @@ class D_operator : public Non_local_operator<T>
             }
 
             if (this->pu_ == GPU) {
-                this->op_.allocate(memory_t::device);
-                this->op_.template copy<memory_t::host, memory_t::device>();
+                this->op_.allocate(memory_t::device).copy_to(memory_t::device);
             }
         }
 
@@ -575,8 +574,7 @@ class Q_operator : public Non_local_operator<T>
             }
 
             if (this->pu_ == device_t::GPU) {
-                this->op_.allocate(memory_t::device);
-                this->op_.template copy<memory_t::host, memory_t::device>();
+                this->op_.allocate(memory_t::device).copy_to(memory_t::device);
             }
         }
 
@@ -618,7 +616,7 @@ class P_operator : public Non_local_operator<T>
             }
             if (this->pu_ == GPU) {
                 this->op_.allocate(memory_t::device);
-                this->op_.template copy<memory_t::host, memory_t::device>();
+                this->op_.copy_to(memory_t::device);
             }
         }
 };

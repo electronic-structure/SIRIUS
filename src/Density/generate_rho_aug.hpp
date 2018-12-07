@@ -152,8 +152,8 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 #endif
     }
 
-    if (pu == GPU) {
-        rho_aug__.copy<memory_t::device, memory_t::host>();
+    if (pu == device_t::GPU) {
+        rho_aug__.copy_to(memory_t::host);
     }
 
     if (ctx_.control().print_checksum_) {

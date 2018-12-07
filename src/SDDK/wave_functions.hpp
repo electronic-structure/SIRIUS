@@ -173,9 +173,9 @@ class Wave_functions
             }
         }
         if (pu__ == device_t::GPU) {
-            s.copy<memory_t::device, memory_t::host>();
+            s.copy_to(memory_t::host);
         }
-        comm_.allreduce(s.at<CPU>(), n__);
+        comm_.allreduce(s.at(memory_t::host), n__);
         return std::move(s);
     }
 

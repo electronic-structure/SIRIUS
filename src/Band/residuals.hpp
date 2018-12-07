@@ -230,8 +230,7 @@ Band::residuals_aux(K_point*             kp__,
 
     mdarray<double, 1> eval(eval__.data(), num_bands__, "residuals_aux::eval");
     if (pu == device_t::GPU) {
-        eval.allocate(memory_t::device);
-        eval.copy<memory_t::host, memory_t::device>();
+        eval.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
     /* compute residuals */
@@ -247,7 +246,7 @@ Band::residuals_aux(K_point*             kp__,
         p_norm[i] = 1.0 / p_norm[i];
     }
     if (pu == device_t::GPU) {
-        p_norm.copy<memory_t::host, memory_t::device>();
+        p_norm.copy_to(memory_t::device);
     }
 
     /* normalize preconditioned residuals */

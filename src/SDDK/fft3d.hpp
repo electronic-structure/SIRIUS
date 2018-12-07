@@ -816,8 +816,8 @@ class FFT3D : public FFT3D_grid
         for (int i = 0; i < local_size(); i++) {
             fft_buffer_[i] = data__[i];
         }
-        if (pu_ == GPU) {
-            fft_buffer_.copy<memory_t::host, memory_t::device>();
+        if (pu_ == device_t::GPU) {
+            fft_buffer_.copy_to(memory_t::device);
         }
     }
 
@@ -825,8 +825,8 @@ class FFT3D : public FFT3D_grid
     /** \param [out] data CPU pointer to the real-space data. */
     inline void output(double* data__)
     {
-        if (pu_ == GPU) {
-            fft_buffer_.copy<memory_t::device, memory_t::host>();
+        if (pu_ == device_t::GPU) {
+            fft_buffer_.copy_to(memory_t::host);
         }
         for (int i = 0; i < local_size(); i++) {
             data__[i] = fft_buffer_[i].real();

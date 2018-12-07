@@ -212,10 +212,8 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
     }
 
     if (ctx_.processing_unit() == GPU) {
-        o_diag.allocate(memory_t::device);
-        o_diag.copy<memory_t::host, memory_t::device>();
-        diag1.allocate(memory_t::device);
-        diag1.copy<memory_t::host, memory_t::device>();
+        o_diag.allocate(memory_t::device).copy_to(memory_t::device);
+        diag1.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
     auto& psi = kp__.singular_components();

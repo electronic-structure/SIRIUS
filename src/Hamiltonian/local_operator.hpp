@@ -102,8 +102,7 @@ class Local_operator
 
         if (fft_coarse_.pu() == GPU) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                veff_vec_[j].f_rg().allocate(memory_t::device);
-                veff_vec_[j].f_rg().copy<memory_t::host, memory_t::device>();
+                veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
             }
             buf_rg_.allocate(memory_t::device);
         }
@@ -171,11 +170,9 @@ class Local_operator
 
             if (fft_coarse_.pu() == GPU) {
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                    veff_vec_[j].f_rg().allocate(memory_t::device);
-                    veff_vec_[j].f_rg().copy<memory_t::host, memory_t::device>();
+                    veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
                 }
-                theta_.f_rg().allocate(memory_t::device);
-                theta_.f_rg().copy<memory_t::host, memory_t::device>();
+                theta_.f_rg().allocate(memory_t::device).copy_to(memory_t::device);
                 buf_rg_.allocate(memory_t::device);
             }
 
@@ -220,8 +217,7 @@ class Local_operator
             /* copy veff to device */
             if (fft_coarse_.pu() == GPU) {
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                    veff_vec_[j].f_rg().allocate(memory_t::device);
-                    veff_vec_[j].f_rg().copy<memory_t::host, memory_t::device>();
+                    veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
                 }
                 if (ctx_.num_mag_dims() == 3) {
                     buf_rg_.allocate(memory_t::device);
@@ -268,8 +264,7 @@ class Local_operator
         }
 
         if (fft_coarse_.pu() == device_t::GPU) {
-            pw_ekin_.allocate(memory_t::device);
-            pw_ekin_.copy<memory_t::host, memory_t::device>();
+            pw_ekin_.allocate(memory_t::device).copy_to(memory_t::device);
             vphi_.allocate(memory_t::device);
         }
     }

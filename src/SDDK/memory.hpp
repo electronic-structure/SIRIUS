@@ -1145,11 +1145,11 @@ class mdarray
     }
 
     /// Allocate memory for array.
-    inline void allocate(memory_t memory__)
+    inline mdarray<T, N>& allocate(memory_t memory__)
     {
         /* do nothing for zero-sized array */
         if (!this->size()) {
-            return;
+            return *this;
         }
 
         /* host allocation */
@@ -1165,14 +1165,15 @@ class mdarray
             raw_ptr_device_    = unique_ptr_device_.get();
         }
 #endif
+        return *this;
     }
 
     /// Allocate memory from the pool.
-    inline void allocate(memory_pool& mp__)
+    inline mdarray<T, N>& allocate(memory_pool& mp__)
     {
         /* do nothing for zero-sized array */
         if (!this->size()) {
-            return;
+            return *this;
         }
         /* host allocation */
         if (is_host_memory(mp__.memory_type())) {
@@ -1187,6 +1188,7 @@ class mdarray
             raw_ptr_device_    = unique_ptr_device_.get();
         }
 #endif
+        return *this;
     }
 
     /// Deallocate host or device memory.
@@ -1390,45 +1392,6 @@ class mdarray
             }
         }
         std::memcpy(dest__.raw_ptr_, raw_ptr_, size() * sizeof(T));
-    }
-
-    /// Copy n elements starting from idx0.
-    template <memory_t from__, memory_t to__>
-    inline void copy(size_t idx0__, size_t n__, int stream_id__ = -1) // TODO: remove this
-    {
-#ifdef __GPU
-        mdarray_assert(raw_ptr_ != nullptr);
-        mdarray_assert(raw_ptr_device_ != nullptr);
-        mdarray_assert(idx0__ + n__ <= size());
-
-        if (is_host_memory(from__) && is_device_memory(to__)) {
-            if (stream_id__ == -1) {
-                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);
-            } else {
-                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__, stream_id__);
-            }
-        }
-
-        if (is_device_memory(from__) && is_host_memory(to__)) {
-            if (stream_id__ == -1) {
-                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__);
-            } else {
-                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__, stream_id__);
-            }
-        }
-#endif
-    }
-
-    template <memory_t from__, memory_t to__>
-    inline void async_copy(size_t n__, int stream_id__)
-    {
-        copy<from__, to__>(0, n__, stream_id__);
-    }
-
-    template <memory_t from__, memory_t to__>
-    inline void copy()
-    {
-        copy<from__, to__>(0, size());
     }
 
     /// Zero n elements starting from idx0.

@@ -429,15 +429,15 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
 
         if (hphi__ != nullptr) {
             kp__->comm().allreduce(halm_phi.at<CPU>(), num_mt_aw * n__);
-            if (ctx_.processing_unit() == GPU) {
-                halm_phi.copy<memory_t::host, memory_t::device>();
+            if (ctx_.processing_unit() == device_t::GPU) {
+                halm_phi.copy_to(memory_t::device);
             }
         }
 
         if (ophi__ != nullptr) {
             kp__->comm().allreduce(alm_phi.at<CPU>(), num_mt_aw * n__);
-            if (ctx_.processing_unit() == GPU) {
-                alm_phi.copy<memory_t::host, memory_t::device>();
+            if (ctx_.processing_unit() == device_t::GPU) {
+                alm_phi.copy_to(memory_t::device);
             }
         }
     };
@@ -527,8 +527,8 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
             }
         } // ia
 
-        if (ctx_.processing_unit() == GPU) {
-            phi_lo_block.copy<memory_t::host, memory_t::device>();
+        if (ctx_.processing_unit() == device_t::GPU) {
+            phi_lo_block.copy_to(memory_t::device);
         }
     };
 

@@ -143,10 +143,10 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
         }
     }
 
-    if (fft.pu() == GPU) {
-        density_rg.copy<memory_t::device, memory_t::host>();
+    if (fft.pu() == device_t::GPU) {
+        density_rg.copy_to(memory_t::host);
     }
-    
+
     /* switch from real density matrix to density and magnetization */
     switch (ctx_.num_mag_dims()) {
         case 3: {
