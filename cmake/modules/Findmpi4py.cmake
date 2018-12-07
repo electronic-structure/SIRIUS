@@ -18,7 +18,7 @@ find_path(MPI4PY_INCLUDE_DIR
   )
 
 if(NOT exit_code EQUAL "0")
-    message( FATAL_ERROR "Not able to import mpi4py in python interpreter: ${pyinterp}. Did you install mpi4py?")
+    message( FATAL_ERROR "Not able to import mpi4py in python interpreter: ${pyinterp}. The mpi4py package can be installed using pip")
 endif()
 
 

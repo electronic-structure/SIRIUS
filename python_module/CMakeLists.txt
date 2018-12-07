@@ -15,6 +15,10 @@ if(CREATE_PYTHON_MODULE)
     add_dependencies(${libname} sirius_cu)
   endif()
   target_include_directories(${libname} PRIVATE ${MPI4PY_INCLUDE_DIR})
+  if(USE_MKL)
+    # workaround for `Intel MKL FATAL ERROR: Cannot load libmkl_avx2.so or libmkl_def.so.`
+    target_link_libraries(${libname} PRIVATE ${MKL_DEF_LIBRARY})
+  endif()
 
   SIRIUS_SETUP_TARGET(${libname})
   # collect python files in module dir
