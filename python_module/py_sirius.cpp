@@ -191,7 +191,13 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Atom>(m, "Atom")
         .def("position", &Atom::position)
-        .def("set_position", &Atom::set_position);
+        .def("type_id", &Atom::type_id)
+        .def_property_readonly("label", [](const Atom& obj) { return obj.type().label(); })
+        .def("set_position", [](Atom& obj, const std::vector<double>& pos) {
+            if (pos.size() != 3)
+                throw std::runtime_error("wrong input");
+            obj.set_position({pos[0], pos[1], pos[2]});
+        });
 
     py::class_<Unit_cell>(m, "Unit_cell")
         .def("add_atom_type",
