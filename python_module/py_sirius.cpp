@@ -54,7 +54,7 @@ py::object pj_convert(json& node)
             return py::int_(u);
         }
         case json::value_t::number_float: {
-            float f(node);
+            double f(node);
             return py::float_(f);
         }
         case json::value_t::object: {
