@@ -181,66 +181,11 @@ class cmd_args
         return v;
     }
 
-    //template <typename T>
-    //inline T value(std::string const key__, T default_val__) const;
-
     std::string operator[](const std::string key__) const
     {
         return keys_.at(key__);
     }
 };
-//
-//template <>
-//inline int cmd_args::value<int>(const std::string key__) const
-//{
-//    int v;
-//
-//    if (!exist(key__)) {
-//        std::stringstream s;
-//        s << "command line parameter --" << key__ << " was not specified";
-//        TERMINATE(s);
-//    }
-//
-//    std::istringstream(keys_.at(key__)) >> v;
-//    return v;
-//}
-
-//template <>
-//inline int cmd_args::value<int>(const std::string key__, int default_val__) const
-//{
-//    if (!exist(key__)) {
-//        return default_val__;
-//    }
-//    int v;
-//    std::istringstream(keys_.at(key__)) >> v;
-//    return v;
-//}
-
-//template <>
-//inline double cmd_args::value<double>(const std::string key__) const
-//{
-//    double v;
-//
-//    if (!exist(key__)) {
-//        std::stringstream s;
-//        s << "command line parameter --" << key__ << " was not specified";
-//        TERMINATE(s);
-//    }
-//
-//    std::istringstream(keys_.at(key__)) >> v;
-//    return v;
-//}
-
-//template <>
-//inline double cmd_args::value<double>(const std::string key__, double default_val__) const
-//{
-//    if (!exist(key__)) {
-//        return default_val__;
-//    }
-//    double v;
-//    std::istringstream(keys_.at(key__)) >> v;
-//    return v;
-//}
 
 template <>
 inline std::string cmd_args::value<std::string>(const std::string key__) const

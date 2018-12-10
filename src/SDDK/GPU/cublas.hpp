@@ -57,6 +57,82 @@ inline void error_message(cublasStatus_t status)
     }
 }
 
+inline cublasOperation_t get_cublasOperation_t(char c)
+{
+    switch (c) {
+        case 'n':
+        case 'N': {
+            return CUBLAS_OP_N;
+        }
+        case 't':
+        case 'T': {
+            return CUBLAS_OP_T;
+        }
+        case 'c':
+        case 'C': {
+            return CUBLAS_OP_C;
+        }
+        default: {
+            throw std::runtime_error("get_cublasOperation_t(): wrong operation");
+        }
+    }
+    return CUBLAS_OP_N; // make compiler happy
+}
+
+inline cublasSideMode_t get_cublasSideMode_t(char c)
+{
+    switch (c) {
+        case 'l':
+        case 'L': {
+            return CUBLAS_SIDE_LEFT;
+        }
+        case 'r':
+        case 'R': {
+            return CUBLAS_SIDE_RIGHT;
+        }
+        default: {
+            throw std::runtime_error("get_cublasSideMode_t(): wrong side");
+        }
+    }
+    return CUBLAS_SIDE_LEFT; //make compiler happy
+}
+
+inline cublasFillMode_t get_cublasFillMode_t(char c)
+{
+    switch (c) {
+        case 'u':
+        case 'U': {
+            return CUBLAS_FILL_MODE_UPPER;
+        }
+        case 'l':
+        case 'L': {
+            return CUBLAS_FILL_MODE_LOWER;
+        }
+        default: {
+            throw std::runtime_error("get_cublasFillMode_t(): wrong mode");
+        }
+    }
+    return CUBLAS_FILL_MODE_UPPER; // make compiler happy
+}
+
+inline cublasDiagType_t get_cublasDiagType_t(char c)
+{
+    switch (c) {
+        case 'n':
+        case 'N': {
+            return CUBLAS_DIAG_NON_UNIT;
+        }
+        case 'u':
+        case 'U': {
+            return CUBLAS_DIAG_UNIT;
+        }
+        default: {
+            throw std::runtime_error("get_cublasDiagType_t(): wrong diagonal type");
+        }
+    }
+    return CUBLAS_DIAG_NON_UNIT; // make compiler happy
+}
+
 #ifdef NDEBUG
 #define CALL_CUBLAS(func__, args__)                                                 \
 {                                                                                   \
@@ -106,12 +182,12 @@ inline void create_stream_handles()
 {
     acc::set_device();
     CALL_CUBLAS(cublasCreate, (&null_stream_handle()));
-    
+
     stream_handles() = std::vector<cublasHandle_t>(acc::num_streams());
     for (int i = 0; i < acc::num_streams(); i++) {
         CALL_CUBLAS(cublasCreate, (&stream_handles()[i]));
 
-        CALL_CUBLAS(cublasSetStream, (stream_handles()[i], acc::stream(i)));
+        CALL_CUBLAS(cublasSetStream, (stream_handles()[i], acc::stream(stream_id(i))));
     }
 }
 
@@ -129,64 +205,38 @@ inline cublasHandle_t stream_handle(int id__)
     return (id__ == -1) ? null_stream_handle() : stream_handles()[id__];
 }
 
-inline void zgemv(int transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, 
+inline void zgemv(char transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, 
                   cuDoubleComplex* x, int32_t incx, cuDoubleComplex* beta, cuDoubleComplex* y, int32_t incy, int stream_id)
 {
-    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
     acc::set_device();
-    CALL_CUBLAS(cublasZgemv, (stream_handle(stream_id), trans[transa], m, n, alpha, a, lda, x, incx, beta, y, incy));
+    CALL_CUBLAS(cublasZgemv, (stream_handle(stream_id), get_cublasOperation_t(transa), m, n, alpha, a, lda, x, incx, beta, y, incy));
 }
 
-inline void zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+inline void zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, 
                   cuDoubleComplex const* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
                   int32_t ldb, cuDoubleComplex const* beta, cuDoubleComplex* c, int32_t ldc, int stream_id)
 {
-    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
     acc::set_device();
-    CALL_CUBLAS(cublasZgemm, (stream_handle(stream_id), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+    CALL_CUBLAS(cublasZgemm, (stream_handle(stream_id), get_cublasOperation_t(transa), get_cublasOperation_t(transb),
+                              m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
-inline void dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+inline void dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, 
                   double const* alpha, double const* a, int32_t lda, double const* b, 
                   int32_t ldb, double const* beta, double* c, int32_t ldc, int stream_id)
 {
-    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
     acc::set_device();
-    CALL_CUBLAS(cublasDgemm, (stream_handle(stream_id), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+    CALL_CUBLAS(cublasDgemm, (stream_handle(stream_id), get_cublasOperation_t(transa), get_cublasOperation_t(transb), 
+                              m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
 inline void dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
-                  double* alpha__, double* A__, int lda__, double* B__, int ldb__)
+                  double const* alpha__, double const* A__, int lda__, double* B__, int ldb__)
 {
-    if (!(side__ == 'L' || side__ == 'R')) {
-        printf("cublas_dtrmm: wrong side\n");
-        exit(-1);
-    }
-    cublasSideMode_t side = (side__ == 'L') ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
-
-    if (!(uplo__ == 'U' || uplo__ == 'L')) {
-        printf("cublas_dtrmm: wrong uplo\n");
-        exit(-1);
-    }
-    cublasFillMode_t uplo = (uplo__ == 'U') ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER;
-
-    if (!(transa__ == 'N' || transa__ == 'T' || transa__ == 'C')) {
-        printf("cublas_dtrmm: wrong transa\n");
-        exit(-1);
-    }
-    cublasOperation_t transa = CUBLAS_OP_N;
-    if (transa__ == 'T') {
-        transa = CUBLAS_OP_T;
-    }
-    if (transa__ == 'C') {
-        transa = CUBLAS_OP_C;
-    }
-
-    if (!(diag__ == 'N' || diag__ == 'U')) {
-        printf("cublas_dtrmm: wrong diag\n");
-        exit(-1);
-    }
-    cublasDiagType_t diag = (diag__ == 'N') ? CUBLAS_DIAG_NON_UNIT : CUBLAS_DIAG_UNIT;
+    cublasSideMode_t side = get_cublasSideMode_t(side__);
+    cublasFillMode_t uplo = get_cublasFillMode_t(uplo__);
+    cublasOperation_t transa = get_cublasOperation_t(transa__);
+    cublasDiagType_t diag = get_cublasDiagType_t(diag__);
     acc::set_device();
     CALL_CUBLAS(cublasDtrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
 }
@@ -197,41 +247,16 @@ inline void ztrmm(char             side__,
                   char             diag__,
                   int              m__,
                   int              n__,
-                  cuDoubleComplex* alpha__,
-                  cuDoubleComplex* A__,
+                  cuDoubleComplex const* alpha__,
+                  cuDoubleComplex const* A__,
                   int              lda__,
                   cuDoubleComplex* B__,
                   int              ldb__)
 {
-    if (!(side__ == 'L' || side__ == 'R')) {
-        printf("cublas_ztrmm: wrong side\n");
-        exit(-1);
-    }
-    cublasSideMode_t side = (side__ == 'L') ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
-
-    if (!(uplo__ == 'U' || uplo__ == 'L')) {
-        printf("cublas_ztrmm: wrong uplo\n");
-        exit(-1);
-    }
-    cublasFillMode_t uplo = (uplo__ == 'U') ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER;
-
-    if (!(transa__ == 'N' || transa__ == 'T' || transa__ == 'C')) {
-        printf("cublas_ztrmm: wrong transa\n");
-        exit(-1);
-    }
-    cublasOperation_t transa = CUBLAS_OP_N;
-    if (transa__ == 'T') {
-        transa = CUBLAS_OP_T;
-    }
-    if (transa__ == 'C') {
-        transa = CUBLAS_OP_C;
-    }
-
-    if (!(diag__ == 'N' || diag__ == 'U')) {
-        printf("cublas_ztrmm: wrong diag\n");
-        exit(-1);
-    }
-    cublasDiagType_t diag = (diag__ == 'N') ? CUBLAS_DIAG_NON_UNIT : CUBLAS_DIAG_UNIT;
+    cublasSideMode_t side = get_cublasSideMode_t(side__);
+    cublasFillMode_t uplo = get_cublasFillMode_t(uplo__);
+    cublasOperation_t transa = get_cublasOperation_t(transa__);
+    cublasDiagType_t diag = get_cublasDiagType_t(diag__);
     acc::set_device();
     CALL_CUBLAS(cublasZtrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
 }
@@ -239,9 +264,9 @@ inline void ztrmm(char             side__,
 inline void dger(int           m,
                  int           n,
                  double const* alpha,
-                 double*       x,
+                 double const* x,
                  int           incx,
-                 double*       y,
+                 double const* y,
                  int           incy,
                  double*       A,
                  int           lda,
@@ -297,23 +322,53 @@ inline void destroy_handle()
     CALL_CUBLAS(cublasXtDestroy, (cublasxt_handle()));
 }
 
-inline void zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+inline void zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, 
                   cuDoubleComplex const* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b,
                   int32_t ldb, cuDoubleComplex const* beta, cuDoubleComplex* c, int32_t ldc)
 {
-    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
     acc::set_device();
-    CALL_CUBLAS(cublasXtZgemm, (cublasxt_handle(), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta,
-                                c, ldc));
+    CALL_CUBLAS(cublasXtZgemm, (cublasxt_handle(), get_cublasOperation_t(transa), get_cublasOperation_t(transb),
+                                m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
-inline void dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
+inline void dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, 
                   double const* alpha, double const* a, int32_t lda, double const* b, 
                   int32_t ldb, double const* beta, double* c, int32_t ldc)
 {
-    const cublasOperation_t trans[] = {CUBLAS_OP_N, CUBLAS_OP_T, CUBLAS_OP_C};
     acc::set_device();
-    CALL_CUBLAS(cublasXtDgemm, (cublasxt_handle(), trans[transa], trans[transb], m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+    CALL_CUBLAS(cublasXtDgemm, (cublasxt_handle(), get_cublasOperation_t(transa), get_cublasOperation_t(transb),
+                                m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+}
+
+inline void dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
+                  double const* alpha__, double const* A__, int lda__, double* B__, int ldb__)
+{
+    cublasSideMode_t side = get_cublasSideMode_t(side__);
+    cublasFillMode_t uplo = get_cublasFillMode_t(uplo__);
+    cublasOperation_t transa = get_cublasOperation_t(transa__);
+    cublasDiagType_t diag = get_cublasDiagType_t(diag__);
+    acc::set_device();
+    CALL_CUBLAS(cublasXtDtrmm, (cublasxt_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
+}
+
+inline void ztrmm(char             side__,
+                  char             uplo__,
+                  char             transa__,
+                  char             diag__,
+                  int              m__,
+                  int              n__,
+                  cuDoubleComplex const* alpha__,
+                  cuDoubleComplex const* A__,
+                  int              lda__,
+                  cuDoubleComplex* B__,
+                  int              ldb__)
+{
+    cublasSideMode_t side = get_cublasSideMode_t(side__);
+    cublasFillMode_t uplo = get_cublasFillMode_t(uplo__);
+    cublasOperation_t transa = get_cublasOperation_t(transa__);
+    cublasDiagType_t diag = get_cublasDiagType_t(diag__);
+    acc::set_device();
+    CALL_CUBLAS(cublasXtZtrmm, (cublasxt_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
 }
 
 } // namespace xt

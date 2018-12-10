@@ -50,17 +50,7 @@ inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian_
     hamiltonian__.local_op().prepare(kp__.gkvec_partition());
     ctx_.fft_coarse().prepare(kp__.gkvec_partition());
 
-    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        printf("memory_t::host pool:        %li %li %li\n", ctx_.mem_pool(memory_t::host).total_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::host).free_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::host).num_blocks());
-        printf("memory_t::host_pinned pool: %li %li %li\n", ctx_.mem_pool(memory_t::host_pinned).total_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::host_pinned).free_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::host_pinned).num_blocks());
-        printf("memory_t::device pool:      %li %li %li\n", ctx_.mem_pool(memory_t::device).total_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::device).free_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::device).num_blocks());
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     int niter{0};
 
@@ -104,17 +94,7 @@ inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian_
 
     ctx_.fft_coarse().dismiss();
 
-    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        printf("memory_t::host pool:        %li %li %li\n", ctx_.mem_pool(memory_t::host).total_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::host).free_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::host).num_blocks());
-        printf("memory_t::host_pinned pool: %li %li %li\n", ctx_.mem_pool(memory_t::host_pinned).total_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::host_pinned).free_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::host_pinned).num_blocks());
-        printf("memory_t::device pool:      %li %li %li\n", ctx_.mem_pool(memory_t::device).total_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::device).free_size() >> 20,
-                                                            ctx_.mem_pool(memory_t::device).num_blocks());
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     return niter;
 }

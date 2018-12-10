@@ -32,7 +32,6 @@
 #include "mpi_grid.hpp"
 #include "radial_integrals.hpp"
 #include "utils/utils.hpp"
-#include "memory_pool.hpp"
 #include "Density/augmentation_operator.hpp"
 
 #ifdef __GPU
@@ -460,6 +459,31 @@ class Simulation_context : public Simulation_parameters
     /// Initialize the similation (can only be called once).
     void initialize();
 
+    void print_info() const;
+
+    /// Print the memory usage.
+    inline void print_memory_usage(const char* file__, int line__)
+    {
+        if (comm().rank() == 0 && control().print_memory_usage_) {
+            sirius::print_memory_usage(file__, line__);
+
+            printf("memory_t::host pool:        %li %li %li %li\n", mem_pool(memory_t::host).total_size() >> 20,
+                                                                    mem_pool(memory_t::host).free_size() >> 20,
+                                                                    mem_pool(memory_t::host).num_blocks(),
+                                                                    mem_pool(memory_t::host).num_stored_ptr());
+
+            printf("memory_t::host_pinned pool: %li %li %li %li\n", mem_pool(memory_t::host_pinned).total_size() >> 20,
+                                                                    mem_pool(memory_t::host_pinned).free_size() >> 20,
+                                                                    mem_pool(memory_t::host_pinned).num_blocks(),
+                                                                    mem_pool(memory_t::host_pinned).num_stored_ptr());
+
+            printf("memory_t::device pool:      %li %li %li %li\n", mem_pool(memory_t::device).total_size() >> 20,
+                                                                    mem_pool(memory_t::device).free_size() >> 20,
+                                                                    mem_pool(memory_t::device).num_blocks(),
+                                                                    mem_pool(memory_t::device).num_stored_ptr());
+        }
+    }
+
     /// Update context after setting new lattice vectors or atomic coordinates.
     void update()
     {
@@ -525,9 +549,10 @@ class Simulation_context : public Simulation_parameters
             }
         }
 #if defined(__GPU)
-        if (processing_unit() == GPU) {
+        if (processing_unit() == device_t::GPU) {
             acc::set_device();
-            gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host | memory_t::device, "gvec_coord_");
+            gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
+            gvec_coord_.allocate(memory_t::device);
             for (int igloc = 0; igloc < gvec().count(); igloc++) {
                 int ig = gvec().offset() + igloc;
                 auto G = gvec().gvec(ig);
@@ -568,8 +593,6 @@ class Simulation_context : public Simulation_parameters
     {
         return atoms_to_grid_idx_[ia__];
     };
-
-    void print_info();
 
     Unit_cell& unit_cell()
     {
@@ -891,9 +914,12 @@ class Simulation_context : public Simulation_parameters
             case GPU: {
                 auto& mp = mem_pool(memory_t::host);
                 auto& mpd = mem_pool(memory_t::device);
-                phase_factors = matrix<double_complex>(nullptr, mpd, ngv_loc, na_max);
-                zm  = matrix<double_complex>(mp, mpd, lmmax, ngv_loc);
-                tmp = matrix<double_complex>(mp, mpd, lmmax, na_max);
+                phase_factors = matrix<double_complex>(nullptr, ngv_loc, na_max);
+                phase_factors.allocate(mpd);
+                zm = matrix<double_complex>(mp, lmmax, ngv_loc);
+                zm.allocate(mpd);
+                tmp = matrix<double_complex>(mp, lmmax, na_max);
+                tmp.allocate(mpd);
                 break;
             }
         }
@@ -1036,12 +1062,30 @@ class Simulation_context : public Simulation_parameters
         return sym_phase_factors_;
     }
 
+    /// Return a reference to a memory pool.
+    /** A memory pool is created when this function called for the first time. */
     memory_pool& mem_pool(memory_t M__)
     {
         if (memory_pool_.count(M__) == 0) {
             memory_pool_.emplace(M__, std::move(memory_pool(M__)));
         }
         return memory_pool_.at(M__);
+    }
+
+    /// Get a defalt memory pool for a given device.
+    memory_pool& mem_pool(device_t dev__)
+    {
+        switch (dev__) {
+            case device_t::CPU: {
+                return mem_pool(memory_t::host);
+                break;
+            }
+            case device_t::GPU: {
+                return mem_pool(memory_t::device);
+                break;
+            }
+        }
+        return mem_pool(memory_t::host); // make compiler happy
     }
 
     inline bool initialized() const
@@ -1061,14 +1105,61 @@ class Simulation_context : public Simulation_parameters
         return theta_[ir__];
     }
 
+    /// Returns a constant reference to the augmentation operator of a given atom type.
     inline Augmentation_operator const& augmentation_op(int iat__) const
     {
         return augmentation_op_[iat__];
     }
 
+    /// Returns a reference to the augmentation operator of a given atom type.
     inline Augmentation_operator& augmentation_op(int iat__)
     {
         return augmentation_op_[iat__];
+    }
+
+    /// Type of the host memory for arrays used in linear algebra operations.
+    inline memory_t host_memory_t() const
+    {
+        switch (processing_unit()) {
+            case device_t::CPU: {
+                return memory_t::host;
+            }
+            case device_t::GPU: {
+                //return memory_t::host;
+                return memory_t::host_pinned;
+            }
+        }
+        return memory_t::none; // make compiler happy
+    }
+
+    /// Type of preferred memory for the storage of wave-functions and related arrays.
+    inline memory_t preferred_memory_t() const
+    {
+        switch (processing_unit()) {
+            case device_t::CPU: {
+                return memory_t::host;
+            }
+            case device_t::GPU: {
+                return memory_t::device;
+                //return memory_t::host_pinned;
+            }
+        }
+        return memory_t::none; // make compiler happy;
+    }
+
+    /// Linear algebra driver for the BLAS operations.
+    inline linalg_t blas_linalg_t() const
+    {
+        switch (processing_unit()) {
+            case device_t::CPU: {
+                return linalg_t::blas;
+            }
+            case device_t::GPU: {
+                //return linalg_t::cublasxt;
+                return linalg_t::cublas;
+            }
+        }
+        return linalg_t::none; // make compiler happy
     }
 };
 
@@ -1101,12 +1192,13 @@ inline void Simulation_context::initialize()
     set_processing_unit(pu);
 
     /* check if we can use a GPU device */
-    if (processing_unit() == GPU) {
+    if (processing_unit() == device_t::GPU) {
 #if !defined(__GPU)
         TERMINATE_NO_GPU;
 #endif
     }
 
+    /* initialize MPI communicators */
     init_comm();
 
     /* can't use reduced G-vectors in LAPW code */
@@ -1122,7 +1214,7 @@ inline void Simulation_context::initialize()
         }
     }
 
-    /* initialize variables, related to the unit cell */
+    /* initialize variables related to the unit cell */
     unit_cell_.initialize();
 
     /* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and minimum MT radius) */
@@ -1287,7 +1379,7 @@ inline void Simulation_context::initialize()
     initialized_ = true;
 }
 
-inline void Simulation_context::print_info()
+inline void Simulation_context::print_info() const
 {
     tm const* ptm = localtime(&start_time_.tv_sec);
     char buf[100];
@@ -1308,6 +1400,10 @@ inline void Simulation_context::print_info()
         printf("\n");
     }
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
+    printf("number of MPI ranks per node  : %i\n", num_ranks_per_node());
+    printf("page size (Kb)                : %li\n", utils::get_page_size() >> 10);
+    printf("number of pages               : %li\n", utils::get_num_pages());
+    printf("available memory (GB)         : %li\n", utils::get_total_memory() >> 30);
 
     std::string headers[]         = {"FFT context for density and potential", "FFT context for coarse grid"};
     double cutoffs[]              = {pw_cutoff(), 2 * gk_cutoff()};
@@ -1425,19 +1521,17 @@ inline void Simulation_context::print_info()
 
     printf("processing unit                    : ");
     switch (processing_unit()) {
-        case CPU: {
+        case device_t::CPU: {
             printf("CPU\n");
             break;
         }
-        case GPU: {
+        case device_t::GPU: {
             printf("GPU\n");
+#ifdef __GPU
+            acc::print_device_info(0);
+#endif
             break;
         }
-    }
-    if (processing_unit() == GPU) {
-#ifdef __GPU
-        acc::print_device_info(0);
-#endif
     }
 
     int i{1};

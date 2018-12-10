@@ -350,6 +350,7 @@ class splindex<block_cyclic, T> : public splindex_base<T>
         return location(idxglob__).local_index;
     }
 
+    /// Get a global index by local index of a rank.
     inline T global_index(T idxloc__, int rank__) const
     {
         assert(rank__ >= 0 && rank__ < this->num_ranks_);
@@ -360,6 +361,7 @@ class splindex<block_cyclic, T> : public splindex_base<T>
         return (nb * this->num_ranks_ + rank__) * block_size_ + idxloc__ % block_size_;
     }
 
+    /// Get global index of this rank.
     inline T operator[](T idxloc__) const
     {
         return global_index(idxloc__, this->rank_);

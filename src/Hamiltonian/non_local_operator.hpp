@@ -29,11 +29,12 @@
 
 namespace sirius {
 
+/// Non-local part of the Hamiltonian in the pseudopotential method.
 template <typename T>
 class Non_local_operator
 {
     protected:
-        Simulation_context const& ctx__;
+        Simulation_context const& ctx_;
 
         device_t pu_;
 
@@ -48,16 +49,18 @@ class Non_local_operator
 
         bool is_null_{false};
 
+        /* copy assigment operrator is forbidden */
         Non_local_operator& operator=(Non_local_operator const& src) = delete;
-        Non_local_operator(Non_local_operator const& src)            = delete;
+        /* copy constructor is forbidden */
+        Non_local_operator(Non_local_operator const& src) = delete;
 
     public:
-        Non_local_operator(Simulation_context const& ctx_)
-            : ctx__(ctx_)
+        Non_local_operator(Simulation_context const& ctx__)
+            : ctx_(ctx__)
         {
             PROFILE("sirius::Non_local_operator::Non_local_operator");
-            pu_                 = this->ctx__.processing_unit();
-            auto& uc            = this->ctx__.unit_cell();
+            pu_                 = this->ctx_.processing_unit();
+            auto& uc            = this->ctx_.unit_cell();
             packed_mtrx_offset_ = mdarray<int, 1>(uc.num_atoms());
             packed_mtrx_size_   = 0;
             for (int ia = 0; ia < uc.num_atoms(); ia++) {
@@ -66,9 +69,13 @@ class Non_local_operator
                 packed_mtrx_size_ += nbf * nbf;
             }
 
-            if (pu_ == GPU) {
-                packed_mtrx_offset_.allocate(memory_t::device);
-                packed_mtrx_offset_.template copy<memory_t::host, memory_t::device>();
+            switch (pu_) {
+                case device_t::GPU: {
+                    packed_mtrx_offset_.allocate(memory_t::device);
+                    packed_mtrx_offset_.template copy<memory_t::host, memory_t::device>();
+                    break;
+                }
+                case device_t::CPU: break;
             }
         }
 
@@ -76,22 +83,20 @@ class Non_local_operator
         {
         }
 
-        template <int N>
         inline void apply(int chunk__,
                           int ispn_block__,
                           Wave_functions& op_phi__,
                           int idx0__,
                           int n__,
-                          Beta_projectors_base<N>& beta_,
+                          Beta_projectors_base& beta_,
                           matrix<T>& beta_phi__);
 
-        template <int N>
         inline void apply_one_atom(int chunk__,
                                    int ispn_block__,
                                    Wave_functions& op_phi__,
                                    int idx0__,
                                    int n__,
-                                   Beta_projectors_base<N>& beta_,
+                                   Beta_projectors_base& beta_,
                                    matrix<T>& beta_phi__,
                                    int i);
 
@@ -102,18 +107,18 @@ class Non_local_operator
 
         inline T operator()(int xi1__, int xi2__, int ispn__, int ia__)
         {
-            int nbf = this->ctx__.unit_cell().atom(ia__).mt_basis_size();
+            int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
             return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
         }
 };
 
-template<> template <int N>
+template<>
 inline void Non_local_operator<double_complex>::apply(int chunk__,
                                                       int ispn_block__,
                                                       Wave_functions& op_phi__,
                                                       int idx0__,
                                                       int n__,
-                                                      Beta_projectors_base<N>& beta_,
+                                                      Beta_projectors_base& beta_,
                                                       matrix<double_complex>& beta_phi__)
 {
     PROFILE("sirius::Non_local_operator::apply");
@@ -130,12 +135,26 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
 
     if (static_cast<size_t>(nbeta * n__) > work_.size()) {
         work_ = mdarray<double_complex, 1>(nbeta * n__);
-        #ifdef __GPU
-        if (pu_ == GPU) {
+        if (pu_ == device_t::GPU) {
             work_.allocate(memory_t::device);
         }
-        #endif
     }
+    /* setup linear algebra parameters */
+    memory_t mem{memory_t::none};
+    linalg_t la{linalg_t::none};
+    switch (pu_) {
+        case device_t::CPU: {
+            mem = memory_t::host;
+            la = linalg_t::blas;
+            break;
+        }
+        case device_t::GPU: {
+            mem = memory_t::device;
+            la = linalg_t::cublas;
+            break;
+        }
+    }
+
     /* compute O * <beta|phi> for atoms in a chunk */
     #pragma omp parallel for
     for (int i = 0; i < beta_.chunk(chunk__).num_atoms_; i++) {
@@ -144,56 +163,93 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
         int offs = beta_.chunk(chunk__).desc_(beta_desc_idx::offset, i);
         int ia   = beta_.chunk(chunk__).desc_(beta_desc_idx::ia, i);
         if (nbf != 0) {
-            switch (pu_) {
-                case CPU: {
-                    linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-                                      beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
-                    break;
-                }
-                case GPU: {
-                    #ifdef __GPU
-                    linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-                                      beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
-                    #endif
-                    break;
-                }
-            }
+            linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
+                             op_.at(mem, packed_mtrx_offset_(ia), ispn_block__), nbf,
+                             beta_phi__.at(mem, offs, 0), nbeta,
+                             &linalg_const<double_complex>::zero(),
+                             work_.at(mem, offs), nbeta, stream_id(omp_get_thread_num()));
         }
-    }
+        //switch (pu_) {
+        //    case CPU: {
+        //        linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
+        //                          beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
 
-    /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
+        //        break;
+        //    }
+        //    case GPU: {
+        //        #ifdef __GPU
+        //        linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
+        //                          beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
+        //        #endif
+        //        break;
+        //    }
+        //}
     switch (pu_) {
-        case CPU: {
-            linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, linalg_const<double_complex>::one(), beta_gk.template at<CPU>(),
-                              num_gkvec_loc, work_.at<CPU>(), nbeta, linalg_const<double_complex>::one(),
-                              op_phi__.pw_coeffs(jspn).prime().at<CPU>(0, idx0__),
-                              op_phi__.pw_coeffs(jspn).prime().ld());
-            break;
-        }
-        case GPU: {
-            #ifdef __GPU
+        case device_t::GPU: {
+#ifdef __GPU
             /* wait for previous zgemms */
             #pragma omp parallel
             acc::sync_stream(omp_get_thread_num());
-
-            linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &linalg_const<double_complex>::one(), beta_gk.template at<GPU>(),
-                              beta_gk.ld(), work_.at<GPU>(), nbeta, &linalg_const<double_complex>::one(),
-                              op_phi__.pw_coeffs(jspn).prime().at<GPU>(0, idx0__),
-                              op_phi__.pw_coeffs(jspn).prime().ld());
-            acc::sync_stream(-1);
-            #endif
+#endif
             break;
+
         }
+        case device_t::CPU: break;
     }
+
+    /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
+    linalg2(ctx_.blas_linalg_t()).gemm('N', 'N', num_gkvec_loc, n__, nbeta,
+                                       &linalg_const<double_complex>::one(),
+                                       beta_gk.at(mem), num_gkvec_loc,
+                                       work_.at(mem), nbeta,
+                                       &linalg_const<double_complex>::one(),
+                                       op_phi__.pw_coeffs(jspn).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
+                                       op_phi__.pw_coeffs(jspn).prime().ld());
+
+    switch (pu_) {
+        case device_t::GPU: {
+#ifdef __GPU
+            acc::sync_stream(-1);
+#endif
+            break;
+
+        }
+        case device_t::CPU: break;
+    }
+
+    ///* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
+    //switch (pu_) {
+    //    case CPU: {
+    //        linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, linalg_const<double_complex>::one(), beta_gk.template at<CPU>(),
+    //                          num_gkvec_loc, work_.at<CPU>(), nbeta, linalg_const<double_complex>::one(),
+    //                          op_phi__.pw_coeffs(jspn).prime().at<CPU>(0, idx0__),
+    //                          op_phi__.pw_coeffs(jspn).prime().ld());
+    //        break;
+    //    }
+    //    case GPU: {
+    //        #ifdef __GPU
+    //        /* wait for previous zgemms */
+    //        #pragma omp parallel
+    //        acc::sync_stream(omp_get_thread_num());
+
+    //        linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &linalg_const<double_complex>::one(), beta_gk.template at<GPU>(),
+    //                          beta_gk.ld(), work_.at<GPU>(), nbeta, &linalg_const<double_complex>::one(),
+    //                          op_phi__.pw_coeffs(jspn).prime().at<GPU>(0, idx0__),
+    //                          op_phi__.pw_coeffs(jspn).prime().ld());
+    //        acc::sync_stream(-1);
+    //        #endif
+    //        break;
+    //    }
+    //}
 }
 
-template<> template<int N>
+template<>
 inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
                                                                int ispn_block__,
                                                                Wave_functions& op_phi__,
                                                                int idx0__,
                                                                int n__,
-                                                               Beta_projectors_base<N>& beta_,
+                                                               Beta_projectors_base& beta_,
                                                                matrix<double_complex>& beta_phi__,
                                                                const int i)
 {
@@ -205,11 +261,9 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
 
     if (static_cast<size_t>(nbeta * n__) > work_.size()) {
         work_ = mdarray<double_complex, 1>(nbeta * n__);
-        #ifdef __GPU
-        if (pu_ == GPU) {
+        if (pu_ == device_t::GPU) {
             work_.allocate(memory_t::device);
         }
-        #endif
     }
 
     int nbf  = beta_.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
@@ -271,13 +325,13 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
     }
 }
 
-template<> template <int N>
+template<>
 inline void Non_local_operator<double>::apply(int chunk__,
                                               int ispn_block__,
                                               Wave_functions& op_phi__,
                                               int idx0__,
                                               int n__,
-                                              Beta_projectors_base<N>& beta_,
+                                              Beta_projectors_base& beta_,
                                               matrix<double>& beta_phi__)
 {
     PROFILE("sirius::Non_local_operator::apply");
@@ -294,7 +348,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
 
     if (static_cast<size_t>(nbeta * n__) > work_.size()) {
         work_ = mdarray<double, 1>(nbeta * n__);
-        if (pu_ == GPU) {
+        if (pu_ == device_t::GPU) {
             work_.allocate(memory_t::device);
         }
     }
@@ -351,16 +405,17 @@ inline void Non_local_operator<double>::apply(int chunk__,
     }
 }
 
-template<> template<int N>
+template<>
 inline void Non_local_operator<double>::apply_one_atom(int chunk__,
                                                        int ispn_block__,
                                                        Wave_functions& op_phi__,
                                                        int idx0__,
                                                        int n__,
-                                                       Beta_projectors_base<N>& beta_,
+                                                       Beta_projectors_base& beta_,
                                                        matrix<double>& beta_phi__,
                                                        const int i)
 {
+    TERMINATE_NOT_IMPLEMENTED;
 }
 
 template <typename T>
@@ -369,7 +424,7 @@ class D_operator : public Non_local_operator<T>
     private:
         void initialize()
         {
-            auto& uc = this->ctx__.unit_cell();
+            auto& uc = this->ctx_.unit_cell();
 
             for (int ia = 0; ia < uc.num_atoms(); ia++) {
                 int nbf = uc.atom(ia).mt_basis_size();
@@ -400,7 +455,7 @@ class D_operator : public Non_local_operator<T>
                     for (int xi2 = 0; xi2 < nbf; xi2++) {
                         for (int xi1 = 0; xi1 < nbf; xi1++) {
                             int idx = xi2 * nbf + xi1;
-                            switch (this->ctx__.num_mag_dims()) {
+                            switch (this->ctx_.num_mag_dims()) {
                                 case 3: {
                                     double bx = uc.atom(ia).d_mtrx(xi1, xi2, 2);
                                     double by = uc.atom(ia).d_mtrx(xi1, xi2, 3);
@@ -431,7 +486,7 @@ class D_operator : public Non_local_operator<T>
                 }
             }
 
-            if (this->ctx__.control().print_checksum_ && this->ctx__.comm().rank() == 0) {
+            if (this->ctx_.control().print_checksum_ && this->ctx_.comm().rank() == 0) {
                 auto cs = this->op_.checksum();
                 utils::print_checksum("D_operator", cs);
             }
@@ -464,7 +519,7 @@ class Q_operator : public Non_local_operator<T>
 
         void initialize()
         {
-            auto& uc = this->ctx__.unit_cell();
+            auto& uc = this->ctx_.unit_cell();
             for (int ia = 0; ia < uc.num_atoms(); ia++) {
                 int iat = uc.atom(ia).type().id();
                 if (!uc.atom_type(iat).augment()) {
@@ -475,7 +530,7 @@ class Q_operator : public Non_local_operator<T>
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
                         /* The ultra soft pseudo potential has spin orbit coupling incorporated to it, so we
                            need to rotate the Q matrix */
-                        if (this->ctx__.unit_cell().atom_type(iat).spin_orbit_coupling()) {
+                        if (this->ctx_.unit_cell().atom_type(iat).spin_orbit_coupling()) {
                             /* this is nothing else than Eq.18 of Ref PRB 71, 115106 */
                             for (auto si = 0; si < 2; si++) {
                                 for (auto sj = 0; sj < 2; sj++) {
@@ -488,7 +543,7 @@ class Q_operator : public Non_local_operator<T>
                                                 /* The F coefficients are already "block diagonal" so we do a full
                                                    summation. We actually rotate the q_matrices only */
                                                 if (uc.atom(ia).type().compare_index_beta_functions(xi1, xi1p)) {
-                                                    result += this->ctx__.augmentation_op(iat).q_mtrx(xi1p, xi2p) *
+                                                    result += this->ctx_.augmentation_op(iat).q_mtrx(xi1p, xi2p) *
                                                         (uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 0) *
                                                          uc.atom(ia).type().f_coefficients(xi2p, xi2, 0, si) +
                                                          uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 1) *
@@ -511,20 +566,20 @@ class Q_operator : public Non_local_operator<T>
                                 }
                             }
                         } else {
-                            for (int ispn = 0; ispn < this->ctx__.num_spins(); ispn++) {
+                            for (int ispn = 0; ispn < this->ctx_.num_spins(); ispn++) {
                                 this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, ispn) =
-                                    this->ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
+                                    this->ctx_.augmentation_op(iat).q_mtrx(xi1, xi2);
                             }
                         }
                     }
                 }
             }
-            if (this->ctx__.control().print_checksum_ && this->ctx__.comm().rank() == 0) {
+            if (this->ctx_.control().print_checksum_ && this->ctx_.comm().rank() == 0) {
                 auto cs = this->op_.checksum();
                 utils::print_checksum("Q_operator", cs);
             }
 
-            if (this->pu_ == GPU) {
+            if (this->pu_ == device_t::GPU) {
                 this->op_.allocate(memory_t::device);
                 this->op_.template copy<memory_t::host, memory_t::device>();
             }

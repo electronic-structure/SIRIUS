@@ -34,6 +34,8 @@
 #include "GPU/fft_kernels.hpp"
 #endif
 
+// TODO: review the size of cufft_work_buf and fft_buffer_aux
+
 namespace sddk {
 
 /// Implementation of FFT3D.
@@ -246,7 +248,7 @@ class FFT3D : public FFT3D_grid
         assert(static_cast<int>(fft_buffer_aux__.size()) >= gvec_partition_->zcol_count_fft() * size(2));
 
         /* input/output data buffer is on device memory */
-        if ((mem & memory_t::device) == memory_t::device) {
+        if (is_device_memory(mem)) {
             utils::timer t("sddk::FFT3D::transform_z_serial|gpu");
 #ifdef __GPU
             switch (direction) {
@@ -309,7 +311,7 @@ class FFT3D : public FFT3D_grid
         }
 
         /* data is host memory */
-        if ((mem & memory_t::host) == memory_t::host) {
+        if (is_host_memory(mem)) {
             utils::timer t("sddk::FFT3D::transform_z_serial|cpu");
             #pragma omp parallel for schedule(dynamic, 1)
             for (int i = 0; i < num_zcol_local; i++) {
@@ -397,10 +399,9 @@ class FFT3D : public FFT3D_grid
                  - or when we don't use GPU-direct but the transformation is parallel; in this case we are
                    going to do mpi_alltoall in host memory
             */
-            if (((mem & memory_t::host) == memory_t::host && pu_ == GPU) ||
-                (((mem & memory_t::device) == memory_t::device) && !is_gpu_direct_ && comm_.size() > 1)) {
-                fft_buffer_aux__.copy<memory_t::device, memory_t::host>(local_size_z_ *
-                                                                        gvec_partition_->gvec().num_zcol());
+            if ((is_host_memory(mem) && pu_ == device_t::GPU) ||
+                (is_device_memory(mem) && !is_gpu_direct_ && comm_.size() > 1)) {
+                fft_buffer_aux__.copy_to(memory_t::host, 0, local_size_z_ * gvec_partition_->gvec().num_zcol());
             }
 
             /* collect full sticks */
@@ -416,7 +417,7 @@ class FFT3D : public FFT3D_grid
                 send.calc_offsets();
                 recv.calc_offsets();
 
-                if ((mem & memory_t::host) == memory_t::host || !is_gpu_direct_) {
+                if (is_host_memory(mem) || !is_gpu_direct_) {
                     /* copy auxiliary buffer because it will be use as the output buffer in the following mpi_a2a */
                     std::copy(&fft_buffer_aux__[0],
                               &fft_buffer_aux__[0] + gvec_partition_->gvec().num_zcol() * local_size_z_,
@@ -426,7 +427,7 @@ class FFT3D : public FFT3D_grid
                                    &recv.counts[0], &recv.offsets[0]);
                 }
 #ifdef __GPU
-                if ((mem & memory_t::device) == memory_t::device && is_gpu_direct_) {
+                if (is_device_memory(mem) && is_gpu_direct_) {
                     /* copy auxiliary buffer because it will be use as the output buffer in the following mpi_a2a */
                     acc::copy<double_complex>(fft_buffer_.at<GPU>(), fft_buffer_aux__.at<GPU>(),
                                               gvec_partition_->gvec().num_zcol() * local_size_z_);
@@ -436,9 +437,8 @@ class FFT3D : public FFT3D_grid
                 }
 
                 /* buffer is on CPU after mpi_a2a and has to be copied to GPU */
-                if ((mem & memory_t::device) == memory_t::device && !is_gpu_direct_) {
-                    fft_buffer_aux__.copy<memory_t::host, memory_t::device>(gvec_partition_->zcol_count_fft() *
-                                                                            size(2));
+                if (is_device_memory(mem) && !is_gpu_direct_) {
+                    fft_buffer_aux__.copy_to(memory_t::device, 0, gvec_partition_->zcol_count_fft() * size(2));
                 }
 #endif
             }
@@ -451,9 +451,8 @@ class FFT3D : public FFT3D_grid
             if (comm_.size() > 1) {
                 utils::timer t("sddk::FFT3D::transform_z|comm");
 #ifdef __GPU
-                if ((mem & memory_t::device) == memory_t::device && !is_gpu_direct_) {
-                    fft_buffer_aux__.copy<memory_t::device, memory_t::host>(gvec_partition_->zcol_count_fft() *
-                                                                            size(2));
+                if (is_device_memory(mem) && !is_gpu_direct_) {
+                    fft_buffer_aux__.copy_to(memory_t::host, 0, gvec_partition_->zcol_count_fft() * size(2));
                 }
 #endif
                 block_data_descriptor send(comm_.size());
@@ -465,7 +464,7 @@ class FFT3D : public FFT3D_grid
                 send.calc_offsets();
                 recv.calc_offsets();
 
-                if ((mem & memory_t::host) == memory_t::host || !is_gpu_direct_) {
+                if (is_host_memory(mem) || !is_gpu_direct_) {
                     /* scatter z-columns */
                     comm_.alltoall(&fft_buffer_aux__[0], &send.counts[0], &send.offsets[0], &fft_buffer_[0],
                                    &recv.counts[0], &recv.offsets[0]);
@@ -475,7 +474,7 @@ class FFT3D : public FFT3D_grid
                 }
 
 #ifdef __GPU
-                if ((mem & memory_t::device) == memory_t::device && is_gpu_direct_) {
+                if (is_device_memory(mem) && is_gpu_direct_) {
                     /* scatter z-columns */
                     comm_.alltoall(fft_buffer_aux__.at<GPU>(), &send.counts[0], &send.offsets[0], fft_buffer_.at<GPU>(),
                                    &recv.counts[0], &recv.offsets[0]);
@@ -486,10 +485,9 @@ class FFT3D : public FFT3D_grid
 #endif
             }
             /* copy back to device memory */
-            if (((mem & memory_t::host) == memory_t::host && pu_ == GPU) ||
-                (((mem & memory_t::device) == memory_t::device) && !is_gpu_direct_ && comm_.size() > 1)) {
-                fft_buffer_aux__.copy<memory_t::host, memory_t::device>(local_size_z_ *
-                                                                        gvec_partition_->gvec().num_zcol());
+            if ((is_host_memory(mem) && pu_ == device_t::GPU) ||
+                (is_device_memory(mem) && !is_gpu_direct_ && comm_.size() > 1)) {
+                fft_buffer_aux__.copy_to(memory_t::device, 0, local_size_z_ * gvec_partition_->gvec().num_zcol());
             }
         }
     }
@@ -760,8 +758,10 @@ class FFT3D : public FFT3D_grid
             cufft::set_stream(cufft_plan_xy_, 0);
 
             /* allocate arrays with z- offsets and sizes on the host and device*/
-            z_offsets_ = mdarray<int, 1>(comm_.size(), memory_t::host | memory_t::device);
-            z_sizes_   = mdarray<int, 1>(comm_.size(), memory_t::host | memory_t::device);
+            z_offsets_ = mdarray<int, 1>(comm_.size(), memory_t::host);
+            z_offsets_.allocate(memory_t::device);
+            z_sizes_ = mdarray<int, 1>(comm_.size(), memory_t::host);
+            z_sizes_.allocate(memory_t::device);
 
             /* copy z- offsets and sizes in mdarray since we can store it also on device*/
             for (int r = 0; r < comm_.size(); r++) {
@@ -950,11 +950,12 @@ class FFT3D : public FFT3D_grid
 
 #ifdef __GPU
         switch (pu_) {
-            case GPU: {
+            case device_t::GPU: {
                 utils::timer t2("sddk::FFT3D::prepare|gpu");
                 size_t work_size;
-                map_gvec_to_fft_buffer_ = mdarray<int, 1>(gvp__.gvec_count_fft(), memory_t::host | memory_t::device,
+                map_gvec_to_fft_buffer_ = mdarray<int, 1>(gvp__.gvec_count_fft(), memory_t::host,
                                                           "FFT3D.map_zcol_to_fft_buffer_");
+                map_gvec_to_fft_buffer_.allocate(memory_t::device);
                 /* loop over local set of columns */
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < gvp__.zcol_count_fft(); i++) {
@@ -975,8 +976,9 @@ class FFT3D : public FFT3D_grid
                 /* for the rank that stores {x=0,y=0} column we need to create a small second mapping */
                 if (gvp__.gvec().reduced() && comm_.rank() == 0) {
                     map_gvec_to_fft_buffer_x0y0_ =
-                        mdarray<int, 1>(gvp__.gvec().zcol(0).z.size(), memory_t::host | memory_t::device,
+                        mdarray<int, 1>(gvp__.gvec().zcol(0).z.size(), memory_t::host,
                                         "FFT3D.map_zcol_to_fft_buffer_x0y0_");
+                    map_gvec_to_fft_buffer_x0y0_.allocate(memory_t::device);
                     for (size_t j = 0; j < gvp__.gvec().zcol(0).z.size(); j++) {
                         int z = coord_by_freq<2>(-gvp__.gvec().zcol(0).z[j]);
                         assert(z >= 0 && z < size(2));
@@ -1024,8 +1026,7 @@ class FFT3D : public FFT3D_grid
                 z_col_pos_.copy<memory_t::host, memory_t::device>();
                 break;
             }
-            case CPU: {
-            }
+            case device_t::CPU: break;
         }
 #endif
     }

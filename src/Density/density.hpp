@@ -552,14 +552,15 @@ class Density : public Field4D
         //    }
         //}
 
-        mdarray<double_complex, 2> rho_aug(ctx_.gvec().count(), ctx_.num_mag_dims() + 1, ctx_.dual_memory_t());
+        mdarray<double_complex, 2> rho_aug(ctx_.gvec().count(), ctx_.num_mag_dims() + 1);
 
         switch (ctx_.processing_unit()) {
-            case CPU: {
+            case device_t::CPU: {
                 generate_rho_aug<CPU>(rho_aug);
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
+                rho_aug.allocate(memory_t::device);
                 generate_rho_aug<GPU>(rho_aug);
                 break;
             }

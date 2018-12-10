@@ -32,7 +32,6 @@
 #include "K_point/k_point.hpp"
 #include "local_operator.hpp"
 #include "non_local_operator.hpp"
-#include "memory_pool.hpp"
 
 namespace sirius {
 

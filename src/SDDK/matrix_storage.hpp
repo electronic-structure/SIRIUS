@@ -111,7 +111,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     }
 
     /// Check if data needs to be remapped.
-    /** Data does not need to be remapped when communicator which is orthogonal to FFT communicator is trivial.
+    /** Data is not remapped when communicator that is orthogonal to FFT communicator is trivial.
      *  In this case the FFT communicator coincides with the entire communicator used to distribute wave functions
      *  and the data is ready for FFT transformations. */
     inline bool is_remapped() const
@@ -149,9 +149,9 @@ class matrix_storage<T, matrix_storage_t::slab>
         if (!is_remapped()) {
             assert(num_rows_loc_ == gvp_->gvec_count_fft());
             ncol = n__;
-            ptr = prime_.template at<CPU>(0, idx0__);
+            ptr = prime_.at(memory_t::host, 0, idx0__);
             if (prime_.on_device()) {
-                ptr_d = prime_.template at<GPU>(0, idx0__);
+                ptr_d = prime_.at(memory_t::device, 0, idx0__);
             }
         } else {
             /* maximum local number of matrix columns */
@@ -160,6 +160,7 @@ class matrix_storage<T, matrix_storage_t::slab>
             size_t sz = gvp_->gvec_count_fft() * ncol;
             /* reallocate buffers if necessary */
             if (extra_buf_.size() < sz) {
+                utils::timer t1("sddk::matrix_storage::set_num_extra|alloc");
                 if (mp__) {
                     send_recv_buf_ = mdarray<T, 1>(*mp__, sz, "matrix_storage.send_recv_buf_");
                     extra_buf_     = mdarray<T, 1>(*mp__, sz, "matrix_storage.extra_buf_");
@@ -168,19 +169,18 @@ class matrix_storage<T, matrix_storage_t::slab>
                     extra_buf_     = mdarray<T, 1>(sz, memory_t::host, "matrix_storage.extra_buf_");
                 }
             }
-            ptr = extra_buf_.template at<CPU>();
+            ptr = extra_buf_.at(memory_t::host);
         }
         /* create the extra storage */
         extra_ = mdarray<T, 2>(ptr, ptr_d, gvp_->gvec_count_fft(), ncol, "matrix_storage.extra_");
     }
 
     /// Remap data from prime to extra storage.
-    /** \param [in] pu        Target processing unit.
-     *  \param [in] n         Number of matrix columns to distribute.
+    /** \param [in] n         Number of matrix columns to distribute.
      *  \param [in] idx0      Starting column of the matrix.
      *
      *  Prime storage is expected on the CPU (for the MPI a2a communication). */
-    inline void remap_forward(device_t pu__, int n__, int idx0__, memory_pool* mp__)
+    inline void remap_forward(int n__, int idx0__, memory_pool* mp__)
     {
         PROFILE("sddk::matrix_storage::remap_forward");
 
@@ -207,10 +207,12 @@ class matrix_storage<T, matrix_storage_t::slab>
         sd.calc_offsets();
         rd.calc_offsets();
 
-        T* send_buf = (num_rows_loc_ == 0) ? nullptr : prime_.template at<CPU>(0, idx0__);
+        T* send_buf = (num_rows_loc_ == 0) ? nullptr : prime_.at(memory_t::host, 0, idx0__);
 
-        comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf_.template at<CPU>(),
+        utils::timer t1("sddk::matrix_storage::remap_forward|mpi");
+        comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf_.at(memory_t::host),
                           rd.counts.data(), rd.offsets.data());
+        t1.stop();
 
         /* reorder recieved blocks */
         #pragma omp parallel for
@@ -270,14 +272,16 @@ class matrix_storage<T, matrix_storage_t::slab>
         sd.calc_offsets();
         rd.calc_offsets();
 
-        T* recv_buf = (num_rows_loc_ == 0) ? nullptr : prime_.template at<CPU>(0, idx0__);
+        T* recv_buf = (num_rows_loc_ == 0) ? nullptr : prime_.at(memory_t::host, 0, idx0__);
 
-        comm_col.alltoall(send_recv_buf_.template at<CPU>(), sd.counts.data(), sd.offsets.data(), recv_buf,
+        utils::timer t1("sddk::matrix_storage::remap_backward|mpi");
+        comm_col.alltoall(send_recv_buf_.at(memory_t::host), sd.counts.data(), sd.offsets.data(), recv_buf,
                            rd.counts.data(), rd.offsets.data());
+        t1.stop();
 
         /* move data back to device */
         if (prime_.on_device()) {
-            prime_.template copy<memory_t::host, memory_t::device>(idx0__ * num_rows_loc(), n__ * num_rows_loc());
+            prime_.copy_to(memory_t::device, idx0__ * num_rows_loc(), n__ * num_rows_loc());
         }
     }
 
@@ -403,11 +407,10 @@ class matrix_storage<T, matrix_storage_t::slab>
     {
         return extra_;
     }
-    
-    template <memory_t mem_type>
-    inline void zero(int i0__, int n__)
+
+    inline void zero(memory_t mem__, int i0__, int n__)
     {
-        prime_.template zero<mem_type>(i0__ * num_rows_loc(), n__ * num_rows_loc());
+        prime_.zero(mem__, i0__ * num_rows_loc(), n__ * num_rows_loc());
     }
 
     /// Local number of rows in prime matrix.
@@ -436,25 +439,25 @@ class matrix_storage<T, matrix_storage_t::slab>
                 break;
             }
             case memory_t::device: {
-                #ifdef __GPU
+#ifdef __GPU
                 scale_matrix_elements_gpu(reinterpret_cast<cuDoubleComplex*>(prime().template at<GPU>(0, i0__)),
                                           prime().ld(), num_rows_loc(), n__, beta__);
-                #endif
+#endif
                 break;
             }
         }
     }
 
-    #ifdef __GPU
+    void allocate(memory_pool& mp__)
+    {
+        prime_.allocate(mp__);
+    }
+
+#ifdef __GPU
     /// Allocate prime storage on device.
     void allocate_on_device()
     {
         prime_.allocate(memory_t::device);
-    }
-
-    void allocate(memory_pool& mp__)
-    {
-        prime_.allocate(mp__);
     }
 
     /// Deallocate storage on device.
@@ -479,7 +482,7 @@ class matrix_storage<T, matrix_storage_t::slab>
             acc::copyout(prime_.template at<CPU>(0, i0__), prime_.template at<GPU>(0, i0__), n__ * num_rows_loc());
         }
     }
-    #endif
+#endif
 
     inline double_complex checksum(device_t pu__,
                                    int      i0__,
@@ -488,7 +491,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         double_complex cs(0, 0);
 
         switch (pu__) {
-            case CPU: {
+            case device_t::CPU: {
                 for (int i = 0; i < n__; i++) {
                     for (int j = 0; j < num_rows_loc(); j++) {
                         cs += prime(j, i0__ + i);
@@ -496,14 +499,15 @@ class matrix_storage<T, matrix_storage_t::slab>
                 }
                 break;
             }
-            case GPU: {
-                mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
-                cs1.zero<memory_t::device>();
-                #ifdef __GPU
-                add_checksum_gpu(prime().template at<GPU>(0, i0__), num_rows_loc(), n__, cs1.at<GPU>());
+            case device_t::GPU: {
+                mdarray<double_complex, 1> cs1(n__, memory_t::host, "checksum");
+                cs1.allocate(memory_t::device);
+                cs1.zero(memory_t::device);
+#ifdef __GPU
+                add_checksum_gpu(prime().at(memory_t::device, 0, i0__), num_rows_loc(), n__, cs1.at(memory_t::device));
                 cs1.copy<memory_t::device, memory_t::host>();
                 cs = cs1.checksum();
-                #endif
+#endif
                 break;
             }
         }

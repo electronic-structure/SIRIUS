@@ -64,7 +64,7 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
 {
     //CUDA_timer t("generate_dm_pw_gpu");
 
-    cudaStream_t stream = acc::stream(stream_id__);
+    cudaStream_t stream = acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(32);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
@@ -77,16 +77,17 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
         gvec__, 
         (cuDoubleComplex*)phase_factors__
     );
-    
+
     double alpha = 1;
     double beta = 0;
 
-    cublas::dgemm(0, 1, nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
-                  &alpha, 
+    cublas::dgemm('N', 'T', nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
+                  &alpha,
                   dm__, nbf__ * (nbf__ + 1) / 2,
                   phase_factors__, num_gvec_loc__ * 2,
-                 &beta,
-                 dm_pw__, nbf__ * (nbf__ + 1) / 2,
-                 stream_id__);
+                  &beta,
+                  dm_pw__, nbf__ * (nbf__ + 1) / 2,
+                  stream_id__);
+   acc::sync_stream(stream_id__);
 }
 
