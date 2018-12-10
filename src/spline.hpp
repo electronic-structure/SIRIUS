@@ -278,11 +278,11 @@ class Spline : public Radial_grid<U>
         int ns = this->num_points();
         assert(ns >= 4);
         /* lower diagonal (use coeffs as temporary storage) */
-        T* dl = coeffs_.template at<CPU>(0, 1);
+        T* dl = coeffs_.at(memory_t::host, 0, 1);
         /* main diagonal */
-        T* d = coeffs_.template at<CPU>(0, 2);
+        T* d = coeffs_.at(memory_t::host, 0, 2);
         /* upper diagonal */
-        T* du = coeffs_.template at<CPU>(0, 3);
+        T* du = coeffs_.at(memory_t::host, 0, 3);
         /* m_i = 2 c_i */
         std::vector<T> m(ns);
         /* derivatives of function */

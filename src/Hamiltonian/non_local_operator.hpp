@@ -170,8 +170,8 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
 
         //switch (pu_) {
         //    case CPU: {
-        //        linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-        //                          beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
+        //        linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at(memory_t::host, packed_mtrx_offset_(ia), ispn_block__), nbf,
+        //                          beta_phi__.at(memory_t::host, offs, 0), nbeta, work_.at(memory_t::host, offs), nbeta);
 
         //        break;
         //    }
@@ -220,9 +220,9 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
     ///* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
     //switch (pu_) {
     //    case CPU: {
-    //        linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, linalg_const<double_complex>::one(), beta_gk.template at<CPU>(),
-    //                          num_gkvec_loc, work_.at<CPU>(), nbeta, linalg_const<double_complex>::one(),
-    //                          op_phi__.pw_coeffs(jspn).prime().at<CPU>(0, idx0__),
+    //        linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, linalg_const<double_complex>::one(), beta_gk.template at(memory_t::host),
+    //                          num_gkvec_loc, work_.at(memory_t::host), nbeta, linalg_const<double_complex>::one(),
+    //                          op_phi__.pw_coeffs(jspn).prime().at(memory_t::host, 0, idx0__),
     //                          op_phi__.pw_coeffs(jspn).prime().ld());
     //        break;
     //    }
@@ -232,8 +232,8 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
     //        #pragma omp parallel
     //        acc::sync_stream(omp_get_thread_num());
 
-    //        linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &linalg_const<double_complex>::one(), beta_gk.template at<GPU>(),
-    //                          beta_gk.ld(), work_.at<GPU>(), nbeta, &linalg_const<double_complex>::one(),
+    //        linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &linalg_const<double_complex>::one(), beta_gk.template at(memory_t::device),
+    //                          beta_gk.ld(), work_.at(memory_t::device), nbeta, &linalg_const<double_complex>::one(),
     //                          op_phi__.pw_coeffs(jspn).prime().at<GPU>(0, idx0__),
     //                          op_phi__.pw_coeffs(jspn).prime().ld());
     //        acc::sync_stream(-1);
@@ -275,22 +275,22 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
     case CPU: {
         linalg<CPU>::gemm(0, 0, nbf,
                           n__, nbf,
-                          op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__),
+                          op_.at(memory_t::host, packed_mtrx_offset_(ia), ispn_block__),
                           nbf,
-                          beta_phi__.at<CPU>(offs, 0),
+                          beta_phi__.at(memory_t::host, offs, 0),
                           nbeta,
-                          work_.at<CPU>(),
+                          work_.at(memory_t::host),
                           nbf);
         /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
         linalg<CPU>::gemm(0, 0,
                           num_gkvec_loc,
                           n__, nbf,
                           linalg_const<double_complex>::one(),
-                          beta_gk.template at<CPU>(0, offs),
+                          beta_gk.template at(memory_t::host, 0, offs),
                           num_gkvec_loc,
-                          work_.at<CPU>(), nbf,
+                          work_.at(memory_t::host), nbf,
                           linalg_const<double_complex>::one(),
-                          op_phi__.pw_coeffs(jspn).prime().at<CPU>(0, idx0__),
+                          op_phi__.pw_coeffs(jspn).prime().at(memory_t::host, 0, idx0__),
                           op_phi__.pw_coeffs(jspn).prime().ld());
 
         break;
@@ -303,14 +303,14 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
                           nbf,
                           beta_phi__.at<GPU>(offs, 0),
                           nbeta,
-                          work_.at<GPU>(),
+                          work_.at(memory_t::device),
                           nbf, -1);
         linalg<GPU>::gemm(0, 0,
                           num_gkvec_loc,
                           n__, nbf,
                           &linalg_const<double_complex>::one(),
                           beta_gk.template at<GPU>(0, offs),
-                          beta_gk.ld(), work_.at<GPU>(), nbf,
+                          beta_gk.ld(), work_.at(memory_t::device), nbf,
                           &linalg_const<double_complex>::one(),
                           op_phi__.pw_coeffs(jspn).prime().at<GPU>(0, idx0__),
                           op_phi__.pw_coeffs(jspn).prime().ld());
@@ -359,8 +359,8 @@ inline void Non_local_operator<double>::apply(int chunk__,
 
         switch (pu_) {
             case CPU: {
-                linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-                                  beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
+                linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at(memory_t::host, packed_mtrx_offset_(ia), ispn_block__), nbf,
+                                  beta_phi__.at(memory_t::host, offs, 0), nbeta, work_.at(memory_t::host, offs), nbeta);
                 break;
             }
             case GPU: {
@@ -376,9 +376,9 @@ inline void Non_local_operator<double>::apply(int chunk__,
     /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
     switch (pu_) {
         case CPU: {
-            linalg<CPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, 1.0, reinterpret_cast<double*>(beta_gk.template at<CPU>()),
-                              2 * num_gkvec_loc, work_.at<CPU>(), nbeta, 1.0,
-                              reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at<CPU>(0, idx0__)),
+            linalg<CPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, 1.0, reinterpret_cast<double*>(beta_gk.template at(memory_t::host)),
+                              2 * num_gkvec_loc, work_.at(memory_t::host), nbeta, 1.0,
+                              reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at(memory_t::host, 0, idx0__)),
                               2 * op_phi__.pw_coeffs(jspn).prime().ld());
             break;
         }
@@ -389,7 +389,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
             acc::sync_stream(omp_get_thread_num());
 
             linalg<GPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, &linalg_const<double>::one(),
-                              reinterpret_cast<double*>(beta_gk.template at<GPU>()), 2 * num_gkvec_loc, work_.at<GPU>(), nbeta,
+                              reinterpret_cast<double*>(beta_gk.template at(memory_t::device)), 2 * num_gkvec_loc, work_.at(memory_t::device), nbeta,
                               &linalg_const<double>::one(),
                               reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at<GPU>(0, idx0__)),
                               2 * num_gkvec_loc);

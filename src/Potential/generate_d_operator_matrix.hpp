@@ -143,7 +143,7 @@ inline void Potential::generate_D_operator_matrix()
                 }
             }
 
-            comm_.allreduce(d_tmp.at<CPU>(), static_cast<int>(d_tmp.size()));
+            comm_.allreduce(d_tmp.at(memory_t::host), static_cast<int>(d_tmp.size()));
 
             if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
                 for (int i = 0; i < atom_type.num_atoms(); i++) {

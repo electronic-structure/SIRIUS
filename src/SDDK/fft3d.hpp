@@ -839,12 +839,12 @@ class FFT3D : public FFT3D_grid
     {
         switch (pu_) {
             case CPU: {
-                std::memcpy(data__, fft_buffer_.at<CPU>(), local_size() * sizeof(double_complex));
+                std::memcpy(data__, fft_buffer_.at(memory_t::host), local_size() * sizeof(double_complex));
                 break;
             }
             case GPU: {
 #ifdef __GPU
-                acc::copyout(data__, fft_buffer_.at<GPU>(), local_size());
+                acc::copyout(data__, fft_buffer_.at(memory_t::device), local_size());
 #endif
                 break;
             }

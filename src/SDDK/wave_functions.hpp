@@ -338,26 +338,27 @@ class Wave_functions
         switch (pu__) {
             case CPU: {
                 /* copy PW part */
-                std::copy(src__.pw_coeffs(ispn__).prime().at<CPU>(0, i0__),
-                          src__.pw_coeffs(ispn__).prime().at<CPU>(0, i0__) + ngv * n__,
-                          pw_coeffs(jspn__).prime().at<CPU>(0, j0__));
+                std::copy(src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
+                          src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + ngv * n__,
+                          pw_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
                 /* copy MT part */
                 if (has_mt()) {
-                    std::copy(src__.mt_coeffs(ispn__).prime().at<CPU>(0, i0__),
-                              src__.mt_coeffs(ispn__).prime().at<CPU>(0, i0__) + nmt * n__,
-                              mt_coeffs(jspn__).prime().at<CPU>(0, j0__));
+                    std::copy(src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
+                              src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + nmt * n__,
+                              mt_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
                 }
                 break;
             }
             case GPU: {
 #ifdef __GPU
                 /* copy PW part */
-                acc::copy(pw_coeffs(jspn__).prime().at<GPU>(0, j0__), src__.pw_coeffs(ispn__).prime().at<GPU>(0, i0__),
+                acc::copy(pw_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
+                          src__.pw_coeffs(ispn__).prime().at(memory_t::device, 0, i0__),
                           ngv * n__);
                 /* copy MT part */
                 if (has_mt()) {
-                    acc::copy(mt_coeffs(jspn__).prime().at<GPU>(0, j0__),
-                              src__.mt_coeffs(ispn__).prime().at<GPU>(0, i0__), nmt * n__);
+                    acc::copy(mt_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
+                              src__.mt_coeffs(ispn__).prime().at(memory_t::device, 0, i0__), nmt * n__);
                 }
 #endif
                 break;

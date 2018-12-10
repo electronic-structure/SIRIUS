@@ -34,12 +34,11 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     auto& fft = ctx_.fft_coarse();
 
     /* get preallocated memory */
-    mdarray<double, 2> density_rg(ctx_.mem_pool(memory_t::host).allocate<double>(fft.local_size() * (ctx_.num_mag_dims() + 1)),
-                                  fft.local_size(), ctx_.num_mag_dims() + 1, "density_rg");
+    mdarray<double, 2> density_rg(ctx_.mem_pool(memory_t::host), fft.local_size(), ctx_.num_mag_dims() + 1, "density_rg");
     density_rg.zero();
 
     if (fft.pu() == device_t::GPU) {
-        density_rg.allocate(memory_t::device);
+        density_rg.allocate(ctx_.mem_pool(memory_t::device));
         density_rg.zero(memory_t::device);
     }
 
@@ -59,7 +58,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                 double w = kp__->band_occupancy(j, ispn) * kp__->weight() / omega;
 
                 /* transform to real space; in case of GPU wave-function stays in GPU memory */
-                fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(ispn).extra().template at<CPU>(0, i));
+                fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(ispn).extra().at(memory_t::host, 0, i));
                 /* add to density */
                 switch (fft.pu()) {
                     case CPU: {
@@ -72,7 +71,8 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                     }
                     case GPU: {
 #ifdef __GPU
-                        update_density_rg_1_gpu(fft.local_size(), fft.buffer().at<GPU>(), w, density_rg.at<GPU>(0, ispn));
+                        update_density_rg_1_gpu(fft.local_size(), fft.buffer().at<GPU>(), w,
+                                                density_rg.at(memory_t::device, 0, ispn));
 #else
                         TERMINATE_NO_GPU
 #endif
@@ -87,13 +87,15 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
 
         /* allocate on CPU or GPU */
         mdarray<double_complex, 1> psi_r(ctx_.mem_pool(memory_t::host), fft.local_size());
-        psi_r.allocate(ctx_.mem_pool(memory_t::device));
+        if (fft.pu() == device_t::GPU) {
+            psi_r.allocate(ctx_.mem_pool(memory_t::device));
+        }
         for (int i = 0; i < kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col().local_size(); i++) {
             int j    = kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col()[i];
             double w = kp__->band_occupancy(j, 0) * kp__->weight() / omega;
 
             /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU memory */
-            fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(0).extra().template at<CPU>(0, i));
+            fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(0).extra().at(memory_t::host, 0, i));
             /* save in auxiliary buffer */
             switch (fft.pu()) {
                 case device_t::CPU: {
@@ -109,7 +111,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
             }
 
             /* transform dn- component of spinor wave function */
-            fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(1).extra().template at<CPU>(0, i));
+            fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(1).extra().at(memory_t::host, 0, i));
 
             switch (fft.pu()) {
                 case CPU: {
@@ -173,6 +175,5 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     }
 
     fft.dismiss();
-    ctx_.mem_pool(memory_t::host).free(density_rg.at<CPU>());
 }
 

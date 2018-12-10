@@ -305,11 +305,11 @@ class Force
 
                 /* apw-apw block of the overlap matrix */
                 linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                                  alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), o.at<CPU>(), o.ld());
+                                  alm_row.at(memory_t::host), alm_row.ld(), alm_col.at(memory_t::host), alm_col.ld(), o.at(memory_t::host), o.ld());
 
                 /* apw-apw block of the Hamiltonian matrix */
                 linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                                  alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), h.at<CPU>(), h.ld());
+                                  alm_row.at(memory_t::host), alm_row.ld(), halm_col.at(memory_t::host), halm_col.ld(), h.at(memory_t::host), h.ld());
 
                 int iat = type.id();
 
@@ -797,7 +797,7 @@ class Force
             hamiltonian_.dismiss();
 
             /* global reduction */
-            kset_.comm().allreduce(forces_hubbard_.at<CPU>(), 3 * ctx_.unit_cell().num_atoms());
+            kset_.comm().allreduce(forces_hubbard_.at(memory_t::host), 3 * ctx_.unit_cell().num_atoms());
 
             return forces_hubbard_;
         }

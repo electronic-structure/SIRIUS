@@ -334,7 +334,7 @@ class HDF5_tree
         for (int i = 0; i < N; i++) {
             dims[i + 1] = (int)data.size(i);
         }
-        write(name, (T*)data.template at<CPU>(), dims);
+        write(name, (T*)data.template at(memory_t::host), dims);
     }
 
     /// Write a multidimensional array by name.
@@ -347,13 +347,13 @@ class HDF5_tree
         //    for (int i = 0; i < N; i++) {
         //        dims[i + 1] = (int)data.size(i);
         //    }
-        //    write(name, (double*)data.template at<CPU>(), dims);
+        //    write(name, (double*)data.template at(memory_t::host), dims);
         //} else {
         std::vector<int> dims(N);
         for (int i = 0; i < N; i++) {
             dims[i] = static_cast<int>(data__.size(i));
         }
-        write(name__, data__.template at<CPU>(), dims);
+        write(name__, data__.template at(memory_t::host), dims);
         //}
     }
 
@@ -406,7 +406,7 @@ class HDF5_tree
         for (int i = 0; i < N; i++) {
             dims[i + 1] = (int)data.size(i);
         }
-        read(name, (double*)data.template at<CPU>(), dims);
+        read(name, (double*)data.template at(memory_t::host), dims);
     }
 
     template <typename T, int N>
@@ -416,7 +416,7 @@ class HDF5_tree
         for (int i = 0; i < N; i++) {
             dims[i] = (int)data.size(i);
         }
-        read(name, data.template at<CPU>(), dims);
+        read(name, data.template at(memory_t::host), dims);
     }
 
     template <typename T, int N>

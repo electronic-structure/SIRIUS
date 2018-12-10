@@ -194,10 +194,9 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                                 dir);
         } // direction x, y, z
 
-        // use a memcpy here
-        memcpy(dn__.template at<CPU>(0, 0, 0, 0, 0, atom_id),
-               dn_tmp.template at<CPU>(),
-               sizeof(double_complex) * dn_tmp.size());
+        /* use a memcpy here */
+        std::memcpy(dn__.at(memory_t::host, 0, 0, 0, 0, 0, atom_id), dn_tmp.at(memory_t::host),
+                    sizeof(double_complex) * dn_tmp.size());
     } // atom_id
 
     #if defined(__GPU)

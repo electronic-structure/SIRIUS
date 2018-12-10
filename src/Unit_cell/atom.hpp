@@ -234,7 +234,7 @@ class Atom
                 #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
-                    std::memcpy(rf_coef.at<CPU>(0, 0, i), rf_spline[i].coeffs().at<CPU>(), nmtp * 4 * sizeof(double));
+                    std::memcpy(rf_coef.at<CPU>(0, 0, i), rf_spline[i].coeffs().at(memory_t::host), nmtp * 4 * sizeof(double));
                     // cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 *
                     // sizeof(double), tid);
                 }
@@ -251,7 +251,7 @@ class Atom
                     for (int j = 0; j < num_mag_dims + 1; j++) {
                         int idx         = lm + lmmax * i + lmmax * nrf * j;
                         vrf_spline[idx] = rf_spline[i] * v_spline[lm + j * lmmax];
-                        std::memcpy(vrf_coef.at<CPU>(0, 0, idx), vrf_spline[idx].coeffs().at<CPU>(),
+                        std::memcpy(vrf_coef.at<CPU>(0, 0, idx), vrf_spline[idx].coeffs().at(memory_t::host),
                                     nmtp * 4 * sizeof(double));
                         // cuda_async_copy_to_device(vrf_coef.at<GPU>(0, 0, idx), vrf_coef.at<CPU>(0, 0, idx), nmtp * 4
                         // *sizeof(double), tid);
@@ -409,15 +409,15 @@ class Atom
 
     inline void sync_radial_integrals(Communicator const& comm__, int const rank__)
     {
-        comm__.bcast(h_radial_integrals_.at<CPU>(), (int)h_radial_integrals_.size(), rank__);
+        comm__.bcast(h_radial_integrals_.at(memory_t::host), (int)h_radial_integrals_.size(), rank__);
         if (type().parameters().num_mag_dims()) {
-            comm__.bcast(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), rank__);
+            comm__.bcast(b_radial_integrals_.at(memory_t::host), (int)b_radial_integrals_.size(), rank__);
         }
     }
 
     inline void sync_occupation_matrix(Communicator const& comm__, int const rank__)
     {
-        comm__.bcast(occupation_matrix_.at<CPU>(), (int)occupation_matrix_.size(), rank__);
+        comm__.bcast(occupation_matrix_.at(memory_t::host), (int)occupation_matrix_.size(), rank__);
     }
 
     inline int offset_aw() const
@@ -544,19 +544,19 @@ class Atom
 
     inline void set_occupation_matrix(const double_complex* source)
     {
-        std::memcpy(occupation_matrix_.at<CPU>(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
+        std::memcpy(occupation_matrix_.at(memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
         apply_uj_correction_ = false;
     }
 
     inline void get_occupation_matrix(double_complex* destination)
     {
-        std::memcpy(destination, occupation_matrix_.at<CPU>(), 16 * 16 * 2 * 2 * sizeof(double_complex));
+        std::memcpy(destination, occupation_matrix_.at(memory_t::host), 16 * 16 * 2 * 2 * sizeof(double_complex));
     }
 
     inline void set_uj_correction_matrix(const int l, const double_complex* source)
     {
         uj_correction_l_ = l;
-        memcpy(uj_correction_matrix_.at<CPU>(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
+        memcpy(uj_correction_matrix_.at(memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
         apply_uj_correction_ = true;
     }
 

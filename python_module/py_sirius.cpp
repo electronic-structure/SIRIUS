@@ -645,7 +645,7 @@ py::class_<Free_atom>(m, "Free_atom")
             int ncols = arr.size(1);
             return py::array_t<complex_double>({nrows, ncols},
                                                {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
-                                               arr.data<CPU>(), obj);
+                                               arr.at(memory_t::host), obj);
         });
 
     py::class_<dmatrix<complex_double>, mdarray<complex_double,2>>(m, "dmatrix");
@@ -680,7 +680,7 @@ py::class_<Free_atom>(m, "Free_atom")
             /* TODO this might be a distributed array, should/can we use dask? */
             return py::array_t<complex_double>({nrows, ncols},
                                                {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
-                                               matrix_storage.prime().data<CPU>(),
+                                               matrix_storage.prime().at(memory_t::host),
                                                obj);
         },
              py::keep_alive<0, 1>())

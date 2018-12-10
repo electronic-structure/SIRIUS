@@ -996,14 +996,14 @@ inline void Unit_cell_symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
             int ja = sym_table_(ia, isym);
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
-                linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at<CPU>(), rotm.ld(),
-                                  frlm__.at<CPU>(0, 0, ia), frlm__.ld(), 1.0,
-                                  fsym.at<CPU>(0, 0, location.local_index), fsym.ld());
+                linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at(memory_t::host), rotm.ld(),
+                                  frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), 1.0,
+                                  fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
             }
         }
     }
-    double* sbuf = spl_atoms.local_size() ? fsym.at<CPU>() : nullptr;
-    comm__.allgather(sbuf, frlm__.at<CPU>(),
+    double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
+    comm__.allgather(sbuf, frlm__.at(memory_t::host),
                      lmmax * nrmax * spl_atoms.global_offset(),
                      lmmax * nrmax * spl_atoms.local_size());
 }
@@ -1043,15 +1043,15 @@ inline void Unit_cell_symmetry::symmetrize_vector_function(mdarray<double, 3>& v
             int ja = sym_table_(ia, isym);
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
-                linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha * S(2, 2), rotm.at<CPU>(), rotm.ld(),
-                                  vz_rlm__.at<CPU>(0, 0, ia), vz_rlm__.ld(), 1.0,
-                                  fsym.at<CPU>(0, 0, location.local_index), fsym.ld());
+                linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha * S(2, 2), rotm.at(memory_t::host), rotm.ld(),
+                                  vz_rlm__.at(memory_t::host, 0, 0, ia), vz_rlm__.ld(), 1.0,
+                                  fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
             }
         }
     }
 
-    double* sbuf = spl_atoms.local_size() ? fsym.at<CPU>() : nullptr;
-    comm__.allgather(sbuf, vz_rlm__.at<CPU>(),
+    double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
+    comm__.allgather(sbuf, vz_rlm__.at(memory_t::host),
                      lmmax * nrmax * spl_atoms.global_offset(),
                      lmmax * nrmax * spl_atoms.local_size());
 }
@@ -1094,9 +1094,9 @@ inline void Unit_cell_symmetry::symmetrize_vector_function(mdarray<double, 3>& v
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
                 for (int k: {0, 1, 2}) {
-                    linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at<CPU>(), rotm.ld(),
-                                      vrlm[k]->at<CPU>(0, 0, ia), vrlm[k]->ld(), 0.0,
-                                      vtmp.at<CPU>(0, 0, k), vtmp.ld());
+                    linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at(memory_t::host), rotm.ld(),
+                                      vrlm[k]->at(memory_t::host, 0, 0, ia), vrlm[k]->ld(), 0.0,
+                                      vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
                 }
                 #pragma omp parallel
                 for (int k: {0, 1, 2}) {
@@ -1114,8 +1114,8 @@ inline void Unit_cell_symmetry::symmetrize_vector_function(mdarray<double, 3>& v
     }
 
     for (int k: {0, 1, 2}) {
-        double* sbuf = spl_atoms.local_size() ? v_sym.at<CPU>(0, 0, 0, k) : nullptr;
-        comm__.allgather(sbuf, vrlm[k]->at<CPU>(),
+        double* sbuf = spl_atoms.local_size() ? v_sym.at(memory_t::host, 0, 0, 0, k) : nullptr;
+        comm__.allgather(sbuf, vrlm[k]->at(memory_t::host),
                          lmmax * nrmax * spl_atoms.global_offset(),
                          lmmax * nrmax * spl_atoms.local_size());
     }

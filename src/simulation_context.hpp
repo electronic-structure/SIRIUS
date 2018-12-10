@@ -946,8 +946,8 @@ class Simulation_context : public Simulation_parameters
             utils::timer t2("sirius::Simulation_context::sum_fg_fl_yg|mul");
             switch (processing_unit()) {
                 case CPU: {
-                    linalg<CPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at<CPU>(), zm.ld(), phase_factors.at<CPU>(),
-                                      phase_factors.ld(), tmp.at<CPU>(), tmp.ld());
+                    linalg<CPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::host), zm.ld(), phase_factors.at(memory_t::host),
+                                      phase_factors.ld(), tmp.at(memory_t::host), tmp.ld());
                     break;
                 }
                 case GPU: {

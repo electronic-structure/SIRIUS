@@ -790,35 +790,6 @@ class mdarray
         return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at_idx(mem__, idx__));
     }
 
-    /// TODO: remove in future
-    template <device_t pu>
-    inline T const* at_idx(index_type const idx__) const
-    {
-        switch (pu) {
-            case CPU: {
-                mdarray_assert(raw_ptr_ != nullptr);
-                return &raw_ptr_[idx__];
-            }
-            case GPU: {
-#ifdef __GPU
-                mdarray_assert(raw_ptr_device_ != nullptr);
-                return &raw_ptr_device_[idx__];
-#else
-                printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
-                exit(0);
-#endif
-            }
-        }
-        return nullptr;
-    }
-
-    /// TODO: remove in future
-    template <device_t pu>
-    inline T* at_idx(index_type const idx__)
-    {
-        return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).template at_idx<pu>(idx__));
-    }
-
     inline void call_constructor()
     {
         /* call constructor on non-trivial data */
@@ -1238,30 +1209,6 @@ class mdarray
         return const_cast<T&>(static_cast<mdarray<T, N> const&>(*this)[idx__]);
     }
 
-    template <device_t pu>
-    inline T* at() // TODO: remove this
-    {
-        return at_idx<pu>(0);
-    }
-
-    template <device_t pu>
-    inline T const* at() const // TODO: remove this
-    {
-        return at_idx<pu>(0);
-    }
-
-    template <device_t pu, typename... Args>
-    inline T* at(Args... args) // TODO: remove this
-    {
-        return at_idx<pu>(idx(args...));
-    }
-
-    template <device_t pu, typename... Args>
-    inline T const* at(Args... args) const // TODO: remove this
-    {
-        return at_idx<pu>(idx(args...));
-    }
-
     template <typename... Args>
     inline T const* at(memory_t mem__, Args... args) const
     {
@@ -1286,11 +1233,11 @@ class mdarray
         return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at(mem__));
     }
 
-    template <device_t pu>
-    typename std::enable_if<pu == device_t::CPU, T*>::type data() // TODO: remove this?
-    {
-        return raw_ptr_;
-    }
+    //template <device_t pu>
+    //typename std::enable_if<pu == device_t::CPU, T*>::type data() // TODO: remove this?
+    //{
+    //    return raw_ptr_;
+    //}
 
     /// Return total size (number of elements) of the array.
     inline size_t size() const

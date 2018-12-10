@@ -70,13 +70,11 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 
     dm.zero();
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         /* the communicator is always of size 1.  I need to allocate memory
            on the device manually */
         dm.allocate(memory_t::device);
     }
-    #endif
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int  ik = kset_.spl_num_kpoints(ikloc);
@@ -208,14 +206,8 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
         }
     }
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        dm.deallocate(memory_t::device);
-    }
-    #endif
-
-    // global reduction over k points
-    ctx_.comm_k().allreduce<double_complex, mpi_op_t::sum>(this->occupancy_number_.at<CPU>(),
+    /* global reduction over k points */
+    ctx_.comm_k().allreduce<double_complex, mpi_op_t::sum>(this->occupancy_number_.at(memory_t::host),
                                                            static_cast<int>(this->occupancy_number_.size()));
 
     // Now symmetrization procedure. We need to review that
