@@ -1380,7 +1380,7 @@ class mdarray
                 acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);
             } else {
                 /* asynchronous (non-blocking) copy */
-                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__, sid.id());
+                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__, sid);
             }
         }
         /* copy back from device to host */
@@ -1390,7 +1390,7 @@ class mdarray
                 acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__);
             } else {
                 /* asynchronous (non-blocking) copy */
-                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__, sid.id());
+                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__, sid);
             }
         }
 #endif

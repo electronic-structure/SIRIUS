@@ -338,9 +338,9 @@ inline void inner(device_t        pu__,
                         /* enqueue the gemm kernel */
                         local_inner(i0__ + i0, nrow, j0__ + j0, ncol, c_tmp.template at(memory_t::device, 0, s % num_streams), nrow, s % num_streams);
                         /* enqueue a copyout operation */
-                        acc::copyout(c_tmp.template at(memory_t::host, 0, s % num_streams), 
-                                     c_tmp.template at(memory_t::device, 0, s % num_streams),
-                                     nrow * ncol, s % num_streams);
+                        acc::copyout(c_tmp.at(memory_t::host, 0, s % num_streams), 
+                                     c_tmp.at(memory_t::device, 0, s % num_streams),
+                                     nrow * ncol, stream_id(s % num_streams));
 
                         /* lock the buffer */
                         #pragma omp atomic write
@@ -353,7 +353,7 @@ inline void inner(device_t        pu__,
                             state = buf_state[s % num_streams];
                         }
                         /* wait for the cuda stream to finish (both gemm and copyout) */
-                        acc::sync_stream(s % num_streams);
+                        acc::sync_stream(stream_id(s % num_streams));
                         /* sum over all MPI ranks */ 
                         comm.allreduce(c_tmp.template at(memory_t::host, 0, s % num_streams), nrow * ncol);
 
@@ -731,7 +731,7 @@ inline void inner(memory_t        mem__,
                         /* enqueue a copyout operation */
                         acc::copyout(c_tmp.at(memory_t::host, 0, s % num_streams), 
                                      c_tmp.at(memory_t::device, 0, s % num_streams),
-                                     nrow * ncol, s % num_streams);
+                                     nrow * ncol, stream_id(s % num_streams));
 
                         /* lock the buffer */
                         #pragma omp atomic write
@@ -744,7 +744,7 @@ inline void inner(memory_t        mem__,
                             state = buf_state[s % num_streams];
                         }
                         /* wait for the cuda stream to finish (both gemm and copyout) */
-                        acc::sync_stream(s % num_streams);
+                        acc::sync_stream(stream_id(s % num_streams));
                         /* sum over all MPI ranks */ 
                         comm.allreduce(c_tmp.template at(memory_t::host, 0, s % num_streams), nrow * ncol);
 

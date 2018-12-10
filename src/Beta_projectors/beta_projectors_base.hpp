@@ -428,7 +428,7 @@ inline void Beta_projectors_base::local_inner_aux<double_complex>(double_complex
     if (pp && gkvec_.comm().rank() == 0) {
 #ifdef __GPU
         if (ctx_.blas_linalg_t() == linalg_t::cublas) {
-            acc::sync_stream(-1);
+            acc::sync_stream(stream_id(-1));
         }
 #endif
         double t = t1.stop();

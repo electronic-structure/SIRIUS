@@ -230,9 +230,9 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
                     set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__, o__);
                 }
             }
-            acc::sync_stream(tid);
+            acc::sync_stream(stream_id(tid));
         }
-        acc::sync_stream(omp_get_max_threads());
+        acc::sync_stream(stream_id(omp_get_max_threads()));
         linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &linalg_const<double_complex>::one(),
                           alm_row.at(memory_t::device, 0, 0, s), alm_row.ld(), alm_col.at(memory_t::device, 0, 0, s), alm_col.ld(), &linalg_const<double_complex>::one(),
                           o__.at(memory_t::device), o__.ld(), omp_get_max_threads());

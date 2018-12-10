@@ -167,29 +167,13 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
                          beta_phi__.at(mem, offs, 0), nbeta,
                          &linalg_const<double_complex>::zero(),
                          work_.at(mem, offs), nbeta, stream_id(omp_get_thread_num()));
-
-        //switch (pu_) {
-        //    case CPU: {
-        //        linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at(memory_t::host, packed_mtrx_offset_(ia), ispn_block__), nbf,
-        //                          beta_phi__.at(memory_t::host, offs, 0), nbeta, work_.at(memory_t::host, offs), nbeta);
-
-        //        break;
-        //    }
-        //    case GPU: {
-        //        #ifdef __GPU
-        //        linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-        //                          beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
-        //        #endif
-        //        break;
-        //    }
-        //}
     }
     switch (pu_) {
         case device_t::GPU: {
 #ifdef __GPU
             /* wait for previous zgemms */
             #pragma omp parallel
-            acc::sync_stream(omp_get_thread_num());
+            acc::sync_stream(stream_id(omp_get_thread_num()));
 #endif
             break;
 
@@ -209,38 +193,13 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
     switch (pu_) {
         case device_t::GPU: {
 #ifdef __GPU
-            acc::sync_stream(-1);
+            acc::sync_stream(stream_id(-1));
 #endif
             break;
 
         }
         case device_t::CPU: break;
     }
-
-    ///* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-    //switch (pu_) {
-    //    case CPU: {
-    //        linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, linalg_const<double_complex>::one(), beta_gk.template at(memory_t::host),
-    //                          num_gkvec_loc, work_.at(memory_t::host), nbeta, linalg_const<double_complex>::one(),
-    //                          op_phi__.pw_coeffs(jspn).prime().at(memory_t::host, 0, idx0__),
-    //                          op_phi__.pw_coeffs(jspn).prime().ld());
-    //        break;
-    //    }
-    //    case GPU: {
-    //        #ifdef __GPU
-    //        /* wait for previous zgemms */
-    //        #pragma omp parallel
-    //        acc::sync_stream(omp_get_thread_num());
-
-    //        linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &linalg_const<double_complex>::one(), beta_gk.template at(memory_t::device),
-    //                          beta_gk.ld(), work_.at(memory_t::device), nbeta, &linalg_const<double_complex>::one(),
-    //                          op_phi__.pw_coeffs(jspn).prime().at<GPU>(0, idx0__),
-    //                          op_phi__.pw_coeffs(jspn).prime().ld());
-    //        acc::sync_stream(-1);
-    //        #endif
-    //        break;
-    //    }
-    //}
 }
 
 template<>
@@ -272,7 +231,7 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
 
     work_.zero();
     switch (pu_) {
-    case CPU: {
+    case device_t::CPU: {
         linalg<CPU>::gemm(0, 0, nbf,
                           n__, nbf,
                           op_.at(memory_t::host, packed_mtrx_offset_(ia), ispn_block__),
@@ -295,8 +254,8 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
 
         break;
     }
-    case GPU: {
-        #ifdef __GPU
+    case device_t::GPU: {
+#ifdef __GPU
         linalg<GPU>::gemm(0, 0, nbf,
                           n__, nbf,
                           op_.at(memory_t::device, packed_mtrx_offset_(ia), ispn_block__),
@@ -314,8 +273,8 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
                           &linalg_const<double_complex>::one(),
                           op_phi__.pw_coeffs(jspn).prime().at(memory_t::device, 0, idx0__),
                           op_phi__.pw_coeffs(jspn).prime().ld());
-        acc::sync_stream(-1);
-        #endif
+        acc::sync_stream(stream_id(-1));
+#endif
         break;
     }
     }
@@ -386,14 +345,14 @@ inline void Non_local_operator<double>::apply(int chunk__,
             #ifdef __GPU
             /* wait for previous zgemms */
             #pragma omp parallel
-            acc::sync_stream(omp_get_thread_num());
+            acc::sync_stream(stream_id(omp_get_thread_num()));
 
             linalg<GPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, &linalg_const<double>::one(),
                               reinterpret_cast<double*>(beta_gk.template at(memory_t::device)), 2 * num_gkvec_loc, work_.at(memory_t::device), nbeta,
                               &linalg_const<double>::one(),
                               reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at(memory_t::device, 0, idx0__)),
                               2 * num_gkvec_loc);
-            acc::sync_stream(-1);
+            acc::sync_stream(stream_id(-1));
             #endif
             break;
         }

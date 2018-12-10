@@ -306,7 +306,7 @@ class FFT3D : public FFT3D_grid
                     TERMINATE("wrong direction");
                 }
             }
-            acc::sync_stream(cufft_stream_id);
+            acc::sync_stream(stream_id(cufft_stream_id));
 #endif
         }
 
@@ -528,7 +528,7 @@ class FFT3D : public FFT3D_grid
                         break;
                     }
                 }
-                acc::sync_stream(cufft_stream_id);
+                acc::sync_stream(stream_id(cufft_stream_id));
 #endif
                 break;
             }
@@ -621,7 +621,7 @@ class FFT3D : public FFT3D_grid
                     break;
                 }
             }
-            acc::sync_stream(cufft_stream_id);
+            acc::sync_stream(stream_id(cufft_stream_id));
         }
 #endif
 

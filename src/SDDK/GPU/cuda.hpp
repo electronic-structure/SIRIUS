@@ -205,9 +205,9 @@ inline void destroy_streams()
 }
 
 /// Synchronize a single stream.
-inline void sync_stream(int stream_id__)
+inline void sync_stream(stream_id sid__)
 {
-    CALL_CUDA(cudaStreamSynchronize, (stream(stream_id(stream_id__))));
+    CALL_CUDA(cudaStreamSynchronize, (stream(sid__)));
 }
 
 /// Copy memory inside a device.
@@ -228,9 +228,9 @@ inline void copyin(T* target__, T const* source__, size_t n__)
 
 /// Asynchronous copy from host to device.
 template <typename T>
-inline void copyin(T* target__, T const* source__, size_t n__, int stream_id__)
+inline void copyin(T* target__, T const* source__, size_t n__, stream_id sid__)
 {
-    CALL_CUDA(cudaMemcpyAsync, (target__, source__, n__ * sizeof(T), cudaMemcpyHostToDevice, stream(stream_id(stream_id__))));
+    CALL_CUDA(cudaMemcpyAsync, (target__, source__, n__ * sizeof(T), cudaMemcpyHostToDevice, stream(sid__)));
 }
 
 /// 2D copy to the device.
@@ -242,10 +242,10 @@ inline void copyin(T* target__, int ld1__, T const* source__, int ld2__, int nro
 
 /// Asynchronous 2D copy to the device.
 template <typename T>
-inline void copyin(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__, int stream_id__)
+inline void copyin(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__, stream_id sid__)
 {
     CALL_CUDA(cudaMemcpy2DAsync, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__,
-                                  cudaMemcpyHostToDevice, stream(stream_id(stream_id__))));
+                                  cudaMemcpyHostToDevice, stream(sid__)));
 }
 
 /// Copy memory from device to host.
@@ -257,9 +257,9 @@ inline void copyout(T* target__, T const* source__, size_t n__)
 
 /// Asynchronous copy from device to host.
 template <typename T>
-inline void copyout(T* target__, T const* source__, size_t n__, int stream_id__)
+inline void copyout(T* target__, T const* source__, size_t n__, stream_id sid__)
 {
-    CALL_CUDA(cudaMemcpyAsync, (target__, source__, n__ * sizeof(T), cudaMemcpyDeviceToHost, stream(stream_id(stream_id__))));
+    CALL_CUDA(cudaMemcpyAsync, (target__, source__, n__ * sizeof(T), cudaMemcpyDeviceToHost, stream(sid__)));
 }
 
 /// 2D copy from device to host.
@@ -271,10 +271,10 @@ inline void copyout(T* target__, int ld1__, T const* source__, int ld2__, int nr
 
 /// Asynchronous 2D copy from device to host.
 template <typename T>
-inline void copyout(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__, int stream_id__)
+inline void copyout(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__, stream_id sid__)
 {
     CALL_CUDA(cudaMemcpy2D, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__,
-                             cudaMemcpyDeviceToHost, stream(stream_id(stream_id__))));
+                             cudaMemcpyDeviceToHost, stream(sid__)));
 }
 
 /// Zero the device memory.

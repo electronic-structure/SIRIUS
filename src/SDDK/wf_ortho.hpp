@@ -251,7 +251,7 @@ inline void orthogonalize(device_t                     pu__,
                                               e->mt_coeffs(s).prime().at(memory_t::device, 0, N__), e->mt_coeffs(s).prime().ld());
                         }
                         /* alpha should not go out of the scope, so wait */
-                        acc::sync_stream(-1);
+                        acc::sync_stream(stream_id(-1));
                     }
                     if (std::is_same<T, double>::value) {
                         double alpha{1};
@@ -265,10 +265,10 @@ inline void orthogonalize(device_t                     pu__,
                                               reinterpret_cast<double*>(o__.at(memory_t::device)), o__.ld(),
                                               reinterpret_cast<double*>(e->mt_coeffs(s).prime().at(memory_t::device, 0, N__)), 2 * e->mt_coeffs(s).prime().ld());
                         }
-                        acc::sync_stream(-1);
+                        acc::sync_stream(stream_id(-1));
                     }
                 }
-                acc::sync_stream(-1);
+                acc::sync_stream(stream_id(-1));
             }
 #endif
         }

@@ -194,8 +194,8 @@ inline void transform(device_t                     pu__,
     if (comm.size() == 1) {
         #ifdef __GPU
         if (pu__ == GPU) {
-            acc::copyin(mtrx__.template at(memory_t::device, irow0__, jcol0__), mtrx__.ld(),
-                        mtrx__.template at(memory_t::host, irow0__, jcol0__), mtrx__.ld(), m__, n__, 0);
+            acc::copyin(mtrx__.at(memory_t::device, irow0__, jcol0__), mtrx__.ld(),
+                        mtrx__.at(memory_t::host, irow0__, jcol0__), mtrx__.ld(), m__, n__, stream_id(0));
         }
         #endif
         T* ptr{nullptr};
@@ -216,7 +216,7 @@ inline void transform(device_t                     pu__,
         #ifdef __GPU
         if (pu__ == GPU) {
             /* wait for the stream to finish zgemm */
-            acc::sync_stream(0);
+            acc::sync_stream(stream_id(0));
         }
         #endif
         if (sddk_pp) {
@@ -309,7 +309,7 @@ inline void transform(device_t                     pu__,
             #ifdef __GPU
             if (pu__ == GPU) {
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
-                acc::sync_stream(s % num_streams);
+                acc::sync_stream(stream_id(s % num_streams));
             }
             #endif
 
@@ -329,10 +329,10 @@ inline void transform(device_t                     pu__,
                 assert(sd.counts[rank] == counts[rank]);
             }
             #ifdef __GPU
-            if (pu__ == GPU) {
-                acc::copyin(submatrix.template at(memory_t::device, 0, 0, s % num_streams), submatrix.ld(),
-                            submatrix.template at(memory_t::host, 0, 0, s % num_streams), submatrix.ld(),
-                            nrow, ncol, s % num_streams);
+            if (pu__ == device_t::GPU) {
+                acc::copyin(submatrix.at(memory_t::device, 0, 0, s % num_streams), submatrix.ld(),
+                            submatrix.at(memory_t::host, 0, 0, s % num_streams), submatrix.ld(),
+                            nrow, ncol, stream_id(s % num_streams));
             }
             #endif
             T* ptr{nullptr};
@@ -356,7 +356,7 @@ inline void transform(device_t                     pu__,
             /* wait for the full block of columns (update of different wave-functions);
              * otherwise cuda streams can start updating the same block of output wave-functions */
             for (int s = 0; s < num_streams; s++) {
-                acc::sync_stream(s);
+                acc::sync_stream(stream_id(s));
             }
         }
         #endif
@@ -554,8 +554,8 @@ inline void transform(memory_t                     mem__,
     if (comm.size() == 1) {
 #ifdef __GPU
         if (is_device_memory(mem__)) {
-            acc::copyin(mtrx__.template at(memory_t::device, irow0__, jcol0__), mtrx__.ld(),
-                        mtrx__.template at(memory_t::host, irow0__, jcol0__), mtrx__.ld(), m__, n__, 0);
+            acc::copyin(mtrx__.at(memory_t::device, irow0__, jcol0__), mtrx__.ld(),
+                        mtrx__.at(memory_t::host, irow0__, jcol0__), mtrx__.ld(), m__, n__, stream_id(0));
         }
 #endif
         T* ptr = mtrx__.at(mem__, irow0__, jcol0__);
@@ -566,7 +566,7 @@ inline void transform(memory_t                     mem__,
 #ifdef __GPU
         if (is_device_memory(mem__)) {
             /* wait for the stream to finish zgemm */
-            acc::sync_stream(0);
+            acc::sync_stream(stream_id(0));
         }
 #endif
         if (sddk_pp) {
@@ -659,7 +659,7 @@ inline void transform(memory_t                     mem__,
 #ifdef __GPU
             if (is_device_memory(mem__)) {
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
-                acc::sync_stream(s % num_streams);
+                acc::sync_stream(stream_id(s % num_streams));
             }
 #endif
 
@@ -682,7 +682,7 @@ inline void transform(memory_t                     mem__,
             if (is_device_memory(mem__)) {
                 acc::copyin(submatrix.at(memory_t::device, 0, 0, s % num_streams), submatrix.ld(),
                             submatrix.at(memory_t::host, 0, 0, s % num_streams), submatrix.ld(),
-                            nrow, ncol, s % num_streams);
+                            nrow, ncol, stream_id(s % num_streams));
             }
 #endif
             T* ptr = submatrix.at(mem__, 0, 0, s % num_streams);
@@ -698,7 +698,7 @@ inline void transform(memory_t                     mem__,
             /* wait for the full block of columns (update of different wave-functions);
              * otherwise cuda streams can start updating the same block of output wave-functions */
             for (int s = 0; s < num_streams; s++) {
-                acc::sync_stream(s);
+                acc::sync_stream(stream_id(s));
             }
         }
 #endif
