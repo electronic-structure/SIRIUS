@@ -62,7 +62,7 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
 
-    cudaStream_t stream = acc::stream(stream_id__);
+    cudaStream_t stream = acc::stream(stream_id(stream_id__));
 
     mul_veff_with_phase_factors_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
     (

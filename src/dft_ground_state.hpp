@@ -238,6 +238,10 @@ class DFT_ground_state
         kset_.update();
         potential_.update();
         density_.update();
+
+        if (!ctx_.full_potential()) {
+            ewald_energy_ = ewald_energy();
+        }
     }
 
     /// Return reference to a simulation context.
@@ -705,7 +709,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         }
         potential_.save();
         density_.save();
-        kset_.save(storage_file_name);
+        //kset_.save(storage_file_name);
     }
 
     json dict = serialize();

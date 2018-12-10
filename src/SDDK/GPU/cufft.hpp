@@ -146,7 +146,7 @@ inline void set_work_area(cufftHandle plan, void* work_area)
 
 inline void set_stream(cufftHandle plan__, int stream_id__)
 {
-    CALL_CUFFT(cufftSetStream, (plan__, acc::stream(stream_id__)));
+    CALL_CUFFT(cufftSetStream, (plan__, acc::stream(stream_id(stream_id__))));
 }
 
 inline void forward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer)

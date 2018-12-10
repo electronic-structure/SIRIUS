@@ -70,14 +70,14 @@ inline void Density::generate_valence(K_point_set const& ks__)
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
+            if (is_device_memory(ctx_.preferred_memory_t())) {
                 /* allocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+                kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
                 kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd); // TODO: copy this asynchronously
             }
 #endif
             /* swap wave functions for the FFT transformation */
-            kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(CPU, nbnd, 0, &ctx_.mem_pool(memory_t::host));
+            kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(nbnd, 0, &ctx_.mem_pool(memory_t::host));
         }
 
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::full_potential_lapwlo) {
@@ -96,7 +96,7 @@ inline void Density::generate_valence(K_point_set const& ks__)
         add_k_point_contribution_rg(kp);
 
 #ifdef __GPU
-        if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
+        if (is_device_memory(ctx_.preferred_memory_t())) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
@@ -106,7 +106,7 @@ inline void Density::generate_valence(K_point_set const& ks__)
     }
 
     if (density_matrix_.size()) {
-        ctx_.comm().allreduce(density_matrix_.at<CPU>(), static_cast<int>(density_matrix_.size()));
+        ctx_.comm().allreduce(density_matrix_.at<device_t::CPU>(), static_cast<int>(density_matrix_.size()));
     }
 
     ctx_.fft_coarse().prepare(ctx_.gvec_coarse_partition());
@@ -115,6 +115,7 @@ inline void Density::generate_valence(K_point_set const& ks__)
         /* reduce arrays; assume that each rank did its own fraction of the density */
         /* comm_ortho_fft is idential to a product of column communicator inside k-point with k-point communicator */
         comm.allreduce(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()); 
+        /* print checksum if needed */
         if (ctx_.control().print_checksum_) {
             auto cs = mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()).checksum();
             ctx_.fft_coarse().comm().allreduce(&cs, 1);

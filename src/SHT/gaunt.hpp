@@ -25,7 +25,7 @@
 #ifndef __GAUNT_HPP__
 #define __GAUNT_HPP__
 
-#include "mdarray.hpp"
+#include "memory.hpp"
 
 namespace sirius {
 

@@ -218,7 +218,7 @@ class Stress {
             int ik = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
+            if (is_device_memory(ctx_.preferred_memory_t())) {
                 int nbnd = ctx_.num_bands();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* allocate GPU memory */
@@ -229,11 +229,11 @@ class Stress {
 #endif
             Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
 
-            Non_local_functor<T, 9> nlf(ctx_, bp_strain_deriv);
+            Non_local_functor<T> nlf(ctx_, bp_strain_deriv);
 
             nlf.add_k_point_contribution(*kp, collect_result);
 #ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
+            if (is_device_memory(ctx_.preferred_memory_t())) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* deallocate GPU memory */
                     kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
@@ -971,7 +971,7 @@ class Stress {
                     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
                         const auto& atom = ctx_.unit_cell().atom(ia1);
                         if (atom.type().hubbard_correction()) {
-                            const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
+                            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
                             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                                 for (int m1 = 0; m1 < lmax_at; m1++) {
                                     for (int m2 = 0; m2 < lmax_at; m2++) {

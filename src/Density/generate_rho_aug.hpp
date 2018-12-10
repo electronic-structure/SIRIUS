@@ -27,10 +27,10 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 {
     PROFILE("sirius::Density::generate_rho_aug");
 
-    rho_aug__.zero<(pu == CPU) ? memory_t::host : memory_t::device>();
-    
+    rho_aug__.zero((pu == CPU) ? memory_t::host : memory_t::device);
+
     if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
-        ctx_.augmentation_op(0).prepare(0);
+        ctx_.augmentation_op(0).prepare(stream_id(0));
     }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -41,7 +41,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
             acc::sync_stream(0);
             if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment() &&
                 ctx_.unit_cell().atom_type(iat + 1).num_atoms() > 0) {
-                ctx_.augmentation_op(iat + 1).prepare(0);
+                ctx_.augmentation_op(iat + 1).prepare(stream_id(0));
             }
         }
 #endif
@@ -54,7 +54,14 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 
         /* convert to real matrix */
         auto dm = density_matrix_aux(iat);
-        
+
+        if (ctx_.control().print_checksum_) {
+             auto cs = dm.checksum();
+             if (ctx_.comm().rank() == 0) {
+                utils::print_checksum("density_matrix_aux", cs);
+             }
+        }
+
         if (pu == CPU) {
             utils::timer t2("sirius::Density::generate_rho_aug|phase_fac");
             /* treat phase factors as real array with x2 size */
@@ -148,7 +155,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
     if (pu == GPU) {
         rho_aug__.copy<memory_t::device, memory_t::host>();
     }
-    
+
     if (ctx_.control().print_checksum_) {
          auto cs = rho_aug__.checksum();
          ctx_.comm().allreduce(&cs, 1);

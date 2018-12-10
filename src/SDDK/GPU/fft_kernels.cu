@@ -121,12 +121,12 @@ extern "C" void cufft_batch_load_gpu(int                    fft_size,
                                      int const*             map, 
                                      cuDoubleComplex const* data, 
                                      cuDoubleComplex*       fft_buffer,
-                                     int                    stream_id)
+                                     int                    stream_id__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_pw_components, grid_t.x), num_fft);
 
-    cudaStream_t stream = acc::stream(stream_id);
+    cudaStream_t stream = acc::stream(stream_id(stream_id__));
 
     acc::zero(fft_buffer, fft_size * num_fft);
 
@@ -173,12 +173,12 @@ extern "C" void cufft_batch_unload_gpu(int                    fft_size,
                                        cuDoubleComplex*       data,
                                        double                 alpha,
                                        double                 beta,
-                                       int                    stream_id)
+                                       int                    stream_id__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_pw_components, grid_t.x), num_fft);
 
-    cudaStream_t stream = acc::stream(stream_id);
+    cudaStream_t stream = acc::stream(stream_id(stream_id__));
 
     if (alpha == 0) {
         acc::zero(data, num_pw_components);
@@ -213,12 +213,12 @@ extern "C" void cufft_load_x0y0_col_gpu(int                    z_col_size,
                                         int const*             map,
                                         cuDoubleComplex const* data,
                                         cuDoubleComplex*       fft_buffer,
-                                        int                    stream_id)
+                                        int                    stream_id__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(z_col_size, grid_t.x));
 
-    cudaStream_t stream = acc::stream(stream_id);
+    cudaStream_t stream = acc::stream(stream_id(stream_id__));
 
     cufft_load_x0y0_col_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
     (
@@ -268,7 +268,7 @@ extern "C" void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                                   bool             use_reduction__, 
                                   int              stream_id__)
 {
-    cudaStream_t stream = acc::stream(stream_id__);
+    cudaStream_t stream = acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);
@@ -308,7 +308,7 @@ extern "C" void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                                 int const*       z_col_pos__,
                                 int              stream_id__)
 {
-    cudaStream_t stream = acc::stream(stream_id__);
+    cudaStream_t stream = acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);
@@ -375,7 +375,7 @@ extern "C" void unpack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
                                     int const*       z_col_pos__,
                                     int              stream_id__)
 {
-    cudaStream_t stream = acc::stream(stream_id__);
+    cudaStream_t stream = acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);
@@ -416,7 +416,7 @@ extern "C" void pack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
                                   int const*       z_col_pos__,
                                   int              stream_id__)
 {
-    cudaStream_t stream = acc::stream(stream_id__);
+    cudaStream_t stream = acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);

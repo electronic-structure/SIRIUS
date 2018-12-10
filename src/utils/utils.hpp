@@ -37,6 +37,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <complex>
+#include "json.hpp"
 
 /// Namespace for simple utility functions.
 namespace utils {
@@ -305,9 +306,9 @@ inline double confined_polynomial(double r, double R, int p1, int p2, int dm)
 
 /// Read json dictionary from file or string.
 /** Terminate if file doesn't exist. */
-inline json read_json_from_file_or_string(std::string const& str__)
+inline nlohmann::json read_json_from_file_or_string(std::string const& str__)
 {
-    json dict = {};
+    nlohmann::json dict = {};
     if (str__.size() == 0) {
         return std::move(dict);
     }
@@ -467,6 +468,21 @@ template <>
 inline std::complex<double> random<std::complex<double>>()
 {
     return std::complex<double>(random<double>(), random<double>());
+}
+
+inline long get_page_size()
+{
+    return sysconf(_SC_PAGESIZE);
+}
+
+inline long get_num_pages()
+{
+    return sysconf(_SC_PHYS_PAGES);
+}
+
+inline long get_total_memory()
+{
+    return get_page_size() * get_num_pages();
 }
 
 } // namespace
