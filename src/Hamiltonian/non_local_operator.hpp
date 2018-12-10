@@ -143,19 +143,20 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
         int nbf  = beta_.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
         int offs = beta_.chunk(chunk__).desc_(beta_desc_idx::offset, i);
         int ia   = beta_.chunk(chunk__).desc_(beta_desc_idx::ia, i);
-        switch (pu_) {
-            case CPU: {
-                linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-                                  beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
-
-                break;
-            }
-            case GPU: {
-                #ifdef __GPU
-                linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-                                  beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
-                #endif
-                break;
+        if (nbf != 0) {
+            switch (pu_) {
+                case CPU: {
+                    linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
+                                      beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
+                    break;
+                }
+                case GPU: {
+                    #ifdef __GPU
+                    linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
+                                      beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
+                    #endif
+                    break;
+                }
             }
         }
     }
@@ -214,6 +215,10 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
     int nbf  = beta_.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
     int offs = beta_.chunk(chunk__).desc_(beta_desc_idx::offset, i);
     int ia   = beta_.chunk(chunk__).desc_(beta_desc_idx::ia, i);
+
+    if (nbf == 0) {
+        return;
+    }
 
     work_.zero();
     switch (pu_) {
@@ -302,22 +307,23 @@ inline void Non_local_operator<double>::apply(int chunk__,
         int offs = beta_.chunk(chunk__).desc_(beta_desc_idx::offset, i);
         int ia   = beta_.chunk(chunk__).desc_(beta_desc_idx::ia, i);
 
-        switch (pu_) {
-            case CPU: {
-                linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-                                  beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
-                break;
-            }
-            case GPU: {
-                #ifdef __GPU
-                linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-                                  beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
-                break;
-                #endif
+        if (nbf != 0) {
+            switch (pu_) {
+                 case CPU: {
+                     linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
+                                       beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
+                     break;
+                 }
+                 case GPU: {
+                     #ifdef __GPU
+                     linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
+                                       beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
+                     break;
+                     #endif
+                 }
             }
         }
     }
-
     /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
     switch (pu_) {
         case CPU: {
