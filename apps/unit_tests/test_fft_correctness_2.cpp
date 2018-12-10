@@ -24,8 +24,8 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
     }
     mdarray<double_complex, 1> g(gvp.gvec_count_fft());
 
-    fft.transform<1>(f.at<CPU>());
-    fft.transform<-1>(g.at<CPU>());
+    fft.transform<1>(f.at(memory_t::host));
+    fft.transform<-1>(g.at(memory_t::host));
 
     double diff{0};
     for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
