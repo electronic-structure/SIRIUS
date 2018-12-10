@@ -105,22 +105,23 @@ inline void Potential::generate_D_operator_matrix()
                 case GPU: {
 #ifdef __GPU
                     /* copy plane wave coefficients of effective potential to GPU */
-                    mdarray<double_complex, 1> veff(&component(iv).f_pw_local(0), veff_tmp.at<GPU>(),
+                    mdarray<double_complex, 1> veff(&component(iv).f_pw_local(0), veff_tmp.at(memory_t::device),
                                                     ctx_.gvec().count());
-                    veff.copy<memory_t::host, memory_t::device>();
+                    veff.copy_to(memory_t::device);
 
                     matrix<double> veff_a(2 * ctx_.gvec().count(), atom_type.num_atoms(), memory_t::device);
 
                     d_tmp.allocate(memory_t::device);
 
-                    mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ctx_.gvec().count(), veff.at<GPU>(),
-                                                    ctx_.gvec_coord().at<GPU>(), ctx_.unit_cell().atom_coord(iat).at<GPU>(),
-                                                    veff_a.at<GPU>(), 1);
+                    mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ctx_.gvec().count(), veff.at(memory_t::device),
+                                                    ctx_.gvec_coord().at(memory_t::device),
+                                                    ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
+                                                    veff_a.at(memory_t::device), 1);
 
                     linalg<GPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                                       ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp, 1);
 
-                    d_tmp.copy<memory_t::device, memory_t::host>();
+                    d_tmp.copy_to(memory_t::host);
 #endif
                     break;
                 }

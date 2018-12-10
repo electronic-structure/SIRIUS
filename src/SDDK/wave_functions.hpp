@@ -161,11 +161,11 @@ class Wave_functions
                 }
                 case device_t::GPU: {
 #ifdef __GPU
-                    add_square_sum_gpu(pw_coeffs(is).prime().at<GPU>(), pw_coeffs(is).num_rows_loc(), n__,
-                                       gkvecp_.gvec().reduced(), comm_.rank(), s.at<GPU>());
+                    add_square_sum_gpu(pw_coeffs(is).prime().at(memory_t::device), pw_coeffs(is).num_rows_loc(), n__,
+                                       gkvecp_.gvec().reduced(), comm_.rank(), s.at(memory_t::device));
                     if (has_mt()) {
-                        add_square_sum_gpu(mt_coeffs(is).prime().at<GPU>(), mt_coeffs(is).num_rows_loc(), n__, 0,
-                                           comm_.rank(), s.at<GPU>());
+                        add_square_sum_gpu(mt_coeffs(is).prime().at(memory_t::device), mt_coeffs(is).num_rows_loc(), n__, 0,
+                                           comm_.rank(), s.at(memory_t::device));
                     }
 #endif
                     break;

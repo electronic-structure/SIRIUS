@@ -124,7 +124,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
                 kp->hubbard_wave_functions().pw_coeffs(ispn).deallocate_on_device();
             }
 
-            dm.copy<memory_t::device, memory_t::host>();
+            dm.copy_to(memory_t::host);
         }
         #endif
 

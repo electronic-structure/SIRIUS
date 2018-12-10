@@ -330,11 +330,11 @@ class Beta_projectors_base
                 auto& desc = chunk(ichunk__).desc_;
                 create_beta_gk_gpu(chunk(ichunk__).num_atoms_,
                                    num_gkvec_loc(),
-                                   desc.template at<GPU>(),
-                                   pw_coeffs_t_.template at<GPU>(0, 0, j__),
-                                   gkvec_coord_.template at<GPU>(),
-                                   chunk(ichunk__).atom_pos_.template at<GPU>(),
-                                   pw_coeffs_a().template at<GPU>());
+                                   desc.at(memory_t::device),
+                                   pw_coeffs_t_.at(memory_t::device, 0, 0, j__),
+                                   gkvec_coord_.at(memory_t::device),
+                                   chunk(ichunk__).atom_pos_.at(memory_t::device),
+                                   pw_coeffs_a().at(memory_t::device));
 #endif
                 /* wave-functions are on CPU but the beta-projectors are on GPU */
                 if (gkvec_.comm().rank() == 0 && is_host_memory(ctx_.preferred_memory_t())) {

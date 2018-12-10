@@ -235,14 +235,14 @@ class linalg<GPU>: public linalg_base
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<T> const& A, matrix<T> const& B,
                          matrix<T>& C, int stream_id = -1)
         {
-            gemm(transa, transb, m, n, k, A.template at<GPU>(), A.ld(), B.template at<GPU>(), B.ld(), C.template at<GPU>(), C.ld(), stream_id);
+            gemm(transa, transb, m, n, k, A.at(memory_t::device), A.ld(), B.at(memory_t::device), B.ld(), C.at(memory_t::device), C.ld(), stream_id);
         }
 
         template <typename T>
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, const T *alpha, matrix<T> const& A, matrix<T> const& B, const T *beta,
                          matrix<T>& C, int stream_id = -1)
         {
-            gemm(transa, transb, m, n, k, alpha, A.template at<GPU>(), A.ld(), B.template at<GPU>(), B.ld(), beta, C.template at<GPU>(), C.ld(), stream_id);
+            gemm(transa, transb, m, n, k, alpha, A.at(memory_t::device), A.ld(), B.at(memory_t::device), B.ld(), beta, C.at(memory_t::device), C.ld(), stream_id);
         }
 
         /// Cholesky factorization
@@ -873,11 +873,11 @@ inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix
     ftn_double_complex z;
     ftn_int info;
     ftn_int lda = A.ld();
-    FORTRAN(zgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, &z, &z, &lwork, &info);
+    FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
     lwork = static_cast<int>(z.real() + 1);
     std::vector<ftn_double_complex> work(lwork);
     std::vector<ftn_double_complex> tau(std::max(m, n));
-    FORTRAN(zgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+    FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
 }
 
 template <>
@@ -887,11 +887,11 @@ inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_dou
     ftn_double z;
     ftn_int info;
     ftn_int lda = A.ld();
-    FORTRAN(dgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, &z, &z, &lwork, &info);
+    FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
     lwork = static_cast<int>(z + 1);
     std::vector<ftn_double> work(lwork);
     std::vector<ftn_double> tau(std::max(m, n));
-    FORTRAN(dgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+    FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
 }
 
 template<>
@@ -902,7 +902,8 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
                                                   ftn_double_complex beta,
                                                   dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
 {
-    gemm(transa, transb, m, n, k, alpha, A.at<CPU>(ia, ja), A.ld(), B.at<CPU>(ib, jb), B.ld(), beta, C.at<CPU>(ic, jc), C.ld());
+    gemm(transa, transb, m, n, k, alpha, A.at(memory_t::host, ia, ja), A.ld(), B.at(memory_t::host, ib, jb), B.ld(),
+         beta, C.at(memory_t::host, ic, jc), C.ld());
 }
 
 template<>
@@ -922,7 +923,8 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
                                           ftn_double beta,
                                           dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
 {
-    gemm(transa, transb, m, n, k, alpha, A.at<CPU>(ia, ja), A.ld(), B.at<CPU>(ib, jb), B.ld(), beta, C.at<CPU>(ic, jc), C.ld());
+    gemm(transa, transb, m, n, k, alpha, A.at(memory_t::host, ia, ja), A.ld(), B.at(memory_t::host, ib, jb), B.ld(),
+         beta, C.at(memory_t::host, ic, jc), C.ld());
 }
 
 template<>

@@ -71,7 +71,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                     }
                     case GPU: {
 #ifdef __GPU
-                        update_density_rg_1_gpu(fft.local_size(), fft.buffer().at<GPU>(), w,
+                        update_density_rg_1_gpu(fft.local_size(), fft.buffer().at(memory_t::device), w,
                                                 density_rg.at(memory_t::device, 0, ispn));
 #else
                         TERMINATE_NO_GPU
@@ -104,7 +104,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                 }
                 case device_t::GPU: {
 #ifdef __GPU
-                    acc::copyout(psi_r.at<GPU>(), fft.buffer().at<GPU>(), fft.local_size());
+                    acc::copyout(psi_r.at(memory_t::device), fft.buffer().at(memory_t::device), fft.local_size());
 #endif
                     break;
                 }
@@ -132,12 +132,14 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                 case GPU: {
 #ifdef __GPU
                     /* add up-up contribution */
-                    update_density_rg_1_gpu(fft.local_size(), psi_r.at<GPU>(), w, density_rg.at<GPU>(0, 0));
+                    update_density_rg_1_gpu(fft.local_size(), psi_r.at(memory_t::device), w,
+                                            density_rg.at(memory_t::device, 0, 0));
                     /* add dn-dn contribution */
-                    update_density_rg_1_gpu(fft.local_size(), fft.buffer().at<GPU>(), w, density_rg.at<GPU>(0, 1));
+                    update_density_rg_1_gpu(fft.local_size(), fft.buffer().at(memory_t::device), w,
+                                            density_rg.at(memory_t::device, 0, 1));
                     /* add off-diagonal contribution */
-                    update_density_rg_2_gpu(fft.local_size(), psi_r.at<GPU>(), fft.buffer().at<GPU>(), w,
-                                            density_rg.at<GPU>(0, 2), density_rg.at<GPU>(0, 3));
+                    update_density_rg_2_gpu(fft.local_size(), psi_r.at(memory_t::device), fft.buffer().at(memory_t::device), w,
+                                            density_rg.at(memory_t::device, 0, 2), density_rg.at(memory_t::device, 0, 3));
 #endif
                     break;
                 }

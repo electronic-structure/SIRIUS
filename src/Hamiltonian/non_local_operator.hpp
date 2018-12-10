@@ -286,7 +286,7 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
                           num_gkvec_loc,
                           n__, nbf,
                           linalg_const<double_complex>::one(),
-                          beta_gk.template at(memory_t::host, 0, offs),
+                          beta_gk.at(memory_t::host, 0, offs),
                           num_gkvec_loc,
                           work_.at(memory_t::host), nbf,
                           linalg_const<double_complex>::one(),
@@ -299,9 +299,9 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
         #ifdef __GPU
         linalg<GPU>::gemm(0, 0, nbf,
                           n__, nbf,
-                          op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__),
+                          op_.at(memory_t::device, packed_mtrx_offset_(ia), ispn_block__),
                           nbf,
-                          beta_phi__.at<GPU>(offs, 0),
+                          beta_phi__.at(memory_t::device, offs, 0),
                           nbeta,
                           work_.at(memory_t::device),
                           nbf, -1);
@@ -309,10 +309,10 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
                           num_gkvec_loc,
                           n__, nbf,
                           &linalg_const<double_complex>::one(),
-                          beta_gk.template at<GPU>(0, offs),
+                          beta_gk.at(memory_t::device, 0, offs),
                           beta_gk.ld(), work_.at(memory_t::device), nbf,
                           &linalg_const<double_complex>::one(),
-                          op_phi__.pw_coeffs(jspn).prime().at<GPU>(0, idx0__),
+                          op_phi__.pw_coeffs(jspn).prime().at(memory_t::device, 0, idx0__),
                           op_phi__.pw_coeffs(jspn).prime().ld());
         acc::sync_stream(-1);
         #endif
@@ -365,8 +365,8 @@ inline void Non_local_operator<double>::apply(int chunk__,
             }
             case GPU: {
                 #ifdef __GPU
-                linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-                                  beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
+                linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at(memory_t::device, packed_mtrx_offset_(ia), ispn_block__), nbf,
+                                  beta_phi__.at(memory_t::device, offs, 0), nbeta, work_.at(memory_t::device, offs), nbeta, omp_get_thread_num());
                 break;
                 #endif
             }
@@ -376,7 +376,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
     /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
     switch (pu_) {
         case CPU: {
-            linalg<CPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, 1.0, reinterpret_cast<double*>(beta_gk.template at(memory_t::host)),
+            linalg<CPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, 1.0, reinterpret_cast<double*>(beta_gk.at(memory_t::host)),
                               2 * num_gkvec_loc, work_.at(memory_t::host), nbeta, 1.0,
                               reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at(memory_t::host, 0, idx0__)),
                               2 * op_phi__.pw_coeffs(jspn).prime().ld());
@@ -391,7 +391,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
             linalg<GPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, &linalg_const<double>::one(),
                               reinterpret_cast<double*>(beta_gk.template at(memory_t::device)), 2 * num_gkvec_loc, work_.at(memory_t::device), nbeta,
                               &linalg_const<double>::one(),
-                              reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at<GPU>(0, idx0__)),
+                              reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at(memory_t::device, 0, idx0__)),
                               2 * num_gkvec_loc);
             acc::sync_stream(-1);
             #endif

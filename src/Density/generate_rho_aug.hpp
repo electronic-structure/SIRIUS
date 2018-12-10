@@ -117,9 +117,8 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
         }
 
 #ifdef __GPU
-        if (pu == GPU) {
-            dm.allocate(memory_t::device);
-            dm.copy<memory_t::host, memory_t::device>();
+        if (pu == device_t::GPU) {
+            dm.allocate(memory_t::device).copy_to(memory_t::device);
 
             /* treat auxiliary array as double with x2 size */
             mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
@@ -132,18 +131,18 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
                 generate_dm_pw_gpu(atom_type.num_atoms(),
                                    ctx_.gvec().count(),
                                    nbf,
-                                   ctx_.unit_cell().atom_coord(iat).at<GPU>(),
-                                   ctx_.gvec_coord().at<GPU>(),
-                                   phase_factors.at<GPU>(),
-                                   dm.at<GPU>(0, 0, iv),
-                                   dm_pw.at<GPU>(),
+                                   ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
+                                   ctx_.gvec_coord().at(memory_t::device),
+                                   phase_factors.at(memory_t::device),
+                                   dm.at(memory_t::device, 0, 0, iv),
+                                   dm_pw.at(memory_t::device),
                                    1);
                 sum_q_pw_dm_pw_gpu(ctx_.gvec().count(), 
                                    nbf,
-                                   ctx_.augmentation_op(iat).q_pw().at<GPU>(),
-                                   dm_pw.at<GPU>(),
-                                   ctx_.augmentation_op(iat).sym_weight().at<GPU>(),
-                                   rho_aug__.at<GPU>(0, iv),
+                                   ctx_.augmentation_op(iat).q_pw().at(memory_t::device),
+                                   dm_pw.at(memory_t::device),
+                                   ctx_.augmentation_op(iat).sym_weight().at(memory_t::device),
+                                   rho_aug__.at(memory_t::device, 0, iv),
                                    1);
             }
             acc::sync_stream(1);

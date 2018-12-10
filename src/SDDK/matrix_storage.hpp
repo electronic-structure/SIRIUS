@@ -440,7 +440,7 @@ class matrix_storage<T, matrix_storage_t::slab>
             }
             case memory_t::device: {
 #ifdef __GPU
-                scale_matrix_elements_gpu(reinterpret_cast<cuDoubleComplex*>(prime().template at<GPU>(0, i0__)),
+                scale_matrix_elements_gpu(reinterpret_cast<cuDoubleComplex*>(prime().at(memory_t::device, 0, i0__)),
                                           prime().ld(), num_rows_loc(), n__, beta__);
 #endif
                 break;
@@ -471,7 +471,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     void copy_to_device(int i0__, int n__)
     {
         if (num_rows_loc()) {
-            acc::copyin(prime_.template at<GPU>(0, i0__), prime_.template at<CPU>(0, i0__), n__ * num_rows_loc());
+            acc::copyin(prime_.at(memory_t::device, 0, i0__), prime_.at(memory_t::host, 0, i0__), n__ * num_rows_loc());
         }
     }
 
@@ -479,7 +479,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     void copy_to_host(int i0__, int n__)
     {
         if (num_rows_loc()) {
-            acc::copyout(prime_.template at<CPU>(0, i0__), prime_.template at<GPU>(0, i0__), n__ * num_rows_loc());
+            acc::copyout(prime_.at(memory_t::host, 0, i0__), prime_.at(memory_t::device, 0, i0__), n__ * num_rows_loc());
         }
     }
 #endif
@@ -505,7 +505,7 @@ class matrix_storage<T, matrix_storage_t::slab>
                 cs1.zero(memory_t::device);
 #ifdef __GPU
                 add_checksum_gpu(prime().at(memory_t::device, 0, i0__), num_rows_loc(), n__, cs1.at(memory_t::device));
-                cs1.copy<memory_t::device, memory_t::host>();
+                cs1.copy_to(memory_t::host);
                 cs = cs1.checksum();
 #endif
                 break;

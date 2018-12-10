@@ -154,11 +154,9 @@ void Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
             // }
         }
 
-        #ifdef __GPU
-        if (ctx_.processing_unit()) {
-            S.copy<memory_t::device, memory_t::host>();
+        if (ctx_.processing_unit() == device_t::GPU) {
+            S.copy_to(memory_t::host);
         }
-        #endif
 
         // diagonalize the all stuff
 
@@ -197,11 +195,9 @@ void Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
             }
         }
 
-        #ifdef __GPU
-        if (ctx_.processing_unit()) {
-            S.copy<memory_t::host, memory_t::device>();
+        if (ctx_.processing_unit() == device_t::GPU) {
+            S.copy_to(memory_t::device);
         }
-        #endif
 
         // only need to do that when in the ultra soft case
         if (augment) {
