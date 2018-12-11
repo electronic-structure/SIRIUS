@@ -164,21 +164,22 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
 
                             // compute Q_ij <\beta_i|\phi> |d \beta_j> and add it to d\phi
                             {
-                                // < beta | phi> for this chunk
-                                auto beta_phi =
-                                    kp.beta_projectors().inner<double_complex>(chunk__, phi, 0, 0, this->number_of_hubbard_orbitals());
-                                q_op.apply_one_atom(chunk__, 0, dphi, 0, this->number_of_hubbard_orbitals(), bp_grad_, beta_phi, i);
+                                /* <beta | phi> for this chunk */
+                                auto beta_phi = kp.beta_projectors().inner<double_complex>(chunk__, phi, 0, 0,
+                                                                                           this->number_of_hubbard_orbitals());
+                                q_op.apply(chunk__, i, 0, dphi, 0, this->number_of_hubbard_orbitals(), bp_grad_, beta_phi);
                             }
 
                             // compute Q_ij <d \beta_i|\phi> |\beta_j> and add it to d\phi
                             {
-                                // < dbeta | phi> for this chunk
-                                auto dbeta_phi = bp_grad_.inner<double_complex>(chunk__, phi, 0, 0, this->number_of_hubbard_orbitals());
+                                /* <dbeta | phi> for this chunk */
+                                auto dbeta_phi = bp_grad_.inner<double_complex>(chunk__, phi, 0, 0,
+                                                                                this->number_of_hubbard_orbitals());
 
                                 /* apply Q operator (diagonal in spin) */
                                 /* Effectively compute Q_ij <d beta_i| phi> |beta_j> and add it dphi */
-                                q_op.apply_one_atom(chunk__, 0, dphi, 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(), dbeta_phi,
-                                                    i);
+                                q_op.apply(chunk__, i, 0, dphi, 0, this->number_of_hubbard_orbitals(),
+                                           kp.beta_projectors(), dbeta_phi);
                             }
                         }
                     }
