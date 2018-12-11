@@ -130,7 +130,7 @@ def get_c0_x(kpointset, eps=0):
     """
 
     """
-    from . import PwCoeffs
+    from .coefficient_array import PwCoeffs
     import numpy as np
 
     c0 = PwCoeffs(kpointset)
