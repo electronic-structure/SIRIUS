@@ -637,7 +637,7 @@ py::class_<Free_atom>(m, "Free_atom")
     py::class_<mdarray<complex_double, 2>>(m, "mdarray2c")
         .def("on_device", &mdarray<complex_double, 2>::on_device)
         .def("copy_to_host", [](mdarray<complex_double, 2>& mdarray) {
-            mdarray.copy<memory_t::device, memory_t::host>();
+            mdarray.copy_to(memory_t::host);
         })
         .def("__array__", [](py::object& obj) {
             mdarray<complex_double, 2>& arr = obj.cast<mdarray<complex_double, 2>&>();
@@ -645,7 +645,7 @@ py::class_<Free_atom>(m, "Free_atom")
             int ncols = arr.size(1);
             return py::array_t<complex_double>({nrows, ncols},
                                                {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
-                                               arr.data<CPU>(), obj);
+                                               arr.at(memory_t::host), obj);
         });
 
     py::class_<dmatrix<complex_double>, mdarray<complex_double,2>>(m, "dmatrix");
@@ -680,7 +680,7 @@ py::class_<Free_atom>(m, "Free_atom")
             /* TODO this might be a distributed array, should/can we use dask? */
             return py::array_t<complex_double>({nrows, ncols},
                                                {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
-                                               matrix_storage.prime().data<CPU>(),
+                                               matrix_storage.prime().at(memory_t::host),
                                                obj);
         },
              py::keep_alive<0, 1>())

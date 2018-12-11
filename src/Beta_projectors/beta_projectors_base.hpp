@@ -143,12 +143,9 @@ class Beta_projectors_base
             beta_chunks_[ib].offset_ = offset_in_beta_gk;
             offset_in_beta_gk += num_beta;
 
-            if (ctx_.processing_unit() == GPU) {
-                beta_chunks_[ib].desc_.allocate(memory_t::device);
-                beta_chunks_[ib].desc_.template copy<memory_t::host, memory_t::device>();
-
-                beta_chunks_[ib].atom_pos_.allocate(memory_t::device);
-                beta_chunks_[ib].atom_pos_.template copy<memory_t::host, memory_t::device>();
+            if (ctx_.processing_unit() == device_t::GPU) {
+                beta_chunks_[ib].desc_.allocate(memory_t::device).copy_to(memory_t::device);
+                beta_chunks_[ib].atom_pos_.allocate(memory_t::device).copy_to(memory_t::device);
             }
         }
 
@@ -196,7 +193,7 @@ class Beta_projectors_base
                     gkvec_coord_(x, igk_loc) = vgk[x];
                 }
             }
-            gkvec_coord_.copy<memory_t::host, memory_t::device>();
+            gkvec_coord_.copy_to(memory_t::device);
         }
     }
 
@@ -270,7 +267,7 @@ class Beta_projectors_base
             utils::timer t1("sirius::Beta_projectors_base::inner|comm");
             /* copy to host for MPI reduction */
             if (is_device_memory(ctx_.preferred_memory_t())) {
-                beta_phi.template copy<memory_t::device, memory_t::host>();
+                beta_phi.copy_to(memory_t::host);
             }
             /* MPI reduction on the host */
             gkvec_.comm().allreduce(beta_phi.at(memory_t::host), static_cast<int>(beta_phi.size()));
@@ -281,10 +278,10 @@ class Beta_projectors_base
                 /* copy back to device */
                 if ((gkvec_.comm().size() > 1 && is_device_memory(ctx_.preferred_memory_t())) ||
                     is_host_memory(ctx_.preferred_memory_t())) {
-                    beta_phi.template copy<memory_t::host, memory_t::device>();
+                    beta_phi.copy_to(memory_t::device);
                 }
                 if (is_device_memory(ctx_.preferred_memory_t())) {
-                    beta_phi.template copy<memory_t::device, memory_t::host>();
+                    beta_phi.copy_to(memory_t::host);
                 }
                 break;
             }
@@ -333,11 +330,11 @@ class Beta_projectors_base
                 auto& desc = chunk(ichunk__).desc_;
                 create_beta_gk_gpu(chunk(ichunk__).num_atoms_,
                                    num_gkvec_loc(),
-                                   desc.template at<GPU>(),
-                                   pw_coeffs_t_.template at<GPU>(0, 0, j__),
-                                   gkvec_coord_.template at<GPU>(),
-                                   chunk(ichunk__).atom_pos_.template at<GPU>(),
-                                   pw_coeffs_a().template at<GPU>());
+                                   desc.at(memory_t::device),
+                                   pw_coeffs_t_.at(memory_t::device, 0, 0, j__),
+                                   gkvec_coord_.at(memory_t::device),
+                                   chunk(ichunk__).atom_pos_.at(memory_t::device),
+                                   pw_coeffs_a().at(memory_t::device));
 #endif
                 /* wave-functions are on CPU but the beta-projectors are on GPU */
                 if (gkvec_.comm().rank() == 0 && is_host_memory(ctx_.preferred_memory_t())) {
@@ -376,8 +373,7 @@ class Beta_projectors_base
         }
 
         if (ctx_.processing_unit() == device_t::GPU && reallocate_pw_coeffs_t_on_gpu_) {
-            pw_coeffs_t_.allocate(memory_t::device);
-            pw_coeffs_t_.template copy<memory_t::host, memory_t::device>();
+            pw_coeffs_t_.allocate(memory_t::device).copy_to(memory_t::device);
         }
     }
 
@@ -432,7 +428,7 @@ inline void Beta_projectors_base::local_inner_aux<double_complex>(double_complex
     if (pp && gkvec_.comm().rank() == 0) {
 #ifdef __GPU
         if (ctx_.blas_linalg_t() == linalg_t::cublas) {
-            acc::sync_stream(-1);
+            acc::sync_stream(stream_id(-1));
         }
 #endif
         double t = t1.stop();

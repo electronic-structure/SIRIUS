@@ -194,10 +194,9 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                                 dir);
         } // direction x, y, z
 
-        // use a memcpy here
-        memcpy(dn__.template at<CPU>(0, 0, 0, 0, 0, atom_id),
-               dn_tmp.template at<CPU>(),
-               sizeof(double_complex) * dn_tmp.size());
+        /* use a memcpy here */
+        std::memcpy(dn__.at(memory_t::host, 0, 0, 0, 0, 0, atom_id), dn_tmp.at(memory_t::host),
+                    sizeof(double_complex) * dn_tmp.size());
     } // atom_id
 
     #if defined(__GPU)
@@ -481,12 +480,11 @@ void Hubbard::compute_occupancies(K_point&                    kp,
               0, this->number_of_hubbard_orbitals(), dphi_s_psi, 0, ispn * this->number_of_hubbard_orbitals());
     }
 
-    #if defined(__GPU)
-    if (ctx_.processing_unit() == GPU) {
-        dphi_s_psi.copy<memory_t::device, memory_t::host>();
-        phi_s_psi.copy<memory_t::device, memory_t::host>();
+    if (ctx_.processing_unit() == device_t::GPU) {
+        dphi_s_psi.copy_to(memory_t::host);
+        phi_s_psi.copy_to(memory_t::host);
     }
-    #endif
+
     /* include the occupancy directly in dphi_s_psi */
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -496,11 +494,9 @@ void Hubbard::compute_occupancies(K_point&                    kp,
             }
         }
     }
-    #if defined(__GPU)
-    if (ctx_.processing_unit() == GPU) {
-        dphi_s_psi.copy<memory_t::host, memory_t::device>();
+    if (ctx_.processing_unit() == device_t::GPU) {
+        dphi_s_psi.copy_to(memory_t::device);
     }
-    #endif
 
     dm.zero(memory_t::host);
     dm.zero(memory_t::device);
@@ -553,7 +549,7 @@ void Hubbard::compute_occupancies(K_point&                    kp,
                               &linalg_const<double_complex>::one(),
                               dm);
 
-            dm.copy<memory_t::device, memory_t::host>();
+            dm.copy_to(memory_t::host);
 #endif
             break;
         }

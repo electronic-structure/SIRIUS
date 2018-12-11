@@ -51,7 +51,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                     /* add |psi_j> n_j <psi_j| to density matrix */
                     linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, linalg_const<double_complex>::one(),
                                       &wf1(0, 0), wf1.ld(), &wf2(0, 0), wf2.ld(), linalg_const<double_complex>::one(),
-                                      density_matrix__.at<CPU>(0, 0, ispn, ia), density_matrix__.ld());
+                                      density_matrix__.at(memory_t::host, 0, 0, ispn, ia), density_matrix__.ld());
                 }
             }
         } else {
@@ -79,13 +79,13 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                 for (int ispn = 0; ispn < 2; ispn++) {
                     linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, linalg_const<double_complex>::one(),
                                       &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(),
-                                      linalg_const<double_complex>::one(), density_matrix__.at<CPU>(0, 0, ispn, ia),
+                                      linalg_const<double_complex>::one(), density_matrix__.at(memory_t::host, 0, 0, ispn, ia),
                                       density_matrix__.ld());
                 }
                 /* offdiagonal term */
                 linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, linalg_const<double_complex>::one(),
                                   &wf1(0, 0, 1), wf1.ld(), &wf2(0, 0, 0), wf2.ld(), linalg_const<double_complex>::one(),
-                                  density_matrix__.at<CPU>(0, 0, 2, ia), density_matrix__.ld());
+                                  density_matrix__.at(memory_t::host, 0, 0, 2, ia), density_matrix__.ld());
             }
         }
     } else { /* pseudopotential */

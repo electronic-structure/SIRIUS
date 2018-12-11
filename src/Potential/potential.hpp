@@ -1096,7 +1096,7 @@ class Potential : public Field4D
 
     inline void set_veff_pw(double_complex const* veff_pw__)
     {
-        std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at<CPU>());
+        std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at(memory_t::host));
     }
 
     double_complex const& rm_inv_pw(int ig__) const
@@ -1106,7 +1106,7 @@ class Potential : public Field4D
 
     inline void set_rm_inv_pw(double_complex const* rm_inv_pw__)
     {
-        std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at<CPU>());
+        std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at(memory_t::host));
     }
 
     double_complex const& rm2_inv_pw(int ig__) const
@@ -1116,7 +1116,7 @@ class Potential : public Field4D
 
     inline void set_rm2_inv_pw(double_complex const* rm2_inv_pw__)
     {
-        std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at<CPU>());
+        std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at(memory_t::host));
     }
 
     /// Integral of \f$ \rho({\bf r}) V^{XC}({\bf r}) \f$.

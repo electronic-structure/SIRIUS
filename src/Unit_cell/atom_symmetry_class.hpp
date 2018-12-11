@@ -762,18 +762,18 @@ inline void Atom_symmetry_class::sync_radial_functions(Communicator const& comm_
 {
     /* don't broadcast Hamiltonian radial functions, because they are used locally */
     int size = (int)(radial_functions_.size(0) * radial_functions_.size(1));
-    comm__.bcast(radial_functions_.at<CPU>(), size, rank__);
-    comm__.bcast(aw_surface_derivatives_.at<CPU>(), (int)aw_surface_derivatives_.size(), rank__);
+    comm__.bcast(radial_functions_.at(memory_t::host), size, rank__);
+    comm__.bcast(aw_surface_derivatives_.at(memory_t::host), (int)aw_surface_derivatives_.size(), rank__);
     // TODO: sync enu to pass to Exciting / Elk
 }
 
 inline void Atom_symmetry_class::sync_radial_integrals(Communicator const& comm__, int const rank__)
 {
-    comm__.bcast(h_spherical_integrals_.at<CPU>(), (int)h_spherical_integrals_.size(), rank__);
-    comm__.bcast(o_radial_integrals_.at<CPU>(), (int)o_radial_integrals_.size(), rank__);
-    comm__.bcast(so_radial_integrals_.at<CPU>(), (int)so_radial_integrals_.size(), rank__);
+    comm__.bcast(h_spherical_integrals_.at(memory_t::host), (int)h_spherical_integrals_.size(), rank__);
+    comm__.bcast(o_radial_integrals_.at(memory_t::host), (int)o_radial_integrals_.size(), rank__);
+    comm__.bcast(so_radial_integrals_.at(memory_t::host), (int)so_radial_integrals_.size(), rank__);
     if (atom_type_.parameters().valence_relativity() == relativity_t::iora) {
-        comm__.bcast(o1_radial_integrals_.at<CPU>(), (int)o1_radial_integrals_.size(), rank__);
+        comm__.bcast(o1_radial_integrals_.at(memory_t::host), (int)o1_radial_integrals_.size(), rank__);
     }
 }
 

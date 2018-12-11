@@ -161,10 +161,8 @@ class Radial_grid
 
     void copy_to_device()
     {
-        x_.allocate(memory_t::device);
-        x_.template copy<memory_t::host, memory_t::device>();
-        dx_.allocate(memory_t::device);
-        dx_.template copy<memory_t::host, memory_t::device>();
+        x_.allocate(memory_t::device).copy_to(memory_t::device);
+        dx_.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
     mdarray<T, 1> const& x() const

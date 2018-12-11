@@ -144,7 +144,7 @@ class Periodic_function : public Smooth_periodic_function<T>
 
     inline void copy_to_global_ptr(T* f_mt__, T* f_it__) const
     {
-        std::memcpy(f_it__, this->f_rg_.template at<CPU>(), this->fft_->local_size() * sizeof(T));
+        std::memcpy(f_it__, this->f_rg_.at(memory_t::host), this->fft_->local_size() * sizeof(T));
 
         if (ctx_.full_potential()) {
             mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());

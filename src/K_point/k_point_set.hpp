@@ -416,7 +416,7 @@ inline void K_point_set::sync_band_energies()
             }
         }
     }
-    comm().allgather(band_energies.at<CPU>(),
+    comm().allgather(band_energies.at(memory_t::host),
                      ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.global_offset(),
                      ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.local_size());
 
