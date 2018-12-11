@@ -38,7 +38,7 @@ extern "C" void create_beta_gk_gpu(int                   num_atoms,
                                    double_complex*       beta_gk);
 #endif
 
-enum beta_desc_idx 
+enum beta_desc_idx
 {
     nbf      = 0,
     offset   = 1,
@@ -416,13 +416,13 @@ inline void Beta_projectors_base::local_inner_aux<double_complex>(double_complex
 {
     utils::timer t1("sirius::Beta_projectors_base::local_inner_aux");
     linalg2(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta__, n__, num_gkvec_loc(),
-            &linalg_const<double_complex>::one(),
-            beta_pw_coeffs_a_ptr__,
-            num_gkvec_loc(),
-            phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
-            phi__.pw_coeffs(ispn__).prime().ld(),
-            &linalg_const<double_complex>::zero(),
-            beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
+                                       &linalg_const<double_complex>::one(),
+                                       beta_pw_coeffs_a_ptr__,
+                                       num_gkvec_loc(),
+                                       phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
+                                       phi__.pw_coeffs(ispn__).prime().ld(),
+                                       &linalg_const<double_complex>::zero(),
+                                       beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
 
     auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
     if (pp && gkvec_.comm().rank() == 0) {
@@ -443,13 +443,13 @@ inline void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs
                                                           matrix<double>& beta_phi__) const
 {
     linalg2(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta__, n__, 2 * num_gkvec_loc(),
-            &linalg_const<double>::two(),
-            beta_pw_coeffs_a_ptr__,
-            2 * num_gkvec_loc(),
-            reinterpret_cast<double const*>(phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__)),
-            2 * phi__.pw_coeffs(ispn__).prime().ld(),
-            &linalg_const<double>::zero(),
-            beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
+                                       &linalg_const<double>::two(),
+                                       beta_pw_coeffs_a_ptr__,
+                                       2 * num_gkvec_loc(),
+                                       reinterpret_cast<double const*>(phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__)),
+                                       2 * phi__.pw_coeffs(ispn__).prime().ld(),
+                                       &linalg_const<double>::zero(),
+                                       beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
 
     /* rank 0 has to do some extra work for Gamma-point case */
     if (gkvec_.comm().rank() == 0) {

@@ -488,7 +488,9 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
         rhomin = std::min(rhomin, d);
         rho.f_rg(ir) = std::max(d, 0.0);
     }
-    if (rhomin < 0.0 && std::abs(rhomin) > 1e-9) {
+    ctx_.fft().comm().allreduce<double, mpi_op_t::min>(&rhomin, 1);
+    /* even a small negative density is a sign of something bing wrong; don't remove this check */
+    if (rhomin < 0.0 && ctx_.comm().rank() == 0) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
@@ -501,11 +503,11 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
             utils::print_hash("rho", h);
         }
     }
-    
+
     Smooth_periodic_function_gradient<double> grad_rho;
     Smooth_periodic_function<double> lapl_rho;
     Smooth_periodic_function<double> grad_rho_grad_rho;
-    
+
     if (is_gga) {
         /* use fft_transfrom of the base class (Smooth_periodic_function) */
         rho.fft_transform(-1);
@@ -521,7 +523,7 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
 
         /* product of gradients */
         grad_rho_grad_rho = dot(grad_rho, grad_rho);
-        
+
         /* Laplacian in real space */
         lapl_rho.fft_transform(1);
 
@@ -576,7 +578,7 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
             if (ixc.is_gga()) {
                 std::vector<double> vrho_t(spl_np_t.local_size());
                 std::vector<double> vsigma_t(spl_np_t.local_size());
-                
+
                 ixc.get_gga(spl_np_t.local_size(), 
                             &rho.f_rg(spl_np_t.global_offset()), 
                             &grad_rho_grad_rho.f_rg(spl_np_t.global_offset()),
@@ -674,7 +676,8 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
     }
     t1.stop();
 
-    if (rhomin < 0.0 && std::abs(rhomin) > 1e-9) {
+    ctx_.fft().comm().allreduce<double, mpi_op_t::min>(&rhomin, 1);
+    if (rhomin < 0.0 && ctx_.comm().rank() == 0) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
