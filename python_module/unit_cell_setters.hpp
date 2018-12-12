@@ -48,7 +48,6 @@ void set_lattice_vectors(Unit_cell& unit_cell,
     auto to_vector = [](pybind11::buffer in)
                        {
                            buffer_info info = in.request();
-                           int npositions = info.shape[0];
                            // checks
                            if (info.ndim != 1) {
                                throw std::runtime_error("Error: set_lattice_vectors expected a vector");
