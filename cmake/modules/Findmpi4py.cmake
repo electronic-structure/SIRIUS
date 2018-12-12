@@ -1,10 +1,7 @@
 
 include(FindPackageHandleStandardArgs)
 
-find_package(Python${PYTHON_VERSION_MAJOR} COMPONENTS Interpreter)
-
-set(pyinterp "${Python${PYTHON_VERSION_MAJOR}_EXECUTABLE}")
-message("py interp: ${pyinterp}")
+set(pyinterp "python${PYTHON_VERSION_MAJOR}")
 exec_program(${pyinterp} ARGS
   -c
   "'import mpi4py; import os; print(os.path.dirname(mpi4py.__file__))'"
