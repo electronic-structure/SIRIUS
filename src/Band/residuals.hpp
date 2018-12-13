@@ -88,19 +88,19 @@ static void compute_res(device_t            pu__,
             }
             case GPU: {
                 #ifdef __GPU
-                compute_residuals_gpu(hpsi__.pw_coeffs(ispn).prime().at<GPU>(),
-                                      opsi__.pw_coeffs(ispn).prime().at<GPU>(),
-                                      res__.pw_coeffs(ispn).prime().at<GPU>(),
+                compute_residuals_gpu(hpsi__.pw_coeffs(ispn).prime().at(memory_t::device),
+                                      opsi__.pw_coeffs(ispn).prime().at(memory_t::device),
+                                      res__.pw_coeffs(ispn).prime().at(memory_t::device),
                                       res__.pw_coeffs(ispn).num_rows_loc(),
                                       num_bands__,
-                                      eval__.at<GPU>());
+                                      eval__.at(memory_t::device));
                 if (res__.has_mt()) {
-                    compute_residuals_gpu(hpsi__.mt_coeffs(ispn).prime().at<GPU>(),
-                                          opsi__.mt_coeffs(ispn).prime().at<GPU>(),
-                                          res__.mt_coeffs(ispn).prime().at<GPU>(),
+                    compute_residuals_gpu(hpsi__.mt_coeffs(ispn).prime().at(memory_t::device),
+                                          opsi__.mt_coeffs(ispn).prime().at(memory_t::device),
+                                          res__.mt_coeffs(ispn).prime().at(memory_t::device),
                                           res__.mt_coeffs(ispn).num_rows_loc(),
                                           num_bands__,
-                                          eval__.at<GPU>());
+                                          eval__.at(memory_t::device));
                 }
                 #endif
             }
@@ -143,19 +143,19 @@ static void apply_p(device_t            pu__,
             }
             case GPU: {
                 #ifdef __GPU
-                apply_preconditioner_gpu(res__.pw_coeffs(ispn).prime().at<GPU>(),
+                apply_preconditioner_gpu(res__.pw_coeffs(ispn).prime().at(memory_t::device),
                                          res__.pw_coeffs(ispn).num_rows_loc(),
                                          num_bands__,
-                                         eval__.at<GPU>(),
-                                         h_diag__.at<GPU>(0, ispn),
-                                         o_diag__.at<GPU>());
+                                         eval__.at(memory_t::device),
+                                         h_diag__.at(memory_t::device, 0, ispn),
+                                         o_diag__.at(memory_t::device));
                 if (res__.has_mt()) {
-                    apply_preconditioner_gpu(res__.mt_coeffs(ispn).prime().at<GPU>(),
+                    apply_preconditioner_gpu(res__.mt_coeffs(ispn).prime().at(memory_t::device),
                                              res__.mt_coeffs(ispn).num_rows_loc(),
                                              num_bands__,
-                                             eval__.at<GPU>(),
-                                             h_diag__.at<GPU>(res__.pw_coeffs(ispn).num_rows_loc(), ispn),
-                                             o_diag__.at<GPU>(res__.pw_coeffs(ispn).num_rows_loc()));
+                                             eval__.at(memory_t::device),
+                                             h_diag__.at(memory_t::device, res__.pw_coeffs(ispn).num_rows_loc(), ispn),
+                                             o_diag__.at(memory_t::device, res__.pw_coeffs(ispn).num_rows_loc()));
                 }
                 break;
                 #endif
@@ -195,14 +195,14 @@ static void normalize_res(device_t            pu__,
                 #ifdef __GPU
                 scale_matrix_columns_gpu(res__.pw_coeffs(ispn).num_rows_loc(),
                                          num_bands__,
-                                         res__.pw_coeffs(ispn).prime().at<GPU>(),
-                                         p_norm__.at<GPU>());
+                                         res__.pw_coeffs(ispn).prime().at(memory_t::device),
+                                         p_norm__.at(memory_t::device));
 
                 if (res__.has_mt()) {
                     scale_matrix_columns_gpu(res__.mt_coeffs(ispn).num_rows_loc(),
                                              num_bands__,
-                                             res__.mt_coeffs(ispn).prime().at<GPU>(),
-                                             p_norm__.at<GPU>());
+                                             res__.mt_coeffs(ispn).prime().at(memory_t::device),
+                                             p_norm__.at(memory_t::device));
                 }
                 #endif
                 break;
@@ -230,8 +230,7 @@ Band::residuals_aux(K_point*             kp__,
 
     mdarray<double, 1> eval(eval__.data(), num_bands__, "residuals_aux::eval");
     if (pu == device_t::GPU) {
-        eval.allocate(memory_t::device);
-        eval.copy<memory_t::host, memory_t::device>();
+        eval.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
     /* compute residuals */
@@ -247,7 +246,7 @@ Band::residuals_aux(K_point*             kp__,
         p_norm[i] = 1.0 / p_norm[i];
     }
     if (pu == device_t::GPU) {
-        p_norm.copy<memory_t::host, memory_t::device>();
+        p_norm.copy_to(memory_t::device);
     }
 
     /* normalize preconditioned residuals */
@@ -406,7 +405,7 @@ inline int Band::residuals(K_point*             kp__,
             }
             case GPU: {
 #ifdef __GPU
-                make_real_g0_gpu(res__.pw_coeffs(ispn__).prime().at<GPU>(), res__.pw_coeffs(ispn__).prime().ld(), n);
+                make_real_g0_gpu(res__.pw_coeffs(ispn__).prime().at(memory_t::device), res__.pw_coeffs(ispn__).prime().ld(), n);
 #endif
                 break;
             }

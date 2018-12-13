@@ -45,7 +45,7 @@ double test_gemm(int M, int N, int K, int transa)
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
     utils::timer t1("gemm_only"); 
-    linalg<CPU>::gemm(transa, 0, M, N, K, a.at<CPU>(), a.ld(), b.at<CPU>(), b.ld(), c.at<CPU>(), c.ld());
+    linalg<CPU>::gemm(transa, 0, M, N, K, a.at(memory_t::host), a.ld(), b.at(memory_t::host), b.ld(), c.at(memory_t::host), c.ld());
     double tval = t1.stop();
     double perf = nop_gemm * 1e-9 * M * N * K / tval;
     printf("execution time (sec) : %12.6f\n", tval);

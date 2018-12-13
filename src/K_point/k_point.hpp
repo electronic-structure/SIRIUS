@@ -1267,7 +1267,7 @@ inline void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
     //        fv_evec(j, i) = fv_eigen_vectors_(jloc, iloc);
     //    }
     //}
-    //comm_.allreduce(fv_evec.at<CPU>(), (int)fv_evec.size());
+    //comm_.allreduce(fv_evec.at(memory_t::host), (int)fv_evec.size());
 }
 
 inline void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
@@ -1300,7 +1300,7 @@ inline void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
         }
     }
 
-    comm_.allreduce(sv_evec.at<CPU>(), (int)sv_evec.size());
+    comm_.allreduce(sv_evec.at(memory_t::host), (int)sv_evec.size());
 }
 
 #include "initialize.hpp"

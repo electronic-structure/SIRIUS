@@ -399,8 +399,8 @@ class Unit_cell
                         atom_coord_[iat](i, x) = atom(ia).position()[x];
                     }
                 }
-                if (parameters_.processing_unit() == GPU) {
-                    atom_coord_[iat].copy<memory_t::host, memory_t::device>();
+                if (parameters_.processing_unit() == device_t::GPU) {
+                    atom_coord_[iat].copy_to(memory_t::device);
                 }
             }
         }

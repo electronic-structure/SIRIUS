@@ -59,7 +59,7 @@ class Smooth_periodic_function
     /// Gather plane-wave coefficients for the subsequent FFT call.
     inline void gather_f_pw_fft()
     {
-        gvecp_->gather_pw_fft(f_pw_local_.at<CPU>(), f_pw_fft_.at<CPU>());
+        gvecp_->gather_pw_fft(f_pw_local_.at(memory_t::host), f_pw_fft_.at(memory_t::host));
     }
 
   public:
@@ -165,16 +165,17 @@ class Smooth_periodic_function
         switch (direction__) {
             case 1: {
                 gather_f_pw_fft();
-                fft_->transform<1>(f_pw_fft_.at<CPU>());
-                fft_->output(f_rg_.template at<CPU>());
+                fft_->transform<1>(f_pw_fft_.at(memory_t::host));
+                fft_->output(f_rg_.at(memory_t::host));
                 break;
             }
             case -1: {
-                fft_->input(f_rg_.template at<CPU>());
-                fft_->transform<-1>(f_pw_fft_.at<CPU>());
+                fft_->input(f_rg_.at(memory_t::host));
+                fft_->transform<-1>(f_pw_fft_.at(memory_t::host));
                 int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
                 int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
-                std::memcpy(f_pw_local_.at<CPU>(), f_pw_fft_.at<CPU>(offset), count * sizeof(double_complex));
+                std::memcpy(f_pw_local_.at(memory_t::host), f_pw_fft_.at(memory_t::host, offset),
+                            count * sizeof(double_complex));
                 break;
             }
             default: {

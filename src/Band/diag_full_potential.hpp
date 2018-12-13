@@ -165,12 +165,12 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
         //                   [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
         //
         //for (int i = 0; i < ctx_.num_fv_states(); i++) {
-        //    std::memcpy(phi.pw_coeffs().prime().at<CPU>(0, i),
-        //                kp->fv_eigen_vectors().at<CPU>(0, i),
+        //    std::memcpy(phi.pw_coeffs().prime().at(memory_t::host, 0, i),
+        //                kp->fv_eigen_vectors().at(memory_t::host, 0, i),
         //                kp->num_gkvec() * sizeof(double_complex));
         //    if (unit_cell_.mt_lo_basis_size()) {
-        //        std::memcpy(phi.mt_coeffs().prime().at<CPU>(0, i),
-        //                    kp->fv_eigen_vectors().at<CPU>(kp->num_gkvec(), i),
+        //        std::memcpy(phi.mt_coeffs().prime().at(memory_t::host, 0, i),
+        //                    kp->fv_eigen_vectors().at(memory_t::host, kp->num_gkvec(), i),
         //                    unit_cell_.mt_lo_basis_size() * sizeof(double_complex));
         //    }
         //}
@@ -212,10 +212,8 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
     }
 
     if (ctx_.processing_unit() == GPU) {
-        o_diag.allocate(memory_t::device);
-        o_diag.copy<memory_t::host, memory_t::device>();
-        diag1.allocate(memory_t::device);
-        diag1.copy<memory_t::host, memory_t::device>();
+        o_diag.allocate(memory_t::device).copy_to(memory_t::device);
+        diag1.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
     auto& psi = kp__.singular_components();
@@ -486,8 +484,8 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
     if (ncomp != 0) {
         phi.mt_coeffs(0).zero(memory_t::host, nlo, ncomp);
         for (int j = 0; j < ncomp; j++) {
-            std::memcpy(phi.pw_coeffs(0).prime().at<CPU>(0, nlo + j),
-                        kp__.singular_components().pw_coeffs(0).prime().at<CPU>(0, j),
+            std::memcpy(phi.pw_coeffs(0).prime().at(memory_t::host, 0, nlo + j),
+                        kp__.singular_components().pw_coeffs(0).prime().at(memory_t::host, 0, j),
                         phi.pw_coeffs(0).num_rows_loc() * sizeof(double_complex));
         }
     }

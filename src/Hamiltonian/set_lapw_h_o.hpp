@@ -45,7 +45,7 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
     if (ctx_.valence_relativity() == relativity_t::iora) {
         oalm_col = mdarray<double_complex, 2>(kp__->num_gkvec_col(), max_mt_aw);
     } else {
-        oalm_col = mdarray<double_complex, 2>(alm_col.at<CPU>(), kp__->num_gkvec_col(), max_mt_aw);
+        oalm_col = mdarray<double_complex, 2>(alm_col.at(memory_t::host), kp__->num_gkvec_col(), max_mt_aw);
     }
 
     utils::timer t1("sirius::Hamiltonian::set_fv_h_o|zgemm");
@@ -76,14 +76,14 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
                     auto& type = atom.type();
                     int naw = type.mt_aw_basis_size();
 
-                    mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_row(), naw);
-                    mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), naw);
-                    mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), naw);
+                    mdarray<double_complex, 2> alm_row_tmp(alm_row.at(memory_t::host, 0, offsets[ialoc]), kp__->num_gkvec_row(), naw);
+                    mdarray<double_complex, 2> alm_col_tmp(alm_col.at(memory_t::host, 0, offsets[ialoc]), kp__->num_gkvec_col(), naw);
+                    mdarray<double_complex, 2> halm_col_tmp(halm_col.at(memory_t::host, 0, offsets[ialoc]), kp__->num_gkvec_col(), naw);
                     mdarray<double_complex, 2> oalm_col_tmp;
                     if (ctx_.valence_relativity() == relativity_t::iora) {
-                        oalm_col_tmp = mdarray<double_complex, 2>(oalm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), naw);
+                        oalm_col_tmp = mdarray<double_complex, 2>(oalm_col.at(memory_t::host, 0, offsets[ialoc]), kp__->num_gkvec_col(), naw);
                     } else {
-                        oalm_col_tmp = mdarray<double_complex, 2>(alm_col.at<CPU>(0, offsets[ialoc]), kp__->num_gkvec_col(), naw);
+                        oalm_col_tmp = mdarray<double_complex, 2>(alm_col.at(memory_t::host, 0, offsets[ialoc]), kp__->num_gkvec_col(), naw);
                     }
 
                     kp__->alm_coeffs_row().generate(ia, alm_row_tmp);
@@ -115,17 +115,17 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
         }
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw,
                           linalg_const<double_complex>::one(),
-                          alm_row.at<CPU>(), alm_row.ld(),
-                          oalm_col.at<CPU>(), oalm_col.ld(),
+                          alm_row.at(memory_t::host), alm_row.ld(),
+                          oalm_col.at(memory_t::host), oalm_col.ld(),
                           linalg_const<double_complex>::one(),
-                          o__.at<CPU>(), o__.ld());
+                          o__.at(memory_t::host), o__.ld());
 
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw,
                           linalg_const<double_complex>::one(),
-                          alm_row.at<CPU>(), alm_row.ld(),
-                          halm_col.at<CPU>(), halm_col.ld(),
+                          alm_row.at(memory_t::host), alm_row.ld(),
+                          halm_col.at(memory_t::host), halm_col.ld(),
                           linalg_const<double_complex>::one(),
-                          h__.at<CPU>(), h__.ld());
+                          h__.at(memory_t::host), h__.ld());
     }
     double tval = t1.stop();
     if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
@@ -200,16 +200,16 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
                     auto& atom = unit_cell_.atom(ia);
                     auto& type = atom.type();
 
-                    mdarray<double_complex, 2> alm_row_tmp(alm_row.at<CPU>(0, offsets[ialoc], s),
-                                                           alm_row.at<GPU>(0, offsets[ialoc], s),
+                    mdarray<double_complex, 2> alm_row_tmp(alm_row.at(memory_t::host, 0, offsets[ialoc], s),
+                                                           alm_row.at(memory_t::device, 0, offsets[ialoc], s),
                                                            kp__->num_gkvec_row(), type.mt_aw_basis_size());
 
-                    mdarray<double_complex, 2> alm_col_tmp(alm_col.at<CPU>(0, offsets[ialoc], s),
-                                                           alm_col.at<GPU>(0, offsets[ialoc], s),
+                    mdarray<double_complex, 2> alm_col_tmp(alm_col.at(memory_t::host, 0, offsets[ialoc], s),
+                                                           alm_col.at(memory_t::device, 0, offsets[ialoc], s),
                                                            kp__->num_gkvec_col(), type.mt_aw_basis_size());
 
-                    mdarray<double_complex, 2> halm_col_tmp(halm_col.at<CPU>(0, offsets[ialoc], s),
-                                                            halm_col.at<GPU>(0, offsets[ialoc], s),
+                    mdarray<double_complex, 2> halm_col_tmp(halm_col.at(memory_t::host, 0, offsets[ialoc], s),
+                                                            halm_col.at(memory_t::device, 0, offsets[ialoc], s),
                                                             kp__->num_gkvec_col(), type.mt_aw_basis_size());
 
                     kp__->alm_coeffs_row().generate(ia, alm_row_tmp);
@@ -230,20 +230,20 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
                     set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__, o__);
                 }
             }
-            acc::sync_stream(tid);
+            acc::sync_stream(stream_id(tid));
         }
-        acc::sync_stream(omp_get_max_threads());
+        acc::sync_stream(stream_id(omp_get_max_threads()));
         linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &linalg_const<double_complex>::one(),
-                          alm_row.at<GPU>(0, 0, s), alm_row.ld(), alm_col.at<GPU>(0, 0, s), alm_col.ld(), &linalg_const<double_complex>::one(),
-                          o__.at<GPU>(), o__.ld(), omp_get_max_threads());
+                          alm_row.at(memory_t::device, 0, 0, s), alm_row.ld(), alm_col.at(memory_t::device, 0, 0, s), alm_col.ld(), &linalg_const<double_complex>::one(),
+                          o__.at(memory_t::device), o__.ld(), omp_get_max_threads());
 
         linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &linalg_const<double_complex>::one(),
-                          alm_row.at<GPU>(0, 0, s), alm_row.ld(), halm_col.at<GPU>(0, 0, s), halm_col.ld(), &linalg_const<double_complex>::one(),
-                          h__.at<GPU>(), h__.ld(), omp_get_max_threads());
+                          alm_row.at(memory_t::device, 0, 0, s), alm_row.ld(), halm_col.at(memory_t::device, 0, 0, s), halm_col.ld(), &linalg_const<double_complex>::one(),
+                          h__.at(memory_t::device), h__.ld(), omp_get_max_threads());
     }
 
-    acc::copyout(h__.at<CPU>(), h__.ld(), h__.at<GPU>(), h__.ld(), kp__->num_gkvec_row(), kp__->num_gkvec_col());
-    acc::copyout(o__.at<CPU>(), o__.ld(), o__.at<GPU>(), o__.ld(), kp__->num_gkvec_row(), kp__->num_gkvec_col());
+    acc::copyout(h__.at(memory_t::host), h__.ld(), h__.at(memory_t::device), h__.ld(), kp__->num_gkvec_row(), kp__->num_gkvec_col());
+    acc::copyout(o__.at(memory_t::host), o__.ld(), o__.at(memory_t::device), o__.ld(), kp__->num_gkvec_row(), kp__->num_gkvec_col());
 
     double tval = t1.stop();
     //if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {

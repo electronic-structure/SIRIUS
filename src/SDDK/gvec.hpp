@@ -376,7 +376,7 @@ class Gvec
             gvec_shell_(tmp[ig].second) = num_gvec_shells_ - 1;
         }
         gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
-        std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at<CPU>());
+        std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at(memory_t::host));
     }
 
     /// Compute the Cartesian coordinates.
@@ -409,7 +409,7 @@ class Gvec
         distribute_z_columns();
 
         gvec_index_by_xy_ = mdarray<int, 3>(2, fft_grid.limits(0), fft_grid.limits(1), memory_t::host, "Gvec.gvec_index_by_xy_");
-        std::fill(gvec_index_by_xy_.at<CPU>(), gvec_index_by_xy_.at<CPU>() + gvec_index_by_xy_.size(), -1);
+        std::fill(gvec_index_by_xy_.at(memory_t::host), gvec_index_by_xy_.at(memory_t::host) + gvec_index_by_xy_.size(), -1);
 
         /* build the full G-vector index and reverse mapping */
         gvec_full_index_ = mdarray<uint32_t, 1>(num_gvec_);

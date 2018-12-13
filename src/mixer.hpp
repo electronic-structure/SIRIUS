@@ -117,7 +117,7 @@ class Mixer // TODO: review mixer implementation, it's too obscure
             vectors_(i, ipos) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, ipos1);
         }
 
-        T* ptr = (this->output_buffer_.size() == 0) ? nullptr : this->output_buffer_.template at<CPU>();
+        T* ptr = (this->output_buffer_.size() == 0) ? nullptr : this->output_buffer_.template at(memory_t::host);
 
         /* collect shared data */
         comm_.allgather(&vectors_(0, ipos), ptr, spl_shared_size_.global_offset(), spl_shared_size_.local_size());
@@ -285,7 +285,7 @@ class Broyden1 : public Mixer<T>
             //    this->vectors_(i, i1) = this->input_buffer_(i);
             //}
 
-            // this->comm_.allgather(&this->vectors_(0, i1), this->output_buffer_.template at<CPU>(),
+            // this->comm_.allgather(&this->vectors_(0, i1), this->output_buffer_.template at(memory_t::host),
             //                      this->spl_shared_size_.global_offset(), this->spl_shared_size_.local_size());
             return 0.0;
         }
@@ -343,7 +343,7 @@ class Broyden1 : public Mixer<T>
                     S(j2, j1) = S(j1, j2) = t;
                 }
             }
-            this->comm_.allreduce(S.at<CPU>(), (int)S.size());
+            this->comm_.allreduce(S.at(memory_t::host), (int)S.size());
 
             // printf("[mixer] S matrix\n");
             // for (int i = 0; i < N; i++)
@@ -381,7 +381,7 @@ class Broyden1 : public Mixer<T>
                 }
                 c(j) = t;
             }
-            this->comm_.allreduce(c.at<CPU>(), (int)c.size());
+            this->comm_.allreduce(c.at(memory_t::host), (int)c.size());
 
             for (int j = 0; j < N; j++) {
                 double gamma = 0;
@@ -410,7 +410,7 @@ class Broyden1 : public Mixer<T>
                 this->vectors_(i, ipos) + this->beta_ * residuals_(i, ipos) + this->input_buffer_(i);
         }
 
-        T* ptr = (this->output_buffer_.size() == 0) ? nullptr : this->output_buffer_.template at<CPU>();
+        T* ptr = (this->output_buffer_.size() == 0) ? nullptr : this->output_buffer_.template at(memory_t::host);
 
         this->comm_.allgather(&this->vectors_(0, i1), ptr, this->spl_shared_size_.global_offset(),
                               this->spl_shared_size_.local_size());
@@ -521,7 +521,7 @@ class Broyden2 : public Mixer<T>
                     S(j2, j1) = S(j1, j2) = t;
                 }
             }
-            this->comm_.allreduce(S.at<CPU>(), (int)S.size());
+            this->comm_.allreduce(S.at(memory_t::host), (int)S.size());
             for (int j1 = 0; j1 < N; j1++) {
                 for (int j2 = 0; j2 < N; j2++) {
                     S(j1, j2) /= this->total_size_;

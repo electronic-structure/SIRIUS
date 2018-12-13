@@ -77,9 +77,8 @@ Hamiltonian::get_h_diag(K_point* kp__,
             nlo++;
         }
     }
-    if (ctx_.processing_unit() == GPU) {
-        h_diag.allocate(memory_t::device);
-        h_diag.copy<memory_t::host, memory_t::device>();
+    if (ctx_.processing_unit() == device_t::GPU) {
+        h_diag.allocate(memory_t::device).copy_to(memory_t::device);
     }
     return std::move(h_diag);
 }
@@ -119,9 +118,8 @@ Hamiltonian::get_o_diag(K_point* kp__,
             }
         }
     }
-    if (ctx_.processing_unit() == GPU) {
-        o_diag.allocate(memory_t::device);
-        o_diag.copy<memory_t::host, memory_t::device>();
+    if (ctx_.processing_unit() == device_t::GPU) {
+        o_diag.allocate(memory_t::device).copy_to(memory_t::device);
     }
     return std::move(o_diag);
 }
@@ -181,9 +179,8 @@ Hamiltonian::get_h_diag(K_point* kp__) const
             }
         }
     }
-    if (ctx_.processing_unit() == GPU) {
-        h_diag.allocate(memory_t::device);
-        h_diag.copy<memory_t::host, memory_t::device>();
+    if (ctx_.processing_unit() == device_t::GPU) {
+        h_diag.allocate(memory_t::device).copy_to(memory_t::device);
     }
     return std::move(h_diag);
 }
@@ -242,9 +239,8 @@ Hamiltonian::get_o_diag(K_point* kp__) const
             }
         }
     }
-    if (ctx_.processing_unit() == GPU) {
-        o_diag.allocate(memory_t::device);
-        o_diag.copy<memory_t::host, memory_t::device>();
+    if (ctx_.processing_unit() == device_t::GPU) {
+        o_diag.allocate(memory_t::device).copy_to(memory_t::device);
     }
     return std::move(o_diag);
 }

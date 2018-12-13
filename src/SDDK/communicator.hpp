@@ -48,7 +48,8 @@ namespace sddk {
 enum class mpi_op_t
 {
     sum,
-    max
+    max,
+    min
 };
 
 template <mpi_op_t op>
@@ -69,6 +70,15 @@ struct mpi_op_wrapper<mpi_op_t::max>
     static MPI_Op kind()
     {
         return MPI_MAX;
+    }
+};
+
+template <>
+struct mpi_op_wrapper<mpi_op_t::min>
+{
+    static MPI_Op kind()
+    {
+        return MPI_MIN;
     }
 };
 

@@ -314,7 +314,7 @@ class dmatrix : public matrix<T>
                 }
             }
         }
-        blacs_grid_->comm().allreduce(d.template at<CPU>(), n__);
+        blacs_grid_->comm().allreduce(d.template at(memory_t::host), n__);
         return std::move(d);
     }
 
@@ -376,7 +376,7 @@ class dmatrix : public matrix<T>
                 }
             }
         }
-        this->comm().allreduce(full_mtrx.template at<CPU>(), static_cast<int>(full_mtrx.size()));
+        this->comm().allreduce(full_mtrx.template at(memory_t::host), static_cast<int>(full_mtrx.size()));
 
         if (this->blacs_grid().comm().rank() == 0) {
             HDF5_tree h5(name__, hdf5_access_t::truncate);
@@ -408,7 +408,7 @@ inline void dmatrix<double_complex>::serialize(std::string name__, int n__) cons
             full_mtrx(irow(i), icol(j)) = (*this)(i, j);
         }
     }
-    blacs_grid_->comm().allreduce(full_mtrx.at<CPU>(), static_cast<int>(full_mtrx.size()));
+    blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
 
     //json dict;
     //dict["mtrx_re"] = json::array();
@@ -457,7 +457,7 @@ inline void dmatrix<double>::serialize(std::string name__, int n__) const
             full_mtrx(irow(i), icol(j)) = (*this)(i, j);
         }
     }
-    blacs_grid_->comm().allreduce(full_mtrx.at<CPU>(), static_cast<int>(full_mtrx.size()));
+    blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
 
     //json dict;
     //dict["mtrx"] = json::array();

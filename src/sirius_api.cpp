@@ -2049,7 +2049,7 @@ void sirius_get_gvec_arrays(void* const* handler__,
         auto d2 = sim_ctx.fft().limits(2);
 
         mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
-        std::fill(index_by_gvec.at<CPU>(), index_by_gvec.at<CPU>() + index_by_gvec.size(), -1);
+        std::fill(index_by_gvec.at(memory_t::host), index_by_gvec.at(memory_t::host) + index_by_gvec.size(), -1);
 
         for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
             auto G = sim_ctx.gvec().gvec(ig);

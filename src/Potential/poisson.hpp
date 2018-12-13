@@ -87,12 +87,12 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
             }
             case GPU: {
 #if defined(__GPU)
-                qa.copy<memory_t::host, memory_t::device>();
+                qa.copy_to(memory_t::device);
                 linalg<GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
-                                  qa.at<GPU>(), qa.ld(),
-                                  pf.at<GPU>(), pf.ld(),
-                                  qapf.at<GPU>(), qapf.ld());
-                qapf.copy<memory_t::device, memory_t::host>();
+                                  qa.at(memory_t::device), qa.ld(),
+                                  pf.at(memory_t::device), pf.ld(),
+                                  qapf.at(memory_t::device), qapf.ld());
+                qapf.copy_to(memory_t::host);
 #endif
                 break;
             }
@@ -259,7 +259,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
             vh_el_(ia) = y00 * hartree_potential_->f_mt<index_domain_t::local>(0, 0, ialoc);
 #endif
         }
-        ctx_.comm().allgather(vh_el_.at<CPU>(), unit_cell_.spl_num_atoms().global_offset(),
+        ctx_.comm().allgather(vh_el_.at(memory_t::host), unit_cell_.spl_num_atoms().global_offset(),
                               unit_cell_.spl_num_atoms().local_size());
     }
 

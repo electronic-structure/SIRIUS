@@ -161,11 +161,11 @@ class Wave_functions
                 }
                 case device_t::GPU: {
 #ifdef __GPU
-                    add_square_sum_gpu(pw_coeffs(is).prime().at<GPU>(), pw_coeffs(is).num_rows_loc(), n__,
-                                       gkvecp_.gvec().reduced(), comm_.rank(), s.at<GPU>());
+                    add_square_sum_gpu(pw_coeffs(is).prime().at(memory_t::device), pw_coeffs(is).num_rows_loc(), n__,
+                                       gkvecp_.gvec().reduced(), comm_.rank(), s.at(memory_t::device));
                     if (has_mt()) {
-                        add_square_sum_gpu(mt_coeffs(is).prime().at<GPU>(), mt_coeffs(is).num_rows_loc(), n__, 0,
-                                           comm_.rank(), s.at<GPU>());
+                        add_square_sum_gpu(mt_coeffs(is).prime().at(memory_t::device), mt_coeffs(is).num_rows_loc(), n__, 0,
+                                           comm_.rank(), s.at(memory_t::device));
                     }
 #endif
                     break;
@@ -173,9 +173,9 @@ class Wave_functions
             }
         }
         if (pu__ == device_t::GPU) {
-            s.copy<memory_t::device, memory_t::host>();
+            s.copy_to(memory_t::host);
         }
-        comm_.allreduce(s.at<CPU>(), n__);
+        comm_.allreduce(s.at(memory_t::host), n__);
         return std::move(s);
     }
 
@@ -338,26 +338,27 @@ class Wave_functions
         switch (pu__) {
             case CPU: {
                 /* copy PW part */
-                std::copy(src__.pw_coeffs(ispn__).prime().at<CPU>(0, i0__),
-                          src__.pw_coeffs(ispn__).prime().at<CPU>(0, i0__) + ngv * n__,
-                          pw_coeffs(jspn__).prime().at<CPU>(0, j0__));
+                std::copy(src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
+                          src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + ngv * n__,
+                          pw_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
                 /* copy MT part */
                 if (has_mt()) {
-                    std::copy(src__.mt_coeffs(ispn__).prime().at<CPU>(0, i0__),
-                              src__.mt_coeffs(ispn__).prime().at<CPU>(0, i0__) + nmt * n__,
-                              mt_coeffs(jspn__).prime().at<CPU>(0, j0__));
+                    std::copy(src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
+                              src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + nmt * n__,
+                              mt_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
                 }
                 break;
             }
             case GPU: {
 #ifdef __GPU
                 /* copy PW part */
-                acc::copy(pw_coeffs(jspn__).prime().at<GPU>(0, j0__), src__.pw_coeffs(ispn__).prime().at<GPU>(0, i0__),
+                acc::copy(pw_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
+                          src__.pw_coeffs(ispn__).prime().at(memory_t::device, 0, i0__),
                           ngv * n__);
                 /* copy MT part */
                 if (has_mt()) {
-                    acc::copy(mt_coeffs(jspn__).prime().at<GPU>(0, j0__),
-                              src__.mt_coeffs(ispn__).prime().at<GPU>(0, i0__), nmt * n__);
+                    acc::copy(mt_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
+                              src__.mt_coeffs(ispn__).prime().at(memory_t::device, 0, i0__), nmt * n__);
                 }
 #endif
                 break;

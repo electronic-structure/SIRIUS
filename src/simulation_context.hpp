@@ -560,7 +560,7 @@ class Simulation_context : public Simulation_parameters
                     gvec_coord_(igloc, x) = G[x];
                 }
             }
-            gvec_coord_.copy<memory_t::host, memory_t::device>();
+            gvec_coord_.copy_to(memory_t::device);
         }
 #endif
         if (full_potential()) {
@@ -803,8 +803,8 @@ class Simulation_context : public Simulation_parameters
             case GPU: {
 #ifdef __GPU
                 acc::set_device();
-                generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at<GPU>(),
-                                           unit_cell().atom_coord(iat__).at<GPU>(), phase_factors__.at<GPU>());
+                generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(memory_t::device),
+                                           unit_cell().atom_coord(iat__).at(memory_t::device), phase_factors__.at(memory_t::device));
 #else
                 TERMINATE_NO_GPU
 #endif
@@ -946,16 +946,16 @@ class Simulation_context : public Simulation_parameters
             utils::timer t2("sirius::Simulation_context::sum_fg_fl_yg|mul");
             switch (processing_unit()) {
                 case CPU: {
-                    linalg<CPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at<CPU>(), zm.ld(), phase_factors.at<CPU>(),
-                                      phase_factors.ld(), tmp.at<CPU>(), tmp.ld());
+                    linalg<CPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::host), zm.ld(), phase_factors.at(memory_t::host),
+                                      phase_factors.ld(), tmp.at(memory_t::host), tmp.ld());
                     break;
                 }
                 case GPU: {
 #if defined(__GPU)
-                    zm.copy<memory_t::host, memory_t::device>();
-                    linalg<GPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at<GPU>(), zm.ld(), phase_factors.at<GPU>(),
-                                      phase_factors.ld(), tmp.at<GPU>(), tmp.ld());
-                    tmp.copy<memory_t::device, memory_t::host>();
+                    zm.copy_to(memory_t::device);
+                    linalg<GPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::device), zm.ld(), phase_factors.at(memory_t::device),
+                                      phase_factors.ld(), tmp.at(memory_t::device), tmp.ld());
+                    tmp.copy_to(memory_t::host);
 #endif
                     break;
                 }

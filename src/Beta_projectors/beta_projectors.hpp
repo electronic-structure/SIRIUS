@@ -96,8 +96,7 @@ class Beta_projectors : public Beta_projectors_base
             /* beta projectors for atom types will be stored on GPU for the entire run */
             case device_t::GPU: {
                 reallocate_pw_coeffs_t_on_gpu_ = false;
-                pw_coeffs_t_.allocate(memory_t::device);
-                pw_coeffs_t_.copy<memory_t::host, memory_t::device>();
+                pw_coeffs_t_.allocate(memory_t::device).copy_to(memory_t::device);
                 break;
             }
             /* generate beta projectors for all atoms */
