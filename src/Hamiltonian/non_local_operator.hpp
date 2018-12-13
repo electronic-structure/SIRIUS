@@ -147,40 +147,15 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_bloc
     #pragma omp parallel for
     for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
-        int nbf  = beta_.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
-        int offs = beta_.chunk(chunk__).desc_(beta_desc_idx::offset, i);
-        int ia   = beta_.chunk(chunk__).desc_(beta_desc_idx::ia, i);
-        if (nbf != 0) {
-            linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
-                             op_.at(mem, packed_mtrx_offset_(ia), ispn_block__), nbf,
-                             beta_phi__.at(mem, offs, 0), nbeta,
-                             &linalg_const<double_complex>::zero(),
-                             work_.at(mem, offs), nbeta, stream_id(omp_get_thread_num()));
-        }
-        //switch (pu_) {
-        //    case CPU: {
-        //        linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-        //                          beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
-
-        //        break;
-        //    }
-        //    case GPU: {
-        //        #ifdef __GPU
-        //        linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-        //                          beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
-        //        #endif
-        //        break;
-        //    }
-        }
-
         int nbf  = beta__.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
         int offs = beta__.chunk(chunk__).desc_(beta_desc_idx::offset, i);
         int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, i);
-        linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
-                         op_.at(mem, packed_mtrx_offset_(ia), ispn_block__), nbf, beta_phi__.at(mem, offs, 0), nbeta,
-                         &linalg_const<double_complex>::zero(), work_.at(mem, offs), nbeta,
-                         stream_id(omp_get_thread_num()));
-    }
+        if (nbf) {
+            linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
+                             op_.at(mem, packed_mtrx_offset_(ia), ispn_block__), nbf, beta_phi__.at(mem, offs, 0), nbeta,
+                             &linalg_const<double_complex>::zero(), work_.at(mem, offs), nbeta,
+                             stream_id(omp_get_thread_num()));
+        }
     switch (pu_) {
         case device_t::GPU: {
 #ifdef __GPU
@@ -238,17 +213,9 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ia__, int
     int offs = beta__.chunk(chunk__).desc_(beta_desc_idx::offset, ia__);
     int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, ia__);
 
-<<<<<<< HEAD
-    if (nbf == 0) {
-        return;
-    }
-
-    work_.zero();
-=======
     /* setup linear algebra parameters */
     memory_t mem{memory_t::none};
     linalg_t la{linalg_t::none};
->>>>>>> 65b98c9f217b00544bda410a4e2a7dedb0a9bfbf
     switch (pu_) {
         case device_t::CPU: {
             mem = memory_t::host;
@@ -332,27 +299,6 @@ inline void Non_local_operator<double>::apply(int chunk__, int ispn_block__, Wav
     #pragma omp parallel for
     for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
-<<<<<<< HEAD
-        int nbf  = beta_.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
-        int offs = beta_.chunk(chunk__).desc_(beta_desc_idx::offset, i);
-        int ia   = beta_.chunk(chunk__).desc_(beta_desc_idx::ia, i);
-
-        if (nbf != 0) {
-            switch (pu_) {
-                 case CPU: {
-                     linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-                                       beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
-                     break;
-                 }
-                 case GPU: {
-                     #ifdef __GPU
-                     linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
-                                       beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
-                     break;
-                     #endif
-                 }
-            }
-=======
         int nbf  = beta__.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
         int offs = beta__.chunk(chunk__).desc_(beta_desc_idx::offset, i);
         int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, i);
@@ -375,9 +321,9 @@ inline void Non_local_operator<double>::apply(int chunk__, int ispn_block__, Wav
         }
         case device_t::CPU: {
             break;
->>>>>>> 65b98c9f217b00544bda410a4e2a7dedb0a9bfbf
         }
     }
+
     /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
     linalg2(ctx_.blas_linalg_t()).gemm('N', 'N', 2 * num_gkvec_loc, n__, nbeta,
                                        &linalg_const<double>::one(),
