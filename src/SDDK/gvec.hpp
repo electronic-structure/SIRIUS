@@ -235,7 +235,12 @@ class Gvec
 
                 non_zero_columns(i, j) = 1;
                 if (reduce_gvec_) {
-                    non_zero_columns(-i, -j) = 1;
+                    int mi = -i;
+                    int mj = -j;
+                    if (mi >= fft_box__.limits(0).first && mi <= fft_box__.limits(0).second &&
+                        mj >= fft_box__.limits(1).first && mj <= fft_box__.limits(1).second) {
+                        non_zero_columns(mi, mj) = 1;
+                    }
                 }
             }
         };
@@ -397,12 +402,15 @@ class Gvec
         }
     }
 
+    FFT3D_grid get_default_fft_grid() const
+    {
+        return FFT3D_grid(find_translations(Gmax_, lattice_vectors_) + vector3d<int>({2, 2, 2}));
+    }
+
     /// Initialize everything.
-    void init()
+    void init(FFT3D_grid const& fft_grid)
     {
         PROFILE("sddk::Gvec::init");
-
-        auto fft_grid = FFT3D_grid(find_translations(Gmax_, lattice_vectors_) + vector3d<int>({2, 2, 2}));
 
         find_z_columns(Gmax_, fft_grid);
 
@@ -492,7 +500,7 @@ class Gvec
         , reduce_gvec_(reduce_gvec__)
         , bare_gvec_(false)
     {
-        init();
+        init(get_default_fft_grid());
     }
 
     /// Constructor for G-vectors.
@@ -502,7 +510,17 @@ class Gvec
         , comm_(comm__)
         , reduce_gvec_(reduce_gvec__)
     {
-        init();
+        init(get_default_fft_grid());
+    }
+
+    /// Constructor for G-vectors.
+    Gvec(matrix3d<double> M__, double Gmax__, FFT3D_grid const& fft_grid__, Communicator const& comm__, bool reduce_gvec__)
+        : Gmax_(Gmax__)
+        , lattice_vectors_(M__)
+        , comm_(comm__)
+        , reduce_gvec_(reduce_gvec__)
+    {
+        init(fft_grid__);
     }
 
     /// Constructor for G-vector distribution based on a previous set.
@@ -514,7 +532,7 @@ class Gvec
         , reduce_gvec_(gvec_base__.reduced())
         , gvec_base_(&gvec_base__)
     {
-        init();
+        init(get_default_fft_grid());
     }
 
     /// Constructor for G-vectors with mpi_comm_self()
@@ -524,7 +542,7 @@ class Gvec
         , comm_(Communicator::self())
         , reduce_gvec_(reduce_gvec__)
     {
-        init();
+        init(get_default_fft_grid());
     }
 
     /// Constructor for empty set of G-vectors.
