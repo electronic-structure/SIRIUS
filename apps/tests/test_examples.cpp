@@ -62,12 +62,12 @@ Gvec_partition gvp(gvec, fft.comm(), Communicator::self());
    and fill with random numbers */
 mdarray<double_complex, 1> f(gvp.gvec_count_fft());
 f = [](int64_t){
-  return type_wrapper<double_complex>::random();
+  return utils::random<double_complex>();
 };
 /* prepare FFT driver for a given G-vector partition */
 fft.prepare(gvp);
 /* transform to real-space domain */
-fft.transform<1>(f.at<CPU>());
+fft.transform<1>(f.at(memory_t::host));
 /* now the fft buffer contains the real space values */
 for (int j0 = 0; j0 < fft.size(0); j0++) {
     for (int j1 = 0; j1 < fft.size(1); j1++) {
@@ -113,7 +113,7 @@ Wave_functions wf(gvp, N);
 int ispn = 0;
 /* fill with random numbers */
 wf.pw_coeffs(ispn).prime() = [](int64_t, int64_t){
-    return type_wrapper<double_complex>::random();
+    return utils::random<double_complex>();
 };
 /* create a 2x2 BLACS grid */
 BLACS_grid grid(Communicator::world(), 2, 2);
@@ -172,7 +172,7 @@ Wave_functions wf(gvp, N);
 int ispn = 0;
 /* fill with random numbers */
 wf.pw_coeffs(ispn).prime() = [](int64_t, int64_t){
-    return type_wrapper<double_complex>::random();
+    return utils::random<double_complex>();
 };
 /* resulting |v*wf> */
 Wave_functions vwf(gvp, N);
@@ -183,16 +183,16 @@ vwf.pw_coeffs(ispn).set_num_extra(CPU, N, 0);
 /* loop over local number of bands */
 for (int i = 0; i < wf.pw_coeffs(ispn).spl_num_col().local_size(); i++) {
     /* transform to real-space */
-    fft.transform<1>(wf.pw_coeffs(ispn).extra().at<CPU>(0, i));
+    fft.transform<1>(wf.pw_coeffs(ispn).extra().at(memory_t::host, 0, i));
     /* multiply by potential */
     for (int j = 0; j < fft.local_size(); j++) {
         fft.buffer(j) *= v[j];
     }
     /* transform to reciprocal space */
-    fft.transform<-1>(vwf.pw_coeffs(ispn).extra().at<CPU>(0, i));
+    fft.transform<-1>(vwf.pw_coeffs(ispn).extra().at(memory_t::host, 0, i));
 }
 /* remap to default "slab" storage */
-vwf.pw_coeffs(ispn).remap_backward(CPU, N, 0);
+vwf.pw_coeffs(ispn).remap_backward(N, 0);
 /* dismiss the FFT driver */
 fft.dismiss();
 
