@@ -79,8 +79,8 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
     dmatrix<double_complex> phi_s_psi(HowManyBands, this->number_of_hubbard_orbitals() * ctx_.num_spins());
     matrix<double_complex>  dm(this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                                this->number_of_hubbard_orbitals() * ctx_.num_spins());
-    mdarray<double_complex, 5> dn_tmp(2 * this->hubbard_lmax() + 1,
-                                      2 * this->hubbard_lmax() + 1,
+    mdarray<double_complex, 5> dn_tmp(2 * lmax() + 1,
+                                      2 * lmax() + 1,
                                       ctx_.num_spins(),
                                       ctx_.unit_cell().num_atoms(),
                                       3);

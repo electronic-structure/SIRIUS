@@ -29,8 +29,6 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
     int N{0};
 
     if (ctx_.iterative_solver_input().init_subspace_ == "lcao") {
-        // it is already calculated during the initialization procedure
-
         /* get the total number of atomic-centered orbitals */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
@@ -46,13 +44,7 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
         }
     }
 
-    H__.local_op().prepare(H__.potential());
-    if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-        H__.prepare<double>();
-    } else {
-        H__.prepare<double_complex>();
-    }
-
+    H__.prepare();
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
@@ -63,7 +55,6 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
         }
     }
     H__.dismiss();
-    H__.local_op().dismiss();
 
     /* reset the energies for the iterative solver to do at least two steps */
     for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
@@ -77,7 +68,7 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
 }
 
 template <typename T>
-inline void Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
+inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 

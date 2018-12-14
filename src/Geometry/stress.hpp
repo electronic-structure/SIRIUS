@@ -291,7 +291,7 @@ class Stress {
     Stress(Simulation_context& ctx__,
            Density& density__,
            Potential& potential__,
-           Hamiltonian &h__,
+           Hamiltonian& h__,
            K_point_set& kset__)
         : ctx_(ctx__)
         , density_(density__)
@@ -948,24 +948,23 @@ class Stress {
     {
         stress_hubbard_.zero();
 
-        mdarray<double_complex, 5> dn_(2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                       2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                       2,
-                                       ctx_.unit_cell().num_atoms(),
-                                       9);
-        hamiltonian_.prepare<double_complex>();
+        mdarray<double_complex, 5> dn(2 * hamiltonian_.U().lmax() + 1,
+                                      2 * hamiltonian_.U().lmax() + 1,
+                                      2,
+                                      ctx_.unit_cell().num_atoms(),
+                                      9);
+        //hamiltonian_.prepare<double_complex>();
+        Q_operator<double_complex> q_op(ctx_);
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-            dn_.zero();
+            dn.zero();
             int ik  = kset_.spl_num_kpoints(ikloc);
             auto kp__ = kset_[ik];
             if (ctx_.num_mag_dims() == 3)
                 TERMINATE("Hubbard stress correction is only implemented for the simple hubbard correction.");
 
-            // compute the derivative of the occupancies numbers
-            hamiltonian_.U().compute_occupancies_stress_derivatives(*kp__,
-                                                                    hamiltonian_.Q<double_complex>(),
-                                                                    dn_);
+            /* compute the derivative of the occupancies numbers */
+            hamiltonian_.U().compute_occupancies_stress_derivatives(*kp__, q_op, dn);
             for (int dir1 = 0; dir1 < 3; dir1++) {
                 for (int dir2 = 0; dir2 < 3; dir2++) {
                     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
@@ -976,7 +975,7 @@ class Stress {
                                 for (int m1 = 0; m1 < lmax_at; m1++) {
                                     for (int m2 = 0; m2 < lmax_at; m2++) {
                                         stress_hubbard_(dir1, dir2) -= (hamiltonian_.U().U(m2, m1, ispn, ia1) *
-                                                                        dn_(m1, m2, ispn, ia1, dir1 + 3 * dir2)).real()/ctx_.unit_cell().omega();
+                                                                        dn(m1, m2, ispn, ia1, dir1 + 3 * dir2)).real() / ctx_.unit_cell().omega();
                                     }
                                 }
                             }
@@ -986,7 +985,7 @@ class Stress {
             }
         }
 
-        hamiltonian_.dismiss();
+        //hamiltonian_.dismiss();
 
         /* global reduction */
         kset_.comm().allreduce<double, mpi_op_t::sum>(&stress_hubbard_(0, 0), 9);

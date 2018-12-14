@@ -204,18 +204,17 @@ class Force
 
         // It is based on this reference : PRB 84, 161102(R) (2011)
 
-        void hubbard_force_add_k_contribution_colinear(K_point &kp__, mdarray<double, 2>& forceh_)
+        void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator<double_complex>& q_op__,
+                                                       mdarray<double, 2>& forceh_)
         {
-            mdarray<double_complex, 6> dn(2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                          2 * hamiltonian_.U().hubbard_lmax() + 1,
+            mdarray<double_complex, 6> dn(2 * hamiltonian_.U().lmax() + 1,
+                                          2 * hamiltonian_.U().lmax() + 1,
                                           2,
                                           ctx_.unit_cell().num_atoms(),
                                           3,
                                           ctx_.unit_cell().num_atoms());
 
-            hamiltonian_.U().compute_occupancies_derivatives(kp__,
-                                                             hamiltonian_.Q<double_complex>(),
-                                                             dn);
+            hamiltonian_.U().compute_occupancies_derivatives(kp__, q_op__, dn);
 
             #pragma omp parallel for
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
@@ -778,12 +777,13 @@ class Force
             forces_hubbard_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
             forces_hubbard_.zero();
 
-            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                hamiltonian_.prepare<double>();
-            } else {
-                hamiltonian_.prepare<double_complex>();
-            }
+            //if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
+            //    hamiltonian_.prepare<double>();
+            //} else {
+            //    hamiltonian_.prepare<double_complex>();
+            //}
             /* we can probably task run this in a task fashion */
+            Q_operator<double_complex> q_op(ctx_);
 
             for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 
@@ -792,9 +792,9 @@ class Force
                 if (ctx_.num_mag_dims() == 3)
                     TERMINATE("Hubbard forces are only implemented for the simple hubbard correction.");
 
-                hubbard_force_add_k_contribution_colinear(*kp, forces_hubbard_);
+                hubbard_force_add_k_contribution_colinear(*kp, q_op, forces_hubbard_);
             }
-            hamiltonian_.dismiss();
+            //hamiltonian_.dismiss();
 
             /* global reduction */
             kset_.comm().allreduce(forces_hubbard_.at(memory_t::host), 3 * ctx_.unit_cell().num_atoms());

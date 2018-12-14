@@ -29,7 +29,7 @@
 
 namespace sirius {
 
-/// Non-local part of the Hamiltonian in the pseudopotential method.
+/// Non-local part of the Hamiltonian and S-operator in the pseudopotential method.
 template <typename T>
 class Non_local_operator
 {
@@ -395,15 +395,14 @@ class D_operator : public Non_local_operator<T>
                                 double bx = uc.atom(ia).d_mtrx(xi1, xi2, 2);
                                 double by = uc.atom(ia).d_mtrx(xi1, xi2, 3);
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 2) =
-                                    // type_wrapper<T>::bypass(double_complex(bx, -by));
                                     utils::zero_if_not_complex<T>(double_complex(bx, -by));
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 3) =
-                                    // type_wrapper<T>::bypass(double_complex(bx, by));
                                     utils::zero_if_not_complex<T>(double_complex(bx, by));
                             }
                             case 1: {
-                                double v                                          = uc.atom(ia).d_mtrx(xi1, xi2, 0);
-                                double bz                                         = uc.atom(ia).d_mtrx(xi1, xi2, 1);
+                                double v  = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+                                double bz = uc.atom(ia).d_mtrx(xi1, xi2, 1);
+
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = v + bz;
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 1) = v - bz;
                                 break;
@@ -426,7 +425,7 @@ class D_operator : public Non_local_operator<T>
             utils::print_checksum("D_operator", cs);
         }
 
-        if (this->pu_ == GPU) {
+        if (this->pu_ == device_t::GPU) {
             this->op_.allocate(memory_t::device).copy_to(memory_t::device);
         }
     }
@@ -552,7 +551,7 @@ class P_operator : public Non_local_operator<T>
                 }
             }
         }
-        if (this->pu_ == GPU) {
+        if (this->pu_ == device_t::GPU) {
             this->op_.allocate(memory_t::device);
             this->op_.copy_to(memory_t::device);
         }

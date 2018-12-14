@@ -243,8 +243,6 @@ class Beta_projectors_base
 
         int nbeta = chunk(chunk__).num_beta_;
 
-        //static_assert(std::is_same<T, double_complex>::value || std::is_same<T, double>::value, "wrong type");
-
         matrix<T> beta_phi(ctx_.mem_pool(ctx_.host_memory_t()), nbeta, n__);
 
         /* location of the beta-projectors is always on the memory of the processing unit being used */
@@ -263,12 +261,14 @@ class Beta_projectors_base
 
         local_inner_aux<T>(pw_coeffs_a_ptr, nbeta, phi__, ispn__, idx0__, n__, beta_phi);
 
+        /* copy to host in MPI sequential or parallel case */
+        if (is_device_memory(ctx_.preferred_memory_t())) {
+            beta_phi.copy_to(memory_t::host);
+        }
+
+        /* in parallel case do a reduction */
         if (gkvec_.comm().size() > 1) {
             utils::timer t1("sirius::Beta_projectors_base::inner|comm");
-            /* copy to host for MPI reduction */
-            if (is_device_memory(ctx_.preferred_memory_t())) {
-                beta_phi.copy_to(memory_t::host);
-            }
             /* MPI reduction on the host */
             gkvec_.comm().allreduce(beta_phi.at(memory_t::host), static_cast<int>(beta_phi.size()));
         }
@@ -276,12 +276,8 @@ class Beta_projectors_base
         switch (ctx_.processing_unit()) {
             case device_t::GPU: {
                 /* copy back to device */
-                if ((gkvec_.comm().size() > 1 && is_device_memory(ctx_.preferred_memory_t())) ||
-                    is_host_memory(ctx_.preferred_memory_t())) {
+                if (gkvec_.comm().size() > 1 || is_host_memory(ctx_.preferred_memory_t())) {
                     beta_phi.copy_to(memory_t::device);
-                }
-                if (is_device_memory(ctx_.preferred_memory_t())) {
-                    beta_phi.copy_to(memory_t::host);
                 }
                 break;
             }
