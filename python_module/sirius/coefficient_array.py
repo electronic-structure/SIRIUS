@@ -13,6 +13,13 @@ def inner(a, b):
         return np.sum(a * np.conj(b), copy=False)
 
 
+def l2norm(a):
+    """
+
+    """
+    return np.sqrt(np.real(inner(a, a)))
+
+
 def einsum(expr, a, b):
     """
     map einsum over elements of CoefficientArray
@@ -50,20 +57,25 @@ class CoefficientArray:
     def __setitem__(self, key, item):
         """
         """
-        if key in self._data:
-            x = self._data[key]
-            # make sure shapes don't change
-            try:
-                # view, no copy needed
-                x[:] = self.ctype(item, copy=False)
-            except TypeError:
-                # not a view, make a copy
-                self._data[key] = self.ctype(item)
-        else:
-            if isinstance(item, np.ndarray):
-                self._data[key] = self.ctype(item, dtype=self.dtype, copy=True)
-            else:
+        if isinstance(key, slice):
+
+            for k in self._data:
                 self._data[key] = item
+        else:
+            if key in self._data:
+                x = self._data[key]
+                # make sure shapes don't change
+                try:
+                    # view, no copy needed
+                    x[:] = self.ctype(item, copy=False)
+                except TypeError:
+                    # not a view, make a copy
+                    self._data[key] = self.ctype(item)
+            else:
+                if isinstance(item, np.ndarray):
+                    self._data[key] = self.ctype(item, dtype=self.dtype, copy=True)
+                else:
+                    self._data[key] = item
 
     def sum(self, **kwargs):
         """
@@ -95,7 +107,7 @@ class CoefficientArray:
         return out
 
     def __truediv__(self, other):
-        out = type(self)(dtype=self.dtype)
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
                 out[key] = np.einsum('...,...->...', self._data[key],
@@ -134,16 +146,36 @@ class CoefficientArray:
         return out
 
     def __neg__(self):
-        out = type(self)(dtype=self.dtype)
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
         for key, val in self._data.items():
             out[key] = -val
         return out
 
     def abs(self):
-        out = type(self)(dtype=self.dtype)
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
         for key in self._data.keys():
             out[key] = np.abs(self._data[key])
         return out
+
+    def sqrt(self):
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for key in self._data.keys():
+            out[key] = np.sqrt(self._data[key])
+        return out
+
+    def svd(self, **args):
+        """
+        returns U, s, Vh
+        """
+        U = type(self)(dtype=self.dtype, ctype=self.ctype)
+        s = type(self)(dtype=np.float64, ctype=np.array)
+        Vh = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for key in self._data.keys():
+            Ul, sl, Vhl = np.linalg.svd(self[key], **args)
+            U[key] = Ul
+            s[key] = sl
+            Vh[key] = Vhl
+        return U, s, Vh
 
     def keys(self):
         return self._data.keys()
@@ -151,8 +183,17 @@ class CoefficientArray:
     def __sub__(self, other):
         return self.__add__(-1 * other)
 
+    def __pow__(self, a):
+        """
+
+        """
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for key in self._data.keys():
+            out[key] = self._data[key]**a
+        return out
+
     def conjugate(self):
-        out = type(self)(dtype=self.dtype)
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
         for key, val in self._data.items():
             out[key] = np.conj(val)
         return out
@@ -166,6 +207,15 @@ class CoefficientArray:
         out = type(self)(dtype=np.double, ctype=ctype)
         for key, val in self._data.items():
             out[key] = ctype(val).flatten()
+        return out
+
+    def asarray(self):
+        """
+
+        """
+        out = type(self)(dtype=self.dtype, ctype=np.array)
+        for key, val in self._data.items():
+            out[key] = np.array(val)
         return out
 
     def cols(self, indices):
@@ -232,6 +282,22 @@ class CoefficientArray:
             for key, val in self._data.items()
         ])
 
+    def to_array(self):
+        """
+        convert to numpy array
+        """
+        return np.concatenate(list(self._data.values()), axis=0)
+
+    def from_array(self, X):
+        """
+        set internal data from numpy array
+        assumes that each entry has the same number of columns
+        """
+        offset = 0
+        for key, val in self._data.items():
+            val[:] = X[offset:offset + val.shape[0], ...]
+            offset += val.shape[0]
+
     def _repr_pretty_(self, p, cycle):
         for key, val in self._data.items():
             p.text('key: ')
@@ -239,7 +305,6 @@ class CoefficientArray:
             p.text('\n')
             p.pretty(val)
             p.text('\n')
-
 
     __lmul__ = __mul__
     __rmul__ = __mul__
