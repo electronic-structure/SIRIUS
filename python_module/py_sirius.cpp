@@ -179,9 +179,11 @@ PYBIND11_MODULE(py_sirius, m)
         .def("full_potential", &Simulation_context::full_potential)
         .def("hubbard_correction", &Simulation_context::hubbard_correction)
         .def("fft", &Simulation_context::fft, py::return_value_policy::reference_internal)
-        .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_), py::return_value_policy::reference)
+        .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_),
+             py::return_value_policy::reference)
         .def("pw_cutoff", &Simulation_context::pw_cutoff)
-        .def("parameters_input", py::overload_cast<>(&Simulation_context::parameters_input, py::const_), py::return_value_policy::reference)
+        .def("parameters_input", py::overload_cast<>(&Simulation_context::parameters_input, py::const_),
+             py::return_value_policy::reference)
         .def("num_spin_dims", &Simulation_context::num_spin_dims)
         .def("num_mag_dims", &Simulation_context::num_mag_dims)
         .def("set_gamma_point", &Simulation_context::set_gamma_point)
@@ -216,6 +218,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("set_lattice_vectors",
              [](Unit_cell& obj, py::buffer l1, py::buffer l2, py::buffer l3) { set_lattice_vectors(obj, l1, l2, l3); })
         .def("get_symmetry", &Unit_cell::get_symmetry)
+        .def("num_electrons", &Unit_cell::num_electrons)
         .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
         .def("generate_radial_functions", &Unit_cell::generate_radial_functions);
 
