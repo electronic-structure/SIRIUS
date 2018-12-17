@@ -629,7 +629,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
             density_.generate_paw_loc_density();
         }
 
-        /* transform density to realspace after mixing and symmetrization */
+        /* transform density to real space after mixing and symmetrization */
         density_.fft_transform(1);
 
         /* check number of elctrons */
