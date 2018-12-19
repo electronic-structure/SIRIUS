@@ -295,14 +295,23 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     kp__->beta_projectors().prepare();
 
+    if (is_device_memory(ctx_.aux_preferred_memory_t())) {
+        auto& mpd = ctx_.mem_pool(memory_t::device);
+        for (int i = 0; i < num_sc; i++) {
+            phi.pw_coeffs(i).allocate(mpd);
+        }
+        phi.preferred_memory_t(ctx_.aux_preferred_memory_t());
+    }
+
+
     if (is_device_memory(ctx_.preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             psi.pw_coeffs(ispn).allocate(mpd);
             psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_bands);
         }
+        psi.preferred_memory_t(ctx_.preferred_memory_t());
         for (int i = 0; i < num_sc; i++) {
-            phi.pw_coeffs(i).allocate(mpd);
             res.pw_coeffs(i).allocate(mpd);
 
             hphi.pw_coeffs(i).allocate(mpd);
@@ -311,6 +320,11 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             hpsi.pw_coeffs(i).allocate(mpd);
             spsi.pw_coeffs(i).allocate(mpd);
         }
+        res.preferred_memory_t(ctx_.preferred_memory_t());
+        hphi.preferred_memory_t(ctx_.preferred_memory_t());
+        sphi.preferred_memory_t(ctx_.preferred_memory_t());
+        hpsi.preferred_memory_t(ctx_.preferred_memory_t());
+        spsi.preferred_memory_t(ctx_.preferred_memory_t());
 
         if (ctx_.blacs_grid().comm().size() == 1) {
             evec.allocate(mpd);
