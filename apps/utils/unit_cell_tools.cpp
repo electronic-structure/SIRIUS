@@ -72,7 +72,7 @@ void create_supercell(cmd_args const& args__)
 
                         auto vr = reduce_coordinates(vf);
                         for (int x: {0, 1, 2}) {
-                            vr.first[x] = Utils::round(vr.first[x], 10);
+                            vr.first[x] = utils::round(vr.first[x], 10);
                         }
                         bool add_atom = (ctx_sc.unit_cell().atom_id_by_position(vr.first) == -1);
                         //==if (add_atom && iat == 2)
@@ -80,8 +80,8 @@ void create_supercell(cmd_args const& args__)
                         //==    double r = type_wrapper<double>::random();
                         //==    if (r < 0.99) add_atom = false;
                         //==}
-
-                        if (add_atom) ctx_sc.unit_cell().add_atom(label, vr.first);
+			std::vector<double> u({vr.first[0], vr.first[1], vr.first[2]});
+                        if (add_atom) ctx_sc.unit_cell().add_atom(label, u);
                     }
                 }
             }
@@ -146,7 +146,8 @@ void find_primitive()
         for (int i = 0; i < nat_new; i++) {
             if (types[i] == iat) {
                 vector3d<double> p(positions(0, i), positions(1, i), positions(2, i));
-                ctx_new.unit_cell().add_atom(label, p);
+                std::vector<double> u({p[0], p[1], p[2]});
+                ctx_new.unit_cell().add_atom(label, u);
             }
         }
     }

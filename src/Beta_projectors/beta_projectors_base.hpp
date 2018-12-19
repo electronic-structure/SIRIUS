@@ -183,7 +183,7 @@ class Beta_projectors_base
         /* allocate memory */
         pw_coeffs_t_ = mdarray<double_complex, 3>(num_gkvec_loc(), num_beta_t(), N__, memory_t::host, "pw_coeffs_t_");
 
-        if (ctx_.processing_unit() == GPU) {
+        if (ctx_.processing_unit() == device_t::GPU) {
             gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc());
             gkvec_coord_.allocate(memory_t::device);
             /* copy G+k vectors */
