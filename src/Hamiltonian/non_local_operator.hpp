@@ -174,7 +174,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_bloc
                                        &linalg_const<double_complex>::one(),
                                        beta_gk.at(mem), num_gkvec_loc, work_.at(mem), nbeta,
                                        &linalg_const<double_complex>::one(),
-                                       op_phi__.pw_coeffs(jspn).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
+                                       op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__),
                                        op_phi__.pw_coeffs(jspn).prime().ld());
 
     switch (pu_) {
@@ -240,7 +240,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ia__, int
                                        beta_gk.at(mem, 0, offs), num_gkvec_loc,
                                        work_.at(mem), nbf,
                                        &linalg_const<double_complex>::one(),
-                                       op_phi__.pw_coeffs(jspn).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
+                                       op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__),
                                        op_phi__.pw_coeffs(jspn).prime().ld());
     switch (pu_) {
         case device_t::CPU: {
@@ -329,7 +329,7 @@ inline void Non_local_operator<double>::apply(int chunk__, int ispn_block__, Wav
                                        reinterpret_cast<double*>(beta_gk.at(mem)), 2 * num_gkvec_loc,
                                        work_.at(mem), nbeta,
                                        &linalg_const<double>::one(),
-                                       reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at(ctx_.preferred_memory_t(), 0, idx0__)),
+                                       reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__)),
                                        2 * op_phi__.pw_coeffs(jspn).prime().ld());
 
     switch (pu_) {

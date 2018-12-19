@@ -184,6 +184,7 @@ class Simulation_context : public Simulation_parameters
 
     memory_t host_memory_t_{memory_t::none};
     memory_t preferred_memory_t_{memory_t::none};
+    memory_t aux_preferred_memory_t_{memory_t::none};
     linalg_t blas_linalg_t_{linalg_t::none};
 
     /// True if the context is already initialized.
@@ -1127,10 +1128,16 @@ class Simulation_context : public Simulation_parameters
         return host_memory_t_;
     }
 
-    /// Type of preferred memory for the storage of wave-functions and related arrays.
+    /// Type of preferred memory for the storage of hpsi, spsi, residuals and and related arrays.
     inline memory_t preferred_memory_t() const
     {
         return preferred_memory_t_;
+    }
+
+    /// Type of preferred memory for the storage of auxiliary wave-functions.
+    inline memory_t aux_preferred_memory_t() const
+    {
+        return aux_preferred_memory_t_;
     }
 
     /// Linear algebra driver for the BLAS operations.
@@ -1201,6 +1208,22 @@ inline void Simulation_context::initialize()
             }
             if (control_input_.memory_usage_ == "low" || control_input_.memory_usage_ == "medium") {
                 preferred_memory_t_ = memory_t::host_pinned;
+            }
+            break;
+        }
+    }
+
+    switch (processing_unit()) {
+        case device_t::CPU: {
+            aux_preferred_memory_t_ = memory_t::host;
+            break;
+        }
+        case device_t::GPU: {
+            if (control_input_.memory_usage_ == "high" || control_input_.memory_usage_ == "medium") {
+                aux_preferred_memory_t_ = memory_t::device;
+            }
+            if (control_input_.memory_usage_ == "low") {
+                aux_preferred_memory_t_ = memory_t::host_pinned;
             }
             break;
         }

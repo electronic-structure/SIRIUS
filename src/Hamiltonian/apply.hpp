@@ -44,13 +44,13 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 {
     PROFILE("sirius::Hamiltonian::apply_h_s");
 
-    if (hphi__ != NULL) {
+    if (hphi__ != nullptr) {
         if (phi__.num_sc() != hphi__->num_sc()) {
             TERMINATE("wrong number of spin components");
         }
     }
 
-    if (sphi__ != NULL) {
+    if (sphi__ != nullptr) {
         if (phi__.num_sc() != sphi__->num_sc()) {
             TERMINATE("wrong number of spin components");
         }
@@ -58,7 +58,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
     double t1 = -omp_get_wtime();
 
-    if (hphi__ != NULL) {
+    if (hphi__ != nullptr) {
         /* apply local part of Hamiltonian */
         local_op_->apply_h(ispn__, phi__, *hphi__, N__, n__);
     }
@@ -71,10 +71,10 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
     int nsc = (ispn__ == 2) ? 2 : 1;
 
-    if (ctx_.control().print_checksum_ && (hphi__ != NULL)) {
+    if (ctx_.control().print_checksum_ && (hphi__ != nullptr)) {
         for (int ispn = 0; ispn < nsc; ispn++) {
-            auto cs1 = phi__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
-            auto cs2 = hphi__->checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
+            auto cs1 = phi__.checksum(get_device_t(phi__.preferred_memory_t()), ispn, N__, n__);
+            auto cs2 = hphi__->checksum(get_device_t(hphi__->preferred_memory_t()), ispn, N__, n__);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "phi_" << ispn;
@@ -87,8 +87,8 @@ void Hamiltonian::apply_h_s(K_point* kp__,
     }
 
     /* set intial sphi */
-    for (int ispn = 0; (ispn < nsc) && (sphi__ != NULL); ispn++) {
-        sphi__->copy_from(get_device_t(ctx_.preferred_memory_t()), n__, phi__, ispn, N__, ispn, N__);
+    for (int ispn = 0; (ispn < nsc) && (sphi__ != nullptr); ispn++) {
+        sphi__->copy_from(get_device_t(sphi__->preferred_memory_t()), n__, phi__, ispn, N__, ispn, N__);
     }
 
     /* return if there are no beta-projectors */
@@ -155,10 +155,10 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         }
     }
 
-    if ((ctx_.control().print_checksum_) && (hphi__ != NULL) && (sphi__ != NULL)) {
+    if ((ctx_.control().print_checksum_) && (hphi__ != nullptr) && (sphi__ != nullptr)) {
         for (int ispn = 0; ispn < nsc; ispn++) {
-            auto cs1 = hphi__->checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
-            auto cs2 = sphi__->checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
+            auto cs1 = hphi__->checksum(get_device_t(hphi__->preferred_memory_t()), ispn, N__, n__);
+            auto cs2 = sphi__->checksum(get_device_t(sphi__->preferred_memory_t()), ispn, N__, n__);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "hphi_" << ispn;

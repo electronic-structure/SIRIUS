@@ -593,7 +593,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     if (is_device_memory(ctx_.preferred_memory_t())) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             psi.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands);
-            psi.pw_coeffs(ispn).deallocate(memory_t::host);
+            psi.pw_coeffs(ispn).deallocate(memory_t::device);
         }
     }
 

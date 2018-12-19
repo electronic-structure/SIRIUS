@@ -113,6 +113,9 @@ class Wave_functions
 
     bool has_mt_{false};
 
+    /// Preferred memory type for this wave functions.
+    memory_t preferred_memory_t_{memory_t::host};
+
     /// Lower boundary for the spin component index by spin index.
     inline int s0(int ispn__) const
     {
@@ -510,6 +513,17 @@ class Wave_functions
                 mt_coeffs(s).copy_to(mem__, i0__, n__);
             }
         }
+    }
+
+    inline memory_t preferred_memory_t() const
+    {
+        return preferred_memory_t_;
+    }
+
+    inline memory_t preferred_memory_t(memory_t mem__)
+    {
+        preferred_memory_t_ = mem__;
+        return preferred_memory_t_;
     }
 };
 
