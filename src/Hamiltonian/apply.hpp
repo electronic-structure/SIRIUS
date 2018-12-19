@@ -148,13 +148,11 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         // functions on GPU (if needed)
         this->U().apply_hubbard_potential(*kp__, ispn__, N__, n__, phi__, *hphi__);
 
-#ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
+        if (ctx_.processing_unit() == device_t::GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                kp__->hubbard_wave_functions().deallocate_on_device(ispn);
+                kp__->hubbard_wave_functions().deallocate(ispn, memory_t::device);
             }
         }
-#endif
     }
 
     if ((ctx_.control().print_checksum_) && (hphi__ != NULL) && (sphi__ != NULL)) {
@@ -227,11 +225,9 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
         }
     }
 
-#if defined(__GPU)
     if (ctx_.processing_unit() == GPU && !apw_only__) {
-        phi__.mt_coeffs(0).copy_to_host(N__, n__);
+        phi__.mt_coeffs(0).copy_to(memory_t::host, N__, n__);
     }
-#endif
 
     /* short name for local number of G+k vectors */
     int ngv = kp__->num_gkvec_loc();
@@ -783,16 +779,14 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
         }
     }
     t2.stop();
-#if defined(__GPU)
     if (ctx_.processing_unit() == GPU && !apw_only__) {
         if (hphi__ != nullptr) {
-            hphi__->mt_coeffs(0).copy_to_device(N__, n__);
+            hphi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
         }
         if (ophi__ != nullptr) {
-            ophi__->mt_coeffs(0).copy_to_device(N__, n__);
+            ophi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
         }
     }
-#endif
     if (ctx_.control().print_checksum_) {
         if (hphi__) {
             auto cs1 = hphi__->checksum_pw(ctx_.processing_unit(), 0, N__, n__);

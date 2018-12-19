@@ -116,22 +116,18 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
     if (ctx_.valence_relativity() == relativity_t::iora) {
         Wave_functions ofv(kp.gkvec_partition(), unit_cell_.num_atoms(),
                            [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(), 1);
-#ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            kp.fv_eigen_vectors_slab().allocate_on_device(0);
-            kp.fv_eigen_vectors_slab().copy_to_device(0, 0, ctx_.num_fv_states());
-            ofv.allocate_on_device(0);
+        if (ctx_.processing_unit() == device_t::GPU) {
+            kp.fv_eigen_vectors_slab().allocate(0, memory_t::device);
+            kp.fv_eigen_vectors_slab().copy_to(0, memory_t::device, 0, ctx_.num_fv_states());
+            ofv.allocate(0, memory_t::device);
         }
-#endif
 
         hamiltonian__.apply_fv_h_o(&kp, false, false, 0, ctx_.num_fv_states(), kp.fv_eigen_vectors_slab(), nullptr, &ofv);
 
-#ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            kp.fv_eigen_vectors_slab().deallocate_on_device(0);
-            ofv.deallocate_on_device(0);
+        if (ctx_.processing_unit() == device_t::GPU) {
+            kp.fv_eigen_vectors_slab().deallocate(0, memory_t::device);
+            ofv.deallocate(0, memory_t::device);
         }
-#endif
 
         std::vector<double> norm(ctx_.num_fv_states(), 0);
         for (int i = 0; i < ctx_.num_fv_states(); i++) {
@@ -239,20 +235,18 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
     dmatrix<double_complex> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<double_complex> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 
-#if defined(__GPU)
-    if (ctx_.processing_unit() == GPU) {
-        psi.pw_coeffs(0).allocate_on_device();
-        psi.pw_coeffs(0).copy_to_device(0, ncomp);
-        phi.pw_coeffs(0).allocate_on_device();
-        res.pw_coeffs(0).allocate_on_device();
-        ophi.pw_coeffs(0).allocate_on_device();
-        opsi.pw_coeffs(0).allocate_on_device();
+    if (ctx_.processing_unit() == device_t::GPU) {
+        psi.pw_coeffs(0).allocate(memory_t::device);
+        psi.pw_coeffs(0).copy_to(memory_t::device, 0, ncomp);
+        phi.pw_coeffs(0).allocate(memory_t::device);
+        res.pw_coeffs(0).allocate(memory_t::device);
+        ophi.pw_coeffs(0).allocate(memory_t::device);
+        opsi.pw_coeffs(0).allocate(memory_t::device);
         if (ctx_.blacs_grid().comm().size() == 1) {
             evec.allocate(memory_t::device);
             ovlp.allocate(memory_t::device);
         }
     }
-#endif
 
     std::vector<double> eval(ncomp, 1e10);
     std::vector<double> eval_old(ncomp);
@@ -393,12 +387,10 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
         phi.copy_from(ctx_.processing_unit(), n, res, 0, 0, 0, N);
     }
 
-#if defined(__GPU)
-    if (ctx_.processing_unit() == GPU) {
-        psi.pw_coeffs(0).copy_to_host(0, ncomp);
-        psi.pw_coeffs(0).deallocate_on_device();
+    if (ctx_.processing_unit() == device_t::GPU) {
+        psi.pw_coeffs(0).copy_to(memory_t::host, 0, ncomp);
+        psi.pw_coeffs(0).deallocate(memory_t::device);
     }
-#endif
 
     if (ctx_.control().verbosity_ >= 2 && kp__.comm().rank() == 0) {
         printf("lowest and highest eigen-values of the singular components: %20.16f %20.16f\n", eval.front(), eval.back());
@@ -490,21 +482,20 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         }
     }
 
-#if defined(__GPU)
     if (ctx_.processing_unit() == device_t::GPU) {
-        psi.allocate_on_device(0);
-        psi.copy_to_device(0, 0, num_bands);
+        psi.allocate(0, memory_t::device);
+        psi.copy_to(0, memory_t::device, 0, num_bands);
 
-        phi.allocate_on_device(0);
-        phi.copy_to_device(0, 0, nlo + ncomp);
+        phi.allocate(0, memory_t::device);
+        phi.copy_to(0, memory_t::device, 0, nlo + ncomp);
 
-        res.allocate_on_device(0);
+        res.allocate(0, memory_t::device);
 
-        hphi.allocate_on_device(0);
-        ophi.allocate_on_device(0);
+        hphi.allocate(0, memory_t::device);
+        ophi.allocate(0, memory_t::device);
 
-        hpsi.allocate_on_device(0);
-        opsi.allocate_on_device(0);
+        hpsi.allocate(0, memory_t::device);
+        opsi.allocate(0, memory_t::device);
 
         if (ctx_.blacs_grid().comm().size() == 1) {
             evec.allocate(memory_t::device);
@@ -512,7 +503,6 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
             hmlt.allocate(memory_t::device);
         }
     }
-#endif
 
     std::vector<double> eval(num_bands);
     for (int i = 0; i < num_bands; i++) {
@@ -617,13 +607,11 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         }
     }
 
-#if defined(__GPU)
-    if (ctx_.processing_unit() == GPU) {
-        psi.pw_coeffs(0).copy_to_host(0, num_bands);
-        psi.mt_coeffs(0).copy_to_host(0, num_bands);
-        psi.deallocate_on_device(0);
+    if (ctx_.processing_unit() == device_t::GPU) {
+        psi.pw_coeffs(0).copy_to(memory_t::host, 0, num_bands);
+        psi.mt_coeffs(0).copy_to(memory_t::host, 0, num_bands);
+        psi.deallocate(0, memory_t::device);
     }
-#endif
     kp__.set_fv_eigen_values(&eval[0]);
 }
 
@@ -679,20 +667,16 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
     int nfv = ctx_.num_fv_states();
     int bs  = ctx_.cyclic_block_size();
 
-#ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        kp__.fv_states().allocate_on_device(0);
-        kp__.fv_states().copy_to_device(0, 0, nfv);
+    if (ctx_.processing_unit() == device_t::GPU) {
+        kp__.fv_states().allocate(0, memory_t::device);
+        kp__.fv_states().copy_to(0, memory_t::device, 0, nfv);
         for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-            hpsi[i].allocate_on_device(0);
-            hpsi[i].copy_to_device(0, 0, nfv);
+            hpsi[i].allocate(0, memory_t::device);
+            hpsi[i].copy_to(0, memory_t::device, 0, nfv);
         }
     }
-#endif
 
-    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     //#ifdef __PRINT_OBJECT_CHECKSUM
     //auto z1 = kp->fv_states().checksum(0, nfv);
@@ -765,14 +749,12 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
         std_solver->solve(nb, nb, h, &band_energies(0, 0), kp__.sv_eigen_vectors(0));
     }
 
-#ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        kp__.fv_states().deallocate_on_device(0);
+    if (ctx_.processing_unit() == device_t::GPU) {
+        kp__.fv_states().deallocate(0, memory_t::device);
         for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-            hpsi[i].deallocate_on_device(0);
+            hpsi[i].deallocate(0, memory_t::device);
         }
     }
-#endif
     for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
         for (int j = 0; j < ctx_.num_bands(); j++) {
             kp__.band_energy(j, ispn, band_energies(j, ispn));

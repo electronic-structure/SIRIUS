@@ -86,7 +86,7 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                                       3);
 
 #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         dm.allocate(memory_t::device);
         dn_tmp.allocate(memory_t::device);
 
@@ -95,13 +95,13 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
         dphi_s_psi.allocate(memory_t::device);
 
         /* wave functions */
-        phitmp.allocate_on_device(0);
-        phi.allocate_on_device(0);
-        dphi.allocate_on_device(0);
-        phi.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
-        kp.spinor_wave_functions().allocate_on_device(ctx_.num_spins());
+        phitmp.allocate(0, memory_t::device);
+        phi.allocate(0, memory_t::device);
+        dphi.allocate(0, memory_t::device);
+        phi.copy_to(0, memory_t::device, 0, this->number_of_hubbard_orbitals());
+        kp.spinor_wave_functions().allocate(ctx_.num_spins(), memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            kp.spinor_wave_functions().copy_to_device(ispn, 0, kp.num_occupied_bands(ispn));
+            kp.spinor_wave_functions().copy_to(ispn, memory_t::device, 0, kp.num_occupied_bands(ispn));
         }
     }
 #endif
@@ -140,11 +140,9 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
 
                 kp.compute_gradient_wave_functions(phi, this->offset[atom_id], lmax_at, phitmp, this->offset[atom_id], dir);
 
-                #if defined(__GPU)
-                if (ctx_.processing_unit() == GPU) {
-                    phitmp.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
+                if (ctx_.processing_unit() == device_t::GPU) {
+                    phitmp.copy_to(0, memory_t::device, 0, this->number_of_hubbard_orbitals());
                 }
-                #endif
 
                 // For norm conserving pp, it is enough to have the derivatives
                 // of |phi^J_m> (J = atom_id)
@@ -206,10 +204,10 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
         dm.deallocate(memory_t::device);
         phi_s_psi.deallocate(memory_t::device);
         dphi_s_psi.deallocate(memory_t::device);
-        phi.deallocate_on_device(0);
-        phitmp.deallocate_on_device(0);
-        dphi.deallocate_on_device(0);
-        kp.spinor_wave_functions().deallocate_on_device(ctx_.num_spins());
+        phi.deallocate(0, memory_t::device);
+        phitmp.deallocate(0, memory_t::device);
+        dphi.deallocate(0, memory_t::device);
+        kp.spinor_wave_functions().deallocate(ctx_.num_spins(), memory_t::device);
     }
     #endif
 
@@ -262,21 +260,19 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
     /* compute the hubbard orbitals */
     kp.generate_atomic_wave_functions_aux(this->number_of_hubbard_orbitals(), phi, this->offset, true);
 
-#ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         dm.allocate(memory_t::device);
         phi_s_psi.allocate(memory_t::device);
         dphi_s_psi.allocate(memory_t::device);
-        phi.allocate_on_device(0);
-        phi.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
-        dphi.allocate_on_device(0);
-        kp.spinor_wave_functions().allocate_on_device(ctx_.num_spins());
+        phi.allocate(0, memory_t::device);
+        phi.copy_to(0, memory_t::device, 0, this->number_of_hubbard_orbitals());
+        dphi.allocate(0, memory_t::device);
+        kp.spinor_wave_functions().allocate(ctx_.num_spins(), memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            kp.spinor_wave_functions().copy_to_device(ispn, 0, kp.num_occupied_bands(ispn));
+            kp.spinor_wave_functions().copy_to(ispn, memory_t::device, 0, kp.num_occupied_bands(ispn));
         }
-        phitmp.allocate_on_device(0);
+        phitmp.allocate(0, memory_t::device);
     }
-#endif
     /* compute the S|phi^I_ia> */
     apply_S_operator(kp, q_op, phi, dphi, 0, this->number_of_hubbard_orbitals());
 
@@ -308,11 +304,9 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
             // |phi_m^J> compared to the strain
 
             compute_gradient_strain_wavefunctions(kp, phitmp, rlm_g, rlm_dg, nu, mu);
-            #if defined(__GPU)
-            if (ctx_.processing_unit() == GPU) {
-                phitmp.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
+            if (ctx_.processing_unit() == device_t::GPU) {
+                phitmp.copy_to(0, memory_t::device, 0, this->number_of_hubbard_orbitals());
             }
-            #endif
             // computes the S|d phi^I_ia>. It just happens that doing
             // this is equivalent to
             dphi.copy_from(ctx_.processing_unit(), this->number_of_hubbard_orbitals(), phitmp, 0, 0, 0, 0);
@@ -377,17 +371,15 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
         }
     }
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         dm.deallocate(memory_t::device);
         phi_s_psi.deallocate(memory_t::device);
         dphi_s_psi.deallocate(memory_t::device);
-        phi.deallocate_on_device(0);
-        phitmp.deallocate_on_device(0);
-        dphi.deallocate_on_device(0);
-        kp.spinor_wave_functions().deallocate_on_device(ctx_.num_spins());
+        phi.deallocate(0, memory_t::device);
+        phitmp.deallocate(0, memory_t::device);
+        dphi.deallocate(0, memory_t::device);
+        kp.spinor_wave_functions().deallocate(ctx_.num_spins(), memory_t::device);
     }
-    #endif
 
     kp.beta_projectors().dismiss();
     bp_strain_deriv.dismiss();

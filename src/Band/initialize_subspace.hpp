@@ -175,9 +175,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
         }
         for (int ispn = 0; ispn < num_sc; ispn++) {
             phi.pw_coeffs(ispn).allocate(mpd);
-#ifdef __GPU
-            phi.pw_coeffs(ispn).copy_to_device(0, num_phi_tot);
-#endif
+            phi.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_phi_tot);
             hphi.pw_coeffs(ispn).allocate(mpd);
             ophi.pw_coeffs(ispn).allocate(mpd);
             wf_tmp.pw_coeffs(ispn).allocate(mpd);
@@ -290,12 +288,10 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
     }
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
-#ifdef __GPU
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            kp__->spinor_wave_functions().pw_coeffs(ispn).copy_to_host(0, num_bands);
-            kp__->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+            kp__->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands);
+            kp__->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
         }
-#endif
     }
 
     if (ctx_.control().print_checksum_) {

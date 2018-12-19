@@ -217,29 +217,26 @@ class Stress {
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
             int ik = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
-#ifdef __GPU
             if (is_device_memory(ctx_.preferred_memory_t())) {
                 int nbnd = ctx_.num_bands();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* allocate GPU memory */
-                    kp->spinor_wave_functions().pw_coeffs(ispn).allocate_on_device();
-                    kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd);
+                    kp->spinor_wave_functions().pw_coeffs(ispn).allocate(memory_t::device);
+                    kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
                 }
             }
-#endif
             Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
 
             Non_local_functor<T> nlf(ctx_, bp_strain_deriv);
 
             nlf.add_k_point_contribution(*kp, collect_result);
-#ifdef __GPU
+
             if (is_device_memory(ctx_.preferred_memory_t())) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* deallocate GPU memory */
-                    kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+                    kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
                 }
             }
-#endif
         }
 
         #pragma omp parallel

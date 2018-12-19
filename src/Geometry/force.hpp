@@ -71,27 +71,24 @@ class Force
         void add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces__) const
         {
             Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.igk_loc(), kpoint.beta_projectors());
-#ifdef __GPU
             if (is_device_memory(ctx_.preferred_memory_t())) {
                 int nbnd = ctx_.num_bands();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* allocate GPU memory */
-                    kpoint.spinor_wave_functions().pw_coeffs(ispn).allocate_on_device();
-                    kpoint.spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd);
+                    kpoint.spinor_wave_functions().pw_coeffs(ispn).allocate(memory_t::device);
+                    kpoint.spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
                 }
             }
-#endif
+
             Non_local_functor<T> nlf(ctx_, bp_grad);
 
             nlf.add_k_point_contribution(kpoint, forces__);
-#ifdef __GPU
             if (is_device_memory(ctx_.preferred_memory_t())) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* deallocate GPU memory */
-                    kpoint.spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+                    kpoint.spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
                 }
             }
-#endif
         }
 
         inline void symmetrize(mdarray<double, 2>& forces__) const
