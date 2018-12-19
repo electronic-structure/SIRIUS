@@ -85,7 +85,6 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                                       ctx_.unit_cell().num_atoms(),
                                       3);
 
-#ifdef __GPU
     if (ctx_.processing_unit() == device_t::GPU) {
         dm.allocate(memory_t::device);
         dn_tmp.allocate(memory_t::device);
@@ -95,16 +94,15 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
         dphi_s_psi.allocate(memory_t::device);
 
         /* wave functions */
-        phitmp.allocate(0, memory_t::device);
-        phi.allocate(0, memory_t::device);
-        dphi.allocate(0, memory_t::device);
+        phitmp.allocate(spin_idx(0), memory_t::device);
+        phi.allocate(spin_idx(0), memory_t::device);
+        dphi.allocate(spin_idx(0), memory_t::device);
         phi.copy_to(0, memory_t::device, 0, this->number_of_hubbard_orbitals());
-        kp.spinor_wave_functions().allocate(ctx_.num_spins(), memory_t::device);
+        kp.spinor_wave_functions().allocate(spin_idx(ctx_.num_spins()), memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             kp.spinor_wave_functions().copy_to(ispn, memory_t::device, 0, kp.num_occupied_bands(ispn));
         }
     }
-#endif
     phi_s_psi.zero(memory_t::host);
     phi_s_psi.zero(memory_t::device);
 
