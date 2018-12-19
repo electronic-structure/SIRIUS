@@ -296,11 +296,10 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     kp__->beta_projectors().prepare();
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
-#ifdef __GPU
         auto& mpd = ctx_.mem_pool(memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             psi.pw_coeffs(ispn).allocate(mpd);
-            psi.pw_coeffs(ispn).copy_to_device(0, num_bands);
+            psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_bands);
         }
         for (int i = 0; i < num_sc; i++) {
             phi.pw_coeffs(i).allocate(mpd);
@@ -318,7 +317,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             ovlp.allocate(mpd);
             hmlt.allocate(mpd);
         }
-#endif
     }
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
@@ -593,12 +591,10 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     //    }
     //}
     if (is_device_memory(ctx_.preferred_memory_t())) {
-#ifdef __GPU
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            psi.pw_coeffs(ispn).copy_to_host(0, num_bands);
-            psi.pw_coeffs(ispn).deallocate_on_device();
+            psi.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands);
+            psi.pw_coeffs(ispn).deallocate(memory_t::host);
         }
-#endif
     }
 
     //== std::cout << "checking psi" << std::endl;

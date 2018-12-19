@@ -200,12 +200,12 @@ class Hubbard
         return hubbard_potential_(m1, m2, m3, m4, channel);
     }
 
-    const bool orthogonalize_hubbard_orbitals() const
+    bool orthogonalize_hubbard_orbitals() const
     {
         return orthogonalize_hubbard_orbitals_;
     }
 
-    const bool normalize_hubbard_orbitals() const
+    bool normalize_hubbard_orbitals() const
     {
         return normalize_orbitals_only_;
     }

@@ -459,7 +459,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     }
 
     /// Copy prime storage to device memory.
-    void copy_to(memory mem__, int i0__, int n__)
+    void copy_to(memory_t mem__, int i0__, int n__)
     {
         if (num_rows_loc()) {
             prime_.copy_to(mem__, i0__ * num_rows_loc(),  n__ * num_rows_loc());

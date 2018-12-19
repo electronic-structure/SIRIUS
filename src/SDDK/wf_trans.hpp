@@ -180,7 +180,11 @@ inline void transform(device_t                     pu__,
         if (beta__ == 0) {
             wf_out__[iv]->zero(pu__, ispn__, j0__, n__);
         } else {
-            wf_out__[iv]->scale(pu__, ispn__, j0__, n__, beta__);
+            if (pu__ == device_t::CPU) {
+                wf_out__[iv]->scale(memory_t::host, ispn__, j0__, n__, beta__);
+            } else {
+                wf_out__[iv]->scale(memory_t::device, ispn__, j0__, n__, beta__);
+            }
         }
     }
     t1.stop();
@@ -540,7 +544,7 @@ inline void transform(memory_t                     mem__,
         if (beta__ == 0) {
             wf_out__[iv]->zero(get_device_t(mem__), ispn__, j0__, n__);
         } else {
-            wf_out__[iv]->scale(get_device_t(mem__), ispn__, j0__, n__, beta__);
+            wf_out__[iv]->scale(mem__, ispn__, j0__, n__, beta__);
         }
     }
     t1.stop();

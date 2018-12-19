@@ -460,24 +460,12 @@ class Wave_functions
         zero_mt(pu__, ispn__, i0__, n__);
     }
 
-    inline void scale(device_t pu__, int ispn__, int i0__, int n__, double beta__)
+    inline void scale(memory_t mem__, int ispn__, int i0__, int n__, double beta__)
     {
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
-            switch (pu__) {
-                case CPU: {
-                    pw_coeffs(s).scale<memory_t::host>(i0__, n__, beta__);
-                    if (has_mt()) {
-                        mt_coeffs(s).scale<memory_t::host>(i0__, n__, beta__);
-                    }
-                    break;
-                }
-                case GPU: {
-                    pw_coeffs(s).scale<memory_t::device>(i0__, n__, beta__);
-                    if (has_mt()) {
-                        mt_coeffs(s).scale<memory_t::device>(i0__, n__, beta__);
-                    }
-                    break;
-                }
+            pw_coeffs(s).scale(mem__, i0__, n__, beta__);
+            if (has_mt()) {
+                mt_coeffs(s).scale(mem__, i0__, n__, beta__);
             }
         }
     }
@@ -494,47 +482,35 @@ class Wave_functions
         return std::move(norm);
     }
 
-#ifdef __GPU
-    void allocate_on_device(int ispn__)
+    void allocate(int ispn__, memory_t mem__)
     {
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
-            pw_coeffs(s).allocate_on_device();
+            pw_coeffs(s).allocate(mem__);
             if (has_mt()) {
-                mt_coeffs(s).allocate_on_device();
+                mt_coeffs(s).allocate(mem__);
             }
         }
     }
 
-    void deallocate_on_device(int ispn__)
+    void deallocate(int ispn__, memory_t mem__)
     {
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
-            pw_coeffs(s).deallocate_on_device();
+            pw_coeffs(s).deallocate(mem__);
             if (has_mt()) {
-                mt_coeffs(s).deallocate_on_device();
+                mt_coeffs(s).deallocate(mem__);
             }
         }
     }
 
-    void copy_to_device(int ispn__, int i0__, int n__)
+    void copy_to(int ispn__, memory_t mem__, int i0__, int n__)
     {
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
-            pw_coeffs(s).copy_to_device(i0__, n__);
+            pw_coeffs(s).copy_to(mem__, i0__, n__);
             if (has_mt()) {
-                mt_coeffs(s).copy_to_device(i0__, n__);
+                mt_coeffs(s).copy_to(mem__, i0__, n__);
             }
         }
     }
-
-    void copy_to_host(int ispn__, int i0__, int n__)
-    {
-        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
-            pw_coeffs(s).copy_to_host(i0__, n__);
-            if (has_mt()) {
-                mt_coeffs(s).copy_to_host(i0__, n__);
-            }
-        }
-    }
-#endif
 };
 
 #include "wf_inner.hpp"

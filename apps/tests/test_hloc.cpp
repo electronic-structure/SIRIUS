@@ -55,13 +55,11 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     }
     Wave_functions hphi(gvecp, 4 * num_bands__);
 
-    #ifdef __GPU
-    if (pu == GPU) {
-        phi.pw_coeffs(0).allocate_on_device();
-        phi.pw_coeffs(0).copy_to_device(0, 4 * num_bands__);
-        hphi.pw_coeffs(0).allocate_on_device();
+    if (pu == device_t::GPU) {
+        phi.pw_coeffs(0).allocate(memory_t::device);
+        phi.pw_coeffs(0).copy_to(memory_t::device, 0, 4 * num_bands__);
+        hphi.pw_coeffs(0).allocate(memory_t::device);
     }
-    #endif
     hloc.prepare(gvecp); 
     Communicator::world().barrier();
     utils::timer t1("h_loc");
@@ -72,11 +70,9 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     t1.stop();
     hloc.dismiss();
 
-    #ifdef __GPU
     if (pu == GPU && !phi.pw_coeffs(0).is_remapped()) {
-        hphi.pw_coeffs(0).copy_to_host(0, 4 * num_bands__);
+        hphi.pw_coeffs(0).copy_to(memory_t::host, 0, 4 * num_bands__);
     }
-    #endif
 
     //auto cs1 = phi.checksum_pw(0, 4 * num_bands__, CPU);
     //auto cs2 = hphi.checksum_pw(0, 4 * num_bands__, CPU);
