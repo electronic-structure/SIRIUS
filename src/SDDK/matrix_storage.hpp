@@ -428,7 +428,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     /// Allocate prime storage.
     void allocate(memory_t mem__)
     {
-        prime_.allocate(mem__)
+        prime_.allocate(mem__);
     }
 
     /// Deallocate storage.

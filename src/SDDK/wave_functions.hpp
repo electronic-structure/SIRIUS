@@ -61,7 +61,7 @@ class spin_idx
             TERMINATE("wrong spin index");
         }
     }
-    inline int operator() const
+    inline int operator()() const
     {
         return idx_;
     }
@@ -482,9 +482,9 @@ class Wave_functions
         return std::move(norm);
     }
 
-    void allocate(int ispn__, memory_t mem__)
+    void allocate(spin_idx sid__, memory_t mem__)
     {
-        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+        for (int s = s0(sid__()); s <= s1(sid__()); s++) {
             pw_coeffs(s).allocate(mem__);
             if (has_mt()) {
                 mt_coeffs(s).allocate(mem__);

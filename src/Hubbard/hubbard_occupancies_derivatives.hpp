@@ -264,14 +264,14 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
         dm.allocate(memory_t::device);
         phi_s_psi.allocate(memory_t::device);
         dphi_s_psi.allocate(memory_t::device);
-        phi.allocate(0, memory_t::device);
+        phi.allocate(spin_idx(0), memory_t::device);
         phi.copy_to(0, memory_t::device, 0, this->number_of_hubbard_orbitals());
-        dphi.allocate(0, memory_t::device);
-        kp.spinor_wave_functions().allocate(ctx_.num_spins(), memory_t::device);
+        dphi.allocate(spin_idx(0), memory_t::device);
+        kp.spinor_wave_functions().allocate(spin_idx(ctx_.num_spins()), memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             kp.spinor_wave_functions().copy_to(ispn, memory_t::device, 0, kp.num_occupied_bands(ispn));
         }
-        phitmp.allocate(0, memory_t::device);
+        phitmp.allocate(spin_idx(0), memory_t::device);
     }
     /* compute the S|phi^I_ia> */
     apply_S_operator(kp, q_op, phi, dphi, 0, this->number_of_hubbard_orbitals());
