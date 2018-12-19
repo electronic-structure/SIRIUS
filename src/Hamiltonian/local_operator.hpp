@@ -353,7 +353,7 @@ class Local_operator
             /* set FFT friednly distribution */
             hphi__.pw_coeffs(ispn).set_num_extra(n__, idx0__, &mp);
             /* memory location of hphi in extra storage */
-            mem_hphi = (hphi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : phi__.preferred_memory_t();
+            mem_hphi = (hphi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : hphi__.preferred_memory_t();
 
             /* local number of wave-functions in extra-storage distribution */
             int num_wf_loc = phi__.pw_coeffs(ispn).spl_num_col().local_size();

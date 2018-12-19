@@ -303,7 +303,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         phi.preferred_memory_t(ctx_.aux_preferred_memory_t());
     }
 
-
     if (is_device_memory(ctx_.preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
