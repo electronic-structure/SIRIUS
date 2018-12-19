@@ -48,6 +48,25 @@ inline std::vector<int> get_spins(int ispn__)
     return (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
 }
 
+/// Helper class to wrap spin index (integer number).
+class spin_idx
+{
+  private:
+    int idx_;
+  public:
+    explicit spin_idx(int idx__)
+        : idx_(idx__)
+    {
+        if (!(idx_ == 0 || idx_ == 1 || idx_ == 2)) {
+            TERMINATE("wrong spin index");
+        }
+    }
+    inline int operator() const
+    {
+        return idx_;
+    }
+};
+
 /// Wave-functions representation.
 /** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
  *  with the slab distribution. Wave-functions have one or two spin components. In case of collinear magnetism

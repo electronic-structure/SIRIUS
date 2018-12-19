@@ -87,7 +87,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     {
         PROFILE("sddk::matrix_storage::matrix_storage");
         /* primary storage of PW wave functions: slabs */
-        prime_ = mdarray<T, 2>(num_rows_loc_, num_cols_, memory_t::host, "matrix_storage.prime_");
+        prime_ = mdarray<T, 2>(num_rows_loc(), num_cols_, memory_t::host, "matrix_storage.prime_");
     }
 
     matrix_storage(int num_rows_loc__, int num_cols__)
@@ -96,7 +96,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     {
         PROFILE("sddk::matrix_storage::matrix_storage");
         /* primary storage of PW wave functions: slabs */
-        prime_ = mdarray<T, 2>(num_rows_loc_, num_cols_, memory_t::host, "matrix_storage.prime_");
+        prime_ = mdarray<T, 2>(num_rows_loc(), num_cols_, memory_t::host, "matrix_storage.prime_");
     }
 
     /// Constructor.
@@ -107,7 +107,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     {
         PROFILE("sddk::matrix_storage::matrix_storage");
         /* primary storage of PW wave functions: slabs */
-        prime_ = mdarray<T, 2>(mp__, num_rows_loc_, num_cols_, "matrix_storage.prime_");
+        prime_ = mdarray<T, 2>(mp__, num_rows_loc(), num_cols_, "matrix_storage.prime_");
     }
 
     /// Check if data needs to be remapped.
@@ -408,11 +408,6 @@ class matrix_storage<T, matrix_storage_t::slab>
         return extra_;
     }
 
-    inline void zero(memory_t mem__, int i0__, int n__)
-    {
-        prime_.zero(mem__, i0__ * num_rows_loc(), n__ * num_rows_loc());
-    }
-
     /// Local number of rows in prime matrix.
     inline int num_rows_loc() const
     {
@@ -422,22 +417,6 @@ class matrix_storage<T, matrix_storage_t::slab>
     inline splindex<block> const& spl_num_col() const
     {
         return spl_num_col_;
-    }
-
-    inline void scale(memory_t mem__, int i0__, int n__, double beta__)
-    {
-        if (is_host_memory(mem__)) {
-            for (int i = 0; i < n__; i++) {
-                for (int j = 0; j < num_rows_loc(); j++) {
-                    prime(j, i0__ + i) *= beta__;
-                }
-            }
-        } else {
-#if defined(__GPU)
-            scale_matrix_elements_gpu(reinterpret_cast<cuDoubleComplex*>(prime().at(mem__, 0, i0__)),
-                                      prime().ld(), num_rows_loc(), n__, beta__);
-#endif
-        }
     }
 
     /// Allocate prime storage.
@@ -458,6 +437,27 @@ class matrix_storage<T, matrix_storage_t::slab>
         prime_.deallocate(mem__);
     }
 
+    inline void scale(memory_t mem__, int i0__, int n__, double beta__)
+    {
+        if (is_host_memory(mem__)) {
+            for (int i = 0; i < n__; i++) {
+                for (int j = 0; j < num_rows_loc(); j++) {
+                    prime(j, i0__ + i) *= beta__;
+                }
+            }
+        } else {
+#if defined(__GPU)
+            scale_matrix_elements_gpu(reinterpret_cast<cuDoubleComplex*>(prime().at(mem__, 0, i0__)),
+                                      prime().ld(), num_rows_loc(), n__, beta__);
+#endif
+        }
+    }
+
+    inline void zero(memory_t mem__, int i0__, int n__)
+    {
+        prime_.zero(mem__, i0__ * num_rows_loc(), n__ * num_rows_loc());
+    }
+
     /// Copy prime storage to device memory.
     void copy_to(memory mem__, int i0__, int n__)
     {
@@ -466,9 +466,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
     }
 
-    inline double_complex checksum(device_t pu__,
-                                   int      i0__,
-                                   int      n__)
+    inline double_complex checksum(device_t pu__, int i0__, int n__)
     {
         double_complex cs(0, 0);
 
