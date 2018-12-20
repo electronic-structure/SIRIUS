@@ -488,7 +488,8 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
 
         for (int ispn = 0; ispn < num_sc; ispn++) {
             if (is_device_memory(ctx_.preferred_memory_t())) {
-                res.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
+                hpsi.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
+                spsi.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
             }
             #pragma omp parallel for schedule(static)
             for (int j = 0; j < ctx_.num_bands(); j++) {

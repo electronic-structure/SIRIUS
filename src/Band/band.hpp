@@ -144,6 +144,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                 }
                 spsi.preferred_memory_t(ctx_.preferred_memory_t());
             }
+            kp__->beta_projectors().prepare();
             /* compute residuals */
             for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
                 if (nc_mag) {
@@ -173,6 +174,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                 }
                 psi.preferred_memory_t(memory_t::host);
             }
+            kp__->beta_projectors().dismiss();
         }
     }
 
