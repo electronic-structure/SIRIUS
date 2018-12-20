@@ -114,6 +114,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     template <typename T>
     void check_residuals(K_point* kp__, Hamiltonian& H__) const;
 
+    /// Check wave-functions for orthonormalization.
     template <typename T>
     void check_wave_functions(K_point& kp__, Hamiltonian& H__) const
     {
@@ -131,19 +132,30 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
             auto& psi = kp__.spinor_wave_functions();
             Wave_functions spsi(kp__.gkvec_partition(), ctx_.num_bands(), num_sc);
 
+            if (is_device_memory(ctx_.preferred_memory_t())) {
+                auto& mpd = ctx_.mem_pool(memory_t::device);
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    psi.pw_coeffs(ispn).allocate(mpd);
+                    psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
+                }
+                psi.preferred_memory_t(ctx_.preferred_memory_t());
+                for (int i = 0; i < num_sc; i++) {
+                    spsi.pw_coeffs(i).allocate(mpd);
+                }
+                spsi.preferred_memory_t(ctx_.preferred_memory_t());
+            }
             /* compute residuals */
             for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
                 if (nc_mag) {
                     /* apply Hamiltonian and S operators to the wave-functions */
                     H__.apply_h_s<T>(&kp__, 2, 0, ctx_.num_bands(), psi, nullptr, &spsi);
-                    inner<T>(CPU, 2, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
+                    inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 2, psi, 0, ctx_.num_bands(),
+                          spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
                 } else {
-                    //Wave_functions phi(&psi.pw_coeffs(ispin_step).prime(0, 0), kp__.gkvec_partition(), ctx_.num_bands(), 1);
                     /* apply Hamiltonian and S operators to the wave-functions */
-                    //H__.apply_h_s<T>(&kp__, ispin_step, 0, ctx_.num_bands(), phi, 0, &spsi);
                     H__.apply_h_s<T>(&kp__, ispin_step, 0, ctx_.num_bands(), psi, 0, &spsi);
-                    //inner<T>(CPU, 0, phi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
-                    inner<T>(CPU, 0, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
+                    inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, psi, 0, ctx_.num_bands(),
+                          spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
                 }
                 double diff = check_identity(ovlp, ctx_.num_bands());
 
@@ -154,6 +166,12 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                         printf("OK! Wave functions are orthonormal.\n");
                     }
                 }
+            }
+            if (is_device_memory(ctx_.preferred_memory_t())) {
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    psi.pw_coeffs(ispn).deallocate(memory_t::device);
+                }
+                psi.preferred_memory_t(memory_t::host);
             }
         }
     }

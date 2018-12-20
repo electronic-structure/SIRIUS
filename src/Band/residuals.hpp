@@ -487,6 +487,9 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
         }
 
         for (int ispn = 0; ispn < num_sc; ispn++) {
+            if (is_device_memory(ctx_.preferred_memory_t())) {
+                res.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
+            }
             #pragma omp parallel for schedule(static)
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
@@ -497,7 +500,7 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
             }
         }
         /* get the norm */
-        auto l2norm = res.l2norm(ctx_.processing_unit(), nc_mag ? 2 : 0, ctx_.num_bands());
+        auto l2norm = res.l2norm(device_t::CPU, nc_mag ? 2 : 0, ctx_.num_bands());
 
         if (kp__->comm().rank() == 0) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
