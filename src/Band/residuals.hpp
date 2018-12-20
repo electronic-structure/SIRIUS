@@ -433,18 +433,10 @@ inline int Band::residuals(K_point*             kp__,
     if (ctx_.control().print_checksum_ && n != 0) {
         for (int ispn: spins) {
             auto cs = res__.checksum(get_device_t(res__.preferred_memory_t()), ispn, 0, n);
-            //auto cs1 = hpsi__.checksum(get_device_t(hpsi__.preferred_memory_t()), ispn, 0, n);
-            //auto cs2 = opsi__.checksum(get_device_t(opsi__.preferred_memory_t()), ispn, 0, n);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "res_" << ispn;
                 utils::print_checksum(s.str(), cs);
-                //s.str("");
-                //s << "hpsi_" << ispn;
-                //utils::print_checksum(s.str(), cs1);
-                //s.str("");
-                //s << "opsi_" << ispn;
-                //utils::print_checksum(s.str(), cs2);
             }
         }
     }
@@ -467,6 +459,22 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
     Wave_functions spsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
     Wave_functions res(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
 
+    if (is_device_memory(ctx_.preferred_memory_t())) {
+        auto& mpd = ctx_.mem_pool(memory_t::device);
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            psi.pw_coeffs(ispn).allocate(mpd);
+            psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
+        }
+        psi.preferred_memory_t(ctx_.preferred_memory_t());
+        for (int i = 0; i < num_sc; i++) {
+            res.pw_coeffs(i).allocate(mpd);
+            hpsi.pw_coeffs(i).allocate(mpd);
+            spsi.pw_coeffs(i).allocate(mpd);
+        }
+        res.preferred_memory_t(ctx_.preferred_memory_t());
+        hpsi.preferred_memory_t(ctx_.preferred_memory_t());
+        spsi.preferred_memory_t(ctx_.preferred_memory_t());
+    }
     kp__->beta_projectors().prepare();
     /* compute residuals */
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
@@ -498,4 +506,10 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
         }
     }
     kp__->beta_projectors().dismiss();
+    if (is_device_memory(ctx_.preferred_memory_t())) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            psi.pw_coeffs(ispn).deallocate(memory_t::device);
+        }
+        psi.preferred_memory_t(memory_t::host);
+    }
 }
