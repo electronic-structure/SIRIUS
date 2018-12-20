@@ -22,7 +22,7 @@
  *  \brief Compute wave-function residuals.
  */
 
-#ifdef __GPU
+#if defined(__GPU)
 extern "C" void residuals_aux_gpu(int num_gvec_loc__,
                                   int num_res_local__,
                                   int* res_idx__,
@@ -87,7 +87,7 @@ static void compute_res(device_t            pu__,
                 break;
             }
             case GPU: {
-                #ifdef __GPU
+#if defined(__GPU)
                 compute_residuals_gpu(hpsi__.pw_coeffs(ispn).prime().at(memory_t::device),
                                       opsi__.pw_coeffs(ispn).prime().at(memory_t::device),
                                       res__.pw_coeffs(ispn).prime().at(memory_t::device),
@@ -102,7 +102,7 @@ static void compute_res(device_t            pu__,
                                           num_bands__,
                                           eval__.at(memory_t::device));
                 }
-                #endif
+#endif
             }
         }
     }
@@ -142,7 +142,7 @@ static void apply_p(device_t            pu__,
                 break;
             }
             case GPU: {
-                #ifdef __GPU
+#if defined(__GPU)
                 apply_preconditioner_gpu(res__.pw_coeffs(ispn).prime().at(memory_t::device),
                                          res__.pw_coeffs(ispn).num_rows_loc(),
                                          num_bands__,
@@ -158,7 +158,7 @@ static void apply_p(device_t            pu__,
                                              o_diag__.at(memory_t::device, res__.pw_coeffs(ispn).num_rows_loc()));
                 }
                 break;
-                #endif
+#endif
             }
         }
     }
@@ -251,7 +251,7 @@ Band::residuals_aux(K_point*             kp__,
 
     /* normalize preconditioned residuals */
     normalize_res(pu, ispn__, num_bands__, res__, p_norm);
-    
+
     if (ctx_.control().verbosity_ >= 5) {
         auto n_norm = res__.l2norm(pu, ispn__, num_bands__);
         if (kp__->comm().rank() == 0) {
@@ -340,12 +340,29 @@ inline int Band::residuals(K_point*             kp__,
                     }
                 }
             }
-            if (ctx_.processing_unit() == GPU && evec__.blacs_grid().comm().size() == 1) {
+            if (ctx_.processing_unit() == device_t::GPU && evec__.blacs_grid().comm().size() == 1) {
                 evec_tmp.allocate(memory_t::device);
             }
             /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
             transform<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), ispn__, {&hphi__, &ophi__}, 0, N__,
                          evec_tmp, 0, 0, {&hpsi__, &opsi__}, 0, n);
+
+            /* print checksums */
+            if (ctx_.control().print_checksum_ && n != 0) {
+                for (int ispn: spins) {
+                    auto cs1 = hpsi__.checksum(get_device_t(hpsi__.preferred_memory_t()), ispn, 0, n);
+                    auto cs2 = opsi__.checksum(get_device_t(opsi__.preferred_memory_t()), ispn, 0, n);
+                    if (kp__->comm().rank() == 0) {
+                        std::stringstream s;
+                        s.str("");
+                        s << "hpsi_" << ispn;
+                        utils::print_checksum(s.str(), cs1);
+                        s.str("");
+                        s << "opsi_" << ispn;
+                        utils::print_checksum(s.str(), cs2);
+                    }
+                }
+            }
 
             auto res_norm = residuals_aux(kp__, ispn__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
@@ -367,7 +384,7 @@ inline int Band::residuals(K_point*             kp__,
                 printf("initial and final number of residuals : %i %i\n", nmax, n);
             }
         }
-    } else {
+    } else { /* compute all residuals first */
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         transform<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), ispn__, {&hphi__, &ophi__}, 0, N__,
                      evec__, 0, 0, {&hpsi__, &opsi__}, 0, num_bands__);
@@ -404,7 +421,7 @@ inline int Band::residuals(K_point*             kp__,
                 break;
             }
             case GPU: {
-#ifdef __GPU
+#if defined(__GPU)
                 make_real_g0_gpu(res__.pw_coeffs(ispn__).prime().at(memory_t::device), res__.pw_coeffs(ispn__).prime().ld(), n);
 #endif
                 break;
@@ -416,18 +433,18 @@ inline int Band::residuals(K_point*             kp__,
     if (ctx_.control().print_checksum_ && n != 0) {
         for (int ispn: spins) {
             auto cs = res__.checksum(get_device_t(res__.preferred_memory_t()), ispn, 0, n);
-            auto cs1 = hpsi__.checksum(get_device_t(res__.preferred_memory_t()), ispn, 0, n);
-            auto cs2 = opsi__.checksum(get_device_t(res__.preferred_memory_t()), ispn, 0, n);
+            //auto cs1 = hpsi__.checksum(get_device_t(hpsi__.preferred_memory_t()), ispn, 0, n);
+            //auto cs2 = opsi__.checksum(get_device_t(opsi__.preferred_memory_t()), ispn, 0, n);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "res_" << ispn;
                 utils::print_checksum(s.str(), cs);
-                s.str("");
-                s << "hpsi_" << ispn;
-                utils::print_checksum(s.str(), cs1);
-                s.str("");
-                s << "opsi_" << ispn;
-                utils::print_checksum(s.str(), cs2);
+                //s.str("");
+                //s << "hpsi_" << ispn;
+                //utils::print_checksum(s.str(), cs1);
+                //s.str("");
+                //s << "opsi_" << ispn;
+                //utils::print_checksum(s.str(), cs2);
             }
         }
     }
