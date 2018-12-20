@@ -100,6 +100,7 @@ class FFT3D : public FFT3D_grid
     int offset_z_;
 
     /// Main input/output buffer.
+    /** This buffer stores the real-space values of the transformed function */
     mdarray<double_complex, 1> fft_buffer_;
 
     /// Auxiliary array to store z-sticks for all-to-all or GPU.
@@ -221,7 +222,7 @@ class FFT3D : public FFT3D_grid
         size_t sz_max = std::max(size(2) * zcol_count_max, local_size());
         if (sz_max > fft_buffer_aux__.size()) {
             fft_buffer_aux__ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux_");
-            if (pu_ == GPU) {
+            if (pu_ == device_t::GPU) {
                 fft_buffer_aux__.allocate(memory_t::device);
             }
         }
@@ -705,7 +706,7 @@ class FFT3D : public FFT3D_grid
         local_size_z_ = spl_z_.local_size();
         offset_z_     = spl_z_.global_offset();
 
-        if (pu_ == CPU) {
+        if (pu_ == device_t::CPU) {
             host_memory_type_ = memory_t::host;
         } else {
             host_memory_type_ = memory_t::host_pinned;

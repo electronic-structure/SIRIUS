@@ -388,6 +388,22 @@ class Wave_functions
         }
     }
 
+    inline void copy_from(Wave_functions const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__)
+    {
+        assert(ispn__ == 0 || ispn__ == 1);
+        assert(jspn__ == 0 || jspn__ == 1);
+
+        int ngv = pw_coeffs(jspn__).num_rows_loc();
+        int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
+
+        copy(src__.preferred_memory_t(), src__.pw_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
+             preferred_memory_t(), pw_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), ngv * n__);
+        if (has_mt()) {
+            copy(src__.preferred_memory_t(), src__.mt_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
+                 preferred_memory_t(), mt_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), nmt * n__);
+        }
+    }
+
     /// Compute the checksum of the spin-components.
     /** Checksum of the n wave-function spin components is computed starting from i0.
      *  Only plane-wave coefficients are considered. */
