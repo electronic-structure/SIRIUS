@@ -608,6 +608,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             psi.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands);
             psi.pw_coeffs(ispn).deallocate(memory_t::device);
         }
+        psi.preferred_memory_t(memory_t::host);
     }
 
     //== std::cout << "checking psi" << std::endl;
