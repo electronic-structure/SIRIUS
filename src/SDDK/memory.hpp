@@ -209,15 +209,15 @@ inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T*
     }
 #if defined(__GPU)
     if (is_device_memory(to_mem__) && is_device_memory(from_mem__)) {
-        acc::copy(to_mem__, from_mem__, n__);
+        acc::copy(to_ptr__, from_ptr__, n__);
         return;
     }
     if (is_device_memory(to_mem__) && is_host_memory(from_mem__)) {
-        acc::copyin(to_mem__, from_mem__, n__);
+        acc::copyin(to_ptr__, from_ptr__, n__);
         return;
     }
     if (is_host_memory(to_mem__) && is_device_memory(from_mem__)) {
-        acc::copyout(to_mem__, from_mem__, n__);
+        acc::copyout(to_ptr__, from_ptr__, n__);
         return;
     }
 #endif
