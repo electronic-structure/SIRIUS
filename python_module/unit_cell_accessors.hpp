@@ -39,6 +39,35 @@ void set_atom_positions(Unit_cell& unit_cell, pybind11::buffer positions)
     }
 }
 
+
+pybind11::array_t<double> atom_positions(Unit_cell& unit_cell)
+{
+    using namespace pybind11;
+
+    int ntot = 0;
+    for (int ia = 0; ia < unit_cell.num_atom_types(); ++ia) {
+        ntot += unit_cell.atom_coord(ia).size(0);
+    }
+
+    array_t<double> positions;
+    positions.resize({ntot, 3});
+    auto pos = positions.mutable_unchecked<2>();
+
+    int offset = 0;
+    for (int ia = 0; ia < unit_cell.num_atom_types(); ++ia) {
+        const auto& atom_coords = unit_cell.atom_coord(ia);
+        int n = atom_coords.size(0);
+        for (int k = 0; k < n; ++k) {
+            pos(offset + k, 0) = atom_coords(k, 0);
+            pos(offset + k, 1) = atom_coords(k, 1);
+            pos(offset + k, 2) = atom_coords(k, 2);
+        }
+    }
+
+    return positions;
+}
+
+
 void set_lattice_vectors(Unit_cell& unit_cell,
                          pybind11::buffer l1buf,
                          pybind11::buffer l2buf,
@@ -69,7 +98,6 @@ void set_lattice_vectors(Unit_cell& unit_cell,
 
     unit_cell.set_lattice_vectors(l1, l2, l3);
 }
-
 }  // sirius
 
 #endif /* SET_ATOM_POSITIONS_H */

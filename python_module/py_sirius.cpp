@@ -17,7 +17,7 @@
 #include "utils/json.hpp"
 #include "Unit_cell/free_atom.hpp"
 #include "energy.hpp"
-#include "unit_cell_setters.hpp"
+#include "unit_cell_accessors.hpp"
 #include "make_sirius_comm.hpp"
 
 
@@ -673,6 +673,7 @@ py::class_<Free_atom>(m, "Free_atom")
 
     m.def("ewald_energy", &ewald_energy);
     m.def("set_atom_positions", &set_atom_positions);
+    m.def("atom_positions", &atom_positions);
     m.def("energy_bxc", &energy_bxc);
     m.def("omp_set_num_threads", &omp_set_num_threads);
     m.def("omp_get_num_threads", &omp_get_num_threads);
