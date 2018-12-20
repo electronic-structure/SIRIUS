@@ -461,6 +461,19 @@ class Simulation_context : public Simulation_parameters
         unit_cell_.import(unit_cell_input_);
     }
 
+    ~Simulation_context()
+    {
+        std::vector<std::string> names({"host", "host_pinned", "device"});
+
+        if (comm().rank() == 0 && control().verbosity_ >= 2) {
+            for (auto name: names) {
+                auto& mp = mem_pool(get_memory_t(name));
+                printf("memory_pool(%s): total size: %li MB, free size: %li MB\n", name.c_str(), mp.total_size() >> 20,
+                       mp.free_size() >> 20);
+            }
+        }
+    }
+
     /// Initialize the similation (can only be called once).
     void initialize();
 
