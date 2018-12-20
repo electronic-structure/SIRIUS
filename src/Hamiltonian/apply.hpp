@@ -88,7 +88,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
     /* set intial sphi */
     for (int ispn = 0; (ispn < nsc) && (sphi__ != nullptr); ispn++) {
-        sphi__->copy_from(get_device_t(sphi__->preferred_memory_t()), n__, phi__, ispn, N__, ispn, N__);
+        sphi__->copy_from(phi__, n__, ispn, N__, ispn, N__);
     }
 
     /* return if there are no beta-projectors */

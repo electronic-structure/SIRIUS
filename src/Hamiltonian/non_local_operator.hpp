@@ -377,7 +377,6 @@ class D_operator : public Non_local_operator<T>
                         int idx = xi2 * nbf + xi1;
                         for (int s = 0; s < 4; s++) {
                             this->op_(this->packed_mtrx_offset_(ia) + idx, s) =
-                                // type_wrapper<T>::bypass(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
                                 utils::zero_if_not_complex<T>(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
                         }
                     }

@@ -415,7 +415,7 @@ inline void Beta_projectors_base::local_inner_aux<double_complex>(double_complex
                                        &linalg_const<double_complex>::one(),
                                        beta_pw_coeffs_a_ptr__,
                                        num_gkvec_loc(),
-                                       phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
+                                       phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__),
                                        phi__.pw_coeffs(ispn__).prime().ld(),
                                        &linalg_const<double_complex>::zero(),
                                        beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
@@ -442,7 +442,7 @@ inline void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs
                                        &linalg_const<double>::two(),
                                        beta_pw_coeffs_a_ptr__,
                                        2 * num_gkvec_loc(),
-                                       reinterpret_cast<double const*>(phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__)),
+                                       reinterpret_cast<double const*>(phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__)),
                                        2 * phi__.pw_coeffs(ispn__).prime().ld(),
                                        &linalg_const<double>::zero(),
                                        beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
