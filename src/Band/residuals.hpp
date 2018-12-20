@@ -357,7 +357,7 @@ inline int Band::residuals(K_point*             kp__,
                     /* shift unconverged residuals to the beginning of array */
                     if (n != i) {
                         for (int ispn: spins) {
-                            res__.copy_from(get_device_t(ctx_.preferred_memory_t()), 1, res__, ispn, i, ispn, n);
+                            res__.copy_from(res__, 1, ispn, i, ispn, n);
                         }
                     }
                     n++;
@@ -381,7 +381,7 @@ inline int Band::residuals(K_point*             kp__,
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) {
                     for (int ispn: spins) {
-                        res__.copy_from(get_device_t(ctx_.preferred_memory_t()), 1, res__, ispn, i, ispn, n);
+                        res__.copy_from(res__, 1, ispn, i, ispn, n);
                     }
                 }
                 n++;
@@ -394,7 +394,7 @@ inline int Band::residuals(K_point*             kp__,
 
     /* prevent numerical noise */
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
-    if (std::is_same<T, double>::value && kp__->comm().rank() == 0 && n != 0) {
+    if (std::is_same<T, double>::value && kp__->comm().rank() == 0 && n != 0) { // TODO: fix for preferred_memory_t()
         assert(ispn__ == 0 || ispn__ == 1);
         switch (ctx_.processing_unit()) {
             case CPU: {
@@ -415,9 +415,9 @@ inline int Band::residuals(K_point*             kp__,
     /* print checksums */
     if (ctx_.control().print_checksum_ && n != 0) {
         for (int ispn: spins) {
-            auto cs = res__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, 0, n);
-            auto cs1 = hpsi__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, 0, n);
-            auto cs2 = opsi__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, 0, n);
+            auto cs = res__.checksum(get_device_t(res__.preferred_memory_t()), ispn, 0, n);
+            auto cs1 = hpsi__.checksum(get_device_t(res__.preferred_memory_t()), ispn, 0, n);
+            auto cs2 = opsi__.checksum(get_device_t(res__.preferred_memory_t()), ispn, 0, n);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "res_" << ispn;

@@ -507,9 +507,9 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
                     /* update basis functions, hphi and ophi */
                     for (int ispn = 0; ispn < num_sc; ispn++) {
-                        phi.copy_from(get_device_t(ctx_.preferred_memory_t()), num_bands, psi, nc_mag ? ispn : ispin_step, 0, nc_mag ? ispn : 0, 0);
-                        hphi.copy_from(get_device_t(ctx_.preferred_memory_t()), num_bands, hpsi, ispn, 0, ispn, 0);
-                        sphi.copy_from(get_device_t(ctx_.preferred_memory_t()), num_bands, spsi, ispn, 0, ispn, 0);
+                        phi.copy_from(psi, num_bands, nc_mag ? ispn : ispin_step, 0, nc_mag ? ispn : 0, 0);
+                        hphi.copy_from(hpsi, num_bands, ispn, 0, ispn, 0);
+                        sphi.copy_from(spsi, num_bands, ispn, 0, ispn, 0);
                     }
                     /* number of basis functions that we already have */
                     N = num_bands;
@@ -518,7 +518,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
             /* expand variational subspace with new basis vectors obtatined from residuals */
             for (int ispn = 0; ispn < num_sc; ispn++) {
-                phi.copy_from(get_device_t(ctx_.preferred_memory_t()), n, res, ispn, 0, ispn, N);
+                phi.copy_from(res, n, ispn, 0, ispn, N);
             }
 
             /* apply Hamiltonian and S operators to the new basis functions */
