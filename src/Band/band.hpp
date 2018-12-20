@@ -143,6 +143,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                     spsi.pw_coeffs(i).allocate(mpd);
                 }
                 spsi.preferred_memory_t(ctx_.preferred_memory_t());
+                ovlp.allocate(memory_t::device);
             }
             kp__.beta_projectors().prepare();
             /* compute residuals */
