@@ -467,6 +467,7 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
     Wave_functions spsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
     Wave_functions res(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
 
+    kp__->beta_projectors().prepare();
     /* compute residuals */
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
         if (nc_mag) {
@@ -496,4 +497,5 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
             }
         }
     }
+    kp__->beta_projectors().dismiss();
 }
