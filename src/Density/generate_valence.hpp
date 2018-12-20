@@ -76,6 +76,7 @@ inline void Density::generate_valence(K_point_set const& ks__)
             }
             /* swap wave functions for the FFT transformation */
             kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(nbnd, 0, &ctx_.mem_pool(memory_t::host));
+            kp->spinor_wave_functions().preferred_memory_t(ctx_.preferred_memory_t());
         }
 
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::full_potential_lapwlo) {
@@ -98,6 +99,7 @@ inline void Density::generate_valence(K_point_set const& ks__)
                 /* deallocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
             }
+            kp->spinor_wave_functions().preferred_memory_t(memory_t::host);
         }
     }
 
