@@ -101,7 +101,7 @@ class Beta_projectors_base
     {
         auto& uc = ctx_.unit_cell();
         /* initial chunk size */
-        int chunk_size = std::min(uc.num_atoms(), 256);
+        int chunk_size = std::min(uc.num_atoms(), ctx_.control().beta_chunk_size_);
         /* maximum number of chunks */
         int num_chunks = uc.num_atoms() / chunk_size + std::min(1, uc.num_atoms() % chunk_size);
         /* final maximum chunk size */

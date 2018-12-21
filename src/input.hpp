@@ -387,6 +387,9 @@ struct Control_input
     /** Possible values are: "low", "medium" and "high". */
     std::string memory_usage_{"high"};
 
+    /// Number of atoms in the beta-projectors chunk.
+    int beta_chunk_size_{256};
+
     void read(json const& parser)
     {
         if (parser.count("control")) {
@@ -412,6 +415,7 @@ struct Control_input
             print_timers_        = section.value("print_timers", print_timers_);
             print_neighbors_     = section.value("print_neighbors", print_neighbors_);
             memory_usage_        = section.value("memory_usage", memory_usage_);
+            beta_chunk_size_     = section.value("beta_chunk_size", beta_chunk_size_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_, &memory_usage_};
             for (auto s : strings) {
