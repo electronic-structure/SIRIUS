@@ -78,6 +78,7 @@ class Force
                     kpoint.spinor_wave_functions().pw_coeffs(ispn).allocate(memory_t::device);
                     kpoint.spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
                 }
+                kpoint.spinor_wave_functions().preferred_memory_t(ctx_.preferred_memory_t());
             }
 
             Non_local_functor<T> nlf(ctx_, bp_grad);
@@ -88,6 +89,7 @@ class Force
                     /* deallocate GPU memory */
                     kpoint.spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
                 }
+                kpoint.spinor_wave_functions().preferred_memory_t(memory_t::host);
             }
         }
 

@@ -224,6 +224,7 @@ class Stress {
                     kp->spinor_wave_functions().pw_coeffs(ispn).allocate(memory_t::device);
                     kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
                 }
+                kp->spinor_wave_functions().preferred_memory_t(ctx_.preferred_memory_t());
             }
             Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
 
@@ -236,6 +237,7 @@ class Stress {
                     /* deallocate GPU memory */
                     kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
                 }
+                kp->spinor_wave_functions().preferred_memory_t(memory_t::host);
             }
         }
 
