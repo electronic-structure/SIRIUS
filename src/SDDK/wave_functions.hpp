@@ -77,6 +77,70 @@ class spin_idx
  *  of pure spinor wave-functions independently. We can also apply uu or dd block of Hamiltonian. In this case it is
  *  reasonable to implement the following convention: for scalar wave-function (num_sc = 1) it's value is returned
  *  for any spin index (ispn = 0 or ispn = 1).
+ *
+ *  Example below shows how the wave-functions are used:
+
+    \code{.cpp}
+    // alias for wave-functions
+    auto& psi = kp__->spinor_wave_functions();
+    // create hpsi
+    Wave_functions hpsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
+    // create hpsi
+    Wave_functions spsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
+
+    // if preferred memory is on GPU
+    if (is_device_memory(ctx_.preferred_memory_t())) {
+        // alias for memory pool
+        auto& mpd = ctx_.mem_pool(memory_t::device);
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            // allocate GPU memory
+            psi.pw_coeffs(ispn).allocate(mpd);
+            // copy to GPU
+            psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
+        }
+        // set the preferred memory type
+        psi.preferred_memory_t(ctx_.preferred_memory_t());
+        // allocate hpsi and spsi on GPU
+        for (int i = 0; i < num_sc; i++) {
+            hpsi.pw_coeffs(i).allocate(mpd);
+            spsi.pw_coeffs(i).allocate(mpd);
+        }
+        // set preferred memory for hpsi
+        hpsi.preferred_memory_t(ctx_.preferred_memory_t());
+        // set preferred memory for spsi
+        spsi.preferred_memory_t(ctx_.preferred_memory_t());
+    }
+    // prepare beta projectors
+    kp__->beta_projectors().prepare();
+    for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
+        if (nc_mag) {
+            // apply Hamiltonian and S operators to both components of wave-functions
+            H__.apply_h_s<T>(kp__, 2, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
+        } else {
+            // apply Hamiltonian and S operators to a single components of wave-functions
+            H__.apply_h_s<T>(kp__, ispin_step, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
+        }
+
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            // copy to host if needed
+            if (is_device_memory(ctx_.preferred_memory_t())) {
+                hpsi.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
+                spsi.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
+            }
+        }
+        // do something with hpsi and spsi
+    }
+    // free beta-projectors
+    kp__->beta_projectors().dismiss();
+    if (is_device_memory(ctx_.preferred_memory_t())) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            // deallocate wave-functions on GPU
+            psi.pw_coeffs(ispn).deallocate(memory_t::device);
+        }
+        // set preferred memory to CPU
+        psi.preferred_memory_t(memory_t::host);
+    }
+    \endcode
  */
 class Wave_functions
 {
@@ -275,11 +339,13 @@ class Wave_functions
         }
     }
 
+    /// Communicator of the G+k vector distribution.
     Communicator const& comm() const
     {
         return comm_;
     }
 
+    /// G+k vectors of the wave-functions.
     Gvec const& gkvec() const
     {
         return gkvecp_.gvec();
