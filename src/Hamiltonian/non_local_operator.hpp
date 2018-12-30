@@ -29,7 +29,7 @@
 
 namespace sirius {
 
-/// Non-local part of the Hamiltonian in the pseudopotential method.
+/// Non-local part of the Hamiltonian and S-operator in the pseudopotential method.
 template <typename T>
 class Non_local_operator
 {
@@ -174,7 +174,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_bloc
                                        &linalg_const<double_complex>::one(),
                                        beta_gk.at(mem), num_gkvec_loc, work_.at(mem), nbeta,
                                        &linalg_const<double_complex>::one(),
-                                       op_phi__.pw_coeffs(jspn).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
+                                       op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__),
                                        op_phi__.pw_coeffs(jspn).prime().ld());
 
     switch (pu_) {
@@ -240,7 +240,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ia__, int
                                        beta_gk.at(mem, 0, offs), num_gkvec_loc,
                                        work_.at(mem), nbf,
                                        &linalg_const<double_complex>::one(),
-                                       op_phi__.pw_coeffs(jspn).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
+                                       op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__),
                                        op_phi__.pw_coeffs(jspn).prime().ld());
     switch (pu_) {
         case device_t::CPU: {
@@ -329,7 +329,7 @@ inline void Non_local_operator<double>::apply(int chunk__, int ispn_block__, Wav
                                        reinterpret_cast<double*>(beta_gk.at(mem)), 2 * num_gkvec_loc,
                                        work_.at(mem), nbeta,
                                        &linalg_const<double>::one(),
-                                       reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at(ctx_.preferred_memory_t(), 0, idx0__)),
+                                       reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__)),
                                        2 * op_phi__.pw_coeffs(jspn).prime().ld());
 
     switch (pu_) {
@@ -377,7 +377,6 @@ class D_operator : public Non_local_operator<T>
                         int idx = xi2 * nbf + xi1;
                         for (int s = 0; s < 4; s++) {
                             this->op_(this->packed_mtrx_offset_(ia) + idx, s) =
-                                // type_wrapper<T>::bypass(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
                                 utils::zero_if_not_complex<T>(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
                         }
                     }
@@ -395,15 +394,14 @@ class D_operator : public Non_local_operator<T>
                                 double bx = uc.atom(ia).d_mtrx(xi1, xi2, 2);
                                 double by = uc.atom(ia).d_mtrx(xi1, xi2, 3);
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 2) =
-                                    // type_wrapper<T>::bypass(double_complex(bx, -by));
                                     utils::zero_if_not_complex<T>(double_complex(bx, -by));
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 3) =
-                                    // type_wrapper<T>::bypass(double_complex(bx, by));
                                     utils::zero_if_not_complex<T>(double_complex(bx, by));
                             }
                             case 1: {
-                                double v                                          = uc.atom(ia).d_mtrx(xi1, xi2, 0);
-                                double bz                                         = uc.atom(ia).d_mtrx(xi1, xi2, 1);
+                                double v  = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+                                double bz = uc.atom(ia).d_mtrx(xi1, xi2, 1);
+
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = v + bz;
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 1) = v - bz;
                                 break;
@@ -426,7 +424,7 @@ class D_operator : public Non_local_operator<T>
             utils::print_checksum("D_operator", cs);
         }
 
-        if (this->pu_ == GPU) {
+        if (this->pu_ == device_t::GPU) {
             this->op_.allocate(memory_t::device).copy_to(memory_t::device);
         }
     }
@@ -552,7 +550,7 @@ class P_operator : public Non_local_operator<T>
                 }
             }
         }
-        if (this->pu_ == GPU) {
+        if (this->pu_ == device_t::GPU) {
             this->op_.allocate(memory_t::device);
             this->op_.copy_to(memory_t::device);
         }

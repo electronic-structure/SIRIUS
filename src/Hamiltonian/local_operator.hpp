@@ -343,19 +343,17 @@ class Local_operator
         for (int ispn: spins) {
             /* if we store wave-functions in the device memory and if the wave functions are remapped
                we need to copy the wave functions to host memory */
-            if (is_device_memory(ctx_.preferred_memory_t()) && phi__.pw_coeffs(ispn).is_remapped()) {
-#ifdef __GPU
-                phi__.pw_coeffs(ispn).copy_to_host(idx0__, n__);
-#endif
+            if (is_device_memory(phi__.preferred_memory_t()) && phi__.pw_coeffs(ispn).is_remapped()) {
+                phi__.pw_coeffs(ispn).copy_to(memory_t::host, idx0__, n__);
             }
             /* set FFT friendly distribution */
             phi__.pw_coeffs(ispn).remap_forward(n__, idx0__, &mp);
             /* memory location of phi in extra storage */
-            mem_phi = (phi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : ctx_.preferred_memory_t();
+            mem_phi = (phi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : phi__.preferred_memory_t();
             /* set FFT friednly distribution */
             hphi__.pw_coeffs(ispn).set_num_extra(n__, idx0__, &mp);
             /* memory location of hphi in extra storage */
-            mem_hphi = (hphi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : ctx_.preferred_memory_t();
+            mem_hphi = (hphi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : hphi__.preferred_memory_t();
 
             /* local number of wave-functions in extra-storage distribution */
             int num_wf_loc = phi__.pw_coeffs(ispn).spl_num_col().local_size();
@@ -788,10 +786,8 @@ class Local_operator
         /* remap hphi backward */
         for (int ispn: spins) {
             hphi__.pw_coeffs(ispn).remap_backward(n__, idx0__);
-            if (is_device_memory(ctx_.preferred_memory_t()) && hphi__.pw_coeffs(ispn).is_remapped()) {
-#ifdef __GPU
-                hphi__.pw_coeffs(ispn).copy_to_device(idx0__, n__);
-#endif
+            if (is_device_memory(hphi__.preferred_memory_t()) && hphi__.pw_coeffs(ispn).is_remapped()) {
+                hphi__.pw_coeffs(ispn).copy_to(memory_t::device, idx0__, n__);
             }
         }
         /* at this point hphi in prime storage is both on CPU and GPU memory; however if the memory pool
@@ -816,11 +812,9 @@ class Local_operator
 
         mdarray<double_complex, 1> buf_pw(gkvec_p_->gvec_count_fft());
 
-#if defined(__GPU)
-        if (ctx_.processing_unit() == GPU) {
-            phi__.pw_coeffs(0).copy_to_host(N__, n__);
+        if (ctx_.processing_unit() == device_t::GPU) {
+            phi__.pw_coeffs(0).copy_to(memory_t::host, N__, n__);
         }
-#endif
         //if (ctx_->control().print_checksum_) {
         //    auto cs = phi__.checksum_pw(N__, n__, ctx_->processing_unit());
         //    if (phi__.comm().rank() == 0) {
@@ -959,16 +953,14 @@ class Local_operator
 
         fft_coarse_.dismiss();
 
-#ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             if (hphi__ != nullptr) {
-                hphi__->pw_coeffs(0).copy_to_device(N__, n__);
+                hphi__->pw_coeffs(0).copy_to(memory_t::device, N__, n__);
             }
             if (ophi__ != nullptr) {
-                ophi__->pw_coeffs(0).copy_to_device(N__, n__);
+                ophi__->pw_coeffs(0).copy_to(memory_t::device, N__, n__);
             }
         }
-#endif
         //if (ctx_->control().print_checksum_) {
         //    auto cs1 = hphi__.checksum_pw(N__, n__, ctx_->processing_unit());
         //    auto cs2 = ophi__.checksum_pw(N__, n__, ctx_->processing_unit());

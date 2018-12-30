@@ -2,7 +2,7 @@
 #define __STREAM_ID_HPP__
 
 /// Helper class to wrap stream id (integer number).
-class stream_id
+class stream_id // TODO: change id() to operator()
 {
   private:
     int id_;

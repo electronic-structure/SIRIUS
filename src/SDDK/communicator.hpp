@@ -301,7 +301,7 @@ class Communicator
 
         MPI_Query_thread(&provided);
         if (provided < required__) {
-            printf("Warning! Required level of thread support is not provided.\nprovided: %d \nrequired: %d", provided, required__);
+            printf("Warning! Required level of thread support is not provided.\nprovided: %d \nrequired: %d\n", provided, required__);
         }
     }
 

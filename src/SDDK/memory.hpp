@@ -200,6 +200,29 @@ inline void deallocate(void* ptr__, memory_t M__)
     }
 }
 
+template <typename T>
+inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T* to_ptr__, size_t n__)
+{
+    if (is_host_memory(to_mem__) && is_host_memory(from_mem__)) {
+        std::memcpy(to_ptr__, from_ptr__, n__ * sizeof(T));
+        return;
+    }
+#if defined(__GPU)
+    if (is_device_memory(to_mem__) && is_device_memory(from_mem__)) {
+        acc::copy(to_ptr__, from_ptr__, n__);
+        return;
+    }
+    if (is_device_memory(to_mem__) && is_host_memory(from_mem__)) {
+        acc::copyin(to_ptr__, from_ptr__, n__);
+        return;
+    }
+    if (is_host_memory(to_mem__) && is_device_memory(from_mem__)) {
+        acc::copyout(to_ptr__, from_ptr__, n__);
+        return;
+    }
+#endif
+}
+
 /* forward declaration */
 class memory_pool;
 
