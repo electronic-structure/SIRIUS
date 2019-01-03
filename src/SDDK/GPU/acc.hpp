@@ -174,17 +174,21 @@ inline size_t get_free_mem()
 
     return free;
 }
+#endif
 
 /// Get the number of devices.
 inline int num_devices()
 {
-    int count = 0;
+    int count{0};
+#if defined(__CUDA)
     if (cudaGetDeviceCount(&count) != cudaSuccess) {
         return 0;
     }
+#endif
     return count;
 }
 
+#if defined(__CUDA)
 inline void print_device_info(int device_id__)
 {
     cudaDeviceProp devprop;

@@ -75,6 +75,14 @@ inline void initialize(bool call_mpi_init__ = true)
     }
     /* get number of ranks per node during the global call to sirius::initialize() */
     sddk::num_ranks_per_node();
+    if (acc::num_devices() > 0) {
+        int devid = sddk::get_device_id(acc::num_devices());
+        #pragma omp parallel
+        {
+            #pragma omp critical
+            acc::set_device_id(devid);
+        }
+    }
 #if defined(__APEX)
     apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
 #endif
@@ -82,11 +90,11 @@ inline void initialize(bool call_mpi_init__ = true)
 
 #if defined(__GPU)
     if (acc::num_devices()) {
-        if (acc::num_devices() > 1) {
-            // TODO: this depends on the rank placement
-            int dev_id = Communicator::world().rank() % acc::num_devices();
-            acc::set_device_id(dev_id);
-        }
+        //if (acc::num_devices() > 1) {
+        //    // TODO: this depends on the rank placement
+        //    int dev_id = Communicator::world().rank() % acc::num_devices();
+        //    acc::set_device_id(dev_id);
+        //}
         acc::create_streams(omp_get_max_threads() + 1);
         cublas::create_stream_handles();
         cublas::xt::create_handle();

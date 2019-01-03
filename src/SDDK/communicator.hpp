@@ -856,6 +856,37 @@ inline int num_ranks_per_node()
     return num_ranks;
 }
 
+inline int get_device_id(int num_devices__)
+{
+    static int id{-1};
+    if (num_devices__ == 0) {
+        return id;
+    }
+    if (id == -1) {
+        int r = Communicator::world.rank();
+        char name[MPI_MAX_PROCESSOR_NAME];
+        int len;
+        CALL_MPI(MPI_Get_processor_name, (name, &len));
+        std::vector<size_t> hash(Communicator::world().size());
+        hash[r] = std::hash<std::string>{}(std::string(name, len));
+        Communicator::world().allgather(hash.data(), r, 1);
+        std::map<size_t, std::vector<int>> rank_map;
+        for (int i = 0; i < Communicator::world().size(); i++) {
+            //if (rank_map.count(hash[i]) == 0) {
+            //    rank_map[hash[i]] = std::vector<int>();
+            //}
+            rank_map[hash[i]].push_back(i);
+        }
+        for (int i = 0; i < (int)rank_map.count(hash[r]]; i++) {
+            if (rank_map[hash[r]][i] == r) {
+                id = i % num_devices__;
+                break;
+            }
+        }
+    }
+    return id;
+}
+
 /// Parallel standard output.
 /** Proveides an ordered standard output from multiple MPI ranks. */
 class pstdout
