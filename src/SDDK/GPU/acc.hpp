@@ -258,7 +258,7 @@ inline void sync_stream(stream_id sid__)
 }
 #endif
 
-#if defined(_CUDA)
+#if defined(__CUDA)
 /// Copy memory inside a device.
 template <typename T>
 inline void copy(T* target__, T const* source__, size_t n__)
@@ -408,7 +408,7 @@ inline void check_last_error()
 
 inline bool check_device_ptr(void const* ptr__)
 {
-    set_device();
+    //set_device();
     cudaPointerAttributes attr;
     cudaError_t error = cudaPointerGetAttributes(&attr, ptr__);
     cudaGetLastError();
@@ -425,16 +425,16 @@ inline bool check_device_ptr(void const* ptr__)
 
 } // namespace acc
 
-//extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
-//
-//extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double const* v);
-//
-//extern "C" void scale_matrix_elements_gpu(cuDoubleComplex* ptr__,
-//                                          int ld__,
-//                                          int nrow__,
-//                                          int ncol__,
-//                                          double beta__);
-//
+extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
+
+extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double const* v);
+
+extern "C" void scale_matrix_elements_gpu(cuDoubleComplex* ptr__,
+                                          int ld__,
+                                          int nrow__,
+                                          int ncol__,
+                                          double beta__);
+
 
 #endif // __ACC_HPP__
 

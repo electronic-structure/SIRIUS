@@ -27,7 +27,7 @@
 #include <unistd.h>
 #include <cufft.h>
 #include <cuda.h>
-#include "cuda.hpp"
+#include "acc.hpp"
 
 namespace cufft {
 

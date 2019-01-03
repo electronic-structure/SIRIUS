@@ -844,9 +844,7 @@ class FFT3D : public FFT3D_grid
                 break;
             }
             case GPU: {
-#ifdef __GPU
                 acc::copyout(data__, fft_buffer_.at(memory_t::device), local_size());
-#endif
                 break;
             }
         }

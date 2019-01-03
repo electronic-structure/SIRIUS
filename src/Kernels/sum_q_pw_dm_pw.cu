@@ -23,7 +23,7 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/cuda.hpp"
+#include "../SDDK/GPU/acc.hpp"
 
 __global__ void sum_q_pw_dm_pw_gpu_kernel
 (
