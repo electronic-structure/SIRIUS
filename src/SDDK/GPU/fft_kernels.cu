@@ -22,7 +22,7 @@
  *  \brief Contains implementaiton of CUDA kernels necessary for a FFT driver.
  */
 
-#include "cuda.hpp"
+#include "acc.hpp"
 #include "cuda_common.hpp"
 
 #include <stdio.h>

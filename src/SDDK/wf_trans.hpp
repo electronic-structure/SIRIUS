@@ -54,11 +54,11 @@ inline void transform(device_t                     pu__,
     int nwf = static_cast<int>(wf_in__.size());
     auto& comm = mtrx__.comm();
 
-#ifdef __GPU
-    if (pu__ == GPU) {
-        acc::set_device();
-    }
-#endif
+//#ifdef __GPU
+//    if (pu__ == GPU) {
+//        acc::set_device();
+//    }
+//#endif
 
     double ngop{0};
     if (std::is_same<T, double>::value) {

@@ -34,9 +34,9 @@
 #include "utils/utils.hpp"
 #include "Density/augmentation_operator.hpp"
 
-#ifdef __GPU
-#include "SDDK/GPU/cuda.hpp"
+#include "SDDK/GPU/acc.hpp"
 
+#ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
                                            double const* atom_pos__, double_complex* phase_factors__);
 #endif
@@ -568,7 +568,7 @@ class Simulation_context : public Simulation_parameters
         }
 #if defined(__GPU)
         if (processing_unit() == device_t::GPU) {
-            acc::set_device();
+            //acc::set_device();
             gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
             gvec_coord_.allocate(memory_t::device);
             for (int igloc = 0; igloc < gvec().count(); igloc++) {
@@ -820,7 +820,7 @@ class Simulation_context : public Simulation_parameters
             }
             case device_t::GPU: {
 #if defined(__GPU)
-                acc::set_device();
+                //acc::set_device();
                 generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(memory_t::device),
                                            unit_cell().atom_coord(iat__).at(memory_t::device), phase_factors__.at(memory_t::device));
 #else

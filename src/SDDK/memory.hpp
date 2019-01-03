@@ -1395,7 +1395,7 @@ class mdarray
         }
         /* copy to device memory */
         if (is_device_memory(mem__)) {
-            if (sid.id() == -1) {
+            if (sid() == -1) {
                 /* synchronous (blocking) copy */
                 acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);
             } else {
@@ -1405,7 +1405,7 @@ class mdarray
         }
         /* copy back from device to host */
         if (is_host_memory(mem__)) {
-            if (sid.id() == -1) {
+            if (sid() == -1) {
                 /* synchronous (blocking) copy */
                 acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__);
             } else {
