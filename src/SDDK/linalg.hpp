@@ -35,7 +35,7 @@
 #include "blas_lapack.h"
 #include "memory.hpp"
 #include "dmatrix.hpp"
-#include "GPU/stream_id.hpp"
+#include "GPU/acc.hpp"
 
 namespace sddk {
 

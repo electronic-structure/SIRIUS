@@ -38,10 +38,7 @@
 #include <initializer_list>
 #include <type_traits>
 #include <functional>
-#ifdef __GPU
-#include "GPU/cuda.hpp"
-#endif
-#include "GPU/stream_id.hpp"
+#include "GPU/acc.hpp"
 
 namespace sddk {
 
