@@ -90,6 +90,7 @@ if(USE_CUDA)
   enable_language(CUDA)
   find_package(CUDA)
   add_definitions("-D__GPU")
+  add_definitions("-D__CUDA")
   include_directories(BEFORE SYSTEM ${CUDA_INCLUDE_DIRS})
   set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${CUDA_LIBRARIES};${CUDA_CUBLAS_LIBRARIES};${CUDA_CUFFT_LIBRARIES}")
 
