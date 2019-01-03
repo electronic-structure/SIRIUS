@@ -31,9 +31,7 @@
 #include <complex>
 #include <cstdarg>
 #include <functional>
-#ifdef __GPU
-#include <GPU/cuda.hpp>
-#endif
+#include <GPU/acc.hpp>
 
 namespace sddk {
 
