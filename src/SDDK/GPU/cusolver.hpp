@@ -1,7 +1,7 @@
 #ifndef __CUSOLVER_HPP__
 #define __CUSOLVER_HPP__
 
-#include "cuda.hpp"
+#include "acc.hpp"
 #include <cusolverDn.h>
 
 namespace cusolver {

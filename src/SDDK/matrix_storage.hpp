@@ -447,8 +447,7 @@ class matrix_storage<T, matrix_storage_t::slab>
             }
         } else {
 #if defined(__GPU)
-            scale_matrix_elements_gpu(reinterpret_cast<cuDoubleComplex*>(prime().at(mem__, 0, i0__)),
-                                      prime().ld(), num_rows_loc(), n__, beta__);
+            scale_matrix_elements_gpu(prime().at(mem__, 0, i0__), prime().ld(), num_rows_loc(), n__, beta__);
 #endif
         }
     }
