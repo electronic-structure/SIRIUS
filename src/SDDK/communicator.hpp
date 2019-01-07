@@ -872,9 +872,6 @@ inline int get_device_id(int num_devices__)
         Communicator::world().allgather(hash.data(), r, 1);
         std::map<size_t, std::vector<int>> rank_map;
         for (int i = 0; i < Communicator::world().size(); i++) {
-            //if (rank_map.count(hash[i]) == 0) {
-            //    rank_map[hash[i]] = std::vector<int>();
-            //}
             rank_map[hash[i]].push_back(i);
         }
         for (int i = 0; i < (int)rank_map[hash[r]].size(); i++) {
@@ -882,6 +879,9 @@ inline int get_device_id(int num_devices__)
                 id = i % num_devices__;
                 break;
             }
+        }
+        if (id == -1) {
+            throw std::runtime_error("get_device_id(): wrong device id was found");
         }
     }
     return id;

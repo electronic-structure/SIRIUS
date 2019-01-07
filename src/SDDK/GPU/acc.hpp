@@ -466,6 +466,7 @@ inline bool check_device_ptr(void const* ptr__)
 
 } // namespace acc
 
+#if defined(__CUDA)
 extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
 
 extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double const* v);
@@ -475,6 +476,7 @@ extern "C" void scale_matrix_elements_gpu(std::complex<double>* ptr__,
                                           int nrow__,
                                           int ncol__,
                                           double beta__);
+#endif
 
 
 #endif // __ACC_HPP__
