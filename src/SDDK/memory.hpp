@@ -200,6 +200,29 @@ inline void deallocate(void* ptr__, memory_t M__)
     }
 }
 
+template <typename T>
+inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T* to_ptr__, size_t n__)
+{
+    if (is_host_memory(to_mem__) && is_host_memory(from_mem__)) {
+        std::memcpy(to_ptr__, from_ptr__, n__ * sizeof(T));
+        return;
+    }
+#if defined(__GPU)
+    if (is_device_memory(to_mem__) && is_device_memory(from_mem__)) {
+        acc::copy(to_ptr__, from_ptr__, n__);
+        return;
+    }
+    if (is_device_memory(to_mem__) && is_host_memory(from_mem__)) {
+        acc::copyin(to_ptr__, from_ptr__, n__);
+        return;
+    }
+    if (is_host_memory(to_mem__) && is_device_memory(from_mem__)) {
+        acc::copyout(to_ptr__, from_ptr__, n__);
+        return;
+    }
+#endif
+}
+
 /* forward declaration */
 class memory_pool;
 
@@ -790,35 +813,6 @@ class mdarray
         return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at_idx(mem__, idx__));
     }
 
-    /// TODO: remove in future
-    template <device_t pu>
-    inline T const* at_idx(index_type const idx__) const
-    {
-        switch (pu) {
-            case CPU: {
-                mdarray_assert(raw_ptr_ != nullptr);
-                return &raw_ptr_[idx__];
-            }
-            case GPU: {
-#ifdef __GPU
-                mdarray_assert(raw_ptr_device_ != nullptr);
-                return &raw_ptr_device_[idx__];
-#else
-                printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
-                exit(0);
-#endif
-            }
-        }
-        return nullptr;
-    }
-
-    /// TODO: remove in future
-    template <device_t pu>
-    inline T* at_idx(index_type const idx__)
-    {
-        return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).template at_idx<pu>(idx__));
-    }
-
     inline void call_constructor()
     {
         /* call constructor on non-trivial data */
@@ -1145,11 +1139,11 @@ class mdarray
     }
 
     /// Allocate memory for array.
-    inline void allocate(memory_t memory__)
+    inline mdarray<T, N>& allocate(memory_t memory__)
     {
         /* do nothing for zero-sized array */
         if (!this->size()) {
-            return;
+            return *this;
         }
 
         /* host allocation */
@@ -1165,14 +1159,15 @@ class mdarray
             raw_ptr_device_    = unique_ptr_device_.get();
         }
 #endif
+        return *this;
     }
 
     /// Allocate memory from the pool.
-    inline void allocate(memory_pool& mp__)
+    inline mdarray<T, N>& allocate(memory_pool& mp__)
     {
         /* do nothing for zero-sized array */
         if (!this->size()) {
-            return;
+            return *this;
         }
         /* host allocation */
         if (is_host_memory(mp__.memory_type())) {
@@ -1187,6 +1182,7 @@ class mdarray
             raw_ptr_device_    = unique_ptr_device_.get();
         }
 #endif
+        return *this;
     }
 
     /// Deallocate host or device memory.
@@ -1236,30 +1232,6 @@ class mdarray
         return const_cast<T&>(static_cast<mdarray<T, N> const&>(*this)[idx__]);
     }
 
-    template <device_t pu>
-    inline T* at() // TODO: remove this
-    {
-        return at_idx<pu>(0);
-    }
-
-    template <device_t pu>
-    inline T const* at() const // TODO: remove this
-    {
-        return at_idx<pu>(0);
-    }
-
-    template <device_t pu, typename... Args>
-    inline T* at(Args... args) // TODO: remove this
-    {
-        return at_idx<pu>(idx(args...));
-    }
-
-    template <device_t pu, typename... Args>
-    inline T const* at(Args... args) const // TODO: remove this
-    {
-        return at_idx<pu>(idx(args...));
-    }
-
     template <typename... Args>
     inline T const* at(memory_t mem__, Args... args) const
     {
@@ -1284,11 +1256,11 @@ class mdarray
         return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at(mem__));
     }
 
-    template <device_t pu>
-    typename std::enable_if<pu == device_t::CPU, T*>::type data() // TODO: remove this?
-    {
-        return raw_ptr_;
-    }
+    //template <device_t pu>
+    //typename std::enable_if<pu == device_t::CPU, T*>::type data() // TODO: remove this?
+    //{
+    //    return raw_ptr_;
+    //}
 
     /// Return total size (number of elements) of the array.
     inline size_t size() const
@@ -1392,45 +1364,6 @@ class mdarray
         std::memcpy(dest__.raw_ptr_, raw_ptr_, size() * sizeof(T));
     }
 
-    /// Copy n elements starting from idx0.
-    template <memory_t from__, memory_t to__>
-    inline void copy(size_t idx0__, size_t n__, int stream_id__ = -1) // TODO: remove this
-    {
-#ifdef __GPU
-        mdarray_assert(raw_ptr_ != nullptr);
-        mdarray_assert(raw_ptr_device_ != nullptr);
-        mdarray_assert(idx0__ + n__ <= size());
-
-        if (is_host_memory(from__) && is_device_memory(to__)) {
-            if (stream_id__ == -1) {
-                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);
-            } else {
-                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__, stream_id__);
-            }
-        }
-
-        if (is_device_memory(from__) && is_host_memory(to__)) {
-            if (stream_id__ == -1) {
-                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__);
-            } else {
-                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__, stream_id__);
-            }
-        }
-#endif
-    }
-
-    template <memory_t from__, memory_t to__>
-    inline void async_copy(size_t n__, int stream_id__)
-    {
-        copy<from__, to__>(0, n__, stream_id__);
-    }
-
-    template <memory_t from__, memory_t to__>
-    inline void copy()
-    {
-        copy<from__, to__>(0, size());
-    }
-
     /// Zero n elements starting from idx0.
     inline void zero(memory_t mem__, size_t idx0__, size_t n__)
     {
@@ -1470,7 +1403,7 @@ class mdarray
                 acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);
             } else {
                 /* asynchronous (non-blocking) copy */
-                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__, sid.id());
+                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__, sid);
             }
         }
         /* copy back from device to host */
@@ -1480,7 +1413,7 @@ class mdarray
                 acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__);
             } else {
                 /* asynchronous (non-blocking) copy */
-                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__, sid.id());
+                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__, sid);
             }
         }
 #endif

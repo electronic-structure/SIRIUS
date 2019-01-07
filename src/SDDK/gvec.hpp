@@ -235,7 +235,12 @@ class Gvec
 
                 non_zero_columns(i, j) = 1;
                 if (reduce_gvec_) {
-                    non_zero_columns(-i, -j) = 1;
+                    int mi = -i;
+                    int mj = -j;
+                    if (mi >= fft_box__.limits(0).first && mi <= fft_box__.limits(0).second &&
+                        mj >= fft_box__.limits(1).first && mj <= fft_box__.limits(1).second) {
+                        non_zero_columns(mi, mj) = 1;
+                    }
                 }
             }
         };
@@ -376,7 +381,7 @@ class Gvec
             gvec_shell_(tmp[ig].second) = num_gvec_shells_ - 1;
         }
         gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
-        std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at<CPU>());
+        std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at(memory_t::host));
     }
 
     /// Compute the Cartesian coordinates.
@@ -397,19 +402,22 @@ class Gvec
         }
     }
 
+    FFT3D_grid get_default_fft_grid() const
+    {
+        return FFT3D_grid(find_translations(Gmax_, lattice_vectors_) + vector3d<int>({2, 2, 2}));
+    }
+
     /// Initialize everything.
-    void init()
+    void init(FFT3D_grid const& fft_grid)
     {
         PROFILE("sddk::Gvec::init");
-
-        auto fft_grid = FFT3D_grid(find_translations(Gmax_, lattice_vectors_) + vector3d<int>({2, 2, 2}));
 
         find_z_columns(Gmax_, fft_grid);
 
         distribute_z_columns();
 
         gvec_index_by_xy_ = mdarray<int, 3>(2, fft_grid.limits(0), fft_grid.limits(1), memory_t::host, "Gvec.gvec_index_by_xy_");
-        std::fill(gvec_index_by_xy_.at<CPU>(), gvec_index_by_xy_.at<CPU>() + gvec_index_by_xy_.size(), -1);
+        std::fill(gvec_index_by_xy_.at(memory_t::host), gvec_index_by_xy_.at(memory_t::host) + gvec_index_by_xy_.size(), -1);
 
         /* build the full G-vector index and reverse mapping */
         gvec_full_index_ = mdarray<uint32_t, 1>(num_gvec_);
@@ -492,7 +500,7 @@ class Gvec
         , reduce_gvec_(reduce_gvec__)
         , bare_gvec_(false)
     {
-        init();
+        init(get_default_fft_grid());
     }
 
     /// Constructor for G-vectors.
@@ -502,7 +510,17 @@ class Gvec
         , comm_(comm__)
         , reduce_gvec_(reduce_gvec__)
     {
-        init();
+        init(get_default_fft_grid());
+    }
+
+    /// Constructor for G-vectors.
+    Gvec(matrix3d<double> M__, double Gmax__, FFT3D_grid const& fft_grid__, Communicator const& comm__, bool reduce_gvec__)
+        : Gmax_(Gmax__)
+        , lattice_vectors_(M__)
+        , comm_(comm__)
+        , reduce_gvec_(reduce_gvec__)
+    {
+        init(fft_grid__);
     }
 
     /// Constructor for G-vector distribution based on a previous set.
@@ -514,7 +532,7 @@ class Gvec
         , reduce_gvec_(gvec_base__.reduced())
         , gvec_base_(&gvec_base__)
     {
-        init();
+        init(get_default_fft_grid());
     }
 
     /// Constructor for G-vectors with mpi_comm_self()
@@ -524,7 +542,7 @@ class Gvec
         , comm_(Communicator::self())
         , reduce_gvec_(reduce_gvec__)
     {
-        init();
+        init(get_default_fft_grid());
     }
 
     /// Constructor for empty set of G-vectors.

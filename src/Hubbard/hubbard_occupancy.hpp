@@ -70,23 +70,20 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 
     dm.zero();
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         /* the communicator is always of size 1.  I need to allocate memory
            on the device manually */
         dm.allocate(memory_t::device);
     }
-    #endif
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int  ik = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
+        if (ctx_.processing_unit() == device_t::GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* allocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
-                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, kp->num_occupied_bands(ispn));
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, kp->num_occupied_bands(ispn));
             }
 
             for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
@@ -95,10 +92,9 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
                     kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
                 }
 
-                kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
+                kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, this->number_of_hubbard_orbitals());
             }
         }
-        #endif
         dm.zero();
         if (ctx_.num_mag_dims() == 3) {
             inner(ctx_.processing_unit(), 2, kp->spinor_wave_functions(), 0, kp->num_occupied_bands(), kp->hubbard_wave_functions(), 0,
@@ -115,20 +111,18 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
             }
         }
 
-        #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+                kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
             }
 
             for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
-                kp->hubbard_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+                kp->hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
             }
 
-            dm.copy<memory_t::device, memory_t::host>();
+            dm.copy_to(memory_t::host);
         }
-        #endif
 
         // compute O'_{nk,j} = O_{nk,j} * f_{nk}
         // NO summation over band yet
@@ -208,14 +202,8 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
         }
     }
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        dm.deallocate(memory_t::device);
-    }
-    #endif
-
-    // global reduction over k points
-    ctx_.comm_k().allreduce<double_complex, mpi_op_t::sum>(this->occupancy_number_.at<CPU>(),
+    /* global reduction over k points */
+    ctx_.comm_k().allreduce<double_complex, mpi_op_t::sum>(this->occupancy_number_.at(memory_t::host),
                                                            static_cast<int>(this->occupancy_number_.size()));
 
     // Now symmetrization procedure. We need to review that

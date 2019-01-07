@@ -31,7 +31,7 @@ int run_test(cmd_args& args, device_t pu__)
     phi(0) = 1.0;
     fft.transform<1>(&phi[0]);
     if (pu__ == GPU) {
-        fft.buffer().copy<memory_t::device, memory_t::host>();
+        fft.buffer().copy_to(memory_t::host);
     }
 
     for (int i = 0; i < fft.local_size(); i++) {

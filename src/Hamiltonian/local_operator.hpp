@@ -102,8 +102,7 @@ class Local_operator
 
         if (fft_coarse_.pu() == GPU) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                veff_vec_[j].f_rg().allocate(memory_t::device);
-                veff_vec_[j].f_rg().copy<memory_t::host, memory_t::device>();
+                veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
             }
             buf_rg_.allocate(memory_t::device);
         }
@@ -171,11 +170,9 @@ class Local_operator
 
             if (fft_coarse_.pu() == GPU) {
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                    veff_vec_[j].f_rg().allocate(memory_t::device);
-                    veff_vec_[j].f_rg().copy<memory_t::host, memory_t::device>();
+                    veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
                 }
-                theta_.f_rg().allocate(memory_t::device);
-                theta_.f_rg().copy<memory_t::host, memory_t::device>();
+                theta_.f_rg().allocate(memory_t::device).copy_to(memory_t::device);
                 buf_rg_.allocate(memory_t::device);
             }
 
@@ -220,8 +217,7 @@ class Local_operator
             /* copy veff to device */
             if (fft_coarse_.pu() == GPU) {
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                    veff_vec_[j].f_rg().allocate(memory_t::device);
-                    veff_vec_[j].f_rg().copy<memory_t::host, memory_t::device>();
+                    veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
                 }
                 if (ctx_.num_mag_dims() == 3) {
                     buf_rg_.allocate(memory_t::device);
@@ -268,8 +264,7 @@ class Local_operator
         }
 
         if (fft_coarse_.pu() == device_t::GPU) {
-            pw_ekin_.allocate(memory_t::device);
-            pw_ekin_.copy<memory_t::host, memory_t::device>();
+            pw_ekin_.allocate(memory_t::device).copy_to(memory_t::device);
             vphi_.allocate(memory_t::device);
         }
     }
@@ -348,19 +343,17 @@ class Local_operator
         for (int ispn: spins) {
             /* if we store wave-functions in the device memory and if the wave functions are remapped
                we need to copy the wave functions to host memory */
-            if (is_device_memory(ctx_.preferred_memory_t()) && phi__.pw_coeffs(ispn).is_remapped()) {
-#ifdef __GPU
-                phi__.pw_coeffs(ispn).copy_to_host(idx0__, n__);
-#endif
+            if (is_device_memory(phi__.preferred_memory_t()) && phi__.pw_coeffs(ispn).is_remapped()) {
+                phi__.pw_coeffs(ispn).copy_to(memory_t::host, idx0__, n__);
             }
             /* set FFT friendly distribution */
             phi__.pw_coeffs(ispn).remap_forward(n__, idx0__, &mp);
             /* memory location of phi in extra storage */
-            mem_phi = (phi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : ctx_.preferred_memory_t();
+            mem_phi = (phi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : phi__.preferred_memory_t();
             /* set FFT friednly distribution */
             hphi__.pw_coeffs(ispn).set_num_extra(n__, idx0__, &mp);
             /* memory location of hphi in extra storage */
-            mem_hphi = (hphi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : ctx_.preferred_memory_t();
+            mem_hphi = (hphi__.pw_coeffs(ispn).is_remapped()) ? memory_t::host : hphi__.preferred_memory_t();
 
             /* local number of wave-functions in extra-storage distribution */
             int num_wf_loc = phi__.pw_coeffs(ispn).spl_num_col().local_size();
@@ -387,7 +380,7 @@ class Local_operator
             case device_t::GPU: {
                 vptr.allocate(memory_t::device);
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                    vptr[j] = veff_vec_[j].f_rg().at<GPU>();
+                    vptr[j] = veff_vec_[j].f_rg().at(memory_t::device);
                 }
                 vptr.copy_to(memory_t::device);
                 break;
@@ -535,7 +528,7 @@ class Local_operator
                 }
                 case device_t::GPU: {
 #ifdef __GPU
-                    mul_by_veff_gpu(ispn_block, fft_coarse_.local_size(), vptr.at<GPU>(), buf.at<GPU>());
+                    mul_by_veff_gpu(ispn_block, fft_coarse_.local_size(), vptr.at(memory_t::device), buf.at(memory_t::device));
 #endif
                     break;
                 }
@@ -612,23 +605,23 @@ class Local_operator
                     if (gamma) {
                         add_pw_ekin_gpu(gkvec_p_->gvec_count_fft(),
                                         alpha,
-                                        pw_ekin_.at<GPU>(),
-                                        phi1[ispn].at<GPU>(0, 0),
-                                        vphi_.at<GPU>(0, 0),
-                                        hphi1[ispn].at<GPU>(0, 0));
+                                        pw_ekin_.at(memory_t::device),
+                                        phi1[ispn].at(memory_t::device, 0, 0),
+                                        vphi_.at(memory_t::device, 0, 0),
+                                        hphi1[ispn].at(memory_t::device, 0, 0));
                         add_pw_ekin_gpu(gkvec_p_->gvec_count_fft(),
                                         alpha,
-                                        pw_ekin_.at<GPU>(),
-                                        phi1[ispn].at<GPU>(0, 1),
-                                        vphi_.at<GPU>(0, 1),
-                                        hphi1[ispn].at<GPU>(0, 1));
+                                        pw_ekin_.at(memory_t::device),
+                                        phi1[ispn].at(memory_t::device, 0, 1),
+                                        vphi_.at(memory_t::device, 0, 1),
+                                        hphi1[ispn].at(memory_t::device, 0, 1));
                     } else {
                         add_pw_ekin_gpu(gkvec_p_->gvec_count_fft(),
                                         alpha,
-                                        pw_ekin_.at<GPU>(),
-                                        phi1[ispn].at<GPU>(0, 0),
-                                        vphi_.at<GPU>(0, 0),
-                                        hphi1[ispn].at<GPU>(0, 0));
+                                        pw_ekin_.at(memory_t::device),
+                                        phi1[ispn].at(memory_t::device, 0, 0),
+                                        vphi_.at(memory_t::device, 0, 0),
+                                        hphi1[ispn].at(memory_t::device, 0, 0));
                     }
 #endif
                     break;
@@ -696,12 +689,12 @@ class Local_operator
                 /* save phi_u(r) */
                 switch (fft_coarse_.pu()) {
                     case device_t::CPU: {
-                        fft_coarse_.output(buf_rg_.at<CPU>());
+                        fft_coarse_.output(buf_rg_.at(memory_t::host));
                         break;
                     }
                     case device_t::GPU: {
 #ifdef __GPU
-                        acc::copy(buf_rg_.at<GPU>(), fft_coarse_.buffer().at<GPU>(), fft_coarse_.local_size());
+                        acc::copy(buf_rg_.at(memory_t::device), fft_coarse_.buffer().at(memory_t::device), fft_coarse_.local_size());
 #endif
                         break;
                     }
@@ -717,12 +710,12 @@ class Local_operator
                 /* copy to FFT buffer */
                 switch (fft_coarse_.pu()) {
                     case device_t::CPU: {
-                        fft_coarse_.input(buf_rg_.at<CPU>());
+                        fft_coarse_.input(buf_rg_.at(memory_t::host));
                         break;
                     }
                     case device_t::GPU: {
 #ifdef __GPU
-                        acc::copy(fft_coarse_.buffer().at<GPU>(), buf_rg_.at<GPU>(), fft_coarse_.local_size());
+                        acc::copy(fft_coarse_.buffer().at(memory_t::device), buf_rg_.at(memory_t::device), fft_coarse_.local_size());
 #endif
                         break;
                     }
@@ -739,12 +732,12 @@ class Local_operator
                 /* save phi_d(r) */
                 switch (fft_coarse_.pu()) {
                     case device_t::CPU: {
-                        fft_coarse_.output(buf_rg_.at<CPU>());
+                        fft_coarse_.output(buf_rg_.at(memory_t::host));
                         break;
                     }
                     case device_t::GPU: {
 #ifdef __GPU
-                        acc::copy(buf_rg_.at<GPU>(), fft_coarse_.buffer().at<GPU>(), fft_coarse_.local_size());
+                        acc::copy(buf_rg_.at(memory_t::device), fft_coarse_.buffer().at(memory_t::device), fft_coarse_.local_size());
 #endif
                         break;
                     }
@@ -760,12 +753,12 @@ class Local_operator
                 /* copy to FFT buffer */
                 switch (fft_coarse_.pu()) {
                     case CPU: {
-                        fft_coarse_.input(buf_rg_.at<CPU>());
+                        fft_coarse_.input(buf_rg_.at(memory_t::host));
                         break;
                     }
                     case GPU: {
 #ifdef __GPU
-                        acc::copy(fft_coarse_.buffer().at<GPU>(), buf_rg_.at<GPU>(), fft_coarse_.local_size());
+                        acc::copy(fft_coarse_.buffer().at(memory_t::device), buf_rg_.at(memory_t::device), fft_coarse_.local_size());
 #endif
                         break;
                     }
@@ -793,10 +786,8 @@ class Local_operator
         /* remap hphi backward */
         for (int ispn: spins) {
             hphi__.pw_coeffs(ispn).remap_backward(n__, idx0__);
-            if (is_device_memory(ctx_.preferred_memory_t()) && hphi__.pw_coeffs(ispn).is_remapped()) {
-#ifdef __GPU
-                hphi__.pw_coeffs(ispn).copy_to_device(idx0__, n__);
-#endif
+            if (is_device_memory(hphi__.preferred_memory_t()) && hphi__.pw_coeffs(ispn).is_remapped()) {
+                hphi__.pw_coeffs(ispn).copy_to(memory_t::device, idx0__, n__);
             }
         }
         /* at this point hphi in prime storage is both on CPU and GPU memory; however if the memory pool
@@ -821,11 +812,9 @@ class Local_operator
 
         mdarray<double_complex, 1> buf_pw(gkvec_p_->gvec_count_fft());
 
-#if defined(__GPU)
-        if (ctx_.processing_unit() == GPU) {
-            phi__.pw_coeffs(0).copy_to_host(N__, n__);
+        if (ctx_.processing_unit() == device_t::GPU) {
+            phi__.pw_coeffs(0).copy_to(memory_t::host, N__, n__);
         }
-#endif
         //if (ctx_->control().print_checksum_) {
         //    auto cs = phi__.checksum_pw(N__, n__, ctx_->processing_unit());
         //    if (phi__.comm().rank() == 0) {
@@ -850,12 +839,12 @@ class Local_operator
             switch (fft_coarse_.pu()) {
                 case CPU: {
                     /* phi(G) -> phi(r) */
-                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
 
                     if (ophi__ != nullptr) {
                         /* save phi(r) */
                         if (hphi__ != nullptr) {
-                            fft_coarse_.output(buf_rg_.at<CPU>());
+                            fft_coarse_.output(buf_rg_.at(memory_t::host));
                         }
                         #pragma omp parallel for schedule(static)
                         for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
@@ -863,10 +852,10 @@ class Local_operator
                             fft_coarse_.buffer(ir) *= theta_.f_rg(ir);
                         }
                         /* phi(r) * Theta(r) -> ophi(G) */
-                        fft_coarse_.transform<-1>(ophi__->pw_coeffs(0).extra().at<CPU>(0, j));
+                        fft_coarse_.transform<-1>(ophi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
                         /* load phi(r) back */
                         if (hphi__ != nullptr) {
-                            fft_coarse_.input(buf_rg_.at<CPU>());
+                            fft_coarse_.input(buf_rg_.at(memory_t::host));
                         }
                     }
                     if (hphi__ != nullptr) {
@@ -877,36 +866,36 @@ class Local_operator
                             fft_coarse_.buffer(ir) *= veff_vec_[0].f_rg(ir);
                         }
                         /* phi(r) * Theta(r) * V(r) -> hphi(G) */
-                        fft_coarse_.transform<-1>(hphi__->pw_coeffs(0).extra().at<CPU>(0, j));
+                        fft_coarse_.transform<-1>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
                     }
                     break;
                 }
                 case GPU: {
 #if defined(__GPU)
                     /* phi(G) -> phi(r) */
-                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
 
                     if (ophi__ != nullptr) {
                         /* save phi(r) */
                         if (hphi__ != nullptr) {
-                            acc::copy(buf_rg_.at<GPU>(), fft_coarse_.buffer().at<GPU>(), fft_coarse_.local_size());
+                            acc::copy(buf_rg_.at(memory_t::device), fft_coarse_.buffer().at(memory_t::device), fft_coarse_.local_size());
                         }
                         /* multiply by step function */
-                        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(),
-                                              theta_.f_rg().at<GPU>());
+                        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at(memory_t::device),
+                                              theta_.f_rg().at(memory_t::device));
                         /* phi(r) * Theta(r) -> ophi(G) */
-                        fft_coarse_.transform<-1>(ophi__->pw_coeffs(0).extra().at<CPU>(0, j));
+                        fft_coarse_.transform<-1>(ophi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
                         /* load phi(r) back */
                         if (hphi__ != nullptr) {
-                            acc::copy(fft_coarse_.buffer().at<GPU>(), buf_rg_.at<GPU>(), fft_coarse_.local_size());
+                            acc::copy(fft_coarse_.buffer().at(memory_t::device), buf_rg_.at(memory_t::device), fft_coarse_.local_size());
                         }
                     }
                     if (hphi__ != nullptr) {
                         /* multiply by effective potential */
-                        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(),
-                                              veff_vec_[0].f_rg().at<GPU>());
+                        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at(memory_t::device),
+                                              veff_vec_[0].f_rg().at(memory_t::device));
                         /* phi(r) * Theta(r) * V(r) -> hphi(G) */
-                        fft_coarse_.transform<-1>(hphi__->pw_coeffs(0).extra().at<CPU>(0, j));
+                        fft_coarse_.transform<-1>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
                     }
 #endif
                     break;
@@ -939,7 +928,7 @@ class Local_operator
                         case GPU: {
 #if defined(__GPU)
                             /* multiply by step function */
-                            scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.f_rg().at<GPU>());
+                            scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at(memory_t::device), theta_.f_rg().at(memory_t::device));
 #endif
                             break;
                         }
@@ -964,16 +953,14 @@ class Local_operator
 
         fft_coarse_.dismiss();
 
-#ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             if (hphi__ != nullptr) {
-                hphi__->pw_coeffs(0).copy_to_device(N__, n__);
+                hphi__->pw_coeffs(0).copy_to(memory_t::device, N__, n__);
             }
             if (ophi__ != nullptr) {
-                ophi__->pw_coeffs(0).copy_to_device(N__, n__);
+                ophi__->pw_coeffs(0).copy_to(memory_t::device, N__, n__);
             }
         }
-#endif
         //if (ctx_->control().print_checksum_) {
         //    auto cs1 = hphi__.checksum_pw(N__, n__, ctx_->processing_unit());
         //    auto cs2 = ophi__.checksum_pw(N__, n__, ctx_->processing_unit());
@@ -1018,10 +1005,10 @@ class Local_operator
             switch (fft_coarse_.pu()) {
                 case CPU: {
                     /* phi(G) -> phi(r) */
-                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
                     /* save phi(r) */
                     if (bphi__.size() == 3) {
-                        fft_coarse_.output(buf_rg_.at<CPU>());
+                        fft_coarse_.output(buf_rg_.at(memory_t::host));
                     }
                     #pragma omp parallel for schedule(static)
                     for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
@@ -1029,7 +1016,7 @@ class Local_operator
                         fft_coarse_.buffer(ir) *= veff_vec_[1].f_rg(ir);
                     }
                     /* phi(r) * Bz(r) -> bphi[0](G) */
-                    fft_coarse_.transform<-1>(bphi__[0].pw_coeffs(0).extra().at<CPU>(0, j));
+                    fft_coarse_.transform<-1>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j));
                     /* non-collinear case */
                     if (bphi__.size() == 3) {
                         #pragma omp parallel for schedule(static)
@@ -1038,18 +1025,18 @@ class Local_operator
                             fft_coarse_.buffer(ir) = buf_rg_[ir] * double_complex(veff_vec_[2].f_rg(ir), -veff_vec_[3].f_rg(ir));
                         }
                         /* phi(r) * (Bx(r)-iBy(r)) -> bphi[2](G) */
-                        fft_coarse_.transform<-1>(bphi__[2].pw_coeffs(0).extra().at<CPU>(0, j));
+                        fft_coarse_.transform<-1>(bphi__[2].pw_coeffs(0).extra().at(memory_t::host, 0, j));
                     }
                     break;
                 }
                 case GPU: {
 #if defined(__GPU)
                     /* phi(G) -> phi(r) */
-                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
                     /* multiply by Bz */
-                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), veff_vec_[1].f_rg().at<GPU>());
+                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at(memory_t::device), veff_vec_[1].f_rg().at(memory_t::device));
                     /* phi(r) * Bz(r) -> bphi[0](G) */
-                    fft_coarse_.transform<-1>(bphi__[0].pw_coeffs(0).extra().at<CPU>(0, j));
+                    fft_coarse_.transform<-1>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j));
 #else
                     TERMINATE_NO_GPU
 #endif

@@ -1,3 +1,4 @@
 add_executable(unit_cell_tools unit_cell_tools.cpp)
-add_dependencies(unit_cell_tools sirius)
-target_link_libraries(unit_cell_tools "${sirius_location};${LIBXC_LIBRARIES};${MPI_CXX_LIBRARIES};${LAPACK_LIBRARIES};${GSL_LIBRARIES};${FFTW_LIBRARIES}")
+SIRIUS_SETUP_TARGET(unit_cell_tools)
+install(TARGETS unit_cell_tools RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+set_property(TARGET unit_cell_tools PROPERTY POSITION_INDEPENDENT_CODE OFF)

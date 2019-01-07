@@ -69,15 +69,14 @@ inline void Density::generate_valence(K_point_set const& ks__)
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
-#ifdef __GPU
             if (is_device_memory(ctx_.preferred_memory_t())) {
                 /* allocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
-                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd); // TODO: copy this asynchronously
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd); // TODO: copy this asynchronously
             }
-#endif
             /* swap wave functions for the FFT transformation */
             kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(nbnd, 0, &ctx_.mem_pool(memory_t::host));
+            kp->spinor_wave_functions().preferred_memory_t(ctx_.preferred_memory_t());
         }
 
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::full_potential_lapwlo) {
@@ -95,18 +94,17 @@ inline void Density::generate_valence(K_point_set const& ks__)
         /* add contribution from regular space grid */
         add_k_point_contribution_rg(kp);
 
-#ifdef __GPU
         if (is_device_memory(ctx_.preferred_memory_t())) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+                kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
             }
+            kp->spinor_wave_functions().preferred_memory_t(memory_t::host);
         }
-#endif
     }
 
     if (density_matrix_.size()) {
-        ctx_.comm().allreduce(density_matrix_.at<device_t::CPU>(), static_cast<int>(density_matrix_.size()));
+        ctx_.comm().allreduce(density_matrix_.at(memory_t::host), static_cast<int>(density_matrix_.size()));
     }
 
     ctx_.fft_coarse().prepare(ctx_.gvec_coarse_partition());

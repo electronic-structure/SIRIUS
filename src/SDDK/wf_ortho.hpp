@@ -164,13 +164,13 @@ inline void orthogonalize(device_t                     pu__,
         if (use_magma) {
 #ifdef __GPU
             /* Cholesky factorization */
-            if (int info = linalg<GPU>::potrf(n__, o__.template at<GPU>(), o__.ld())) {
+            if (int info = linalg<GPU>::potrf(n__, o__.at(memory_t::device), o__.ld())) {
                 std::stringstream s;
                 s << "error in GPU factorization, info = " << info;
                 TERMINATE(s);
             }
             /* inversion of triangular matrix */
-            if (linalg<GPU>::trtri(n__, o__.template at<GPU>(), o__.ld())) {
+            if (linalg<GPU>::trtri(n__, o__.at(memory_t::device), o__.ld())) {
                 TERMINATE("error in inversion");
             }
 #endif
@@ -191,7 +191,7 @@ inline void orthogonalize(device_t                     pu__,
             }
             if (pu__ == GPU) {
 #ifdef __GPU
-                acc::copyin(o__.template at<GPU>(), o__.ld(), o__.template at<CPU>(), o__.ld(), n__, n__);
+                acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), n__, n__);
 #endif
             }
         }
@@ -211,25 +211,25 @@ inline void orthogonalize(device_t                     pu__,
                     /* wave functions are complex, transformation matrix is complex */
                     if (std::is_same<T, double_complex>::value) {
                         linalg<CPU>::trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__, double_complex(1, 0),
-                                          reinterpret_cast<double_complex*>(o__.template at<CPU>()), o__.ld(),
-                                          e->pw_coeffs(s).prime().at<CPU>(0, N__), e->pw_coeffs(s).prime().ld());
+                                          reinterpret_cast<double_complex*>(o__.at(memory_t::host)), o__.ld(),
+                                          e->pw_coeffs(s).prime().at(memory_t::host, 0, N__), e->pw_coeffs(s).prime().ld());
 
                         if (e->has_mt()) {
                             linalg<CPU>::trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__, double_complex(1, 0),
-                                              reinterpret_cast<double_complex*>(o__.template at<CPU>()), o__.ld(),
-                                              e->mt_coeffs(s).prime().at<CPU>(0, N__), e->mt_coeffs(s).prime().ld());
+                                              reinterpret_cast<double_complex*>(o__.at(memory_t::host)), o__.ld(),
+                                              e->mt_coeffs(s).prime().at(memory_t::host, 0, N__), e->mt_coeffs(s).prime().ld());
                         }
                     }
                     /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
                     if (std::is_same<T, double>::value) {
                         linalg<CPU>::trmm('R', 'U', 'N', 2 * e->pw_coeffs(s).num_rows_loc(), n__, 1.0,
-                                          reinterpret_cast<double*>(o__.template at<CPU>()), o__.ld(),
-                                          reinterpret_cast<double*>(e->pw_coeffs(s).prime().at<CPU>(0, N__)), 2 * e->pw_coeffs(s).prime().ld());
+                                          reinterpret_cast<double*>(o__.at(memory_t::host)), o__.ld(),
+                                          reinterpret_cast<double*>(e->pw_coeffs(s).prime().at(memory_t::host, 0, N__)), 2 * e->pw_coeffs(s).prime().ld());
 
                         if (e->has_mt()) {
                             linalg<CPU>::trmm('R', 'U', 'N', 2 * e->mt_coeffs(s).num_rows_loc(), n__, 1.0,
-                                              reinterpret_cast<double*>(o__.template at<CPU>()), o__.ld(),
-                                              reinterpret_cast<double*>(e->mt_coeffs(s).prime().at<CPU>(0, N__)), 2 * e->mt_coeffs(s).prime().ld());
+                                              reinterpret_cast<double*>(o__.at(memory_t::host)), o__.ld(),
+                                              reinterpret_cast<double*>(e->mt_coeffs(s).prime().at(memory_t::host, 0, N__)), 2 * e->mt_coeffs(s).prime().ld());
                         }
                     }
                 }
@@ -242,33 +242,33 @@ inline void orthogonalize(device_t                     pu__,
                         double_complex alpha(1, 0);
 
                         linalg<GPU>::trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__, &alpha,
-                                          reinterpret_cast<double_complex*>(o__.template at<GPU>()), o__.ld(),
-                                          e->pw_coeffs(s).prime().at<GPU>(0, N__), e->pw_coeffs(s).prime().ld());
+                                          reinterpret_cast<double_complex*>(o__.at(memory_t::device)), o__.ld(),
+                                          e->pw_coeffs(s).prime().at(memory_t::device, 0, N__), e->pw_coeffs(s).prime().ld());
 
                         if (e->has_mt()) {
                             linalg<GPU>::trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__, &alpha,
-                                              reinterpret_cast<double_complex*>(o__.template at<GPU>()), o__.ld(),
-                                              e->mt_coeffs(s).prime().at<GPU>(0, N__), e->mt_coeffs(s).prime().ld());
+                                              reinterpret_cast<double_complex*>(o__.at(memory_t::device)), o__.ld(),
+                                              e->mt_coeffs(s).prime().at(memory_t::device, 0, N__), e->mt_coeffs(s).prime().ld());
                         }
                         /* alpha should not go out of the scope, so wait */
-                        acc::sync_stream(-1);
+                        acc::sync_stream(stream_id(-1));
                     }
                     if (std::is_same<T, double>::value) {
                         double alpha{1};
 
                         linalg<GPU>::trmm('R', 'U', 'N', 2 * e->pw_coeffs(s).num_rows_loc(), n__, &alpha,
-                                          reinterpret_cast<double*>(o__.template at<GPU>()), o__.ld(),
-                                          reinterpret_cast<double*>(e->pw_coeffs(s).prime().at<GPU>(0, N__)), 2 * e->pw_coeffs(s).prime().ld());
+                                          reinterpret_cast<double*>(o__.at(memory_t::device)), o__.ld(),
+                                          reinterpret_cast<double*>(e->pw_coeffs(s).prime().at(memory_t::device, 0, N__)), 2 * e->pw_coeffs(s).prime().ld());
 
                         if (e->has_mt()) {
                             linalg<GPU>::trmm('R', 'U', 'N', 2 * e->mt_coeffs(s).num_rows_loc(), n__, &alpha,
-                                              reinterpret_cast<double*>(o__.template at<GPU>()), o__.ld(),
-                                              reinterpret_cast<double*>(e->mt_coeffs(s).prime().at<GPU>(0, N__)), 2 * e->mt_coeffs(s).prime().ld());
+                                              reinterpret_cast<double*>(o__.at(memory_t::device)), o__.ld(),
+                                              reinterpret_cast<double*>(e->mt_coeffs(s).prime().at(memory_t::device, 0, N__)), 2 * e->mt_coeffs(s).prime().ld());
                         }
-                        acc::sync_stream(-1);
+                        acc::sync_stream(stream_id(-1));
                     }
                 }
-                acc::sync_stream(-1);
+                acc::sync_stream(stream_id(-1));
             }
 #endif
         }
@@ -498,13 +498,13 @@ inline void orthogonalize(memory_t                     mem__,
         if (use_magma) {
 #ifdef __GPU
             /* Cholesky factorization */
-            if (int info = linalg<GPU>::potrf(n__, o__.template at<GPU>(), o__.ld())) {
+            if (int info = linalg<GPU>::potrf(n__, o__.at(memory_t::device), o__.ld())) {
                 std::stringstream s;
                 s << "error in GPU factorization, info = " << info;
                 TERMINATE(s);
             }
             /* inversion of triangular matrix */
-            if (linalg<GPU>::trtri(n__, o__.template at<GPU>(), o__.ld())) {
+            if (linalg<GPU>::trtri(n__, o__.at(memory_t::device), o__.ld())) {
                 TERMINATE("error in inversion");
             }
 #endif
@@ -541,13 +541,13 @@ inline void orthogonalize(memory_t                     mem__,
                     linalg2(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__,
                                        &linalg_const<double_complex>::one(),
                                        reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
-                                       e->pw_coeffs(s).prime().at(mem__, 0, N__), e->pw_coeffs(s).prime().ld());
+                                       e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__), e->pw_coeffs(s).prime().ld());
 
                     if (e->has_mt()) {
                         linalg2(la__).trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__,
                                            &linalg_const<double_complex>::one(),
                                            reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
-                                           e->mt_coeffs(s).prime().at(mem__, 0, N__), e->mt_coeffs(s).prime().ld());
+                                           e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__), e->mt_coeffs(s).prime().ld());
                     }
                 }
                 /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
@@ -555,14 +555,14 @@ inline void orthogonalize(memory_t                     mem__,
                     linalg2(la__).trmm('R', 'U', 'N', 2 * e->pw_coeffs(s).num_rows_loc(), n__,
                                        &linalg_const<double>::one(),
                                        reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
-                                       reinterpret_cast<double*>(e->pw_coeffs(s).prime().at(mem__, 0, N__)),
+                                       reinterpret_cast<double*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
                                        2 * e->pw_coeffs(s).prime().ld());
 
                     if (e->has_mt()) {
                         linalg2(la__).trmm('R', 'U', 'N', 2 * e->mt_coeffs(s).num_rows_loc(), n__,
                                            &linalg_const<double>::one(),
                                            reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
-                                           reinterpret_cast<double*>(e->mt_coeffs(s).prime().at(mem__, 0, N__)),
+                                           reinterpret_cast<double*>(e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
                                            2 * e->mt_coeffs(s).prime().ld());
                     }
                 }
@@ -603,7 +603,7 @@ inline void orthogonalize(memory_t                     mem__,
         for (auto& e: wfs__) {
             transform(mem__, la__, ispn__, *e, N__, n__, o__, 0, 0, tmp__, 0, n__);
             for (int s: spins) {
-                e->copy_from(get_device_t(mem__), n__, tmp__, s, 0, s, N__);
+                e->copy_from(tmp__, n__, s, 0, s, N__);
             }
         }
     }

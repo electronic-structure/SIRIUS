@@ -274,7 +274,7 @@ class Atom_type
     inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__, double p__)
     {
         radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__, p__);
-        if (parameters_.processing_unit() == GPU) {
+        if (parameters_.processing_unit() == device_t::GPU) {
             radial_grid_.copy_to_device();
         }
     }
@@ -1148,8 +1148,7 @@ inline void Atom_type::init(int offset_lo__)
     }
 
     if (parameters_.processing_unit() == device_t::GPU && parameters_.full_potential()) {
-        idx_radial_integrals_.allocate(memory_t::device);
-        idx_radial_integrals_.copy<memory_t::host, memory_t::device>();
+        idx_radial_integrals_.allocate(memory_t::device).copy_to(memory_t::device);
         rf_coef_  = mdarray<double, 3>(num_mt_points(), 4, indexr().size(), memory_t::host_pinned, "Atom_type::rf_coef_");
         vrf_coef_ = mdarray<double, 3>(num_mt_points(), 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1),
                                        memory_t::host_pinned, "Atom_type::vrf_coef_");

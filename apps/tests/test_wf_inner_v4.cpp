@@ -7,7 +7,9 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
                    int num_bands__,
                    int bs__,
                    linalg_t la__,
-                   memory_t mem__)
+                   memory_t mem_bra__,
+                   memory_t mem_ket__,
+                   memory_t mem_o__)
 {
     std::unique_ptr<BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
@@ -30,52 +32,50 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     }
 
     int nsp{1};
-    Wave_functions phi(gvp, num_bands__, nsp);
+    Wave_functions phi(gvp, 2 * num_bands__, nsp);
 
     for (int is = 0; is < nsp; is++) {
-        phi.zero(device_t::CPU, is, 0, num_bands__);
-        for (int i = 0; i < num_bands__; i++) {
+        for (int i = 0; i < 2 * num_bands__; i++) {
             for (int igloc = 0; igloc < gvec.count(); igloc++) {
-                if (igloc + gvec.offset() == i) {
-                    phi.pw_coeffs(is).prime(igloc, i) = 1.0;
-                }
+                phi.pw_coeffs(is).prime(igloc, i) = utils::random<double_complex>();
             }
         }
     }
 
-    dmatrix<double_complex> ovlp(num_bands__, num_bands__, *blacs_grid, bs__, bs__);
-
-    if (is_device_memory(mem__)) {
+    if (is_device_memory(mem_bra__)) {
+        phi.preferred_memory_t(mem_bra__);
         for (int ispn = 0; ispn < nsp; ispn++) {
-            phi.allocate(spin_idx(ispn), memory_t::device);
-            phi.copy_to(ispn, memory_t::device, 0, num_bands__);
-        }
-        ovlp.allocate(memory_t::device);
-    }
-
-    /* warmup call */
-    inner(mem__, la__, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
-    Communicator::world().barrier();
-
-    utils::timer t1("inner");
-    inner(mem__, la__, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
-    Communicator::world().barrier();
-    double t = t1.stop();
-
-    double perf = 8e-9 * num_bands__ * num_bands__ *  gvec.num_gvec() / t;
-    if (Communicator::world().rank() == 0) {
-        printf("execution time (sec) : %12.6f\n", t);
-        printf("performance (GFlops) : %12.6f\n", perf);
-    }
-
-    double max_diff{0};
-    for (int j = 0; j < ovlp.num_cols_local(); j++) {
-        for (int i = 0; i < ovlp.num_rows_local(); i++) {
-            double_complex z = (ovlp.irow(i) == ovlp.icol(j)) ? ovlp(i, j) - 1.0 : ovlp(i, j);
-            max_diff = std::max(max_diff, std::abs(z));
+            phi.allocate(spin_idx(ispn), mem_bra__);
+            phi.copy_to(ispn, mem_bra__, 0, 2 * num_bands__);
         }
     }
-    Communicator::world().reduce<double, mpi_op_t::max>(&max_diff, 1, 0);
+
+    Wave_functions phi1(gvp, 2 * num_bands__, nsp);
+    if (is_device_memory(mem_ket__)) {
+        phi1.preferred_memory_t(mem_ket__);
+        for (int ispn = 0; ispn < nsp; ispn++) {
+            phi1.allocate(spin_idx(ispn), mem_ket__);
+        }
+    }
+    for (int ispn = 0; ispn < nsp; ispn++) {
+        phi1.copy_from(phi, 2 * num_bands__, ispn, 0, ispn, 0);
+    }
+
+    dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, *blacs_grid, bs__, bs__);
+
+    if (is_device_memory(mem_o__)) {
+        ovlp.allocate(mem_o__);
+    }
+    ovlp.zero();
+
+    inner(mem_o__, la__, 0, phi, 0,           num_bands__, phi1, 0,           num_bands__, ovlp, 0,           0);
+    inner(mem_o__, la__, 0, phi, 0,           num_bands__, phi1, num_bands__, num_bands__, ovlp, 0,           num_bands__);
+    inner(mem_o__, la__, 0, phi, num_bands__, num_bands__, phi1, 0,           num_bands__, ovlp, num_bands__, 0);
+    inner(mem_o__, la__, 0, phi, num_bands__, num_bands__, phi1, num_bands__, num_bands__, ovlp, num_bands__, num_bands__);
+
+    //ovlp.serialize("ovlp", 2 * num_bands__);
+
+    auto max_diff = check_hermitian(ovlp, 2 * num_bands__);
     if (Communicator::world().rank() == 0) {
         printf("maximum difference: %18.12f\n", max_diff);
         if (max_diff > 1e-12) {
@@ -94,7 +94,9 @@ int main(int argn, char** argv)
     args.register_key("--bs=", "{int} block size");
     args.register_key("--num_bands=", "{int} number of bands");
     args.register_key("--linalg_t=", "{string} type of the linear algebra driver");
-    args.register_key("--memory_t=", "{string} type of the memory");
+    args.register_key("--mem_bra=", "{string} memory type of the <bra| states");
+    args.register_key("--mem_ket=", "{string} memory type of the |ket> states");
+    args.register_key("--mem_o=", "{string} memory type of the resulting overlap matrix");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -106,12 +108,14 @@ int main(int argn, char** argv)
     auto cutoff = args.value<double>("cutoff", 8.0);
     auto bs = args.value<int>("bs", 32);
     auto num_bands = args.value<int>("num_bands", 100);
-    std::string linalg_t_str = args.value<std::string>("linalg_t", "blas");
-    std::string memory_t_str = args.value<std::string>("memory_t", "host");
+    auto la = get_linalg_t(args.value<std::string>("linalg_t", "blas"));
+    auto mem_bra = get_memory_t(args.value<std::string>("mem_bra", "host"));
+    auto mem_ket = get_memory_t(args.value<std::string>("mem_ket", "host"));
+    auto mem_o = get_memory_t(args.value<std::string>("mem_o", "host"));
 
     sirius::initialize(1);
 
-    test_wf_inner(mpi_grid_dims, cutoff, num_bands, bs, get_linalg_t(linalg_t_str), get_memory_t(memory_t_str));
+    test_wf_inner(mpi_grid_dims, cutoff, num_bands, bs, la, mem_bra, mem_ket, mem_o);
 
     Communicator::world().barrier();
     if (Communicator::world().rank() == 0) {

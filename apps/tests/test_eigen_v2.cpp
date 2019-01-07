@@ -128,11 +128,11 @@ void test_diag2(BLACS_grid const& blacs_grid__,
         full_mtrx = matrix<double_complex>(n, n);
         h5.read("/mtrx", full_mtrx);
         blacs_grid__.comm().bcast(&n, 1, 0);
-        blacs_grid__.comm().bcast(full_mtrx.at<CPU>(), static_cast<int>(full_mtrx.size()), 0);
+        blacs_grid__.comm().bcast(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()), 0);
     } else {
         blacs_grid__.comm().bcast(&n, 1, 0);
         full_mtrx = matrix<double_complex>(n, n);
-        blacs_grid__.comm().bcast(full_mtrx.at<CPU>(), static_cast<int>(full_mtrx.size()), 0);
+        blacs_grid__.comm().bcast(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()), 0);
     }
     if (blacs_grid__.comm().rank() == 0) {
         printf("matrix size: %i\n", n);

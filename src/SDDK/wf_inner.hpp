@@ -111,15 +111,15 @@ inline void inner(device_t        pu__,
                     case CPU: {
                         linalg<CPU>::gemm(2, 0, m__, n__, bra__.pw_coeffs(s).num_rows_loc(),
                                           *reinterpret_cast<double_complex*>(&alpha),
-                                          bra__.pw_coeffs(s).prime().at<CPU>(0, i0__), bra__.pw_coeffs(s).prime().ld(),
-                                          ket__.pw_coeffs(s).prime().at<CPU>(0, j0__), ket__.pw_coeffs(s).prime().ld(),
+                                          bra__.pw_coeffs(s).prime().at(memory_t::host, 0, i0__), bra__.pw_coeffs(s).prime().ld(),
+                                          ket__.pw_coeffs(s).prime().at(memory_t::host, 0, j0__), ket__.pw_coeffs(s).prime().ld(),
                                           *reinterpret_cast<double_complex*>(&beta),
                                           reinterpret_cast<double_complex*>(buf__), ld__);
                         if (bra__.has_mt()) {
                             linalg<CPU>::gemm(2, 0, m__, n__, bra__.mt_coeffs(s).num_rows_loc(),
                                               *reinterpret_cast<double_complex*>(&alpha),
-                                              bra__.mt_coeffs(s).prime().at<CPU>(0, i0__), bra__.mt_coeffs(s).prime().ld(),
-                                              ket__.mt_coeffs(s).prime().at<CPU>(0, j0__), ket__.mt_coeffs(s).prime().ld(),
+                                              bra__.mt_coeffs(s).prime().at(memory_t::host, 0, i0__), bra__.mt_coeffs(s).prime().ld(),
+                                              ket__.mt_coeffs(s).prime().at(memory_t::host, 0, j0__), ket__.mt_coeffs(s).prime().ld(),
                                               linalg_const<double_complex>::one(),
                                               reinterpret_cast<double_complex*>(buf__), ld__);
                         }
@@ -129,16 +129,16 @@ inline void inner(device_t        pu__,
                         #ifdef __GPU
                         linalg<GPU>::gemm(2, 0, m__, n__, bra__.pw_coeffs(s).num_rows_loc(),
                                           reinterpret_cast<double_complex*>(&alpha),
-                                          bra__.pw_coeffs(s).prime().at<GPU>(0, i0__), bra__.pw_coeffs(s).prime().ld(),
-                                          ket__.pw_coeffs(s).prime().at<GPU>(0, j0__), ket__.pw_coeffs(s).prime().ld(),
+                                          bra__.pw_coeffs(s).prime().at(memory_t::device, 0, i0__), bra__.pw_coeffs(s).prime().ld(),
+                                          ket__.pw_coeffs(s).prime().at(memory_t::device, 0, j0__), ket__.pw_coeffs(s).prime().ld(),
                                           reinterpret_cast<double_complex*>(&beta),
                                           reinterpret_cast<double_complex*>(buf__), ld__,
                                           stream_id);
                         if (bra__.has_mt()) {
                             linalg<GPU>::gemm(2, 0, m__, n__, bra__.mt_coeffs(s).num_rows_loc(),
                                               reinterpret_cast<double_complex*>(&alpha),
-                                              bra__.mt_coeffs(s).prime().at<GPU>(0, i0__), bra__.mt_coeffs(s).prime().ld(),
-                                              ket__.mt_coeffs(s).prime().at<GPU>(0, j0__), ket__.mt_coeffs(s).prime().ld(),
+                                              bra__.mt_coeffs(s).prime().at(memory_t::device, 0, i0__), bra__.mt_coeffs(s).prime().ld(),
+                                              ket__.mt_coeffs(s).prime().at(memory_t::device, 0, j0__), ket__.mt_coeffs(s).prime().ld(),
                                               &linalg_const<double_complex>::one(),
                                               reinterpret_cast<double_complex*>(buf__), ld__,
                                               stream_id);
@@ -157,15 +157,15 @@ inline void inner(device_t        pu__,
                     case CPU: {
                         linalg<CPU>::gemm(2, 0, m__, n__, 2 * bra__.pw_coeffs(s).num_rows_loc(),
                                           *reinterpret_cast<double*>(&alpha),
-                                          reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at<CPU>(0, i0__)), 2 * bra__.pw_coeffs(s).prime().ld(),
-                                          reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at<CPU>(0, j0__)), 2 * ket__.pw_coeffs(s).prime().ld(),
+                                          reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(memory_t::host, 0, i0__)), 2 * bra__.pw_coeffs(s).prime().ld(),
+                                          reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(memory_t::host, 0, j0__)), 2 * ket__.pw_coeffs(s).prime().ld(),
                                           *reinterpret_cast<double*>(&beta),
                                           reinterpret_cast<double*>(buf__), ld__);
                         /* subtract one extra G=0 contribution */
                         if (comm.rank() == 0) {
                             linalg<CPU>::ger(m__, n__, -1.0,
-                                             reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at<CPU>(0, i0__)), 2 * bra__.pw_coeffs(s).prime().ld(),
-                                             reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at<CPU>(0, j0__)), 2 * ket__.pw_coeffs(s).prime().ld(),
+                                             reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(memory_t::host, 0, i0__)), 2 * bra__.pw_coeffs(s).prime().ld(),
+                                             reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(memory_t::host, 0, j0__)), 2 * ket__.pw_coeffs(s).prime().ld(),
                                              reinterpret_cast<double*>(buf__), ld__); 
 
                         }
@@ -175,16 +175,16 @@ inline void inner(device_t        pu__,
                         #ifdef __GPU
                         linalg<GPU>::gemm(2, 0, m__, n__, 2 * bra__.pw_coeffs(s).num_rows_loc(),
                                           reinterpret_cast<double*>(&alpha),
-                                          reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at<GPU>(0, i0__)), 2 * bra__.pw_coeffs(s).prime().ld(),
-                                          reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at<GPU>(0, j0__)), 2 * ket__.pw_coeffs(s).prime().ld(),
+                                          reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(memory_t::device, 0, i0__)), 2 * bra__.pw_coeffs(s).prime().ld(),
+                                          reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(memory_t::device, 0, j0__)), 2 * ket__.pw_coeffs(s).prime().ld(),
                                           reinterpret_cast<double*>(&beta),
                                           reinterpret_cast<double*>(buf__), ld__,
                                           stream_id);
                         /* subtract one extra G=0 contribution */
                         if (comm.rank() == 0) {
                             linalg<GPU>::ger(m__, n__, &linalg_const<double>::m_one(),
-                                             reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at<GPU>(0, i0__)), 2 * bra__.pw_coeffs(s).prime().ld(),
-                                             reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at<GPU>(0, j0__)), 2 * ket__.pw_coeffs(s).prime().ld(),
+                                             reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(memory_t::device, 0, i0__)), 2 * bra__.pw_coeffs(s).prime().ld(),
+                                             reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(memory_t::device, 0, j0__)), 2 * ket__.pw_coeffs(s).prime().ld(),
                                              reinterpret_cast<double*>(buf__), ld__,
                                              stream_id);
                         }
@@ -199,12 +199,12 @@ inline void inner(device_t        pu__,
 
     /* single MPI rank */
     if (comm.size() == 1) {
-        T* buf = (pu__ == CPU) ? result__.template at<CPU>(irow0__, jcol0__) : result__.template at<GPU>(irow0__, jcol0__);
+        T* buf = (pu__ == CPU) ? result__.template at(memory_t::host, irow0__, jcol0__) : result__.template at(memory_t::device, irow0__, jcol0__);
         local_inner(i0__, m__, j0__, n__, buf, result__.ld(), -1);
         #ifdef __GPU
         if (pu__ == GPU) {
-            acc::copyout(result__.template at<CPU>(irow0__, jcol0__), result__.ld(),
-                         result__.template at<GPU>(irow0__, jcol0__), result__.ld(),
+            acc::copyout(result__.template at(memory_t::host, irow0__, jcol0__), result__.ld(),
+                         result__.template at(memory_t::device, irow0__, jcol0__), result__.ld(),
                          m__, n__);
         }
         #endif
@@ -219,10 +219,10 @@ inline void inner(device_t        pu__,
         if (pu__ == GPU) {
             tmp.allocate(memory_t::device);
         }
-        T* buf = (pu__ == CPU) ? tmp.template at<CPU>(0, 0) : tmp.template at<GPU>(0, 0);
+        T* buf = (pu__ == CPU) ? tmp.template at(memory_t::host, 0, 0) : tmp.template at(memory_t::device, 0, 0);
         local_inner(i0__, m__, j0__, n__, buf, m__, -1);
         if (pu__ == GPU) {
-            tmp.template copy<memory_t::device, memory_t::host>();
+            tmp.copy_to(memory_t::host);
         }
         comm.allreduce(&tmp[0], static_cast<int>(tmp.size()));
         for (int j = 0; j < n__; j++) {
@@ -232,8 +232,8 @@ inline void inner(device_t        pu__,
         }
 #ifdef __GPU
         if (pu__ == GPU) {
-            acc::copyin(result__.template at<GPU>(irow0__, jcol0__), result__.ld(),
-                        result__.template at<CPU>(irow0__, jcol0__), result__.ld(),
+            acc::copyin(result__.template at(memory_t::device, irow0__, jcol0__), result__.ld(),
+                        result__.template at(memory_t::host, irow0__, jcol0__), result__.ld(),
                         m__, n__);
         }
 #endif
@@ -336,11 +336,11 @@ inline void inner(device_t        pu__,
                             state = buf_state[s % num_streams];
                         }
                         /* enqueue the gemm kernel */
-                        local_inner(i0__ + i0, nrow, j0__ + j0, ncol, c_tmp.template at<GPU>(0, s % num_streams), nrow, s % num_streams);
+                        local_inner(i0__ + i0, nrow, j0__ + j0, ncol, c_tmp.template at(memory_t::device, 0, s % num_streams), nrow, s % num_streams);
                         /* enqueue a copyout operation */
-                        acc::copyout(c_tmp.template at<CPU>(0, s % num_streams), 
-                                     c_tmp.template at<GPU>(0, s % num_streams),
-                                     nrow * ncol, s % num_streams);
+                        acc::copyout(c_tmp.at(memory_t::host, 0, s % num_streams), 
+                                     c_tmp.at(memory_t::device, 0, s % num_streams),
+                                     nrow * ncol, stream_id(s % num_streams));
 
                         /* lock the buffer */
                         #pragma omp atomic write
@@ -353,9 +353,9 @@ inline void inner(device_t        pu__,
                             state = buf_state[s % num_streams];
                         }
                         /* wait for the cuda stream to finish (both gemm and copyout) */
-                        acc::sync_stream(s % num_streams);
+                        acc::sync_stream(stream_id(s % num_streams));
                         /* sum over all MPI ranks */ 
-                        comm.allreduce(c_tmp.template at<CPU>(0, s % num_streams), nrow * ncol);
+                        comm.allreduce(c_tmp.template at(memory_t::host, 0, s % num_streams), nrow * ncol);
 
                         /* store panel: go over the elements of the window and add the elements 
                          * to the resulting array; the .add() method skips the elements that are 
@@ -413,10 +413,10 @@ inline void inner(device_t        pu__,
                 dims[s % 2][2] = nrow;
                 dims[s % 2][3] = ncol;
 
-                T* buf = (pu__ == CPU) ? c_tmp.template at<CPU>(0, s % 2) : c_tmp.template at<GPU>(0, s % 2);
+                T* buf = (pu__ == CPU) ? c_tmp.template at(memory_t::host, 0, s % 2) : c_tmp.template at(memory_t::device, 0, s % 2);
                 local_inner(i0__ + i0, nrow, j0__ + j0, ncol, buf, nrow, -1);
 
-                comm.iallreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol, &req[s % 2]);
+                comm.iallreduce(c_tmp.template at(memory_t::host, 0, s % 2), nrow * ncol, &req[s % 2]);
 
                 s++;
             }
@@ -459,18 +459,18 @@ void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functio
         }
         linalg2(la__).gemm('C', 'N', m__, n__, 2 * bra__.pw_coeffs(s).num_rows_loc(),
                            &linalg_const<double>::two(),
-                           reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(mem__, 0, i0__)),
+                           reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
                            2 * bra__.pw_coeffs(s).prime().ld(),
-                           reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(mem__, 0, j0__)),
+                           reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__)),
                            2 * ket__.pw_coeffs(s).prime().ld(),
                            beta__, buf__, ld__, sid__);
         /* subtract one extra G=0 contribution */
         if (comm.rank() == 0) {
             linalg_t la = is_host_memory(mem__) ? linalg_t::blas : linalg_t::cublas;
             linalg2(la).ger(m__, n__, &linalg_const<double>::m_one(),
-                            reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(mem__, 0, i0__)),
+                            reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
                             2 * bra__.pw_coeffs(s).prime().ld(),
-                            reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(mem__, 0, j0__)),
+                            reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__)),
                             2 * ket__.pw_coeffs(s).prime().ld(),
                             buf__, ld__);
         }
@@ -490,14 +490,18 @@ void inner_local<double_complex>(memory_t mem__, linalg_t la__, int ispn__, Wave
     for (auto s: spins) {
         linalg2(la__).gemm('C', 'N', m__, n__, bra__.pw_coeffs(s).num_rows_loc(),
                            &linalg_const<double_complex>::one(),
-                           bra__.pw_coeffs(s).prime().at(mem__, 0, i0__), bra__.pw_coeffs(s).prime().ld(),
-                           ket__.pw_coeffs(s).prime().at(mem__, 0, j0__), ket__.pw_coeffs(s).prime().ld(),
+                           bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__),
+                           bra__.pw_coeffs(s).prime().ld(),
+                           ket__.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__),
+                           ket__.pw_coeffs(s).prime().ld(),
                            beta__, buf__, ld__, sid__);
         if (bra__.has_mt()) {
             linalg2(la__).gemm('C', 'N', m__, n__, bra__.mt_coeffs(s).num_rows_loc(),
                                &linalg_const<double_complex>::one(),
-                               bra__.mt_coeffs(s).prime().at(mem__, 0, i0__), bra__.mt_coeffs(s).prime().ld(),
-                               ket__.mt_coeffs(s).prime().at(mem__, 0, j0__), ket__.mt_coeffs(s).prime().ld(),
+                               bra__.mt_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__),
+                               bra__.mt_coeffs(s).prime().ld(),
+                               ket__.mt_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__),
+                               ket__.mt_coeffs(s).prime().ld(),
                                &linalg_const<double_complex>::one(),
                                buf__, ld__, sid__);
         }
@@ -554,10 +558,8 @@ inline void inner(memory_t        mem__,
 
     /* single MPI rank */
     if (comm.size() == 1) {
-        //T* buf = result__.at(mem__, irow0__, jcol0__);
         inner_local<T>(mem__, la__, ispn__, bra__, i0__, m__, ket__, j0__, n__, &beta,
                        result__.at(mem__, irow0__, jcol0__), result__.ld(), stream_id(-1));
-        //local_inner(i0__, m__, j0__, n__, buf, result__.ld(), stream_id(-1));
 #ifdef __GPU
         if (is_device_memory(mem__)) {
             acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
@@ -724,14 +726,14 @@ inline void inner(memory_t        mem__,
                             state = buf_state[s % num_streams];
                         }
                         /* enqueue the gemm kernel */
-                        //local_inner(i0__ + i0, nrow, j0__ + j0, ncol, c_tmp.template at<GPU>(0, s % num_streams),
+                        //local_inner(i0__ + i0, nrow, j0__ + j0, ncol, c_tmp.template at(memory_t::device, 0, s % num_streams),
                         //            nrow, stream_id(s % num_streams));
                         inner_local<T>(mem__, la__, ispn__, bra__, i0__ + i0, nrow, ket__, j0__ + j0, ncol, &beta,
                                        c_tmp.at(memory_t::device, 0, s % num_streams), nrow, stream_id(-1));
                         /* enqueue a copyout operation */
                         acc::copyout(c_tmp.at(memory_t::host, 0, s % num_streams), 
                                      c_tmp.at(memory_t::device, 0, s % num_streams),
-                                     nrow * ncol, s % num_streams);
+                                     nrow * ncol, stream_id(s % num_streams));
 
                         /* lock the buffer */
                         #pragma omp atomic write
@@ -744,9 +746,9 @@ inline void inner(memory_t        mem__,
                             state = buf_state[s % num_streams];
                         }
                         /* wait for the cuda stream to finish (both gemm and copyout) */
-                        acc::sync_stream(s % num_streams);
+                        acc::sync_stream(stream_id(s % num_streams));
                         /* sum over all MPI ranks */ 
-                        comm.allreduce(c_tmp.template at<CPU>(0, s % num_streams), nrow * ncol);
+                        comm.allreduce(c_tmp.template at(memory_t::host, 0, s % num_streams), nrow * ncol);
 
                         /* store panel: go over the elements of the window and add the elements 
                          * to the resulting array; the .add() method skips the elements that are 

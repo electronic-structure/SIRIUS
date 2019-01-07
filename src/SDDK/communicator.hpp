@@ -48,7 +48,8 @@ namespace sddk {
 enum class mpi_op_t
 {
     sum,
-    max
+    max,
+    min
 };
 
 template <mpi_op_t op>
@@ -69,6 +70,15 @@ struct mpi_op_wrapper<mpi_op_t::max>
     static MPI_Op kind()
     {
         return MPI_MAX;
+    }
+};
+
+template <>
+struct mpi_op_wrapper<mpi_op_t::min>
+{
+    static MPI_Op kind()
+    {
+        return MPI_MIN;
     }
 };
 
@@ -291,7 +301,7 @@ class Communicator
 
         MPI_Query_thread(&provided);
         if (provided < required__) {
-            printf("Warning! Required level of thread support is not provided.\nprovided: %d \nrequired: %d", provided, required__);
+            printf("Warning! Required level of thread support is not provided.\nprovided: %d \nrequired: %d\n", provided, required__);
         }
     }
 

@@ -88,6 +88,6 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
                   &beta,
                   dm_pw__, nbf__ * (nbf__ + 1) / 2,
                   stream_id__);
-   acc::sync_stream(stream_id__);
+   acc::sync_stream(stream_id(stream_id__));
 }
 

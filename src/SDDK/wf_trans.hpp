@@ -104,18 +104,18 @@ inline void transform(device_t                     pu__,
                     /* transform plane-wave part */
                     linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                       *reinterpret_cast<double_complex*>(alpha),
-                                      wf_in__->pw_coeffs(in_s).prime().at<CPU>(0, i0__), wf_in__->pw_coeffs(in_s).prime().ld(),
+                                      wf_in__->pw_coeffs(in_s).prime().at(memory_t::host, 0, i0__), wf_in__->pw_coeffs(in_s).prime().ld(),
                                       reinterpret_cast<double_complex*>(ptr__), ld__,
                                       linalg_const<double_complex>::one(),
-                                      wf_out__->pw_coeffs(s).prime().at<CPU>(0, j0__), wf_out__->pw_coeffs(s).prime().ld());
+                                      wf_out__->pw_coeffs(s).prime().at(memory_t::host, 0, j0__), wf_out__->pw_coeffs(s).prime().ld());
                     /* transform muffin-tin part */
                     if (wf_in__->has_mt()) {
                         linalg<CPU>::gemm(0, 0, wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__,
                                           *reinterpret_cast<double_complex*>(alpha),
-                                          wf_in__->mt_coeffs(in_s).prime().at<CPU>(0, i0__), wf_in__->mt_coeffs(in_s).prime().ld(),
+                                          wf_in__->mt_coeffs(in_s).prime().at(memory_t::host, 0, i0__), wf_in__->mt_coeffs(in_s).prime().ld(),
                                           reinterpret_cast<double_complex*>(ptr__), ld__,
                                           linalg_const<double_complex>::one(),
-                                          wf_out__->mt_coeffs(s).prime().at<CPU>(0, j0__), wf_out__->mt_coeffs(s).prime().ld());
+                                          wf_out__->mt_coeffs(s).prime().at(memory_t::host, 0, j0__), wf_out__->mt_coeffs(s).prime().ld());
                     }
                 }
 
@@ -123,10 +123,10 @@ inline void transform(device_t                     pu__,
                     /* transform plane-wave part */
                     linalg<CPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                       *reinterpret_cast<double*>(alpha),
-                                      reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at<CPU>(0, i0__)), 2 * wf_in__->pw_coeffs(in_s).prime().ld(),
+                                      reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at(memory_t::host, 0, i0__)), 2 * wf_in__->pw_coeffs(in_s).prime().ld(),
                                       reinterpret_cast<double*>(ptr__), ld__,
                                       linalg_const<double>::one(),
-                                      reinterpret_cast<double*>(wf_out__->pw_coeffs(s).prime().at<CPU>(0, j0__)), 2 * wf_out__->pw_coeffs(s).prime().ld());
+                                      reinterpret_cast<double*>(wf_out__->pw_coeffs(s).prime().at(memory_t::host, 0, j0__)), 2 * wf_out__->pw_coeffs(s).prime().ld());
                     if (wf_in__->has_mt()) {
                         TERMINATE("not implemented");
                     }
@@ -138,20 +138,20 @@ inline void transform(device_t                     pu__,
                     /* transform plane-wave part */
                     linalg<GPU>::gemm(0, 0, wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                       reinterpret_cast<double_complex*>(alpha),
-                                      wf_in__->pw_coeffs(in_s).prime().at<GPU>(0, i0__), wf_in__->pw_coeffs(in_s).prime().ld(),
+                                      wf_in__->pw_coeffs(in_s).prime().at(memory_t::device, 0, i0__), wf_in__->pw_coeffs(in_s).prime().ld(),
                                       reinterpret_cast<double_complex*>(ptr__), ld__,
                                       &linalg_const<double_complex>::one(),
-                                      wf_out__->pw_coeffs(s).prime().at<GPU>(0, j0__), wf_out__->pw_coeffs(s).prime().ld(),
+                                      wf_out__->pw_coeffs(s).prime().at(memory_t::device, 0, j0__), wf_out__->pw_coeffs(s).prime().ld(),
                                       stream_id__);
 
                     if (wf_in__->has_mt()) {
                         /* transform muffin-tin part */
                         linalg<GPU>::gemm(0, 0, wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__,
                                           reinterpret_cast<double_complex*>(alpha),
-                                          wf_in__->mt_coeffs(in_s).prime().at<GPU>(0, i0__), wf_in__->mt_coeffs(in_s).prime().ld(),
+                                          wf_in__->mt_coeffs(in_s).prime().at(memory_t::device, 0, i0__), wf_in__->mt_coeffs(in_s).prime().ld(),
                                           reinterpret_cast<double_complex*>(ptr__), ld__,
                                           &linalg_const<double_complex>::one(),
-                                          wf_out__->mt_coeffs(s).prime().at<GPU>(0, j0__), wf_out__->mt_coeffs(s).prime().ld(),
+                                          wf_out__->mt_coeffs(s).prime().at(memory_t::device, 0, j0__), wf_out__->mt_coeffs(s).prime().ld(),
                                           stream_id__);
                     }
                 }
@@ -160,10 +160,10 @@ inline void transform(device_t                     pu__,
                     /* transform plane-wave part */
                     linalg<GPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                       reinterpret_cast<double*>(alpha),
-                                      reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at<GPU>(0, i0__)), 2 * wf_in__->pw_coeffs(in_s).prime().ld(),
+                                      reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at(memory_t::device, 0, i0__)), 2 * wf_in__->pw_coeffs(in_s).prime().ld(),
                                       reinterpret_cast<double*>(ptr__), ld__,
                                       &linalg_const<double>::one(),
-                                      reinterpret_cast<double*>(wf_out__->pw_coeffs(s).prime().at<GPU>(0, j0__)), 2 * wf_out__->pw_coeffs(s).prime().ld(),
+                                      reinterpret_cast<double*>(wf_out__->pw_coeffs(s).prime().at(memory_t::device, 0, j0__)), 2 * wf_out__->pw_coeffs(s).prime().ld(),
                                       stream_id__);
                     if (wf_in__->has_mt()) {
                         TERMINATE("not implemented");
@@ -180,7 +180,11 @@ inline void transform(device_t                     pu__,
         if (beta__ == 0) {
             wf_out__[iv]->zero(pu__, ispn__, j0__, n__);
         } else {
-            wf_out__[iv]->scale(pu__, ispn__, j0__, n__, beta__);
+            if (pu__ == device_t::CPU) {
+                wf_out__[iv]->scale(memory_t::host, ispn__, j0__, n__, beta__);
+            } else {
+                wf_out__[iv]->scale(memory_t::device, ispn__, j0__, n__, beta__);
+            }
         }
     }
     t1.stop();
@@ -194,18 +198,18 @@ inline void transform(device_t                     pu__,
     if (comm.size() == 1) {
         #ifdef __GPU
         if (pu__ == GPU) {
-            acc::copyin(mtrx__.template at<GPU>(irow0__, jcol0__), mtrx__.ld(),
-                        mtrx__.template at<CPU>(irow0__, jcol0__), mtrx__.ld(), m__, n__, 0);
+            acc::copyin(mtrx__.at(memory_t::device, irow0__, jcol0__), mtrx__.ld(),
+                        mtrx__.at(memory_t::host, irow0__, jcol0__), mtrx__.ld(), m__, n__, stream_id(0));
         }
         #endif
         T* ptr{nullptr};
         switch (pu__) {
             case CPU: {
-                ptr = mtrx__.template at<CPU>(irow0__, jcol0__);
+                ptr = mtrx__.template at(memory_t::host, irow0__, jcol0__);
                 break;
             }
             case GPU: {
-                ptr = mtrx__.template at<GPU>(irow0__, jcol0__);
+                ptr = mtrx__.template at(memory_t::device, irow0__, jcol0__);
                 break;
             }
         }
@@ -216,7 +220,7 @@ inline void transform(device_t                     pu__,
         #ifdef __GPU
         if (pu__ == GPU) {
             /* wait for the stream to finish zgemm */
-            acc::sync_stream(0);
+            acc::sync_stream(stream_id(0));
         }
         #endif
         if (sddk_pp) {
@@ -309,7 +313,7 @@ inline void transform(device_t                     pu__,
             #ifdef __GPU
             if (pu__ == GPU) {
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
-                acc::sync_stream(s % num_streams);
+                acc::sync_stream(stream_id(s % num_streams));
             }
             #endif
 
@@ -329,20 +333,20 @@ inline void transform(device_t                     pu__,
                 assert(sd.counts[rank] == counts[rank]);
             }
             #ifdef __GPU
-            if (pu__ == GPU) {
-                acc::copyin(submatrix.template at<GPU>(0, 0, s % num_streams), submatrix.ld(),
-                            submatrix.template at<CPU>(0, 0, s % num_streams), submatrix.ld(),
-                            nrow, ncol, s % num_streams);
+            if (pu__ == device_t::GPU) {
+                acc::copyin(submatrix.at(memory_t::device, 0, 0, s % num_streams), submatrix.ld(),
+                            submatrix.at(memory_t::host, 0, 0, s % num_streams), submatrix.ld(),
+                            nrow, ncol, stream_id(s % num_streams));
             }
             #endif
             T* ptr{nullptr};
             switch (pu__) {
                 case CPU: {
-                    ptr = submatrix.template at<CPU>(0, 0, s % num_streams);
+                    ptr = submatrix.template at(memory_t::host, 0, 0, s % num_streams);
                     break;
                 }
                 case GPU: {
-                    ptr = submatrix.template at<GPU>(0, 0, s % num_streams);
+                    ptr = submatrix.template at(memory_t::device, 0, 0, s % num_streams);
                     break;
                 }
             }
@@ -356,7 +360,7 @@ inline void transform(device_t                     pu__,
             /* wait for the full block of columns (update of different wave-functions);
              * otherwise cuda streams can start updating the same block of output wave-functions */
             for (int s = 0; s < num_streams; s++) {
-                acc::sync_stream(s);
+                acc::sync_stream(stream_id(s));
             }
         }
         #endif
@@ -496,22 +500,22 @@ inline void transform(memory_t                     mem__,
                 /* transform plane-wave part */
                 linalg2(la__).gemm('N', 'N', wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                    reinterpret_cast<double_complex*>(alpha),
-                                   wf_in__->pw_coeffs(in_s).prime().at(mem__, 0, i0__),
+                                   wf_in__->pw_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__),
                                    wf_in__->pw_coeffs(in_s).prime().ld(),
                                    reinterpret_cast<double_complex*>(ptr__), ld__,
                                    &linalg_const<double_complex>::one(),
-                                   wf_out__->pw_coeffs(s).prime().at(mem__, 0, j0__),
+                                   wf_out__->pw_coeffs(s).prime().at(wf_out__->preferred_memory_t(), 0, j0__),
                                    wf_out__->pw_coeffs(s).prime().ld(),
                                    sid__);
                 /* transform muffin-tin part */
                 if (wf_in__->has_mt()) {
                     linalg2(la__).gemm('N', 'N', wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__,
                                        reinterpret_cast<double_complex*>(alpha),
-                                       wf_in__->mt_coeffs(in_s).prime().at(mem__, 0, i0__),
+                                       wf_in__->mt_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__),
                                        wf_in__->mt_coeffs(in_s).prime().ld(),
                                        reinterpret_cast<double_complex*>(ptr__), ld__,
                                        &linalg_const<double_complex>::one(),
-                                       wf_out__->mt_coeffs(s).prime().at(mem__, 0, j0__),
+                                       wf_out__->mt_coeffs(s).prime().at(wf_out__->preferred_memory_t(), 0, j0__),
                                        wf_out__->mt_coeffs(s).prime().ld(),
                                        sid__);
                     }
@@ -520,11 +524,11 @@ inline void transform(memory_t                     mem__,
                 /* transform plane-wave part */
                 linalg2(la__).gemm('N', 'N', 2 * wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                    reinterpret_cast<double*>(alpha),
-                                   reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at(mem__, 0, i0__)),
+                                   reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__)),
                                    2 * wf_in__->pw_coeffs(in_s).prime().ld(),
                                    reinterpret_cast<double*>(ptr__), ld__,
                                    &linalg_const<double>::one(),
-                                   reinterpret_cast<double*>(wf_out__->pw_coeffs(s).prime().at(mem__, 0, j0__)),
+                                   reinterpret_cast<double*>(wf_out__->pw_coeffs(s).prime().at(wf_out__->preferred_memory_t(), 0, j0__)),
                                    2 * wf_out__->pw_coeffs(s).prime().ld(),
                                    sid__);
                 if (wf_in__->has_mt()) {
@@ -538,9 +542,9 @@ inline void transform(memory_t                     mem__,
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (beta__ == 0) {
-            wf_out__[iv]->zero(get_device_t(mem__), ispn__, j0__, n__);
+            wf_out__[iv]->zero(get_device_t(wf_out__[iv]->preferred_memory_t()), ispn__, j0__, n__);
         } else {
-            wf_out__[iv]->scale(get_device_t(mem__), ispn__, j0__, n__, beta__);
+            wf_out__[iv]->scale(wf_out__[iv]->preferred_memory_t(), ispn__, j0__, n__, beta__);
         }
     }
     t1.stop();
@@ -552,21 +556,20 @@ inline void transform(memory_t                     mem__,
 
     /* trivial case */
     if (comm.size() == 1) {
-#ifdef __GPU
+#if defined(__GPU)
         if (is_device_memory(mem__)) {
-            acc::copyin(mtrx__.template at<GPU>(irow0__, jcol0__), mtrx__.ld(),
-                        mtrx__.template at<CPU>(irow0__, jcol0__), mtrx__.ld(), m__, n__, 0);
+            acc::copyin(mtrx__.at(memory_t::device, irow0__, jcol0__), mtrx__.ld(),
+                        mtrx__.at(memory_t::host, irow0__, jcol0__), mtrx__.ld(), m__, n__, stream_id(0));
         }
 #endif
-        T* ptr = mtrx__.at(mem__, irow0__, jcol0__);
-
         for (int iv = 0; iv < nwf; iv++) {
-            local_transform(&alpha, wf_in__[iv], i0__, m__, ptr, mtrx__.ld(), wf_out__[iv], j0__, n__, stream_id(0));
+            local_transform(&alpha, wf_in__[iv], i0__, m__, mtrx__.at(mem__, irow0__, jcol0__), mtrx__.ld(),
+                            wf_out__[iv], j0__, n__, stream_id(0));
         }
-#ifdef __GPU
+#if defined(__GPU)
         if (is_device_memory(mem__)) {
             /* wait for the stream to finish zgemm */
-            acc::sync_stream(0);
+            acc::sync_stream(stream_id(0));
         }
 #endif
         if (sddk_pp) {
@@ -659,7 +662,7 @@ inline void transform(memory_t                     mem__,
 #ifdef __GPU
             if (is_device_memory(mem__)) {
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
-                acc::sync_stream(s % num_streams);
+                acc::sync_stream(stream_id(s % num_streams));
             }
 #endif
 
@@ -682,7 +685,7 @@ inline void transform(memory_t                     mem__,
             if (is_device_memory(mem__)) {
                 acc::copyin(submatrix.at(memory_t::device, 0, 0, s % num_streams), submatrix.ld(),
                             submatrix.at(memory_t::host, 0, 0, s % num_streams), submatrix.ld(),
-                            nrow, ncol, s % num_streams);
+                            nrow, ncol, stream_id(s % num_streams));
             }
 #endif
             T* ptr = submatrix.at(mem__, 0, 0, s % num_streams);
@@ -698,7 +701,7 @@ inline void transform(memory_t                     mem__,
             /* wait for the full block of columns (update of different wave-functions);
              * otherwise cuda streams can start updating the same block of output wave-functions */
             for (int s = 0; s < num_streams; s++) {
-                acc::sync_stream(s);
+                acc::sync_stream(stream_id(s));
             }
         }
 #endif

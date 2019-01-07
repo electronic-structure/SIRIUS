@@ -75,7 +75,7 @@ class linalg<CPU>: public linalg_base
         static void hemm(int side, int uplo, ftn_int m, ftn_int n, T alpha, matrix<T>& A,
                          matrix<T>& B, T beta, matrix<T>& C)
         {
-            hemm(side, uplo, m, n, alpha, A.template at<CPU>(), A.ld(), B.template at<CPU>(), B.ld(), beta, C.template at<CPU>(), C.ld());
+            hemm(side, uplo, m, n, alpha, A.at(memory_t::host), A.ld(), B.at(memory_t::host), B.ld(), beta, C.at(memory_t::host), C.ld());
         }
 
         /// General matrix-matrix multiplication.
@@ -99,7 +99,7 @@ class linalg<CPU>: public linalg_base
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, matrix<T> const& A, matrix<T> const& B,
                          T beta, matrix<T>& C)
         {
-            gemm(transa, transb, m, n, k, alpha, A.template at<CPU>(), A.ld(), B.template at<CPU>(), B.ld(), beta, C.template at<CPU>(), C.ld());
+            gemm(transa, transb, m, n, k, alpha, A.at(memory_t::host), A.ld(), B.at(memory_t::host), B.ld(), beta, C.at(memory_t::host), C.ld());
         }
 
         /// Compute C = op(A) * op(B) operation with matrix objects.
@@ -107,7 +107,7 @@ class linalg<CPU>: public linalg_base
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<T> const& A, matrix<T> const& B,
                          matrix<T>& C)
         {
-            gemm(transa, transb, m, n, k, A.template at<CPU>(), A.ld(), B.template at<CPU>(), B.ld(), C.template at<CPU>(), C.ld());
+            gemm(transa, transb, m, n, k, A.at(memory_t::host), A.ld(), B.at(memory_t::host), B.ld(), C.at(memory_t::host), C.ld());
         }
 
         /// Compute C = alpha * op(A) * op(B) + beta * op(C), generic interface
@@ -235,14 +235,14 @@ class linalg<GPU>: public linalg_base
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<T> const& A, matrix<T> const& B,
                          matrix<T>& C, int stream_id = -1)
         {
-            gemm(transa, transb, m, n, k, A.template at<GPU>(), A.ld(), B.template at<GPU>(), B.ld(), C.template at<GPU>(), C.ld(), stream_id);
+            gemm(transa, transb, m, n, k, A.at(memory_t::device), A.ld(), B.at(memory_t::device), B.ld(), C.at(memory_t::device), C.ld(), stream_id);
         }
 
         template <typename T>
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, const T *alpha, matrix<T> const& A, matrix<T> const& B, const T *beta,
                          matrix<T>& C, int stream_id = -1)
         {
-            gemm(transa, transb, m, n, k, alpha, A.template at<GPU>(), A.ld(), B.template at<GPU>(), B.ld(), beta, C.template at<GPU>(), C.ld(), stream_id);
+            gemm(transa, transb, m, n, k, alpha, A.at(memory_t::device), A.ld(), B.at(memory_t::device), B.ld(), beta, C.at(memory_t::device), C.ld(), stream_id);
         }
 
         /// Cholesky factorization
@@ -433,14 +433,14 @@ template <>
 inline void linalg<CPU>::geinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
 {
     std::vector<int> ipiv(n);
-    int info = getrf(n, n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    int info = getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
         printf("getrf returned %i\n", info);
         exit(-1);
     }
 
-    info = getri(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    info = getri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
         printf("getri returned %i\n", info);
@@ -453,14 +453,14 @@ template <>
 inline void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex>& A)
 {
     std::vector<int> ipiv(n);
-    int info = getrf(n, n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    int info = getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
         printf("getrf returned %i\n", info);
         exit(-1);
     }
 
-    info = getri(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    info = getri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
         printf("getri returned %i\n", info);
@@ -494,13 +494,13 @@ template <>
 inline void linalg<CPU>::heinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex>& A)
 {
     std::vector<int> ipiv(n);
-    int info = hetrf(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    int info = hetrf(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info) {
         printf("hetrf returned %i\n", info);
         exit(-1);
     }
 
-    info = hetri(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    info = hetri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info) {
         printf("hetri returned %i\n", info);
         exit(-1);
@@ -532,14 +532,14 @@ template <>
 inline void linalg<CPU>::syinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
 {
     std::vector<int> ipiv(n);
-    int info = sytrf(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    int info = sytrf(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
         printf("sytrf returned %i\n", info);
         exit(-1);
     }
 
-    info = sytri(n, A.at<CPU>(), A.ld(), &ipiv[0]);
+    info = sytri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
         printf("sytri returned %i\n", info);
@@ -638,7 +638,7 @@ inline ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmat
     ftn_int info;
     ia++;
     ja++;
-    FORTRAN(pzgetrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), ipiv, &info);
+    FORTRAN(pzgetrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), ipiv, &info);
     return info;
 }
 
@@ -655,13 +655,13 @@ inline ftn_int linalg<CPU>::getri<ftn_double_complex>(ftn_int n, dmatrix<ftn_dou
     ftn_double_complex z;
     i = -1;
     /* query work sizes */
-    FORTRAN(pzgetri)(&n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &ipiv[0], &z, &i, &liwork, &i, &info);
+    FORTRAN(pzgetri)(&n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &ipiv[0], &z, &i, &liwork, &i, &info);
 
     lwork = (int)real(z) + 1;
     std::vector<ftn_double_complex> work(lwork);
     std::vector<ftn_int> iwork(liwork);
 
-    FORTRAN(pzgetri)(&n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &ipiv[0], &work[0], &lwork, &iwork[0], &liwork, &info);
+    FORTRAN(pzgetri)(&n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &ipiv[0], &work[0], &lwork, &iwork[0], &liwork, &info);
 
     return info;
 }
@@ -671,15 +671,13 @@ inline void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<ftn_double
 {
     std::vector<ftn_int> ipiv(A.num_rows_local() + A.bs_row());
     ftn_int info = getrf(n, n, A, 0, 0, &ipiv[0]);
-    if (info)
-    {
+    if (info) {
         printf("getrf returned %i\n", info);
         exit(-1);
     }
 
     info = getri(n, A, 0, 0, &ipiv[0]);
-    if (info)
-    {
+    if (info) {
         printf("getri returned %i\n", info);
         exit(-1);
     }
@@ -695,7 +693,7 @@ inline void linalg<CPU>::tranc<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix
     ftn_double_complex one = 1;
     ftn_double_complex zero = 0;
 
-    pztranc(m, n, one, A.at<CPU>(), ia, ja, A.descriptor(), zero, C.at<CPU>(), ic, jc, C.descriptor());
+    pztranc(m, n, one, A.at(memory_t::host), ia, ja, A.descriptor(), zero, C.at(memory_t::host), ic, jc, C.descriptor());
 }
 
 template <>
@@ -708,7 +706,7 @@ inline void linalg<CPU>::tranu<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix
     ftn_double_complex one = 1;
     ftn_double_complex zero = 0;
 
-    pztranu(m, n, one, A.at<CPU>(), ia, ja, A.descriptor(), zero, C.at<CPU>(), ic, jc, C.descriptor());
+    pztranu(m, n, one, A.at(memory_t::host), ia, ja, A.descriptor(), zero, C.at(memory_t::host), ic, jc, C.descriptor());
 }
 
 template <>
@@ -721,7 +719,7 @@ inline void linalg<CPU>::tranc<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_dou
     ftn_double one = 1;
     ftn_double zero = 0;
 
-    pdtran(m, n, one, A.at<CPU>(), ia, ja, A.descriptor(), zero, C.at<CPU>(), ic, jc, C.descriptor());
+    pdtran(m, n, one, A.at(memory_t::host), ia, ja, A.descriptor(), zero, C.at(memory_t::host), ic, jc, C.descriptor());
 }
 
 template <>
@@ -730,7 +728,7 @@ inline void linalg<CPU>::gemr2d(ftn_int m, ftn_int n, dmatrix<ftn_double_complex
 {
     ia++; ja++;
     ib++; jb++;
-    FORTRAN(pzgemr2d)(&m, &n, A.at<CPU>(), &ia, &ja, A.descriptor(), B.at<CPU>(), &ib, &jb, B.descriptor(), &gcontext);
+    FORTRAN(pzgemr2d)(&m, &n, A.at(memory_t::host), &ia, &ja, A.descriptor(), B.at(memory_t::host), &ib, &jb, B.descriptor(), &gcontext);
 }
 
 template<>
@@ -748,8 +746,8 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
     ia++; ja++;
     ib++; jb++;
     ic++; jc++;
-    FORTRAN(pdgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, A.at<CPU>(), &ia, &ja, A.descriptor(),
-                    B.at<CPU>(), &ib, &jb, B.descriptor(), &beta, C.at<CPU>(), &ic, &jc, C.descriptor(),
+    FORTRAN(pdgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                    B.at(memory_t::host), &ib, &jb, B.descriptor(), &beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
                     (ftn_len)1, (ftn_len)1);
 }
 
@@ -770,8 +768,8 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
     ia++; ja++;
     ib++; jb++;
     ic++; jc++;
-    FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, A.at<CPU>(), &ia, &ja, A.descriptor(),
-                    B.at<CPU>(), &ib, &jb, B.descriptor(), &beta, C.at<CPU>(), &ic, &jc, C.descriptor(),
+    FORTRAN(pzgemm)(trans[transa], trans[transb], &m, &n, &k, &alpha, A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                    B.at(memory_t::host), &ib, &jb, B.descriptor(), &beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
                     (ftn_len)1, (ftn_len)1);
 }
 
@@ -781,7 +779,7 @@ inline ftn_int linalg<CPU>::potrf<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
     ftn_int ia{1};
     ftn_int ja{1};
     ftn_int info;
-    FORTRAN(pdpotrf)("U", &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1);
+    FORTRAN(pdpotrf)("U", &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1);
     return info;
 }
 
@@ -791,7 +789,7 @@ inline ftn_int linalg<CPU>::potrf<ftn_double_complex>(ftn_int n, dmatrix<ftn_dou
     ftn_int ia{1};
     ftn_int ja{1};
     ftn_int info;
-    FORTRAN(pzpotrf)("U", &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1);
+    FORTRAN(pzpotrf)("U", &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1);
     return info;
 }
 
@@ -801,7 +799,7 @@ inline ftn_int linalg<CPU>::trtri<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
     ftn_int ia{1};
     ftn_int ja{1};
     ftn_int info;
-    FORTRAN(pdtrtri)("U", "N", &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1, (ftn_len)1);
+    FORTRAN(pdtrtri)("U", "N", &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1, (ftn_len)1);
     return info;
 }
 
@@ -811,7 +809,7 @@ inline ftn_int linalg<CPU>::trtri<ftn_double_complex>(ftn_int n, dmatrix<ftn_dou
     ftn_int ia{1};
     ftn_int ja{1};
     ftn_int info;
-    FORTRAN(pztrtri)("U", "N", &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1, (ftn_len)1);
+    FORTRAN(pztrtri)("U", "N", &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1, (ftn_len)1);
     return info;
 }
 
@@ -822,11 +820,11 @@ inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix
     ftn_int lwork = -1;
     ftn_double_complex z;
     ftn_int info;
-    FORTRAN(pzgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
+    FORTRAN(pzgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
     lwork = static_cast<int>(z.real() + 1);
     std::vector<ftn_double_complex> work(lwork);
     std::vector<ftn_double_complex> tau(std::max(m, n));
-    FORTRAN(pzgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork, &info);
+    FORTRAN(pzgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork, &info);
 }
 
 template <>
@@ -836,36 +834,36 @@ inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_dou
     ftn_int lwork = -1;
     ftn_double z;
     ftn_int info;
-    FORTRAN(pdgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
+    FORTRAN(pdgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
     lwork = static_cast<int>(z + 1);
     std::vector<ftn_double> work(lwork);
     std::vector<ftn_double> tau(std::max(m, n));
-    FORTRAN(pdgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork, &info);
+    FORTRAN(pdgeqrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork, &info);
 }
 
 #else
 template<>
 inline ftn_int linalg<CPU>::potrf<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
 {
-    return linalg<CPU>::potrf<ftn_double>(n, A.at<CPU>(), A.ld());
+    return linalg<CPU>::potrf<ftn_double>(n, A.at(memory_t::host), A.ld());
 }
 
 template<>
 inline ftn_int linalg<CPU>::potrf<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
 {
-    return linalg<CPU>::potrf<ftn_double_complex>(n, A.at<CPU>(), A.ld());
+    return linalg<CPU>::potrf<ftn_double_complex>(n, A.at(memory_t::host), A.ld());
 }
 
 template<>
 inline ftn_int linalg<CPU>::trtri<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
 {
-    return linalg<CPU>::trtri<ftn_double>(n, A.at<CPU>(), A.ld());
+    return linalg<CPU>::trtri<ftn_double>(n, A.at(memory_t::host), A.ld());
 }
 
 template<>
 inline ftn_int linalg<CPU>::trtri<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
 {
-    return linalg<CPU>::trtri<ftn_double_complex>(n, A.at<CPU>(), A.ld());
+    return linalg<CPU>::trtri<ftn_double_complex>(n, A.at(memory_t::host), A.ld());
 }
 
 template <>
@@ -875,11 +873,11 @@ inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix
     ftn_double_complex z;
     ftn_int info;
     ftn_int lda = A.ld();
-    FORTRAN(zgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, &z, &z, &lwork, &info);
+    FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
     lwork = static_cast<int>(z.real() + 1);
     std::vector<ftn_double_complex> work(lwork);
     std::vector<ftn_double_complex> tau(std::max(m, n));
-    FORTRAN(zgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+    FORTRAN(zgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
 }
 
 template <>
@@ -889,11 +887,11 @@ inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_dou
     ftn_double z;
     ftn_int info;
     ftn_int lda = A.ld();
-    FORTRAN(dgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, &z, &z, &lwork, &info);
+    FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, &z, &z, &lwork, &info);
     lwork = static_cast<int>(z + 1);
     std::vector<ftn_double> work(lwork);
     std::vector<ftn_double> tau(std::max(m, n));
-    FORTRAN(dgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+    FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
 }
 
 template<>
@@ -904,7 +902,8 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
                                                   ftn_double_complex beta,
                                                   dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
 {
-    gemm(transa, transb, m, n, k, alpha, A.at<CPU>(ia, ja), A.ld(), B.at<CPU>(ib, jb), B.ld(), beta, C.at<CPU>(ic, jc), C.ld());
+    gemm(transa, transb, m, n, k, alpha, A.at(memory_t::host, ia, ja), A.ld(), B.at(memory_t::host, ib, jb), B.ld(),
+         beta, C.at(memory_t::host, ic, jc), C.ld());
 }
 
 template<>
@@ -913,7 +912,7 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
                                                   dmatrix<ftn_double_complex>& A, dmatrix<ftn_double_complex>& B,
                                                   ftn_double_complex beta, dmatrix<ftn_double_complex>& C)
 {
-    gemm(transa, transb, m, n, k, alpha, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), beta, C.at<CPU>(), C.ld());
+    gemm(transa, transb, m, n, k, alpha, A.at(memory_t::host), A.ld(), B.at(memory_t::host), B.ld(), beta, C.at(memory_t::host), C.ld());
 }
 
 template<>
@@ -924,7 +923,8 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
                                           ftn_double beta,
                                           dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
 {
-    gemm(transa, transb, m, n, k, alpha, A.at<CPU>(ia, ja), A.ld(), B.at<CPU>(ib, jb), B.ld(), beta, C.at<CPU>(ic, jc), C.ld());
+    gemm(transa, transb, m, n, k, alpha, A.at(memory_t::host, ia, ja), A.ld(), B.at(memory_t::host, ib, jb), B.ld(),
+         beta, C.at(memory_t::host, ic, jc), C.ld());
 }
 
 template<>
@@ -933,7 +933,7 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
                                           dmatrix<ftn_double>& A, dmatrix<ftn_double>& B,
                                           ftn_double beta, dmatrix<ftn_double>& C)
 {
-    gemm(transa, transb, m, n, k, alpha, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), beta, C.at<CPU>(), C.ld());
+    gemm(transa, transb, m, n, k, alpha, A.at(memory_t::host), A.ld(), B.at(memory_t::host), B.ld(), beta, C.at(memory_t::host), C.ld());
 }
 #endif
 

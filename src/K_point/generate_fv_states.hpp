@@ -30,23 +30,16 @@ inline void K_point::generate_fv_states()
         return;
     }
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        fv_eigen_vectors_slab().pw_coeffs(0).allocate_on_device();
-        fv_eigen_vectors_slab().pw_coeffs(0).copy_to_device(0, ctx_.num_fv_states());
-    }
-    #endif
-
     mdarray<double_complex, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), memory_t::host);
     mdarray<double_complex, 2> tmp(unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
+        fv_eigen_vectors_slab().pw_coeffs(0).allocate(memory_t::device);
+        fv_eigen_vectors_slab().pw_coeffs(0).copy_to(memory_t::device, 0, ctx_.num_fv_states());
         alm.allocate(memory_t::device);
         tmp.allocate(memory_t::device);
     }
-    #endif
-    
+
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto location = fv_eigen_vectors_slab().spl_num_atoms().location(ia);
         /* number of alm coefficients for atom */
@@ -55,30 +48,30 @@ inline void K_point::generate_fv_states()
         /* generate matching coefficients for all G-vectors */
         alm_coeffs_loc_->generate(ia, alm);
 
-        double_complex* tmp_ptr_gpu = (ctx_.processing_unit() == GPU) ? tmp.at<GPU>() : nullptr;
-        mdarray<double_complex, 2> tmp1(tmp.at<CPU>(), tmp_ptr_gpu, mt_aw_size, ctx_.num_fv_states());
+        double_complex* tmp_ptr_gpu = (ctx_.processing_unit() == GPU) ? tmp.at(memory_t::device) : nullptr;
+        mdarray<double_complex, 2> tmp1(tmp.at(memory_t::host), tmp_ptr_gpu, mt_aw_size, ctx_.num_fv_states());
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
         if (ctx_.processing_unit() == CPU) {
             linalg<CPU>::gemm(1, 0, mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
-                              alm.at<CPU>(), alm.ld(),
-                              fv_eigen_vectors_slab().pw_coeffs(0).prime().at<CPU>(),
+                              alm.at(memory_t::host), alm.ld(),
+                              fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::host),
                               fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),
-                              tmp1.at<CPU>(), tmp1.ld());
+                              tmp1.at(memory_t::host), tmp1.ld());
         }
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             alm.copy_to(memory_t::device, 0, mt_aw_size * num_gkvec_loc());
             linalg<GPU>::gemm(1, 0, mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
-                              alm.at<GPU>(), alm.ld(),
-                              fv_eigen_vectors_slab().pw_coeffs(0).prime().at<GPU>(),
+                              alm.at(memory_t::device), alm.ld(),
+                              fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::device),
                               fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),
-                              tmp1.at<GPU>(), tmp1.ld());
+                              tmp1.at(memory_t::device), tmp1.ld());
             tmp1.copy_to(memory_t::host);
         }
         #endif
 
-        comm_.reduce(tmp1.at<CPU>(), static_cast<int>(tmp1.size()), location.rank);
+        comm_.reduce(tmp1.at(memory_t::host), static_cast<int>(tmp1.size()), location.rank);
 
         #ifdef __PRINT_OBJECT_CHECKSUM
         auto z1 = tmp1.checksum();
@@ -90,13 +83,13 @@ inline void K_point::generate_fv_states()
             int offset2 = fv_eigen_vectors_slab().offset_mt_coeffs(location.local_index);
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
                 /* aw block */
-                std::memcpy(fv_states().mt_coeffs(0).prime().at<CPU>(offset1, i),
-                            tmp1.at<CPU>(0, i),
+                std::memcpy(fv_states().mt_coeffs(0).prime().at(memory_t::host, offset1, i),
+                            tmp1.at(memory_t::host, 0, i),
                             mt_aw_size * sizeof(double_complex));
                 /* lo block */
                 if (mt_lo_size) {
-                    std::memcpy(fv_states().mt_coeffs(0).prime().at<CPU>(offset1 + mt_aw_size, i),
-                                fv_eigen_vectors_slab().mt_coeffs(0).prime().at<CPU>(offset2, i),
+                    std::memcpy(fv_states().mt_coeffs(0).prime().at(memory_t::host, offset1 + mt_aw_size, i),
+                                fv_eigen_vectors_slab().mt_coeffs(0).prime().at(memory_t::host, offset2, i),
                                 mt_lo_size * sizeof(double_complex));
                 }
             }
@@ -106,14 +99,12 @@ inline void K_point::generate_fv_states()
     #pragma omp parallel for
     for (int i = 0; i < ctx_.num_fv_states(); i++) {
         /* G+k block */
-        std::memcpy(fv_states().pw_coeffs(0).prime().at<CPU>(0, i),
-                    fv_eigen_vectors_slab().pw_coeffs(0).prime().at<CPU>(0, i),
+        std::memcpy(fv_states().pw_coeffs(0).prime().at(memory_t::host, 0, i),
+                    fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::host, 0, i),
                     num_gkvec_loc() * sizeof(double_complex));
     }
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        fv_eigen_vectors_slab().pw_coeffs(0).deallocate_on_device();
+    if (ctx_.processing_unit() == device_t::GPU) {
+        fv_eigen_vectors_slab().pw_coeffs(0).deallocate(memory_t::device);
     }
-    #endif
 }
