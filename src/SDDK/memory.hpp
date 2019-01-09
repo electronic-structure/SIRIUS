@@ -28,16 +28,9 @@
 #include <iostream>
 #include <map>
 #include <memory>
-#include <signal.h>
-#include <cassert>
-#include <string>
-#include <atomic>
-#include <vector>
-#include <array>
 #include <cstring>
-#include <initializer_list>
-#include <type_traits>
 #include <functional>
+#include <algorithm>
 #include "GPU/acc.hpp"
 
 namespace sddk {
@@ -231,13 +224,13 @@ class memory_t_deleter_base
     {
       public:
         virtual void free(void* ptr__) = 0;
+        virtual ~memory_t_deleter_base_impl()
+        {
+        }
     };
     std::unique_ptr<memory_t_deleter_base_impl> impl_;
 
   public:
-    memory_t_deleter_base()
-    {
-    }
     void operator()(void* ptr__)
     {
         impl_->free(ptr__);
@@ -1252,12 +1245,6 @@ class mdarray
     {
         return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at(mem__));
     }
-
-    //template <device_t pu>
-    //typename std::enable_if<pu == device_t::CPU, T*>::type data() // TODO: remove this?
-    //{
-    //    return raw_ptr_;
-    //}
 
     /// Return total size (number of elements) of the array.
     inline size_t size() const
