@@ -312,7 +312,8 @@ inline cublasXtHandle_t& cublasxt_handle()
 
 inline void create_handle()
 {
-    int device_id[] = {0};
+    int device_id[1];
+    device_id[0] = acc::get_device_id();
     CALL_CUBLAS(cublasXtCreate, (&cublasxt_handle()));
     CALL_CUBLAS(cublasXtDeviceSelect, (cublasxt_handle(), 1, device_id));
 }

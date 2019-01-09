@@ -1225,7 +1225,7 @@ inline void linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_i
             break;
         }
         case linalg_t::cublas: {
-#ifdef __GPU
+#if defined(__GPU) && defined(__CUDA)
             cublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
 #else
             throw std::runtime_error("not compiled with cublas");
@@ -1233,7 +1233,7 @@ inline void linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_i
             break;
         }
         case linalg_t::cublasxt: {
-#ifdef __GPU
+#if defined(__GPU) && defined(__CUDA);
             cublas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 #else
             throw std::runtime_error("not compiled with cublasxt");
