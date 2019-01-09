@@ -1,7 +1,7 @@
 def _fermi_entropy(fn, dd):
     import numpy as np
     fn = np.array(fn).flatten()
-    return np.sum(-fn * np.log(fn + dd * (1 - fn)) +
+    return np.sum(fn * np.log(fn + dd * (1 - fn)) +
                   (1 - fn) * np.log(1 - fn + dd * fn))
 
 
@@ -43,8 +43,8 @@ def df_fermi_entropy(fn, dd=1e-4):
 def _df_fermi_entropy(fn, dd):
     import numpy as np
     fn = np.array(fn).flatten()
-    return -fn * (1 - dd) / (fn + dd * (1 - fn)) + (1 - fn) * (-1 + dd) / (
-        1 - fn + dd * fn) - np.log(fn + dd *
+    return fn * (1 - dd) / (fn + dd * (1 - fn)) + (1 - fn) * (-1 + dd) / (
+        1 - fn + dd * fn) + np.log(fn + dd *
                                    (1 - fn)) - np.log(1 - fn + dd * fn)
 
 
@@ -181,7 +181,7 @@ class FreeEnergy:
         MPI.COMM_WORLD.Allreduce([loc, MPI.DOUBLE], [entropy, MPI.DOUBLE],
                                  op=MPI.SUM)
 
-        return E - np.asscalar(entropy)
+        return E + np.asscalar(entropy)
 
     def grad(self, cn, fn):
         """
@@ -207,6 +207,6 @@ class FreeEnergy:
         # TODO: k-point weights missing?
         dAdfn = np.real(
             einsum('ij,ij->j', cn.conj(), dAdC)
-        ) - self.temperature * self.omega_k * self.scale * df_fermi_entropy(
+        ) + self.temperature * self.omega_k * self.scale * df_fermi_entropy(
             self.scale * fn)
         return dAdC * fn, dAdfn.flatten(ctype=np.array)
