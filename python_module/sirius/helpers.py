@@ -196,9 +196,9 @@ class Logger:
                 with open(self.fout, 'a') as fh:
                     print(arg1, *args, file=fh)
             else:
-                print(*args)
+                print(arg1, *args)
         elif self._all_print:
-            print(*args)
+            print(arg1, *args)
 
     def __call__(self, *args):
-        self.print(*args)
+        self.log(*args)
