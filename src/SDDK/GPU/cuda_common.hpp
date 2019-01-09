@@ -80,20 +80,20 @@ class CUDA_timers_wrapper
             printf("\n");
 
             std::map<std::string, std::vector<float> >::iterator it;
-            for (it = cuda_timers_.begin(); it != cuda_timers_.end(); it++)
-            {
+            for (it = cuda_timers_.begin(); it != cuda_timers_.end(); it++) {
                 int count = (int)it->second.size();
                 double total = 0.0;
                 float minval = 1e10;
                 float maxval = 0.0;
-                for (int i = 0; i < count; i++)
-                {
+                for (int i = 0; i < count; i++) {
                     total += it->second[i];
                     minval = std::min(minval, it->second[i]);
                     maxval = std::max(maxval, it->second[i]);
                 }
                 double average = (count == 0) ? 0.0 : total / count;
-                if (count == 0) minval = 0.0;
+                if (count == 0) {
+                    minval = 0.0;
+                }
 
                 printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), count, total, minval, maxval, average);
             }
