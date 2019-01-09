@@ -5,11 +5,10 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
     ispn   -- spin component
     """
     from .coefficient_array import PwCoeffs
-    from .py_sirius import DeviceEnum
+    from .py_sirius import MemoryEnum
     from .ot import matview
     import numpy as np
 
-    on_device = kpointset.ctx().processing_unit() == DeviceEnum.GPU
 
     if isinstance(cn, PwCoeffs):
         assert (ki is None)
@@ -18,13 +17,17 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
             k, ispn = key
             n, m = v.shape
             assert (np.isclose(matview(v).H * v, np.eye(m, m)).all())
-            kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[:] = v
+            psi = kpointset[k].spinor_wave_functions()
+            psi.pw_coeffs(ispn)[:] = v
+            on_device = psi.preferred_memory_t() == MemoryEnum.device
             if on_device:
-                kpointset[k].spinor_wave_functions().copy_to_gpu()
+                psi.copy_to_gpu()
     else:
-        kpointset[ki].spinor_wave_functions().pw_coeffs(ispn)[:] = cn
+        psi = kpointset[ki].spinor_wave_functions()
+        on_device = psi.preferred_memory_t() == MemoryEnum.device
+        psi.pw_coeffs(ispn)[:] = cn
         if on_device:
-            kpointset[ki].spinor_wave_functions().copy_to_gpu()
+            psi.copy_to_gpu()
 
 
 def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):

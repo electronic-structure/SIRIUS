@@ -234,7 +234,7 @@ class Atom
                 #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
-                    std::memcpy(rf_coef.at<CPU>(0, 0, i), rf_spline[i].coeffs().at<CPU>(), nmtp * 4 * sizeof(double));
+                    std::memcpy(rf_coef.at(memory_t::host, 0, 0, i), rf_spline[i].coeffs().at(memory_t::host), nmtp * 4 * sizeof(double));
                     // cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 *
                     // sizeof(double), tid);
                 }
@@ -243,7 +243,7 @@ class Atom
                     v_spline[i].interpolate();
                 }
             }
-            rf_coef.async_copy<memory_t::host, memory_t::device>(-1);
+            rf_coef.copy_to(memory_t::device, stream_id(-1));
 
             #pragma omp parallel for
             for (int lm = 0; lm < lmmax; lm++) {
@@ -251,27 +251,27 @@ class Atom
                     for (int j = 0; j < num_mag_dims + 1; j++) {
                         int idx         = lm + lmmax * i + lmmax * nrf * j;
                         vrf_spline[idx] = rf_spline[i] * v_spline[lm + j * lmmax];
-                        std::memcpy(vrf_coef.at<CPU>(0, 0, idx), vrf_spline[idx].coeffs().at<CPU>(),
+                        std::memcpy(vrf_coef.at(memory_t::host, 0, 0, idx), vrf_spline[idx].coeffs().at(memory_t::host),
                                     nmtp * 4 * sizeof(double));
                         // cuda_async_copy_to_device(vrf_coef.at<GPU>(0, 0, idx), vrf_coef.at<CPU>(0, 0, idx), nmtp * 4
                         // *sizeof(double), tid);
                     }
                 }
             }
-            vrf_coef.copy<memory_t::host, memory_t::device>();
+            vrf_coef.copy_to(memory_t::device);
             t1.stop();
 
             result.allocate(memory_t::device);
             //utils::timer t2("sirius::Atom::generate_radial_integrals|inner");
-            spline_inner_product_gpu_v3(idx_ri.at<GPU>(), (int)idx_ri.size(1), nmtp, rgrid.x().at<GPU>(),
-                                        rgrid.dx().at<GPU>(), rf_coef.at<GPU>(), vrf_coef.at<GPU>(), result.at<GPU>());
+            spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp, rgrid.x().at(memory_t::device),
+                                        rgrid.dx().at(memory_t::device), rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device), result.at(memory_t::device));
             acc::sync();
             //if (type().parameters().control().print_performance_) {
             //    double tval = t2.stop();
             //    DUMP("spline GPU integration performance: %12.6f GFlops",
             //         1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
             //}
-            result.copy<memory_t::device, memory_t::host>();
+            result.copy_to(memory_t::host);
             result.deallocate(memory_t::device);
 #else
             TERMINATE_NO_GPU
@@ -409,15 +409,15 @@ class Atom
 
     inline void sync_radial_integrals(Communicator const& comm__, int const rank__)
     {
-        comm__.bcast(h_radial_integrals_.at<CPU>(), (int)h_radial_integrals_.size(), rank__);
+        comm__.bcast(h_radial_integrals_.at(memory_t::host), (int)h_radial_integrals_.size(), rank__);
         if (type().parameters().num_mag_dims()) {
-            comm__.bcast(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), rank__);
+            comm__.bcast(b_radial_integrals_.at(memory_t::host), (int)b_radial_integrals_.size(), rank__);
         }
     }
 
     inline void sync_occupation_matrix(Communicator const& comm__, int const rank__)
     {
-        comm__.bcast(occupation_matrix_.at<CPU>(), (int)occupation_matrix_.size(), rank__);
+        comm__.bcast(occupation_matrix_.at(memory_t::host), (int)occupation_matrix_.size(), rank__);
     }
 
     inline int offset_aw() const
@@ -544,19 +544,19 @@ class Atom
 
     inline void set_occupation_matrix(const double_complex* source)
     {
-        std::memcpy(occupation_matrix_.at<CPU>(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
+        std::memcpy(occupation_matrix_.at(memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
         apply_uj_correction_ = false;
     }
 
     inline void get_occupation_matrix(double_complex* destination)
     {
-        std::memcpy(destination, occupation_matrix_.at<CPU>(), 16 * 16 * 2 * 2 * sizeof(double_complex));
+        std::memcpy(destination, occupation_matrix_.at(memory_t::host), 16 * 16 * 2 * 2 * sizeof(double_complex));
     }
 
     inline void set_uj_correction_matrix(const int l, const double_complex* source)
     {
         uj_correction_l_ = l;
-        memcpy(uj_correction_matrix_.at<CPU>(), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
+        memcpy(uj_correction_matrix_.at(memory_t::host), source, 16 * 16 * 2 * 2 * sizeof(double_complex));
         apply_uj_correction_ = true;
     }
 

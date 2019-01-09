@@ -1,36 +1,6 @@
-#include <sirius.h>
+#include "test.hpp"
 
-class Measurement: public std::vector<double>
-{
-    public:
-
-        inline double val(size_t i)
-        {
-            return (*this)[i];
-        }
-
-        double average()
-        {
-            double d = 0;
-            for (size_t i = 0; i < this->size(); i++)
-                d += val(i);
-            d /= static_cast<double>(this->size());
-            return d;
-        }
-
-        double sigma()
-        {
-            double avg = average();
-            double variance = 0;
-            for (size_t i = 0; i < this->size(); i++)
-                variance += std::pow(val(i) - avg, 2);
-            variance /= static_cast<double>(this->size());
-            return std::sqrt(variance);
-        }
-};
-
-
-#ifdef _TEST_REAL_
+#ifdef __TEST_REAL
 typedef double gemm_type;
 int const nop_gemm = 2;
 #else
@@ -75,7 +45,7 @@ double test_gemm(int M, int N, int K, int transa)
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
     utils::timer t1("gemm_only"); 
-    linalg<CPU>::gemm(transa, 0, M, N, K, a.at<CPU>(), a.ld(), b.at<CPU>(), b.ld(), c.at<CPU>(), c.ld());
+    linalg<CPU>::gemm(transa, 0, M, N, K, a.at(memory_t::host), a.ld(), b.at(memory_t::host), b.ld(), c.at(memory_t::host), c.ld());
     double tval = t1.stop();
     double perf = nop_gemm * 1e-9 * M * N * K / tval;
     printf("execution time (sec) : %12.6f\n", tval);

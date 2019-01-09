@@ -158,15 +158,5 @@ inline void K_point::initialize()
         spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(), nst, ctx_.num_spins()));
     }
 
-    if (ctx_.processing_unit() == GPU && ctx_.control().keep_wf_on_device_) {
-        /* allocate GPU memory */
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            spinor_wave_functions_->pw_coeffs(ispn).prime().allocate(memory_t::device);
-            if (ctx_.full_potential()) {
-                spinor_wave_functions_->mt_coeffs(ispn).prime().allocate(memory_t::device);
-            }
-        }
-    }
-
     update();
 }

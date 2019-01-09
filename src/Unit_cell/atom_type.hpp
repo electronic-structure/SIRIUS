@@ -157,14 +157,11 @@ class Atom_type
     /// True if the pseudo potential includes spin orbit coupling.
     bool spin_orbit_coupling_{false};
 
-    /// vector containing all orbitals informations that are relevant
-    /// for the hubbard correction
+    /// Vector containing all orbitals informations that are relevant for the Hubbard correction.
+    std::vector<hubbard_orbital_descriptor> hubbard_orbitals_;
 
-    std::vector<hubbard_orbital_descriptor_> hubbard_orbitals_;
-
-    /// Hubbard correction
+    /// Hubbard correction.
     bool hubbard_correction_{false};
-
 
     /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
     /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
@@ -277,7 +274,7 @@ class Atom_type
     inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__, double p__)
     {
         radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__, p__);
-        if (parameters_.processing_unit() == GPU) {
+        if (parameters_.processing_unit() == device_t::GPU) {
             radial_grid_.copy_to_device();
         }
     }
@@ -593,7 +590,7 @@ class Atom_type
         for (int s = 0; s < static_cast<int>(ps_atomic_wf_level_.size()); s++) {
             if (ps_atomic_wf_level_[s] >= 0) {
                 if ((ps_atomic_wf_level_[s] ==  n) && (std::abs(ps_atomic_wf(s).first) == l)) {
-                    hubbard_orbital_descriptor_ hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
+                    hubbard_orbital_descriptor hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
                     hubbard_orbitals_.push_back(std::move(hub));
 
                     // we nedd to consider the case where spin orbit
@@ -613,7 +610,7 @@ class Atom_type
                 // codes that do not store all info about wave
                 // functions.
                 if (std::abs(wfc.first) == l) {
-                    hubbard_orbital_descriptor_ hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
+                    hubbard_orbital_descriptor hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
                     hubbard_orbitals_.push_back(std::move(hub));
 
                     if (!this->spin_orbit_coupling_)
@@ -628,13 +625,13 @@ class Atom_type
         return static_cast<int>(hubbard_orbitals_.size());
     }
 
-    inline hubbard_orbital_descriptor_ const &hubbard_orbital(const int channel_) const
+    inline hubbard_orbital_descriptor const& hubbard_orbital(const int channel_) const
     {
         assert(hubbard_orbitals_.size() > 0);
         return hubbard_orbitals_[channel_];
     }
 
-    inline const std::vector<hubbard_orbital_descriptor_> &hubbard_orbital() const
+    inline const std::vector<hubbard_orbital_descriptor>& hubbard_orbital() const
     {
         return hubbard_orbitals_;
     }
@@ -1144,19 +1141,19 @@ inline void Atom_type::init(int offset_lo__)
             }
         }
         idx_radial_integrals_ = mdarray<int, 2>(2, non_zero_elements.size());
-        for (size_t j = 0; j < non_zero_elements.size(); j++) {
+        for (int j = 0; j < (int)non_zero_elements.size(); j++) {
             idx_radial_integrals_(0, j) = non_zero_elements[j].first;
             idx_radial_integrals_(1, j) = non_zero_elements[j].second;
         }
     }
 
-    if (parameters_.processing_unit() == GPU && parameters_.full_potential()) {
-        idx_radial_integrals_.allocate(memory_t::device);
-        idx_radial_integrals_.copy<memory_t::host, memory_t::device>();
-        rf_coef_  = mdarray<double, 3>(num_mt_points(), 4, indexr().size(), memory_t::host_pinned | memory_t::device,
-                                       "Atom_type::rf_coef_");
+    if (parameters_.processing_unit() == device_t::GPU && parameters_.full_potential()) {
+        idx_radial_integrals_.allocate(memory_t::device).copy_to(memory_t::device);
+        rf_coef_  = mdarray<double, 3>(num_mt_points(), 4, indexr().size(), memory_t::host_pinned, "Atom_type::rf_coef_");
         vrf_coef_ = mdarray<double, 3>(num_mt_points(), 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1),
-                                       memory_t::host_pinned | memory_t::device, "Atom_type::vrf_coef_");
+                                       memory_t::host_pinned, "Atom_type::vrf_coef_");
+        rf_coef_.allocate(memory_t::device);
+        vrf_coef_.allocate(memory_t::device);
     }
 
     if (this->spin_orbit_coupling()) {
@@ -1272,9 +1269,9 @@ inline void Atom_type::print_info() const
     if (parameters_.hubbard_correction() && this->hubbard_correction_) {
         printf("Hubbard correction is included in the calculations");
         printf("\n");
-        printf("angular momentum         : %i\n", hubbard_orbitals_[0].hubbard_l());
-        printf("principal quantum number : %i\n", hubbard_orbitals_[0].hubbard_n());
-        printf("occupancy                : %f\n", hubbard_orbitals_[0].hubbard_occupancy());
+        printf("angular momentum         : %i\n", hubbard_orbitals_[0].l());
+        printf("principal quantum number : %i\n", hubbard_orbitals_[0].n());
+        printf("occupancy                : %f\n", hubbard_orbitals_[0].occupancy());
     }
 
     if (parameters_.full_potential()) {

@@ -19,7 +19,7 @@
 
 /** \file splindex.hpp
  *
- *  \brief Contains definition of sddk::splindex_base and sddk::specialization of splindex classes.
+ *  \brief Contains definition of sddk::splindex_base and specializations of sddk::splindex class.
  */
 
 #ifndef __SPLINDEX_HPP__
@@ -107,6 +107,7 @@ class splindex_base
     }
 };
 
+/// Split index.
 template <splindex_t type, typename T = int>
 class splindex : public splindex_base<T>
 {
@@ -350,6 +351,7 @@ class splindex<block_cyclic, T> : public splindex_base<T>
         return location(idxglob__).local_index;
     }
 
+    /// Get a global index by local index of a rank.
     inline T global_index(T idxloc__, int rank__) const
     {
         assert(rank__ >= 0 && rank__ < this->num_ranks_);
@@ -360,6 +362,7 @@ class splindex<block_cyclic, T> : public splindex_base<T>
         return (nb * this->num_ranks_ + rank__) * block_size_ + idxloc__ % block_size_;
     }
 
+    /// Get global index of this rank.
     inline T operator[](T idxloc__) const
     {
         return global_index(idxloc__, this->rank_);

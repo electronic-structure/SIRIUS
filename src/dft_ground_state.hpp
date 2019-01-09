@@ -238,6 +238,10 @@ class DFT_ground_state
         kset_.update();
         potential_.update();
         density_.update();
+
+        if (!ctx_.full_potential()) {
+            ewald_energy_ = ewald_energy();
+        }
     }
 
     /// Return reference to a simulation context.
@@ -625,7 +629,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
             density_.generate_paw_loc_density();
         }
 
-        /* transform density to realspace after mixing and symmetrization */
+        /* transform density to real space after mixing and symmetrization */
         density_.fft_transform(1);
 
         /* check number of elctrons */
@@ -705,6 +709,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         }
         potential_.save();
         density_.save();
+        //kset_.save(storage_file_name);
     }
 
     json dict = serialize();

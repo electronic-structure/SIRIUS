@@ -83,7 +83,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(true);
     printf("running %-30s : ", argv[0]);
-    int result = run_test(args, CPU);
+    int result = run_test(args, device_t::CPU);
     if (result) {
         printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
     } else {

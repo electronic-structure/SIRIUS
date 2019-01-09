@@ -27,7 +27,7 @@
 
 #include <fstream>
 #include <hdf5.h>
-#include "mdarray.hpp"
+#include "memory.hpp"
 
 namespace sddk {
 
@@ -334,27 +334,18 @@ class HDF5_tree
         for (int i = 0; i < N; i++) {
             dims[i + 1] = (int)data.size(i);
         }
-        write(name, (T*)data.template at<CPU>(), dims);
+        write(name, (T*)data.at(memory_t::host), dims);
     }
 
     /// Write a multidimensional array by name.
     template <typename T, int N>
     void write(std::string const& name__, mdarray<T, N> const& data__)
     {
-        //if (typeid(T) == typeid(std::complex<double>)) {
-        //    std::vector<int> dims(N + 1);
-        //    dims[0] = 2;
-        //    for (int i = 0; i < N; i++) {
-        //        dims[i + 1] = (int)data.size(i);
-        //    }
-        //    write(name, (double*)data.template at<CPU>(), dims);
-        //} else {
         std::vector<int> dims(N);
         for (int i = 0; i < N; i++) {
             dims[i] = static_cast<int>(data__.size(i));
         }
-        write(name__, data__.template at<CPU>(), dims);
-        //}
+        write(name__, data__.at(memory_t::host), dims);
     }
 
     /// Write a multidimensional array by integer index.
@@ -406,7 +397,7 @@ class HDF5_tree
         for (int i = 0; i < N; i++) {
             dims[i + 1] = (int)data.size(i);
         }
-        read(name, (double*)data.template at<CPU>(), dims);
+        read(name, (double*)data.at(memory_t::host), dims);
     }
 
     template <typename T, int N>
@@ -416,7 +407,7 @@ class HDF5_tree
         for (int i = 0; i < N; i++) {
             dims[i] = (int)data.size(i);
         }
-        read(name, data.template at<CPU>(), dims);
+        read(name, data.at(memory_t::host), dims);
     }
 
     template <typename T, int N>

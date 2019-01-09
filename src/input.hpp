@@ -380,12 +380,15 @@ struct Control_input
     /// If true then the list of nearest neighbours for each atom is printed to the standard output.
     bool print_neighbors_{false};
 
-    /// If true wave-functions stay in the device memory during the entire run.
-    /** This may lead to a better performance at a cost of high memory consumption on the device. */
-    bool keep_wf_on_device_{false};
-
     /// True if second-variational diagonalization is used in LAPW method.
     bool use_second_variation_{true};
+
+    /// Control the usage of the GPU memory.
+    /** Possible values are: "low", "medium" and "high". */
+    std::string memory_usage_{"high"};
+
+    /// Number of atoms in the beta-projectors chunk.
+    int beta_chunk_size_{256};
 
     void read(json const& parser)
     {
@@ -411,10 +414,18 @@ struct Control_input
             print_forces_        = section.value("print_forces", print_forces_);
             print_timers_        = section.value("print_timers", print_timers_);
             print_neighbors_     = section.value("print_neighbors", print_neighbors_);
+            memory_usage_        = section.value("memory_usage", memory_usage_);
+            beta_chunk_size_     = section.value("beta_chunk_size", beta_chunk_size_);
 
-            auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
+            auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_, &memory_usage_};
             for (auto s : strings) {
                 std::transform(s->begin(), s->end(), s->begin(), ::tolower);
+            }
+
+            std::list<std::string> kw;
+            kw = {"low", "medium", "high"};
+            if (std::find(kw.begin(), kw.end(), memory_usage_) == kw.end()) {
+                TERMINATE("wrong memory_usage input");
             }
         }
     }

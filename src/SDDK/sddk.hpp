@@ -50,13 +50,10 @@ namespace sddk {
 
 #include "profiler.hpp"
 #include "communicator.hpp"
-#ifdef __GPU
-#include "GPU/cuda.hpp"
-#endif
 #include "mpi_grid.hpp"
 #include "blacs_grid.hpp"
 #include "splindex.hpp"
-#include "mdarray.hpp"
+#include "memory.hpp"
 #include "dmatrix.hpp"
 #include "matrix_storage.hpp"
 #include "gvec.hpp"

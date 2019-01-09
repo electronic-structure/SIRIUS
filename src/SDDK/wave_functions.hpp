@@ -30,6 +30,7 @@
 #include "linalg.hpp"
 #include "eigenproblem.h"
 #include "hdf5_tree.hpp"
+#include "utils/env.hpp"
 #ifdef __GPU
 extern "C" void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, int reduced__,
                                    int mpi_rank__, double* result__);
@@ -41,6 +42,31 @@ const int sddk_default_block_size = 256;
 
 namespace sddk {
 
+/// Helper function: get a list of spin-indices.
+inline std::vector<int> get_spins(int ispn__)
+{
+    return (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
+}
+
+/// Helper class to wrap spin index (integer number).
+class spin_idx
+{
+  private:
+    int idx_;
+  public:
+    explicit spin_idx(int idx__)
+        : idx_(idx__)
+    {
+        if (!(idx_ == 0 || idx_ == 1 || idx_ == 2)) {
+            TERMINATE("wrong spin index");
+        }
+    }
+    inline int operator()() const
+    {
+        return idx_;
+    }
+};
+
 /// Wave-functions representation.
 /** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
  *  with the slab distribution. Wave-functions have one or two spin components. In case of collinear magnetism
@@ -51,6 +77,70 @@ namespace sddk {
  *  of pure spinor wave-functions independently. We can also apply uu or dd block of Hamiltonian. In this case it is
  *  reasonable to implement the following convention: for scalar wave-function (num_sc = 1) it's value is returned
  *  for any spin index (ispn = 0 or ispn = 1).
+ *
+ *  Example below shows how the wave-functions are used:
+
+    \code{.cpp}
+    // alias for wave-functions
+    auto& psi = kp__->spinor_wave_functions();
+    // create hpsi
+    Wave_functions hpsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
+    // create hpsi
+    Wave_functions spsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
+
+    // if preferred memory is on GPU
+    if (is_device_memory(ctx_.preferred_memory_t())) {
+        // alias for memory pool
+        auto& mpd = ctx_.mem_pool(memory_t::device);
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            // allocate GPU memory
+            psi.pw_coeffs(ispn).allocate(mpd);
+            // copy to GPU
+            psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
+        }
+        // set the preferred memory type
+        psi.preferred_memory_t(ctx_.preferred_memory_t());
+        // allocate hpsi and spsi on GPU
+        for (int i = 0; i < num_sc; i++) {
+            hpsi.pw_coeffs(i).allocate(mpd);
+            spsi.pw_coeffs(i).allocate(mpd);
+        }
+        // set preferred memory for hpsi
+        hpsi.preferred_memory_t(ctx_.preferred_memory_t());
+        // set preferred memory for spsi
+        spsi.preferred_memory_t(ctx_.preferred_memory_t());
+    }
+    // prepare beta projectors
+    kp__->beta_projectors().prepare();
+    for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
+        if (nc_mag) {
+            // apply Hamiltonian and S operators to both components of wave-functions
+            H__.apply_h_s<T>(kp__, 2, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
+        } else {
+            // apply Hamiltonian and S operators to a single components of wave-functions
+            H__.apply_h_s<T>(kp__, ispin_step, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
+        }
+
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            // copy to host if needed
+            if (is_device_memory(ctx_.preferred_memory_t())) {
+                hpsi.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
+                spsi.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
+            }
+        }
+        // do something with hpsi and spsi
+    }
+    // free beta-projectors
+    kp__->beta_projectors().dismiss();
+    if (is_device_memory(ctx_.preferred_memory_t())) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            // deallocate wave-functions on GPU
+            psi.pw_coeffs(ispn).deallocate(memory_t::device);
+        }
+        // set preferred memory to CPU
+        psi.preferred_memory_t(memory_t::host);
+    }
+    \endcode
  */
 class Wave_functions
 {
@@ -87,6 +177,9 @@ class Wave_functions
 
     bool has_mt_{false};
 
+    /// Preferred memory type for this wave functions.
+    memory_t preferred_memory_t_{memory_t::host};
+
     /// Lower boundary for the spin component index by spin index.
     inline int s0(int ispn__) const
     {
@@ -122,14 +215,14 @@ class Wave_functions
     {
         mdarray<double, 1> s(n__, memory_t::host, "sumsqr");
         s.zero();
-        if (pu__ == GPU) {
+        if (pu__ == device_t::GPU) {
             s.allocate(memory_t::device);
-            s.zero<memory_t::device>();
+            s.zero(memory_t::device);
         }
 
         for (int is = s0(ispn__); is <= s1(ispn__); is++) {
             switch (pu__) {
-                case CPU: {
+                case device_t::CPU: {
                     #pragma omp parallel for
                     for (int i = 0; i < n__; i++) {
                         for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
@@ -152,23 +245,23 @@ class Wave_functions
                     }
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
 #ifdef __GPU
-                    add_square_sum_gpu(pw_coeffs(is).prime().at<GPU>(), pw_coeffs(is).num_rows_loc(), n__,
-                                       gkvecp_.gvec().reduced(), comm_.rank(), s.at<GPU>());
+                    add_square_sum_gpu(pw_coeffs(is).prime().at(memory_t::device), pw_coeffs(is).num_rows_loc(), n__,
+                                       gkvecp_.gvec().reduced(), comm_.rank(), s.at(memory_t::device));
                     if (has_mt()) {
-                        add_square_sum_gpu(mt_coeffs(is).prime().at<GPU>(), mt_coeffs(is).num_rows_loc(), n__, 0,
-                                           comm_.rank(), s.at<GPU>());
+                        add_square_sum_gpu(mt_coeffs(is).prime().at(memory_t::device), mt_coeffs(is).num_rows_loc(), n__, 0,
+                                           comm_.rank(), s.at(memory_t::device));
                     }
 #endif
                     break;
                 }
             }
         }
-        if (pu__ == GPU) {
-            s.copy<memory_t::device, memory_t::host>();
+        if (pu__ == device_t::GPU) {
+            s.copy_to(memory_t::host);
         }
-        comm_.allreduce(s.at<CPU>(), n__);
+        comm_.allreduce(s.at(memory_t::host), n__);
         return std::move(s);
     }
 
@@ -191,7 +284,7 @@ class Wave_functions
     }
 
     /// Constructor for PW wave-functions.
-    Wave_functions(double_complex* ptr__, Gvec_partition const& gkvecp__, int num_wf__, int num_sc__ = 1)
+    Wave_functions(memory_pool& mp__, Gvec_partition const& gkvecp__, int num_wf__, int num_sc__ = 1)
         : comm_(gkvecp__.gvec().comm())
         , gkvecp_(gkvecp__)
         , num_wf_(num_wf__)
@@ -203,8 +296,7 @@ class Wave_functions
 
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(ptr__, gkvecp_, num_wf_));
-            ptr__ += gkvecp_.gvec().count() * num_wf_;
+                new matrix_storage<double_complex, matrix_storage_t::slab>(mp__, gkvecp_, num_wf_));
         }
     }
 
@@ -247,11 +339,13 @@ class Wave_functions
         }
     }
 
+    /// Communicator of the G+k vector distribution.
     Communicator const& comm() const
     {
         return comm_;
     }
 
+    /// G+k vectors of the wave-functions.
     Gvec const& gkvec() const
     {
         return gkvecp_.gvec();
@@ -332,30 +426,47 @@ class Wave_functions
         switch (pu__) {
             case CPU: {
                 /* copy PW part */
-                std::copy(src__.pw_coeffs(ispn__).prime().at<CPU>(0, i0__),
-                          src__.pw_coeffs(ispn__).prime().at<CPU>(0, i0__) + ngv * n__,
-                          pw_coeffs(jspn__).prime().at<CPU>(0, j0__));
+                std::copy(src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
+                          src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + ngv * n__,
+                          pw_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
                 /* copy MT part */
                 if (has_mt()) {
-                    std::copy(src__.mt_coeffs(ispn__).prime().at<CPU>(0, i0__),
-                              src__.mt_coeffs(ispn__).prime().at<CPU>(0, i0__) + nmt * n__,
-                              mt_coeffs(jspn__).prime().at<CPU>(0, j0__));
+                    std::copy(src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
+                              src__.mt_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + nmt * n__,
+                              mt_coeffs(jspn__).prime().at(memory_t::host, 0, j0__));
                 }
                 break;
             }
             case GPU: {
 #ifdef __GPU
                 /* copy PW part */
-                acc::copy(pw_coeffs(jspn__).prime().at<GPU>(0, j0__), src__.pw_coeffs(ispn__).prime().at<GPU>(0, i0__),
+                acc::copy(pw_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
+                          src__.pw_coeffs(ispn__).prime().at(memory_t::device, 0, i0__),
                           ngv * n__);
                 /* copy MT part */
                 if (has_mt()) {
-                    acc::copy(mt_coeffs(jspn__).prime().at<GPU>(0, j0__),
-                              src__.mt_coeffs(ispn__).prime().at<GPU>(0, i0__), nmt * n__);
+                    acc::copy(mt_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
+                              src__.mt_coeffs(ispn__).prime().at(memory_t::device, 0, i0__), nmt * n__);
                 }
 #endif
                 break;
             }
+        }
+    }
+
+    inline void copy_from(Wave_functions const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__)
+    {
+        assert(ispn__ == 0 || ispn__ == 1);
+        assert(jspn__ == 0 || jspn__ == 1);
+
+        int ngv = pw_coeffs(jspn__).num_rows_loc();
+        int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
+
+        copy(src__.preferred_memory_t(), src__.pw_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
+             preferred_memory_t(), pw_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), ngv * n__);
+        if (has_mt()) {
+            copy(src__.preferred_memory_t(), src__.mt_coeffs(ispn__).prime().at(src__.preferred_memory_t(), 0, i0__),
+                 preferred_memory_t(), mt_coeffs(jspn__).prime().at(preferred_memory_t(), 0, j0__), nmt * n__);
         }
     }
 
@@ -393,23 +504,23 @@ class Wave_functions
         return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
     }
 
-    inline void zero_pw(device_t pu__, int ispn__, int i0__, int n__)
+    inline void zero_pw(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
     {
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
             switch (pu__) {
                 case CPU: {
-                    pw_coeffs(s).zero<memory_t::host>(i0__, n__);
+                    pw_coeffs(s).zero(memory_t::host, i0__, n__);
                     break;
                 }
                 case GPU: {
-                    pw_coeffs(s).zero<memory_t::device>(i0__, n__);
+                    pw_coeffs(s).zero(memory_t::device, i0__, n__);
                     break;
                 }
             }
         }
     }
 
-    inline void zero_mt(device_t pu__, int ispn__, int i0__, int n__)
+    inline void zero_mt(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
     {
         if (!has_mt()) {
             return;
@@ -417,41 +528,29 @@ class Wave_functions
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
             switch (pu__) {
                 case CPU: {
-                    mt_coeffs(s).zero<memory_t::host>(i0__, n__);
+                    mt_coeffs(s).zero(memory_t::host, i0__, n__);
                     break;
                 }
                 case GPU: {
-                    mt_coeffs(s).zero<memory_t::device>(i0__, n__);
+                    mt_coeffs(s).zero(memory_t::device, i0__, n__);
                     break;
                 }
             }
         }
     }
 
-    inline void zero(device_t pu__, int ispn__, int i0__, int n__)
+    inline void zero(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
     {
         zero_pw(pu__, ispn__, i0__, n__);
         zero_mt(pu__, ispn__, i0__, n__);
     }
 
-    inline void scale(device_t pu__, int ispn__, int i0__, int n__, double beta__)
+    inline void scale(memory_t mem__, int ispn__, int i0__, int n__, double beta__)
     {
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
-            switch (pu__) {
-                case CPU: {
-                    pw_coeffs(s).scale<memory_t::host>(i0__, n__, beta__);
-                    if (has_mt()) {
-                        mt_coeffs(s).scale<memory_t::host>(i0__, n__, beta__);
-                    }
-                    break;
-                }
-                case GPU: {
-                    pw_coeffs(s).scale<memory_t::device>(i0__, n__, beta__);
-                    if (has_mt()) {
-                        mt_coeffs(s).scale<memory_t::device>(i0__, n__, beta__);
-                    }
-                    break;
-                }
+            pw_coeffs(s).scale(mem__, i0__, n__, beta__);
+            if (has_mt()) {
+                mt_coeffs(s).scale(mem__, i0__, n__, beta__);
             }
         }
     }
@@ -468,47 +567,46 @@ class Wave_functions
         return std::move(norm);
     }
 
-#ifdef __GPU
-    void allocate_on_device(int ispn__)
+    void allocate(spin_idx sid__, memory_t mem__)
     {
-        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
-            pw_coeffs(s).allocate_on_device();
+        for (int s = s0(sid__()); s <= s1(sid__()); s++) {
+            pw_coeffs(s).allocate(mem__);
             if (has_mt()) {
-                mt_coeffs(s).allocate_on_device();
+                mt_coeffs(s).allocate(mem__);
             }
         }
     }
 
-    void deallocate_on_device(int ispn__)
+    void deallocate(int ispn__, memory_t mem__)
     {
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
-            pw_coeffs(s).deallocate_on_device();
+            pw_coeffs(s).deallocate(mem__);
             if (has_mt()) {
-                mt_coeffs(s).deallocate_on_device();
+                mt_coeffs(s).deallocate(mem__);
             }
         }
     }
 
-    void copy_to_device(int ispn__, int i0__, int n__)
+    void copy_to(int ispn__, memory_t mem__, int i0__, int n__)
     {
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
-            pw_coeffs(s).copy_to_device(i0__, n__);
+            pw_coeffs(s).copy_to(mem__, i0__, n__);
             if (has_mt()) {
-                mt_coeffs(s).copy_to_device(i0__, n__);
+                mt_coeffs(s).copy_to(mem__, i0__, n__);
             }
         }
     }
 
-    void copy_to_host(int ispn__, int i0__, int n__)
+    inline memory_t preferred_memory_t() const
     {
-        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
-            pw_coeffs(s).copy_to_host(i0__, n__);
-            if (has_mt()) {
-                mt_coeffs(s).copy_to_host(i0__, n__);
-            }
-        }
+        return preferred_memory_t_;
     }
-#endif
+
+    inline memory_t preferred_memory_t(memory_t mem__)
+    {
+        preferred_memory_t_ = mem__;
+        return preferred_memory_t_;
+    }
 };
 
 #include "wf_inner.hpp"

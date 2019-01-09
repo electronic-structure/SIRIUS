@@ -27,10 +27,10 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 {
     PROFILE("sirius::Density::generate_rho_aug");
 
-    rho_aug__.zero<(pu == CPU) ? memory_t::host : memory_t::device>();
-    
+    rho_aug__.zero((pu == CPU) ? memory_t::host : memory_t::device);
+
     if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
-        ctx_.augmentation_op(0).prepare(0);
+        ctx_.augmentation_op(0).prepare(stream_id(0));
     }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -38,10 +38,10 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 
 #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
-            acc::sync_stream(0);
+            acc::sync_stream(stream_id(0));
             if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment() &&
                 ctx_.unit_cell().atom_type(iat + 1).num_atoms() > 0) {
-                ctx_.augmentation_op(iat + 1).prepare(0);
+                ctx_.augmentation_op(iat + 1).prepare(stream_id(0));
             }
         }
 #endif
@@ -54,7 +54,14 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 
         /* convert to real matrix */
         auto dm = density_matrix_aux(iat);
-        
+
+        if (ctx_.control().print_checksum_) {
+             auto cs = dm.checksum();
+             if (ctx_.comm().rank() == 0) {
+                utils::print_checksum("density_matrix_aux", cs);
+             }
+        }
+
         if (pu == CPU) {
             utils::timer t2("sirius::Density::generate_rho_aug|phase_fac");
             /* treat phase factors as real array with x2 size */
@@ -110,9 +117,8 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
         }
 
 #ifdef __GPU
-        if (pu == GPU) {
-            dm.allocate(memory_t::device);
-            dm.copy<memory_t::host, memory_t::device>();
+        if (pu == device_t::GPU) {
+            dm.allocate(memory_t::device).copy_to(memory_t::device);
 
             /* treat auxiliary array as double with x2 size */
             mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
@@ -125,30 +131,30 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
                 generate_dm_pw_gpu(atom_type.num_atoms(),
                                    ctx_.gvec().count(),
                                    nbf,
-                                   ctx_.unit_cell().atom_coord(iat).at<GPU>(),
-                                   ctx_.gvec_coord().at<GPU>(),
-                                   phase_factors.at<GPU>(),
-                                   dm.at<GPU>(0, 0, iv),
-                                   dm_pw.at<GPU>(),
+                                   ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
+                                   ctx_.gvec_coord().at(memory_t::device),
+                                   phase_factors.at(memory_t::device),
+                                   dm.at(memory_t::device, 0, 0, iv),
+                                   dm_pw.at(memory_t::device),
                                    1);
                 sum_q_pw_dm_pw_gpu(ctx_.gvec().count(), 
                                    nbf,
-                                   ctx_.augmentation_op(iat).q_pw().at<GPU>(),
-                                   dm_pw.at<GPU>(),
-                                   ctx_.augmentation_op(iat).sym_weight().at<GPU>(),
-                                   rho_aug__.at<GPU>(0, iv),
+                                   ctx_.augmentation_op(iat).q_pw().at(memory_t::device),
+                                   dm_pw.at(memory_t::device),
+                                   ctx_.augmentation_op(iat).sym_weight().at(memory_t::device),
+                                   rho_aug__.at(memory_t::device, 0, iv),
                                    1);
             }
-            acc::sync_stream(1);
+            acc::sync_stream(stream_id(1));
             ctx_.augmentation_op(iat).dismiss();
         }
 #endif
     }
 
-    if (pu == GPU) {
-        rho_aug__.copy<memory_t::device, memory_t::host>();
+    if (pu == device_t::GPU) {
+        rho_aug__.copy_to(memory_t::host);
     }
-    
+
     if (ctx_.control().print_checksum_) {
          auto cs = rho_aug__.checksum();
          ctx_.comm().allreduce(&cs, 1);

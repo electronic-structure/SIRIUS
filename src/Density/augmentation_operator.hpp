@@ -57,7 +57,7 @@ class Augmentation_operator
     {
     }
 
-    void generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__)
+    void generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__, memory_pool& mp__)
     {
         if (!atom_type_.augment()) {
             return;
@@ -98,7 +98,7 @@ class Augmentation_operator
         int nbf = atom_type_.mt_basis_size();
 
         /* array of plane-wave coefficients */
-        q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, memory_t::host_pinned, "q_pw_");
+        q_pw_ = mdarray<double, 2>(mp__, nbf * (nbf + 1) / 2, 2 * gvec_count, "q_pw_");
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             int    ig = gvec_offset + igloc;
@@ -133,7 +133,11 @@ class Augmentation_operator
             }
         }
 
-        sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, memory_t::host_pinned, "sym_weight_");
+        memory_t mem{memory_t::host};
+        if (atom_type_.parameters().processing_unit() == device_t::GPU) {
+            mem = memory_t::host_pinned;
+        }
+        sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, mem, "sym_weight_");
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             for (int xi1 = 0; xi1 <= xi2; xi1++) {
                 /* packed orbital index */
@@ -168,14 +172,14 @@ class Augmentation_operator
         }
     }
 
-    void prepare(int stream_id__)
+    void prepare(stream_id sid)
     {
-        if (atom_type_.parameters().processing_unit() == GPU && atom_type_.augment()) {
+        if (atom_type_.parameters().processing_unit() == device_t::GPU && atom_type_.augment()) {
             sym_weight_.allocate(memory_t::device);
-            sym_weight_.async_copy<memory_t::host, memory_t::device>(stream_id__);
+            sym_weight_.copy_to(memory_t::device, sid);
 
             q_pw_.allocate(memory_t::device);
-            q_pw_.async_copy<memory_t::host, memory_t::device>(stream_id__);
+            q_pw_.copy_to(memory_t::device, sid);
         }
     }
 
@@ -292,7 +296,8 @@ class Augmentation_operator_gvec_deriv
     void generate_pw_coeffs(Atom_type                   const& atom_type__,
                             Radial_integrals_aug<false> const& ri__,
                             Radial_integrals_aug<true>  const& ri_dq__,
-                            int                                nu__)
+                            int                                nu__,
+                            memory_pool&                       mp__)
     {
         PROFILE("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs");
 
@@ -317,7 +322,7 @@ class Augmentation_operator_gvec_deriv
         int nbf = atom_type__.mt_basis_size();
 
         /* array of plane-wave coefficients */
-        q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, memory_t::host_pinned, "q_pw_dg_");
+        q_pw_ = mdarray<double, 2>(mp__, nbf * (nbf + 1) / 2, 2 * gvec_count, "q_pw_dg_");
         utils::timer t2("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|qpw");
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_count; igloc++) {
@@ -357,7 +362,11 @@ class Augmentation_operator_gvec_deriv
         }
         t2.stop();
 
-        sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, memory_t::host_pinned, "sym_weight_");
+        memory_t mem{memory_t::host};
+        if (atom_type__.parameters().processing_unit() == device_t::GPU) {
+            mem = memory_t::host_pinned;
+        }
+        sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, mem, "sym_weight_");
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             for (int xi1 = 0; xi1 <= xi2; xi1++) {
                 /* packed orbital index */
@@ -390,11 +399,6 @@ class Augmentation_operator_gvec_deriv
     //    #endif
     //}
 
-    //mdarray<double, 2> const& q_pw() const
-    //{
-    //    return q_pw_;
-    //}
-
     mdarray<double, 2> const& q_pw() const
     {
         return q_pw_;
@@ -404,12 +408,6 @@ class Augmentation_operator_gvec_deriv
     {
         return q_pw_(i__, ig__);
     }
-
-    //inline mdarray<double, 1> const& sym_weight() const
-    //{
-    //    return sym_weight_;
-    //}
-    //
 
     /// Weight of Q_{\xi,\xi'}.
     /** 2 if off-diagonal (xi != xi'), 1 if diagonal (xi=xi') */

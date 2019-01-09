@@ -50,6 +50,8 @@ inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian_
     hamiltonian__.local_op().prepare(kp__.gkvec_partition());
     ctx_.fft_coarse().prepare(kp__.gkvec_partition());
 
+    ctx_.print_memory_usage(__FILE__, __LINE__);
+
     int niter{0};
 
     auto& itso = ctx_.iterative_solver_input();
@@ -91,6 +93,9 @@ inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian_
     }
 
     ctx_.fft_coarse().dismiss();
+
+    ctx_.print_memory_usage(__FILE__, __LINE__);
+
     return niter;
 }
 
@@ -105,20 +110,10 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
         unit_cell_.generate_radial_integrals();
     }
 
-    /* map local potential to a coarse grid */
-    hamiltonian__.local_op().prepare(hamiltonian__.potential());
-    if (!ctx_.full_potential()) {
-        /* prepare non-local operators */
-        if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-            hamiltonian__.prepare<double>();
-        } else {
-            hamiltonian__.prepare<double_complex>();
-        }
-    }
+    /* prepare k-independent part */
+    hamiltonian__.prepare();
 
-    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     int num_dav_iter{0};
     /* solve secular equation and generate wave functions */
@@ -141,10 +136,7 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
         printf("Average number of iterations: %12.6f\n", static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 
-    hamiltonian__.local_op().dismiss();
-    if (!ctx_.full_potential()) {
-        hamiltonian__.dismiss();
-    }
+    hamiltonian__.dismiss();
 
     /* synchronize eigen-values */
     kset__.sync_band_energies();

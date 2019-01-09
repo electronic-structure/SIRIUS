@@ -44,10 +44,6 @@ void f2()
     a4 = std::move(a3);
 
     a4 = mdarray<int, 1>(20);
-    
-    #ifndef NDEBUG
-    std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;
-    #endif
 }
 
 void f3()
@@ -59,9 +55,6 @@ void f3()
             mdarray<double_complex, 2> a(100, 100);
             a(0, 0) = double_complex(tid, tid);
         }
-        if (mdarray_mem_count::allocated().load() != 0) {
-            printf("oops! mdarray_mem_count class is not thread safe\n");
-        }
     }
 }
 
@@ -69,9 +62,9 @@ void f4()
 {
     mdarray<int, 1> buf;
 
-    buf = mdarray<int, 1>(100, memory_t::host | memory_t::device, "buf");
+    buf = mdarray<int, 1>(100, memory_t::host, "buf");
 
-    buf = mdarray<int, 1>(200, memory_t::host | memory_t::device, "buf");
+    buf = mdarray<int, 1>(200, memory_t::host, "buf");
     
     //buf = mdarray<int, 1>(300, memory_t::host | memory_t::device, "buf");
 
@@ -113,10 +106,6 @@ int main(int argn, char **argv)
     
     mdarray<double, 2> a;
     f6(a);
-
-    #ifndef NDEBUG
-    std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;
-    #endif
 
     sirius::finalize();
 }

@@ -1,74 +1,9 @@
-#include <sirius.h>
+#include "test.hpp"
 
 using namespace sirius;
 
 template <typename T>
-dmatrix<T> random_symmetric(int N__, int bs__, BLACS_grid const& blacs_grid__)
-{
-    dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__);
-    dmatrix<T> B(N__, N__, blacs_grid__, bs__, bs__);
-    for (int j = 0; j < A.num_cols_local(); j++) {
-        for (int i = 0; i < A.num_rows_local(); i++) {
-            A(i, j) = utils::random<T>();
-        }
-    }
-
-#ifdef __SCALAPACK
-    linalg<CPU>::tranc(N__, N__, A, 0, 0, B, 0, 0);
-#else
-    for (int i = 0; i < N__; i++) {
-        for (int j = 0; j < N__; j++) {
-            B(i, j) = utils::conj(A(j, i));
-        }
-    }
-#endif
-
-    for (int j = 0; j < A.num_cols_local(); j++) {
-        for (int i = 0; i < A.num_rows_local(); i++) {
-            A(i, j) = 0.5 * (A(i, j) + B(i, j));
-        }
-    }
-
-    for (int i = 0; i < N__; i++) {
-        A.set(i, i, 50.0);
-    }
-
-    return std::move(A);
-}
-
-template <typename T>
-dmatrix<T> random_positive_definite(int N__, int bs__, BLACS_grid const& blacs_grid__)
-{
-    double p = 1.0 / N__;
-    dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__);
-    dmatrix<T> B(N__, N__, blacs_grid__, bs__, bs__);
-    for (int j = 0; j < A.num_cols_local(); j++) {
-        for (int i = 0; i < A.num_rows_local(); i++) {
-            A(i, j) = p * utils::random<T>();
-        }
-    }
-
-#ifdef __SCALAPACK
-    linalg<CPU>::tranc(N__, N__, A, 0, 0, B, 0, 0);
-#else
-    for (int i = 0; i < N__; i++) {
-        for (int j = 0; j < N__; j++) {
-          B(i, j) = utils::conj(A(j, i));
-        }
-    }
-#endif
-    linalg<CPU>::gemm(2, 0, N__, N__, N__, linalg_const<T>::one(), A, A, linalg_const<T>::zero(), B);
-
-    for (int i = 0; i < N__; i++) {
-        B.set(i, i, N__);
-    }
-
-    return std::move(B);
-}
-
-
-template <typename T>
-void test_diag(BLACS_grid const& blacs_grid__,
+double test_diag(BLACS_grid const& blacs_grid__,
                int N__,
                int n__,
                int nev__,
@@ -90,15 +25,7 @@ void test_diag(BLACS_grid const& blacs_grid__,
         B >> B_ref;
     }
 
-    std::map<std::string, ev_solver_t> map_name_to_type = {
-        {"lapack", ev_solver_t::lapack},
-        {"scalapack", ev_solver_t::scalapack},
-        {"elpa1", ev_solver_t::elpa1},
-        {"elpa2", ev_solver_t::elpa2},
-        {"magma", ev_solver_t::magma}
-    };
-
-    auto solver = Eigensolver_factory<T>(map_name_to_type[name__]);
+    auto solver = Eigensolver_factory<T>(get_ev_solver_t(name__));
 
     std::vector<double> eval(nev__);
 
@@ -178,6 +105,7 @@ void test_diag(BLACS_grid const& blacs_grid__,
             printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
         }
     }
+    return t;
 }
 
 void test_diag2(BLACS_grid const& blacs_grid__,
@@ -185,15 +113,7 @@ void test_diag2(BLACS_grid const& blacs_grid__,
                 std::string name__,
                 std::string fname__)
 {
-    std::map<std::string, ev_solver_t> map_name_to_type = {
-        {"lapack", ev_solver_t::lapack},
-        {"scalapack", ev_solver_t::scalapack},
-        {"elpa1", ev_solver_t::elpa1},
-        {"elpa2", ev_solver_t::elpa2},
-        {"magma", ev_solver_t::magma}
-    };
-
-    auto solver = Eigensolver_factory<double_complex>(map_name_to_type[name__]);
+    auto solver = Eigensolver_factory<double_complex>(get_ev_solver_t(name__));
 
     matrix<double_complex> full_mtrx;
     int n;
@@ -208,11 +128,11 @@ void test_diag2(BLACS_grid const& blacs_grid__,
         full_mtrx = matrix<double_complex>(n, n);
         h5.read("/mtrx", full_mtrx);
         blacs_grid__.comm().bcast(&n, 1, 0);
-        blacs_grid__.comm().bcast(full_mtrx.at<CPU>(), static_cast<int>(full_mtrx.size()), 0);
+        blacs_grid__.comm().bcast(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()), 0);
     } else {
         blacs_grid__.comm().bcast(&n, 1, 0);
         full_mtrx = matrix<double_complex>(n, n);
-        blacs_grid__.comm().bcast(full_mtrx.at<CPU>(), static_cast<int>(full_mtrx.size()), 0);
+        blacs_grid__.comm().bcast(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()), 0);
     }
     if (blacs_grid__.comm().rank() == 0) {
         printf("matrix size: %i\n", n);
@@ -249,12 +169,18 @@ void call_test(std::vector<int> mpi_grid__,
 {
     BLACS_grid blacs_grid(Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
     if (fname__.length() == 0) {
+        Measurement m;
         for (int i = 0; i < repeat__; i++) {
+            double t;
             if (type__ == 0) {
-                test_diag<double>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
+                t = test_diag<double>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
             } else {
-                test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
+                t = test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
             }
+            m.push_back(t);
+        }
+        if (blacs_grid.comm().rank() == 0) {
+            printf("average time: %f (sec.), sigma: %f (sec.) \n", m.average(), m.sigma());
         }
     } else {
         test_diag2(blacs_grid, bs__, name__, fname__);

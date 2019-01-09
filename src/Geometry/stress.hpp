@@ -217,29 +217,28 @@ class Stress {
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
             int ik = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
-#ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
+            if (is_device_memory(ctx_.preferred_memory_t())) {
                 int nbnd = ctx_.num_bands();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* allocate GPU memory */
-                    kp->spinor_wave_functions().pw_coeffs(ispn).allocate_on_device();
-                    kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd);
+                    kp->spinor_wave_functions().pw_coeffs(ispn).allocate(memory_t::device);
+                    kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
                 }
+                kp->spinor_wave_functions().preferred_memory_t(ctx_.preferred_memory_t());
             }
-#endif
             Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
 
-            Non_local_functor<T, 9> nlf(ctx_, bp_strain_deriv);
+            Non_local_functor<T> nlf(ctx_, bp_strain_deriv);
 
             nlf.add_k_point_contribution(*kp, collect_result);
-#ifdef __GPU
-            if (ctx_.processing_unit() == GPU && !ctx_.control().keep_wf_on_device_) {
+
+            if (is_device_memory(ctx_.preferred_memory_t())) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* deallocate GPU memory */
-                    kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+                    kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
                 }
+                kp->spinor_wave_functions().preferred_memory_t(memory_t::host);
             }
-#endif
         }
 
         #pragma omp parallel
@@ -291,7 +290,7 @@ class Stress {
     Stress(Simulation_context& ctx__,
            Density& density__,
            Potential& potential__,
-           Hamiltonian &h__,
+           Hamiltonian& h__,
            K_point_set& kset__)
         : ctx_(ctx__)
         , density_(density__)
@@ -607,27 +606,34 @@ class Stress {
             int ik = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
 
-            for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-                auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
+            #pragma omp parallel
+            {
+                matrix3d<double> tmp;
+                #pragma omp for schedule(static)
+                for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
+                    auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
 
-                double d{0};
-                for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
-                    for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
-                        double f = kp->band_occupancy(i, ispin);
-                        auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
-                        d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                    double d{0};
+                    for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
+                        for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
+                            double f = kp->band_occupancy(i, ispin);
+                            auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
+                            d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                        }
                     }
-                }
-                d *= kp->weight();
-                if (kp->gkvec().reduced()) {
-                    d *= 2;
-                }
-                for (int mu: {0, 1, 2}) {
-                    for (int nu: {0, 1, 2}) {
-                        stress_kin_(mu, nu) += Gk[mu] * Gk[nu] * d;
+                    d *= kp->weight();
+                    if (kp->gkvec().reduced()) {
+                        d *= 2;
                     }
-                }
-            } // igloc
+                    for (int mu: {0, 1, 2}) {
+                        for (int nu: {0, 1, 2}) {
+                            tmp(mu, nu) += Gk[mu] * Gk[nu] * d;
+                        }
+                    }
+                } // igloc
+                #pragma omp critical
+                stress_kin_ += tmp;
+            }
         } // ikloc
 
         ctx_.comm().allreduce(&stress_kin_(0, 0), 9);
@@ -718,7 +724,7 @@ class Stress {
             /* get auxiliary density matrix */
             auto dm = density_.density_matrix_aux(iat);
 
-            mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count());
+            mdarray<double_complex, 2> phase_factors(ctx_.mem_pool(memory_t::host), atom_type.num_atoms(), ctx_.gvec().count());
 
             utils::timer t0("sirius::Stress|us|phase_fac");
             #pragma omp parallel for schedule(static)
@@ -730,12 +736,25 @@ class Stress {
                 }
             }
             t0.stop();
+
+            memory_pool* mp{nullptr};
+            switch (ctx_.processing_unit()) {
+                case CPU: {
+                    mp = &ctx_.mem_pool(memory_t::host);
+                    break;
+                }
+                case GPU: {
+                    mp = &ctx_.mem_pool(memory_t::host_pinned);
+                    break;
+                }
+            }
+
             mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
             mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
             /* over spin components, can be from 1 to 4 */
             for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++ ){
                 for (int nu = 0; nu < 3; nu++) {
-                    q_deriv.generate_pw_coeffs(atom_type, ri, ri_dq, nu);
+                    q_deriv.generate_pw_coeffs(atom_type, ri, ri_dq, nu, *mp);
 
                     for (int mu = 0; mu < 3; mu++) {
                         utils::timer t2("sirius::Stress|us|prepare");
@@ -752,7 +771,6 @@ class Stress {
                             double g = gvc.length();
 
                             for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                                //auto z = phase_factors(ia, igloc) * std::conj(potential_.effective_potential()->f_pw_local(igloc));
                                 auto z = phase_factors(ia, igloc) * potential_.component(ispin).f_pw_local(igloc) * (-gvc[mu] / g);
                                 v_tmp(ia, 2 * igloc)     = z.real();
                                 v_tmp(ia, 2 * igloc + 1) = z.imag();
@@ -861,6 +879,22 @@ class Stress {
     {
         stress_core_.zero();
 
+        bool empty = true;
+
+        /* check if the core atomic wave functions are set up or not */
+        /* if not then the core correction is simply ignored */
+
+        for (int ia = 0; (ia < ctx_.unit_cell().num_atoms()) && empty; ia++) {
+            Atom& atom = ctx_.unit_cell().atom(ia);
+            if (!atom.type().ps_core_charge_density().empty()) {
+                empty = false;
+           }
+        }
+
+        if (empty) {
+            return stress_core_;
+        }
+
         potential_.xc_potential().fft_transform(-1);
 
         auto& ri_dg = ctx_.ps_core_ri_djl();
@@ -913,35 +947,34 @@ class Stress {
     {
         stress_hubbard_.zero();
 
-        mdarray<double_complex, 5> dn_(2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                       2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                       2,
-                                       ctx_.unit_cell().num_atoms(),
-                                       9);
-        hamiltonian_.prepare<double_complex>();
+        mdarray<double_complex, 5> dn(2 * hamiltonian_.U().lmax() + 1,
+                                      2 * hamiltonian_.U().lmax() + 1,
+                                      2,
+                                      ctx_.unit_cell().num_atoms(),
+                                      9);
+        //hamiltonian_.prepare<double_complex>();
+        Q_operator<double_complex> q_op(ctx_);
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-            dn_.zero();
+            dn.zero();
             int ik  = kset_.spl_num_kpoints(ikloc);
             auto kp__ = kset_[ik];
             if (ctx_.num_mag_dims() == 3)
                 TERMINATE("Hubbard stress correction is only implemented for the simple hubbard correction.");
 
-            // compute the derivative of the occupancies numbers
-            hamiltonian_.U().compute_occupancies_stress_derivatives(*kp__,
-                                                                    hamiltonian_.Q<double_complex>(),
-                                                                    dn_);
+            /* compute the derivative of the occupancies numbers */
+            hamiltonian_.U().compute_occupancies_stress_derivatives(*kp__, q_op, dn);
             for (int dir1 = 0; dir1 < 3; dir1++) {
                 for (int dir2 = 0; dir2 < 3; dir2++) {
                     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
                         const auto& atom = ctx_.unit_cell().atom(ia1);
                         if (atom.type().hubbard_correction()) {
-                            const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
+                            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
                             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                                 for (int m1 = 0; m1 < lmax_at; m1++) {
                                     for (int m2 = 0; m2 < lmax_at; m2++) {
                                         stress_hubbard_(dir1, dir2) -= (hamiltonian_.U().U(m2, m1, ispn, ia1) *
-                                                                        dn_(m1, m2, ispn, ia1, dir1 + 3 * dir2)).real()/ctx_.unit_cell().omega();
+                                                                        dn(m1, m2, ispn, ia1, dir1 + 3 * dir2)).real() / ctx_.unit_cell().omega();
                                     }
                                 }
                             }
@@ -951,7 +984,7 @@ class Stress {
             }
         }
 
-        hamiltonian_.dismiss();
+        //hamiltonian_.dismiss();
 
         /* global reduction */
         kset_.comm().allreduce<double, mpi_op_t::sum>(&stress_hubbard_(0, 0), 9);

@@ -87,19 +87,18 @@ class Spheric_function: public mdarray<T, 2>
 
         inline Spheric_function<domain_t, T>& operator+=(Spheric_function<domain_t, T> const& rhs__)
         {
-            for (size_t i1 = 0; i1 < this->size(1); i1++) {
-                for (size_t i0 = 0; i0 < this->size(0); i0++) {
+            for (int i1 = 0; i1 < (int)this->size(1); i1++) {
+                for (int i0 = 0; i0 < (int)this->size(0); i0++) {
                     (*this)(i0, i1) += rhs__(i0, i1);
                 }
             }
-            
             return *this;
         }
 
         inline Spheric_function<domain_t, T>& operator+=(Spheric_function<domain_t, T>&& rhs__)
         {
-            for (size_t i1 = 0; i1 < this->size(1); i1++) {
-                for (size_t i0 = 0; i0 < this->size(0); i0++) {
+            for (int i1 = 0; i1 < (int)this->size(1); i1++) {
+                for (int i0 = 0; i0 < (int)this->size(0); i0++) {
                     (*this)(i0, i1) += rhs__(i0, i1);
                 }
             }

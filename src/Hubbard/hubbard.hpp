@@ -115,14 +115,14 @@ class Hubbard
                 if (ctx_.num_mag_dims() == 3) {
                     for (auto&& orb : atom.type().hubbard_orbital()) {
                         if (atom.type().spin_orbit_coupling()) {
-                            counter += (2 * orb.hubbard_l() + 1);
+                            counter += (2 * orb.l() + 1);
                         } else {
-                            counter += 2 * (2 * orb.hubbard_l() + 1);
+                            counter += 2 * (2 * orb.l() + 1);
                         }
                     }
                 } else {
                     for (auto&& orb : atom.type().hubbard_orbital()) {
-                        counter += (2 * orb.hubbard_l() + 1);
+                        counter += (2 * orb.l() + 1);
                     }
                 }
             }
@@ -165,14 +165,14 @@ class Hubbard
         approximation_ = true;
     }
 
-    inline int hubbard_lmax() const
+    inline int lmax() const
     {
         return lmax_;
     }
 
     void set_orthogonalize_hubbard_orbitals(const bool test)
     {
-        this->orthogonalize_hubbard_orbitals_ = test;
+        orthogonalize_hubbard_orbitals_ = test;
     }
 
     void set_normalize_hubbard_orbitals(const bool test)
@@ -200,14 +200,14 @@ class Hubbard
         return hubbard_potential_(m1, m2, m3, m4, channel);
     }
 
-    const bool& orthogonalize_hubbard_orbitals() const
+    bool orthogonalize_hubbard_orbitals() const
     {
-        return this->orthogonalize_hubbard_orbitals_;
+        return orthogonalize_hubbard_orbitals_;
     }
 
-    const bool& normalize_hubbard_orbitals() const
+    bool normalize_hubbard_orbitals() const
     {
-        return this->normalize_orbitals_only_;
+        return normalize_orbitals_only_;
     }
 
     /// Apply the hubbard potential on wave functions
@@ -274,9 +274,9 @@ class Hubbard
         if (!ctx_.hubbard_correction()) {
             return;
         }
-        this->orthogonalize_hubbard_orbitals_ = ctx_.Hubbard().orthogonalize_hubbard_orbitals_;
-        this->normalize_orbitals_only_        = ctx_.Hubbard().normalize_hubbard_orbitals_;
-        this->projection_method_              = ctx_.Hubbard().projection_method_;
+        orthogonalize_hubbard_orbitals_ = ctx_.Hubbard().orthogonalize_hubbard_orbitals_;
+        normalize_orbitals_only_        = ctx_.Hubbard().normalize_hubbard_orbitals_;
+        projection_method_              = ctx_.Hubbard().projection_method_;
 
         // if the projectors are defined externaly then we need the file
         // that contains them. All the other methods do not depend on
@@ -289,7 +289,7 @@ class Hubbard
             auto& atom_type = ctx_.unit_cell().atom(ia).type();
             if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
                 for (int channel = 0; channel < atom_type.number_of_hubbard_channels(); channel++) {
-                    this->lmax_ = std::max(this->lmax_, atom_type.hubbard_orbital(channel).hubbard_l());
+                    this->lmax_ = std::max(this->lmax_, atom_type.hubbard_orbital(channel).l());
                 }
             }
         }

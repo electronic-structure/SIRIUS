@@ -58,6 +58,37 @@ struct linalg_const
     }
 };
 
+enum class linalg_t
+{
+    none,
+    blas,
+    lapack,
+    cublas,
+    cublasxt,
+    magma
+};
+
+inline linalg_t get_linalg_t(std::string name__)
+{
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+
+    static const std::map<std::string, linalg_t> map_to_type = {
+        {"blas",     linalg_t::blas},
+        {"lapack",   linalg_t::lapack},
+        {"cublas",   linalg_t::cublas},
+        {"cublasxt", linalg_t::cublasxt},
+        {"magma",    linalg_t::magma},
+    };
+
+    if (map_to_type.count(name__) == 0) {
+        std::stringstream s;
+        s << "wrong label of linear algebra type: " << name__;
+        throw std::runtime_error(s.str());
+    }
+
+    return map_to_type.at(name__);
+}
+
 extern "C" {
 
 ftn_int FORTRAN(ilaenv)(ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n1, ftn_int* n2, ftn_int* n3,

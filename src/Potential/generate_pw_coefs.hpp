@@ -39,8 +39,8 @@ inline void Potential::generate_pw_coefs()
                 double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
                 ctx_.fft().buffer(ir) = ctx_.theta(ir) / std::pow(M, 2);
             }
-            if (ctx_.fft().pu() == GPU) {
-                ctx_.fft().buffer().copy<memory_t::host, memory_t::device>();
+            if (ctx_.fft().pu() == device_t::GPU) {
+                ctx_.fft().buffer().copy_to(memory_t::device);
             }
             ctx_.fft().transform<-1>(&fpw_fft[0]);
             ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm2_inv_pw_[0]);
@@ -50,8 +50,8 @@ inline void Potential::generate_pw_coefs()
                 double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
                 ctx_.fft().buffer(ir) = ctx_.theta(ir) / M;
             }
-            if (ctx_.fft().pu() == GPU) {
-                ctx_.fft().buffer().copy<memory_t::host, memory_t::device>();
+            if (ctx_.fft().pu() == device_t::GPU) {
+                ctx_.fft().buffer().copy_to(memory_t::device);
             }
             ctx_.fft().transform<-1>(&fpw_fft[0]);
             ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm_inv_pw_[0]);
@@ -60,8 +60,8 @@ inline void Potential::generate_pw_coefs()
             for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
                 ctx_.fft().buffer(ir) = effective_potential().f_rg(ir) * ctx_.theta(ir);
             }
-            if (ctx_.fft().pu() == GPU) {
-                ctx_.fft().buffer().copy<memory_t::host, memory_t::device>();
+            if (ctx_.fft().pu() == device_t::GPU) {
+                ctx_.fft().buffer().copy_to(memory_t::device);
             }
             ctx_.fft().transform<-1>(&fpw_fft[0]);
             ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &veff_pw_[0]);

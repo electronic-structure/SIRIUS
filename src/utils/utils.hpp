@@ -36,6 +36,8 @@
 #include <sstream>
 #include <sys/time.h>
 #include <unistd.h>
+#include <complex>
+#include "json.hpp"
 
 /// Namespace for simple utility functions.
 namespace utils {
@@ -304,9 +306,9 @@ inline double confined_polynomial(double r, double R, int p1, int p2, int dm)
 
 /// Read json dictionary from file or string.
 /** Terminate if file doesn't exist. */
-inline json read_json_from_file_or_string(std::string const& str__)
+inline nlohmann::json read_json_from_file_or_string(std::string const& str__)
 {
-    json dict = {};
+    nlohmann::json dict = {};
     if (str__.size() == 0) {
         return std::move(dict);
     }
@@ -382,13 +384,14 @@ inline void get_proc_status(size_t* VmHWM__, size_t* VmRSS__)
     }
 }
 
+/// Get number of threads currently running for this process.
 inline int get_proc_threads()
 {
     int num_threads{-1};
 
     std::ifstream ifs("/proc/self/status");
     if (ifs.is_open()) {
-        std::string str; 
+        std::string str;
         while (std::getline(ifs, str)) {
             auto p = str.find("Threads:");
             if (p != std::string::npos) {
@@ -402,6 +405,7 @@ inline int get_proc_threads()
     return num_threads;
 }
 
+/// Get a host name.
 inline std::string hostname()
 {
     const int len{1024};
@@ -411,11 +415,14 @@ inline std::string hostname()
     return std::string(nm);
 }
 
+/// Return complex conjugate of a number. For a real value this is the number itself.
 inline double conj(double x__)
 {
+    /* std::conj() will return complex for a double value input; this is not what we want */
     return x__;
 }
 
+/// Return complex conjugate of a number.
 inline std::complex<double> conj(std::complex<double> x__)
 {
     return std::conj(x__);
@@ -461,6 +468,21 @@ template <>
 inline std::complex<double> random<std::complex<double>>()
 {
     return std::complex<double>(random<double>(), random<double>());
+}
+
+inline long get_page_size()
+{
+    return sysconf(_SC_PAGESIZE);
+}
+
+inline long get_num_pages()
+{
+    return sysconf(_SC_PHYS_PAGES);
+}
+
+inline long get_total_memory()
+{
+    return get_page_size() * get_num_pages();
 }
 
 } // namespace

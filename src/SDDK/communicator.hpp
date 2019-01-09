@@ -30,9 +30,8 @@
 #include <vector>
 #include <complex>
 #include <cstdarg>
-#ifdef __GPU
-#include <GPU/cuda.hpp>
-#endif
+#include <functional>
+#include <GPU/acc.hpp>
 
 namespace sddk {
 
@@ -47,7 +46,8 @@ namespace sddk {
 enum class mpi_op_t
 {
     sum,
-    max
+    max,
+    min
 };
 
 template <mpi_op_t op>
@@ -68,6 +68,15 @@ struct mpi_op_wrapper<mpi_op_t::max>
     static MPI_Op kind()
     {
         return MPI_MAX;
+    }
+};
+
+template <>
+struct mpi_op_wrapper<mpi_op_t::min>
+{
+    static MPI_Op kind()
+    {
+        return MPI_MIN;
     }
 };
 
@@ -290,7 +299,7 @@ class Communicator
 
         MPI_Query_thread(&provided);
         if (provided < required__) {
-            printf("Warning! Required level of thread support is not provided.\nprovided: %d \nrequired: %d", provided, required__);
+            printf("Warning! Required level of thread support is not provided.\nprovided: %d \nrequired: %d\n", provided, required__);
         }
     }
 
@@ -811,6 +820,72 @@ class Communicator
     //==    return a2a;
     //==}
 };
+
+/// Get number of ranks per node.
+inline int num_ranks_per_node()
+{
+    static int num_ranks{-1};
+    if (num_ranks == -1) {
+        char name[MPI_MAX_PROCESSOR_NAME];
+        int len;
+        CALL_MPI(MPI_Get_processor_name, (name, &len));
+        std::vector<size_t> hash(Communicator::world().size());
+        hash[Communicator::world().rank()] = std::hash<std::string>{}(std::string(name, len));
+        Communicator::world().allgather(hash.data(), Communicator::world().rank(), 1);
+        std::sort(hash.begin(), hash.end());
+
+        int n{1};
+        for (int i = 1; i < (int)hash.size(); i++) {
+            if (hash[i] == hash.front()) {
+                n++;
+            } else {
+                break;
+            }
+        }
+        int m{1};
+        for (int i = (int)hash.size() - 2; i >= 0; i--) {
+            if (hash[i] == hash.back()) {
+                m++;
+            } else {
+                break;
+            }
+        }
+        num_ranks = std::max(n, m);
+    }
+
+    return num_ranks;
+}
+
+inline int get_device_id(int num_devices__)
+{
+    static int id{-1};
+    if (num_devices__ == 0) {
+        return id;
+    }
+    if (id == -1) {
+        int r = Communicator::world().rank();
+        char name[MPI_MAX_PROCESSOR_NAME];
+        int len;
+        CALL_MPI(MPI_Get_processor_name, (name, &len));
+        std::vector<size_t> hash(Communicator::world().size());
+        hash[r] = std::hash<std::string>{}(std::string(name, len));
+        Communicator::world().allgather(hash.data(), r, 1);
+        std::map<size_t, std::vector<int>> rank_map;
+        for (int i = 0; i < Communicator::world().size(); i++) {
+            rank_map[hash[i]].push_back(i);
+        }
+        for (int i = 0; i < (int)rank_map[hash[r]].size(); i++) {
+            if (rank_map[hash[r]][i] == r) {
+                id = i % num_devices__;
+                break;
+            }
+        }
+        if (id == -1) {
+            throw std::runtime_error("get_device_id(): wrong device id was found");
+        }
+    }
+    return id;
+}
 
 /// Parallel standard output.
 /** Proveides an ordered standard output from multiple MPI ranks. */

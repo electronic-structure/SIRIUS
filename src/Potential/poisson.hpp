@@ -47,21 +47,25 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
         mdarray<double_complex, 2> qapf;
 
         switch (ctx_.processing_unit()) {
-            case CPU: {
-                pf   = mdarray<double_complex, 2>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(ngv * na),    ngv,   na);
-                qa   = mdarray<double_complex, 2>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax * na),  lmmax, na);
-                qapf = mdarray<double_complex, 2>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax * ngv), lmmax, ngv);
+            case device_t::CPU: {
+                auto& mp = ctx_.mem_pool(memory_t::host);
+                pf = mdarray<double_complex, 2>(mp, ngv, na);
+                qa = mdarray<double_complex, 2>(mp, lmmax, na);
+                qapf = mdarray<double_complex, 2>(mp, lmmax, ngv);
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
+                auto& mp = ctx_.mem_pool(memory_t::host);
+                auto& mpd = ctx_.mem_pool(memory_t::device);
                 /* allocate on GPU */
-                pf   = mdarray<double_complex, 2>(nullptr, ctx_.mem_pool().allocate<double_complex, memory_t::device>(ngv * na), ngv, na);
+                pf = mdarray<double_complex, 2>(nullptr, ngv, na);
+                pf.allocate(mpd);
                 /* allocate on CPU & GPU */
-                qa   = mdarray<double_complex, 2>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax * na),
-                                                  ctx_.mem_pool().allocate<double_complex, memory_t::device>(lmmax * na), lmmax, na);
+                qa = mdarray<double_complex, 2>(mp, lmmax, na);
+                qa.allocate(mpd);
                 /* allocate on CPU & GPU */
-                qapf = mdarray<double_complex, 2>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(ngv * lmmax), 
-                                                  ctx_.mem_pool().allocate<double_complex, memory_t::device>(ngv * lmmax), lmmax, ngv);
+                qapf = mdarray<double_complex, 2>(mp, lmmax, ngv);
+                qapf.allocate(mpd);
                 break;
             }
         }
@@ -83,12 +87,12 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
             }
             case GPU: {
 #if defined(__GPU)
-                qa.copy<memory_t::host, memory_t::device>();
+                qa.copy_to(memory_t::device);
                 linalg<GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
-                                  qa.at<GPU>(), qa.ld(),
-                                  pf.at<GPU>(), pf.ld(),
-                                  qapf.at<GPU>(), qapf.ld());
-                qapf.copy<memory_t::device, memory_t::host>();
+                                  qa.at(memory_t::device), qa.ld(),
+                                  pf.at(memory_t::device), pf.ld(),
+                                  qapf.at(memory_t::device), qapf.ld());
+                qapf.copy_to(memory_t::host);
 #endif
                 break;
             }
@@ -121,10 +125,6 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
                 }
             }
             rho_pw__[igloc] += rho_G;
-        }
-        ctx_.mem_pool().reset<memory_t::host>();
-        if (ctx_.processing_unit() == GPU) {
-            ctx_.mem_pool().reset<memory_t::device>();
         }
     }
 }
@@ -259,7 +259,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
             vh_el_(ia) = y00 * hartree_potential_->f_mt<index_domain_t::local>(0, 0, ialoc);
 #endif
         }
-        ctx_.comm().allgather(vh_el_.at<CPU>(), unit_cell_.spl_num_atoms().global_offset(),
+        ctx_.comm().allgather(vh_el_.at(memory_t::host), unit_cell_.spl_num_atoms().global_offset(),
                               unit_cell_.spl_num_atoms().local_size());
     }
 

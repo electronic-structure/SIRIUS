@@ -18,7 +18,7 @@ packages = {
         "options" : ["--disable-shared"]
     },
     "hdf5" : {
-        "url"     : "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.2/src/hdf5-1.10.2.tar.gz",
+        "url"     : "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz",
         "options" : ["--enable-fortran",
                      "--disable-shared",
                      "--enable-static=yes",
@@ -77,6 +77,8 @@ def configure_package(package_name, prefix):
     tf.extractall("./libs/")
 
     new_env = os.environ.copy()
+    if 'FC' in new_env:
+        new_env['F77'] = new_env['FC']
 
     # spglib requires a special care
     if package_name == 'spg':

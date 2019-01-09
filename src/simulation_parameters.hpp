@@ -241,15 +241,15 @@ class Simulation_parameters
 
     inline void set_processing_unit(device_t pu__)
     {
-        #ifdef __GPU
+#ifdef __GPU
         if (acc::num_devices() == 0) {
             processing_unit_ = device_t::CPU;
         } else {
             processing_unit_ = pu__;
         }
-        #else
+#else
         processing_unit_ = device_t::CPU;
-        #endif
+#endif
     }
 
     inline void set_molecule(bool molecule__)
@@ -493,22 +493,6 @@ class Simulation_parameters
     inline bool molecule() const
     {
         return parameters_input_.molecule_;
-    }
-
-    inline memory_t main_memory_t() const
-    {
-        if (processing_unit_ == GPU) {
-            return memory_t::device;
-        }
-        return memory_t::host;
-    }
-
-    inline memory_t dual_memory_t() const
-    {
-        if (processing_unit_ == GPU) {
-            return (memory_t::host | memory_t::device);
-        }
-        return memory_t::host;
     }
 
     inline bool use_symmetry() const
