@@ -150,10 +150,13 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_bloc
         int nbf  = beta__.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
         int offs = beta__.chunk(chunk__).desc_(beta_desc_idx::offset, i);
         int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, i);
-        linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
-                         op_.at(mem, packed_mtrx_offset_(ia), ispn_block__), nbf, beta_phi__.at(mem, offs, 0), nbeta,
-                         &linalg_const<double_complex>::zero(), work_.at(mem, offs), nbeta,
-                         stream_id(omp_get_thread_num()));
+
+        if (nbf) {
+            linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
+                             op_.at(mem, packed_mtrx_offset_(ia), ispn_block__), nbf, beta_phi__.at(mem, offs, 0), nbeta,
+                             &linalg_const<double_complex>::zero(), work_.at(mem, offs), nbeta,
+                             stream_id(omp_get_thread_num()));
+        }
     }
     switch (pu_) {
         case device_t::GPU: {
@@ -217,11 +220,11 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ia__, int
     }
 
     work_.zero();
-
+    
     /* setup linear algebra parameters */
     memory_t mem{memory_t::none};
     linalg_t la{linalg_t::none};
-
+    
     switch (pu_) {
         case device_t::CPU: {
             mem = memory_t::host;
@@ -333,6 +336,7 @@ inline void Non_local_operator<double>::apply(int chunk__, int ispn_block__, Wav
             break;
         }
     }
+
     /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
     linalg2(ctx_.blas_linalg_t()).gemm('N', 'N', 2 * num_gkvec_loc, n__, nbeta,
                                        &linalg_const<double>::one(),
