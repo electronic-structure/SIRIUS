@@ -75,23 +75,24 @@ inline void initialize(bool call_mpi_init__ = true)
     }
     /* get number of ranks per node during the global call to sirius::initialize() */
     sddk::num_ranks_per_node();
+    if (acc::num_devices() > 0) {
+        int devid = sddk::get_device_id(acc::num_devices());
+        #pragma omp parallel
+        {
+            #pragma omp critical
+            acc::set_device_id(devid);
+        }
+        acc::create_streams(omp_get_max_threads() + 1);
+#if defined(__CUDA)
+        cublas::create_stream_handles();
+        cublas::xt::create_handle();
+        cusolver::create_handle();
+#endif
+    }
 #if defined(__APEX)
     apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
 #endif
     utils::start_global_timer();
-
-#if defined(__GPU)
-    if (acc::num_devices()) {
-        if (acc::num_devices() > 1) {
-            // TODO: this depends on the rank placement
-            int dev_id = Communicator::world().rank() % acc::num_devices();
-            acc::set_device_id(dev_id);
-        }
-        acc::create_streams(omp_get_max_threads() + 1);
-        cublas::create_stream_handles();
-        cublas::xt::create_handle();
-    }
-#endif
 #if defined(__MAGMA)
     magma::init();
 #endif
@@ -121,17 +122,17 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     libsci_acc_finalize();
 #endif
 
-#if defined(__GPU)
     if (acc::num_devices()) {
-        acc::set_device();
+        //acc::set_device();
+#if defined(__CUDA)
         cublas::destroy_stream_handles();
         cublas::xt::destroy_handle();
+#endif
         acc::destroy_streams();
         if (reset_device__) {
             acc::reset();
         }
     }
-#endif
     if (fftw_cleanup__) {
         fftw_cleanup();
     }
