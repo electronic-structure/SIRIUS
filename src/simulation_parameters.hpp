@@ -241,15 +241,15 @@ class Simulation_parameters
 
     inline void set_processing_unit(device_t pu__)
     {
-        #ifdef __GPU
+#ifdef __GPU
         if (acc::num_devices() == 0) {
             processing_unit_ = device_t::CPU;
         } else {
             processing_unit_ = pu__;
         }
-        #else
+#else
         processing_unit_ = device_t::CPU;
-        #endif
+#endif
     }
 
     inline void set_molecule(bool molecule__)

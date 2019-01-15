@@ -50,9 +50,6 @@ namespace sddk {
 
 #include "profiler.hpp"
 #include "communicator.hpp"
-#ifdef __GPU
-#include "GPU/cuda.hpp"
-#endif
 #include "mpi_grid.hpp"
 #include "blacs_grid.hpp"
 #include "splindex.hpp"

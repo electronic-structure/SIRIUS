@@ -101,7 +101,7 @@ class Beta_projectors_base
     {
         auto& uc = ctx_.unit_cell();
         /* initial chunk size */
-        int chunk_size = std::min(uc.num_atoms(), 256);
+        int chunk_size = std::min(uc.num_atoms(), ctx_.control().beta_chunk_size_);
         /* maximum number of chunks */
         int num_chunks = uc.num_atoms() / chunk_size + std::min(1, uc.num_atoms() % chunk_size);
         /* final maximum chunk size */
@@ -183,7 +183,7 @@ class Beta_projectors_base
         /* allocate memory */
         pw_coeffs_t_ = mdarray<double_complex, 3>(num_gkvec_loc(), num_beta_t(), N__, memory_t::host, "pw_coeffs_t_");
 
-        if (ctx_.processing_unit() == GPU) {
+        if (ctx_.processing_unit() == device_t::GPU) {
             gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc());
             gkvec_coord_.allocate(memory_t::device);
             /* copy G+k vectors */
@@ -243,8 +243,6 @@ class Beta_projectors_base
 
         int nbeta = chunk(chunk__).num_beta_;
 
-        //static_assert(std::is_same<T, double_complex>::value || std::is_same<T, double>::value, "wrong type");
-
         matrix<T> beta_phi(ctx_.mem_pool(ctx_.host_memory_t()), nbeta, n__);
 
         /* location of the beta-projectors is always on the memory of the processing unit being used */
@@ -263,12 +261,14 @@ class Beta_projectors_base
 
         local_inner_aux<T>(pw_coeffs_a_ptr, nbeta, phi__, ispn__, idx0__, n__, beta_phi);
 
+        /* copy to host in MPI sequential or parallel case */
+        if (is_device_memory(ctx_.preferred_memory_t())) {
+            beta_phi.copy_to(memory_t::host);
+        }
+
+        /* in parallel case do a reduction */
         if (gkvec_.comm().size() > 1) {
             utils::timer t1("sirius::Beta_projectors_base::inner|comm");
-            /* copy to host for MPI reduction */
-            if (is_device_memory(ctx_.preferred_memory_t())) {
-                beta_phi.copy_to(memory_t::host);
-            }
             /* MPI reduction on the host */
             gkvec_.comm().allreduce(beta_phi.at(memory_t::host), static_cast<int>(beta_phi.size()));
         }
@@ -276,12 +276,8 @@ class Beta_projectors_base
         switch (ctx_.processing_unit()) {
             case device_t::GPU: {
                 /* copy back to device */
-                if ((gkvec_.comm().size() > 1 && is_device_memory(ctx_.preferred_memory_t())) ||
-                    is_host_memory(ctx_.preferred_memory_t())) {
+                if (gkvec_.comm().size() > 1 || is_host_memory(ctx_.preferred_memory_t())) {
                     beta_phi.copy_to(memory_t::device);
-                }
-                if (is_device_memory(ctx_.preferred_memory_t())) {
-                    beta_phi.copy_to(memory_t::host);
                 }
                 break;
             }
@@ -419,7 +415,7 @@ inline void Beta_projectors_base::local_inner_aux<double_complex>(double_complex
                                        &linalg_const<double_complex>::one(),
                                        beta_pw_coeffs_a_ptr__,
                                        num_gkvec_loc(),
-                                       phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__),
+                                       phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__),
                                        phi__.pw_coeffs(ispn__).prime().ld(),
                                        &linalg_const<double_complex>::zero(),
                                        beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
@@ -446,7 +442,7 @@ inline void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs
                                        &linalg_const<double>::two(),
                                        beta_pw_coeffs_a_ptr__,
                                        2 * num_gkvec_loc(),
-                                       reinterpret_cast<double const*>(phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__)),
+                                       reinterpret_cast<double const*>(phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__)),
                                        2 * phi__.pw_coeffs(ispn__).prime().ld(),
                                        &linalg_const<double>::zero(),
                                        beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());

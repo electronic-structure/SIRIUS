@@ -31,9 +31,7 @@
 #include <complex>
 #include <cstdarg>
 #include <functional>
-#ifdef __GPU
-#include <GPU/cuda.hpp>
-#endif
+#include <GPU/acc.hpp>
 
 namespace sddk {
 
@@ -301,7 +299,7 @@ class Communicator
 
         MPI_Query_thread(&provided);
         if (provided < required__) {
-            printf("Warning! Required level of thread support is not provided.\nprovided: %d \nrequired: %d", provided, required__);
+            printf("Warning! Required level of thread support is not provided.\nprovided: %d \nrequired: %d\n", provided, required__);
         }
     }
 
@@ -856,6 +854,37 @@ inline int num_ranks_per_node()
     }
 
     return num_ranks;
+}
+
+inline int get_device_id(int num_devices__)
+{
+    static int id{-1};
+    if (num_devices__ == 0) {
+        return id;
+    }
+    if (id == -1) {
+        int r = Communicator::world().rank();
+        char name[MPI_MAX_PROCESSOR_NAME];
+        int len;
+        CALL_MPI(MPI_Get_processor_name, (name, &len));
+        std::vector<size_t> hash(Communicator::world().size());
+        hash[r] = std::hash<std::string>{}(std::string(name, len));
+        Communicator::world().allgather(hash.data(), r, 1);
+        std::map<size_t, std::vector<int>> rank_map;
+        for (int i = 0; i < Communicator::world().size(); i++) {
+            rank_map[hash[i]].push_back(i);
+        }
+        for (int i = 0; i < (int)rank_map[hash[r]].size(); i++) {
+            if (rank_map[hash[r]][i] == r) {
+                id = i % num_devices__;
+                break;
+            }
+        }
+        if (id == -1) {
+            throw std::runtime_error("get_device_id(): wrong device id was found");
+        }
+    }
+    return id;
 }
 
 /// Parallel standard output.

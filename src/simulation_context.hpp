@@ -34,9 +34,9 @@
 #include "utils/utils.hpp"
 #include "Density/augmentation_operator.hpp"
 
-#ifdef __GPU
-#include "SDDK/GPU/cuda.hpp"
+#include "SDDK/GPU/acc.hpp"
 
+#ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
                                            double const* atom_pos__, double_complex* phase_factors__);
 #endif
@@ -181,6 +181,11 @@ class Simulation_context : public Simulation_parameters
 
     /// Augmentation operator for each atom type.
     std::vector<Augmentation_operator> augmentation_op_;
+
+    memory_t host_memory_t_{memory_t::none};
+    memory_t preferred_memory_t_{memory_t::none};
+    memory_t aux_preferred_memory_t_{memory_t::none};
+    linalg_t blas_linalg_t_{linalg_t::none};
 
     /// True if the context is already initialized.
     bool initialized_{false};
@@ -456,6 +461,19 @@ class Simulation_context : public Simulation_parameters
         unit_cell_.import(unit_cell_input_);
     }
 
+    ~Simulation_context()
+    {
+        std::vector<std::string> names({"host", "host_pinned", "device"});
+
+        if (comm().rank() == 0 && control().verbosity_ >= 2) {
+            for (auto name: names) {
+                auto& mp = mem_pool(get_memory_t(name));
+                printf("memory_pool(%s): total size: %li MB, free size: %li MB\n", name.c_str(), mp.total_size() >> 20,
+                       mp.free_size() >> 20);
+            }
+        }
+    }
+
     /// Initialize the similation (can only be called once).
     void initialize();
 
@@ -550,7 +568,7 @@ class Simulation_context : public Simulation_parameters
         }
 #if defined(__GPU)
         if (processing_unit() == device_t::GPU) {
-            acc::set_device();
+            //acc::set_device();
             gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
             gvec_coord_.allocate(memory_t::device);
             for (int igloc = 0; igloc < gvec().count(); igloc++) {
@@ -789,7 +807,7 @@ class Simulation_context : public Simulation_parameters
         PROFILE("sirius::Simulation_context::generate_phase_factors");
         int na = unit_cell_.atom_type(iat__).num_atoms();
         switch (processing_unit_) {
-            case CPU: {
+            case device_t::CPU: {
                 #pragma omp parallel for
                 for (int igloc = 0; igloc < gvec().count(); igloc++) {
                     int ig = gvec().offset() + igloc;
@@ -800,9 +818,9 @@ class Simulation_context : public Simulation_parameters
                 }
                 break;
             }
-            case GPU: {
-#ifdef __GPU
-                acc::set_device();
+            case device_t::GPU: {
+#if defined(__GPU)
+                //acc::set_device();
                 generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(memory_t::device),
                                            unit_cell().atom_coord(iat__).at(memory_t::device), phase_factors__.at(memory_t::device));
 #else
@@ -904,14 +922,14 @@ class Simulation_context : public Simulation_parameters
         matrix<double_complex> tmp;
 
         switch (processing_unit()) {
-            case CPU: {
+            case device_t::CPU: {
                 auto& mp = mem_pool(memory_t::host);
                 phase_factors = matrix<double_complex>(mp, ngv_loc, na_max);
                 zm = matrix<double_complex>(mp, lmmax, ngv_loc);
                 tmp = matrix<double_complex>(mp, lmmax, na_max);
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
                 auto& mp = mem_pool(memory_t::host);
                 auto& mpd = mem_pool(memory_t::device);
                 phase_factors = matrix<double_complex>(nullptr, ngv_loc, na_max);
@@ -945,12 +963,12 @@ class Simulation_context : public Simulation_parameters
             t1.stop();
             utils::timer t2("sirius::Simulation_context::sum_fg_fl_yg|mul");
             switch (processing_unit()) {
-                case CPU: {
+                case device_t::CPU: {
                     linalg<CPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::host), zm.ld(), phase_factors.at(memory_t::host),
                                       phase_factors.ld(), tmp.at(memory_t::host), tmp.ld());
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
 #if defined(__GPU)
                     zm.copy_to(memory_t::device);
                     linalg<GPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::device), zm.ld(), phase_factors.at(memory_t::device),
@@ -1120,46 +1138,25 @@ class Simulation_context : public Simulation_parameters
     /// Type of the host memory for arrays used in linear algebra operations.
     inline memory_t host_memory_t() const
     {
-        switch (processing_unit()) {
-            case device_t::CPU: {
-                return memory_t::host;
-            }
-            case device_t::GPU: {
-                //return memory_t::host;
-                return memory_t::host_pinned;
-            }
-        }
-        return memory_t::none; // make compiler happy
+        return host_memory_t_;
     }
 
-    /// Type of preferred memory for the storage of wave-functions and related arrays.
+    /// Type of preferred memory for the storage of hpsi, spsi, residuals and and related arrays.
     inline memory_t preferred_memory_t() const
     {
-        switch (processing_unit()) {
-            case device_t::CPU: {
-                return memory_t::host;
-            }
-            case device_t::GPU: {
-                return memory_t::device;
-                //return memory_t::host_pinned;
-            }
-        }
-        return memory_t::none; // make compiler happy;
+        return preferred_memory_t_;
+    }
+
+    /// Type of preferred memory for the storage of auxiliary wave-functions.
+    inline memory_t aux_preferred_memory_t() const
+    {
+        return aux_preferred_memory_t_;
     }
 
     /// Linear algebra driver for the BLAS operations.
     inline linalg_t blas_linalg_t() const
     {
-        switch (processing_unit()) {
-            case device_t::CPU: {
-                return linalg_t::blas;
-            }
-            case device_t::GPU: {
-                //return linalg_t::cublasxt;
-                return linalg_t::cublas;
-            }
-        }
-        return linalg_t::none; // make compiler happy
+        return blas_linalg_t_;
     }
 };
 
@@ -1200,6 +1197,66 @@ inline void Simulation_context::initialize()
 
     /* initialize MPI communicators */
     init_comm();
+
+    switch (processing_unit()) {
+        case device_t::CPU: {
+            host_memory_t_ = memory_t::host;
+            break;
+        }
+        case device_t::GPU: {
+            //return memory_t::host;
+            host_memory_t_ = memory_t::host_pinned;
+            break;
+        }
+    }
+
+    switch (processing_unit()) {
+        case device_t::CPU: {
+            preferred_memory_t_ = memory_t::host;
+            break;
+        }
+        case device_t::GPU: {
+            if (control_input_.memory_usage_ == "high") {
+                preferred_memory_t_ = memory_t::device;
+            }
+            if (control_input_.memory_usage_ == "low" || control_input_.memory_usage_ == "medium") {
+                preferred_memory_t_ = memory_t::host_pinned;
+            }
+            break;
+        }
+    }
+
+    switch (processing_unit()) {
+        case device_t::CPU: {
+            aux_preferred_memory_t_ = memory_t::host;
+            break;
+        }
+        case device_t::GPU: {
+            if (control_input_.memory_usage_ == "high" || control_input_.memory_usage_ == "medium") {
+                aux_preferred_memory_t_ = memory_t::device;
+            }
+            if (control_input_.memory_usage_ == "low") {
+                aux_preferred_memory_t_ = memory_t::host_pinned;
+            }
+            break;
+        }
+    }
+
+    switch (processing_unit()) {
+        case device_t::CPU: {
+            blas_linalg_t_ = linalg_t::blas;
+            break;
+        }
+        case device_t::GPU: {
+            if (control_input_.memory_usage_ == "high") {
+                blas_linalg_t_ = linalg_t::cublas;
+            }
+            if (control_input_.memory_usage_ == "low" || control_input_.memory_usage_ == "medium") {
+                blas_linalg_t_ = linalg_t::cublasxt;
+            }
+            break;
+        }
+    }
 
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {

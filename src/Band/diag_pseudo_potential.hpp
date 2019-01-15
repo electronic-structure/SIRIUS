@@ -295,15 +295,22 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     kp__->beta_projectors().prepare();
 
+    if (is_device_memory(ctx_.aux_preferred_memory_t())) {
+        auto& mpd = ctx_.mem_pool(memory_t::device);
+        for (int i = 0; i < num_sc; i++) {
+            phi.pw_coeffs(i).allocate(mpd);
+        }
+        phi.preferred_memory_t(ctx_.aux_preferred_memory_t());
+    }
+
     if (is_device_memory(ctx_.preferred_memory_t())) {
-#ifdef __GPU
         auto& mpd = ctx_.mem_pool(memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             psi.pw_coeffs(ispn).allocate(mpd);
-            psi.pw_coeffs(ispn).copy_to_device(0, num_bands);
+            psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_bands);
         }
+        psi.preferred_memory_t(ctx_.preferred_memory_t());
         for (int i = 0; i < num_sc; i++) {
-            phi.pw_coeffs(i).allocate(mpd);
             res.pw_coeffs(i).allocate(mpd);
 
             hphi.pw_coeffs(i).allocate(mpd);
@@ -312,13 +319,17 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             hpsi.pw_coeffs(i).allocate(mpd);
             spsi.pw_coeffs(i).allocate(mpd);
         }
+        res.preferred_memory_t(ctx_.preferred_memory_t());
+        hphi.preferred_memory_t(ctx_.preferred_memory_t());
+        sphi.preferred_memory_t(ctx_.preferred_memory_t());
+        hpsi.preferred_memory_t(ctx_.preferred_memory_t());
+        spsi.preferred_memory_t(ctx_.preferred_memory_t());
 
         if (ctx_.blacs_grid().comm().size() == 1) {
             evec.allocate(mpd);
             ovlp.allocate(mpd);
             hmlt.allocate(mpd);
         }
-#endif
     }
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
@@ -344,7 +355,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            auto cs = psi.checksum_pw(get_device_t(ctx_.preferred_memory_t()), ispn, 0, num_bands);
+            auto cs = psi.checksum_pw(get_device_t(psi.preferred_memory_t()), ispn, 0, num_bands);
             std::stringstream s;
             s << "input spinor_wave_functions_" << ispn;
             if (kp__->comm().rank() == 0) {
@@ -369,11 +380,11 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
         /* trial basis functions */
         for (int ispn = 0; ispn < num_sc; ispn++) {
-            phi.copy_from(get_device_t(ctx_.preferred_memory_t()), num_bands, psi, nc_mag ? ispn : ispin_step, 0, ispn, 0);
+            phi.copy_from(psi, num_bands, nc_mag ? ispn : ispin_step, 0, ispn, 0);
         }
         if (ctx_.control().print_checksum_) {
             for (int ispn = 0; ispn < num_sc; ispn++) {
-                auto cs = psi.checksum_pw(get_device_t(ctx_.preferred_memory_t()), ispn, 0, num_bands);
+                auto cs = phi.checksum_pw(get_device_t(phi.preferred_memory_t()), ispn, 0, num_bands);
                 std::stringstream s;
                 s << "input phi" << ispn;
                 if (kp__->comm().rank() == 0) {
@@ -496,9 +507,9 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
                     /* update basis functions, hphi and ophi */
                     for (int ispn = 0; ispn < num_sc; ispn++) {
-                        phi.copy_from(get_device_t(ctx_.preferred_memory_t()), num_bands, psi, nc_mag ? ispn : ispin_step, 0, nc_mag ? ispn : 0, 0);
-                        hphi.copy_from(get_device_t(ctx_.preferred_memory_t()), num_bands, hpsi, ispn, 0, ispn, 0);
-                        sphi.copy_from(get_device_t(ctx_.preferred_memory_t()), num_bands, spsi, ispn, 0, ispn, 0);
+                        phi.copy_from(psi, num_bands, nc_mag ? ispn : ispin_step, 0, nc_mag ? ispn : 0, 0);
+                        hphi.copy_from(hpsi, num_bands, ispn, 0, ispn, 0);
+                        sphi.copy_from(spsi, num_bands, ispn, 0, ispn, 0);
                     }
                     /* number of basis functions that we already have */
                     N = num_bands;
@@ -507,7 +518,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
             /* expand variational subspace with new basis vectors obtatined from residuals */
             for (int ispn = 0; ispn < num_sc; ispn++) {
-                phi.copy_from(get_device_t(ctx_.preferred_memory_t()), n, res, ispn, 0, ispn, N);
+                phi.copy_from(res, n, ispn, 0, ispn, N);
             }
 
             /* apply Hamiltonian and S operators to the new basis functions */
@@ -593,12 +604,11 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     //    }
     //}
     if (is_device_memory(ctx_.preferred_memory_t())) {
-#ifdef __GPU
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            psi.pw_coeffs(ispn).copy_to_host(0, num_bands);
-            psi.pw_coeffs(ispn).deallocate_on_device();
+            psi.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands);
+            psi.pw_coeffs(ispn).deallocate(memory_t::device);
         }
-#endif
+        psi.preferred_memory_t(memory_t::host);
     }
 
     //== std::cout << "checking psi" << std::endl;

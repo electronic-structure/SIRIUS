@@ -30,23 +30,16 @@ inline void K_point::generate_fv_states()
         return;
     }
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        fv_eigen_vectors_slab().pw_coeffs(0).allocate_on_device();
-        fv_eigen_vectors_slab().pw_coeffs(0).copy_to_device(0, ctx_.num_fv_states());
-    }
-    #endif
-
     mdarray<double_complex, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), memory_t::host);
     mdarray<double_complex, 2> tmp(unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
+        fv_eigen_vectors_slab().pw_coeffs(0).allocate(memory_t::device);
+        fv_eigen_vectors_slab().pw_coeffs(0).copy_to(memory_t::device, 0, ctx_.num_fv_states());
         alm.allocate(memory_t::device);
         tmp.allocate(memory_t::device);
     }
-    #endif
-    
+
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto location = fv_eigen_vectors_slab().spl_num_atoms().location(ia);
         /* number of alm coefficients for atom */
@@ -111,9 +104,7 @@ inline void K_point::generate_fv_states()
                     num_gkvec_loc() * sizeof(double_complex));
     }
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        fv_eigen_vectors_slab().pw_coeffs(0).deallocate_on_device();
+    if (ctx_.processing_unit() == device_t::GPU) {
+        fv_eigen_vectors_slab().pw_coeffs(0).deallocate(memory_t::device);
     }
-    #endif
 }

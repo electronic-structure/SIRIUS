@@ -25,7 +25,6 @@
 #ifndef __EIGENPROBLEM_H__
 #define __EIGENPROBLEM_H__
 
-//#include "constants.hpp"
 #include "linalg.hpp"
 
 #ifdef __ELPA
@@ -37,6 +36,10 @@ extern "C" {
 
 #if defined(__GPU) && defined(__MAGMA)
 #include "GPU/magma.hpp"
+#endif
+
+#if defined(__GPU) && defined(__CUDA)
+#include "GPU/cusolver.hpp"
 #endif
 
 using namespace sddk;

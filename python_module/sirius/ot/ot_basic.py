@@ -1,4 +1,4 @@
-from ..py_sirius import ewald_energy, energy_bxc, Wave_functions, DeviceEnum
+from ..py_sirius import ewald_energy, energy_bxc, Wave_functions, MemoryEnum
 from ..coefficient_array import PwCoeffs
 import numpy as np
 
@@ -60,9 +60,10 @@ class Energy:
                 assert(np.isclose(matview(val).H*val, np.eye(val.shape[1])).all())
                 # TODO: don't know if copy is required
                 # function below copies everything twice, TODO: loop over k-view
-            if self.ctx.processing_unit() == DeviceEnum.GPU:
-                for ki in cn.kvalues():
-                    self.kpointset[k].spinor_wave_functions().copy_to_gpu()
+            for ki in cn.kvalues():
+                psi = self.kpointset[k].spinor_wave_functions()
+                if psi.preferred_memory_t() == MemoryEnum.device:
+                    psi.copy_to_gpu()
             # update density, potential
             self.density.generate(self.kpointset)
             if self.ctx.use_symmetry():
@@ -106,8 +107,9 @@ class Energy:
         else:
             k = self.kpointset[ki]
             k.spinor_wave_functions().pw_coeffs(ispn)[:] = cn
-            if self.ctx.processing_unit() == DeviceEnum.GPU:
-                k.spinor_wave_functions().copy_to_gpu()
+            psi = self.kpointset[k].spinor_wave_functions()
+            if psi.preferred_memory_t() == MemoryEnum.device:
+                psi.copy_to_gpu()
             # update density and potential at point
             self.density.generate(self.kpointset)
             self.density.generate_paw_loc_density()

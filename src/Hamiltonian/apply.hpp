@@ -44,13 +44,13 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 {
     PROFILE("sirius::Hamiltonian::apply_h_s");
 
-    if (hphi__ != NULL) {
+    if (hphi__ != nullptr) {
         if (phi__.num_sc() != hphi__->num_sc()) {
             TERMINATE("wrong number of spin components");
         }
     }
 
-    if (sphi__ != NULL) {
+    if (sphi__ != nullptr) {
         if (phi__.num_sc() != sphi__->num_sc()) {
             TERMINATE("wrong number of spin components");
         }
@@ -58,7 +58,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
     double t1 = -omp_get_wtime();
 
-    if (hphi__ != NULL) {
+    if (hphi__ != nullptr) {
         /* apply local part of Hamiltonian */
         local_op_->apply_h(ispn__, phi__, *hphi__, N__, n__);
     }
@@ -71,10 +71,10 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
     int nsc = (ispn__ == 2) ? 2 : 1;
 
-    if (ctx_.control().print_checksum_ && (hphi__ != NULL)) {
+    if (ctx_.control().print_checksum_ && (hphi__ != nullptr)) {
         for (int ispn = 0; ispn < nsc; ispn++) {
-            auto cs1 = phi__.checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
-            auto cs2 = hphi__->checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
+            auto cs1 = phi__.checksum(get_device_t(phi__.preferred_memory_t()), ispn, N__, n__);
+            auto cs2 = hphi__->checksum(get_device_t(hphi__->preferred_memory_t()), ispn, N__, n__);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "phi_" << ispn;
@@ -87,8 +87,8 @@ void Hamiltonian::apply_h_s(K_point* kp__,
     }
 
     /* set intial sphi */
-    for (int ispn = 0; (ispn < nsc) && (sphi__ != NULL); ispn++) {
-        sphi__->copy_from(get_device_t(ctx_.preferred_memory_t()), n__, phi__, ispn, N__, ispn, N__);
+    for (int ispn = 0; (ispn < nsc) && (sphi__ != nullptr); ispn++) {
+        sphi__->copy_from(phi__, n__, ispn, N__, ispn, N__);
     }
 
     /* return if there are no beta-projectors */
@@ -148,19 +148,17 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         // functions on GPU (if needed)
         this->U().apply_hubbard_potential(*kp__, ispn__, N__, n__, phi__, *hphi__);
 
-#ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
+        if (ctx_.processing_unit() == device_t::GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                kp__->hubbard_wave_functions().deallocate_on_device(ispn);
+                kp__->hubbard_wave_functions().deallocate(ispn, memory_t::device);
             }
         }
-#endif
     }
 
-    if ((ctx_.control().print_checksum_) && (hphi__ != NULL) && (sphi__ != NULL)) {
+    if ((ctx_.control().print_checksum_) && (hphi__ != nullptr) && (sphi__ != nullptr)) {
         for (int ispn = 0; ispn < nsc; ispn++) {
-            auto cs1 = hphi__->checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
-            auto cs2 = sphi__->checksum(get_device_t(ctx_.preferred_memory_t()), ispn, N__, n__);
+            auto cs1 = hphi__->checksum(get_device_t(hphi__->preferred_memory_t()), ispn, N__, n__);
+            auto cs2 = sphi__->checksum(get_device_t(sphi__->preferred_memory_t()), ispn, N__, n__);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "hphi_" << ispn;
@@ -227,11 +225,9 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
         }
     }
 
-#if defined(__GPU)
     if (ctx_.processing_unit() == GPU && !apw_only__) {
-        phi__.mt_coeffs(0).copy_to_host(N__, n__);
+        phi__.mt_coeffs(0).copy_to(memory_t::host, N__, n__);
     }
-#endif
 
     /* short name for local number of G+k vectors */
     int ngv = kp__->num_gkvec_loc();
@@ -783,16 +779,14 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
         }
     }
     t2.stop();
-#if defined(__GPU)
     if (ctx_.processing_unit() == GPU && !apw_only__) {
         if (hphi__ != nullptr) {
-            hphi__->mt_coeffs(0).copy_to_device(N__, n__);
+            hphi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
         }
         if (ophi__ != nullptr) {
-            ophi__->mt_coeffs(0).copy_to_device(N__, n__);
+            ophi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
         }
     }
-#endif
     if (ctx_.control().print_checksum_) {
         if (hphi__) {
             auto cs1 = hphi__->checksum_pw(ctx_.processing_unit(), 0, N__, n__);

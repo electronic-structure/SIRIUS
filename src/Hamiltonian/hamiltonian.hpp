@@ -57,12 +57,11 @@ class Hamiltonian
     /// Non-zero Gaunt coefficients
     std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
 
+    /// D operator (non-local part of Hamiltonian).
     void* d_op_{nullptr};
 
-    /// Q operator
+    /// Q operator (non-local part of S-operator).
     void* q_op_{nullptr};
-
-    std::type_info const* type_of_T_{nullptr};
 
   public:
     /// Constructor.
@@ -108,31 +107,32 @@ class Hamiltonian
     }
 
     /// Prepare k-point independent operators.
-    template <typename T>
     inline void prepare()
     {
-        PROFILE("sirius::Hamiltonian::prepare");
-
-        if (type_of_T_) {
-            TERMINATE("Operator is alredy prepared");
+        if (!ctx_.full_potential()) {
+            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
+                d_op_ = static_cast<void*>(new D_operator<double>(ctx_));
+                q_op_ = static_cast<void*>(new Q_operator<double>(ctx_));
+            } else {
+                d_op_ = static_cast<void*>(new D_operator<double_complex>(ctx_));
+                q_op_ = static_cast<void*>(new Q_operator<double_complex>(ctx_));
+            }
         }
-        type_of_T_ = &typeid(T);
-        d_op_ = static_cast<void*>(new D_operator<T>(ctx_));
-        q_op_ = static_cast<void*>(new Q_operator<T>(ctx_));
+        local_op().prepare(potential_);
     }
 
     inline void dismiss()
     {
-        if (*type_of_T_ == typeid(double)) {
-            delete static_cast<D_operator<double>*>(d_op_);
-            delete static_cast<Q_operator<double>*>(q_op_);
-        } else if (*type_of_T_ == typeid(double_complex)) {
-            delete static_cast<D_operator<double_complex>*>(d_op_);
-            delete static_cast<Q_operator<double_complex>*>(q_op_);
+        if (!ctx_.full_potential()) {
+            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
+                delete static_cast<D_operator<double>*>(d_op_);
+                delete static_cast<Q_operator<double>*>(q_op_);
+            } else {
+                delete static_cast<D_operator<double_complex>*>(d_op_);
+                delete static_cast<Q_operator<double_complex>*>(q_op_);
+            }
         }
-        d_op_ = nullptr;
-        q_op_ = nullptr;
-        type_of_T_ = nullptr;
+        local_op().dismiss();
     }
 
     template <typename T>

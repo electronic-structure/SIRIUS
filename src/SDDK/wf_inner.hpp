@@ -63,11 +63,11 @@ inline void inner(device_t        pu__,
 
     auto& comm = bra__.comm();
 
-#ifdef __GPU
-    if (pu__ == GPU) {
-        acc::set_device();
-    }
-#endif
+//#ifdef __GPU
+//    if (pu__ == GPU) {
+//        acc::set_device();
+//    }
+//#endif
 
     const char* sddk_pp_raw = std::getenv("SDDK_PRINT_PERFORMANCE");
     int sddk_pp = (sddk_pp_raw == NULL) ? 0 : std::atoi(sddk_pp_raw);
@@ -459,18 +459,18 @@ void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functio
         }
         linalg2(la__).gemm('C', 'N', m__, n__, 2 * bra__.pw_coeffs(s).num_rows_loc(),
                            &linalg_const<double>::two(),
-                           reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(mem__, 0, i0__)),
+                           reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
                            2 * bra__.pw_coeffs(s).prime().ld(),
-                           reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(mem__, 0, j0__)),
+                           reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__)),
                            2 * ket__.pw_coeffs(s).prime().ld(),
                            beta__, buf__, ld__, sid__);
         /* subtract one extra G=0 contribution */
         if (comm.rank() == 0) {
             linalg_t la = is_host_memory(mem__) ? linalg_t::blas : linalg_t::cublas;
             linalg2(la).ger(m__, n__, &linalg_const<double>::m_one(),
-                            reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(mem__, 0, i0__)),
+                            reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
                             2 * bra__.pw_coeffs(s).prime().ld(),
-                            reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(mem__, 0, j0__)),
+                            reinterpret_cast<double*>(ket__.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__)),
                             2 * ket__.pw_coeffs(s).prime().ld(),
                             buf__, ld__);
         }
@@ -490,14 +490,18 @@ void inner_local<double_complex>(memory_t mem__, linalg_t la__, int ispn__, Wave
     for (auto s: spins) {
         linalg2(la__).gemm('C', 'N', m__, n__, bra__.pw_coeffs(s).num_rows_loc(),
                            &linalg_const<double_complex>::one(),
-                           bra__.pw_coeffs(s).prime().at(mem__, 0, i0__), bra__.pw_coeffs(s).prime().ld(),
-                           ket__.pw_coeffs(s).prime().at(mem__, 0, j0__), ket__.pw_coeffs(s).prime().ld(),
+                           bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__),
+                           bra__.pw_coeffs(s).prime().ld(),
+                           ket__.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__),
+                           ket__.pw_coeffs(s).prime().ld(),
                            beta__, buf__, ld__, sid__);
         if (bra__.has_mt()) {
             linalg2(la__).gemm('C', 'N', m__, n__, bra__.mt_coeffs(s).num_rows_loc(),
                                &linalg_const<double_complex>::one(),
-                               bra__.mt_coeffs(s).prime().at(mem__, 0, i0__), bra__.mt_coeffs(s).prime().ld(),
-                               ket__.mt_coeffs(s).prime().at(mem__, 0, j0__), ket__.mt_coeffs(s).prime().ld(),
+                               bra__.mt_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__),
+                               bra__.mt_coeffs(s).prime().ld(),
+                               ket__.mt_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__),
+                               ket__.mt_coeffs(s).prime().ld(),
                                &linalg_const<double_complex>::one(),
                                buf__, ld__, sid__);
         }
@@ -554,10 +558,8 @@ inline void inner(memory_t        mem__,
 
     /* single MPI rank */
     if (comm.size() == 1) {
-        //T* buf = result__.at(mem__, irow0__, jcol0__);
         inner_local<T>(mem__, la__, ispn__, bra__, i0__, m__, ket__, j0__, n__, &beta,
                        result__.at(mem__, irow0__, jcol0__), result__.ld(), stream_id(-1));
-        //local_inner(i0__, m__, j0__, n__, buf, result__.ld(), stream_id(-1));
 #ifdef __GPU
         if (is_device_memory(mem__)) {
             acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),

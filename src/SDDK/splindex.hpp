@@ -19,7 +19,7 @@
 
 /** \file splindex.hpp
  *
- *  \brief Contains definition of sddk::splindex_base and sddk::specialization of splindex classes.
+ *  \brief Contains definition of sddk::splindex_base and specializations of sddk::splindex class.
  */
 
 #ifndef __SPLINDEX_HPP__
@@ -107,6 +107,7 @@ class splindex_base
     }
 };
 
+/// Split index.
 template <splindex_t type, typename T = int>
 class splindex : public splindex_base<T>
 {

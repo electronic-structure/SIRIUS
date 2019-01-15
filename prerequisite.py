@@ -77,6 +77,8 @@ def configure_package(package_name, prefix):
     tf.extractall("./libs/")
 
     new_env = os.environ.copy()
+    if 'FC' in new_env:
+        new_env['F77'] = new_env['FC']
 
     # spglib requires a special care
     if package_name == 'spg':

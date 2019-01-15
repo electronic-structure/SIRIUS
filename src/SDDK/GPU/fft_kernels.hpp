@@ -22,7 +22,7 @@
  *  \brief Contains definition of CUDA kernels necessary for a FFT driver.
  */
 
-#include "cuda.hpp"
+#include "acc.hpp"
 
 extern "C" {
 

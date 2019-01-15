@@ -54,11 +54,11 @@ inline void transform(device_t                     pu__,
     int nwf = static_cast<int>(wf_in__.size());
     auto& comm = mtrx__.comm();
 
-#ifdef __GPU
-    if (pu__ == GPU) {
-        acc::set_device();
-    }
-#endif
+//#ifdef __GPU
+//    if (pu__ == GPU) {
+//        acc::set_device();
+//    }
+//#endif
 
     double ngop{0};
     if (std::is_same<T, double>::value) {
@@ -180,7 +180,11 @@ inline void transform(device_t                     pu__,
         if (beta__ == 0) {
             wf_out__[iv]->zero(pu__, ispn__, j0__, n__);
         } else {
-            wf_out__[iv]->scale(pu__, ispn__, j0__, n__, beta__);
+            if (pu__ == device_t::CPU) {
+                wf_out__[iv]->scale(memory_t::host, ispn__, j0__, n__, beta__);
+            } else {
+                wf_out__[iv]->scale(memory_t::device, ispn__, j0__, n__, beta__);
+            }
         }
     }
     t1.stop();
@@ -496,22 +500,22 @@ inline void transform(memory_t                     mem__,
                 /* transform plane-wave part */
                 linalg2(la__).gemm('N', 'N', wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                    reinterpret_cast<double_complex*>(alpha),
-                                   wf_in__->pw_coeffs(in_s).prime().at(mem__, 0, i0__),
+                                   wf_in__->pw_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__),
                                    wf_in__->pw_coeffs(in_s).prime().ld(),
                                    reinterpret_cast<double_complex*>(ptr__), ld__,
                                    &linalg_const<double_complex>::one(),
-                                   wf_out__->pw_coeffs(s).prime().at(mem__, 0, j0__),
+                                   wf_out__->pw_coeffs(s).prime().at(wf_out__->preferred_memory_t(), 0, j0__),
                                    wf_out__->pw_coeffs(s).prime().ld(),
                                    sid__);
                 /* transform muffin-tin part */
                 if (wf_in__->has_mt()) {
                     linalg2(la__).gemm('N', 'N', wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__,
                                        reinterpret_cast<double_complex*>(alpha),
-                                       wf_in__->mt_coeffs(in_s).prime().at(mem__, 0, i0__),
+                                       wf_in__->mt_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__),
                                        wf_in__->mt_coeffs(in_s).prime().ld(),
                                        reinterpret_cast<double_complex*>(ptr__), ld__,
                                        &linalg_const<double_complex>::one(),
-                                       wf_out__->mt_coeffs(s).prime().at(mem__, 0, j0__),
+                                       wf_out__->mt_coeffs(s).prime().at(wf_out__->preferred_memory_t(), 0, j0__),
                                        wf_out__->mt_coeffs(s).prime().ld(),
                                        sid__);
                     }
@@ -520,11 +524,11 @@ inline void transform(memory_t                     mem__,
                 /* transform plane-wave part */
                 linalg2(la__).gemm('N', 'N', 2 * wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                    reinterpret_cast<double*>(alpha),
-                                   reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at(mem__, 0, i0__)),
+                                   reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__)),
                                    2 * wf_in__->pw_coeffs(in_s).prime().ld(),
                                    reinterpret_cast<double*>(ptr__), ld__,
                                    &linalg_const<double>::one(),
-                                   reinterpret_cast<double*>(wf_out__->pw_coeffs(s).prime().at(mem__, 0, j0__)),
+                                   reinterpret_cast<double*>(wf_out__->pw_coeffs(s).prime().at(wf_out__->preferred_memory_t(), 0, j0__)),
                                    2 * wf_out__->pw_coeffs(s).prime().ld(),
                                    sid__);
                 if (wf_in__->has_mt()) {
@@ -538,9 +542,9 @@ inline void transform(memory_t                     mem__,
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (beta__ == 0) {
-            wf_out__[iv]->zero(get_device_t(mem__), ispn__, j0__, n__);
+            wf_out__[iv]->zero(get_device_t(wf_out__[iv]->preferred_memory_t()), ispn__, j0__, n__);
         } else {
-            wf_out__[iv]->scale(get_device_t(mem__), ispn__, j0__, n__, beta__);
+            wf_out__[iv]->scale(wf_out__[iv]->preferred_memory_t(), ispn__, j0__, n__, beta__);
         }
     }
     t1.stop();
@@ -552,18 +556,17 @@ inline void transform(memory_t                     mem__,
 
     /* trivial case */
     if (comm.size() == 1) {
-#ifdef __GPU
+#if defined(__GPU)
         if (is_device_memory(mem__)) {
             acc::copyin(mtrx__.at(memory_t::device, irow0__, jcol0__), mtrx__.ld(),
                         mtrx__.at(memory_t::host, irow0__, jcol0__), mtrx__.ld(), m__, n__, stream_id(0));
         }
 #endif
-        T* ptr = mtrx__.at(mem__, irow0__, jcol0__);
-
         for (int iv = 0; iv < nwf; iv++) {
-            local_transform(&alpha, wf_in__[iv], i0__, m__, ptr, mtrx__.ld(), wf_out__[iv], j0__, n__, stream_id(0));
+            local_transform(&alpha, wf_in__[iv], i0__, m__, mtrx__.at(mem__, irow0__, jcol0__), mtrx__.ld(),
+                            wf_out__[iv], j0__, n__, stream_id(0));
         }
-#ifdef __GPU
+#if defined(__GPU)
         if (is_device_memory(mem__)) {
             /* wait for the stream to finish zgemm */
             acc::sync_stream(stream_id(0));
