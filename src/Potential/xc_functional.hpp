@@ -27,6 +27,8 @@
 
 #include <xc.h>
 #include <string.h>
+#include <vdwxc.h>
+#include <vdwxc_mpi.h>
 
 namespace sirius {
 
@@ -387,7 +389,10 @@ const std::map<std::string, int> libxc_functionals = {
     {"XC_HYB_MGGA_XC_M08_SO", XC_HYB_MGGA_XC_M08_SO}, /* M08-SO functional from Minnesota */
     {"XC_HYB_MGGA_XC_M11", XC_HYB_MGGA_XC_M11}, /* M11    functional from Minnesota */
     {"XC_HYB_MGGA_X_MVSH", XC_HYB_MGGA_X_MVSH}, /* MVS hybrid */
-    {"XC_HYB_MGGA_XC_WB97M_V", XC_HYB_MGGA_XC_WB97M_V} /* Mardirossian and Head-Gordon */
+    {"XC_HYB_MGGA_XC_WB97M_V", XC_HYB_MGGA_XC_WB97M_V}, /* Mardirossian and Head-Gordon */
+    {"XC_FUNC_VDWDF", FUNC_VDWDF},
+    {"XC_FUNC_VDWDF2", FUNC_VDWDF2},
+    {"XC_FUNC_VDWDFCX", FUNC_VDWDFCX}
 };
 
 /// Interface class to Libxc.
@@ -399,7 +404,13 @@ class XC_functional
 
         int num_spins_;
 
+        // I can not use a generic void pointer because xc_func_type is a structure
+        // while wdv_functional_ is a pointer over structure.
+
         xc_func_type handler_;
+        vdwxc_data handler_wdv_{nullptr};
+
+        bool wdv_functional_{false};
 
         /* forbid copy constructor */
         XC_functional(const XC_functional& src) = delete;
@@ -410,8 +421,9 @@ class XC_functional
         bool initialized_{false};
 
     public:
+    /* we need the context because libvdwxc asks for lattice vectors and fft parameters */
 
-        XC_functional(const std::string libxc_name__, int num_spins__)
+    XC_functional(const simulation_context &ctx__, const std::string libxc_name__, int num_spins__)
             : libxc_name_(libxc_name__),
               num_spins_(num_spins__)
         {
@@ -422,11 +434,61 @@ class XC_functional
                 TERMINATE(s);
             }
 
-            /* init xc functional handler */
-            if (xc_func_init(&handler_, libxc_functionals.at(libxc_name_), num_spins_) != 0) {
-                TERMINATE("xc_func_init() failed");
-            }
+            switch(libxc_functionals.at(libxc_name_)) {
+            case FUNC_VDWDF:
+            case FUNC_VDWDF2:
+            case FUNC_VDWDFCX:
+            {
+                if (libwdvxc_functionals.count(xc_name_) == 0) {
+                    std::stringstream s;
+                    s << "VDW functional " << xc_name__ << " is unknown";
+                    TERMINATE(s);
+                }
 
+                if (num_spins__ == 1) {
+                    handler_vdw_ = vdwxc_new(xc_name_.c_string());
+                } else {
+                    handler_vdw_ = vdwxc_new_spin(xc_name_.c_string());
+                }
+
+                if (!handler_vdw_) {
+                    s << "VDW functional lib could not be initialized";
+                    TERMINATE(s);
+                }
+
+                if (num_spins__ == 1) {
+                    handler_vdw_ = vdwxc_new(xc_name_.c_string());
+                } else {
+                    handler_vdw_ = vdwxc_new_spin(xc_name_.c_string());
+                }
+
+                auto &v1 = ctx__.unit_cell().lattice_vector(0);
+                auto &v2 = ctx__.unit_cell().lattice_vector(1);
+                auto &v3 = ctx__.unit_cell().lattice_vector(2);
+
+                vdwxc_set_unit_cell(handler_vdw_,
+                                    ctx__.fft().size(0),
+                                    ctx__.fft().size(1),
+                                    ctx__.fft().size(2),
+                                    v1(0), v1(1), v1(2),
+                                    v2(0), v2(1), v2(2),
+                                    v3(0), v3(1), v3(2));
+
+                if (ctx_.fft().comm().size() == 1) {
+                    vdwxc_init_serial(handler_vdw_);
+                } else {
+                    vdwxc_set_communicator(handler_vdw_, ctx__.fft().comm());
+                    vdwxc_init_mpi(handler_vdw_, ctx__.fft().comm());
+                }
+                vdw_functional_ = true;
+            }
+            break;
+            default:
+                if (xc_func_init(&handler_, libxc_functionals.at(libxc_name_), num_spins_) != 0) {
+                    TERMINATE("xc_func_init() failed");
+                }
+                break;
+            }
             initialized_ = true;
         }
 
@@ -435,6 +497,8 @@ class XC_functional
             this->libxc_name_  = src__.libxc_name_;
             this->num_spins_   = src__.num_spins_;
             this->handler_     = src__.handler_;
+            this->handler_vdw_ = src__.handler_vdw_;
+            this->vdw_functional_ = src__.vdw_functional_;
             this->initialized_ = true;
             src__.initialized_ = false;
         }
@@ -442,6 +506,10 @@ class XC_functional
         ~XC_functional()
         {
             if (initialized_) {
+                if (this->vdw_functional_) {
+                    vdwxc_finalize(&this->handler_vdw_);
+                    return;
+                }
                 xc_func_end(&handler_);
             }
         }
@@ -454,6 +522,14 @@ class XC_functional
         const std::string refs() const
         {
             std::stringstream s;
+            if (wdv_functional_) {
+                s << "A. H. Larsen, M. Kuisma, J. Löfgren, Y. Pouillon, P. Erhart, and P. Hyldgaard,\n";
+                s << "libvdwxc: a library for exchange–correlation functionals in the vdW-DF family,\n";
+                s << "Modelling Simul. Mater. Sci. Eng. 25, 065004 (2017),\n";
+                s << "doi : 10.1088/1361-651X/aa7320\n";
+                return s.str();
+            }
+
             for (int i = 0; i < 5; i++) {
                 if (handler_.info->refs[i] == NULL) {
                     break;
@@ -470,6 +546,10 @@ class XC_functional
 
         int family() const
         {
+            if (this->vdw_functional_ == true) {
+                return XC_FAMILY_UNKNOWN;
+            }
+
             return handler_.info->family;
         }
 
@@ -483,8 +563,16 @@ class XC_functional
             return family() == XC_FAMILY_GGA;
         }
 
+        bool is_vdw() const
+        {
+            return this->vdw_functional_;
+        }
+
         int kind() const
         {
+            if (this->vdw_functional_ == true) {
+                return -1;
+            }
             return handler_.info->kind;
         }
 
@@ -677,6 +765,35 @@ class XC_functional
                 vsigma_ud[i] = vsigma[3 * i + 1];
                 vsigma_dd[i] = vsigma[3 * i + 2];
             }
+        }
+
+    /// get wan der walls contribution to the exchange term
+    void get_vdw(const double* rho,
+                 const double* sigma,
+                 double* vrho,
+                 double* vsigma,
+                 double* energy__)
+        {
+            if (!is_vdw()) {
+                TERMINATE("Error wrong vdw XC");
+            }
+            energy__[0] = vdwxc_calculate(handler_vdw_, rho, sigma, v);
+        }
+
+    /// get wan der walls contribution to the exchange term magnetic case
+    void get_vdw(const double *rho_up, const double *rho_down,
+                 const double *sigma_up, const double *sigma_down,
+                 double *vrho_up, double *vrho_down,
+                 double *vsigma_up, double *vsigma_down,
+                 double *energy__)
+        {
+            if (!is_vdw()) {
+                TERMINATE("Error wrong vdw XC");
+            }
+            energy__[0] = vdwxc_calculate(handler_vdw_, rho_up, rho_down,
+                                          sigma_up, , sigma_down,
+                                          vrho_up, vrho_down,
+                                          vsigma_up, vsigma_down);
         }
 };
 
