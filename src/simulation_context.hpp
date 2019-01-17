@@ -33,7 +33,7 @@
 #include "radial_integrals.hpp"
 #include "utils/utils.hpp"
 #include "Density/augmentation_operator.hpp"
-
+#include "Potential/xc_functional.hpp"
 #include "SDDK/GPU/acc.hpp"
 
 #ifdef __GPU
