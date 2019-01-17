@@ -26,6 +26,7 @@
 #define __POTENTIAL_HPP__
 
 #include "Density/density.hpp"
+#include "xc_functional.hpp"
 
 namespace sirius {
 
