@@ -338,7 +338,7 @@ class Potential : public Field4D
 
         /* create list of XC functionals */
         for (auto& xc_label : ctx_.xc_functionals()) {
-            xc_func_.push_back(std::move(XC_functional(ctx_, xc_label, ctx_.num_spins())));
+            xc_func_.push_back(std::move(XC_functional(ctx_.fft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins())));
         }
 
         using pf = Periodic_function<double>;

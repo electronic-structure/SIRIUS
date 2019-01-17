@@ -588,12 +588,12 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
         */
         if (ixc.is_vdw()) {
             /* Van der Walls correction */
-            std::vector<double> exc_t(num_points);
-            std::vector<double> vrho_t(num_points);
-            std::vector<double> vsigma_t(num_points);
-            exc_t.zero();
-            ixc.get_vdw(&rho.f_rg(spl_np_t.global_offset()),
-                        &grad_rho_grad_rho.f_rg(spl_np_t.global_offset()),
+            std::vector<double> exc_t(num_points, 0.0);
+            std::vector<double> vrho_t(num_points, 0.0);
+            std::vector<double> vsigma_t(num_points, 0.0);
+            
+            ixc.get_vdw(&rho.f_rg(0),
+                        &grad_rho_grad_rho.f_rg(0),
                         &vrho_t[0],
                         &vsigma_t[0],
                         &exc_t[0]);
@@ -878,13 +878,12 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
          * internaly */
 
         if (ixc.is_vdw()) {
-            std::vector<double> vrho_up_t(num_points);
-            std::vector<double> vrho_dn_t(num_points);
-            std::vector<double> vsigma_uu_t(num_points);
-            std::vector<double> vsigma_ud_t(num_points);
-            std::vector<double> vsigma_dd_t(num_points);
-            vsigma_ud_t.zero();
-            exc_t.zero();
+            std::vector<double> vrho_up_t(num_points, 0.0);
+            std::vector<double> vrho_dn_t(num_points, 0.0);
+            std::vector<double> vsigma_uu_t(num_points, 0.0);
+            std::vector<double> vsigma_ud_t(num_points, 0.0);
+            std::vector<double> vsigma_dd_t(num_points, 0.0);
+            std::vector<double> exc_t(num_points, 0.0);
 
             ixc.get_vdw(&rho_up.f_rg(0),
                         &rho_dn.f_rg(0),

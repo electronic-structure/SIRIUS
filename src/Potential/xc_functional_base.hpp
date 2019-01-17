@@ -19,7 +19,7 @@
 
 /** \file xc_functional.hpp
  *
- *  \brief Contains implementation of sirius::XC_functional class.
+ *  \brief Contains implementation of sirius::XC_functional_base class.
  */
 
 #ifndef __XC_FUNCTIONAL_BASE_HPP__
@@ -393,7 +393,7 @@ const std::map<std::string, int> libxc_functionals = {
 /// Interface class to Libxc.
 class XC_functional_base
 {
-    private:
+    protected:
 
         std::string libxc_name_;
 
@@ -401,13 +401,13 @@ class XC_functional_base
 
         xc_func_type handler_;
 
+        bool initialized_{false};
+    private:
         /* forbid copy constructor */
-        XC_functional(const XC_functional_base& src) = delete;
+        XC_functional_base(const XC_functional_base& src) = delete;
 
         /* forbid assigment operator */
         XC_functional_base& operator=(const XC_functional_base& src) = delete;
-
-        bool initialized_{false};
 
     public:
 
