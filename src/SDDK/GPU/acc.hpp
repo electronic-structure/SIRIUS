@@ -146,6 +146,7 @@ inline void stack_backtrace()
 #define CALL_DEVICE_API(func__, args__)
 #endif
 
+/// Namespace for accelerator-related functions.
 namespace acc {
 
 /// Set the GPU id.
