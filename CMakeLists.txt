@@ -72,6 +72,7 @@ find_package(OpenMP REQUIRED)
 find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C HL)
+find_package(LibVDWXC 0.3.0 REQUIRED)
 
 # cmake assumes spglib installed
 #add_compile_options(-D__SPGLIB_STD_INCLUDE_PATH)
@@ -116,7 +117,7 @@ if(USE_MAGMA)
 endif(USE_MAGMA)
 
 # add required libraries
-set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${GSL_LIBRARIES};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
+set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${GSL_LIBRARIES};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES};${LIBVDWXC_LIBRARIES}")
 
 # set OpenMP flags
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -126,6 +127,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}
 # include library headers
 include_directories(${FFTW_INCLUDE_DIR})
 include_directories(${LIBXC_INCLUDE_DIR})
+include_directories(${LIBVDWXC_INCLUDE_DIR})
 include_directories(${LIBSPG_INCLUDE_DIR})
 include_directories(${HDF5_INCLUDE_DIR})
 include_directories(${MPI_INCLUDE_DIR})

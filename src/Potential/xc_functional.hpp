@@ -121,11 +121,8 @@ namespace sirius {
         }
 
         XC_functional(XC_functional&& src__)
+        :XC_functional_base(std::move(src__))
         {
-     //       this->libxc_name_  = src__.libxc_name_;
-     //       this->num_spins_   = src__.num_spins_;
-     //       this->handler_     = src__.handler_;
-            XC_functional_base::XC_functional_base(src__);
             this->handler_vdw_ = src__.handler_vdw_;
             this->vdw_functional_ = src__.vdw_functional_;
         }
@@ -173,8 +170,8 @@ namespace sirius {
         }
 
     /// get wan der walls contribution to the exchange term
-    void get_vdw(const double* rho,
-                 const double* sigma,
+    void get_vdw(double* rho,
+                 double* sigma,
                  double* vrho,
                  double* vsigma,
                  double* energy__)
@@ -182,12 +179,12 @@ namespace sirius {
             if (!is_vdw()) {
                 TERMINATE("Error wrong vdw XC");
             }
-            energy__[0] = vdwxc_calculate(handler_vdw_, rho, sigma, v);
+            energy__[0] = vdwxc_calculate(handler_vdw_, rho, sigma, vrho, vsigma);
         }
 
     /// get wan der walls contribution to the exchange term magnetic case
-    void get_vdw(const double *rho_up, const double *rho_down,
-                 const double *sigma_up, const double *sigma_down,
+    void get_vdw(double *rho_up, double *rho_down,
+                 double *sigma_up, double *sigma_down,
                  double *vrho_up, double *vrho_down,
                  double *vsigma_up, double *vsigma_down,
                  double *energy__)
@@ -196,8 +193,8 @@ namespace sirius {
                 TERMINATE("Error wrong XC");
             }
 
-            energy__[0] = vdwxc_calculate(handler_vdw_, rho_up, rho_down,
-                                          sigma_up, , sigma_down,
+            energy__[0] = vdwxc_calculate_spin(handler_vdw_, rho_up, rho_down,
+                                          sigma_up , sigma_down,
                                           vrho_up, vrho_down,
                                           vsigma_up, vsigma_down);
         }
