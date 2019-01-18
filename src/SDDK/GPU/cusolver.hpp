@@ -56,7 +56,43 @@ inline void destroy_handle()
     CALL_CUSOLVER(cusolverDnDestroy, (cusolver_handle()));
 }
 
-inline void zheevd()
+inline int zheevd(int32_t matrix_size, int nv, void* A, int32_t lda, void* B, int32_t ldb, double* eval)
+
+{
+    cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
+    cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
+    cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+
+    auto w = acc::allocate<double>(matrix_size);
+
+    int lwork;
+    CALL_CUSOLVER(cusolverDnZhegvd_bufferSize, (cusolver_handle(), itype, jobz, uplo, matrix_size, A, lda, B, ldb, w, &lwork));
+
+    auto work = acc::allocate<cuDoubleComplex>(lwork);
+
+    int info;
+    CALL_CUSOLVER(cusolverDnZhegvd, (cusolver_handle(), itype, jobz, uplo, matrix_size, A, lda, B, ldb, w, work, lwork, &info));
+
+    acc::copyout(eval, w, nv);
+
+    acc::deallocate(work);
+    acc::deallocate(w);
+
+    return info;
+}
+
+inline void dsyevd()
+{
+
+}
+
+
+inline void zhegvd()
+{
+
+}
+
+inline void dsygvd()
 {
 
 }
