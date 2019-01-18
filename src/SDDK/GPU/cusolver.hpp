@@ -66,12 +66,16 @@ inline int zheevd(int32_t matrix_size, int nv, void* A, int32_t lda, void* B, in
     auto w = acc::allocate<double>(matrix_size);
 
     int lwork;
-    CALL_CUSOLVER(cusolverDnZhegvd_bufferSize, (cusolver_handle(), itype, jobz, uplo, matrix_size, A, lda, B, ldb, w, &lwork));
+    CALL_CUSOLVER(cusolverDnZhegvd_bufferSize, (cusolver_handle(), itype, jobz, uplo, matrix_size,
+                                                static_cast<cuDoubleComplex*>(A), lda, 
+                                                static_cast<cuDoubleComplex*>(B), ldb, w, &lwork));
 
     auto work = acc::allocate<cuDoubleComplex>(lwork);
 
     int info;
-    CALL_CUSOLVER(cusolverDnZhegvd, (cusolver_handle(), itype, jobz, uplo, matrix_size, A, lda, B, ldb, w, work, lwork, &info));
+    CALL_CUSOLVER(cusolverDnZhegvd, (cusolver_handle(), itype, jobz, uplo, matrix_size,
+                                     static_cast<cuDoubleComplex*>(A), lda,
+                                     static_cast<cuDoubleComplex*>(B), ldb, w, work, lwork, &info));
 
     acc::copyout(eval, w, nv);
 
