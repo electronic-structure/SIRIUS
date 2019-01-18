@@ -45,6 +45,8 @@ extern "C" {
 
 using namespace sddk;
 
+//TODO use ELPA functions to transform to standard eigen-problem
+
 /// Type of eigen-value solver.
 enum class ev_solver_t
 {
@@ -66,6 +68,7 @@ enum class ev_solver_t
     /// PLASMA
     plasma,
 
+    /// CUDA eigen-solver
     cusolver
 };
 
@@ -75,7 +78,8 @@ inline ev_solver_t get_ev_solver_t(std::string name__)
 
     static const std::map<std::string, ev_solver_t> map_to_type = {
         {"lapack", ev_solver_t::lapack}, {"scalapack", ev_solver_t::scalapack}, {"elpa1", ev_solver_t::elpa1},
-        {"elpa2", ev_solver_t::elpa2},   {"magma", ev_solver_t::magma},         {"plasma", ev_solver_t::plasma}};
+        {"elpa2", ev_solver_t::elpa2},   {"magma", ev_solver_t::magma},         {"plasma", ev_solver_t::plasma},
+        {"cusolver", ev_solver_t::cusolver}};
 
     if (map_to_type.count(name__) == 0) {
         std::stringstream s;
@@ -90,14 +94,17 @@ class Eigensolver
 {
   protected:
     /// Memory pool for CPU work buffers.
-    memory_pool mp_h;
+    memory_pool mp_h_;
+    /// Memory pool for CPU work buffers using pinned memory.
+    memory_pool mp_hp_;
     /// Memory pool for GPU work buffers.
-    memory_pool mp_d;
+    memory_pool mp_d_;
 
   public:
     Eigensolver()
-        : mp_h(memory_pool(memory_t::host))
-        , mp_d(memory_pool(memory_t::device))
+        : mp_h_(memory_pool(memory_t::host))
+        , mp_hp_(memory_pool(memory_t::host_pinned))
+        , mp_d_(memory_pool(memory_t::device))
     {
     }
 
@@ -187,8 +194,8 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int lwork  = 1 + 6 * matrix_size__ + 2 * matrix_size__ * matrix_size__;
         ftn_int liwork = 3 + 5 * matrix_size__;
 
-        auto work  = mp_h.get_unique_ptr<double>(lwork);
-        auto iwork = mp_h.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mp_h_.get_unique_ptr<double>(lwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         FORTRAN(dsyevd)
         ("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(), &lwork, iwork.get(), &liwork,
@@ -214,9 +221,9 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int lrwork = 1 + 5 * matrix_size__ + 2 * matrix_size__ * matrix_size__;
         ftn_int liwork = 3 + 5 * matrix_size__;
 
-        auto work  = mp_h.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_h.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mp_h_.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mp_h_.get_unique_ptr<double>(lrwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         FORTRAN(zheevd)
         ("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(), &lwork, rwork.get(), &lrwork,
@@ -239,8 +246,8 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int m{-1};
         ftn_int info;
 
-        auto w      = mp_h.get_unique_ptr<double>(matrix_size__);
-        auto isuppz = mp_h.get_unique_ptr<ftn_int>(2 * matrix_size__);
+        auto w      = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto isuppz = mp_h_.get_unique_ptr<ftn_int>(2 * matrix_size__);
 
         ftn_int lda = A__.ld();
         ftn_int ldz = Z__.ld();
@@ -248,11 +255,11 @@ class Eigensolver_lapack : public Eigensolver
         double abs_tol = 2 * linalg_base::dlamch('S');
 
         ftn_int liwork = 10 * matrix_size__;
-        auto iwork     = mp_h.get_unique_ptr<ftn_int>(liwork);
+        auto iwork     = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         int nb        = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, -1, -1, -1);
         ftn_int lwork = (nb + 6) * matrix_size__;
-        auto work     = mp_h.get_unique_ptr<double>(lwork);
+        auto work     = mp_h_.get_unique_ptr<double>(lwork);
 
         FORTRAN(dsyevr)
         ("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, &vl, &vu, &il, &nev__, &abs_tol, &m, w.get(),
@@ -286,8 +293,8 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int m{-1};
         ftn_int info;
 
-        auto w      = mp_h.get_unique_ptr<double>(matrix_size__);
-        auto isuppz = mp_h.get_unique_ptr<ftn_int>(2 * matrix_size__);
+        auto w      = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto isuppz = mp_h_.get_unique_ptr<ftn_int>(2 * matrix_size__);
 
         ftn_int lda = A__.ld();
         ftn_int ldz = Z__.ld();
@@ -295,14 +302,14 @@ class Eigensolver_lapack : public Eigensolver
         double abs_tol = 2 * linalg_base::dlamch('S');
 
         ftn_int liwork = 10 * matrix_size__;
-        auto iwork     = mp_h.get_unique_ptr<ftn_int>(liwork);
+        auto iwork     = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         int nb        = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size__, -1, -1, -1);
         ftn_int lwork = (nb + 1) * matrix_size__;
-        auto work     = mp_h.get_unique_ptr<double_complex>(lwork);
+        auto work     = mp_h_.get_unique_ptr<double_complex>(lwork);
 
         ftn_int lrwork = 24 * matrix_size__;
-        auto rwork     = mp_h.get_unique_ptr<double>(lrwork);
+        auto rwork     = mp_h_.get_unique_ptr<double>(lrwork);
 
         FORTRAN(zheevr)
         ("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, &vl, &vu, &il, &nev__, &abs_tol, &m, w.get(),
@@ -343,15 +350,15 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int ione{1};
         ftn_int m{0};
 
-        auto w     = mp_h.get_unique_ptr<double>(matrix_size__);
-        auto ifail = mp_h.get_unique_ptr<ftn_int>(matrix_size__);
+        auto w     = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
 
         int nb     = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, 0, 0, 0);
         int lwork  = (nb + 3) * matrix_size__ + 1024;
         int liwork = 5 * matrix_size__;
 
-        auto work  = mp_h.get_unique_ptr<double>(lwork);
-        auto iwork = mp_h.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mp_h_.get_unique_ptr<double>(lwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         FORTRAN(dsygvx)
         (&ione, "V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, B__.at(memory_t::host), &ldb, &vl, &vu,
@@ -392,17 +399,17 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int ione{1};
         ftn_int m{0};
 
-        auto w     = mp_h.get_unique_ptr<double>(matrix_size__);
-        auto ifail = mp_h.get_unique_ptr<ftn_int>(matrix_size__);
+        auto w     = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
 
         int nb     = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size__, 0, 0, 0);
         int lwork  = (nb + 1) * matrix_size__;
         int lrwork = 7 * matrix_size__;
         int liwork = 5 * matrix_size__;
 
-        auto work  = mp_h.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_h.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mp_h_.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mp_h_.get_unique_ptr<double>(lrwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         FORTRAN(zhegvx)
         (&ione, "V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, B__.at(memory_t::host), &ldb, &vl, &vu,
@@ -598,7 +605,7 @@ class Eigensolver_elpa : public Eigensolver
         int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
         int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
 
-        auto w = mp_h.get_unique_ptr<double>(matrix_size__);
+        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
 
         int success{-1};
         if (stage_ == 1) {
@@ -638,7 +645,7 @@ class Eigensolver_elpa : public Eigensolver
         int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
         int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
 
-        auto w = mp_h.get_unique_ptr<double>(matrix_size__);
+        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
         int success{-1};
         if (stage_ == 1) {
             success = elpa_solve_evp_complex_1stage_double_precision(
@@ -730,9 +737,9 @@ class Eigensolver_scalapack : public Eigensolver
         lrwork = static_cast<ftn_int>(rwork1) + 1;
         liwork = iwork1;
 
-        auto work  = mp_h.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_h.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mp_h_.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mp_h_.get_unique_ptr<double>(lrwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         FORTRAN(pzheevd)
         ("V", "U", &matrix_size__, A__.at(memory_t::host), &ione, &ione, desca, eval__, Z__.at(memory_t::host), &ione,
@@ -760,10 +767,10 @@ class Eigensolver_scalapack : public Eigensolver
         double d1;
         ftn_int info{-1};
 
-        auto ifail   = mp_h.get_unique_ptr<ftn_int>(matrix_size__);
-        auto iclustr = mp_h.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
-        auto gap     = mp_h.get_unique_ptr<double>(A__.blacs_grid().comm().size());
-        auto w       = mp_h.get_unique_ptr<double>(matrix_size__);
+        auto ifail   = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
+        auto iclustr = mp_h_.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
+        auto gap     = mp_h_.get_unique_ptr<double>(A__.blacs_grid().comm().size());
+        auto w       = mp_h_.get_unique_ptr<double>(matrix_size__);
 
         /* work size query */
         double work3[3];
@@ -779,8 +786,8 @@ class Eigensolver_scalapack : public Eigensolver
         lwork  = static_cast<ftn_int>(work3[0]) + 4 * (1 << 20);
         liwork = iwork1;
 
-        auto work  = mp_h.get_unique_ptr<double>(lwork);
-        auto iwork = mp_h.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mp_h_.get_unique_ptr<double>(lwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         FORTRAN(pdsyevx)
         ("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &ione, &ione, desca, &d1, &d1, &ione, &nev__, &abstol_,
@@ -844,10 +851,10 @@ class Eigensolver_scalapack : public Eigensolver
         double d1;
         ftn_int info{-1};
 
-        auto ifail   = mp_h.get_unique_ptr<ftn_int>(matrix_size__);
-        auto iclustr = mp_h.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
-        auto gap     = mp_h.get_unique_ptr<double>(A__.blacs_grid().comm().size());
-        auto w       = mp_h.get_unique_ptr<double>(matrix_size__);
+        auto ifail   = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
+        auto iclustr = mp_h_.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
+        auto gap     = mp_h_.get_unique_ptr<double>(A__.blacs_grid().comm().size());
+        auto w       = mp_h_.get_unique_ptr<double>(matrix_size__);
 
         /* work size query */
         double_complex work3[3];
@@ -865,9 +872,9 @@ class Eigensolver_scalapack : public Eigensolver
         lrwork = static_cast<int32_t>(rwork3[0]) + (1 << 16);
         liwork = iwork1;
 
-        auto work  = mp_h.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_h.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mp_h_.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mp_h_.get_unique_ptr<double>(lrwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         FORTRAN(pzheevx)
         ("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &ione, &ione, desca, &d1, &d1, &ione, &nev__, &abstol_,
@@ -929,10 +936,10 @@ class Eigensolver_scalapack : public Eigensolver
         linalg_base::descinit(descz, matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0,
                               Z__.blacs_grid().context(), Z__.ld());
 
-        auto ifail   = mp_h.get_unique_ptr<ftn_int>(matrix_size__);
-        auto iclustr = mp_h.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
-        auto gap     = mp_h.get_unique_ptr<double>(A__.blacs_grid().comm().size());
-        auto w       = mp_h.get_unique_ptr<double>(matrix_size__);
+        auto ifail   = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
+        auto iclustr = mp_h_.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
+        auto gap     = mp_h_.get_unique_ptr<double>(A__.blacs_grid().comm().size());
+        auto w       = mp_h_.get_unique_ptr<double>(matrix_size__);
 
         ftn_int ione{1};
 
@@ -953,8 +960,8 @@ class Eigensolver_scalapack : public Eigensolver
 
         lwork = static_cast<int32_t>(work1) + 4 * (1 << 20);
 
-        auto work  = mp_h.get_unique_ptr<double>(lwork);
-        auto iwork = mp_h.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mp_h_.get_unique_ptr<double>(lwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         FORTRAN(pdsygvx)
         (&ione, "V", "I", "U", &matrix_size__, A__.at(memory_t::host), &ione, &ione, desca, B__.at(memory_t::host),
@@ -1016,10 +1023,10 @@ class Eigensolver_scalapack : public Eigensolver
         linalg_base::descinit(descz, matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0,
                               Z__.blacs_grid().context(), Z__.ld());
 
-        auto ifail   = mp_h.get_unique_ptr<ftn_int>(matrix_size__);
-        auto iclustr = mp_h.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
-        auto gap     = mp_h.get_unique_ptr<double>(A__.blacs_grid().comm().size());
-        auto w       = mp_h.get_unique_ptr<double>(matrix_size__);
+        auto ifail   = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
+        auto iclustr = mp_h_.get_unique_ptr<ftn_int>(2 * A__.blacs_grid().comm().size());
+        auto gap     = mp_h_.get_unique_ptr<double>(A__.blacs_grid().comm().size());
+        auto w       = mp_h_.get_unique_ptr<double>(matrix_size__);
 
         ftn_int ione{1};
 
@@ -1047,9 +1054,9 @@ class Eigensolver_scalapack : public Eigensolver
         lrwork = static_cast<int32_t>(rwork3[0]) + 4096;
         liwork = iwork1 + 4096;
 
-        auto work  = mp_h.get_unique_ptr<double_complex>(lwork);
-        auto rwork = mp_h.get_unique_ptr<double>(lrwork);
-        auto iwork = mp_h.get_unique_ptr<ftn_int>(liwork);
+        auto work  = mp_h_.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mp_h_.get_unique_ptr<double>(lrwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         FORTRAN(pzhegvx)
         (&ione, "V", "I", "U", &matrix_size__, A__.at(memory_t::host), &ione, &ione, desca, B__.at(memory_t::host),
@@ -1104,168 +1111,359 @@ class Eigensolver_scalapack : public Eigensolver
 };
 #endif
 
-//== fix this == #ifdef __MAGMA
-//== fix this == template <typename T>
-//== fix this == class Eigensolver_magma: public Eigensolver<T>
-//== fix this == {
-//== fix this ==   public:
-//== fix this ==
-//== fix this ==     inline bool is_parallel()
-//== fix this ==     {
-//== fix this ==         return false;
-//== fix this ==     }
-//== fix this ==
-//== fix this ==     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-//== fix this ==     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__,
-//dmatrix<T>& Z__)
-//== fix this ==     {
-//== fix this ==         int nt = omp_get_max_threads();
-//== fix this ==         int result{-1};
-//== fix this ==         int lda = A__.ld();
-//== fix this ==         int ldb = B__.ld();
-//== fix this ==         std::vector<double> w(matrix_size__);
-//== fix this ==         if (std::is_same<T, double_complex>::value) {
-//== fix this ==             result = magma::zhegvdx_2stage(matrix_size__, nev__,
-//reinterpret_cast<double_complex*>(A__.at(memory_t::host)),
-//== fix this ==                                            lda,
-//reinterpret_cast<double_complex*>(B__.at(memory_t::host)), ldb, w.data());
-//== fix this ==
-//== fix this ==             if (nt != omp_get_max_threads()) {
-//== fix this ==                 TERMINATE("magma has changed the number of threads");
-//== fix this ==             }
-//== fix this ==
-//== fix this ==             if (result) {
-//== fix this ==                 //return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, B, ldb, eval, Z, ldz);
-//== fix this ==                 return result;
-//== fix this ==             }
-//== fix this ==         }
-//== fix this ==         if (std::is_same<T, double>::value) {
-//== fix this ==             result = magma::dsygvdx_2stage(matrix_size__, nev__,
-//reinterpret_cast<double*>(A__.at(memory_t::host)),
-//== fix this ==                                            lda, reinterpret_cast<double*>(B__.at(memory_t::host)), ldb,
-//w.data());
-//== fix this ==             if (result) {
-//== fix this ==                 //return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, B, ldb, eval, Z, ldz);
-//== fix this ==                 return result;
-//== fix this ==             }
-//== fix this ==         }
-//== fix this ==
-//== fix this ==         std::copy(w.begin(), w.begin() + nev__, eval__);
-//== fix this ==         #pragma omp parallel for schedule(static)
-//== fix this ==         for (int i = 0; i < nev__; i++) {
-//== fix this ==             std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
-//Z__.at(memory_t::host, 0, i));
-//== fix this ==         }
-//== fix this ==
-//== fix this ==         return 0;
-//== fix this ==     }
-//== fix this ==
-//== fix this ==     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-//== fix this ==     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
-//== fix this ==     {
-//== fix this ==         int nt = omp_get_max_threads();
-//== fix this ==         int result{-1};
-//== fix this ==         int lda = A__.ld();
-//== fix this ==         std::vector<double> w(matrix_size__);
-//== fix this ==         if (std::is_same<T, double>::value) {
-//== fix this ==             result = magma::dsyevdx(matrix_size__, nev__,
-//reinterpret_cast<double*>(A__.at(memory_t::host)),
-//== fix this ==                                     lda, w.data());
-//== fix this ==
-//== fix this ==             if (nt != omp_get_max_threads()) {
-//== fix this ==                 TERMINATE("magma has changed the number of threads");
-//== fix this ==             }
-//== fix this ==
-//== fix this ==             if (result) {
-//== fix this ==                 //return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, B, ldb, eval, Z, ldz);
-//== fix this ==                 return result;
-//== fix this ==             }
-//== fix this ==         }
-//== fix this ==         if (std::is_same<T, double_complex>::value) {
-//== fix this ==             result = magma::zheevdx(matrix_size__, nev__,
-//reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::host)),
-//== fix this ==                                            lda, w.data());
-//== fix this ==             if (result) {
-//== fix this ==                 //return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, B, ldb, eval, Z, ldz);
-//== fix this ==                 return result;
-//== fix this ==             }
-//== fix this ==         }
-//== fix this ==
-//== fix this ==         std::copy(w.begin(), w.begin() + nev__, eval__);
-//== fix this ==         #pragma omp parallel for schedule(static)
-//== fix this ==         for (int i = 0; i < nev__; i++) {
-//== fix this ==             std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
-//Z__.at(memory_t::host, 0, i));
-//== fix this ==         }
-//== fix this ==
-//== fix this ==         return 0;
-//== fix this ==     }
-//== fix this == };
-//== fix this == #else
-//== fix this == template <typename T>
-//== fix this == class Eigensolver_magma: public Eigensolver<T>
-//== fix this == {
-//== fix this ==   public:
-//== fix this ==     inline bool is_parallel()
-//== fix this ==     {
-//== fix this ==         return false;
-//== fix this ==     }
-//== fix this == };
-//== fix this == #endif
-//== fix this ==
-//== fix this == #ifdef __PLASMA
-//== fix this == template <typename T>
-//== fix this == class Eigensolver_plasma: public Eigensolver<T>
-//== fix this == {
-//== fix this ==   public:
-//== fix this ==     inline bool is_parallel()
-//== fix this ==     {
-//== fix this ==         return false;
-//== fix this ==     }
-//== fix this == };
-//== fix this == #else
-//== fix this == template <typename T>
-//== fix this == class Eigensolver_plasma: public Eigensolver<T>
-//== fix this == {
-//== fix this ==   public:
-//== fix this ==     inline bool is_parallel()
-//== fix this ==     {
-//== fix this ==         return false;
-//== fix this ==     }
-//== fix this == };
-//== fix this == #endif
-//== fix this ==
-//== fix this == template <typename T>
-//== fix this == std::unique_ptr<Eigensolver<T>> Eigensolver_factory(ev_solver_t ev_solver_type__)
-//== fix this == {
-//== fix this ==     Eigensolver<T>* ptr;
-//== fix this ==     switch (ev_solver_type__) {
-//== fix this ==         case ev_solver_t::lapack: {
-//== fix this ==             ptr = new Eigensolver_lapack<T>();
-//== fix this ==             break;
-//== fix this ==         }
-//== fix this ==         case ev_solver_t::scalapack: {
-//== fix this ==             ptr = new Eigensolver_scalapack<T>();
-//== fix this ==             break;
-//== fix this ==         }
-//== fix this ==         case ev_solver_t::elpa1: {
-//== fix this ==             ptr = new Eigensolver_elpa<T>(1);
-//== fix this ==             break;
-//== fix this ==         }
-//== fix this ==         case ev_solver_t::elpa2: {
-//== fix this ==             ptr = new Eigensolver_elpa<T>(2);
-//== fix this ==             break;
-//== fix this ==         }
-//== fix this ==         case ev_solver_t::magma: {
-//== fix this ==             ptr = new Eigensolver_magma<T>();
-//== fix this ==             break;
-//== fix this ==         }
-//== fix this ==         default: {
-//== fix this ==             TERMINATE("not implemented");
-//== fix this ==         }
-//== fix this ==     }
-//== fix this ==     return std::move(std::unique_ptr<Eigensolver<T>>(ptr));
-//== fix this == }
+#ifdef __MAGMA
+class Eigensolver_magma: public Eigensolver
+{
+  public:
+
+    inline bool is_parallel()
+    {
+        return false;
+    }
+
+    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
+              dmatrix<double>& Z__)
+    {
+        int nt = omp_get_max_threads();
+        int result{-1};
+        int lda = A__.ld();
+        int ldb = B__.ld();
+
+        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+
+        int m;
+        int info;
+
+        int lwork;
+        int liwork;
+        magma_dsyevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &liwork);
+
+        auto h_work = mp_hp_.get_unique_ptr<double>(lwork);
+        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+
+        magma_dsygvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(memory_t::host), lda,
+                             B__.at(memory_t::host), ldb, 0.0, 0.0, 1, nev__, &m, w.get(), h_work.get(), lwork,
+                             iwork.get(), liwork, &info);
+
+
+        if (nt != omp_get_max_threads()) {
+            TERMINATE("magma has changed the number of threads");
+        }
+
+        if (m < nev__) {
+            return 1;
+        }
+
+        if (!info) {
+            std::copy(w.get(), w.get() + nev__, eval__);
+            #pragma omp parallel for schedule(static)
+            for (int i = 0; i < nev__; i++) {
+                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+                          Z__.at(memory_t::host, 0, i));
+            }
+        }
+
+        return info;
+    }
+
+    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
+              double* eval__, dmatrix<double_complex>& Z__)
+    {
+        int nt = omp_get_max_threads();
+        int result{-1};
+        int lda = A__.ld();
+        int ldb = B__.ld();
+
+        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+
+        int m;
+        int info;
+
+        int lwork;
+        int lrwork;
+        int liwork;
+        magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
+
+        auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
+        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+
+        magma_zhegvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
+                             reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::host)), lda,
+                             reinterpret_cast<magmaDoubleComplex*>(B__.at(memory_t::host)), ldb, 0.0, 0.0,
+                             1, nev__, &m, w.get(), reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork,
+                             rwork.get(), lrwork, iwork.get(), liwork, &info);
+
+        if (nt != omp_get_max_threads()) {
+            TERMINATE("magma has changed the number of threads");
+        }
+
+        if (m < nev__) {
+            return 1;
+        }
+
+        if (!info) {
+            std::copy(w.get(), w.get() + nev__, eval__);
+            #pragma omp parallel for schedule(static)
+            for (int i = 0; i < nev__; i++) {
+                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+                          Z__.at(memory_t::host, 0, i));
+            }
+        }
+
+        return info;
+    }
+
+    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    {
+        utils::timer t0("Eigensolver_magma|dsygvdx");
+
+        int nt = omp_get_max_threads();
+        int lda = A__.ld();
+        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+
+        int lwork;
+        int liwork;
+        magma_dsyevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &liwork);
+
+        auto h_work = mp_hp_.get_unique_ptr<double>(lwork);
+        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+
+        int info;
+        int m;
+
+        magma_dsyevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(memory_t::host), lda, 0.0, 0.0, 1,
+                      nev__, &m, w.get(), h_work.get(), lwork, iwork.get(), liwork, &info);
+        
+        if (nt != omp_get_max_threads()) {
+            TERMINATE("magma has changed the number of threads");
+        }
+
+        if (m < nev__) {
+            return 1;
+        }
+
+        if (!info) {
+            std::copy(w.get(), w.get() + nev__, eval__);
+            #pragma omp parallel for schedule(static)
+            for (int i = 0; i < nev__; i++) {
+                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+                          Z__.at(memory_t::host, 0, i));
+            }
+        }
+
+        return info;
+    }
+
+    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
+              dmatrix<double_complex>& Z__)
+    {
+        utils::timer t0("Eigensolver_magma|zheevdx");
+
+        int nt = omp_get_max_threads();
+        int lda = A__.ld();
+        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+
+        int info, m;
+
+        int lwork;
+        int lrwork;
+        int liwork;
+        magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
+
+        auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
+        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+
+        magma_zheevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
+                      reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::host)), lda, 0.0, 0.0, 1,
+                      nev__, &m, w.get(), reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork, rwork.get(),
+                      lrwork, iwork.get(), liwork, &info);
+
+        if (nt != omp_get_max_threads()) {
+            TERMINATE("magma has changed the number of threads");
+        }
+
+        if (m < nev__) {
+            return 1;
+        }
+
+        if (!info) {
+            std::copy(w.get(), w.get() + nev__, eval__);
+            #pragma omp parallel for schedule(static)
+            for (int i = 0; i < nev__; i++) {
+                std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+                          Z__.at(memory_t::host, 0, i));
+            }
+        }
+
+        return info;
+    }
+};
+#else
+class Eigensolver_magma: public Eigensolver
+{
+  public:
+    inline bool is_parallel()
+    {
+        return false;
+    }
+};
+#endif
+
+#if defined(__CUDA)
+class Eigensolver_cuda: public Eigensolver
+{
+  public:
+    inline bool is_parallel()
+    {
+        return false;
+    }
+
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, double* eval__,
+              dmatrix<double_complex>& Z__)
+    {
+        utils::timer t0("Eigensolver_cuda|zheevd");
+
+        cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
+        cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+
+        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+
+        int lwork;
+        CALL_CUSOLVER(cusolverDnZheevd_bufferSize, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
+                                                    reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
+                                                    w.get(), &lwork));
+
+        auto work = mp_d_.get_unique_ptr<double_complex>(lwork);
+
+        int info;
+        CALL_CUSOLVER(cusolverDnZheevd, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
+                                         reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
+                                         w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, &info));
+        if (!info) {
+            acc::copyout(eval__, w.get(), nev__);
+            acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+        }
+        return info;
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__,
+              dmatrix<double_complex>& Z__)
+    {
+        return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__, double* eval__,
+              dmatrix<double_complex>& Z__)
+    {
+        utils::timer t0("Eigensolver_cuda|zhegvd");
+
+        cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
+        cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
+        cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+
+        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+
+        int lwork;
+        CALL_CUSOLVER(cusolverDnZhegvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+                                                    reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
+                                                    reinterpret_cast<cuDoubleComplex*>(B__.at(memory_t::device)), B__.ld(),
+                                                    w.get(), &lwork));
+
+        auto work = mp_d_.get_unique_ptr<double_complex>(lwork);
+
+        int info;
+        CALL_CUSOLVER(cusolverDnZhegvd, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+                                         reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
+                                         reinterpret_cast<cuDoubleComplex*>(B__.at(memory_t::device)), B__.ld(),
+                                         w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, &info));
+        if (!info) {
+            acc::copyout(eval__, w.get(), nev__);
+            acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+        }
+        return info;
+    }
+
+    /// Solve a standard eigen-value problem for all eigen-pairs.
+    int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__, double* eval__,
+              dmatrix<double_complex>& Z__)
+    {
+        return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
+    }
+
+
+};
+#else
+class Eigensolver_cuda: public Eigensolver_cuda
+{
+  public:
+    inline bool is_parallel()
+    {
+        return false;
+    }
+};
+#endif
+
+//#ifdef __PLASMA
+//template <typename T>
+//class Eigensolver_plasma: public Eigensolver<T>
+//{
+//  public:
+//    inline bool is_parallel()
+//    {
+//        return false;
+//    }
+//};
+//#else
+//template <typename T>
+//class Eigensolver_plasma: public Eigensolver<T>
+//{
+//  public:
+//    inline bool is_parallel()
+//    {
+//        return false;
+//    }
+//};
+
+std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_type__)
+{
+    Eigensolver* ptr;
+    switch (ev_solver_type__) {
+        case ev_solver_t::lapack: {
+            ptr = new Eigensolver_lapack();
+            break;
+        }
+        case ev_solver_t::scalapack: {
+            ptr = new Eigensolver_scalapack();
+            break;
+        }
+        case ev_solver_t::elpa1: {
+            ptr = new Eigensolver_elpa(1);
+            break;
+        }
+        case ev_solver_t::elpa2: {
+            ptr = new Eigensolver_elpa(2);
+            break;
+        }
+        case ev_solver_t::magma: {
+            ptr = new Eigensolver_magma();
+            break;
+        }
+        case ev_solver_t::cusolver: {
+            ptr = new Eigensolver_cuda();
+            break;
+        }
+        default: {
+            TERMINATE("not implemented");
+        }
+    }
+    return std::move(std::unique_ptr<Eigensolver>(ptr));
+}
 
 //== #ifdef __PLASMA
 //== extern "C" void plasma_zheevd_wrapper(int32_t matrix_size, void* a, int32_t lda, void* z,
@@ -1321,141 +1519,6 @@ class Eigensolver_scalapack : public Eigensolver
 //== //extern "C" int magma_zheevdx_2stage_wrapper(int32_t matrix_size, int32_t nv, cuDoubleComplex* a, int32_t lda,
 //double* eval);
 //== //#endif
-//==
-//== /// Interface for MAGMA eigen-value solvers.
-//== class Eigenproblem_magma: public Eigenproblem
-//== {
-//==     public:
-//==
-//==         Eigenproblem_magma()
-//==         {
-//==         }
-//==
-//==         #ifdef __MAGMA
-//==         int solve(int32_t matrix_size, int32_t nevec,
-//==                   double_complex* A, int32_t lda,
-//==                   double_complex* B, int32_t ldb,
-//==                   double* eval,
-//==                   double_complex* Z, int32_t ldz,
-//==                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
-//==         {
-//==             assert(nevec <= matrix_size);
-//==
-//==             int nt = omp_get_max_threads();
-//==
-//==             int result = magma::zhegvdx_2stage(matrix_size, nevec, A, lda, B, ldb, eval);
-//==
-//==             if (nt != omp_get_max_threads()) {
-//==                 TERMINATE("magma has changed the number of threads");
-//==             }
-//==
-//==             if (result) {
-//==                 return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, B, ldb, eval, Z, ldz);
-//==             } else {
-//==                 #pragma omp parallel for
-//==                 for (int i = 0; i < nevec; i++) {
-//==                     std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
-//==                 }
-//==
-//==                 return 0;
-//==             }
-//==         }
-//==
-//==         int solve(int32_t matrix_size, int32_t nevec,
-//==                   double* A, int32_t lda,
-//==                   double* B, int32_t ldb,
-//==                   double* eval,
-//==                   double* Z, int32_t ldz,
-//==                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
-//==         {
-//==             assert(nevec <= matrix_size);
-//==
-//==             int nt = omp_get_max_threads();
-//==
-//==             int result = magma::dsygvdx_2stage(matrix_size, nevec, A, lda, B, ldb, eval);
-//==
-//==             if (nt != omp_get_max_threads()) {
-//==                 TERMINATE("magma has changed the number of threads");
-//==             }
-//==
-//==             if (result) {
-//==                 return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, B, ldb, eval, Z, ldz);
-//==             } else {
-//==                 #pragma omp parallel for
-//==                 for (int i = 0; i < nevec; i++) {
-//==                     std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
-//==                 }
-//==
-//==                 return 0;
-//==             }
-//==         }
-//==
-//==         int solve(int32_t matrix_size, int32_t nevec,
-//==                   double* A, int32_t lda,
-//==                   double* eval,
-//==                   double* Z, int32_t ldz,
-//==                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
-//==         {
-//==             assert(nevec <= matrix_size);
-//==
-//==             int nt = omp_get_max_threads();
-//==
-//==             int result = magma::dsyevdx(matrix_size, nevec, A, lda, eval);
-//==
-//==             if (nt != omp_get_max_threads()) {
-//==                 TERMINATE("magma has changed the number of threads");
-//==             }
-//==
-//==             if (result) {
-//==                 return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, eval, Z, ldz);
-//==             } else {
-//==                 #pragma omp parallel for
-//==                 for (int i = 0; i < nevec; i++) {
-//==                     std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
-//==                 }
-//==
-//==                 return 0;
-//==             }
-//==         }
-//==
-//==         int solve(int32_t matrix_size, int32_t nevec,
-//==                   double_complex* A, int32_t lda,
-//==                   double* eval,
-//==                   double_complex* Z, int32_t ldz,
-//==                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
-//==         {
-//==             assert(nevec <= matrix_size);
-//==
-//==             int nt = omp_get_max_threads();
-//==
-//==             int result = magma::zheevdx(matrix_size, nevec, (magmaDoubleComplex*)A, lda, eval);
-//==
-//==             if (nt != omp_get_max_threads()) {
-//==                 TERMINATE("magma has changed the number of threads");
-//==             }
-//==
-//==             if (result) {
-//==                 return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, eval, Z, ldz);
-//==             } else {
-//==                 #pragma omp parallel for
-//==                 for (int i = 0; i < nevec; i++) {
-//==                     std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
-//==                 }
-//==                 return 0;
-//==             }
-//==         }
-//==         #endif
-//==
-//==         bool parallel() const
-//==         {
-//==             return false;
-//==         }
-//==
-//==         ev_solver_t type() const
-//==         {
-//==             return ev_magma;
-//==         }
-//== };
 //==
 //== /// Interface for ScaLAPACK eigen-value solvers.
 //== class Eigenproblem_scalapack: public Eigenproblem

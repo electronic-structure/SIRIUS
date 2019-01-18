@@ -86,7 +86,7 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
     std::vector<double> eval(ctx_.num_fv_states());
 
     utils::timer t("sirius::Band::diag_fv_exact|genevp");
-    auto         solver = ctx_.gen_evp_solver<double_complex>();
+    auto solver = ctx_.gen_evp_solver();
 
     if (solver->solve(kp.gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp.fv_eigen_vectors())) {
         TERMINATE("error in generalized eigen-value problem");
@@ -274,7 +274,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
         MEMORY_USAGE_INFO();
     }
 
-    auto std_solver = ctx_.std_evp_solver<double_complex>();
+    auto std_solver = ctx_.std_evp_solver();
 
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
@@ -532,7 +532,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         MEMORY_USAGE_INFO();
     }
 
-    auto std_solver = ctx_.std_evp_solver<double_complex>();
+    auto std_solver = ctx_.std_evp_solver();
 
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
@@ -687,7 +687,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
     //}
     //#endif
 
-    auto std_solver = ctx_.std_evp_solver<double_complex>();
+    auto std_solver = ctx_.std_evp_solver();
 
     if (ctx_.num_mag_dims() != 3) {
         dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);

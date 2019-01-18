@@ -161,7 +161,7 @@ void Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
         if (this->orthogonalize_hubbard_orbitals_) {
             dmatrix<double_complex> Z(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals());
 
-            auto ev_solver = Eigensolver_factory<double_complex>(ev_solver_t::lapack);
+            auto ev_solver = Eigensolver_factory(ev_solver_t::lapack);
 
             std::vector<double> eigenvalues(this->number_of_hubbard_orbitals(), 0.0);
 

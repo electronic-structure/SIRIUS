@@ -155,7 +155,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
 
     int bs = ctx_.cyclic_block_size();
 
-    auto gen_solver = Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
+    auto gen_solver = Eigensolver_factory(ctx_.gen_evp_solver_type());
 
     dmatrix<T> hmlt(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> ovlp(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
@@ -229,7 +229,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
                 TERMINATE(s);
             }
             std::vector<double> eo(num_phi_tot);
-            auto std_solver = Eigensolver_factory<T>(ctx_.std_evp_solver_type());
+            auto std_solver = Eigensolver_factory(ctx_.std_evp_solver_type());
             if (std_solver->solve(num_phi_tot, num_phi_tot, hmlt, eo.data(), evec)) {
                 std::stringstream s;
                 s << "error in diagonalization";

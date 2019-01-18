@@ -99,7 +99,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     hmlt.zero();
     ovlp.zero();
 
-    auto gen_solver = ctx_.gen_evp_solver<T>();
+    auto gen_solver = ctx_.gen_evp_solver();
 
     for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
         hmlt.set(ig, ig, 0.5 * std::pow(kp__->gkvec().gkvec_cart<index_domain_t::global>(ig).length(), 2));
@@ -350,8 +350,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         }
     }
 
-    auto std_solver = ctx_.std_evp_solver<T>();
-    auto gen_solver = ctx_.gen_evp_solver<T>();
+    auto std_solver = ctx_.std_evp_solver();
+    auto gen_solver = ctx_.gen_evp_solver();
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {

@@ -300,6 +300,14 @@ inline void copy(T* target__, T const* source__, size_t n__)
     CALL_DEVICE_API(Memcpy, (target__, source__, n__ * sizeof(T), P(MemcpyDeviceToDevice)));
 }
 
+/// 2D copy inside a device.
+template <typename T>
+inline void copy(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__)
+{
+    CALL_DEVICE_API(Memcpy2D, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__,
+                               P(MemcpyDeviceToDevice)));
+}
+
 /// Copy memory from host to device.
 template <typename T>
 inline void copyin(T* target__, T const* source__, size_t n__)

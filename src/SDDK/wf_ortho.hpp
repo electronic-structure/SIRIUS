@@ -109,7 +109,7 @@ inline void orthogonalize(device_t                     pu__,
         std::vector<double> eo(n__);
         dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-        auto solver = Eigensolver_factory<T>(ev_solver_t::scalapack);
+        auto solver = Eigensolver_factory(ev_solver_t::scalapack);
         solver->solve(n__, o__, eo.data(), evec);
 
         if (o__.comm().rank() == 0) {
@@ -443,7 +443,7 @@ inline void orthogonalize(memory_t                     mem__,
         std::vector<double> eo(n__);
         dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-        auto solver = Eigensolver_factory<T>(ev_solver_t::scalapack);
+        auto solver = Eigensolver_factory(ev_solver_t::scalapack);
         solver->solve(n__, o__, eo.data(), evec);
 
         if (o__.comm().rank() == 0) {

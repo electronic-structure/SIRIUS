@@ -28,7 +28,7 @@
 #include <cstdlib>
 #include <iostream>
 #include "linalg.hpp"
-#include "eigenproblem.h"
+#include "eigenproblem.hpp"
 #include "hdf5_tree.hpp"
 #include "utils/env.hpp"
 #ifdef __GPU
