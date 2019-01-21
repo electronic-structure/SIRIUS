@@ -1,14 +1,17 @@
 # from .bands import *
 from .helpers import *
+from .coefficient_array import CoefficientArray, PwCoeffs, inner, l2norm
 # from .baarman import *
 from .py_sirius import *
+from .py_sirius import K_point_set
+import numpy as np
+from numpy import array, zeros
 # from . import ot
 __all__ = ["ot", "baarman", "bands"]
 
 
 class OccupancyDescriptor(object):
     def __set__(self, instance, value):
-        from numpy import array, zeros
         for key, v in value._data.items():
             k, ispn = key
             # append with zeros if necessary
@@ -20,7 +23,6 @@ class OccupancyDescriptor(object):
         instance.sync_band_occupancies()
 
     def __get__(self, instance, owner):
-        from .coefficient_array import CoefficientArray
         import numpy as np
 
         out = CoefficientArray(dtype=np.double, ctype=np.array)
@@ -44,8 +46,6 @@ class PWDescriptor(object):
 
 class KPointWeightDescriptor(object):
     def __get__(self, instance, owner):
-        from .coefficient_array import CoefficientArray
-        import numpy as np
 
         out = CoefficientArray(dtype=np.double, ctype=np.array)
 
@@ -59,7 +59,6 @@ class KPointWeightDescriptor(object):
 class BandEnergiesDescriptor(object):
     def __get__(self, instance, owner):
         from .coefficient_array import CoefficientArray
-        import numpy as np
 
         out = CoefficientArray(dtype=np.double, ctype=np.array)
 

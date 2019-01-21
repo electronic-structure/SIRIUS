@@ -1,5 +1,7 @@
 import numpy as np
 
+__all__ = ['CoefficientArray', 'inner', 'l2norm', 'PwCoeffs']
+
 
 def inner(a, b):
     """
