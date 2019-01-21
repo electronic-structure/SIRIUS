@@ -105,7 +105,7 @@ using complex_double      = std::complex<double>;
 PYBIND11_MODULE(py_sirius, m)
 {
     // this is needed to be able to pass MPI_Comm from Python->C++
-    if (import_mpi4py() < 0) return; /* Python 2.X */
+    if (import_mpi4py() < 0) return;
     // MPI_Init/Finalize
     int mpi_init_flag;
     MPI_Initialized(&mpi_init_flag);
@@ -191,6 +191,15 @@ PYBIND11_MODULE(py_sirius, m)
         .def("update", &Simulation_context::update)
         .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
         .def("preferred_memory_t", &Simulation_context::preferred_memory_t)
+        .def("comm", [](Simulation_context& obj){
+                         return make_pycomm(obj.comm());
+                     }, py::return_value_policy::reference_internal)
+        .def("comm_k", [](Simulation_context& obj){
+                         return make_pycomm(obj.comm_k());
+                     }, py::return_value_policy::reference_internal)
+        .def("comm_fft", [](Simulation_context& obj){
+                           return make_pycomm(obj.comm_fft());
+                       }, py::return_value_policy::reference_internal)
         .def("set_iterative_solver_tolerance", &Simulation_context::set_iterative_solver_tolerance);
 
     py::class_<Atom>(m, "Atom")
@@ -410,10 +419,10 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
-        .def(py::init<Simulation_context&, std::vector<vector3d<double>>>())
-        .def(py::init<Simulation_context&, std::initializer_list<std::initializer_list<double>>>())
-        .def(py::init<Simulation_context&, vector3d<int>, vector3d<int>, bool>())
-        .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>())
+        .def(py::init<Simulation_context&, std::vector<vector3d<double>>>(), py::keep_alive<1, 2>())
+        .def(py::init<Simulation_context&, std::initializer_list<std::initializer_list<double>>>(), py::keep_alive<1, 2>())
+        .def(py::init<Simulation_context&, vector3d<int>, vector3d<int>, bool>(), py::keep_alive<1, 2>())
+        .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>(), py::keep_alive<1, 2>())
         .def("initialize", &K_point_set::initialize, py::arg("counts") = std::vector<int>{})
         .def("ctx", &K_point_set::ctx, py::return_value_policy::reference_internal)
         .def("unit_cell", &K_point_set::unit_cell, py::return_value_policy::reference_internal)
@@ -678,5 +687,6 @@ py::class_<Free_atom>(m, "Free_atom")
     m.def("omp_set_num_threads", &omp_set_num_threads);
     m.def("omp_get_num_threads", &omp_get_num_threads);
     m.def("make_sirius_comm", &make_sirius_comm);
+    m.def("make_pycomm", &make_pycomm);
     // m.def("pseudopotential_hmatrix", &pseudopotential_hmatrix<complex_double>, "kpoint"_a, "ispn"_a, "H"_a);
 }

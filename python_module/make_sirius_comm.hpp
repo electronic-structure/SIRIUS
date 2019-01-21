@@ -22,4 +22,10 @@ Communicator make_sirius_comm(pybind11::object py_comm)
     return sirius_comm;
 }
 
+
+pybind11::handle make_pycomm(const Communicator& comm) {
+    return pybind11::handle(PyMPIComm_New(comm.mpi_comm()));
+}
+
+
 } // end namespace sirius
