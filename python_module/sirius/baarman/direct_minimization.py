@@ -1,5 +1,11 @@
+from scipy.constants import physical_constants
+import numpy as np
+from ..coefficient_array import CoefficientArray, einsum
+from functools import reduce
+from mpi4py import MPI
+
+
 def _fermi_entropy(fn, dd):
-    import numpy as np
     fn = np.array(fn).flatten()
     return np.sum(fn * np.log(fn + dd * (1 - fn)) +
                   (1 - fn) * np.log(1 - fn + dd * fn))
@@ -11,8 +17,6 @@ def fermi_entropy(fn, dd=1e-4):
     fn --  occupation numbers
     dd -- regularization parameter
     """
-    from ..coefficient_array import CoefficientArray
-    import numpy as np
     if isinstance(fn, CoefficientArray):
         out = CoefficientArray(dtype=np.double, ctype=np.array)
         for key, val in fn._data.items():
@@ -28,8 +32,6 @@ def df_fermi_entropy(fn, dd=1e-4):
     fn --  occupation numbers
     dd -- regularization parameter
     """
-    from ..coefficient_array import CoefficientArray
-    import numpy as np
 
     if isinstance(fn, CoefficientArray):
         out = CoefficientArray(dtype=np.double, ctype=np.array)
@@ -41,7 +43,6 @@ def df_fermi_entropy(fn, dd=1e-4):
 
 
 def _df_fermi_entropy(fn, dd):
-    import numpy as np
     fn = np.array(fn).flatten()
     return fn * (1 - dd) / (fn + dd * (1 - fn)) + (1 - fn) * (-1 + dd) / (
         1 - fn + dd * fn) + np.log(fn + dd *
@@ -49,8 +50,6 @@ def _df_fermi_entropy(fn, dd):
 
 
 def _occupancy_admissible_ds(y, fn, mag):
-    import numpy as np
-
     if mag:
         fmax = 1
     else:
@@ -84,11 +83,6 @@ def occupancy_admissible_ds(y, fn, mag=False):
     fn -- band occupancy
     mag -- (Default False) magnetization
     """
-    from functools import reduce
-    from ..coefficient_array import CoefficientArray
-    from mpi4py import MPI
-    import numpy as np
-
     if isinstance(fn, CoefficientArray):
         lmin = reduce(
             min,
@@ -107,7 +101,6 @@ def _constrain_occupancy_gradient(dfn, fn, mag):
     """
     """
     from scipy.optimize import minimize, Bounds
-    import numpy as np
 
     if mag:
         fmax = 1
@@ -135,9 +128,6 @@ def _constrain_occupancy_gradient(dfn, fn, mag):
 
 
 def constrain_occupancy_gradient(dfn, fn, mag=False):
-    from ..coefficient_array import CoefficientArray
-    import numpy as np
-
     if isinstance(fn, CoefficientArray):
         fn = fn.flatten(ctype=np.array)
         out = CoefficientArray(dtype=np.double, ctype=np.array)
@@ -150,11 +140,20 @@ def constrain_occupancy_gradient(dfn, fn, mag=False):
 
 class FreeEnergy:
     def __init__(self, energy, temperature, H):
+        """
+        Keyword Arguments:
+        self        --
+        energy      --
+        temperature -- temperature in Kelvin
+        H           --
+        """
         self.energy = energy
         self.temperature = temperature
         self.omega_k = self.energy.kpointset.w
         self.H = H
         # assert (isinstance(H, ApplyHamiltonian))
+        self.kb = (physical_constants['Boltzmann constant in eV/K'][0] /
+                   physical_constants['Hartree energy in eV'][0])
 
         if self.H.hamiltonian.ctx().num_mag_dims() == 0:
             self.scale = 0.5
@@ -167,20 +166,17 @@ class FreeEnergy:
         cn   -- Planewave coefficients
         fn   -- occupations numbers
         """
-        import numpy as np
-        from mpi4py import MPI
 
         self.energy.kpointset.fn = fn
         E = self.energy(cn)
         S = fermi_entropy(self.scale * fn)
-        entropy_loc = self.temperature * np.sum(
+        entropy_loc = self.kb * self.temperature * np.sum(
             np.array(list((self.omega_k * S)._data.values())))
 
         loc = np.array(entropy_loc, dtype=np.float64)
         entropy = np.array(0.0, dtype=np.float64)
         MPI.COMM_WORLD.Allreduce([loc, MPI.DOUBLE], [entropy, MPI.DOUBLE],
                                  op=MPI.SUM)
-
         return E + np.asscalar(entropy)
 
     def grad(self, cn, fn):
@@ -196,8 +192,6 @@ class FreeEnergy:
         dAdC -- gradient with respect to pw coeffs
         dAdf -- gradient with respect to occupation numbers
         """
-        from ..coefficient_array import einsum
-        import numpy as np
 
         # Compute dAdC
         self.energy.kpointset.fn = fn
@@ -207,6 +201,6 @@ class FreeEnergy:
         # TODO: k-point weights missing?
         dAdfn = np.real(
             einsum('ij,ij->j', cn.conj(), dAdC)
-        ) + self.temperature * self.omega_k * self.scale * df_fermi_entropy(
+        ) + self.kb * self.temperature * self.omega_k * self.scale * df_fermi_entropy(
             self.scale * fn)
         return dAdC * fn, dAdfn.flatten(ctype=np.array)
