@@ -52,7 +52,7 @@ class KPointWeightDescriptor(object):
         for k in range(len(instance)):
             for ispn in range(instance.ctx().num_spins()):
                 key = k, ispn
-                out[key] = instance[k].weight()
+                out[key] = np.array(instance[k].weight())
         return out
 
 
