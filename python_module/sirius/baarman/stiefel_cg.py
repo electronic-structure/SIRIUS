@@ -91,7 +91,8 @@ def trim(X, fn, tol=1e-12):
     return Xout, fnout, sel
 
 
-def quadratic_approximation(free_energy, dAdC, dAdf, Y, y, X, fn, te, se):
+def quadratic_approximation(free_energy, dAdC, dAdf, Y, y, X, fn, te, se,
+                            comm, kweights, mag):
     """
     Keyword Arguments:
     dAdC -- ∇ₓ A
@@ -155,7 +156,7 @@ def quadratic_approximation(free_energy, dAdC, dAdf, Y, y, X, fn, te, se):
         eint1 = free_energy(Xnew, ynew)
         logger('\tfree energy at interpolation point: ', eint1)
         dAdCnew, dAdfnew = free_energy.grad(Xnew, ynew)
-        ynew = constrain_occupancy_gradient(dAdfnew, ynew)
+        ynew = constrain_occupancy_gradient(dAdfnew, ynew, comm, kweights, mag)
         Asys[3, [0, 2]] = [2 * te, 1]
         rsys[3] = np.real(inner(dAdCnew, Y))
         # 4-th line: dσ p(te, se)
@@ -191,6 +192,9 @@ class CG:
         """
         import numpy as np
         self.A = A
+        self.comm = A.comm
+        # k-point weights (rank local)
+        self.kweights = A.energy.kpointset.w
         # minimum step lengths
         self.min_tau = 0.1
         self.min_sigma = 0.1
@@ -264,7 +268,8 @@ class CG:
         from sirius.baarman import occupancy_admissible_ds
 
         # current_energy = A(X, f)
-        y = constrain_occupancy_gradient(-dAdf, f, self.mag)
+        y = constrain_occupancy_gradient(-dAdf, f, self.comm,
+                                         self.kweights, self.mag)
         logger('\t||y||:', inner(y, y))
         sigma_max = occupancy_admissible_ds(y, f, self.mag)
         # logger('y:', y)
@@ -276,7 +281,8 @@ class CG:
         logger('\tte=%.4g, se=%.4g' % (te, se))
         try:
             coeffs, Etrial = quadratic_approximation(
-                self.A, dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=se)
+                self.A, dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=se,
+                comm=self.comm, kweights=self.kweights, mag=self.mag)
         except GradientXError:
             logger('!!!CG RESTART!!!')
             Y = -stiefel_project_tangent(dAdC, X)
@@ -344,7 +350,8 @@ class CG:
                     # attempt to optimize only X
                     self.A(X, f)
                     coeffs, Etrial = quadratic_approximation(
-                        self.A, dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=0)
+                        self.A, dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=0,
+                        comm=self.comm, kweights=self.kweights, mag=self.mag)
                     assert coeffs[0] > 0 and coeffs[2] < 0
                     tau_min = -coeffs[2] / (2*coeffs[0])
                     U, W = stiefel_transport_operators(Y, X, tau=tau_min)

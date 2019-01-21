@@ -3,6 +3,7 @@ import numpy as np
 from ..coefficient_array import CoefficientArray, einsum
 from functools import reduce
 from mpi4py import MPI
+from copy import deepcopy
 
 
 def _fermi_entropy(fn, dd):
@@ -97,7 +98,7 @@ def occupancy_admissible_ds(y, fn, mag=False):
         return _occupancy_admissible_ds(y, fn, mag)
 
 
-def _constrain_occupancy_gradient(dfn, fn, mag):
+def _constrain_occupancy_gradient(dfn, fn, mag, kweights):
     """
     """
     from scipy.optimize import minimize, Bounds
@@ -108,6 +109,13 @@ def _constrain_occupancy_gradient(dfn, fn, mag):
         fmax = 2
 
     s = 100
+
+    # reshape into 1d array
+    shape = fn.shape
+    fn = fn.reshape(-1)
+    dfn = dfn.reshape(-1)
+    kweights = kweights.reshape(-1)
+
     lb = -s * np.ones_like(fn)
     ub = s * np.ones_like(fn)
     ub[np.isclose(fn, fmax)] = 0
@@ -120,20 +128,41 @@ def _constrain_occupancy_gradient(dfn, fn, mag):
         x0,
         bounds=bounds,
         constraints={
-            'fun': lambda y: np.sum(y),
+            'fun': lambda y: np.sum(kweights*y),
             "type": "eq"
         })
-    y = res['x']
+    assert res['success']
+    # restore shape
+    y = res['x'].reshape(shape)
+
     return y
 
 
-def constrain_occupancy_gradient(dfn, fn, mag=False):
+def constrain_occupancy_gradient(dfn, fn, comm, kweights, mag):
+    """
+    Keyword Arguments:
+    dfn      -- unconstrained gradient (times -1)
+    fn       -- occupation numbers
+    comm     -- mpi4py communicators
+    kweights -- k-point weights
+    mag      -- magnetization
+    """
     if isinstance(fn, CoefficientArray):
         fn = fn.flatten(ctype=np.array)
-        out = CoefficientArray(dtype=np.double, ctype=np.array)
-        for key, val in fn._data.items():
-            out[key] = _constrain_occupancy_gradient(dfn[key], val, mag)
-        return out
+        # allgather and stack to columns
+        kw = deepcopy(fn)
+        for k in kw._data.keys():
+            kw[k] = np.ones_like(kw[k]) * kweights[k]
+        vfn = np.vstack(comm.allgather(fn.to_array()))
+        vdfn = np.vstack(comm.allgather(dfn.to_array()))
+        vkw = np.vstack(comm.allgather(kw.to_array()))
+        y = _constrain_occupancy_gradient(vdfn, vfn, mag, vkw)
+        # select local contribution
+        y_loc = y[comm.rank, :]
+        constrained_gradient = deepcopy(fn)
+        # set from y_loc
+        constrained_gradient.from_array(y_loc)
+        return constrained_gradient
     else:
         return _constrain_occupancy_gradient(dfn, fn, mag)
 
@@ -150,6 +179,7 @@ class FreeEnergy:
         self.energy = energy
         self.temperature = temperature
         self.omega_k = self.energy.kpointset.w
+        self.comm = self.energy.kpointset.ctx().comm_k()
         self.H = H
         # assert (isinstance(H, ApplyHamiltonian))
         self.kb = (physical_constants['Boltzmann constant in eV/K'][0] /
