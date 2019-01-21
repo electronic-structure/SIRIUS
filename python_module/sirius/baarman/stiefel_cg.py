@@ -16,24 +16,22 @@ from sirius import kpoint_index, Logger
 
 logger = Logger()
 
-np.set_printoptions(precision=3, linewidth=120)
-
 
 class GradientXError(Exception):
     pass
 
 
-def save_state(X, Y, f, y, tau_min, sigma_min, prefix='fail'):
+def save_state(kset, X, Y, f, y, tau_min, sigma_min, prefix='fail'):
     """
     dump current state to HDF5
     """
     from mpi4py import MPI
     rank = MPI.COMM_WORLD.rank
     with h5py.File(prefix+'%d.h5' % rank, 'w') as fh5:
-        grpX = ot.save(fh5, 'X', X, kpointset)
-        grpf = ot.save(fh5, 'fn', f, kpointset)
-        grpY = ot.save(fh5, 'Y', Y, kpointset)
-        grpy = ot.save(fh5, 'y', y, kpointset)
+        grpX = ot.save(fh5, 'X', X, kset)
+        grpf = ot.save(fh5, 'fn', f, kset)
+        grpY = ot.save(fh5, 'Y', Y, kset)
+        grpy = ot.save(fh5, 'y', y, kset)
         grpY.attrs['tau_min'] = tau_min
         grpy.attrs['sigma_min'] = sigma_min
 
@@ -93,7 +91,7 @@ def trim(X, fn, tol=1e-12):
     return Xout, fnout, sel
 
 
-def quadratic_approximation(dAdC, dAdf, Y, y, X, fn, te, se):
+def quadratic_approximation(free_energy, dAdC, dAdf, Y, y, X, fn, te, se):
     """
     Keyword Arguments:
     dAdC -- ∇ₓ A
@@ -250,6 +248,7 @@ class CG:
             res = np.real(inner(Y, Y))
             resf = np.real(inner(dAdf, dAdf))
             logger('iteration %03d, res %.5g f: %.5g' % (i, res, resf))
+        return X, fn
 
     def cg_step(self, X, f, dAdC, dAdf, Y):
         """
@@ -277,12 +276,12 @@ class CG:
         logger('\tte=%.4g, se=%.4g' % (te, se))
         try:
             coeffs, Etrial = quadratic_approximation(
-                dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=se)
+                self.A, dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=se)
         except GradientXError:
             logger('!!!CG RESTART!!!')
             Y = -stiefel_project_tangent(dAdC, X)
             coeffs, Etrial = quadratic_approximation(
-                dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=se)
+                self.A, dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=se)
 
         logger('\tquadratic approx: ', coeffs)
 
@@ -298,7 +297,7 @@ class CG:
             logger(
                 '\tOCCUPATION APPROX FAILED! taking sigma_max'
             )
-            save_state(X, Y, f, y, tau_min, sigma_min)
+            save_state(self.A.energy.kpointset, X, Y, f, y, tau_min, sigma_min)
         if sigma_min > sigma_max:
             logger('\ttoo long step for occupation numbers, limit by max step')
             sigma_min = sigma_max
@@ -345,7 +344,7 @@ class CG:
                     # attempt to optimize only X
                     self.A(X, f)
                     coeffs, Etrial = quadratic_approximation(
-                        dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=0)
+                        self.A, dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=0)
                     assert coeffs[0] > 0 and coeffs[2] < 0
                     tau_min = -coeffs[2] / (2*coeffs[0])
                     U, W = stiefel_transport_operators(Y, X, tau=tau_min)
@@ -357,7 +356,7 @@ class CG:
                     # attempt to update
                     self.E = E
                 except:
-                    save_state(X, Y, f, y, tau_min, sigma_min)
+                    save_state(self.A.energy.kpointset, X, Y, f, y, tau_min, sigma_min)
                     raise Exception('giving up')
 
         F = stiefel_project_tangent(dAdC, X)
