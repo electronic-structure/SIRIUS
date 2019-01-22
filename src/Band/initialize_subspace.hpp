@@ -160,7 +160,6 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
     dmatrix<T> hmlt(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> ovlp(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> evec(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> hmlt_old;
 
     std::vector<double> eval(num_bands);
 
@@ -217,7 +216,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
 
-            set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, hmlt, hmlt_old);
+            set_subspace_mtrx<T>(1, num_phi_tot, phi, ophi, hmlt);
             if (ctx_.control().verification_ >= 2) {
                 hmlt.serialize("overlap", num_phi_tot);
             }
@@ -244,8 +243,8 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
         }
 
         /* setup eigen-value problem */
-        set_subspace_mtrx<T>(0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
-        set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp, hmlt_old);
+        set_subspace_mtrx<T>(0, num_phi_tot, phi, hphi, hmlt);
+        set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp);
 
         if (ctx_.control().verification_ >= 2) {
             hmlt.serialize("hmlt", num_phi_tot);

@@ -188,7 +188,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                                   Wave_functions& phi__,
                                   Wave_functions& op_phi__,
                                   dmatrix<T>& mtrx__,
-                                  dmatrix<T>& mtrx_old__) const;
+                                  dmatrix<T>* mtrx_old__ = nullptr) const;
 
   public:
     /// Constructor
