@@ -54,6 +54,8 @@ double test_diag(BLACS_grid const& blacs_grid__,
             solver->solve(n__, nev__, A, B, eval.data(), Z);
         }
     } else {
+        A.allocate(memory_t::device).copy_to(memory_t::device);
+        Z.allocate(memory_t::device);
         if (n__ == nev__) {
             solver->solve(n__, A, eval.data(), Z);
         } else {

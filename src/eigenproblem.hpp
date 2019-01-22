@@ -1341,9 +1341,11 @@ class Eigensolver_cuda: public Eigensolver
         auto work = mp_d_.get_unique_ptr<double_complex>(lwork);
 
         int info;
+        auto dinfo = mp_d_.get_unique_ptr<int>(1);
         CALL_CUSOLVER(cusolverDnZheevd, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
                                          reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
-                                         w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, &info));
+                                         w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, dinfo.get()));
+        acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
             acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
@@ -1377,10 +1379,12 @@ class Eigensolver_cuda: public Eigensolver
         auto work = mp_d_.get_unique_ptr<double_complex>(lwork);
 
         int info;
+        auto dinfo = mp_d_.get_unique_ptr<int>(1);
         CALL_CUSOLVER(cusolverDnZhegvd, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
                                          reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
                                          reinterpret_cast<cuDoubleComplex*>(B__.at(memory_t::device)), B__.ld(),
-                                         w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, &info));
+                                         w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, dinfo.get()));
+        acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
             acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
