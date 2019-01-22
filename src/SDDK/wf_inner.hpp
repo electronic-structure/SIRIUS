@@ -560,13 +560,11 @@ inline void inner(memory_t        mem__,
     if (comm.size() == 1) {
         inner_local<T>(mem__, la__, ispn__, bra__, i0__, m__, ket__, j0__, n__, &beta,
                        result__.at(mem__, irow0__, jcol0__), result__.ld(), stream_id(-1));
-#ifdef __GPU
         if (is_device_memory(mem__)) {
             acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
                          result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
                          m__, n__);
         }
-#endif
         if (sddk_pp) {
             time += omp_get_wtime();
             int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();
@@ -577,7 +575,6 @@ inline void inner(memory_t        mem__,
     } else if (result__.comm().size() == 1) { /* parallel wave-functions distribution but sequential diagonalization */
         inner_local<T>(mem__, la__, ispn__, bra__, i0__, m__, ket__, j0__, n__, &beta,
                        result__.at(mem__, irow0__, jcol0__), result__.ld(), stream_id(-1));
-#ifdef __GPU
         if (is_device_memory(mem__)) {
             utils::timer t1("sddk::inner|device_copy");
             acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
@@ -590,7 +587,6 @@ inline void inner(memory_t        mem__,
                 }
             }
         }
-#endif
         utils::timer t3("sddk::inner|store");
         mdarray<T, 2> tmp(m__, n__);
         #pragma omp parallel for schedule(static)
@@ -611,7 +607,6 @@ inline void inner(memory_t        mem__,
             }
         }
         t2.stop();
-#ifdef __GPU
         if (is_device_memory(mem__)) {
             utils::timer t1("sddk::inner|device_copy");
             acc::copyin(result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
@@ -624,7 +619,6 @@ inline void inner(memory_t        mem__,
                 }
             }
         }
-#endif
         if (sddk_pp) {
             time += omp_get_wtime();
             int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();

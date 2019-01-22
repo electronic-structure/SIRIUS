@@ -21,8 +21,24 @@ inline void error_message(cusolverStatus_t status)
             printf("the device only supports compute capability 2.0 and above\n");
             break;
         }
+        case CUSOLVER_STATUS_INVALID_VALUE: {
+            printf("An unsupported value or parameter was passed to the function\n");
+            break;
+        }
+        case CUSOLVER_STATUS_EXECUTION_FAILED: {
+            printf("The GPU program failed to execute. This is often caused by a launch failure of the kernel on the GPU, which can be caused by multiple reasons.\n");
+            break;
+        }
+        case CUSOLVER_STATUS_INTERNAL_ERROR: {
+            printf("An internal cuSolver operation failed. This error is usually caused by a cudaMemcpyAsync() failure.\n");
+            break;
+        }
+        case CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED: {
+            printf("The matrix type is not supported by this function. This is usually caused by passing an invalid matrix descriptor to the function.\n");
+            break;
+        }
         default: {
-            printf("cusolver status unknown");
+            printf("cusolver status unknown\n");
         }
     }
 }
@@ -55,51 +71,6 @@ inline void destroy_handle()
 {
     CALL_CUSOLVER(cusolverDnDestroy, (cusolver_handle()));
 }
-
-//inline int zheevd(int32_t matrix_size, int nv, void* A, int32_t lda, void* B, int32_t ldb, double* eval)
-//
-//{
-//    cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
-//    cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
-//    cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
-//
-//    auto w = acc::allocate<double>(matrix_size);
-//
-//    int lwork;
-//    CALL_CUSOLVER(cusolverDnZhegvd_bufferSize, (cusolver_handle(), itype, jobz, uplo, matrix_size,
-//                                                static_cast<cuDoubleComplex*>(A), lda, 
-//                                                static_cast<cuDoubleComplex*>(B), ldb, w, &lwork));
-//
-//    auto work = acc::allocate<cuDoubleComplex>(lwork);
-//
-//    int info;
-//    CALL_CUSOLVER(cusolverDnZhegvd, (cusolver_handle(), itype, jobz, uplo, matrix_size,
-//                                     static_cast<cuDoubleComplex*>(A), lda,
-//                                     static_cast<cuDoubleComplex*>(B), ldb, w, work, lwork, &info));
-//
-//    acc::copyout(eval, w, nv);
-//
-//    acc::deallocate(work);
-//    acc::deallocate(w);
-//
-//    return info;
-//}
-//
-//inline void dsyevd()
-//{
-//
-//}
-//
-//
-//inline void zhegvd()
-//{
-//
-//}
-//
-//inline void dsygvd()
-//{
-//
-//}
 
 } // namespace cusolver
 

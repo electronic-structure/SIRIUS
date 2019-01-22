@@ -125,8 +125,9 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     if (acc::num_devices()) {
         //acc::set_device();
 #if defined(__CUDA)
-        cublas::destroy_stream_handles();
+        cusolver::destroy_handle();
         cublas::xt::destroy_handle();
+        cublas::destroy_stream_handles();
 #endif
         acc::destroy_streams();
         if (reset_device__) {
