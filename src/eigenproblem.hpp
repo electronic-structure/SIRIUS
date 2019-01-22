@@ -197,9 +197,8 @@ class Eigensolver_lapack : public Eigensolver
         auto work  = mp_h_.get_unique_ptr<double>(lwork);
         auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
-        FORTRAN(dsyevd)
-        ("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(), &lwork, iwork.get(), &liwork,
-         &info, (ftn_int)1, (ftn_int)1);
+        FORTRAN(dsyevd)("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(), &lwork,
+                        iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
         if (!info) {
             for (int i = 0; i < matrix_size__; i++) {
                 std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
@@ -225,15 +224,15 @@ class Eigensolver_lapack : public Eigensolver
         auto rwork = mp_h_.get_unique_ptr<double>(lrwork);
         auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
-        FORTRAN(zheevd)
-        ("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(), &lwork, rwork.get(), &lrwork,
-         iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
+        FORTRAN(zheevd)("V", "U", &matrix_size__, A__.at(memory_t::host), &lda, eval__, work.get(),
+                        &lwork, rwork.get(), &lrwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
         if (!info) {
             for (int i = 0; i < matrix_size__; i++) {
                 std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
                           Z__.at(memory_t::host, 0, i));
             }
         }
+        return info;
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
@@ -1399,7 +1398,7 @@ class Eigensolver_cuda: public Eigensolver
 
 };
 #else
-class Eigensolver_cuda: public Eigensolver_cuda
+class Eigensolver_cuda: public Eigensolver
 {
   public:
     inline bool is_parallel()

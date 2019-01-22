@@ -99,7 +99,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     hmlt.zero();
     ovlp.zero();
 
-    auto gen_solver = ctx_.gen_evp_solver();
+    auto& gen_solver = ctx_.gen_evp_solver();
 
     for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
         hmlt.set(ig, ig, 0.5 * std::pow(kp__->gkvec().gkvec_cart<index_domain_t::global>(ig).length(), 2));
@@ -209,7 +209,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     kp__->beta_projectors_row().dismiss();
     kp__->beta_projectors_col().dismiss();
 
-    if (gen_solver->solve(kp__->num_gkvec(), ctx_.num_bands(), hmlt, ovlp, eval.data(), evec)) {
+    if (gen_solver.solve(kp__->num_gkvec(), ctx_.num_bands(), hmlt, ovlp, eval.data(), evec)) {
         std::stringstream s;
         s << "error in full diagonalziation";
         TERMINATE(s);
@@ -350,8 +350,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         }
     }
 
-    auto std_solver = ctx_.std_evp_solver();
-    auto gen_solver = ctx_.gen_evp_solver();
+    auto& std_solver = ctx_.std_evp_solver();
+    auto& gen_solver = ctx_.gen_evp_solver();
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -433,7 +433,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
         utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (gen_solver->solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
+        if (gen_solver.solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
@@ -564,14 +564,14 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N */
-                if (std_solver->solve(N, num_bands, hmlt, eval.data(), evec)) {
+                if (std_solver.solve(N, num_bands, hmlt, eval.data(), evec)) {
                     std::stringstream s;
                     s << "error in diagonalziation";
                     TERMINATE(s);
                 }
             } else {
                 /* solve generalized eigen-value problem with the size N */
-                if (gen_solver->solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
+                if (gen_solver.solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
                     std::stringstream s;
                     s << "error in diagonalziation";
                     TERMINATE(s);

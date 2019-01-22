@@ -25,7 +25,7 @@ double test_diag(BLACS_grid const& blacs_grid__,
         B >> B_ref;
     }
 
-    auto solver = Eigensolver_factory<T>(get_ev_solver_t(name__));
+    auto solver = Eigensolver_factory(get_ev_solver_t(name__));
 
     std::vector<double> eval(nev__);
 
@@ -113,7 +113,7 @@ void test_diag2(BLACS_grid const& blacs_grid__,
                 std::string name__,
                 std::string fname__)
 {
-    auto solver = Eigensolver_factory<double_complex>(get_ev_solver_t(name__));
+    auto solver = Eigensolver_factory(get_ev_solver_t(name__));
 
     matrix<double_complex> full_mtrx;
     int n;

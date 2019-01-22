@@ -182,6 +182,12 @@ class Simulation_context : public Simulation_parameters
     /// Augmentation operator for each atom type.
     std::vector<Augmentation_operator> augmentation_op_;
 
+    /// Standard eigen-value problem solver.
+    std::unique_ptr<Eigensolver> std_evp_solver_;
+
+    /// Generalized eigen-value problem solver.
+    std::unique_ptr<Eigensolver> gen_evp_solver_;
+
     memory_t host_memory_t_{memory_t::none};
     memory_t preferred_memory_t_{memory_t::none};
     memory_t aux_preferred_memory_t_{memory_t::none};
@@ -772,14 +778,14 @@ class Simulation_context : public Simulation_parameters
         return get_ev_solver_t(gen_evp_solver_name());
     }
 
-    inline std::unique_ptr<Eigensolver> std_evp_solver()
+    inline Eigensolver& std_evp_solver()
     {
-        return std::move(Eigensolver_factory(std_evp_solver_type()));
+        return* std_evp_solver_;
     }
 
-    inline std::unique_ptr<Eigensolver> gen_evp_solver()
+    inline Eigensolver& gen_evp_solver()
     {
-        return std::move(Eigensolver_factory(gen_evp_solver_type()));
+        return* gen_evp_solver_;
     }
 
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
@@ -1360,15 +1366,18 @@ inline void Simulation_context::initialize()
     std_evp_solver_name(evsn[0]);
     gen_evp_solver_name(evsn[1]);
 
-    auto std_solver = std_evp_solver();
-    auto gen_solver = gen_evp_solver();
+    std_evp_solver_ = Eigensolver_factory(std_evp_solver_type());
+    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_type());
 
-    if (std_solver->is_parallel() != gen_solver->is_parallel()) {
+    auto& std_solver = std_evp_solver();
+    auto& gen_solver = gen_evp_solver();
+
+    if (std_solver.is_parallel() != gen_solver.is_parallel()) {
         TERMINATE("both solvers must be sequential or parallel");
     }
 
     /* setup BLACS grid */
-    if (std_solver->is_parallel()) {
+    if (std_solver.is_parallel()) {
         blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(comm_band(), npr, npc));
     } else {
         blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), 1, 1));
