@@ -1577,6 +1577,10 @@ inline void Simulation_context::print_info() const
                 printf("PLASMA\n");
                 break;
             }
+            case ev_solver_t::cusolver: {
+                printf("cuSOLVER\n");
+                break;
+            }
             default: {
                 TERMINATE("wrong eigen-value solver");
             }
@@ -1591,9 +1595,7 @@ inline void Simulation_context::print_info() const
         }
         case device_t::GPU: {
             printf("GPU\n");
-#ifdef __GPU
             acc::print_device_info(0);
-#endif
             break;
         }
     }
