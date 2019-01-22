@@ -153,14 +153,23 @@ def constrain_occupancy_gradient(dfn, fn, comm, kweights, mag):
         kw = deepcopy(fn)
         for k in kw._data.keys():
             kw[k] = np.ones_like(kw[k]) * kweights[k]
-        vfn = np.vstack(comm.allgather(fn.to_array()))
-        vdfn = np.vstack(comm.allgather(dfn.to_array()))
-        vkw = np.vstack(comm.allgather(kw.to_array()))
+
+        vfn_tmp = comm.allgather(fn.to_array())
+        # count number of elements per rank
+        proc_sizes = list(map(np.size, vfn_tmp))
+        # get offset per rank
+        offsets = np.hstack([0, np.cumsum(proc_sizes[:-1])]).astype(np.int)
+        # allgather occupation numbers and gradient (because constraint is global)
+        vfn = np.hstack(vfn_tmp)
+        vdfn = np.hstack(comm.allgather(dfn.to_array()))
+        vkw = np.hstack(comm.allgather(kw.to_array()))
         y = _constrain_occupancy_gradient(vdfn, vfn, mag, vkw)
-        # select local contribution
-        y_loc = y[comm.rank, :]
-        constrained_gradient = deepcopy(fn)
+        # get local contribution
+        offset = offsets[comm.rank]
+        lsize = proc_sizes[comm.rank]
+        y_loc = y[offset:offset+lsize]
         # set from y_loc
+        constrained_gradient = deepcopy(fn)
         constrained_gradient.from_array(y_loc)
         return constrained_gradient
     else:
