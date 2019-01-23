@@ -190,7 +190,6 @@ class FreeEnergy:
         self.omega_k = self.energy.kpointset.w
         self.comm = self.energy.kpointset.ctx().comm_k()
         self.H = H
-        # assert (isinstance(H, ApplyHamiltonian))
         self.kb = (physical_constants['Boltzmann constant in eV/K'][0] /
                    physical_constants['Hartree energy in eV'][0])
 

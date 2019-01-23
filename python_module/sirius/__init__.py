@@ -40,7 +40,6 @@ class PWDescriptor(object):
         store_pw_coeffs(instance, value)
 
     def __get__(self, instance, owner):
-        from .coefficient_array import PwCoeffs
         return PwCoeffs(instance)
 
 
