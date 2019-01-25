@@ -452,8 +452,9 @@ class memory_pool
     template <typename T>
     T* allocate(size_t num_elements__)
     {
+        size_t align_size = std::max(size_t(64), alignof(T));
         /* size of the memory block in bytes */
-        size_t size = num_elements__ * sizeof(T) + alignof(T);
+        size_t size = num_elements__ * sizeof(T) + align_size;
 
         uint8_t* ptr{nullptr};
 
@@ -483,7 +484,9 @@ class memory_pool
         msb.unaligned_ptr_ = ptr;
         auto uip = reinterpret_cast<std::uintptr_t>(ptr);
         /* align the pointer */
-        uip += (alignof(T) - uip % alignof(T));
+        if (uip % align_size) {
+            uip += (align_size - uip % align_size);
+        }
         uint8_t* aligned_ptr = reinterpret_cast<uint8_t*>(uip);
         //msb.first = it;
         //msb.second = size;

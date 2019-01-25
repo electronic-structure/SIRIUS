@@ -1332,6 +1332,7 @@ class Eigensolver_cuda: public Eigensolver
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
 
         auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        A__.copy_to(memory_t::device);
 
         int lwork;
         CALL_CUSOLVER(cusolverDnZheevd_bufferSize, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
@@ -1349,6 +1350,7 @@ class Eigensolver_cuda: public Eigensolver
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
             acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+            Z__.copy_to(memory_t::host);
         }
         return info;
     }
@@ -1369,6 +1371,8 @@ class Eigensolver_cuda: public Eigensolver
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
 
         auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        A__.copy_to(memory_t::device);
+        B__.copy_to(memory_t::device);
 
         int lwork;
         CALL_CUSOLVER(cusolverDnZhegvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
@@ -1377,6 +1381,7 @@ class Eigensolver_cuda: public Eigensolver
                                                     w.get(), &lwork));
 
         auto work = mp_d_.get_unique_ptr<double_complex>(lwork);
+
 
         int info;
         auto dinfo = mp_d_.get_unique_ptr<int>(1);
@@ -1388,6 +1393,7 @@ class Eigensolver_cuda: public Eigensolver
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
             acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+            Z__.copy_to(memory_t::host);
         }
         return info;
     }

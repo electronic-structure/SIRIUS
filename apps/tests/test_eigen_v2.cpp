@@ -9,7 +9,8 @@ double test_diag(BLACS_grid const& blacs_grid__,
                int nev__,
                int bs__,
                bool test_gen__,
-               std::string name__)
+               std::string name__,
+               Eigensolver& solver)
 {
     dmatrix<T> A = random_symmetric<T>(N__, bs__, blacs_grid__);
     dmatrix<T> A_ref(N__, N__, blacs_grid__, bs__, bs__);
@@ -25,9 +26,11 @@ double test_diag(BLACS_grid const& blacs_grid__,
         B >> B_ref;
     }
 
-    auto solver = Eigensolver_factory(get_ev_solver_t(name__));
-
     std::vector<double> eval(nev__);
+
+    A.allocate(memory_t::device);
+    B.allocate(memory_t::device);
+    Z.allocate(memory_t::device);
 
     if (blacs_grid__.comm().rank() == 0) {
         printf("N = %i\n", N__);
@@ -49,17 +52,15 @@ double test_diag(BLACS_grid const& blacs_grid__,
     utils::timer t1("evp");
     if (test_gen__) {
         if (n__ == nev__) {
-            solver->solve(n__, A, B, eval.data(), Z);
+            solver.solve(n__, A, B, eval.data(), Z);
         } else {
-            solver->solve(n__, nev__, A, B, eval.data(), Z);
+            solver.solve(n__, nev__, A, B, eval.data(), Z);
         }
     } else {
-        A.allocate(memory_t::device).copy_to(memory_t::device);
-        Z.allocate(memory_t::device);
         if (n__ == nev__) {
-            solver->solve(n__, A, eval.data(), Z);
+            solver.solve(n__, A, eval.data(), Z);
         } else {
-            solver->solve(n__, nev__, A, eval.data(), Z);
+            solver.solve(n__, nev__, A, eval.data(), Z);
         }
     }
     double t = t1.stop();
@@ -169,15 +170,16 @@ void call_test(std::vector<int> mpi_grid__,
                int repeat__,
                int type__)
 {
+    auto solver = Eigensolver_factory(get_ev_solver_t(name__));
     BLACS_grid blacs_grid(Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
     if (fname__.length() == 0) {
         Measurement m;
         for (int i = 0; i < repeat__; i++) {
             double t;
             if (type__ == 0) {
-                t = test_diag<double>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
+                t = test_diag<double>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__, *solver);
             } else {
-                t = test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
+                t = test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__, *solver);
             }
             m.push_back(t);
         }

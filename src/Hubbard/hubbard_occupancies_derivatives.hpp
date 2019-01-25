@@ -203,18 +203,10 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                     sizeof(double_complex) * dn_tmp.size());
     } // atom_id
 
-    #if defined(__GPU)
     if (ctx_.processing_unit() == GPU) {
-        dn_tmp.deallocate(memory_t::device);
-        dm.deallocate(memory_t::device);
-        phi_s_psi.deallocate(memory_t::device);
-        dphi_s_psi.deallocate(memory_t::device);
-        phi.deallocate(0, memory_t::device);
-        phitmp.deallocate(0, memory_t::device);
-        dphi.deallocate(0, memory_t::device);
-        kp.spinor_wave_functions().deallocate(ctx_.num_spins(), memory_t::device);
+        phi.deallocate(spin_idx(0), memory_t::device);
+        kp.spinor_wave_functions().deallocate(spin_idx(ctx_.num_spins()), memory_t::device);
     }
-    #endif
 
     kp.beta_projectors().dismiss();
     bp_grad_.dismiss();
