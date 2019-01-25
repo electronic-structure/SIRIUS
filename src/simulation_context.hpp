@@ -188,9 +188,16 @@ class Simulation_context : public Simulation_parameters
     /// Generalized eigen-value problem solver.
     std::unique_ptr<Eigensolver> gen_evp_solver_;
 
+    /// Type of host memory (pagable or page-locked) for the arrays that participate in host-to-device memory copy.
     memory_t host_memory_t_{memory_t::none};
+
+    /// Type of preferred memory for wave-functions and related arrays.
     memory_t preferred_memory_t_{memory_t::none};
+
+    /// Type of preferred memory for auxiliary wave-functions of the iterative solver.
     memory_t aux_preferred_memory_t_{memory_t::none};
+
+    /// Type of BLAS linear algebra library.
     linalg_t blas_linalg_t_{linalg_t::none};
 
     /// True if the context is already initialized.

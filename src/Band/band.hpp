@@ -130,7 +130,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
             const int num_sc = nc_mag ? 2 : 1;
 
             auto& psi = kp__.spinor_wave_functions();
-            Wave_functions spsi(kp__.gkvec_partition(), ctx_.num_bands(), num_sc);
+            Wave_functions spsi(kp__.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
 
             if (is_device_memory(ctx_.preferred_memory_t())) {
                 auto& mpd = ctx_.mem_pool(memory_t::device);
@@ -138,11 +138,9 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                     psi.pw_coeffs(ispn).allocate(mpd);
                     psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
                 }
-                psi.preferred_memory_t(ctx_.preferred_memory_t());
                 for (int i = 0; i < num_sc; i++) {
                     spsi.pw_coeffs(i).allocate(mpd);
                 }
-                spsi.preferred_memory_t(ctx_.preferred_memory_t());
                 ovlp.allocate(memory_t::device);
             }
             kp__.beta_projectors().prepare();
@@ -173,7 +171,6 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     psi.pw_coeffs(ispn).deallocate(memory_t::device);
                 }
-                psi.preferred_memory_t(memory_t::host);
             }
             kp__.beta_projectors().dismiss();
         }

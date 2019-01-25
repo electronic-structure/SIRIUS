@@ -268,22 +268,22 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
 
     /* auxiliary wave-functions */
-    Wave_functions phi(mp, kp__->gkvec_partition(), num_phi, num_sc);
+    Wave_functions phi(mp, kp__->gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
 
     /* Hamiltonian, applied to auxiliary wave-functions */
-    Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi, num_sc);
+    Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
 
     /* S operator, applied to auxiliary wave-functions */
-    Wave_functions sphi(mp, kp__->gkvec_partition(), num_phi, num_sc);
+    Wave_functions sphi(mp, kp__->gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
 
     /* Hamiltonain, applied to new Psi wave-functions */
-    Wave_functions hpsi(mp, kp__->gkvec_partition(), num_bands, num_sc);
+    Wave_functions hpsi(mp, kp__->gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions spsi(mp, kp__->gkvec_partition(), num_bands, num_sc);
+    Wave_functions spsi(mp, kp__->gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     /* residuals */
-    Wave_functions res(mp, kp__->gkvec_partition(), num_bands, num_sc);
+    Wave_functions res(mp, kp__->gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     const int bs = ctx_.cyclic_block_size();
 
@@ -300,7 +300,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         for (int i = 0; i < num_sc; i++) {
             phi.pw_coeffs(i).allocate(mpd);
         }
-        phi.preferred_memory_t(ctx_.aux_preferred_memory_t());
     }
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
@@ -309,7 +308,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             psi.pw_coeffs(ispn).allocate(mpd);
             psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_bands);
         }
-        psi.preferred_memory_t(ctx_.preferred_memory_t());
+
         for (int i = 0; i < num_sc; i++) {
             res.pw_coeffs(i).allocate(mpd);
 
@@ -319,11 +318,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             hpsi.pw_coeffs(i).allocate(mpd);
             spsi.pw_coeffs(i).allocate(mpd);
         }
-        res.preferred_memory_t(ctx_.preferred_memory_t());
-        hphi.preferred_memory_t(ctx_.preferred_memory_t());
-        sphi.preferred_memory_t(ctx_.preferred_memory_t());
-        hpsi.preferred_memory_t(ctx_.preferred_memory_t());
-        spsi.preferred_memory_t(ctx_.preferred_memory_t());
 
         if (ctx_.blacs_grid().comm().size() == 1) {
             evec.allocate(mpd);
@@ -608,7 +602,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             psi.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands);
             psi.pw_coeffs(ispn).deallocate(memory_t::device);
         }
-        psi.preferred_memory_t(memory_t::host);
     }
 
     //== std::cout << "checking psi" << std::endl;

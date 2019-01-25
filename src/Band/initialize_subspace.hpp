@@ -88,7 +88,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     /* initial basis functions */
-    Wave_functions phi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions phi(mp, kp__->gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
         phi.pw_coeffs(ispn).prime().zero();
     }
@@ -148,10 +148,10 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
     H__.local_op().prepare(kp__->gkvec_partition());
 
     /* allocate wave-functions */
-    Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
-    Wave_functions ophi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions ophi(mp, kp__->gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
     /* temporary wave-functions required as a storage during orthogonalization */
-    Wave_functions wf_tmp(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions wf_tmp(mp, kp__->gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
 
     int bs = ctx_.cyclic_block_size();
 
@@ -167,25 +167,18 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
 
     kp__->beta_projectors().prepare();
 
-    if (is_device_memory(ctx_.aux_preferred_memory_t())) {
+    if (is_device_memory(ctx_.preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);
-        phi.preferred_memory_t(ctx_.aux_preferred_memory_t());
+
         for (int ispn = 0; ispn < num_sc; ispn++) {
             phi.pw_coeffs(ispn).allocate(mpd);
             phi.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_phi_tot);
         }
-    }
 
-    if (is_device_memory(ctx_.preferred_memory_t())) {
-        auto& mpd = ctx_.mem_pool(memory_t::device);
-        kp__->spinor_wave_functions().preferred_memory_t(ctx_.preferred_memory_t());
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             kp__->spinor_wave_functions().pw_coeffs(ispn).allocate(mpd);
         }
 
-        hphi.preferred_memory_t(ctx_.preferred_memory_t());
-        ophi.preferred_memory_t(ctx_.preferred_memory_t());
-        wf_tmp.preferred_memory_t(ctx_.preferred_memory_t());
         for (int ispn = 0; ispn < num_sc; ispn++) {
             hphi.pw_coeffs(ispn).allocate(mpd);
             ophi.pw_coeffs(ispn).allocate(mpd);

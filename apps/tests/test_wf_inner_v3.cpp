@@ -30,7 +30,7 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     }
 
     int nsp{1};
-    Wave_functions phi(gvp, num_bands__, nsp);
+    Wave_functions phi(gvp, num_bands__, memory_t::host, nsp);
 
     for (int is = 0; is < nsp; is++) {
         phi.zero(device_t::CPU, is, 0, num_bands__);
@@ -48,7 +48,7 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     if (is_device_memory(mem__)) {
         for (int ispn = 0; ispn < nsp; ispn++) {
             phi.allocate(spin_idx(ispn), memory_t::device);
-            phi.copy_to(ispn, memory_t::device, 0, num_bands__);
+            phi.copy_to(spin_idx(ispn), memory_t::device, 0, num_bands__);
         }
         ovlp.allocate(memory_t::device);
     }
