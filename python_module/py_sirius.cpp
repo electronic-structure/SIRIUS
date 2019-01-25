@@ -604,7 +604,7 @@ py::class_<Free_atom>(m, "Free_atom")
     py::class_<mdarray<double, 2>>(m, "mdarray2")
         .def("on_device", &mdarray<double, 2>::on_device)
         .def("copy_to_host", [](mdarray<double, 2>& mdarray) {
-                               mdarray.copy<memory_t::device, memory_t::host>(mdarray.size(1));
+                                 mdarray.copy_to(memory_t::host, 0, mdarray.size(1));
                              })
         .def("__array__", [](py::object& obj) {
                             mdarray<double, 2>& arr = obj.cast<mdarray<double, 2>&>();
@@ -612,7 +612,7 @@ py::class_<Free_atom>(m, "Free_atom")
                             int ncols = arr.size(1);
                             return py::array_t<double>({nrows, ncols},
                                                                {1 * sizeof(double), nrows * sizeof(double)},
-                                                               arr.data<CPU>(), obj);
+                                                               arr.at(memory_t::host), obj);
                           });
 
     py::enum_<sddk::device_t>(m, "DeviceEnum")
