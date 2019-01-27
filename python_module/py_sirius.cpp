@@ -493,7 +493,7 @@ PYBIND11_MODULE(py_sirius, m)
                  if (n != hamiltonian.ctx().num_bands()) {
                      throw std::runtime_error("num_wf != num_bands");
                  }
-                 hamiltonian.local_op().prepare(hamiltonian.potential());
+                 hamiltonian.prepare();
                  hamiltonian.local_op().prepare(kp.gkvec_partition());
                  hamiltonian.ctx().fft_coarse().prepare(kp.gkvec_partition());
                  kp.beta_projectors().prepare();
