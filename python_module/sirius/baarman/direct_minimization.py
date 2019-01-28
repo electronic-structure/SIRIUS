@@ -177,13 +177,13 @@ def constrain_occupancy_gradient(dfn, fn, comm, kweights, mag):
 
 
 class FreeEnergy:
-    def __init__(self, energy, temperature, H):
+    def __init__(self, energy, temperature, H, delta=1e-4):
         """
         Keyword Arguments:
-        self        --
-        energy      --
+        energy      -- total energy object
         temperature -- temperature in Kelvin
-        H           --
+        H           -- Hamiltonian
+        delta       -- smoothing parameter for entropy gradient
         """
         self.energy = energy
         self.temperature = temperature
@@ -192,7 +192,7 @@ class FreeEnergy:
         self.H = H
         self.kb = (physical_constants['Boltzmann constant in eV/K'][0] /
                    physical_constants['Hartree energy in eV'][0])
-
+        self.delta = delta
         if self.H.hamiltonian.ctx().num_mag_dims() == 0:
             self.scale = 0.5
         else:
@@ -207,7 +207,7 @@ class FreeEnergy:
 
         self.energy.kpointset.fn = fn
         E = self.energy(cn)
-        S = fermi_entropy(self.scale * fn)
+        S = fermi_entropy(self.scale * fn, dd=self.delta)
         entropy_loc = self.kb * self.temperature * np.sum(
             np.array(list((self.omega_k * S)._data.values())))
 
@@ -220,7 +220,6 @@ class FreeEnergy:
     def grad(self, cn, fn):
         """
         Keyword Arguments:
-        self --
         cn   -- planewave coefficients
         fn   -- occupation numbers
 
@@ -240,5 +239,5 @@ class FreeEnergy:
         dAdfn = np.real(
             einsum('ij,ij->j', cn.conj(), dAdC)
         ) + self.kb * self.temperature * self.omega_k * self.scale * df_fermi_entropy(
-            self.scale * fn)
+            self.scale * fn, dd=self.delta)
         return dAdC * fn, dAdfn.flatten(ctype=np.array)
