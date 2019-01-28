@@ -287,7 +287,8 @@ class CG:
             logger('!!!CG RESTART!!!')
             Y = -stiefel_project_tangent(dAdC, X)
             coeffs, Etrial = quadratic_approximation(
-                self.A, dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=se)
+                self.A, dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=se,
+                comm=self.comm, kweights=self.kweights, mag=self.mag)
 
         logger('\tquadratic approx: ', coeffs)
 
