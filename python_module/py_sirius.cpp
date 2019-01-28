@@ -490,9 +490,6 @@ PYBIND11_MODULE(py_sirius, m)
                  /* apply H to all wave functions */
                  int N = 0;
                  int n = num_wf;
-                 if (n != hamiltonian.ctx().num_bands()) {
-                     throw std::runtime_error("num_wf != num_bands");
-                 }
                  hamiltonian.prepare();
                  hamiltonian.local_op().prepare(kp.gkvec_partition());
                  hamiltonian.ctx().fft_coarse().prepare(kp.gkvec_partition());
@@ -555,9 +552,6 @@ PYBIND11_MODULE(py_sirius, m)
                  /* apply H to all wave functions */
                  int N = 0;
                  int n = num_wf;
-                 if (n != hamiltonian.ctx().num_bands()) {
-                     throw std::runtime_error("num_wf != num_bands");
-                 }
                  hamiltonian.local_op().prepare(kp.gkvec_partition());
                  hamiltonian.ctx().fft_coarse().prepare(kp.gkvec_partition());
                  kp.beta_projectors().prepare();
