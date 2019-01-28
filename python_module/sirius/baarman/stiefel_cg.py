@@ -154,7 +154,7 @@ def quadratic_approximation(free_energy, dAdC, dAdf, Y, y, X, fn, te, se,
         Xnew = U @ X
         ynew = fn + se * y
         eint1 = free_energy(Xnew, ynew)
-        logger('\tfree energy at interpolation point: ', eint1)
+        # logger('\tfree energy at interpolation point: ', eint1)
         dAdCnew, dAdfnew = free_energy.grad(Xnew, ynew)
         ynew = constrain_occupancy_gradient(dAdfnew, ynew, comm, kweights, mag)
         Asys[3, [0, 2]] = [2 * te, 1]
@@ -174,8 +174,8 @@ def quadratic_approximation(free_energy, dAdC, dAdf, Y, y, X, fn, te, se,
             rsys[0] = free_energy(X, fn)
         coeffs = np.linalg.solve(Asys, rsys)
         eint1_extrap = eval_quadratic_approx(coeffs, te, se)
-        logger('\tqapprox eint1: ', eint1)
-        logger('\tqapprox eint1_extrap: ', eint1_extrap)
+        # logger('\tqapprox eint1: ', eint1)
+        # logger('\tqapprox eint1_extrap: ', eint1_extrap)
 
     return coeffs, eint1
 
@@ -290,7 +290,7 @@ class CG:
                 self.A, dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=se,
                 comm=self.comm, kweights=self.kweights, mag=self.mag)
 
-        logger('\tquadratic approx: ', coeffs)
+        # logger('\tquadratic approx: ', coeffs)
 
         if np.abs(coeffs[1]) < 1e-9:
             sigma_min = 0
@@ -379,7 +379,7 @@ class CG:
         Fnext = stiefel_project_tangent(dAdC, Xout)
         # determine next direction
         gamma = self.polak_ribiere(Fnext, WF.cols(sel), F.cols(sel))
-        logger('gamma:', gamma)
+        # logger('gamma:', gamma)
 
         Ynew = -Fnext + gamma * Yt.cols(sel)
 
