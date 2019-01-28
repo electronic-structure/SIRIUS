@@ -288,8 +288,11 @@ class CoefficientArray:
         """
         convert to numpy array
         """
-        return np.concatenate(list(map(np.atleast_1d, self._data.values())),
-                              axis=0)
+        if len(self) > 0:
+            return np.concatenate(list(map(np.atleast_1d, self._data.values())),
+                                  axis=0)
+        else:
+            return np.array([])
 
     def from_array(self, X):
         """

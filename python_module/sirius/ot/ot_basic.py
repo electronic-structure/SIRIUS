@@ -90,7 +90,7 @@ class Energy:
                 for j, ek in enumerate(benergies):
                     self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
 
-                self.kpointset.sync_band_energies()
+            self.kpointset.sync_band_energies()
 
             return pp_total_energy(self.potential, self.density,
                                    self.kpointset, self.ctx)
@@ -133,6 +133,7 @@ class ApplyHamiltonian:
         from ..coefficient_array import PwCoeffs
 
         num_sc = self.hamiltonian.ctx().num_spins()
+        self.hamiltonian._apply_ref_inner_prepare()
         if isinstance(cn, PwCoeffs):
             assert (ki is None)
             assert (ispn is None)
@@ -148,7 +149,7 @@ class ApplyHamiltonian:
                                        num_sc)
                 for i, val in ispn_coeffs:
                     Psi_x.pw_coeffs(i)[:] = val
-                self.hamiltonian.apply_ref(self.kpointset[k], Psi_y, Psi_x)
+                self.hamiltonian._apply_ref_inner(self.kpointset[k], Psi_y, Psi_x)
                 # copy coefficients from Psi_y
                 for i, _ in ispn_coeffs:
                     if scale:
@@ -159,6 +160,7 @@ class ApplyHamiltonian:
                         out[(k, i)] = np.array(
                             Psi_y.pw_coeffs(i), copy=False)
                 # end for
+            self.hamiltonian._apply_ref_inner_dismiss()
             return out
         else:
             assert (ki in self.kpointset)
@@ -170,6 +172,7 @@ class ApplyHamiltonian:
             bnd_occ = np.array(kpoint.band_occupancy(ispn))
             Psi_x.pw_coeffs(ispn)[:] = cn
             self.hamiltonian.apply_ref(kpoint, Psi_y, Psi_x)
+            self.hamiltonian._apply_ref_inner_dismiss()
             if scale:
                 return np.matrix(
                     np.array(Psi_y.pw_coeffs(ispn), copy=False) * bnd_occ * w,
