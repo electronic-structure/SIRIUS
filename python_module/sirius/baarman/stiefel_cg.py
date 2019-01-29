@@ -9,7 +9,7 @@ from sirius.baarman import stiefel_project_tangent, stiefel_decompose_tangent, s
 from sirius.baarman import FreeEnergy
 from scipy.optimize import root
 # from sirius.baarman import ApplyHamiltonian as NewApplyHamiltonian
-from copy import copy
+from copy import copy, deepcopy
 import sirius.ot as ot
 import h5py
 from sirius import kpoint_index, Logger
@@ -61,7 +61,8 @@ def num_electrons(n, T, mu, num_spins):
 
 def trim(X, fn, tol=1e-12):
     """
-    #TODO: this should be called trim AND sort
+    Trim and sort.
+
     Keyword Arguments:
     X  -- pw coeffs
     fn -- occupation numbers
@@ -129,7 +130,6 @@ def quadratic_approximation(free_energy, dAdC, dAdf, Y, y, X, fn, te, se,
         Asys[0, 1] = 1
         rsys[0] = 2 * np.real(inner(dAdC, Y))
         logger('slope:', rsys[0])
-        assert rsys[2] < 1e-14
         Asys[1, [0, 1, 2]] = [te**2, te, 1]
         rsys[1] = free_energy(Xnew, ynew)
         Asys[2, 2] = 1
@@ -148,7 +148,7 @@ def quadratic_approximation(free_energy, dAdC, dAdf, Y, y, X, fn, te, se,
         # 2-nd line: dσ p(0,0)
         Asys[2, 3] = 1
         rsys[2] = np.real(inner(dAdf, y))
-        assert  rsys[2] < 1e-14
+        assert rsys[2] < 1e-7
         # 3-rd line: dτ p(te, se)
         # goto target point: U(te)X, fn+se*y
         Xnew = U @ X
@@ -173,7 +173,7 @@ def quadratic_approximation(free_energy, dAdC, dAdf, Y, y, X, fn, te, se,
             Asys[0, 4] = 1
             rsys[0] = free_energy(X, fn)
         coeffs = np.linalg.solve(Asys, rsys)
-        eint1_extrap = eval_quadratic_approx(coeffs, te, se)
+        # eint1_extrap = eval_quadratic_approx(coeffs, te, se)
         # logger('\tqapprox eint1: ', eint1)
         # logger('\tqapprox eint1_extrap: ', eint1_extrap)
 
@@ -238,7 +238,8 @@ class CG:
         """
         E = A(X0, f0)
         logger('entry E=', E)
-        X, fn, sel = trim(X0, f0, tol=1e-12)
+        # X, fn, sel = trim(X0, f0, tol=1e-12)
+        X, fn = deepcopy(X0), deepcopy(f0)
         Et = A(X, fn)
         assert (np.isclose(Et, E))
         dAdC, dAdf = A.grad(X, fn)
@@ -370,55 +371,16 @@ class CG:
         F = stiefel_project_tangent(dAdC, X)
         WF = W @ F
         # trim..
-        Xout, fnout, sel = trim(Xnew, ynew)
-        assert np.isclose(E, self.A(Xout, fnout))
+        # Xout, fnout, sel = trim(Xnew, ynew)
+        # assert np.isclose(E, self.A(Xout, fnout))
         # compute new gradients
-        self.A(Xout, fnout)
-        dAdC, dAdf = self.A.grad(Xout, fnout)
+        # self.A(Xnew, ynew)
+        dAdC, dAdf = self.A.grad(Xnew, ynew)
         # project to Stiefel manifold
-        Fnext = stiefel_project_tangent(dAdC, Xout)
+        Fnext = stiefel_project_tangent(dAdC, Xnew)
         # determine next direction
-        gamma = self.polak_ribiere(Fnext, WF.cols(sel), F.cols(sel))
-        # logger('gamma:', gamma)
+        gamma = self.polak_ribiere(Fnext, WF, F)
 
-        Ynew = -Fnext + gamma * Yt.cols(sel)
+        Ynew = -Fnext + gamma * Yt
 
-        Yo = stiefel_project_tangent(Ynew, Xout)
-        assert (np.isclose(Yo[0, 0], Ynew[0, 0]).all())
-
-        return Xout, Ynew, dAdC, fnout, dAdf
-
-
-# plt.ion()
-# init_state = DFT_ground_state_find(1)
-# density = init_state['density']
-# potential = init_state['potential']
-# hamiltonian = init_state['hamiltonian']
-# kpointset = init_state['kpointset']
-# ctx = init_state['ctx']
-
-# # python wrappers for Hamiltonian and Energy
-# H = ApplyHamiltonian(hamiltonian, kpointset)
-# E = Energy(kpointset, potential, density, H)
-
-# X = kpointset.C
-
-# logger('initialize occupancies using Fermi function')
-# n = ctx.unit_cell().num_electrons()
-# fn = kpointset.fn
-# nbands = len(fn[0, 0])
-# for k in fn.keys():
-#     T = 1
-#     num_spins = 1 if ctx.num_spins() == 2 else 2
-#     res = root(lambda mu: n/ctx.num_spins() -
-#                num_electrons(nbands, T, mu, num_spins), x0=0)
-#     assert (res['success'])
-#     mu = res['x']
-#     fn[k] = fermi_function(np.arange(nbands), T, mu, num_spins)
-
-# kpointset.fn = fn
-
-# free_energy = FreeEnergy(E, temperature=1, H=H)
-
-# cg = CG(free_energy, ctx.num_spins() == 2)
-# cg.run(X, fn, free_energy, maxiter=1500)
+        return Xnew, Ynew, dAdC, ynew, dAdf
