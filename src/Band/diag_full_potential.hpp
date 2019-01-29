@@ -743,11 +743,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
                 }
             }
         } else {
-#ifdef __SCALAPACK
-            linalg<CPU>::tranc(nfv, nfv, h, 0, nfv, h, nfv, 0);
-#else
-            TERMINATE_NO_SCALAPACK
-#endif
+            tranc(nfv, nfv, h, 0, nfv, h, nfv, 0);
         }
 
         for (int i = 0; i < nfv; i++) {

@@ -184,7 +184,7 @@ inline void orthogonalize(memory_t                     mem__,
                 TERMINATE(s);
             }
             /* inversion of triangular matrix */
-            if (linalg<CPU>::trtri(n__, &o__(0, 0), o__.ld())) {
+            if (linalg2(linalg_t::lapack).trtri(n__, &o__(0, 0), o__.ld())) {
                 TERMINATE("error in inversion");
             }
             if (is_device_memory(mem__)) {
@@ -238,7 +238,7 @@ inline void orthogonalize(memory_t                     mem__,
         if (sddk_debug >= 1) {
             diag = o__.get_diag(n__);
         }
-        if (int info = linalg<CPU>::potrf(n__, o__)) {
+        if (int info = linalg2(linalg_t::scalapack).potrf(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
             std::stringstream s;
             s << "error in Cholesky factorization, info = " << info << ", matrix size = " << n__;
             if (sddk_debug >= 1) {
@@ -249,7 +249,7 @@ inline void orthogonalize(memory_t                     mem__,
         t1.stop();
 
         utils::timer t2("sddk::orthogonalize|trtri");
-        if (linalg<CPU>::trtri(n__, o__)) {
+        if (linalg2(linalg_t::scalapack).trtri(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
             TERMINATE("error in inversion");
         }
         t2.stop();
