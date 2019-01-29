@@ -140,25 +140,28 @@ class ApplyHamiltonian:
             out = PwCoeffs(dtype=cn.dtype)
             cn._data.keys()
             for k, ispn_coeffs in cn.by_k().items():
-                num_wf = ispn_coeffs[0][1].shape[1]
                 kpoint = self.kpointset[k]
-                w = kpoint.weight()
+                # spins might have different number of bands ...
+                num_wf = max(ispn_coeffs, key=lambda x: x[1].shape[1])[1].shape[1]
                 Psi_x = Wave_functions(kpoint.gkvec_partition(), num_wf,
                                        num_sc)
                 Psi_y = Wave_functions(kpoint.gkvec_partition(), num_wf,
                                        num_sc)
                 for i, val in ispn_coeffs:
-                    Psi_x.pw_coeffs(i)[:] = val
+                    Psi_x.pw_coeffs(i)[:, :val.shape[1]] = val
                 self.hamiltonian._apply_ref_inner(self.kpointset[k], Psi_y, Psi_x)
+
+                w = kpoint.weight()
                 # copy coefficients from Psi_y
                 for i, _ in ispn_coeffs:
+                    num_wf = cn[(k, i)].shape[1]
                     if scale:
                         bnd_occ = np.array(kpoint.band_occupancy(i))
                         out[(k, i)] = np.array(
-                            Psi_y.pw_coeffs(i), copy=False) * bnd_occ * w
+                            Psi_y.pw_coeffs(i), copy=False)[:, :num_wf] * bnd_occ * w
                     else:
                         out[(k, i)] = np.array(
-                            Psi_y.pw_coeffs(i), copy=False)
+                            Psi_y.pw_coeffs(i), copy=False)[:, :num_wf]
                 # end for
             self.hamiltonian._apply_ref_inner_dismiss()
             return out
