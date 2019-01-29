@@ -39,6 +39,276 @@
 
 namespace sddk {
 
+class linalg2
+{
+  private:
+    linalg_t la_;
+  public:
+    linalg2(linalg_t la__)
+        : la_(la__)
+    {
+    }
+
+    template <typename T>
+    inline void gemm(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, T const* alpha, T const* A, ftn_int lda,
+                     T const* B, ftn_int ldb, T const* beta, T* C, ftn_int ldc, stream_id sid = stream_id(-1)) const;
+
+    template<typename T>
+    inline void ger(ftn_int m, ftn_int n, T const* alpha, T const* x, ftn_int incx, T const* y, ftn_int incy, T* A, ftn_int lda,
+                    stream_id sid = stream_id(-1)) const;
+
+    template <typename T>
+    inline void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T const* aplha, T const* A, ftn_int lda, T* B, ftn_int ldb);
+
+    template <typename T>
+    inline int potrf(ftn_int n, T* A, ftn_int lda);
+
+    template <typename T>
+    inline void trtri();
+};
+
+template <>
+inline void linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_double const* alpha,
+                                      ftn_double const* A, ftn_int lda, ftn_double const* B, ftn_int ldb,
+                                      ftn_double const* beta, ftn_double* C, ftn_int ldc, stream_id sid) const
+{
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(dgemm)(&transa, &transb, &m, &n, &k, const_cast<double*>(alpha), const_cast<double*>(A), &lda,
+                           const_cast<double*>(B), &ldb, const_cast<double*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        case linalg_t::cublas: {
+#if defined(__GPU) && defined(__CUDA)
+            cublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
+#else
+            throw std::runtime_error("not compiled with cublas");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+#if defined(__GPU) && defined(__CUDA)
+            cublas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+#else
+            throw std::runtime_error("not compiled with cublasxt");
+#endif
+            break;
+
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+}
+
+template <>
+inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k,
+                                              ftn_double_complex const* alpha, ftn_double_complex const* A, ftn_int lda,
+                                              ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const *beta,
+                                              ftn_double_complex* C, ftn_int ldc, stream_id sid) const
+{
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(zgemm)(&transa, &transb, &m, &n, &k, const_cast<ftn_double_complex*>(alpha),
+                           const_cast<ftn_double_complex*>(A), &lda, const_cast<ftn_double_complex*>(B), &ldb,
+                           const_cast<ftn_double_complex*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        case linalg_t::cublas: {
+#if defined(__GPU) && defined(__CUDA)
+            cublas::zgemm(transa, transb, m, n, k, reinterpret_cast<cuDoubleComplex const*>(alpha),
+                          reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex const*>(B), 
+                          ldb, reinterpret_cast<cuDoubleComplex const*>(beta),
+                          reinterpret_cast<cuDoubleComplex*>(C), ldc, sid());
+#else
+            throw std::runtime_error("not compiled with cublas");
+#endif
+            break;
+
+        }
+        case linalg_t::cublasxt: {
+#if defined(__GPU) && defined(__CUDA)
+            cublas::xt::zgemm(transa, transb, m, n, k, reinterpret_cast<cuDoubleComplex const*>(alpha),
+                              reinterpret_cast<cuDoubleComplex const*>(A), lda,
+                              reinterpret_cast<cuDoubleComplex const*>(B), ldb,
+                              reinterpret_cast<cuDoubleComplex const*>(beta),
+                              reinterpret_cast<cuDoubleComplex*>(C), ldc);
+#else
+            throw std::runtime_error("not compiled with cublasxt");
+#endif
+            break;
+
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+}
+
+template<>
+inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alpha, ftn_double const* x, ftn_int incx,
+                                     ftn_double const* y, ftn_int incy, ftn_double* A, ftn_int lda, stream_id sid) const
+{
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(dger)(&m, &n, const_cast<ftn_double*>(alpha), const_cast<ftn_double*>(x), &incx,
+                          const_cast<ftn_double*>(y), &incy, A, &lda);
+            break;
+        }
+        case  linalg_t::cublas: {
+#if defined(__GPU) && defined(__CUDA)
+            cublas::dger(m, n, alpha, x, incx, y, incy, A, lda, sid());
+#else
+            throw std::runtime_error("not compiled with cublas");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+            throw std::runtime_error("(d,z)ger is not implemented in cublasxt");
+            break;
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+}
+
+template <>
+inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double const* alpha,
+                                      ftn_double const* A, ftn_int lda, ftn_double* B, ftn_int ldb)
+{
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(dtrmm)(&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_double*>(alpha),
+                           const_cast<ftn_double*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        case  linalg_t::cublas: {
+#if defined(__GPU) && defined(__CUDA)
+            cublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+#else
+            throw std::runtime_error("not compiled with cublas");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+#if defined(__GPU) && defined(__CUDA)
+            cublas::xt::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+#else
+            throw std::runtime_error("not compiled with cublasxt");
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+}
+
+template <>
+inline void linalg2::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n,
+                                              ftn_double_complex const* alpha, ftn_double_complex const* A,
+                                              ftn_int lda, ftn_double_complex* B, ftn_int ldb)
+{
+    switch (la_) {
+        case linalg_t::blas: {
+            FORTRAN(ztrmm)(&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_double_complex*>(alpha),
+                           const_cast<ftn_double_complex*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+            break;
+        }
+        case  linalg_t::cublas: {
+#if defined(__GPU) && defined(__CUDA)
+            cublas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<cuDoubleComplex const*>(alpha), 
+                          reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex*>(B), ldb);
+#else
+            throw std::runtime_error("not compiled with cublas");
+#endif
+            break;
+        }
+        case linalg_t::cublasxt: {
+#if defined(__GPU) && defined(__CUDA)
+            cublas::xt::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<cuDoubleComplex const*>(alpha),
+                              reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex*>(B), ldb);
+#else
+            throw std::runtime_error("not compiled with cublasxt");
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+}
+
+template<>
+inline int linalg2::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda)
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(dpotrf)("U", &n, A, &lda, &info, (ftn_len)1);
+            return info;
+            break;
+        }
+        case linalg_t::magma: {
+#if defined(__GPU) && defined(__MAGMA)
+            return magma::dpotrf('U', n, A, lda);
+#else
+            throw std::runtime_error("not compiled with magma");
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline int linalg2::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda)
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(zpotrf)("U", &n, A, &lda, &info, (ftn_len)1);
+            return info;
+            break;
+        }
+        case linalg_t::magma: {
+#if defined(__GPU) && defined(__MAGMA)
+            return magma::zpotrf('U', n, reinterpret_cast<magmaDoubleComplex*>(A), lda);
+#else
+            throw std::runtime_error("not compiled with magma");
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+    return -1;
+}
+
 /// Linear algebra interface class.
 template <device_t pu>
 class linalg;
@@ -845,13 +1115,13 @@ inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_dou
 template<>
 inline ftn_int linalg<CPU>::potrf<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
 {
-    return linalg<CPU>::potrf<ftn_double>(n, A.at(memory_t::host), A.ld());
+    return linalg2(linalg_t::lapack).potrf(n, A.at(memory_t::host), A.ld());
 }
 
 template<>
 inline ftn_int linalg<CPU>::potrf<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
 {
-    return linalg<CPU>::potrf<ftn_double_complex>(n, A.at(memory_t::host), A.ld());
+    return linalg2(linalg_t::lapack).potrf(n, A.at(memory_t::host), A.ld());
 }
 
 template<>
@@ -1183,276 +1453,6 @@ inline double check_identity(dmatrix<T>& mtrx__, int n__)
     }
     mtrx__.comm().template allreduce<double, mpi_op_t::max>(&max_diff, 1);
     return max_diff;
-}
-
-class linalg2
-{
-  private:
-    linalg_t la_;
-  public:
-    linalg2(linalg_t la__)
-        : la_(la__)
-    {
-    }
-
-    template <typename T>
-    inline void gemm(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, T const* alpha, T const* A, ftn_int lda,
-                     T const* B, ftn_int ldb, T const* beta, T* C, ftn_int ldc, stream_id sid = stream_id(-1)) const;
-
-    template<typename T>
-    inline void ger(ftn_int m, ftn_int n, T const* alpha, T const* x, ftn_int incx, T const* y, ftn_int incy, T* A, ftn_int lda,
-                    stream_id sid = stream_id(-1)) const;
-
-    template <typename T>
-    inline void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T const* aplha, T const* A, ftn_int lda, T* B, ftn_int ldb);
-
-    template <typename T>
-    inline int potrf(ftn_int n, T* A, ftn_int lda);
-
-    template <typename T>
-    inline void trtri();
-};
-
-template <>
-inline void linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k, ftn_double const* alpha,
-                                      ftn_double const* A, ftn_int lda, ftn_double const* B, ftn_int ldb,
-                                      ftn_double const* beta, ftn_double* C, ftn_int ldc, stream_id sid) const
-{
-    assert(lda > 0);
-    assert(ldb > 0);
-    assert(ldc > 0);
-    assert(m > 0);
-    assert(n > 0);
-    assert(k > 0);
-    switch (la_) {
-        case linalg_t::blas: {
-            FORTRAN(dgemm)(&transa, &transb, &m, &n, &k, const_cast<double*>(alpha), const_cast<double*>(A), &lda,
-                           const_cast<double*>(B), &ldb, const_cast<double*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
-            break;
-        }
-        case linalg_t::cublas: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
-#else
-            throw std::runtime_error("not compiled with cublas");
-#endif
-            break;
-        }
-        case linalg_t::cublasxt: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
-#else
-            throw std::runtime_error("not compiled with cublasxt");
-#endif
-            break;
-
-        }
-        default: {
-            throw std::runtime_error("wrong type of linear algebra library");
-            break;
-        }
-    }
-}
-
-template <>
-inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n, ftn_int k,
-                                              ftn_double_complex const* alpha, ftn_double_complex const* A, ftn_int lda,
-                                              ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const *beta,
-                                              ftn_double_complex* C, ftn_int ldc, stream_id sid) const
-{
-    assert(lda > 0);
-    assert(ldb > 0);
-    assert(ldc > 0);
-    assert(m > 0);
-    assert(n > 0);
-    assert(k > 0);
-    switch (la_) {
-        case linalg_t::blas: {
-            FORTRAN(zgemm)(&transa, &transb, &m, &n, &k, const_cast<ftn_double_complex*>(alpha),
-                           const_cast<ftn_double_complex*>(A), &lda, const_cast<ftn_double_complex*>(B), &ldb,
-                           const_cast<ftn_double_complex*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
-            break;
-        }
-        case linalg_t::cublas: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::zgemm(transa, transb, m, n, k, reinterpret_cast<cuDoubleComplex const*>(alpha),
-                          reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex const*>(B), 
-                          ldb, reinterpret_cast<cuDoubleComplex const*>(beta),
-                          reinterpret_cast<cuDoubleComplex*>(C), ldc, sid());
-#else
-            throw std::runtime_error("not compiled with cublas");
-#endif
-            break;
-
-        }
-        case linalg_t::cublasxt: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::xt::zgemm(transa, transb, m, n, k, reinterpret_cast<cuDoubleComplex const*>(alpha),
-                              reinterpret_cast<cuDoubleComplex const*>(A), lda,
-                              reinterpret_cast<cuDoubleComplex const*>(B), ldb,
-                              reinterpret_cast<cuDoubleComplex const*>(beta),
-                              reinterpret_cast<cuDoubleComplex*>(C), ldc);
-#else
-            throw std::runtime_error("not compiled with cublasxt");
-#endif
-            break;
-
-        }
-        default: {
-            throw std::runtime_error("wrong type of linear algebra library");
-            break;
-        }
-    }
-}
-
-template<>
-inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alpha, ftn_double const* x, ftn_int incx,
-                                     ftn_double const* y, ftn_int incy, ftn_double* A, ftn_int lda, stream_id sid) const
-{
-    switch (la_) {
-        case linalg_t::blas: {
-            FORTRAN(dger)(&m, &n, const_cast<ftn_double*>(alpha), const_cast<ftn_double*>(x), &incx,
-                          const_cast<ftn_double*>(y), &incy, A, &lda);
-            break;
-        }
-        case  linalg_t::cublas: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::dger(m, n, alpha, x, incx, y, incy, A, lda, sid());
-#else
-            throw std::runtime_error("not compiled with cublas");
-#endif
-            break;
-        }
-        case linalg_t::cublasxt: {
-            throw std::runtime_error("(d,z)ger is not implemented in cublasxt");
-            break;
-        }
-        default: {
-            throw std::runtime_error("wrong type of linear algebra library");
-            break;
-        }
-    }
-}
-
-template <>
-inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double const* alpha,
-                                      ftn_double const* A, ftn_int lda, ftn_double* B, ftn_int ldb)
-{
-    switch (la_) {
-        case linalg_t::blas: {
-            FORTRAN(dtrmm)(&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_double*>(alpha),
-                           const_cast<ftn_double*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
-            break;
-        }
-        case  linalg_t::cublas: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
-#else
-            throw std::runtime_error("not compiled with cublas");
-#endif
-            break;
-        }
-        case linalg_t::cublasxt: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::xt::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
-#else
-            throw std::runtime_error("not compiled with cublasxt");
-#endif
-            break;
-        }
-        default: {
-            throw std::runtime_error("wrong type of linear algebra library");
-            break;
-        }
-    }
-}
-
-template <>
-inline void linalg2::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n,
-                                              ftn_double_complex const* alpha, ftn_double_complex const* A,
-                                              ftn_int lda, ftn_double_complex* B, ftn_int ldb)
-{
-    switch (la_) {
-        case linalg_t::blas: {
-            FORTRAN(ztrmm)(&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_double_complex*>(alpha),
-                           const_cast<ftn_double_complex*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
-            break;
-        }
-        case  linalg_t::cublas: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<cuDoubleComplex const*>(alpha), 
-                          reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex*>(B), ldb);
-#else
-            throw std::runtime_error("not compiled with cublas");
-#endif
-            break;
-        }
-        case linalg_t::cublasxt: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::xt::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<cuDoubleComplex const*>(alpha),
-                              reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex*>(B), ldb);
-#else
-            throw std::runtime_error("not compiled with cublasxt");
-#endif
-            break;
-        }
-        default: {
-            throw std::runtime_error("wrong type of linear algebra library");
-            break;
-        }
-    }
-}
-
-template<>
-inline int linalg2::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda)
-{
-    switch (la_) {
-        case linalg_t::lapack: {
-            ftn_int info;
-            FORTRAN(dpotrf)("U", &n, A, &lda, &info, (ftn_len)1);
-            return info;
-            break;
-        }
-        case linalg_t::magma: {
-#if defined(__GPU) && defined(__MAGMA)
-            return magma::dpotrf('U', n, A, lda);
-#else
-            throw std::runtime_error("not compiled with magma");
-#endif
-            break;
-        }
-        default: {
-            throw std::runtime_error("wrong type of linear algebra library");
-            break;
-        }
-    }
-    return -1;
-}
-
-template<>
-inline int linalg2::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda)
-{
-    switch (la_) {
-        case linalg_t::lapack: {
-            ftn_int info;
-            FORTRAN(zpotrf)("U", &n, A, &lda, &info, (ftn_len)1);
-            return info;
-            break;
-        }
-        case linalg_t::magma: {
-#if defined(__GPU) && defined(__MAGMA)
-            return magma::zpotrf('U', n, reinterpret_cast<magmaDoubleComplex*>(A), lda);
-#else
-            throw std::runtime_error("not compiled with magma");
-#endif
-            break;
-        }
-        default: {
-            throw std::runtime_error("wrong type of linear algebra library");
-            break;
-        }
-    }
-    return -1;
 }
 
 } // namespace sddk

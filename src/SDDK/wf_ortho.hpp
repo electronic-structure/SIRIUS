@@ -162,7 +162,7 @@ inline void orthogonalize(memory_t                     mem__,
         if (use_magma) {
 #ifdef __GPU
             /* Cholesky factorization */
-            if (int info = linalg<GPU>::potrf(n__, o__.at(memory_t::device), o__.ld())) {
+            if (int info = linalg2(linalg_t::magma).potrf(n__, o__.at(memory_t::device), o__.ld())) {
                 std::stringstream s;
                 s << "error in GPU factorization, info = " << info;
                 TERMINATE(s);
