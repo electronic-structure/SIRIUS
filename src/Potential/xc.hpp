@@ -587,11 +587,12 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
           for each grid point
         */
         if (ixc.is_vdw()) {
+#ifdef USE_VDWXC
             /* Van der Walls correction */
             std::vector<double> exc_t(num_points, 0.0);
             std::vector<double> vrho_t(num_points, 0.0);
             std::vector<double> vsigma_t(num_points, 0.0);
-            
+
             ixc.get_vdw(&rho.f_rg(0),
                         &grad_rho_grad_rho.f_rg(0),
                         &vrho_t[0],
@@ -613,6 +614,9 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
                 /* save the sigma derivative */
                 vsigma_tmp(i) += vsigma_t[i];
             }
+#else
+            TERMINATE("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
+#endif
         } else {
 #pragma omp parallel
             {
@@ -643,14 +647,12 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
                     std::vector<double> vrho_t(spl_np_t.local_size());
                     std::vector<double> vsigma_t(spl_np_t.local_size());
 
-                    if (ixc.is_gga()) {
-                        ixc.get_gga(spl_np_t.local_size(),
-                                    &rho.f_rg(spl_np_t.global_offset()),
-                                    &grad_rho_grad_rho.f_rg(spl_np_t.global_offset()),
-                                    &vrho_t[0],
-                                    &vsigma_t[0],
-                                    &exc_t[0]);
-                    }
+                    ixc.get_gga(spl_np_t.local_size(),
+                                &rho.f_rg(spl_np_t.global_offset()),
+                                &grad_rho_grad_rho.f_rg(spl_np_t.global_offset()),
+                                &vrho_t[0],
+                                &vsigma_t[0],
+                                &exc_t[0]);
 
                     /* this is the same expression between gga and vdw corrections.
                      * The functionals are different that's all */
@@ -878,10 +880,11 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
          * internaly */
 
         if (ixc.is_vdw()) {
+#ifdef USE_VDWXC
             std::vector<double> vrho_up_t(num_points, 0.0);
             std::vector<double> vrho_dn_t(num_points, 0.0);
             std::vector<double> vsigma_uu_t(num_points, 0.0);
-            std::vector<double> vsigma_ud_t(num_points, 0.0);
+//            std::vector<double> vsigma_ud_t(num_points, 0.0);
             std::vector<double> vsigma_dd_t(num_points, 0.0);
             std::vector<double> exc_t(num_points, 0.0);
 
@@ -901,14 +904,17 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
                 exc_tmp(i) += exc_t[i];
 
                 /* directly add to Vxc available contributions */
-                vxc_up_tmp(i) += (vrho_up_t[i] - 2 * vsigma_uu_t[i] * lapl_rho_up.f_rg(i) - vsigma_ud_t[i] * lapl_rho_dn.f_rg(i));
-                vxc_dn_tmp(i) += (vrho_dn_t[i] - 2 * vsigma_dd_t[i] * lapl_rho_dn.f_rg(i) - vsigma_ud_t[i] * lapl_rho_up.f_rg(i));
+                vxc_up_tmp(i) += vrho_up_t[i] - 2 * vsigma_uu_t[i] * lapl_rho_up.f_rg(i);
+                vxc_dn_tmp(i) += vrho_dn_t[i] - 2 * vsigma_dd_t[i] * lapl_rho_dn.f_rg(i);
 
                 /* save the sigma derivative */
                 vsigma_uu_tmp(i) += vsigma_uu_t[i];
-                vsigma_ud_tmp(i) += vsigma_ud_t[i];
+                //              vsigma_ud_tmp(i) += vsigma_ud_t[i];
                 vsigma_dd_tmp(i) += vsigma_dd_t[i];
             }
+#else
+            TERMINATE("You should not be there since sirius is not compiled with libVDWXC\n");
+#endif
         } else {
 #pragma omp parallel
             {

@@ -1596,7 +1596,17 @@ inline void Simulation_context::print_info() const
     printf("XC functionals\n");
     printf("==============\n");
     for (auto& xc_label : xc_functionals()) {
-        XC_functional_base xc(xc_label, num_spins());
+        XC_functional xc(fft(),
+                         unit_cell().lattice_vectors(),
+                         xc_label,
+                         num_spins());
+#ifdef USE_VDWXC
+        if (xc.is_vdw()) {
+            printf("Van der Walls functional\n");
+            printf("%s\n", xc.refs().c_str());
+            continue;
+        }
+#endif
         printf("%i) %s: %s\n", i, xc_label.c_str(), xc.name().c_str());
         printf("%s\n", xc.refs().c_str());
         i++;

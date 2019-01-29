@@ -401,7 +401,8 @@ class XC_functional_base
 
         xc_func_type handler_;
 
-        bool initialized_{false};
+
+        bool libxc_initialized_{false};
     private:
         /* forbid copy constructor */
         XC_functional_base(const XC_functional_base& src) = delete;
@@ -419,6 +420,7 @@ class XC_functional_base
             if (libxc_functionals.count(libxc_name_) == 0) {
                 /* if not just return since van der walls functionals can be
                  * used */
+                libxc_initialized_ = false;
                 return;
             }
 
@@ -427,7 +429,7 @@ class XC_functional_base
                 TERMINATE("xc_func_init() failed");
             }
 
-            initialized_ = true;
+            libxc_initialized_ = true;
         }
 
         XC_functional_base(XC_functional_base&& src__)
@@ -435,13 +437,13 @@ class XC_functional_base
             this->libxc_name_  = src__.libxc_name_;
             this->num_spins_   = src__.num_spins_;
             this->handler_     = src__.handler_;
-            this->initialized_ = true;
-            src__.initialized_ = false;
+            this->libxc_initialized_ = src__.libxc_initialized_;
+            src__.libxc_initialized_ = false;
         }
 
         ~XC_functional_base()
         {
-            if (initialized_) {
+            if (libxc_initialized_) {
                 xc_func_end(&handler_);
             }
         }
