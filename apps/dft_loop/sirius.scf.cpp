@@ -136,8 +136,9 @@ double ground_state(Simulation_context& ctx,
         dict["counters"]["band_evp_work_count"] = Band::evp_work_count();
 
         if (ctx.comm().rank() == 0) {
-            std::ofstream ofs(std::string("output_") + ctx.start_time_tag() + std::string(".json"),
-                              std::ofstream::out | std::ofstream::trunc);
+            std::string output_file = args.value<std::string>("output", std::string("output_") +
+                                                              ctx.start_time_tag() + std::string(".json"));
+            std::ofstream ofs(output_file, std::ofstream::out | std::ofstream::trunc);
             ofs << dict.dump(4);
         }
 
@@ -303,6 +304,7 @@ int main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--input=", "{string} input file name");
+    args.register_key("--output=", "{string} output file name");
     args.register_key("--task=", "{int} task id");
     args.register_key("--mpi_grid=", "{vector int} MPI grid dimensions");
     args.register_key("--aiida_output", "write output for AiiDA");
