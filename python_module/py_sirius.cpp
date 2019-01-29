@@ -462,7 +462,7 @@ PYBIND11_MODULE(py_sirius, m)
                  #ifdef __GPU
                  if (is_device_memory(ctx.preferred_memory_t())) {
                      for (int ispn = 0; ispn < num_sc; ++ispn)
-                         wf_out.copy_to(ispn, memory_t::host, 0, n);
+                         wf_out.copy_to(spin_idx(ispn), memory_t::host, 0, n);
                  }
                  #endif // __GPU
              }, "kpoint"_a, "wf_out"_a, "wf_in"_a);
