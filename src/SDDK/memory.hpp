@@ -415,7 +415,6 @@ struct memory_block_descriptor
 };
 
 /// Store information about the allocated subblock: iterator in the list of memory blocks and subblock size;
-//using memory_subblock_descriptor = std::pair<std::list<memory_block_descriptor>::iterator, size_t>;
 struct memory_subblock_descriptor
 {
     std::list<memory_block_descriptor>::iterator it_;
@@ -488,8 +487,6 @@ class memory_pool
             uip += (align_size - uip % align_size);
         }
         uint8_t* aligned_ptr = reinterpret_cast<uint8_t*>(uip);
-        //msb.first = it;
-        //msb.second = size;
         /* add to the hash table */
         map_ptr_[aligned_ptr] = msb;
         return reinterpret_cast<T*>(aligned_ptr);

@@ -26,23 +26,23 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     Wave_functions phi(gvecp, num_atoms, nmt, 2 * num_bands__, memory_t::host);
     Wave_functions hphi(gvecp, num_atoms, nmt, 2 * num_bands__, memory_t::host);
     Wave_functions tmp(gvecp, num_atoms, nmt, num_bands__, memory_t::host);
-    
+
     phi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
     phi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
     hphi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
     hphi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
 
     dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
-    
-    orthogonalize<double_complex>(pu, 0, phi, hphi, 0, num_bands__, ovlp, tmp);
-    orthogonalize<double_complex>(pu, 0, phi, hphi, num_bands__, num_bands__, ovlp, tmp);
 
-    memory_t mem{memory_t::host};
     linalg_t la{linalg_t::blas};
+    memory_t mem{memory_t::host};
     if (pu == device_t::GPU) {
-        mem = memory_t::device;
         la = linalg_t::cublas;
+        mem = memory_t::device;
     }
+
+    orthogonalize<double_complex>(mem, la, 0, phi, hphi, 0, num_bands__, ovlp, tmp);
+    orthogonalize<double_complex>(mem, la, 0, phi, hphi, num_bands__, num_bands__, ovlp, tmp);
 
     inner(mem, la, 0, phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
 
