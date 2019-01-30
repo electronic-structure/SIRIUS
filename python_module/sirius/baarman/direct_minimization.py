@@ -87,7 +87,8 @@ def occupancy_admissible_ds(y, fn, mag=False):
     if isinstance(fn, CoefficientArray):
         lmin = reduce(
             min,
-            [_occupancy_admissible_ds(y[k], fn[k], mag) for k in y.keys()])
+            [_occupancy_admissible_ds(y[k], fn[k], mag) for k in y.keys()],
+            np.finfo(np.float64).max)
         loc = np.array(lmin, dtype=np.float64)
         rcvBuf = np.array(0.0, dtype=np.float64)
 
