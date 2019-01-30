@@ -122,13 +122,13 @@ class Free_atom : public Atom_type_base
         free_atom_wave_functions_x_       = mdarray<double, 2>(np, num_atomic_levels());
         free_atom_wave_functions_x_deriv_ = mdarray<double, 2>(np, num_atomic_levels());
 
-        XC_functional *Ex = nullptr;
-        XC_functional Ec("XC_LDA_C_VWN", 1);;
+        XC_functional_base *Ex = nullptr;
+        XC_functional_base Ec("XC_LDA_C_VWN", 1);;
         if (rel) {
             TERMINATE("Fixme : the libxc staring with version 4 changed the way to set relativitic LDA exchange");
-            Ex = new XC_functional("XC_LDA_REL_X", 1);
+            Ex = new XC_functional_base("XC_LDA_REL_X", 1);
         } else {
-            Ex = new XC_functional("XC_LDA_X", 1);
+            Ex = new XC_functional_base("XC_LDA_X", 1);
         }
 
         std::vector<double> veff(np);
