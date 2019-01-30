@@ -35,7 +35,7 @@ class Simulation_parameters
 {
   protected:
     /// Type of the processing unit.
-    device_t processing_unit_{CPU};
+    device_t processing_unit_{device_t::CPU};
 
     /// Type of relativity for valence states.
     relativity_t valence_relativity_{relativity_t::zora};
@@ -93,6 +93,12 @@ class Simulation_parameters
         settings_input_.read(dict);
         /* read hubbard parameters */
         hubbard_input_.read(dict);
+    }
+
+    /// Import from command line arguments.
+    void import(cmd_args const& args__)
+    {
+        set_processing_unit(args__.value<std::string>.("control.processing_unit", control_input_.processing_unit_));
     }
 
     inline void set_lmax_apw(int lmax_apw__)
@@ -241,15 +247,11 @@ class Simulation_parameters
 
     inline void set_processing_unit(device_t pu__)
     {
-#ifdef __GPU
         if (acc::num_devices() == 0) {
             processing_unit_ = device_t::CPU;
         } else {
             processing_unit_ = pu__;
         }
-#else
-        processing_unit_ = device_t::CPU;
-#endif
     }
 
     inline void set_molecule(bool molecule__)
