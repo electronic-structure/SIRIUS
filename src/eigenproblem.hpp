@@ -1332,7 +1332,8 @@ class Eigensolver_cuda: public Eigensolver
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
 
         auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
-        A__.copy_to(memory_t::device);
+        //A__.copy_to(memory_t::device);
+        acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
         CALL_CUSOLVER(cusolverDnZheevd_bufferSize, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
@@ -1349,8 +1350,9 @@ class Eigensolver_cuda: public Eigensolver
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
-            acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
-            Z__.copy_to(memory_t::host);
+            acc::copyout(Z__.at(memory_t:host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+            //acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+            //Z__.copy_to(memory_t::host);
         }
         return info;
     }
@@ -1371,8 +1373,10 @@ class Eigensolver_cuda: public Eigensolver
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
 
         auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
-        A__.copy_to(memory_t::device);
-        B__.copy_to(memory_t::device);
+        acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
+        acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
+        //A__.copy_to(memory_t::device);
+        //B__.copy_to(memory_t::device);
 
         int lwork;
         CALL_CUSOLVER(cusolverDnZhegvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
@@ -1392,8 +1396,9 @@ class Eigensolver_cuda: public Eigensolver
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
-            acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
-            Z__.copy_to(memory_t::host);
+            acc::copyout(Z__.at(memory_t:host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+            //acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+            //Z__.copy_to(memory_t::host);
         }
         return info;
     }
