@@ -16,7 +16,7 @@ def _stiefel_project_tangent(V, X):
 
     n, m = X.shape
 
-    return (np.eye(n, n) - 0.5 * X @ X.H) @ V - 0.5 * X @ V.H @ X
+    return V - 0.5 * X @ (X.H @ V) - 0.5 * X @ (V.H @ X)
 
 
 def stiefel_project_tangent(V, X):
@@ -112,8 +112,6 @@ def _stiefel_transport_operators(Y, X, tau):
 
     """
     import numpy as np
-
-    _, ss, _ = np.linalg.svd(Y)
 
     B, Q, R = stiefel_decompose_tangent(Y, X)
     m, n = Q.shape
