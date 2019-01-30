@@ -29,6 +29,7 @@
 #include <string>
 #include <map>
 #include <sstream>
+#include <algorithm>
 
 /// Simple command line arguments handler.
 class cmd_args
@@ -46,7 +47,9 @@ class cmd_args
     template <typename T>
     std::vector<T> get_vector(std::string const key__) const
     {
-        std::istringstream iss(keys_.at(key__));
+        auto s = keys_.at(key__);
+        std::replace(s.begin(), s.end(), ':', ' ');
+        std::istringstream iss(s);
         std::vector<T> v;
         while (!iss.eof()) {
             T k;
