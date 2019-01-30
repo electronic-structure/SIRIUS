@@ -148,7 +148,7 @@ def quadratic_approximation(free_energy, dAdC, dAdf, Y, y, X, fn, te, se,
         # 2-nd line: dσ p(0,0)
         Asys[2, 3] = 1
         rsys[2] = np.real(inner(dAdf, y))
-        assert rsys[2] < 1e-7
+        # assert rsys[2] < 1e-7
         # 3-rd line: dτ p(te, se)
         # goto target point: U(te)X, fn+se*y
         Xnew = U @ X
