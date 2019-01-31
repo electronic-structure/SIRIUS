@@ -32,16 +32,16 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
         TERMINATE("this is not a Gamma-point calculation")
     }
 
-    auto mpi_grid_dims = args__.value<std::vector<int>>("mpi_grid", ctx.mpi_grid_dims());
+    auto mpi_grid_dims = args__.value("mpi_grid", ctx.mpi_grid_dims());
     ctx.set_mpi_grid_dims(mpi_grid_dims);
 
-    auto std_evp_solver_name = args__.value<std::string>("std_evp_solver_name", ctx.control().std_evp_solver_name_);
+    auto std_evp_solver_name = args__.value("std_evp_solver_name", ctx.control().std_evp_solver_name_);
     ctx.std_evp_solver_name(std_evp_solver_name);
 
-    auto gen_evp_solver_name = args__.value<std::string>("gen_evp_solver_name", ctx.control().gen_evp_solver_name_);
+    auto gen_evp_solver_name = args__.value("gen_evp_solver_name", ctx.control().gen_evp_solver_name_);
     ctx.gen_evp_solver_name(gen_evp_solver_name);
 
-    auto pu = args__.value<std::string>("processing_unit", ctx.control().processing_unit_);
+    auto pu = args__.value("processing_unit", ctx.control().processing_unit_);
     if (pu == "") {
 #ifdef __GPU
         pu = "gpu";
@@ -50,6 +50,7 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
 #endif
     }
     ctx.set_processing_unit(pu);
+    ctx.import(args__);
 
     return std::move(ctx_ptr);
 }
@@ -312,14 +313,15 @@ int main(int argn, char** argv)
     args.register_key("--std_evp_solver_name=", "{string} standard eigen-value solver");
     args.register_key("--gen_evp_solver_name=", "{string} generalized eigen-value solver");
     args.register_key("--processing_unit=", "{string} type of the processing unit");
-
-    args.parse_args(argn, argv);
-
-    if (args.exist("help")) {
-        printf("Usage: %s [options] \n", argv[0]);
-        args.print_help();
-        return 0;
-    }
+    args.register_key("--control.processing_unit=", "");
+    args.register_key("--control.processing_unit=", "");
+    args.register_key("--control.mpi_grid_dims=","");
+    args.register_key("--control.std_evp_solver_name=", "");
+    args.register_key("--control.gen_evp_solver_name=", "");
+    args.register_key("--control.fft_mode", "");
+    args.register_key("--control.memory_usage", "");
+    args.register_key("--parameters.ngridk", "");
+    args.register_key("--parameters.gamma_point", "");
 
     sirius::initialize(1);
 

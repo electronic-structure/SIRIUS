@@ -188,6 +188,11 @@ class cmd_args
     {
         return keys_.at(key__);
     }
+
+    std::map<std::string, std::string> keys() const
+    {
+        return keys_;
+    }
 };
 
 template <>

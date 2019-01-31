@@ -1187,16 +1187,8 @@ inline void Simulation_context::initialize()
     set_core_relativity(parameters_input().core_relativity_);
     set_valence_relativity(parameters_input().valence_relativity_);
 
-    /* get processing unit */
-    std::string pu = control().processing_unit_;
-    if (pu == "") {
-#if defined(__GPU)
-        pu = "gpu";
-#else
-        pu = "cpu";
-#endif
-    }
-    set_processing_unit(pu);
+    /* set processing unit type */
+    set_processing_unit(control().processing_unit_);
 
     /* check if we can use a GPU device */
     if (processing_unit() == device_t::GPU) {

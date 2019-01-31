@@ -1105,30 +1105,6 @@ inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_dou
 }
 
 #else
-//template<>
-//inline ftn_int linalg<CPU>::potrf<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
-//{
-//    return linalg2(linalg_t::lapack).potrf(n, A.at(memory_t::host), A.ld());
-//}
-//
-//template<>
-//inline ftn_int linalg<CPU>::potrf<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
-//{
-//    return linalg2(linalg_t::lapack).potrf(n, A.at(memory_t::host), A.ld());
-//}
-//
-//template<>
-//inline ftn_int linalg<CPU>::trtri<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
-//{
-//    return linalg<CPU>::trtri<ftn_double>(n, A.at(memory_t::host), A.ld());
-//}
-//
-//template<>
-//inline ftn_int linalg<CPU>::trtri<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
-//{
-//    return linalg<CPU>::trtri<ftn_double_complex>(n, A.at(memory_t::host), A.ld());
-//}
-
 template <>
 inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
 {
