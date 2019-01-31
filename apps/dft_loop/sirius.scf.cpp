@@ -314,7 +314,6 @@ int main(int argn, char** argv)
     args.register_key("--gen_evp_solver_name=", "{string} generalized eigen-value solver");
     args.register_key("--processing_unit=", "{string} type of the processing unit");
     args.register_key("--control.processing_unit=", "");
-    args.register_key("--control.processing_unit=", "");
     args.register_key("--control.mpi_grid_dims=","");
     args.register_key("--control.std_evp_solver_name=", "");
     args.register_key("--control.gen_evp_solver_name=", "");
