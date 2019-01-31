@@ -98,7 +98,7 @@ class Simulation_parameters
     /// Import from command line arguments.
     void import(cmd_args const& args__)
     {
-        set_processing_unit(args__.value<std::string>.("control.processing_unit", control_input_.processing_unit_));
+        set_processing_unit(args__.value<std::string>("control.processing_unit", control_input_.processing_unit_));
     }
 
     inline void set_lmax_apw(int lmax_apw__)

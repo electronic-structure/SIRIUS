@@ -1350,7 +1350,7 @@ class Eigensolver_cuda: public Eigensolver
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
-            acc::copyout(Z__.at(memory_t:host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
             //acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
             //Z__.copy_to(memory_t::host);
         }
@@ -1396,7 +1396,7 @@ class Eigensolver_cuda: public Eigensolver
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
-            acc::copyout(Z__.at(memory_t:host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
             //acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
             //Z__.copy_to(memory_t::host);
         }
