@@ -322,6 +322,13 @@ int main(int argn, char** argv)
     args.register_key("--parameters.ngridk", "");
     args.register_key("--parameters.gamma_point", "");
 
+    args.parse_args(argn, argv);
+    if (args.exist("help")) {
+        printf("Usage: %s [options]\n", argv[0]);
+        args.print_help();
+        return 0;
+    }
+
     sirius::initialize(1);
 
     run_tasks(args);
