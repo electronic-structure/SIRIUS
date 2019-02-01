@@ -317,10 +317,10 @@ int main(int argn, char** argv)
     args.register_key("--control.mpi_grid_dims=","");
     args.register_key("--control.std_evp_solver_name=", "");
     args.register_key("--control.gen_evp_solver_name=", "");
-    args.register_key("--control.fft_mode", "");
-    args.register_key("--control.memory_usage", "");
-    args.register_key("--parameters.ngridk", "");
-    args.register_key("--parameters.gamma_point", "");
+    args.register_key("--control.fft_mode=", "");
+    args.register_key("--control.memory_usage=", "");
+    args.register_key("--parameters.ngridk=", "");
+    args.register_key("--parameters.gamma_point=", "");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
