@@ -38,13 +38,17 @@ pipeline {
                 node('ssl_daintvm1') {
                     dir('SIRIUS') {
                         sh '''
-                    	     cd build
+                           cd build
                            export SIRIUS_BINARIES=$(realpath apps/dft_loop)
                            type -f ${SIRIUS_BINARIES}/sirius.scf
                            export ENVFILE=$(realpath ../ci/env-gnu-gpu)
                            sbatch --wait ../ci/run-mc-verification.sh
                            cat *err
                            cat *out
+                           cp *.{out,err} ../
+                           # delete some of the heavy directories
+                           cd ../
+                           rm -rf build verification examples
                            '''
                     }
                 }
