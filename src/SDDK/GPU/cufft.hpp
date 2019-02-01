@@ -77,19 +77,15 @@ inline void error_message(cufftResult result)
         gethostname(nm, 1024);                                                      \
         printf("hostname: %s\n", nm);                                               \
         printf("Error in %s at line %i of file %s: ", #func__, __LINE__, __FILE__); \
-        cufft::error_message(result);                                                      \
+        cufft::error_message(result);                                               \
         exit(-100);                                                                 \
     }                                                                               \
 }
 
-inline void create_plan_handle(cufftHandle* plan)
+inline void destroy_plan_handle(void* plan)
 {
-    CALL_CUFFT(cufftCreate, (plan));
-}
-
-inline void destroy_plan_handle(cufftHandle plan)
-{
-    CALL_CUFFT(cufftDestroy, (plan));
+    CALL_CUFFT(cufftDestroy, (*static_cast<cufftHandle*>(plan)));
+    delete static_cast<cufftHandle*>(plan);
 }
 
 // Size of work buffer in bytes
@@ -106,18 +102,14 @@ inline size_t get_work_size(int ndim, int* dims, int nfft)
     return work_size;
 }
 
-inline size_t create_batch_plan(cufftHandle plan, int rank, int* dims, int* embed, int stride, int dist, int nfft, int auto_alloc)
+inline void* create_batch_plan(int rank, int* dims, int* embed, int stride, int dist, int nfft, bool auto_alloc)
 {
-    int fft_size = 1;
-    for (int i = 0; i < rank; i++) {
-        fft_size *= dims[i];
-    }
+    auto plan = new cufftHandle;
+
+    CALL_CUFFT(cufftCreate, (plan));
     
-    if (auto_alloc) {
-        CALL_CUFFT(cufftSetAutoAllocation, (plan, true));
-    } else {
-        CALL_CUFFT(cufftSetAutoAllocation, (plan, false));
-    }
+    CALL_CUFFT(cufftSetAutoAllocation, (*static_cast<cufftHandle*>(plan), auto_alloc));
+
     size_t work_size;
 
     /* 1D
@@ -134,31 +126,31 @@ inline size_t create_batch_plan(cufftHandle plan, int rank, int* dims, int* embe
 
        - See more at: http://docs.nvidia.com/cuda/cufft/index.html#advanced-data-layout
      */
-    CALL_CUFFT(cufftMakePlanMany, (plan, rank, dims, embed, stride, dist, embed, stride, dist, CUFFT_Z2Z, nfft, &work_size));
+    CALL_CUFFT(cufftMakePlanMany, (*static_cast<cufftHandle*>(plan), rank, dims, embed, stride, dist, embed, stride, dist, CUFFT_Z2Z, nfft, &work_size));
 
-    return work_size;
+    return plan;
 }
 
-inline void set_work_area(cufftHandle plan, void* work_area)
+inline void set_work_area(void* plan, void* work_area)
 {
-    CALL_CUFFT(cufftSetWorkArea, (plan, work_area));
+    CALL_CUFFT(cufftSetWorkArea, (*static_cast<cufftHandle*>(plan), work_area));
 }
 
-inline void set_stream(cufftHandle plan__, int stream_id__)
+inline void set_stream(void* plan__, stream_id sid__)
 {
-    CALL_CUFFT(cufftSetStream, (plan__, acc::stream(stream_id(stream_id__))));
+    CALL_CUFFT(cufftSetStream, (*static_cast<cufftHandle*>(plan__), acc::stream(sid__)));
 }
 
-inline void forward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer)
+inline void forward_transform(void* plan, std::complex<double>* fft_buffer)
 {
     //CUDA_timer t("cufft_forward_transform");
-    CALL_CUFFT(cufftExecZ2Z, (plan, fft_buffer, fft_buffer, CUFFT_FORWARD));
+    CALL_CUFFT(cufftExecZ2Z, (*static_cast<cufftHandle*>(plan), (cuDoubleComplex*)fft_buffer, (cuDoubleComplex*)fft_buffer, CUFFT_FORWARD));
 }
 
-inline void backward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer)
+inline void backward_transform(void* plan, std::complex<double>* fft_buffer)
 {
     //CUDA_timer t("cufft_backward_transform");
-    CALL_CUFFT(cufftExecZ2Z, (plan, fft_buffer, fft_buffer, CUFFT_INVERSE));
+    CALL_CUFFT(cufftExecZ2Z, (*static_cast<cufftHandle*>(plan), (cuDoubleComplex*)fft_buffer, (cuDoubleComplex*)fft_buffer, CUFFT_INVERSE));
 }
 
 } // namespace cufft

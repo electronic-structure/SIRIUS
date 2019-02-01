@@ -51,17 +51,16 @@ void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& 
     kp.allocate_hubbard_wave_functions(this->number_of_hubbard_orbitals());
 
     // temporary wave functions
-    Wave_functions sphi(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), num_sc);
+    Wave_functions sphi(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), ctx_.preferred_memory_t(), num_sc);
 
     kp.generate_atomic_wave_functions_aux(this->number_of_hubbard_orbitals(), sphi, this->offset, true);
 
     // check if we have a norm conserving pseudo potential only
-    bool augment = false;
+    bool augment{false};
     for (auto ia = 0; (ia < ctx_.unit_cell().num_atom_types()) && (!augment); ia++) {
         augment = ctx_.unit_cell().atom_type(ia).augment();
     }
 
-    #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
             /* allocate GPU memory */
@@ -71,7 +70,6 @@ void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& 
             kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
         }
     }
-    #endif
 
     for (int s = 0; s < num_sc; s++) {
         // I need to consider the case where all atoms are norm
@@ -101,16 +99,14 @@ void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& 
 
     orthogonalize_atomic_orbitals(kp, sphi);
 
-    #ifdef __GPU
     // All calculations on GPU then we need to copy the final result back to the cpus
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
             sphi.pw_coeffs(ispn).prime().deallocate(memory_t::device);
             // copy the hubbard wave functions on the host and then deallocate on GPU
             kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, this->number_of_hubbard_orbitals());
         }
     }
-    #endif
 }
 
 void Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
@@ -128,20 +124,25 @@ void Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
         dmatrix<double_complex> S(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals());
         S.zero();
 
-        #ifdef __GPU
-        if (ctx_.processing_unit()) {
+        if (ctx_.processing_unit() == device_t::GPU) {
             S.allocate(memory_t::device);
         }
-        #endif
+
+        memory_t mem{memory_t::host};
+        linalg_t la{linalg_t::blas};
+        if (ctx_.processing_unit() == device_t::GPU) {
+            mem = memory_t::device;
+            la = linalg_t::cublas;
+        }
 
         if (ctx_.num_mag_dims() == 3) {
-            inner<double_complex>(ctx_.processing_unit(), 2, sphi, 0, this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(), 0,
+            inner<double_complex>(mem, la, 2, sphi, 0, this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(), 0,
                                   this->number_of_hubbard_orbitals(), S, 0, 0);
         } else {
             // we do not need to treat both up and down spins for the
             // colinear case because the up and down components are
             // identical
-            inner<double_complex>(ctx_.processing_unit(), 0, sphi, 0, this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(), 0,
+            inner<double_complex>(mem, la, 0, sphi, 0, this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(), 0,
                                   this->number_of_hubbard_orbitals(), S, 0, 0);
 
             // for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
@@ -161,7 +162,7 @@ void Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
         if (this->orthogonalize_hubbard_orbitals_) {
             dmatrix<double_complex> Z(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals());
 
-            auto ev_solver = Eigensolver_factory<double_complex>(ev_solver_t::lapack);
+            auto ev_solver = Eigensolver_factory(ev_solver_t::lapack);
 
             std::vector<double> eigenvalues(this->number_of_hubbard_orbitals(), 0.0);
 

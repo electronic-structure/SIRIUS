@@ -108,7 +108,7 @@ Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
 /* number of wave-functions */
 int N = 100;
 /* create scalar wave-functions for N bands */
-Wave_functions wf(gvp, N);
+Wave_functions wf(gvp, N, memory_t::host);
 /* spin index for scalar wave-functions */
 int ispn = 0;
 /* fill with random numbers */
@@ -122,12 +122,12 @@ int bs = 16;
 /* create a distributed overlap matrix */
 dmatrix<double_complex> o(N, N, grid, bs, bs);
 /* create temporary wave-functions */
-Wave_functions tmp(gvp, N);
+Wave_functions tmp(gvp, N, memory_t::host);
 /* orthogonalize wave-functions */
 orthogonalize<double_complex, 0, 0>(CPU, ispn, {&wf},
                                     0, N, o, tmp);
 /* compute overlap */
-inner(CPU, ispn, wf, 0, N, wf, 0, N, o, 0, 0);
+inner(memory_t::host, linalg_t::blas, ispn, wf, 0, N, wf, 0, N, o, 0, 0);
 /* get the diagonal of the matrix */
 auto d = o.get_diag(N);
 /* check diagonal */
@@ -167,7 +167,7 @@ fft.prepare(gvp);
 /* number of wave-functions */
 int N = 100;
 /* create scalar wave-functions for N bands */
-Wave_functions wf(gvp, N);
+Wave_functions wf(gvp, N, memory_t::host);
 /* spin index for scalar wave-functions */
 int ispn = 0;
 /* fill with random numbers */
@@ -175,7 +175,7 @@ wf.pw_coeffs(ispn).prime() = [](int64_t, int64_t){
     return utils::random<double_complex>();
 };
 /* resulting |v*wf> */
-Wave_functions vwf(gvp, N);
+Wave_functions vwf(gvp, N, memory_t::host);
 /* remap wave-functions */
 wf.pw_coeffs(ispn).remap_forward(CPU, N, 0);
 /* prepare the target wave-functions */

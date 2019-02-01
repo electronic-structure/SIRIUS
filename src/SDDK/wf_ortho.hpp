@@ -70,10 +70,17 @@ inline void orthogonalize(device_t                     pu__,
 
     double gflops{0};
 
+    memory_t mem{memory_t::host};
+    linalg_t la{linalg_t::blas};
+    if (pu__ == device_t::GPU) {
+        mem = memory_t::device;
+        la = linalg_t::cublas;
+    }
+
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0) {
-        inner(pu__, ispn__, *wfs__[idx_bra__], 0, N__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+        inner(mem, la, ispn__, *wfs__[idx_bra__], 0, N__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
         transform(pu__, ispn__, -1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
 
         if (sddk_pp) {
@@ -85,7 +92,7 @@ inline void orthogonalize(device_t                     pu__,
         if (o__.comm().rank() == 0) {
             printf("check QR decomposition, matrix size : %i\n", n__);
         }
-        inner(pu__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+        inner(mem, la, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
         linalg<CPU>::geqrf(n__, n__, o__, 0, 0);
         auto diag = o__.get_diag(n__);
@@ -100,7 +107,7 @@ inline void orthogonalize(device_t                     pu__,
         if (o__.comm().rank() == 0) {
             printf("check eigen-values, matrix size : %i\n", n__);
         }
-        inner(pu__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+        inner(mem, la, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
         //if (sddk_debug >= 3) {
         //    save_to_hdf5("nxn_overlap.h5", o__, n__);
@@ -109,7 +116,7 @@ inline void orthogonalize(device_t                     pu__,
         std::vector<double> eo(n__);
         dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-        auto solver = Eigensolver_factory<T>(ev_solver_t::scalapack);
+        auto solver = Eigensolver_factory(ev_solver_t::scalapack);
         solver->solve(n__, o__, eo.data(), evec);
 
         if (o__.comm().rank() == 0) {
@@ -122,7 +129,7 @@ inline void orthogonalize(device_t                     pu__,
     }
 
     /* orthogonalize new n__ x n__ block */
-    inner(pu__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+    inner(mem, la, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
     if (sddk_debug >= 1) {
         if (o__.comm().rank() == 0) {
@@ -443,7 +450,7 @@ inline void orthogonalize(memory_t                     mem__,
         std::vector<double> eo(n__);
         dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-        auto solver = Eigensolver_factory<T>(ev_solver_t::scalapack);
+        auto solver = Eigensolver_factory(ev_solver_t::scalapack);
         solver->solve(n__, o__, eo.data(), evec);
 
         if (o__.comm().rank() == 0) {

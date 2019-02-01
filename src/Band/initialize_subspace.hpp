@@ -88,7 +88,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     /* initial basis functions */
-    Wave_functions phi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions phi(mp, kp__->gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
         phi.pw_coeffs(ispn).prime().zero();
     }
@@ -148,19 +148,18 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
     H__.local_op().prepare(kp__->gkvec_partition());
 
     /* allocate wave-functions */
-    Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
-    Wave_functions ophi(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
+    Wave_functions ophi(mp, kp__->gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
     /* temporary wave-functions required as a storage during orthogonalization */
-    Wave_functions wf_tmp(mp, kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions wf_tmp(mp, kp__->gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);
 
     int bs = ctx_.cyclic_block_size();
 
-    auto gen_solver = Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
+    auto& gen_solver = ctx_.gen_evp_solver();
 
     dmatrix<T> hmlt(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> ovlp(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> evec(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> hmlt_old;
 
     std::vector<double> eval(num_bands);
 
@@ -168,25 +167,18 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
 
     kp__->beta_projectors().prepare();
 
-    if (is_device_memory(ctx_.aux_preferred_memory_t())) {
+    if (is_device_memory(ctx_.preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);
-        phi.preferred_memory_t(ctx_.aux_preferred_memory_t());
+
         for (int ispn = 0; ispn < num_sc; ispn++) {
             phi.pw_coeffs(ispn).allocate(mpd);
             phi.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_phi_tot);
         }
-    }
 
-    if (is_device_memory(ctx_.preferred_memory_t())) {
-        auto& mpd = ctx_.mem_pool(memory_t::device);
-        kp__->spinor_wave_functions().preferred_memory_t(ctx_.preferred_memory_t());
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             kp__->spinor_wave_functions().pw_coeffs(ispn).allocate(mpd);
         }
 
-        hphi.preferred_memory_t(ctx_.preferred_memory_t());
-        ophi.preferred_memory_t(ctx_.preferred_memory_t());
-        wf_tmp.preferred_memory_t(ctx_.preferred_memory_t());
         for (int ispn = 0; ispn < num_sc; ispn++) {
             hphi.pw_coeffs(ispn).allocate(mpd);
             ophi.pw_coeffs(ispn).allocate(mpd);
@@ -217,7 +209,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
 
-            set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, hmlt, hmlt_old);
+            set_subspace_mtrx<T>(1, num_phi_tot, phi, ophi, hmlt);
             if (ctx_.control().verification_ >= 2) {
                 hmlt.serialize("overlap", num_phi_tot);
             }
@@ -229,8 +221,8 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
                 TERMINATE(s);
             }
             std::vector<double> eo(num_phi_tot);
-            auto std_solver = Eigensolver_factory<T>(ctx_.std_evp_solver_type());
-            if (std_solver->solve(num_phi_tot, num_phi_tot, hmlt, eo.data(), evec)) {
+            auto& std_solver = ctx_.std_evp_solver();
+            if (std_solver.solve(num_phi_tot, num_phi_tot, hmlt, eo.data(), evec)) {
                 std::stringstream s;
                 s << "error in diagonalization";
                 TERMINATE(s);
@@ -244,8 +236,8 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
         }
 
         /* setup eigen-value problem */
-        set_subspace_mtrx<T>(0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
-        set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp, hmlt_old);
+        set_subspace_mtrx<T>(0, num_phi_tot, phi, hphi, hmlt);
+        set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp);
 
         if (ctx_.control().verification_ >= 2) {
             hmlt.serialize("hmlt", num_phi_tot);
@@ -253,7 +245,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
         }
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (gen_solver->solve(num_phi_tot, num_bands, hmlt, ovlp, eval.data(), evec)) {
+        if (gen_solver.solve(num_phi_tot, num_bands, hmlt, ovlp, eval.data(), evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);

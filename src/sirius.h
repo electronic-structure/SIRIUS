@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -125,8 +125,9 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     if (acc::num_devices()) {
         //acc::set_device();
 #if defined(__CUDA)
-        cublas::destroy_stream_handles();
+        cusolver::destroy_handle();
         cublas::xt::destroy_handle();
+        cublas::destroy_stream_handles();
 #endif
         acc::destroy_streams();
         if (reset_device__) {
