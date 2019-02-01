@@ -221,10 +221,6 @@ class CG:
         from sirius import inner
         import numpy as np
 
-        iWF = inner(WF, WF)
-        iF = inner(F, F)
-        # assert np.isclose(iWF, iF, atol=1e-4)
-
         return np.real(inner(Fnext - WF, Fnext)) / np.real(inner(F, F))
 
     def run(self, X0, f0, A, maxiter=100, tol=1e-8):

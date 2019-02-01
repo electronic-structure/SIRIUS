@@ -228,6 +228,7 @@ PYBIND11_MODULE(py_sirius, m)
              [](Unit_cell& obj, py::buffer l1, py::buffer l2, py::buffer l3) { set_lattice_vectors(obj, l1, l2, l3); })
         .def("get_symmetry", &Unit_cell::get_symmetry)
         .def("num_electrons", &Unit_cell::num_electrons)
+        .def("num_valence_electrons", &Unit_cell::num_valence_electrons)
         .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
         .def("generate_radial_functions", &Unit_cell::generate_radial_functions);
 
