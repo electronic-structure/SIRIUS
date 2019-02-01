@@ -479,9 +479,9 @@ class Eigensolver_elpa : public Eigensolver
 
         utils::timer t1("Eigensolver_elpa|to_std");
         /* Cholesky factorization B = U^{H}*U */
-        linalg<CPU>::potrf(matrix_size__, B__);
+        linalg2(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
         /* inversion of the triangular matrix */
-        linalg<CPU>::trtri(matrix_size__, B__);
+        linalg2(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
         /* U^{-1} is upper triangular matrix */
         for (int i = 0; i < matrix_size__; i++) {
             for (int j = i + 1; j < matrix_size__; j++) {
@@ -540,9 +540,9 @@ class Eigensolver_elpa : public Eigensolver
 
         utils::timer t1("Eigensolver_elpa|to_std");
         /* Cholesky factorization B = U^{H}*U */
-        linalg<CPU>::potrf(matrix_size__, B__);
+        linalg2(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
         /* inversion of the triangular matrix */
-        linalg<CPU>::trtri(matrix_size__, B__);
+        linalg2(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
         /* U^{-1} is upper triangular matrix */
         for (int i = 0; i < matrix_size__; i++) {
             for (int j = i + 1; j < matrix_size__; j++) {
