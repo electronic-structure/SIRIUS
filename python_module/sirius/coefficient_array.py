@@ -1,6 +1,19 @@
 import numpy as np
 
-__all__ = ['CoefficientArray', 'inner', 'l2norm', 'PwCoeffs']
+__all__ = ['CoefficientArray', 'inner', 'l2norm', 'PwCoeffs', 'diag']
+
+
+def diag(x):
+    """
+    TODO: make a check not to flatten a 2d matrix
+    """
+    if isinstance(x, CoefficientArray):
+        out = type(x)(dtype=x.dtype, ctype=x.ctype)
+        for key, val in x._data.items():
+            out[key] = np.diag(np.array(val).flatten())
+        return out
+    else:
+        return np.diag(x)
 
 
 def inner(a, b):
@@ -84,13 +97,9 @@ class CoefficientArray:
         """
         from mpi4py import MPI
         loc_sum = np.array(
-            sum([np.sum(v) for _, v in self.items()]), dtype=np.complex128)
-        rcvBuf = np.array(0.0, dtype=np.complex128)
-
-        MPI.COMM_WORLD.Allreduce([loc_sum, MPI.DOUBLE_COMPLEX],
-                                 [rcvBuf, MPI.DOUBLE_COMPLEX],
-                                 op=MPI.SUM)
-        return np.asscalar(rcvBuf)
+            sum([np.sum(v) for _, v in self.items()]), dtype=self.dtype)
+        reduced = MPI.COMM_WORLD.allreduce(loc_sum, op=MPI.SUM)
+        return np.asscalar(reduced)
 
     def __mul__(self, other):
         """

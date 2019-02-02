@@ -1,6 +1,6 @@
 # from .bands import *
 from .helpers import *
-from .coefficient_array import CoefficientArray, PwCoeffs, inner, l2norm
+from .coefficient_array import CoefficientArray, PwCoeffs, inner, l2norm, diag
 # from .baarman import *
 from .py_sirius import *
 from .py_sirius import K_point_set
