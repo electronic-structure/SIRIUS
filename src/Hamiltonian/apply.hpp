@@ -104,8 +104,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
             for (int ispn = 0; ispn < 2; ispn++) {
 
                 auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn, N__, n__);
-
-                if (ctx_.control().print_checksum_) {
+                if (ctx_.control().print_checksum_ && kp__->comm().rank() == 0) {
                     std::stringstream s;
                     s << "<beta|phi_" << ispn << ">";
                     auto cs = beta_phi.checksum();
@@ -132,6 +131,13 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         } else { /* non-magnetic or collinear case */
 
             auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn__, N__, n__);
+            if (ctx_.control().print_checksum_ && kp__->comm().rank() == 0) {
+                std::stringstream s;
+                s << "<beta|phi_" << ispn__ << ">";
+                auto cs = beta_phi.checksum();
+                utils::print_checksum(s.str(), cs);
+            }
+
             if (hphi__) {
                 D<T>().apply(i, ispn__, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
             }
