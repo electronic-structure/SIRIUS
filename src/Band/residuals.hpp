@@ -413,7 +413,7 @@ inline int Band::residuals(K_point*             kp__,
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
     if (std::is_same<T, double>::value && kp__->comm().rank() == 0 && n != 0) {
         assert(ispn__ == 0 || ispn__ == 1);
-        if (is_device_memory(res_.preferred_memory_t()) {
+        if (is_device_memory(res__.preferred_memory_t())) {
 #if defined(__GPU)
             make_real_g0_gpu(res__.pw_coeffs(ispn__).prime().at(memory_t::device), res__.pw_coeffs(ispn__).prime().ld(), n);
 #endif

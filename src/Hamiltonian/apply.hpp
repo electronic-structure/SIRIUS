@@ -105,6 +105,13 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
                 auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn, N__, n__);
 
+                if (ctx_.control().print_checksum_) {
+                    std::stringstream s;
+                    s << "<beta|phi_" << ispn << ">";
+                    auto cs = beta_phi.checksum();
+                    utils::print_checksum(s.str(), cs);
+                }
+
                 if (hphi__) {
                     /* apply diagonal spin blocks */
                     D<T>().apply(i, ispn, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
@@ -345,26 +352,20 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                             alm_tmp(igk, xi) = std::conj(alm_tmp(igk, xi));
                         }
                     }
-#if defined(__GPU)
                     if (ctx_.processing_unit() == device_t::GPU) {
                         alm_tmp.copy_to(memory_t::device, stream_id(tid));
                     }
-#endif
                     if (hphi__ != nullptr) {
                         apply_hmt_to_apw<spin_block_t::nm>(atom, ngv, alm_tmp, halm_tmp);
-#if defined(__GPU)
                         if (ctx_.processing_unit() == device_t::GPU) {
                             halm_tmp.copy_to(memory_t::device, stream_id(tid));
                         }
-#endif
                     }
                 }
             }
-#if defined(__GPU)
             if (ctx_.processing_unit() == device_t::GPU) {
                 acc::sync_stream(stream_id(tid));
             }
-#endif
         }
     };
 

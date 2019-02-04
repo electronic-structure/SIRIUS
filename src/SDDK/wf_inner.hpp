@@ -419,7 +419,8 @@ inline void inner(memory_t        mem__,
         time += omp_get_wtime();
         int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();
         if (comm.rank() == 0) {
-            printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n", ngop * m__ * n__ * k / time / comm.size(), m__, n__, k, time);
+            printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
+                   ngop * m__ * n__ * k / time / comm.size(), m__, n__, k, time);
         }
     }
 }
