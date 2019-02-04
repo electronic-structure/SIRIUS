@@ -411,20 +411,15 @@ inline int Band::residuals(K_point*             kp__,
 
     /* prevent numerical noise */
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
-    if (std::is_same<T, double>::value && kp__->comm().rank() == 0 && n != 0) { // TODO: fix for preferred_memory_t()
+    if (std::is_same<T, double>::value && kp__->comm().rank() == 0 && n != 0) {
         assert(ispn__ == 0 || ispn__ == 1);
-        switch (ctx_.processing_unit()) {
-            case CPU: {
-                for (int i = 0; i < n; i++) {
-                    res__.pw_coeffs(ispn__).prime(0, i) = res__.pw_coeffs(ispn__).prime(0, i).real();
-                }
-                break;
-            }
-            case GPU: {
+        if (is_device_memory(res_.preferred_memory_t()) {
 #if defined(__GPU)
-                make_real_g0_gpu(res__.pw_coeffs(ispn__).prime().at(memory_t::device), res__.pw_coeffs(ispn__).prime().ld(), n);
+            make_real_g0_gpu(res__.pw_coeffs(ispn__).prime().at(memory_t::device), res__.pw_coeffs(ispn__).prime().ld(), n);
 #endif
-                break;
+        } else {
+            for (int i = 0; i < n; i++) {
+                res__.pw_coeffs(ispn__).prime(0, i) = res__.pw_coeffs(ispn__).prime(0, i).real();
             }
         }
     }
