@@ -296,7 +296,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
             }
         }
 
-        orthogonalize(ctx_.processing_unit(), 0, phi, ophi, N, n, ovlp, res);
+        orthogonalize(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, ophi, N, n, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -357,7 +357,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
             utils::timer t1("sirius::Band::get_singular_components|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.processing_unit(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
+            transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
@@ -368,7 +368,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
                 }
 
                 if (itso.converge_by_energy_) {
-                    transform(ctx_.processing_unit(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
+                    transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
                 }
 
                 ovlp_old.zero();
@@ -549,7 +549,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
             H__.apply_fv_h_o(&kp__, false, false, N, n, phi, &hphi, &ophi);
         }
 
-        orthogonalize(ctx_.processing_unit(), 0, phi, hphi, ophi, N, n, ovlp, res);
+        orthogonalize(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, hphi, ophi, N, n, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -588,7 +588,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
             utils::timer t1("sirius::Band::diag_fv_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.processing_unit(), 0, phi, 0, N, evec, 0, 0, psi, 0, num_bands);
+            transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, 0, N, evec, 0, 0, psi, 0, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
@@ -743,11 +743,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
                 }
             }
         } else {
-#ifdef __SCALAPACK
-            linalg<CPU>::tranc(nfv, nfv, h, 0, nfv, h, nfv, 0);
-#else
-            TERMINATE_NO_SCALAPACK
-#endif
+            tranc(nfv, nfv, h, 0, nfv, h, nfv, 0);
         }
 
         for (int i = 0; i < nfv; i++) {

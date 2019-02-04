@@ -207,13 +207,8 @@ void Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
 
         // now apply the overlap matrix
         // Apply the transform on the wave functions
-        transform<double_complex>(ctx_.processing_unit(), (ctx_.num_mag_dims() == 3) ? 2 : 0, sphi, 0, this->number_of_hubbard_orbitals(),
+        transform<double_complex>(mem, la, (ctx_.num_mag_dims() == 3) ? 2 : 0, sphi, 0, this->number_of_hubbard_orbitals(),
                                   S, 0, 0, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals());
 
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            S.deallocate(memory_t::device);
-        }
-        #endif
     }
 }

@@ -67,9 +67,6 @@ class spin_idx
     }
 };
 
-//TODO: set preferred memory in the constructor and don't change it. If the device memory was not allocated before
-//      the linear algebra call this will immediately segfaults which is easy to debug.
-
 /// Wave-functions representation.
 /** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
  *  with the slab distribution. Wave-functions have one or two spin components. In case of collinear magnetism

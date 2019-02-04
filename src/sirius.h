@@ -72,6 +72,9 @@ inline void initialize(bool call_mpi_init__ = true)
     }
     if (Communicator::world().rank() == 0) {
         printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version, minor_version, revision, git_hash);
+#if !defined(NDEBUG)
+        printf("Warning! Compiled in 'debug' mode with assert statemsnts enabled!\n");
+#endif
     }
     /* get number of ranks per node during the global call to sirius::initialize() */
     sddk::num_ranks_per_node();

@@ -455,10 +455,9 @@ inline void check_last_error()
 
 inline bool check_device_ptr(void const* ptr__)
 {
-    //set_device();
     cudaPointerAttributes attr;
     cudaError_t error = cudaPointerGetAttributes(&attr, ptr__);
-    cudaGetLastError();
+    //cudaGetLastError();
     if (error != cudaSuccess) {
         return false;
     }

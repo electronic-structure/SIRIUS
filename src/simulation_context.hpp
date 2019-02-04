@@ -56,11 +56,10 @@ inline void print_memory_usage(const char* file__, int line__)
     n += snprintf(&str[n], 2048, " VmHWM: %i Mb, VmRSS: %i Mb", static_cast<int>(VmHWM >> 20),
                   static_cast<int>(VmRSS >> 20));
 
-#ifdef __GPU
-    size_t gpu_mem = acc::get_free_mem();
-    n += snprintf(&str[n], 2048, ", GPU free memory: %i Mb", static_cast<int>(gpu_mem >> 20));
-#endif
-
+    if (acc::num_devices() > 0) {
+        size_t gpu_mem = acc::get_free_mem();
+        n += snprintf(&str[n], 2048, ", GPU free memory: %i Mb", static_cast<int>(gpu_mem >> 20));
+    }
     printf("%s\n", &str[0]);
 }
 
@@ -1188,16 +1187,8 @@ inline void Simulation_context::initialize()
     set_core_relativity(parameters_input().core_relativity_);
     set_valence_relativity(parameters_input().valence_relativity_);
 
-    /* get processing unit */
-    std::string pu = control().processing_unit_;
-    if (pu == "") {
-#if defined(__GPU)
-        pu = "gpu";
-#else
-        pu = "cpu";
-#endif
-    }
-    set_processing_unit(pu);
+    /* set processing unit type */
+    set_processing_unit(control().processing_unit_);
 
     /* check if we can use a GPU device */
     if (processing_unit() == device_t::GPU) {

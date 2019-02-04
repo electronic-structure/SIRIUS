@@ -63,6 +63,7 @@ enum class linalg_t
     none,
     blas,
     lapack,
+    scalapack,
     cublas,
     cublasxt,
     magma
@@ -73,11 +74,12 @@ inline linalg_t get_linalg_t(std::string name__)
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 
     static const std::map<std::string, linalg_t> map_to_type = {
-        {"blas",     linalg_t::blas},
-        {"lapack",   linalg_t::lapack},
-        {"cublas",   linalg_t::cublas},
-        {"cublasxt", linalg_t::cublasxt},
-        {"magma",    linalg_t::magma},
+        {"blas",      linalg_t::blas},
+        {"lapack",    linalg_t::lapack},
+        {"scalapack", linalg_t::scalapack},
+        {"cublas",    linalg_t::cublas},
+        {"cublasxt",  linalg_t::cublasxt},
+        {"magma",     linalg_t::magma},
     };
 
     if (map_to_type.count(name__) == 0) {
@@ -230,27 +232,6 @@ class linalg_base
     static int32_t iceil(int32_t inum, int32_t idenom)
     {
         return FORTRAN(iceil)(&inum, &idenom);
-    }
-
-    static void pztranc(ftn_int m, ftn_int n, ftn_double_complex alpha, ftn_double_complex* A, ftn_int ia, ftn_int ja,
-                        ftn_int const* desca, ftn_double_complex beta, ftn_double_complex* C, ftn_int ic, ftn_int jc,
-                        ftn_int const* descc)
-    {
-        FORTRAN(pztranc)(&m, &n, &alpha, A, &ia, &ja, desca, &beta, C, &ic, &jc, descc);
-    }
-
-    static void pztranu(ftn_int m, ftn_int n, ftn_double_complex alpha, ftn_double_complex* A, ftn_int ia, ftn_int ja,
-                        ftn_int const* desca, ftn_double_complex beta, ftn_double_complex* C, ftn_int ic, ftn_int jc,
-                        ftn_int const* descc)
-    {
-        FORTRAN(pztranu)(&m, &n, &alpha, A, &ia, &ja, desca, &beta, C, &ic, &jc, descc);
-    }
-
-    static void pdtran(ftn_int m, ftn_int n, ftn_double alpha, ftn_double* A, ftn_int ia, ftn_int ja,
-                       ftn_int const* desca, ftn_double beta, ftn_double* C, ftn_int ic, ftn_int jc,
-                       ftn_int const* descc)
-    {
-        FORTRAN(pdtran)(&m, &n, &alpha, A, &ia, &ja, desca, &beta, C, &ic, &jc, descc);
     }
 #endif
 };

@@ -124,7 +124,7 @@ dmatrix<double_complex> o(N, N, grid, bs, bs);
 /* create temporary wave-functions */
 Wave_functions tmp(gvp, N, memory_t::host);
 /* orthogonalize wave-functions */
-orthogonalize<double_complex, 0, 0>(CPU, ispn, {&wf},
+orthogonalize<double_complex, 0, 0>(memory_t::host, linalg_t::blas, ispn, {&wf},
                                     0, N, o, tmp);
 /* compute overlap */
 inner(memory_t::host, linalg_t::blas, ispn, wf, 0, N, wf, 0, N, o, 0, 0);
