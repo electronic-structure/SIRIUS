@@ -64,7 +64,7 @@ class BandEnergiesDescriptor(object):
         for k in range(len(instance)):
             for ispn in range(instance.ctx().num_spins()):
                 key = k, ispn
-                out[key] = instance[k].band_energies(ispn)
+                out[key] = np.array(instance[k].band_energies(ispn))
         return out
 
     def __set__(self, instance, value):
@@ -72,7 +72,7 @@ class BandEnergiesDescriptor(object):
             k, ispn = key
             for j, v in enumerate(val):
                 instance[k].set_band_energy(j, ispn, v)
-
+            instance.sync_band_energies()
 
 K_point_set.fn = OccupancyDescriptor()
 K_point_set.C = PWDescriptor()
