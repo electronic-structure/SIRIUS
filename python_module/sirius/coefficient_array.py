@@ -1,6 +1,14 @@
 import numpy as np
 
-__all__ = ['CoefficientArray', 'inner', 'l2norm', 'PwCoeffs', 'diag']
+__all__ = ['CoefficientArray', 'inner', 'l2norm',
+           'PwCoeffs', 'diag', 'einsum', 'ones_like']
+
+
+def is_complex(x):
+    if isinstance(x, CoefficientArray):
+        return np.iscomplexobj(x.dtype())
+    else:
+        return np.iscomplexobj(x)
 
 
 def diag(x):
@@ -10,10 +18,25 @@ def diag(x):
     if isinstance(x, CoefficientArray):
         out = type(x)(dtype=x.dtype, ctype=x.ctype)
         for key, val in x._data.items():
-            out[key] = np.diag(np.array(val).flatten())
+            if val.size == max(val.shape):
+                out[key] = np.diag(np.array(val, ).flatten())
+            else:
+                out[key] = np.diag(val)
         return out
     else:
         return np.diag(x)
+
+
+def ones_like(x, dtype=None):
+    """
+    TODO: make a check not to flatten a 2d matrix
+    """
+    if isinstance(x, CoefficientArray):
+        return CoefficientArray.ones_like(x, dtype=dtype)
+    else:
+        if dtype is None:
+            dtype = x.dtype
+        return np.diag(x, dtype=dtype)
 
 
 def inner(a, b):
@@ -35,16 +58,20 @@ def l2norm(a):
     return np.sqrt(np.real(inner(a, a)))
 
 
-def einsum(expr, a, b):
+def einsum(expr, *operands):
     """
     map einsum over elements of CoefficientArray
     """
+
+    assert len(operands) > 0
+
     try:
-        return np.einsum(expr, a, b)
+        return np.einsum(expr, *operands)
     except ValueError:
-        out = type(a)(dtype=a.dtype)
-        for key in a._data.keys():
-            out[key] = np.einsum(expr, a[key], b[key])
+        out = type(operands[0])(dtype=operands[0].dtype)
+        for key in operands[0]._data.keys():
+            out[key] = np.einsum(expr,
+                                 *list(map(lambda x: x[key], operands)))
         return out
 
 
@@ -103,9 +130,13 @@ class CoefficientArray:
 
     def __mul__(self, other):
         """
-        Returns a new object of type type(self)
         """
-        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        if is_complex(self) or is_complex(other):
+            dtype = np.complex
+        else:
+            dtype = np.float
+
+        out = type(self)(dtype=dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
                 out[key] = np.einsum('...,...->...', self._data[key],
@@ -118,7 +149,12 @@ class CoefficientArray:
         return out
 
     def __truediv__(self, other):
-        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        if is_complex(self) or is_complex(other):
+            dtype = np.complex
+        else:
+            dtype = np.float
+
+        out = type(self)(dtype=dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
                 out[key] = np.einsum('...,...->...', self._data[key],
@@ -132,10 +168,12 @@ class CoefficientArray:
 
     def __matmul__(self, other):
         """
-        TODO
         """
-        # TODO: complex | double -> complex, double | double -> double
-        out = type(self)(dtype=np.complex)
+        if is_complex(self) or is_complex(other):
+            dtype = np.complex
+        else:
+            dtype = np.float
+        out = type(self)(dtype=dtype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
                 out[key] = self._data[key] @ other._data[key]
@@ -147,7 +185,12 @@ class CoefficientArray:
         return out
 
     def __add__(self, other):
-        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        if is_complex(self) or is_complex(other):
+            dtype = np.complex
+        else:
+            dtype = np.float
+
+        out = type(self)(dtype=dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
                 out[key] = self._data[key] + other._data[key]
@@ -163,7 +206,7 @@ class CoefficientArray:
         return out
 
     def abs(self):
-        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        out = type(self)(dtype=np.float, ctype=self.ctype)
         for key in self._data.keys():
             out[key] = np.abs(self._data[key])
         return out
@@ -187,6 +230,27 @@ class CoefficientArray:
             s[key] = sl
             Vh[key] = Vhl
         return U, s, Vh
+
+    def eigh(self, **args):
+        w = type(self)(dtype=np.float64, ctype=np.array)
+        V = type(self)(dtype=self.dtype, ctype=np.matrix)
+        for key in self._data.keys():
+            w[key], V[key] = np.linalg.eigh(self[key], **args)
+        return w, V
+
+    def eig(self, **args):
+        w = type(self)(dtype=np.complex, ctype=np.array)
+        V = type(self)(dtype=self.dtype, ctype=np.matrix)
+        for key in self._data.keys():
+            w[key], V[key] = np.linalg.eig(self[key], **args)
+        return w, V
+
+    def qr(self, **args):
+        Q = type(self)(dtype=self.dtype, ctype=np.matrix)
+        R = type(self)(dtype=self.dtype, ctype=np.matrix)
+        for key in self._data.keys():
+            Q[key], R[key] = np.linalg.qr(self[key], **args)
+        return Q, R
 
     def keys(self):
         return self._data.keys()
@@ -272,9 +336,9 @@ class CoefficientArray:
         """
         Hermitian conjugate
         """
-        out = type(self)(dtype=self.dtype)
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
         for key, val in self._data.items():
-            out[key] = val.H
+            out[key] = np.atleast_2d(val).H
         return out
 
     @property
@@ -282,9 +346,9 @@ class CoefficientArray:
         """
         Tranpose
         """
-        out = type(self)(dtype=self.dtype)
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
         for key, val in self._data.items():
-            out[key] = val.T
+            out[key] = np.atleast_2d(val).T
         return out
 
     def __str__(self):
@@ -320,6 +384,18 @@ class CoefficientArray:
             p.text('\n')
             p.pretty(val)
             p.text('\n')
+
+    @staticmethod
+    def ones_like(x, dtype=None, ctype=None):
+        if ctype is None:
+            ctype = x.ctype
+        if dtype is None:
+            dtype = x.dtype
+        out = type(x)(dtype=dtype, ctype=ctype)
+        for k in x._data.keys():
+            out[k] = np.ones_like(x[k], dtype=dtype)
+
+        return out
 
     __lmul__ = __mul__
     __rmul__ = __mul__
