@@ -277,7 +277,7 @@ class dmatrix : public matrix<T>
             map_col[j] = spl_c1[n0 + j] - jc0__;
         }
 
-        #pragma omp parallel for
+        //#pragma omp parallel for
         for (int j = 0; j < n1 - n0; j++) {
             for (int i = 0; i < m1 - m0; i++) {
                 (*this)(m0 + i, n0 + j) = ptr__[map_row[i] + ld__ * map_col[j]];
