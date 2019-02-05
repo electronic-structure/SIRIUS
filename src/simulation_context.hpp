@@ -1073,11 +1073,11 @@ class Simulation_context : public Simulation_parameters
         /* iterate to find lambda */
         do {
             lambda += 0.1;
-            upper_bound =
-                charge * charge * std::sqrt(2.0 * lambda / twopi) * std::erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
+            upper_bound = charge * charge * std::sqrt(2.0 * lambda / twopi) *
+                          std::erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
         } while (upper_bound < 1e-8);
 
-        if (lambda < 1.5) {
+        if (lambda < 1.5 && comm().rank() == 0) {
             std::stringstream s;
             s << "ewald_lambda(): pw_cutoff is too small";
             WARNING(s);
@@ -1100,7 +1100,7 @@ class Simulation_context : public Simulation_parameters
         return memory_pool_.at(M__);
     }
 
-    /// Get a defalt memory pool for a given device.
+    /// Get a default memory pool for a given device.
     memory_pool& mem_pool(device_t dev__)
     {
         switch (dev__) {

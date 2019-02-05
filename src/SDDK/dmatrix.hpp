@@ -255,6 +255,36 @@ class dmatrix : public matrix<T>
     //    }
     //}
 
+    void set(int ir0__, int jc0__, int mr__, int nc__, T* ptr__, int ld__)
+    {
+        splindex<block_cyclic> spl_r0(ir0__,        blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+        splindex<block_cyclic> spl_r1(ir0__ + mr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+
+        splindex<block_cyclic> spl_c0(jc0__,        blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+        splindex<block_cyclic> spl_c1(jc0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+
+        int m0 = spl_r0.local_size();
+        int m1 = spl_r1.local_size();
+        int n0 = spl_c0.local_size();
+        int n1 = spl_c1.local_size();
+        std::vector<int> map_row(m1 - m0);
+        std::vector<int> map_col(n1 - n0);
+
+        for (int i = 0; i < m1 - m0; i++) {
+            map_row[i] = spl_r1[m0 + i] - ir0__;
+        }
+        for (int j = 0; j < n1 - n0; j++) {
+            map_col[j] = spl_c1[n0 + j] - jc0__;
+        }
+
+        #pragma omp parallel for
+        for (int j = 0; j < n1 - n0; j++) {
+            for (int i = 0; i < m1 - m0; i++) {
+                (*this)(m0 + i, n0 + j) = ptr__[map_row[i] + ld__ * map_col[j]];
+            }
+        }
+    }
+
     inline void set(const int irow_glob, const int icol_glob, T val)
     {
         auto r = spl_row_.location(irow_glob);

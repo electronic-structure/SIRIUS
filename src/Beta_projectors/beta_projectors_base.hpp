@@ -459,7 +459,7 @@ inline void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs
             switch (ctx_.processing_unit()) {
                 case device_t::GPU: {
                     beta_pw_coeffs_a_ptr__ = reinterpret_cast<double*>(const_cast<double_complex*>(&pw_coeffs_a_g0_(0)));
-                    incx = 1;
+                    incx = 2;
                     break;
                 }
                 case device_t::CPU: break;
