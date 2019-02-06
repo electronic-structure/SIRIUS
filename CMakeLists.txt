@@ -13,13 +13,12 @@ set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
 set(USE_CUDA OFF CACHE BOOL "use CUDA")
 set(USE_MKL OFF CACHE BOOL "use Intel MKL")
+set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
 set(USE_SCALAPACK OFF CACHE BOOL "use scalapack")
 set(BUILD_TESTS OFF CACHE BOOL "build tests")
 set(GPU_MODEL "none" CACHE STRING "The target GPU architecture; one of {none,P100,G10x0}")
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "G10x0")
-
-# TODO: mkl provides scalapack, make sure not both options turned on
 
 # Set release as the default build type.
 if (NOT CMAKE_BUILD_TYPE)
@@ -49,7 +48,7 @@ list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")
 
 if(USE_SCALAPACK)
-    add_definitions("-D__SCALAPACK")
+  add_definitions("-D__SCALAPACK")
 endif()
 
 find_package(MPI REQUIRED)
@@ -58,14 +57,20 @@ if(USE_MKL)
   set(USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
   find_package(MKL REQUIRED)
   include_directories(BEFORE ${MKL_INCLUDE_DIR})
+elseif(USE_CRAY_LIBSCI)
+  if(USE_MKL)
+    message(FATAL_ERROR "CANNOT USE_CRAY_LIBSCI _AND_ USE_MKL, use one of them.")
+  endif()
+  find_package(CRAY_LIBSCI REQUIRED)
+  set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${CRAY_LIBSCI_LIBRARIES}")
 else()
   find_package(LAPACK REQUIRED)
   if(USE_SCALAPACK)
-    find_package(ScaLAPACK REQUIRED) # just sets scalapack_DIR
+    find_package(SCALAPACK REQUIRED) # just sets scalapack_DIR
     include_directories(BEFORE ${SCALAPACK_INCLUDE_DIR})
     set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${SCALAPACK_LIBRARIES}")
   endif()
-endif(USE_MKL)
+endif()
 
 find_package(FFTW REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -116,7 +121,7 @@ if(USE_MAGMA)
 endif(USE_MAGMA)
 
 # add required libraries
-set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${GSL_LIBRARIES};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
+set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${GSL_LIBRARY};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
 
 # set OpenMP flags
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -138,19 +143,19 @@ include_directories(BEFORE src/SDDK)
 add_custom_command(
   OUTPUT _always_rebuild
   COMMAND true
-)
+  )
 add_custom_command(
-    OUTPUT version.hpp-test
-    DEPENDS _always_rebuild
-    COMMAND python ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
-)
+  OUTPUT version.hpp-test
+  DEPENDS _always_rebuild
+  COMMAND python ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
+  )
 
 set(version_hpp_path src/version.hpp)
 add_custom_command(
-    OUTPUT ${version_hpp_path}
-    DEPENDS version.hpp-test
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different version.hpp-test ${version_hpp_path}
-)
+  OUTPUT ${version_hpp_path}
+  DEPENDS version.hpp-test
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different version.hpp-test ${version_hpp_path}
+  )
 
 add_custom_target(generate_version_hpp DEPENDS ${version_hpp_path})
 
