@@ -947,17 +947,17 @@ class Eigensolver_scalapack : public Eigensolver
         double d1;
         ftn_int info{-1};
 
-        double work1;
+        double work1[3];
         ftn_int lwork  = -1;
         ftn_int liwork = -1;
         /* work size query */
         FORTRAN(pdsygvx)
         (&ione, "V", "I", "U", &matrix_size__, A__.at(memory_t::host), &ione, &ione, desca, B__.at(memory_t::host),
          &ione, &ione, descb, &d1, &d1, &ione, &nev__, &abstol_, &m, &nz, w.get(), &ortfac_, Z__.at(memory_t::host),
-         &ione, &ione, descz, &work1, &lwork, &liwork, &lwork, ifail.get(), iclustr.get(), gap.get(), &info, (ftn_int)1,
+         &ione, &ione, descz, work1, &lwork, &liwork, &lwork, ifail.get(), iclustr.get(), gap.get(), &info, (ftn_int)1,
          (ftn_int)1, (ftn_int)1);
 
-        lwork = static_cast<int32_t>(work1) + 4 * (1 << 20);
+        lwork = static_cast<int32_t>(work1[0]) + 4 * (1 << 20);
 
         auto work  = mp_h_.get_unique_ptr<double>(lwork);
         auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
