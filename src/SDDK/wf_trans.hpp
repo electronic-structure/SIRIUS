@@ -184,11 +184,16 @@ inline void transform(memory_t                     mem__,
 
     int num_streams = std::min(4, omp_get_max_threads());
 
-    mdarray<T, 1> buf(BS * BS, memory_t::host_pinned, "transform::buf");
-    mdarray<T, 3> submatrix(BS, BS, num_streams, memory_t::host_pinned, "transform::submatrix");
+    mdarray<T, 1> buf;
+    mdarray<T, 3> submatrix;
 
     if (is_device_memory(mem__)) {
+        buf = mdarray<T, 1>(BS * BS, memory_t::host_pinned, "transform::buf");
+        submatrix = mdarray<T, 3>(BS, BS, num_streams, memory_t::host_pinned, "transform::submatrix");
         submatrix.allocate(memory_t::device);
+    } else {
+        buf = mdarray<T, 1>(BS * BS, memory_t::host, "transform::buf");
+        submatrix = mdarray<T, 3>(BS, BS, num_streams, memory_t::host, "transform::submatrix");
     }
 
     /* cache cartesian ranks */
