@@ -28,8 +28,6 @@ if(PYTHON2)
   set(PYBIND11_PYTHON_VERSION 2.7)
 endif()
 
-# TODO: mkl provides scalapack, make sure not both options turned on
-
 # Set release as the default build type.
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE release CACHE STRING "Choose the type of build." FORCE)
