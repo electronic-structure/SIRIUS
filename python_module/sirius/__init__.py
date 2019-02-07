@@ -72,7 +72,7 @@ class BandEnergiesDescriptor(object):
             k, ispn = key
             for j, v in enumerate(val):
                 instance[k].set_band_energy(j, ispn, v)
-            instance.sync_band_energies()
+        instance.sync_band_energies()
 
 K_point_set.fn = OccupancyDescriptor()
 K_point_set.C = PWDescriptor()

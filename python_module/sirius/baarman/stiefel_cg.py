@@ -265,8 +265,8 @@ class CG:
         from sirius.baarman import occupancy_admissible_ds
 
         # current_energy = A(X, f)
-        y = constrain_occupancy_gradient(-dAdf, f, self.comm,
-                                         self.kweights, self.mag)
+        y = -constrain_occupancy_gradient(dAdf, f, self.comm,
+                                          self.kweights, self.mag)
         logger('\t||y||:', inner(y, y))
         sigma_max = occupancy_admissible_ds(y, f, self.mag)
         # logger('y:', y)
