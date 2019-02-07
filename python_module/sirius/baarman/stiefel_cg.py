@@ -265,8 +265,8 @@ class CG:
         from sirius.baarman import occupancy_admissible_ds
 
         # current_energy = A(X, f)
-        y = -constrain_occupancy_gradient(dAdf, f, self.comm,
-                                          self.kweights, self.mag)
+        y = constrain_occupancy_gradient(dAdf, f, self.comm,
+                                         self.kweights, self.mag)
         logger('\t||y||:', inner(y, y))
         sigma_max = occupancy_admissible_ds(y, f, self.mag)
         # logger('y:', y)
@@ -286,8 +286,6 @@ class CG:
             coeffs, Etrial = quadratic_approximation(
                 self.A, dAdC, dAdf, Y, y, X=X, fn=f, te=te, se=se,
                 comm=self.comm, kweights=self.kweights, mag=self.mag)
-
-        # logger('\tquadratic approx: ', coeffs)
 
         if np.abs(coeffs[1]) < 1e-9:
             sigma_min = 0

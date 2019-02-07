@@ -125,7 +125,7 @@ def _constrain_occupancy_gradient(dfn, fn, mag, kweights):
     bounds = Bounds(lb, ub)
     x0 = dfn
     res = minimize(
-        lambda x: np.linalg.norm(x - dfn),
+        lambda x: np.linalg.norm(x + dfn),
         x0,
         bounds=bounds,
         constraints={
@@ -236,7 +236,6 @@ class FreeEnergy:
         dAdC = self.H(cn, scale=False) * self.omega_k
 
         # Compute dAdf
-        # TODO: k-point weights missing?
         dAdfn = np.real(
             einsum('ij,ij->j', cn.conj(), dAdC)
         ) + self.kb * self.temperature * self.omega_k * self.scale * df_fermi_entropy(
