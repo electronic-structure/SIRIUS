@@ -342,16 +342,16 @@ inline void inner(memory_t        mem__,
                         /* store panel: go over the elements of the window and add the elements 
                          * to the resulting array; the .set() method skips the elements that are 
                          * not part of the local result matrix. */
-                        #pragma omp parallel for num_threads(nt - 1)
-                        for (int jcol = 0; jcol < ncol; jcol++) {
-                            for (int irow = 0; irow < nrow; irow++) {
-                                /* .add() method takes the global (row, column) indices */
-                                result__.set(irow0__ + i0 + irow, jcol0__ + j0 + jcol,
-                                             c_tmp(irow + nrow * jcol, s % num_streams));
-                            }
-                        }
-                        //result__.set(irow0__ + i0, jcol0__ + j0, nrow, ncol,
-                        //             c_tmp.at(memory_t::host, 0, s % num_streams), nrow);
+                        //#pragma omp parallel for num_threads(nt - 1)
+                        //for (int jcol = 0; jcol < ncol; jcol++) {
+                        //    for (int irow = 0; irow < nrow; irow++) {
+                        //        /* .add() method takes the global (row, column) indices */
+                        //        result__.set(irow0__ + i0 + irow, jcol0__ + j0 + jcol,
+                        //                     c_tmp(irow + nrow * jcol, s % num_streams));
+                        //    }
+                        //}
+                        result__.set(irow0__ + i0, jcol0__ + j0, nrow, ncol,
+                                     c_tmp.at(memory_t::host, 0, s % num_streams), nrow);
 
                         /* release the buffer */
                         #pragma omp atomic write
@@ -372,15 +372,15 @@ inline void inner(memory_t        mem__,
             MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
             t2.stop();
 
-            #pragma omp parallel for schedule(static)
-            for (int jcol = 0; jcol < dims[s % 2][3]; jcol++) {
-                for (int irow = 0; irow < dims[s % 2][2]; irow++) {
-                    result__.set(irow0__ + irow +  dims[s % 2][0], jcol0__ + jcol +  dims[s % 2][1],
-                                 c_tmp(irow + dims[s % 2][2] * jcol, s % 2));
-                }
-            }
-            //result__.set(irow0__ + dims[s % 2][0], jcol0__ + dims[s % 2][1], dims[s % 2][2], dims[s % 2][3],
-            //              c_tmp.at(memory_t::host, 0, s % 2), dims[s % 2][2]);
+            //#pragma omp parallel for schedule(static)
+            //for (int jcol = 0; jcol < dims[s % 2][3]; jcol++) {
+            //    for (int irow = 0; irow < dims[s % 2][2]; irow++) {
+            //        result__.set(irow0__ + irow +  dims[s % 2][0], jcol0__ + jcol +  dims[s % 2][1],
+            //                     c_tmp(irow + dims[s % 2][2] * jcol, s % 2));
+            //    }
+            //}
+            result__.set(irow0__ + dims[s % 2][0], jcol0__ + dims[s % 2][1], dims[s % 2][2], dims[s % 2][3],
+                          c_tmp.at(memory_t::host, 0, s % 2), dims[s % 2][2]);
         };
 
         int s{0};
