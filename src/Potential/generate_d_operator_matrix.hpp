@@ -49,16 +49,14 @@ inline void Potential::generate_D_operator_matrix()
         auto& atom_type = unit_cell_.atom_type(iat);
         int nbf         = atom_type.mt_basis_size();
 
-#ifdef __GPU
         /* start copy of Q(G) for the next atom type */
-        if (ctx_.processing_unit() == GPU) {
+        if (ctx_.processing_unit() == device_t::GPU) {
             acc::sync_stream(stream_id(0));
             if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment() &&
                 ctx_.unit_cell().atom_type(iat + 1).num_atoms() > 0) {
                 ctx_.augmentation_op(iat + 1).prepare(stream_id(0));
             }
         }
-#endif
 
         /* trivial case */
         if (!atom_type.augment() || atom_type.num_atoms() == 0) {
@@ -82,7 +80,7 @@ inline void Potential::generate_D_operator_matrix()
         matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
             switch (ctx_.processing_unit()) {
-                case CPU: {
+                case device_t::CPU: {
                     matrix<double> veff_a(2 * ctx_.gvec().count(), atom_type.num_atoms());
 
                     #pragma omp parallel for schedule(static)
@@ -102,7 +100,7 @@ inline void Potential::generate_D_operator_matrix()
                                       ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp);
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
 #ifdef __GPU
                     /* copy plane wave coefficients of effective potential to GPU */
                     mdarray<double_complex, 1> veff(&component(iv).f_pw_local(0), veff_tmp.at(memory_t::device),

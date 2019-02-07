@@ -997,11 +997,11 @@ inline void Unit_cell::print_info(int verbosity__) const
     printf("number of atom types : %i\n", num_atom_types());
     for (int i = 0; i < num_atom_types(); i++) {
         int id = atom_type(i).id();
-        printf("type id : %i   symbol : %2s   mt_radius : %10.6f\n", id, atom_type(i).symbol().c_str(),
-               atom_type(i).mt_radius());
+        printf("type id : %i   symbol : %2s   mt_radius : %10.6f, num_atoms: %i\n", id, atom_type(i).symbol().c_str(),
+               atom_type(i).mt_radius(), atom_type(i).num_atoms());
     }
 
-    printf("number of atoms : %i\n", num_atoms());
+    printf("total number of atoms : %i\n", num_atoms());
     printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
     if (!parameters_.full_potential()) {
         printf("number of PAW atoms : %i\n", num_paw_atoms());

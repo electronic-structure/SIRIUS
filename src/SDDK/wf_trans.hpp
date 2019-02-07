@@ -32,6 +32,8 @@ inline void transform_local<double>(linalg_t la__, int ispn__, double* alpha__, 
                                     int m__, double* mtrx__, int ld__, Wave_functions* wf_out__, int j0__,
                                     int n__, stream_id sid__)
 {
+    utils::timer t1("sddk::transform:local");
+
     auto spins = get_spins(ispn__);
 
     for (int s: spins) {
@@ -60,6 +62,8 @@ inline void transform_local<double_complex>(linalg_t la__, int ispn__, double_co
                                             int i0__, int m__, double_complex* mtrx__, int ld__,
                                             Wave_functions* wf_out__, int j0__, int n__, stream_id sid__)
 {
+    utils::timer t1("sddk::transform:local");
+
     auto spins = get_spins(ispn__);
 
     for (int s: spins) {
