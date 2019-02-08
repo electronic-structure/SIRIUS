@@ -1178,8 +1178,10 @@ class Simulation_context : public Simulation_parameters
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             int nat = unit_cell_.atom_type(iat).num_atoms();
             int nbf = unit_cell_.atom_type(iat).mt_basis_size();
-            ngv_b = std::max(ngv_b, 4 * std::max(nbf * (nbf + 1) / 2, nat));
+            ngv_b = std::max(ngv_b, std::max(nbf * (nbf + 1) / 2, nat));
         }
+        /* limit the size of relevant array to ~1Gb */
+        ngv_b = (1 << 30) / sizeof(double_complex) / ngv_b;
         ngv_b = std::min(ngv_loc, ngv_b);
         /* number of blocks of G-vectors */
         int nb = ngv_loc / ngv_b;

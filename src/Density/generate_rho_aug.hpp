@@ -129,20 +129,22 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
                                            1);
                         sum_q_pw_dm_pw_gpu(spl_ngv_loc.local_size(),
                                            nbf,
-                                           ctx_.augmentation_op(iat).q_pw().at(memory_t::device, 0, 2 * g_begin)
+                                           ctx_.augmentation_op(iat).q_pw().at(memory_t::device, 0, 2 * g_begin),
                                            dm_pw.at(memory_t::device),
                                            ctx_.augmentation_op(iat).sym_weight().at(memory_t::device),
                                            rho_aug__.at(memory_t::device, g_begin, iv),
                                            1);
                     }
 #endif
-                    acc::sync_stream(stream_id(1));
-                    ctx_.augmentation_op(iat).dismiss();
                     break;
                 }
             }
         }
 
+        if (pu == device_t::GPU) {
+            acc::sync_stream(stream_id(1));
+            ctx_.augmentation_op(iat).dismiss();
+        }
 
 
 //        if (pu == device_t::CPU) {
