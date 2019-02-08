@@ -1168,6 +1168,24 @@ class Simulation_context : public Simulation_parameters
     {
         return blas_linalg_t_;
     }
+
+    inline splindex<block> split_gvec_local() const
+    {
+        /* local number of G-vectors for this MPI rank */
+        int ngv_loc = gvec().count();
+        /* estimate number of G-vectors in a block */
+        int ngv_b{-1};
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            int nat = unit_cell_.atom_type(iat).num_atoms();
+            int nbf = unit_cell_.atom_type(iat).mt_basis_size();
+            ngv_b = std::max(ngv_b, 4 * std::max(nbf * (nbf + 1) / 2, nat));
+        }
+        ngv_b = std::min(ngv_loc, ngv_b);
+        /* number of blocks of G-vectors */
+        int nb = ngv_loc / ngv_b;
+        /* split local number of G-vectors between blocks */
+        return std::move(splindex<block>(ngv_loc, nb, 0));
+    }
 };
 
 inline void Simulation_context::initialize()

@@ -36,20 +36,21 @@ inline void Potential::generate_D_operator_matrix()
 {
     PROFILE("sirius::Potential::generate_D_operator_matrix");
 
-    /* local number of G-vectors for this MPI rank */
-    int ngv_loc = ctx_.gvec().count();
-    /* estimate number of G-vectors in a block */
-    int ngv_b{-1};
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        int nat = unit_cell_.atom_type(iat).num_atoms();
-        int nbf = unit_cell_.atom_type(iat).mt_basis_size();
-        ngv_b = std::max(ngv_b, 4 * std::max(nbf * (nbf + 1) / 2, nat));
-    }
-    ngv_b = std::min(ngv_loc, ngv_b);
-    /* number of blocks of G-vectors */
-    int nb = ngv_loc / ngv_b;
-    /* split local number of G-vectors between blocks */
-    splindex<block> spl_ngv_loc(ngv_loc, nb, 0);
+    ///* local number of G-vectors for this MPI rank */
+    //int ngv_loc = ctx_.gvec().count();
+    ///* estimate number of G-vectors in a block */
+    //int ngv_b{-1};
+    //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+    //    int nat = unit_cell_.atom_type(iat).num_atoms();
+    //    int nbf = unit_cell_.atom_type(iat).mt_basis_size();
+    //    ngv_b = std::max(ngv_b, 4 * std::max(nbf * (nbf + 1) / 2, nat));
+    //}
+    //ngv_b = std::min(ngv_loc, ngv_b);
+    ///* number of blocks of G-vectors */
+    //int nb = ngv_loc / ngv_b;
+    ///* split local number of G-vectors between blocks */
+    //splindex<block> spl_ngv_loc(ngv_loc, nb, 0);
+    auto spl_ngv_loc = ctx_.split_gvec_local();
 
     if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
         ctx_.augmentation_op(0).prepare(stream_id(0));
@@ -105,7 +106,7 @@ inline void Potential::generate_D_operator_matrix()
                 veff_a.allocate(ctx_.mem_pool(memory_t::device));
             }
 
-            for (int ib = 0; ib < nb; ib++) {
+            for (int ib = 0; ib < spl_ngv_loc.num_ranks(); ib++) {
                 int g_begin = spl_ngv_loc.global_index(0, ib);
                 int g_end = g_begin + spl_ngv_loc.local_size(ib);
 
@@ -115,7 +116,7 @@ inline void Potential::generate_D_operator_matrix()
                         for (int i = 0; i < atom_type.num_atoms(); i++) {
                             int ia = atom_type.atom_id(i);
 
-                            for (int igloc = g_begin; igloc != g_end; igloc++) {
+                            for (int igloc = g_begin; igloc < g_end; igloc++) {
                                 int ig = ctx_.gvec().offset() + igloc;
                                 /* V(G) * exp(i * G * r_{alpha}) */
                                 auto z = component(iv).f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia);
