@@ -86,7 +86,6 @@ namespace sirius {
             }
 
             if (test) {
-                std::cout << "test" << std::endl;
                 if (num_spins__ == 1) {
                     // non magnetic case
                     handler_vdw_ = vdwxc_new(func_);
