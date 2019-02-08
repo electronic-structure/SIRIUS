@@ -28,9 +28,14 @@
 #include <numeric>
 #include <map>
 #include <iostream>
+#include <assert.h>
+#include "memory.hpp"
 #include "fft3d_grid.hpp"
 #include "geometry3d.hpp"
 #include "serializer.hpp"
+#include "splindex.hpp"
+#include "utils/utils.hpp"
+#include "utils/profiler.hpp"
 
 using namespace geometry3d;
 
@@ -610,7 +615,8 @@ class Gvec
     /// Return the volume of the real space unit cell that corresponds to the reciprocal lattice of G-vectors.
     inline double omega() const
     {
-        return std::pow(twopi, 3) / std::abs(lattice_vectors().det());
+        double const twopi_pow3 = 248.050213442398561403810520537;
+        return twopi_pow3 / std::abs(lattice_vectors().det());
     }
 
     /// Return the total number of G-vectors within the cutoff.
@@ -797,7 +803,7 @@ class Gvec
            #2 (negative and positive)  ____________ 3   4  0  1  2 _________
            #3 (all positive)           _____________________  0  1  2  3 ___
 
-           Remember how FFT frequencies are stored: firs positive frequences, then negative in the reverse order
+           Remember how FFT frequencies are stored: first positive frequences, then negative in the reverse order
 
            subtract first z-coordinate in column from the current z-coordinate of G-vector: in case #1 or #3 this
            already gives a proper offset, in case #2 storage of FFT frequencies must be taken into account
@@ -836,6 +842,9 @@ class Gvec
         assert(gvec_base_ != nullptr);
         return gvec_base_mapping_(igloc_base__);
     }
+
+    friend void serialize(serializer& s__, Gvec& gv__);
+    friend void deserialize(serializer& s__, Gvec& gv__);
 
     /// Serialize to a string of bytes.
     void pack(serializer& s__) const
@@ -1160,7 +1169,7 @@ class Gvec_partition
         return gvec_;
     }
 
-    void gather_pw_fft(double_complex* f_pw_local__, double_complex* f_pw_fft__) const
+    void gather_pw_fft(std::complex<double>* f_pw_local__, std::complex<double>* f_pw_fft__) const
     {
         int rank = gvec().comm().rank();
         /* collect scattered PW coefficients */
@@ -1168,7 +1177,7 @@ class Gvec_partition
                                    gvec_fft_slab().counts.data(), gvec_fft_slab().offsets.data());
     }
 
-    void gather_pw_global(double_complex* f_pw_fft__, double_complex* f_pw_global__) const
+    void gather_pw_global(std::complex<double>* f_pw_fft__, std::complex<double>* f_pw_global__) const
     {
         for (int ig = 0; ig < gvec().count(); ig++) {
             /* position inside fft buffer */

@@ -56,11 +56,10 @@ inline void print_memory_usage(const char* file__, int line__)
     n += snprintf(&str[n], 2048, " VmHWM: %i Mb, VmRSS: %i Mb", static_cast<int>(VmHWM >> 20),
                   static_cast<int>(VmRSS >> 20));
 
-#ifdef __GPU
-    size_t gpu_mem = acc::get_free_mem();
-    n += snprintf(&str[n], 2048, ", GPU free memory: %i Mb", static_cast<int>(gpu_mem >> 20));
-#endif
-
+    if (acc::num_devices() > 0) {
+        size_t gpu_mem = acc::get_free_mem();
+        n += snprintf(&str[n], 2048, ", GPU free memory: %i Mb", static_cast<int>(gpu_mem >> 20));
+    }
     printf("%s\n", &str[0]);
 }
 
@@ -182,9 +181,22 @@ class Simulation_context : public Simulation_parameters
     /// Augmentation operator for each atom type.
     std::vector<Augmentation_operator> augmentation_op_;
 
+    /// Standard eigen-value problem solver.
+    std::unique_ptr<Eigensolver> std_evp_solver_;
+
+    /// Generalized eigen-value problem solver.
+    std::unique_ptr<Eigensolver> gen_evp_solver_;
+
+    /// Type of host memory (pagable or page-locked) for the arrays that participate in host-to-device memory copy.
     memory_t host_memory_t_{memory_t::none};
+
+    /// Type of preferred memory for wave-functions and related arrays.
     memory_t preferred_memory_t_{memory_t::none};
+
+    /// Type of preferred memory for auxiliary wave-functions of the iterative solver.
     memory_t aux_preferred_memory_t_{memory_t::none};
+
+    /// Type of BLAS linear algebra library.
     linalg_t blas_linalg_t_{linalg_t::none};
 
     /// True if the context is already initialized.
@@ -772,16 +784,14 @@ class Simulation_context : public Simulation_parameters
         return get_ev_solver_t(gen_evp_solver_name());
     }
 
-    template <typename T>
-    inline std::unique_ptr<Eigensolver<T>> std_evp_solver()
+    inline Eigensolver& std_evp_solver()
     {
-        return std::move(Eigensolver_factory<T>(std_evp_solver_type()));
+        return* std_evp_solver_;
     }
 
-    template <typename T>
-    inline std::unique_ptr<Eigensolver<T>> gen_evp_solver()
+    inline Eigensolver& gen_evp_solver()
     {
-        return std::move(Eigensolver_factory<T>(gen_evp_solver_type()));
+        return* gen_evp_solver_;
     }
 
     /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
@@ -1177,16 +1187,8 @@ inline void Simulation_context::initialize()
     set_core_relativity(parameters_input().core_relativity_);
     set_valence_relativity(parameters_input().valence_relativity_);
 
-    /* get processing unit */
-    std::string pu = control().processing_unit_;
-    if (pu == "") {
-#if defined(__GPU)
-        pu = "gpu";
-#else
-        pu = "cpu";
-#endif
-    }
-    set_processing_unit(pu);
+    /* set processing unit type */
+    set_processing_unit(control().processing_unit_);
 
     /* check if we can use a GPU device */
     if (processing_unit() == device_t::GPU) {
@@ -1362,15 +1364,18 @@ inline void Simulation_context::initialize()
     std_evp_solver_name(evsn[0]);
     gen_evp_solver_name(evsn[1]);
 
-    auto std_solver = std_evp_solver<double>();
-    auto gen_solver = gen_evp_solver<double>();
+    std_evp_solver_ = Eigensolver_factory(std_evp_solver_type());
+    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_type());
 
-    if (std_solver->is_parallel() != gen_solver->is_parallel()) {
+    auto& std_solver = std_evp_solver();
+    auto& gen_solver = gen_evp_solver();
+
+    if (std_solver.is_parallel() != gen_solver.is_parallel()) {
         TERMINATE("both solvers must be sequential or parallel");
     }
 
     /* setup BLACS grid */
-    if (std_solver->is_parallel()) {
+    if (std_solver.is_parallel()) {
         blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(comm_band(), npr, npc));
     } else {
         blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), 1, 1));
@@ -1570,6 +1575,10 @@ inline void Simulation_context::print_info() const
                 printf("PLASMA\n");
                 break;
             }
+            case ev_solver_t::cusolver: {
+                printf("cuSOLVER\n");
+                break;
+            }
             default: {
                 TERMINATE("wrong eigen-value solver");
             }
@@ -1584,9 +1593,7 @@ inline void Simulation_context::print_info() const
         }
         case device_t::GPU: {
             printf("GPU\n");
-#ifdef __GPU
             acc::print_device_info(0);
-#endif
             break;
         }
     }

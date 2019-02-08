@@ -22,47 +22,48 @@
  *  \brief Contains definition of CUDA kernels necessary for a FFT driver.
  */
 
-#include "acc.hpp"
+//#include "acc.hpp"
+#include <complex>
 
 extern "C" {
 
-void cufft_repack_z_buffer(int direction,
-                           int num_ranks,
-                                      int dimz,
-                                      int num_zcol_loc,
-                                      int zcol_max_size,
-                                      int const* local_z_offsets,
-                                      int const* local_z_sizes,
-                                      cuDoubleComplex* serial_buffer,
-                                      cuDoubleComplex* parallel_buffer);
+void repack_z_buffer_gpu(int                   direction,
+                         int                   num_ranks,
+                         int                   size_z,
+                         int                   num_zcol_loc,
+                         int                   zcol_max_size,
+                         int const*            local_z_offsets,
+                         int const*            local_z_sizes,
+                         std::complex<double>* z_long_sticks_local,
+                         std::complex<double>* z_short_sticks_full);
 
 
-void cufft_batch_load_gpu(int                    fft_size,
-                          int                    num_pw_components, 
-                          int                    num_fft,
-                          int const*             map, 
-                          cuDoubleComplex const* data, 
-                          cuDoubleComplex*       fft_buffer,
-                          int                    stream_id);
+void batch_load_gpu(int                    fft_size,
+                    int                    num_pw_components, 
+                    int                    num_fft,
+                    int const*             map, 
+                    std::complex<double> const* data, 
+                    std::complex<double>*       fft_buffer,
+                    int                    stream_id);
 
-void cufft_load_x0y0_col_gpu(int                    z_col_size,
-                             int const*             map,
-                             cuDoubleComplex const* data,
-                             cuDoubleComplex*       fft_buffer,
-                             int                    stream_id);
+void load_x0y0_col_gpu(int                    z_col_size,
+                       int const*             map,
+                       std::complex<double> const* data,
+                       std::complex<double>*       fft_buffer,
+                       int                    stream_id);
 
-void cufft_batch_unload_gpu(int                    fft_size,
-                            int                    num_pw_components,
-                            int                    num_fft,
-                            int const*             map, 
-                            cuDoubleComplex const* fft_buffer, 
-                            cuDoubleComplex*       data,
-                            double                 alpha,
-                            double                 beta,
-                            int                    stream_id);
+void batch_unload_gpu(int                    fft_size,
+                      int                    num_pw_components,
+                      int                    num_fft,
+                      int const*             map, 
+                      std::complex<double> const* fft_buffer, 
+                      std::complex<double>*       data,
+                      double                 alpha,
+                      double                 beta,
+                      int                    stream_id);
 
-void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
-                       cuDoubleComplex* fft_buf__,
+void unpack_z_cols_gpu(std::complex<double>* z_cols_packed__,
+                       std::complex<double>* fft_buf__,
                        int              size_x__,
                        int              size_y__,
                        int              size_z__,
@@ -71,8 +72,8 @@ void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                        bool             use_reduction__, 
                        int              stream_id__);
 
-void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
-                     cuDoubleComplex* fft_buf__,
+void pack_z_cols_gpu(std::complex<double>* z_cols_packed__,
+                     std::complex<double>* fft_buf__,
                      int              size_x__,
                      int              size_y__,
                      int              size_z__,
@@ -80,9 +81,9 @@ void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                      int const*       z_col_pos__,
                      int              stream_id__);
 
-void unpack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
-                         cuDoubleComplex* z_cols_packed2__,
-                         cuDoubleComplex* fft_buf__,
+void unpack_z_cols_2_gpu(std::complex<double>* z_cols_packed1__,
+                         std::complex<double>* z_cols_packed2__,
+                         std::complex<double>* fft_buf__,
                          int              size_x__,
                          int              size_y__,
                          int              size_z__,
@@ -90,9 +91,9 @@ void unpack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
                          int const*       z_col_pos__,
                          int              stream_id__);
 
-void pack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
-                       cuDoubleComplex* z_cols_packed2__,
-                       cuDoubleComplex* fft_buf__,
+void pack_z_cols_2_gpu(std::complex<double>* z_cols_packed1__,
+                       std::complex<double>* z_cols_packed2__,
+                       std::complex<double>* fft_buf__,
                        int              size_x__,
                        int              size_y__,
                        int              size_z__,

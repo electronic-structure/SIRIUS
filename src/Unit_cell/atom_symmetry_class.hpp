@@ -26,7 +26,7 @@
 #define __ATOM_SYMMETRY_CLASS_HPP__
 
 #include "atom_type.hpp"
-#include "eigenproblem.h"
+#include "eigenproblem.hpp"
 
 namespace sirius {
 
@@ -567,7 +567,7 @@ inline std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double
     mdarray<double, 2> ovlp(num_lo_descriptors(), num_lo_descriptors());
     loprod >> ovlp;
 
-    Eigensolver_lapack<double> stdevp;
+    Eigensolver_lapack stdevp;
 
     std::vector<double> loprod_eval(num_lo_descriptors());
     dmatrix<double>     loprod_evec(num_lo_descriptors(), num_lo_descriptors());

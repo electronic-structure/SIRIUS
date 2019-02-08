@@ -75,6 +75,12 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
            on the device manually */
         dm.allocate(memory_t::device);
     }
+    memory_t mem{memory_t::host};
+    linalg_t la{linalg_t::blas};
+    if (ctx_.processing_unit() == device_t::GPU) {
+        mem = memory_t::device;
+        la = linalg_t::cublas;
+    }
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int  ik = kset_.spl_num_kpoints(ikloc);
@@ -97,7 +103,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
         }
         dm.zero();
         if (ctx_.num_mag_dims() == 3) {
-            inner(ctx_.processing_unit(), 2, kp->spinor_wave_functions(), 0, kp->num_occupied_bands(), kp->hubbard_wave_functions(), 0,
+            inner(mem, la, 2, kp->spinor_wave_functions(), 0, kp->num_occupied_bands(), kp->hubbard_wave_functions(), 0,
                   this->number_of_hubbard_orbitals(), dm, 0, 0);
         } else {
             // SLDA + U, we need to do the explicit calculation. The
@@ -105,7 +111,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
             // wave functions have two. The inner product takes care of
             // this case internally.
             for (int ispn_ = 0; ispn_ < ctx_.num_spins(); ispn_++) {
-                inner(ctx_.processing_unit(), ispn_, kp->spinor_wave_functions(), 0, kp->num_occupied_bands(ispn_),
+                inner(mem, la, ispn_, kp->spinor_wave_functions(), 0, kp->num_occupied_bands(ispn_),
                       kp->hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), dm, 0,
                       ispn_ * this->number_of_hubbard_orbitals());
             }

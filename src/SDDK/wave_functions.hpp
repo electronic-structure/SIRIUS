@@ -28,7 +28,7 @@
 #include <cstdlib>
 #include <iostream>
 #include "linalg.hpp"
-#include "eigenproblem.h"
+#include "eigenproblem.hpp"
 #include "hdf5_tree.hpp"
 #include "utils/env.hpp"
 #ifdef __GPU
@@ -267,11 +267,12 @@ class Wave_functions
 
   public:
     /// Constructor for PW wave-functions.
-    Wave_functions(Gvec_partition const& gkvecp__, int num_wf__, int num_sc__ = 1)
+    Wave_functions(Gvec_partition const& gkvecp__, int num_wf__, memory_t preferred_memory_t__, int num_sc__ = 1)
         : comm_(gkvecp__.gvec().comm())
         , gkvecp_(gkvecp__)
         , num_wf_(num_wf__)
         , num_sc_(num_sc__)
+        , preferred_memory_t_(preferred_memory_t__)
     {
         if (!(num_sc__ == 1 || num_sc__ == 2)) {
             TERMINATE("wrong number of spin components");
@@ -284,11 +285,13 @@ class Wave_functions
     }
 
     /// Constructor for PW wave-functions.
-    Wave_functions(memory_pool& mp__, Gvec_partition const& gkvecp__, int num_wf__, int num_sc__ = 1)
+    Wave_functions(memory_pool& mp__, Gvec_partition const& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
+                   int num_sc__ = 1)
         : comm_(gkvecp__.gvec().comm())
         , gkvecp_(gkvecp__)
         , num_wf_(num_wf__)
         , num_sc_(num_sc__)
+        , preferred_memory_t_(preferred_memory_t__)
     {
         if (!(num_sc__ == 1 || num_sc__ == 2)) {
             TERMINATE("wrong number of spin components");
@@ -302,12 +305,13 @@ class Wave_functions
 
     /// Constructor for LAPW wave-functions.
     Wave_functions(Gvec_partition const& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__, int num_wf__,
-                   int num_sc__ = 1)
+                   memory_t preferred_memory_t__, int num_sc__ = 1)
         : comm_(gkvecp__.gvec().comm())
         , gkvecp_(gkvecp__)
         , num_wf_(num_wf__)
         , num_sc_(num_sc__)
         , has_mt_(true)
+        , preferred_memory_t_(preferred_memory_t__)
     {
         if (!(num_sc__ == 1 || num_sc__ == 2)) {
             TERMINATE("wrong number of spin components");
@@ -577,9 +581,9 @@ class Wave_functions
         }
     }
 
-    void deallocate(int ispn__, memory_t mem__)
+    void deallocate(spin_idx sid__, memory_t mem__)
     {
-        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+        for (int s = s0(sid__()); s <= s1(sid__()); s++) {
             pw_coeffs(s).deallocate(mem__);
             if (has_mt()) {
                 mt_coeffs(s).deallocate(mem__);
@@ -587,9 +591,9 @@ class Wave_functions
         }
     }
 
-    void copy_to(int ispn__, memory_t mem__, int i0__, int n__)
+    void copy_to(spin_idx ispn__, memory_t mem__, int i0__, int n__)
     {
-        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+        for (int s = s0(ispn__()); s <= s1(ispn__()); s++) {
             pw_coeffs(s).copy_to(mem__, i0__, n__);
             if (has_mt()) {
                 mt_coeffs(s).copy_to(mem__, i0__, n__);
@@ -599,12 +603,6 @@ class Wave_functions
 
     inline memory_t preferred_memory_t() const
     {
-        return preferred_memory_t_;
-    }
-
-    inline memory_t preferred_memory_t(memory_t mem__)
-    {
-        preferred_memory_t_ = mem__;
         return preferred_memory_t_;
     }
 };

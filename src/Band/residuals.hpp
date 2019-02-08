@@ -455,9 +455,9 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
     const int num_sc = nc_mag ? 2 : 1;
 
     auto& psi = kp__->spinor_wave_functions();
-    Wave_functions hpsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
-    Wave_functions spsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
-    Wave_functions res(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
+    Wave_functions hpsi(kp__->gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+    Wave_functions spsi(kp__->gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+    Wave_functions res(kp__->gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);
@@ -465,15 +465,11 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
             psi.pw_coeffs(ispn).allocate(mpd);
             psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
         }
-        psi.preferred_memory_t(ctx_.preferred_memory_t());
         for (int i = 0; i < num_sc; i++) {
             res.pw_coeffs(i).allocate(mpd);
             hpsi.pw_coeffs(i).allocate(mpd);
             spsi.pw_coeffs(i).allocate(mpd);
         }
-        res.preferred_memory_t(ctx_.preferred_memory_t());
-        hpsi.preferred_memory_t(ctx_.preferred_memory_t());
-        spsi.preferred_memory_t(ctx_.preferred_memory_t());
     }
     kp__->beta_projectors().prepare();
     /* compute residuals */
@@ -488,8 +484,8 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
 
         for (int ispn = 0; ispn < num_sc; ispn++) {
             if (is_device_memory(ctx_.preferred_memory_t())) {
-                hpsi.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
-                spsi.copy_to(ispn, memory_t::host, 0, ctx_.num_bands());
+                hpsi.copy_to(spin_idx(ispn), memory_t::host, 0, ctx_.num_bands());
+                spsi.copy_to(spin_idx(ispn), memory_t::host, 0, ctx_.num_bands());
             }
             #pragma omp parallel for schedule(static)
             for (int j = 0; j < ctx_.num_bands(); j++) {
@@ -514,6 +510,5 @@ void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             psi.pw_coeffs(ispn).deallocate(memory_t::device);
         }
-        psi.preferred_memory_t(memory_t::host);
     }
 }

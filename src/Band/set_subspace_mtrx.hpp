@@ -28,13 +28,13 @@ inline void Band::set_subspace_mtrx(int N__,
                                     Wave_functions& phi__,
                                     Wave_functions& op_phi__,
                                     dmatrix<T>& mtrx__,
-                                    dmatrix<T>& mtrx_old__) const
+                                    dmatrix<T>* mtrx_old__) const
 {
     PROFILE("sirius::Band::set_subspace_mtrx");
 
     assert(n__ != 0);
-    if (mtrx_old__.size()) {
-        assert(&mtrx__.blacs_grid() == &mtrx_old__.blacs_grid());
+    if (mtrx_old__ && mtrx_old__->size()) {
+        assert(&mtrx__.blacs_grid() == &mtrx_old__->blacs_grid());
     }
 
     /* copy old N x N distributed matrix */
@@ -46,7 +46,7 @@ inline void Band::set_subspace_mtrx(int N__,
 
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < spl_col.local_size(); i++) {
-            std::copy(&mtrx_old__(0, i), &mtrx_old__(0, i) + spl_row.local_size(), &mtrx__(0, i));
+            std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
         }
 
         if (ctx_.control().print_checksum_) {
@@ -77,11 +77,7 @@ inline void Band::set_subspace_mtrx(int N__,
                 }
             }
         } else {
-#ifdef __SCALAPACK
-            linalg<CPU>::tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
-#else
-            TERMINATE_NO_SCALAPACK
-#endif
+            tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
         }
     }
 
@@ -106,7 +102,7 @@ inline void Band::set_subspace_mtrx(int N__,
     mtrx__.make_real_diag(N__ + n__);
 
     /* save new matrix */
-    if (mtrx_old__.size()) {
+    if (mtrx_old__) {
         splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(),
                                        mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
         splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(),
@@ -114,7 +110,7 @@ inline void Band::set_subspace_mtrx(int N__,
 
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < spl_col.local_size(); i++) {
-            std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &mtrx_old__(0, i));
+            std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &(*mtrx_old__)(0, i));
         }
     }
 }
