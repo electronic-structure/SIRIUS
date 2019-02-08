@@ -279,6 +279,65 @@ class Unit_cell
         return paw_atom_index_[ipaw__];
     }
 
+    inline void print_symmetry_info(int verbosity__) const
+    {
+        if (symmetry_ != nullptr) {
+            printf("\n");
+            printf("space group number   : %i\n", symmetry_->spacegroup_number());
+            printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
+            printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
+            printf("number of operations : %i\n", symmetry_->num_mag_sym());
+            printf("transformation matrix : \n");
+            auto tm = symmetry_->transformation_matrix();
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    printf("%12.6f ", tm(i, j));
+                }
+                printf("\n");
+            }
+            printf("origin shift : \n");
+            auto t = symmetry_->origin_shift();
+            printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+
+            if (verbosity__ >= 2) {
+                printf("symmetry operations  : \n");
+                for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
+                    auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
+                    auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
+                    auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
+
+                    printf("isym : %i\n", isym);
+                    printf("R : ");
+                    for (int i = 0; i < 3; i++) {
+                        if (i) {
+                            printf("    ");
+                        }
+                        for (int j = 0; j < 3; j++) {
+                            printf("%3i ", R(i, j));
+                        }
+                        printf("\n");
+                    }
+                    printf("T : ");
+                    for (int j = 0; j < 3; j++) {
+                        printf("%8.4f ", t[j]);
+                    }
+                    printf("\n");
+                    printf("S : ");
+                    for (int i = 0; i < 3; i++) {
+                        if (i) {
+                            printf("    ");
+                        }
+                        for (int j = 0; j < 3; j++) {
+                            printf("%8.4f ", S(i, j));
+                        }
+                        printf("\n");
+                    }
+                    printf("\n");
+                }
+            }
+        }
+    }
+
     /// Print basic info.
     inline void print_info(int verbosity__) const;
 
@@ -1044,61 +1103,7 @@ inline void Unit_cell::print_info(int verbosity__) const
         }
     }
 
-    if (symmetry_ != nullptr) {
-        printf("\n");
-        printf("space group number   : %i\n", symmetry_->spacegroup_number());
-        printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
-        printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
-        printf("number of operations : %i\n", symmetry_->num_mag_sym());
-        printf("transformation matrix : \n");
-        auto tm = symmetry_->transformation_matrix();
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                printf("%12.6f ", tm(i, j));
-            }
-            printf("\n");
-        }
-        printf("origin shift : \n");
-        auto t = symmetry_->origin_shift();
-        printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
-
-        if (verbosity__ >= 2) {
-            printf("symmetry operations  : \n");
-            for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
-                auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
-                auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
-                auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
-
-                printf("isym : %i\n", isym);
-                printf("R : ");
-                for (int i = 0; i < 3; i++) {
-                    if (i) {
-                        printf("    ");
-                    }
-                    for (int j = 0; j < 3; j++) {
-                        printf("%3i ", R(i, j));
-                    }
-                    printf("\n");
-                }
-                printf("T : ");
-                for (int j = 0; j < 3; j++) {
-                    printf("%8.4f ", t[j]);
-                }
-                printf("\n");
-                printf("S : ");
-                for (int i = 0; i < 3; i++) {
-                    if (i) {
-                        printf("    ");
-                    }
-                    for (int j = 0; j < 3; j++) {
-                        printf("%8.4f ", S(i, j));
-                    }
-                    printf("\n");
-                }
-                printf("\n");
-            }
-        }
-    }
+    print_symmetry_info(verbosity__);
 }
 
 inline unit_cell_parameters_descriptor Unit_cell::unit_cell_parameters()
