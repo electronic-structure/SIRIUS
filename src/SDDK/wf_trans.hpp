@@ -32,7 +32,7 @@ inline void transform_local<double>(linalg_t la__, int ispn__, double* alpha__, 
                                     int m__, double* mtrx__, int ld__, Wave_functions* wf_out__, int j0__,
                                     int n__, stream_id sid__)
 {
-    utils::timer t1("sddk::transform:local");
+    utils::timer t1("sddk::transform|local");
 
     auto spins = get_spins(ispn__);
 
@@ -62,7 +62,7 @@ inline void transform_local<double_complex>(linalg_t la__, int ispn__, double_co
                                             int i0__, int m__, double_complex* mtrx__, int ld__,
                                             Wave_functions* wf_out__, int j0__, int n__, stream_id sid__)
 {
-    utils::timer t1("sddk::transform:local");
+    utils::timer t1("sddk::transform|local");
 
     auto spins = get_spins(ispn__);
 
@@ -118,7 +118,7 @@ inline void transform(memory_t                     mem__,
                       int                          j0__,
                       int                          n__)
 {
-    PROFILE("sddk::Wave_functions::transform");
+    PROFILE("sddk::transform");
 
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
 
@@ -144,7 +144,7 @@ inline void transform(memory_t                     mem__,
 
     T alpha = alpha__;
 
-    utils::timer t1("sddk::Wave_functions::transform|init");
+    utils::timer t1("sddk::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (beta__ == 0) {
