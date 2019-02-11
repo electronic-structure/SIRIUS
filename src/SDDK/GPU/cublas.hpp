@@ -316,6 +316,7 @@ inline void create_handle()
     device_id[0] = acc::get_device_id();
     CALL_CUBLAS(cublasXtCreate, (&cublasxt_handle()));
     CALL_CUBLAS(cublasXtDeviceSelect, (cublasxt_handle(), 1, device_id));
+    CALL_CUBLAS(cublasXtSetBlockDim, (cublasxt_handle(), 4096));
 }
 
 inline void destroy_handle()
