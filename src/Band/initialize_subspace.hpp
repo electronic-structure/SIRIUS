@@ -209,12 +209,12 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
 
-            set_subspace_mtrx<T>(1, num_phi_tot, phi, ophi, hmlt);
+            set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp);
             if (ctx_.control().verification_ >= 2) {
-                hmlt.serialize("overlap", num_phi_tot);
+                ovlp.serialize("overlap", num_phi_tot);
             }
 
-            double max_diff = check_hermitian(hmlt, num_phi_tot);
+            double max_diff = check_hermitian(ovlp, num_phi_tot);
             if (max_diff > 1e-12) {
                 std::stringstream s;
                 s << "overlap matrix is not hermitian, max_err = " << max_diff;
@@ -222,7 +222,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
             }
             std::vector<double> eo(num_phi_tot);
             auto& std_solver = ctx_.std_evp_solver();
-            if (std_solver.solve(num_phi_tot, num_phi_tot, hmlt, eo.data(), evec)) {
+            if (std_solver.solve(num_phi_tot, num_phi_tot, ovlp, eo.data(), evec)) {
                 std::stringstream s;
                 s << "error in diagonalization";
                 TERMINATE(s);

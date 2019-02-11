@@ -92,6 +92,7 @@ inline void Potential::generate_D_operator_matrix()
                 veff_a.allocate(ctx_.mem_pool(memory_t::device));
             }
 
+            /* split a large loop over G-vectors into blocks */
             for (int ib = 0; ib < spl_ngv_loc.num_ranks(); ib++) {
                 int g_begin = spl_ngv_loc.global_index(0, ib);
                 int g_end = g_begin + spl_ngv_loc.local_size(ib);

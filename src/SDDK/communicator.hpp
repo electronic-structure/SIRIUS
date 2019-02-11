@@ -228,6 +228,10 @@ class Request
   private:
     MPI_Request handler_;
   public:
+    ~Request()
+    {
+        //CALL_MPI(MPI_Request_free, (&handler_));
+    }
     void wait()
     {
         CALL_MPI(MPI_Wait, (&handler_, MPI_STATUS_IGNORE));

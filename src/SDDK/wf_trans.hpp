@@ -120,8 +120,6 @@ inline void transform(memory_t                     mem__,
 {
     PROFILE("sddk::transform");
 
-    static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
-
     assert(n__ != 0);
     assert(m__ != 0);
     assert(wf_in__.size() == wf_out__.size());
