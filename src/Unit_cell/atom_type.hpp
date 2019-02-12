@@ -1318,6 +1318,10 @@ inline void Atom_type::print_info() const
     printf("total number of basis functions  : %i\n", indexb().size());
     printf("number of aw basis functions     : %i\n", indexb().size_aw());
     printf("number of lo basis functions     : %i\n", indexb().size_lo());
+    if (!parameters_.full_potential()) 
+    {
+        printf("number of ps wavefunctions       : %i\n", this->num_ps_atomic_wf());
+    }
 }
 
 inline void Atom_type::read_input_core(json const& parser)
