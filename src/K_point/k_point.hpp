@@ -495,6 +495,7 @@ class K_point
             const int num_sc = ctx_.num_mag_dims() == 3 ?  2 : 1;
             hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(),
                                                                                          size,
+                                                                                         ctx_.preferred_memory_t(),
                                                                                          num_sc));
         }
 

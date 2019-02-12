@@ -46,14 +46,14 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     
     Local_operator hloc(params, fft, gvecp);
 
-    Wave_functions phi(gvecp, 4 * num_bands__);
+    Wave_functions phi(gvecp, 4 * num_bands__, memory_t::host);
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
             phi.pw_coeffs(0).prime(j, i) = utils::random<double_complex>();
         }
         phi.pw_coeffs(0).prime(0, i) = 1.0;
     }
-    Wave_functions hphi(gvecp, 4 * num_bands__);
+    Wave_functions hphi(gvecp, 4 * num_bands__, memory_t::host);
 
     if (pu == device_t::GPU) {
         phi.pw_coeffs(0).allocate(memory_t::device);

@@ -26,6 +26,7 @@
 #define __MPI_GRID_HPP__
 
 #include "communicator.hpp"
+#include "utils/utils.hpp"
 
 namespace sddk {
 

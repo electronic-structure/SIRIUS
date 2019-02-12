@@ -82,7 +82,7 @@ inline void K_point::initialize()
             /* allocate fv eien vectors */
             fv_eigen_vectors_slab_ = std::unique_ptr<Wave_functions>(
                 new Wave_functions(gkvec_partition(), unit_cell_.num_atoms(),
-                    [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states()));
+                    [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states(), ctx_.preferred_memory_t()));
 
             fv_eigen_vectors_slab_->pw_coeffs(0).prime().zero();
             fv_eigen_vectors_slab_->mt_coeffs(0).prime().zero();
@@ -110,7 +110,7 @@ inline void K_point::initialize()
                     ncomp = ctx_.num_fv_states() / 2;
                 }
 
-                singular_components_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(), ncomp));
+                singular_components_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(), ncomp, ctx_.preferred_memory_t()));
                 singular_components_->pw_coeffs(0).prime().zero();
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ncomp; i++) {
@@ -141,21 +141,21 @@ inline void K_point::initialize()
                                                                             {
                                                                                 return unit_cell_.atom(ia).mt_basis_size();
                                                                             },
-                                                                            ctx_.num_fv_states()));
+                                                                            ctx_.num_fv_states(),
+                                                                            ctx_.preferred_memory_t()));
 
-            spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(),
-                                                                                        unit_cell_.num_atoms(),
-                                                                                        [this](int ia)
-                                                                                        {
-                                                                                            return unit_cell_.atom(ia).mt_basis_size();
-                                                                                        },
-                                                                                        nst,
-                                                                                        ctx_.num_spins()));
+            spinor_wave_functions_ = std::unique_ptr<Wave_functions>(
+                new Wave_functions(gkvec_partition(), unit_cell_.num_atoms(), [this](int ia)
+                                                                              {
+                                                                                  return unit_cell_.atom(ia).mt_basis_size();
+                                                                              }, nst, ctx_.preferred_memory_t(),
+                                                                              ctx_.num_spins()));
         } else {
             TERMINATE_NOT_IMPLEMENTED
         }
     } else {
-        spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(), nst, ctx_.num_spins()));
+        spinor_wave_functions_ = std::unique_ptr<Wave_functions>(
+            new Wave_functions(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins()));
     }
 
     update();

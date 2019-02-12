@@ -26,15 +26,14 @@
 #define __PROFILER_HPP__
 
 #include <string>
-#include "communicator.hpp"
-#include "../utils/timer.hpp"
+#include "timer.hpp"
 
 #define __PROFILE
 #define __PROFILE_TIME
 //#define __PROFILE_STACK
 //#define __PROFILE_FUNC
 
-namespace sddk {
+namespace utils {
 
 /// Simple profiler and function call tracker.
 class profiler
@@ -87,7 +86,11 @@ class profiler
         for (int i = 0; i < tab; i++) {
             printf(" ");
         }
-        printf("[rank%04i] + %s\n", Communicator::world().rank(), label_.c_str());
+#if defined(MPI_VERSION)
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        printf("[rank%04i] + %s\n", rank, label_.c_str());
+#endif
 #endif
 
 #if defined(__PROFILE_TIME)
@@ -109,7 +112,11 @@ class profiler
         for (int i = 0; i < tab; i++) {
             printf(" ");
         }
-        printf("[rank%04i] - %s\n", Communicator::world().rank(), label_.c_str());
+#if defined(MPI_VERSION)
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        printf("[rank%04i] - %s\n", rank, label_.c_str());
+#endif
 #endif
 
 #ifdef __PROFILE_STACK
@@ -143,7 +150,7 @@ class profiler
 #endif
 
 #ifdef __PROFILE
-    #define PROFILE(name) sddk::profiler profiler__(__function_name__, __FILE__, __LINE__, name);
+    #define PROFILE(name) utils::profiler profiler__(__function_name__, __FILE__, __LINE__, name);
 #else
     #define PROFILE(...)
 #endif

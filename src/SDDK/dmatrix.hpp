@@ -31,6 +31,8 @@
 
 namespace sddk {
 
+using double_complex = std::complex<double>;
+
 /// Distributed matrix.
 template <typename T>
 class dmatrix : public matrix<T>
