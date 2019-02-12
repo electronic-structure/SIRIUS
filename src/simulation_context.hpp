@@ -1182,7 +1182,7 @@ class Simulation_context : public Simulation_parameters
         }
         /* limit the size of relevant array to ~1Gb */
         ngv_b = (1 << 30) / sizeof(double_complex) / ngv_b;
-        ngv_b = std::min(ngv_loc, ngv_b);
+        ngv_b = std::max(1, std::min(ngv_loc, ngv_b));
         /* number of blocks of G-vectors */
         int nb = ngv_loc / ngv_b;
         /* split local number of G-vectors between blocks */
