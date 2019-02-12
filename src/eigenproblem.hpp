@@ -1332,7 +1332,6 @@ class Eigensolver_cuda: public Eigensolver
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
 
         auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
-        //A__.copy_to(memory_t::device);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
@@ -1351,14 +1350,47 @@ class Eigensolver_cuda: public Eigensolver
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
             acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
-            //acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
-            //Z__.copy_to(memory_t::host);
         }
         return info;
     }
 
-    int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__,
-              dmatrix<double_complex>& Z__)
+    int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
+    {
+        return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__,
+              dmatrix<double>& Z__)
+    {
+        utils::timer t0("Eigensolver_cuda|dsyevd");
+
+        cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
+        cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+
+        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
+
+        int lwork;
+        CALL_CUSOLVER(cusolverDnDsyevd_bufferSize, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
+                                                    A__.at(memory_t::device), A__.ld(),
+                                                    w.get(), &lwork));
+
+        auto work = mp_d_.get_unique_ptr<double_complex>(lwork);
+
+        int info;
+        auto dinfo = mp_d_.get_unique_ptr<int>(1);
+        CALL_CUSOLVER(cusolverDnDsyevd, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
+                                         A__.at(memory_t::device), A__.ld(),
+                                         w.get(), cuDoubleComplex*>(work.get(), lwork, dinfo.get()));
+        acc::copyout(&info, dinfo.get(), 1);
+        if (!info) {
+            acc::copyout(eval__, w.get(), nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+        }
+        return info;
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
         return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
     }
@@ -1375,8 +1407,6 @@ class Eigensolver_cuda: public Eigensolver
         auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
-        //A__.copy_to(memory_t::device);
-        //B__.copy_to(memory_t::device);
 
         int lwork;
         CALL_CUSOLVER(cusolverDnZhegvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
@@ -1397,8 +1427,6 @@ class Eigensolver_cuda: public Eigensolver
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
             acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
-            //acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
-            //Z__.copy_to(memory_t::host);
         }
         return info;
     }
@@ -1410,7 +1438,45 @@ class Eigensolver_cuda: public Eigensolver
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
+              dmatrix<double>& Z__)
+    {
+        utils::timer t0("Eigensolver_cuda|dsygvd");
 
+        cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
+        cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
+        cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+
+        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
+        acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
+
+        int lwork;
+        CALL_CUSOLVER(cusolverDnDsygvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+                                                    A__.at(memory_t::device), A__.ld(),
+                                                    B__.at(memory_t::device)), B__.ld(),
+                                                    w.get(), &lwork));
+
+        auto work = mp_d_.get_unique_ptr<double>(lwork);
+
+        int info;
+        auto dinfo = mp_d_.get_unique_ptr<int>(1);
+        CALL_CUSOLVER(cusolverDnDsygvd, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+                                         A__.at(memory_t::device), A__.ld(),
+                                         B__.at(memory_t::device), B__.ld(),
+                                         w.get(), work.get(), lwork, dinfo.get()));
+        acc::copyout(&info, dinfo.get(), 1);
+        if (!info) {
+            acc::copyout(eval__, w.get(), nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+        }
+        return info;
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__)
+    {
+        return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
+    }
 };
 #else
 class Eigensolver_cuda: public Eigensolver
