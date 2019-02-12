@@ -1375,13 +1375,13 @@ class Eigensolver_cuda: public Eigensolver
                                                     A__.at(memory_t::device), A__.ld(),
                                                     w.get(), &lwork));
 
-        auto work = mp_d_.get_unique_ptr<double_complex>(lwork);
+        auto work = mp_d_.get_unique_ptr<double>(lwork);
 
         int info;
         auto dinfo = mp_d_.get_unique_ptr<int>(1);
         CALL_CUSOLVER(cusolverDnDsyevd, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
                                          A__.at(memory_t::device), A__.ld(),
-                                         w.get(), cuDoubleComplex*>(work.get(), lwork, dinfo.get()));
+                                         w.get(), work.get(), lwork, dinfo.get()));
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
@@ -1454,7 +1454,7 @@ class Eigensolver_cuda: public Eigensolver
         int lwork;
         CALL_CUSOLVER(cusolverDnDsygvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
                                                     A__.at(memory_t::device), A__.ld(),
-                                                    B__.at(memory_t::device)), B__.ld(),
+                                                    B__.at(memory_t::device), B__.ld(),
                                                     w.get(), &lwork));
 
         auto work = mp_d_.get_unique_ptr<double>(lwork);
