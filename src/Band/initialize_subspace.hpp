@@ -34,7 +34,7 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
             auto& atom_type = unit_cell_.atom_type(iat);
             int n{0};
             for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
-                n += (2 * atom_type.ps_atomic_wf(i).first + 1);
+                n += (2 * std::abs(atom_type.ps_atomic_wf(i).first) + 1);
             }
             N += atom_type.num_atoms() * n;
         }
