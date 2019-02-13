@@ -746,6 +746,35 @@ class Eigensolver_scalapack : public Eigensolver
         return info;
     }
 
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    {
+        utils::timer t0("Eigensolver_scalapack|pdsyevd");
+
+        ftn_int info;
+        ftn_int ione{1};
+
+        ftn_int lwork{-1};
+        ftn_int liwork{-1};
+        double work1[10];
+        ftn_int iwork1[10];
+
+        /* work size query */
+        FORTRAN(pdsyevd)
+        ("V", "U", &matrix_size__, A__.at(memory_t::host), &ione, &ione, const_cast<ftn_int*>(A__.descriptor()), eval__,
+         Z__.at(memory_t::host), &ione, &ione, const_cast<ftn_int*>(Z__.descriptor()), work1, &lwork, iwork1, &liwork, &info, (ftn_int)1, (ftn_int)1);
+
+        lwork  = static_cast<ftn_int>(work1[0]) + 1;
+        liwork = iwork1[0];
+
+        auto work  = mp_h_.get_unique_ptr<double>(lwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
+
+        FORTRAN(pdsyevd)
+        ("V", "U", &matrix_size__, A__.at(memory_t::host), &ione, &ione, const_cast<ftn_int*>(A__.descriptor()), eval__,
+         Z__.at(memory_t::host), &ione, &ione, const_cast<ftn_int*>(Z__.descriptor()), work.get(), &lwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
+        return info;
+    }
+
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
