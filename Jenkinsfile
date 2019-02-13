@@ -23,6 +23,7 @@ pipeline {
                         sh '''
                            #!/bin/bash -l
                            export ENVFILE=$(realpath ci/env-gnu-gpu)
+                           rm -f build-daint-gpu{.out,.err}
                            sbatch --wait ci/build-daint-gpu.sh
                            echo "---------- build-daint-gpu.out ----------"
                            cat build-daint-gpu.out
@@ -42,9 +43,10 @@ pipeline {
                            export SIRIUS_BINARIES=$(realpath apps/dft_loop)
                            type -f ${SIRIUS_BINARIES}/sirius.scf
                            export ENVFILE=$(realpath ../ci/env-gnu-gpu)
+                           rm -f sirius-mc-tests{.out,.err}
                            sbatch --wait ../ci/run-mc-verification.sh
-                           cat *err
-                           cat *out
+                           cat sirius-mc-tests.err
+                           cat sirius-mc-tests.out
                            cp *.{out,err} ../
                            # delete some of the heavy directories
                            cd ../
