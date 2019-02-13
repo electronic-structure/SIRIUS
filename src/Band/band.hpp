@@ -112,7 +112,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                          mdarray<double, 1>& o_diag__) const;
 
     template <typename T>
-    void check_residuals(K_point* kp__, Hamiltonian& H__) const;
+    void check_residuals(K_point& kp__, Hamiltonian& H__) const;
 
     /// Check wave-functions for orthonormalization.
     template <typename T>

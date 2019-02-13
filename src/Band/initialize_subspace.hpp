@@ -309,6 +309,12 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
         }
     }
 
+    /* check residuals */
+    if (ctx_.control().verification_ >= 1) {
+        check_residuals<T>(*kp__, H__);
+        check_wave_functions<T>(*kp__, H__);
+    }
+
     kp__->beta_projectors().dismiss();
     ctx_.fft_coarse().dismiss();
 
