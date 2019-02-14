@@ -1114,6 +1114,7 @@ inline void Unit_cell::print_info(int verbosity__) const
             printf("\n");
         }
     }
+    printf("\nminimum bond length: %20.12f\n", min_bond_length());
 
     print_symmetry_info(verbosity__);
 }
