@@ -777,6 +777,18 @@ class Unit_cell
     {
         return atom_coord_[iat__];
     }
+
+    inline double min_bond_length()
+    {
+        double len{1e10};
+
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            if (nearest_neighbours_[ia].size() > 1) {
+                len = std::min(len, nearest_neighbours_[ia][1].distance);
+            }
+        }
+        return len;
+    }
 };
 
 inline void Unit_cell::initialize()
