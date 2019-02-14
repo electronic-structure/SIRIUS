@@ -250,11 +250,11 @@ class Simulation_parameters
 
         /* set the default value */
         if (name__ == "") {
-#if defined(__GPU)
-            name__ = "gpu";
-#else
-            name__ = "cpu";
-#endif
+            if (acc::num_devices() > 0) {
+                name__ = "gpu";
+            } else {
+                name__ = "cpu";
+            }
         }
         control_input_.processing_unit_ = name__;
         if (name__ == "cpu") {
