@@ -462,7 +462,7 @@ PYBIND11_MODULE(py_sirius, m)
                  #ifdef __GPU
                  if (is_device_memory(ctx.preferred_memory_t())) {
                      for (int ispn = 0; ispn < num_sc; ++ispn)
-                         wf_out.copy_to(ispn, memory_t::host, 0, n);
+                         wf_out.copy_to(spin_idx(ispn), memory_t::host, 0, n);
                  }
                  #endif // __GPU
              }, "kpoint"_a, "wf_out"_a, "wf_in"_a);
@@ -548,7 +548,7 @@ py::class_<Free_atom>(m, "Free_atom")
         .value("host", memory_t::host);
 
     py::class_<Wave_functions>(m, "Wave_functions")
-        .def(py::init<Gvec_partition const&, int, int>(), "gvecp"_a, "num_wf"_a, "num_sc"_a)
+        .def(py::init<Gvec_partition const&, int, memory_t, int>(), "gvecp"_a, "num_wf"_a, "mem"_a, "num_sc"_a)
         .def("num_sc", &Wave_functions::num_sc)
         .def("num_wf", &Wave_functions::num_wf)
         .def("has_mt", &Wave_functions::has_mt)
@@ -567,7 +567,6 @@ py::class_<Free_atom>(m, "Free_atom")
                                                obj);
         },
              py::keep_alive<0, 1>())
-        #ifdef __GPU
         .def("copy_to_gpu", [](Wave_functions& wf) {
             /* is_on_device -> true if all internal storage is allocated on device */
             bool is_on_device = true;
@@ -580,7 +579,7 @@ py::class_<Free_atom>(m, "Free_atom")
                 }
             }
             for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-                wf.copy_to(ispn, memory_t::device, 0, wf.num_wf());
+                wf.copy_to(spin_idx(ispn), memory_t::device, 0, wf.num_wf());
             }
         })
         .def("copy_to_cpu", [](Wave_functions& wf) {
@@ -592,11 +591,10 @@ py::class_<Free_atom>(m, "Free_atom")
             if (!is_on_device) {
             } else {
                 for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-                    wf.copy_to(ispn, memory_t::host, 0, wf.num_wf());
+                    wf.copy_to(spin_idx(ispn), memory_t::host, 0, wf.num_wf());
                 }
             }
         })
-        #endif // __GPU
         .def("allocated_on_device", [](Wave_functions& wf) {
             bool is_on_device = true;
             for (int i = 0; i < wf.num_sc(); ++i) {

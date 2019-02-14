@@ -322,7 +322,8 @@ struct memory_block_descriptor
     }
 
     /// Try to allocate a subblock of memory.
-    /** Return a valid pointer in case of success and nullptr if empty space can't be found in this memory block */
+    /** Return a valid pointer in case of success and nullptr if empty space can't be found in this memory block.
+        The returned pointer is not aligned. */
     uint8_t* allocate_subblock(size_t size__)
     {
         uint8_t* ptr{nullptr};
@@ -414,7 +415,12 @@ struct memory_block_descriptor
 };
 
 /// Store information about the allocated subblock: iterator in the list of memory blocks and subblock size;
-using memory_subblock_descriptor = std::pair<std::list<memory_block_descriptor>::iterator, size_t>;
+struct memory_subblock_descriptor
+{
+    std::list<memory_block_descriptor>::iterator it_;
+    size_t size_;
+    uint8_t* unaligned_ptr_;
+};
 
 //// Memory pool.
 /** This class stores list of allocated memory blocks. Each of the blocks can be devided into subblocks. When subblock
@@ -445,8 +451,9 @@ class memory_pool
     template <typename T>
     T* allocate(size_t num_elements__)
     {
+        size_t align_size = std::max(size_t(64), alignof(T));
         /* size of the memory block in bytes */
-        size_t size = num_elements__ * sizeof(T);
+        size_t size = num_elements__ * sizeof(T) + align_size;
 
         uint8_t* ptr{nullptr};
 
@@ -471,11 +478,18 @@ class memory_pool
             throw std::runtime_error("memory allocation failed");
         }
         memory_subblock_descriptor msb;
-        msb.first = it;
-        msb.second = size;
+        msb.it_ = it;
+        msb.size_ = size;
+        msb.unaligned_ptr_ = ptr;
+        auto uip = reinterpret_cast<std::uintptr_t>(ptr);
+        /* align the pointer */
+        if (uip % align_size) {
+            uip += (align_size - uip % align_size);
+        }
+        uint8_t* aligned_ptr = reinterpret_cast<uint8_t*>(uip);
         /* add to the hash table */
-        map_ptr_[ptr] = msb;
-        return reinterpret_cast<T*>(ptr);
+        map_ptr_[aligned_ptr] = msb;
+        return reinterpret_cast<T*>(aligned_ptr);
     }
 
     /// Delete a pointer and add its memory back to the pool.
@@ -483,7 +497,7 @@ class memory_pool
     {
         uint8_t* ptr = reinterpret_cast<uint8_t*>(ptr__);
         auto& msb = map_ptr_.at(ptr);
-        msb.first->free_subblock(ptr, msb.second);
+        msb.it_->free_subblock(msb.unaligned_ptr_, msb.size_);
 
         auto merge_blocks = [&](std::list<memory_block_descriptor>::iterator it0,
                                 std::list<memory_block_descriptor>::iterator it)
@@ -498,7 +512,7 @@ class memory_pool
         };
 
         /* merge memory blocks; this is not strictly necessary but can lead to a better performance */
-        auto it = msb.first;
+        auto it = msb.it_;
         if (it->is_empty()) {
             /* try the previous block */
             if (it != memory_blocks_.begin()) {

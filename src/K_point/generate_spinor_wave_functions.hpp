@@ -39,7 +39,7 @@ inline void K_point::generate_spinor_wave_functions()
 
         if (ctx_.processing_unit() == device_t::GPU) {
             fv_states().allocate(spin_idx(0), memory_t::device);
-            fv_states().copy_to(0, memory_t::device, 0, nfv);
+            fv_states().copy_to(spin_idx(0), memory_t::device, 0, nfv);
             sv_eigen_vectors_[0].allocate(memory_t::device).copy_to(memory_t::device);
             if (ctx_.num_mag_dims() == 1) {
                 sv_eigen_vectors_[1].allocate(memory_t::device).copy_to(memory_t::device);
@@ -47,7 +47,7 @@ inline void K_point::generate_spinor_wave_functions()
             if (is_device_memory(ctx_.preferred_memory_t())) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     spinor_wave_functions().allocate(spin_idx(ispn), memory_t::device);
-                    spinor_wave_functions().copy_to(ispn, memory_t::device, 0, nbnd);
+                    spinor_wave_functions().copy_to(spin_idx(ispn), memory_t::device, 0, nbnd);
                 }
             }
         }
@@ -65,13 +65,13 @@ inline void K_point::generate_spinor_wave_functions()
                 o = 0;
             }
             /* multiply consecutively up and dn blocks */
-            transform(ctx_.processing_unit(), ispn, fv_states(), 0, nfv, sv_eigen_vectors_[s], o, 0, spinor_wave_functions(), 0, nbnd);
+            transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), ispn, fv_states(), 0, nfv, sv_eigen_vectors_[s], o, 0, spinor_wave_functions(), 0, nbnd);
         }
 
         if (ctx_.processing_unit() == device_t::GPU) {
-            fv_states().deallocate(0, memory_t::device);
+            fv_states().deallocate(spin_idx(0), memory_t::device);
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                spinor_wave_functions().copy_to(ispn, memory_t::host, 0, nbnd);
+                spinor_wave_functions().copy_to(spin_idx(ispn), memory_t::host, 0, nbnd);
             }
             sv_eigen_vectors_[0].deallocate(memory_t::device);
             if (ctx_.num_mag_dims() == 3) {
