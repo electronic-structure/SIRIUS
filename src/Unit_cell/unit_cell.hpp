@@ -778,7 +778,7 @@ class Unit_cell
         return atom_coord_[iat__];
     }
 
-    inline double min_bond_length()
+    inline double min_bond_length() const
     {
         double len{1e10};
 
