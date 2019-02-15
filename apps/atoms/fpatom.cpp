@@ -113,8 +113,8 @@ void generate_xc(int lmmax__,
     vxc_dn_tp.zero();
     exc_tp.zero();
 
-    sirius::XC_functional Ex("XC_LDA_X", 2);
-    sirius::XC_functional Ec("XC_LDA_C_VWN", 2);
+    sirius::XC_functional_base Ex("XC_LDA_X", 2);
+    sirius::XC_functional_base Ec("XC_LDA_C_VWN", 2);
 
     Ex.add_lda(sht.num_points() * rgrid.num_points(), &rho_up_tp(0, 0), &rho_dn_tp(0, 0),
                &vxc_up_tp(0, 0), &vxc_dn_tp(0, 0), &exc_tp(0, 0));

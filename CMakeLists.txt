@@ -12,6 +12,7 @@ set(BUILD_DOCS OFF CACHE BOOL "build doxygen doc")
 set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
 set(USE_CUDA OFF CACHE BOOL "use CUDA")
+set(USE_VDWXC OFF CACHE BOOL "use libvdwxc for van der Walls corrections")
 set(USE_MKL OFF CACHE BOOL "use Intel MKL")
 set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
 set(USE_SCALAPACK OFF CACHE BOOL "use scalapack")
@@ -78,6 +79,7 @@ find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C HL)
 
+
 # cmake assumes spglib installed
 #add_compile_options(-D__SPGLIB_STD_INCLUDE_PATH)
 
@@ -134,6 +136,13 @@ include_directories(${LIBXC_INCLUDE_DIR})
 include_directories(${LIBSPG_INCLUDE_DIR})
 include_directories(${HDF5_INCLUDE_DIR})
 include_directories(${MPI_INCLUDE_DIR})
+
+if(USE_VDWXC)
+  find_package(LibVDWXC 0.3.0 REQUIRED)
+  include_directories(${LIBVDWXC_INCLUDE_DIR})
+  set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${LIBVDWXC_LIBRARIES}")
+  add_definitions("-DUSE_VDWXC")
+endif(USE_VDWXC)
 
 # project header locations
 include_directories(BEFORE src)
