@@ -235,6 +235,28 @@ class Simulation_context : public Simulation_parameters
 
         /* prepare fine-grained FFT driver for the entire simulation */
         fft_->prepare(*gvec_partition_);
+
+        for (int igloc = 0; igloc < gvec().count(); igloc++) {
+            int ig = gvec().offset() + igloc;
+
+            auto gv = gvec().gvec(ig);
+            /* check limits */
+            for (int x: {0, 1, 2}) {
+                auto limits = fft().limits(x);
+                /* check boundaries */
+                if (gv[x] < limits.first || gv[x] > limits.second) {
+                    std::stringstream s;
+                    s << "G-vector is outside of grid limits" << std::endl
+                      << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << std::endl
+                      << "limits: "
+                      << fft().limits(0).first << " " << fft().limits(0).second << " "
+                      << fft().limits(1).first << " " << fft().limits(1).second << " "
+                      << fft().limits(2).first << " " << fft().limits(2).second;
+
+                      TERMINATE(s);
+                }
+            }
+        }
     }
 
     /// Initialize communicators.
