@@ -214,11 +214,11 @@ class Simulation_context : public Simulation_parameters
         }
 
         /* create FFT driver for dense mesh (density and potential) */
-        fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit()));
+        fft_ = std::unique_ptr<FFT3D>(new FFT3D(get_min_fft_grid(pw_cutoff(), rlv).grid_size(), comm_fft(), processing_unit()));
 
         /* create FFT driver for coarse mesh */
         fft_coarse_ = std::unique_ptr<FFT3D>(
-            new FFT3D(find_translations(2 * gk_cutoff(), rlv), comm_fft_coarse(), processing_unit()));
+            new FFT3D(get_min_fft_grid(2 * gk_cutoff(), rlv).grid_size(), comm_fft_coarse(), processing_unit()));
 
         /* create a list of G-vectors for corase FFT grid */
         gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, gk_cutoff() * 2, comm(), control().reduce_gvec_));
