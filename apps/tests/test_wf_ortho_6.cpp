@@ -5,111 +5,85 @@ using namespace sirius;
 void test_wf_ortho(BLACS_grid const& blacs_grid__,
                    double cutoff__,
                    int num_bands__,
-                   int use_gpu__,
                    int bs__,
-                   int num_mag_dims__)
+                   int num_mag_dims__,
+                   memory_t mem__,
+                   linalg_t la__)
 {
     int nsp = (num_mag_dims__ == 0) ? 1 : 2;
-
-    device_t pu = static_cast<device_t>(use_gpu__);
+    int num_spin_steps = (num_mag_dims__ == 3) ? 1 : nsp;
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    
-    /* create G-vectors */
-    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
-
-    if (mpi_comm_world().rank() == 0) {
-        printf("number of G-vectors: %i\n", gvec.num_gvec());
+    Gvec gvec(M, cutoff__, Communicator::world(), false);
+    Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
+    if (Communicator::world().rank() == 0) {
+        printf("number of bands          : %i\n", num_bands__);
+        printf("number of spins          : %i\n", nsp);
+        printf("full spinors             : %i\n", num_mag_dims__ == 3);
+        printf("total number of G-vectors: %i\n", gvec.num_gvec());
+        printf("local number of G-vectors: %i\n", gvec.count());
     }
 
-    int num_atoms = 10;
+    int num_atoms = 31;
     auto nmt = [](int i) {
-        return 20;
+        return 123;
     };
 
-    experimental::Wave_functions phi(gvec, num_atoms, nmt, 2 * num_bands__, nsp);
-    experimental::Wave_functions tmp(gvec, num_atoms, nmt, 2 * num_bands__, nsp);
-    
-    for (int ispn = 0; ispn < nsp; ispn++) {
-        phi.pw_coeffs(ispn).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-        phi.mt_coeffs(ispn).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
+    Wave_functions phi(gvp, num_atoms, nmt, 2 * num_bands__, mem__, nsp);
+    Wave_functions tmp(gvp, num_atoms, nmt, 2 * num_bands__, mem__, nsp);
+
+    for (int is = 0; is < nsp; is++) {
+        phi.pw_coeffs(is).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
+        phi.mt_coeffs(is).prime() = [](int64_t i0, int64_t i1){return utils::random<double_complex>();};
     }
-    //phi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    //hphi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
 
     dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
 
-#ifdef __GPU
-    if (pu == GPU) {
-        for (int is = 0; is < nsp; is++) {
-            phi.pw_coeffs(is).allocate_on_device();
-            phi.pw_coeffs(is).copy_to_device(0, 2 * num_bands__);
-            if (phi.has_mt()) {
-                phi.mt_coeffs(is).allocate_on_device();
-                phi.mt_coeffs(is).copy_to_device(0, 2 * num_bands__);
-            }
-            tmp.pw_coeffs(is).allocate_on_device();
-        }
-        ovlp.allocate(memory_t::device);
-    }
-#endif
-
-    if (num_mag_dims__ == 3) {
-        orthogonalize<double_complex, 0, 0>(pu, 2, {&phi}, 0, num_bands__, ovlp, tmp);
-        orthogonalize<double_complex, 0, 0>(pu, 2, {&phi}, num_bands__, num_bands__, ovlp, tmp);
-    } else {
+    if (is_device_memory(mem__)) {
+        ovlp.allocate(mem__);
         for (int ispn = 0; ispn < nsp; ispn++) {
-            orthogonalize<double_complex, 0, 0>(pu, ispn, {&phi}, 0, num_bands__, ovlp, tmp);
-            orthogonalize<double_complex, 0, 0>(pu, ispn, {&phi}, num_bands__, num_bands__, ovlp, tmp);
+            phi.allocate(spin_idx(ispn), mem__);
+            phi.copy_to(spin_idx(ispn), mem__, 0, 2 * num_bands__);
+            tmp.allocate(spin_idx(ispn), mem__);
         }
     }
 
-    int err{0};
-    if (num_mag_dims__ == 3) {
-        inner(pu, 2, phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
-    
-        for (int j = 0; j < ovlp.num_cols_local(); j++) {
-            for (int i = 0; i < ovlp.num_rows_local(); i++) {
-                double_complex z = (ovlp.irow(i) == ovlp.icol(j)) ? ovlp(i, j) - 1.0 : ovlp(i, j);
-                if (std::abs(z) > 1e-12) {
-                    err = 1;
-                }
-            }
-        }
-    } else {
-        for (int ispn = 0; ispn < nsp; ispn++) {
-            inner(pu, ispn, phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
-    
-            for (int j = 0; j < ovlp.num_cols_local(); j++) {
-                for (int i = 0; i < ovlp.num_rows_local(); i++) {
-                    double_complex z = (ovlp.irow(i) == ovlp.icol(j)) ? ovlp(i, j) - 1.0 : ovlp(i, j);
-                    if (std::abs(z) > 1e-12) {
-                        err = 1;
-                    }
-                }
-            }
-        }
+    for (int iss = 0; iss < num_spin_steps; iss++) {
+        orthogonalize<double_complex, 0, 0>(mem__, la__, num_mag_dims__ == 3 ? 2 : iss, {&phi}, 0,           num_bands__, ovlp, tmp);
+        orthogonalize<double_complex, 0, 0>(mem__, la__, num_mag_dims__ == 3 ? 2 : iss, {&phi}, num_bands__, num_bands__, ovlp, tmp);
     }
-    if (err) {
-        printf("\x1b[31m" "Failed\n" "\x1b[0m" "\n");
-    } else {
-        printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+
+    for (int iss = 0; iss < num_spin_steps; iss++) {
+        inner(mem__, la__, num_mag_dims__ == 3 ? 2 : iss, phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
+        auto max_diff = check_identity(ovlp, 2 * num_bands__);
+        if (Communicator::world().rank() == 0) {
+            printf("maximum difference: %18.12f\n", max_diff);
+            if (max_diff > 1e-12) {
+                printf("\x1b[31m" "Fail\n" "\x1b[0m" "\n");
+            } else {
+                printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+            }
+        }
     }
 }
 
-void call_test(std::vector<int> mpi_grid__,
+void call_test(std::vector<int> mpi_grid_dims__,
                double cutoff__,
                int num_bands__,
-               int use_gpu__,
                int bs__,
+               int num_mag_dims__,
+               memory_t mem__,
+               linalg_t la__,
                int repeat__)
 {
-    int np = mpi_grid__[0] * mpi_grid__[1];
-    BLACS_grid blacs_grid((np == 1) ? mpi_comm_self() : mpi_comm_world(), mpi_grid__[0], mpi_grid__[1]);
+    std::unique_ptr<BLACS_grid> blacs_grid;
+    if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
+        blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
+    } else {
+        blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
+    }
     for (int i = 0; i < repeat__; i++) {
-        test_wf_ortho(blacs_grid, cutoff__, num_bands__, use_gpu__, bs__, 0);
-        test_wf_ortho(blacs_grid, cutoff__, num_bands__, use_gpu__, bs__, 1);
-        test_wf_ortho(blacs_grid, cutoff__, num_bands__, use_gpu__, bs__, 3);
+        test_wf_ortho(*blacs_grid, cutoff__, num_bands__, bs__, num_mag_dims__, mem__, la__);
     }
 }
 
@@ -119,9 +93,10 @@ int main(int argn, char** argv)
     args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
     args.register_key("--cutoff=", "{double} wave-functions cutoff");
     args.register_key("--bs=", "{int} block size");
-    args.register_key("--num_bands=", "{int} block size");
-    args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
-    args.register_key("--repeat=", "{int} number of repeats");
+    args.register_key("--num_bands=", "{int} number of bands");
+    args.register_key("--num_mag_dims=", "{int} number of magnetic dimensions");
+    args.register_key("--linalg_t=", "{string} type of the linear algebra driver");
+    args.register_key("--memory_t=", "{string} type of memory");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -131,14 +106,17 @@ int main(int argn, char** argv)
     }
     auto mpi_grid_dims = args.value<std::vector<int>>("mpi_grid_dims", {1, 1});
     auto cutoff = args.value<double>("cutoff", 8.0);
-    auto use_gpu = args.value<int>("use_gpu", 0);
     auto bs = args.value<int>("bs", 32);
     auto num_bands = args.value<int>("num_bands", 100);
-    auto repeat = args.value<int>("repeat", 2);
+    auto num_mag_dims = args.value<int>("num_mag_dims", 0);
+    auto la = get_linalg_t(args.value<std::string>("linalg_t", "blas"));
+    auto mem = get_memory_t(args.value<std::string>("memory_t", "host"));
 
     sirius::initialize(1);
-    call_test(mpi_grid_dims, cutoff, num_bands, use_gpu, bs, repeat);
-    mpi_comm_world().barrier();
-    sddk::timer::print();
+    call_test(mpi_grid_dims, cutoff, num_bands, bs, num_mag_dims, mem, la, 1);
+    Communicator::world().barrier();
+    if (Communicator::world().rank() == 0) {
+        utils::timer::print();
+    }
     sirius::finalize();
 }

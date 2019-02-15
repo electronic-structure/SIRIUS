@@ -78,7 +78,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     for (int bs = 1; bs < 16; bs++) {
-        for (int i = 1; i < 30; i++) {
+        for (int i = 30; i < 60; i++) {
             test_wf_ortho(mpi_grid_dims, cutoff, i, use_gpu, bs);
         }
     }
