@@ -221,7 +221,7 @@ class Simulation_context : public Simulation_parameters
             new FFT3D(get_min_fft_grid(2 * gk_cutoff(), rlv).grid_size(), comm_fft_coarse(), processing_unit()));
 
         /* create a list of G-vectors for corase FFT grid */
-        gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, gk_cutoff() * 2, comm(), control().reduce_gvec_));
+        gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
 
         gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
             new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
@@ -236,6 +236,7 @@ class Simulation_context : public Simulation_parameters
         /* prepare fine-grained FFT driver for the entire simulation */
         fft_->prepare(*gvec_partition_);
 
+        #pragma omp parallel for
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             int ig = gvec().offset() + igloc;
 
