@@ -53,6 +53,7 @@ class sirius_scf_launcher:
             params = params + ', ' + str(kwargs['mem_usage'])
         if 'gamma' in kwargs:
             cmd.append("--parameters.gamma_point=%i"%kwargs['gamma'])
+            params = params + ', gamma=' + str(kwargs['gamma'])
     
         if count == 0:
             print("Executing reference calculation on %i MPI rank(s)"%(self.num_ranks), end = '')
@@ -112,15 +113,15 @@ class sirius_scf_launcher:
         for i in range(1, self.num_ranks + 1):
             for j in range(1, self.num_ranks + 1):
                 if check_for_gamma:
-                    k_rage = 1
+                    k_range = 1
                 else:
-                    k_rage = self.num_ranks
-                for k in range(1, k_rage + 1):
+                    k_range = self.num_ranks
+                for k in range(1, k_range + 1):
                     if i * j * k == self.num_ranks:
                         mpi_grids.append([i, j, k])
     
         list_pu = {'cpu', 'gpu'}
-        list_ev = {'lapack', 'magma', 'scalapack', 'elpa1'}
+        list_ev = {'lapack', 'magma', 'cusolver', 'scalapack', 'elpa1'}
         list_mem = {'high', 'low'}
         if check_for_gamma:
             list_gamma = {0, 1}
@@ -130,12 +131,15 @@ class sirius_scf_launcher:
         count = 0
         self.launch_job(count)
 
-        print("testing %i calculations\n"%(len(mpi_grids) * len(list_pu) * len(list_ev) * len(list_mem)))
+        #print("testing %i calculations\n"%(len(mpi_grids) * len(list_pu) * len(list_ev) * len(list_gamma) * len(list_mem)))
 
         num_correct = 0
+        num_wrong = 0
     
         for pu in list_pu:
             for evs in list_ev:
+                if evs == 'cusolver' and pu == 'cpu':
+                    continue
                 for gp in list_gamma:
                     for mem in list_mem:
                         for g in mpi_grids:
@@ -143,8 +147,11 @@ class sirius_scf_launcher:
                             errcode = self.launch_job(count, processing_unit=pu, ev_solver=evs, mpi_grid=g, mem_usage=mem, gamma=gp)
                             if errcode == 0:
                                 num_correct = num_correct + 1
+                            else:
+                                num_wrong = num_wrong + 1
         
         print("number of correct calculations : %i"%num_correct)
+        print("number of wrong calculations : %i"%num_wrong)
 
 def main():
     launcher = sirius_scf_launcher(4, 12)
