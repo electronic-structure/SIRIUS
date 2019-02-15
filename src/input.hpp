@@ -250,7 +250,7 @@ struct Iterative_solver_input
     /// Defines the flavour of the iterative solver.
     /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
      *  is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
-     *  unconverged residuals and only then compute only the unconverged. */
+     *  unconverged residuals and then compute only the unconverged ones. */
     int converge_by_energy_{1}; // TODO: rename, this is meaningless
 
     /// Minimum number of residuals to continue iterative diagonalization process.

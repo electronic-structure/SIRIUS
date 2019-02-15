@@ -1073,11 +1073,11 @@ class Simulation_context : public Simulation_parameters
         /* iterate to find lambda */
         do {
             lambda += 0.1;
-            upper_bound =
-                charge * charge * std::sqrt(2.0 * lambda / twopi) * std::erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
+            upper_bound = charge * charge * std::sqrt(2.0 * lambda / twopi) *
+                          std::erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
         } while (upper_bound < 1e-8);
 
-        if (lambda < 1.5) {
+        if (lambda < 1.5 && comm().rank() == 0) {
             std::stringstream s;
             s << "ewald_lambda(): pw_cutoff is too small";
             WARNING(s);
@@ -1100,7 +1100,7 @@ class Simulation_context : public Simulation_parameters
         return memory_pool_.at(M__);
     }
 
-    /// Get a defalt memory pool for a given device.
+    /// Get a default memory pool for a given device.
     memory_pool& mem_pool(device_t dev__)
     {
         switch (dev__) {
@@ -1167,6 +1167,26 @@ class Simulation_context : public Simulation_parameters
     inline linalg_t blas_linalg_t() const
     {
         return blas_linalg_t_;
+    }
+
+    inline splindex<block> split_gvec_local() const
+    {
+        /* local number of G-vectors for this MPI rank */
+        int ngv_loc = gvec().count();
+        /* estimate number of G-vectors in a block */
+        int ngv_b{-1};
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            int nat = unit_cell_.atom_type(iat).num_atoms();
+            int nbf = unit_cell_.atom_type(iat).mt_basis_size();
+            ngv_b = std::max(ngv_b, std::max(nbf * (nbf + 1) / 2, nat));
+        }
+        /* limit the size of relevant array to ~1Gb */
+        ngv_b = (1 << 30) / sizeof(double_complex) / ngv_b;
+        ngv_b = std::max(1, std::min(ngv_loc, ngv_b));
+        /* number of blocks of G-vectors */
+        int nb = ngv_loc / ngv_b;
+        /* split local number of G-vectors between blocks */
+        return std::move(splindex<block>(ngv_loc, nb, 0));
     }
 };
 

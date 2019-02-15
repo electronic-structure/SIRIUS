@@ -18,6 +18,7 @@ max_num_threads = 12
 class sirius_scf_launcher:
 
     def __init__(self, num_nodes, num_threads_per_rank):
+
         self.env = os.environ.copy()
         self.num_nodes = num_nodes
         self.num_threads_per_rank = num_threads_per_rank
@@ -26,25 +27,32 @@ class sirius_scf_launcher:
         self.env['MPICH_MAX_THREAD_SAFETY'] = 'multiple'
         self.env['OMP_NUM_THREADS'] = str(num_threads_per_rank)
         self.env['MKL_NUM_THREADS'] = str(num_threads_per_rank)
-        self.env['CRAY_CUDA_MPS'] = '0'
+        if self.num_ranks_per_node > 1:
+            self.env['CRAY_CUDA_MPS'] = '1'
 
     def launch_job(self, count, **kwargs):
-    
+
         output_json = "out_%iR_%i.json"%(self.num_ranks, count)
         params = ''
         # basic command
         cmd = ['srun', '-C', 'gpu', '-N', str(self.num_nodes), '-n', str(self.num_ranks), '-c',
                str(self.num_threads_per_rank), '--unbuffered', '--hint=nomultithread', './sirius.scf', '--output=' + output_json]
+        # extra parameters
         if 'processing_unit' in kwargs:
-            cmd.append("--processing_unit=%s"%kwargs['processing_unit'])
+            cmd.append("--control.processing_unit=%s"%kwargs['processing_unit'])
             params = params + ', ' + kwargs['processing_unit']
         if 'ev_solver' in kwargs:
-            cmd.append("--std_evp_solver_name=%s"%kwargs['ev_solver'])
-            cmd.append("--gen_evp_solver_name=%s"%kwargs['ev_solver'])
+            cmd.append("--control.std_evp_solver_name=%s"%kwargs['ev_solver'])
+            cmd.append("--control.gen_evp_solver_name=%s"%kwargs['ev_solver'])
             params = params + ', ' + kwargs['ev_solver']
         if 'mpi_grid' in kwargs:
-            cmd.append("--mpi_grid=%i:%i"%(kwargs['mpi_grid'][0], kwargs['mpi_grid'][1]))
+            cmd.append("--control.mpi_grid_dims=%i:%i"%(kwargs['mpi_grid'][0], kwargs['mpi_grid'][1]))
             params = params + ', ' + str(kwargs['mpi_grid'])
+        if 'mem_usage' in kwargs:
+            cmd.append("--control.memory_usage=%s"%(kwargs['mem_usage']))
+            params = params + ', ' + str(kwargs['mem_usage'])
+        if 'gamma' in kwargs:
+            cmd.append("--parameters.gamma_point=%i"%kwargs['gamma'])
     
         if count == 0:
             print("Executing reference calculation on %i MPI rank(s)"%(self.num_ranks), end = '')
@@ -81,9 +89,20 @@ class sirius_scf_launcher:
                     print('Success: total energy is correct')
         else:
             print("Error: calculation failed with error code %i"%errcode)
+        
+        print('')
+        return errcode
     
     def launch_jobs(self):
+        with open('sirius.json', 'r') as f:
+            jin = json.load(f)
     
+        ngridk = jin['parameters']['ngridk']
+        if ngridk[0] * ngridk[1] * ngridk[2] == 1:
+            check_for_gamma = True
+        else:
+            check_for_gamma = False
+
         #cwdlibs = os.getcwd() + "/libs/"
     
         #if not os.path.exists(cwdlibs):
@@ -92,23 +111,43 @@ class sirius_scf_launcher:
         mpi_grids = []
         for i in range(1, self.num_ranks + 1):
             for j in range(1, self.num_ranks + 1):
-                for k in range(1, self.num_ranks + 1):
+                if check_for_gamma:
+                    k_rage = 1
+                else:
+                    k_rage = self.num_ranks
+                for k in range(1, k_rage + 1):
                     if i * j * k == self.num_ranks:
                         mpi_grids.append([i, j, k])
     
+        list_pu = {'cpu', 'gpu'}
+        list_ev = {'lapack', 'magma', 'scalapack', 'elpa1'}
+        list_mem = {'high', 'low'}
+        if check_for_gamma:
+            list_gamma = {0, 1}
+        else:
+            list_gamma = {0}
+
         count = 0
         self.launch_job(count)
+
+        print("testing %i calculations\n"%(len(mpi_grids) * len(list_pu) * len(list_ev) * len(list_mem)))
+
+        num_correct = 0
     
-        list_pu = {'cpu', 'gpu'}
-        list_ev = {'lapack', 'magma', 'scalapack'}
         for pu in list_pu:
             for evs in list_ev:
-                for g in mpi_grids:
-                    count = count + 1
-                    self.launch_job(count, processing_unit=pu, ev_solver=evs, mpi_grid=g)
+                for gp in list_gamma:
+                    for mem in list_mem:
+                        for g in mpi_grids:
+                            count = count + 1
+                            errcode = self.launch_job(count, processing_unit=pu, ev_solver=evs, mpi_grid=g, mem_usage=mem, gamma=gp)
+                            if errcode == 0:
+                                num_correct = num_correct + 1
+        
+        print("number of correct calculations : %i"%num_correct)
 
 def main():
-    launcher = sirius_scf_launcher(2, 12)
+    launcher = sirius_scf_launcher(4, 12)
     launcher.launch_jobs()
 
 if __name__ == "__main__":

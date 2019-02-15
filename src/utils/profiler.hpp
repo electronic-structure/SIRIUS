@@ -25,6 +25,7 @@
 #ifndef __PROFILER_HPP__
 #define __PROFILER_HPP__
 
+#include <mpi.h>
 #include <string>
 #include "timer.hpp"
 
@@ -86,11 +87,11 @@ class profiler
         for (int i = 0; i < tab; i++) {
             printf(" ");
         }
-#if defined(MPI_VERSION)
+//#if defined(MPI_VERSION)
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         printf("[rank%04i] + %s\n", rank, label_.c_str());
-#endif
+//#endif
 #endif
 
 #if defined(__PROFILE_TIME)
@@ -112,11 +113,11 @@ class profiler
         for (int i = 0; i < tab; i++) {
             printf(" ");
         }
-#if defined(MPI_VERSION)
+//#if defined(MPI_VERSION)
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         printf("[rank%04i] - %s\n", rank, label_.c_str());
-#endif
+//#endif
 #endif
 
 #ifdef __PROFILE_STACK

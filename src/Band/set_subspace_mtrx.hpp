@@ -44,9 +44,11 @@ inline void Band::set_subspace_mtrx(int N__,
         splindex<block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(),
                                        mtrx__.bs_col());
 
-        #pragma omp parallel for schedule(static)
-        for (int i = 0; i < spl_col.local_size(); i++) {
-            std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
+        if (mtrx_old__) {
+            #pragma omp parallel for schedule(static)
+            for (int i = 0; i < spl_col.local_size(); i++) {
+                std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
+            }
         }
 
         if (ctx_.control().print_checksum_) {

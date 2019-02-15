@@ -746,6 +746,35 @@ class Eigensolver_scalapack : public Eigensolver
         return info;
     }
 
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    {
+        utils::timer t0("Eigensolver_scalapack|pdsyevd");
+
+        ftn_int info;
+        ftn_int ione{1};
+
+        ftn_int lwork{-1};
+        ftn_int liwork{-1};
+        double work1[10];
+        ftn_int iwork1[10];
+
+        /* work size query */
+        FORTRAN(pdsyevd)
+        ("V", "U", &matrix_size__, A__.at(memory_t::host), &ione, &ione, const_cast<ftn_int*>(A__.descriptor()), eval__,
+         Z__.at(memory_t::host), &ione, &ione, const_cast<ftn_int*>(Z__.descriptor()), work1, &lwork, iwork1, &liwork, &info, (ftn_int)1, (ftn_int)1);
+
+        lwork  = static_cast<ftn_int>(work1[0]) + 1;
+        liwork = iwork1[0];
+
+        auto work  = mp_h_.get_unique_ptr<double>(lwork);
+        auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
+
+        FORTRAN(pdsyevd)
+        ("V", "U", &matrix_size__, A__.at(memory_t::host), &ione, &ione, const_cast<ftn_int*>(A__.descriptor()), eval__,
+         Z__.at(memory_t::host), &ione, &ione, const_cast<ftn_int*>(Z__.descriptor()), work.get(), &lwork, iwork.get(), &liwork, &info, (ftn_int)1, (ftn_int)1);
+        return info;
+    }
+
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
@@ -947,17 +976,17 @@ class Eigensolver_scalapack : public Eigensolver
         double d1;
         ftn_int info{-1};
 
-        double work1;
+        double work1[3];
         ftn_int lwork  = -1;
         ftn_int liwork = -1;
         /* work size query */
         FORTRAN(pdsygvx)
         (&ione, "V", "I", "U", &matrix_size__, A__.at(memory_t::host), &ione, &ione, desca, B__.at(memory_t::host),
          &ione, &ione, descb, &d1, &d1, &ione, &nev__, &abstol_, &m, &nz, w.get(), &ortfac_, Z__.at(memory_t::host),
-         &ione, &ione, descz, &work1, &lwork, &liwork, &lwork, ifail.get(), iclustr.get(), gap.get(), &info, (ftn_int)1,
+         &ione, &ione, descz, work1, &lwork, &liwork, &lwork, ifail.get(), iclustr.get(), gap.get(), &info, (ftn_int)1,
          (ftn_int)1, (ftn_int)1);
 
-        lwork = static_cast<int32_t>(work1) + 4 * (1 << 20);
+        lwork = static_cast<int32_t>(work1[0]) + 4 * (1 << 20);
 
         auto work  = mp_h_.get_unique_ptr<double>(lwork);
         auto iwork = mp_h_.get_unique_ptr<ftn_int>(liwork);
@@ -1332,7 +1361,6 @@ class Eigensolver_cuda: public Eigensolver
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
 
         auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
-        //A__.copy_to(memory_t::device);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
@@ -1351,14 +1379,47 @@ class Eigensolver_cuda: public Eigensolver
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
             acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
-            //acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
-            //Z__.copy_to(memory_t::host);
         }
         return info;
     }
 
-    int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__,
-              dmatrix<double_complex>& Z__)
+    int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
+    {
+        return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
+    }
+
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__,
+              dmatrix<double>& Z__)
+    {
+        utils::timer t0("Eigensolver_cuda|dsyevd");
+
+        cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
+        cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+
+        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
+
+        int lwork;
+        CALL_CUSOLVER(cusolverDnDsyevd_bufferSize, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
+                                                    A__.at(memory_t::device), A__.ld(),
+                                                    w.get(), &lwork));
+
+        auto work = mp_d_.get_unique_ptr<double>(lwork);
+
+        int info;
+        auto dinfo = mp_d_.get_unique_ptr<int>(1);
+        CALL_CUSOLVER(cusolverDnDsyevd, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
+                                         A__.at(memory_t::device), A__.ld(),
+                                         w.get(), work.get(), lwork, dinfo.get()));
+        acc::copyout(&info, dinfo.get(), 1);
+        if (!info) {
+            acc::copyout(eval__, w.get(), nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+        }
+        return info;
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
         return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
     }
@@ -1375,8 +1436,6 @@ class Eigensolver_cuda: public Eigensolver
         auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
-        //A__.copy_to(memory_t::device);
-        //B__.copy_to(memory_t::device);
 
         int lwork;
         CALL_CUSOLVER(cusolverDnZhegvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
@@ -1397,8 +1456,6 @@ class Eigensolver_cuda: public Eigensolver
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
             acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
-            //acc::copy(Z__.at(memory_t::device), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
-            //Z__.copy_to(memory_t::host);
         }
         return info;
     }
@@ -1410,7 +1467,45 @@ class Eigensolver_cuda: public Eigensolver
         return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
     }
 
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
+              dmatrix<double>& Z__)
+    {
+        utils::timer t0("Eigensolver_cuda|dsygvd");
 
+        cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
+        cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
+        cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+
+        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
+        acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
+
+        int lwork;
+        CALL_CUSOLVER(cusolverDnDsygvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+                                                    A__.at(memory_t::device), A__.ld(),
+                                                    B__.at(memory_t::device), B__.ld(),
+                                                    w.get(), &lwork));
+
+        auto work = mp_d_.get_unique_ptr<double>(lwork);
+
+        int info;
+        auto dinfo = mp_d_.get_unique_ptr<int>(1);
+        CALL_CUSOLVER(cusolverDnDsygvd, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+                                         A__.at(memory_t::device), A__.ld(),
+                                         B__.at(memory_t::device), B__.ld(),
+                                         w.get(), work.get(), lwork, dinfo.get()));
+        acc::copyout(&info, dinfo.get(), 1);
+        if (!info) {
+            acc::copyout(eval__, w.get(), nev__);
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
+        }
+        return info;
+    }
+
+    int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__)
+    {
+        return solve(matrix_size__, matrix_size__, A__, B__, eval__, Z__);
+    }
 };
 #else
 class Eigensolver_cuda: public Eigensolver

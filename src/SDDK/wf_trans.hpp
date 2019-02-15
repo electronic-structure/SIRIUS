@@ -32,6 +32,8 @@ inline void transform_local<double>(linalg_t la__, int ispn__, double* alpha__, 
                                     int m__, double* mtrx__, int ld__, Wave_functions* wf_out__, int j0__,
                                     int n__, stream_id sid__)
 {
+    utils::timer t1("sddk::transform|local");
+
     auto spins = get_spins(ispn__);
 
     for (int s: spins) {
@@ -60,6 +62,8 @@ inline void transform_local<double_complex>(linalg_t la__, int ispn__, double_co
                                             int i0__, int m__, double_complex* mtrx__, int ld__,
                                             Wave_functions* wf_out__, int j0__, int n__, stream_id sid__)
 {
+    utils::timer t1("sddk::transform|local");
+
     auto spins = get_spins(ispn__);
 
     for (int s: spins) {
@@ -114,9 +118,7 @@ inline void transform(memory_t                     mem__,
                       int                          j0__,
                       int                          n__)
 {
-    PROFILE("sddk::Wave_functions::transform");
-
-    static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
+    PROFILE("sddk::transform");
 
     assert(n__ != 0);
     assert(m__ != 0);
@@ -140,7 +142,7 @@ inline void transform(memory_t                     mem__,
 
     T alpha = alpha__;
 
-    utils::timer t1("sddk::Wave_functions::transform|init");
+    utils::timer t1("sddk::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (beta__ == 0) {
@@ -184,11 +186,16 @@ inline void transform(memory_t                     mem__,
 
     int num_streams = std::min(4, omp_get_max_threads());
 
-    mdarray<T, 1> buf(BS * BS, memory_t::host_pinned, "transform::buf");
-    mdarray<T, 3> submatrix(BS, BS, num_streams, memory_t::host_pinned, "transform::submatrix");
+    mdarray<T, 1> buf;
+    mdarray<T, 3> submatrix;
 
     if (is_device_memory(mem__)) {
+        buf = mdarray<T, 1>(BS * BS, memory_t::host_pinned, "transform::buf");
+        submatrix = mdarray<T, 3>(BS, BS, num_streams, memory_t::host_pinned, "transform::submatrix");
         submatrix.allocate(memory_t::device);
+    } else {
+        buf = mdarray<T, 1>(BS * BS, memory_t::host, "transform::buf");
+        submatrix = mdarray<T, 3>(BS, BS, num_streams, memory_t::host, "transform::submatrix");
     }
 
     /* cache cartesian ranks */

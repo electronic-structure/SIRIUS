@@ -1,9 +1,9 @@
 {
     "control" : {
         "!cyclic_block_size" : 16,
-        "processing_unit" : "gpu",
-        "!std_evp_solver_type" : "lapack",
-        "!gen_evp_solver_type" : "lapack",
+        "!processing_unit" : "gpu",
+        "!std_evp_solver_type" : "scalapack",
+        "!gen_evp_solver_type" : "scalapack",
         "verbosity" : 2,
         "verification" : 0,
         "print_memory_usage" : false,

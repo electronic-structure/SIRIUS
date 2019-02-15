@@ -157,11 +157,9 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_bloc
     }
     switch (pu_) {
         case device_t::GPU: {
-#ifdef __GPU
             /* wait for previous zgemms */
             #pragma omp parallel
             acc::sync_stream(stream_id(omp_get_thread_num()));
-#endif
             break;
         }
         case device_t::CPU: {
@@ -179,9 +177,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_bloc
 
     switch (pu_) {
         case device_t::GPU: {
-#ifdef __GPU
             acc::sync_stream(stream_id(-1));
-#endif
             break;
         }
         case device_t::CPU: {
@@ -311,11 +307,9 @@ inline void Non_local_operator<double>::apply(int chunk__, int ispn_block__, Wav
     }
     switch (pu_) {
         case device_t::GPU: {
-#ifdef __GPU
             /* wait for previous zgemms */
             #pragma omp parallel
             acc::sync_stream(stream_id(omp_get_thread_num()));
-#endif
             break;
         }
         case device_t::CPU: {
@@ -334,9 +328,7 @@ inline void Non_local_operator<double>::apply(int chunk__, int ispn_block__, Wav
 
     switch (pu_) {
         case device_t::GPU: {
-#ifdef __GPU
             acc::sync_stream(stream_id(-1));
-#endif
             break;
         }
         case device_t::CPU: {

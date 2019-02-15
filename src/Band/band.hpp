@@ -112,7 +112,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                          mdarray<double, 1>& o_diag__) const;
 
     template <typename T>
-    void check_residuals(K_point* kp__, Hamiltonian& H__) const;
+    void check_residuals(K_point& kp__, Hamiltonian& H__) const;
 
     /// Check wave-functions for orthonormalization.
     template <typename T>
@@ -146,22 +146,16 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
             kp__.beta_projectors().prepare();
             /* compute residuals */
             for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
-                if (nc_mag) {
-                    /* apply Hamiltonian and S operators to the wave-functions */
-                    H__.apply_h_s<T>(&kp__, 2, 0, ctx_.num_bands(), psi, nullptr, &spsi);
-                    inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 2, psi, 0, ctx_.num_bands(),
-                          spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
-                } else {
-                    /* apply Hamiltonian and S operators to the wave-functions */
-                    H__.apply_h_s<T>(&kp__, ispin_step, 0, ctx_.num_bands(), psi, 0, &spsi);
-                    inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, psi, 0, ctx_.num_bands(),
-                          spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
-                }
+                /* apply Hamiltonian and S operators to the wave-functions */
+                H__.apply_h_s<T>(&kp__, nc_mag ? 2 : ispin_step, 0, ctx_.num_bands(), psi, nullptr, &spsi);
+                inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, psi, 0, ctx_.num_bands(),
+                      spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
+
                 double diff = check_identity(ovlp, ctx_.num_bands());
 
                 if (kp__.comm().rank() == 0) {
                     if (diff > 1e-12) {
-                        printf("overlap matrix is not identity, maximum error : %f\n", diff);
+                        printf("overlap matrix is not identity, maximum error : %20.12f\n", diff);
                     } else {
                         printf("OK! Wave functions are orthonormal.\n");
                     }

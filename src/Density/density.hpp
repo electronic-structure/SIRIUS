@@ -25,6 +25,7 @@
 #ifndef __DENSITY_HPP__
 #define __DENSITY_HPP__
 
+#include <iomanip>
 #include "field4d.hpp"
 #include "periodic_function.hpp"
 #include "K_point/k_point_set.hpp"

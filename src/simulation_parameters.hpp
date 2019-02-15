@@ -108,14 +108,9 @@ class Simulation_parameters
         parameters_input_.ngridk_           = args__.value("parameters.ngridk", parameters_input_.ngridk_);
         parameters_input_.gamma_point_      = args__.value("parameters.gamma_point", parameters_input_.gamma_point_);
 
-        //json dict = {};
-        //for (auto const& k: args__.keys()) {
-        //    auto i = k.first.find('.');
-        //    auto s1 = k.first.substr(0, i);
-        //    auto s2 = k.first.substr(i + 1);
-        //    dict
-        //    std::cout << s1 << " " << s2 << "\n";
-        //}
+        iterative_solver_input_.orthogonalize_ = args__.value("iterative_solver.orthogonalize",
+                                                              iterative_solver_input_.orthogonalize_);
+
     }
 
     inline void set_lmax_apw(int lmax_apw__)
@@ -255,11 +250,11 @@ class Simulation_parameters
 
         /* set the default value */
         if (name__ == "") {
-#if defined(__GPU)
-            name__ = "gpu";
-#else
-            name__ = "cpu";
-#endif
+            if (acc::num_devices() > 0) {
+                name__ = "gpu";
+            } else {
+                name__ = "cpu";
+            }
         }
         control_input_.processing_unit_ = name__;
         if (name__ == "cpu") {

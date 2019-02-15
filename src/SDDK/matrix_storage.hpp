@@ -304,7 +304,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
 
         block_data_descriptor rd(comm.size());
-        rd.counts[comm.rank()] = num_rows_loc_;
+        rd.counts[comm.rank()] = num_rows_loc();
         comm.allgather(rd.counts.data(), comm.rank(), 1);
         rd.calc_offsets();
 
