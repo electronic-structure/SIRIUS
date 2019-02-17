@@ -147,6 +147,7 @@ include_directories(BEFORE SYSTEM ${LIBXC_INCLUDE_DIR})
 include_directories(BEFORE SYSTEM ${LIBSPG_INCLUDE_DIR})
 include_directories(BEFORE SYSTEM ${HDF5_INCLUDE_DIR})
 include_directories(BEFORE SYSTEM ${MPI_C_INCLUDE_DIRS})
+include_directories(BEFORE SYSTEM ${GSL_INCLUDE_DIRS})
 
 if(USE_VDWXC)
   find_package(LibVDWXC 0.3.0 REQUIRED)
