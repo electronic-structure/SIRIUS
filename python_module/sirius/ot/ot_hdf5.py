@@ -40,7 +40,7 @@ def load(fh5, name, obj):
     if isinstance(obj, CoefficientArray):
         for key, val in obj.items():
             dname = ','.join(map(str, key))
-            out[key] = fh5[name][dname]
+            out[key] = np.array(fh5[name][dname])
     else:
         out = np.array(fh5[name])
     return out

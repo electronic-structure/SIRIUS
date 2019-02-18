@@ -247,9 +247,9 @@ def minimize(x0,
         else:
             b = beta(pdfx, pdfprev, M)
             p = -M @ dfx + b * p
-            if (np.real(inner(p, dfx)) > 0):
+            if np.real(inner(p, dfx)) > 0:
                 p = -M @ dfx
-                assert (np.real(inner(p, dfx)) < 0)
+                assert np.real(inner(p, dfx)) < 0
     else:
         if log:
             return (x, maxiter, False, histf)

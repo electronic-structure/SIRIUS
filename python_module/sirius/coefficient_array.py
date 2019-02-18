@@ -19,7 +19,7 @@ def diag(x):
         out = type(x)(dtype=x.dtype, ctype=x.ctype)
         for key, val in x._data.items():
             if val.size == max(val.shape):
-                out[key] = np.diag(np.array(val, ).flatten())
+                out[key] = np.diag(np.array(val, copy=True).flatten())
             else:
                 out[key] = np.diag(val)
         return out
@@ -67,8 +67,8 @@ def einsum(expr, *operands):
 
     try:
         return np.einsum(expr, *operands)
-    except ValueError:
-        out = type(operands[0])(dtype=operands[0].dtype)
+    except ValueError or TypeError:
+        out = type(operands[0])(dtype=operands[0].dtype, ctype=np.array)
         for key in operands[0]._data.keys():
             out[key] = np.einsum(expr,
                                  *list(map(lambda x: x[key], operands)))
@@ -162,6 +162,24 @@ class CoefficientArray:
         elif np.isscalar(other):
             for key in self._data.keys():
                 out[key] = self._data[key] / other
+        else:
+            raise TypeError('wrong type')
+        return out
+
+    def __rtruediv__(self, other):
+        if is_complex(self) or is_complex(other):
+            dtype = np.complex
+        else:
+            dtype = np.float
+
+        out = type(self)(dtype=dtype, ctype=self.ctype)
+        if isinstance(other, CoefficientArray):
+            for key in other._data.keys():
+                out[key] = np.einsum('...,...->...', 1 / self._data[key],
+                                     other._data[key])
+        elif np.isscalar(other):
+            for key in self._data.keys():
+                out[key] = other / self._data[key]
         else:
             raise TypeError('wrong type')
         return out
@@ -279,7 +297,7 @@ class CoefficientArray:
     def flatten(self, ctype=None):
         if ctype is None:
             ctype = self.ctype
-        out = type(self)(dtype=np.double, ctype=ctype)
+        out = type(self)(dtype=self.dtype, ctype=ctype)
         for key, val in self._data.items():
             out[key] = ctype(val).flatten()
         return out
@@ -409,7 +427,7 @@ class PwCoeffs(CoefficientArray):
     def __init__(self, kpointset=None, dtype=np.complex, ctype=np.matrix):
         super().__init__(dtype=dtype, ctype=ctype)
 
-        # load plane wave-coefficients from kpointset
+        # load plane-wave coefficients from kpointset
         if kpointset is not None:
             num_sc = kpointset.ctx().num_spins()
             for ki in range(len(kpointset)):

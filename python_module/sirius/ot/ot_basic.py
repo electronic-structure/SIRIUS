@@ -44,17 +44,15 @@ class Energy:
         else:
             self.ctx = ctx
 
-    def __call__(self, cn, ki=None, ispn=0):
+    def __call__(self, cn, ek=None):
         """
         Keyword Arguments:
         cn  --
-        ki -- the index of the k-point
+        ek  -- band energies
         """
         from ..coefficient_array import PwCoeffs
 
         if isinstance(cn, PwCoeffs):
-            ispn = None
-            assert (ki is None)
             # update coefficients for all items in PwCoeffs
             for key, val in cn.items():
                 k, ispn = key
@@ -79,45 +77,26 @@ class Energy:
             self.potential.fft_transform(1)
 
             # update band energies
-            yn = self.H(cn, scale=False)
-            for key, val in yn.items():
-                k, ispn = key
-                benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex)
-                benergies[:val.shape[1]] = np.einsum('ij,ij->j',
-                                                    val,
-                                                    np.conj(cn[key]))
+            if ek is None:
+                yn = self.H(cn, scale=False)
+                for key, val in yn.items():
+                    k, ispn = key
+                    benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex)
+                    benergies[:val.shape[1]] = np.einsum('ij,ij->j',
+                                                        val,
+                                                        np.conj(cn[key]))
 
-                for j, ek in enumerate(benergies):
-                    self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
+                    for j, ek in enumerate(benergies):
+                        self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
 
-            self.kpointset.sync_band_energies()
+                self.kpointset.sync_band_energies()
+            else:
+                self.kpointset.e = ek
 
             return pp_total_energy(self.potential, self.density,
                                    self.kpointset, self.ctx)
         else:
-            k = self.kpointset[ki]
-            k.spinor_wave_functions().pw_coeffs(ispn)[:] = cn
-            psi = self.kpointset[k].spinor_wave_functions()
-            if psi.preferred_memory_t() == MemoryEnum.device:
-                psi.copy_to_gpu()
-            # update density and potential at point
-            self.density.generate(self.kpointset)
-            self.density.generate_paw_loc_density()
-            self.density.fft_transform(1)
-            self.potential.generate(self.density)
-            self.potential.fft_transform(1)
-            # compute band energies
-            yn = self.H(cn, scale=False, ki=ki, ispn=ispn)
-            # divide by band occupancies bnd_occ and kpoint-weight w
-            yn = np.matrix(yn, copy=False)
-            HH = yn.H * cn
-            ek = np.diag(HH)
-            for i, ek in enumerate(ek):
-                k.set_band_energy(i, ispn, ek)
-            self.kpointset.sync_band_energies()
-            return pp_total_energy(self.potential, self.density,
-                                   self.kpointset, self.ctx)
-
+            assert False
 
 class ApplyHamiltonian:
     def __init__(self, hamiltonian, kpointset):
