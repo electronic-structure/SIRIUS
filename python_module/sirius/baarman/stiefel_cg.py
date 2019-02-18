@@ -246,7 +246,7 @@ class CG:
             X, Y, dAdC, fn, dAdf = self.cg_step(X, fn, dAdC, dAdf, Y)
             # logger('occupation numbers:', fn)
             # check for convergence
-            res = np.real(inner(Y, Y))
+            res = np.real(inner(Y, dAdC))
             resf = np.real(inner(dAdf, dAdf))
             logger('iteration %03d, res %.5g f: %.5g' % (i, res, resf))
         return X, fn
