@@ -24,77 +24,78 @@
 
 #include "../SDDK/GPU/cuda_common.hpp"
 #include "../SDDK/GPU/acc.hpp"
-#include <cuComplex.h>
+#include "hip/hip_runtime.h"
+#include "hip/hip_complex.h"
 
 __global__ void mul_by_veff0_gpu_kernel(int                    size__,
                                         double* const*         veff__,
-                                        cuDoubleComplex*       buf__)
+                                        hipDoubleComplex*       buf__)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < size__) {
-        cuDoubleComplex z = buf__[i];
+        hipDoubleComplex z = buf__[i];
         double v0 = veff__[0][i];
-        buf__[i] = make_cuDoubleComplex(z.x * v0, z.y * v0);
+        buf__[i] = make_hipDoubleComplex(z.x * v0, z.y * v0);
     }
 }
 
 __global__ void mul_by_veff1_gpu_kernel(int                    size__,
                                         double* const*         veff__,
-                                        cuDoubleComplex*       buf__)
+                                        hipDoubleComplex*       buf__)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < size__) {
-        cuDoubleComplex z = buf__[i];
+        hipDoubleComplex z = buf__[i];
         double v1 = veff__[1][i];
-        buf__[i] = make_cuDoubleComplex(z.x * v1, z.y * v1);
+        buf__[i] = make_hipDoubleComplex(z.x * v1, z.y * v1);
     }
 }
 
 __global__ void mul_by_veff2_gpu_kernel(int                    size__,
                                         double* const*         veff__,
-                                        cuDoubleComplex*       buf__)
+                                        hipDoubleComplex*       buf__)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < size__) {
-        cuDoubleComplex z = buf__[i];
-        cuDoubleComplex v = make_cuDoubleComplex(veff__[2][i], -veff__[3][i]);  
-        buf__[i] = cuCmul(z, v);
+        hipDoubleComplex z = buf__[i];
+        hipDoubleComplex v = make_hipDoubleComplex(veff__[2][i], -veff__[3][i]);  
+        buf__[i] = hipCmul(z, v);
     }
 }
 
 __global__ void mul_by_veff3_gpu_kernel(int                    size__,
                                         double* const*         veff__,
-                                        cuDoubleComplex*       buf__)
+                                        hipDoubleComplex*       buf__)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < size__) {
-        cuDoubleComplex z = buf__[i];
-        cuDoubleComplex v = make_cuDoubleComplex(veff__[2][i], veff__[3][i]);
-        buf__[i] = cuCmul(z, v);
+        hipDoubleComplex z = buf__[i];
+        hipDoubleComplex v = make_hipDoubleComplex(veff__[2][i], veff__[3][i]);
+        buf__[i] = hipCmul(z, v);
     }
 }
 
-extern "C" void mul_by_veff_gpu(int ispn__, int size__, double* const* veff__, cuDoubleComplex* buf__)
+extern "C" void mul_by_veff_gpu(int ispn__, int size__, double* const* veff__, hipDoubleComplex* buf__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(size__, grid_t.x));
 
     switch (ispn__) {
         case 0: {
-            mul_by_veff0_gpu_kernel<<<grid_b, grid_t>>>(size__, veff__, buf__);
+            hipLaunchKernelGGL((mul_by_veff0_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, size__, veff__, buf__);
             break;
         }
         case 1: {
-            mul_by_veff1_gpu_kernel<<<grid_b, grid_t>>>(size__, veff__, buf__);
+            hipLaunchKernelGGL((mul_by_veff1_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, size__, veff__, buf__);
             break;
         }
         case 2: {
-            mul_by_veff2_gpu_kernel<<<grid_b, grid_t>>>(size__, veff__, buf__);
+            hipLaunchKernelGGL((mul_by_veff2_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, size__, veff__, buf__);
             break;
         }
 
         case 3: {
-            mul_by_veff3_gpu_kernel<<<grid_b, grid_t>>>(size__, veff__, buf__);
+            hipLaunchKernelGGL((mul_by_veff3_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, size__, veff__, buf__);
             break;
         }
     }

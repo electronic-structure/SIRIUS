@@ -23,17 +23,21 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
+#include "hip/hip_runtime.h"
+#include "hip/hip_complex.h"
+
+#ifdef __CUDA
 #include "../SDDK/GPU/cuda_timer.hpp"
-#include <cuComplex.h>
+#endif
 
 __global__ void create_beta_gk_gpu_kernel
 (
     int num_gkvec__, 
     int const* beta_desc__,
-    cuDoubleComplex const* beta_gk_t, 
+    hipDoubleComplex const* beta_gk_t, 
     double const* gkvec, 
     double const* atom_pos,
-    cuDoubleComplex* beta_gk
+    hipDoubleComplex* beta_gk
 )
 {
     int ia = blockIdx.y;
@@ -55,8 +59,8 @@ __global__ void create_beta_gk_gpu_kernel
 
         for (int xi = 0; xi < nbf; xi++) {
             beta_gk[array2D_offset(igk, offset_beta_gk + xi, num_gkvec__)] =
-                cuCmul(beta_gk_t[array2D_offset(igk, offset_beta_gk_t + xi, num_gkvec__)],
-                       make_cuDoubleComplex(cosp, -sinp));
+                hipCmul(beta_gk_t[array2D_offset(igk, offset_beta_gk_t + xi, num_gkvec__)],
+                       make_hipDoubleComplex(cosp, -sinp));
         }
     }
 }
@@ -64,18 +68,19 @@ __global__ void create_beta_gk_gpu_kernel
 extern "C" void create_beta_gk_gpu(int num_atoms,
                                    int num_gkvec,
                                    int const* beta_desc,
-                                   cuDoubleComplex const* beta_gk_t,
+                                   hipDoubleComplex const* beta_gk_t,
                                    double const* gkvec,
                                    double const* atom_pos,
-                                   cuDoubleComplex* beta_gk)
+                                   hipDoubleComplex* beta_gk)
 {
+#ifdef __CUDA
     CUDA_timer t("create_beta_gk_gpu");
+#endif
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gkvec, grid_t.x), num_atoms);
 
-    create_beta_gk_gpu_kernel <<<grid_b, grid_t>>> 
-    (
+    hipLaunchKernelGGL((create_beta_gk_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
         num_gkvec,
         beta_desc,
         beta_gk_t,

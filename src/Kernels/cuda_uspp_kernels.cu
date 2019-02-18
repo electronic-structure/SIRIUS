@@ -23,22 +23,23 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
-#include <cuComplex.h>
+#include "hip/hip_runtime.h"
+#include "hip/hip_complex.h"
 
-extern cudaStream_t* streams;
+extern hipStream_t* streams;
 extern "C" void* cuda_malloc(size_t size);
 extern "C" void cuda_free(void* ptr);
 extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                             cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, cuDoubleComplex* b, 
-                             int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
+                             hipDoubleComplex* alpha, hipDoubleComplex* a, int32_t lda, hipDoubleComplex* b, 
+                             int32_t ldb, hipDoubleComplex* beta, hipDoubleComplex* c, int32_t ldc, int stream_id);
 
 __global__ void compute_chebyshev_order1_gpu_kernel
 (
     int num_gkvec__,
     double c__,
     double r__,
-    cuDoubleComplex* phi0__,
-    cuDoubleComplex* phi1__
+    hipDoubleComplex* phi0__,
+    hipDoubleComplex* phi1__
 )
 {
     int igk = blockDim.x * blockIdx.x + threadIdx.x;
@@ -48,11 +49,11 @@ __global__ void compute_chebyshev_order1_gpu_kernel
     {
         int i = array2D_offset(igk, j, num_gkvec__);
         // phi0 * c
-        cuDoubleComplex z1 = cuCmul(phi0__[i], make_cuDoubleComplex(c__, 0));
+        hipDoubleComplex z1 = hipCmul(phi0__[i], make_hipDoubleComplex(c__, 0));
         // phi1 - phi0 * c
-        cuDoubleComplex z2 = cuCsub(phi1__[i], z1);
+        hipDoubleComplex z2 = hipCsub(phi1__[i], z1);
         // (phi1 - phi0 * c) / r
-        phi1__[i] = cuCdiv(z2, make_cuDoubleComplex(r__, 0));
+        phi1__[i] = hipCdiv(z2, make_hipDoubleComplex(r__, 0));
     }
 }
 
@@ -61,9 +62,9 @@ __global__ void compute_chebyshev_orderk_gpu_kernel
     int num_gkvec__,
     double c__,
     double r__,
-    cuDoubleComplex* phi0__,
-    cuDoubleComplex* phi1__,
-    cuDoubleComplex* phi2__
+    hipDoubleComplex* phi0__,
+    hipDoubleComplex* phi1__,
+    hipDoubleComplex* phi2__
 )
 {
     int igk = blockDim.x * blockIdx.x + threadIdx.x;
@@ -73,13 +74,13 @@ __global__ void compute_chebyshev_orderk_gpu_kernel
     {
         int i = array2D_offset(igk, j, num_gkvec__);
         // phi1 * c
-        cuDoubleComplex z1 = cuCmul(phi1__[i], make_cuDoubleComplex(c__, 0));
+        hipDoubleComplex z1 = hipCmul(phi1__[i], make_hipDoubleComplex(c__, 0));
         // phi2 - phi1 * c
-        cuDoubleComplex z2 = cuCsub(phi2__[i], z1);
+        hipDoubleComplex z2 = hipCsub(phi2__[i], z1);
         // (phi2 - phi1 * c) * 2 / r
-        cuDoubleComplex z3 = cuCmul(z2, make_cuDoubleComplex(2.0 / r__, 0));
+        hipDoubleComplex z3 = hipCmul(z2, make_hipDoubleComplex(2.0 / r__, 0));
         // (phi2 - phi1 * c) * 2 / r - phi0
-        phi2__[i] = cuCsub(z3, phi0__[i]);
+        phi2__[i] = hipCsub(z3, phi0__[i]);
     }
 }
 
@@ -87,17 +88,16 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  int n,
                                                  double c,
                                                  double r,
-                                                 cuDoubleComplex* phi0,
-                                                 cuDoubleComplex* phi1,
-                                                 cuDoubleComplex* phi2)
+                                                 hipDoubleComplex* phi0,
+                                                 hipDoubleComplex* phi1,
+                                                 hipDoubleComplex* phi2)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gkvec, grid_t.x), n);
 
     if (phi2 == NULL)
     {
-        compute_chebyshev_order1_gpu_kernel <<<grid_b, grid_t>>>
-        (
+        hipLaunchKernelGGL((compute_chebyshev_order1_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
             num_gkvec,
             c,
             r,
@@ -107,8 +107,7 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
     }
     else
     {
-        compute_chebyshev_orderk_gpu_kernel <<<grid_b, grid_t>>>
-        (
+        hipLaunchKernelGGL((compute_chebyshev_orderk_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
             num_gkvec,
             c,
             r,
@@ -128,9 +127,9 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 //==                                              int* beta_t_idx, 
 //==                                              double* atom_pos, 
 //==                                              double* gkvec, 
-//==                                              cuDoubleComplex* beta_pw_type,
-//==                                              cuDoubleComplex* phi,
-//==                                              cuDoubleComplex* beta_phi)
+//==                                              hipDoubleComplex* beta_pw_type,
+//==                                              hipDoubleComplex* phi,
+//==                                              hipDoubleComplex* beta_phi)
 //== {
 //==     int idx_beta = blockDim.x * blockIdx.x + threadIdx.x;
 //==     int idx_phi = blockDim.y * blockIdx.y + threadIdx.y;
@@ -148,12 +147,12 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 //== 
 //==     int N = num_blocks(num_gkvec, BLOCK_SIZE);
 //== 
-//==     cuDoubleComplex val = make_cuDoubleComplex(0.0, 0.0);
+//==     hipDoubleComplex val = make_hipDoubleComplex(0.0, 0.0);
 //== 
 //==     for (int m = 0; m < N; m++)
 //==     {
-//==         __shared__ cuDoubleComplex beta_pw_tile[BLOCK_SIZE][BLOCK_SIZE];
-//==         __shared__ cuDoubleComplex phi_tile[BLOCK_SIZE][BLOCK_SIZE];
+//==         __shared__ hipDoubleComplex beta_pw_tile[BLOCK_SIZE][BLOCK_SIZE];
+//==         __shared__ hipDoubleComplex phi_tile[BLOCK_SIZE][BLOCK_SIZE];
 //== 
 //==         int bs = (m + 1) * BLOCK_SIZE > num_gkvec ? num_gkvec - m * BLOCK_SIZE : BLOCK_SIZE;
 //== 
@@ -169,8 +168,8 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 //==             double sinp = sin(p);
 //==             double cosp = cos(p);
 //== 
-//==             beta_pw_tile[threadIdx.x][threadIdx.y] = cuCmul(cuConj(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)]), 
-//==                                                             make_cuDoubleComplex(cosp, sinp));
+//==             beta_pw_tile[threadIdx.x][threadIdx.y] = hipCmul(hipConj(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)]), 
+//==                                                             make_hipDoubleComplex(cosp, sinp));
 //== 
 //==         }
 //==         
@@ -181,7 +180,7 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 //== 
 //==         __syncthreads();
 //== 
-//==         for (int i = 0; i < bs; i++) val = cuCadd(val, cuCmul(beta_pw_tile[threadIdx.x][i], phi_tile[threadIdx.y][i]));
+//==         for (int i = 0; i < bs; i++) val = hipCadd(val, hipCmul(beta_pw_tile[threadIdx.x][i], phi_tile[threadIdx.y][i]));
 //== 
 //==         __syncthreads();
 //==     }
@@ -204,17 +203,15 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 //==     dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE);
 //==     dim3 numBlocks(num_blocks(num_beta, BLOCK_SIZE), num_blocks(num_phi, BLOCK_SIZE));
 //== 
-//==     generate_beta_phi_gpu_kernel<<<
-//==         numBlocks, 
-//==         threadsPerBlock>>>(num_gkvec, 
+//==     hipLaunchKernelGGL((generate_beta_phi_gpu_kernel), dim3(//==         numBlocks), dim3(//==         threadsPerBlock), 0, 0, num_gkvec, 
 //==                            num_beta,
 //==                            num_phi,
 //==                            beta_t_idx, 
 //==                            atom_pos,
 //==                            gkvec, 
-//==                            (cuDoubleComplex*)beta_pw_type,
-//==                            (cuDoubleComplex*)phi,
-//==                            (cuDoubleComplex*)beta_phi);
+//==                            (hipDoubleComplex*)beta_pw_type,
+//==                            (hipDoubleComplex*)phi,
+//==                            (hipDoubleComplex*)beta_phi);
 //== }
 
 
@@ -222,33 +219,33 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 
 //__global__ void copy_beta_psi_gpu_kernel
 //(
-//    cuDoubleComplex const* beta_psi,
+//    hipDoubleComplex const* beta_psi,
 //    int beta_psi_ld, 
 //    double const* wo,
-//    cuDoubleComplex* beta_psi_wo,
+//    hipDoubleComplex* beta_psi_wo,
 //    int beta_psi_wo_ld
 //)
 //{
 //    int xi = threadIdx.x;
 //    int j = blockIdx.x;
 //
-//    beta_psi_wo[array2D_offset(xi, j, beta_psi_wo_ld)] = cuCmul(cuConj(beta_psi[array2D_offset(xi, j, beta_psi_ld)]),
-//                                                                make_cuDoubleComplex(wo[j], 0.0));
+//    beta_psi_wo[array2D_offset(xi, j, beta_psi_wo_ld)] = hipCmul(hipConj(beta_psi[array2D_offset(xi, j, beta_psi_ld)]),
+//                                                                make_hipDoubleComplex(wo[j], 0.0));
 //}
 
 //extern "C" void copy_beta_psi_gpu(int nbf,
 //                                  int nloc,
-//                                  cuDoubleComplex const* beta_psi,
+//                                  hipDoubleComplex const* beta_psi,
 //                                  int beta_psi_ld,
 //                                  double const* wo,
-//                                  cuDoubleComplex* beta_psi_wo,
+//                                  hipDoubleComplex* beta_psi_wo,
 //                                  int beta_psi_wo_ld,
 //                                  int stream_id)
 //{
 //    dim3 grid_t(nbf);
 //    dim3 grid_b(nloc);
 //    
-//    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+//    hipStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
 //    
 //    copy_beta_psi_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
 //    (
@@ -263,14 +260,14 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 __global__ void compute_inner_product_gpu_kernel
 (
     int num_gkvec_row,
-    cuDoubleComplex const* f1,
-    cuDoubleComplex const* f2,
+    hipDoubleComplex const* f1,
+    hipDoubleComplex const* f2,
     double* prod
 )
 {
     int N = num_blocks(num_gkvec_row, blockDim.x);
 
-    extern __shared__ char sdata_ptr[];
+    HIP_DYNAMIC_SHARED( char, sdata_ptr)
     double* sdata = (double*)&sdata_ptr[0];
 
     sdata[threadIdx.x] = 0.0;
@@ -298,15 +295,14 @@ __global__ void compute_inner_product_gpu_kernel
 
 extern "C" void compute_inner_product_gpu(int num_gkvec_row,
                                           int n,
-                                          cuDoubleComplex const* f1,
-                                          cuDoubleComplex const* f2,
+                                          hipDoubleComplex const* f1,
+                                          hipDoubleComplex const* f2,
                                           double* prod)
 {
     dim3 grid_t(64);
     dim3 grid_b(n);
 
-    compute_inner_product_gpu_kernel <<<grid_b, grid_t, grid_t.x * sizeof(double)>>>
-    (
+    hipLaunchKernelGGL((compute_inner_product_gpu_kernel), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(double), 0, 
         num_gkvec_row,
         f1,
         f2,
@@ -317,14 +313,14 @@ extern "C" void compute_inner_product_gpu(int num_gkvec_row,
 
 __global__ void add_checksum_gpu_kernel
 (
-    cuDoubleComplex const* wf__,
+    hipDoubleComplex const* wf__,
     int num_rows_loc__,
-    cuDoubleComplex* result__
+    hipDoubleComplex* result__
 )
 {
     int N = num_blocks(num_rows_loc__, blockDim.x);
 
-    extern __shared__ char sdata_ptr[];
+    HIP_DYNAMIC_SHARED( char, sdata_ptr)
     double* sdata_x = (double*)&sdata_ptr[0];
     double* sdata_y = (double*)&sdata_ptr[blockDim.x * sizeof(double)];
 
@@ -349,19 +345,18 @@ __global__ void add_checksum_gpu_kernel
         __syncthreads();
     }
 
-    result__[blockIdx.x] = cuCadd(result__[blockIdx.x], make_cuDoubleComplex(sdata_x[0], sdata_y[0]));
+    result__[blockIdx.x] = hipCadd(result__[blockIdx.x], make_hipDoubleComplex(sdata_x[0], sdata_y[0]));
 }
 
-extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
+extern "C" void add_checksum_gpu(hipDoubleComplex* wf__,
                                  int num_rows_loc__,
                                  int nwf__,
-                                 cuDoubleComplex* result__)
+                                 hipDoubleComplex* result__)
 {
     dim3 grid_t(64);
     dim3 grid_b(nwf__);
 
-    add_checksum_gpu_kernel <<<grid_b, grid_t, 2 * grid_t.x * sizeof(double)>>>
-    (
+    hipLaunchKernelGGL((add_checksum_gpu_kernel), dim3(grid_b), dim3(grid_t), 2 * grid_t.x * sizeof(double), 0, 
         wf__,
         num_rows_loc__,
         result__

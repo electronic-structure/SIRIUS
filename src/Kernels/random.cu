@@ -21,6 +21,7 @@
  *
  *  \brief CUDA kernel to compute simple random noise on GPU.
  */
+//#include "hip/hip_runtime.h"
 
 //== inline __device__ uint32_t random(size_t seed)
 //== {

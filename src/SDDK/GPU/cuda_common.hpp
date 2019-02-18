@@ -25,6 +25,10 @@
 #ifndef __CUDA_COMMON_HPP__
 #define __CUDA_COMMON_HPP__
 
+#include <stdio.h>
+#include "hip/hip_runtime.h"
+#include "hip/hip_complex.h"
+
 const double twopi = 6.2831853071795864769;
 
 inline __device__ size_t array2D_offset(int i0, int i1, int ld0)
