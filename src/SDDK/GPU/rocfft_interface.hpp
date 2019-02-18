@@ -17,35 +17,44 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file cuda_common.hpp
- *
- *  \brief Common functions used by CUDA kernels.
+/** \file rocfft_interace.hpp
+ *   
+ *  \brief Interface to rocFFT related functions.
  */
 
-#ifndef __CUDA_COMMON_HPP__
-#define __CUDA_COMMON_HPP__
+#ifndef __ROCFFT_INTERFACE_HPP__
+#define __ROCFFT_INTERFACE_HPP__
+#include<complex>
+#include "acc.hpp"
 
-const double twopi = 6.2831853071795864769;
-
-inline __device__ size_t array2D_offset(int i0, int i1, int ld0)
+namespace rocfft
 {
-    return i0 + i1 * ld0;
-}
+void destroy_plan_handle(void* plan);
 
-inline __device__ size_t array3D_offset(int i0, int i1, int i2, int ld0, int ld1)
-{
-    return i0 + ld0 * (i1 + i2 * ld1);
-}
+// NOTE: creates a new plan for work size calculation; if a plan is available call directly with
+// pointer to it for better performance
+size_t get_work_size(int ndim, int* dims, int nfft);
 
-inline __device__ size_t array4D_offset(int i0, int i1, int i2, int i3, int ld0, int ld1, int ld2)
-{
-    return i0 + ld0 * (i1 + ld1 * (i2 + i3 * ld2));
-}
+size_t get_work_size(void* plan);
 
-inline __host__ __device__ int num_blocks(int length, int block_size)
-{
-    return (length / block_size) + ((length % block_size) ? 1 : 0);
-}
+// embed can be nullptr (stride and dist are then ignored)
+void* create_batch_plan(int rank, int* dims, int* embed, int stride, int dist, int nfft,
+                        bool auto_alloc);
+
+void set_work_area(void* plan, void* work_area);
+
+void set_stream(void* plan__, stream_id sid__);
+
+void forward_transform(void* plan, std::complex<double>* fft_buffer);
+
+void backward_transform(void* plan, std::complex<double>* fft_buffer);
 
 
+// function for rocfft library initializeation
+// NOTE: Source code in ROCM suggests nothing is actually done (empty functions)
+void initialize();
+
+void finalize();
+
+} // namespace rocfft
 #endif

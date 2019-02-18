@@ -23,6 +23,7 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
+#include <cuComplex.h>
 
 extern cudaStream_t* streams;
 extern "C" void* cuda_malloc(size_t size);

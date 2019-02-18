@@ -23,6 +23,7 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
+#include <cuComplex.h>
 
 __global__ void update_density_rg_1_gpu_kernel(int size__,
                                                cuDoubleComplex const* psi_rg__,

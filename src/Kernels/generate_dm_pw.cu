@@ -25,6 +25,7 @@
 #include "../SDDK/GPU/cuda_common.hpp"
 #include "../SDDK/GPU/acc.hpp"
 #include "../SDDK/GPU/cublas.hpp"
+#include <cuComplex.h>
 
 __global__ void generate_phase_factors_conj_gpu_kernel
 (

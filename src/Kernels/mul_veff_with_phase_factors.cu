@@ -24,6 +24,7 @@
 
 #include "../SDDK/GPU/cuda_common.hpp"
 #include "../SDDK/GPU/acc.hpp"
+#include <cuComplex.h>
 
 __global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc__,
                                                        cuDoubleComplex const* veff__, 

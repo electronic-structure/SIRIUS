@@ -23,6 +23,7 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
+#include <cuComplex.h>
 
 __global__ void add_pw_ekin_gpu_kernel(int num_gvec__,
                                        double alpha__,

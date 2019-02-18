@@ -24,6 +24,7 @@
 
 #include "../SDDK/GPU/cuda_common.hpp"
 #include "../SDDK/GPU/acc.hpp"
+#include <cuComplex.h>
 
 __global__ void mul_by_veff0_gpu_kernel(int                    size__,
                                         double* const*         veff__,

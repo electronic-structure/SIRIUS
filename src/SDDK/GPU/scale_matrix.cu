@@ -22,6 +22,7 @@
  *  \brief Contains implementaiton of CUDA kernels to scale matrix elements (rows or columns).
  */
 #include "cuda_common.hpp"
+#include <cuComplex.h>
 
 __global__ void scale_matrix_columns_gpu_kernel
 (

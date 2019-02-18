@@ -23,6 +23,8 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
+#include "../SDDK/GPU/cuda_timer.hpp"
+#include <cuComplex.h>
 
 __global__ void create_beta_gk_gpu_kernel
 (

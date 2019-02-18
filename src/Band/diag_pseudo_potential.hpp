@@ -22,7 +22,7 @@
  *   \brief Diagonalization of pseudopotential Hamiltonian.
  */
 
-#ifdef __GPU
+#if defined(__GPU) && defined(__CUDA)
 extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  int n,
                                                  double c,

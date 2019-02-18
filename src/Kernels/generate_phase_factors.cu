@@ -23,6 +23,7 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
+#include <cuComplex.h>
 
 __global__ void generate_phase_factors_gpu_kernel
 (

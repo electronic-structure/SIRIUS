@@ -23,6 +23,7 @@
  */
 
 #include "cuda_common.hpp"
+#include <cuComplex.h>
 
 __global__ void double_complex_checksum_gpu_kernel
 (
