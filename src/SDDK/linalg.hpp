@@ -1183,8 +1183,8 @@ inline void linalg<GPU>::gemv<ftn_double_complex>(int trans__, ftn_int m, ftn_in
                                                   ftn_double_complex* beta, ftn_double_complex* y, ftn_int incy,
                                                   int stream_id)
 {
-    const char trans[] = {'N', 'T', 'C'};
 #if defined(__GPU) && defined(__CUDA)
+    const char trans[] = {'N', 'T', 'C'};
     cublas::zgemv(trans[trans__], m, n, (cuDoubleComplex*)alpha, (cuDoubleComplex*)A, lda, (cuDoubleComplex*)x, incx, (cuDoubleComplex*)beta, (cuDoubleComplex*)y, incy, stream_id);
 #else
     throw std::runtime_error("not compiled with cublas");
@@ -1204,8 +1204,8 @@ inline void linalg<GPU>::gemm<ftn_double_complex>(int transa__, int transb__, ft
     assert(m > 0);
     assert(n > 0);
     assert(k > 0);
-    const char trans[] = {'N', 'T', 'C'};
 #if defined(__GPU) && defined(__CUDA)
+    const char trans[] = {'N', 'T', 'C'};
     cublas::zgemm(trans[transa__], trans[transb__], m, n, k, (cuDoubleComplex*)alpha, (cuDoubleComplex*)A, lda, (cuDoubleComplex*)B, ldb, (cuDoubleComplex*)beta, (cuDoubleComplex*)C, ldc, stream_id);
 #else
     throw std::runtime_error("not compiled with cublas");
@@ -1225,8 +1225,8 @@ inline void linalg<GPU>::gemm<ftn_double>(int transa__, int transb__, ftn_int m,
     assert(m > 0);
     assert(n > 0);
     assert(k > 0);
-    const char trans[] = {'N', 'T', 'C'};
 #if defined(__GPU) && defined(__CUDA)
+    const char trans[] = {'N', 'T', 'C'};
     cublas::dgemm(trans[transa__], trans[transb__], m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
 #else
     throw std::runtime_error("not compiled with cublas");

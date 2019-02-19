@@ -91,7 +91,7 @@ void* create_batch_plan(int rank, int* dims, int* embed, int stride, int dist, i
 
     // ROCFFT appears to expect dimension to be ordered in reverse (see hipFFT implementation)
     size_t lengths[3] = {1, 1, 1};
-    for (size_t i = 0; i < rank; i++) lengths[i] = dims[rank - 1 - i];
+    for (size_t i = 0; i < (size_t)rank; i++) lengths[i] = dims[rank - 1 - i];
 
     if (embed != nullptr) {
         rocfft_plan_description_create(&desc);
@@ -99,9 +99,9 @@ void* create_batch_plan(int rank, int* dims, int* embed, int stride, int dist, i
         size_t strides[3] = {(size_t)stride, 1, 1};
 
         size_t nembed_lengths[3] = {1, 1, 1};
-        for (size_t i = 0; i < rank; i++) nembed_lengths[i] = embed[rank - 1 - i];
+        for (size_t i = 0; i < (size_t)rank; i++) nembed_lengths[i] = embed[rank - 1 - i];
 
-        for (size_t i = 1; i < rank; i++) strides[i] = nembed_lengths[i - 1] * strides[i - 1];
+        for (size_t i = 1; i < (size_t)rank; i++) strides[i] = nembed_lengths[i - 1] * strides[i - 1];
 
         CALL_ROCFFT(
             rocfft_plan_description_set_data_layout,
