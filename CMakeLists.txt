@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.6) # Intel C++11 support starts from 3.6 or even later version
 project(SIRIUS)
 
+# allow {module}_ROOT variables to be set
+cmake_policy(SET CMP0074 NEW)
+
 # set language and standard
 enable_language(CXX Fortran)
 set(CMAKE_CXX_STANDARD 11)
@@ -12,6 +15,7 @@ set(BUILD_DOCS OFF CACHE BOOL "build doxygen doc")
 set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
 set(USE_CUDA OFF CACHE BOOL "use CUDA")
+set(USE_ROCM OFF CACHE BOOL "use ROCM AMD GPU code")
 set(USE_MKL OFF CACHE BOOL "use Intel MKL")
 set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
 set(USE_SCALAPACK OFF CACHE BOOL "use scalapack")
@@ -108,6 +112,9 @@ if(USE_CUDA)
     #list(APPEND CMAKE_CUDA_FLAGS "-arch=sm_61")
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_61")
   endif()
+  # tell HIP to call cuda api
+  add_definitions("-D__HIP_PLATFORM_NVCC__")
+  include_directories(BEFORE ${PROJECT_SOURCE_DIR}/src/utils/amd_hip)
 endif(USE_CUDA)
 
 if(USE_MAGMA)
@@ -119,6 +126,35 @@ if(USE_MAGMA)
   include_directories(BEFORE SYSTEM ${MAGMA_INCLUDE_DIR})
   set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MAGMA_LIBRARIES}")
 endif(USE_MAGMA)
+
+if(USE_CUDA AND USE_ROCM)
+  message(FATAL_ERROR "USE_CUDA and USE_ROCM must not be enabled at the same time!")
+endif()
+
+if(USE_ROCM)
+  # TODO
+    message(STATUS "WARNING: ROCM enabled, prototype feature! Only limited functionality available.")
+    find_package(ROCM COMPONENTS rocfft)
+    if(NOT ${ROCM_HIP_PLATFORM} STREQUAL hcc)
+	message(FATAL_ERROR "Compilation on Nvidia platform not supported with ROCM enabled!")
+    endif()
+    add_definitions("-D__GPU")
+    add_definitions("-D__ROCM")
+    add_definitions(${ROCM_DEFINITIONS})
+    include_directories(${ROCM_INCLUDE_DIRS})
+
+    # set compile flags to use with HIPCC compiler
+    set(HIPCC_COMPILE_FLAGS)
+    set(BUILD_TYPES DEBUG RELEASE RELWITHDEBINFO)
+    if(CMAKE_BUILD_TYPE)
+	string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE_UPPER)
+	foreach(build_type IN LISTS BUILD_TYPES)
+	    if("${build_type}" STREQUAL "${BUILD_TYPE_UPPER}")
+		list(APPEND HIPCC_COMPILE_FLAGS ${CMAKE_CXX_FLAGS_${BUILD_TYPE_UPPER}})
+	    endif()
+	endforeach()
+    endif()
+endif()
 
 # add required libraries
 set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${GSL_LIBRARY};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
@@ -193,14 +229,22 @@ MACRO(SIRIUS_SETUP_TARGET _target)
   if(USE_MKL)
     # TODO: handle -lpthread properly
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-Wl,--no-as-needed;${MKL_LIBRARIES};-lpthread -lm -ldl -lgomp")
+      target_link_libraries(${_target} PRIVATE "${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-Wl,--no-as-needed;${MKL_LIBRARIES};-lpthread -lm -ldl -lgomp")
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${MKL_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-lpthread")
+      target_link_libraries(${_target} PRIVATE "${SYSTEM_LIBRARIES};${MKL_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-lpthread")
     else()
       message(FATAL_ERROR "Unsupported compiler")
     endif()
   else()
-    target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
+    target_link_libraries(${_target} PRIVATE "${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
+  endif()
+
+  if(USE_CUDA)
+    target_link_libraries(${_target} PRIVATE "${sirius_cu_location}")
+  endif()
+
+  if(USE_ROCM)
+    target_link_libraries(${_target} PRIVATE sirius_rocm sirius_cpp ${ROCM_LIBRARIES})
   endif()
 ENDMACRO()
 
@@ -211,12 +255,13 @@ if(USE_CUDA)
 endif()
 
 # applications
-add_subdirectory(apps/atoms)
-add_subdirectory(apps/dft_loop)
 if(BUILD_TESTS)
   add_subdirectory(apps/tests)
   add_subdirectory(apps/unit_tests)
 endif(BUILD_TESTS)
+
+add_subdirectory(apps/atoms)
+add_subdirectory(apps/dft_loop)
 add_subdirectory(apps/utils)
 add_subdirectory(python_module)
 add_subdirectory(doc)

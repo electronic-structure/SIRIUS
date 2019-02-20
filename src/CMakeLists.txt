@@ -23,5 +23,22 @@ if(CREATE_FORTRAN_BINDINGS)
     )
 endif()
 
+if(USE_ROCM)
+  add_library(sirius_cpp STATIC ./SDDK/GPU/rocfft_interface.cpp)
+  set_target_properties(sirius_cpp PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  INSTALL (TARGETS sirius_cpp ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/)
+
+  # use include directories and definitions of sirius_cpp (using custom targets not possible with generators)
+  set(DEFINITIONS_PROP "$<TARGET_PROPERTY:sirius_cpp,COMPILE_DEFINITIONS>")
+  set(DEFINITIONS_GENERATOR "$<$<BOOL:${DEFINITIONS_PROP}>:-D$<JOIN:${DEFINITIONS_PROP}, -D>>")
+  set(INCLUDE_DIR_PROP "$<TARGET_PROPERTY:sirius_cpp,INCLUDE_DIRECTORIES>")
+  set(INCLUDE_DIR_GENERATOR "$<$<BOOL:${INCLUDE_DIR_PROP}>:-I$<JOIN:${INCLUDE_DIR_PROP}, -I>>")
+
+  # create gpu library compiled with hip
+  file(GLOB_RECURSE HIPFILES_KERNELS "Kernels/*.cu")
+  rocm_hip_add_library(sirius_rocm SHARED ./SDDK/GPU/fft_kernels.cu ${HIPFILES_KERNELS}
+    FLAGS ${DEFINITIONS_GENERATOR} ${INCLUDE_DIR_GENERATOR} "-Wno-macro-redefined")
+endif()
+
 install(DIRECTORY ./ DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius" FILES_MATCHING REGEX ".*(hpp|h)$")
 install(FILES ${PROJECT_BINARY_DIR}/src/version.hpp DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
