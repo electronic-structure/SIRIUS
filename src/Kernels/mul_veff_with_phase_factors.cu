@@ -64,7 +64,7 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
 
-    hipStream_t stream = acc::stream(stream_id(stream_id__));
+    hipStream_t stream = (hipStream_t)acc::stream(stream_id(stream_id__));
 
     hipLaunchKernelGGL((mul_veff_with_phase_factors_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
         num_gvec_loc__,

@@ -91,7 +91,7 @@ extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
     CUDA_timer t("sum_q_pw_dm_pw_gpu");
 #endif
 
-    hipStream_t stream = acc::stream(stream_id(stream_id__));
+    hipStream_t stream = (hipStream_t)acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(64);
     dim3 grid_b(num_gvec_loc__);

@@ -82,7 +82,7 @@ void* create_batch_plan(int rank, int* dims, int* embed, int stride, int dist, i
     if (auto_alloc) throw std::runtime_error("Auto allocation for rocfft not implemented!");
 
     // check input
-    for (size_t i = 0; i < rank; i++) {
+    for (size_t i = 0; i < (size_t)rank; i++) {
         if (dims[i] > embed[i])
             throw std::runtime_error("Illegal dims or embed parameters for ROCFFT plan creation!");
     }

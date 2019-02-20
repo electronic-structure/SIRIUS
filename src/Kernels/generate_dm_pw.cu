@@ -69,7 +69,7 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
 {
     //CUDA_timer t("generate_dm_pw_gpu");
 
-    hipStream_t stream = acc::stream(stream_id(stream_id__));
+    hipStream_t stream = (hipStream_t)acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(32);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
