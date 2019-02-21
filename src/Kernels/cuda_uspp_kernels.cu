@@ -27,11 +27,6 @@
 #include "hip/hip_complex.h"
 
 extern hipStream_t* streams;
-extern "C" void* cuda_malloc(size_t size);
-extern "C" void cuda_free(void* ptr);
-extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                             hipDoubleComplex* alpha, hipDoubleComplex* a, int32_t lda, hipDoubleComplex* b, 
-                             int32_t ldb, hipDoubleComplex* beta, hipDoubleComplex* c, int32_t ldc, int stream_id);
 
 __global__ void compute_chebyshev_order1_gpu_kernel
 (

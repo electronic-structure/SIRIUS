@@ -132,7 +132,7 @@ void Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
         linalg_t la{linalg_t::blas};
         if (ctx_.processing_unit() == device_t::GPU) {
             mem = memory_t::device;
-            la = linalg_t::cublas;
+            la = linalg_t::gpublas;
         }
 
         if (ctx_.num_mag_dims() == 3) {

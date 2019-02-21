@@ -36,7 +36,8 @@ if(USE_ROCM)
 
   # create gpu library compiled with hip
   file(GLOB_RECURSE HIPFILES_KERNELS "Kernels/*.cu")
-  rocm_hip_add_library(sirius_rocm SHARED ./SDDK/GPU/fft_kernels.cu ${HIPFILES_KERNELS}
+  file(GLOB_RECURSE HIPFILES_SDDK "SDDK/*.cu")
+  rocm_hip_add_library(sirius_rocm SHARED ${HIPFILES_SDDK} ${HIPFILES_KERNELS}
     FLAGS ${DEFINITIONS_GENERATOR} ${INCLUDE_DIR_GENERATOR} "-Wno-macro-redefined")
 endif()
 

@@ -27,8 +27,8 @@
 #include "hip/hip_runtime.h"
 #include "hip/hip_complex.h"
 
-#ifdef __CUDA
-#include "../SDDK/GPU/cublas.hpp"
+#ifdef __GPU
+#include "../SDDK/GPU/gpublas_interface.hpp"
 #endif
 
 __global__ void generate_phase_factors_conj_gpu_kernel
@@ -85,17 +85,13 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
     double alpha = 1;
     double beta = 0;
 
-#ifdef __CUDA
-    cublas::dgemm('N', 'T', nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
+    gpublas::dgemm('N', 'T', nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
                   &alpha,
                   dm__, nbf__ * (nbf__ + 1) / 2,
                   phase_factors__, num_gvec_loc__ * 2,
                   &beta,
                   dm_pw__, nbf__ * (nbf__ + 1) / 2,
                   stream_id__);
-#else
-    throw std::runtime_error("not implemented for non-CUDA.");
-#endif
    acc::sync_stream(stream_id(stream_id__));
 }
 

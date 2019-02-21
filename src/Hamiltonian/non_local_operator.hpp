@@ -138,7 +138,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_bloc
         }
         case device_t::GPU: {
             mem = memory_t::device;
-            la  = linalg_t::cublas;
+            la  = linalg_t::gpublas;
             break;
         }
     }
@@ -223,7 +223,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ia__, int
         }
         case device_t::GPU: {
             mem = memory_t::device;
-            la  = linalg_t::cublas;
+            la  = linalg_t::gpublas;
             break;
         }
     }
@@ -289,7 +289,7 @@ inline void Non_local_operator<double>::apply(int chunk__, int ispn_block__, Wav
         }
         case device_t::GPU: {
             mem = memory_t::device;
-            la  = linalg_t::cublas;
+            la  = linalg_t::gpublas;
             break;
         }
     }

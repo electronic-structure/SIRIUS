@@ -471,7 +471,7 @@ inline bool check_device_ptr(void const* ptr__)
 
 } // namespace acc
 
-#if defined(__CUDA)
+#if defined(__GPU)
 extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
 
 extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double const* v);
@@ -481,24 +481,7 @@ extern "C" void scale_matrix_elements_gpu(std::complex<double>* ptr__,
                                           int nrow__,
                                           int ncol__,
                                           double beta__);
-#elif defined(__ROCM)
-inline void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a) {
-    throw std::runtime_error("Not implemented for ROCM!");
-}
-
-inline void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double const* v) {
-    throw std::runtime_error("Not implemented for ROCM!");
-}
-
-inline void scale_matrix_elements_gpu(std::complex<double>* ptr__,
-                                          int ld__,
-                                          int nrow__,
-                                          int ncol__,
-                                          double beta__) {
-    throw std::runtime_error("Not implemented for ROCM!");
-}
 #endif
-
 
 #endif // __ACC_HPP__
 

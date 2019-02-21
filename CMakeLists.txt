@@ -132,9 +132,8 @@ if(USE_CUDA AND USE_ROCM)
 endif()
 
 if(USE_ROCM)
-  # TODO
     message(STATUS "WARNING: ROCM enabled, prototype feature! Only limited functionality available.")
-    find_package(ROCM COMPONENTS rocfft)
+    find_package(ROCM COMPONENTS rocfft hipblas)
     if(NOT ${ROCM_HIP_PLATFORM} STREQUAL hcc)
 	message(FATAL_ERROR "Compilation on Nvidia platform not supported with ROCM enabled!")
     endif()
@@ -142,18 +141,6 @@ if(USE_ROCM)
     add_definitions("-D__ROCM")
     add_definitions(${ROCM_DEFINITIONS})
     include_directories(${ROCM_INCLUDE_DIRS})
-
-    # set compile flags to use with HIPCC compiler
-    set(HIPCC_COMPILE_FLAGS)
-    set(BUILD_TYPES DEBUG RELEASE RELWITHDEBINFO)
-    if(CMAKE_BUILD_TYPE)
-	string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE_UPPER)
-	foreach(build_type IN LISTS BUILD_TYPES)
-	    if("${build_type}" STREQUAL "${BUILD_TYPE_UPPER}")
-		list(APPEND HIPCC_COMPILE_FLAGS ${CMAKE_CXX_FLAGS_${BUILD_TYPE_UPPER}})
-	    endif()
-	endforeach()
-    endif()
 endif()
 
 # add required libraries

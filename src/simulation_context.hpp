@@ -1251,10 +1251,14 @@ inline void Simulation_context::initialize()
         }
         case device_t::GPU: {
             if (control_input_.memory_usage_ == "high") {
-                blas_linalg_t_ = linalg_t::cublas;
+                blas_linalg_t_ = linalg_t::gpublas;
             }
             if (control_input_.memory_usage_ == "low" || control_input_.memory_usage_ == "medium") {
+#ifdef __ROCM
+                blas_linalg_t_ = linalg_t::gpublas;
+#else
                 blas_linalg_t_ = linalg_t::cublasxt;
+#endif
             }
             break;
         }
