@@ -34,6 +34,7 @@
 using json = nlohmann::json;
 
 #include "input.hpp"
+#include "options.hpp"
 #include "radial_solver.hpp"
 #include "SHT/sht.hpp"
 #include "SHT/gaunt.hpp"

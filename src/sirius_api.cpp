@@ -34,6 +34,8 @@
 #define GET_KS(h) assert(h != nullptr); \
                   auto& ks = static_cast<utils::any_ptr*>(*h)->get<sirius::K_point_set>();
 
+std::vector<param> parameter_list_;
+
 /// Index of Rlm in QE in the block of lm coefficients for a given l.
 static inline int idx_m_qe(int m__)
 {
@@ -376,6 +378,7 @@ void sirius_initialize_context(void* const* handler__)
 {
     GET_SIM_CTX(handler__)
     sim_ctx.initialize();
+    parameter_list_.clear();
 }
 
 /* @fortran begin function void sirius_update_context     Update simulation context after changing lattice or atomic positions.
@@ -2400,5 +2403,290 @@ void sirius_update_atomic_potential(void* const* handler__)
     GET_GS(handler__);
     gs.potential().update_atomic_potential();
 }
+/* @fortran begin function void sirius_get_number_of_parameters   return the number of options that can be setup.
+   @fortran argument in required int*  length                  number of parameters.
+   @fortran end */
+void sirius_get_number_of_parameters(int *number_of_parameters)
+{
+    parameter_list_.clear();
+    std::vector<int> tmp_i(3, 1);
+    std::vector<double> tmp_r(3, 0.0);
+    std::vector<std::string> tmp_c(3);
+    param tmp;
 
+    tmp.init("mixer",
+             "type",
+             "type of mixer",
+             "type (linear, broyden1, broyden2)",
+             "broyden1");
+    parameter_list_.push_back(tmp);
+    tmp.init("mixer", "max_history",
+             "Number of history steps for Broyden-type mixers.",
+             "max_history (8)",
+             8);
+    parameter_list_.push_back(tmp);
+    tmp.init("mixer", "subspace_size",
+             "Size of the variational subspace is this number times the number of bands.",
+             "subspace_size (4)",
+             4);
+    parameter_list_.push_back(tmp);
+    tmp.init("mixer", "linear_mix_rms_tol",
+             " RMS tolerance above which the linear mixing is triggered.",
+             "linear_mix_rms_tol (1e6)",
+             1e6);
+    parameter_list_.push_back(tmp);
+    tmp.init("mixer", "beta",
+             "Mixing parameter.",
+             "beta (0.7)",
+             0.7);
+    parameter_list_.push_back(tmp);
+    tmp.init("mixer", "beta0",
+             " Mixing ratio in case of initial linear mixing.",
+             "beta0 (0.15)",
+             0.15);
+    parameter_list_.push_back(tmp);
+    tmp.init("mixer", "beta_scaling_factor",
+             "Scaling factor for mixing parameter.",
+             "beta_scaling_factor (1.0)",
+             1.0);
+    parameter_list_.push_back(tmp);
+    tmp.init("solver", "type", "type of iterative solver", "type (davidson)", "davidson");
+    parameter_list_.push_back(tmp);
+    tmp.init("solver", "num_steps", "number of steps", "num_steps (10)", 10);
+    parameter_list_.push_back(tmp);
+    tmp.init("solver", "subspace_size", "Size of the variational subspace is this number times the number of bands.", "subspace_size (4)", 4);
+    parameter_list_.push_back(tmp);
+    tmp.init("solver", "energy_tolerance", "Tolerance for the eigen-energy difference. Reduced automatically during the scf cycle", "energy_tolerance (0.01)", 0.01);
+    parameter_list_.push_back(tmp);
+    tmp.init("solver", "residual_tolerance", "Tolerance for the residual L2 norm.", "residual_tolerance (1e-6)", 0.000001);
+    parameter_list_.push_back(tmp);
+    tmp.init("solver", "empty_state_tolerance", "Additional tolerance for empty states.", "empty_state_tolerance (1e-5)", 1.0e-5);
+    parameter_list_.push_back(tmp);
+    tmp.init("solver", "min_num_res", "Minimum number of residuals to continue iterative diagonalization process.", "min_num_res (0)", 0);
+    parameter_list_.push_back(tmp);
+    tmp.init("solver", "orthogonalize", "keep basis orthogonal and solve standard eigen-value problem.", "orthogonalize (true)", true);
+    parameter_list_.push_back(tmp);
+    tmp.init("solver", "init_eval_old", "Initialize eigen-values with previous (old) values.", "init_eval_old (true)", true);
+    parameter_list_.push_back(tmp);
+    tmp.init("solver", "init_subspace", "initial subspace (lcao or random)", "init_subspace (lcao)", "lcao");
+    parameter_list_.push_back(tmp);
+    tmp.init("control", "mpi_grid_dims", "Dimensions of the MPI grid ", "mpi_grid_dims (1, 1, 1)", tmp_i);
+    parameter_list_.push_back(tmp);
+    tmp.init("control", "cyclic_block_size", "Block size for ScaLAPACK and ELPA.", "cyclic_block_size 32", -1);
+    parameter_list_.push_back(tmp);
+    tmp.init("control", "reduce_gvec", "Reduce G-vectors by inversion symmetry.", "reduce_gvec (true)", true);
+    parameter_list_.push_back(tmp);
+    tmp.init("control", "std_evp_solver_type", "Type of eigensolver", "std_evp_solver_type (lapack, scalapack, elpa, magma)", "lapack");
+    parameter_list_.push_back(tmp);
+    tmp.init("control", "gen_evp_solver_type", "Type of generalized eigensolver", "gen_evp_solver_type (lapack, scalapack, elpa, magma)", "lapack");
+    parameter_list_.push_back(tmp);
+    tmp.init("control", "processing_unit", "processing_unit", "processong_unit (cpu | gpu)", "gpu");
+    parameter_list_.push_back(tmp);
+    tmp.init("control", "fft_mode", "Coarse grid FFT mode.", "fft_mode (serial | parallel)", "serial");
+    parameter_list_.push_back(tmp);
+    tmp.init("control", "rmt_max", "Maximum allowed muffin-tin radius in case of LAPW.", "rmt_max (2.2)", 2.2);
+    parameter_list_.push_back(tmp);
+    tmp.init("control", "spglib_tolerance", "Tolerance of the spglib in finding crystal symmetries.", "spglib_tolerance (1e-4)", 0.0001);
+    parameter_list_.push_back(tmp);
+    tmp.init("control", "verbosity", "degree of verbosity 0 : silent, 1 : basic, 2 extended, 3 extensive", "verbosity (0)", 0);
+    parameter_list_.push_back(tmp);
+    tmp.init("control", "num_band_to_print", " Number of eigen-values that are printed to the standard output.", "num_band_to_print (10)", 10);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "electronic_structure_method", "Electronic structure method.", "electronic_structure_method (pseudo_potential|full_potential)", "pseudo_potential");
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "xc_functionals", "List of XC functions (typically contains exchange term and correlation term)", "xc_functionals list of functionals", tmp_c);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "core_relativity",
+             "Type of core-states relativity in full-potential LAPW case.",
+             "core_relativity (dirac)",
+             "dirac");
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "valence_relativity",
+             "Type of valence states relativity in full-potential LAPW case.",
+             "valence_relativity ZORA",
+             "zora");
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "num_fv_states",
+             "Number of first-variational states.",
+             "num_fv_states (integer)",
+             -1);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "smearing_width", "Smearing function width.", "smearing_width (0.01)", 0.01);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "pw_cutoff", "Cutoff for plane-waves (for density and potential expansion) in a.u.^-1", "pw_cutoff (20.0)", 20.0);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "aw_cutoff", "Cutoff for augmented plane-waves in a.u.^-1", "aw_cutoff (7.0)", 7.0);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "gk_cutoff", "Cutoff for |G+k| plane-waves in a.u.^-1", "aw_cutoff (6.0)", 6.0);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "lmax_apw", "Maximum l for APW functions.", "lmax_apw (8)", 8);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "lmax_rho", "Maximum l for density.", "lmax_rho (8)", 8);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "lmax_pot", "Maximum l for potential.", "lmax_pot (8)", 8);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "num_mag_dims", "Number of dimensions of the magnetization and effective magnetic field (0, 1 or 3).", "num_mag_dims (0)", 0);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "auto_rmt", "Scale muffin-tin radii automatically.", "auto_rmt (1)", 1);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "k_grid", "Regular k-point grid for the SCF ground state.", "k_grid 1, 1, 1", tmp_i);
+    parameter_list_.push_back(tmp);
+    tmp_i[0] = 0;
+    tmp_i[1] = 0;
+    tmp_i[2] = 0;
+    tmp.init("parameters", "k_shift", "Shift in the k-point grid.", "k_shift 0, 0, 0", tmp_i);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "num_dft_iter", "Number of SCF iterations.", "num_dft_iter 100", 100);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "energy_tol", "Tolerance in total energy change.", "energy_tol 1e-5", 0.00001);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "potential_tol", "Tolerance in potential RMS change.", "potential_tol 1e-5", 0.00001);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "molecule", "True if this is a molecule calculation.", "moecule (false)", false);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "gamma_point", "gamma point calculations", "gamma_point (false)", false);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "spin_orbit", "include spin orbit coupling (imply full non colinear magnetism)", "spin_orbit (false)", false);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters", "use_symmetry", "use symmetries for reducing the brillouin zone and G vectors", "use_symmetry (true)", true);
+    parameter_list_.push_back(tmp);
+    tmp.init("parameters","reduce_aux_bf", "Reduction of the auxiliary magnetic field at each SCF step.", "reduce_aux_bf (0.0)", 0.0);
+    parameter_list_.push_back(tmp);
+    *number_of_parameters = parameter_list_.size();
+}
+
+/* @fortran begin function void sirius_get_description_and_type_of_parameter   get the type, etc of a given parameter
+   @fortran argument in required int  index              index of the option.
+   @fortran argument in required char section            name of the section where the option is defined
+   @fortran argument in required char name               name of the option
+   @fortran argument in optional char  desc              description of the option
+   @fortran argument in optional char  use               describe how to use it
+   @fortran argument in optional int   type              type of parameter (int, double, etc...).
+   @fortran end */
+void  sirius_get_description_and_type_of_parameter(int *index, char *section, char *name, char *desc, char *use, int *type)
+{
+    memcpy(section, parameter_list_[*index].section_.c_str(), parameter_list_[*index].section_.size());
+    memcpy(name, parameter_list_[*index].name_.c_str(), parameter_list_[*index].name_.size());
+    if (desc)
+        memcpy(desc, parameter_list_[*index].desc_.c_str(), parameter_list_[*index].desc_.size());
+    if (use)
+        memcpy(use, parameter_list_[*index].name_.c_str(), parameter_list_[*index].use_.size());
+    if (type)
+        *type = parameter_list_[*index].get_type();
+}
+
+/* @fortran begin function void sirius_get_default_values_of_parameters_int   get the value of parameter index
+   @fortran argument in required int  index              index of the option.
+   @fortran argument in required int  value              default value of the option
+   @fortran end */
+
+void sirius_get_default_values_of_parameter_int(int *index, int *value)
+{
+    if (parameter_list_[*index].get_type() != 0)
+        TERMINATE("not an integer");
+    *value = parameter_list_[*index].get_int();
+}
+/* @fortran begin function void sirius_get_default_values_of_parameters_double   get the value of parameter index
+   @fortran argument in required int  index              index of the option.
+   @fortran argument in required double  value              default value of the option
+   @fortran end */
+
+void sirius_get_default_values_of_parameter_double(int *index, double *value)
+{
+    if (parameter_list_[*index].get_type() != 1)
+        TERMINATE("not an real number");
+    *value = parameter_list_[*index].get_double();
+}
+
+/* @fortran begin function void sirius_get_default_values_of_parameters_boolean   get the value of parameter index
+   @fortran argument in required int  index              index of the option.
+   @fortran argument in required bool  value              default value of the option
+   @fortran end */
+
+void sirius_get_default_values_of_parameter_boolean(int *index, bool *value)
+{
+    if (parameter_list_[*index].get_type() != 2)
+        TERMINATE("not an boolean");
+    *value = parameter_list_[*index].get_bool();
+}
+/* @fortran begin function void sirius_get_default_values_of_parameters_string   get the value of parameter index
+   @fortran argument in required int  index              index of the option.
+   @fortran argument in required char  value              default value of the option
+   @fortran end */
+
+void sirius_get_default_values_of_parameter_string(int *index, char *value)
+{
+    if (parameter_list_[*index].get_type() != 3)
+        TERMINATE("not a string");
+    memcpy(value, parameter_list_[*index].get_string().c_str(), parameter_list_[*index].get_string().size());
+}
+
+/* @fortran begin function void sirius_get_default_values_of_parameters_vecint   get the value of parameter index
+   @fortran argument in required int  index              index of the option.
+   @fortran argument in required int  value              default value of the option
+   @fortran end */
+
+void sirius_get_default_values_of_parameter_vecint(int *index, int *value, int *length)
+{
+    if (parameter_list_[*index].get_type() != 5)
+        TERMINATE("not an integer vector");
+    auto vec = parameter_list_[*index].get_int_vec();
+    copy(vec.begin(), vec.end(), value);
+    *length = vec.size();
+}
+
+/* @fortran begin function void sirius_get_default_values_of_parameters_vecdouble   get the value of parameter index
+   @fortran argument in required int  index              index of the option.
+   @fortran argument in required double value              default value of the option
+   @fortran end */
+
+void sirius_get_default_values_of_parameter_vecdouble(int *index, double *value, int *length)
+{
+    if (parameter_list_[*index].get_type() != 6)
+        TERMINATE("not an real vector");
+    auto vec = parameter_list_[*index].get_double_vec();
+    copy(vec.begin(), vec.end(), value);
+    *length = vec.size();
+}
+
+/* @fortran begin function void sirius_get_default_values_of_parameters_vecbool   get the value of parameter index
+   @fortran argument in required int  index              index of the option.
+   @fortran argument in required bool value              default value of the option
+   @fortran end */
+
+void sirius_get_default_values_of_parameter_vecboolean(int *index, bool *value, int *length)
+{
+    if (parameter_list_[*index].get_type() != 7)
+        TERMINATE("not an boolean vector");
+    auto vec = parameter_list_[*index].get_bool_vec();
+    copy(vec.begin(), vec.end(), value);
+    *length = vec.size();
+}
+
+/* @fortran begin function void sirius_get_default_values_of_parameters_vecstring_elem   get the value of the element of the vector represented by index
+   @fortran argument in required int  index              index of the option.
+   @fortran argument in required elem  index              index of the option.
+   @fortran argument in required char value              default value of the option
+   @fortran end */
+
+void sirius_get_default_values_of_parameter_vecstring_elem(int *index, int *elem, char *value)
+{
+    if (parameter_list_[*index].get_type() != 8)
+        TERMINATE("not a string vector");
+    auto vec = parameter_list_[*index].get_string_vec();
+    if (*elem >= vec.size())
+        TERMINATE("element is outside the boundaries of the vector");
+    memcpy(value, vec[*elem].c_str(), vec[*elem].size());
+}
+
+bool sirius_check_if_option_is_in_section(int *index, char *section)
+{
+    if (*index >= parameter_list_.size()) {
+        TERMINATE("indice outside the vector boundaries");
+    }
+
+    std::string test(section);
+    std::transform(test.begin(), test.end(), test.begin(), ::tolower);
+    return (test == parameter_list_[*index].section_);
+}
 } // extern "C"
