@@ -23,18 +23,19 @@
  */
 
 #include "cuda_common.hpp"
-#include <cuComplex.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_complex.h>
 
 __global__ void double_complex_checksum_gpu_kernel
 (
-    cuDoubleComplex const* ptr__,
+    hipDoubleComplex const* ptr__,
     size_t size__,
-    cuDoubleComplex *result__
+    hipDoubleComplex *result__
 )
 {
     int N = num_blocks(size__, blockDim.x);
 
-    extern __shared__ char sdata_ptr[];
+    HIP_DYNAMIC_SHARED( char, sdata_ptr)
     double* sdata_x = (double*)&sdata_ptr[0];
     double* sdata_y = (double*)&sdata_ptr[blockDim.x * sizeof(double)];
 
@@ -58,27 +59,26 @@ __global__ void double_complex_checksum_gpu_kernel
         __syncthreads();
     }
 
-    *result__ = make_cuDoubleComplex(sdata_x[0], sdata_y[0]);
+    *result__ = make_hipDoubleComplex(sdata_x[0], sdata_y[0]);
 }
 
-extern "C" void double_complex_checksum_gpu(cuDoubleComplex const* ptr__,
+extern "C" void double_complex_checksum_gpu(hipDoubleComplex const* ptr__,
                                             size_t size__,
-                                            cuDoubleComplex* result__)
+                                            hipDoubleComplex* result__)
 {
     dim3 grid_t(64);
     dim3 grid_b(1);
 
-    cuDoubleComplex* res;
-    cudaMalloc(&res, sizeof(cuDoubleComplex));
+    hipDoubleComplex* res;
+    hipMalloc(&res, sizeof(hipDoubleComplex));
 
-    double_complex_checksum_gpu_kernel <<<grid_b, grid_t, 2 * grid_t.x * sizeof(double)>>>
-    (
+    hipLaunchKernelGGL((double_complex_checksum_gpu_kernel), dim3(grid_b), dim3(grid_t), 2 * grid_t.x * sizeof(double), 0, 
         ptr__,
         size__,
         res
     );
 
-    cudaMemcpy(result__, res, sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+    hipMemcpy(result__, res, sizeof(hipDoubleComplex), hipMemcpyDeviceToHost);
 
-    cudaFree(res);
+    hipFree(res);
 }
