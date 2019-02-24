@@ -128,6 +128,12 @@ class CoefficientArray:
         reduced = MPI.COMM_WORLD.allreduce(loc_sum, op=MPI.SUM)
         return np.asscalar(reduced)
 
+    def log(self, **kwargs):
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for key in self._data.keys():
+            out[key] = np.log(self._data[key], **kwargs)
+        return out
+
     def __mul__(self, other):
         """
         """
