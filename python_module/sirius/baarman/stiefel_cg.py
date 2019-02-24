@@ -301,7 +301,7 @@ class CG:
             )
             save_state(self.A.energy.kpointset, X, Y, f, y, tau_min, sigma_min)
         if sigma_min > sigma_max:
-            logger('\ttoo long step for occupation numbers, limit by max step')
+            logger('\ttoo long step for occupation numbers, limit by max step, σ_min = %.5g, a= %.5g' % (sigma_min, coeffs[3]))
             sigma_min = sigma_max
 
         # store step lengths as estimate for next iteration
