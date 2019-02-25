@@ -74,11 +74,12 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
         energy_tol = siriusJson['parameters']['energy_tol']
     write_status = False
 
-    dft_gs.find(potential_tol, energy_tol, num_dft_iter, write_status)
+    E0 = dft_gs.find(potential_tol, energy_tol, num_dft_iter, write_status)
     ks = dft_gs.k_point_set()
     hamiltonian = dft_gs.hamiltonian()
 
     return {
+        'E': E0,
         'dft_gs': dft_gs,
         'kpointset': ks,
         'hamiltonian': hamiltonian,
