@@ -109,7 +109,7 @@ def _constrain_occupancy_gradient(dfn, fn, mag, kweights):
     else:
         fmax = 2
 
-    s = 1000
+    s = 100
 
     # reshape into 1d array
     shape = fn.shape
@@ -210,7 +210,7 @@ class FreeEnergy:
         E = self.energy(cn)
         S = fermi_entropy(self.scale * fn, dd=self.delta)
         entropy_loc = self.kb * self.temperature * np.sum(
-            np.array(list( S._data.values())))
+            np.array(list((self.omega_k * S)._data.values())))
 
         loc = np.array(entropy_loc, dtype=np.float64)
         entropy = np.array(0.0, dtype=np.float64)
@@ -238,6 +238,6 @@ class FreeEnergy:
         # Compute dAdf
         dAdfn = np.real(
             einsum('ij,ij->j', cn.conj(), dAdC)
-        ) + self.kb * self.temperature * self.scale * df_fermi_entropy(
+        ) + self.kb * self.temperature * self.omega_k * self.scale * df_fermi_entropy(
             self.scale * fn, dd=self.delta)
         return dAdC * fn, dAdfn.flatten(ctype=np.array)
