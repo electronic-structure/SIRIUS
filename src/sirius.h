@@ -34,7 +34,6 @@
 using json = nlohmann::json;
 
 #include "input.hpp"
-#include "options.hpp"
 #include "radial_solver.hpp"
 #include "SHT/sht.hpp"
 #include "SHT/gaunt.hpp"
@@ -54,6 +53,7 @@ extern "C" void libsci_acc_finalize();
 
 /// Namespace of the SIRIUS library.
 namespace sirius {
+    json sirius_options_parser_;
 
 /// Return the status of the library (initialized or not).
 inline static bool& is_initialized()

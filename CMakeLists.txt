@@ -153,6 +153,7 @@ add_custom_command(
   OUTPUT _always_rebuild
   COMMAND true
   )
+
 add_custom_command(
   OUTPUT version.hpp-test
   DEPENDS _always_rebuild
@@ -168,6 +169,15 @@ add_custom_command(
 
 add_custom_target(generate_version_hpp DEPENDS ${version_hpp_path})
 
+set(runtime_options_json_path src/runtime_options_json.hpp)
+add_custom_command(
+  OUTPUT ${runtime_options_json_path}
+  DEPENDS _always_rebuild
+  COMMAND ${CMAKE_SOURCE_DIR}/generate_options_header_file.sh $(CMAKE_SOURCE_DIR)/src/options.json > ${runtime_options_json_path}
+  COMMAND cp ${runtime_options_json_path} ${CMAKE_SOURCE_DIR}/src/runtime_options_json.hpp
+  )
+
+add_custom_target(runtime_options_json_hpp DEPENDS ${runtime_options_json_path})
 
 ## configure version header
 #exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR}
@@ -198,6 +208,7 @@ MACRO(SIRIUS_SETUP_TARGET _target)
   endif()
 
   add_dependencies(${_target} generate_version_hpp)
+  add_dependencies(${_target} runtime_options_json_hpp)
 
   if(USE_MKL)
     # TODO: handle -lpthread properly
