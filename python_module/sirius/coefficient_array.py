@@ -282,6 +282,9 @@ class CoefficientArray:
     def __sub__(self, other):
         return self.__add__(-1 * other)
 
+    def __rsub__(self, other):
+        return -(self.__add__(-1 * other))
+
     def __pow__(self, a):
         """
 
@@ -425,8 +428,6 @@ class CoefficientArray:
     __rmul__ = __mul__
     __radd__ = __add__
     __ladd__ = __add__
-    __lsub__ = __sub__
-    __rsub__ = __sub__
 
 
 class PwCoeffs(CoefficientArray):
