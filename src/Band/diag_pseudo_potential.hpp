@@ -22,9 +22,9 @@
  *   \brief Diagonalization of pseudopotential Hamiltonian.
  */
 
-#include <hip/hip_complex.h>
 
 #if defined(__GPU) && defined(__CUDA)
+#include <hip/hip_complex.h>
 extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  int n,
                                                  double c,

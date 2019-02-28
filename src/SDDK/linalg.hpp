@@ -87,7 +87,11 @@ inline void linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_i
             break;
         }
         case linalg_t::gpublas: {
+#ifdef __GPU
             gpublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
+#else
+            throw std::runtime_error("not compiled with GPU blas support!");
+#endif
             break;
         }
         case linalg_t::cublasxt: {
@@ -126,10 +130,14 @@ inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int 
             break;
         }
         case linalg_t::gpublas: {
+#ifdef __GPU
             gpublas::zgemm(transa, transb, m, n, k, reinterpret_cast<hipDoubleComplex const*>(alpha),
                           reinterpret_cast<hipDoubleComplex const*>(A), lda, reinterpret_cast<hipDoubleComplex const*>(B), 
                           ldb, reinterpret_cast<hipDoubleComplex const*>(beta),
                           reinterpret_cast<hipDoubleComplex*>(C), ldc, sid());
+#else
+            throw std::runtime_error("not compiled with GPU blas support!");
+#endif
             break;
 
         }
@@ -164,7 +172,11 @@ inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alp
             break;
         }
         case  linalg_t::gpublas: {
+#ifdef __GPU
             gpublas::dger(m, n, alpha, x, incx, y, incy, A, lda, sid());
+#else
+            throw std::runtime_error("not compiled with GPU blas support!");
+#endif
             break;
         }
         case linalg_t::cublasxt: {
@@ -189,7 +201,11 @@ inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int
             break;
         }
         case  linalg_t::gpublas: {
+#ifdef __GPU
             gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+#else
+            throw std::runtime_error("not compiled with GPU blas support!");
+#endif
             break;
         }
         case linalg_t::cublasxt: {
@@ -219,8 +235,12 @@ inline void linalg2::trmm<ftn_double_complex>(char side, char uplo, char transa,
             break;
         }
         case  linalg_t::gpublas: {
+#ifdef __GPU
             gpublas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<hipDoubleComplex const*>(alpha), 
                           reinterpret_cast<hipDoubleComplex const*>(A), lda, reinterpret_cast<hipDoubleComplex*>(B), ldb);
+#else
+            throw std::runtime_error("not compiled with GPU blas support!");
+#endif
             break;
         }
         case linalg_t::cublasxt: {

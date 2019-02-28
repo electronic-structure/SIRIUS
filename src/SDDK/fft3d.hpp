@@ -33,11 +33,12 @@
 #if defined(__GPU) && defined(__CUDA)
 #include "GPU/cufft.hpp"
 #include "GPU/fft_kernels.hpp"
-#define GPUFFT cufft
+namespace gpufft = cufft;
+
 #elif defined(__GPU) && defined(__ROCM)
 #include "GPU/rocfft_interface.hpp"
 #include "GPU/fft_kernels.hpp"
-#define GPUFFT rocfft
+namespace gpufft = rocfft;
 #endif
 
 namespace sddk {
@@ -197,11 +198,11 @@ class FFT3D : public FFT3D_grid
                 case device_t::GPU: {
 #if defined(__GPU)
                     if (*acc_fft_plan__) {
-                        GPUFFT::destroy_plan_handle(*acc_fft_plan__);
+                        gpufft::destroy_plan_handle(*acc_fft_plan__);
                     }
                     int dim_z[] = {size(2)};
-                    *acc_fft_plan__ = GPUFFT::create_batch_plan(1, dim_z, dim_z, 1, size(2), zcol_count_max__, false);
-                    GPUFFT::set_stream(*acc_fft_plan__, stream_id(acc_fft_stream_id_));
+                    *acc_fft_plan__ = gpufft::create_batch_plan(1, dim_z, dim_z, 1, size(2), zcol_count_max__, false);
+                    gpufft::set_stream(*acc_fft_plan__, stream_id(acc_fft_stream_id_));
 #endif
                     break;
                 }
@@ -271,7 +272,7 @@ class FFT3D : public FFT3D_grid
                                           fft_buffer_aux__.at(memory_t::device), acc_fft_stream_id_);
                     }
                     /* transform all columns */
-                    GPUFFT::backward_transform(acc_fft_plan_z__, fft_buffer_aux__.at(memory_t::device));
+                    gpufft::backward_transform(acc_fft_plan_z__, fft_buffer_aux__.at(memory_t::device));
 
                     /* repack from fft_buffer_aux to fft_buffer */
                     repack_z_buffer_gpu(direction, comm_.size(), size(2), num_zcol_local, max_zloc_size_,
@@ -297,7 +298,7 @@ class FFT3D : public FFT3D_grid
                                         fft_buffer_.at(memory_t::device));
 
                     /* transform all columns */
-                    GPUFFT::forward_transform(acc_fft_plan_z__, fft_buffer_aux__.at(memory_t::device));
+                    gpufft::forward_transform(acc_fft_plan_z__, fft_buffer_aux__.at(memory_t::device));
                     /* get all columns from FFT buffer */
                     batch_unload_gpu(gvec_partition_->zcol_count_fft() * size(2),
                                      gvec_partition_->gvec_count_fft(), 1, map_gvec_to_fft_buffer_.at(memory_t::device),
@@ -499,12 +500,12 @@ class FFT3D : public FFT3D_grid
                                           gvec_partition_->gvec().num_zcol(), z_col_pos_.at(memory_t::device), is_reduced,
                                           acc_fft_stream_id_);
                         /* stream #0 executes FFT */
-                        GPUFFT::backward_transform(acc_fft_plan_xy_, fft_buffer_.at(memory_t::device));
+                        gpufft::backward_transform(acc_fft_plan_xy_, fft_buffer_.at(memory_t::device));
                         break;
                     }
                     case -1: {
                         /* stream #0 executes FFT */
-                        GPUFFT::forward_transform(acc_fft_plan_xy_, fft_buffer_.at(memory_t::device));
+                        gpufft::forward_transform(acc_fft_plan_xy_, fft_buffer_.at(memory_t::device));
                         /* stream #0 packs z-columns */
                         pack_z_cols_gpu(fft_buffer_aux__.at(memory_t::device),
                                         fft_buffer_.at(memory_t::device), size(0), size(1), local_size_z(),
@@ -591,12 +592,12 @@ class FFT3D : public FFT3D_grid
                                         fft_buffer_.at(memory_t::device), size(0), size(1), local_size_z(),
                                         gvec_partition_->gvec().num_zcol(), z_col_pos_.at(memory_t::device), acc_fft_stream_id_);
                     /* stream #0 executes FFT */
-                    GPUFFT::backward_transform(acc_fft_plan_xy_, fft_buffer_.at(memory_t::device));
+                    gpufft::backward_transform(acc_fft_plan_xy_, fft_buffer_.at(memory_t::device));
                     break;
                 }
                 case -1: {
                     /* stream #0 executes FFT */
-                    GPUFFT::forward_transform(acc_fft_plan_xy_, fft_buffer_.at(memory_t::device));
+                    gpufft::forward_transform(acc_fft_plan_xy_, fft_buffer_.at(memory_t::device));
                     /* stream #0 packs z-columns */
                     pack_z_cols_2_gpu(fft_buffer_aux1__.at(memory_t::device),
                                       fft_buffer_aux2__.at(memory_t::device),
@@ -739,12 +740,12 @@ class FFT3D : public FFT3D_grid
             bool auto_alloc{false};
             int dim_xy[] = {size(1), size(0)};
             /* create plan for xy transform */
-            acc_fft_plan_xy_ = GPUFFT::create_batch_plan(2, dim_xy, dim_xy, 1, size(0) * size(1), local_size_z(),
+            acc_fft_plan_xy_ = gpufft::create_batch_plan(2, dim_xy, dim_xy, 1, size(0) * size(1), local_size_z(),
                                                                 auto_alloc);
             /* in CUDA case this is an alias */
             acc_fft_plan_xy_ = acc_fft_plan_xy_;
             /* stream #0 will execute FFTs */
-            GPUFFT::set_stream(acc_fft_plan_xy_, stream_id(acc_fft_stream_id_));
+            gpufft::set_stream(acc_fft_plan_xy_, stream_id(acc_fft_stream_id_));
             /* allocate arrays with z- offsets and sizes on the host and device*/
             z_offsets_ = mdarray<int, 1>(comm_.size());
             z_sizes_ = mdarray<int, 1>(comm_.size());
@@ -783,12 +784,12 @@ class FFT3D : public FFT3D_grid
         }
 #if defined(__GPU)
         if (pu_ == device_t::GPU) {
-            GPUFFT::destroy_plan_handle(acc_fft_plan_xy_);
+            gpufft::destroy_plan_handle(acc_fft_plan_xy_);
             if (acc_fft_plan_z_gvec_) {
-                GPUFFT::destroy_plan_handle(acc_fft_plan_z_gvec_);
+                gpufft::destroy_plan_handle(acc_fft_plan_z_gvec_);
             }
             if (acc_fft_plan_z_gkvec_) {
-                GPUFFT::destroy_plan_handle(acc_fft_plan_z_gkvec_);
+                gpufft::destroy_plan_handle(acc_fft_plan_z_gkvec_);
             }
 #if defined(__ROCM)
             rocfft::finalize();
@@ -993,36 +994,32 @@ class FFT3D : public FFT3D_grid
                     map_gvec_to_fft_buffer_x0y0_.allocate(memory_t::device).copy_to(memory_t::device);
                 }
 #if defined(__GPU)
+#if defined(__CUDA)
                 int zcol_count_max{0};
                 if (gvp__.gvec().bare()) {
                     zcol_count_max = zcol_gvec_count_max_;
                 } else {
                     zcol_count_max = zcol_gkvec_count_max_;
                 }
-                size_t work_size;
                 int dim_z[]   = {size(2)};
                 int dims_xy[] = {size(1), size(0)};
-#endif
-
-#if defined(__GPU)
                 /* maximum worksize of z and xy transforms */
-#if defined(__CUDA)
-                work_size = std::max(GPUFFT::get_work_size(2, dims_xy, local_size_z()),
-                                     GPUFFT::get_work_size(1, dim_z, zcol_count_max));
+                size_t work_size = std::max(gpufft::get_work_size(2, dims_xy, local_size_z()),
+                                            gpufft::get_work_size(1, dim_z, zcol_count_max));
 #elif defined(__ROCM)
-                work_size = std::max(GPUFFT::get_work_size(acc_fft_plan_xy_),
-                                     GPUFFT::get_work_size(acc_fft_plan_z_gvec_));
+                size_t work_size = std::max(gpufft::get_work_size(acc_fft_plan_xy_),
+                                     gpufft::get_work_size(acc_fft_plan_z_gvec_));
 #endif
 
                 /* allocate accelerator fft work buffer */
                 acc_fft_work_buf_ = mdarray<char, 1>(work_size, memory_t::device, "FFT3D.acc_fft_work_buf_");
 
-                /* set work area for GPUFFT */
-                GPUFFT::set_work_area(acc_fft_plan_xy_, acc_fft_work_buf_.at(memory_t::device));
+                /* set work area for gpufft */
+                gpufft::set_work_area(acc_fft_plan_xy_, acc_fft_work_buf_.at(memory_t::device));
                 if (gvp__.gvec().bare()) {
-                    GPUFFT::set_work_area(acc_fft_plan_z_gvec_, acc_fft_work_buf_.at(memory_t::device));
+                    gpufft::set_work_area(acc_fft_plan_z_gvec_, acc_fft_work_buf_.at(memory_t::device));
                 } else {
-                    GPUFFT::set_work_area(acc_fft_plan_z_gkvec_, acc_fft_work_buf_.at(memory_t::device));
+                    gpufft::set_work_area(acc_fft_plan_z_gkvec_, acc_fft_work_buf_.at(memory_t::device));
                 }
 #endif
                 fft_buffer_aux1_.allocate(memory_t::device);
