@@ -43,6 +43,8 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     Simulation_context params;
     params.set_processing_unit(pu);
+    params.electronic_structure_method("pseudopotential");
+    params.initialize();
     
     Local_operator hloc(params, fft, gvecp);
 

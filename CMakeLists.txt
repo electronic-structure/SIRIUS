@@ -18,6 +18,8 @@ set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
 set(USE_SCALAPACK OFF CACHE BOOL "use scalapack")
 set(BUILD_TESTS OFF CACHE BOOL "build tests")
 set(GPU_MODEL "none" CACHE STRING "The target GPU architecture; one of {none,P100,G10x0}")
+set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
+set(USE_OPENMP ON CACHE BOOL "use OpenMP")
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "G10x0")
 
@@ -48,6 +50,10 @@ list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 # generate compile_commands.json with compile commands for each target
 set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")
 
+if(DEBUG_MEMORY_POOL)
+  add_definitions("-D__DEBUG_MEMORY_POOL")
+endif()
+
 if(USE_SCALAPACK)
   add_definitions("-D__SCALAPACK")
 endif()
@@ -74,7 +80,9 @@ else()
 endif()
 
 find_package(FFTW REQUIRED)
-find_package(OpenMP REQUIRED)
+if (USE_OPENMP)
+  find_package(OpenMP REQUIRED)
+endif()
 find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C HL)
