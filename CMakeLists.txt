@@ -141,6 +141,8 @@ if(USE_ROCM)
     add_definitions("-D__ROCM")
     add_definitions(${ROCM_DEFINITIONS})
     include_directories(${ROCM_INCLUDE_DIRS})
+    add_subdirectory(src/SDDK/GPU/hipblas_port)
+    include_directories(src/SDDK/GPU/hipblas_port)
 endif()
 
 # add required libraries
@@ -231,7 +233,7 @@ MACRO(SIRIUS_SETUP_TARGET _target)
   endif()
 
   if(USE_ROCM)
-    target_link_libraries(${_target} PRIVATE sirius_rocm sirius_cpp ${ROCM_LIBRARIES})
+    target_link_libraries(${_target} PRIVATE sirius_rocm sirius_cpp hipblas_port ${ROCM_LIBRARIES})
   endif()
 ENDMACRO()
 

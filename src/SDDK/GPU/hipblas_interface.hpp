@@ -30,6 +30,7 @@
 #include <hip/hip_complex.h>
 #include <hipblas.h>
 #include "acc.hpp"
+#include "hipblas_port.h"
 
 namespace hipblas {
 
@@ -231,12 +232,13 @@ inline void dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k,
 inline void dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
                   double const* alpha__, double const* A__, int lda__, double* B__, int ldb__)
 {
-    throw std::runtime_error("dtrmm not implemented in hipblas with ROCM!");
-    // hipblasSideMode_t side = get_hipblasSideMode_t(side__);
-    // hipblasFillMode_t uplo = get_hipblasFillMode_t(uplo__);
-    // hipblasOperation_t transa = get_hipblasOperation_t(transa__);
-    // hipblasDiagType_t diag = get_hipblasDiagType_t(diag__);
-    // CALL_HIPBLAS(hipblasDtrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
+    // throw std::runtime_error("dtrmm not implemented in hipblas with ROCM!");
+    hipblasSideMode_t side = get_hipblasSideMode_t(side__);
+    hipblasFillMode_t uplo = get_hipblasFillMode_t(uplo__);
+    hipblasOperation_t transa = get_hipblasOperation_t(transa__);
+    hipblasDiagType_t diag = get_hipblasDiagType_t(diag__);
+    CALL_HIPBLAS(hipblas_port_Dtrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__,
+                                      B__, ldb__, B__, ldb__));
 }
 
 inline void ztrmm(char             side__,
@@ -251,12 +253,13 @@ inline void ztrmm(char             side__,
                   hipDoubleComplex* B__,
                   int              ldb__)
 {
-    throw std::runtime_error("ztrmm not implemented in hipblas with ROCM!");
-    // hipblasSideMode_t side = get_hipblasSideMode_t(side__);
-    // hipblasFillMode_t uplo = get_hipblasFillMode_t(uplo__);
-    // hipblasOperation_t transa = get_hipblasOperation_t(transa__);
-    // hipblasDiagType_t diag = get_hipblasDiagType_t(diag__);
-    // CALL_HIPBLAS(hipblasZtrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
+    // throw std::runtime_error("ztrmm not implemented in hipblas with ROCM!");
+    hipblasSideMode_t side = get_hipblasSideMode_t(side__);
+    hipblasFillMode_t uplo = get_hipblasFillMode_t(uplo__);
+    hipblasOperation_t transa = get_hipblasOperation_t(transa__);
+    hipblasDiagType_t diag = get_hipblasDiagType_t(diag__);
+    CALL_HIPBLAS(hipblas_port_Ztrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__,
+                                      B__, ldb__, B__, ldb__));
 }
 
 inline void dger(int           m,
@@ -284,8 +287,8 @@ inline void zgeru(int                    m,
                   int                    lda, 
                   int                    stream_id)
 {
-    throw std::runtime_error("zgeru not implemented in hipblas with ROCM!");
-    // CALL_HIPBLAS(hipblasZgeru, (stream_handle(stream_id), m, n, alpha, x, incx, y, incy, A, lda));
+    // throw std::runtime_error("zgeru not implemented in hipblas with ROCM!");
+    CALL_HIPBLAS(hipblas_port_Zgeru, (stream_handle(stream_id), m, n, alpha, x, incx, y, incy, A, lda));
 }
 
 inline void zaxpy(int                    n__,
@@ -295,8 +298,8 @@ inline void zaxpy(int                    n__,
                   hipDoubleComplex*       y__,
                   int                    incy__)
 {
-    throw std::runtime_error("zaxpy not implemented in hipblas with ROCM!");
-    // CALL_HIPBLAS(hipblasZaxpy, (null_stream_handle(), n__, alpha__, x__, incx__, y__, incy__));
+    // throw std::runtime_error("zaxpy not implemented in hipblas with ROCM!");
+    CALL_HIPBLAS(hipblas_port_Zaxpy, (null_stream_handle(), n__, alpha__, x__, incx__, y__, incy__));
 }
 
 

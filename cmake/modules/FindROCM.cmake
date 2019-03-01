@@ -360,7 +360,7 @@ macro(rocm_hip_add_library)
 
     # generate flags to use
     set(_ROCM_STD_FLAGS ${HIP_LIB_FLAGS} ${ROCM_HIPCC_FLAGS})
-    list(FILTER _ROCM_STD_FLAGS INCLUDE REGEX ^-std=)
+    list(FILTER _ROCM_STD_FLAGS INCLUDE REGEX -std=)
     set(_ROCM_FLAGS ${HIP_LIB_FLAGS})
     if(CMAKE_CXX_STANDARD AND NOT _ROCM_STD_FLAGS)
 	list(APPEND _ROCM_FLAGS -std=c++${CMAKE_CXX_STANDARD})
