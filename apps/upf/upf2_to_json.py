@@ -74,7 +74,7 @@ def parse_non_local(upf_dict, root):
         upf_dict['beta_projectors'].append({})
         beta = [float(e) for e in str.split(node.text)]
         upf_dict['beta_projectors'][i]['radial_function'] = beta[0:nr]
-        if node.findall('label'):
+        if 'label' in node.attrib:
             upf_dict['beta_projectors'][i]['label'] = node.attrib['label']
         upf_dict['beta_projectors'][i]['angular_momentum'] = int(
             node.attrib['angular_momentum'])
@@ -197,7 +197,7 @@ def parse_PAW(upf_dict, root):
 
     # ------ Read PP_PAW section: occupation, AE_NLCC, AE_VLOC
     node = root.findall("./PP_PAW")[0]
-    if node.findall('core_energy'):
+    if 'core_energy' in node.attrib:
         upf_dict['header']["paw_core_energy"] = float(
             node.attrib['core_energy']) / 2  # convert to Ha
 

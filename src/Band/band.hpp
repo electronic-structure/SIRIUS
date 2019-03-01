@@ -112,7 +112,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                          mdarray<double, 1>& o_diag__) const;
 
     template <typename T>
-    void check_residuals(K_point* kp__, Hamiltonian& H__) const;
+    void check_residuals(K_point& kp__, Hamiltonian& H__) const;
 
     /// Check wave-functions for orthonormalization.
     template <typename T>
@@ -130,7 +130,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
             const int num_sc = nc_mag ? 2 : 1;
 
             auto& psi = kp__.spinor_wave_functions();
-            Wave_functions spsi(kp__.gkvec_partition(), ctx_.num_bands(), num_sc);
+            Wave_functions spsi(kp__.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
 
             if (is_device_memory(ctx_.preferred_memory_t())) {
                 auto& mpd = ctx_.mem_pool(memory_t::device);
@@ -138,32 +138,24 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                     psi.pw_coeffs(ispn).allocate(mpd);
                     psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
                 }
-                psi.preferred_memory_t(ctx_.preferred_memory_t());
                 for (int i = 0; i < num_sc; i++) {
                     spsi.pw_coeffs(i).allocate(mpd);
                 }
-                spsi.preferred_memory_t(ctx_.preferred_memory_t());
                 ovlp.allocate(memory_t::device);
             }
             kp__.beta_projectors().prepare();
             /* compute residuals */
             for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
-                if (nc_mag) {
-                    /* apply Hamiltonian and S operators to the wave-functions */
-                    H__.apply_h_s<T>(&kp__, 2, 0, ctx_.num_bands(), psi, nullptr, &spsi);
-                    inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 2, psi, 0, ctx_.num_bands(),
-                          spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
-                } else {
-                    /* apply Hamiltonian and S operators to the wave-functions */
-                    H__.apply_h_s<T>(&kp__, ispin_step, 0, ctx_.num_bands(), psi, 0, &spsi);
-                    inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, psi, 0, ctx_.num_bands(),
-                          spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
-                }
+                /* apply Hamiltonian and S operators to the wave-functions */
+                H__.apply_h_s<T>(&kp__, nc_mag ? 2 : ispin_step, 0, ctx_.num_bands(), psi, nullptr, &spsi);
+                inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, psi, 0, ctx_.num_bands(),
+                      spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
+
                 double diff = check_identity(ovlp, ctx_.num_bands());
 
                 if (kp__.comm().rank() == 0) {
                     if (diff > 1e-12) {
-                        printf("overlap matrix is not identity, maximum error : %f\n", diff);
+                        printf("overlap matrix is not identity, maximum error : %20.12f\n", diff);
                     } else {
                         printf("OK! Wave functions are orthonormal.\n");
                     }
@@ -173,7 +165,6 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     psi.pw_coeffs(ispn).deallocate(memory_t::device);
                 }
-                psi.preferred_memory_t(memory_t::host);
             }
             kp__.beta_projectors().dismiss();
         }
@@ -188,7 +179,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                                   Wave_functions& phi__,
                                   Wave_functions& op_phi__,
                                   dmatrix<T>& mtrx__,
-                                  dmatrix<T>& mtrx_old__) const;
+                                  dmatrix<T>* mtrx_old__ = nullptr) const;
 
   public:
     /// Constructor

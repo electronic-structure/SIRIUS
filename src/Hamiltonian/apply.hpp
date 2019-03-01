@@ -104,6 +104,12 @@ void Hamiltonian::apply_h_s(K_point* kp__,
             for (int ispn = 0; ispn < 2; ispn++) {
 
                 auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn, N__, n__);
+                if (ctx_.control().print_checksum_ && kp__->comm().rank() == 0) {
+                    std::stringstream s;
+                    s << "<beta|phi_" << ispn << ">";
+                    auto cs = beta_phi.checksum();
+                    utils::print_checksum(s.str(), cs);
+                }
 
                 if (hphi__) {
                     /* apply diagonal spin blocks */
@@ -125,6 +131,13 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         } else { /* non-magnetic or collinear case */
 
             auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn__, N__, n__);
+            if (ctx_.control().print_checksum_ && kp__->comm().rank() == 0) {
+                std::stringstream s;
+                s << "<beta|phi_" << ispn__ << ">";
+                auto cs = beta_phi.checksum();
+                utils::print_checksum(s.str(), cs);
+            }
+
             if (hphi__) {
                 D<T>().apply(i, ispn__, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
             }
@@ -150,7 +163,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
         if (ctx_.processing_unit() == device_t::GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                kp__->hubbard_wave_functions().deallocate(ispn, memory_t::device);
+                kp__->hubbard_wave_functions().deallocate(spin_idx(ispn), memory_t::device);
             }
         }
     }
@@ -345,26 +358,20 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                             alm_tmp(igk, xi) = std::conj(alm_tmp(igk, xi));
                         }
                     }
-#if defined(__GPU)
                     if (ctx_.processing_unit() == device_t::GPU) {
                         alm_tmp.copy_to(memory_t::device, stream_id(tid));
                     }
-#endif
                     if (hphi__ != nullptr) {
                         apply_hmt_to_apw<spin_block_t::nm>(atom, ngv, alm_tmp, halm_tmp);
-#if defined(__GPU)
                         if (ctx_.processing_unit() == device_t::GPU) {
                             halm_tmp.copy_to(memory_t::device, stream_id(tid));
                         }
-#endif
                     }
                 }
             }
-#if defined(__GPU)
             if (ctx_.processing_unit() == device_t::GPU) {
                 acc::sync_stream(stream_id(tid));
             }
-#endif
         }
     };
 

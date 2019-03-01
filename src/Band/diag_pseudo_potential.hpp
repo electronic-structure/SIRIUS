@@ -99,7 +99,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     hmlt.zero();
     ovlp.zero();
 
-    auto gen_solver = ctx_.gen_evp_solver<T>();
+    auto& gen_solver = ctx_.gen_evp_solver();
 
     for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
         hmlt.set(ig, ig, 0.5 * std::pow(kp__->gkvec().gkvec_cart<index_domain_t::global>(ig).length(), 2));
@@ -209,7 +209,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     kp__->beta_projectors_row().dismiss();
     kp__->beta_projectors_col().dismiss();
 
-    if (gen_solver->solve(kp__->num_gkvec(), ctx_.num_bands(), hmlt, ovlp, eval.data(), evec)) {
+    if (gen_solver.solve(kp__->num_gkvec(), ctx_.num_bands(), hmlt, ovlp, eval.data(), evec)) {
         std::stringstream s;
         s << "error in full diagonalziation";
         TERMINATE(s);
@@ -268,22 +268,22 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
 
     /* auxiliary wave-functions */
-    Wave_functions phi(mp, kp__->gkvec_partition(), num_phi, num_sc);
+    Wave_functions phi(mp, kp__->gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
 
     /* Hamiltonian, applied to auxiliary wave-functions */
-    Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi, num_sc);
+    Wave_functions hphi(mp, kp__->gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
 
     /* S operator, applied to auxiliary wave-functions */
-    Wave_functions sphi(mp, kp__->gkvec_partition(), num_phi, num_sc);
+    Wave_functions sphi(mp, kp__->gkvec_partition(), num_phi, ctx_.preferred_memory_t(), num_sc);
 
     /* Hamiltonain, applied to new Psi wave-functions */
-    Wave_functions hpsi(mp, kp__->gkvec_partition(), num_bands, num_sc);
+    Wave_functions hpsi(mp, kp__->gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions spsi(mp, kp__->gkvec_partition(), num_bands, num_sc);
+    Wave_functions spsi(mp, kp__->gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     /* residuals */
-    Wave_functions res(mp, kp__->gkvec_partition(), num_bands, num_sc);
+    Wave_functions res(mp, kp__->gkvec_partition(), num_bands, ctx_.preferred_memory_t(), num_sc);
 
     const int bs = ctx_.cyclic_block_size();
 
@@ -300,7 +300,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         for (int i = 0; i < num_sc; i++) {
             phi.pw_coeffs(i).allocate(mpd);
         }
-        phi.preferred_memory_t(ctx_.aux_preferred_memory_t());
     }
 
     if (is_device_memory(ctx_.preferred_memory_t())) {
@@ -309,7 +308,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             psi.pw_coeffs(ispn).allocate(mpd);
             psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_bands);
         }
-        psi.preferred_memory_t(ctx_.preferred_memory_t());
+
         for (int i = 0; i < num_sc; i++) {
             res.pw_coeffs(i).allocate(mpd);
 
@@ -319,11 +318,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             hpsi.pw_coeffs(i).allocate(mpd);
             spsi.pw_coeffs(i).allocate(mpd);
         }
-        res.preferred_memory_t(ctx_.preferred_memory_t());
-        hphi.preferred_memory_t(ctx_.preferred_memory_t());
-        sphi.preferred_memory_t(ctx_.preferred_memory_t());
-        hpsi.preferred_memory_t(ctx_.preferred_memory_t());
-        spsi.preferred_memory_t(ctx_.preferred_memory_t());
 
         if (ctx_.blacs_grid().comm().size() == 1) {
             evec.allocate(mpd);
@@ -350,8 +344,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         }
     }
 
-    auto std_solver = ctx_.std_evp_solver<T>();
-    auto gen_solver = ctx_.gen_evp_solver<T>();
+    auto& std_solver = ctx_.std_evp_solver();
+    auto& gen_solver = ctx_.gen_evp_solver();
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -402,9 +396,9 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(0, num_bands, phi, hphi, hmlt, hmlt_old);
+        set_subspace_mtrx(0, num_bands, phi, hphi, hmlt, &hmlt_old);
         /* setup overlap matrix */
-        set_subspace_mtrx(0, num_bands, phi, sphi, ovlp, ovlp_old);
+        set_subspace_mtrx(0, num_bands, phi, sphi, ovlp, &ovlp_old);
 
         if (ctx_.control().verification_ >= 1) {
             double max_diff = check_hermitian(hmlt, num_bands);
@@ -433,7 +427,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
         utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (gen_solver->solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
+        if (gen_solver.solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
@@ -531,7 +525,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             /* setup eigen-value problem
              * N is the number of previous basis functions
              * n is the number of new basis functions */
-            set_subspace_mtrx(N, n, phi, hphi, hmlt, hmlt_old);
+            set_subspace_mtrx(N, n, phi, hphi, hmlt, &hmlt_old);
 
             if (ctx_.control().verification_ >= 1) {
                 double max_diff = check_hermitian(hmlt, N + n);
@@ -544,7 +538,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
             if (!itso.orthogonalize_) {
                 /* setup overlap matrix */
-                set_subspace_mtrx(N, n, phi, sphi, ovlp, ovlp_old);
+                set_subspace_mtrx(N, n, phi, sphi, ovlp, &ovlp_old);
 
                 if (ctx_.control().verification_ >= 1) {
                     double max_diff = check_hermitian(ovlp, N + n);
@@ -564,14 +558,14 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N */
-                if (std_solver->solve(N, num_bands, hmlt, eval.data(), evec)) {
+                if (std_solver.solve(N, num_bands, hmlt, eval.data(), evec)) {
                     std::stringstream s;
                     s << "error in diagonalziation";
                     TERMINATE(s);
                 }
             } else {
                 /* solve generalized eigen-value problem with the size N */
-                if (gen_solver->solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
+                if (gen_solver.solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
                     std::stringstream s;
                     s << "error in diagonalziation";
                     TERMINATE(s);
@@ -608,7 +602,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             psi.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands);
             psi.pw_coeffs(ispn).deallocate(memory_t::device);
         }
-        psi.preferred_memory_t(memory_t::host);
     }
 
     //== std::cout << "checking psi" << std::endl;

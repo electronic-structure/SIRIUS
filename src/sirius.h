@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -72,6 +72,9 @@ inline void initialize(bool call_mpi_init__ = true)
     }
     if (Communicator::world().rank() == 0) {
         printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version, minor_version, revision, git_hash);
+#if !defined(NDEBUG)
+        printf("Warning! Compiled in 'debug' mode with assert statemsnts enabled!\n");
+#endif
     }
     /* get number of ranks per node during the global call to sirius::initialize() */
     sddk::num_ranks_per_node();
@@ -125,8 +128,9 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     if (acc::num_devices()) {
         //acc::set_device();
 #if defined(__CUDA)
-        cublas::destroy_stream_handles();
+        cusolver::destroy_handle();
         cublas::xt::destroy_handle();
+        cublas::destroy_stream_handles();
 #endif
         acc::destroy_streams();
         if (reset_device__) {

@@ -28,84 +28,73 @@
 #include <stdio.h>
 
 
-__global__ void cufft_repack_z_buffer_back_kernel(int dimz,
-                                             int num_zcol_loc, 
-                                             int const* local_z_offsets,
-                                             int const* local_z_sizes,
-                                             cuDoubleComplex const* old_buffer,
-                                             cuDoubleComplex* new_buffer)
+template <int direction>
+__global__ void repack_z_buffer_gpu_kernel(int size_z,
+                                           int num_zcol_loc,
+                                           int const* local_z_offsets,
+                                           int const* local_z_sizes,
+                                           cuDoubleComplex* z_sticks_local,
+                                           cuDoubleComplex* a2a_buffer)
 {
     int iz = blockDim.x * blockIdx.x + threadIdx.x;
     int izcol = blockIdx.y;
     int rank = blockIdx.z;
-    
+
     int local_zsize = local_z_sizes[rank];
     if (iz < local_zsize) {
         int offs = local_z_offsets[rank];
-        new_buffer[offs + iz + izcol * dimz] = old_buffer[offs * num_zcol_loc + izcol * local_zsize + iz];
+        if (direction == -11) {
+            z_sticks_local[offs + iz + izcol * size_z] = a2a_buffer[offs * num_zcol_loc + izcol * local_zsize + iz];
+        }
+        if (direction == 1) {
+            a2a_buffer[offs * num_zcol_loc + izcol * local_zsize + iz] = z_sticks_local[offs + iz + izcol * size_z];
+        }
     }
 }
 
-
-__global__ void cufft_repack_z_buffer_kernel(int dimz,
-                                             int num_zcol_loc, 
-                                             int const* local_z_offsets,
-                                             int const* local_z_sizes,
-                                             cuDoubleComplex* old_buffer,
-                                             cuDoubleComplex* new_buffer)
-{
-    int iz = blockDim.x * blockIdx.x + threadIdx.x;
-    int izcol = blockIdx.y;
-    int rank = blockIdx.z;
-    
-    int local_zsize = local_z_sizes[rank];
-    if (iz < local_zsize) {
-        int offs = local_z_offsets[rank];
-        new_buffer[offs * num_zcol_loc + izcol * local_zsize + iz] = old_buffer[offs + iz + izcol * dimz];
-    }
-}
-
-
-extern "C" void cufft_repack_z_buffer(int direction,
-                                      int num_ranks,
-                                      int dimz,
-                                      int num_zcol_loc,
-                                      int zcol_max_size,
-                                      int const* local_z_offsets,
-                                      int const* local_z_sizes,
-                                      cuDoubleComplex* serial_buffer,
-                                      cuDoubleComplex* parallel_buffer)
+extern "C" void repack_z_buffer_gpu(int direction,
+                                    int num_ranks,
+                                    int size_z,
+                                    int num_zcol_loc,
+                                    int zcol_max_size,
+                                    int const* local_z_offsets,
+                                    int const* local_z_sizes,
+                                    cuDoubleComplex* z_sticks_local,
+                                    cuDoubleComplex* a2a_buffer)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(zcol_max_size, grid_t.x), num_zcol_loc, num_ranks);
 
     if (direction == 1) {
-        cufft_repack_z_buffer_kernel<<<grid_b, grid_t, 0, 0>>>
-                                                   (dimz,
-                                                    num_zcol_loc,
-                                                    local_z_offsets,
-                                                    local_z_sizes,
-                                                    serial_buffer,
-                                                    parallel_buffer);
-    } else { 
-        cufft_repack_z_buffer_back_kernel<<<grid_b, grid_t, 0, 0>>>
-                                                   (dimz,
-                                                    num_zcol_loc,
-                                                    local_z_offsets,
-                                                    local_z_sizes,
-                                                    parallel_buffer,
-                                                    serial_buffer);
+        repack_z_buffer_gpu_kernel<1> <<<grid_b, grid_t, 0, 0>>>
+        (
+            size_z,
+            num_zcol_loc,
+            local_z_offsets,
+            local_z_sizes,
+            z_sticks_local,
+            a2a_buffer
+        );
+    } else {
+        repack_z_buffer_gpu_kernel<-1> <<<grid_b, grid_t, 0, 0>>>
+        (
+            size_z,
+            num_zcol_loc,
+            local_z_offsets,
+            local_z_sizes,
+            z_sticks_local,
+            a2a_buffer
+        );
     }
-
 }
 
 
 
-__global__ void cufft_batch_load_gpu_kernel(int                    fft_size, 
-                                            int                    num_pw_components, 
-                                            int const*             map, 
-                                            cuDoubleComplex const* data, 
-                                            cuDoubleComplex*       fft_buffer)
+__global__ void batch_load_gpu_kernel(int                    fft_size, 
+                                      int                    num_pw_components, 
+                                      int const*             map, 
+                                      cuDoubleComplex const* data, 
+                                      cuDoubleComplex*       fft_buffer)
 {
     int i = blockIdx.y;
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -115,13 +104,13 @@ __global__ void cufft_batch_load_gpu_kernel(int                    fft_size,
     }
 }
 
-extern "C" void cufft_batch_load_gpu(int                    fft_size,
-                                     int                    num_pw_components, 
-                                     int                    num_fft,
-                                     int const*             map, 
-                                     cuDoubleComplex const* data, 
-                                     cuDoubleComplex*       fft_buffer,
-                                     int                    stream_id__)
+extern "C" void batch_load_gpu(int                    fft_size,
+                               int                    num_pw_components, 
+                               int                    num_fft,
+                               int const*             map, 
+                               cuDoubleComplex const* data, 
+                               cuDoubleComplex*       fft_buffer,
+                               int                    stream_id__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_pw_components, grid_t.x), num_fft);
@@ -130,7 +119,7 @@ extern "C" void cufft_batch_load_gpu(int                    fft_size,
 
     acc::zero(fft_buffer, fft_size * num_fft);
 
-    cufft_batch_load_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
+    batch_load_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
     (
         fft_size,
         num_pw_components,
@@ -140,13 +129,13 @@ extern "C" void cufft_batch_load_gpu(int                    fft_size,
     );
 }
 
-__global__ void cufft_batch_unload_gpu_kernel(int                    fft_size, 
-                                              int                    num_pw_components, 
-                                              int const*             map, 
-                                              cuDoubleComplex const* fft_buffer,
-                                              cuDoubleComplex*       data,
-                                              double                 alpha,
-                                              double                 beta)
+__global__ void batch_unload_gpu_kernel(int                    fft_size, 
+                                        int                    num_pw_components, 
+                                        int const*             map, 
+                                        cuDoubleComplex const* fft_buffer,
+                                        cuDoubleComplex*       data,
+                                        double                 alpha,
+                                        double                 beta)
 {
     int i = blockIdx.y;
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -165,15 +154,15 @@ __global__ void cufft_batch_unload_gpu_kernel(int                    fft_size,
 /// Unload data from FFT buffer.
 /** The following operation is executed:
  *  data[ig] = alpha * data[ig] + beta * fft_buffer[map[ig]] */
-extern "C" void cufft_batch_unload_gpu(int                    fft_size,
-                                       int                    num_pw_components,
-                                       int                    num_fft,
-                                       int const*             map, 
-                                       cuDoubleComplex const* fft_buffer, 
-                                       cuDoubleComplex*       data,
-                                       double                 alpha,
-                                       double                 beta,
-                                       int                    stream_id__)
+extern "C" void batch_unload_gpu(int                    fft_size,
+                                 int                    num_pw_components,
+                                 int                    num_fft,
+                                 int const*             map, 
+                                 cuDoubleComplex const* fft_buffer, 
+                                 cuDoubleComplex*       data,
+                                 double                 alpha,
+                                 double                 beta,
+                                 int                    stream_id__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_pw_components, grid_t.x), num_fft);
@@ -183,8 +172,8 @@ extern "C" void cufft_batch_unload_gpu(int                    fft_size,
     if (alpha == 0) {
         acc::zero(data, num_pw_components);
     }
-    
-    cufft_batch_unload_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
+
+    batch_unload_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
     (
         fft_size, 
         num_pw_components, 
@@ -196,10 +185,10 @@ extern "C" void cufft_batch_unload_gpu(int                    fft_size,
     );
 }
 
-__global__ void cufft_load_x0y0_col_gpu_kernel(int                    z_col_size,
-                                               int const*             map,
-                                               cuDoubleComplex const* data,
-                                               cuDoubleComplex*       fft_buffer)
+__global__ void load_x0y0_col_gpu_kernel(int                    z_col_size,
+                                         int const*             map,
+                                         cuDoubleComplex const* data,
+                                         cuDoubleComplex*       fft_buffer)
 
 {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -209,18 +198,18 @@ __global__ void cufft_load_x0y0_col_gpu_kernel(int                    z_col_size
     }
 }
 
-extern "C" void cufft_load_x0y0_col_gpu(int                    z_col_size,
-                                        int const*             map,
-                                        cuDoubleComplex const* data,
-                                        cuDoubleComplex*       fft_buffer,
-                                        int                    stream_id__)
+extern "C" void load_x0y0_col_gpu(int                    z_col_size,
+                                  int const*             map,
+                                  cuDoubleComplex const* data,
+                                  cuDoubleComplex*       fft_buffer,
+                                  int                    stream_id__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(z_col_size, grid_t.x));
 
     cudaStream_t stream = acc::stream(stream_id(stream_id__));
 
-    cufft_load_x0y0_col_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
+    load_x0y0_col_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
     (
         z_col_size,
         map,

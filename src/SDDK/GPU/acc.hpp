@@ -146,6 +146,7 @@ inline void stack_backtrace()
 #define CALL_DEVICE_API(func__, args__)
 #endif
 
+/// Namespace for accelerator-related functions.
 namespace acc {
 
 /// Set the GPU id.
@@ -299,6 +300,14 @@ inline void copy(T* target__, T const* source__, size_t n__)
     CALL_DEVICE_API(Memcpy, (target__, source__, n__ * sizeof(T), P(MemcpyDeviceToDevice)));
 }
 
+/// 2D copy inside a device.
+template <typename T>
+inline void copy(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__)
+{
+    CALL_DEVICE_API(Memcpy2D, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__,
+                               P(MemcpyDeviceToDevice)));
+}
+
 /// Copy memory from host to device.
 template <typename T>
 inline void copyin(T* target__, T const* source__, size_t n__)
@@ -446,10 +455,9 @@ inline void check_last_error()
 
 inline bool check_device_ptr(void const* ptr__)
 {
-    //set_device();
     cudaPointerAttributes attr;
     cudaError_t error = cudaPointerGetAttributes(&attr, ptr__);
-    cudaGetLastError();
+    //cudaGetLastError();
     if (error != cudaSuccess) {
         return false;
     }

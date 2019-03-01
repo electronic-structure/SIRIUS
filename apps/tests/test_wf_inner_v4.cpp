@@ -32,7 +32,7 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     }
 
     int nsp{1};
-    Wave_functions phi(gvp, 2 * num_bands__, nsp);
+    Wave_functions phi(gvp, 2 * num_bands__, mem_bra__, nsp);
 
     for (int is = 0; is < nsp; is++) {
         for (int i = 0; i < 2 * num_bands__; i++) {
@@ -43,16 +43,14 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     }
 
     if (is_device_memory(mem_bra__)) {
-        phi.preferred_memory_t(mem_bra__);
         for (int ispn = 0; ispn < nsp; ispn++) {
             phi.allocate(spin_idx(ispn), mem_bra__);
-            phi.copy_to(ispn, mem_bra__, 0, 2 * num_bands__);
+            phi.copy_to(spin_idx(ispn), mem_bra__, 0, 2 * num_bands__);
         }
     }
 
-    Wave_functions phi1(gvp, 2 * num_bands__, nsp);
+    Wave_functions phi1(gvp, 2 * num_bands__, mem_ket__, nsp);
     if (is_device_memory(mem_ket__)) {
-        phi1.preferred_memory_t(mem_ket__);
         for (int ispn = 0; ispn < nsp; ispn++) {
             phi1.allocate(spin_idx(ispn), mem_ket__);
         }

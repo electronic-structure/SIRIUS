@@ -35,7 +35,7 @@ class Simulation_parameters
 {
   protected:
     /// Type of the processing unit.
-    device_t processing_unit_{CPU};
+    device_t processing_unit_{device_t::CPU};
 
     /// Type of relativity for valence states.
     relativity_t valence_relativity_{relativity_t::zora};
@@ -93,6 +93,24 @@ class Simulation_parameters
         settings_input_.read(dict);
         /* read hubbard parameters */
         hubbard_input_.read(dict);
+    }
+
+    /// Import from command line arguments.
+    void import(cmd_args const& args__)
+    {
+        control_input_.processing_unit_     = args__.value("control.processing_unit", control_input_.processing_unit_);
+        control_input_.mpi_grid_dims_       = args__.value("control.mpi_grid_dims", control_input_.mpi_grid_dims_);
+        control_input_.std_evp_solver_name_ = args__.value("control.std_evp_solver_name", control_input_.std_evp_solver_name_);
+        control_input_.gen_evp_solver_name_ = args__.value("control.gen_evp_solver_name", control_input_.gen_evp_solver_name_);
+        control_input_.fft_mode_            = args__.value("control.fft_mode", control_input_.fft_mode_);
+        control_input_.memory_usage_        = args__.value("control.memory_usage", control_input_.memory_usage_);
+
+        parameters_input_.ngridk_           = args__.value("parameters.ngridk", parameters_input_.ngridk_);
+        parameters_input_.gamma_point_      = args__.value("parameters.gamma_point", parameters_input_.gamma_point_);
+
+        iterative_solver_input_.orthogonalize_ = args__.value("iterative_solver.orthogonalize",
+                                                              iterative_solver_input_.orthogonalize_);
+
     }
 
     inline void set_lmax_apw(int lmax_apw__)
@@ -229,27 +247,34 @@ class Simulation_parameters
     inline void set_processing_unit(std::string name__)
     {
         std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+
+        /* set the default value */
+        if (name__ == "") {
+            if (acc::num_devices() > 0) {
+                name__ = "gpu";
+            } else {
+                name__ = "cpu";
+            }
+        }
         control_input_.processing_unit_ = name__;
         if (name__ == "cpu") {
             this->set_processing_unit(device_t::CPU);
         } else if (name__ == "gpu") {
             this->set_processing_unit(device_t::GPU);
         } else {
-            TERMINATE("wrong processing unit");
+            std::stringstream s;
+            s << "wrong processing unit name: " << name__;
+            TERMINATE(s);
         }
     }
 
     inline void set_processing_unit(device_t pu__)
     {
-#ifdef __GPU
         if (acc::num_devices() == 0) {
             processing_unit_ = device_t::CPU;
         } else {
             processing_unit_ = pu__;
         }
-#else
-        processing_unit_ = device_t::CPU;
-#endif
     }
 
     inline void set_molecule(bool molecule__)
