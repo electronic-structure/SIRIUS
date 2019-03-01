@@ -25,7 +25,11 @@
 #ifndef __SDDK_HPP__
 #define __SDDK_HPP__
 
+#if defined(_OPENMP)
 #include <omp.h>
+#else
+#include "omp.hpp"
+#endif
 #include <string>
 #include <sstream>
 #include <chrono>

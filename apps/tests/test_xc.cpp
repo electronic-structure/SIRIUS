@@ -4,8 +4,8 @@ using namespace sirius;
 
 void test_xc()
 {
-    XC_functional Ex("XC_LDA_X", 2);
-    XC_functional Ec("XC_LDA_C_VWN", 2);
+    XC_functional_base Ex("XC_LDA_X", 2);
+    XC_functional_base Ec("XC_LDA_C_VWN", 2);
 
     int npt = 5;
     double rho_up[] = {0, 0.1, 0.2, 0.5, 2.234};
@@ -30,10 +30,10 @@ void test_xc()
 
 void test_xc2()
 {
-    XC_functional Ex("XC_GGA_X_PBE", 1);
-    XC_functional Ec("XC_GGA_C_PBE", 1);
-    XC_functional E1("XC_LDA_X", 1);
-    XC_functional E2("XC_LDA_C_PW", 1);
+    XC_functional_base Ex("XC_GGA_X_PBE", 1);
+    XC_functional_base Ec("XC_GGA_C_PBE", 1);
+    XC_functional_base E1("XC_LDA_X", 1);
+    XC_functional_base E2("XC_LDA_C_PW", 1);
     
     //XC_functional Ec("XC_LDA_C_PZ", 1);
     ///XC_functional Ex("XC_GGA_X_PW91", 1);

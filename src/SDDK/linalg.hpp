@@ -654,9 +654,9 @@ class linalg<GPU>: public linalg_base
             gemm(transa, transb, m, n, k, alpha, A.at(memory_t::device), A.ld(), B.at(memory_t::device), B.ld(), beta, C.at(memory_t::device), C.ld(), stream_id);
         }
 
-        /// Inversion of triangular matrix.
-        template <typename T>
-        static ftn_int trtri(ftn_int n, T* A, ftn_int lda);
+        ///// Inversion of triangular matrix.
+        //template <typename T>
+        //static ftn_int trtri(ftn_int n, T* A, ftn_int lda);
 
         template <typename T>
         static void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T* aplha, T* A, ftn_int lda, T* B, ftn_int ldb);
@@ -1221,33 +1221,33 @@ inline void linalg<GPU>::gemm<ftn_double>(int transa__, int transb__, ftn_int m,
     gpublas::dgemm(trans[transa__], trans[transb__], m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
 }
 
-template <>
-inline ftn_int linalg<GPU>::trtri<ftn_double>(ftn_int n,
-                                              ftn_double* A,
-                                              ftn_int lda)
-{
-    #ifdef __MAGMA
-    return magma::dtrtri('U', n, A, lda);
-    #else
-    printf("not compiled with MAGMA support\n");
-    raise(SIGTERM);
-    #endif
-    return -1;
-}
-
-template <>
-inline ftn_int linalg<GPU>::trtri<ftn_double_complex>(ftn_int n,
-                                                      ftn_double_complex* A,
-                                                      ftn_int lda)
-{
-    #ifdef __MAGMA
-    return magma::ztrtri('U', n, (magmaDoubleComplex*)A, lda);
-    #else
-    printf("not compiled with MAGMA support\n");
-    raise(SIGTERM);
-    #endif
-    return -1;
-}
+//template <>
+//inline ftn_int linalg<GPU>::trtri<ftn_double>(ftn_int n,
+//                                              ftn_double* A,
+//                                              ftn_int lda)
+//{
+//    #ifdef __MAGMA
+//    return magma::dtrtri('U', n, A, lda);
+//    #else
+//    printf("not compiled with MAGMA support\n");
+//    raise(SIGTERM);
+//    #endif
+//    return -1;
+//}
+//
+//template <>
+//inline ftn_int linalg<GPU>::trtri<ftn_double_complex>(ftn_int n,
+//                                                      ftn_double_complex* A,
+//                                                      ftn_int lda)
+//{
+//    #ifdef __MAGMA
+//    return magma::ztrtri('U', n, (magmaDoubleComplex*)A, lda);
+//    #else
+//    printf("not compiled with MAGMA support\n");
+//    raise(SIGTERM);
+//    #endif
+//    return -1;
+//}
 
 template <>
 inline void linalg<GPU>::trmm<ftn_double>(char side,

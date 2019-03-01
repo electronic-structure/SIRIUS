@@ -80,8 +80,10 @@ void create_supercell(cmd_args const& args__)
                         //==    double r = type_wrapper<double>::random();
                         //==    if (r < 0.99) add_atom = false;
                         //==}
-			std::vector<double> u({vr.first[0], vr.first[1], vr.first[2]});
-                        if (add_atom) ctx_sc.unit_cell().add_atom(label, u);
+                        std::vector<double> u({vr.first[0], vr.first[1], vr.first[2]});
+                        if (add_atom) {
+                            ctx_sc.unit_cell().add_atom(label, u);
+                        }
                     }
                 }
             }
@@ -245,6 +247,8 @@ int main(int argn, char** argv)
     if (args.exist("cif")) {
         Simulation_context ctx("sirius.json", Communicator::self());
         ctx.unit_cell().write_cif();
+        ctx.unit_cell().find_nearest_neighbours(20);
+        printf("minimum bond length: %20.12f\n", ctx.unit_cell().min_bond_length());
     }
 
     sirius::finalize(1);

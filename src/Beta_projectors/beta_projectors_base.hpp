@@ -461,7 +461,7 @@ inline void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs
             switch (ctx_.processing_unit()) {
                 case device_t::GPU: {
                     beta_pw_coeffs_a_ptr__ = reinterpret_cast<double*>(const_cast<double_complex*>(&pw_coeffs_a_g0_(0)));
-                    incx = 1;
+                    incx = 2;
                     break;
                 }
                 case device_t::CPU: break;
@@ -470,7 +470,7 @@ inline void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs
         linalg2(la).ger(nbeta__, n__,
                         &linalg_const<double>::m_one(),
                         beta_pw_coeffs_a_ptr__, incx,
-                        reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at(ctx_.preferred_memory_t(), 0, idx0__)), 
+                        reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__)),
                         2 * phi__.pw_coeffs(ispn__).prime().ld(),
                         beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
     }

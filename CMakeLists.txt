@@ -16,11 +16,14 @@ set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
 set(USE_CUDA OFF CACHE BOOL "use CUDA")
 set(USE_ROCM OFF CACHE BOOL "use ROCM AMD GPU code")
+set(USE_VDWXC OFF CACHE BOOL "use libvdwxc for van der Walls corrections")
 set(USE_MKL OFF CACHE BOOL "use Intel MKL")
 set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
 set(USE_SCALAPACK OFF CACHE BOOL "use scalapack")
 set(BUILD_TESTS OFF CACHE BOOL "build tests")
 set(GPU_MODEL "none" CACHE STRING "The target GPU architecture; one of {none,P100,G10x0}")
+set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
+set(USE_OPENMP ON CACHE BOOL "use OpenMP")
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "G10x0")
 
@@ -51,6 +54,10 @@ list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 # generate compile_commands.json with compile commands for each target
 set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")
 
+if(DEBUG_MEMORY_POOL)
+  add_definitions("-D__DEBUG_MEMORY_POOL")
+endif()
+
 if(USE_SCALAPACK)
   add_definitions("-D__SCALAPACK")
 endif()
@@ -77,10 +84,13 @@ else()
 endif()
 
 find_package(FFTW REQUIRED)
-find_package(OpenMP REQUIRED)
+if (USE_OPENMP)
+  find_package(OpenMP REQUIRED)
+endif()
 find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C HL)
+
 
 # cmake assumes spglib installed
 #add_compile_options(-D__SPGLIB_STD_INCLUDE_PATH)
@@ -159,6 +169,13 @@ include_directories(${LIBXC_INCLUDE_DIR})
 include_directories(${LIBSPG_INCLUDE_DIR})
 include_directories(${HDF5_INCLUDE_DIR})
 include_directories(${MPI_INCLUDE_DIR})
+
+if(USE_VDWXC)
+  find_package(LibVDWXC 0.3.0 REQUIRED)
+  include_directories(${LIBVDWXC_INCLUDE_DIR})
+  set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${LIBVDWXC_LIBRARIES}")
+  add_definitions("-DUSE_VDWXC")
+endif(USE_VDWXC)
 
 # project header locations
 include_directories(BEFORE src)
