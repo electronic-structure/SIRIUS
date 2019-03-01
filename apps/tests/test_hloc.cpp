@@ -7,45 +7,52 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 {
     device_t pu = static_cast<device_t>(use_gpu__);
 
-    MPI_grid mpi_grid(mpi_grid_dims__, Communicator::world()); 
-    
-    //matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    matrix3d<double> M = {{10, 0, 0}, {0, 10, 0}, {0, 0, 10}};
 
-    matrix3d<double> M = transpose(matrix3d<double>({{0.1876146971, 0.1083182969, -0.0001874171},
-                                                     {0.0003106919, 0.2160983064, -0.0000921806},
-                                                     {-0.0000819370, -0.0000453654, 0.1171347286}}));
-    
+    //matrix3d<double> M = transpose(matrix3d<double>({{0.1876146971, 0.1083182969, -0.0001874171},
+    //                                                 {0.0003106919, 0.2160983064, -0.0000921806},
+    //                                                 {-0.0000819370, -0.0000453654, 0.1171347286}}));
+
     for (int i = 0; i < 3; i++) {
-        printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, M(0, i), M(1, i), M(2, i));
-    }
-    
-    FFT3D_grid fft_box(find_translations(2 * cutoff__, M));
-
-    FFT3D fft(find_translations(2 * cutoff__, M), mpi_grid.communicator(1 << 0), pu);
-
-    Communicator comm_ortho_fft = Communicator::world().split(fft.comm().rank());
-
-    Gvec gvec(M, cutoff__, Communicator::world(), reduce_gvec__);
-
-    Gvec_partition gvecp(gvec,  fft.comm(), comm_ortho_fft);
-
-    if (Communicator::world().rank() == 0) {
-        printf("total number of G-vectors: %i\n", gvec.num_gvec());
-        printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
-        printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
-        printf("number of FFT threads: %i\n", omp_get_max_threads());
-        printf("number of FFT groups: %i\n", mpi_grid.communicator(1 << 1).size());
-        printf("MPI grid: %i %i\n", mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size());
-        printf("number of z-columns: %i\n", gvec.num_zcol());
+        printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, M(0, i), M(1, i), M(2, i));
     }
 
-    fft.prepare(gvecp);
+    //FFT3D_grid fft_box(find_translations(2 * cutoff__, M));
+
+    //FFT3D fft(find_translations(2 * cutoff__, M), mpi_grid.communicator(1 << 0), pu);
+
+    //Communicator comm_ortho_fft = Communicator::world().split(fft.comm().rank());
+
+
+    //Gvec gvec(M, cutoff__, Communicator::world(), reduce_gvec__);
+
+    //Gvec_partition gvecp(gvec,  fft.comm(), comm_ortho_fft);
+
 
     Simulation_context params;
     params.set_processing_unit(pu);
+    params.unit_cell().set_lattice_vectors(M);
+    params.set_mpi_grid_dims(mpi_grid_dims__);
+    params.set_pw_cutoff(cutoff__ + 1);
+    params.set_gk_cutoff(cutoff__ / 2);
     params.electronic_structure_method("pseudopotential");
+    params.use_symmetry(false);
     params.initialize();
+
+    auto& gvec = params.gvec();
+    auto& gvecp = params.gvec_partition();
+    auto& fft = params.fft();
     
+    if (Communicator::world().rank() == 0) {
+        printf("total number of G-vectors: %i\n", gvec.num_gvec());
+        printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
+        printf("FFT grid size: %i %i %i\n", fft.size(0), fft.size(1), fft.size(2));
+        printf("number of FFT threads: %i\n", omp_get_max_threads());
+        printf("number of FFT groups: %i\n", params.comm_ortho_fft().size());
+        //printf("MPI grid: %i %i\n", mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size());
+        printf("number of z-columns: %i\n", gvec.num_zcol());
+    }
+
     Local_operator hloc(params, fft, gvecp);
 
     Wave_functions phi(gvecp, 4 * num_bands__, memory_t::host);
@@ -75,11 +82,6 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     if (pu == GPU && !phi.pw_coeffs(0).is_remapped()) {
         hphi.pw_coeffs(0).copy_to(memory_t::host, 0, 4 * num_bands__);
     }
-
-    //auto cs1 = phi.checksum_pw(0, 4 * num_bands__, CPU);
-    //auto cs2 = hphi.checksum_pw(0, 4 * num_bands__, CPU);
-
-    //std::cout << "checksum(phi): " << cs1 << " checksum(hphi): " << cs2 << std::endl;
 
     double diff{0};
     for (int i = 0; i < 4 * num_bands__; i++) {
@@ -122,7 +124,7 @@ int main(int argn, char** argv)
         return 0;
     }
     auto mpi_grid_dims = args.value< std::vector<int> >("mpi_grid_dims", {1, 1});
-    auto cutoff = args.value<double>("cutoff", 2.0);
+    auto cutoff = args.value<double>("cutoff", 10.0);
     auto reduce_gvec = args.value<int>("reduce_gvec", 0);
     auto num_bands = args.value<int>("num_bands", 10);
     auto use_gpu = args.value<int>("use_gpu", 0);
@@ -138,6 +140,5 @@ int main(int argn, char** argv)
         utils::timer::print();
     }
     Communicator::world().barrier();
-    //runtime::Timer::print_all();
     sirius::finalize();
 }
