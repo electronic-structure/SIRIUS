@@ -527,7 +527,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def("_apply_ref_inner_dismiss",
              // must be called AFTER _apply_ref_inner
              [](Hamiltonian& hamiltonian) {
-                 auto& ctx = hamiltonian.ctx();
                  if (!hamiltonian.ctx().full_potential()) {
                      hamiltonian.dismiss();
                  }
