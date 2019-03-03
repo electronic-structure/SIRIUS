@@ -30,7 +30,21 @@
 
 namespace sirius {
 
-/// Set of basic parameters of a simulation.
+    /// json dictionary containing the options given by the interface
+#include "runtime_options_json.hpp"
+
+    /// get all possible options for initializing sirius. It is a json dictionary
+    inline  const json &get_options_dictionary()
+    {
+        if (all_options_dictionary_.size() == 0)
+        {
+            TERMINATE("Dictionary not initialized\n");
+        }
+        return all_options_dictionary_;
+    }
+
+
+    /// Set of basic parameters of a simulation.
 class Simulation_parameters
 {
   protected:
@@ -66,9 +80,6 @@ class Simulation_parameters
 
     /// LDA+U input parameters.
     Hubbard_input hubbard_input_;
-
-    /// json dictionary containing the options given by the interface
-    json all_options_dictionary_;
 
     /// json dictionary containing all runtime options set up through the interface
     json runtime_options_dictionary_;
@@ -618,15 +629,7 @@ public:
     {
         return hubbard_input_;
     }
-    /// get all possible options for initializing sirius. It is a json dictionary
-    json &get_options_dictionary()
-        {
-            if (all_options_dictionary_.size() == 0)
-                all_options_dictionary_.parse(
-#include "runtime_options_json.hpp"
-                    );
-            return all_options_dictionary_;
-        }
+
     /// get the options set at runtime
     json &get_runtime_options_dictionary()
         {
@@ -636,7 +639,7 @@ public:
     /// print all options in the terminal
     void print_options()
         {
-            json &dict = get_options_dictionary();
+            const json &dict = get_options_dictionary();
             int rank;
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             if (rank != 0)
