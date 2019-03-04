@@ -127,8 +127,10 @@ inline void Potential::generate_D_operator_matrix()
                         break;
                     }
                 }
-                if (ctx_.processing_unit() == device_t::GPU && ctx_.control().print_checksum_) {
-                    veff_a.copy_to(memory_t::host);
+                if (ctx_.control().print_checksum_) {
+                    if (ctx_.processing_unit() == device_t::GPU) {
+                        veff_a.copy_to(memory_t::host);
+                    }
                     auto cs = veff_a.checksum();
                     std::stringstream s;
                     s << "Gvec_block_" << ib << "_veff_a";
