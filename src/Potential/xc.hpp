@@ -464,7 +464,7 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
 {
     PROFILE("sirius::Potential::xc_rg_nonmagnetic");
 
-    bool const use_2nd_deriv{true};
+    bool const use_2nd_deriv{false};
 
     bool const use_all_gvec{false};
 
