@@ -22,6 +22,28 @@
  *  \brief Generate augmentation charge.
  */
 
+#if defined(__GPU)
+extern "C" void generate_dm_pw_gpu(int           num_atoms__,
+                                   int           num_gvec_loc__,
+                                   int           num_beta__,
+                                   double const* atom_pos__,
+                                   int const*    gvx__,
+                                   int const*    gvy__,
+                                   int const*    gvz__,
+                                   double*       phase_factors__,
+                                   double const* dm__,
+                                   double*       dm_pw__,
+                                   int           stream_id__);
+
+extern "C" void sum_q_pw_dm_pw_gpu(int             num_gvec_loc__,
+                                   int             nbf__,
+                                   double const*   q_pw__,
+                                   double const*   dm_pw__,
+                                   double const*   sym_weight__,
+                                   double_complex* rho_pw__,
+                                   int             stream_id__);
+#endif
+
 template <device_t pu>
 inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 {
@@ -89,7 +111,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
                     }
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         utils::timer t3("sirius::Density::generate_rho_aug|gemm");
-                        linalg2(linalg_t::blas).gemm('N', 'N', nbf * (nbf + 1) / 2, 2 * spl_ngv_loc.local_size(),
+                        linalg2(linalg_t::blas).gemm('N', 'N', nbf * (nbf + 1) / 2, 2 * spl_ngv_loc.local_size(ib),
                                                      atom_type.num_atoms(),
                                                      &linalg_const<double>::one(),
                                                      dm.at(memory_t::host, 0, 0, iv), dm.ld(),
@@ -119,15 +141,17 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 #if defined(__GPU)
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         generate_dm_pw_gpu(atom_type.num_atoms(),
-                                           spl_ngv_loc.local_size(),
+                                           spl_ngv_loc.local_size(ib),
                                            nbf,
                                            ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
                                            ctx_.gvec_coord().at(memory_t::device, g_begin, 0),
+                                           ctx_.gvec_coord().at(memory_t::device, g_begin, 1),
+                                           ctx_.gvec_coord().at(memory_t::device, g_begin, 2),
                                            phase_factors.at(memory_t::device),
                                            dm.at(memory_t::device, 0, 0, iv),
                                            dm_pw.at(memory_t::device),
                                            1);
-                        sum_q_pw_dm_pw_gpu(spl_ngv_loc.local_size(),
+                        sum_q_pw_dm_pw_gpu(spl_ngv_loc.local_size(ib),
                                            nbf,
                                            ctx_.augmentation_op(iat).q_pw().at(memory_t::device, 0, 2 * g_begin),
                                            dm_pw.at(memory_t::device),

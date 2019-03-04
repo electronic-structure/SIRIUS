@@ -26,9 +26,12 @@
 extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 int num_gvec_loc__,
                                                 double_complex const* veff__,
-                                                int const* gvec__,
+                                                int const* gvx__,
+                                                int const* gvy__,
+                                                int const* gvz__,
                                                 double const* atom_pos__,
                                                 double* veff_a__,
+                                                int ld__,
                                                 int stream_id__);
 #endif
 
@@ -123,8 +126,10 @@ inline void Potential::generate_D_operator_matrix()
                         mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), spl_ngv_loc.local_size(ib),
                                                         veff.at(memory_t::device),
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 0),
+                                                        ctx_.gvec_coord().at(memory_t::device, g_begin, 1),
+                                                        ctx_.gvec_coord().at(memory_t::device, g_begin, 2),
                                                         ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
-                                                        veff_a.at(memory_t::device), 1);
+                                                        veff_a.at(memory_t::device), spl_ngv_loc.local_size(), 1);
 #endif
                         break;
                     }
