@@ -41,6 +41,11 @@ using namespace geometry3d;
 
 namespace sddk {
 
+FFT3D_grid get_min_fft_grid(double cutoff__, matrix3d<double> M__)
+{
+    return FFT3D_grid(find_translations(cutoff__, M__) + vector3d<int>({2, 2, 2}));
+}
+
 /// Descriptor of the z-column (x,y fixed, z varying) of the G-vectors.
 /** Sphere of G-vectors within a given plane-wave cutoff is represented as a set of z-columns with different lengths. */
 struct z_column_descriptor
@@ -407,10 +412,10 @@ class Gvec
         }
     }
 
-    FFT3D_grid get_default_fft_grid() const
-    {
-        return FFT3D_grid(find_translations(Gmax_, lattice_vectors_) + vector3d<int>({2, 2, 2}));
-    }
+    //FFT3D_grid get_default_fft_grid() const
+    //{
+    //    return FFT3D_grid(find_translations(Gmax_, lattice_vectors_) + vector3d<int>({2, 2, 2}));
+    //}
 
     /// Initialize everything.
     void init(FFT3D_grid const& fft_grid)
@@ -505,7 +510,7 @@ class Gvec
         , reduce_gvec_(reduce_gvec__)
         , bare_gvec_(false)
     {
-        init(get_default_fft_grid());
+        init(get_min_fft_grid(Gmax__, M__));
     }
 
     /// Constructor for G-vectors.
@@ -515,7 +520,7 @@ class Gvec
         , comm_(comm__)
         , reduce_gvec_(reduce_gvec__)
     {
-        init(get_default_fft_grid());
+        init(get_min_fft_grid(Gmax__, M__));
     }
 
     /// Constructor for G-vectors.
@@ -537,7 +542,7 @@ class Gvec
         , reduce_gvec_(gvec_base__.reduced())
         , gvec_base_(&gvec_base__)
     {
-        init(get_default_fft_grid());
+        init(get_min_fft_grid(Gmax__, lattice_vectors_));
     }
 
     /// Constructor for G-vectors with mpi_comm_self()
@@ -547,7 +552,7 @@ class Gvec
         , comm_(Communicator::self())
         , reduce_gvec_(reduce_gvec__)
     {
-        init(get_default_fft_grid());
+        init(get_min_fft_grid(Gmax__, M__));
     }
 
     /// Constructor for empty set of G-vectors.

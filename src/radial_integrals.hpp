@@ -629,7 +629,7 @@ class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
                     values_(iat)(iq) = s.interpolate().integrate(2);
                 } else {
                     for (int ir = 0; ir < s.num_points(); ir++) {
-                        s(ir) = atom_type.free_atom_density(ir) * std::sin(g * atom_type.free_atom_radial_grid(ir));// / g;
+                        s(ir) = atom_type.free_atom_density(ir) * std::sin(g * atom_type.free_atom_radial_grid(ir));
                     }
                     values_(iat)(iq) = s.interpolate().integrate(1);
                 }

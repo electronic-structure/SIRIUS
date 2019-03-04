@@ -136,9 +136,9 @@ inline void inner(memory_t        mem__,
 
     auto sddk_pp = utils::get_env<int>("SDDK_PRINT_PERFORMANCE");
 
-    auto sddk_bs_raw = utils::get_env<int>("SDDK_BLOCK_SIZE");
+    auto sddk_bs_raw = utils::get_env<int>("SDDK_INNER_BLOCK_SIZE");
 
-    int sddk_block_size = (sddk_bs_raw == nullptr) ? sddk_default_block_size : *sddk_bs_raw;
+    int sddk_block_size = (sddk_bs_raw == nullptr) ? sddk_inner_default_block_size : *sddk_bs_raw;
 
     double ngop{0};
     if (std::is_same<T, double>::value) {

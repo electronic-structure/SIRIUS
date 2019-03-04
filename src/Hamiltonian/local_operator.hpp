@@ -100,7 +100,7 @@ class Local_operator
             theta_ = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
         }
 
-        if (fft_coarse_.pu() == GPU) {
+        if (fft_coarse_.pu() == device_t::GPU) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
             }
