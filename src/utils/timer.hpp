@@ -30,7 +30,6 @@
 #if defined(__APEX)
 #include <apex_api.hpp>
 #endif
-#include <omp.h>
 #include <string>
 #include <sstream>
 #include <chrono>

@@ -1,3 +1,4 @@
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -430,6 +431,7 @@ struct memory_subblock_descriptor
 class memory_pool
 {
   private:
+    /// Type of memory that is handeled by this pool.
     memory_t M_;
     /// List of blocks of allocated memory.
     std::list<memory_block_descriptor> memory_blocks_;
@@ -534,7 +536,11 @@ class memory_pool
     template <typename T>
     std::unique_ptr<T, memory_t_deleter_base> get_unique_ptr(size_t n__)
     {
+#if !defined(__DEBUG_MEMORY_POOL)
         return std::move(std::unique_ptr<T, memory_t_deleter_base>(allocate<T>(n__), memory_pool_deleter(this)));
+#else
+        return std::move(sddk::get_unique_ptr<T>(n__, M_));
+#endif
     }
 
     /// Free all the allocated blocks.
