@@ -114,6 +114,8 @@ inline void Potential::generate_D_operator_matrix()
                         break;
                     }
                     case device_t::GPU: {
+                        /* wait for stream#1 to finish previous zgemm */
+                        acc::sync_stream(stream_id(1));
                         /* copy plane wave coefficients of effective potential to GPU */
                         mdarray<double_complex, 1> veff(&component(iv).f_pw_local(g_begin), spl_ngv_loc.local_size(ib));
                         veff.allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
