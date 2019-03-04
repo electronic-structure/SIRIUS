@@ -694,14 +694,12 @@ py::class_<Free_atom>(m, "Free_atom")
             auto& matrix_storage = wf.pw_coeffs(i);
             int   nrows          = matrix_storage.prime().size(0);
             int   ncols          = matrix_storage.prime().size(1);
-            /* return underlying data as numpy.ndarray view, e.g. non-copying */
-            /* TODO this might be a distributed array, should/can we use dask? */
+            /* return underlying data as numpy.ndarray view */
             return py::array_t<complex_double>({nrows, ncols},
                                                {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
                                                matrix_storage.prime().at(memory_t::host),
                                                obj);
-        },
-             py::keep_alive<0, 1>())
+        }, py::keep_alive<0, 1>())
         .def("copy_to_gpu", [](Wave_functions& wf) {
             /* is_on_device -> true if all internal storage is allocated on device */
             bool is_on_device = true;
