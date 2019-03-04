@@ -601,9 +601,8 @@ class Simulation_context : public Simulation_parameters
                 }
             }
         }
-#if defined(__GPU)
+
         if (processing_unit() == device_t::GPU) {
-            //acc::set_device();
             gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
             gvec_coord_.allocate(memory_t::device);
             for (int igloc = 0; igloc < gvec().count(); igloc++) {
@@ -615,7 +614,7 @@ class Simulation_context : public Simulation_parameters
             }
             gvec_coord_.copy_to(memory_t::device);
         }
-#endif
+
         if (full_potential()) {
             init_step_function();
         }
