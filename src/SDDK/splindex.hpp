@@ -429,7 +429,7 @@ class splindex<chunk, T> : public splindex_base<T>
     splindex()
     {
     }
-    
+
     /// Constructor with specific partitioning.
     splindex(T global_index_size__, int num_ranks__, int rank__, std::vector<T> const& counts__)
     {
@@ -456,7 +456,7 @@ class splindex<chunk, T> : public splindex_base<T>
                 locations_.push_back(typename splindex_base<T>::location_t(i, r));
             }
         }
-        
+
         assert(static_cast<T>(locations_.size()) == global_index_size__);
     }
 
