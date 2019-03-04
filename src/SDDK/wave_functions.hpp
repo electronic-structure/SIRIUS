@@ -38,7 +38,8 @@ extern "C" void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc_
 extern "C" void add_checksum_gpu(double_complex* wf__, int num_rows_loc__, int nwf__, double_complex* result__);
 #endif
 
-const int sddk_default_block_size = 256;
+const int sddk_inner_default_block_size = 1024;
+const int sddk_trans_default_block_size = 2048;
 
 namespace sddk {
 
