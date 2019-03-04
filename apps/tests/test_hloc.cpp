@@ -79,9 +79,6 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     t1.stop();
     hloc.dismiss();
 
-    if (pu == GPU && !phi.pw_coeffs(0).is_remapped()) {
-        hphi.pw_coeffs(0).copy_to(memory_t::host, 0, 4 * num_bands__);
-    }
 
     double diff{0};
     for (int i = 0; i < 4 * num_bands__; i++) {

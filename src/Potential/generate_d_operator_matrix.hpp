@@ -86,7 +86,7 @@ inline void Potential::generate_D_operator_matrix()
 
             d_tmp.zero();
             if (ctx_.processing_unit() == device_t::GPU) {
-                la = linalg_t::cublas;
+                la = linalg_t::gpublas;
                 mem = memory_t::device;
                 d_tmp.zero(memory_t::device);
                 veff_a.allocate(ctx_.mem_pool(memory_t::device));
