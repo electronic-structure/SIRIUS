@@ -3,7 +3,7 @@ from scipy.sparse import dia_matrix
 import numpy as np
 
 
-def make_kinetic_precond(kpointset, c0, eps=0.1, asPwCoeffs=False):
+def make_kinetic_precond(kpointset, c0, eps=0.1, asPwCoeffs=True):
     """
     Preconditioner
     P = 1 / (||k|| + ε)
