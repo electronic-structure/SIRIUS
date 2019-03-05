@@ -221,7 +221,7 @@ def minimize(x0,
             xnext, fnext = linesearch(x, p, f, dfx, f0=fc)
         except ValueError:
             # linsearch failed, resort to fallback method
-            logger.print('%d line-search resort to fallback' % i)
+            logger('%d line-search resort to fallback' % i)
             xnext, fnext = ls_golden(x, p, f, a=0, b=5, f0=fc)
         fc = fnext
 
@@ -233,11 +233,11 @@ def minimize(x0,
         res = np.real(inner(pdfx, pdfx))
 
         if verbose:
-            logger.print('%4d %16.9f (Ha)  residual: %.3e' % (i, fnext, res))
+            logger('%4d %16.9f (Ha)  residual: %.3e' % (i, fnext, res))
         x = xnext
 
         if res < tol:
-            logger.print('minimization: success after', i + 1, ' iterations')
+            logger('minimization: success after', i + 1, ' iterations')
             break
 
         # conjugate search direction for next iteration
