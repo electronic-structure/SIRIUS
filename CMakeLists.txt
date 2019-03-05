@@ -168,7 +168,7 @@ include_directories(${FFTW_INCLUDE_DIR})
 include_directories(${LIBXC_INCLUDE_DIR})
 include_directories(${LIBSPG_INCLUDE_DIR})
 include_directories(${HDF5_INCLUDE_DIR})
-include_directories(${MPI_INCLUDE_DIR})
+include_directories(${MPI_CXX_INCLUDE_DIRS})
 
 if(USE_VDWXC)
   find_package(LibVDWXC 0.3.0 REQUIRED)
