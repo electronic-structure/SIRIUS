@@ -123,8 +123,10 @@ class ApplyHamiltonian:
                 # spins might have different number of bands ...
                 num_wf = max(ispn_coeffs, key=lambda x: x[1].shape[1])[1].shape[1]
                 Psi_x = Wave_functions(kpoint.gkvec_partition(), num_wf,
+                                       MemoryEnum.host,
                                        num_sc)
                 Psi_y = Wave_functions(kpoint.gkvec_partition(), num_wf,
+                                       MemoryEnum.host,
                                        num_sc)
                 for i, val in ispn_coeffs:
                     Psi_x.pw_coeffs(i)[:, :val.shape[1]] = val
@@ -149,8 +151,8 @@ class ApplyHamiltonian:
             kpoint = self.kpointset[ki]
             w = kpoint.weight()
             num_wf = cn.shape[1]
-            Psi_y = Wave_functions(kpoint.gkvec_partition(), num_wf, num_sc)
-            Psi_x = Wave_functions(kpoint.gkvec_partition(), num_wf, num_sc)
+            Psi_y = Wave_functions(kpoint.gkvec_partition(), num_wf, MemoryEnum.host, num_sc)
+            Psi_x = Wave_functions(kpoint.gkvec_partition(), num_wf, MemoryEnum.host, num_sc)
             bnd_occ = np.array(kpoint.band_occupancy(ispn))
             Psi_x.pw_coeffs(ispn)[:] = cn
             self.hamiltonian.apply_ref(kpoint, Psi_y, Psi_x)
