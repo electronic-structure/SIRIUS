@@ -1,4 +1,5 @@
 import sys
+import re
 
 # @fortran begin function                                    {type} {name} {doc-string}
 # @fortran       argument {in|out|inout} {required|optional} {type} {name} {doc-string}
@@ -141,6 +142,8 @@ def main():
         line = f.readline()
         if not line: break
 
+        #m = re.search('@fortran\s+begin', line)
+        #print (m.group(0))
         i = line.find('@fortran')
         if i > 0:
             v = line[i:].split()

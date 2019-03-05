@@ -212,6 +212,7 @@ end subroutine sirius_import_parameters
 !> @param [in] pw_cutoff Cutoff for G-vectors.
 !> @param [in] gk_cutoff Cutoff for G+k-vectors.
 !> @param [in] aw_cutoff This is R_{mt} * gk_cutoff.
+!> @param [in] fft_grid_size Size of the fine-grain FFT grid.
 !> @param [in] auto_rmt Set the automatic search of muffin-tin radii.
 !> @param [in] gamma_point True if this is a Gamma-point calculation.
 !> @param [in] use_symmetry True if crystal symmetry is taken into account.
@@ -227,10 +228,10 @@ end subroutine sirius_import_parameters
 !> @param [in] hubbard_correction_kind Type of LDA+U implementation (simplified or full).
 !> @param [in] hubbard_orbitals Type of localized orbitals.
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_state&
-&s,num_bands,num_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,auto_rmt,gamma_point,use_&
-&symmetry,so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_t&
-&ol_empty,iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,h&
-&ubbard_orbitals)
+&s,num_bands,num_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,fft_grid_size,auto_rmt,ga&
+&mma_point,use_symmetry,so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol&
+&,iter_solver_tol_empty,iter_solver_type,verbosity,hubbard_correction,hubbard_cor&
+&rection_kind,hubbard_orbitals)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), optional, target, intent(in) :: lmax_apw
@@ -242,6 +243,7 @@ integer(C_INT), optional, target, intent(in) :: num_mag_dims
 real(C_DOUBLE), optional, target, intent(in) :: pw_cutoff
 real(C_DOUBLE), optional, target, intent(in) :: gk_cutoff
 real(C_DOUBLE), optional, target, intent(in) :: aw_cutoff
+integer(C_INT), optional, target, intent(in) :: fft_grid_size
 integer(C_INT), optional, target, intent(in) :: auto_rmt
 logical(C_BOOL), optional, target, intent(in) :: gamma_point
 logical(C_BOOL), optional, target, intent(in) :: use_symmetry
@@ -265,6 +267,7 @@ type(C_PTR) :: num_mag_dims_ptr
 type(C_PTR) :: pw_cutoff_ptr
 type(C_PTR) :: gk_cutoff_ptr
 type(C_PTR) :: aw_cutoff_ptr
+type(C_PTR) :: fft_grid_size_ptr
 type(C_PTR) :: auto_rmt_ptr
 type(C_PTR) :: gamma_point_ptr
 type(C_PTR) :: use_symmetry_ptr
@@ -281,10 +284,10 @@ type(C_PTR) :: hubbard_correction_kind_ptr
 type(C_PTR) :: hubbard_orbitals_ptr
 interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_s&
-&tates,num_bands,num_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,auto_rmt,gamma_point,&
-&use_symmetry,so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solv&
-&er_tol_empty,iter_solver_type,verbosity,hubbard_correction,hubbard_correction_ki&
-&nd,hubbard_orbitals)&
+&tates,num_bands,num_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,fft_grid_size,auto_rm&
+&t,gamma_point,use_symmetry,so_correction,valence_rel,core_rel,esm_bc,iter_solver&
+&_tol,iter_solver_tol_empty,iter_solver_type,verbosity,hubbard_correction,hubbard&
+&_correction_kind,hubbard_orbitals)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
@@ -297,6 +300,7 @@ type(C_PTR), value, intent(in) :: num_mag_dims
 type(C_PTR), value, intent(in) :: pw_cutoff
 type(C_PTR), value, intent(in) :: gk_cutoff
 type(C_PTR), value, intent(in) :: aw_cutoff
+type(C_PTR), value, intent(in) :: fft_grid_size
 type(C_PTR), value, intent(in) :: auto_rmt
 type(C_PTR), value, intent(in) :: gamma_point
 type(C_PTR), value, intent(in) :: use_symmetry
@@ -340,6 +344,9 @@ if (present(gk_cutoff)) gk_cutoff_ptr = C_LOC(gk_cutoff)
 
 aw_cutoff_ptr = C_NULL_PTR
 if (present(aw_cutoff)) aw_cutoff_ptr = C_LOC(aw_cutoff)
+
+fft_grid_size_ptr = C_NULL_PTR
+if (present(fft_grid_size)) fft_grid_size_ptr = C_LOC(fft_grid_size)
 
 auto_rmt_ptr = C_NULL_PTR
 if (present(auto_rmt)) auto_rmt_ptr = C_LOC(auto_rmt)
@@ -385,10 +392,10 @@ if (present(hubbard_orbitals)) hubbard_orbitals_ptr = C_LOC(hubbard_orbitals)
 
 call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,nu&
 &m_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,aw_cu&
-&toff_ptr,auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence&
-&_rel_ptr,core_rel_ptr,esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,i&
-&ter_solver_type_ptr,verbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind&
-&_ptr,hubbard_orbitals_ptr)
+&toff_ptr,fft_grid_size_ptr,auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_corr&
+&ection_ptr,valence_rel_ptr,core_rel_ptr,esm_bc_ptr,iter_solver_tol_ptr,iter_solv&
+&er_tol_empty_ptr,iter_solver_type_ptr,verbosity_ptr,hubbard_correction_ptr,hubba&
+&rd_correction_kind_ptr,hubbard_orbitals_ptr)
 end subroutine sirius_set_parameters
 
 !> @brief Add one of the XC functionals.
