@@ -2449,9 +2449,9 @@ end interface
 call sirius_update_atomic_potential_aux(handler)
 end subroutine sirius_update_atomic_potential
 
-!> @brief return the list of options in json format to a string
-!> @param [in] section string containing the options in json format
-!> @param [out] length string containing the options in json format
+!> @brief return the number of options in a given section
+!> @param [in] section name of the seciton
+!> @param [out] length number of options contained in the section
 subroutine sirius_option_get_length(section,length)
 implicit none
 character(C_CHAR), dimension(*), intent(in) :: section
@@ -2468,9 +2468,9 @@ end interface
 call sirius_option_get_length_aux(section,length)
 end subroutine sirius_option_get_length
 
-!> @brief return the list of options in json format to a string
-!> @param [in] section string containing the options in json format
-!> @param [out] elem_ index of the element to pick
+!> @brief return the name and a type of an option from its index
+!> @param [in] section name of the section
+!> @param [out] elem_ index of the option
 !> @param [out] key_name name of the option
 !> @param [out] type type of the option (real, integer, boolean, string)
 subroutine sirius_option_get_name_and_type(section,elem_,key_name,type)
@@ -2493,9 +2493,9 @@ end interface
 call sirius_option_get_name_and_type_aux(section,elem_,key_name,type)
 end subroutine sirius_option_get_name_and_type
 
-!> @brief return the list of options in json format to a string
-!> @param [in] section string containing the options in json format
-!> @param [in] name name of the element to pick
+!> @brief return the description and usage of a given option
+!> @param [in] section name of the section
+!> @param [in] name name of the option
 !> @param [out] desc_ description of the option
 !> @param [out] usage_ how to use the option
 subroutine sirius_option_get_description_usage(section,name,desc_,usage_)
@@ -2518,85 +2518,85 @@ end interface
 call sirius_option_get_description_usage_aux(section,name,desc_,usage_)
 end subroutine sirius_option_get_description_usage
 
-!> @brief return the list of options in json format to a string
-!> @param [in] section string containing the options in json format
-!> @param [in] name name of the element to pick
-!> @param [out] default_values table containing the default values
+!> @brief return the default value of the option
+!> @param [in] section name of the section of interest
+!> @param [in] name name of the element
+!> @param [out] default_value table containing the default values (if vector)
 !> @param [out] length length of the table containing the default values
-subroutine sirius_option_get_int(section,name,default_values,length)
+subroutine sirius_option_get_int(section,name,default_value,length)
 implicit none
 character(C_CHAR), dimension(*), intent(in) :: section
 character(C_CHAR), dimension(*), intent(in) :: name
-integer(C_INT), intent(out) :: default_values
+integer(C_INT), intent(out) :: default_value
 integer(C_INT), intent(out) :: length
 interface
-subroutine sirius_option_get_int_aux(section,name,default_values,length)&
+subroutine sirius_option_get_int_aux(section,name,default_value,length)&
 &bind(C, name="sirius_option_get_int")
 use, intrinsic :: ISO_C_BINDING
 character(C_CHAR), dimension(*), intent(in) :: section
 character(C_CHAR), dimension(*), intent(in) :: name
-integer(C_INT), intent(out) :: default_values
+integer(C_INT), intent(out) :: default_value
 integer(C_INT), intent(out) :: length
 end subroutine
 end interface
 
-call sirius_option_get_int_aux(section,name,default_values,length)
+call sirius_option_get_int_aux(section,name,default_value,length)
 end subroutine sirius_option_get_int
 
-!> @brief return the list of options in json format to a string
-!> @param [in] section string containing the options in json format
-!> @param [in] name name of the element to pick
-!> @param [out] default_values table containing the default values
+!> @brief return the default value of the option
+!> @param [in] section name of the section of interest
+!> @param [in] name name of the element
+!> @param [out] default_value table containing the default values (if vector)
 !> @param [out] length length of the table containing the default values
-subroutine sirius_option_get_double(section,name,default_values,length)
+subroutine sirius_option_get_double(section,name,default_value,length)
 implicit none
 character(C_CHAR), dimension(*), intent(in) :: section
 character(C_CHAR), dimension(*), intent(in) :: name
-real(C_DOUBLE), intent(out) :: default_values
+real(C_DOUBLE), intent(out) :: default_value
 integer(C_INT), intent(out) :: length
 interface
-subroutine sirius_option_get_double_aux(section,name,default_values,length)&
+subroutine sirius_option_get_double_aux(section,name,default_value,length)&
 &bind(C, name="sirius_option_get_double")
 use, intrinsic :: ISO_C_BINDING
 character(C_CHAR), dimension(*), intent(in) :: section
 character(C_CHAR), dimension(*), intent(in) :: name
-real(C_DOUBLE), intent(out) :: default_values
+real(C_DOUBLE), intent(out) :: default_value
 integer(C_INT), intent(out) :: length
 end subroutine
 end interface
 
-call sirius_option_get_double_aux(section,name,default_values,length)
+call sirius_option_get_double_aux(section,name,default_value,length)
 end subroutine sirius_option_get_double
 
-!> @brief return the list of options in json format to a string
-!> @param [in] section string containing the options in json format
-!> @param [in] name name of the element to pick
-!> @param [out] default_values table containing the default values
+!> @brief return the default value of the option
+!> @param [in] section name of the section
+!> @param [in] name name of the element
+!> @param [out] default_value table containing the default values
 !> @param [out] length length of the table containing the default values
-subroutine sirius_option_get_logical(section,name,default_values,length)
+subroutine sirius_option_get_logical(section,name,default_value,length)
 implicit none
 character(C_CHAR), dimension(*), intent(in) :: section
 character(C_CHAR), dimension(*), intent(in) :: name
-logical(C_BOOL), intent(out) :: default_values
+logical(C_BOOL), intent(out) :: default_value
 integer(C_INT), intent(out) :: length
 interface
-subroutine sirius_option_get_logical_aux(section,name,default_values,length)&
+subroutine sirius_option_get_logical_aux(section,name,default_value,length)&
 &bind(C, name="sirius_option_get_logical")
 use, intrinsic :: ISO_C_BINDING
 character(C_CHAR), dimension(*), intent(in) :: section
 character(C_CHAR), dimension(*), intent(in) :: name
-logical(C_BOOL), intent(out) :: default_values
+logical(C_BOOL), intent(out) :: default_value
 integer(C_INT), intent(out) :: length
 end subroutine
 end interface
 
-call sirius_option_get_logical_aux(section,name,default_values,length)
+call sirius_option_get_logical_aux(section,name,default_value,length)
 end subroutine sirius_option_get_logical
 
-!> @brief return the list of options in json format to a string
-!> @param [in] section string containing the options in json format
-!> @param [in] name name of the element to pick
-!> @param [out] default_value table containing the default values
+!> @brief return the default value of the option
+!> @param [in] section name of the section
+!> @param [in] name name of the option
+!> @param [out] default_value table containing the string
 subroutine sirius_option_get_string(section,name,default_value)
 implicit none
 character(C_CHAR), dimension(*), intent(in) :: section
@@ -2615,9 +2615,9 @@ end interface
 call sirius_option_get_string_aux(section,name,default_value)
 end subroutine sirius_option_get_string
 
-!> @brief return the number of possible values for a string parameter
-!> @param [in] section string containing the options in json format
-!> @param [in] name name of the element to pick
+!> @brief return the number of possible values for a string option
+!> @param [in] section name of the section
+!> @param [in] name name of the option
 !> @param [out] num_ number of elements
 subroutine sirius_option_get_number_of_possible_values(section,name,num_)
 implicit none
@@ -2637,31 +2637,65 @@ end interface
 call sirius_option_get_number_of_possible_values_aux(section,name,num_)
 end subroutine sirius_option_get_number_of_possible_values
 
-!> @brief return the number of possible values for a string parameter
-!> @param [in] section string containing the options in json format
-!> @param [in] name name of the element to pick
-!> @param [in] elem_ number of elements
-!> @param [out] possible_value_n string containing the value
-subroutine sirius_option_string_get_value(section,name,elem_,possible_value_n)
+!> @brief return the possible values for a string parameter
+!> @param [in] section name of the section
+!> @param [in] name name of the option
+!> @param [in] elem_ index of the value
+!> @param [out] value_n string containing the value
+subroutine sirius_option_string_get_value(section,name,elem_,value_n)
 implicit none
 character(C_CHAR), dimension(*), intent(in) :: section
 character(C_CHAR), dimension(*), intent(in) :: name
 integer(C_INT), intent(in) :: elem_
-character(C_CHAR), dimension(*), intent(out) :: possible_value_n
+character(C_CHAR), dimension(*), intent(out) :: value_n
 interface
-subroutine sirius_option_string_get_value_aux(section,name,elem_,possible_value_&
-&n)&
+subroutine sirius_option_string_get_value_aux(section,name,elem_,value_n)&
 &bind(C, name="sirius_option_string_get_value")
 use, intrinsic :: ISO_C_BINDING
 character(C_CHAR), dimension(*), intent(in) :: section
 character(C_CHAR), dimension(*), intent(in) :: name
 integer(C_INT), intent(in) :: elem_
-character(C_CHAR), dimension(*), intent(out) :: possible_value_n
+character(C_CHAR), dimension(*), intent(out) :: value_n
 end subroutine
 end interface
 
-call sirius_option_string_get_value_aux(section,name,elem_,possible_value_n)
+call sirius_option_string_get_value_aux(section,name,elem_,value_n)
 end subroutine sirius_option_string_get_value
+
+!> @brief return the name of a given section
+!> @param [in] elem_ index of the section
+!> @param [out] section_name name of the section
+subroutine sirius_option_get_section_name(elem_,section_name)
+implicit none
+integer(C_INT), intent(in) :: elem_
+character(C_CHAR), dimension(*), intent(out) :: section_name
+interface
+subroutine sirius_option_get_section_name_aux(elem_,section_name)&
+&bind(C, name="sirius_option_get_section_name")
+use, intrinsic :: ISO_C_BINDING
+integer(C_INT), intent(in) :: elem_
+character(C_CHAR), dimension(*), intent(out) :: section_name
+end subroutine
+end interface
+
+call sirius_option_get_section_name_aux(elem_,section_name)
+end subroutine sirius_option_get_section_name
+
+!> @brief return the number of sections
+!> @param [out] length number of sections
+subroutine sirius_option_get_number_of_sections(length)
+implicit none
+integer(C_INT), intent(out) :: length
+interface
+subroutine sirius_option_get_number_of_sections_aux(length)&
+&bind(C, name="sirius_option_get_number_of_sections")
+use, intrinsic :: ISO_C_BINDING
+integer(C_INT), intent(out) :: length
+end subroutine
+end interface
+
+call sirius_option_get_number_of_sections_aux(length)
+end subroutine sirius_option_get_number_of_sections
 
 !> @brief set the value of the option name in a (internal) json dictionary
 !> @param [in] handler Simulation context handler.
@@ -2774,4 +2808,23 @@ end interface
 
 call sirius_option_set_string_aux(handler,section,name,default_values)
 end subroutine sirius_option_set_string
+
+!> @brief dump the runtime setup in a file
+!> @param [in] handler Simulation context handler.
+!> @param [in] filename string containing the name of the file
+subroutine sirius_dump_runtime_setup(handler,filename)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: filename
+interface
+subroutine sirius_dump_runtime_setup_aux(handler,filename)&
+&bind(C, name="sirius_dump_runtime_setup")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: filename
+end subroutine
+end interface
+
+call sirius_dump_runtime_setup_aux(handler,filename)
+end subroutine sirius_dump_runtime_setup
 

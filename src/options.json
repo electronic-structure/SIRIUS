@@ -40,10 +40,11 @@
             "default_value" : 1.0
         }
     },
-    "solver": {
+    "iterative_solver": {
         "type" : {
             "description" :  "type of iterative solver" ,
             "usage" :  "type (davidson)" ,
+            "possible_values" : ["davidson"],
             "default_value" :  "davidson"
         },
         "num_steps" : {
@@ -63,8 +64,8 @@
             "default_value" :  0.01
         },
         "residual_tolerance" :
-        { "description" :
-          "Tolerance for the residual L2 norm." ,
+        {
+            "description" : "Tolerance for the residual L2 norm." ,
           "usage" :  "residual_tolerance (1e-6)" ,
           "default_value" :  0.000001
         },
@@ -95,6 +96,11 @@
             "usage" :  "init_subspace (lcao)" ,
             "possible_values" : ["lcao", "random"],
             "default_value" :  "lcao"
+        },
+        "converge_by_energy" : {
+            "description" : "0 : then the residuals are estimated by their norm, 1 : residuals are estimated by the eigen-energy difference",
+            "usage" : "converge_by_energy 0 or 1",
+            "default_value" : 0
         }
     },
     "control" : {
@@ -174,14 +180,16 @@
         "electronic_structure_method" :
         {
             "description" :  "Electronic structure method." ,
-            "usage" :  "electronic_structure_method (pseudo_potential|full_potential)",
-            "possible_values" : ["pseudo_potential", "full_potential"],
-            "default_value" :  "pseudo_potential"
+            "usage" :  "electronic_structure_method (pseudopotential|full_potential_lapwlo)",
+            "possible_values" : ["pseudopotential", "full_potential_lapwlo"],
+            "default_value" :  "pseudopotential"
         },
         "xc_functionals" :
         {
-            "description" :  "List of XC functions (typically contains exchange term and correlation term)" ,
-            "usage" :  "xc_functionals list of functionals"
+            "description" :  "List of XC functionals (typically contains exchange term and correlation term. We will retrieve this info from the hosy code if possible" ,
+            "usage" :  "xc_functionals ",
+            "possible_values" : ["XC_LDA", "too many"],
+            "default_value" : "none"
         },
         "core_relativity" :
         {
@@ -393,17 +401,20 @@
         "lattice_vectors" : {
             "description" : "table containing the lattice vectors of the structure",
             "usage" : " lattice_vectors [[a1_x, a1_y, a1_z], [a2_x, a2_y, a2_z], [a3_x, a3_y, a3_z]]",
-            "default_value" : "[1.0 0.0 0.0], [0.0 1.0 0.0], [1.0 0.0 0.0]"
+            "possible_values" : "[[1.0 0.0 0.0], [0.0 1.0 0.0], [1.0 0.0 0.0]]",
+            "default_value" : [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]]
         },
         "lattice_vectors_scale" : {
             "description" : "scaling factor for the lattice vectors",
             "usage" : "lattice_vectors_scale 1.0",
+            "possible_values" : "undefined",
             "default_value" : 1.0
         },
         "atom_types" : {
             "description" : "list of atom type",
             "usage" : "atom_types [label_A, label_B, ...]",
-            "default_value" : ""
+            "possible_values" : ["none"],
+            "default_value" : "none"
         },
         "atom_coordinate_units" : {
             "description" : "units used to report the atoms coordinates (a.u. or A)",
@@ -414,7 +425,8 @@
         "atoms" : {
             "description" : "atoms { label_A : [[x1,y1,z1],...], label_B : [[x1,y1,z1],...]}",
             "usage" : ".....",
-            "default_value" : ""
+            "possible_values" : "[[0, 0, 0]]",
+            "default_value" : [[0, 0, 0]]
         }
     }
 }
