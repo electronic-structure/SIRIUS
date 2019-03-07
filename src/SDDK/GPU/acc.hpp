@@ -364,8 +364,8 @@ inline void copyout(T* target__, int ld1__, T const* source__, int ld2__, int nr
 template <typename T>
 inline void copyout(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__, stream_id sid__)
 {
-    CALL_DEVICE_API(Memcpy2D, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__,
-                               P(MemcpyDeviceToHost), stream(sid__)));
+    CALL_DEVICE_API(Memcpy2DAsync, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__,
+                                    P(MemcpyDeviceToHost), stream(sid__)));
 }
 
 /// Zero the device memory.
