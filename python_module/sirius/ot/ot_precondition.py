@@ -1,4 +1,9 @@
-def make_kinetic_precond(kpointset, c0, eps=0.1, asPwCoeffs=False):
+from ..coefficient_array import PwCoeffs
+from scipy.sparse import dia_matrix
+import numpy as np
+
+
+def make_kinetic_precond(kpointset, c0, eps=0.1, asPwCoeffs=True):
     """
     Preconditioner
     P = 1 / (||k|| + ε)
@@ -6,13 +11,9 @@ def make_kinetic_precond(kpointset, c0, eps=0.1, asPwCoeffs=False):
     Keyword Arguments:
     kpointset --
     """
-    from ..coefficient_array import PwCoeffs
-    from scipy.sparse import dia_matrix
-    import numpy as np
 
     nk = len(kpointset)
     nc = kpointset.ctx().num_spins()
-    unit_cell = kpointset.unit_cell()
     if nc == 1 and nk == 1 and not asPwCoeffs:
         # return as np.matrix
         kp = kpointset[0]

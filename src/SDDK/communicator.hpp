@@ -316,6 +316,13 @@ class Communicator
         MPI_Finalize();
     }
 
+    static bool is_finalized()
+    {
+        int mpi_finalized_flag;
+        MPI_Finalized(&mpi_finalized_flag);
+        return mpi_finalized_flag == true;
+    }
+
     static Communicator const& self()
     {
         static Communicator comm(MPI_COMM_SELF);

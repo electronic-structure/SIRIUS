@@ -241,6 +241,9 @@ class K_point_set
         return bnd_e;
     }
 
+    /// Sync band occupations numbers
+    void sync_band_occupancies();
+
     /// Find Fermi energy and band occupation numbers
     void find_band_occupancies();
 
@@ -426,6 +429,51 @@ inline void K_point_set::sync_band_energies()
                 kpoints_[ik]->band_energy(j, ispn, band_energies(j, ispn, ik));
             }
         }
+    }
+}
+
+inline void K_point_set::sync_band_occupancies()
+{
+    int nranks = comm().size();
+    int pid    = comm().rank();
+    std::vector<int> nk_per_rank(nranks);
+    for (int i = 0; i < nranks; ++i) {
+        nk_per_rank[i] = spl_num_kpoints_.local_size(i);
+    }
+    int ns        = 1;
+    int num_bands = ctx_.num_bands();
+    if (ctx_.num_spin_dims() > 1)
+        ns = 2;
+
+    std::vector<int> offsets(nranks);
+    std::vector<int> sizes(nranks);
+    int offset = 0;
+    for (int i = 0; i < nranks; ++i) {
+
+        offsets[i] = offset;
+        int lsize  = nk_per_rank[i] * num_bands * ns;
+        sizes[i]   = lsize;
+        offset += lsize;
+    }
+    int size = offset;
+
+    std::vector<double> tmp(sizes[pid]);
+    for (int i = 0; i < sizes[pid]; ++i) {
+        int gi = offsets[pid] + i;
+        int k    = gi / (num_bands * ns);
+        int spin = (gi % (num_bands * ns)) / num_bands;
+        int n    = (gi % (num_bands * ns)) % num_bands;
+        tmp[i]   = kpoints_[k]->band_occupancy(n, spin);
+    }
+
+    std::vector<double> occupancies(size);
+    comm().allgather(tmp.data(), sizes[pid], occupancies.data(), sizes.data(), offsets.data());
+
+    for (int i = 0; i < size; ++i) {
+        int k    = i / (num_bands * ns);
+        int spin = (i % (num_bands * ns)) / num_bands;
+        int n    = (i % (num_bands * ns)) % num_bands;
+        kpoints_[k]->band_occupancy(n, spin, occupancies[i]);
     }
 }
 
