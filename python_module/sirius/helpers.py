@@ -1,13 +1,12 @@
 from __future__ import print_function
 
 import h5py
-import numpy as np
 from mpi4py import MPI
-
-from .coefficient_array import CoefficientArray, PwCoeffs
-from .logger import Logger
-from .ot import matview
+from .coefficient_array import PwCoeffs, CoefficientArray
 from .py_sirius import MemoryEnum
+from .ot import matview
+from .logger import Logger
+import numpy as np
 
 logger = Logger()
 
@@ -37,7 +36,7 @@ def load_state(filename, kset, name, dtype):
     from sirius.helpers import kpoint_index
     import glob
 
-    ctype = np.matrix
+    ctype=np.matrix
     out = CoefficientArray(dtype=dtype, ctype=np.matrix)
 
     idx_to_k = {}
@@ -93,14 +92,17 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
 
     Keyword Arguments:
     num_dft_iter -- (Default 1) number of SCF interations
-    config       -- json configuration
+    config       -- json configuration / or dictionary (from json)
     """
 
     from . import Simulation_context, K_point_set, DFT_ground_state
     import json
-
-    siriusJson = json.load(open(config))
-    ctx = Simulation_context(json.dumps(siriusJson))
+    if isinstance(config, dict):
+        ctx = Simulation_context(json.dumps(config))
+        siriusJson = config
+    else:
+        siriusJson = json.load(open(config))
+        ctx = Simulation_context(json.dumps(siriusJson))
     ctx.initialize()
 
     if 'shiftk' in siriusJson['parameters']:
