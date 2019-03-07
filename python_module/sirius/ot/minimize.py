@@ -1,17 +1,5 @@
 import numpy as np
-
-
-def inner(a, b):
-    """
-    complex inner product
-    """
-    # TODO: find a better solution, not try except
-    try:
-        return np.sum(
-            np.array(a, copy=False) * np.array(np.conj(b), copy=False))
-    except ValueError:
-        # is of type CoefficientArray (cannot convert to array)
-        return np.sum(a * np.conj(b), copy=False)
+from ..coefficient_array import inner
 
 
 def beta_fletcher_reves(dfnext, df, P=None):
@@ -219,21 +207,21 @@ def minimize(x0,
     else:
         raise Exception('invalid argument for `lstype`')
 
+    # compute initial energy
     x = x0
+    fc = f(x)
     pdfx, dfx = df(x)
     p = -M @ dfx
 
     if log:
-        histf = [f(x)]
-
-    fc = f(x)
+        histf = [fc]
 
     for i in range(maxiter):
         try:
             xnext, fnext = linesearch(x, p, f, dfx, f0=fc)
         except ValueError:
-            # fall back to bracketing line-search
-            logger.print('%d line-search resort to fallback' % i)
+            # linsearch failed, resort to fallback method
+            logger('%d line-search resort to fallback' % i)
             xnext, fnext = ls_golden(x, p, f, a=0, b=5, f0=fc)
         fc = fnext
 
@@ -245,11 +233,11 @@ def minimize(x0,
         res = np.real(inner(pdfx, pdfx))
 
         if verbose:
-            logger.print('%4d %16.9f (Ha)  residual: %.3e' % (i, fnext, res))
+            logger('%4d %16.9f (Ha)  residual: %.3e' % (i, fnext, res))
         x = xnext
 
         if res < tol:
-            logger.print('minimization: success after', i + 1, ' iterations')
+            logger('minimization: success after', i + 1, ' iterations')
             break
 
         # conjugate search direction for next iteration
@@ -259,9 +247,9 @@ def minimize(x0,
         else:
             b = beta(pdfx, pdfprev, M)
             p = -M @ dfx + b * p
-            if (np.real(inner(p, dfx)) > 0):
+            if np.real(inner(p, dfx)) > 0:
                 p = -M @ dfx
-                assert (np.real(inner(p, dfx)) < 0)
+                assert np.real(inner(p, dfx)) < 0
     else:
         if log:
             return (x, maxiter, False, histf)

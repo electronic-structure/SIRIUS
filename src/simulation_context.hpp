@@ -500,7 +500,8 @@ class Simulation_context : public Simulation_parameters
     {
         std::vector<std::string> names({"host", "host_pinned", "device"});
 
-        if (comm().rank() == 0 && control().verbosity_ >= 2) {
+        if ((!comm().is_finalized() && comm().rank() == 0)
+            && control().verbosity_ >= 2) {
             for (auto name: names) {
                 auto& mp = mem_pool(get_memory_t(name));
                 printf("memory_pool(%s): total size: %li MB, free size: %li MB\n", name.c_str(), mp.total_size() >> 20,
