@@ -5,7 +5,7 @@ from .py_sirius import K_point_set
 from .logger import Logger
 import numpy as np
 from numpy import array, zeros
-__all__ = ["ot", "baarman", "bands"]
+__all__ = ["ot", "baarman", "bands", "edft"]
 
 
 class OccupancyDescriptor(object):
