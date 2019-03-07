@@ -1,5 +1,64 @@
 from __future__ import print_function
 
+import h5py
+import numpy as np
+from mpi4py import MPI
+
+from .coefficient_array import CoefficientArray, PwCoeffs
+from .logger import Logger
+from .ot import matview
+from .py_sirius import MemoryEnum
+
+logger = Logger()
+
+
+def save_state(objs_dict, kset, prefix='fail'):
+    """
+    Arguments:
+    objs_dict = dictionary(string: CoefficientArray), example: {'Z': Z, 'G': G}
+    dump current state to HDF5
+    """
+    logger('save state')
+    rank = MPI.COMM_WORLD.rank
+    import sirius.ot as ot
+    with h5py.File(prefix+'%d.h5' % rank, 'w') as fh5:
+        for key in objs_dict:
+            # assume it is a string
+            name = key
+            ot.save(fh5, name, objs_dict[key], kset)
+
+
+def load_state(filename, kset, name, dtype):
+    """
+    Keyword Arguments:
+    fh5  --
+    name --
+    """
+    from sirius.helpers import kpoint_index
+    import glob
+
+    ctype = np.matrix
+    out = CoefficientArray(dtype=dtype, ctype=np.matrix)
+
+    idx_to_k = {}
+    for i, kp in enumerate(kset):
+        kindex = kpoint_index(kp, kset.ctx())
+        idx_to_k[kindex] = i
+
+    if '*' in filename:
+        files = glob.glob(filename)
+    else:
+        files = [filename]
+
+    for fi in files:
+        with h5py.File(fi, 'r') as fh5:
+            for key in fh5[name].keys():
+                ki = tuple(fh5[name][key].attrs['ki'])
+                k = idx_to_k[ki]
+                _, s = eval(key)
+                out[(k, s)] = ctype(fh5[name][key])
+    return out
+
 
 def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
     """
@@ -7,11 +66,6 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
     cn     -- numpy array
     ispn   -- spin component
     """
-    from .coefficient_array import PwCoeffs
-    from .py_sirius import MemoryEnum
-    from .ot import matview
-    import numpy as np
-
 
     if isinstance(cn, PwCoeffs):
         assert (ki is None)
@@ -161,45 +215,3 @@ def kpoint_index(kp, ctx):
     assert np.isclose(ik-ik.astype(np.int), 0).all()
     ik = ik.astype(np.int)
     return tuple(ik)
-
-
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(
-                *args, **kwargs)
-        return cls._instances[cls]
-
-
-class Logger:
-    __metaclass__ = Singleton
-
-    def __init__(self, fout=None, comm=None, all_print=False):
-        from mpi4py import MPI
-        self.fout = fout
-        self._all_print = all_print
-        if self.fout is not None:
-            with open(self.fout, 'w'):
-                print('')
-        if comm is None:
-            self.comm = MPI.COMM_WORLD
-        else:
-            self.comm = comm
-
-    def log(self, arg1, *args):
-        """
-
-        """
-        if self.comm.rank == 0 or self._all_print:
-            if self.fout is not None:
-                with open(self.fout, 'a') as fh:
-                    print(arg1, *args, file=fh)
-            else:
-                print(arg1, *args)
-        elif self._all_print:
-            print(arg1, *args)
-
-    def __call__(self, *args):
-        self.log(*args)
