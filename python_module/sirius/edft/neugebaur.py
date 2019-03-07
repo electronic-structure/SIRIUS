@@ -556,6 +556,13 @@ class CG:
 
             if slope > 0:
                 if cg_restart_inprogress:
+                    save_state({'X': X, 'f': fn,
+                                'eta': eta, 'G_X': G_X,
+                                'gx': g_X,
+                                'g_eta': g_eta,
+                                'F0': FE,
+                                'slope': slope,
+                                'G_eta': G_eta, 'slope': slope}, self.M.energy.kpointset)
                     raise ValueError('Error: _ascent_ direction, slope %.4e' % slope)
                 else:
                     cg_restart_inprogress = True
