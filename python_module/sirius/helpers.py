@@ -33,7 +33,6 @@ def load_state(filename, kset, name, dtype):
     fh5  --
     name --
     """
-    from sirius.helpers import kpoint_index
     import glob
 
     ctype=np.matrix
@@ -53,9 +52,14 @@ def load_state(filename, kset, name, dtype):
         with h5py.File(fi, 'r') as fh5:
             for key in fh5[name].keys():
                 ki = tuple(fh5[name][key].attrs['ki'])
+                if ki not in idx_to_k:
+                    # looping over all k-points,
+                    # skip if k-point is not present on this rank
+                    continue
                 k = idx_to_k[ki]
                 _, s = eval(key)
-                out[(k, s)] = ctype(fh5[name][key])
+                if key in fh5[name].keys():
+                    out[(k, s)] = ctype(fh5[name][key])
     return out
 
 
