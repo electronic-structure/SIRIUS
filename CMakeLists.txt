@@ -204,6 +204,9 @@ MACRO(SIRIUS_SETUP_TARGET _target)
     target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
   endif()
 
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_link_libraries(${_target} PRIVATE "-lgfortran")
+  endif()
 ENDMACRO()
 
 # sirius library
