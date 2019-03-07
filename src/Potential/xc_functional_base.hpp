@@ -51,12 +51,7 @@ const std::map<std::string, int> libxc_functionals = {
     {"XC_LDA_C_1D_CSC", XC_LDA_C_1D_CSC}, /* Casula, Sorella, and Senatore 1D correlation */
     {"XC_LDA_X_2D", XC_LDA_X_2D}, /* Exchange in 2D */
     {"XC_LDA_XC_TETER93", XC_LDA_XC_TETER93}, /* Teter 93 parametrization */
-#if (XC_MAJOR_VERSION >= 4) && (XC_MINOR_VERSION >= 3)
-    {"XC_LDA_X_1D_SOFT", XC_LDA_X_1D_SOFT},
-    {"XC_LDA_X_1D_EXPONENTIAL", XC_LDA_X_1D_EXPONENTIAL},
-#else
     {"XC_LDA_X_1D", XC_LDA_X_1D}, /* Exchange in 1D */
-#endif
     {"XC_LDA_C_ML1", XC_LDA_C_ML1}, /* Modified LSD (version 1) of Proynov and Salahub */
     {"XC_LDA_C_ML2", XC_LDA_C_ML2}, /* Modified LSD (version 2) of Proynov and Salahub */
     {"XC_LDA_C_GOMBAS", XC_LDA_C_GOMBAS}, /* Gombas parametrization */
