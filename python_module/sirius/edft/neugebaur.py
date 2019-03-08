@@ -499,7 +499,7 @@ class CG:
             raise ValueError('GSS didn\'t find a better value')
         return X, fn, ek, F, Ul
 
-    def run(self, X, fn, maxiter=100, restart=20, tol=1e-10, prec=False, kappa=0.3, eps=0.001):
+    def run(self, X, fn, maxiter=100, restart=20, tol=1e-10, prec=False, kappa=0.3, eps=0.001, use_g_eta=False):
 
         prec_direction = True
 
@@ -542,7 +542,10 @@ class CG:
         # start CG
         if prec_direction:
             G_X = delta_X
-            G_eta = delta_eta
+            if not use_g_eta:
+                G_eta = delta_eta
+            else:
+                G_eta = -kappa*g_eta
         else:
             G_X = -g_X
             G_eta = -g_eta
@@ -588,14 +591,14 @@ class CG:
                         kappa = kappa/3
                         logger('kappa: ', kappa)
 
-            logger('step %5d' % ii, 'F: %.11f res: X,eta %+10.5e, %+10.5e' % (FE, np.real(inner(g_X, G_X)), np.real(inner(g_eta, G_eta))))
+            logger('step %5d' % ii, 'F: %.11f res: X,eta %+10.5e, %+10.5e' %
+                   (FE, np.real(inner(g_X, G_X)), np.real(inner(g_eta, G_eta))))
             eta = diag(ek)
             # keep previous search directions
             GP_X = G_X@U
-            GP_eta = U.H@G_eta@U  # TODO: is this correct?
-            deltaP_X = delta_X@U
-            # TODO: how to update delta_eta
-            deltaP_eta = U.H@delta_eta@U
+            GP_eta = U.H@G_eta@U
+            # deltaP_X = delta_X@U
+            # deltaP_eta = U.H@delta_eta@U
             # compute new gradients
 
             HX = H.apply(X, scale=False) * kw
@@ -611,16 +614,22 @@ class CG:
             # check that constraints are fulfilled
             delta_X = -K * (HX - X @ LL)
             assert l2norm(X.H @ delta_X) < 1e-11
-            delta_eta = kappa * (Hij - kw*diag(ek))
+            if not use_g_eta:
+                delta_eta = kappa * (Hij - kw*diag(ek))
+            else:
+                delta_eta = -kappa * g_eta
 
             # conjugated search directions
             # gamma = (np.real(inner(2*g_X, delta_X) + inner(g_eta, delta_eta)) /
             #          np.real(inner(-2*GP_X, deltaP_X) + inner(-GP_eta, deltaP_eta)))
 
             if not ii % restart == 0 and not cg_restart_inprogress:
-                gamma_eta = np.real(inner(g_eta, g_eta-gp_eta) )
+                gamma_eta = np.real(inner(g_eta, g_eta-gp_eta))
                 gamma_X = np.real(inner(g_X, g_X-gp_X))
-                gamma = max(0, (gamma_X + gamma_eta) / (l2norm(gp_X)**2 + l2norm(gp_eta)**2))
+                gamma = max(0,
+                            (gamma_X + gamma_eta)
+                            /
+                            (l2norm(gp_X)**2 + l2norm(gp_eta)**2))
             else:
                 logger('restart CG')
                 gamma = 0
