@@ -186,9 +186,14 @@
         },
         "xc_functionals" :
         {
-            "description" :  "List of XC functionals (typically contains exchange term and correlation term. We will retrieve this info from the hosy code if possible" ,
-            "usage" :  "xc_functionals ",
-            "possible_values" : ["XC_LDA", "too many"],
+            "description" :  "List of XC functionals (typically contains exchange term and correlation term. We will retrieve this info from the host code if possible" ,
+            "usage" :  "xc_functionals func1 func2 funct3 ",
+            "default_value" : "none"
+        },
+        "vdw_functionals" : {
+            "description" : "Van der functionals are included in the calculations. Note that they can be used with some subsets of xc_functionals.",
+            "usage" : "vdw_functionals name",
+            "possible_values" : ["XC_FUNC_VDWDF", "Xc_FUNC_VDWDF2", "XC_FUNC_VDWDFCX", "none"],
             "default_value" : "none"
         },
         "core_relativity" :

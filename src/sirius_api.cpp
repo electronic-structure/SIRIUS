@@ -2708,10 +2708,8 @@ void sirius_option_set_int(void* const* handler__, char*section, char *name, int
             for (int s = 0; s < *length; s++)
                 v[s] = default_values[s];
             conf_dict[section][name] = v;
-            std::cout << name << " " << *default_values << conf_dict[section][name].get<int>() << std::endl;
         } else {
             conf_dict[section][name] = *default_values;
-            std::cout << name << " " << *default_values << conf_dict[section][name].get<int>() << std::endl;
         }
     }
 }
@@ -2743,10 +2741,8 @@ void sirius_option_set_double(void* const* handler__, char*section, char *name, 
             for (int s = 0; s < *length; s++)
                 v[s] = default_values[s];
             conf_dict[section][name] = v;
-            std::cout << name << " " << *default_values << conf_dict[section][name].get<double>() << std::endl;
         } else {
             conf_dict[section][name] = *default_values;
-            std::cout << name << " " << *default_values << conf_dict[section][name].get<double>() << std::endl;
         }
     }
 }
@@ -2779,10 +2775,8 @@ void sirius_option_set_logical(void* const* handler__, char*section, char *name,
             for (int s = 0; s < *length; s++)
                 v[s] = (default_values[s] == 1);
             conf_dict[section][name] = v;
-            std::cout << name << " " << *default_values << conf_dict[section][name].get<bool>() << std::endl;
         } else {
             conf_dict[section][name] = (*default_values == 1);
-            std::cout << name << " " << *default_values << conf_dict[section][name].get<bool>() << std::endl;
         }
     }
 }
@@ -2813,6 +2807,41 @@ void sirius_option_set_string(void* const* handler__, char * section, char * nam
         for ( char *p = default_values; *p; p++) *p = tolower(*p);
         std::string st = default_values;
         conf_dict[section][name] = st;
+    }
+}
+
+/* @fortran begin function void sirius_option_add_string_to                           add a string value to the option in the json dictionary
+   @fortran argument in  required void*  handler                                      Simulation context handler.
+   @fortran argument in  required string  section                                     name of the section
+   @fortran argument in  required string  name                                        name of the element to pick
+   @fortran argument in required string   default_values                              string to be added
+   @fortran end */
+
+void sirius_option_add_string_to(void* const* handler__, char * section, char * name, char *default_values)
+{
+    GET_SIM_CTX(handler__);
+    // the first one is static
+    const json &parser =  sirius::get_options_dictionary();
+    json &conf_dict = sim_ctx.get_runtime_options_dictionary();
+    // ugly as hell but fortran is a piece of ....
+    for ( char *p = section; *p; p++) *p = tolower(*p);
+    // ugly as hell but fortran is a piece of ....
+    for ( char *p = name; *p; p++) *p = tolower(*p);
+    if (parser[section].count(name)) {
+        if (!default_values) {
+            std::cout << "option not set up because the string null" << std::endl;
+            return;
+        }
+        if (conf_dict[section].count(name)) {
+            auto v = conf_dict[section][name].get<std::vector<std::string>>();
+            v.push_back(default_values);
+            conf_dict[section][name] = v;
+        } else {
+            std::vector<std::string> st;
+            st.clear();
+            st.push_back(default_values);
+            conf_dict[section][name] = st;
+        }
     }
 }
 

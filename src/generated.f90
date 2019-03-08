@@ -2809,6 +2809,31 @@ end interface
 call sirius_option_set_string_aux(handler,section,name,default_values)
 end subroutine sirius_option_set_string
 
+!> @brief add a string value to the option in the json dictionary
+!> @param [in] handler Simulation context handler.
+!> @param [in] section name of the section
+!> @param [in] name name of the element to pick
+!> @param [in] default_values string to be added
+subroutine sirius_option_add_string_to(handler,section,name,default_values)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: section
+character(C_CHAR), dimension(*), intent(in) :: name
+character(C_CHAR), dimension(*), intent(in) :: default_values
+interface
+subroutine sirius_option_add_string_to_aux(handler,section,name,default_values)&
+&bind(C, name="sirius_option_add_string_to")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: section
+character(C_CHAR), dimension(*), intent(in) :: name
+character(C_CHAR), dimension(*), intent(in) :: default_values
+end subroutine
+end interface
+
+call sirius_option_add_string_to_aux(handler,section,name,default_values)
+end subroutine sirius_option_add_string_to
+
 !> @brief dump the runtime setup in a file
 !> @param [in] handler Simulation context handler.
 !> @param [in] filename string containing the name of the file
