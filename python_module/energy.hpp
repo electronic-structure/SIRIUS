@@ -34,7 +34,7 @@ double ewald_energy(const Simulation_context& ctx, const Gvec& gvec, const Unit_
         #pragma omp critical
         ewald_g += ewald_g_pt;
     }
-    gvec.comm().allreduce(&ewald_g, 1);
+    ctx.comm().allreduce(&ewald_g, 1);
     if (gvec.reduced()) {
         ewald_g *= 2;
     }

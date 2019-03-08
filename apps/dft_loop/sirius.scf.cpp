@@ -321,6 +321,8 @@ int main(int argn, char** argv)
     args.register_key("--control.memory_usage=", "");
     args.register_key("--parameters.ngridk=", "");
     args.register_key("--parameters.gamma_point=", "");
+    args.register_key("--parameters.pw_cutoff=", "");
+    args.register_key("--iterative_solver.orthogonalize=", "");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {

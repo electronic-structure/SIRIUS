@@ -228,6 +228,10 @@ class Request
   private:
     MPI_Request handler_;
   public:
+    ~Request()
+    {
+        //CALL_MPI(MPI_Request_free, (&handler_));
+    }
     void wait()
     {
         CALL_MPI(MPI_Wait, (&handler_, MPI_STATUS_IGNORE));
@@ -310,6 +314,13 @@ class Communicator
     static void finalize()
     {
         MPI_Finalize();
+    }
+
+    static bool is_finalized()
+    {
+        int mpi_finalized_flag;
+        MPI_Finalized(&mpi_finalized_flag);
+        return mpi_finalized_flag == true;
     }
 
     static Communicator const& self()

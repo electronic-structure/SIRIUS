@@ -26,9 +26,12 @@
 extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 int num_gvec_loc__,
                                                 double_complex const* veff__,
-                                                int const* gvec__,
+                                                int const* gvx__,
+                                                int const* gvy__,
+                                                int const* gvz__,
                                                 double const* atom_pos__,
                                                 double* veff_a__,
+                                                int ld__,
                                                 int stream_id__);
 #endif
 
@@ -36,29 +39,23 @@ inline void Potential::generate_D_operator_matrix()
 {
     PROFILE("sirius::Potential::generate_D_operator_matrix");
 
-    mdarray<double_complex, 1> veff_tmp(nullptr, ctx_.gvec().count());
-    if (ctx_.processing_unit() == device_t::GPU) {
-        veff_tmp.allocate(memory_t::device);
-    }
+    auto spl_ngv_loc = ctx_.split_gvec_local();
 
     if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
         ctx_.augmentation_op(0).prepare(stream_id(0));
     }
-
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
         int nbf         = atom_type.mt_basis_size();
 
-#ifdef __GPU
         /* start copy of Q(G) for the next atom type */
-        if (ctx_.processing_unit() == GPU) {
+        if (ctx_.processing_unit() == device_t::GPU) {
             acc::sync_stream(stream_id(0));
             if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment() &&
                 ctx_.unit_cell().atom_type(iat + 1).num_atoms() > 0) {
                 ctx_.augmentation_op(iat + 1).prepare(stream_id(0));
             }
         }
-#endif
 
         /* trivial case */
         if (!atom_type.augment() || atom_type.num_atoms() == 0) {
@@ -79,52 +76,85 @@ inline void Potential::generate_D_operator_matrix()
             }
             continue;
         }
-        matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
+        matrix<double> d_tmp(ctx_.mem_pool(memory_t::host), nbf * (nbf + 1) / 2, atom_type.num_atoms());
+        if (ctx_.processing_unit() == device_t::GPU) {
+            d_tmp.allocate(ctx_.mem_pool(memory_t::device));
+        }
+
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-            switch (ctx_.processing_unit()) {
-                case CPU: {
-                    matrix<double> veff_a(2 * ctx_.gvec().count(), atom_type.num_atoms());
+            matrix<double> veff_a(ctx_.mem_pool(memory_t::host), 2 * spl_ngv_loc.local_size(), atom_type.num_atoms());
 
-                    #pragma omp parallel for schedule(static)
-                    for (int i = 0; i < atom_type.num_atoms(); i++) {
-                        int ia = atom_type.atom_id(i);
+            auto la = linalg_t::blas;
+            auto mem = memory_t::host;
 
-                        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-                            int ig = ctx_.gvec().offset() + igloc;
-                            /* V(G) * exp(i * G * r_{alpha}) */
-                            auto z = component(iv).f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia);
-                            veff_a(2 * igloc, i)     = z.real();
-                            veff_a(2 * igloc + 1, i) = z.imag();
+            d_tmp.zero();
+            if (ctx_.processing_unit() == device_t::GPU) {
+                la = linalg_t::cublas;
+                mem = memory_t::device;
+                d_tmp.zero(memory_t::device);
+                veff_a.allocate(ctx_.mem_pool(memory_t::device));
+            }
+
+            /* split a large loop over G-vectors into blocks */
+            for (int ib = 0; ib < spl_ngv_loc.num_ranks(); ib++) {
+                int g_begin = spl_ngv_loc.global_index(0, ib);
+                int g_end = g_begin + spl_ngv_loc.local_size(ib);
+
+                switch (ctx_.processing_unit()) {
+                    case device_t::CPU: {
+                        #pragma omp parallel for schedule(static)
+                        for (int i = 0; i < atom_type.num_atoms(); i++) {
+                            int ia = atom_type.atom_id(i);
+
+                            for (int igloc = g_begin; igloc < g_end; igloc++) {
+                                int ig = ctx_.gvec().offset() + igloc;
+                                /* V(G) * exp(i * G * r_{alpha}) */
+                                auto z = component(iv).f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia);
+                                veff_a(2 * (igloc - g_begin),     i) = z.real();
+                                veff_a(2 * (igloc - g_begin) + 1, i) = z.imag();
+                            }
                         }
+                        break;
                     }
-
-                    linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                      ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp);
-                    break;
-                }
-                case GPU: {
-#ifdef __GPU
-                    /* copy plane wave coefficients of effective potential to GPU */
-                    mdarray<double_complex, 1> veff(&component(iv).f_pw_local(0), veff_tmp.at(memory_t::device),
-                                                    ctx_.gvec().count());
-                    veff.copy_to(memory_t::device);
-
-                    matrix<double> veff_a(2 * ctx_.gvec().count(), atom_type.num_atoms(), memory_t::device);
-
-                    d_tmp.allocate(memory_t::device);
-
-                    mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ctx_.gvec().count(), veff.at(memory_t::device),
-                                                    ctx_.gvec_coord().at(memory_t::device),
-                                                    ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
-                                                    veff_a.at(memory_t::device), 1);
-
-                    linalg<GPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                      ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp, 1);
-
-                    d_tmp.copy_to(memory_t::host);
+                    case device_t::GPU: {
+                        /* wait for stream#1 to finish previous zgemm */
+                        acc::sync_stream(stream_id(1));
+                        /* copy plane wave coefficients of effective potential to GPU */
+                        mdarray<double_complex, 1> veff(&component(iv).f_pw_local(g_begin), spl_ngv_loc.local_size(ib));
+                        veff.allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
+#if defined(__GPU)
+                        mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), spl_ngv_loc.local_size(ib),
+                                                        veff.at(memory_t::device),
+                                                        ctx_.gvec_coord().at(memory_t::device, g_begin, 0),
+                                                        ctx_.gvec_coord().at(memory_t::device, g_begin, 1),
+                                                        ctx_.gvec_coord().at(memory_t::device, g_begin, 2),
+                                                        ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
+                                                        veff_a.at(memory_t::device), spl_ngv_loc.local_size(), 1);
 #endif
-                    break;
+                        break;
+                    }
                 }
+                if (ctx_.control().print_checksum_) {
+                    if (ctx_.processing_unit() == device_t::GPU) {
+                        veff_a.copy_to(memory_t::host);
+                    }
+                    auto cs = veff_a.checksum();
+                    std::stringstream s;
+                    s << "Gvec_block_" << ib << "_veff_a";
+                    utils::print_checksum(s.str(), cs);
+                }
+                linalg2(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
+                                  &linalg_const<double>::one(),
+                                  ctx_.augmentation_op(iat).q_pw().at(mem, 0, 2 * g_begin),
+                                  ctx_.augmentation_op(iat).q_pw().ld(),
+                                  veff_a.at(mem), veff_a.ld(),
+                                  &linalg_const<double>::one(),
+                                  d_tmp.at(mem), d_tmp.ld(),
+                                  stream_id(1));
+            }
+
+            if (ctx_.processing_unit() == device_t::GPU) {
+                d_tmp.copy_to(memory_t::host);
             }
 
             if (ctx_.gvec().reduced()) {

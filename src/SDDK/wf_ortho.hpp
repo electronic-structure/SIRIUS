@@ -50,8 +50,8 @@ inline void orthogonalize(memory_t                     mem__,
         }
     }
 
-    const char* sddk_debug_raw = std::getenv("SDDK_DEBUG");
-    int sddk_debug = (sddk_debug_raw == NULL) ? 0 : std::atoi(sddk_debug_raw);
+    auto sddk_debug_ptr = utils::get_env<int>("SDDK_DEBUG");
+    int sddk_debug = (sddk_debug_ptr) ? (*sddk_debug_ptr) : 0;
 
     double ngop{0};
     if (std::is_same<T, double>::value) {
@@ -160,7 +160,6 @@ inline void orthogonalize(memory_t                     mem__,
 
         utils::timer t1("sddk::orthogonalize|tmtrx");
         if (use_magma) {
-#ifdef __GPU
             /* Cholesky factorization */
             if (int info = linalg2(linalg_t::magma).potrf(n__, o__.at(memory_t::device), o__.ld())) {
                 std::stringstream s;
@@ -168,10 +167,9 @@ inline void orthogonalize(memory_t                     mem__,
                 TERMINATE(s);
             }
             /* inversion of triangular matrix */
-            if (linalg<GPU>::trtri(n__, o__.at(memory_t::device), o__.ld())) {
+            if (linalg2(linalg_t::magma).trtri(n__, o__.at(memory_t::device), o__.ld())) {
                 TERMINATE("error in inversion");
             }
-#endif
         } else { /* CPU version */
             /* Cholesky factorization */
             if (int info = linalg2(linalg_t::lapack).potrf(n__, &o__(0, 0), o__.ld())) {

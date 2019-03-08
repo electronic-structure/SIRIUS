@@ -25,6 +25,13 @@ $ make install
 ```
 This will compile SIRIUS in a most simple way: CPU-only mode without parallel linear algebra routines.
 
+In order to download and build the compulsory dependencies (xc, gsl, spg, fftw)
+the script `prerequisite.py` can be used:
+
+```console
+$ mkdir -p libs
+$ python prerequisite.py ${PWD}/libs xc spg gsl fftw hdf5
+```
 
 
 ## Examples

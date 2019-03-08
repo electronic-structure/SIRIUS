@@ -1,5 +1,79 @@
 import numpy as np
 
+__all__ = ['CoefficientArray', 'inner', 'l2norm',
+           'PwCoeffs', 'diag', 'einsum', 'ones_like']
+
+
+def is_complex(x):
+    if isinstance(x, CoefficientArray):
+        return np.iscomplexobj(x.dtype())
+    else:
+        return np.iscomplexobj(x)
+
+
+def diag(x):
+    """
+    TODO: make a check not to flatten a 2d matrix
+    """
+    if isinstance(x, CoefficientArray):
+        out = type(x)(dtype=x.dtype, ctype=x.ctype)
+        for key, val in x._data.items():
+            if val.size == max(val.shape):
+                out[key] = np.diag(np.array(val, copy=True).flatten())
+            else:
+                out[key] = np.diag(val)
+        return out
+    else:
+        return np.diag(x)
+
+
+def ones_like(x, dtype=None):
+    """
+    TODO: make a check not to flatten a 2d matrix
+    """
+    if isinstance(x, CoefficientArray):
+        return CoefficientArray.ones_like(x, dtype=dtype)
+    else:
+        if dtype is None:
+            dtype = x.dtype
+        return np.diag(x, dtype=dtype)
+
+
+def inner(a, b):
+    """
+    complex inner product
+    """
+    try:
+        return np.sum(
+            np.array(a, copy=False) * np.array(np.conj(b), copy=False))
+    except ValueError:
+        # is of type CoefficientArray (cannot convert to array)
+        return np.sum(a * np.conj(b), copy=False)
+
+
+def l2norm(a):
+    """
+
+    """
+    return np.sqrt(np.real(inner(a, a)))
+
+
+def einsum(expr, *operands):
+    """
+    map einsum over elements of CoefficientArray
+    """
+
+    assert len(operands) > 0
+
+    try:
+        return np.einsum(expr, *operands)
+    except ValueError or TypeError:
+        out = type(operands[0])(dtype=operands[0].dtype, ctype=np.array)
+        for key in operands[0]._data.keys():
+            out[key] = np.einsum(expr,
+                                 *list(map(lambda x: x[key], operands)))
+        return out
+
 
 class CoefficientArray:
     def __init__(self, dtype=np.complex, ctype=np.matrix):
@@ -25,67 +99,122 @@ class CoefficientArray:
     def __setitem__(self, key, item):
         """
         """
-        if key in self._data:
-            x = self._data[key]
-            # make sure shapes don't change
-            try:
-                # view, no copy needed
-                x[:] = self.ctype(item, copy=False)
-            except TypeError:
-                # not a view, make a copy
-                x = self.ctype(item, copy=True)
+        if isinstance(key, slice):
+
+            for k in self._data:
+                self._data[key] = item
         else:
-            self._data[key] = self.ctype(item, dtype=self.dtype, copy=True)
+            if key in self._data:
+                x = self._data[key]
+                # make sure shapes don't change
+                try:
+                    # view, no copy needed
+                    x[:] = self.ctype(item, copy=False)
+                except TypeError:
+                    # not a view, make a copy
+                    self._data[key] = self.ctype(item)
+            else:
+                if isinstance(item, np.ndarray):
+                    self._data[key] = self.ctype(item, dtype=self.dtype, copy=True)
+                else:
+                    self._data[key] = item
 
     def sum(self, **kwargs):
         """
         """
         from mpi4py import MPI
-        loc_sum = np.array(sum([np.sum(v) for _, v in self.items()]), dtype=np.complex128)
-        rcvBuf = np.array(0.0, dtype=np.complex128)
+        loc_sum = np.array(
+            sum([np.sum(v) for _, v in self.items()]), dtype=self.dtype)
+        reduced = MPI.COMM_WORLD.allreduce(loc_sum, op=MPI.SUM)
+        return np.asscalar(reduced)
 
-        MPI.COMM_WORLD.Allreduce(
-            [loc_sum, MPI.DOUBLE_COMPLEX],
-            [rcvBuf, MPI.DOUBLE_COMPLEX],
-                op=MPI.SUM)
-        return np.asscalar(rcvBuf)
+    def log(self, **kwargs):
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for key in self._data.keys():
+            out[key] = np.log(self._data[key], **kwargs)
+        return out
 
     def __mul__(self, other):
         """
-        Returns a new object of type type(self)
         """
-        out = type(self)(dtype=self.dtype)
+        if is_complex(self) or is_complex(other):
+            dtype = np.complex
+        else:
+            dtype = np.float
+
+        out = type(self)(dtype=dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
-                out[key] = np.einsum('ij,ij->ij', self._data[key], other._data[key])
+                out[key] = np.einsum('...,...->...', self._data[key],
+                                     other._data[key])
         elif np.isscalar(other):
             for key in self._data.keys():
                 out[key] = self._data[key] * other
+        else:
+            raise TypeError('wrong type')
+        return out
+
+    def __truediv__(self, other):
+        if is_complex(self) or is_complex(other):
+            dtype = np.complex
+        else:
+            dtype = np.float
+
+        out = type(self)(dtype=dtype, ctype=self.ctype)
+        if isinstance(other, CoefficientArray):
+            for key in other._data.keys():
+                out[key] = np.einsum('...,...->...', self._data[key],
+                                     1 / other._data[key])
+        elif np.isscalar(other):
+            for key in self._data.keys():
+                out[key] = self._data[key] / other
+        else:
+            raise TypeError('wrong type')
+        return out
+
+    def __rtruediv__(self, other):
+        if is_complex(self) or is_complex(other):
+            dtype = np.complex
+        else:
+            dtype = np.float
+
+        out = type(self)(dtype=dtype, ctype=self.ctype)
+        if isinstance(other, CoefficientArray):
+            for key in other._data.keys():
+                out[key] = np.einsum('...,...->...', 1 / self._data[key],
+                                     other._data[key])
+        elif np.isscalar(other):
+            for key in self._data.keys():
+                out[key] = other / self._data[key]
         else:
             raise TypeError('wrong type')
         return out
 
     def __matmul__(self, other):
         """
-        TODO
         """
-        # TODO: complex | double -> complex, double | double -> double
-        out = type(self)(dtype=np.complex)
-        assert(self.ctype is np.matrix)
+        if is_complex(self) or is_complex(other):
+            dtype = np.complex
+        else:
+            dtype = np.float
+        out = type(self)(dtype=dtype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
-                out[key] = self._data[key] * other._data[key]
+                out[key] = self._data[key] @ other._data[key]
         elif np.isscalar(other):
             for key in self._data.keys():
-                out[key] = self._data[key] * other
+                out[key] = self._data[key] @ other
         else:
             raise TypeError('wrong type')
         return out
 
     def __add__(self, other):
-        """
-        """
-        out = type(self)(dtype=self.dtype)
+        if is_complex(self) or is_complex(other):
+            dtype = np.complex
+        else:
+            dtype = np.float
+
+        out = type(self)(dtype=dtype, ctype=self.ctype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
                 out[key] = self._data[key] + other._data[key]
@@ -95,56 +224,217 @@ class CoefficientArray:
         return out
 
     def __neg__(self):
-        """
-
-        """
-        out = type(self)(dtype=self.dtype)
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
         for key, val in self._data.items():
             out[key] = -val
         return out
 
     def abs(self):
-        """
-        """
-        out = type(self)(dtype=self.dtype)
+        out = type(self)(dtype=np.float, ctype=self.ctype)
         for key in self._data.keys():
             out[key] = np.abs(self._data[key])
         return out
+
+    def sqrt(self):
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for key in self._data.keys():
+            out[key] = np.sqrt(self._data[key])
+        return out
+
+    def svd(self, **args):
+        """
+        returns U, s, Vh
+        """
+        U = type(self)(dtype=self.dtype, ctype=self.ctype)
+        s = type(self)(dtype=np.float64, ctype=np.array)
+        Vh = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for key in self._data.keys():
+            Ul, sl, Vhl = np.linalg.svd(self[key], **args)
+            U[key] = Ul
+            s[key] = sl
+            Vh[key] = Vhl
+        return U, s, Vh
+
+    def eigh(self, **args):
+        w = type(self)(dtype=np.float64, ctype=np.array)
+        V = type(self)(dtype=self.dtype, ctype=np.matrix)
+        for key in self._data.keys():
+            w[key], V[key] = np.linalg.eigh(self[key], **args)
+        return w, V
+
+    def eig(self, **args):
+        w = type(self)(dtype=np.complex, ctype=np.array)
+        V = type(self)(dtype=self.dtype, ctype=np.matrix)
+        for key in self._data.keys():
+            w[key], V[key] = np.linalg.eig(self[key], **args)
+        return w, V
+
+    def qr(self, **args):
+        Q = type(self)(dtype=self.dtype, ctype=np.matrix)
+        R = type(self)(dtype=self.dtype, ctype=np.matrix)
+        for key in self._data.keys():
+            Q[key], R[key] = np.linalg.qr(self[key], **args)
+        return Q, R
 
     def keys(self):
         return self._data.keys()
 
     def __sub__(self, other):
-        """
-        """
         return self.__add__(-1 * other)
 
+    def __rsub__(self, other):
+        return -(self.__add__(-1 * other))
+
+    def __pow__(self, a):
+        """
+
+        """
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for key in self._data.keys():
+            out[key] = self._data[key]**a
+        return out
+
     def conjugate(self):
-        """
-        """
-        out = type(self)(dtype=self.dtype)
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
         for key, val in self._data.items():
             out[key] = np.conj(val)
         return out
 
     def conj(self):
-        """
-        """
         return self.conjugate()
+
+    def flatten(self, ctype=None):
+        if ctype is None:
+            ctype = self.ctype
+        out = type(self)(dtype=self.dtype, ctype=ctype)
+        for key, val in self._data.items():
+            out[key] = ctype(val).flatten()
+        return out
+
+    def asarray(self):
+        """
+
+        """
+        out = type(self)(dtype=self.dtype, ctype=np.array)
+        for key, val in self._data.items():
+            out[key] = np.array(val)
+        return out
+
+    def cols(self, indices):
+        """
+
+        """
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for k, jj in indices._data.items():
+            out[k] = self[k][:, jj]
+        return out
+
+    def __len__(self):
+        """
+        """
+        return len(self._data)
+
+    def items(self):
+        """
+        """
+        return self._data.items()
+
+    def __contains__(self, key):
+        """
+        """
+        return self._data.__contains(key)
+
+    @property
+    def real(self):
+        out = type(self)(dtype=np.double)
+        for key, val in self._data.items():
+            out[key] = np.real(val)
+        return out
+
+    @property
+    def imag(self):
+        out = type(self)(dtype=np.double)
+        for key, val in self._data.items():
+            out[key] = np.imag(val)
+        return out
+
+    @property
+    def H(self):
+        """
+        Hermitian conjugate
+        """
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for key, val in self._data.items():
+            out[key] = np.atleast_2d(val).H
+        return out
+
+    @property
+    def T(self):
+        """
+        Tranpose
+        """
+        out = type(self)(dtype=self.dtype, ctype=self.ctype)
+        for key, val in self._data.items():
+            out[key] = np.atleast_2d(val).T
+        return out
+
+    def __str__(self):
+        return '\n'.join([
+            '\n'.join(map(str, [key, val, '---']))
+            for key, val in self._data.items()
+        ])
+
+    def to_array(self):
+        """
+        convert to numpy array
+        """
+        if len(self) > 0:
+            return np.concatenate(list(map(np.atleast_1d, self._data.values())),
+                                  axis=0)
+        else:
+            return np.array([])
+
+    def from_array(self, X):
+        """
+        set internal data from numpy array
+        assumes that each entry has the same number of columns
+        """
+        offset = 0
+        for key, val in self._data.items():
+            val[:] = X[offset:offset + val.shape[0], ...]
+            offset += val.shape[0]
+
+    def _repr_pretty_(self, p, cycle):
+        for key, val in self._data.items():
+            p.text('key: ')
+            p.pretty(key)
+            p.text('\n')
+            p.pretty(val)
+            p.text('\n')
+
+    @staticmethod
+    def ones_like(x, dtype=None, ctype=None):
+        if ctype is None:
+            ctype = x.ctype
+        if dtype is None:
+            dtype = x.dtype
+        out = type(x)(dtype=dtype, ctype=ctype)
+        for k in x._data.keys():
+            out[k] = np.ones_like(x[k], dtype=dtype)
+
+        return out
 
     __lmul__ = __mul__
     __rmul__ = __mul__
     __radd__ = __add__
     __ladd__ = __add__
-    __lsub__ = __sub__
-    __rsub__ = __sub__
 
 
 class PwCoeffs(CoefficientArray):
     def __init__(self, kpointset=None, dtype=np.complex, ctype=np.matrix):
         super().__init__(dtype=dtype, ctype=ctype)
 
-        # load plane wave-coefficients from kpointset
+        # load plane-wave coefficients from kpointset
         if kpointset is not None:
             num_sc = kpointset.ctx().num_spins()
             for ki in range(len(kpointset)):
@@ -174,7 +464,10 @@ class PwCoeffs(CoefficientArray):
         """
         TODO: make an iterator
         """
-        ks, _ = zip(*self._data.keys())
+        if len(self._data.keys()) > 0:
+            ks, _ = zip(*self._data.keys())
+        else:
+            ks = []
         return ks
 
     def by_k(self):
@@ -186,21 +479,6 @@ class PwCoeffs(CoefficientArray):
         for k, ispn in self._data:
             sdict[k].append((ispn, self._data[(k, ispn)]))
         return sdict
-
-    def __len__(self):
-        """
-        """
-        return len(self._data)
-
-    def items(self):
-        """
-        """
-        return self._data.items()
-
-    def __contains__(self, key):
-        """
-        """
-        return self._data.__contains(key)
 
 
 if __name__ == '__main__':

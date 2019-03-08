@@ -28,7 +28,7 @@
 #include <complex>
 
 const int major_version = 6;
-const int minor_version = 0;
+const int minor_version = 1;
 const int revision      = 0;
 
 /// NIST value for the inverse fine structure (http://physics.nist.gov/cuu/Constants/index.html)

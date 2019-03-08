@@ -25,30 +25,13 @@
 #ifndef __DENSITY_HPP__
 #define __DENSITY_HPP__
 
+#include <iomanip>
 #include "field4d.hpp"
 #include "periodic_function.hpp"
 #include "K_point/k_point_set.hpp"
 #include "mixer.hpp"
 
-#ifdef __GPU
-extern "C" void generate_dm_pw_gpu(int           num_atoms__,
-                                   int           num_gvec_loc__,
-                                   int           num_beta__,
-                                   double const* atom_pos__,
-                                   int const*    gvec__,
-                                   double*       phase_factors__,
-                                   double const* dm__,
-                                   double*       dm_pw__,
-                                   int           stream_id__);
-
-extern "C" void sum_q_pw_dm_pw_gpu(int             num_gvec_loc__,
-                                   int             nbf__,
-                                   double const*   q_pw__,
-                                   double const*   dm_pw__,
-                                   double const*   sym_weight__,
-                                   double_complex* rho_pw__,
-                                   int             stream_id__);
-
+#if defined(__GPU)
 extern "C" void update_density_rg_1_gpu(int                   size__,
                                         double_complex const* psi_rg__,
                                         double                wt__,

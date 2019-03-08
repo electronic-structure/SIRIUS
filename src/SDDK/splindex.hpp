@@ -29,6 +29,7 @@
 #include <vector>
 #include <sstream>
 #include <limits>
+#include <cassert>
 
 namespace sddk {
 
@@ -285,6 +286,47 @@ class splindex<block_cyclic, T> : public splindex_base<T>
     }
 
   public:
+    struct iterator
+    {
+        T idxloc_;
+        T idxglob_;
+        T num_blocks_min_;
+        int block_size_;
+        int rank_;
+        int num_ranks_;
+
+        iterator(T idxglob__, int num_ranks__, int block_size__)
+            : idxglob_(idxglob__)
+            , num_ranks_(num_ranks__)
+            , block_size_(block_size__)
+        {
+            /* number of full blocks */
+            T num_blocks = idxglob__ / block_size_;
+            num_blocks_min_ = num_blocks / num_ranks_;
+            idxloc_ = num_blocks_min_ * block_size_ + idxglob_ % block_size_;
+            rank_ = static_cast<int>(num_blocks % num_ranks_);
+        }
+
+        bool operator!=(iterator const& rhs__) const
+        {
+            return idxglob_ != rhs__.idxglob_;
+        }
+
+        iterator& operator++()
+        {
+            idxglob_++;
+            idxloc_++;
+            if (idxloc_ % block_size_ == 0) {
+                rank_++;
+                if (rank_ % num_ranks_ == 0) {
+                    num_blocks_min_++;
+                    rank_ = 0;
+                }
+                idxloc_ = num_blocks_min_ * block_size_;// + idxglob_ % block_size_;
+            }
+        }
+    };
+
     /// Default constructor
     splindex()
     {
@@ -294,6 +336,11 @@ class splindex<block_cyclic, T> : public splindex_base<T>
     splindex(T global_index_size__, int num_ranks__, int rank__, int bs__)
     {
         init(global_index_size__, num_ranks__, rank__, bs__);
+    }
+
+    iterator at(T idxglob__) const
+    {
+        return iterator(idxglob__, this->num_ranks_, this->block_size_);
     }
 
     /// Return "local index, rank" pair for a global index.
@@ -382,7 +429,7 @@ class splindex<chunk, T> : public splindex_base<T>
     splindex()
     {
     }
-    
+
     /// Constructor with specific partitioning.
     splindex(T global_index_size__, int num_ranks__, int rank__, std::vector<T> const& counts__)
     {
@@ -409,7 +456,7 @@ class splindex<chunk, T> : public splindex_base<T>
                 locations_.push_back(typename splindex_base<T>::location_t(i, r));
             }
         }
-        
+
         assert(static_cast<T>(locations_.size()) == global_index_size__);
     }
 

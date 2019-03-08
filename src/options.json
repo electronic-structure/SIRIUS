@@ -1,0 +1,437 @@
+{
+    "mixer" : {
+        "type" :
+        {
+            "description": "type of mixer",
+            "possible_values" : ["linear", "broyden1", "broyden2"],
+            "usage" : "type broyden1",
+            "default_value" : "broyden1",
+            "variable_type" : "string"
+        },
+        "max_history" :{
+            "description" : "Number of history steps for Broyden-type mixers.",
+            "usage" : "max_history 8",
+            "default_value" : 8,
+            "variable_type" : "int"
+        },
+        "subspace_size" : {
+            "description" : "Size of the variational subspace is this number times the number of bands.",
+            "usage" : "subspace_size (4)",
+            "default_value" : 4
+        },
+        "linear_mix_rms_tol" : {
+            "description" : "RMS tolerance above which the linear mixing is triggered.",
+            "usage" : "linear_mix_rms_tol (1e6)",
+            "default_value" : 1.0e6
+        },
+        "beta" : {
+            "desciption" : "Mixing parameter.",
+            "usage" : "BETA 0.7",
+            "default_value" : 0.7
+        },
+        "beta0": {
+            "description" : "Mixing ratio in case of initial linear mixing.",
+            "usage": "beta0 (0.15)",
+            "default_value" : 0.15
+        },
+        "beta_scaling_factor" :{
+            "description" : "Scaling factor for mixing parameter.",
+            "usage" : "beta_scaling_factor (1.0)",
+            "default_value" : 1.0
+        }
+    },
+    "iterative_solver": {
+        "type" : {
+            "description" :  "type of iterative solver" ,
+            "usage" :  "type (davidson)" ,
+            "possible_values" : ["davidson"],
+            "default_value" :  "davidson"
+        },
+        "num_steps" : {
+            "description" :  "number of steps" ,
+            "usage" :  "num_steps (10)" ,
+            "default_value" :  10
+        },
+        "subspace_size" : {
+            "description" :  "Size of the variational subspace is this number times the number of bands." ,
+            "usage" :  "subspace_size (4)" ,
+            "default_value" :  4
+        },
+        "energy_tolerance" :
+        {
+            "description" :  "Tolerance for the eigen-energy difference. Reduced automatically during the scf cycle" ,
+            "usage" :  "energy_tolerance (0.01)" ,
+            "default_value" :  0.01
+        },
+        "residual_tolerance" :
+        {
+            "description" : "Tolerance for the residual L2 norm." ,
+          "usage" :  "residual_tolerance (1e-6)" ,
+          "default_value" :  0.000001
+        },
+        "empty_state_tolerance" :
+        {
+            "description" :  "Additional tolerance for empty states." ,
+            "usage" :  "empty_state_tolerance (1e-5)" ,
+            "default_value" :  1.0e-5
+        },
+        "min_num_res" :
+        {
+            "description" :  "Minimum number of residuals to continue iterative diagonalization process." ,
+            "usage" :  "min_num_res (0)" ,
+            "default_value" :  0
+        },
+        "orthogonalize" : {
+            "description" :  "keep basis orthogonal and solve standard eigen-value problem." ,
+            "usage" :  "orthogonalize (true)" ,
+            "default_value" :  true
+        },
+        "init_eval_old" : {
+            "description" :  "Initialize eigen-values with previous (old) values." ,
+            "usage" :  "init_eval_old (true)" ,
+            "default_value" :  true
+        },
+        "init_subspace" : {
+            "description" :  "initial subspace (lcao or random)" ,
+            "usage" :  "init_subspace (lcao)" ,
+            "possible_values" : ["lcao", "random"],
+            "default_value" :  "lcao"
+        },
+        "converge_by_energy" : {
+            "description" : "0 : then the residuals are estimated by their norm, 1 : residuals are estimated by the eigen-energy difference",
+            "usage" : "converge_by_energy 0 or 1",
+            "default_value" : 0
+        }
+    },
+    "control" : {
+        "mpi_grid_dims" :
+        {
+            "description" :  "Dimensions of the MPI grid",
+            "usage" :  "mpi_grid_dims (1 , 1, 1)",
+            "default_value" :  [1, 1, 1]
+        },
+        "cyclic_block_size" :
+        {
+            "description" :  "Block size for ScaLAPACK and ELPA." ,
+            "usage" :  "cyclic_block_size 32" ,
+            "default_value" :  -1
+        },
+        "reduce_gvec" :
+        {
+            "description" :  "Reduce G-vectors by inversion symmetry." ,
+            "usage" :  "reduce_gvec (true)" ,
+            "default_value" :  true
+        },
+        "std_evp_solver_type" :
+        {
+            "description" :  "Type of eigensolver",
+            "usage" :  "std_evp_solver_type (lapack, elpa, scalapack, magma)",
+            "possible_values" : ["scalapack", "elpa", "lapack", "magma"],
+            "default_value" :  "lapack"
+        },
+        "gen_evp_solver_type" :
+        {
+            "description" : "Type of generalized eigensolver" ,
+            "usage" :  "gen_evp_solver_type (lapack, elpa, scalapack, magma)",
+            "possible_values" : ["scalapack", "elpa", "lapack", "magma"],
+            "default_value" :  "lapack"
+        },
+        "processing_unit" :
+        {
+            "description" :  "processing_unit" ,
+            "usage" :  "processong_unit (cpu | gpu)" ,
+            "possible_values" : ["CPU" , "GPU"],
+            "default_value" :  "gpu"
+        },
+        "fft_mode" :
+        {
+            "description" :  "Coarse grid FFT mode.",
+            "usage" :  "fft_mode mode" ,
+            "possible_values" : ["serial", "parallel"],
+            "default_value" :  "serial"
+        },
+        "rmt_max" :
+        {
+            "description" :  "Maximum allowed muffin-tin radius in case of LAPW." ,
+            "usage" :  "rmt_max (2.2)" ,
+            "default_value" :  2.2
+        },
+        "spglib_tolerance" :
+        {
+            "description" :  "Tolerance of the spglib in finding crystal symmetries." ,
+            "usage" :  "spglib_tolerance (1e-4)" ,
+            "default_value" :  0.0001
+        },
+        "verbosity" :
+        {
+            "description" :  "degree of verbosity 0 : silent, 1 : basic, 2 extended",
+            "usage" : "verbosity 0",
+            "default_value" :  1
+        },
+        "num_band_to_print" :
+        {
+            "description" :  " Number of eigen-values that are printed to the standard output." ,
+            "usage" :  "num_band_to_print (10)" ,
+            "default_value" :  10
+        }
+    },
+    "parameters" :
+    {
+        "electronic_structure_method" :
+        {
+            "description" :  "Electronic structure method." ,
+            "usage" :  "electronic_structure_method (pseudopotential|full_potential_lapwlo)",
+            "possible_values" : ["pseudopotential", "full_potential_lapwlo"],
+            "default_value" :  "pseudopotential"
+        },
+        "xc_functionals" :
+        {
+            "description" :  "List of XC functionals (typically contains exchange term and correlation term. We will retrieve this info from the host code if possible" ,
+            "usage" :  "xc_functionals func1 func2 funct3 ",
+            "default_value" : "none"
+        },
+        "vdw_functionals" : {
+            "description" : "Van der functionals are included in the calculations. Note that they can be used with some subsets of xc_functionals.",
+            "usage" : "vdw_functionals name",
+            "possible_values" : ["XC_FUNC_VDWDF", "Xc_FUNC_VDWDF2", "XC_FUNC_VDWDFCX", "none"],
+            "default_value" : "none"
+        },
+        "core_relativity" :
+        {
+            "description" :  "Type of core-states relativity in full-potential LAPW case." ,
+            "usage" :  "core_relativity (dirac)" ,
+            "possible_values" : ["dirac", "none"],
+            "default_value" :  "dirac"
+        },
+        "valence_relativity" :
+        {
+            "description" :  "Type of valence states relativity in full-potential LAPW case." ,
+            "usage" :  "valence_relativity ZORA" ,
+            "possible_values" : ["zora", "none"],
+            "default_value" :  "zora"
+        },
+        "num_fv_states" :
+        {
+            "description" :  "Number of first-variational states." ,
+            "usage" :  "num_fv_states (integer)" ,
+            "default_value" :  -1
+        },
+        "smearing_width" :
+        {
+            "description" :  "Smearing function width." ,
+            "usage" :  "smearing_width (0.01)" ,
+            "default_value" :  0.01
+        },
+        "pw_cutoff" :
+        {
+            "description" :  "Cutoff for plane-waves (for density and potential expansion) in a.u.^-1" ,
+            "usage" :  "pw_cutoff (20.0)",
+            "default_value" :  20.0
+        },
+        "aw_cutoff" :
+        {
+            "description" :  "Cutoff for augmented plane-waves in a.u.^-1" ,
+            "usage" :  "aw_cutoff (7.0)" ,
+            "default_value" :  7.0
+        },
+        "gk_cutoff" :
+        {
+            "description" :  "Cutoff for |G+k| plane-waves in a.u.^-1" ,
+            "usage" :  "aw_cutoff (6.0)" ,
+            "default_value" :  6.0
+        },
+        "lmax_apw" :
+        {
+            "description" :  "Maximum l for APW functions.",
+            "usage" :  "lmax_apw (8)",
+            "default_value" :  8
+        },
+        "lmax_rho" :
+        {
+            "description" :  "Maximum l for density." ,
+            "usage" :  "lmax_rho (8)" ,
+            "default_value" :  8
+        },
+        "lmax_pot" :
+        {
+            "description" :  "Maximum l for potential." ,
+            "usage" :  "lmax_pot (8)" ,
+            "default_value" :  8
+        },
+        "num_mag_dims" :
+        {
+            "description" :  "Number of dimensions of the magnetization and effective magnetic field (0 , 1 or 3)." ,
+            "usage" : "num_mag_dims 0",
+            "default_value" :  0
+        },
+        "auto_rmt" :
+        {
+            "description" :  "Scale muffin-tin radii automatically." ,
+            "usage" :  "auto_rmt (1)" ,
+            "default_value" :  1
+        },
+        "k_grid" :
+        {
+            "description" :  "Regular k-point grid for the SCF ground state." ,
+            "usage" :  "k_grid (1, 1, 1)" ,
+            "default_value" :  [1, 1, 1]},
+        "k_shift" : {
+            "description" :  "Shift in the k-point grid." ,
+            "usage" :  "k_shift (0, 0, 0)",
+            "default_value" :  [0, 0, 0]
+        },
+        "num_dft_iter" :
+        {
+            "description" :  "Number of SCF iterations." ,
+            "usage" :  "num_dft_iter 100" ,
+            "default_value" :  100
+        },
+        "energy_tol" :
+        {
+            "description" :  "Tolerance in total energy change." ,
+            "usage" : "energy_tol 1e-5" ,
+            "default_value" :  0.00001
+        },
+        "potential_tol" :
+        {
+            "description" :  "Tolerance in potential RMS change." ,
+            "usage" :  "potential_tol 1e-5" ,
+            "default_value" :  0.00001
+        },
+        "molecule" : {
+            "description" :  "True if this is a molecule calculation." ,
+            "usage" :  "moecule (false)" ,
+            "default_value" :  false
+        },
+        "gamma_point" : {
+            "description" :  "gamma point calculations" ,
+            "usage" :  "gamma_point (false)" ,
+            "default_value" :  false
+        },
+        "spin_orbit" : {
+            "description" :  "include spin orbit coupling (imply full non colinear magnetism)" ,
+            "usage" :  "spin_orbit (false)" ,
+            "default_value" :  false
+        },
+        "use_symmetry" : {
+            "description" :  "use symmetries for reducing the brillouin zone and G vectors" ,
+            "usage" :  "use_symmetry (true)" ,
+            "default_value" :  true
+        },
+        "reduce_aux_bf" : {
+            "description" :  "Reduction of the auxiliary magnetic field at each SCF step." ,
+            "usage" :  "reduce_aux_bf (0.0)" ,
+            "default_value" :  0.0
+        },
+        "hubbard_correction" : {
+            "description" :  "set the parameters for hubbard correction.",
+            "usage" : "hubbard_correction (false, true)",
+            "default_value" : false
+        }
+    },
+    "hubbard" : {
+        "orthogonalize_hubbard_wave_functions" : {
+            "description" : "orthogonalize the hubbard wave functions",
+            "usage" : "orthogonalize_hubbard_wave_functions true or false",
+            "default_value": false
+        },
+        "normalize_hubbard_wave_functions" : {
+            "description" : "normalize the hubbard wave functions",
+            "usage" : "normalize_hubbard_wave_functions true, false",
+            "default_value" : false
+        },
+        "atom_type" : {
+            "description" : "for each of the atom type, set all hubbard constants. for instance O  , etc... the options are given as follow",
+            "usage" : "type ",
+            "possible_values" : ["none"],
+            "default_value" : "none"
+        },
+        "U" : {
+            "description" : "Hubbard constant U for the simplifed model",
+            "usage" : " U 1.2",
+            "default_value" : 0.0
+        },
+        "J" : {
+            "description" : "Hubbard constant J for the simplifed model",
+            "usage" : " J 1.2",
+            "default_value" : 0.0
+        },
+        "B" : {
+            "description" : "Hubbard constant B for the fully spherical model",
+            "usage" : "B 1.2",
+            "default_value" : 0.0
+        },
+        "E1" : {
+            "description" : "Hubbard constant E1 for the fully spherical model",
+            "usage" : " E1 1.2",
+            "default_value" : 0.0
+        },
+        "E2" : {
+            "description" : "Hubbard constant E1 for the fully spherical model",
+            "usage" : " E2 1.2",
+            "default_value" : 0.0
+        },
+        "E3" : {
+            "description" : "Hubbard constant E1 for the fully spherical model",
+            "usage" : " E3 1.2",
+            "default_value" : 0.0
+        },
+        "alpha" : {
+            "description" : "Hubbard constant alpha for the simplifed model",
+            "usage" : " alpha 0.0",
+            "default_value" : 0.0
+        },
+        "beta" : {
+            "description" : "Hubbard constant alpha for the simplifed model",
+            "usage" : " beta 0.0",
+            "default_value" : 0.0
+        },
+        "occupancy" : {
+            "description" : "set up the hubbard occupancy",
+            "usage" : "occupancy number",
+            "default_value" : 0
+        },
+        "n" : {
+            "description" : "atomic level of the hubbard orbital",
+            "usage" : "n integer",
+            "default_value" : 0
+        },
+        "l" : {
+            "description" : "angular momentum of the hubbard orbital",
+            "usage" : "l integer",
+            "default_value" : 0
+        }
+    },
+    "unit_cell" : {
+        "lattice_vectors" : {
+            "description" : "table containing the lattice vectors of the structure",
+            "usage" : " lattice_vectors [[a1_x, a1_y, a1_z], [a2_x, a2_y, a2_z], [a3_x, a3_y, a3_z]]",
+            "possible_values" : "[[1.0 0.0 0.0], [0.0 1.0 0.0], [1.0 0.0 0.0]]",
+            "default_value" : [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]]
+        },
+        "lattice_vectors_scale" : {
+            "description" : "scaling factor for the lattice vectors",
+            "usage" : "lattice_vectors_scale 1.0",
+            "possible_values" : "undefined",
+            "default_value" : 1.0
+        },
+        "atom_types" : {
+            "description" : "list of atom type",
+            "usage" : "atom_types [label_A, label_B, ...]",
+            "possible_values" : ["none"],
+            "default_value" : "none"
+        },
+        "atom_coordinate_units" : {
+            "description" : "units used to report the atoms coordinates (a.u. or A)",
+            "usage" : "atom_coordinate_units a.u or A",
+            "possible_values" : ["A", "a.u"],
+            "default_value" : ""
+        },
+        "atoms" : {
+            "description" : "atoms { label_A : [[x1,y1,z1],...], label_B : [[x1,y1,z1],...]}",
+            "usage" : ".....",
+            "possible_values" : "[[0, 0, 0]]",
+            "default_value" : [[0, 0, 0]]
+        }
+    }
+}
