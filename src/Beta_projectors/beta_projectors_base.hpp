@@ -28,7 +28,7 @@
 
 namespace sirius {
 
-#if defined(__GPU) && defined(__CUDA)
+#if defined(__GPU)
 extern "C" void create_beta_gk_gpu(int                   num_atoms,
                                    int                   num_gkvec,
                                    int const*            beta_desc,
@@ -322,7 +322,7 @@ class Beta_projectors_base
                 break;
             }
             case device_t::GPU: {
-#if defined(__GPU) && defined(__CUDA)
+#if defined(__GPU)
                 auto& desc = chunk(ichunk__).desc_;
                 create_beta_gk_gpu(chunk(ichunk__).num_atoms_,
                                    num_gkvec_loc(),
@@ -331,8 +331,6 @@ class Beta_projectors_base
                                    gkvec_coord_.at(memory_t::device),
                                    chunk(ichunk__).atom_pos_.at(memory_t::device),
                                    pw_coeffs_a().at(memory_t::device));
-#else
-                throw std::runtime_error("create_beta_gk_gpu() not implemented for non-CUDA devices!");
 #endif
                 /* wave-functions are on CPU but the beta-projectors are on GPU */
                 if (gkvec_.comm().rank() == 0 && is_host_memory(ctx_.preferred_memory_t())) {
