@@ -214,14 +214,14 @@ class Simulation_context : public Simulation_parameters
         }
 
         /* create FFT driver for dense mesh (density and potential) */
-        fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit()));
+        fft_ = std::unique_ptr<FFT3D>(new FFT3D(get_min_fft_grid(pw_cutoff(), rlv).grid_size(), comm_fft(), processing_unit()));
 
         /* create FFT driver for coarse mesh */
         fft_coarse_ = std::unique_ptr<FFT3D>(
-            new FFT3D(find_translations(2 * gk_cutoff(), rlv), comm_fft_coarse(), processing_unit()));
+            new FFT3D(get_min_fft_grid(2 * gk_cutoff(), rlv).grid_size(), comm_fft_coarse(), processing_unit()));
 
         /* create a list of G-vectors for corase FFT grid */
-        gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, gk_cutoff() * 2, comm(), control().reduce_gvec_));
+        gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
 
         gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
             new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
@@ -235,6 +235,29 @@ class Simulation_context : public Simulation_parameters
 
         /* prepare fine-grained FFT driver for the entire simulation */
         fft_->prepare(*gvec_partition_);
+
+        #pragma omp parallel for
+        for (int igloc = 0; igloc < gvec().count(); igloc++) {
+            int ig = gvec().offset() + igloc;
+
+            auto gv = gvec().gvec(ig);
+            /* check limits */
+            for (int x: {0, 1, 2}) {
+                auto limits = fft().limits(x);
+                /* check boundaries */
+                if (gv[x] < limits.first || gv[x] > limits.second) {
+                    std::stringstream s;
+                    s << "G-vector is outside of grid limits" << std::endl
+                      << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << std::endl
+                      << "limits: "
+                      << fft().limits(0).first << " " << fft().limits(0).second << " "
+                      << fft().limits(1).first << " " << fft().limits(1).second << " "
+                      << fft().limits(2).first << " " << fft().limits(2).second;
+
+                      TERMINATE(s);
+                }
+            }
+        }
     }
 
     /// Initialize communicators.
@@ -477,7 +500,8 @@ class Simulation_context : public Simulation_parameters
     {
         std::vector<std::string> names({"host", "host_pinned", "device"});
 
-        if (comm().rank() == 0 && control().verbosity_ >= 2) {
+        if ((!comm().is_finalized() && comm().rank() == 0)
+            && control().verbosity_ >= 2) {
             for (auto name: names) {
                 auto& mp = mem_pool(get_memory_t(name));
                 printf("memory_pool(%s): total size: %li MB, free size: %li MB\n", name.c_str(), mp.total_size() >> 20,
@@ -578,9 +602,8 @@ class Simulation_context : public Simulation_parameters
                 }
             }
         }
-#if defined(__GPU)
+
         if (processing_unit() == device_t::GPU) {
-            //acc::set_device();
             gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
             gvec_coord_.allocate(memory_t::device);
             for (int igloc = 0; igloc < gvec().count(); igloc++) {
@@ -592,7 +615,7 @@ class Simulation_context : public Simulation_parameters
             }
             gvec_coord_.copy_to(memory_t::device);
         }
-#endif
+
         if (full_potential()) {
             init_step_function();
         }

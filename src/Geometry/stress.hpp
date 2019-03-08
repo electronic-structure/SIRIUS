@@ -1074,6 +1074,10 @@ class Stress {
                 printf("== stress_hubbard ==\n");
                 print_stress(stress_hubbard);
             }
+
+            auto stress_total = stress_total_ * au2kbar;
+            printf("== stress_total ==\n");
+            print_stress(stress_total);
         }
     }
 };

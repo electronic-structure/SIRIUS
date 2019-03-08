@@ -28,7 +28,7 @@
 namespace sddk {
 
 /// Handling of FFT grids.
-class FFT3D_grid
+class FFT3D_grid // TODO: inherit from std::array<int, 3>
 {
   private:
     /// Size of each dimension.
@@ -88,6 +88,11 @@ class FFT3D_grid
     FFT3D_grid(std::array<int, 3> initial_dims__)
     {
         find_grid_size(initial_dims__);
+    }
+
+    std::array<int, 3> grid_size() const
+    {
+        return grid_size_;
     }
 
     /// Limits of a given dimension.

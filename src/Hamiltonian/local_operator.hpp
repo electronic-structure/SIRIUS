@@ -100,7 +100,7 @@ class Local_operator
             theta_ = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
         }
 
-        if (fft_coarse_.pu() == GPU) {
+        if (fft_coarse_.pu() == device_t::GPU) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
             }
@@ -332,10 +332,6 @@ class Local_operator
 
         /* small buffers in the host memory */
         auto buff = mp.get_unique_ptr<double_complex>(4 * ngv_fft);
-        /* small buffers in the device memory */
-#ifdef __GPU
-        auto buff_d = mpd.get_unique_ptr<double_complex>(4 * ngv_fft);
-#endif
         memory_t mem_phi{memory_t::none};
         memory_t mem_hphi{memory_t::none};
 
@@ -423,6 +419,9 @@ class Local_operator
                     case device_t::GPU: { /* FFT is done on GPU */
                         if (is_host_memory(mem_phi)) {
 #ifdef __GPU
+                            /* small buffers in the device memory */
+                            auto buff_d = mpd.get_unique_ptr<double_complex>(4 * ngv_fft);
+
                             phi1[ispn] = mdarray<double_complex, 2>(nullptr, buff_d.get() + o, ngv_fft, p);
                             o += ngv_fft * p;
                             /* copy wave-functions to device */
@@ -435,6 +434,8 @@ class Local_operator
                         }
                         if (is_host_memory(mem_hphi)) {
 #ifdef __GPU
+                            /* small buffers in the device memory */
+                            auto buff_d = mpd.get_unique_ptr<double_complex>(4 * ngv_fft);
                             hphi1[ispn] = mdarray<double_complex, 2>(nullptr, buff_d.get() + o, ngv_fft, p);
                             o += ngv_fft * p;
 #endif

@@ -54,18 +54,19 @@ if(NOT USE_MKL_SHARED_LIBS)
   set(BLACS_LIB "libmkl_blacs_intelmpi_lp64.a")
 else()
   message("MKL using shared libs!")
-  set(INT_LIB "mkl_intel_lp64")
-  set(SEQ_LIB "mkl_sequential")
+  set(INT_LIB "libmkl_intel_lp64.so")
+  set(SEQ_LIB "libmkl_sequential.so")
   if(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-    set(THR_LIB "mkl_intel_thread")
+    set(THR_LIB "libmkl_intel_thread.so")
   elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    set(THR_LIB "mkl_gnu_thread")
+    set(THR_LIB "libmkl_gnu_thread.so")
   else()
     message(FATAL_ERROR "FindMKL: Unknown compiler")
   endif()
-  set(COR_LIB "mkl_core")
-  set(SCA_LIB "mkl_scalapack_lp64")
-  set(BLACS_LIB "mkl_blacs_intelmpi_lp64")
+  set(COR_LIB "libmkl_core.so")
+  set(SCA_LIB "libmkl_scalapack_lp64.so")
+  set(BLACS_LIB "libmkl_blacs_intelmpi_lp64.so")
+  set(DEF_LIB "libmkl_def.so")
 endif()
 
 find_path(MKL_INCLUDE_DIR NAMES mkl.h HINTS $ENV{MKLROOT}/include)
@@ -112,7 +113,12 @@ find_library(MKL_BLACS_LIBRARY
   $ENV{INTEL}/mkl/lib/intel64
   NO_DEFAULT_PATH)
 
-
+find_library(MKL_DEF_LIBRARY
+  NAMES ${DEF_LIB}
+  PATHS $ENV{MKLROOT}/lib
+  $ENV{MKLROOT}/lib/intel64
+  $ENV{INTEL}/mkl/lib/intel64
+  NO_DEFAULT_PATH)
 
 set(MKL_INCLUDE_DIRS ${MKL_INCLUDE_DIR})
 # TODO: decide when to use MKL_SEQUENTIAL_LAYER_LIBRARY / MKL_THREAD_LIBRARY
@@ -131,7 +137,7 @@ if (MKL_INCLUDE_DIR AND
     set(ABI "-m64")
   endif()
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ABI}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  ${ABI}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ABI}")
 else()
   set(MKL_INCLUDE_DIRS "")
   set(MKL_LIBRARIES "")
@@ -142,6 +148,6 @@ endif()
 
 # Handle the QUIETLY and REQUIRED arguments and set MKL_FOUND to TRUE if
 # all listed variables are TRUE.
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(MKL DEFAULT_MSG MKL_LIBRARIES MKL_SCALAPACK_LIBRARY MKL_INCLUDE_DIRS MKL_INTERFACE_LIBRARY MKL_SEQUENTIAL_LAYER_LIBRARY MKL_CORE_LIBRARY)
-
-MARK_AS_ADVANCED(MKL_INCLUDE_DIRS MKL_LIBRARIES MKL_SCALAPACK_LIBRARY MKL_INTERFACE_LIBRARY MKL_SEQUENTIAL_LAYER_LIBRARY MKL_CORE_LIBRARY)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(MKL DEFAULT_MSG
+  MKL_LIBRARIES MKL_SCALAPACK_LIBRARY MKL_INCLUDE_DIRS MKL_INTERFACE_LIBRARY MKL_SEQUENTIAL_LAYER_LIBRARY MKL_CORE_LIBRARY MKL_DEF_LIBRARY)
+MARK_AS_ADVANCED(MKL_INCLUDE_DIRS MKL_LIBRARIES MKL_SCALAPACK_LIBRARY MKL_INTERFACE_LIBRARY MKL_SEQUENTIAL_LAYER_LIBRARY MKL_CORE_LIBRARY MKL_DEF_LIBRARY)
