@@ -173,10 +173,10 @@ __global__ void gemvc_kernel(rocblas_int m, rocblas_int n, U alpha_device_host, 
     rocblas_int m_full = (m / NB_X) * NB_X;
 
     for (rocblas_int i = 0; i < m_full; i += NB_X)
-        res += rb_port_conj_op<OP, T>::eval(A[i]) * x[(tx + i) * incx];
+        res += ConjOp<OP, T>::eval(A[i]) * x[(tx + i) * incx];
 
     if (tx + m_full < m)
-        res += rb_port_conj_op<OP, T>::eval(A[m_full]) * x[(tx + m_full) * incx];
+        res += ConjOp<OP, T>::eval(A[m_full]) * x[(tx + m_full) * incx];
 
     sdata[tx] = res;
 
@@ -198,55 +198,6 @@ __global__ void gemvc_kernel(rocblas_int m, rocblas_int n, U alpha_device_host, 
         y[col * incy] = alpha * sdata[0] + beta * y[col * incy];
 }
 
-template <typename>
-constexpr char rocblas_gemv_name[] = "unknown";
-template <>
-constexpr char rocblas_gemv_name<float>[] = "rocblas_sgemv";
-template <>
-constexpr char rocblas_gemv_name<double>[] = "rocblas_dgemv";
-
-/*! \brief BLAS Level 2 API
-
-    \details
-    xGEMV performs one of the matrix-vector operations
-
-        y := alpha*A*x    + beta*y,   or
-        y := alpha*A**T*x + beta*y,   or
-        y := alpha*A**H*x + beta*y,
-
-    where alpha and beta are scalars, x and y are vectors and A is an
-    m by n matrix.
-
-    @param[in]
-    handle    rocblas_handle.
-              handle to the rocblas library context queue.
-    @param[in]
-    trans     rocblas_operation
-    @param[in]
-    m         rocblas_int
-    @param[in]
-    n         rocblas_int
-    @param[in]
-    alpha
-              specifies the scalar alpha.
-    @param[in]
-    A         pointer storing matrix A on the GPU.
-    @param[in]
-    lda       rocblas_int
-              specifies the leading dimension of A.
-    @param[in]
-    x         pointer storing vector x on the GPU.
-    @param[in]
-    incx      specifies the increment for the elements of x.
-    @param[in]
-    beta      specifies the scalar beta.
-    @param[out]
-    y         pointer storing vector y on the GPU.
-    @param[in]
-    incy      rocblas_int
-              specifies the increment for the elements of y.
-
-    ********************************************************************/
 
 template <typename T>
 rocblas_status rocblas_gemv(rocblas_handle handle, rocblas_operation transA, rocblas_int m, rocblas_int n,

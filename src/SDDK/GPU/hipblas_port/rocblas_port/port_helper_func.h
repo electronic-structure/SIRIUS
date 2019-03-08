@@ -22,19 +22,19 @@ __host__ __device__ inline bool rb_port_cmp_and_real_only(const hipFloatComplex&
  * Conjugate helper functions
  */
 template<rocblas_operation OP, typename T>
-struct rb_port_conj_op {
+struct ConjOp {
     __host__ __device__ static inline T eval(const T& val) { return val; }
 };
 
 template<>
-struct rb_port_conj_op<rocblas_operation_conjugate_transpose, hipDoubleComplex> {
+struct ConjOp<rocblas_operation_conjugate_transpose, hipDoubleComplex> {
     __host__ __device__ static inline hipDoubleComplex eval(const hipDoubleComplex& val) {
         return hipDoubleComplex(val.x, -val.y);
     }
 };
 
 template<>
-struct rb_port_conj_op<rocblas_operation_conjugate_transpose, hipFloatComplex> {
+struct ConjOp<rocblas_operation_conjugate_transpose, hipFloatComplex> {
     __host__ __device__ static inline hipFloatComplex eval(const hipFloatComplex& val) {
         return hipFloatComplex(val.x, -val.y);
     }
