@@ -16,7 +16,7 @@
         },
         "subspace_size" : {
             "description" : "Size of the variational subspace is this number times the number of bands.",
-            "usage" : "subspace_size (4)",
+            "usage" : "subspace_size (3)",
             "default_value" : 4
         },
         "linear_mix_rms_tol" : {
@@ -53,7 +53,7 @@
             "default_value" :  10
         },
         "subspace_size" : {
-            "description" :  "Size of the variational subspace is this number times the number of bands." ,
+            "description" :  "Size of the variational subspace : this number times the number of bands." ,
             "usage" :  "subspace_size (4)" ,
             "default_value" :  4
         },
@@ -98,7 +98,7 @@
             "default_value" :  "lcao"
         },
         "converge_by_energy" : {
-            "description" : "0 : then the residuals are estimated by their norm, 1 : residuals are estimated by the eigen-energy difference",
+            "description" : "0 : then the residuals are estimated by their norm, 0 : residuals are estimated by the eigen-energy difference",
             "usage" : "converge_by_energy 0 or 1",
             "default_value" : 0
         }
@@ -186,12 +186,12 @@
         },
         "xc_functionals" :
         {
-            "description" :  "List of XC functionals (typically contains exchange term and correlation term. We will retrieve this info from the host code if possible" ,
-            "usage" :  "xc_functionals func1 func2 funct3 ",
+            "description" :  "List of XC functionals (see libxc documentation for a list of functional) We will retrieve this info from the host code if possible" ,
+	    "usage" :  "xc_functionals func1 func2 funct3",
             "default_value" : "none"
         },
         "vdw_functionals" : {
-            "description" : "Van der functionals are included in the calculations. Note that they can be used with some subsets of xc_functionals.",
+            "description" : "Van der functionals (see libvdwxc documentation). Note that they can be used with some subsets of xc_functionals.",
             "usage" : "vdw_functionals name",
             "possible_values" : ["XC_FUNC_VDWDF", "Xc_FUNC_VDWDF2", "XC_FUNC_VDWDFCX", "none"],
             "default_value" : "none"
