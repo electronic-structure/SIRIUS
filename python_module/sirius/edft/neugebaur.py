@@ -536,8 +536,8 @@ class CG:
         LL = _solve(XhKX, XhKHXF)
 
         g_X = (HX*fn - X@LL)
-        delta_X = -K @ (HX - X @ LL)
-        delta_eta = kappa * (Hij - kw*diag(ek))
+        delta_X = -K @ (HX - X @ LL) / kw
+        delta_eta = kappa * (Hij - kw*diag(ek)) / kw
 
         # start CG
         if prec_direction:
@@ -612,10 +612,10 @@ class CG:
             gp_X = g_X
             g_X = (HX*fn - X@LL)
             # check that constraints are fulfilled
-            delta_X = -K * (HX - X @ LL)
+            delta_X = -K * (HX - X @ LL) / kw
             assert l2norm(X.H @ delta_X) < 1e-11
             if not use_g_eta:
-                delta_eta = kappa * (Hij - kw*diag(ek))
+                delta_eta = kappa * (Hij - kw*diag(ek)) / kw
             else:
                 delta_eta = -kappa * g_eta
 
