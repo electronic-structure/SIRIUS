@@ -2472,11 +2472,11 @@ void sirius_option_get_name_and_type(char *section, int *elem_, char *key_name, 
     }
 }
 
-/* @fortran begin function void sirius_option_get_description_usage                    return the description and usage of a given option
-   @fortran argument in  required string  section                                      name of the section
-   @fortran argument in  required string  name                                         name of the option
-   @fortran argument out required string  desc_                                        description of the option
-   @fortran argument out required string  usage_                                       how to use the option
+/* @fortran begin function void sirius_option_get_description_usage          return the description and usage of a given option
+   @fortran argument in  required string  section                            name of the section
+   @fortran argument in  required string  name                               name of the option
+   @fortran argument out required string  desc_                              description of the option
+   @fortran argument out required string  usage_                             how to use the option
    @fortran end */
 
 void sirius_option_get_description_usage(char * section, char * name, char *desc_, char *usage_)
@@ -2498,11 +2498,11 @@ void sirius_option_get_description_usage(char * section, char * name, char *desc
     }
 }
 
-/* @fortran begin function void sirius_option_get_int                            return the default value of the option
-   @fortran argument in  required string  section                                name of the section of interest
-   @fortran argument in  required string  name                                   name of the element
-   @fortran argument out required int     default_value                          table containing the default values (if vector)
-   @fortran argument out required int     length                                 length of the table containing the default values
+/* @fortran begin function void sirius_option_get_int                        return the default value of the option
+   @fortran argument in  required string  section                            name of the section of interest
+   @fortran argument in  required string  name                               name of the element
+   @fortran argument out required int     default_value                      table containing the default values (if vector)
+   @fortran argument out required int     length                             length of the table containing the default values
    @fortran end */
 
 void sirius_option_get_int(char * section, char * name, int *default_value, int *length)
@@ -2524,11 +2524,11 @@ void sirius_option_get_int(char * section, char * name, int *default_value, int 
     }
 }
 
-/* @fortran begin function void sirius_option_get_double                         return the default value of the option
-   @fortran argument in  required string  section                                name of the section of interest
-   @fortran argument in  required string  name                                   name of the element
-   @fortran argument out required double default_value                           table containing the default values (if vector)
-   @fortran argument out required int    length                                  length of the table containing the default values
+/* @fortran begin function void sirius_option_get_double                     return the default value of the option
+   @fortran argument in  required string  section                            name of the section of interest
+   @fortran argument in  required string  name                               name of the element
+   @fortran argument out required double default_value                       table containing the default values (if vector)
+   @fortran argument out required int    length                              length of the table containing the default values
    @fortran end */
 
 void sirius_option_get_double(char * section, char * name, double *default_value, int *length)
@@ -2551,11 +2551,11 @@ void sirius_option_get_double(char * section, char * name, double *default_value
     }
 }
 
-/* @fortran begin function void sirius_option_get_logical                       return the default value of the option
-   @fortran argument in  required string  section                               name of the section
-   @fortran argument in  required string  name                                  name of the element
-   @fortran argument out required bool   default_value                          table containing the default values
-   @fortran argument out required int    length                                 length of the table containing the default values
+/* @fortran begin function void sirius_option_get_logical                    return the default value of the option
+   @fortran argument in  required string  section                            name of the section
+   @fortran argument in  required string  name                               name of the element
+   @fortran argument out required bool   default_value                       table containing the default values
+   @fortran argument out required int    length                              length of the table containing the default values
    @fortran end */
 
 void sirius_option_get_logical(char * section, char * name, bool *default_value, int *length)
@@ -2589,8 +2589,8 @@ void sirius_option_get_string(char* section, char * name, char *default_value)
 
     // ugly as hell but fortran is a piece of ....
     for ( char *p = section; *p; p++) *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
-    //for ( char *p = name; *p; p++) *p = tolower(*p);
+    for ( char *p = name; *p; p++) *p = tolower(*p);
+
     if (!parser[section][name].count("default_value"))
         std::cout << "default value is mossing" << std::endl;
     std::string value = parser[section][name].value("default_value", "");
@@ -2609,8 +2609,7 @@ void sirius_option_get_number_of_possible_values(char* section, char * name, int
 
     // ugly as hell but fortran is a piece of ....
     for ( char *p = section; *p; p++) *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
-    //for ( char *p = name; *p; p++) *p = tolower(*p);
+    for ( char *p = name; *p; p++) *p = tolower(*p);
 
     if (parser[section][name].count("possible_values")) {
         auto tmp =  parser[section][name]["possible_values"].get<std::vector<std::string>>();
@@ -2620,11 +2619,11 @@ void sirius_option_get_number_of_possible_values(char* section, char * name, int
     *num_ = -1;
 }
 
-/* @fortran begin function void sirius_option_string_get_value              return the possible values for a string parameter
-   @fortran argument in  required string  section                           name of the section
-   @fortran argument in  required string  name                              name of the option
-   @fortran argument in  required int    elem_                              index of the value
-   @fortran argument out required string  value_n                           string containing the value
+/* @fortran begin function void sirius_option_string_get_value               return the possible values for a string parameter
+   @fortran argument in  required string  section                            name of the section
+   @fortran argument in  required string  name                               name of the option
+   @fortran argument in  required int    elem_                               index of the value
+   @fortran argument out required string  value_n                            string containing the value
    @fortran end */
 
 void sirius_option_string_get_value(char* section, char * name, int *elem_, char *value_n)
@@ -2633,8 +2632,8 @@ void sirius_option_string_get_value(char* section, char * name, int *elem_, char
 
     // ugly as hell but fortran is a piece of ....
     for ( char *p = section; *p; p++) *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
-    // for ( char *p = name; *p; p++) *p = tolower(*p);
+    for ( char *p = name; *p; p++) *p = tolower(*p);
+
     // for string I do not consider a table of several strings to be returned. I
     // need to specialize however the possible values that the string can have
     if (parser[section][name].count("possible_values")) {
@@ -2646,9 +2645,9 @@ void sirius_option_string_get_value(char* section, char * name, int *elem_, char
     }
 }
 
-/* @fortran begin function void sirius_option_get_section_name              return the name of a given section
-   @fortran argument in  required int     elem_                             index of the section
-   @fortran argument out  required string  section_name                     name of the section
+/* @fortran begin function void sirius_option_get_section_name               return the name of a given section
+   @fortran argument in  required int     elem_                              index of the section
+   @fortran argument out  required string  section_name                      name of the section
    @fortran end */
 
 void sirius_option_get_section_name(int *elem, char *section_name)
@@ -2666,8 +2665,8 @@ void sirius_option_get_section_name(int *elem, char *section_name)
     }
 }
 
-/* @fortran begin function void sirius_option_get_number_of_sections        return the number of sections
-   @fortran argument out  required int     length                           number of sections
+/* @fortran begin function void sirius_option_get_number_of_sections         return the number of sections
+   @fortran argument out  required int     length                            number of sections
    @fortran end */
 
 void sirius_option_get_number_of_sections(int *length)
@@ -2678,11 +2677,11 @@ void sirius_option_get_number_of_sections(int *length)
 
 
 /* @fortran begin function void sirius_option_set_int                        set the value of the option name in a  (internal) json dictionary
-   @fortran argument in  required void*  handler                                      Simulation context handler.
-   @fortran argument in  required string  section                                      string containing the options in json format
-   @fortran argument in  required string  name                                         name of the element to pick
-   @fortran argument in required int    default_values                               table containing the values
-   @fortran argument in required int    length                                  length of the table containing the values
+   @fortran argument in  required void*  handler                             Simulation context handler.
+   @fortran argument in  required string  section                            string containing the options in json format
+   @fortran argument in  required string  name                               name of the element to pick
+   @fortran argument in required int    default_values                       table containing the values
+   @fortran argument in required int    length                               length of the table containing the values
    @fortran end */
 
 void sirius_option_set_int(void* const* handler__, char*section, char *name, int *default_values, int *length)
@@ -2694,11 +2693,9 @@ void sirius_option_set_int(void* const* handler__, char*section, char *name, int
     // dictionary containing the values of the options for the simulations
     json &conf_dict = sim_ctx.get_runtime_options_dictionary();
 
-    // ugly as hell but fortran is a piece of ....
+    // lower case for section and options
     for ( char *p = section; *p; p++) *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
     for ( char *p = name; *p; p++) *p = tolower(*p);
-    std::cout << section << " " << name << std::endl;
 
     if (parser[section].count(name)) {
         // check that the option exists
@@ -2715,11 +2712,11 @@ void sirius_option_set_int(void* const* handler__, char*section, char *name, int
 }
 
 /* @fortran begin function void sirius_option_set_double                     set the value of the option name in a (internal) json dictionary
-   @fortran argument in  required void*  handler                                      Simulation context handler.
-   @fortran argument in  required string  section                                      name of the section
-   @fortran argument in  required string  name                                         name of the element to pick
-   @fortran argument in required double default_values                               table containing the values
-   @fortran argument in required int    length                                  length of the table containing the values
+   @fortran argument in  required void*  handler                             Simulation context handler.
+   @fortran argument in  required string  section                            name of the section
+   @fortran argument in  required string  name                               name of the element to pick
+   @fortran argument in required double default_values                       table containing the values
+   @fortran argument in required int    length                               length of the table containing the values
    @fortran end */
 
 void sirius_option_set_double(void* const* handler__, char*section, char *name, double *default_values, int *length)
@@ -2731,7 +2728,6 @@ void sirius_option_set_double(void* const* handler__, char*section, char *name, 
     for ( char *p = section; *p; p++) *p = tolower(*p);
     // ugly as hell but fortran is a piece of ....
     for ( char *p = name; *p; p++) *p = tolower(*p);
-    std::cout << section << " " << name << std::endl;
 
     if (parser[section].count(name)) {
         // check that the option exists
@@ -2748,11 +2744,11 @@ void sirius_option_set_double(void* const* handler__, char*section, char *name, 
 }
 
 /* @fortran begin function void sirius_option_set_logical                    set the value of the option name in a  (internal) json dictionary
-   @fortran argument in  required void*  handler                                      Simulation context handler.
-   @fortran argument in  required string  section                                      name of the section
-   @fortran argument in  required string  name                                         name of the element to pick
-   @fortran argument in required int   default_values                               table containing the values
-   @fortran argument in required int    length                                  length of the table containing the values
+   @fortran argument in  required void*  handler                             Simulation context handler.
+   @fortran argument in  required string  section                            name of the section
+   @fortran argument in  required string  name                               name of the element to pick
+   @fortran argument in required int   default_values                        table containing the values
+   @fortran argument in required int    length                               length of the table containing the values
    @fortran end */
 
 void sirius_option_set_logical(void* const* handler__, char*section, char *name, int *default_values, int *length)
@@ -2781,11 +2777,11 @@ void sirius_option_set_logical(void* const* handler__, char*section, char *name,
     }
 }
 
-/* @fortran begin function void sirius_option_set_string                    set the value of the option name in a  (internal) json dictionary
-   @fortran argument in  required void*  handler                                      Simulation context handler.
-   @fortran argument in  required string  section                                      name of the section
-   @fortran argument in  required string  name                                         name of the element to pick
-   @fortran argument in required string   default_values                               table containing the values
+/* @fortran begin function void sirius_option_set_string                     set the value of the option name in a  (internal) json dictionary
+   @fortran argument in  required void*  handler                             Simulation context handler.
+   @fortran argument in  required string  section                            name of the section
+   @fortran argument in  required string  name                               name of the element to pick
+   @fortran argument in required string   default_values                     table containing the values
    @fortran end */
 
 void sirius_option_set_string(void* const* handler__, char * section, char * name, char *default_values)
@@ -2810,11 +2806,11 @@ void sirius_option_set_string(void* const* handler__, char * section, char * nam
     }
 }
 
-/* @fortran begin function void sirius_option_add_string_to                           add a string value to the option in the json dictionary
-   @fortran argument in  required void*  handler                                      Simulation context handler.
-   @fortran argument in  required string  section                                     name of the section
-   @fortran argument in  required string  name                                        name of the element to pick
-   @fortran argument in required string   default_values                              string to be added
+/* @fortran begin function void sirius_option_add_string_to                  add a string value to the option in the json dictionary
+   @fortran argument in  required void*  handler                             Simulation context handler.
+   @fortran argument in  required string  section                            name of the section
+   @fortran argument in  required string  name                               name of the element to pick
+   @fortran argument in required string   default_values                     string to be added
    @fortran end */
 
 void sirius_option_add_string_to(void* const* handler__, char * section, char * name, char *default_values)
@@ -2846,7 +2842,7 @@ void sirius_option_add_string_to(void* const* handler__, char * section, char * 
 }
 
 /* @fortran begin function void sirius_dump_runtime_setup                    dump the runtime setup in a file
-   @fortran argument in  required void*  handler                                      Simulation context handler.
+   @fortran argument in  required void*  handler                             Simulation context handler.
    @fortran argument in  required string filename                            string containing the name of the file
    @fortran end */
 
