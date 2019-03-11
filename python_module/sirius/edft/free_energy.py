@@ -40,6 +40,11 @@ class FreeEnergy:
         self.kb = (physical_constants['Boltzmann constant in eV/K'][0] /
                    physical_constants['Hartree energy in eV'][0])
 
+    def entropy(self, fn):
+        ns = 2 if self.energy.kpointset.ctx().num_mag_dims() == 0 else 1
+        S = s(np.sqrt(fn/ns))
+        return self.kb * self.T * np.real(np.sum(self.kw*S))
+
     def __call__(self, X, fn):
         """
         Keyword Arguments:
