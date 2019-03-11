@@ -392,6 +392,24 @@ class CGFailed(Exception):
     pass
 
 
+def fletcher_reeves(**kwargs):
+    g_X = kwargs['g_X']
+    gp_X = kwargs['gp_X']
+    g_eta = kwargs['g_eta']
+    gp_eta = kwargs['gp_eta']
+    gamma_eta = np.real(inner(g_eta, g_eta-gp_eta))
+    gamma_X = np.real(inner(g_X, g_X-gp_X))
+    gamma = max(0,
+                (gamma_X + gamma_eta)
+                /
+                (l2norm(gp_X)**2 + l2norm(gp_eta)**2))
+    return gamma
+
+
+def steepest_descent(**kwargs):
+    return 0
+
+
 class CG:
     def __init__(self, free_energy):
         """
@@ -499,7 +517,16 @@ class CG:
             raise ValueError('GSS didn\'t find a better value')
         return X, fn, ek, F, Ul
 
-    def run(self, X, fn, maxiter=100, restart=20, tol=1e-10, prec=False, kappa=0.3, eps=0.001, use_g_eta=False):
+    def run(self, X, fn, maxiter=100, restart=20, tol=1e-10,
+            prec=False, kappa=0.3, eps=0.001, use_g_eta=False,
+            type='FR'):
+
+        if type == 'FR':
+            cg_update = fletcher_reeves
+        elif type == 'SD':
+            cg_update = steepest_descent
+        else:
+            raise ValueError('wrong type')
 
         prec_direction = True
 
@@ -624,12 +651,7 @@ class CG:
             #          np.real(inner(-2*GP_X, deltaP_X) + inner(-GP_eta, deltaP_eta)))
 
             if not ii % restart == 0 and not cg_restart_inprogress:
-                gamma_eta = np.real(inner(g_eta, g_eta-gp_eta))
-                gamma_X = np.real(inner(g_X, g_X-gp_X))
-                gamma = max(0,
-                            (gamma_X + gamma_eta)
-                            /
-                            (l2norm(gp_X)**2 + l2norm(gp_eta)**2))
+                gamma = cg_update(g_X=g_X, gp_X=gp_X, g_eta=g_eta, gp_eta=gp_eta)
             else:
                 logger('restart CG')
                 gamma = 0
