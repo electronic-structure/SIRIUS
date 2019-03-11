@@ -30,7 +30,21 @@
 
 namespace sirius {
 
-/// Set of basic parameters of a simulation.
+    /// json dictionary containing the options given by the interface
+#include "runtime_options_json.hpp"
+
+    /// get all possible options for initializing sirius. It is a json dictionary
+    inline  const json &get_options_dictionary()
+    {
+        if (all_options_dictionary_.size() == 0)
+        {
+            TERMINATE("Dictionary not initialized\n");
+        }
+        return all_options_dictionary_;
+    }
+
+
+    /// Set of basic parameters of a simulation.
 class Simulation_parameters
 {
   protected:
@@ -67,7 +81,10 @@ class Simulation_parameters
     /// LDA+U input parameters.
     Hubbard_input hubbard_input_;
 
-  public:
+    /// json dictionary containing all runtime options set up through the interface
+    json runtime_options_dictionary_;
+
+public:
     /// Import parameters from a file or a serialized json string.
     void import(std::string const& str__)
     {
@@ -94,6 +111,31 @@ class Simulation_parameters
         /* read hubbard parameters */
         hubbard_input_.read(dict);
     }
+
+    /// Import parameters from a json dictionary.
+    void import(json const &dict)
+        {
+            PROFILE("sirius::Simulation_parameters::import");
+
+            if (dict.size() == 0) {
+                return;
+            }
+            /* read unit cell */
+            unit_cell_input_.read(dict);
+            /* read parameters of mixer */
+            mixer_input_.read(dict);
+            /* read parameters of iterative solver */
+            iterative_solver_input_.read(dict);
+            /* read controls */
+            control_input_.read(dict);
+            /* read parameters */
+            parameters_input_.read(dict);
+            /* read settings */
+            settings_input_.read(dict);
+            /* read hubbard parameters */
+            hubbard_input_.read(dict);
+        }
+
 
     /// Import from command line arguments.
     void import(cmd_args const& args__)
@@ -588,6 +630,48 @@ class Simulation_parameters
     {
         return hubbard_input_;
     }
+
+    /// get the options set at runtime
+    json &get_runtime_options_dictionary()
+        {
+            return runtime_options_dictionary_;
+        }
+
+    /// print all options in the terminal
+    void print_options()
+        {
+            const json &dict = get_options_dictionary();
+            int rank;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            if (rank != 0)
+                MPI_Barrier(MPI_COMM_WORLD);
+
+            std::cout << "the sirius library or the mini apps can be initialized through the interface" << std::endl;
+            std::cout << "using the api directly or through a json dictionary. The following contains " << std::endl;
+            std::cout << "a description of all the runtime options, that can be used directly to      " << std::endl;
+            std::cout << "initialize sirius.                                                          " << std::endl;
+
+            for (auto& el : dict.items()) {
+                std::cout << "============================================================================\n";
+                std::cout << "                                                                              ";
+                std::cout << "                      section : " << el.key() << "                             \n";
+                std::cout << "                                                                            \n";
+                std::cout << "============================================================================\n";
+
+                for (int s = 0; s < dict[el.key()].size(); s++) {
+                    std::cout << "name of the option : " << dict[el.key()][s]["name"].get<std::string>() << std::endl;
+                    std::cout << "description : " << dict[el.key()][s]["description"].get<std::string>() << std::endl;
+                    if (dict[el.key()][s].count("possible_values")) {
+                        const auto &v = dict[el.key()][s]["description"].get<std::vector<std::string>>();
+                        std::cout << "possible values : " << v[0];
+                        for (int st = 1; st < v.size(); st++)
+                            std::cout << " " << v[st];
+                    }
+                    std::cout << "default value : " << dict[el.key()]["default_values"].get<std::string>() << std::endl;
+                }
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+        }
 };
 
 }; // namespace sirius

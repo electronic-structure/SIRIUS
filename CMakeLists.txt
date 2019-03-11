@@ -165,6 +165,7 @@ add_custom_command(
   OUTPUT _always_rebuild
   COMMAND true
   )
+
 add_custom_command(
   OUTPUT version.hpp-test
   DEPENDS _always_rebuild
@@ -180,6 +181,37 @@ add_custom_command(
 
 add_custom_target(generate_version_hpp DEPENDS ${version_hpp_path})
 
+set(runtime_options_json_path src/runtime_options_json.hpp)
+add_custom_command(
+  OUTPUT ${runtime_options_json_path}
+  DEPENDS _always_rebuild
+  COMMAND ${CMAKE_SOURCE_DIR}/generate_options_header_file.sh $(CMAKE_SOURCE_DIR)/src/options.json > ${runtime_options_json_path}
+  COMMAND cp ${runtime_options_json_path} ${CMAKE_SOURCE_DIR}/src/runtime_options_json.hpp
+  )
+
+add_custom_target(runtime_options_json_hpp DEPENDS ${runtime_options_json_path})
+
+## configure version header
+#exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR}
+#  ARGS "rev-parse HEAD"
+#  OUTPUT_VARIABLE GIT_VERSION_SHA1
+#  RETURN_VALUE exit_code)
+#if(exit_code)
+#  set(GIT_VERSION_SHA1 "")
+#endif()
+#exec_program("date"
+#  ARGS "+\"%a, %e %b %Y %H:%M:%S\""
+#  OUTPUT_VARIABLE BUILD_DATE)
+#exec_program(
+#  "git"
+#  ${CMAKE_CURRENT_SOURCE_DIR}
+#  ARGS "describe --all"
+#  OUTPUT_VARIABLE GIT_BRANCHNAME
+#  RETURN_VALUE exit_code)
+#if(exit_code)
+#  set(GIT_BRANCHNAME "")
+#endif()
+#configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" "${PROJECT_BINARY_DIR}/src/version.hpp")
 include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
@@ -188,6 +220,8 @@ MACRO(SIRIUS_SETUP_TARGET _target)
   endif()
 
   add_dependencies(${_target} generate_version_hpp)
+  add_dependencies(${_target} runtime_options_json_hpp)
+
   if(USE_MKL)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
       target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-Wl,--no-as-needed;${MKL_LIBRARIES}")
