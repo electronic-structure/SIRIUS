@@ -28,9 +28,11 @@
 #include <unistd.h>
 #include <hip/hip_runtime_api.h>
 #include <hip/hip_complex.h>
+#include <vector>
 #include <hipblas.h>
 #include "acc.hpp"
 #include "hipblas_port.h"
+// #include "blas_lapack.h"
 
 namespace hipblas {
 
@@ -136,34 +138,33 @@ inline hipblasDiagType_t get_hipblasDiagType_t(char c)
 }
 
 #ifdef NDEBUG
-#define CALL_HIPBLAS(func__, args__)                                                 \
-{                                                                                   \
-    hipblasStatus_t status;                                                          \
-    if ((status = func__ args__) != HIPBLAS_STATUS_SUCCESS) {                        \
-        error_message(status);                                                      \
-        char nm[1024];                                                              \
-        gethostname(nm, 1024);                                                      \
-        printf("hostname: %s\n", nm);                                               \
-        printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
-        stack_backtrace();                                                          \
-    }                                                                               \
-}
+#define CALL_HIPBLAS(func__, args__)                                                                                   \
+    {                                                                                                                  \
+        hipblasStatus_t status;                                                                                        \
+        if ((status = func__ args__) != HIPBLAS_STATUS_SUCCESS) {                                                      \
+            error_message(status);                                                                                     \
+            char nm[1024];                                                                                             \
+            gethostname(nm, 1024);                                                                                     \
+            printf("hostname: %s\n", nm);                                                                              \
+            printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__);                                \
+            stack_backtrace();                                                                                         \
+        }                                                                                                              \
+        hipDeviceSynchronize();                                                                                        \
+    }
 #else
-#define CALL_HIPBLAS(func__, args__)                                                 \
-{                                                                                   \
-    hipblasStatus_t status;                                                          \
-    func__ args__;                                                                  \
-    hipDeviceSynchronize();                                                        \
-    status = hipblasGetError();                                                      \
-    if (status != HIPBLAS_STATUS_SUCCESS) {                                          \
-        error_message(status);                                                      \
-        char nm[1024];                                                              \
-        gethostname(nm, 1024);                                                      \
-        printf("hostname: %s\n", nm);                                               \
-        printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
-        stack_backtrace();                                                          \
-    }                                                                               \
-}
+#define CALL_HIPBLAS(func__, args__)                                                                                   \
+    {                                                                                                                  \
+        hipblasStatus_t status;                                                                                        \
+        if ((status = func__ args__) != HIPBLAS_STATUS_SUCCESS) {                                                      \
+            error_message(status);                                                                                     \
+            char nm[1024];                                                                                             \
+            gethostname(nm, 1024);                                                                                     \
+            printf("hostname: %s\n", nm);                                                                              \
+            printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__);                                \
+            stack_backtrace();                                                                                         \
+        }                                                                                                              \
+        hipDeviceSynchronize();                                                                                        \
+    }
 #endif
 
 /// Store the default (null) stream handler.
@@ -200,108 +201,102 @@ inline void destroy_stream_handles()
     }
 }
 
-inline hipblasHandle_t stream_handle(int id__)
+inline hipblasHandle_t stream_handle(int id)
 {
-    return (id__ == -1) ? null_stream_handle() : stream_handles()[id__];
+    return (id == -1) ? null_stream_handle() : stream_handles()[id];
 }
 
-inline void zgemv(char transa, int32_t m, int32_t n, hipDoubleComplex* alpha, hipDoubleComplex* a, int32_t lda, 
-                  hipDoubleComplex* x, int32_t incx, hipDoubleComplex* beta, hipDoubleComplex* y, int32_t incy, int stream_id)
+inline void zgemv(char transa, int32_t m, int32_t n, hipDoubleComplex* alpha, hipDoubleComplex* a, int32_t lda,
+                  hipDoubleComplex* x, int32_t incx, hipDoubleComplex* beta, hipDoubleComplex* y, int32_t incy,
+                  int stream_id)
 {
-    // CALL_HIPBLAS(hipblasZgemv, (stream_handle(stream_id), get_hipblasOperation_t(transa), m, n, alpha, a, lda, x, incx, beta, y, incy));
-    throw std::runtime_error("zgemv not implemented in hipblas with ROCM!");
+    CALL_HIPBLAS(hipblas_port_Zgemv, (stream_handle(stream_id), get_hipblasOperation_t(transa), m, n, alpha, a, lda, x,
+                                      incx, beta, y, incy));
 }
 
-inline void zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, 
-                  hipDoubleComplex const* alpha, hipDoubleComplex const* a, int32_t lda, hipDoubleComplex const* b, 
-                  int32_t ldb, hipDoubleComplex const* beta, hipDoubleComplex* c, int32_t ldc, int stream_id)
+inline void zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, hipDoubleComplex const* alpha,
+                  hipDoubleComplex const* a, int32_t lda, hipDoubleComplex const* b, int32_t ldb,
+                  hipDoubleComplex const* beta, hipDoubleComplex* c, int32_t ldc, int stream_id)
 {
-    // CALL_HIPBLAS(hipblasZgemm, (stream_handle(stream_id), get_hipblasOperation_t(transa), get_hipblasOperation_t(transb),
-                              // m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
-    throw std::runtime_error("zgemm not implemented in hipblas with ROCM!");
+    CALL_HIPBLAS(hipblas_port_Zgemm, (stream_handle(stream_id), get_hipblasOperation_t(transa),
+                                      get_hipblasOperation_t(transb), m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
-inline void dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, 
-                  double const* alpha, double const* a, int32_t lda, double const* b, 
-                  int32_t ldb, double const* beta, double* c, int32_t ldc, int stream_id)
+inline void dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, double const* alpha, double const* a,
+                  int32_t lda, double const* b, int32_t ldb, double const* beta, double* c, int32_t ldc, int stream_id)
 {
-    CALL_HIPBLAS(hipblasDgemm, (stream_handle(stream_id), get_hipblasOperation_t(transa), get_hipblasOperation_t(transb), 
-                              m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
+    CALL_HIPBLAS(hipblasDgemm, (stream_handle(stream_id), get_hipblasOperation_t(transa),
+                                get_hipblasOperation_t(transb), m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
-inline void dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
-                  double const* alpha__, double const* A__, int lda__, double* B__, int ldb__)
+inline void dtrmm(char side, char uplo, char transa, char diag, int m, int n, double const* alpha,
+                  double const* A, int lda, double* B, int ldb)
 {
-    // throw std::runtime_error("dtrmm not implemented in hipblas with ROCM!");
-    hipblasSideMode_t side = get_hipblasSideMode_t(side__);
-    hipblasFillMode_t uplo = get_hipblasFillMode_t(uplo__);
-    hipblasOperation_t transa = get_hipblasOperation_t(transa__);
-    hipblasDiagType_t diag = get_hipblasDiagType_t(diag__);
-    CALL_HIPBLAS(hipblas_port_Dtrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__,
-                                      B__, ldb__, B__, ldb__));
+    hipblasSideMode_t side_gpu    = get_hipblasSideMode_t(side);
+    hipblasFillMode_t uplo_gpu    = get_hipblasFillMode_t(uplo);
+    hipblasOperation_t transa_gpu = get_hipblasOperation_t(transa);
+    hipblasDiagType_t diag_gpu    = get_hipblasDiagType_t(diag);
+    CALL_HIPBLAS(hipblas_port_Dtrmm,
+                 (null_stream_handle(), side_gpu, uplo_gpu, transa_gpu, diag_gpu, m, n, alpha, A, lda, B, ldb, B, ldb));
 }
 
-inline void ztrmm(char             side__,
-                  char             uplo__,
-                  char             transa__,
-                  char             diag__,
-                  int              m__,
-                  int              n__,
-                  hipDoubleComplex const* alpha__,
-                  hipDoubleComplex const* A__,
-                  int              lda__,
-                  hipDoubleComplex* B__,
-                  int              ldb__)
+inline void ztrmm(char side, char uplo, char transa, char diag, int m, int n,
+                  hipDoubleComplex const* alpha, hipDoubleComplex const* A, int lda, hipDoubleComplex* B,
+                  int ldb)
 {
-    // throw std::runtime_error("ztrmm not implemented in hipblas with ROCM!");
-    hipblasSideMode_t side = get_hipblasSideMode_t(side__);
-    hipblasFillMode_t uplo = get_hipblasFillMode_t(uplo__);
-    hipblasOperation_t transa = get_hipblasOperation_t(transa__);
-    hipblasDiagType_t diag = get_hipblasDiagType_t(diag__);
-    CALL_HIPBLAS(hipblas_port_Ztrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__,
-                                      B__, ldb__, B__, ldb__));
+    hipblasSideMode_t side_gpu    = get_hipblasSideMode_t(side);
+    hipblasFillMode_t uplo_gpu    = get_hipblasFillMode_t(uplo);
+    hipblasOperation_t transa_gpu = get_hipblasOperation_t(transa);
+    hipblasDiagType_t diag_gpu    = get_hipblasDiagType_t(diag);
+    CALL_HIPBLAS(hipblas_port_Ztrmm,
+                 (null_stream_handle(), side_gpu, uplo_gpu, transa_gpu, diag_gpu, m, n, alpha, A, lda, B, ldb, B, ldb));
+
+    // copy to host, calculate, copy back
+    // int size_A, size_B;
+    // size_B = n * ldb;
+    // if (side == 'l' || side == 'L') {
+    //     if (transa == 'n' || transa == 'N')
+    //         size_A = m * lda;
+    //     else
+    //         size_A = n * lda;
+    // } else {
+    //     if (transa == 'n' || transa == 'N')
+    //         size_A = n * lda;
+    //     else
+    //         size_A = m * lda;
+    // }
+    // std::vector<hipDoubleComplex> A_host(size_A);
+    // std::vector<hipDoubleComplex> B_host(size_B);
+    // acc::copyout(A_host.data(), A, A_host.size());
+    // acc::copyout(B_host.data(), B, B_host.size());
+    // ftn_int mf = m;
+    // ftn_int nf = n;
+    // ftn_int ldaf = lda;
+    // ftn_int ldbf = ldb;
+    // FORTRAN(dtrmm)
+    // (&side, &uplo, &transa, "N", &mf, &nf, const_cast<ftn_double*>((const ftn_double*)alpha),
+    //  ((ftn_double*)A_host.data()), &ldaf, ((ftn_double*)B_host.data()), &ldbf, (ftn_len)1,
+    //  (ftn_len)1, (ftn_len)1, (ftn_len)1);
+    // acc::copyin(const_cast<hipDoubleComplex*>(B), B_host.data(), B_host.size());
 }
 
-inline void dger(int           m,
-                 int           n,
-                 double const* alpha,
-                 double const* x,
-                 int           incx,
-                 double const* y,
-                 int           incy,
-                 double*       A,
-                 int           lda,
-                 int           stream_id)
+inline void dger(int m, int n, double const* alpha, double const* x, int incx, double const* y, int incy, double* A,
+                 int lda, int stream_id)
 {
     CALL_HIPBLAS(hipblasDger, (stream_handle(stream_id), m, n, alpha, x, incx, y, incy, A, lda));
 }
 
-inline void zgeru(int                    m,
-                  int                    n,
-                  hipDoubleComplex const* alpha,
-                  hipDoubleComplex const* x,
-                  int                    incx,
-                  hipDoubleComplex const* y,
-                  int                    incy,
-                  hipDoubleComplex*       A,
-                  int                    lda, 
-                  int                    stream_id)
+inline void zgeru(int m, int n, hipDoubleComplex const* alpha, hipDoubleComplex const* x, int incx,
+                  hipDoubleComplex const* y, int incy, hipDoubleComplex* A, int lda, int stream_id)
 {
-    // throw std::runtime_error("zgeru not implemented in hipblas with ROCM!");
     CALL_HIPBLAS(hipblas_port_Zgeru, (stream_handle(stream_id), m, n, alpha, x, incx, y, incy, A, lda));
 }
 
-inline void zaxpy(int                    n__,
-                  hipDoubleComplex const* alpha__,
-                  hipDoubleComplex const* x__,
-                  int                    incx__,
-                  hipDoubleComplex*       y__,
-                  int                    incy__)
+inline void zaxpy(int n, hipDoubleComplex const* alpha, hipDoubleComplex const* x, int incx,
+                  hipDoubleComplex* y, int incy)
 {
-    // throw std::runtime_error("zaxpy not implemented in hipblas with ROCM!");
-    CALL_HIPBLAS(hipblas_port_Zaxpy, (null_stream_handle(), n__, alpha__, x__, incx__, y__, incy__));
+    CALL_HIPBLAS(hipblas_port_Zaxpy, (null_stream_handle(), n, alpha, x, incx, y, incy));
 }
-
 
 } // namespace hipblas
 
