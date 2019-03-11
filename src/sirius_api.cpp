@@ -2701,7 +2701,7 @@ void sirius_option_set_int(void* const* handler__, char*section, char *name, int
         // check that the option exists
         if (*length > 1) {
             // we are dealing with a vector
-            std::vector<int> v;
+            std::vector<int> v(*length);
             for (int s = 0; s < *length; s++)
                 v[s] = default_values[s];
             conf_dict[section][name] = v;
@@ -2733,7 +2733,7 @@ void sirius_option_set_double(void* const* handler__, char*section, char *name, 
         // check that the option exists
         if (*length > 1) {
             // we are dealing with a vector
-            std::vector<double> v;
+            std::vector<double> v(*length);
             for (int s = 0; s < *length; s++)
                 v[s] = default_values[s];
             conf_dict[section][name] = v;
@@ -2767,7 +2767,7 @@ void sirius_option_set_logical(void* const* handler__, char*section, char *name,
         // check that the option exists
         if (*length > 1) {
             // we are dealing with a vector
-            std::vector<bool> v;
+            std::vector<bool> v(*length);
             for (int s = 0; s < *length; s++)
                 v[s] = (default_values[s] == 1);
             conf_dict[section][name] = v;
