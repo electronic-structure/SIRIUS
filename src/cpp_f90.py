@@ -18,12 +18,21 @@ in_type_map = {
 
 
 def write_str_to_f90(o, string):
-    n = 80
-    while len(string) > n:
-        o.write(string[:n] + '&\n&')
-        string = string[n:]
-    o.write(string)
-    o.write('\n')
+    p = 0
+    subs = string
+    while (True):
+        p = subs.find(',', p)
+        # no more commas left in the string or string is short
+        if p == -1 or len(subs) <= 80:
+            o.write(subs)
+            o.write('\n')
+            break;
+        # position after comma
+        p += 1
+        if p >= 80:
+            o.write(subs[:p] + '&\n&')
+            subs = subs[p:]
+            p = 0
 
 
 def write_function(o, func_name, func_type, func_args, func_doc, details):
