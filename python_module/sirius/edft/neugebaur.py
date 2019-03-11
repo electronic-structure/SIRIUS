@@ -613,7 +613,7 @@ class CG:
             g_X = (HX*fn - X@LL)
             # check that constraints are fulfilled
             delta_X = -K * (HX - X @ LL) / kw
-            assert l2norm(X.H @ delta_X) < 1e-11
+            # assert l2norm(X.H @ delta_X) < 1e-11
             if not use_g_eta:
                 delta_eta = kappa * (Hij - kw*diag(ek)) / kw
             else:
