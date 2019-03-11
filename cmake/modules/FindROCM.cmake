@@ -357,6 +357,7 @@ macro(rocm_hip_add_library)
 	endif()
 	set(_ROCM_SOURCES ${_ROCM_SOURCES} ${source})
     endforeach()
+    get_filename_component(HIP_LIB_OUTPUT_DIR ${HIP_LIB_OUTPUT_DIR} ABSOLUTE)
 
     # generate flags to use
     set(_ROCM_STD_FLAGS ${HIP_LIB_FLAGS} ${ROCM_HIPCC_FLAGS})
@@ -377,27 +378,39 @@ macro(rocm_hip_add_library)
     # create imported shared library
     if(HIP_LIB_SHARED)
         set(_ROCM_FLAGS ${_ROCM_FLAGS} -fPIC)
-	add_library(${HIP_LIB_NAME} SHARED IMPORTED GLOBAL)
-        set_target_properties(${HIP_LIB_NAME} PROPERTIES IMPORTED_LOCATION ${HIP_LIB_OUTPUT_DIR}/lib${HIP_LIB_NAME}.so)
     endif()
 
     # compile all files to .o
     set(_ROCM_OBJS)
     set(_ROCM_OBJ_TARGETS)
     foreach(_rocm_file IN LISTS _ROCM_SOURCES)
+
+	# create output directory for .o file
+	get_filename_component(_ROCM_CURRENT_DIR ${_rocm_file} DIRECTORY)
+	file(RELATIVE_PATH _ROCM_CURRENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" ${_ROCM_CURRENT_DIR})
+	set(_ROCM_OBJ_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${HIP_LIB_NAME}.dir/${_ROCM_CURRENT_DIR}")
+	file(MAKE_DIRECTORY ${_ROCM_OBJ_OUT_DIR})
+
+	# set .o name and path
 	get_filename_component(_ROCM_FILE_NAME_ONLY ${_rocm_file} NAME)
-	set(_ROCM_OBJ_FILE ${HIP_LIB_OUTPUT_DIR}/${_ROCM_FILE_NAME_ONLY}.o)
+	set(_ROCM_OBJ_FILE ${_ROCM_OBJ_OUT_DIR}/${_ROCM_FILE_NAME_ONLY}.o)
 	list(APPEND _ROCM_OBJS ${_ROCM_OBJ_FILE})
 	list(APPEND _ROCM_OBJ_TARGETS HIP_TARGET_${_ROCM_FILE_NAME_ONLY})
+
+	# compile .o file
 	add_custom_target(HIP_TARGET_${_ROCM_FILE_NAME_ONLY} COMMAND ${ROCM_HIPCC_EXECUTABLE} -c ${_rocm_file} -o ${_ROCM_OBJ_FILE} ${_ROCM_FLAGS} ${_ROCM_FULL_PATH_INCLUDE_FLAGS}
-	    WORKING_DIRECTORY ${HIP_LIB_OUTPUT_DIR} SOURCES ${_rocm_file})
+	    WORKING_DIRECTORY ${_ROCM_OBJ_OUT_DIR} SOURCES ${_rocm_file})
 
     endforeach()
 
     # compile shared library
     if(HIP_LIB_SHARED)
-	add_custom_target(HIP_TARGET_${HIP_LIB_NAME} COMMAND ${ROCM_HIPCC_EXECUTABLE} ${_ROCM_OBJS} -fPIC --shared -o ${HIP_LIB_OUTPUT_DIR}/lib${HIP_LIB_NAME}.so ${_ROCM_FLAGS} ${_ROCM_FULL_PATH_INCLUDE_FLAGS}
+	add_custom_target(HIP_TARGET_${HIP_LIB_NAME} COMMAND ${ROCM_HIPCC_EXECUTABLE} ${_ROCM_OBJS} -fPIC --shared -o ${HIP_LIB_OUTPUT_DIR}/lib${HIP_LIB_NAME}.so 
+	    ${_ROCM_FLAGS} ${_ROCM_FULL_PATH_INCLUDE_FLAGS}
 	    WORKING_DIRECTORY ${HIP_LIB_OUTPUT_DIR})
+
+	add_library(${HIP_LIB_NAME} INTERFACE)
+	target_link_libraries(${HIP_LIB_NAME} INTERFACE ${HIP_LIB_OUTPUT_DIR}/lib${HIP_LIB_NAME}.so)
 
 	# add depencies
 	add_dependencies(${HIP_LIB_NAME} HIP_TARGET_${HIP_LIB_NAME})
