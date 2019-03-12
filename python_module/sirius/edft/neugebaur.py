@@ -636,7 +636,7 @@ class CG:
             XhKHXF = X.H @ (K @ HX)
             XhKX = X.H @ (K @ X)
             LL = _solve(XhKX, XhKHXF)
-            gp_X = g_X
+            gp_X = g_X@U
             g_X = (HX*fn - X@LL)
             # check that constraints are fulfilled
             delta_X = -K * (HX - X @ LL) / kw
