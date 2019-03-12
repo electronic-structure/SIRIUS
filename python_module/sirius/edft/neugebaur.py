@@ -392,7 +392,7 @@ class CGFailed(Exception):
     pass
 
 
-def fletcher_reeves(**kwargs):
+def polak_ribiere(**kwargs):
     g_X = kwargs['g_X']
     gp_X = kwargs['gp_X']
     g_eta = kwargs['g_eta']
@@ -404,6 +404,22 @@ def fletcher_reeves(**kwargs):
                 /
                 (l2norm(gp_X)**2 + l2norm(gp_eta)**2))
     return gamma
+
+
+def fletcher_reeves(**kwargs):
+    g_X = kwargs['g_X']
+    gp_X = kwargs['gp_X']
+    g_eta = kwargs['g_eta']
+    gp_eta = kwargs['gp_eta']
+    delta_X = kwargs['delta_X']
+    delta_eta = kwargs['delta_eta']
+    deltaP_X = kwargs['deltaP_X']
+    deltaP_eta = kwargs['deltaP_eta']
+    gamma_eta = np.real(inner(g_eta, delta_eta))
+    gammaP_eta = np.real(inner(gp_eta, deltaP_eta))
+    gamma_X = np.real(inner(g_X, delta_X))
+    gammaP_X = np.real(inner(gp_X, deltaP_X))
+    return (gamma_eta + gamma_X) / (gammaP_eta + gammaP_X)
 
 
 def steepest_descent(**kwargs):
@@ -521,7 +537,9 @@ class CG:
             prec=False, kappa=0.3, eps=0.001, use_g_eta=False,
             type='FR'):
 
-        if type == 'FR':
+        if type == 'PR':
+            cg_update = polak_ribiere
+        elif type == 'FR':
             cg_update = fletcher_reeves
         elif type == 'SD':
             cg_update = steepest_descent
@@ -624,8 +642,8 @@ class CG:
             # keep previous search directions
             GP_X = G_X@U
             GP_eta = U.H@G_eta@U
-            # deltaP_X = delta_X@U
-            # deltaP_eta = U.H@delta_eta@U
+            deltaP_X = delta_X@U
+            deltaP_eta = U.H@delta_eta@U
             # compute new gradients
 
             HX = H.apply(X, scale=False) * kw
@@ -651,7 +669,9 @@ class CG:
             #          np.real(inner(-2*GP_X, deltaP_X) + inner(-GP_eta, deltaP_eta)))
 
             if not ii % restart == 0 and not cg_restart_inprogress:
-                gamma = cg_update(g_X=g_X, gp_X=gp_X, g_eta=g_eta, gp_eta=gp_eta)
+                gamma = cg_update(g_X=g_X, gp_X=gp_X, g_eta=g_eta, gp_eta=gp_eta,
+                                  deltaP_X=deltaP_X, deltaP_eta=deltaP_eta,
+                                  delta_X=delta_X, delta_eta=delta_eta)
             else:
                 logger('restart CG')
                 gamma = 0
