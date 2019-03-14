@@ -417,8 +417,8 @@ def fletcher_reeves(**kwargs):
     deltaP_eta = kwargs['deltaP_eta']
     gamma_eta = np.real(inner(g_eta, delta_eta))
     gammaP_eta = np.real(inner(gp_eta, deltaP_eta))
-    gamma_X = np.real(inner(g_X, delta_X))
-    gammaP_X = np.real(inner(gp_X, deltaP_X))
+    gamma_X = 2 * np.real(inner(g_X, delta_X))
+    gammaP_X = 2 * np.real(inner(gp_X, deltaP_X))
     return (gamma_eta + gamma_X) / (gammaP_eta + gammaP_X)
 
 
@@ -530,6 +530,10 @@ class CG:
             logger('t1,t2 = %.5g, %.5g' % (t1, t2))
             logger('F0: %.8f' % F0)
             logger('F1: %.8f' % F)
+            save_state({'X': X, 'f': f,
+                        'eta': eta, 'G_X': Fline.G_X,
+                        'G_eta': Fline.G_eta}, Fline.M.energy.kpointset)
+
             raise ValueError('GSS didn\'t find a better value')
         return X, fn, ek, F, Ul
 
@@ -570,7 +574,7 @@ class CG:
         # compute initial free energy
         FE = M(X, fn)
         logger('intial F: %.10g' % FE)
-        save_state({'fn': fn, 'ek': ek}, kset, 'init_occu')
+        # save_state({'fn': fn, 'ek': ek}, kset, 'init_occu')
 
         HX = H.apply(X, scale=False) * kw
         Hij = X.H @ HX
@@ -585,15 +589,15 @@ class CG:
         delta_eta = kappa * (Hij - kw*diag(ek)) / kw
 
         # start CG
-        if prec_direction:
-            G_X = delta_X
-            if not use_g_eta:
-                G_eta = delta_eta
-            else:
-                G_eta = -kappa*g_eta
-        else:
-            G_X = -g_X
-            G_eta = -g_eta
+        # if prec_direction:
+        #     G_X = delta_X
+        #     if not use_g_eta:
+        #         G_eta = delta_eta
+        #     else:
+        #         G_eta = -kappa*g_eta
+        # else:
+        G_X = -g_X
+        G_eta = -g_eta
 
         cg_restart_inprogress = False
         for ii in range(1, maxiter):
