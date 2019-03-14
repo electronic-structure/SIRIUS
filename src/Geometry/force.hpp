@@ -856,8 +856,6 @@ class Force
 
         inline void print_info()
         {
-            PROFILE("sirius::DFT_ground_state::forces");
-
             if (ctx_.comm().rank() == 0) {
                 auto print_forces = [&](mdarray<double, 2> const& forces)
                     {

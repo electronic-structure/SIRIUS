@@ -658,13 +658,13 @@ public:
                 std::cout << "                                                                            \n";
                 std::cout << "============================================================================\n";
 
-                for (int s = 0; s < dict[el.key()].size(); s++) {
+                for (size_t s = 0; s < dict[el.key()].size(); s++) {
                     std::cout << "name of the option : " << dict[el.key()][s]["name"].get<std::string>() << std::endl;
                     std::cout << "description : " << dict[el.key()][s]["description"].get<std::string>() << std::endl;
                     if (dict[el.key()][s].count("possible_values")) {
                         const auto &v = dict[el.key()][s]["description"].get<std::vector<std::string>>();
                         std::cout << "possible values : " << v[0];
-                        for (int st = 1; st < v.size(); st++)
+                        for (size_t st = 1; st < v.size(); st++)
                             std::cout << " " << v[st];
                     }
                     std::cout << "default value : " << dict[el.key()]["default_values"].get<std::string>() << std::endl;

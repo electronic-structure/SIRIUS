@@ -214,6 +214,7 @@ void sirius_import_parameters(void* const* handler__,
    @fortran argument in optional double pw_cutoff                Cutoff for G-vectors.
    @fortran argument in optional double gk_cutoff                Cutoff for G+k-vectors.
    @fortran argument in optional double aw_cutoff                This is R_{mt} * gk_cutoff.
+   @fortran argument in optional int fft_grid_size               Size of the fine-grain FFT grid.
    @fortran argument in optional int auto_rmt                    Set the automatic search of muffin-tin radii.
    @fortran argument in optional bool gamma_point                True if this is a Gamma-point calculation.
    @fortran argument in optional bool use_symmetry               True if crystal symmetry is taken into account.
@@ -239,6 +240,7 @@ void sirius_set_parameters(void*  const* handler__,
                            double const* pw_cutoff__,
                            double const* gk_cutoff__,
                            double const* aw_cutoff__,
+                           int    const* fft_grid_size__,
                            int    const* auto_rmt__,
                            bool   const* gamma_point__,
                            bool   const* use_symmetry__,
@@ -332,6 +334,9 @@ void sirius_set_parameters(void*  const* handler__,
         if (s == "norm-atomic") {
             sim_ctx.set_normalize_hubbard_orbitals(true);
         }
+    }
+    if (fft_grid_size__ != nullptr) {
+        sim_ctx.fft_grid_size({fft_grid_size__[0], fft_grid_size__[1], fft_grid_size__[2]});
     }
 }
 

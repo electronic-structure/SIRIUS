@@ -536,19 +536,18 @@ class Potential : public Field4D
                     }
 
                     double fact = fourpi / double(2 * l + 1);
-                    T      vlm;
 
                     for (int ir = 0; ir < nmtp; ir++) {
                         double r = atom__.radial_grid(ir);
 
                         if (free_atom) {
-                            vlm = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
+                            vha_mt__(lm, ir) = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
                         } else {
                             double d1 = 1.0 / std::pow(R, 2 * l + 1);
-                            vlm       = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
+                            vha_mt__(lm, ir) = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
                                   (g2.back() - g2[ir]) * std::pow(r, l) - (g1.back() - g1[ir]) * std::pow(r, l) * d1;
                         }
-                        vha_mt__(lm, ir) = vlm * fact;
+                        vha_mt__(lm, ir) *= fact;
                     }
                 }
             }

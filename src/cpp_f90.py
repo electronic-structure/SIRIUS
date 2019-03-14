@@ -1,11 +1,11 @@
 import sys
+import re
 
 # @fortran begin function                                    {type} {name} {doc-string}
 # @fortran       argument {in|out|inout} {required|optional} {type} {name} {doc-string}
 # [@fortran details]
 # [detailed documentation]
 # @fortran end
-# TODO: parse with regexp
 
 in_type_map = {
     'void*'   : 'type(C_PTR)',
@@ -18,15 +18,24 @@ in_type_map = {
 
 
 def write_str_to_f90(o, string):
-    n = 80
-    while len(string) > n:
-        o.write(string[:n] + '&\n&')
-        string = string[n:]
-    o.write(string)
-    o.write('\n')
+    p = 0
+    subs = string
+    while (True):
+        p = subs.find(',', p)
+        # no more commas left in the string or string is short
+        if p == -1 or len(subs) <= 80:
+            o.write(subs)
+            o.write('\n')
+            break;
+        # position after comma
+        p += 1
+        if p >= 80:
+            o.write(subs[:p] + '&\n&')
+            subs = subs[p:]
+            p = 0
 
 
-def write_function(o, func_name, func_suffix, func_type, func_args, func_doc, details):
+def write_function(o, func_name, func_type, func_args, func_doc, details):
     o.write('!> @brief ' + func_doc + '\n')
     if details:
         o.write('!> @details ' + details[0] + '\n')
@@ -40,7 +49,7 @@ def write_function(o, func_name, func_suffix, func_type, func_args, func_doc, de
         string = 'subroutine '
     else:
         string = 'function '
-    string = string + func_name + func_suffix + '('
+    string = string + func_name + '('
     va = [a['name'] for a in func_args]
     string = string + ','.join(va)
     string = string + ')'
@@ -126,7 +135,7 @@ def write_function(o, func_name, func_suffix, func_type, func_args, func_doc, de
         o.write('end subroutine ')
     else:
         o.write('end function ')
-    o.write(func_name + func_suffix + '\n\n')
+    o.write(func_name + '\n\n')
 
 
 def main():
@@ -141,62 +150,48 @@ def main():
         line = f.readline()
         if not line: break
 
-        i = line.find('@fortran')
-        if i > 0:
-            v = line[i:].split()
-            end_of_block = False
-            if v[1] == 'begin' and v[2] == 'function':
-                func_type = v[3]
-                func_name = v[4]
-                if (v[5][0] == '_'):
-                    func_suffix = v[5]
-                    func_doc = ' '.join(v[6:])
-                else:
-                    func_suffix = ''
-                    func_doc = ' '.join(v[5:])
+        # parse @fortran begin function {type} {name} {doc-string}
+        m = re.search('@fortran\s+begin\s+function\s+(\w+\*?)\s+(\w+)\s+((\w|\W|\s)*)', line)
+        # match is successful
+        if m:
+            # we need to set the following variables:
+            #   func_type
+            #   func_name
+            #   func_args
+            #   func_doc
+            #   details
+            func_type = m.group(1)
+            func_name = m.group(2)
+            func_doc = m.group(3).strip()
+            func_args = []
+            details = []
 
-                func_args = []
+            # parse strings until @fortran end is encountered
+            while (True):
+                line = f.readline()
+                # check for @fortran details
+                m = re.search('@fortran\s+details', line)
+                if m:
+                    while (True):
+                        line = f.readline()
+                        # check for @fortran end
+                        m = re.search('@fortran', line)
+                        if m: break
+                        details.append(line.strip())
 
-                details = []
+                # check for @fortran end
+                m = re.search('@fortran\s+end', line)
+                if m: break
 
+                # parse @fortran argument {in|out|inout} {required|optional} {type} {name} {doc-string}
+                m = re.search('@fortran\s+argument\s+(\w+)\s+(\w+)\s+(\w+\*?)\s+(\w+)\s+((\w|\W|\s)*)', line)
+                if m: func_args.append({'type'     : m.group(3),
+                                        'intent'   : m.group(1),
+                                        'required' : m.group(2) == 'required',
+                                        'name'     : m.group(4),
+                                        'doc'      : m.group(5).strip()})
 
-                while (True):
-                    line = f.readline()
-
-                    i = line.find('@fortran')
-                    if i > 0:
-                        v = line[i:].split()
-                        if v[1] == 'argument':
-                            if v[3] == 'required':
-                                arg_required = True
-                            else:
-                                arg_required = False
-                            arg_doc = ' '.join(v[6:])
-                            func_args.append({'type'     : v[4],
-                                              'intent'   : v[2],
-                                              'required' : arg_required, 
-                                              'name'     : v[5],
-                                              'doc'      : arg_doc})
-                        if v[1] == 'details':
-                            while (True):
-                                line = f.readline()
-
-                                i = line.find('@fortran')
-                                if i > 0:
-                                    v = line[i:].split()
-                                    if v[1] == 'end':
-                                        end_of_block = True
-                                        break
-                                else:
-                                    details.append(line.strip())
-
-                        if v[1] == 'end':
-                            end_of_block = True
-                            break;
-
-
-            if end_of_block:
-                write_function(o, func_name, func_suffix, func_type, func_args, func_doc, details)
+            write_function(o, func_name, func_type, func_args, func_doc, details)
 
 
     f.close()
