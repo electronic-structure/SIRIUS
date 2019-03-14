@@ -83,7 +83,6 @@ using acc_complex_double_t = cuDoubleComplex;
 #define ACC_DYNAMIC_SHARED(type, var) extern __shared__ type var[];
 
 #elif defined(__ROCM)
-using acc_error_t = hipError_t;
 using acc_complex_float_t = hipFloatComplex;
 using acc_complex_double_t = hipDoubleComplex;
 #define make_accDoubleComplex make_hipDoubleComplex
