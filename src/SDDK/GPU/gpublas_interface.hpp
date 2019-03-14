@@ -25,7 +25,6 @@
 #ifndef __GPUBLAS_INTERFACE_HPP__
 #define __GPUBLAS_INTERFACE_HPP__
 
-#include <hip/hip_complex.h>
 
 #if defined(__GPU) && defined(__CUDA)
 #include "cublas.hpp"

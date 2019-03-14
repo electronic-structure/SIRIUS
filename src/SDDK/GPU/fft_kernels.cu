@@ -22,11 +22,9 @@
  *  \brief Contains implementaiton of CUDA and ROCM kernels necessary for a FFT driver.
  */
 
-#include "acc.hpp"
 #include <stdio.h>
-#include <hip/hip_runtime.h>
-#include <hip/hip_complex.h>
 #include "cuda_common.hpp"
+#include "acc_runtime.hpp"
 
 //NOTE: HIP will call the corresponding CUDA function if compiled with CUDA support
 
@@ -36,8 +34,8 @@ __global__ void repack_z_buffer_gpu_kernel(int size_z,
                                            int num_zcol_loc,
                                            int const* local_z_offsets,
                                            int const* local_z_sizes,
-                                           hipDoubleComplex* z_sticks_local,
-                                           hipDoubleComplex* a2a_buffer)
+                                           acc_complex_double_t* z_sticks_local,
+                                           acc_complex_double_t* a2a_buffer)
 {
     int iz = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
     int izcol = hipBlockIdx_y;
@@ -62,14 +60,14 @@ extern "C" void repack_z_buffer_gpu(int direction,
                                     int zcol_max_size,
                                     int const* local_z_offsets,
                                     int const* local_z_sizes,
-                                    hipDoubleComplex* z_sticks_local,
-                                    hipDoubleComplex* a2a_buffer)
+                                    acc_complex_double_t* z_sticks_local,
+                                    acc_complex_double_t* a2a_buffer)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(zcol_max_size, grid_t.x), num_zcol_loc, num_ranks);
 
     if (direction == 1) {
-        hipLaunchKernelGGL((repack_z_buffer_gpu_kernel<1>), dim3(grid_b), dim3(grid_t), 0, 0, 
+        accLaunchKernel((repack_z_buffer_gpu_kernel<1>), dim3(grid_b), dim3(grid_t), 0, 0, 
             size_z,
             num_zcol_loc,
             local_z_offsets,
@@ -78,7 +76,7 @@ extern "C" void repack_z_buffer_gpu(int direction,
             a2a_buffer
         );
     } else {
-        hipLaunchKernelGGL((repack_z_buffer_gpu_kernel<-1>), dim3(grid_b), dim3(grid_t), 0, 0, 
+        accLaunchKernel((repack_z_buffer_gpu_kernel<-1>), dim3(grid_b), dim3(grid_t), 0, 0, 
             size_z,
             num_zcol_loc,
             local_z_offsets,
@@ -94,8 +92,8 @@ extern "C" void repack_z_buffer_gpu(int direction,
 __global__ void batch_load_gpu_kernel(int                    fft_size, 
                                       int                    num_pw_components, 
                                       int const*             map, 
-                                      hipDoubleComplex const* data, 
-                                      hipDoubleComplex*       fft_buffer)
+                                      acc_complex_double_t const* data, 
+                                      acc_complex_double_t*       fft_buffer)
 {
     int i = hipBlockIdx_y;
     int idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
@@ -109,18 +107,18 @@ extern "C" void batch_load_gpu(int                    fft_size,
                                int                    num_pw_components, 
                                int                    num_fft,
                                int const*             map, 
-                               hipDoubleComplex const* data, 
-                               hipDoubleComplex*       fft_buffer,
+                               acc_complex_double_t const* data, 
+                               acc_complex_double_t*       fft_buffer,
                                int                    stream_id__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_pw_components, grid_t.x), num_fft);
 
-    hipStream_t stream = (hipStream_t) acc::stream(stream_id(stream_id__));
+    acc_stream_t stream = (acc_stream_t) acc::stream(stream_id(stream_id__));
 
-    hipMemsetAsync(fft_buffer, 0, fft_size * num_fft * sizeof(hipDoubleComplex), stream);
+    acc::zero(fft_buffer, fft_size*num_fft, stream_id(stream_id__));
 
-    hipLaunchKernelGGL((batch_load_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
+    accLaunchKernel((batch_load_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
         fft_size,
         num_pw_components,
         map,
@@ -132,8 +130,8 @@ extern "C" void batch_load_gpu(int                    fft_size,
 __global__ void batch_unload_gpu_kernel(int                    fft_size, 
                                         int                    num_pw_components, 
                                         int const*             map, 
-                                        hipDoubleComplex const* fft_buffer,
-                                        hipDoubleComplex*       data,
+                                        acc_complex_double_t const* fft_buffer,
+                                        acc_complex_double_t*       data,
                                         double                 alpha,
                                         double                 beta)
 {
@@ -141,9 +139,9 @@ __global__ void batch_unload_gpu_kernel(int                    fft_size,
     int idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
     if (idx < num_pw_components) {
-        hipDoubleComplex z1 = data[array2D_offset(idx, i, num_pw_components)];
-        hipDoubleComplex z2 = fft_buffer[array2D_offset(map[idx], i, fft_size)];
-        data[array2D_offset(idx, i, num_pw_components)] = make_hipDoubleComplex(alpha * z1.x + beta * z2.x, alpha * z1.y + beta * z2.y);
+        acc_complex_double_t z1 = data[array2D_offset(idx, i, num_pw_components)];
+        acc_complex_double_t z2 = fft_buffer[array2D_offset(map[idx], i, fft_size)];
+        data[array2D_offset(idx, i, num_pw_components)] = make_accDoubleComplex(alpha * z1.x + beta * z2.x, alpha * z1.y + beta * z2.y);
 
         //data[array2D_offset(idx, i, num_pw_components)] = cuCadd(
         //    cuCmul(make_cuDoubleComplex(alpha, 0), data[array2D_offset(idx, i, num_pw_components)]),
@@ -158,8 +156,8 @@ extern "C" void batch_unload_gpu(int                    fft_size,
                                  int                    num_pw_components,
                                  int                    num_fft,
                                  int const*             map, 
-                                 hipDoubleComplex const* fft_buffer, 
-                                 hipDoubleComplex*       data,
+                                 acc_complex_double_t const* fft_buffer, 
+                                 acc_complex_double_t*       data,
                                  double                 alpha,
                                  double                 beta,
                                  int                    stream_id__)
@@ -167,13 +165,13 @@ extern "C" void batch_unload_gpu(int                    fft_size,
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_pw_components, grid_t.x), num_fft);
 
-    hipStream_t stream = (hipStream_t) acc::stream(stream_id(stream_id__));
+    acc_stream_t stream = (acc_stream_t) acc::stream(stream_id(stream_id__));
 
     if (alpha == 0) {
-        hipMemsetAsync(data, 0, num_pw_components * sizeof(hipDoubleComplex), stream);
+        acc::zero(data, num_pw_components, stream_id(stream_id__));
     }
 
-    hipLaunchKernelGGL((batch_unload_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
+    accLaunchKernel((batch_unload_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
         fft_size, 
         num_pw_components, 
         map, 
@@ -186,29 +184,29 @@ extern "C" void batch_unload_gpu(int                    fft_size,
 
 __global__ void load_x0y0_col_gpu_kernel(int                    z_col_size,
                                          int const*             map,
-                                         hipDoubleComplex const* data,
-                                         hipDoubleComplex*       fft_buffer)
+                                         acc_complex_double_t const* data,
+                                         acc_complex_double_t*       fft_buffer)
 
 {
     int idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
     if (idx < z_col_size) {
-        fft_buffer[map[idx]] = make_hipDoubleComplex(data[idx].x, -data[idx].y);
+        fft_buffer[map[idx]] = make_accDoubleComplex(data[idx].x, -data[idx].y);
     }
 }
 
 extern "C" void load_x0y0_col_gpu(int                    z_col_size,
                                   int const*             map,
-                                  hipDoubleComplex const* data,
-                                  hipDoubleComplex*       fft_buffer,
+                                  acc_complex_double_t const* data,
+                                  acc_complex_double_t*       fft_buffer,
                                   int                    stream_id__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(z_col_size, grid_t.x));
 
-    hipStream_t stream = (hipStream_t) acc::stream(stream_id(stream_id__));
+    acc_stream_t stream = (acc_stream_t) acc::stream(stream_id(stream_id__));
 
-    hipLaunchKernelGGL((load_x0y0_col_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
+    accLaunchKernel((load_x0y0_col_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
         z_col_size,
         map,
         data,
@@ -217,8 +215,8 @@ extern "C" void load_x0y0_col_gpu(int                    z_col_size,
 }
 
 template <int direction, bool conjugate>
-__global__ void pack_unpack_z_cols_gpu_kernel(hipDoubleComplex* z_cols_packed__,
-                                              hipDoubleComplex* fft_buf__,
+__global__ void pack_unpack_z_cols_gpu_kernel(acc_complex_double_t* z_cols_packed__,
+                                              acc_complex_double_t* fft_buf__,
                                               int              size_x__,
                                               int              size_y__,
                                               int              size_z__,
@@ -246,8 +244,8 @@ __global__ void pack_unpack_z_cols_gpu_kernel(hipDoubleComplex* z_cols_packed__,
     }
 }
 
-extern "C" void unpack_z_cols_gpu(hipDoubleComplex* z_cols_packed__,
-                                  hipDoubleComplex* fft_buf__,
+extern "C" void unpack_z_cols_gpu(acc_complex_double_t* z_cols_packed__,
+                                  acc_complex_double_t* fft_buf__,
                                   int              size_x__,
                                   int              size_y__,
                                   int              size_z__,
@@ -256,14 +254,14 @@ extern "C" void unpack_z_cols_gpu(hipDoubleComplex* z_cols_packed__,
                                   bool             use_reduction__, 
                                   int              stream_id__)
 {
-    hipStream_t stream = (hipStream_t) acc::stream(stream_id(stream_id__));
+    acc_stream_t stream = (acc_stream_t) acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);
 
-    hipMemsetAsync(fft_buf__, 0, size_x__ * size_y__ * size_z__ * sizeof(hipDoubleComplex), stream);
+    acc::zero(fft_buf__, size_x__ * size_y__ * size_z__, stream_id(stream_id__));
 
-    hipLaunchKernelGGL((pack_unpack_z_cols_gpu_kernel<1, false>), dim3(grid_b), dim3(grid_t), 0, stream, 
+    accLaunchKernel((pack_unpack_z_cols_gpu_kernel<1, false>), dim3(grid_b), dim3(grid_t), 0, stream, 
         z_cols_packed__,
         fft_buf__,
         size_x__,
@@ -273,7 +271,7 @@ extern "C" void unpack_z_cols_gpu(hipDoubleComplex* z_cols_packed__,
         z_col_pos__
     );
     if (use_reduction__) {
-        hipLaunchKernelGGL((pack_unpack_z_cols_gpu_kernel<1, true>), dim3(grid_b), dim3(grid_t), 0, stream, 
+        accLaunchKernel((pack_unpack_z_cols_gpu_kernel<1, true>), dim3(grid_b), dim3(grid_t), 0, stream, 
             &z_cols_packed__[size_z__], // skip first column for {-x, -y} coordinates
             fft_buf__,
             size_x__,
@@ -285,8 +283,8 @@ extern "C" void unpack_z_cols_gpu(hipDoubleComplex* z_cols_packed__,
     }
 }
 
-extern "C" void pack_z_cols_gpu(hipDoubleComplex* z_cols_packed__,
-                                hipDoubleComplex* fft_buf__,
+extern "C" void pack_z_cols_gpu(acc_complex_double_t* z_cols_packed__,
+                                acc_complex_double_t* fft_buf__,
                                 int              size_x__,
                                 int              size_y__,
                                 int              size_z__,
@@ -294,12 +292,12 @@ extern "C" void pack_z_cols_gpu(hipDoubleComplex* z_cols_packed__,
                                 int const*       z_col_pos__,
                                 int              stream_id__)
 {
-    hipStream_t stream = (hipStream_t) acc::stream(stream_id(stream_id__));
+    acc_stream_t stream = (acc_stream_t) acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);
 
-    hipLaunchKernelGGL((pack_unpack_z_cols_gpu_kernel<-1, false>), dim3(grid_b), dim3(grid_t), 0, stream, 
+    accLaunchKernel((pack_unpack_z_cols_gpu_kernel<-1, false>), dim3(grid_b), dim3(grid_t), 0, stream, 
         z_cols_packed__,
         fft_buf__,
         size_x__,
@@ -311,9 +309,9 @@ extern "C" void pack_z_cols_gpu(hipDoubleComplex* z_cols_packed__,
 }
 
 template <int direction, bool conjugate>
-__global__ void pack_unpack_two_z_cols_gpu_kernel(hipDoubleComplex* z_cols_packed1__,
-                                                  hipDoubleComplex* z_cols_packed2__,
-                                                  hipDoubleComplex* fft_buf__,
+__global__ void pack_unpack_two_z_cols_gpu_kernel(acc_complex_double_t* z_cols_packed1__,
+                                                  acc_complex_double_t* z_cols_packed2__,
+                                                  acc_complex_double_t* fft_buf__,
                                                   int              size_x__,
                                                   int              size_y__,
                                                   int              size_z__,
@@ -327,32 +325,32 @@ __global__ void pack_unpack_two_z_cols_gpu_kernel(hipDoubleComplex* z_cols_packe
         /* load into buffer */
         if (direction == 1) {
             int ipos = z_col_pos__[icol];
-            hipDoubleComplex z1 = z_cols_packed1__[array2D_offset(iz, icol, size_z__)];
-            hipDoubleComplex z2 = z_cols_packed2__[array2D_offset(iz, icol, size_z__)];
+            acc_complex_double_t z1 = z_cols_packed1__[array2D_offset(iz, icol, size_z__)];
+            acc_complex_double_t z2 = z_cols_packed2__[array2D_offset(iz, icol, size_z__)];
             if (conjugate) {
                 /* conj(z1) + I * conj(z2) */
-                fft_buf__[array2D_offset(ipos, iz, size_xy)] = make_hipDoubleComplex(z1.x + z2.y, z2.x - z1.y);
+                fft_buf__[array2D_offset(ipos, iz, size_xy)] = make_accDoubleComplex(z1.x + z2.y, z2.x - z1.y);
             }
             else {
                 /* z1 + I * z2 */
-                fft_buf__[array2D_offset(ipos, iz, size_xy)] = make_hipDoubleComplex(z1.x - z2.y, z1.y + z2.x);
+                fft_buf__[array2D_offset(ipos, iz, size_xy)] = make_accDoubleComplex(z1.x - z2.y, z1.y + z2.x);
             }
         }
         if (direction == -1) {
             int ipos1 = z_col_pos__[icol];
             int ipos2 = z_col_pos__[num_z_cols__ + icol];
-            hipDoubleComplex z1 = fft_buf__[array2D_offset(ipos1, iz, size_xy)];
-            hipDoubleComplex z2 = fft_buf__[array2D_offset(ipos2, iz, size_xy)];
+            acc_complex_double_t z1 = fft_buf__[array2D_offset(ipos1, iz, size_xy)];
+            acc_complex_double_t z2 = fft_buf__[array2D_offset(ipos2, iz, size_xy)];
 
-            z_cols_packed1__[array2D_offset(iz, icol, size_z__)] = make_hipDoubleComplex(0.5 * (z1.x + z2.x), 0.5 * (z1.y - z2.y));
-            z_cols_packed2__[array2D_offset(iz, icol, size_z__)] = make_hipDoubleComplex(0.5 * (z1.y + z2.y), 0.5 * (z2.x - z1.x));
+            z_cols_packed1__[array2D_offset(iz, icol, size_z__)] = make_accDoubleComplex(0.5 * (z1.x + z2.x), 0.5 * (z1.y - z2.y));
+            z_cols_packed2__[array2D_offset(iz, icol, size_z__)] = make_accDoubleComplex(0.5 * (z1.y + z2.y), 0.5 * (z2.x - z1.x));
         }
     }
 }
 
-extern "C" void unpack_z_cols_2_gpu(hipDoubleComplex* z_cols_packed1__,
-                                    hipDoubleComplex* z_cols_packed2__,
-                                    hipDoubleComplex* fft_buf__,
+extern "C" void unpack_z_cols_2_gpu(acc_complex_double_t* z_cols_packed1__,
+                                    acc_complex_double_t* z_cols_packed2__,
+                                    acc_complex_double_t* fft_buf__,
                                     int              size_x__,
                                     int              size_y__,
                                     int              size_z__,
@@ -360,14 +358,14 @@ extern "C" void unpack_z_cols_2_gpu(hipDoubleComplex* z_cols_packed1__,
                                     int const*       z_col_pos__,
                                     int              stream_id__)
 {
-    hipStream_t stream = (hipStream_t) acc::stream(stream_id(stream_id__));
+    acc_stream_t stream = (acc_stream_t) acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);
 
-    hipMemsetAsync(fft_buf__, 0, size_x__ * size_y__ * size_z__ * sizeof(hipDoubleComplex), stream);
+    acc::zero(fft_buf__, size_x__ * size_y__ * size_z__, stream_id(stream_id__));
 
-    hipLaunchKernelGGL((pack_unpack_two_z_cols_gpu_kernel<1, false>), dim3(grid_b), dim3(grid_t), 0, stream, 
+    accLaunchKernel((pack_unpack_two_z_cols_gpu_kernel<1, false>), dim3(grid_b), dim3(grid_t), 0, stream, 
         z_cols_packed1__,
         z_cols_packed2__,
         fft_buf__,
@@ -377,7 +375,7 @@ extern "C" void unpack_z_cols_2_gpu(hipDoubleComplex* z_cols_packed1__,
         num_z_cols__,
         z_col_pos__
     );
-    hipLaunchKernelGGL((pack_unpack_two_z_cols_gpu_kernel<1, true>), dim3(grid_b), dim3(grid_t), 0, stream, 
+    accLaunchKernel((pack_unpack_two_z_cols_gpu_kernel<1, true>), dim3(grid_b), dim3(grid_t), 0, stream, 
         &z_cols_packed1__[size_z__], // skip first column for {-x, -y} coordinates
         &z_cols_packed2__[size_z__], // skip first column for {-x, -y} coordinates
         fft_buf__,
@@ -389,9 +387,9 @@ extern "C" void unpack_z_cols_2_gpu(hipDoubleComplex* z_cols_packed1__,
     );
 }
 
-extern "C" void pack_z_cols_2_gpu(hipDoubleComplex* z_cols_packed1__,
-                                  hipDoubleComplex* z_cols_packed2__,
-                                  hipDoubleComplex* fft_buf__,
+extern "C" void pack_z_cols_2_gpu(acc_complex_double_t* z_cols_packed1__,
+                                  acc_complex_double_t* z_cols_packed2__,
+                                  acc_complex_double_t* fft_buf__,
                                   int              size_x__,
                                   int              size_y__,
                                   int              size_z__,
@@ -399,12 +397,12 @@ extern "C" void pack_z_cols_2_gpu(hipDoubleComplex* z_cols_packed1__,
                                   int const*       z_col_pos__,
                                   int              stream_id__)
 {
-    hipStream_t stream = (hipStream_t) acc::stream(stream_id(stream_id__));
+    acc_stream_t stream = (acc_stream_t) acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);
 
-    hipLaunchKernelGGL((pack_unpack_two_z_cols_gpu_kernel<-1, false>), dim3(grid_b), dim3(grid_t), 0, stream, 
+    accLaunchKernel((pack_unpack_two_z_cols_gpu_kernel<-1, false>), dim3(grid_b), dim3(grid_t), 0, stream, 
         z_cols_packed1__,
         z_cols_packed2__,
         fft_buf__,

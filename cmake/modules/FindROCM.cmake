@@ -405,7 +405,7 @@ macro(rocm_hip_add_library)
 
     # compile shared library
     if(HIP_LIB_SHARED)
-	add_custom_target(HIP_TARGET_${HIP_LIB_NAME} COMMAND ${ROCM_HIPCC_EXECUTABLE} ${_ROCM_OBJS} -fPIC --shared -o ${HIP_LIB_OUTPUT_DIR}/lib${HIP_LIB_NAME}.so 
+	add_custom_target(HIP_TARGET_${HIP_LIB_NAME} COMMAND ${ROCM_HIPCC_EXECUTABLE} ${_ROCM_OBJS} -fPIC --shared -o ${HIP_LIB_OUTPUT_DIR}/lib${HIP_LIB_NAME}.so
 	    ${_ROCM_FLAGS} ${_ROCM_FULL_PATH_INCLUDE_FLAGS}
 	    WORKING_DIRECTORY ${HIP_LIB_OUTPUT_DIR})
 

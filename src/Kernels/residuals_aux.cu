@@ -23,16 +23,15 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
-#include "hip/hip_runtime.h"
-#include "hip/hip_complex.h"
+#include "../SDDK/GPU/acc_runtime.hpp"
 
 __global__ void compute_residuals_gpu_kernel
 (
     int const num_rows_loc__,
     double const* eval__,
-    hipDoubleComplex const* hpsi__,
-    hipDoubleComplex const* opsi__,
-    hipDoubleComplex* res__
+    acc_complex_double_t const* hpsi__,
+    acc_complex_double_t const* opsi__,
+    acc_complex_double_t* res__
 )
 {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -41,7 +40,7 @@ __global__ void compute_residuals_gpu_kernel
     if (j < num_rows_loc__) {
         int k = array2D_offset(j, ibnd, num_rows_loc__);
         /* res = hpsi_j - e_j * opsi_j */
-        res__[k] = hipCsub(hpsi__[k], make_hipDoubleComplex(opsi__[k].x * eval__[ibnd], opsi__[k].y * eval__[ibnd]));
+        res__[k] = accCsub(hpsi__[k], make_accDoubleComplex(opsi__[k].x * eval__[ibnd], opsi__[k].y * eval__[ibnd]));
     }
 }
 
@@ -49,7 +48,7 @@ __global__ void compute_residuals_gpu_kernel
 //== (
 //==     int num_gkvec_row,
 //==     int* res_idx,
-//==     hipDoubleComplex const* res,
+//==     acc_complex_double_t const* res,
 //==     double* res_norm,
 //==     int reduced,
 //==     int mpi_rank
@@ -57,7 +56,7 @@ __global__ void compute_residuals_gpu_kernel
 //== {
 //==     int N = num_blocks(num_gkvec_row, blockDim.x);
 //== 
-//==     HIP_DYNAMIC_SHARED( char, sdata_ptr)
+//==     ACC_DYNAMIC_SHARED( char, sdata_ptr)
 //==     double* sdata = (double*)&sdata_ptr[0];
 //== 
 //==     sdata[threadIdx.x] = 0.0;
@@ -101,11 +100,11 @@ __global__ void compute_residuals_gpu_kernel
 //==                                   int num_res_local__,
 //==                                   int* res_idx__,
 //==                                   double* eval__,
-//==                                   hipDoubleComplex const* hpsi__,
-//==                                   hipDoubleComplex const* opsi__,
+//==                                   acc_complex_double_t const* hpsi__,
+//==                                   acc_complex_double_t const* opsi__,
 //==                                   double const* h_diag__,
 //==                                   double const* o_diag__,
-//==                                   hipDoubleComplex* res__,
+//==                                   acc_complex_double_t* res__,
 //==                                   double* res_norm__,
 //==                                   double* p_norm__,
 //==                                   int gkvec_reduced__,
@@ -160,9 +159,9 @@ __global__ void compute_residuals_gpu_kernel
 //==     );
 //== }
 
-extern "C" void compute_residuals_gpu(hipDoubleComplex* hpsi__,
-                                      hipDoubleComplex* opsi__,
-                                      hipDoubleComplex* res__,
+extern "C" void compute_residuals_gpu(acc_complex_double_t* hpsi__,
+                                      acc_complex_double_t* opsi__,
+                                      acc_complex_double_t* res__,
                                       int num_rows_loc__,
                                       int num_bands__,
                                       double* eval__)
@@ -170,7 +169,7 @@ extern "C" void compute_residuals_gpu(hipDoubleComplex* hpsi__,
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
 
-    hipLaunchKernelGGL((compute_residuals_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
+    accLaunchKernel((compute_residuals_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
         num_rows_loc__,
         eval__,
         hpsi__,
@@ -182,7 +181,7 @@ extern "C" void compute_residuals_gpu(hipDoubleComplex* hpsi__,
 __global__ void add_square_sum_gpu_kernel
 (
     int num_rows_loc__,
-    hipDoubleComplex const* wf__,
+    acc_complex_double_t const* wf__,
     int reduced__,
     int mpi_rank__,
     double* result__
@@ -190,7 +189,7 @@ __global__ void add_square_sum_gpu_kernel
 {
     int N = num_blocks(num_rows_loc__, blockDim.x);
 
-    HIP_DYNAMIC_SHARED( char, sdata_ptr)
+    ACC_DYNAMIC_SHARED( char, sdata_ptr)
     double* sdata = (double*)&sdata_ptr[0];
 
     sdata[threadIdx.x] = 0.0;
@@ -226,7 +225,7 @@ __global__ void add_square_sum_gpu_kernel
     }
 }
 
-extern "C" void add_square_sum_gpu(hipDoubleComplex* wf__,
+extern "C" void add_square_sum_gpu(acc_complex_double_t* wf__,
                                    int num_rows_loc__,
                                    int nwf__,
                                    int reduced__,
@@ -236,7 +235,7 @@ extern "C" void add_square_sum_gpu(hipDoubleComplex* wf__,
     dim3 grid_t(64);
     dim3 grid_b(nwf__);
 
-    hipLaunchKernelGGL((add_square_sum_gpu_kernel), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(double), 0, 
+    accLaunchKernel((add_square_sum_gpu_kernel), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(double), 0, 
         num_rows_loc__,
         wf__,
         reduced__,
@@ -249,7 +248,7 @@ __global__ void apply_preconditioner_gpu_kernel(int const num_rows_loc__,
                                                 double const* eval__,
                                                 double const* h_diag__,
                                                 double const* o_diag__,
-                                                hipDoubleComplex* res__)
+                                                acc_complex_double_t* res__)
 {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     int ibnd = blockIdx.y;
@@ -258,11 +257,11 @@ __global__ void apply_preconditioner_gpu_kernel(int const num_rows_loc__,
         double p = (h_diag__[j] - eval__[ibnd] * o_diag__[j]);
         p = 0.5 * (1 + p + sqrt(1.0 + (p - 1) * (p - 1)));
         int k = array2D_offset(j, ibnd, num_rows_loc__);
-        res__[k] = make_hipDoubleComplex(res__[k].x / p, res__[k].y / p);
+        res__[k] = make_accDoubleComplex(res__[k].x / p, res__[k].y / p);
     }
 }
 
-extern "C" void apply_preconditioner_gpu(hipDoubleComplex* res__,
+extern "C" void apply_preconditioner_gpu(acc_complex_double_t* res__,
                                          int num_rows_loc__,
                                          int num_bands__,
                                          double* eval__,
@@ -272,26 +271,26 @@ extern "C" void apply_preconditioner_gpu(hipDoubleComplex* res__,
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
 
-    hipLaunchKernelGGL((apply_preconditioner_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, num_rows_loc__, eval__, h_diag__, o_diag__, res__);
+    accLaunchKernel((apply_preconditioner_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, num_rows_loc__, eval__, h_diag__, o_diag__, res__);
 }
 
-__global__ void make_real_g0_gpu_kernel(hipDoubleComplex* res__,
+__global__ void make_real_g0_gpu_kernel(acc_complex_double_t* res__,
                                         int              ld__)
 {
-    hipDoubleComplex z = res__[array2D_offset(0, blockIdx.x, ld__)];
+    acc_complex_double_t z = res__[array2D_offset(0, blockIdx.x, ld__)];
     if (threadIdx.x == 0) {
-        res__[array2D_offset(0, blockIdx.x, ld__)] = make_hipDoubleComplex(z.x, 0);
+        res__[array2D_offset(0, blockIdx.x, ld__)] = make_accDoubleComplex(z.x, 0);
     }
 }
 
-extern "C" void make_real_g0_gpu(hipDoubleComplex* res__,
+extern "C" void make_real_g0_gpu(acc_complex_double_t* res__,
                                  int              ld__,
                                  int              n__)
 {
     dim3 grid_t(32);
     dim3 grid_b(n__);
 
-    hipLaunchKernelGGL((make_real_g0_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, res__, ld__);
+    accLaunchKernel((make_real_g0_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, res__, ld__);
 }
 
 

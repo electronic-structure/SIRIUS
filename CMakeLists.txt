@@ -122,9 +122,6 @@ if(USE_CUDA)
     #list(APPEND CMAKE_CUDA_FLAGS "-arch=sm_61")
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_61")
   endif()
-  # tell HIP to call cuda api
-  add_definitions("-D__HIP_PLATFORM_NVCC__")
-  include_directories(BEFORE ${PROJECT_SOURCE_DIR}/src/utils/amd_hip)
 endif(USE_CUDA)
 
 if(USE_MAGMA)

@@ -23,13 +23,8 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/acc.hpp"
-#include "hip/hip_runtime.h"
-#include "hip/hip_complex.h"
-
-#ifdef __GPU
+#include "../SDDK/GPU/acc_runtime.hpp"
 #include "../SDDK/GPU/gpublas_interface.hpp"
-#endif
 
 __global__ void generate_phase_factors_conj_gpu_kernel
 (
@@ -37,7 +32,7 @@ __global__ void generate_phase_factors_conj_gpu_kernel
     int num_atoms__, 
     double const* atom_pos__, 
     int const* gvec__, 
-    hipDoubleComplex* phase_factors__
+    acc_complex_double_t* phase_factors__
 )
 {
     int ia = blockIdx.y;
@@ -53,7 +48,7 @@ __global__ void generate_phase_factors_conj_gpu_kernel
         int gvz = gvec__[array2D_offset(igloc, 2, num_gvec_loc__)];
 
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
-        phase_factors__[array2D_offset(igloc, ia, num_gvec_loc__)] = make_hipDoubleComplex(cos(p), -sin(p));
+        phase_factors__[array2D_offset(igloc, ia, num_gvec_loc__)] = make_accDoubleComplex(cos(p), -sin(p));
     }
 }
 
@@ -69,17 +64,17 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
 {
     //CUDA_timer t("generate_dm_pw_gpu");
 
-    hipStream_t stream = (hipStream_t)acc::stream(stream_id(stream_id__));
+    acc_stream_t stream = (acc_stream_t)acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(32);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
 
-    hipLaunchKernelGGL((generate_phase_factors_conj_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
+    accLaunchKernel((generate_phase_factors_conj_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
         num_gvec_loc__, 
         num_atoms__, 
         atom_pos__, 
         gvec__, 
-        (hipDoubleComplex*)phase_factors__
+        (acc_complex_double_t*)phase_factors__
     );
 
     double alpha = 1;

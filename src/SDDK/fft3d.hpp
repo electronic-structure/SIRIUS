@@ -742,8 +742,6 @@ class FFT3D : public FFT3D_grid
             /* create plan for xy transform */
             acc_fft_plan_xy_ = gpufft::create_batch_plan(2, dim_xy, dim_xy, 1, size(0) * size(1), local_size_z(),
                                                                 auto_alloc);
-            /* in CUDA case this is an alias */
-            acc_fft_plan_xy_ = acc_fft_plan_xy_;
             /* stream #0 will execute FFTs */
             gpufft::set_stream(acc_fft_plan_xy_, stream_id(acc_fft_stream_id_));
             /* allocate arrays with z- offsets and sizes on the host and device*/

@@ -23,8 +23,7 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
-#include "hip/hip_runtime.h"
-#include "hip/hip_complex.h"
+#include "../SDDK/GPU/acc_runtime.hpp"
 
 __global__ void generate_phase_factors_gpu_kernel
 (
@@ -32,7 +31,7 @@ __global__ void generate_phase_factors_gpu_kernel
     int num_atoms,
     double const* atom_pos, 
     int const* gvec, 
-    hipDoubleComplex* phase_factors
+    acc_complex_double_t* phase_factors
 )
 {
     int ia = blockIdx.y;
@@ -52,7 +51,7 @@ __global__ void generate_phase_factors_gpu_kernel
         double sinp = sin(p);
         double cosp = cos(p);
 
-        phase_factors[array2D_offset(igloc, ia, num_gvec_loc)] = make_hipDoubleComplex(cosp, sinp);
+        phase_factors[array2D_offset(igloc, ia, num_gvec_loc)] = make_accDoubleComplex(cosp, sinp);
     }
 }
 
@@ -61,13 +60,13 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
                                            int num_atoms__,
                                            int const* gvec__,
                                            double const* atom_pos__,
-                                           hipDoubleComplex* phase_factors__)
+                                           acc_complex_double_t* phase_factors__)
 
 {
     dim3 grid_t(32);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
 
-    hipLaunchKernelGGL((generate_phase_factors_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
+    accLaunchKernel((generate_phase_factors_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
         num_gvec_loc__, 
         num_atoms__,
         atom_pos__, 

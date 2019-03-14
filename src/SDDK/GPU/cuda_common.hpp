@@ -26,8 +26,7 @@
 #define __CUDA_COMMON_HPP__
 
 #include <stdio.h>
-#include "hip/hip_runtime.h"
-#include "hip/hip_complex.h"
+#include "acc.hpp"
 
 const double twopi = 6.2831853071795864769;
 

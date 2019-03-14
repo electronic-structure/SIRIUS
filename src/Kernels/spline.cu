@@ -23,8 +23,7 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
-#include "hip/hip_runtime.h"
-#include "hip/hip_complex.h"
+#include "../SDDK/GPU/acc_runtime.hpp"
 
 __global__ void spline_inner_product_gpu_kernel_v3(int num_points__,
                                                    int const* idx_ri__,
@@ -38,7 +37,7 @@ __global__ void spline_inner_product_gpu_kernel_v3(int num_points__,
     int idx_f = idx_ri__[array2D_offset(0, blockIdx.x, 2)];
     int idx_g = idx_ri__[array2D_offset(1, blockIdx.x, 2)];
 
-    HIP_DYNAMIC_SHARED( char, sdata_ptr)
+    ACC_DYNAMIC_SHARED( char, sdata_ptr)
     double* sdata = (double*)&sdata_ptr[0];
 
     int a_offs_f = array3D_offset(0, 0, idx_f, num_points__, 4);
@@ -139,7 +138,7 @@ extern "C" void spline_inner_product_gpu_v3(int const* idx_ri__,
     dim3 grid_t(64);
     dim3 grid_b(num_ri__);
 
-    hipLaunchKernelGGL((spline_inner_product_gpu_kernel_v3), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(double), 0, 
+    accLaunchKernel((spline_inner_product_gpu_kernel_v3), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(double), 0, 
         num_points__,
         idx_ri__,
         x__,

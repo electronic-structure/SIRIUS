@@ -24,14 +24,14 @@
 
 
 #if defined(__GPU) && defined(__CUDA)
-#include <hip/hip_complex.h>
+#include "../SDDK/GPU/acc.hpp"
 extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  int n,
                                                  double c,
                                                  double r,
-                                                 hipDoubleComplex* phi0,
-                                                 hipDoubleComplex* phi1,
-                                                 hipDoubleComplex* phi2);
+                                                 acc_complex_double_t* phi0,
+                                                 acc_complex_double_t* phi1,
+                                                 acc_complex_double_t* phi2);
 #endif
 
 template <typename T>

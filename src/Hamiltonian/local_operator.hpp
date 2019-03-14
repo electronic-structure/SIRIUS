@@ -26,6 +26,7 @@
 #define __LOCAL_OPERATOR_HPP__
 
 #include "Potential/potential.hpp"
+#include "../SDDK/GPU/acc.hpp"
 
 #ifdef __GPU
 extern "C" void mul_by_veff_gpu(int ispn__, int size__, double* const* veff__, double_complex* buf__);
@@ -881,7 +882,8 @@ class Local_operator
                             acc::copy(buf_rg_.at(memory_t::device), fft_coarse_.buffer().at(memory_t::device), fft_coarse_.local_size());
                         }
                         /* multiply by step function */
-                        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at(memory_t::device),
+                        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
+                                              (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
                                               theta_.f_rg().at(memory_t::device));
                         /* phi(r) * Theta(r) -> ophi(G) */
                         fft_coarse_.transform<-1>(ophi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
@@ -892,7 +894,8 @@ class Local_operator
                     }
                     if (hphi__ != nullptr) {
                         /* multiply by effective potential */
-                        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at(memory_t::device),
+                        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
+                                              (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
                                               veff_vec_[0].f_rg().at(memory_t::device));
                         /* phi(r) * Theta(r) * V(r) -> hphi(G) */
                         fft_coarse_.transform<-1>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
@@ -928,7 +931,9 @@ class Local_operator
                         case GPU: {
 #if defined(__GPU)
                             /* multiply by step function */
-                            scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at(memory_t::device), theta_.f_rg().at(memory_t::device));
+                            scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
+                                                  (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
+                                                  theta_.f_rg().at(memory_t::device));
 #endif
                             break;
                         }
@@ -1034,7 +1039,9 @@ class Local_operator
                     /* phi(G) -> phi(r) */
                     fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
                     /* multiply by Bz */
-                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at(memory_t::device), veff_vec_[1].f_rg().at(memory_t::device));
+                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
+                                          (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
+                                          veff_vec_[1].f_rg().at(memory_t::device));
                     /* phi(r) * Bz(r) -> bphi[0](G) */
                     fft_coarse_.transform<-1>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j));
 #else
