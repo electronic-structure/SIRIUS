@@ -472,12 +472,21 @@ inline Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double>&   lattice_vector
             /* spatial transform */
             vector3d<double> pos(positions__(0, ia), positions__(1, ia), positions__(2, ia));
             auto v = reduce_coordinates(R * pos + t);
+            auto distance = [](const vector3d<double>& a, const vector3d<double>& b) {
+                                auto diff = a-b;
+                                vector3d<double> d;
+                                for (int i=0; i < 3; ++i) {
+                                    double dl = std::abs(diff[i]);
+                                    d[i] = std::min(dl, 1-dl);
+                                }
+                                return std::sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]);
+                            };
 
             int ja = -1;
             /* check for equivalent atom */
             for (int k = 0; k < num_atoms_; k++) {
                 vector3d<double> pos1(positions__(0, k), positions__(1, k), positions__(2, k));
-                if ((v.first - pos1).length() < tolerance_) {
+                if (distance(v.first, pos1) < tolerance_) {
                     ja = k;
                     break;
                 }

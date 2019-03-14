@@ -1,6 +1,4 @@
-import matplotlib.pyplot as plt
 from .py_sirius import vector3d_double
-
 
 # inspired by bands.py in SIRIUS/apps/bands
 class plotter:
@@ -13,6 +11,8 @@ class plotter:
     line_style = {1: "-", 2: "-.", 3: "--", 4: ".", 5: ":"}
 
     def __init__(self, filename="band_plot.pdf"):
+        import matplotlib.pyplot as plt
+
         self.fig, self.sp = plt.subplots(1)
         self.emin_ = -0.5
         self.emax_ = 1

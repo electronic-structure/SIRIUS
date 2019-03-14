@@ -16,6 +16,7 @@ module load daint-gpu
 module load git
 module unload cray-libsci
 module load EasyBuild-custom/cscs
+module load CMake/3.12.0
 
 eb libxc-4.2.3-CrayGNU-18.08.eb -r
 eb GSL-2.5-CrayGNU-18.08.eb -r

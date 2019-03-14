@@ -137,8 +137,8 @@ inline void transform(memory_t                     mem__,
 
     auto sddk_pp = utils::get_env<int>("SDDK_PRINT_PERFORMANCE");
 
-    auto sddk_bs_raw = utils::get_env<int>("SDDK_BLOCK_SIZE");
-    int sddk_block_size = (sddk_bs_raw == nullptr) ? sddk_default_block_size : *sddk_bs_raw;
+    auto sddk_bs_raw = utils::get_env<int>("SDDK_TRANS_BLOCK_SIZE");
+    int sddk_block_size = (sddk_bs_raw == nullptr) ? sddk_trans_default_block_size : *sddk_bs_raw;
 
     T alpha = alpha__;
 
@@ -260,10 +260,10 @@ inline void transform(memory_t                     mem__,
                                 local_size_row * sizeof(T));
                 }
             }
-            double t0 = omp_get_wtime();
+            utils::timer t0("sddk::transform|mpi");
             /* collect submatrix */
             comm.allgather(&buf[0], sd.counts.data(), sd.offsets.data());
-            time_mpi += (omp_get_wtime() - t0);
+            time_mpi += t0.stop();
 
             if (is_device_memory(mem__)) {
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */

@@ -27,10 +27,13 @@
 
 __global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc__,
                                                        acc_complex_double_t const* veff__, 
-                                                       int const* gvec__, 
+                                                       int const* gvx__, 
+                                                       int const* gvy__, 
+                                                       int const* gvz__, 
                                                        int num_atoms__,
                                                        double const* atom_pos__, 
-                                                       acc_complex_double_t* veff_a__)
+                                                       acc_complex_double_t* veff_a__,
+                                                       int ld__)
 {
     int ia = blockIdx.y;
     double ax = atom_pos__[array2D_offset(ia, 0, num_atoms__)];
@@ -38,26 +41,26 @@ __global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc__,
     double az = atom_pos__[array2D_offset(ia, 2, num_atoms__)];
 
     int igloc = blockDim.x * blockIdx.x + threadIdx.x;
-    if (igloc < num_gvec_loc__)
-    {
-        int gvx = gvec__[array2D_offset(igloc, 0, num_gvec_loc__)];
-        int gvy = gvec__[array2D_offset(igloc, 1, num_gvec_loc__)];
-        int gvz = gvec__[array2D_offset(igloc, 2, num_gvec_loc__)];
+    if (igloc < num_gvec_loc__) {
+        int gvx = gvx__[igloc];
+        int gvy = gvy__[igloc];
+        int gvz = gvz__[igloc];
 
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
 
-        //veff_a__[array2D_offset(igloc, ia, num_gvec_loc__)] = accConj(accCmul(veff__[igloc], make_accDoubleComplex(cos(p), sin(p))));
-        veff_a__[array2D_offset(igloc, ia, num_gvec_loc__)] =
-            accCmul(veff__[igloc], make_accDoubleComplex(cos(p), sin(p)));
+        veff_a__[array2D_offset(igloc, ia, ld__)] = accCmul(veff__[igloc], make_accDoubleComplex(cos(p), sin(p)));
     }
 }
  
 extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 int num_gvec_loc__, 
                                                 acc_complex_double_t const* veff__, 
-                                                int const* gvec__, 
+                                                int const* gvx__, 
+                                                int const* gvy__, 
+                                                int const* gvz__, 
                                                 double const* atom_pos__,
                                                 double* veff_a__,
+                                                int ld__,
                                                 int stream_id__)
 {
     dim3 grid_t(64);
@@ -68,9 +71,12 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
     accLaunchKernel((mul_veff_with_phase_factors_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
         num_gvec_loc__,
         veff__,
-        gvec__,
+        gvx__,
+        gvy__,
+        gvz__,
         num_atoms__,
         atom_pos__,
-        (acc_complex_double_t*)veff_a__
+        (acc_complex_double_t*)veff_a__,
+        ld__
     );
 }

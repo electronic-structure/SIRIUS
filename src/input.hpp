@@ -530,13 +530,17 @@ struct Parameters_input
                 parser["parameters"].value("electronic_structure_method", electronic_structure_method_);
             std::transform(electronic_structure_method_.begin(), electronic_structure_method_.end(),
                            electronic_structure_method_.begin(), ::tolower);
-
+            xc_functionals_.clear();
             /* read list of XC functionals */
             if (parser["parameters"].count("xc_functionals")) {
                 xc_functionals_.clear();
                 for (auto& label : parser["parameters"]["xc_functionals"]) {
                     xc_functionals_.push_back(label);
                 }
+            }
+
+            if (parser["parameters"].count("vdw_functionals")) {
+                xc_functionals_.push_back(parser["parameters"]["vdw_functionals"].get<std::string>());
             }
 
             core_relativity_ = parser["parameters"].value("core_relativity", core_relativity_);

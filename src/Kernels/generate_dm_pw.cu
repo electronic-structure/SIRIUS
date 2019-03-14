@@ -31,7 +31,9 @@ __global__ void generate_phase_factors_conj_gpu_kernel
     int num_gvec_loc__, 
     int num_atoms__, 
     double const* atom_pos__, 
-    int const* gvec__, 
+    int const* gvx__, 
+    int const* gvy__, 
+    int const* gvz__, 
     acc_complex_double_t* phase_factors__
 )
 {
@@ -43,9 +45,9 @@ __global__ void generate_phase_factors_conj_gpu_kernel
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (igloc < num_gvec_loc__) {
-        int gvx = gvec__[array2D_offset(igloc, 0, num_gvec_loc__)];
-        int gvy = gvec__[array2D_offset(igloc, 1, num_gvec_loc__)];
-        int gvz = gvec__[array2D_offset(igloc, 2, num_gvec_loc__)];
+        int gvx = gvx__[igloc];
+        int gvy = gvy__[igloc];
+        int gvz = gvz__[igloc];
 
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
         phase_factors__[array2D_offset(igloc, ia, num_gvec_loc__)] = make_accDoubleComplex(cos(p), -sin(p));
@@ -56,7 +58,9 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
                                    int num_gvec_loc__,
                                    int nbf__,
                                    double const* atom_pos__,
-                                   int const* gvec__,
+                                   int const* gvx__,
+                                   int const* gvy__,
+                                   int const* gvz__,
                                    double* phase_factors__, 
                                    double const* dm__,
                                    double* dm_pw__,
@@ -73,7 +77,9 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
         num_gvec_loc__, 
         num_atoms__, 
         atom_pos__, 
-        gvec__, 
+        gvx__, 
+        gvy__, 
+        gvz__, 
         (acc_complex_double_t*)phase_factors__
     );
 

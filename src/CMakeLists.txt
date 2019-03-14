@@ -13,7 +13,7 @@ if(USE_CUDA)
 endif()
 if(CREATE_FORTRAN_BINDINGS)
   add_library(sirius_f "sirius_api.cpp;sirius.f90")
-  add_dependencies(sirius_f generate_version_hpp)
+  add_dependencies(sirius_f generate_version_hpp runtime_options_json_hpp)
   INSTALL (TARGETS sirius_f ARCHIVE DESTINATION
     ${CMAKE_INSTALL_PREFIX}/lib/)
   set_target_properties(sirius_f PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -24,14 +24,14 @@ if(CREATE_FORTRAN_BINDINGS)
 endif()
 
 if(USE_ROCM)
-  add_library(sirius_cpp STATIC ./SDDK/GPU/rocfft_interface.cpp)
-  set_target_properties(sirius_cpp PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  INSTALL (TARGETS sirius_cpp ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/)
+  add_library(sirius_rocm_interface STATIC ./SDDK/GPU/rocfft_interface.cpp)
+  set_target_properties(sirius_rocm_interface PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  # don't install as it is STATIC and not meant to be used by external projects
 
-  # use include directories and definitions of sirius_cpp (using custom targets not possible with generators)
-  set(DEFINITIONS_PROP "$<TARGET_PROPERTY:sirius_cpp,COMPILE_DEFINITIONS>")
+  # use include directories and definitions of sirius_rocm_interface (using custom targets not possible with generators)
+  set(DEFINITIONS_PROP "$<TARGET_PROPERTY:sirius_rocm_interface,COMPILE_DEFINITIONS>")
   set(DEFINITIONS_GENERATOR "$<$<BOOL:${DEFINITIONS_PROP}>:-D$<JOIN:${DEFINITIONS_PROP}, -D>>")
-  set(INCLUDE_DIR_PROP "$<TARGET_PROPERTY:sirius_cpp,INCLUDE_DIRECTORIES>")
+  set(INCLUDE_DIR_PROP "$<TARGET_PROPERTY:sirius_rocm_interface,INCLUDE_DIRECTORIES>")
   set(INCLUDE_DIR_GENERATOR "$<$<BOOL:${INCLUDE_DIR_PROP}>:-I$<JOIN:${INCLUDE_DIR_PROP}, -I>>")
 
   # create gpu library compiled with hip

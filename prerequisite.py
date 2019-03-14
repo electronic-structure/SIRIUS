@@ -6,7 +6,7 @@ import json
 
 packages = {
     "spg"  : {
-        "url"     : "https://github.com/atztogo/spglib/archive/v1.10.4.tar.gz",
+        "url"     : "https://github.com/atztogo/spglib/archive/v1.12.0.tar.gz",
         "options" : []
     },
     "fftw" : {
@@ -18,7 +18,7 @@ packages = {
         "options" : ["--disable-shared"]
     },
     "hdf5" : {
-        "url"     : "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz",
+        "url"     : "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.5/src/hdf5-1.10.5.tar.gz",
         "options" : ["--enable-fortran",
                      "--disable-shared",
                      "--enable-static=yes",
@@ -29,7 +29,7 @@ packages = {
                      "--with-szlib=no"]
     },
     "xc"   : {
-        "url"     : "http://www.tddft.org/programs/octopus/down.php?file=libxc/4.2.3/libxc-4.2.3.tar.gz",
+        "url"     : "http://www.tddft.org/programs/octopus/down.php?file=libxc/4.3.4/libxc-4.3.4.tar.gz",
         "options" : []
     }
 }
@@ -79,6 +79,15 @@ def configure_package(package_name, prefix):
     new_env = os.environ.copy()
     if 'FC' in new_env:
         new_env['F77'] = new_env['FC']
+    # python modules needs position independent code
+    if not 'CCFLAGS' in new_env:
+        new_env['CCFLAGS'] = '-fPIC'
+    else:
+        new_env['CCFLAGS'] += ' -fPIC'
+    if not 'CFLAGS' in new_env:
+        new_env['CFLAGS'] = '-fPIC'
+    else:
+        new_env['CFLAGS'] += ' -fPIC'
 
     # spglib requires a special care
     if package_name == 'spg':
@@ -132,7 +141,7 @@ def main():
               "will download, configure and install all the packages into $HOME/local\n")
 
         sys.exit(0)
-    
+
     prefix = sys.argv[1]
     print("Installation prefix: %s"%prefix)
     for pkg in sys.argv[2:]:
