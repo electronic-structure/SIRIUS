@@ -162,6 +162,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def_readonly("shiftk", &Parameters_input::shiftk_)
         .def_readonly("ngridk", &Parameters_input::ngridk_);
 
+    py::class_<Mixer_input>(m, "Mixer_input");
+
     py::class_<Communicator>(m, "Communicator");
 
     py::class_<Simulation_context>(m, "Simulation_context")
@@ -194,6 +196,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("update", &Simulation_context::update)
         .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
         .def("preferred_memory_t", &Simulation_context::preferred_memory_t)
+        .def("mixer_input", &Simulation_context::mixer_input)
         .def("comm", [](Simulation_context& obj) { return make_pycomm(obj.comm()); },
              py::return_value_policy::reference_internal)
         .def("comm_k", [](Simulation_context& obj) { return make_pycomm(obj.comm_k()); },
@@ -335,10 +338,14 @@ PYBIND11_MODULE(py_sirius, m)
         .def("PAW_total_energy", &Potential::PAW_total_energy)
         .def("PAW_one_elec_energy", &Potential::PAW_one_elec_energy);
 
-    py::class_<Density>(m, "Density")
+    py::class_<Field4D>(m, "Field4D")
+        .def("component", py::overload_cast<int>(&Field4D::component), py::return_value_policy::reference_internal);
+
+    py::class_<Density, Field4D>(m, "Density")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>(), "ctx"_a)
         .def("initial_density", &Density::initial_density)
         .def("allocate", &Density::allocate)
+        .def("mixer_init", &Density::mixer_init)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("fft_transform", &Density::fft_transform)
         .def("mix", &Density::mix)
@@ -349,6 +356,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("save", &Density::save)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("load", &Density::load);
+
 
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
@@ -616,6 +624,28 @@ PYBIND11_MODULE(py_sirius, m)
         .def("prime", py::overload_cast<>(&matrix_storage_slab<complex_double>::prime),
              py::return_value_policy::reference_internal);
 
+    py::class_<mdarray<complex_double, 1>>(m, "mdarray1c")
+        .def("on_device", &mdarray<complex_double, 1>::on_device)
+        .def("copy_to_host", [](mdarray<complex_double, 1>& mdarray) { mdarray.copy_to(memory_t::host); })
+        .def("__array__", [](py::object& obj) {
+                            mdarray<complex_double, 1>& arr = obj.cast<mdarray<complex_double, 1>&>();
+                            int nrows                       = arr.size(0);
+                            return py::array_t<complex_double>({nrows},
+                                                               {1 * sizeof(complex_double)},
+                                                               arr.at(memory_t::host), obj);
+                          });
+
+    py::class_<mdarray<double, 1>>(m, "mdarray1r")
+        .def("on_device", &mdarray<double, 1>::on_device)
+        .def("copy_to_host", [](mdarray<double, 1>& mdarray) { mdarray.copy_to(memory_t::host); })
+        .def("__array__", [](py::object& obj) {
+                            mdarray<double, 1>& arr = obj.cast<mdarray<double, 1>&>();
+                            int nrows                       = arr.size(0);
+                            return py::array_t<double>({nrows},
+                              {1 * sizeof(double)},
+                                                               arr.at(memory_t::host), obj);
+                          });
+
     py::class_<mdarray<complex_double, 2>>(m, "mdarray2c")
         .def("on_device", &mdarray<complex_double, 2>::on_device)
         .def("copy_to_host", [](mdarray<complex_double, 2>& mdarray) { mdarray.copy_to(memory_t::host); })
@@ -704,6 +734,16 @@ PYBIND11_MODULE(py_sirius, m)
              })
         .def("pw_coeffs_obj", py::overload_cast<int>(&Wave_functions::pw_coeffs, py::const_),
              py::return_value_policy::reference_internal);
+
+    py::class_<Smooth_periodic_function<complex_double>>(m, "CSmooth_periodic_function")
+        .def("pw", &Smooth_periodic_function<complex_double>::pw_array, py::return_value_policy::reference_internal)
+        .def("rg", &Smooth_periodic_function<complex_double>::rg_array, py::return_value_policy::reference_internal);
+
+    py::class_<Smooth_periodic_function<double>>(m, "RSmooth_periodic_function")
+        .def("pw", &Smooth_periodic_function<double>::pw_array, py::return_value_policy::reference_internal)
+        .def("rg", &Smooth_periodic_function<double>::rg_array, py::return_value_policy::reference_internal);
+
+    py::class_<Periodic_function<double>, Smooth_periodic_function<double>>(m, "RPeriodic_function");
 
     m.def("ewald_energy", &ewald_energy);
     m.def("set_atom_positions", &set_atom_positions);
