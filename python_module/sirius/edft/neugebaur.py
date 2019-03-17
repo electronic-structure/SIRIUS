@@ -600,7 +600,7 @@ class CG:
         G_eta = -g_eta
 
         cg_restart_inprogress = False
-        for ii in range(1, maxiter):
+        for ii in range(1, 1+maxiter):
             slope = np.real(2*inner(g_X, G_X) + inner(g_eta, G_eta))
 
             if np.abs(slope) < tol:
@@ -669,9 +669,6 @@ class CG:
                 delta_eta = -kappa * g_eta
 
             # conjugated search directions
-            # gamma = (np.real(inner(2*g_X, delta_X) + inner(g_eta, delta_eta)) /
-            #          np.real(inner(-2*GP_X, deltaP_X) + inner(-GP_eta, deltaP_eta)))
-
             if not ii % restart == 0 and not cg_restart_inprogress:
                 gamma = cg_update(g_X=g_X, gp_X=gp_X, g_eta=g_eta, gp_eta=gp_eta,
                                   deltaP_X=deltaP_X, deltaP_eta=deltaP_eta,
