@@ -27,7 +27,7 @@
 
 #include <stdint.h>
 #ifdef __GPU
-#include "GPU/cublas.hpp"
+#include "GPU/gpublas_interface.hpp"
 #endif
 #ifdef __MAGMA
 #include "GPU/magma.hpp"
@@ -86,17 +86,17 @@ inline void linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_i
                            const_cast<double*>(B), &ldb, const_cast<double*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
             break;
         }
-        case linalg_t::cublas: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
+        case linalg_t::gpublas: {
+#ifdef __GPU
+            gpublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
 #else
-            throw std::runtime_error("not compiled with cublas");
+            throw std::runtime_error("not compiled with GPU blas support!");
 #endif
             break;
         }
         case linalg_t::cublasxt: {
 #if defined(__GPU) && defined(__CUDA)
-            cublas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+            gpublas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -129,25 +129,25 @@ inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int 
                            const_cast<ftn_double_complex*>(beta), C, &ldc, (ftn_len)1, (ftn_len)1);
             break;
         }
-        case linalg_t::cublas: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::zgemm(transa, transb, m, n, k, reinterpret_cast<cuDoubleComplex const*>(alpha),
-                          reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex const*>(B), 
-                          ldb, reinterpret_cast<cuDoubleComplex const*>(beta),
-                          reinterpret_cast<cuDoubleComplex*>(C), ldc, sid());
+        case linalg_t::gpublas: {
+#ifdef __GPU
+            gpublas::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
+                          reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t const*>(B), 
+                          ldb, reinterpret_cast<acc_complex_double_t const*>(beta),
+                          reinterpret_cast<acc_complex_double_t*>(C), ldc, sid());
 #else
-            throw std::runtime_error("not compiled with cublas");
+            throw std::runtime_error("not compiled with GPU blas support!");
 #endif
             break;
 
         }
         case linalg_t::cublasxt: {
 #if defined(__GPU) && defined(__CUDA)
-            cublas::xt::zgemm(transa, transb, m, n, k, reinterpret_cast<cuDoubleComplex const*>(alpha),
-                              reinterpret_cast<cuDoubleComplex const*>(A), lda,
-                              reinterpret_cast<cuDoubleComplex const*>(B), ldb,
-                              reinterpret_cast<cuDoubleComplex const*>(beta),
-                              reinterpret_cast<cuDoubleComplex*>(C), ldc);
+            gpublas::xt::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
+                              reinterpret_cast<acc_complex_double_t const*>(A), lda,
+                              reinterpret_cast<acc_complex_double_t const*>(B), ldb,
+                              reinterpret_cast<acc_complex_double_t const*>(beta),
+                              reinterpret_cast<acc_complex_double_t*>(C), ldc);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -171,11 +171,11 @@ inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alp
                           const_cast<ftn_double*>(y), &incy, A, &lda);
             break;
         }
-        case  linalg_t::cublas: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::dger(m, n, alpha, x, incx, y, incy, A, lda, sid());
+        case  linalg_t::gpublas: {
+#ifdef __GPU
+            gpublas::dger(m, n, alpha, x, incx, y, incy, A, lda, sid());
 #else
-            throw std::runtime_error("not compiled with cublas");
+            throw std::runtime_error("not compiled with GPU blas support!");
 #endif
             break;
         }
@@ -200,17 +200,17 @@ inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int
                            const_cast<ftn_double*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
             break;
         }
-        case  linalg_t::cublas: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+        case  linalg_t::gpublas: {
+#ifdef __GPU
+            gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
 #else
-            throw std::runtime_error("not compiled with cublas");
+            throw std::runtime_error("not compiled with GPU blas support!");
 #endif
             break;
         }
         case linalg_t::cublasxt: {
 #if defined(__GPU) && defined(__CUDA)
-            cublas::xt::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+            gpublas::xt::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -234,19 +234,19 @@ inline void linalg2::trmm<ftn_double_complex>(char side, char uplo, char transa,
                            const_cast<ftn_double_complex*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
             break;
         }
-        case  linalg_t::cublas: {
-#if defined(__GPU) && defined(__CUDA)
-            cublas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<cuDoubleComplex const*>(alpha), 
-                          reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex*>(B), ldb);
+        case  linalg_t::gpublas: {
+#ifdef __GPU
+            gpublas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha), 
+                          reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t*>(B), ldb);
 #else
-            throw std::runtime_error("not compiled with cublas");
+            throw std::runtime_error("not compiled with GPU blas support!");
 #endif
             break;
         }
         case linalg_t::cublasxt: {
 #if defined(__GPU) && defined(__CUDA)
-            cublas::xt::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<cuDoubleComplex const*>(alpha),
-                              reinterpret_cast<cuDoubleComplex const*>(A), lda, reinterpret_cast<cuDoubleComplex*>(B), ldb);
+            gpublas::xt::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
+                              reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t*>(B), ldb);
 #else
             throw std::runtime_error("not compiled with cublasxt");
 #endif
@@ -1184,7 +1184,7 @@ inline void linalg<GPU>::gemv<ftn_double_complex>(int trans__, ftn_int m, ftn_in
                                                   int stream_id)
 {
     const char trans[] = {'N', 'T', 'C'};
-    cublas::zgemv(trans[trans__], m, n, (cuDoubleComplex*)alpha, (cuDoubleComplex*)A, lda, (cuDoubleComplex*)x, incx, (cuDoubleComplex*)beta, (cuDoubleComplex*)y, incy, stream_id);
+    gpublas::zgemv(trans[trans__], m, n, (acc_complex_double_t*)alpha, (acc_complex_double_t*)A, lda, (acc_complex_double_t*)x, incx, (acc_complex_double_t*)beta, (acc_complex_double_t*)y, incy, stream_id);
 }
 
 // Generic interface to zgemm
@@ -1201,7 +1201,7 @@ inline void linalg<GPU>::gemm<ftn_double_complex>(int transa__, int transb__, ft
     assert(n > 0);
     assert(k > 0);
     const char trans[] = {'N', 'T', 'C'};
-    cublas::zgemm(trans[transa__], trans[transb__], m, n, k, (cuDoubleComplex*)alpha, (cuDoubleComplex*)A, lda, (cuDoubleComplex*)B, ldb, (cuDoubleComplex*)beta, (cuDoubleComplex*)C, ldc, stream_id);
+    gpublas::zgemm(trans[transa__], trans[transb__], m, n, k, (acc_complex_double_t*)alpha, (acc_complex_double_t*)A, lda, (acc_complex_double_t*)B, ldb, (acc_complex_double_t*)beta, (acc_complex_double_t*)C, ldc, stream_id);
 }
 
 // Generic interface to dgemm
@@ -1218,7 +1218,7 @@ inline void linalg<GPU>::gemm<ftn_double>(int transa__, int transb__, ftn_int m,
     assert(n > 0);
     assert(k > 0);
     const char trans[] = {'N', 'T', 'C'};
-    cublas::dgemm(trans[transa__], trans[transb__], m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+    gpublas::dgemm(trans[transa__], trans[transb__], m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
 }
 
 //template <>
@@ -1261,7 +1261,7 @@ inline void linalg<GPU>::trmm<ftn_double>(char side,
                                           ftn_double* B,
                                           ftn_int ldb)
 {
-    cublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+    gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
 }
 
 template <>
@@ -1276,7 +1276,8 @@ inline void linalg<GPU>::trmm<ftn_double_complex>(char side,
                                                   ftn_double_complex* B,
                                                   ftn_int ldb)
 {
-    cublas::ztrmm(side, uplo, transa, 'N', m, n, (cuDoubleComplex*)alpha, (cuDoubleComplex*)A, lda, (cuDoubleComplex*)B, ldb);
+    gpublas::ztrmm(side, uplo, transa, 'N', m, n, (acc_complex_double_t*)alpha, (acc_complex_double_t*)A, lda,
+                   (acc_complex_double_t*)B, ldb);
 }
 
 template <>
@@ -1287,7 +1288,8 @@ inline void linalg<GPU>::axpy<ftn_double_complex>(ftn_int n__,
                                                   ftn_double_complex* y__,
                                                   ftn_int incy__)
 {
-    cublas::zaxpy(n__, (cuDoubleComplex const*)alpha__, (cuDoubleComplex*)x__, incx__, (cuDoubleComplex*)y__, incy__);
+    gpublas::zaxpy(n__, (acc_complex_double_t const*)alpha__, (acc_complex_double_t*)x__, incx__,
+                   (acc_complex_double_t*)y__, incy__);
 }
 #endif // __GPU
 

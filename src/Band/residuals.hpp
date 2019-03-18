@@ -193,15 +193,14 @@ static void normalize_res(device_t            pu__,
             }
             case GPU: {
                 #ifdef __GPU
-                scale_matrix_columns_gpu(res__.pw_coeffs(ispn).num_rows_loc(),
-                                         num_bands__,
-                                         res__.pw_coeffs(ispn).prime().at(memory_t::device),
+                scale_matrix_columns_gpu(res__.pw_coeffs(ispn).num_rows_loc(), num_bands__,
+                                         (acc_complex_double_t*)res__.pw_coeffs(ispn).prime().at(memory_t::device),
                                          p_norm__.at(memory_t::device));
 
                 if (res__.has_mt()) {
                     scale_matrix_columns_gpu(res__.mt_coeffs(ispn).num_rows_loc(),
                                              num_bands__,
-                                             res__.mt_coeffs(ispn).prime().at(memory_t::device),
+                                             (acc_complex_double_t *)res__.mt_coeffs(ispn).prime().at(memory_t::device),
                                              p_norm__.at(memory_t::device));
                 }
                 #endif

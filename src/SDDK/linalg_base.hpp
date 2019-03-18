@@ -64,7 +64,7 @@ enum class linalg_t
     blas,
     lapack,
     scalapack,
-    cublas,
+    gpublas,
     cublasxt,
     magma
 };
@@ -77,7 +77,8 @@ inline linalg_t get_linalg_t(std::string name__)
         {"blas",      linalg_t::blas},
         {"lapack",    linalg_t::lapack},
         {"scalapack", linalg_t::scalapack},
-        {"cublas",    linalg_t::cublas},
+        {"cublas",    linalg_t::gpublas},
+        {"gpublas",   linalg_t::gpublas},
         {"cublasxt",  linalg_t::cublasxt},
         {"magma",     linalg_t::magma},
     };

@@ -23,21 +23,17 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
+#include "../SDDK/GPU/acc_runtime.hpp"
 
-extern cudaStream_t* streams;
-extern "C" void* cuda_malloc(size_t size);
-extern "C" void cuda_free(void* ptr);
-extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-                             cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, cuDoubleComplex* b, 
-                             int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
+extern acc_stream_t* streams;
 
 __global__ void compute_chebyshev_order1_gpu_kernel
 (
     int num_gkvec__,
     double c__,
     double r__,
-    cuDoubleComplex* phi0__,
-    cuDoubleComplex* phi1__
+    acc_complex_double_t* phi0__,
+    acc_complex_double_t* phi1__
 )
 {
     int igk = blockDim.x * blockIdx.x + threadIdx.x;
@@ -47,11 +43,11 @@ __global__ void compute_chebyshev_order1_gpu_kernel
     {
         int i = array2D_offset(igk, j, num_gkvec__);
         // phi0 * c
-        cuDoubleComplex z1 = cuCmul(phi0__[i], make_cuDoubleComplex(c__, 0));
+        acc_complex_double_t z1 = accCmul(phi0__[i], make_accDoubleComplex(c__, 0));
         // phi1 - phi0 * c
-        cuDoubleComplex z2 = cuCsub(phi1__[i], z1);
+        acc_complex_double_t z2 = accCsub(phi1__[i], z1);
         // (phi1 - phi0 * c) / r
-        phi1__[i] = cuCdiv(z2, make_cuDoubleComplex(r__, 0));
+        phi1__[i] = accCdiv(z2, make_accDoubleComplex(r__, 0));
     }
 }
 
@@ -60,9 +56,9 @@ __global__ void compute_chebyshev_orderk_gpu_kernel
     int num_gkvec__,
     double c__,
     double r__,
-    cuDoubleComplex* phi0__,
-    cuDoubleComplex* phi1__,
-    cuDoubleComplex* phi2__
+    acc_complex_double_t* phi0__,
+    acc_complex_double_t* phi1__,
+    acc_complex_double_t* phi2__
 )
 {
     int igk = blockDim.x * blockIdx.x + threadIdx.x;
@@ -72,13 +68,13 @@ __global__ void compute_chebyshev_orderk_gpu_kernel
     {
         int i = array2D_offset(igk, j, num_gkvec__);
         // phi1 * c
-        cuDoubleComplex z1 = cuCmul(phi1__[i], make_cuDoubleComplex(c__, 0));
+        acc_complex_double_t z1 = accCmul(phi1__[i], make_accDoubleComplex(c__, 0));
         // phi2 - phi1 * c
-        cuDoubleComplex z2 = cuCsub(phi2__[i], z1);
+        acc_complex_double_t z2 = accCsub(phi2__[i], z1);
         // (phi2 - phi1 * c) * 2 / r
-        cuDoubleComplex z3 = cuCmul(z2, make_cuDoubleComplex(2.0 / r__, 0));
+        acc_complex_double_t z3 = accCmul(z2, make_accDoubleComplex(2.0 / r__, 0));
         // (phi2 - phi1 * c) * 2 / r - phi0
-        phi2__[i] = cuCsub(z3, phi0__[i]);
+        phi2__[i] = accCsub(z3, phi0__[i]);
     }
 }
 
@@ -86,17 +82,16 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  int n,
                                                  double c,
                                                  double r,
-                                                 cuDoubleComplex* phi0,
-                                                 cuDoubleComplex* phi1,
-                                                 cuDoubleComplex* phi2)
+                                                 acc_complex_double_t* phi0,
+                                                 acc_complex_double_t* phi1,
+                                                 acc_complex_double_t* phi2)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gkvec, grid_t.x), n);
 
     if (phi2 == NULL)
     {
-        compute_chebyshev_order1_gpu_kernel <<<grid_b, grid_t>>>
-        (
+        accLaunchKernel((compute_chebyshev_order1_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
             num_gkvec,
             c,
             r,
@@ -106,8 +101,7 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
     }
     else
     {
-        compute_chebyshev_orderk_gpu_kernel <<<grid_b, grid_t>>>
-        (
+        accLaunchKernel((compute_chebyshev_orderk_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
             num_gkvec,
             c,
             r,
@@ -127,9 +121,9 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 //==                                              int* beta_t_idx, 
 //==                                              double* atom_pos, 
 //==                                              double* gkvec, 
-//==                                              cuDoubleComplex* beta_pw_type,
-//==                                              cuDoubleComplex* phi,
-//==                                              cuDoubleComplex* beta_phi)
+//==                                              acc_complex_double_t* beta_pw_type,
+//==                                              acc_complex_double_t* phi,
+//==                                              acc_complex_double_t* beta_phi)
 //== {
 //==     int idx_beta = blockDim.x * blockIdx.x + threadIdx.x;
 //==     int idx_phi = blockDim.y * blockIdx.y + threadIdx.y;
@@ -147,12 +141,12 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 //== 
 //==     int N = num_blocks(num_gkvec, BLOCK_SIZE);
 //== 
-//==     cuDoubleComplex val = make_cuDoubleComplex(0.0, 0.0);
+//==     acc_complex_double_t val = make_accDoubleComplex(0.0, 0.0);
 //== 
 //==     for (int m = 0; m < N; m++)
 //==     {
-//==         __shared__ cuDoubleComplex beta_pw_tile[BLOCK_SIZE][BLOCK_SIZE];
-//==         __shared__ cuDoubleComplex phi_tile[BLOCK_SIZE][BLOCK_SIZE];
+//==         __shared__ acc_complex_double_t beta_pw_tile[BLOCK_SIZE][BLOCK_SIZE];
+//==         __shared__ acc_complex_double_t phi_tile[BLOCK_SIZE][BLOCK_SIZE];
 //== 
 //==         int bs = (m + 1) * BLOCK_SIZE > num_gkvec ? num_gkvec - m * BLOCK_SIZE : BLOCK_SIZE;
 //== 
@@ -168,8 +162,8 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 //==             double sinp = sin(p);
 //==             double cosp = cos(p);
 //== 
-//==             beta_pw_tile[threadIdx.x][threadIdx.y] = cuCmul(cuConj(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)]), 
-//==                                                             make_cuDoubleComplex(cosp, sinp));
+//==             beta_pw_tile[threadIdx.x][threadIdx.y] = accCmul(accConj(beta_pw_type[array2D_offset(igk, offset_t, num_gkvec)]), 
+//==                                                             make_accDoubleComplex(cosp, sinp));
 //== 
 //==         }
 //==         
@@ -180,7 +174,7 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 //== 
 //==         __syncthreads();
 //== 
-//==         for (int i = 0; i < bs; i++) val = cuCadd(val, cuCmul(beta_pw_tile[threadIdx.x][i], phi_tile[threadIdx.y][i]));
+//==         for (int i = 0; i < bs; i++) val = accCadd(val, accCmul(beta_pw_tile[threadIdx.x][i], phi_tile[threadIdx.y][i]));
 //== 
 //==         __syncthreads();
 //==     }
@@ -203,17 +197,15 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 //==     dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE);
 //==     dim3 numBlocks(num_blocks(num_beta, BLOCK_SIZE), num_blocks(num_phi, BLOCK_SIZE));
 //== 
-//==     generate_beta_phi_gpu_kernel<<<
-//==         numBlocks, 
-//==         threadsPerBlock>>>(num_gkvec, 
+//==     accLaunchKernel((generate_beta_phi_gpu_kernel), dim3(//==         numBlocks), dim3(//==         threadsPerBlock), 0, 0, num_gkvec, 
 //==                            num_beta,
 //==                            num_phi,
 //==                            beta_t_idx, 
 //==                            atom_pos,
 //==                            gkvec, 
-//==                            (cuDoubleComplex*)beta_pw_type,
-//==                            (cuDoubleComplex*)phi,
-//==                            (cuDoubleComplex*)beta_phi);
+//==                            (acc_complex_double_t*)beta_pw_type,
+//==                            (acc_complex_double_t*)phi,
+//==                            (acc_complex_double_t*)beta_phi);
 //== }
 
 
@@ -221,33 +213,33 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 
 //__global__ void copy_beta_psi_gpu_kernel
 //(
-//    cuDoubleComplex const* beta_psi,
+//    acc_complex_double_t const* beta_psi,
 //    int beta_psi_ld, 
 //    double const* wo,
-//    cuDoubleComplex* beta_psi_wo,
+//    acc_complex_double_t* beta_psi_wo,
 //    int beta_psi_wo_ld
 //)
 //{
 //    int xi = threadIdx.x;
 //    int j = blockIdx.x;
 //
-//    beta_psi_wo[array2D_offset(xi, j, beta_psi_wo_ld)] = cuCmul(cuConj(beta_psi[array2D_offset(xi, j, beta_psi_ld)]),
-//                                                                make_cuDoubleComplex(wo[j], 0.0));
+//    beta_psi_wo[array2D_offset(xi, j, beta_psi_wo_ld)] = accCmul(accConj(beta_psi[array2D_offset(xi, j, beta_psi_ld)]),
+//                                                                make_accDoubleComplex(wo[j], 0.0));
 //}
 
 //extern "C" void copy_beta_psi_gpu(int nbf,
 //                                  int nloc,
-//                                  cuDoubleComplex const* beta_psi,
+//                                  acc_complex_double_t const* beta_psi,
 //                                  int beta_psi_ld,
 //                                  double const* wo,
-//                                  cuDoubleComplex* beta_psi_wo,
+//                                  acc_complex_double_t* beta_psi_wo,
 //                                  int beta_psi_wo_ld,
 //                                  int stream_id)
 //{
 //    dim3 grid_t(nbf);
 //    dim3 grid_b(nloc);
 //    
-//    cudaStream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
+//    acc_stream_t stream = (stream_id == -1) ? NULL : streams[stream_id];
 //    
 //    copy_beta_psi_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
 //    (
@@ -262,14 +254,14 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 __global__ void compute_inner_product_gpu_kernel
 (
     int num_gkvec_row,
-    cuDoubleComplex const* f1,
-    cuDoubleComplex const* f2,
+    acc_complex_double_t const* f1,
+    acc_complex_double_t const* f2,
     double* prod
 )
 {
     int N = num_blocks(num_gkvec_row, blockDim.x);
 
-    extern __shared__ char sdata_ptr[];
+    ACC_DYNAMIC_SHARED( char, sdata_ptr)
     double* sdata = (double*)&sdata_ptr[0];
 
     sdata[threadIdx.x] = 0.0;
@@ -297,15 +289,14 @@ __global__ void compute_inner_product_gpu_kernel
 
 extern "C" void compute_inner_product_gpu(int num_gkvec_row,
                                           int n,
-                                          cuDoubleComplex const* f1,
-                                          cuDoubleComplex const* f2,
+                                          acc_complex_double_t const* f1,
+                                          acc_complex_double_t const* f2,
                                           double* prod)
 {
     dim3 grid_t(64);
     dim3 grid_b(n);
 
-    compute_inner_product_gpu_kernel <<<grid_b, grid_t, grid_t.x * sizeof(double)>>>
-    (
+    accLaunchKernel((compute_inner_product_gpu_kernel), dim3(grid_b), dim3(grid_t), grid_t.x * sizeof(double), 0, 
         num_gkvec_row,
         f1,
         f2,
@@ -316,14 +307,14 @@ extern "C" void compute_inner_product_gpu(int num_gkvec_row,
 
 __global__ void add_checksum_gpu_kernel
 (
-    cuDoubleComplex const* wf__,
+    acc_complex_double_t const* wf__,
     int num_rows_loc__,
-    cuDoubleComplex* result__
+    acc_complex_double_t* result__
 )
 {
     int N = num_blocks(num_rows_loc__, blockDim.x);
 
-    extern __shared__ char sdata_ptr[];
+    ACC_DYNAMIC_SHARED( char, sdata_ptr)
     double* sdata_x = (double*)&sdata_ptr[0];
     double* sdata_y = (double*)&sdata_ptr[blockDim.x * sizeof(double)];
 
@@ -348,19 +339,18 @@ __global__ void add_checksum_gpu_kernel
         __syncthreads();
     }
 
-    result__[blockIdx.x] = cuCadd(result__[blockIdx.x], make_cuDoubleComplex(sdata_x[0], sdata_y[0]));
+    result__[blockIdx.x] = accCadd(result__[blockIdx.x], make_accDoubleComplex(sdata_x[0], sdata_y[0]));
 }
 
-extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
+extern "C" void add_checksum_gpu(acc_complex_double_t* wf__,
                                  int num_rows_loc__,
                                  int nwf__,
-                                 cuDoubleComplex* result__)
+                                 acc_complex_double_t* result__)
 {
     dim3 grid_t(64);
     dim3 grid_b(nwf__);
 
-    add_checksum_gpu_kernel <<<grid_b, grid_t, 2 * grid_t.x * sizeof(double)>>>
-    (
+    accLaunchKernel((add_checksum_gpu_kernel), dim3(grid_b), dim3(grid_t), 2 * grid_t.x * sizeof(double), 0, 
         wf__,
         num_rows_loc__,
         result__
