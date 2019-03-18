@@ -579,25 +579,13 @@ class CG:
         HX = H.apply(X, scale=False) * kw
         Hij = X.H @ HX
         g_eta = grad_eta(Hij, ek, fn, T, kw)
-        # Lagrange multipliers
-        XhKHXF = X.H @ (K @ HX)
-        XhKX = X.H @ (K @ X)
-        LL = _solve(XhKX, XhKHXF)
-
+        LL = Hij*fn
         g_X = (HX*fn - X@LL)
-        delta_X = -K @ (HX - X @ LL) / kw
-        delta_eta = kappa * (Hij - kw*diag(ek)) / kw
 
-        # start CG
-        # if prec_direction:
-        #     G_X = delta_X
-        #     if not use_g_eta:
-        #         G_eta = delta_eta
-        #     else:
-        #         G_eta = -kappa*g_eta
-        # else:
         G_X = -g_X
         G_eta = -g_eta
+        delta_X = G_X
+        delta_eta = G_eta
 
         cg_restart_inprogress = False
         for ii in range(1, 1+maxiter):
