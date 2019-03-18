@@ -6,7 +6,7 @@ import json
 
 packages = {
     "spg"  : {
-        "url"     : "https://github.com/atztogo/spglib/archive/v1.10.4.tar.gz",
+        "url"     : "https://github.com/atztogo/spglib/archive/v1.12.0.tar.gz",
         "options" : []
     },
     "fftw" : {
@@ -18,7 +18,7 @@ packages = {
         "options" : ["--disable-shared"]
     },
     "hdf5" : {
-        "url"     : "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz",
+        "url"     : "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.5/src/hdf5-1.10.5.tar.gz",
         "options" : ["--enable-fortran",
                      "--disable-shared",
                      "--enable-static=yes",
@@ -29,7 +29,7 @@ packages = {
                      "--with-szlib=no"]
     },
     "xc"   : {
-        "url"     : "http://www.tddft.org/programs/octopus/down.php?file=libxc/4.2.3/libxc-4.2.3.tar.gz",
+        "url"     : "http://www.tddft.org/programs/octopus/down.php?file=libxc/4.3.4/libxc-4.3.4.tar.gz",
         "options" : []
     }
 }

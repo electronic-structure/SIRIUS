@@ -1,16 +1,22 @@
 if(CREATE_PYTHON_MODULE)
   set(CMAKE_CXX_STANDARD 14)
+  find_package(mpi4py REQUIRED)
 
   set(pb11_src_dir "${PROJECT_SOURCE_DIR}/python_module/pybind11")
   check_git_submodule(pybind11 "${pb11_src_dir}")
   if(NOT pybind11_avail)
-    message(FATAL_ERROR "The git submodule for pybind11 is not available, required for python support")
+    # attempt to find system installation of pybind11
+    find_package(pybind11 REQUIRED)
+    if (NOT pybind11_FOUND)
+      message(FATAL_ERROR "ERROR: pybind11 cannot be found!")
+    endif()
+  else()
+    add_subdirectory(pybind11)
   endif()
 
-  add_subdirectory(pybind11)
-  find_package(mpi4py REQUIRED)
   set(libname py_sirius)
   pybind11_add_module(${libname} py_sirius.cpp)
+
   if(USE_CUDA)
     add_dependencies(${libname} sirius_cu)
   endif()
