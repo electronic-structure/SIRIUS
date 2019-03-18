@@ -1,925 +1,1086 @@
 {
-    "build_date": "Thu,  6 Sep 2018 09:50:51",
     "comm_world_size": 1,
     "counters": {
-        "band_evp_work_count": 4401.776807843705,
-        "local_operator_num_applied": 14187
+        "band_evp_work_count": 4933.5451231958,
+        "local_operator_num_applied": 16676
     },
-    "git_hash": "df65c9ae1af51c668b8f0cc9e4ea1e1bb142f720",
+    "git_hash": "2cd5e90efd5de9fbd0ee14102eab1edc30c45f26",
     "ground_state": {
         "aw_cutoff": 7.0,
         "band_gap": 0.0,
         "chemical_formula": "Ni",
         "converged": true,
         "core_leakage": 0.0,
-        "efermi": 0.6565139588942949,
+        "efermi": 0.656514250007665,
         "energy": {
-            "bxc": -0.0010109827660166732,
+            "bxc": -0.001011402984635398,
             "core_eval_sum": 0.0,
             "enuc": 0.0,
-            "eval_sum": -10.66477709932868,
-            "ewald": -111.75579487449036,
-            "exc": -17.773642603325882,
-            "kin": 48.798393232383596,
-            "total": -171.62824549258403,
-            "veff": -59.46215934894626,
-            "vha": 107.41349934608857,
-            "vxc": -22.27170777483915
+            "eval_sum": -10.664778763165614,
+            "ewald": -111.75579413957684,
+            "exc": -17.77364275522456,
+            "kin": 48.79839203324314,
+            "total": -171.6282459104131,
+            "veff": -59.462159393424116,
+            "vha": 107.413498470397,
+            "vxc": -22.27170757976776
         },
-        "fft_coarse_grid": [18,18,18],
+        "fft_coarse_grid": [20,20,20],
         "fft_grid": [40,40,40],
+        "forces": [
+            [4.312324370118219e-13,4.31042704161251e-13,4.314009838610825e-13]
+        ],
         "mpi_grid": [1,1],
         "num_atoms": 1,
         "num_bands": 38,
         "num_fv_states": -1,
-        "num_scf_iterations": 20,
+        "num_scf_iterations": 25,
         "omega": 73.39284359469754,
-        "pw_cutoff": 25.0
+        "pw_cutoff": 25.0,
+        "stress": [
+            [-0.0019160915943802134,3.209883240645393e-35,2.710505431213764e-20],
+            [3.209883240645393e-35,-0.0019160915943802134,-2.25875452601153e-20],
+            [2.710505431213764e-20,-2.25875452601153e-20,-0.0019160915943802481]
+        ]
     },
     "task": 0,
     "threads_per_rank": 8,
     "timers": {
-        "Eigensolver_lapack::solve_std": {
-            "avg": 0.0030363930635838154,
-            "count": 346,
-            "max": 0.008694,
-            "min": 0.00118,
-            "total": 1.0505920000000002
+        "Eigensolver_lapack|zheevr": {
+            "avg": 0.0016954684466019409,
+            "count": 412,
+            "max": 0.005478,
+            "min": 0.000727,
+            "total": 0.6985329999999996
         },
-        "Eigensolver_lapack::solve_std|zheevr": {
-            "avg": 0.0030222080924855485,
-            "count": 346,
-            "max": 0.008666,
-            "min": 0.001172,
-            "total": 1.0456839999999998
+        "Eigensolver_lapack|zhegvx": {
+            "avg": 0.0009102037037037042,
+            "count": 216,
+            "max": 0.001251,
+            "min": 0.000769,
+            "total": 0.1966040000000001
         },
         "sddk::FFT3D::FFT3D": {
-            "avg": 0.0022310000000000003,
+            "avg": 0.0031869999999999997,
             "count": 2,
-            "max": 0.002494,
-            "min": 0.001968,
-            "total": 0.004462000000000001
+            "max": 0.004951,
+            "min": 0.001423,
+            "total": 0.0063739999999999995
         },
         "sddk::FFT3D::prepare": {
-            "avg": 7.272938144329889e-05,
-            "count": 388,
-            "max": 0.000238,
-            "min": 3.8e-05,
-            "total": 0.02821899999999997
+            "avg": 6.442050209205025e-05,
+            "count": 478,
+            "max": 0.000215,
+            "min": 4.7e-05,
+            "total": 0.030793000000000022
         },
         "sddk::FFT3D::prepare|cpu": {
-            "avg": 6.88969072164948e-05,
-            "count": 388,
-            "max": 0.000234,
-            "min": 3.6e-05,
-            "total": 0.02673199999999998
+            "avg": 5.9767782426778246e-05,
+            "count": 478,
+            "max": 0.000177,
+            "min": 4.3e-05,
+            "total": 0.028569
         },
         "sddk::FFT3D::transform": {
-            "avg": 0.0004096741146120022,
-            "count": 92643,
-            "max": 0.005248,
-            "min": 0.000204,
-            "total": 37.95343899999972
+            "avg": 0.00014875313337052014,
+            "count": 109387,
+            "max": 0.002772,
+            "min": 9.5e-05,
+            "total": 16.271659000001087
         },
         "sddk::FFT3D::transform_xy": {
-            "avg": 0.00011670004209709307,
-            "count": 92643,
-            "max": 0.001511,
-            "min": 8.5e-05,
-            "total": 10.811442000000993
+            "avg": 6.546954391290364e-05,
+            "count": 109387,
+            "max": 0.002187,
+            "min": 3.4e-05,
+            "total": 7.161517000000791
         },
         "sddk::FFT3D::transform_z": {
-            "avg": 0.0002873646254978861,
-            "count": 92643,
-            "max": 0.004866,
-            "min": 9.3e-05,
-            "total": 26.62232100000066
+            "avg": 7.73817821130533e-05,
+            "count": 109387,
+            "max": 0.001612,
+            "min": 4.2e-05,
+            "total": 8.464561000000561
         },
         "sddk::FFT3D::transform_z_serial": {
-            "avg": 0.0002846808285569428,
-            "count": 92643,
-            "max": 0.004854,
-            "min": 9.1e-05,
-            "total": 26.37368600000085
+            "avg": 7.48567197199017e-05,
+            "count": 109387,
+            "max": 0.001609,
+            "min": 4e-05,
+            "total": 8.188352000000886
         },
         "sddk::FFT3D::transform_z_serial|cpu": {
-            "avg": 0.0002816616797815347,
-            "count": 92643,
-            "max": 0.004848,
-            "min": 8.9e-05,
-            "total": 26.09398300000072
+            "avg": 7.205200800827431e-05,
+            "count": 109387,
+            "max": 0.0016,
+            "min": 3.8e-05,
+            "total": 7.881553000001102
         },
         "sddk::Gvec::find_gvec_shells": {
-            "avg": 0.00021379999999999997,
+            "avg": 0.00019810000000000004,
             "count": 20,
-            "max": 0.001152,
-            "min": 5.6e-05,
-            "total": 0.004275999999999999
+            "max": 0.000844,
+            "min": 5.3e-05,
+            "total": 0.003962000000000001
         },
         "sddk::Gvec::init": {
-            "avg": 0.0007190000000000001,
+            "avg": 0.0005337000000000001,
             "count": 10,
-            "max": 0.004353,
-            "min": 0.000164,
-            "total": 0.007190000000000001
+            "max": 0.002938,
+            "min": 0.000134,
+            "total": 0.0053370000000000015
         },
-        "sddk::Wave_functions::inner": {
-            "avg": 0.0010071100719424467,
-            "count": 1390,
-            "max": 0.005401,
-            "min": 1e-06,
-            "total": 1.3998830000000009
+        "sddk::inner": {
+            "avg": 0.00013706534772182227,
+            "count": 1668,
+            "max": 0.00039,
+            "min": 3e-06,
+            "total": 0.22862499999999955
         },
-        "sddk::Wave_functions::orthogonalize": {
-            "avg": 0.00469957803468208,
-            "count": 346,
-            "max": 0.014489,
-            "min": 0.0002,
-            "total": 1.6260539999999999
-        },
-        "sddk::Wave_functions::transform": {
-            "avg": 0.002170299097065463,
-            "count": 886,
-            "max": 0.0088,
-            "min": 0.000111,
-            "total": 1.9228850000000002
-        },
-        "sddk::Wave_functions::transform|init": {
-            "avg": 7.793792325056423e-05,
-            "count": 886,
-            "max": 0.000618,
-            "min": 1e-06,
-            "total": 0.0690529999999999
+        "sddk::inner|local": {
+            "avg": 0.00013371642685851338,
+            "count": 1668,
+            "max": 0.000384,
+            "min": 2e-06,
+            "total": 0.22303900000000035
         },
         "sddk::matrix_storage::matrix_storage": {
-            "avg": 2.3707061068702924e-06,
-            "count": 2096,
-            "max": 0.000264,
+            "avg": 8.955745341614831e-07,
+            "count": 2576,
+            "max": 1.7e-05,
             "min": 0.0,
-            "total": 0.004969000000000133
+            "total": 0.0023069999999999805
         },
         "sddk::matrix_storage::remap_backward": {
-            "avg": 5.325670498084356e-07,
-            "count": 1044,
-            "max": 1.3e-05,
+            "avg": 6.257961783439576e-07,
+            "count": 1256,
+            "max": 7e-06,
             "min": 0.0,
-            "total": 0.0005560000000000067
+            "total": 0.0007860000000000109
         },
         "sddk::matrix_storage::remap_forward": {
-            "avg": 1.9137681159420233e-06,
-            "count": 1380,
-            "max": 4.4e-05,
+            "avg": 3.4043062200956807e-06,
+            "count": 1672,
+            "max": 4.3e-05,
+            "min": 1e-06,
+            "total": 0.005691999999999978
+        },
+        "sddk::matrix_storage::set_num_extra": {
+            "avg": 8.346994535519114e-07,
+            "count": 2928,
+            "max": 3.9e-05,
             "min": 0.0,
-            "total": 0.002640999999999992
+            "total": 0.0024439999999999965
+        },
+        "sddk::orthogonalize": {
+            "avg": 0.0005975339805825236,
+            "count": 412,
+            "max": 0.001485,
+            "min": 0.000114,
+            "total": 0.24618399999999974
+        },
+        "sddk::orthogonalize|tmtrx": {
+            "avg": 3.488592233009715e-05,
+            "count": 412,
+            "max": 0.00015,
+            "min": 1e-06,
+            "total": 0.014373000000000026
+        },
+        "sddk::orthogonalize|transform": {
+            "avg": 8.079611650485426e-05,
+            "count": 412,
+            "max": 0.000249,
+            "min": 5e-06,
+            "total": 0.033287999999999957
         },
         "sddk::remap_gvec_to_shells|init": {
-            "avg": 0.004211,
+            "avg": 0.002212,
             "count": 1,
-            "max": 0.004211,
-            "min": 0.004211,
-            "total": 0.004211
+            "max": 0.002212,
+            "min": 0.002212,
+            "total": 0.002212
         },
         "sddk::remap_gvec_to_shells|remap_backward": {
-            "avg": 0.0012398452380952389,
-            "count": 168,
-            "max": 0.002114,
-            "min": 0.001037,
-            "total": 0.20829400000000015
+            "avg": 0.0001973701923076922,
+            "count": 208,
+            "max": 0.000425,
+            "min": 0.000158,
+            "total": 0.04105299999999998
         },
         "sddk::remap_gvec_to_shells|remap_forward": {
-            "avg": 0.0012205535714285714,
-            "count": 168,
-            "max": 0.001811,
-            "min": 0.001023,
-            "total": 0.20505299999999999
+            "avg": 0.0001936730769230768,
+            "count": 208,
+            "max": 0.000368,
+            "min": 0.000169,
+            "total": 0.04028399999999997
+        },
+        "sddk::transform": {
+            "avg": 0.00020157407407407404,
+            "count": 1080,
+            "max": 0.00062,
+            "min": 4.9e-05,
+            "total": 0.21769999999999998
+        },
+        "sddk::transform|init": {
+            "avg": 2.380370370370376e-05,
+            "count": 1080,
+            "max": 0.000415,
+            "min": 1e-06,
+            "total": 0.02570800000000006
+        },
+        "sddk::transform|local": {
+            "avg": 7.80454159592529e-05,
+            "count": 2356,
+            "max": 0.000489,
+            "min": 1.9e-05,
+            "total": 0.18387499999999982
         },
         "sirius::Atom_type::init": {
-            "avg": 0.023392,
+            "avg": 0.025208,
             "count": 1,
-            "max": 0.023392,
-            "min": 0.023392,
-            "total": 0.023392
+            "max": 0.025208,
+            "min": 0.025208,
+            "total": 0.025208
         },
         "sirius::Augmentation_operator::generate_pw_coeffs": {
-            "avg": 0.072145,
+            "avg": 0.067034,
             "count": 1,
-            "max": 0.072145,
-            "min": 0.072145,
-            "total": 0.072145
+            "max": 0.067034,
+            "min": 0.067034,
+            "total": 0.067034
+        },
+        "sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs": {
+            "avg": 0.04757549999999999,
+            "count": 12,
+            "max": 0.059723,
+            "min": 0.041093,
+            "total": 0.5709059999999999
+        },
+        "sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|qpw": {
+            "avg": 0.04333099999999999,
+            "count": 12,
+            "max": 0.054546,
+            "min": 0.03684,
+            "total": 0.5199719999999999
+        },
+        "sirius::Augmentation_operator_gvec_deriv|constructor": {
+            "avg": 0.056933,
+            "count": 1,
+            "max": 0.056933,
+            "min": 0.056933,
+            "total": 0.056933
         },
         "sirius::Band::diag_pseudo_potential_davidson": {
-            "avg": 0.26679659523809524,
-            "count": 168,
-            "max": 0.578207,
-            "min": 0.166411,
-            "total": 44.821827999999996
+            "avg": 0.1202287163461538,
+            "count": 208,
+            "max": 0.223928,
+            "min": 0.057594,
+            "total": 25.00757299999999
         },
         "sirius::Band::diag_pseudo_potential_davidson|alloc": {
-            "avg": 0.00013795833333333347,
-            "count": 168,
-            "max": 0.000911,
-            "min": 0.000101,
-            "total": 0.02317700000000002
+            "avg": 3.990865384615383e-05,
+            "count": 208,
+            "max": 8.9e-05,
+            "min": 3e-05,
+            "total": 0.008300999999999998
         },
         "sirius::Band::diag_pseudo_potential_davidson|evp": {
-            "avg": 0.002383642023346303,
-            "count": 514,
-            "max": 0.008697,
-            "min": 0.000826,
-            "total": 1.2251919999999996
+            "avg": 0.0014356677419354832,
+            "count": 620,
+            "max": 0.005482,
+            "min": 0.000729,
+            "total": 0.8901139999999996
         },
         "sirius::Band::diag_pseudo_potential_davidson|iter": {
-            "avg": 0.2654392380952382,
-            "count": 168,
-            "max": 0.577359,
-            "min": 0.16562,
-            "total": 44.593792000000015
+            "avg": 0.11956309615384608,
+            "count": 208,
+            "max": 0.222937,
+            "min": 0.057029,
+            "total": 24.869123999999985
         },
         "sirius::Band::diag_pseudo_potential_davidson|update_phi": {
-            "avg": 0.002479761904761904,
-            "count": 168,
-            "max": 0.00494,
-            "min": 0.001346,
-            "total": 0.41659999999999986
-        },
-        "sirius::Band::diag_pseudo_potential_davidson|wf": {
-            "avg": 3.817857142857143e-05,
-            "count": 168,
-            "max": 0.000148,
-            "min": 2.3e-05,
-            "total": 0.006414
+            "avg": 0.00018023076923076922,
+            "count": 208,
+            "max": 0.000528,
+            "min": 9.8e-05,
+            "total": 0.037488
         },
         "sirius::Band::initialize_subspace": {
-            "avg": 1.091483,
+            "avg": 0.430926,
             "count": 1,
-            "max": 1.091483,
-            "min": 1.091483,
-            "total": 1.091483
+            "max": 0.430926,
+            "min": 0.430926,
+            "total": 0.430926
         },
         "sirius::Band::initialize_subspace|kp": {
-            "avg": 0.13605075,
+            "avg": 0.053737375,
             "count": 8,
-            "max": 0.144128,
-            "min": 0.132203,
-            "total": 1.088406
+            "max": 0.05484,
+            "min": 0.052523,
+            "total": 0.429899
         },
         "sirius::Band::initialize_subspace|kp|wf": {
-            "avg": 0.027489375000000003,
+            "avg": 0.000296125,
             "count": 8,
-            "max": 0.029968,
-            "min": 0.026036,
-            "total": 0.21991500000000003
+            "max": 0.000334,
+            "min": 0.000268,
+            "total": 0.002369
         },
         "sirius::Band::residuals": {
-            "avg": 0.0019320116731517524,
-            "count": 514,
-            "max": 0.007195,
+            "avg": 0.0005777854838709669,
+            "count": 620,
+            "max": 0.001337,
             "min": 0.0,
-            "total": 0.9930540000000008
+            "total": 0.35822699999999946
         },
         "sirius::Band::residuals_aux": {
-            "avg": 0.0009061428571428576,
-            "count": 364,
-            "max": 0.001738,
-            "min": 0.000403,
-            "total": 0.3298360000000002
+            "avg": 0.0006156084070796459,
+            "count": 452,
+            "max": 0.000836,
+            "min": 0.000513,
+            "total": 0.278255
         },
         "sirius::Band::set_subspace_mtrx": {
-            "avg": 0.001477628939828081,
-            "count": 698,
-            "max": 0.005828,
-            "min": 0.000183,
-            "total": 1.0313850000000004
+            "avg": 0.0002951409952606636,
+            "count": 844,
+            "max": 0.000637,
+            "min": 0.00014,
+            "total": 0.24909900000000007
         },
         "sirius::Band::solve": {
-            "avg": 2.1392889047619046,
-            "count": 21,
-            "max": 3.818727,
-            "min": 1.522265,
-            "total": 44.925067
+            "avg": 0.9635754615384614,
+            "count": 26,
+            "max": 1.698416,
+            "min": 0.479334,
+            "total": 25.052961999999997
         },
         "sirius::Beta_projectors::Beta_projectors": {
-            "avg": 0.000184875,
+            "avg": 0.000222125,
             "count": 8,
-            "max": 0.000213,
-            "min": 0.000145,
-            "total": 0.001479
+            "max": 0.000348,
+            "min": 0.000133,
+            "total": 0.001777
         },
         "sirius::Beta_projectors::generate_pw_coefs_t": {
-            "avg": 0.00018112499999999997,
+            "avg": 0.00018262500000000003,
             "count": 8,
-            "max": 0.00021,
-            "min": 0.000141,
-            "total": 0.0014489999999999998
+            "max": 0.000284,
+            "min": 0.000108,
+            "total": 0.0014610000000000003
         },
         "sirius::Beta_projectors_base::dismiss": {
-            "avg": 3.982558139534876e-07,
-            "count": 344,
-            "max": 5e-06,
+            "avg": 3.815789473684202e-07,
+            "count": 456,
+            "max": 6e-06,
             "min": 0.0,
-            "total": 0.00013699999999999973
+            "total": 0.00017399999999999962
         },
         "sirius::Beta_projectors_base::generate": {
-            "avg": 2.7610144927536306e-05,
-            "count": 690,
-            "max": 8.8e-05,
-            "min": 2.3e-05,
-            "total": 0.01905100000000005
+            "avg": 2.9259615384615396e-05,
+            "count": 104,
+            "max": 6.2e-05,
+            "min": 1.9e-05,
+            "total": 0.003043000000000001
         },
         "sirius::Beta_projectors_base::inner": {
-            "avg": 0.00018381739130434824,
-            "count": 1380,
-            "max": 0.001163,
-            "min": 8e-06,
-            "total": 0.25366800000000056
+            "avg": 4.4521097046413545e-05,
+            "count": 1896,
+            "max": 0.000128,
+            "min": 7e-06,
+            "total": 0.08441200000000008
+        },
+        "sirius::Beta_projectors_base::local_inner_aux": {
+            "avg": 4.093934599156124e-05,
+            "count": 1896,
+            "max": 0.000121,
+            "min": 5e-06,
+            "total": 0.07762100000000012
         },
         "sirius::Beta_projectors_base::prepare": {
-            "avg": 9.534883720930269e-07,
-            "count": 344,
-            "max": 2.1e-05,
-            "min": 0.0,
-            "total": 0.00032800000000000125
+            "avg": 1.5000000000000005e-06,
+            "count": 16,
+            "max": 2e-06,
+            "min": 1e-06,
+            "total": 2.4000000000000007e-05
+        },
+        "sirius::Beta_projectors_strain_deriv::generate_pw_coefs_t": {
+            "avg": 0.000922375,
+            "count": 8,
+            "max": 0.00159,
+            "min": 0.000585,
+            "total": 0.007379
         },
         "sirius::Broyden1::mix": {
-            "avg": 0.002139047619047619,
-            "count": 21,
-            "max": 0.00307,
-            "min": 0.000307,
-            "total": 0.04492
-        },
-        "sirius::DFT_ground_state::compute_atomic_mag_mom": {
-            "avg": 0.011421136363636368,
-            "count": 22,
-            "max": 0.01295,
-            "min": 0.000348,
-            "total": 0.25126500000000007
+            "avg": 0.002122269230769231,
+            "count": 26,
+            "max": 0.003687,
+            "min": 7e-05,
+            "total": 0.055179000000000006
         },
         "sirius::DFT_ground_state::ewald_energy": {
-            "avg": 0.038855,
+            "avg": 0.000531,
             "count": 1,
-            "max": 0.038855,
-            "min": 0.038855,
-            "total": 0.038855
+            "max": 0.000531,
+            "min": 0.000531,
+            "total": 0.000531
         },
         "sirius::DFT_ground_state::scf_loop": {
-            "avg": 54.459923,
+            "avg": 29.559268,
             "count": 1,
-            "max": 54.459923,
-            "min": 54.459923,
-            "total": 54.459923
+            "max": 29.559268,
+            "min": 29.559268,
+            "total": 29.559268
         },
         "sirius::DFT_ground_state::scf_loop|iteration": {
-            "avg": 2.5926808571428572,
-            "count": 21,
-            "max": 4.287296,
-            "min": 1.965889,
-            "total": 54.446298000000006
+            "avg": 1.1365299615384612,
+            "count": 26,
+            "max": 1.864239,
+            "min": 0.66581,
+            "total": 29.549778999999994
         },
         "sirius::Density::add_k_point_contribution_dm": {
-            "avg": 0.0005340833333333331,
-            "count": 168,
-            "max": 0.001112,
-            "min": 0.000418,
-            "total": 0.08972599999999997
+            "avg": 0.0002818750000000001,
+            "count": 208,
+            "max": 0.000433,
+            "min": 0.000228,
+            "total": 0.05863000000000003
         },
         "sirius::Density::add_k_point_contribution_rg": {
-            "avg": 0.01734484523809524,
-            "count": 168,
-            "max": 0.027571,
-            "min": 0.01444,
-            "total": 2.9139340000000002
+            "avg": 0.007623153846153839,
+            "count": 208,
+            "max": 0.010544,
+            "min": 0.006414,
+            "total": 1.5856159999999986
         },
         "sirius::Density::augment": {
-            "avg": 0.07885552380952382,
-            "count": 21,
-            "max": 0.083501,
-            "min": 0.072651,
-            "total": 1.6559660000000003
+            "avg": 0.033785115384615386,
+            "count": 26,
+            "max": 0.045658,
+            "min": 0.030672,
+            "total": 0.878413
+        },
+        "sirius::Density::compute_atomic_mag_mom": {
+            "avg": 0.000224,
+            "count": 1,
+            "max": 0.000224,
+            "min": 0.000224,
+            "total": 0.000224
         },
         "sirius::Density::generate": {
-            "avg": 0.2249563333333333,
-            "count": 21,
-            "max": 0.253827,
-            "min": 0.214597,
-            "total": 4.724082999999999
+            "avg": 0.09806865384615386,
+            "count": 26,
+            "max": 0.114156,
+            "min": 0.088864,
+            "total": 2.5497850000000004
         },
         "sirius::Density::generate_pseudo_core_charge_density": {
-            "avg": 0.041356,
+            "avg": 0.001122,
             "count": 1,
-            "max": 0.041356,
-            "min": 0.041356,
-            "total": 0.041356
+            "max": 0.001122,
+            "min": 0.001122,
+            "total": 0.001122
         },
         "sirius::Density::generate_rho_aug": {
-            "avg": 0.07818133333333332,
-            "count": 21,
-            "max": 0.082828,
-            "min": 0.071889,
-            "total": 1.6418079999999997
+            "avg": 0.033503346153846154,
+            "count": 26,
+            "max": 0.045371,
+            "min": 0.030394,
+            "total": 0.8710870000000001
         },
         "sirius::Density::generate_rho_aug|gemm": {
-            "avg": 0.006736011904761906,
-            "count": 84,
-            "max": 0.019566,
-            "min": 0.002998,
-            "total": 0.5658250000000001
-        },
-        "sirius::Density::generate_rho_aug|phase_fac": {
-            "avg": 0.04035757142857144,
-            "count": 21,
-            "max": 0.043463,
-            "min": 0.039229,
-            "total": 0.8475090000000002
+            "avg": 0.005936259615384614,
+            "count": 104,
+            "max": 0.020818,
+            "min": 0.001935,
+            "total": 0.6173709999999999
         },
         "sirius::Density::generate_rho_aug|sum": {
-            "avg": 0.002028916666666666,
-            "count": 84,
-            "max": 0.003517,
-            "min": 0.0016,
-            "total": 0.17042899999999994
+            "avg": 0.001836836538461538,
+            "count": 104,
+            "max": 0.003942,
+            "min": 0.001365,
+            "total": 0.19103099999999995
         },
         "sirius::Density::generate_valence": {
-            "avg": 0.22494938095238093,
-            "count": 21,
-            "max": 0.253823,
-            "min": 0.214593,
-            "total": 4.723936999999999
+            "avg": 0.09806403846153847,
+            "count": 26,
+            "max": 0.114152,
+            "min": 0.088861,
+            "total": 2.549665
         },
         "sirius::Density::initial_density": {
-            "avg": 0.05643,
+            "avg": 0.006274,
             "count": 1,
-            "max": 0.05643,
-            "min": 0.05643,
-            "total": 0.05643
+            "max": 0.006274,
+            "min": 0.006274,
+            "total": 0.006274
         },
         "sirius::Density::symmetrize_density_matrix": {
-            "avg": 0.0041038095238095235,
-            "count": 21,
-            "max": 0.004973,
-            "min": 0.003577,
-            "total": 0.08617999999999999
+            "avg": 0.0037466538461538466,
+            "count": 26,
+            "max": 0.004637,
+            "min": 0.003357,
+            "total": 0.09741300000000001
         },
         "sirius::Density::update": {
-            "avg": 0.041605,
+            "avg": 0.001137,
             "count": 1,
-            "max": 0.041605,
-            "min": 0.041605,
-            "total": 0.041605
+            "max": 0.001137,
+            "min": 0.001137,
+            "total": 0.001137
         },
         "sirius::Field4D::symmetrize": {
-            "avg": 0.016069833333333332,
-            "count": 42,
-            "max": 0.018568,
-            "min": 0.014456,
-            "total": 0.674933
+            "avg": 0.0072001538461538474,
+            "count": 52,
+            "max": 0.012111,
+            "min": 0.006337,
+            "total": 0.3744080000000001
+        },
+        "sirius::Force::calc_forces_core": {
+            "avg": 0.001065,
+            "count": 1,
+            "max": 0.001065,
+            "min": 0.001065,
+            "total": 0.001065
+        },
+        "sirius::Force::calc_forces_ewald": {
+            "avg": 0.00084,
+            "count": 1,
+            "max": 0.00084,
+            "min": 0.00084,
+            "total": 0.00084
+        },
+        "sirius::Force::calc_forces_nonloc": {
+            "avg": 0.018368,
+            "count": 1,
+            "max": 0.018368,
+            "min": 0.018368,
+            "total": 0.018368
+        },
+        "sirius::Force::calc_forces_scf_corr": {
+            "avg": 0.000335,
+            "count": 1,
+            "max": 0.000335,
+            "min": 0.000335,
+            "total": 0.000335
+        },
+        "sirius::Force::calc_forces_us": {
+            "avg": 0.020247,
+            "count": 1,
+            "max": 0.020247,
+            "min": 0.020247,
+            "total": 0.020247
+        },
+        "sirius::Force::calc_forces_vloc": {
+            "avg": 0.000683,
+            "count": 1,
+            "max": 0.000683,
+            "min": 0.000683,
+            "total": 0.000683
         },
         "sirius::Hamiltonian::apply_h_s": {
-            "avg": 0.07672624712643682,
-            "count": 522,
-            "max": 0.141204,
-            "min": 0.003053,
-            "total": 40.05110100000002
+            "avg": 0.037388304140127386,
+            "count": 628,
+            "max": 0.062024,
+            "min": 0.001618,
+            "total": 23.479854999999997
         },
         "sirius::Hamiltonian::get_h_diag": {
-            "avg": 0.0005703035714285714,
-            "count": 168,
-            "max": 0.000885,
-            "min": 0.000382,
-            "total": 0.09581100000000001
+            "avg": 0.0003688317307692305,
+            "count": 208,
+            "max": 0.000866,
+            "min": 0.000304,
+            "total": 0.07671699999999995
         },
         "sirius::Hamiltonian::get_o_diag": {
-            "avg": 0.0002866845238095238,
-            "count": 168,
-            "max": 0.000455,
-            "min": 0.000189,
-            "total": 0.048163
-        },
-        "sirius::Hamiltonian::prepare": {
-            "avg": 1.6181818181818178e-05,
-            "count": 22,
-            "max": 2.8e-05,
-            "min": 1.4e-05,
-            "total": 0.0003559999999999999
+            "avg": 0.00017999038461538467,
+            "count": 208,
+            "max": 0.000271,
+            "min": 0.000145,
+            "total": 0.03743800000000001
         },
         "sirius::K_point::K_point": {
-            "avg": 8.75e-07,
+            "avg": 1e-06,
             "count": 8,
-            "max": 5e-06,
+            "max": 4e-06,
             "min": 0.0,
-            "total": 7e-06
+            "total": 8e-06
         },
         "sirius::K_point::generate_gkvec": {
-            "avg": 0.00031662499999999996,
+            "avg": 0.000243875,
             "count": 8,
-            "max": 0.000457,
-            "min": 0.0002,
-            "total": 0.0025329999999999997
+            "max": 0.000416,
+            "min": 0.000143,
+            "total": 0.001951
         },
         "sirius::K_point::initialize": {
-            "avg": 0.0008957500000000001,
+            "avg": 0.0006168750000000001,
             "count": 8,
-            "max": 0.001273,
-            "min": 0.000674,
-            "total": 0.0071660000000000005
+            "max": 0.000989,
+            "min": 0.000375,
+            "total": 0.004935000000000001
         },
         "sirius::K_point::update": {
-            "avg": 0.0003441249999999999,
+            "avg": 0.000349,
             "count": 8,
-            "max": 0.000406,
-            "min": 0.00025,
-            "total": 0.0027529999999999994
+            "max": 0.000542,
+            "min": 0.000207,
+            "total": 0.002792
         },
         "sirius::K_point_set::add_kpoint": {
-            "avg": 4.125e-06,
+            "avg": 3.750000000000001e-06,
             "count": 8,
-            "max": 1.6e-05,
+            "max": 1.5e-05,
             "min": 2e-06,
-            "total": 3.3e-05
+            "total": 3.0000000000000008e-05
         },
         "sirius::K_point_set::create_k_mesh": {
-            "avg": 0.021561,
+            "avg": 0.03291,
             "count": 1,
-            "max": 0.021561,
-            "min": 0.021561,
-            "total": 0.021561
+            "max": 0.03291,
+            "min": 0.03291,
+            "total": 0.03291
         },
         "sirius::K_point_set::find_band_occupancies": {
-            "avg": 0.000504952380952381,
-            "count": 21,
-            "max": 0.000994,
-            "min": 1e-05,
-            "total": 0.010604
+            "avg": 0.0005033461538461539,
+            "count": 26,
+            "max": 0.000738,
+            "min": 1.2e-05,
+            "total": 0.013087000000000001
         },
         "sirius::K_point_set::initialize": {
-            "avg": 0.007449,
+            "avg": 0.005077,
             "count": 1,
-            "max": 0.007449,
-            "min": 0.007449,
-            "total": 0.007449
+            "max": 0.005077,
+            "min": 0.005077,
+            "total": 0.005077
         },
         "sirius::K_point_set::sync_band_energies": {
-            "avg": 1.4857142857142857e-05,
-            "count": 21,
-            "max": 5.2e-05,
-            "min": 9e-06,
-            "total": 0.000312
+            "avg": 6.307692307692309e-06,
+            "count": 26,
+            "max": 1.1e-05,
+            "min": 5e-06,
+            "total": 0.00016400000000000003
         },
         "sirius::Local_operator::apply_h": {
-            "avg": 0.07476950766283529,
-            "count": 522,
-            "max": 0.137215,
-            "min": 0.002701,
-            "total": 39.02968300000002
+            "avg": 0.036739941082802534,
+            "count": 628,
+            "max": 0.061175,
+            "min": 0.001242,
+            "total": 23.07268299999999
         },
         "sirius::Local_operator::prepare": {
-            "avg": 0.00043934343434343337,
-            "count": 198,
-            "max": 0.005385,
+            "avg": 0.00011822222222222208,
+            "count": 243,
+            "max": 0.001117,
             "min": 7e-06,
-            "total": 0.0869899999999998
+            "total": 0.028727999999999965
         },
         "sirius::Non_local_operator::Non_local_operator": {
-            "avg": 8.636363636363635e-07,
-            "count": 44,
+            "avg": 1.0925925925925925e-06,
+            "count": 54,
             "max": 2e-06,
             "min": 0.0,
-            "total": 3.7999999999999995e-05
+            "total": 5.899999999999999e-05
         },
         "sirius::Non_local_operator::apply": {
-            "avg": 0.0002278393997445721,
-            "count": 3132,
-            "max": 0.000726,
-            "min": 4.1e-05,
-            "total": 0.7135929999999998
+            "avg": 8.477016985138036e-05,
+            "count": 3768,
+            "max": 0.000457,
+            "min": 4.9e-05,
+            "total": 0.3194140000000012
         },
         "sirius::Periodic_function::add": {
-            "avg": 6.940909090909091e-05,
-            "count": 44,
-            "max": 0.000155,
-            "min": 4.9e-05,
-            "total": 0.003054
+            "avg": 6.91851851851852e-05,
+            "count": 54,
+            "max": 0.000107,
+            "min": 5.4e-05,
+            "total": 0.0037360000000000006
         },
         "sirius::Periodic_function::inner": {
-            "avg": 6.497018348623851e-05,
-            "count": 436,
-            "max": 0.000192,
-            "min": 4.8e-05,
-            "total": 0.02832699999999999
+            "avg": 7.234758364312265e-05,
+            "count": 538,
+            "max": 0.000127,
+            "min": 5.4e-05,
+            "total": 0.038922999999999985
         },
         "sirius::Periodic_function::integrate": {
-            "avg": 5.656470588235293e-05,
-            "count": 85,
-            "max": 8.1e-05,
-            "min": 4.8e-05,
-            "total": 0.004807999999999999
+            "avg": 6.676190476190481e-05,
+            "count": 105,
+            "max": 0.000106,
+            "min": 5.2e-05,
+            "total": 0.007010000000000004
         },
         "sirius::Potential::Potential": {
-            "avg": 0.044804,
+            "avg": 0.00497,
             "count": 1,
-            "max": 0.044804,
-            "min": 0.044804,
-            "total": 0.044804
+            "max": 0.00497,
+            "min": 0.00497,
+            "total": 0.00497
         },
         "sirius::Potential::generate": {
-            "avg": 0.15403063636363637,
-            "count": 22,
-            "max": 0.178269,
-            "min": 0.148201,
-            "total": 3.388674
+            "avg": 0.04746707407407408,
+            "count": 27,
+            "max": 0.058739,
+            "min": 0.04318,
+            "total": 1.281611
         },
         "sirius::Potential::generate_D_operator_matrix": {
-            "avg": 0.015514090909090906,
-            "count": 22,
-            "max": 0.020451,
-            "min": 0.013948,
-            "total": 0.34130999999999995
+            "avg": 0.006026888888888889,
+            "count": 27,
+            "max": 0.007259,
+            "min": 0.005441,
+            "total": 0.162726
         },
         "sirius::Potential::generate_PAW_effective_potential": {
-            "avg": 1.181818181818182e-06,
-            "count": 22,
-            "max": 1.4e-05,
+            "avg": 4.4444444444444454e-07,
+            "count": 27,
+            "max": 1e-06,
             "min": 0.0,
-            "total": 2.6000000000000002e-05
+            "total": 1.2000000000000002e-05
         },
         "sirius::Potential::generate_local_potential": {
-            "avg": 0.043232,
+            "avg": 0.001596,
             "count": 1,
-            "max": 0.043232,
-            "min": 0.043232,
-            "total": 0.043232
+            "max": 0.001596,
+            "min": 0.001596,
+            "total": 0.001596
         },
         "sirius::Potential::poisson": {
-            "avg": 0.04473554545454545,
-            "count": 22,
-            "max": 0.050452,
-            "min": 0.043564,
-            "total": 0.9841819999999999
+            "avg": 0.0007348518518518519,
+            "count": 27,
+            "max": 0.000981,
+            "min": 0.000595,
+            "total": 0.019841
         },
         "sirius::Potential::update": {
-            "avg": 0.043479,
+            "avg": 0.001611,
             "count": 1,
-            "max": 0.043479,
-            "min": 0.043479,
-            "total": 0.043479
+            "max": 0.001611,
+            "min": 0.001611,
+            "total": 0.001611
         },
         "sirius::Potential::xc": {
-            "avg": 0.08298681818181818,
-            "count": 22,
-            "max": 0.096714,
-            "min": 0.078752,
-            "total": 1.82571
+            "avg": 0.03873048148148148,
+            "count": 27,
+            "max": 0.048404,
+            "min": 0.035123,
+            "total": 1.045723
         },
         "sirius::Potential::xc_rg_magnetic": {
-            "avg": 0.08298100000000001,
-            "count": 22,
-            "max": 0.096707,
-            "min": 0.078748,
-            "total": 1.8255820000000003
+            "avg": 0.03872425925925926,
+            "count": 27,
+            "max": 0.048396,
+            "min": 0.035117,
+            "total": 1.045555
         },
         "sirius::Potential::xc_rg_magnetic|grad1": {
-            "avg": 0.028945681818181822,
-            "count": 22,
-            "max": 0.031066,
-            "min": 0.026958,
-            "total": 0.6368050000000001
+            "avg": 0.010490481481481483,
+            "count": 27,
+            "max": 0.01235,
+            "min": 0.008872,
+            "total": 0.283243
         },
         "sirius::Potential::xc_rg_magnetic|grad2": {
-            "avg": 0.039553090909090906,
-            "count": 22,
-            "max": 0.045649,
-            "min": 0.036246,
-            "total": 0.8701679999999999
+            "avg": 0.014416629629629628,
+            "count": 27,
+            "max": 0.018941,
+            "min": 0.013016,
+            "total": 0.38924899999999996
         },
         "sirius::Potential::xc_rg_magnetic|libxc": {
-            "avg": 0.010329136363636362,
-            "count": 22,
-            "max": 0.015998,
-            "min": 0.00736,
-            "total": 0.22724099999999997
+            "avg": 0.004754629629629631,
+            "count": 27,
+            "max": 0.00615,
+            "min": 0.002731,
+            "total": 0.12837500000000004
         },
         "sirius::Potential::xc_rg_magnetic|up_dn": {
-            "avg": 0.0005264090909090908,
-            "count": 22,
-            "max": 0.000998,
-            "min": 0.000479,
-            "total": 0.011581
+            "avg": 0.0005578888888888889,
+            "count": 27,
+            "max": 0.000846,
+            "min": 0.000451,
+            "total": 0.015063
         },
         "sirius::Radial_integrals|atomic_centered_wfc": {
-            "avg": 0.0866285,
+            "avg": 0.09750500000000001,
             "count": 2,
-            "max": 0.087847,
-            "min": 0.08541,
-            "total": 0.173257
+            "max": 0.106908,
+            "min": 0.088102,
+            "total": 0.19501000000000002
         },
         "sirius::Radial_integrals|aug": {
-            "avg": 0.44958200000000004,
+            "avg": 0.47775,
             "count": 2,
-            "max": 0.51239,
-            "min": 0.386774,
-            "total": 0.8991640000000001
+            "max": 0.533911,
+            "min": 0.421589,
+            "total": 0.9555
         },
         "sirius::Radial_integrals|beta": {
-            "avg": 0.0806605,
+            "avg": 0.0846475,
             "count": 2,
-            "max": 0.085445,
-            "min": 0.075876,
-            "total": 0.161321
+            "max": 0.087398,
+            "min": 0.081897,
+            "total": 0.169295
         },
         "sirius::Radial_integrals|rho_core_pseudo": {
-            "avg": 0.024008500000000002,
+            "avg": 0.024718,
             "count": 2,
-            "max": 0.027949,
-            "min": 0.020068,
-            "total": 0.048017000000000004
+            "max": 0.02676,
+            "min": 0.022676,
+            "total": 0.049436
         },
         "sirius::Radial_integrals|rho_pseudo": {
-            "avg": 0.01935,
+            "avg": 0.020838,
             "count": 1,
-            "max": 0.01935,
-            "min": 0.01935,
-            "total": 0.01935
+            "max": 0.020838,
+            "min": 0.020838,
+            "total": 0.020838
         },
         "sirius::Radial_integrals|vloc": {
-            "avg": 0.0708805,
+            "avg": 0.070633,
             "count": 2,
-            "max": 0.078384,
-            "min": 0.063377,
-            "total": 0.141761
+            "max": 0.076832,
+            "min": 0.064434,
+            "total": 0.141266
         },
         "sirius::Simulation_context::init_atoms_to_grid_idx": {
-            "avg": 0.004354,
+            "avg": 0.001429,
             "count": 1,
-            "max": 0.004354,
-            "min": 0.004354,
-            "total": 0.004354
+            "max": 0.001429,
+            "min": 0.001429,
+            "total": 0.001429
         },
         "sirius::Simulation_context::init_comm": {
-            "avg": 0.000544,
+            "avg": 0.000246,
             "count": 1,
-            "max": 0.000544,
-            "min": 0.000544,
-            "total": 0.000544
+            "max": 0.000246,
+            "min": 0.000246,
+            "total": 0.000246
         },
         "sirius::Simulation_context::init_fft": {
-            "avg": 0.014965,
+            "avg": 0.012589,
             "count": 1,
-            "max": 0.014965,
-            "min": 0.014965,
-            "total": 0.014965
+            "max": 0.012589,
+            "min": 0.012589,
+            "total": 0.012589
         },
         "sirius::Simulation_context::initialize": {
-            "avg": 1.634293,
+            "avg": 1.699048,
             "count": 1,
-            "max": 1.634293,
-            "min": 1.634293,
-            "total": 1.634293
+            "max": 1.699048,
+            "min": 1.699048,
+            "total": 1.699048
         },
         "sirius::Simulation_context::make_periodic_function": {
-            "avg": 0.04007733333333333,
-            "count": 3,
-            "max": 0.041187,
-            "min": 0.038589,
-            "total": 0.120232
+            "avg": 0.00024716666666666664,
+            "count": 6,
+            "max": 0.000393,
+            "min": 0.000159,
+            "total": 0.001483
         },
         "sirius::Simulation_context::update": {
-            "avg": 0.139113,
+            "avg": 0.099655,
             "count": 1,
-            "max": 0.139113,
-            "min": 0.139113,
-            "total": 0.139113
+            "max": 0.099655,
+            "min": 0.099655,
+            "total": 0.099655
         },
         "sirius::Simulation_parameters::import": {
-            "avg": 0.001095,
+            "avg": 0.000186,
             "count": 1,
-            "max": 0.001095,
-            "min": 0.001095,
-            "total": 0.001095
+            "max": 0.000186,
+            "min": 0.000186,
+            "total": 0.000186
         },
         "sirius::Smooth_periodic_function::fft_transform": {
-            "avg": 0.0023548384697130715,
-            "count": 941,
-            "max": 0.005357,
-            "min": 0.000446,
-            "total": 2.2159030000000004
+            "avg": 0.00046733475661827527,
+            "count": 1171,
+            "max": 0.001254,
+            "min": 0.000127,
+            "total": 0.5472490000000003
         },
         "sirius::Smooth_periodic_function::gather_f_pw": {
-            "avg": 4.625e-05,
+            "avg": 2.3125e-05,
             "count": 8,
-            "max": 0.000123,
-            "min": 2.9e-05,
-            "total": 0.00037
-        },
-        "sirius::Smooth_periodic_function_gradient|dot": {
-            "avg": 0.00040437662337662324,
-            "count": 154,
-            "max": 0.000593,
-            "min": 0.000288,
-            "total": 0.062273999999999975
-        },
-        "sirius::Smooth_periodic_function_gradient|gradient": {
-            "avg": 0.0004025818181818181,
-            "count": 110,
-            "max": 0.000723,
-            "min": 0.000144,
-            "total": 0.04428399999999999
-        },
-        "sirius::Smooth_periodic_function_gradient|laplacian": {
-            "avg": 0.000244840909090909,
-            "count": 44,
-            "max": 0.000324,
-            "min": 0.000212,
-            "total": 0.010772999999999996
+            "max": 3.3e-05,
+            "min": 1.7e-05,
+            "total": 0.000185
         },
         "sirius::Smooth_periodic_function|inner": {
-            "avg": 6.277445109780441e-05,
-            "count": 501,
-            "max": 0.000188,
-            "min": 4.7e-05,
-            "total": 0.031450000000000006
+            "avg": 6.984652665589646e-05,
+            "count": 619,
+            "max": 0.000125,
+            "min": 5.2e-05,
+            "total": 0.043234999999999905
+        },
+        "sirius::Stress|ewald": {
+            "avg": 0.000858,
+            "count": 1,
+            "max": 0.000858,
+            "min": 0.000858,
+            "total": 0.000858
+        },
+        "sirius::Stress|har": {
+            "avg": 0.000281,
+            "count": 1,
+            "max": 0.000281,
+            "min": 0.000281,
+            "total": 0.000281
+        },
+        "sirius::Stress|kin": {
+            "avg": 0.001601,
+            "count": 1,
+            "max": 0.001601,
+            "min": 0.001601,
+            "total": 0.001601
+        },
+        "sirius::Stress|nonloc": {
+            "avg": 0.051411,
+            "count": 1,
+            "max": 0.051411,
+            "min": 0.051411,
+            "total": 0.051411
+        },
+        "sirius::Stress|us": {
+            "avg": 0.67746,
+            "count": 1,
+            "max": 0.67746,
+            "min": 0.67746,
+            "total": 0.67746
+        },
+        "sirius::Stress|us|gemm": {
+            "avg": 0.0010714166666666667,
+            "count": 36,
+            "max": 0.001527,
+            "min": 0.000939,
+            "total": 0.038571
+        },
+        "sirius::Stress|us|phase_fac": {
+            "avg": 0.00015,
+            "count": 1,
+            "max": 0.00015,
+            "min": 0.00015,
+            "total": 0.00015
+        },
+        "sirius::Stress|us|prepare": {
+            "avg": 0.00012480555555555557,
+            "count": 36,
+            "max": 0.000433,
+            "min": 9.3e-05,
+            "total": 0.0044930000000000005
+        },
+        "sirius::Stress|vloc": {
+            "avg": 0.001065,
+            "count": 1,
+            "max": 0.001065,
+            "min": 0.001065,
+            "total": 0.001065
         },
         "sirius::Unit_cell::find_nearest_neighbours": {
-            "avg": 0.00025699999999999996,
+            "avg": 0.000212,
             "count": 2,
-            "max": 0.000396,
-            "min": 0.000118,
-            "total": 0.0005139999999999999
+            "max": 0.000284,
+            "min": 0.00014,
+            "total": 0.000424
         },
         "sirius::Unit_cell::get_symmetry": {
-            "avg": 0.013666500000000002,
+            "avg": 0.028816,
             "count": 2,
-            "max": 0.015789,
-            "min": 0.011544,
-            "total": 0.027333000000000003
+            "max": 0.02905,
+            "min": 0.028582,
+            "total": 0.057632
         },
         "sirius::Unit_cell::initialize": {
-            "avg": 0.035371,
+            "avg": 0.054104,
             "count": 1,
-            "max": 0.035371,
-            "min": 0.035371,
-            "total": 0.035371
+            "max": 0.054104,
+            "min": 0.054104,
+            "total": 0.054104
         },
         "sirius::Unit_cell::update": {
-            "avg": 0.0139395,
+            "avg": 0.0290375,
             "count": 2,
-            "max": 0.015923,
-            "min": 0.011956,
-            "total": 0.027879
+            "max": 0.029199,
+            "min": 0.028876,
+            "total": 0.058075
         },
         "sirius::Unit_cell_symmetry::Unit_cell_symmetry": {
-            "avg": 0.013635500000000002,
+            "avg": 0.0287835,
             "count": 2,
-            "max": 0.015741,
-            "min": 0.01153,
-            "total": 0.027271000000000004
+            "max": 0.029007,
+            "min": 0.02856,
+            "total": 0.057567
         },
         "sirius::Unit_cell_symmetry::Unit_cell_symmetry|spg": {
-            "avg": 0.013453,
+            "avg": 0.0285465,
             "count": 2,
-            "max": 0.015515,
-            "min": 0.011391,
-            "total": 0.026906
+            "max": 0.028793,
+            "min": 0.0283,
+            "total": 0.057093
         },
         "sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym1": {
-            "avg": 5.95e-05,
+            "avg": 4.4999999999999996e-05,
             "count": 2,
-            "max": 6.6e-05,
-            "min": 5.3e-05,
-            "total": 0.000119
+            "max": 6.1e-05,
+            "min": 2.9e-05,
+            "total": 8.999999999999999e-05
         },
         "sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym2": {
-            "avg": 9.15e-05,
+            "avg": 0.00016350000000000002,
             "count": 2,
-            "max": 0.000132,
-            "min": 5.1e-05,
-            "total": 0.000183
+            "max": 0.000176,
+            "min": 0.000151,
+            "total": 0.00032700000000000003
         },
         "sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym3": {
-            "avg": 1.6e-05,
+            "avg": 1.65e-05,
             "count": 2,
-            "max": 2.2e-05,
+            "max": 2.3e-05,
             "min": 1e-05,
-            "total": 3.2e-05
+            "total": 3.3e-05
         },
         "sirius::Unit_cell_symmetry::symmetrize_function_pw": {
-            "avg": 0.005162761904761904,
-            "count": 42,
-            "max": 0.006266,
-            "min": 0.004561,
-            "total": 0.21683599999999997
+            "avg": 0.003077461538461539,
+            "count": 52,
+            "max": 0.006804,
+            "min": 0.002648,
+            "total": 0.16002800000000003
         },
         "sirius::Unit_cell_symmetry::symmetrize_function_pw|local": {
-            "avg": 0.0026809999999999994,
-            "count": 42,
-            "max": 0.003013,
-            "min": 0.002367,
-            "total": 0.11260199999999998
+            "avg": 0.0026438461538461537,
+            "count": 52,
+            "max": 0.006216,
+            "min": 0.00227,
+            "total": 0.13748
         },
         "sirius::Unit_cell_symmetry::symmetrize_vector_function_pw_3c": {
-            "avg": 0.010895404761904762,
-            "count": 42,
-            "max": 0.012714,
-            "min": 0.009344,
-            "total": 0.457607
+            "avg": 0.004113865384615385,
+            "count": 52,
+            "max": 0.005954,
+            "min": 0.003602,
+            "total": 0.21392100000000003
+        },
+        "sirius::dot": {
+            "avg": 0.0006011481481481481,
+            "count": 189,
+            "max": 0.000921,
+            "min": 0.000503,
+            "total": 0.11361699999999998
+        },
+        "sirius::gradient": {
+            "avg": 0.0010857205882352937,
+            "count": 136,
+            "max": 0.001761,
+            "min": 0.000212,
+            "total": 0.14765799999999993
+        },
+        "sirius::laplacian": {
+            "avg": 0.0005723333333333332,
+            "count": 54,
+            "max": 0.000702,
+            "min": 0.000482,
+            "total": 0.030905999999999993
         }
     }
 }
