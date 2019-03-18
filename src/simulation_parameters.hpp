@@ -315,8 +315,18 @@ public:
     {
         if (acc::num_devices() == 0) {
             processing_unit_ = device_t::CPU;
+            control_input_.processing_unit_ = "cpu";
         } else {
             processing_unit_ = pu__;
+            if (pu__ == device_t::CPU) {
+                control_input_.processing_unit_ = "cpu";
+            } else if (pu__ == device_t::GPU) {
+                control_input_.processing_unit_ = "gpu";
+            } else {
+                std::stringstream s;
+                s << "wrong processing unit type";
+                TERMINATE(s);
+            }
         }
     }
 

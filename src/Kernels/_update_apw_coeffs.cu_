@@ -1,9 +1,11 @@
+#include "hip/hip_runtime.h"
 #include "kernels_common.hpp"
+#include "hip/hip_complex.h"
 
-__global__ void update_apw_coeffs_gpu_kernel(cuDoubleComplex* apw_coeffs__,
+__global__ void update_apw_coeffs_gpu_kernel(hipDoubleComplex* apw_coeffs__,
                                              int ld__,
-                                             cuDoubleComplex* v__,
-                                             cuDoubleComplex* alm__,
+                                             hipDoubleComplex* v__,
+                                             hipDoubleComplex* alm__,
                                              int nrow__)
 { 
     int icol = blockIdx.y;
@@ -14,18 +16,17 @@ __global__ void update_apw_coeffs_gpu_kernel(cuDoubleComplex* apw_coeffs__,
 }
 
 
-extern "C" void update_apw_coeffs_gpu(cuDoubleComplex* apw_coeffs__,
+extern "C" void update_apw_coeffs_gpu(hipDoubleComplex* apw_coeffs__,
                                       int ld__,
-                                      cuDoubleComplex* v__,
-                                      cuDoubleComplex* alm__,
+                                      hipDoubleComplex* v__,
+                                      hipDoubleComplex* alm__,
                                       int nrow__,
                                       int ncol__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(nrow__, grid_t.x), ncol__);
 
-    update_apw_coeffs_gpu_kernel <<<grid_b, grid_t>>>
-    (
+    hipLaunchKernelGGL((update_apw_coeffs_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
 
 
     );

@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.9) # Intel C++11 support starts from 3.6 or even later version
 project(SIRIUS)
 
+# allow {module}_ROOT variables to be set
+cmake_policy(SET CMP0074 NEW)
+
 # set language and standard
 enable_language(CXX Fortran)
 set(CMAKE_CXX_STANDARD 11)
@@ -12,6 +15,7 @@ set(BUILD_DOCS OFF CACHE BOOL "build doxygen doc")
 set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
 set(USE_CUDA OFF CACHE BOOL "use CUDA")
+set(USE_ROCM OFF CACHE BOOL "use ROCM AMD GPU code")
 set(USE_VDWXC OFF CACHE BOOL "use libvdwxc for van der Walls corrections")
 set(USE_MKL OFF CACHE BOOL "use Intel MKL")
 set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
@@ -133,6 +137,24 @@ if(USE_MAGMA)
   set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MAGMA_LIBRARIES}")
 endif(USE_MAGMA)
 
+if(USE_CUDA AND USE_ROCM)
+  message(FATAL_ERROR "USE_CUDA and USE_ROCM must not be enabled at the same time!")
+endif()
+
+if(USE_ROCM)
+    message(STATUS "WARNING: ROCM enabled, prototype feature! Only limited functionality available.")
+    find_package(ROCM COMPONENTS rocfft hipblas)
+    if(NOT ${ROCM_HIP_PLATFORM} STREQUAL hcc)
+	message(FATAL_ERROR "Compilation on Nvidia platform not supported with ROCM enabled!")
+    endif()
+    add_definitions("-D__GPU")
+    add_definitions("-D__ROCM")
+    add_definitions(${ROCM_DEFINITIONS})
+    include_directories(${ROCM_INCLUDE_DIRS})
+    add_subdirectory(src/SDDK/GPU/hipblas_port)
+    include_directories(src/SDDK/GPU/hipblas_port)
+endif()
+
 # add required libraries
 set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${GSL_LIBRARY};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
 
@@ -231,7 +253,15 @@ MACRO(SIRIUS_SETUP_TARGET _target)
       message(FATAL_ERROR "Unsupported compiler")
     endif()
   else()
-    target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
+    target_link_libraries(${_target} PRIVATE "${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
+  endif()
+
+  if(USE_CUDA)
+    target_link_libraries(${_target} PRIVATE "${sirius_cu_location}")
+  endif()
+
+  if(USE_ROCM)
+    target_link_libraries(${_target} PRIVATE sirius_rocm sirius_rocm_interface hipblas_port ${ROCM_LIBRARIES})
   endif()
 
   if(OpenMP_CXX_FOUND)
@@ -250,12 +280,13 @@ if(USE_CUDA)
 endif()
 
 # applications
-add_subdirectory(apps/atoms)
-add_subdirectory(apps/dft_loop)
 if(BUILD_TESTS)
   add_subdirectory(apps/tests)
   add_subdirectory(apps/unit_tests)
 endif(BUILD_TESTS)
+
+add_subdirectory(apps/atoms)
+add_subdirectory(apps/dft_loop)
 add_subdirectory(apps/utils)
 add_subdirectory(python_module)
 add_subdirectory(doc)

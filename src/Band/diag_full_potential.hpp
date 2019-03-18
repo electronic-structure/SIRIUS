@@ -699,7 +699,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
     linalg_t la{linalg_t::blas};
     if (ctx_.processing_unit() == device_t::GPU) {
         mem = memory_t::device;
-        la = linalg_t::cublas;
+        la = linalg_t::gpublas;
     }
 
     if (ctx_.num_mag_dims() != 3) {

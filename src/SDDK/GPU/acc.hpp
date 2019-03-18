@@ -31,10 +31,12 @@
 #include <cublas_v2.h>
 #include <cublasXt.h>
 #include <nvToolsExt.h>
+#include <cuComplex.h>
 #endif
 
 #if defined(__ROCM)
 #include <hip/hip_runtime_api.h>
+#include <hip/hip_complex.h>
 #endif
 
 #include <execinfo.h>
@@ -47,9 +49,9 @@
 #include <stdio.h>
 
 #if defined(__CUDA)
-#define P(x) cuda##x
+#define GPU_PREFIX(x) cuda##x
 #elif defined(__ROCM)
-#define P(x) hip##x
+#define GPU_PREFIX(x) hip##x
 #endif
 
 #if defined(__CUDA)
@@ -66,6 +68,31 @@ using acc_error_t = cudaError_t;
 using acc_error_t = hipError_t;
 #else
 using acc_error_t = void;
+#endif
+
+#if defined(__CUDA)
+using acc_complex_float_t = cuFloatComplex;
+using acc_complex_double_t = cuDoubleComplex;
+#define make_accDoubleComplex make_cuDoubleComplex
+#define make_accFloatComplex make_cuFloatComplex
+#define accCadd cuCadd
+#define accCsub cuCsub
+#define accCmul cuCmul
+#define accCdiv cuCdiv
+#define accConj cuConj
+#define ACC_DYNAMIC_SHARED(type, var) extern __shared__ type var[];
+
+#elif defined(__ROCM)
+using acc_complex_float_t = hipFloatComplex;
+using acc_complex_double_t = hipDoubleComplex;
+#define make_accDoubleComplex make_hipDoubleComplex
+#define make_accFloatComplex make_hipFloatComplex
+#define accCadd hipCadd
+#define accCsub hipCsub
+#define accCmul hipCmul
+#define accCdiv hipCdiv
+#define accConj hipConj
+#define ACC_DYNAMIC_SHARED(type, var) HIP_DYNAMIC_SHARED(type, var)
 #endif
 
 /// Helper class to wrap stream id (integer number).
@@ -133,12 +160,12 @@ inline void stack_backtrace()
 #define CALL_DEVICE_API(func__, args__)                                                                            \
 {                                                                                                                  \
     acc_error_t error;                                                                                             \
-    error = P(func__) args__;                                                                                      \
-    if (error != P(Success)) {                                                                                     \
+    error = GPU_PREFIX(func__) args__;                                                                                      \
+    if (error != GPU_PREFIX(Success)) {                                                                                     \
         char nm[1024];                                                                                             \
         gethostname(nm, 1024);                                                                                     \
         printf("hostname: %s\n", nm);                                                                              \
-        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, P(GetErrorString)(error));  \
+        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, GPU_PREFIX(GetErrorString)(error));  \
         stack_backtrace();                                                                                         \
     }                                                                                                              \
 }
@@ -235,7 +262,7 @@ inline int num_devices()
 {
     int count{0};
 #if defined(__CUDA) || defined(__ROCM)
-    if (P(GetDeviceCount)(&count) != P(Success)) {
+    if (GPU_PREFIX(GetDeviceCount)(&count) != GPU_PREFIX(Success)) {
         return 0;
     }
 #endif
@@ -297,7 +324,7 @@ inline void copy(T* target__, T const* source__, size_t n__)
 {
     assert(source__ != nullptr);
     assert(target__ != nullptr);
-    CALL_DEVICE_API(Memcpy, (target__, source__, n__ * sizeof(T), P(MemcpyDeviceToDevice)));
+    CALL_DEVICE_API(Memcpy, (target__, source__, n__ * sizeof(T), GPU_PREFIX(MemcpyDeviceToDevice)));
 }
 
 /// 2D copy inside a device.
@@ -305,21 +332,21 @@ template <typename T>
 inline void copy(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__)
 {
     CALL_DEVICE_API(Memcpy2D, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__,
-                               P(MemcpyDeviceToDevice)));
+                               GPU_PREFIX(MemcpyDeviceToDevice)));
 }
 
 /// Copy memory from host to device.
 template <typename T>
 inline void copyin(T* target__, T const* source__, size_t n__)
 {
-    CALL_DEVICE_API(Memcpy, (target__, source__, n__ * sizeof(T), P(MemcpyHostToDevice)));
+    CALL_DEVICE_API(Memcpy, (target__, source__, n__ * sizeof(T), GPU_PREFIX(MemcpyHostToDevice)));
 }
 
 /// Asynchronous copy from host to device.
 template <typename T>
 inline void copyin(T* target__, T const* source__, size_t n__, stream_id sid__)
 {
-    CALL_DEVICE_API(MemcpyAsync, (target__, source__, n__ * sizeof(T), P(MemcpyHostToDevice), stream(sid__)));
+    CALL_DEVICE_API(MemcpyAsync, (target__, source__, n__ * sizeof(T), GPU_PREFIX(MemcpyHostToDevice), stream(sid__)));
 }
 
 /// 2D copy to the device.
@@ -327,7 +354,7 @@ template <typename T>
 inline void copyin(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__)
 {
     CALL_DEVICE_API(Memcpy2D, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__,
-                               P(MemcpyHostToDevice)));
+                               GPU_PREFIX(MemcpyHostToDevice)));
 }
 
 /// Asynchronous 2D copy to the device.
@@ -335,21 +362,21 @@ template <typename T>
 inline void copyin(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__, stream_id sid__)
 {
     CALL_DEVICE_API(Memcpy2DAsync, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__,
-                                    P(MemcpyHostToDevice), stream(sid__)));
+                                    GPU_PREFIX(MemcpyHostToDevice), stream(sid__)));
 }
 
 /// Copy memory from device to host.
 template <typename T>
 inline void copyout(T* target__, T const* source__, size_t n__)
 {
-    CALL_DEVICE_API(Memcpy, (target__, source__, n__ * sizeof(T), P(MemcpyDeviceToHost)));
+    CALL_DEVICE_API(Memcpy, (target__, source__, n__ * sizeof(T), GPU_PREFIX(MemcpyDeviceToHost)));
 }
 
 /// Asynchronous copy from device to host.
 template <typename T>
 inline void copyout(T* target__, T const* source__, size_t n__, stream_id sid__)
 {
-    CALL_DEVICE_API(MemcpyAsync, (target__, source__, n__ * sizeof(T), P(MemcpyDeviceToHost), stream(sid__)));
+    CALL_DEVICE_API(MemcpyAsync, (target__, source__, n__ * sizeof(T), GPU_PREFIX(MemcpyDeviceToHost), stream(sid__)));
 }
 
 /// 2D copy from device to host.
@@ -357,15 +384,15 @@ template <typename T>
 inline void copyout(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__)
 {
     CALL_DEVICE_API(Memcpy2D, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__,
-                               P(MemcpyDeviceToHost)));
+                               GPU_PREFIX(MemcpyDeviceToHost)));
 }
 
 /// Asynchronous 2D copy from device to host.
 template <typename T>
 inline void copyout(T* target__, int ld1__, T const* source__, int ld2__, int nrow__, int ncol__, stream_id sid__)
 {
-    CALL_DEVICE_API(Memcpy2DAsync, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__,
-                                    P(MemcpyDeviceToHost), stream(sid__)));
+    CALL_DEVICE_API(Memcpy2DAsync, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T),
+                                    ncol__, GPU_PREFIX(MemcpyDeviceToHost), stream(sid__)));
 }
 
 /// Zero the device memory.
@@ -373,6 +400,12 @@ template <typename T>
 inline void zero(T* ptr__, size_t n__)
 {
     CALL_DEVICE_API(Memset, (ptr__, 0, n__ * sizeof(T)));
+}
+
+template <typename T>
+inline void zero(T* ptr__, size_t n__, stream_id sid__)
+{
+    CALL_DEVICE_API(MemsetAsync, (ptr__, 0, n__ * sizeof(T), stream(sid__)));
 }
 
 /// Zero the 2D block of device memory.
@@ -471,18 +504,17 @@ inline bool check_device_ptr(void const* ptr__)
 
 } // namespace acc
 
-#if defined(__CUDA)
-extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
+#if defined(__GPU)
+extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, acc_complex_double_t* mtrx, double* a);
 
-extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double const* v);
+extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, acc_complex_double_t* mtrx, double const* v);
 
-extern "C" void scale_matrix_elements_gpu(std::complex<double>* ptr__,
+extern "C" void scale_matrix_elements_gpu(acc_complex_double_t* ptr__,
                                           int ld__,
                                           int nrow__,
                                           int ncol__,
                                           double beta__);
 #endif
-
 
 #endif // __ACC_HPP__
 
