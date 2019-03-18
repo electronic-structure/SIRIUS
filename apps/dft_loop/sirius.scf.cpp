@@ -41,15 +41,6 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     auto gen_evp_solver_name = args__.value("gen_evp_solver_name", ctx.control().gen_evp_solver_name_);
     ctx.gen_evp_solver_name(gen_evp_solver_name);
 
-//    auto pu = args__.value("processing_unit", ctx.control().processing_unit_);
-//    if (pu == "") {
-//#ifdef __GPU
-//        pu = "gpu";
-//#else
-//        pu = "cpu";
-//#endif
-//    }
-//    ctx.set_processing_unit(pu);
     ctx.import(args__);
 
     return std::move(ctx_ptr);
@@ -96,6 +87,14 @@ double ground_state(Simulation_context& ctx,
 
     /* launch the calculation */
     auto result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
+
+    auto repeat_update = args.value<int>("repeat_update", 0);
+    if (repeat_update) {
+        for (int i = 0; i < repeat_update; i++) {
+            dft.update();
+            result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
+        }
+    }
 
     dft.print_magnetic_moment();
 
@@ -146,8 +145,8 @@ double ground_state(Simulation_context& ctx,
             }
             if (diff > 1e-6) {
                 printf("total stress is different!");
-                //std::cout << "  reference: " << dict_ref["ground_state"]["stress"] << "\n";
-                //std::cout << "  computed: " << result["stress"] << "\n";
+                std::cout << "  reference: " << dict_ref["ground_state"]["stress"] << "\n";
+                std::cout << "  computed: " << result["stress"] << "\n";
                 ctx.comm().abort(2);
             }
         }
@@ -162,8 +161,8 @@ double ground_state(Simulation_context& ctx,
             }
             if (diff > 1e-6) {
                 printf("total force is different!");
-                //std::cout << "  reference: " << dict_ref["ground_state"]["stress"] << "\n";
-                //std::cout << "  computed: " << result["stress"] << "\n";
+                std::cout << "  reference: " << dict_ref["ground_state"]["forces"] << "\n";
+                std::cout << "  computed: " << result["forces"] << "\n";
                 ctx.comm().abort(3);
             }
         }
@@ -357,6 +356,7 @@ int main(int argn, char** argv)
     args.register_key("--std_evp_solver_name=", "{string} standard eigen-value solver");
     args.register_key("--gen_evp_solver_name=", "{string} generalized eigen-value solver");
     args.register_key("--processing_unit=", "{string} type of the processing unit");
+    args.register_key("--repeat_update=", "{int} number of times to repeat update()");
     args.register_key("--control.processing_unit=", "");
     args.register_key("--control.mpi_grid_dims=","");
     args.register_key("--control.std_evp_solver_name=", "");
