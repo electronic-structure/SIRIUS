@@ -166,10 +166,13 @@ add_custom_command(
   COMMAND true
   )
 
+
+find_package(Python REQUIRED Interpreter)
+
 add_custom_command(
   OUTPUT version.hpp-test
   DEPENDS _always_rebuild
-  COMMAND python ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
+  COMMAND ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
   )
 
 set(version_hpp_path src/version.hpp)
@@ -180,6 +183,7 @@ add_custom_command(
   )
 
 add_custom_target(generate_version_hpp DEPENDS ${version_hpp_path})
+
 
 set(runtime_options_json_path src/runtime_options_json.hpp)
 add_custom_command(
