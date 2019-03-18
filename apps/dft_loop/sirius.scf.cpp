@@ -41,15 +41,15 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     auto gen_evp_solver_name = args__.value("gen_evp_solver_name", ctx.control().gen_evp_solver_name_);
     ctx.gen_evp_solver_name(gen_evp_solver_name);
 
-    auto pu = args__.value("processing_unit", ctx.control().processing_unit_);
-    if (pu == "") {
-#ifdef __GPU
-        pu = "gpu";
-#else
-        pu = "cpu";
-#endif
-    }
-    ctx.set_processing_unit(pu);
+//    auto pu = args__.value("processing_unit", ctx.control().processing_unit_);
+//    if (pu == "") {
+//#ifdef __GPU
+//        pu = "gpu";
+//#else
+//        pu = "cpu";
+//#endif
+//    }
+//    ctx.set_processing_unit(pu);
     ctx.import(args__);
 
     return std::move(ctx_ptr);
@@ -99,6 +99,31 @@ double ground_state(Simulation_context& ctx,
 
     dft.print_magnetic_moment();
 
+    if (!ctx.full_potential()) {
+        if (ctx.control().print_stress_) {
+            Stress& s = dft.stress();
+            auto stress_tot = s.calc_stress_total();
+            s.print_info();
+            result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    result["stress"][i][j] = stress_tot(j, i);
+                }
+            }
+        }
+        if (ctx.control().print_forces_) {
+            Force& f = dft.forces();
+            auto& forces_tot = f.calc_forces_total();
+            f.print_info();
+            result["forces"] = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
+            for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
+                for (int j = 0; j < 3; j++) {
+                    result["forces"][i][j] = forces_tot(j, i);
+                }
+            }
+        }
+    }
+
     if (ref_file.size() != 0) {
         json dict_ref;
         std::ifstream(ref_file) >> dict_ref;
@@ -110,18 +135,37 @@ double ground_state(Simulation_context& ctx,
             printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
             ctx.comm().abort(1);
         }
-    }
-
-    if (!ctx.full_potential()) {
-        if (ctx.control().print_stress_) {
-            Stress& s = dft.stress();
-            s.calc_stress_total();
-            s.print_info();
+        if (result.count("stress") && dict_ref["ground_state"].count("stress")) {
+            double diff{0};
+            auto s1 = result["stress"].get<std::vector<std::vector<double>>>();
+            auto s2 = dict_ref["ground_state"]["stress"].get<std::vector<std::vector<double>>>();
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    diff += std::abs(s1[i][j] - s2[i][j]);
+                }
+            }
+            if (diff > 1e-6) {
+                printf("total stress is different!");
+                //std::cout << "  reference: " << dict_ref["ground_state"]["stress"] << "\n";
+                //std::cout << "  computed: " << result["stress"] << "\n";
+                ctx.comm().abort(2);
+            }
         }
-        if (ctx.control().print_forces_) {
-            Force& f = dft.forces();
-            f.calc_forces_total();
-            f.print_info();
+        if (result.count("forces") && dict_ref["ground_state"].count("forces")) {
+            double diff{0};
+            auto s1 = result["forces"].get<std::vector<std::vector<double>>>();
+            auto s2 = dict_ref["ground_state"]["forces"].get<std::vector<std::vector<double>>>();
+            for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
+                for (int j = 0; j < 3; j++) {
+                    diff += std::abs(s1[i][j] - s2[i][j]);
+                }
+            }
+            if (diff > 1e-6) {
+                printf("total force is different!");
+                //std::cout << "  reference: " << dict_ref["ground_state"]["stress"] << "\n";
+                //std::cout << "  computed: " << result["stress"] << "\n";
+                ctx.comm().abort(3);
+            }
         }
     }
 

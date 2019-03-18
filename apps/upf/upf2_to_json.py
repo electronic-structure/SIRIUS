@@ -200,6 +200,8 @@ def parse_PAW(upf_dict, root):
     if 'core_energy' in node.attrib:
         upf_dict['header']["paw_core_energy"] = float(
             node.attrib['core_energy']) / 2  # convert to Ha
+    except KeyError:
+        print('WARNING: PP_PAW has no core_energy set!')
 
     node = root.findall("./PP_PAW/PP_OCCUPATIONS")[0]
     size = int(node.attrib['size'])

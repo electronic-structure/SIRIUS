@@ -36,7 +36,7 @@ def get_sha(vstr, dirname):
         if p.returncode is not 0:
             raise RuntimeError
         return to_string(sha_str)
-    except RuntimeError:
+    except RuntimeError or OSError:
         # python2 and python3 handle URL requests differently
         try:
             if sys.version_info < (3, 0):
@@ -54,6 +54,8 @@ def get_sha(vstr, dirname):
             return to_string(sha_str)
         except URLError:
             return 'GIT_SHA_UNKNOWN'
+    except:
+        return 'GIT_SHA_UNKNOWN'
 
 
 def get_branch(sha_str, vstr):

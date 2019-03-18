@@ -95,6 +95,9 @@ class Simulation_context : public Simulation_parameters
     /// 2D BLACS grid for distributed linear algebra operations.
     std::unique_ptr<BLACS_grid> blacs_grid_;
 
+    /// Initial dimenstions for the fine-grain FFT grid.
+    std::array<int, 3> fft_grid_size_{{0, 0, 0}};
+
     /// Fine-grained FFT for density and potential.
     /** This is the FFT driver to transform periodic functions such as density and potential on the fine-grained
      *  FFT grid. The transformation is parallel. */
@@ -214,7 +217,11 @@ class Simulation_context : public Simulation_parameters
         }
 
         /* create FFT driver for dense mesh (density and potential) */
-        fft_ = std::unique_ptr<FFT3D>(new FFT3D(get_min_fft_grid(pw_cutoff(), rlv).grid_size(), comm_fft(), processing_unit()));
+        auto fft_grid = fft_grid_size_;
+        if (fft_grid[0] * fft_grid[1] * fft_grid[2] == 0) {
+            fft_grid = get_min_fft_grid(pw_cutoff(), rlv).grid_size();
+        }
+        fft_ = std::unique_ptr<FFT3D>(new FFT3D(fft_grid, comm_fft(), processing_unit()));
 
         /* create FFT driver for coarse mesh */
         fft_coarse_ = std::unique_ptr<FFT3D>(
@@ -500,7 +507,8 @@ class Simulation_context : public Simulation_parameters
     {
         std::vector<std::string> names({"host", "host_pinned", "device"});
 
-        if (comm().rank() == 0 && control().verbosity_ >= 2) {
+        if ((!comm().is_finalized() && comm().rank() == 0)
+            && control().verbosity_ >= 2) {
             for (auto name: names) {
                 auto& mp = mem_pool(get_memory_t(name));
                 printf("memory_pool(%s): total size: %li MB, free size: %li MB\n", name.c_str(), mp.total_size() >> 20,
@@ -1209,6 +1217,11 @@ class Simulation_context : public Simulation_parameters
         int nb = ngv_loc / ngv_b;
         /* split local number of G-vectors between blocks */
         return std::move(splindex<block>(ngv_loc, nb, 0));
+    }
+
+    inline void fft_grid_size(std::array<int, 3> fft_grid_size__)
+    {
+        fft_grid_size_ = fft_grid_size__;
     }
 };
 

@@ -12,20 +12,23 @@
 #include <memory>
 #include <stdexcept>
 #include <omp.h>
+#include <mpi.h>
 
 #include "utils/json.hpp"
 #include "Unit_cell/free_atom.hpp"
 #include "energy.hpp"
-
+#include "unit_cell_accessors.hpp"
+#include "make_sirius_comm.hpp"
 
 using namespace pybind11::literals;
 namespace py = pybind11;
 using namespace sirius;
 using namespace geometry3d;
 using json = nlohmann::json;
+
 using nlohmann::basic_json;
 
-//inspired by: https://github.com/mdcb/python-jsoncpp11/blob/master/extension.cpp
+// inspired by: https://github.com/mdcb/python-jsoncpp11/blob/master/extension.cpp
 py::object pj_convert(json& node)
 {
     switch (node.type()) {
@@ -50,7 +53,7 @@ py::object pj_convert(json& node)
             return py::int_(u);
         }
         case json::value_t::number_float: {
-            float f(node);
+            double f(node);
             return py::float_(f);
         }
         case json::value_t::object: {
@@ -80,9 +83,11 @@ std::string show_mat(const matrix3d<double>& mat)
 {
     std::string str = "[";
     for (int i = 0; i < 2; ++i) {
-        str = str + "[" + std::to_string(mat(i, 0)) + "," + std::to_string(mat(i, 1)) + "," + std::to_string(mat(i, 2)) + "]" + "\n";
+        str = str + "[" + std::to_string(mat(i, 0)) + "," + std::to_string(mat(i, 1)) + "," +
+              std::to_string(mat(i, 2)) + "]" + "\n";
     }
-    str = str + "[" + std::to_string(mat(2, 0)) + "," + std::to_string(mat(2, 1)) + "," + std::to_string(mat(2, 2)) + "]" + "]";
+    str = str + "[" + std::to_string(mat(2, 0)) + "," + std::to_string(mat(2, 1)) + "," + std::to_string(mat(2, 2)) +
+          "]" + "]";
     return str;
 }
 
@@ -100,7 +105,9 @@ using complex_double      = std::complex<double>;
 
 PYBIND11_MODULE(py_sirius, m)
 {
-
+    // this is needed to be able to pass MPI_Comm from Python->C++
+    if (import_mpi4py() < 0)
+        return;
     // MPI_Init/Finalize
     int mpi_init_flag;
     MPI_Initialized(&mpi_init_flag);
@@ -123,7 +130,7 @@ PYBIND11_MODULE(py_sirius, m)
     atexit.attr("register")(py::cpp_function([]() {
         int mpi_finalized_flag;
         MPI_Finalized(&mpi_finalized_flag);
-        if(mpi_finalized_flag == true) {
+        if (mpi_finalized_flag == true) {
             sirius::finalize(false);
         } else {
             sirius::finalize(
@@ -149,16 +156,23 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Parameters_input>(m, "Parameters_input")
         .def(py::init<>())
-        .def_readwrite("potential_tol_", &Parameters_input::potential_tol_)
-        .def_readwrite("energy_tol_", &Parameters_input::energy_tol_)
-        .def_readwrite("num_dft_iter_", &Parameters_input::num_dft_iter_);
+        .def_readonly("potential_tol", &Parameters_input::potential_tol_)
+        .def_readonly("energy_tol", &Parameters_input::energy_tol_)
+        .def_readonly("num_dft_iter", &Parameters_input::num_dft_iter_)
+        .def_readonly("shiftk", &Parameters_input::shiftk_)
+        .def_readonly("ngridk", &Parameters_input::ngridk_);
+
+    py::class_<Communicator>(m, "Communicator");
 
     py::class_<Simulation_context>(m, "Simulation_context")
         .def(py::init<>())
         .def(py::init<std::string const&>())
+        .def(py::init<std::string const&, Communicator const&>(), py::keep_alive<1, 3>())
         .def("initialize", &Simulation_context::initialize)
         .def("num_bands", py::overload_cast<>(&Simulation_context::num_bands, py::const_))
         .def("num_bands", py::overload_cast<int>(&Simulation_context::num_bands))
+        .def("max_occupancy", &Simulation_context::max_occupancy)
+        .def("num_fv_states", py::overload_cast<>(&Simulation_context::num_fv_states, py::const_))
         .def("num_spins", &Simulation_context::num_spins)
         .def("set_verbosity", &Simulation_context::set_verbosity)
         .def("create_storage_file", &Simulation_context::create_storage_file)
@@ -168,9 +182,11 @@ PYBIND11_MODULE(py_sirius, m)
         .def("full_potential", &Simulation_context::full_potential)
         .def("hubbard_correction", &Simulation_context::hubbard_correction)
         .def("fft", &Simulation_context::fft, py::return_value_policy::reference_internal)
-        .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_), py::return_value_policy::reference)
+        .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_),
+             py::return_value_policy::reference)
         .def("pw_cutoff", &Simulation_context::pw_cutoff)
-        .def("parameters_input", py::overload_cast<>(&Simulation_context::parameters_input, py::const_), py::return_value_policy::reference)
+        .def("parameters_input", py::overload_cast<>(&Simulation_context::parameters_input, py::const_),
+             py::return_value_policy::reference)
         .def("num_spin_dims", &Simulation_context::num_spin_dims)
         .def("num_mag_dims", &Simulation_context::num_mag_dims)
         .def("set_gamma_point", &Simulation_context::set_gamma_point)
@@ -178,15 +194,41 @@ PYBIND11_MODULE(py_sirius, m)
         .def("update", &Simulation_context::update)
         .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
         .def("preferred_memory_t", &Simulation_context::preferred_memory_t)
+        .def("comm", [](Simulation_context& obj) { return make_pycomm(obj.comm()); },
+             py::return_value_policy::reference_internal)
+        .def("comm_k", [](Simulation_context& obj) { return make_pycomm(obj.comm_k()); },
+             py::return_value_policy::reference_internal)
+        .def("comm_fft", [](Simulation_context& obj) { return make_pycomm(obj.comm_fft()); },
+             py::return_value_policy::reference_internal)
         .def("set_iterative_solver_tolerance", &Simulation_context::set_iterative_solver_tolerance);
 
+    py::class_<Atom>(m, "Atom")
+        .def("position", &Atom::position)
+        .def("type_id", &Atom::type_id)
+        .def("type", &Atom::type, py::return_value_policy::reference)
+        .def_property_readonly("label", [](const Atom& obj) { return obj.type().label(); })
+        .def("set_position", [](Atom& obj, const std::vector<double>& pos) {
+            if (pos.size() != 3)
+                throw std::runtime_error("wrong input");
+            obj.set_position({pos[0], pos[1], pos[2]});
+        });
+
+    py::class_<Atom_type>(m, "Atom_type")
+        .def_property_readonly("augment", [](const Atom_type& atype) { return atype.augment(); })
+        .def_property_readonly("num_atoms", [](const Atom_type& atype) { return atype.num_atoms(); });
+
     py::class_<Unit_cell>(m, "Unit_cell")
-        .def("add_atom_type", static_cast<void (Unit_cell::*)(const std::string, const std::string)>(&Unit_cell::add_atom_type))
+        .def("add_atom_type",
+             static_cast<void (Unit_cell::*)(const std::string, const std::string)>(&Unit_cell::add_atom_type))
         .def("add_atom", py::overload_cast<const std::string, std::vector<double>>(&Unit_cell::add_atom))
+        .def("atom", py::overload_cast<int>(&Unit_cell::atom), py::return_value_policy::reference)
         .def("atom_type", py::overload_cast<int>(&Unit_cell::atom_type), py::return_value_policy::reference)
-        .def("set_lattice_vectors", static_cast<void (Unit_cell::*)(matrix3d<double>)>(&Unit_cell::set_lattice_vectors))
         .def("lattice_vectors", &Unit_cell::lattice_vectors)
+        .def("set_lattice_vectors",
+             [](Unit_cell& obj, py::buffer l1, py::buffer l2, py::buffer l3) { set_lattice_vectors(obj, l1, l2, l3); })
         .def("get_symmetry", &Unit_cell::get_symmetry)
+        .def("num_electrons", &Unit_cell::num_electrons)
+        .def("num_valence_electrons", &Unit_cell::num_valence_electrons)
         .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
         .def("generate_radial_functions", &Unit_cell::generate_radial_functions);
 
@@ -205,58 +247,54 @@ PYBIND11_MODULE(py_sirius, m)
         .def("gkvec", &sddk::Gvec::gkvec)
         .def("gkvec_cart", &sddk::Gvec::gkvec_cart<index_domain_t::global>)
         .def("num_zcol", &sddk::Gvec::num_zcol)
-        .def("gvec_alt", [](Gvec& obj, int idx) {
-            vector3d<int>    vec(obj.gvec(idx));
-            std::vector<int> retr = {vec[0], vec[1], vec[2]};
-            return retr;
-        })
-        .def("index_by_gvec", [](Gvec& obj, std::vector<int> vec) {
-            vector3d<int> vec3d(vec);
-            return obj.index_by_gvec(vec3d);
-        })
-        .def("zcol", [](Gvec& gvec, int idx) {
-            z_column_descriptor obj(gvec.zcol(idx));
-            py::dict            dict("x"_a = obj.x, "y"_a = obj.y, "z"_a = obj.z);
-            return dict;
-        })
+        .def("gvec_alt",
+             [](Gvec& obj, int idx) {
+                 vector3d<int> vec(obj.gvec(idx));
+                 std::vector<int> retr = {vec[0], vec[1], vec[2]};
+                 return retr;
+             })
+        .def("index_by_gvec",
+             [](Gvec& obj, std::vector<int> vec) {
+                 vector3d<int> vec3d(vec);
+                 return obj.index_by_gvec(vec3d);
+             })
+        .def("zcol",
+             [](Gvec& gvec, int idx) {
+                 z_column_descriptor obj(gvec.zcol(idx));
+                 py::dict dict("x"_a = obj.x, "y"_a = obj.y, "z"_a = obj.z);
+                 return dict;
+             })
         .def("index_by_gvec", &Gvec::index_by_gvec);
 
     py::class_<Gvec_partition>(m, "Gvec_partition");
 
     py::class_<vector3d<int>>(m, "vector3d_int")
         .def(py::init<std::vector<int>>())
-        .def("__call__", [](const vector3d<int>& obj, int x) {
-            return obj[x];
-        })
-        .def("__repr__", [](const vector3d<int>& vec) {
-            return show_vec(vec);
-        })
+        .def("__call__", [](const vector3d<int>& obj, int x) { return obj[x]; })
+        .def("__repr__", [](const vector3d<int>& vec) { return show_vec(vec); })
         .def("__len__", &vector3d<int>::length)
         .def("__array__", [](vector3d<int>& v3d) {
             py::array_t<int> x(3);
             auto r = x.mutable_unchecked<1>();
-            r(0) = v3d[0];
-            r(1) = v3d[1];
-            r(2) = v3d[2];
+            r(0)   = v3d[0];
+            r(1)   = v3d[1];
+            r(2)   = v3d[2];
             return x;
         });
 
     py::class_<vector3d<double>>(m, "vector3d_double")
         .def(py::init<std::vector<double>>())
-        .def("__call__", [](const vector3d<double>& obj, int x) {
-            return obj[x];
-        })
-        .def("__repr__", [](const vector3d<double>& vec) {
-            return show_vec(vec);
-        })
-        .def("__array__", [](vector3d<double>& v3d) {
-            py::array_t<double> x(3);
-            auto r = x.mutable_unchecked<1>();
-            r(0) = v3d[0];
-            r(1) = v3d[1];
-            r(2) = v3d[2];
-            return x;
-        })
+        .def("__call__", [](const vector3d<double>& obj, int x) { return obj[x]; })
+        .def("__repr__", [](const vector3d<double>& vec) { return show_vec(vec); })
+        .def("__array__",
+             [](vector3d<double>& v3d) {
+                 py::array_t<double> x(3);
+                 auto r = x.mutable_unchecked<1>();
+                 r(0)   = v3d[0];
+                 r(1)   = v3d[1];
+                 r(2)   = v3d[2];
+                 return x;
+             })
         .def("__len__", &vector3d<double>::length)
         .def(py::self - py::self)
         .def(py::self * float())
@@ -266,25 +304,20 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<matrix3d<double>>(m, "matrix3d")
         .def(py::init<std::vector<std::vector<double>>>())
         .def(py::init<>())
-        .def("__call__", [](const matrix3d<double>& obj, int x, int y) {
-            return obj(x, y);
-        })
-        .def("__array__", [](const matrix3d<double>& mat) {
-            return py::array_t<double>({3, 3},
-                                       {3 * sizeof(double), sizeof(double)},
-                                       &mat(0, 0));
-        }, py::return_value_policy::reference_internal)
+        .def("__call__", [](const matrix3d<double>& obj, int x, int y) { return obj(x, y); })
+        .def("__array__",
+             [](const matrix3d<double>& mat) {
+                 return py::array_t<double>({3, 3}, {3 * sizeof(double), sizeof(double)}, &mat(0, 0));
+             },
+             py::return_value_policy::reference_internal)
         .def(py::self * py::self)
-        .def("__getitem__", [](const matrix3d<double>& obj, int x, int y) {
-            return obj(x, y);
-        })
-        .def("__mul__", [](const matrix3d<double>& obj, vector3d<double> const& b) {
-            vector3d<double> res = obj * b;
-            return res;
-        })
-        .def("__repr__", [](const matrix3d<double>& mat) {
-            return show_mat(mat);
-        })
+        .def("__getitem__", [](const matrix3d<double>& obj, int x, int y) { return obj(x, y); })
+        .def("__mul__",
+             [](const matrix3d<double>& obj, vector3d<double> const& b) {
+                 vector3d<double> res = obj * b;
+                 return res;
+             })
+        .def("__repr__", [](const matrix3d<double>& mat) { return show_mat(mat); })
         .def(py::init<matrix3d<double>>())
         .def("det", &matrix3d<double>::det);
 
@@ -319,7 +352,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
-        .def("initialize_subspace", py::overload_cast<K_point_set&, Hamiltonian&>(&Band::initialize_subspace, py::const_))
+        .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian&) const) & Band::initialize_subspace)
         .def("solve", &Band::solve);
 
     py::class_<DFT_ground_state>(m, "DFT_ground_state")
@@ -329,13 +362,17 @@ PYBIND11_MODULE(py_sirius, m)
         .def("print_magnetic_moment", &DFT_ground_state::print_magnetic_moment)
         .def("total_energy", &DFT_ground_state::total_energy)
         .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
-        .def("find", [](DFT_ground_state& dft, double potential_tol, double energy_tol, int num_dft_iter, bool write_state) {
-            json js = dft.find(potential_tol, energy_tol, num_dft_iter, write_state);
-            return pj_convert(js);
-        }, "potential_tol"_a, "energy_tol"_a, "num_dft_iter"_a, "write_state"_a)
+        .def("find",
+             [](DFT_ground_state& dft, double potential_tol, double energy_tol, int num_dft_iter, bool write_state) {
+                 json js = dft.find(potential_tol, energy_tol, num_dft_iter, write_state);
+                 return pj_convert(js);
+             },
+             "potential_tol"_a, "energy_tol"_a, "num_dft_iter"_a, "write_state"_a)
         .def("k_point_set", &DFT_ground_state::k_point_set, py::return_value_policy::reference_internal)
         .def("hamiltonian", &DFT_ground_state::hamiltonian, py::return_value_policy::reference_internal)
         .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference_internal)
+        .def("forces", &DFT_ground_state::forces, py::return_value_policy::reference_internal)
+        .def("stress", &DFT_ground_state::stress, py::return_value_policy::reference_internal)
         .def("update", &DFT_ground_state::update);
 
     py::class_<K_point>(m, "K_point")
@@ -360,6 +397,14 @@ PYBIND11_MODULE(py_sirius, m)
                  }
                  return occ;
              })
+        .def("set_band_occupancy",
+             [](K_point& kpoint, int ispn, const std::vector<double>& fn) {
+                 assert(static_cast<int>(fn.size()) == kpoint.num_bands());
+                 for (size_t i = 0; i < fn.size(); ++i) {
+                     kpoint.band_occupancy(i, ispn, fn[i]);
+                 }
+             },
+             "ispn"_a, "fn"_a)
         .def("gkvec_partition", &K_point::gkvec_partition, py::return_value_policy::reference_internal)
         .def("gkvec", &K_point::gkvec, py::return_value_policy::reference_internal)
         .def("fv_states", &K_point::fv_states, py::return_value_policy::reference_internal)
@@ -369,37 +414,35 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
-        .def(py::init<Simulation_context&, std::vector<vector3d<double>>>())
-        .def(py::init<Simulation_context&, std::initializer_list<std::initializer_list<double>>>())
-        .def(py::init<Simulation_context&, vector3d<int>, vector3d<int>, bool>())
-        .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>())
+        .def(py::init<Simulation_context&, std::vector<vector3d<double>>>(), py::keep_alive<1, 2>())
+        .def(py::init<Simulation_context&, std::initializer_list<std::initializer_list<double>>>(),
+             py::keep_alive<1, 2>())
+        .def(py::init<Simulation_context&, vector3d<int>, vector3d<int>, bool>(), py::keep_alive<1, 2>())
+        .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>(), py::keep_alive<1, 2>())
         .def("initialize", &K_point_set::initialize, py::arg("counts") = std::vector<int>{})
         .def("ctx", &K_point_set::ctx, py::return_value_policy::reference_internal)
         .def("unit_cell", &K_point_set::unit_cell, py::return_value_policy::reference_internal)
         .def("_num_kpoints", &K_point_set::num_kpoints)
-        .def("size", [](K_point_set& ks) -> int {
-            return ks.spl_num_kpoints().local_size();
-        })
+        .def("size", [](K_point_set& ks) -> int { return ks.spl_num_kpoints().local_size(); })
         .def("energy_fermi", &K_point_set::energy_fermi)
         .def("get_band_energies", &K_point_set::get_band_energies)
         .def("find_band_occupancies", &K_point_set::find_band_occupancies)
+        .def("band_gap", &K_point_set::band_gap)
         .def("sync_band_energies", &K_point_set::sync_band_energies)
+        .def("sync_band_occupancies", &K_point_set::sync_band_occupancies)
         .def("valence_eval_sum", &K_point_set::valence_eval_sum)
-        .def("__contains__", [](K_point_set& ks, int i) {
-            return (i >= 0 && i < ks.spl_num_kpoints().local_size());
-        })
-        .def("__getitem__", [](K_point_set& ks, int i) -> K_point& {
-            return *ks[ks.spl_num_kpoints(i)];
-        }, py::return_value_policy::reference_internal)
-        .def("__len__", [](K_point_set const& ks) {
-            return ks.spl_num_kpoints().local_size();
-        })
-        .def("add_kpoint", [](K_point_set& ks, std::vector<double> v, double weight) {
-            ks.add_kpoint(v.data(), weight);
-        })
-        .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) {
-            ks.add_kpoint(&v[0], weight);
-        });
+        .def("__contains__", [](K_point_set& ks, int i) { return (i >= 0 && i < ks.spl_num_kpoints().local_size()); })
+        .def("__getitem__",
+             [](K_point_set& ks, int i) -> K_point& {
+                 if (i >= ks.spl_num_kpoints().local_size())
+                     throw pybind11::index_error("out of bounds");
+                 return *ks[ks.spl_num_kpoints(i)];
+             },
+             py::return_value_policy::reference_internal)
+        .def("__len__", [](K_point_set const& ks) { return ks.spl_num_kpoints().local_size(); })
+        .def("add_kpoint",
+             [](K_point_set& ks, std::vector<double> v, double weight) { ks.add_kpoint(v.data(), weight); })
+        .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
 
     py::class_<Hamiltonian>(m, "Hamiltonian")
         .def(py::init<Simulation_context&, Potential&>(), py::keep_alive<1, 2>())
@@ -436,10 +479,7 @@ PYBIND11_MODULE(py_sirius, m)
                  /* apply H to all wave functions */
                  int N = 0;
                  int n = num_wf;
-                 if (n != hamiltonian.ctx().num_bands()) {
-                     throw std::runtime_error("num_wf != num_bands");
-                 }
-                 hamiltonian.local_op().prepare(hamiltonian.potential());
+                 hamiltonian.prepare();
                  hamiltonian.local_op().prepare(kp.gkvec_partition());
                  hamiltonian.ctx().fft_coarse().prepare(kp.gkvec_partition());
                  kp.beta_projectors().prepare();
@@ -462,90 +502,148 @@ PYBIND11_MODULE(py_sirius, m)
                  #ifdef __GPU
                  if (is_device_memory(ctx.preferred_memory_t())) {
                      for (int ispn = 0; ispn < num_sc; ++ispn)
-                         wf_out.copy_to(spin_idx(ispn), memory_t::host, 0, n);
+                         wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
                  }
                  #endif // __GPU
-             }, "kpoint"_a, "wf_out"_a, "wf_in"_a);
+             },
+             "kpoint"_a, "wf_out"_a, "wf_in"_a)
+        .def("_apply_ref_inner_prepare",
+             // must be called BEFORE _apply_ref_inner
+             [](Hamiltonian& hamiltonian) { hamiltonian.prepare(); })
+        .def("_apply_ref_inner_dismiss",
+             // must be called AFTER _apply_ref_inner
+             [](Hamiltonian& hamiltonian) {
+                 if (!hamiltonian.ctx().full_potential()) {
+                     hamiltonian.dismiss();
+                 }
+             })
+        .def("_apply_ref_inner",
+             // this is the same as apply_ref, but skipping hamiltonian.prepare() which will deadlock unless called by
+             // all ranks
+             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf) {
+                 int num_wf = wf.num_wf();
+                 int num_sc = wf.num_sc();
+                 if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
+                     throw std::runtime_error(
+                         "Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
+                 }
+                 #ifdef __GPU
+                 auto& ctx = hamiltonian.ctx();
+                 if (is_device_memory(ctx.preferred_memory_t())) {
+                     auto& mpd = ctx.mem_pool(memory_t::device);
+                     for (int ispn = 0; ispn < num_sc; ++ispn) {
+                         wf_out.pw_coeffs(ispn).allocate(mpd);
+                         wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
+                     }
+                 }
+                 #endif
+                 /* apply H to all wave functions */
+                 int N = 0;
+                 int n = num_wf;
+                 hamiltonian.local_op().prepare(kp.gkvec_partition());
+                 hamiltonian.ctx().fft_coarse().prepare(kp.gkvec_partition());
+                 kp.beta_projectors().prepare();
+                 if (!hamiltonian.ctx().gamma_point()) {
+                     for (int ispn = 0; ispn < num_sc; ++ispn) {
+                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
+                     }
+                 } else {
+                     std::cerr << "python module:: H applied at gamma-point\n";
+                     for (int ispn = 0; ispn < num_sc; ++ispn) {
+                         hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
+                     }
+                 }
+                 kp.beta_projectors().dismiss();
+                 hamiltonian.local_op().dismiss();
+                 hamiltonian.ctx().fft_coarse().dismiss();
+                 #ifdef __GPU
+                 if (is_device_memory(ctx.preferred_memory_t())) {
+                     for (int ispn = 0; ispn < num_sc; ++ispn)
+                         wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
+                 }
+                 #endif // __GPU
+             });
 
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
         .def("calc_stress_total", &Stress::calc_stress_total, py::return_value_policy::reference_internal)
         .def("print_info", &Stress::print_info);
 
-py::class_<Free_atom>(m, "Free_atom")
-    .def(py::init<std::string>())
-    .def(py::init<int>())
-    .def("ground_state", [](Free_atom& atom, double energy_tol, double charge_tol, bool rel)
-                         {
-                             json js = atom.ground_state(energy_tol, charge_tol, rel);
-                             return pj_convert(js);
-                         })
-    .def("radial_grid_points", &Free_atom::radial_grid_points)
-    .def("num_atomic_levels", &Free_atom::num_atomic_levels)
-    .def("atomic_level", [](Free_atom& atom, int idx)
-                         {
-                            auto level = atom.atomic_level(idx);
-                            json js;
-                            js["n"]         = level.n;
-                            js["l"]         = level.l;
-                            js["k"]         = level.k;
-                            js["occupancy"] = level.occupancy;
-                            js["energy"]    = atom.atomic_level_energy(idx);
-                            return pj_convert(js);
-                         })
-    .def("free_atom_electronic_potential", [](Free_atom& atom)
-                                           {
-                                               return atom.free_atom_electronic_potential();
-                                           })
-    .def("free_atom_wave_function", [](Free_atom& atom, int idx)
-                                    {
-                                        return atom.free_atom_wave_function(idx);
-                                    })
-    .def("free_atom_wave_function_x", [](Free_atom& atom, int idx)
-                                      {
-                                          return atom.free_atom_wave_function_x(idx);
-                                      })
-    .def("free_atom_wave_function_x_deriv", [](Free_atom& atom, int idx)
-                                            {
-                                                return atom.free_atom_wave_function_x_deriv(idx);
-                                            })
-    .def("free_atom_wave_function_residual", [](Free_atom& atom, int idx)
-                                             {
-                                                 return atom.free_atom_wave_function_residual(idx);
-                                             });
+    py::class_<Free_atom>(m, "Free_atom")
+        .def(py::init<std::string>())
+        .def(py::init<int>())
+        .def("ground_state",
+             [](Free_atom& atom, double energy_tol, double charge_tol, bool rel) {
+                 json js = atom.ground_state(energy_tol, charge_tol, rel);
+                 return pj_convert(js);
+             })
+        .def("radial_grid_points", &Free_atom::radial_grid_points)
+        .def("num_atomic_levels", &Free_atom::num_atomic_levels)
+        .def("atomic_level",
+             [](Free_atom& atom, int idx) {
+                 auto level = atom.atomic_level(idx);
+                 json js;
+                 js["n"]         = level.n;
+                 js["l"]         = level.l;
+                 js["k"]         = level.k;
+                 js["occupancy"] = level.occupancy;
+                 js["energy"]    = atom.atomic_level_energy(idx);
+                 return pj_convert(js);
+             })
+        .def("free_atom_electronic_potential", [](Free_atom& atom) { return atom.free_atom_electronic_potential(); })
+        .def("free_atom_wave_function", [](Free_atom& atom, int idx) { return atom.free_atom_wave_function(idx); })
+        .def("free_atom_wave_function_x", [](Free_atom& atom, int idx) { return atom.free_atom_wave_function_x(idx); })
+        .def("free_atom_wave_function_x_deriv",
+             [](Free_atom& atom, int idx) { return atom.free_atom_wave_function_x_deriv(idx); })
+        .def("free_atom_wave_function_residual",
+             [](Free_atom& atom, int idx) { return atom.free_atom_wave_function_residual(idx); });
 
     py::class_<Force>(m, "Force")
         .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
         .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal)
+        .def_property_readonly("ewald", &Force::forces_ewald)
+        .def_property_readonly("hubbard", &Force::forces_hubbard)
+        .def_property_readonly("vloc", &Force::forces_vloc)
+        .def_property_readonly("nonloc", &Force::forces_nonloc)
+        .def_property_readonly("core", &Force::forces_core)
+        .def_property_readonly("scf_corr", &Force::forces_scf_corr)
+        .def_property_readonly("us", &Force::forces_us)
+        .def_property_readonly("total", &Force::forces_total)
         .def("print_info", &Force::print_info);
 
     py::class_<matrix_storage_slab<complex_double>>(m, "MatrixStorageSlabC")
         .def("is_remapped", &matrix_storage_slab<complex_double>::is_remapped)
-        .def("prime", py::overload_cast<>(&matrix_storage_slab<complex_double>::prime), py::return_value_policy::reference_internal);
+        .def("prime", py::overload_cast<>(&matrix_storage_slab<complex_double>::prime),
+             py::return_value_policy::reference_internal);
 
     py::class_<mdarray<complex_double, 2>>(m, "mdarray2c")
         .def("on_device", &mdarray<complex_double, 2>::on_device)
-        .def("copy_to_host", [](mdarray<complex_double, 2>& mdarray) {
-            mdarray.copy_to(memory_t::host);
-        })
+        .def("copy_to_host", [](mdarray<complex_double, 2>& mdarray) { mdarray.copy_to(memory_t::host); })
         .def("__array__", [](py::object& obj) {
             mdarray<complex_double, 2>& arr = obj.cast<mdarray<complex_double, 2>&>();
-            int nrows = arr.size(0);
-            int ncols = arr.size(1);
+            int nrows                       = arr.size(0);
+            int ncols                       = arr.size(1);
             return py::array_t<complex_double>({nrows, ncols},
                                                {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
                                                arr.at(memory_t::host), obj);
         });
 
-    py::class_<dmatrix<complex_double>, mdarray<complex_double,2>>(m, "dmatrix");
+    py::class_<dmatrix<complex_double>, mdarray<complex_double, 2>>(m, "dmatrix");
 
-    py::enum_<sddk::device_t>(m, "DeviceEnum")
-        .value("CPU", sddk::device_t::CPU)
-        .value("GPU", sddk::device_t::GPU);
+    py::class_<mdarray<double, 2>>(m, "mdarray2")
+        .def("on_device", &mdarray<double, 2>::on_device)
+        .def("copy_to_host", [](mdarray<double, 2>& mdarray) { mdarray.copy_to(memory_t::host, 0, mdarray.size(1)); })
+        .def("__array__", [](py::object& obj) {
+            mdarray<double, 2>& arr = obj.cast<mdarray<double, 2>&>();
+            int nrows               = arr.size(0);
+            int ncols               = arr.size(1);
+            return py::array_t<double>({nrows, ncols}, {1 * sizeof(double), nrows * sizeof(double)},
+                                       arr.at(memory_t::host), obj);
+        });
 
-    py::enum_<sddk::memory_t>(m, "MemoryEnum")
-        .value("device", memory_t::device)
-        .value("host", memory_t::host);
+    py::enum_<sddk::device_t>(m, "DeviceEnum").value("CPU", sddk::device_t::CPU).value("GPU", sddk::device_t::GPU);
+
+    py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", memory_t::device).value("host", memory_t::host);
 
     py::class_<Wave_functions>(m, "Wave_functions")
         .def(py::init<Gvec_partition const&, int, memory_t, int>(), "gvecp"_a, "num_wf"_a, "mem"_a, "num_sc"_a)
@@ -554,61 +652,65 @@ py::class_<Free_atom>(m, "Free_atom")
         .def("has_mt", &Wave_functions::has_mt)
         .def("zero_pw", &Wave_functions::zero_pw)
         .def("preferred_memory_t", py::overload_cast<>(&Wave_functions::preferred_memory_t, py::const_))
-        .def("pw_coeffs", [](py::object& obj, int i) -> py::array_t<complex_double> {
-            Wave_functions& wf = obj.cast<Wave_functions&>();
-            auto& matrix_storage = wf.pw_coeffs(i);
-            int   nrows          = matrix_storage.prime().size(0);
-            int   ncols          = matrix_storage.prime().size(1);
-            /* return underlying data as numpy.ndarray view, e.g. non-copying */
-            /* TODO this might be a distributed array, should/can we use dask? */
-            return py::array_t<complex_double>({nrows, ncols},
-                                               {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
-                                               matrix_storage.prime().at(memory_t::host),
-                                               obj);
-        },
+        .def("pw_coeffs",
+             [](py::object& obj, int i) -> py::array_t<complex_double> {
+                 Wave_functions& wf   = obj.cast<Wave_functions&>();
+                 auto& matrix_storage = wf.pw_coeffs(i);
+                 int nrows            = matrix_storage.prime().size(0);
+                 int ncols            = matrix_storage.prime().size(1);
+                 /* return underlying data as numpy.ndarray view */
+                 return py::array_t<complex_double>({nrows, ncols},
+                                                    {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
+                                                    matrix_storage.prime().at(memory_t::host), obj);
+             },
              py::keep_alive<0, 1>())
-        .def("copy_to_gpu", [](Wave_functions& wf) {
-            /* is_on_device -> true if all internal storage is allocated on device */
-            bool is_on_device = true;
-            for (int i = 0; i < wf.num_sc(); ++i) {
-                is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
-            }
-            if (!is_on_device) {
-                for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-                    wf.pw_coeffs(ispn).prime().allocate(memory_t::device);
-                }
-            }
-            for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-                wf.copy_to(spin_idx(ispn), memory_t::device, 0, wf.num_wf());
-            }
-        })
-        .def("copy_to_cpu", [](Wave_functions& wf) {
-            /* is_on_device -> true if all internal storage is allocated on device */
-            bool is_on_device = true;
-            for (int i = 0; i < wf.num_sc(); ++i) {
-                is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
-            }
-            if (!is_on_device) {
-            } else {
-                for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-                    wf.copy_to(spin_idx(ispn), memory_t::host, 0, wf.num_wf());
-                }
-            }
-        })
-        .def("allocated_on_device", [](Wave_functions& wf) {
-            bool is_on_device = true;
-            for (int i = 0; i < wf.num_sc(); ++i) {
-                is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
-            }
-            return is_on_device;
-        })
-        .def("pw_coeffs_obj", py::overload_cast<int>(&Wave_functions::pw_coeffs, py::const_), py::return_value_policy::reference_internal);
+        .def("copy_to_gpu",
+             [](Wave_functions& wf) {
+                 /* is_on_device -> true if all internal storage is allocated on device */
+                 bool is_on_device = true;
+                 for (int i = 0; i < wf.num_sc(); ++i) {
+                     is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
+                 }
+                 if (!is_on_device) {
+                     for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
+                         wf.pw_coeffs(ispn).prime().allocate(memory_t::device);
+                     }
+                 }
+                 for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
+                     wf.copy_to(spin_idx(ispn), memory_t::device, 0, wf.num_wf());
+                 }
+             })
+        .def("copy_to_cpu",
+             [](Wave_functions& wf) {
+                 /* is_on_device -> true if all internal storage is allocated on device */
+                 bool is_on_device = true;
+                 for (int i = 0; i < wf.num_sc(); ++i) {
+                     is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
+                 }
+                 if (!is_on_device) {
+                 } else {
+                     for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
+                         wf.copy_to(spin_idx(ispn), memory_t::host, 0, wf.num_wf());
+                     }
+                 }
+             })
+        .def("allocated_on_device",
+             [](Wave_functions& wf) {
+                 bool is_on_device = true;
+                 for (int i = 0; i < wf.num_sc(); ++i) {
+                     is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
+                 }
+                 return is_on_device;
+             })
+        .def("pw_coeffs_obj", py::overload_cast<int>(&Wave_functions::pw_coeffs, py::const_),
+             py::return_value_policy::reference_internal);
 
-
-    /* TODO: group this kind of functions somewhere */
     m.def("ewald_energy", &ewald_energy);
+    m.def("set_atom_positions", &set_atom_positions);
+    m.def("atom_positions", &atom_positions);
     m.def("energy_bxc", &energy_bxc);
     m.def("omp_set_num_threads", &omp_set_num_threads);
     m.def("omp_get_num_threads", &omp_get_num_threads);
-    // m.def("pseudopotential_hmatrix", &pseudopotential_hmatrix<complex_double>, "kpoint"_a, "ispn"_a, "H"_a);
+    m.def("make_sirius_comm", &make_sirius_comm);
+    m.def("make_pycomm", &make_pycomm);
 }
