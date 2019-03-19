@@ -187,13 +187,13 @@
         "xc_functionals" :
         {
             "description" :  "List of XC functionals (see libxc documentation for a list of functional) We will retrieve this info from the host code if possible" ,
-	    "usage" :  "xc_functionals func1 func2 funct3",
+            "usage" :  "xc_functionals func1 func2 funct3",
             "default_value" : "none"
         },
         "vdw_functionals" : {
             "description" : "Van der functionals (see libvdwxc documentation). Note that they can be used with some subsets of xc_functionals.",
             "usage" : "vdw_functionals name",
-            "possible_values" : ["XC_FUNC_VDWDF", "Xc_FUNC_VDWDF2", "XC_FUNC_VDWDFCX", "none"],
+            "possible_values" : ["XC_FUNC_VDWDF", "XC_FUNC_VDWDF2", "XC_FUNC_VDWDFCX", "none"],
             "default_value" : "none"
         },
         "core_relativity" :
@@ -270,14 +270,15 @@
             "usage" :  "auto_rmt (1)" ,
             "default_value" :  1
         },
-        "k_grid" :
+        "ngridk" :
         {
             "description" :  "Regular k-point grid for the SCF ground state." ,
-            "usage" :  "k_grid (1, 1, 1)" ,
-            "default_value" :  [1, 1, 1]},
-        "k_shift" : {
+            "usage" :  "ngridk (1, 1, 1)" ,
+            "default_value" :  [1, 1, 1]
+        },
+        "shiftk" : {
             "description" :  "Shift in the k-point grid." ,
-            "usage" :  "k_shift (0, 0, 0)",
+            "usage" :  "shiftk (0, 0, 0)",
             "default_value" :  [0, 0, 0]
         },
         "num_dft_iter" :
