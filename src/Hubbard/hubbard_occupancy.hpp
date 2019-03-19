@@ -79,7 +79,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
     linalg_t la{linalg_t::blas};
     if (ctx_.processing_unit() == device_t::GPU) {
         mem = memory_t::device;
-        la = linalg_t::cublas;
+        la = linalg_t::gpublas;
     }
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {

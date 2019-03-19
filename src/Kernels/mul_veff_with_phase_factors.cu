@@ -23,16 +23,16 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/acc.hpp"
+#include "../SDDK/GPU/acc_runtime.hpp"
 
 __global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc__,
-                                                       cuDoubleComplex const* veff__, 
+                                                       acc_complex_double_t const* veff__, 
                                                        int const* gvx__, 
                                                        int const* gvy__, 
                                                        int const* gvz__, 
                                                        int num_atoms__,
                                                        double const* atom_pos__, 
-                                                       cuDoubleComplex* veff_a__,
+                                                       acc_complex_double_t* veff_a__,
                                                        int ld__)
 {
     int ia = blockIdx.y;
@@ -48,13 +48,13 @@ __global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc__,
 
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
 
-        veff_a__[array2D_offset(igloc, ia, ld__)] = cuCmul(veff__[igloc], make_cuDoubleComplex(cos(p), sin(p)));
+        veff_a__[array2D_offset(igloc, ia, ld__)] = accCmul(veff__[igloc], make_accDoubleComplex(cos(p), sin(p)));
     }
 }
  
 extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 int num_gvec_loc__, 
-                                                cuDoubleComplex const* veff__, 
+                                                acc_complex_double_t const* veff__, 
                                                 int const* gvx__, 
                                                 int const* gvy__, 
                                                 int const* gvz__, 
@@ -66,10 +66,9 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
 
-    cudaStream_t stream = acc::stream(stream_id(stream_id__));
+    acc_stream_t stream = (acc_stream_t)acc::stream(stream_id(stream_id__));
 
-    mul_veff_with_phase_factors_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
-    (
+    accLaunchKernel((mul_veff_with_phase_factors_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
         num_gvec_loc__,
         veff__,
         gvx__,
@@ -77,7 +76,7 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
         gvz__,
         num_atoms__,
         atom_pos__,
-        (cuDoubleComplex*)veff_a__,
+        (acc_complex_double_t*)veff_a__,
         ld__
     );
 }

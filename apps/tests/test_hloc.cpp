@@ -1,4 +1,6 @@
 #include <sirius.h>
+#include <fstream>
+#include <string>
 
 using namespace sirius;
 
@@ -79,9 +81,6 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     t1.stop();
     hloc.dismiss();
 
-    if (pu == GPU && !phi.pw_coeffs(0).is_remapped()) {
-        hphi.pw_coeffs(0).copy_to(memory_t::host, 0, 4 * num_bands__);
-    }
 
     double diff{0};
     for (int i = 0; i < 4 * num_bands__; i++) {
@@ -116,6 +115,7 @@ int main(int argn, char** argv)
     args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
     args.register_key("--gpu_ptr=", "{int} 0: start from CPU, 1: start from GPU");
     args.register_key("--repeat=", "{int} number of repetitions");
+    args.register_key("--t_file=", "{string} name of timing output file");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -130,6 +130,7 @@ int main(int argn, char** argv)
     auto use_gpu = args.value<int>("use_gpu", 0);
     auto gpu_ptr = args.value<int>("gpu_ptr", 0);
     auto repeat = args.value<int>("repeat", 3);
+    auto t_file = args.value<std::string>("t_file", std::string(""));
 
     sirius::initialize(1);
     for (int i = 0; i < repeat; i++) {
@@ -138,6 +139,11 @@ int main(int argn, char** argv)
     Communicator::world().barrier();
     if (Communicator::world().rank() == 0) {
         utils::timer::print();
+
+        if (!t_file.empty()) {
+            std::ofstream json_file(t_file);
+            json_file << std::setw(2) << utils::timer::serialize() << std::endl;
+        }
     }
     Communicator::world().barrier();
     sirius::finalize();

@@ -23,19 +23,20 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
+#include "../SDDK/GPU/acc_runtime.hpp"
 
 __global__ void add_pw_ekin_gpu_kernel(int num_gvec__,
                                        double alpha__,
                                        double const* pw_ekin__,
-                                       cuDoubleComplex const* phi__,
-                                       cuDoubleComplex const* vphi__,
-                                       cuDoubleComplex* hphi__)
+                                       acc_complex_double_t const* phi__,
+                                       acc_complex_double_t const* vphi__,
+                                       acc_complex_double_t* hphi__)
 {
     int ig = blockIdx.x * blockDim.x + threadIdx.x;
     if (ig < num_gvec__) {
-        cuDoubleComplex z1 = cuCadd(vphi__[ig], make_cuDoubleComplex(alpha__ * pw_ekin__[ig] * phi__[ig].x, 
+        acc_complex_double_t z1 = accCadd(vphi__[ig], make_accDoubleComplex(alpha__ * pw_ekin__[ig] * phi__[ig].x, 
                                                                      alpha__ * pw_ekin__[ig] * phi__[ig].y));
-        hphi__[ig] = cuCadd(hphi__[ig], z1);
+        hphi__[ig] = accCadd(hphi__[ig], z1);
     }
 }
 
@@ -46,15 +47,14 @@ __global__ void add_pw_ekin_gpu_kernel(int num_gvec__,
 extern "C" void add_pw_ekin_gpu(int num_gvec__,
                                 double alpha__,
                                 double const* pw_ekin__,
-                                cuDoubleComplex const* phi__,
-                                cuDoubleComplex const* vphi__,
-                                cuDoubleComplex* hphi__)
+                                acc_complex_double_t const* phi__,
+                                acc_complex_double_t const* vphi__,
+                                acc_complex_double_t* hphi__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_gvec__, grid_t.x));
 
-    add_pw_ekin_gpu_kernel <<<grid_b, grid_t>>>
-    (
+    accLaunchKernel((add_pw_ekin_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
         num_gvec__,
         alpha__,
         pw_ekin__,

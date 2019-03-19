@@ -28,7 +28,7 @@
 
 namespace sirius {
 
-#ifdef __GPU
+#if defined(__GPU)
 extern "C" void create_beta_gk_gpu(int                   num_atoms,
                                    int                   num_gkvec,
                                    int const*            beta_desc,
@@ -322,7 +322,7 @@ class Beta_projectors_base
                 break;
             }
             case device_t::GPU: {
-#ifdef __GPU
+#if defined(__GPU)
                 auto& desc = chunk(ichunk__).desc_;
                 create_beta_gk_gpu(chunk(ichunk__).num_atoms_,
                                    num_gkvec_loc(),
@@ -423,7 +423,7 @@ inline void Beta_projectors_base::local_inner_aux<double_complex>(double_complex
     auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
     if (pp && gkvec_.comm().rank() == 0) {
 #ifdef __GPU
-        if (ctx_.blas_linalg_t() == linalg_t::cublas) {
+        if (ctx_.blas_linalg_t() == linalg_t::gpublas) {
             acc::sync_stream(stream_id(-1));
         }
 #endif
@@ -453,7 +453,7 @@ inline void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs
         linalg_t la{linalg_t::none};
         /* both wave-functions and beta-projectors are on GPU */
         if (is_device_memory(ctx_.preferred_memory_t())) {
-            la = linalg_t::cublas;
+            la = linalg_t::gpublas;
         } else { /* wave-functions are on CPU but the beta-projectors are in the memory of main device */
             la = linalg_t::blas;
             switch (ctx_.processing_unit()) {

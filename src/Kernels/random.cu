@@ -22,6 +22,7 @@
  *  \brief CUDA kernel to compute simple random noise on GPU.
  */
 
+//#include "../SDDK/GPU/acc_runtime.hpp"
 //== inline __device__ uint32_t random(size_t seed)
 //== {
 //==     uint32_t h = 5381;
