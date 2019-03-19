@@ -101,9 +101,6 @@ find_package(HDF5 REQUIRED C HL)
 
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
-  # if(NOT USE_SCALAPACK)
-  #   message(FATAL_ERROR "ELPA depends on ScaLAPACK, please set USE_SCALAPACK=On.")
-  # endif()
   include_directories(BEFORE SYSTEM "${ELPA_INCLUDE_DIR}")
   set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${ELPA_LIBRARIES}")
   add_definitions("-D__ELPA")
@@ -225,27 +222,6 @@ add_custom_command(
 
 add_custom_target(runtime_options_json_hpp DEPENDS ${runtime_options_json_path})
 
-## configure version header
-#exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR}
-#  ARGS "rev-parse HEAD"
-#  OUTPUT_VARIABLE GIT_VERSION_SHA1
-#  RETURN_VALUE exit_code)
-#if(exit_code)
-#  set(GIT_VERSION_SHA1 "")
-#endif()
-#exec_program("date"
-#  ARGS "+\"%a, %e %b %Y %H:%M:%S\""
-#  OUTPUT_VARIABLE BUILD_DATE)
-#exec_program(
-#  "git"
-#  ${CMAKE_CURRENT_SOURCE_DIR}
-#  ARGS "describe --all"
-#  OUTPUT_VARIABLE GIT_BRANCHNAME
-#  RETURN_VALUE exit_code)
-#if(exit_code)
-#  set(GIT_BRANCHNAME "")
-#endif()
-#configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" "${PROJECT_BINARY_DIR}/src/version.hpp")
 include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
