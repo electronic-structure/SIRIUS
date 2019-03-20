@@ -233,6 +233,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("num_electrons", &Unit_cell::num_electrons)
         .def("num_valence_electrons", &Unit_cell::num_valence_electrons)
         .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
+        .def("print_info", &Unit_cell::print_info)
         .def("generate_radial_functions", &Unit_cell::generate_radial_functions);
 
     py::class_<z_column_descriptor>(m, "z_column_descriptor")
