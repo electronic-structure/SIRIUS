@@ -25,7 +25,7 @@
             "default_value" : 1.0e6
         },
         "beta" : {
-            "desciption" : "Mixing parameter.",
+            "description" : "Mixing parameter.",
             "usage" : "BETA 0.7",
             "default_value" : 0.7
         },
