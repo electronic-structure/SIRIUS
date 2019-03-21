@@ -191,6 +191,7 @@ add_custom_command(
 
 find_package(Python REQUIRED Interpreter)
 
+# handle the generation of the version.hpp file
 add_custom_command(
   OUTPUT version.hpp-test
   DEPENDS _always_rebuild
@@ -206,13 +207,18 @@ add_custom_command(
 
 add_custom_target(generate_version_hpp DEPENDS ${version_hpp_path})
 
+# handle the generation of runtime_options_json.hpp file
+add_custom_command(
+  OUTPUT runtime_options_json.hpp-test
+  DEPENDS _always_rebuild
+  COMMAND ${CMAKE_SOURCE_DIR}/generate_options_header_file.sh $(CMAKE_SOURCE_DIR)/src/options.json > runtime_options_json.hpp-test
+  )
 
 set(runtime_options_json_path src/runtime_options_json.hpp)
 add_custom_command(
   OUTPUT ${runtime_options_json_path}
-  DEPENDS _always_rebuild
-  COMMAND ${CMAKE_SOURCE_DIR}/generate_options_header_file.sh $(CMAKE_SOURCE_DIR)/src/options.json > ${runtime_options_json_path}
-  COMMAND cp ${runtime_options_json_path} ${CMAKE_SOURCE_DIR}/src/runtime_options_json.hpp
+  DEPENDS runtime_options_json.hpp-test
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different runtime_options_json.hpp-test ${runtime_options_json_path}
   )
 
 add_custom_target(runtime_options_json_hpp DEPENDS ${runtime_options_json_path})
