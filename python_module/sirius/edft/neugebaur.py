@@ -3,7 +3,7 @@ from scipy.constants import physical_constants
 from scipy.sparse import dia_matrix
 from ..coefficient_array import CoefficientArray as ca
 from ..coefficient_array import CoefficientArray, PwCoeffs
-from .. import diag, einsum, inner, l2norm
+from ..coefficient_array import diag, einsum, inner, l2norm
 from ..helpers import save_state
 from ..logger import Logger
 from .gs import gram_schmidt
