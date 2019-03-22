@@ -11,12 +11,13 @@ find_library(SCALAPACK_LIBRARIES
   PATH_SUFFIXES lib
   DOC "scalapack library path")
 
-find_path(SCALAPACK_INCLUDE_DIR
-  NAMES pblas.h
-  PATH_SUFFIXES include src
-  HINTS
-  ENV SCALAPACKROOT
-  ${_SCALAPACK_INCLUDE_DIRS}
-  /usr)
+#find_path(SCALAPACK_INCLUDE_DIR
+#  NAMES pblas.h
+#  PATH_SUFFIXES include src
+#  HINTS
+#  ENV SCALAPACKROOT
+#  ${_SCALAPACK_INCLUDE_DIRS}
+#  /usr)
 
-find_package_handle_standard_args(SCALAPACK DEFAULT_MSG SCALAPACK_LIBRARIES SCALAPACK_INCLUDE_DIR)
+#find_package_handle_standard_args(SCALAPACK DEFAULT_MSG SCALAPACK_LIBRARIES SCALAPACK_INCLUDE_DIR)
+find_package_handle_standard_args(SCALAPACK DEFAULT_MSG SCALAPACK_LIBRARIES)
