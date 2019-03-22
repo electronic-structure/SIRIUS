@@ -377,7 +377,7 @@ class F():
         X_new = self.X + t * self.G_X
         eta_new = self.eta + t * self.G_eta
         ek, Ul = eta_new.eigh()
-        X = gram_schmidt(X_new) @ Ul
+        X = loewdin(X_new) @ Ul
         kw = kset.w
         ne = kset.ctx().unit_cell().num_valence_electrons()
         m = kset.ctx().max_occupancy()

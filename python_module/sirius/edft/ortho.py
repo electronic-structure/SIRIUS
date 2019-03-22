@@ -31,6 +31,6 @@ def gram_schmidt(X):
 
 def loewdin(X):
     S = X.H @ X
-    w, U = np.linalg.eigh(S)
+    w, U = S.eigh()
     Sm2 = U @ diag(1/np.sqrt(w)) @ U.H
     return X @ Sm2
