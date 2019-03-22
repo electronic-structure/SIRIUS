@@ -6,7 +6,7 @@ from ..coefficient_array import CoefficientArray, PwCoeffs
 from ..coefficient_array import diag, einsum, inner, l2norm
 from ..helpers import save_state
 from ..logger import Logger
-from .gs import gram_schmidt
+from .ortho import gram_schmidt, loewdin
 
 logger = Logger()
 
