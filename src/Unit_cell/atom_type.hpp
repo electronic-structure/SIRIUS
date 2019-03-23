@@ -1320,7 +1320,7 @@ inline void Atom_type::print_info() const
     printf("total number of basis functions  : %i\n", indexb().size());
     printf("number of aw basis functions     : %i\n", indexb().size_aw());
     printf("number of lo basis functions     : %i\n", indexb().size_lo());
-    if (!parameters_.full_potential()) 
+    if (!parameters_.full_potential())
     {
         printf("number of ps wavefunctions       : %i\n", this->num_ps_atomic_wf());
     }
@@ -1575,8 +1575,13 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
 {
     is_paw_ = true;
 
+    auto& header = parser["pseudo_potential"]["header"];
     /* read core energy */
-    paw_core_energy(parser["pseudo_potential"]["header"]["paw_core_energy"]);
+    if (header.count("paw_core_energy")) {
+        paw_core_energy(header["paw_core_energy"]);
+    } else {
+        paw_core_energy(0);
+    }
 
     /* cutoff index */
     int cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"];
