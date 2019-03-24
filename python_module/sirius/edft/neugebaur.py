@@ -188,7 +188,7 @@ def make_kinetic_precond(kpointset, eps=0.1):
         N = gkvec.count()
         d = np.array([
             1 / (np.sum(
-                (np.array(gkvec.gkvec(i)))**2) + eps)
+                (np.array(gkvec.gkvec_cart(i)))**2) + eps)
             for i in range(N)
         ])
         for ispn in range(nc):
