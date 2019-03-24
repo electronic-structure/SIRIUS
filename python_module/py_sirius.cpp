@@ -523,6 +523,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("_apply_ref_inner_dismiss",
              // must be called AFTER _apply_ref_inner
              [](Hamiltonian& hamiltonian) {
+                 hamiltonian.local_op().dismiss();
                  if (!hamiltonian.ctx().full_potential()) {
                      hamiltonian.dismiss();
                  }
@@ -565,7 +566,7 @@ PYBIND11_MODULE(py_sirius, m)
                      }
                  }
                  kp.beta_projectors().dismiss();
-                 hamiltonian.local_op().dismiss();
+                 //hamiltonian.local_op().dismiss();
                  hamiltonian.ctx().fft_coarse().dismiss();
                  #ifdef __GPU
                  if (is_device_memory(ctx.preferred_memory_t())) {
