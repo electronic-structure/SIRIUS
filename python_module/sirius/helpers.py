@@ -115,7 +115,10 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
         shiftk = [0, 0, 0]
     if 'ngridk' in siriusJson['parameters']:
         gridk = siriusJson['parameters']['ngridk']
-    use_symmetry = siriusJson['parameters']['use_symmetry']
+    if 'use_symmetry' in siriusJson['parameters']:
+        use_symmetry = siriusJson['parameters']['use_symmetry']
+    else:
+        use_symmetry = True
 
     kPointSet = K_point_set(ctx, gridk, shiftk, use_symmetry)
 
