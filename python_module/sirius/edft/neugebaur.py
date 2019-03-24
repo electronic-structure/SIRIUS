@@ -496,11 +496,11 @@ class CG:
             logger('Fpred:', Fpred, ' xi_min: ', xi_min, 'xi_trial: ', xi_trial)
             logger('F1: ', F1, ' a: ', a)
             logger('slope: ', slope)
-            # save_state({'X': X, 'f': f,
-            #             'F0': F0, 'F1': F1,
-            #             'a': a, 'b': b, 'c': c,
-            #             'eta': eta, 'G_X': G_X,
-            #             'G_eta': G_eta, 'slope': slope, **kwargs}, self.M.energy.kpointset)
+            save_state({'X': X, 'f': f,
+                        'F0': F0, 'F1': F1,
+                        'a': a, 'b': b, 'c': c,
+                        'eta': eta, 'G_X': G_X,
+                        'G_eta': G_eta, 'slope': slope, **kwargs}, self.M.energy.kpointset)
             raise ValueError('quadratic line-search failed to find a new minima')
 
         return X_n, f_n, ek, FE, U
@@ -530,9 +530,9 @@ class CG:
             logger('t1,t2 = %.5g, %.5g' % (t1, t2))
             logger('F0: %.8f' % F0)
             logger('F1: %.8f' % F)
-            save_state({'X': X, 'f': f,
-                        'eta': eta, 'G_X': Fline.G_X,
-                        'G_eta': Fline.G_eta}, Fline.M.energy.kpointset)
+            # save_state({'X': X, 'f': f,
+            #             'eta': eta, 'G_X': Fline.G_X,
+            #             'G_eta': Fline.G_eta}, Fline.M.energy.kpointset)
 
             raise ValueError('GSS didn\'t find a better value')
         return X, fn, ek, F, Ul
@@ -596,13 +596,13 @@ class CG:
 
             if slope > 0:
                 if cg_restart_inprogress:
-                    save_state({'X': X, 'f': fn,
-                                'eta': eta, 'G_X': G_X,
-                                'gx': g_X,
-                                'g_eta': g_eta,
-                                'F0': FE,
-                                'slope': slope,
-                                'G_eta': G_eta, 'slope': slope}, self.M.energy.kpointset)
+                    # save_state({'X': X, 'f': fn,
+                    #             'eta': eta, 'G_X': G_X,
+                    #             'gx': g_X,
+                    #             'g_eta': g_eta,
+                    #             'F0': FE,
+                    #             'slope': slope,
+                    #             'G_eta': G_eta, 'slope': slope}, self.M.energy.kpointset)
                     raise ValueError('Error: _ascent_ direction, slope %.4e' % slope)
                 else:
                     cg_restart_inprogress = True
