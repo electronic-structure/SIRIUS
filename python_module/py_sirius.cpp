@@ -481,6 +481,7 @@ PYBIND11_MODULE(py_sirius, m)
                      auto& mpd = ctx.mem_pool(memory_t::device);
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
                          wf_out.pw_coeffs(ispn).allocate(mpd);
+                         wf.pw_coeffs(ispn).allocate(mpd);
                          wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
                      }
                  }
@@ -542,6 +543,7 @@ PYBIND11_MODULE(py_sirius, m)
                      auto& mpd = ctx.mem_pool(memory_t::device);
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
                          wf_out.pw_coeffs(ispn).allocate(mpd);
+                         wf.pw_coeffs(ispn).allocate(mpd);
                          wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
                      }
                  }
