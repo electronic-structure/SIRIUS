@@ -50,7 +50,6 @@ class Energy:
         cn  --
         ek  -- band energies
         """
-        from ..coefficient_array import PwCoeffs
 
         if isinstance(cn, PwCoeffs):
             # update coefficients for all items in PwCoeffs
@@ -117,7 +116,6 @@ class ApplyHamiltonian:
             assert (ki is None)
             assert (ispn is None)
             out = PwCoeffs(dtype=cn.dtype)
-            cn._data.keys()
             for k, ispn_coeffs in cn.by_k().items():
                 kpoint = self.kpointset[k]
                 # spins might have different number of bands ...
