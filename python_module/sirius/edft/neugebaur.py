@@ -14,6 +14,7 @@ logger = Logger()
 kb = (physical_constants['Boltzmann constant in eV/K'][0] /
       physical_constants['Hartree energy in eV'][0])
 
+
 def _solve(A, X):
     """
     returns A⁻¹ X
@@ -52,8 +53,7 @@ def fermi_function(x, T, mu, num_spins):
         for key, val in x._data.items():
             out[key] = _fermi_function(x[key], T, mu, num_spins)
         return out
-    else:
-        return _fermi_function(x, T, mu, num_spins)
+    return _fermi_function(x, T, mu, num_spins)
 
 
 def _inv_fermi_function(f, T, num_spins):
@@ -163,7 +163,7 @@ def grad_eta(Hij, ek, fn, T, kw):
         Eij[k] = np.where(EEc, 1, Eij[k])
         Fij[k] = np.where(EEc, 0, Fij[k])
 
-    g_eta_3 = Fij/ Eij * Hij * (1-II)
+    g_eta_3 = Fij / Eij * Hij * (1-II)
     g_eta = (g_eta_1 + g_eta_2 + g_eta_3)
     return g_eta
 
@@ -279,7 +279,8 @@ class IdentityPreconditioner():
 
 class DiagonalPreconditioner():
     """
-    Apply diagonal preconditioner and project resulting gradient to satisfy the constraint.
+    Apply diagonal preconditioner and project resulting gradient to satisfy the
+    constraint.
     """
 
     def __init__(self, D):
@@ -302,8 +303,10 @@ class DiagonalPreconditioner():
 
         """
         if np.isscalar(s):
+            out = type(self)(self.D)
             for key, Dl in self.D.items():
-                self.D[key] = s*Dl
+                out.D[key] = s*Dl
+            return out
         elif isinstance(s, CoefficientArray):
             out = type(s)(dtype=s.dtype)
             for key in s.keys():
@@ -331,6 +334,9 @@ class DiagonalPreconditioner():
         return self.D[key]
 
     def inv(self):
+        """
+        inverse
+        """
         D = type(self.D)(dtype=self.D.dtype, ctype=self.D.ctype)
         for k in self.D.keys():
             shape = self.D[k].shape
@@ -434,6 +440,8 @@ class CG:
         T -- temperature
         """
         self.M = free_energy
+        self._save = False
+
 
     def step(self, X, f, eta, G_X, G_eta, xi_trial, F0, slope, kwargs):
         """
@@ -457,7 +465,6 @@ class CG:
 
         # TODO: refactor
         kset = self.M.energy.kpointset
-        m = kset.ctx().max_occupancy()
         fline = F(X, eta, self.M, G_X, G_eta)
         while True:
             # free energy at trial point
@@ -530,22 +537,23 @@ class CG:
             logger('t1,t2 = %.5g, %.5g' % (t1, t2))
             logger('F0: %.8f' % F0)
             logger('F1: %.8f' % F)
-            # save_state({'X': X, 'f': f,
-            #             'eta': eta, 'G_X': Fline.G_X,
-            #             'G_eta': Fline.G_eta}, Fline.M.energy.kpointset)
+            if self._save:
+                save_state({'X': X, 'f': f,
+                            'eta': eta, 'G_X': Fline.G_X,
+                            'G_eta': Fline.G_eta}, Fline.M.energy.kpointset)
 
             raise ValueError('GSS didn\'t find a better value')
         return X, fn, ek, F, Ul
 
     def run(self, X, fn, maxiter=100, restart=20, tol=1e-10,
             prec=False, kappa=0.3, eps=0.001, use_g_eta=False,
-            type='FR'):
+            cgtype='FR'):
 
-        if type == 'PR':
+        if cgtype == 'PR':
             cg_update = polak_ribiere
-        elif type == 'FR':
+        elif cgtype == 'FR':
             cg_update = fletcher_reeves
-        elif type == 'SD':
+        elif cgtype == 'SD':
             cg_update = steepest_descent
         else:
             raise ValueError('wrong type')
