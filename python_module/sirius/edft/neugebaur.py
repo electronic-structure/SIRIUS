@@ -496,11 +496,11 @@ class CG:
             logger('Fpred:', Fpred, ' xi_min: ', xi_min, 'xi_trial: ', xi_trial)
             logger('F1: ', F1, ' a: ', a)
             logger('slope: ', slope)
-            save_state({'X': X, 'f': f,
-                        'F0': F0, 'F1': F1,
-                        'a': a, 'b': b, 'c': c,
-                        'eta': eta, 'G_X': G_X,
-                        'G_eta': G_eta, 'slope': slope, **kwargs}, self.M.energy.kpointset)
+            # save_state({'X': X, 'f': f,
+            #             'F0': F0, 'F1': F1,
+            #             'a': a, 'b': b, 'c': c,
+            #             'eta': eta, 'G_X': G_X,
+            #             'G_eta': G_eta, 'slope': slope, **kwargs}, self.M.energy.kpointset)
             raise ValueError('quadratic line-search failed to find a new minima')
 
         return X_n, f_n, ek, FE, U
