@@ -531,7 +531,7 @@ class CG:
         """
 
         t1, t2 = gss(Fline, a=0, b=20)
-        F, X, fn, ek, Ul = Fline((t1+t2)/2)
+        F, Xn, fn, ek, Ul = Fline((t1+t2)/2)
         if not F < F0:
             logger('WARNING: gss has failed')
             logger('t1,t2 = %.5g, %.5g' % (t1, t2))
@@ -543,7 +543,7 @@ class CG:
                             'G_eta': Fline.G_eta}, Fline.M.energy.kpointset)
 
             raise ValueError('GSS didn\'t find a better value')
-        return X, fn, ek, F, Ul
+        return Xn, fn, ek, F, Ul
 
     def run(self, X, fn, maxiter=100, restart=20, tol=1e-10,
             prec=False, kappa=0.3, eps=0.001, use_g_eta=False,
