@@ -196,6 +196,21 @@ def make_kinetic_precond(kpointset, eps=0.1):
     return DiagonalPreconditioner(P)
 
 
+def btsearch(f, b, f0, maxiter=10):
+    """
+    Backtracking search
+    """
+
+    x = b
+
+    for i in range(maxiter):
+        fx = f(x)
+        if fx[0] > f0:
+            x /= 2
+        else:
+            return x, fx
+    raise ValueError('backtracking search could not find a new minimum')
+
 def gss(f, a, b, tol=1e-3):
     """
     Golden section search.
@@ -544,6 +559,12 @@ class CG:
 
             raise ValueError('GSS didn\'t find a better value')
         return Xn, fn, ek, F, Ul
+
+    def backtracking_search(self, X, f, eta, Fline, F0):
+        t1, res = btsearch(Fline, 5, F0)
+        F1, X1, f1, ek1, Ul1 = res
+
+        return X1, f1, ek1, F1, Ul1
 
     def run(self, X, fn, maxiter=100, restart=20, tol=1e-10,
             prec=False, kappa=0.3, eps=0.001, use_g_eta=False,
