@@ -545,7 +545,7 @@ class CG:
         U    -- subspace rotation matrix
         """
 
-        t1, t2 = gss(Fline, a=0, b=20)
+        t1, t2 = gss(Fline, a=0, b=5)
         F, Xn, fn, ek, Ul = Fline((t1+t2)/2)
         if not F < F0:
             logger('WARNING: gss has failed')
