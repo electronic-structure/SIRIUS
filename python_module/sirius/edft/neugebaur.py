@@ -649,7 +649,8 @@ class CG:
                     try:
                         M(X, fn)
                         Fline = F(X, eta, M, G_X, G_eta)
-                        X, fn, ek, FE, U = self.step_golden_section_search(X, fn, eta, Fline, FE)
+                        # X, fn, ek, FE, U = self.step_golden_section_search(X, fn, eta, Fline, FE)
+                        X, fn, ek, FE, U = self.backtracking_search(X, fn, eta, Fline, FE)
                     except ValueError:
                         # not even golden section search works
                         # restart CG and reduce kappa
