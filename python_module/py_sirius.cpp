@@ -17,6 +17,7 @@
 #include "utils/json.hpp"
 #include "Unit_cell/free_atom.hpp"
 #include "energy.hpp"
+#include "magnetization.hpp"
 #include "unit_cell_accessors.hpp"
 #include "make_sirius_comm.hpp"
 
@@ -757,4 +758,5 @@ PYBIND11_MODULE(py_sirius, m)
     m.def("omp_get_num_threads", &omp_get_num_threads);
     m.def("make_sirius_comm", &make_sirius_comm);
     m.def("make_pycomm", &make_pycomm);
+    m.def("magnetization", &magnetization);
 }
