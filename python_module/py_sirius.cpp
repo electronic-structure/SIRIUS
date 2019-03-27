@@ -469,7 +469,7 @@ PYBIND11_MODULE(py_sirius, m)
                  }
              })
         .def("apply_ref",
-             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf) {
+             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions>& swf) {
                  int num_wf = wf.num_wf();
                  int num_sc = wf.num_sc();
                  if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
@@ -496,12 +496,12 @@ PYBIND11_MODULE(py_sirius, m)
                  kp.beta_projectors().prepare();
                  if (!hamiltonian.ctx().gamma_point()) {
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
+                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
                      }
                  } else {
                      std::cerr << "python module:: H applied at gamma-point\n";
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
+                         hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
                      }
                  }
                  kp.beta_projectors().dismiss();
@@ -517,7 +517,7 @@ PYBIND11_MODULE(py_sirius, m)
                  }
                  #endif // __GPU
              },
-             "kpoint"_a, "wf_out"_a, "wf_in"_a)
+             "kpoint"_a, "wf_out"_a, "wf_in"_a, py::arg("swf_out")=nullptr)
         .def("_apply_ref_inner_prepare",
              // must be called BEFORE _apply_ref_inner
              [](Hamiltonian& hamiltonian) { hamiltonian.prepare(); })
@@ -532,7 +532,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("_apply_ref_inner",
              // this is the same as apply_ref, but skipping hamiltonian.prepare() which will deadlock unless called by
              // all ranks
-             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf) {
+             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions> swf) {
                  int num_wf = wf.num_wf();
                  int num_sc = wf.num_sc();
                  if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
@@ -558,12 +558,12 @@ PYBIND11_MODULE(py_sirius, m)
                  kp.beta_projectors().prepare();
                  if (!hamiltonian.ctx().gamma_point()) {
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
+                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
                      }
                  } else {
                      std::cerr << "python module:: H applied at gamma-point\n";
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
+                         hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
                      }
                  }
                  kp.beta_projectors().dismiss();
@@ -575,7 +575,7 @@ PYBIND11_MODULE(py_sirius, m)
                          wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
                  }
                  #endif // __GPU
-             });
+             }, "kpoint"_a, "wf_out"_a, "wf_in"_a, py::arg("swf_out")=nullptr);
 
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
