@@ -196,7 +196,7 @@ def make_kinetic_precond(kpointset, eps=0.1):
     return DiagonalPreconditioner(P)
 
 
-def btsearch(f, b, f0, maxiter=10):
+def btsearch(f, b, f0, maxiter=20):
     """
     Backtracking search
     """
