@@ -680,7 +680,8 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", memory_t::device).value("host", memory_t::host);
 
-    py::class_<Wave_functions>(m, "Wave_functions")
+    // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
+    py::class_<Wave_functions, std::shared_ptr<Wave_functions>>(m, "Wave_functions")
         .def(py::init<Gvec_partition const&, int, memory_t, int>(), "gvecp"_a, "num_wf"_a, "mem"_a, "num_sc"_a)
         .def("num_sc", &Wave_functions::num_sc)
         .def("num_wf", &Wave_functions::num_wf)
