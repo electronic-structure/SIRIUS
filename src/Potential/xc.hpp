@@ -798,8 +798,6 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
 
     Smooth_periodic_vector_function<double> grad_rho_up;
     Smooth_periodic_vector_function<double> grad_rho_dn;
-    Smooth_periodic_function<double> lapl_rho_up;
-    Smooth_periodic_function<double> lapl_rho_dn;
     Smooth_periodic_function<double> grad_rho_up_grad_rho_up;
     Smooth_periodic_function<double> grad_rho_up_grad_rho_dn;
     Smooth_periodic_function<double> grad_rho_dn_grad_rho_dn;
@@ -813,8 +811,6 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         /* generate pw coeffs of the gradient and laplacian */
         grad_rho_up = gradient(rho_up);
         grad_rho_dn = gradient(rho_dn);
-        lapl_rho_up = laplacian(rho_up);
-        lapl_rho_dn = laplacian(rho_dn);
 
         /* gradient in real space */
         for (int x: {0, 1, 2}) {
@@ -827,21 +823,12 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         grad_rho_up_grad_rho_dn = dot(grad_rho_up, grad_rho_dn);
         grad_rho_dn_grad_rho_dn = dot(grad_rho_dn, grad_rho_dn);
 
-        /* Laplacian in real space */
-        lapl_rho_up.fft_transform(1);
-        lapl_rho_dn.fft_transform(1);
-
         if (ctx_.control().print_hash_) {
-            auto h1 = lapl_rho_up.hash_f_rg();
-            auto h2 = lapl_rho_dn.hash_f_rg();
-
             auto h3 = grad_rho_up_grad_rho_up.hash_f_rg();
             auto h4 = grad_rho_up_grad_rho_dn.hash_f_rg();
             auto h5 = grad_rho_dn_grad_rho_dn.hash_f_rg();
 
             if (ctx_.comm().rank() == 0) {
-                utils::print_hash("lapl_rho_up", h1);
-                utils::print_hash("lapl_rho_dn", h2);
                 utils::print_hash("grad_rho_up_grad_rho_up", h3);
                 utils::print_hash("grad_rho_up_grad_rho_dn", h4);
                 utils::print_hash("grad_rho_dn_grad_rho_dn", h5);
@@ -970,10 +957,9 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
                     for (int i = 0; i < spl_t.local_size(); i++) {
                         /* add Exc contribution */
                         exc_tmp(spl_t[i]) += exc_t[i];
-
                         /* directly add to Vxc available contributions */
-                        vxc_up_tmp(spl_t[i]) += (vrho_up_t[i] - 2 * vsigma_uu_t[i] * lapl_rho_up.f_rg(spl_t[i]) - vsigma_ud_t[i] * lapl_rho_dn.f_rg(spl_t[i]));
-                        vxc_dn_tmp(spl_t[i]) += (vrho_dn_t[i] - 2 * vsigma_dd_t[i] * lapl_rho_dn.f_rg(spl_t[i]) - vsigma_ud_t[i] * lapl_rho_up.f_rg(spl_t[i]));
+                        vxc_up_tmp(spl_t[i]) += vrho_up_t[i];
+                        vxc_dn_tmp(spl_t[i]) += vrho_dn_t[i];
 
                         /* save the sigma derivative */
                         vsigma_uu_tmp(spl_t[i]) += vsigma_uu_t[i];
@@ -989,8 +975,11 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
     if (is_gga) {
         utils::timer t4("sirius::Potential::xc_rg_magnetic|grad2");
         /* gather vsigma */
+        // vsigma_uu: dϵ/dσ↑↑
         Smooth_periodic_function<double> vsigma_uu(ctx_.fft(), ctx_.gvec_partition());
+        // vsigma_ud: dϵ/dσ↑↓
         Smooth_periodic_function<double> vsigma_ud(ctx_.fft(), ctx_.gvec_partition());
+        // vsigma_dd: dϵ/dσ↓↓
         Smooth_periodic_function<double> vsigma_dd(ctx_.fft(), ctx_.gvec_partition());
         for (int ir = 0; ir < num_points; ir++) {
             vsigma_uu.f_rg(ir) = vsigma_uu_tmp[ir];
@@ -998,34 +987,43 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
             vsigma_dd.f_rg(ir) = vsigma_dd_tmp[ir];
         }
 
-        /* forward transform vsigma to plane-wave domain */
-        vsigma_uu.fft_transform(-1);
-        vsigma_ud.fft_transform(-1);
-        vsigma_dd.fft_transform(-1);
+        // /* forward transform vsigma to plane-wave domain */
+        // not needed!
+        // vsigma_uu.fft_transform(-1);
+        // vsigma_ud.fft_transform(-1);
+        // vsigma_dd.fft_transform(-1);
 
-        /* gradient of vsigma in plane-wave domain */
-        auto grad_vsigma_uu = gradient(vsigma_uu);
-        auto grad_vsigma_ud = gradient(vsigma_ud);
-        auto grad_vsigma_dd = gradient(vsigma_dd);
+        // /* backward transform gradient from pw to real space */
+        // for (int x: {0, 1, 2}) {
+        //     grad_vsigma_uu[x].fft_transform(1);
+        //     grad_vsigma_ud[x].fft_transform(1);
+        //     grad_vsigma_dd[x].fft_transform(1);
+        // }
 
-        /* backward transform gradient from pw to real space */
+        Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.fft(), ctx_.gvec_partition());
+        Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.fft(), ctx_.gvec_partition());
         for (int x: {0, 1, 2}) {
-            grad_vsigma_uu[x].fft_transform(1);
-            grad_vsigma_ud[x].fft_transform(1);
-            grad_vsigma_dd[x].fft_transform(1);
+            for(int ir = 0; ir < num_points; ++ir) {
+              up_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_up[x].f_rg(ir) * vsigma_uu.f_rg(ir) + grad_rho_dn[x].f_rg(ir) * vsigma_ud.f_rg(ir);
+              dn_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_dn[x].f_rg(ir) * vsigma_dd.f_rg(ir) + grad_rho_up[x].f_rg(ir) * vsigma_ud.f_rg(ir);
+            }
         }
 
-        /* compute scalar product of two gradients */
-        auto grad_vsigma_uu_grad_rho_up = dot(grad_vsigma_uu, grad_rho_up);
-        auto grad_vsigma_dd_grad_rho_dn = dot(grad_vsigma_dd, grad_rho_dn);
-        auto grad_vsigma_ud_grad_rho_up = dot(grad_vsigma_ud, grad_rho_up);
-        auto grad_vsigma_ud_grad_rho_dn = dot(grad_vsigma_ud, grad_rho_dn);
+        /* transform to plane wave domain */
+        for (int x: {0, 1, 2}) {
+            up_gradrho_vsigma[x].fft_transform(-1);
+            dn_gradrho_vsigma[x].fft_transform(-1);
+        }
+
+        // divergence: plane-wave (input) to real-space domain (output)
+        auto div_up_gradrho_vsigma = divergence(up_gradrho_vsigma);
+        auto div_dn_gradrho_vsigma = divergence(dn_gradrho_vsigma);
 
         /* add remaining term to Vxc */
         #pragma omp parallel for
         for (int ir = 0; ir < num_points; ir++) {
-            vxc_up_tmp(ir) -= (2 * grad_vsigma_uu_grad_rho_up.f_rg(ir) + grad_vsigma_ud_grad_rho_dn.f_rg(ir));
-            vxc_dn_tmp(ir) -= (2 * grad_vsigma_dd_grad_rho_dn.f_rg(ir) + grad_vsigma_ud_grad_rho_up.f_rg(ir));
+            vxc_up_tmp(ir) -= div_up_gradrho_vsigma.f_rg(ir);
+            vxc_dn_tmp(ir) -= div_dn_gradrho_vsigma.f_rg(ir);
         }
     }
 
