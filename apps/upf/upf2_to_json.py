@@ -197,7 +197,7 @@ def parse_PAW(upf_dict, root):
 
     # ------ Read PP_PAW section: occupation, AE_NLCC, AE_VLOC
     node = root.findall("./PP_PAW")[0]
-    if 'core_energy' in node.attrib:
+    try:
         upf_dict['header']["paw_core_energy"] = float(
             node.attrib['core_energy']) / 2  # convert to Ha
     except KeyError:
