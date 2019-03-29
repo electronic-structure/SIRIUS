@@ -165,20 +165,11 @@ class Density : public Field4D
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 
-    /// High-frequency mixer for the pseudopotential density mixing.
-    std::unique_ptr<Mixer<double_complex>> hf_mixer_{nullptr};
-
     /// Low-frequency mixer for the pseudopotential density mixing.
-    std::unique_ptr<Mixer<double_complex>> lf_mixer_{nullptr};
+    std::unique_ptr<Mixer<double_complex>> mixer_{nullptr};
 
-    /// List of local low-fequency G-vectors.
-    std::vector<int> lf_gvec_;
-
-    /// List of local high-fequency G-vectors.
-    std::vector<int> hf_gvec_;
-
-    /// Weights of local low-frequency G-vectors.
-    std::vector<double> lf_gvec_weights_;
+    /// Weights of G-vectors for the mixer
+    std::vector<double> gvec_mixer_weights_;
 
     /// Allocate PAW data.
     void init_paw();
@@ -341,15 +332,10 @@ class Density : public Field4D
         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
             int  ig = ctx_.gvec().offset() + igloc;
             auto gv = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
-            if (gv.length() <= 2 * ctx_.gk_cutoff()) {
-                lf_gvec_.push_back(igloc);
-                if (ig) {
-                    lf_gvec_weights_.push_back(fourpi * unit_cell_.omega() / std::pow(gv.length(), 2));
-                } else {
-                    lf_gvec_weights_.push_back(0);
-                }
+            if (ig) {
+                gvec_mixer_weights_.push_back(fourpi * unit_cell_.omega() / std::pow(gv.length(), 2));
             } else {
-                hf_gvec_.push_back(igloc);
+                gvec_mixer_weights_.push_back(0);
             }
         }
 
@@ -825,35 +811,21 @@ class Density : public Field4D
         if (ctx_.full_potential()) {
             Field4D::mixer_input();
         } else {
-            int ld = static_cast<int>(hf_gvec_.size());
-            if (hf_mixer_) {
-                /* input high-frequency components */
-                for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                    for (int i = 0; i < static_cast<int>(hf_gvec_.size()); i++) {
-                        int igloc = hf_gvec_[i];
-                        hf_mixer_->input_local(i + j * ld, component(j).f_pw_local(igloc));
-                    }
-                }
-            }
-
-            ld = static_cast<int>(lf_gvec_.size());
-            /* input low-frequency components */
+            int ngv = ctx_.gvec().count();
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 if (j == 0) {
-                    for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
-                        int igloc = lf_gvec_[i];
-                        lf_mixer_->input_local(i + j * ld, component(j).f_pw_local(igloc), lf_gvec_weights_[i]);
+                    for (int igloc = 0; igloc < ngv; igloc++) {
+                        mixer_->input_local(igloc + j * ngv, component(j).f_pw_local(igloc), gvec_mixer_weights_[igloc]);
                     }
                 } else {
-                    for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
-                        int igloc = lf_gvec_[i];
-                        lf_mixer_->input_local(i + j * ld, component(j).f_pw_local(igloc));
+                    for (int igloc = 0; igloc < ngv; igloc++) {
+                        mixer_->input_local(igloc + j * ngv, component(j).f_pw_local(igloc));
                     }
                 }
             }
             /* input commonly shared data */
             for (int i = 0; i < static_cast<int>(density_matrix_.size()); i++) {
-                lf_mixer_->input_shared(i, density_matrix_[i], 0);
+                mixer_->input_shared(i, density_matrix_[i], 0);
             }
         }
     }
@@ -863,28 +835,16 @@ class Density : public Field4D
         if (ctx_.full_potential()) {
             Field4D::mixer_output();
         } else {
-            int ld = static_cast<int>(hf_gvec_.size());
-            if (hf_mixer_) {
-                /* get high-frequency components */
-                for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                    for (int i = 0; i < static_cast<int>(hf_gvec_.size()); i++) {
-                        int igloc                      = hf_gvec_[i];
-                        component(j).f_pw_local(igloc) = hf_mixer_->output_local(i + j * ld);
-                    }
-                }
-            }
-
-            ld = static_cast<int>(lf_gvec_.size());
+            int ngv = ctx_.gvec().count();
             /* get low-frequency components */
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
-                    int igloc                      = lf_gvec_[i];
-                    component(j).f_pw_local(igloc) = lf_mixer_->output_local(i + j * ld);
+                for (int igloc = 0; igloc < ngv; igloc++) {
+                    component(j).f_pw_local(igloc) = mixer_->output_local(igloc + j * ngv);
                 }
             }
 
             for (int i = 0; i < static_cast<int>(density_matrix_.size()); i++) {
-                density_matrix_[i] = lf_mixer_->output_shared(i);
+                density_matrix_[i] = mixer_->output_shared(i);
             }
         }
     }
@@ -894,25 +854,11 @@ class Density : public Field4D
         if (ctx_.full_potential()) {
             Field4D::mixer_init(mixer_cfg__);
         } else {
-            auto conf1  = mixer_cfg__;
-            conf1.type_ = "linear";
-            if (hf_gvec_.size() > 0) {
-                hf_mixer_   = Mixer_factory<double_complex>(0,
-                                                            static_cast<int>(hf_gvec_.size() * (1 + ctx_.num_mag_dims())),
-                                                            conf1,
-                                                            ctx_.comm());
-            }
-
-            lf_mixer_ = Mixer_factory<double_complex>(static_cast<int>(density_matrix_.size()),
-                                                      static_cast<int>(lf_gvec_.size() * (1 + ctx_.num_mag_dims())),
-                                                      mixer_cfg__,
-                                                      ctx_.comm());
+            mixer_ = Mixer_factory<double_complex>(static_cast<int>(density_matrix_.size()),
+                                                   ctx_.gvec().count() * (1 + ctx_.num_mag_dims()),
+                                                   mixer_cfg__, ctx_.comm());
             mixer_input();
-            lf_mixer_->initialize();
-
-            if (hf_mixer_) {
-                hf_mixer_->initialize();
-            }
+            mixer_->initialize();
         }
     }
 
@@ -928,10 +874,7 @@ class Density : public Field4D
         } else {
             /* mix in G-space in case of PP */
             mixer_input();
-            rms = lf_mixer_->mix(ctx_.settings().mixer_rss_min_);
-            if (hf_mixer_) {
-                rms += hf_mixer_->mix(ctx_.settings().mixer_rss_min_);
-            }
+            rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
             mixer_output();
         }
 
@@ -940,7 +883,7 @@ class Density : public Field4D
 
     inline double dr2() const
     {
-        return lf_mixer_->rss();
+        return mixer_->rss();
     }
 
     mdarray<double_complex, 4> const& density_matrix() const
