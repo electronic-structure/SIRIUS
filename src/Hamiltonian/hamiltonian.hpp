@@ -154,7 +154,13 @@ class Hamiltonian
                           int             n__,
                           Wave_functions& phi__,
                           Wave_functions* hphi__,
-                          Wave_functions* ophi__) const;
+                          Wave_functions* sphi__) const;
+
+    template <typename T>
+    inline void apply_s(K_point*        kp__,
+                        int             ispn__,
+                        Wave_functions& phi__,
+                        Wave_functions& sphi__) const;
 
     /// Apply magnetic field to first-variational LAPW wave-functions.
     inline void apply_magnetic_field(K_point*                     kp__,

@@ -3,6 +3,7 @@ from .coefficient_array import *
 from .py_sirius import *
 from .py_sirius import K_point_set
 from .logger import Logger
+from .operators import S_operator
 import numpy as np
 from numpy import array, zeros
 __all__ = ["ot", "baarman", "bands", "edft"]
