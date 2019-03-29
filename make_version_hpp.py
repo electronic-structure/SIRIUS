@@ -45,7 +45,7 @@ def get_sha(vstr, dirname):
             else:
                 from urllib.request import Request, urlopen, URLError
                 req = Request(request_str)
-                data = json.load(urlopen(req))
+                data = json.loads(urlopen(req).read().decode('utf-8'))
             # search for a version tag
             for e in data:
                 if e['name'] == 'v' + vstr:
