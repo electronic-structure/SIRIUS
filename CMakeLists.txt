@@ -83,7 +83,7 @@ else()
   find_package(LAPACK REQUIRED)
   if(USE_SCALAPACK)
     find_package(SCALAPACK REQUIRED) # just sets scalapack_DIR
-    include_directories(BEFORE ${SCALAPACK_INCLUDE_DIR})
+    #include_directories(BEFORE ${SCALAPACK_INCLUDE_DIR})
     set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${SCALAPACK_LIBRARIES}")
   endif()
 endif()

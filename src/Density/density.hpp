@@ -168,12 +168,6 @@ class Density : public Field4D
     /// Low-frequency mixer for the pseudopotential density mixing.
     std::unique_ptr<Mixer<double_complex>> mixer_{nullptr};
 
-    /// List of local low-fequency G-vectors.
-    //std::vector<int> lf_gvec_;
-
-    /// List of local high-fequency G-vectors.
-    //std::vector<int> hf_gvec_;
-
     /// Weights of G-vectors for the mixer
     std::vector<double> gvec_mixer_weights_;
 

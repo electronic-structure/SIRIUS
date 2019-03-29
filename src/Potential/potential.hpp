@@ -714,12 +714,22 @@ class Potential : public Field4D
     /** In case of spin-unpolarized GGA the XC potential has the following expression:
      *  \f[
      *      V_{XC}({\bf r}) = \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \nabla \rho) -
-     *        \nabla \frac{\partial}{\partial (\nabla \rho)} \varepsilon_{xc}(\rho, \nabla \rho)
+     *        \nabla \frac{\partial}{\partial (\nabla \rho)} \varepsilon_{xc}(\rho, \nabla \rho) = 
+     *     \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \nabla \rho) -
+     *     \sum_{\alpha} \frac{\partial}{\partial r_{\alpha}}
+     *     \frac{\partial \varepsilon_{xc}(\rho, \nabla \rho) }{\partial g_{\alpha}}
      *  \f]
+     *  where \f$ {\bf g}({\bf r}) = \nabla \rho({\bf r}) \f$.
+     *
      *  LibXC packs the gradient information into the so-called \a sigma array:
      *  \f[
-     *      \sigma = \nabla \rho \nabla \rho
+     *      \sigma = \nabla \rho \nabla \rho = \sum_{\alpha} g_{\alpha}^2({\bf r})
      *  \f]
+     * The derivative of \f$ \sigma \f$ with respect to the gradient of density is simply
+     *  \f[
+     *      \frac{\partial \sigma}{\partial g_{\alpha}} = 2 g_{\alpha}
+     *  \f]
+     *  
      *  Changing variables in \f$ V_{XC} \f$ expression gives:
      *  \f{eqnarray*}{
      *      V_{XC}({\bf r}) &=& \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) -
@@ -729,6 +739,14 @@ class Potential : public Field4D
      *        2 \nabla \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \nabla \rho -
      *        2 \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \nabla^2 \rho
      *  \f}
+     *  Alternative expression can be derived for the XC potential if we leave the gradient:
+     *  \f[
+     *    V_{XC}({\bf r}) = \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) - 
+     *     \sum_{\alpha} \frac{\partial}{\partial r_{\alpha}} 
+     *     \Big( \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} 2 g_{\alpha}  \Big) = 
+     *    \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) - 2 \nabla \Big(
+     *     \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} {\bf g}({\bf r}) \Big)
+     *  \f]
      *  The following sequence of functions must be computed:
      *      - density on the real space grid
      *      - gradient of density (in spectral representation)
