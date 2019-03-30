@@ -188,13 +188,13 @@ add_custom_command(
   )
 
 
-find_package(Python REQUIRED Interpreter)
+find_package(PythonInterp REQUIRED)
 
 # handle the generation of the version.hpp file
 add_custom_command(
   OUTPUT version.hpp-test
   DEPENDS _always_rebuild
-  COMMAND ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
+  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
   )
 set(version_hpp_path src/version.hpp)
 add_custom_command(

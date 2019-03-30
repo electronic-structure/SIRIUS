@@ -1,6 +1,6 @@
 include(FindPackageHandleStandardArgs)
 
-exec_program(${Python_EXECUTABLE} ARGS
+exec_program(${PYTHON_EXECUTABLE} ARGS
   -c
   "'import mpi4py; import os; print(os.path.dirname(mpi4py.__file__))'"
   OUTPUT_VARIABLE MPI4PY_PATH
