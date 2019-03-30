@@ -7,6 +7,8 @@ from ..coefficient_array import diag, einsum, inner, l2norm
 from ..helpers import save_state
 from ..logger import Logger
 from .ortho import gram_schmidt, loewdin
+from mpi4py import MPI
+from copy import deepcopy
 
 logger = Logger()
 
@@ -50,7 +52,7 @@ def fermi_function(x, T, mu, num_spins):
 
     if isinstance(x, CoefficientArray):
         out = type(x)(dtype=x.dtype, ctype=np.array)
-        for key, val in x._data.items():
+        for key, _ in x._data.items():
             out[key] = _fermi_function(x[key], T, mu, num_spins)
         return out
     return _fermi_function(x, T, mu, num_spins)
@@ -402,8 +404,17 @@ class F():
         kw = kset.w
         ne = kset.ctx().unit_cell().num_valence_electrons()
         m = kset.ctx().max_occupancy()
+
+        # collect all band energies from every k-point rank
+        comm = self.M.energy.kpointset.ctx().comm_k()
+        vek = np.hstack(comm.allgather(ek.to_array()))
+        vkw = deepcopy(ek)
+        for k in vkw._data.keys():
+            vkw[k] = np.ones_like(vkw[k]) * kw[k]
+        vkw = np.hstack(comm.allgather(vkw.to_array()))
+
         # update occupation numbers
-        mu = find_chemical_potential(lambda mu: ne - np.sum(kw*fermi_function(ek, T, mu, m)),
+        mu = find_chemical_potential(lambda mu: ne - np.sum(vkw*fermi_function(vek, T, mu, m)),
                                      mu0=0)
         fn = fermi_function(ek, T, mu, m)
         return self.M(X, fn), X, fn, ek, Ul
