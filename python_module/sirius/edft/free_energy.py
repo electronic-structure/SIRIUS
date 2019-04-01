@@ -51,9 +51,9 @@ class FreeEnergy:
         X --
         f --
         """
-        # self.energy.kpointset.sync_band_occupancies()
+
         self.energy.kpointset.fn = fn
         ns = 2 if self.energy.kpointset.ctx().num_mag_dims() == 0 else 1
         entropy = s(np.sqrt(fn/ns))
-        E = self.energy(X)
-        return E + self.kb * self.T * np.real(np.sum(self.kw*entropy))
+        E, HX = self.energy.compute(X)
+        return E + self.kb * self.T * np.real(np.sum(self.kw*entropy)), HX

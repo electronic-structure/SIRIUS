@@ -265,6 +265,9 @@ def gss(f, a, b, tol=1e-3):
 
 
 class IdentityPreconditioner():
+    """
+    Identity preconditioner
+    """
     def __init__(self, _f=1):
         self._f = _f
 
@@ -390,6 +393,7 @@ class F():
 
         Returns:
         F  -- free energy
+        Hx -- gradient (free of occupation, k-point-weight)
         X  -- plane-wave coefficients
         fn -- occupation numbers
         U  -- subspace rotation matrix
@@ -417,10 +421,13 @@ class F():
         mu = find_chemical_potential(lambda mu: ne - np.sum(vkw*fermi_function(vek, T, mu, m)),
                                      mu0=0)
         fn = fermi_function(ek, T, mu, m)
-        return self.M(X, fn), X, fn, ek, Ul
+        FE, Hx = self.M(X, fn)
+        return FE, Hx, X, fn, ek, Ul
 
 
 class CGFailed(Exception):
+    """
+    """
     pass
 
 
@@ -486,6 +493,7 @@ class CG:
         f_n  --
         ek   --
         F    -- free energy at minimum
+        Hx   -- H*X_n at (X_n, f_n)
         U    -- subspace rotation matrix
         """
 
@@ -494,7 +502,7 @@ class CG:
         fline = F(X, eta, self.M, G_X, G_eta)
         while True:
             # free energy at trial point
-            F1, _, _, _, _ = fline(xi_trial)
+            F1, _, _, _, _, _ = fline(xi_trial)
             # find xi_min
             c = F0
             b = slope
@@ -519,10 +527,12 @@ class CG:
             #             'a': a, 'b': b, 'c': c,
             #             'G_eta': G_eta, 'slope': slope, **kwargs}, self.M.energy.kpointset)
         if not Fpred < F0:
+            # reset Hamiltonian (side effects)
+            fline(0)
             raise ValueError('quadratic line-search failed to find a new minima')
 
         # free energy at minimum
-        FE, X_n, f_n, ek, U = fline(xi_min)
+        FE, Hx, X_n, f_n, ek, U = fline(xi_min)
         if not FE < F0:
             logger('==== failed step ====')
             logger('F0:', F0)
@@ -534,9 +544,12 @@ class CG:
             #             'a': a, 'b': b, 'c': c,
             #             'eta': eta, 'G_X': G_X,
             #             'G_eta': G_eta, 'slope': slope, **kwargs}, self.M.energy.kpointset)
+
+            # reset Hamiltonian (side effects)
+            fline(0)
             raise ValueError('quadratic line-search failed to find a new minima')
 
-        return X_n, f_n, ek, FE, U
+        return X_n, f_n, ek, FE, Hx, U
 
     def step_golden_section_search(self, X, f, eta, Fline, F0):
         """
@@ -557,7 +570,7 @@ class CG:
         """
 
         t1, t2 = gss(Fline, a=0, b=5)
-        F, Xn, fn, ek, Ul = Fline((t1+t2)/2)
+        F, Hx, Xn, fn, ek, Ul = Fline((t1+t2)/2)
         if not F < F0:
             logger('WARNING: gss has failed')
             logger('t1,t2 = %.5g, %.5g' % (t1, t2))
@@ -569,13 +582,13 @@ class CG:
                             'G_eta': Fline.G_eta}, Fline.M.energy.kpointset)
 
             raise ValueError('GSS didn\'t find a better value')
-        return Xn, fn, ek, F, Ul
+        return Xn, fn, ek, F, Hx, Ul
 
     def backtracking_search(self, X, f, eta, Fline, F0, tau=0.5):
         t1, res = btsearch(Fline, 5, F0, tau=tau)
-        F1, X1, f1, ek1, Ul1 = res
+        F1, Hx1, X1, f1, ek1, Ul1 = res
 
-        return X1, f1, ek1, F1, Ul1
+        return X1, f1, ek1, F1, Hx1, Ul1
 
     def run(self, X, fn, maxiter=100, restart=20, tol=1e-10,
             prec=False, kappa=0.3, eps=0.001, use_g_eta=False,
@@ -612,11 +625,11 @@ class CG:
         ek = w
         X = X@U
         # compute initial free energy
-        FE = M(X, fn)
+        FE, Hx = M(X, fn)
         logger('intial F: %.10g' % FE)
         # save_state({'fn': fn, 'ek': ek}, kset, 'init_occu')
 
-        HX = H.apply(X, scale=False) * kw
+        HX = Hx * kw
         Hij = X.H @ HX
         g_eta = grad_eta(Hij, ek, fn, T, kw)
         LL = Hij*fn
@@ -646,22 +659,20 @@ class CG:
                     raise ValueError('Error: _ascent_ direction, slope %.4e' % slope)
                 else:
                     cg_restart_inprogress = True
-                    M(X, fn) # TODO: is this required?
             else:
                 try:
-                    X, fn, ek, FE, U = self.step(X, fn, eta, G_X, G_eta,
-                                                xi_trial=0.2, F0=FE, slope=slope,
-                                                kwargs={'gx': g_X, 'g_eta': g_eta})
+                    X, fn, ek, FE, Hx, U = self.step(X, fn, eta, G_X, G_eta,
+                                                     xi_trial=0.2, F0=FE, slope=slope,
+                                                     kwargs={'gx': g_X, 'g_eta': g_eta})
                     # reset kappa
                     kappa = kappa0
                     cg_restart_inprogress = False
                 except ValueError:
                     # side effects
                     try:
-                        M(X, fn)
                         Fline = F(X, eta, M, G_X, G_eta)
                         # X, fn, ek, FE, U = self.step_golden_section_search(X, fn, eta, Fline, FE)
-                        X, fn, ek, FE, U = self.backtracking_search(X, fn, eta, Fline, FE)
+                        X, fn, ek, FE, Hx, U = self.backtracking_search(X, fn, eta, Fline, FE)
                     except ValueError:
                         # not even golden section search works
                         # restart CG and reduce kappa
@@ -677,9 +688,9 @@ class CG:
             GP_eta = U.H@G_eta@U
             deltaP_X = delta_X@U
             deltaP_eta = U.H@delta_eta@U
-            # compute new gradients
 
-            HX = H.apply(X, scale=False) * kw
+            # compute new gradients
+            HX = Hx*kw
             Hij = X.H @ HX
             gp_eta = U.H @ g_eta @ U
             g_eta = grad_eta(Hij, ek, fn, T, kw)

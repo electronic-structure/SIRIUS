@@ -44,58 +44,59 @@ class Energy:
         else:
             self.ctx = ctx
 
-    def __call__(self, cn, ek=None):
+    def compute(self, cn):
         """
         Keyword Arguments:
         cn  --
         ek  -- band energies
         """
 
-        if isinstance(cn, PwCoeffs):
-            # update coefficients for all items in PwCoeffs
-            for key, val in cn.items():
-                k, ispn = key
-                self.kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[:, :val.shape[1]] = val
-            # copy to device (if needed)
-            for ki in cn.kvalues():
-                psi = self.kpointset[ki].spinor_wave_functions()
-                if psi.preferred_memory_t() == MemoryEnum.device:
-                    psi.copy_to_gpu()
-            # update density, potential
-            self.density.generate(self.kpointset)
-            if self.ctx.use_symmetry():
-                self.density.symmetrize()
-                self.density.symmetrize_density_matrix()
+        assert isinstance(cn, PwCoeffs)
 
-            self.density.generate_paw_loc_density()
-            self.density.fft_transform(1)
-            self.potential.generate(self.density)
-            if self.ctx.use_symmetry():
-                self.potential.symmetrize()
+        for key, val in cn.items():
+            k, ispn = key
+            self.kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[:, :val.shape[1]] = val
+        # copy to device (if needed)
+        for ki in cn.kvalues():
+            psi = self.kpointset[ki].spinor_wave_functions()
+            if psi.preferred_memory_t() == MemoryEnum.device:
+                psi.copy_to_gpu()
+        # update density, potential
+        self.density.generate(self.kpointset)
+        if self.ctx.use_symmetry():
+            self.density.symmetrize()
+            self.density.symmetrize_density_matrix()
 
-            self.potential.fft_transform(1)
+        self.density.generate_paw_loc_density()
+        self.density.fft_transform(1)
+        self.potential.generate(self.density)
+        if self.ctx.use_symmetry():
+            self.potential.symmetrize()
 
-            # update band energies
-            if ek is None:
-                yn = self.H(cn, scale=False)
-                for key, val in yn.items():
-                    k, ispn = key
-                    benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex)
-                    benergies[:val.shape[1]] = np.einsum('ij,ij->j',
-                                                        val,
-                                                        np.conj(cn[key]))
+        self.potential.fft_transform(1)
 
-                    for j, ek in enumerate(benergies):
-                        self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
+        yn = self.H(cn, scale=False)
+        for key, val in yn.items():
+            k, ispn = key
+            benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex)
+            benergies[:val.shape[1]] = np.einsum('ij,ij->j',
+                                                val,
+                                                np.conj(cn[key]))
 
-                self.kpointset.sync_band_energies()
-            else:
-                self.kpointset.e = ek
+            for j, ek in enumerate(benergies):
+                self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
 
-            return pp_total_energy(self.potential, self.density,
-                                   self.kpointset, self.ctx)
-        else:
-            assert False
+        self.kpointset.sync_band_energies()
+
+        Etot = pp_total_energy(self.potential, self.density,
+                               self.kpointset, self.ctx)
+
+        return Etot, yn
+
+    def __call__(self, cn):
+        E, _ = self.compute(cn)
+        return E
+
 
 class ApplyHamiltonian:
     def __init__(self, hamiltonian, kpointset):
