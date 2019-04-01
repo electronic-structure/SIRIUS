@@ -110,7 +110,8 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     ctx.initialize()
 
     if 'shiftk' in siriusJson['parameters']:
-        shiftk = siriusJson['parameters']['shiftk']
+        # make sure shiftk is not a list of floats
+        shiftk = [int(x) for x in siriusJson['parameters']['shiftk']]
     else:
         shiftk = [0, 0, 0]
     if 'ngridk' in siriusJson['parameters']:
