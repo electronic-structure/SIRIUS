@@ -571,8 +571,12 @@ PYBIND11_MODULE(py_sirius, m)
                  hamiltonian.ctx().fft_coarse().dismiss();
                  #ifdef __GPU
                  if (is_device_memory(ctx.preferred_memory_t())) {
-                     for (int ispn = 0; ispn < num_sc; ++ispn)
+                     for (int ispn = 0; ispn < num_sc; ++ispn) {
                          wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
+                         if(swf) {
+                             swf->pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
+                         }
+                     }
                  }
                  #endif // __GPU
              }, "kpoint"_a, "wf_out"_a, "wf_in"_a, py::arg("swf_out")=nullptr)
