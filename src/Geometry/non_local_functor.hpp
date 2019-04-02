@@ -110,7 +110,11 @@ class Non_local_functor
                         };
 
                         for (int ibf = 0; ibf < nbf; ibf++) {
+                            int lm2    = unit_cell.atom(ia).type().indexb(ibf).lm;
+                            int idxrf2 = unit_cell.atom(ia).type().indexb(ibf).idxrf;
                             for (int jbf = 0; jbf < nbf; jbf++) {
+                                int lm1    = unit_cell.atom(ia).type().indexb(jbf).lm;
+                                int idxrf1 = unit_cell.atom(ia).type().indexb(jbf).idxrf;
 
                                 /* Qij exists only in the case of ultrasoft/PAW */
                                 double qij = unit_cell.atom(ia).type().augment() ? ctx_.augmentation_op(iat).q_mtrx(ibf, jbf) : 0.0;
@@ -120,12 +124,18 @@ class Non_local_functor
                                 switch (ctx_.num_spins()) {
                                     case 1: {
                                         dij = unit_cell.atom(ia).d_mtrx(ibf, jbf, 0);
+                                        if (lm1 == lm2) {
+                                            dij += unit_cell.atom(ia).type().d_mtrx_ion()(idxrf1, idxrf2);
+                                        }
                                         break;
                                     }
 
                                     case 2: {
                                         /* Dij(00) = dij + dij_Z ;  Dij(11) = dij - dij_Z*/
-                                        dij =  (unit_cell.atom(ia).d_mtrx(ibf, jbf, 0) + spin_factor * unit_cell.atom(ia).d_mtrx(ibf, jbf, 1));
+                                        dij = (unit_cell.atom(ia).d_mtrx(ibf, jbf, 0) + spin_factor * unit_cell.atom(ia).d_mtrx(ibf, jbf, 1));
+                                        if (lm1 == lm2) {
+                                            dij += unit_cell.atom(ia).type().d_mtrx_ion()(idxrf1, idxrf2);
+                                        }
                                         break;
                                     }
 
