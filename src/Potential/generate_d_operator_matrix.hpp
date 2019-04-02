@@ -67,9 +67,6 @@ inline void Potential::generate_D_operator_matrix()
                     for (int xi2 = 0; xi2 < nbf; xi2++) {
                         for (int xi1 = 0; xi1 < nbf; xi1++) {
                             atom.d_mtrx(xi1, xi2, iv) = 0;
-                            if (atom_type.spin_orbit_coupling()) {
-                                atom.d_mtrx_so(xi1, xi2, iv) = 0;
-                            }
                         }
                     }
                 }
@@ -151,7 +148,7 @@ inline void Potential::generate_D_operator_matrix()
                                   &linalg_const<double>::one(),
                                   d_tmp.at(mem), d_tmp.ld(),
                                   stream_id(1));
-            }
+            } // ib (blocks of G-vectors)
 
             if (ctx_.processing_unit() == device_t::GPU) {
                 d_tmp.copy_to(memory_t::host);
@@ -174,6 +171,7 @@ inline void Potential::generate_D_operator_matrix()
                 }
             }
 
+            /* sum from all ranks */
             comm_.allreduce(d_tmp.at(memory_t::host), static_cast<int>(d_tmp.size()));
 
             if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
@@ -202,137 +200,137 @@ inline void Potential::generate_D_operator_matrix()
             }
         }
 
-        // Now compute the d operator for atoms with so interactions
-        if (atom_type.spin_orbit_coupling()) {
-            #pragma omp parallel for schedule(static)
-            for (int i = 0; i < atom_type.num_atoms(); i++) {
-                int ia     = atom_type.atom_id(i);
-                auto& atom = unit_cell_.atom(ia);
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    for (int xi1 = 0; xi1 < nbf; xi1++) {
+        //// Now compute the d operator for atoms with so interactions
+        //if (atom_type.spin_orbit_coupling()) {
+        //    #pragma omp parallel for schedule(static)
+        //    for (int i = 0; i < atom_type.num_atoms(); i++) {
+        //        int ia     = atom_type.atom_id(i);
+        //        auto& atom = unit_cell_.atom(ia);
+        //        for (int xi2 = 0; xi2 < nbf; xi2++) {
+        //            for (int xi1 = 0; xi1 < nbf; xi1++) {
 
-                        // first compute \f[A^_\alpha I^{I,\alpha}_{xi,xi}\f]
-                        // cf Eq.19 PRB 71 115106
+        //                // first compute \f[A^_\alpha I^{I,\alpha}_{xi,xi}\f]
+        //                // cf Eq.19 PRB 71 115106
 
-                        // note that the I integrals are already calculated and
-                        // stored in atom.d_mtrx
-                        for (int sigma = 0; sigma < 2; sigma++) {
-                            for (int sigmap = 0; sigmap < 2; sigmap++) {
-                                double_complex Pauli_vector[4][2][2];
-                                // Id
-                                Pauli_vector[0][0][0] = double_complex(1.0, 0.0);
-                                Pauli_vector[0][0][1] = double_complex(0.0, 0.0);
-                                Pauli_vector[0][1][0] = double_complex(0.0, 0.0);
-                                Pauli_vector[0][1][1] = double_complex(1.0, 0.0);
-                                // sigma_z
-                                Pauli_vector[1][0][0] = double_complex(1.0, 0.0);
-                                Pauli_vector[1][0][1] = double_complex(0.0, 0.0);
-                                Pauli_vector[1][1][0] = double_complex(0.0, 0.0);
-                                Pauli_vector[1][1][1] = double_complex(-1.0, 0.0);
-                                // sigma_x
-                                Pauli_vector[2][0][0] = double_complex(0.0, 0.0);
-                                Pauli_vector[2][0][1] = double_complex(1.0, 0.0);
-                                Pauli_vector[2][1][0] = double_complex(1.0, 0.0);
-                                Pauli_vector[2][1][1] = double_complex(0.0, 0.0);
-                                // sigma_y
-                                Pauli_vector[3][0][0] = double_complex(0.0, 0.0);
-                                Pauli_vector[3][0][1] = double_complex(0.0, -1.0);
-                                Pauli_vector[3][1][0] = double_complex(0.0, 1.0);
-                                Pauli_vector[3][1][1] = double_complex(0.0, 0.0);
-                                double_complex result = {0.0, 0.0};
-                                for (auto xi2p = 0; xi2p < nbf; xi2p++) {
-                                    if (atom_type.compare_index_beta_functions(xi2, xi2p)) {
-                                        // just sum over m2, all other indices are the same
-                                        for (auto xi1p = 0; xi1p < nbf; xi1p++) {
-                                            if (atom_type.compare_index_beta_functions(xi1, xi1p)) {
-                                                // just sum over m1, all other indices are the same
+        //                // note that the I integrals are already calculated and
+        //                // stored in atom.d_mtrx
+        //                for (int sigma = 0; sigma < 2; sigma++) {
+        //                    for (int sigmap = 0; sigmap < 2; sigmap++) {
+        //                        double_complex Pauli_vector[4][2][2];
+        //                        // Id
+        //                        Pauli_vector[0][0][0] = double_complex(1.0, 0.0);
+        //                        Pauli_vector[0][0][1] = double_complex(0.0, 0.0);
+        //                        Pauli_vector[0][1][0] = double_complex(0.0, 0.0);
+        //                        Pauli_vector[0][1][1] = double_complex(1.0, 0.0);
+        //                        // sigma_z
+        //                        Pauli_vector[1][0][0] = double_complex(1.0, 0.0);
+        //                        Pauli_vector[1][0][1] = double_complex(0.0, 0.0);
+        //                        Pauli_vector[1][1][0] = double_complex(0.0, 0.0);
+        //                        Pauli_vector[1][1][1] = double_complex(-1.0, 0.0);
+        //                        // sigma_x
+        //                        Pauli_vector[2][0][0] = double_complex(0.0, 0.0);
+        //                        Pauli_vector[2][0][1] = double_complex(1.0, 0.0);
+        //                        Pauli_vector[2][1][0] = double_complex(1.0, 0.0);
+        //                        Pauli_vector[2][1][1] = double_complex(0.0, 0.0);
+        //                        // sigma_y
+        //                        Pauli_vector[3][0][0] = double_complex(0.0, 0.0);
+        //                        Pauli_vector[3][0][1] = double_complex(0.0, -1.0);
+        //                        Pauli_vector[3][1][0] = double_complex(0.0, 1.0);
+        //                        Pauli_vector[3][1][1] = double_complex(0.0, 0.0);
+        //                        double_complex result = {0.0, 0.0};
+        //                        for (auto xi2p = 0; xi2p < nbf; xi2p++) {
+        //                            if (atom_type.compare_index_beta_functions(xi2, xi2p)) {
+        //                                // just sum over m2, all other indices are the same
+        //                                for (auto xi1p = 0; xi1p < nbf; xi1p++) {
+        //                                    if (atom_type.compare_index_beta_functions(xi1, xi1p)) {
+        //                                        // just sum over m1, all other indices are the same
 
-                                                for (int alpha = 0; alpha < 4; alpha++) { // loop over the 0, z,x,y coordinates
-                                                    for (int sigma1 = 0; sigma1 < 2; sigma1++) {
-                                                        for (int sigma2 = 0; sigma2 < 2; sigma2++) {
-                                                            result +=
-                                                                atom.d_mtrx(xi1p, xi2p, alpha) *
-                                                                Pauli_vector[alpha][sigma1][sigma2] *
-                                                                atom.type().f_coefficients(xi1, xi1p, sigma, sigma1) *
-                                                                atom.type().f_coefficients(xi2p, xi2, sigma2, sigmap);
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                const int ind =
-                                    (sigma == sigmap) * sigma + (1 + 2 * sigma + sigmap) * (sigma != sigmap);
-                                atom.d_mtrx_so(xi1, xi2, ind) = result;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        //                                        for (int alpha = 0; alpha < 4; alpha++) { // loop over the 0, z,x,y coordinates
+        //                                            for (int sigma1 = 0; sigma1 < 2; sigma1++) {
+        //                                                for (int sigma2 = 0; sigma2 < 2; sigma2++) {
+        //                                                    result +=
+        //                                                        atom.d_mtrx(xi1p, xi2p, alpha) *
+        //                                                        Pauli_vector[alpha][sigma1][sigma2] *
+        //                                                        atom.type().f_coefficients(xi1, xi1p, sigma, sigma1) *
+        //                                                        atom.type().f_coefficients(xi2p, xi2, sigma2, sigmap);
+        //                                                }
+        //                                            }
+        //                                        }
+        //                                    }
+        //                                }
+        //                            }
+        //                        }
+        //                        const int ind =
+        //                            (sigma == sigmap) * sigma + (1 + 2 * sigma + sigmap) * (sigma != sigmap);
+        //                        atom.d_mtrx_so(xi1, xi2, ind) = result;
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
         ctx_.augmentation_op(iat).dismiss();
     }
 
-    /* add d_ion to the effective potential component of D-operator */
-    #pragma omp parallel for schedule(static)
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        auto& atom_type = unit_cell_.atom(ia).type();
-        int nbf         = unit_cell_.atom(ia).mt_basis_size();
+    ///* add d_ion to the effective potential component of D-operator */
+    //#pragma omp parallel for schedule(static)
+    //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+    //    auto& atom_type = unit_cell_.atom(ia).type();
+    //    int nbf         = unit_cell_.atom(ia).mt_basis_size();
 
-        auto& dion      = atom_type.d_mtrx_ion();
+    //    auto& dion      = atom_type.d_mtrx_ion();
 
-        if (atom_type.spin_orbit_coupling()) {
-            // spin orbit coupling mixes this term
+    //    if (atom_type.spin_orbit_coupling()) {
+    //        // spin orbit coupling mixes this term
 
-            // keep the order of the indices because it is crucial
-            // here. Permuting the indices makes things wrong
+    //        // keep the order of the indices because it is crucial
+    //        // here. Permuting the indices makes things wrong
 
-            for (int xi2 = 0; xi2 < nbf; xi2++) {
-                int l2     = atom_type.indexb(xi2).l;
-                double j2  = atom_type.indexb(xi2).j;
-                int idxrf2 = atom_type.indexb(xi2).idxrf;
-                for (int xi1 = 0; xi1 < nbf; xi1++) {
-                    int l1     = atom_type.indexb(xi1).l;
-                    double j1  = atom_type.indexb(xi1).j;
-                    int idxrf1 = atom_type.indexb(xi1).idxrf;
-                    if ((l1 == l2) && (std::abs(j1 - j2) < 1e-8)) {
-                        // up-up down-down
-                        unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 0) +=
-                            dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 0, 0);
-                        unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 1) +=
-                            dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 1, 1);
+    //        for (int xi2 = 0; xi2 < nbf; xi2++) {
+    //            int l2     = atom_type.indexb(xi2).l;
+    //            double j2  = atom_type.indexb(xi2).j;
+    //            int idxrf2 = atom_type.indexb(xi2).idxrf;
+    //            for (int xi1 = 0; xi1 < nbf; xi1++) {
+    //                int l1     = atom_type.indexb(xi1).l;
+    //                double j1  = atom_type.indexb(xi1).j;
+    //                int idxrf1 = atom_type.indexb(xi1).idxrf;
+    //                if ((l1 == l2) && (std::abs(j1 - j2) < 1e-8)) {
+    //                    // up-up down-down
+    //                    unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 0) +=
+    //                        dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 0, 0);
+    //                    unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 1) +=
+    //                        dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 1, 1);
 
-                        // up-down down-up
-                        unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 2) +=
-                            dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 0, 1);
-                        unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 3) +=
-                            dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 1, 0);
-                    }
-                }
-            }
-        } else {
-            for (int xi2 = 0; xi2 < nbf; xi2++) {
-                int lm2    = atom_type.indexb(xi2).lm;
-                int idxrf2 = atom_type.indexb(xi2).idxrf;
-                for (int xi1 = 0; xi1 < nbf; xi1++) {
-                    int lm1    = atom_type.indexb(xi1).lm;
-                    int idxrf1 = atom_type.indexb(xi1).idxrf;
+    //                    // up-down down-up
+    //                    unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 2) +=
+    //                        dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 0, 1);
+    //                    unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 3) +=
+    //                        dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 1, 0);
+    //                }
+    //            }
+    //        }
+    //    } else {
+    //        for (int xi2 = 0; xi2 < nbf; xi2++) {
+    //            int lm2    = atom_type.indexb(xi2).lm;
+    //            int idxrf2 = atom_type.indexb(xi2).idxrf;
+    //            for (int xi1 = 0; xi1 < nbf; xi1++) {
+    //                int lm1    = atom_type.indexb(xi1).lm;
+    //                int idxrf1 = atom_type.indexb(xi1).idxrf;
 
-                    if (lm1 == lm2) {
-                        unit_cell_.atom(ia).d_mtrx(xi1, xi2, 0) += dion(idxrf1, idxrf2);
-                    }
-                }
-            }
-        }
-    }
+    //                if (lm1 == lm2) {
+    //                    unit_cell_.atom(ia).d_mtrx(xi1, xi2, 0) += dion(idxrf1, idxrf2);
+    //                }
+    //            }
+    //        }
+    //    }
+    //}
 
-    if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto cs = unit_cell_.atom(ia).d_mtrx().checksum();
-            std::stringstream s;
-            s << "D_mtrx_tot(atom_" << ia << ")";
-            utils::print_checksum(s.str(), cs);
-        }
-    }
+    //if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
+    //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+    //        auto cs = unit_cell_.atom(ia).d_mtrx().checksum();
+    //        std::stringstream s;
+    //        s << "D_mtrx_tot(atom_" << ia << ")";
+    //        utils::print_checksum(s.str(), cs);
+    //    }
+    //}
 }

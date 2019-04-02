@@ -367,9 +367,82 @@ class D_operator : public Non_local_operator<T>
     {
         auto& uc = this->ctx_.unit_cell();
 
+        #pragma omp parallel for
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
-            int nbf = uc.atom(ia).mt_basis_size();
+            auto& atom = this->ctx_.unit_cell().atom(ia);
+            int nbf    = atom.mt_basis_size();
+            auto& dion = atom.type().d_mtrx_ion();
+
+            /* in case of spin orbit coupling */
             if (uc.atom(ia).type().spin_orbit_coupling()) {
+                mdarray<double_complex, 3> d_mtrx_so(nbf, nbf, 4);
+                d_mtrx_so.zero();
+
+                /* transform the d_mtrx */
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
+
+                        /* first compute \f[A^_\alpha I^{I,\alpha}_{xi,xi}\f] cf Eq.19 PRB 71 115106 */
+
+                        /* note that the `I` integrals are already calculated and stored in atom.d_mtrx */
+                        for (int sigma = 0; sigma < 2; sigma++) {
+                            for (int sigmap = 0; sigmap < 2; sigmap++) {
+                                double_complex result = {0.0, 0.0};
+                                for (auto xi2p = 0; xi2p < nbf; xi2p++) {
+                                    if (atom.type().compare_index_beta_functions(xi2, xi2p)) {
+                                        /* just sum over m2, all other indices are the same */
+                                        for (auto xi1p = 0; xi1p < nbf; xi1p++) {
+                                            if (atom.type().compare_index_beta_functions(xi1, xi1p)) {
+                                                /* just sum over m1, all other indices are the same */
+
+                                                for (int alpha = 0; alpha < 4; alpha++) { // loop over the 0, z,x,y coordinates
+                                                    for (int sigma1 = 0; sigma1 < 2; sigma1++) {
+                                                        for (int sigma2 = 0; sigma2 < 2; sigma2++) {
+                                                            result +=
+                                                                atom.d_mtrx(xi1p, xi2p, alpha) *
+                                                                pauli_matrix[alpha][sigma1][sigma2] *
+                                                                atom.type().f_coefficients(xi1, xi1p, sigma, sigma1) *
+                                                                atom.type().f_coefficients(xi2p, xi2, sigma2, sigmap);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                const int ind =
+                                    (sigma == sigmap) * sigma + (1 + 2 * sigma + sigmap) * (sigma != sigmap);
+                                d_mtrx_so(xi1, xi2, ind) = result;
+                            }
+                        }
+                    }
+                }
+
+                /* add ionic contribution */
+
+                /* spin orbit coupling mixes terms */
+
+                /* keep the order of the indices because it is crucial here;
+                   permuting the indices makes things wrong */
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    int l2     = atom.type().indexb(xi2).l;
+                    double j2  = atom.type().indexb(xi2).j;
+                    int idxrf2 = atom.type().indexb(xi2).idxrf;
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
+                        int l1     = atom.type().indexb(xi1).l;
+                        double j1  = atom.type().indexb(xi1).j;
+                        int idxrf1 = atom.type().indexb(xi1).idxrf;
+                        if ((l1 == l2) && (std::abs(j1 - j2) < 1e-8)) {
+                            /* up-up down-down */
+                            d_mtrx_so(xi1, xi2, 0) += dion(idxrf1, idxrf2) * atom.type().f_coefficients(xi1, xi2, 0, 0);
+                            d_mtrx_so(xi1, xi2, 1) += dion(idxrf1, idxrf2) * atom.type().f_coefficients(xi1, xi2, 1, 1);
+
+                            /* up-down down-up */
+                            d_mtrx_so(xi1, xi2, 2) += dion(idxrf1, idxrf2) * atom.type().f_coefficients(xi1, xi2, 0, 1);
+                            d_mtrx_so(xi1, xi2, 3) += dion(idxrf1, idxrf2) * atom.type().f_coefficients(xi1, xi2, 1, 0);
+                        }
+                    }
+                }
 
                 // the pseudo potential contains information about
                 // spin orbit coupling so we use a different formula
@@ -383,7 +456,7 @@ class D_operator : public Non_local_operator<T>
                         int idx = xi2 * nbf + xi1;
                         for (int s = 0; s < 4; s++) {
                             this->op_(this->packed_mtrx_offset_(ia) + idx, s) =
-                                utils::zero_if_not_complex<T>(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
+                                utils::zero_if_not_complex<T>(d_mtrx_so(xi1, xi2, s));
                         }
                     }
                 }
@@ -393,7 +466,12 @@ class D_operator : public Non_local_operator<T>
                 // sigma_z\f] since the D matrices are calculated that
                 // way.
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    int lm2    = atom.type().indexb(xi2).lm;
+                    int idxrf2 = atom.type().indexb(xi2).idxrf;
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
+                        int lm1    = atom.type().indexb(xi1).lm;
+                        int idxrf1 = atom.type().indexb(xi1).idxrf;
+
                         int idx = xi2 * nbf + xi1;
                         switch (this->ctx_.num_mag_dims()) {
                             case 3: {
@@ -408,12 +486,21 @@ class D_operator : public Non_local_operator<T>
                                 double v  = uc.atom(ia).d_mtrx(xi1, xi2, 0);
                                 double bz = uc.atom(ia).d_mtrx(xi1, xi2, 1);
 
+                                /* add ionic part */
+                                if (lm1 == lm2) {
+                                    v += dion(idxrf1, idxrf2);
+                                }
+
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = v + bz;
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 1) = v - bz;
                                 break;
                             }
                             case 0: {
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+                                /* add ionic part */
+                                if (lm1 == lm2) {
+                                    this->op_(this->packed_mtrx_offset_(ia) + idx, 0) += dion(idxrf1, idxrf2);
+                                }
                                 break;
                             }
                             default: {
@@ -456,6 +543,7 @@ class Q_operator : public Non_local_operator<T>
     void initialize()
     {
         auto& uc = this->ctx_.unit_cell();
+        #pragma omp parallel for
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
             int iat = uc.atom(ia).type().id();
             if (!uc.atom_type(iat).augment()) {
