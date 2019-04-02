@@ -440,21 +440,6 @@ inline T zero_if_not_complex(std::complex<T> x__)
     return 0;
 };
 
-//template <typename T>
-//inline T zero_if_not_complex(std::complex<double> x__);
-//
-//template<>
-//inline double zero_if_not_complex<double>(std::complex<double> x__)
-//{
-//    return 0;
-//}
-//
-//template<>
-//inline std::complex<double> zero_if_not_complex<std::complex<double>>(std::complex<double> x__)
-//{
-//    return x__;
-//}
-
 /// Simple random number generator.
 inline uint32_t rnd()
 {
