@@ -93,6 +93,10 @@ class Non_local_functor
                         int nbf  = bp_base_.chunk(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
                         int iat  = unit_cell.atom(ia).type_id();
 
+                        if (unit_cell.atom(ia).type().spin_orbit_coupling()) {
+                            TERMINATE("stress and forces with SO coupling are not upported");
+                        }
+
                         /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
                         auto for_bnd = [&](int ibf, int jbf, double_complex dij, double_complex qij, matrix<T>& beta_phi_chunk)
                         {
