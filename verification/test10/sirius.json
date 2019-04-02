@@ -7,8 +7,8 @@
 	"print_checksum" : false,
 	"verification" : 0,
 	"cyclic block size" : 2,
-	"print_forces" : true,
-        "print_stress" : true
+	"print_forces" : false,
+        "print_stress" : false
     },
     "iterative_solver" : {
         "tolerance" : 1e-5,
