@@ -74,8 +74,8 @@ class Atom_symmetry_class
     mdarray<double, 3> so_radial_integrals_;
 
     /// Core charge density.
-    /** All-electron core charge density of the LAPW method. It is recomputed on every SCF iteration due to 
-            the change of effective potential. */
+    /** All-electron core charge density of the LAPW method. It is recomputed on every SCF iteration due to
+        the change of effective potential. */
     std::vector<double> ae_core_charge_density_;
 
     /// Core eigen-value sum.

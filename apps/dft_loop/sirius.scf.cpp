@@ -100,7 +100,7 @@ double ground_state(Simulation_context& ctx,
 
     if (!ctx.full_potential()) {
         if (ctx.control().print_stress_) {
-            Stress& s = dft.stress();
+            Stress& s       = dft.stress();
             auto stress_tot = s.calc_stress_total();
             s.print_info();
             result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
@@ -111,7 +111,7 @@ double ground_state(Simulation_context& ctx,
             }
         }
         if (ctx.control().print_forces_) {
-            Force& f = dft.forces();
+            Force& f         = dft.forces();
             auto& forces_tot = f.calc_forces_total();
             f.print_info();
             result["forces"] = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
@@ -119,6 +119,14 @@ double ground_state(Simulation_context& ctx,
                 for (int j = 0; j < 3; j++) {
                     result["forces"][i][j] = forces_tot(j, i);
                 }
+            }
+        }
+    } else {
+        if (ctx.control().print_forces_) {
+            Force& f        = dft.forces();
+            auto forces_tot = f.forces_total_fp();
+            for (int ia = 0; ia < ctx.unit_cell().num_atoms(); ia++) {
+                printf("%i  %f %f %f\n", ia, forces_tot(0, ia), forces_tot(1, ia), forces_tot(2, ia));
             }
         }
     }
