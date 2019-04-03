@@ -89,11 +89,10 @@ class Atom
      *  \f[
      *      D_{\xi \xi'}^{\alpha} = \int V({\bf r}) Q_{\xi \xi'}^{\alpha}({\bf r}) d{\bf r}
      *  \f]
+     *
+     *  The ionic part of the D-operator matrix is added in the D_operator class, when it is initialized.
      */
     mdarray<double, 3> d_mtrx_;
-
-    /// D-operator matrix for spin orbit coupling. see Ref. PRB 71 115106 eq.19
-    mdarray<double_complex, 3> d_mtrx_so_;
 
   public:
     /// Constructor.
@@ -144,10 +143,6 @@ class Atom
             int nbf = type().mt_lo_basis_size();
             d_mtrx_ = mdarray<double, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1, memory_t::host, "Atom::d_mtrx_");
             d_mtrx_.zero();
-            if (type().spin_orbit_coupling()) {
-                d_mtrx_so_ = mdarray<double_complex, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1);
-                d_mtrx_so_.zero();
-            }
         }
     }
 
@@ -593,16 +588,6 @@ class Atom
     inline mdarray<double, 3>& d_mtrx()
     {
         return d_mtrx_;
-    }
-
-    inline double_complex& d_mtrx_so(int xi1, int xi2, int iv)
-    {
-        return d_mtrx_so_(xi1, xi2, iv);
-    }
-
-    inline double_complex const& d_mtrx_so(int xi1, int xi2, int iv) const
-    {
-        return d_mtrx_so_(xi1, xi2, iv);
     }
 };
 
