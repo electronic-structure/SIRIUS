@@ -65,6 +65,16 @@ inline void print_memory_usage(const char* file__, int line__)
 
 #define MEMORY_USAGE_INFO() print_memory_usage(__FILE__, __LINE__);
 
+/// Utility function to generate LAPW unit step function.
+inline double unit_step_function_form_factors(double R__, double g__)
+{
+    if (g__ < 1e-12) {
+        return std::pow(R__, 3) / 3.0;
+    } else {
+        return (std::sin(g__ * R__) - g__ * R__ * std::cos(g__ * R__)) / std::pow(g__, 3);
+    }
+}
+
 /// Simulation context is a set of parameters and objects describing a single simulation.
 /** The order of initialization of the simulation context is the following: first, the default parameter
  *  values are set in the constructor, then (optionally) import() method is called and the parameters are
@@ -339,11 +349,7 @@ class Simulation_context : public Simulation_parameters
     {
         auto v = make_periodic_function<index_domain_t::global>([&](int iat, double g) {
             auto R = unit_cell().atom_type(iat).mt_radius();
-            if (g < 1e-12) {
-                return std::pow(R, 3) / 3.0;
-            } else {
-                return (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
-            }
+            return unit_step_function_form_factors(R, g);
         });
 
         theta_    = mdarray<double, 1>(fft().local_size());
