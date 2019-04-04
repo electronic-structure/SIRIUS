@@ -10,7 +10,7 @@ from .ortho import gram_schmidt, loewdin
 from mpi4py import MPI
 from copy import deepcopy
 
-logger = Logger()
+logger = Logger(fout='neugebaur_cg_tmp.log')
 
 
 kb = (physical_constants['Boltzmann constant in eV/K'][0] /
@@ -548,6 +548,7 @@ class CG:
             # reset Hamiltonian (side effects)
             fline(0)
             raise ValueError('quadratic line-search failed to find a new minima')
+        logger('qline prediction error, FE-Fpred: %.10f' % (FE-Fpred))
 
         return X_n, f_n, ek, FE, Hx, U
 
