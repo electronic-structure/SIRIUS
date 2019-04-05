@@ -956,6 +956,8 @@ class Atom_type
         return parameters_;
     }
 
+    /// Set radial grid of the free atom.
+    /** The grid is extended to effective infinity (usually > 100 a.u.) */
     inline void set_free_atom_radial_grid(int num_points__, double const* points__)
     {
         if (num_points__ <= 0) {
