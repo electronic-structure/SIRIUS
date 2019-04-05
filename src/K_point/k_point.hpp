@@ -381,9 +381,66 @@ class K_point
 
         //== void load_wave_functions(int id);
 
-        void get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec);
+        /// Collect distributed first-variational vectors into a global array.
+        void get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec__) const
+        {
+            assert((int)fv_evec__.size(0) >= gklo_basis_size());
+            assert((int)fv_evec__.size(1) == ctx_.num_fv_states());
+            assert(gklo_basis_size_row() == fv_eigen_vectors_.num_rows_local());
 
-        void get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec);
+            mdarray<double_complex, 1> tmp(gklo_basis_size_row());
+
+            fv_evec__.zero();
+
+            for (int ist = 0; ist < ctx_.num_fv_states(); ist++) {
+                auto loc = fv_eigen_vectors_.spl_col().location(ist);
+                if (loc.rank == fv_eigen_vectors_.rank_col()) {
+                    std::copy(&fv_eigen_vectors_(0, loc.local_index),
+                              &fv_eigen_vectors_(0, loc.local_index) + gklo_basis_size_row(),
+                              &tmp(0));
+                }
+                fv_eigen_vectors_.blacs_grid().comm_col().bcast(&tmp(0), gklo_basis_size_row(), loc.rank);
+                for (int jloc = 0; jloc < gklo_basis_size_row(); jloc++) {
+                    int j = fv_eigen_vectors_.irow(jloc);
+                    fv_evec__(j, ist) = tmp(jloc);
+                }
+                fv_eigen_vectors_.blacs_grid().comm_row().allreduce(&fv_evec__(0, ist), gklo_basis_size());
+            }
+        }
+
+        /// Collect distributed second-variational vectors into a global array.
+        void get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec) const
+        {
+            assert((int)sv_evec.size(0) == ctx_.num_bands());
+            assert((int)sv_evec.size(1) == ctx_.num_bands());
+
+            sv_evec.zero();
+
+            if (!ctx_.need_sv()) {
+                for (int i = 0; i < ctx_.num_fv_states(); i++) {
+                    sv_evec(i, i) = 1;
+                }
+                return;
+            }
+
+            int nsp = (ctx_.num_mag_dims() == 3) ? 1 : ctx_.num_spins();
+
+            for (int ispn = 0; ispn < nsp; ispn++)
+            {
+                int offs = ctx_.num_fv_states() * ispn;
+                for (int jloc = 0; jloc < sv_eigen_vectors_[ispn].num_cols_local(); jloc++)
+                {
+                    int j = sv_eigen_vectors_[ispn].icol(jloc);
+                    for (int iloc = 0; iloc < sv_eigen_vectors_[ispn].num_rows_local(); iloc++)
+                    {
+                        int i = sv_eigen_vectors_[ispn].irow(iloc);
+                        sv_evec(i + offs, j + offs) = sv_eigen_vectors_[ispn](iloc, jloc);
+                    }
+                }
+            }
+
+            comm_.allreduce(sv_evec.at(memory_t::host), (int)sv_evec.size());
+        }
 
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
@@ -515,9 +572,11 @@ class K_point
         }
 
         /// Basis size of LAPW+lo method.
+        /** The total LAPW+lo basis size is equal to the sum of the number of LAPW functions and the total number
+         *  of the local orbitals. */
         inline int gklo_basis_size() const
         {
-            return static_cast<int>(num_gkvec() + unit_cell_.mt_lo_basis_size());
+            return num_gkvec() + unit_cell_.mt_lo_basis_size();
         }
 
         /// Local number of G+k vectors in case of flat distribution.
@@ -1250,59 +1309,6 @@ inline void K_point::load(HDF5_tree h5in, int id)
 //==         fin["K_points"][id]["spinor_wave_functions"].read_mdarray(j, wfj);
 //==     }
 //== }
-
-inline void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec)
-{
-    assert((int)fv_evec.size(0) >= gklo_basis_size());
-    assert((int)fv_evec.size(1) == ctx_.num_fv_states());
-    
-    fv_evec.zero();
-    STOP();
-
-    //for (int iloc = 0; iloc < (int)spl_fv_states_.local_size(); iloc++)
-    //{
-    //    int i = (int)spl_fv_states_[iloc];
-    //    for (int jloc = 0; jloc < gklo_basis_size_row(); jloc++)
-    //    {
-    //        int j = gklo_basis_descriptor_row(jloc).id;
-    //        fv_evec(j, i) = fv_eigen_vectors_(jloc, iloc);
-    //    }
-    //}
-    //comm_.allreduce(fv_evec.at(memory_t::host), (int)fv_evec.size());
-}
-
-inline void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
-{
-    assert((int)sv_evec.size(0) == ctx_.num_bands());
-    assert((int)sv_evec.size(1) == ctx_.num_bands());
-
-    sv_evec.zero();
-
-    if (!ctx_.need_sv()) {
-        for (int i = 0; i < ctx_.num_fv_states(); i++) {
-            sv_evec(i, i) = 1;
-        }
-        return;
-    }
-
-    int nsp = (ctx_.num_mag_dims() == 3) ? 1 : ctx_.num_spins();
-
-    for (int ispn = 0; ispn < nsp; ispn++)
-    {
-        int offs = ctx_.num_fv_states() * ispn;
-        for (int jloc = 0; jloc < sv_eigen_vectors_[ispn].num_cols_local(); jloc++)
-        {
-            int j = sv_eigen_vectors_[ispn].icol(jloc);
-            for (int iloc = 0; iloc < sv_eigen_vectors_[ispn].num_rows_local(); iloc++)
-            {
-                int i = sv_eigen_vectors_[ispn].irow(iloc);
-                sv_evec(i + offs, j + offs) = sv_eigen_vectors_[ispn](iloc, jloc);
-            }
-        }
-    }
-
-    comm_.allreduce(sv_evec.at(memory_t::host), (int)sv_evec.size());
-}
 
 #include "initialize.hpp"
 #include "generate_fv_states.hpp"
