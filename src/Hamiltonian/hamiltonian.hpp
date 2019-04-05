@@ -161,13 +161,13 @@ class Hamiltonian
                                      Wave_functions&              fv_states__,
                                      std::vector<Wave_functions>& hpsi__) const;
 
-    /// Apply SO correction to the first-variational states.
+    /// Apply SO correction to the first-variational LAPW wave-functions.
     /** Raising and lowering operators:
      *  \f[
      *      L_{\pm} Y_{\ell m}= (L_x \pm i L_y) Y_{\ell m}  = \sqrt{\ell(\ell+1) - m(m \pm 1)} Y_{\ell m \pm 1}
      *  \f]
      */
-    void apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi);
+    void apply_so_correction(K_point* kp__, Wave_functions& fv_states__, std::vector<Wave_functions>& hpsi__) const;
 
     /// Apply UJ correction to scalar wave functions
     template <spin_block_t sblock>

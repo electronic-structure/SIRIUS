@@ -962,48 +962,54 @@ inline void Hamiltonian::apply_magnetic_field(K_point*                     kp__,
 //==     }
 //== }
 
-//== void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi)
-//== {
-//==     Timer t("sirius::Band::apply_so_correction");
-//==
-//==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-//==     {
-//==         Atom_type* type = unit_cell_.atom(ia)->type();
-//==
-//==         int offset = unit_cell_.atom(ia)->offset_wf();
-//==
-//==         for (int l = 0; l <= parameters_.lmax_apw(); l++)
-//==         {
-//==             int nrf = type->indexr().num_rf(l);
-//==
-//==             for (int order1 = 0; order1 < nrf; order1++)
-//==             {
-//==                 for (int order2 = 0; order2 < nrf; order2++)
-//==                 {
-//==                     double sori = unit_cell_.atom(ia)->symmetry_class()->so_radial_integral(l, order1, order2);
-//==
-//==                     for (int m = -l; m <= l; m++)
-//==                     {
-//==                         int idx1 = type->indexb_by_l_m_order(l, m, order1);
-//==                         int idx2 = type->indexb_by_l_m_order(l, m, order2);
-//==                         int idx3 = (m + l != 0) ? type->indexb_by_l_m_order(l, m - 1, order2) : 0;
-//==                         int idx4 = (m - l != 0) ? type->indexb_by_l_m_order(l, m + 1, order2) : 0;
-//==
-//==                         for (int ist = 0; ist < (int)parameters_.spl_fv_states().local_size(); ist++)
-//==                         {
-//==                             double_complex z1 = fv_states(offset + idx2, ist) * double(m) * sori;
-//==                             hpsi(offset + idx1, ist, 0) += z1;
-//==                             hpsi(offset + idx1, ist, 1) -= z1;
-//==                             // apply L_{-} operator
-//==                             if (m + l) hpsi(offset + idx1, ist, 2) += fv_states(offset + idx3, ist) * sori *
-//==                                                                       sqrt(double(l * (l + 1) - m * (m - 1)));
-//==                             // apply L_{+} operator
-//==                             if (m - l) hpsi(offset + idx1, ist, 3) += fv_states(offset + idx4, ist) * sori *
-//==                                                                       sqrt(double(l * (l + 1) - m * (m + 1)));
-//==                         }
-//==                     }
-//==                 }
-//==             }
-//==         }
-//==     }
-//== }
+void Hamiltonian::apply_so_correction(K_point* kp__, Wave_functions& fv_states__,
+                                      std::vector<Wave_functions>& hpsi__) const
+{
+    PROFILE("sirius::Hamiltonian::apply_so_correction");
+
+    for (int ialoc = 0; ialoc < fv_states__.spl_num_atoms().local_size(); ialoc++) {
+        int ia            = fv_states__.spl_num_atoms()[ialoc];
+        auto& atom        = unit_cell_.atom(ia);
+        int offset        = fv_states__.offset_mt_coeffs(ialoc);
+
+        for (int l = 0; l <= ctx_.lmax_apw(); l++) {
+            /* number of radial functions for this l */
+            int nrf = atom.type().indexr().num_rf(l);
+
+            for (int order1 = 0; order1 < nrf; order1++) {
+                for (int order2 = 0; order2 < nrf; order2++) {
+                    double sori = atom.symmetry_class().so_radial_integral(l, order1, order2);
+
+                    for (int m = -l; m <= l; m++) {
+                        int idx1 = atom.type().indexb_by_l_m_order(l, m, order1);
+                        int idx2 = atom.type().indexb_by_l_m_order(l, m, order2);
+                        int idx3 = (m + l != 0) ? atom.type().indexb_by_l_m_order(l, m - 1, order2) : 0;
+                        //int idx4 = (m - l != 0) ? atom.type().indexb_by_l_m_order(l, m + 1, order2) : 0;
+
+                        for (int ist = 0; ist < ctx_.num_fv_states(); ist++) {
+                            double_complex z1 = fv_states__.mt_coeffs(0).prime(offset + idx2, ist) *
+                                                double(m) * sori;
+                            /* u-u part */
+                            hpsi__[0].mt_coeffs(0).prime(offset + idx1, ist) += z1;
+                            /* d-d part */
+                            hpsi__[1].mt_coeffs(0).prime(offset + idx1, ist) -= z1;
+                            /* apply L_{-} operator; u-d part */
+                            if (m + l) {
+                                hpsi__[2].mt_coeffs(0).prime(offset + idx1, ist) +=
+                                    fv_states__.mt_coeffs(0).prime(offset + idx3, ist) * 
+                                        sori * std::sqrt(double(l * (l + 1) - m * (m - 1)));
+                            }
+                            /* for the d-u part */
+                            ///* apply L_{+} operator */
+                            //if (m - l) {
+                            //    hpsi[3].mt_coeffs(0).prime().at(memory_t::host, offset + idx1, ist) +=
+                            //        fv_states__.mt_coeffs(0).prime().at(memory_t::host, offset + idx4, ist) * 
+                            //            sori * std::sqrt(double(l * (l + 1) - m * (m + 1)));
+                            //}
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
