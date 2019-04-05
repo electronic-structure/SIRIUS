@@ -1341,10 +1341,10 @@ inline void Simulation_context::initialize()
     /* initialize variables related to the unit cell */
     unit_cell_.initialize();
 
-    /* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and minimum MT radius) */
-    if (full_potential()) {
-        set_gk_cutoff(aw_cutoff() / unit_cell_.min_mt_radius());
-    }
+    ///* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and minimum MT radius) */
+    //if (full_potential()) {
+    //    set_gk_cutoff(aw_cutoff() / unit_cell_.min_mt_radius());
+    //}
 
     /* check the G+k cutoff */
     if (gk_cutoff() * 2 > pw_cutoff()) {
