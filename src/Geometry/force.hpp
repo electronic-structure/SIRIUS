@@ -141,7 +141,7 @@ class Force
      *      q_{ij} = \sum_{l\sigma}n_{l{\bf k}} c_{\sigma i}^{l{\bf k}*}c_{\sigma j}^{l{\bf k}}
      *  \f]
      */
-    void compute_dmat(K_point* kp__, dmatrix<double_complex>& dm__)
+    void compute_dmat(K_point* kp__, dmatrix<double_complex>& dm__) const
     {
         dm__.zero();
 
@@ -229,13 +229,11 @@ class Force
         }
     }
 
-    void ibs_force(K_point* kp__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__)
+    void add_ibs_force(K_point* kp__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const
     {
         PROFILE("sirius::Force::ibs_force");
 
         auto& uc = ctx_.unit_cell();
-
-        forcek__.zero();
 
         auto& bg = ctx_.blacs_grid();
 
@@ -385,6 +383,94 @@ class Force
                 }
             }
         } // ia
+    }
+
+    /// Calculate total force in FP-LAPW case.
+    inline mdarray<double, 2> forces_total_fp() const
+    {
+        PROFILE("sirius::Force::forces_total_fp");
+
+        auto& uc = ctx_.unit_cell();
+
+        mdarray<double, 2> force(3, uc.num_atoms());
+
+        force.zero();
+
+        mdarray<double, 2> ffac(uc.num_atom_types(), ctx_.gvec().num_shells());
+        #pragma omp parallel for
+        for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++) {
+            for (int iat = 0; iat < uc.num_atom_types(); iat++) {
+                ffac(iat, igs) = unit_step_function_form_factors(uc.atom_type(iat).mt_radius(),
+                                                                 ctx_.gvec().shell_len(igs));
+            }
+        }
+
+        for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+            int ik = kset_.spl_num_kpoints(ikloc);
+            add_ibs_force(kset_[ik], ffac, force);
+        }
+        ctx_.comm().allreduce(&force(0, 0), (int)force.size());
+
+        //if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
+            printf("\n");
+            printf("Forces\n");
+            printf("\n");
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
+                printf("ia : %i, IBS : %12.6f %12.6f %12.6f\n", ia, force(0, ia), force(1, ia), force(2, ia));
+            }
+        //}
+
+        mdarray<double, 2> forcehf(3, uc.num_atoms());
+
+        forcehf.zero();
+        for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++) {
+            int ia = uc.spl_num_atoms(ialoc);
+            auto g = gradient(potential_.hartree_potential_mt(ialoc));
+            for (int x = 0; x < 3; x++) {
+                forcehf(x, ia) = uc.atom(ia).zn() * g[x](0, 0) * y00;
+            }
+        }
+        ctx_.comm().allreduce(&forcehf(0, 0), (int)forcehf.size());
+        symmetrize(forcehf);
+
+        //if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
+            printf("\n");
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
+                printf("ia : %i, Hellmann–Feynman : %12.6f %12.6f %12.6f\n", ia, forcehf(0, ia), forcehf(1, ia),
+                       forcehf(2, ia));
+            }
+        //}
+
+        mdarray<double, 2> forcerho(3, uc.num_atoms());
+        forcerho.zero();
+        for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++) {
+            int ia = uc.spl_num_atoms(ialoc);
+            auto g = gradient(density_.density_mt(ialoc));
+            for (int x = 0; x < 3; x++) {
+                forcerho(x, ia) = inner(potential_.effective_potential_mt(ialoc), g[x]);
+            }
+        }
+        ctx_.comm().allreduce(&forcerho(0, 0), (int)forcerho.size());
+        symmetrize(forcerho);
+
+        //if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
+            printf("\n");
+            printf("rho force\n");
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
+                printf("ia : %i, density contribution : %12.6f %12.6f %12.6f\n", ia, forcerho(0, ia), forcerho(1, ia),
+                       forcerho(2, ia));
+            }
+        //}
+
+        for (int ia = 0; ia < uc.num_atoms(); ia++) {
+            for (int x = 0; x < 3; x++) {
+                force(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
+            }
+        }
+
+        symmetrize(force);
+
+        return std::move(force);
     }
 
   public:
@@ -796,31 +882,34 @@ class Force
 
     inline mdarray<double, 2> const& calc_forces_total()
     {
-        calc_forces_vloc();
-        calc_forces_us();
-        calc_forces_nonloc();
-        calc_forces_core();
-        calc_forces_ewald();
-        calc_forces_scf_corr();
-
-        if (ctx_.hubbard_correction()) {
-            calc_forces_hubbard();
-        }
-
-        forces_total_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            for (int x : {0, 1, 2}) {
-                forces_total_(x, ia) = forces_vloc_(x, ia) + forces_us_(x, ia) + forces_nonloc_(x, ia) +
-                                       forces_core_(x, ia) + forces_ewald_(x, ia) + forces_scf_corr_(x, ia);
-            }
+        if (ctx_.full_potential()) {
+            forces_total_ = forces_total_fp();
+        } else {
+            calc_forces_vloc();
+            calc_forces_us();
+            calc_forces_nonloc();
+            calc_forces_core();
+            calc_forces_ewald();
+            calc_forces_scf_corr();
 
             if (ctx_.hubbard_correction()) {
+                calc_forces_hubbard();
+            }
+
+            forces_total_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 for (int x : {0, 1, 2}) {
-                    forces_total_(x, ia) += forces_hubbard_(x, ia);
+                    forces_total_(x, ia) = forces_vloc_(x, ia) + forces_us_(x, ia) + forces_nonloc_(x, ia) +
+                                           forces_core_(x, ia) + forces_ewald_(x, ia) + forces_scf_corr_(x, ia);
+                }
+
+                if (ctx_.hubbard_correction()) {
+                    for (int x : {0, 1, 2}) {
+                        forces_total_(x, ia) += forces_hubbard_(x, ia);
+                    }
                 }
             }
         }
-
         return forces_total_;
     }
 
@@ -879,91 +968,8 @@ class Force
         }
     }
 
-    inline mdarray<double, 2> forces_total_fp()
-    {
-        PROFILE("sirius::Force::forces_total_fp");
-
-        auto& uc = ctx_.unit_cell();
-
-        mdarray<double, 2> force(3, uc.num_atoms());
-
-        force.zero();
-
-        mdarray<double, 2> ffac(uc.num_atom_types(), ctx_.gvec().num_shells());
-        #pragma omp parallel for
-        for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++) {
-            for (int iat = 0; iat < uc.num_atom_types(); iat++) {
-                ffac(iat, igs) =
-                    unit_step_function_form_factors(uc.atom_type(iat).mt_radius(), ctx_.gvec().shell_len(igs));
-            }
-        }
-
-        for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-            int ik = kset_.spl_num_kpoints(ikloc);
-            ibs_force(kset_[ik], ffac, force);
-        }
-        ctx_.comm().allreduce(&force(0, 0), (int)force.size());
-
-        if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
-            printf("\n");
-            printf("Forces\n");
-            printf("\n");
-            for (int ia = 0; ia < uc.num_atoms(); ia++) {
-                printf("ia : %i, IBS : %12.6f %12.6f %12.6f\n", ia, force(0, ia), force(1, ia), force(2, ia));
-            }
-        }
-
-        mdarray<double, 2> forcehf(3, uc.num_atoms());
-
-        forcehf.zero();
-        for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++) {
-            int ia = uc.spl_num_atoms(ialoc);
-            auto g = gradient(potential_.hartree_potential_mt(ialoc));
-            for (int x = 0; x < 3; x++) {
-                forcehf(x, ia) = uc.atom(ia).zn() * g[x](0, 0) * y00;
-            }
-        }
-        ctx_.comm().allreduce(&forcehf(0, 0), (int)forcehf.size());
-
-        if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
-            printf("\n");
-            for (int ia = 0; ia < uc.num_atoms(); ia++) {
-                printf("ia : %i, Hellmann–Feynman : %12.6f %12.6f %12.6f\n", ia, forcehf(0, ia), forcehf(1, ia),
-                       forcehf(2, ia));
-            }
-        }
-
-        mdarray<double, 2> forcerho(3, uc.num_atoms());
-        forcerho.zero();
-        for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++) {
-            int ia = uc.spl_num_atoms(ialoc);
-            auto g = gradient(density_.density_mt(ialoc));
-            for (int x = 0; x < 3; x++) {
-                forcerho(x, ia) = inner(potential_.effective_potential_mt(ialoc), g[x]);
-            }
-        }
-        ctx_.comm().allreduce(&forcerho(0, 0), (int)forcerho.size());
-
-        if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
-            printf("\n");
-            printf("rho force\n");
-            for (int ia = 0; ia < uc.num_atoms(); ia++) {
-                printf("ia : %i, density contribution : %12.6f %12.6f %12.6f\n", ia, forcerho(0, ia), forcerho(1, ia),
-                       forcerho(2, ia));
-            }
-        }
-
-        for (int ia = 0; ia < uc.num_atoms(); ia++) {
-            for (int x = 0; x < 3; x++) {
-                force(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
-            }
-        }
-
-        symmetrize(force);
-
-        return std::move(force);
-    }
 };
+
 } // namespace sirius
 
 #endif // __FORCES_HAMILTONIAN__
