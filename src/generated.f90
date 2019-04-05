@@ -2857,21 +2857,27 @@ end subroutine sirius_dump_runtime_setup
 !> @param [in] handler K-point set handler
 !> @param [in] ik Global index of the k-point
 !> @param [out] fv_evec Output first-variational eigenvector array
-subroutine sirius_get_fv_eigen_vectors(handler,ik,fv_evec)
+!> @param [in] ld Leading dimension of fv_evec
+!> @param [in] num_fv_states Number of first-vaariational states
+subroutine sirius_get_fv_eigen_vectors(handler,ik,fv_evec,ld,num_fv_states)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ik
 complex(C_DOUBLE), intent(out) :: fv_evec
+integer(C_INT), intent(in) :: ld
+integer(C_INT), intent(in) :: num_fv_states
 interface
-subroutine sirius_get_fv_eigen_vectors_aux(handler,ik,fv_evec)&
+subroutine sirius_get_fv_eigen_vectors_aux(handler,ik,fv_evec,ld,num_fv_states)&
 &bind(C, name="sirius_get_fv_eigen_vectors")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ik
 complex(C_DOUBLE), intent(out) :: fv_evec
+integer(C_INT), intent(in) :: ld
+integer(C_INT), intent(in) :: num_fv_states
 end subroutine
 end interface
 
-call sirius_get_fv_eigen_vectors_aux(handler,ik,fv_evec)
+call sirius_get_fv_eigen_vectors_aux(handler,ik,fv_evec,ld,num_fv_states)
 end subroutine sirius_get_fv_eigen_vectors
 

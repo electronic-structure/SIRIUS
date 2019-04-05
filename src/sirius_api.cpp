@@ -2873,8 +2873,8 @@ void sirius_dump_runtime_setup(void* const* handler__, char *filename)
    @fortran argument in  required void* handler                     K-point set handler
    @fortran argument in  required int   ik                          Global index of the k-point
    @fortran argument out required complex fv_evec                   Output first-variational eigenvector array
-   @fortran array    in  required int    ld                         Leading dimension of fv_evec
-   @fortran array    in  required int    num_fv_states              Number of first-vaariational states
+   @fortran argument in  required int    ld                         Leading dimension of fv_evec
+   @fortran argument in  required int    num_fv_states              Number of first-vaariational states
    @fortran end */
 void sirius_get_fv_eigen_vectors(void*          const* handler__,
                                  int            const* ik__,
