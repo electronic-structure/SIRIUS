@@ -871,8 +871,7 @@ inline void Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
         }
     }
 
-    if (false) // TODO: if it's slow, compute only when spin-orbit is turned on
-    {
+    if (atom_type_.parameters().so_correction()) {
         double soc = std::pow(2 * speed_of_light, -2);
 
         Spline<double> s(atom_type_.radial_grid());

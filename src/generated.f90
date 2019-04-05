@@ -756,6 +756,33 @@ end interface
 call sirius_set_atom_type_radial_grid_aux(handler,label,num_radial_points,radial_points)
 end subroutine sirius_set_atom_type_radial_grid
 
+!> @brief Set radial grid of the free atom (up to effectice infinity).
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] num_radial_points Number of radial grid points.
+!> @param [in] radial_points List of radial grid points.
+subroutine sirius_set_atom_type_radial_grid_inf(handler,label,num_radial_points,&
+&radial_points)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_radial_points
+real(C_DOUBLE), intent(in) :: radial_points
+interface
+subroutine sirius_set_atom_type_radial_grid_inf_aux(handler,label,num_radial_points,&
+&radial_points)&
+&bind(C, name="sirius_set_atom_type_radial_grid_inf")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_radial_points
+real(C_DOUBLE), intent(in) :: radial_points
+end subroutine
+end interface
+
+call sirius_set_atom_type_radial_grid_inf_aux(handler,label,num_radial_points,radial_points)
+end subroutine sirius_set_atom_type_radial_grid_inf
+
 !> @brief Add one of the radial functions.
 !> @param [in] handler Simulation context handler.
 !> @param [in] atom_type Label of the atom type.
@@ -2825,4 +2852,26 @@ end interface
 
 call sirius_dump_runtime_setup_aux(handler,filename)
 end subroutine sirius_dump_runtime_setup
+
+!> @brief Get the first-variational eigen vectors
+!> @param [in] handler K-point set handler
+!> @param [in] ik Global index of the k-point
+!> @param [out] fv_evec Output first-variational eigenvector array
+subroutine sirius_get_fv_eigen_vectors(handler,ik,fv_evec)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ik
+complex(C_DOUBLE), intent(out) :: fv_evec
+interface
+subroutine sirius_get_fv_eigen_vectors_aux(handler,ik,fv_evec)&
+&bind(C, name="sirius_get_fv_eigen_vectors")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ik
+complex(C_DOUBLE), intent(out) :: fv_evec
+end subroutine
+end interface
+
+call sirius_get_fv_eigen_vectors_aux(handler,ik,fv_evec)
+end subroutine sirius_get_fv_eigen_vectors
 

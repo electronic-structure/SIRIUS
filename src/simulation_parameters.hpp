@@ -30,21 +30,19 @@
 
 namespace sirius {
 
-    /// json dictionary containing the options given by the interface
+/// Json dictionary containing the options given by the interface.
 #include "runtime_options_json.hpp"
 
-    /// get all possible options for initializing sirius. It is a json dictionary
-    inline  const json &get_options_dictionary()
-    {
-        if (all_options_dictionary_.size() == 0)
-        {
-            TERMINATE("Dictionary not initialized\n");
-        }
-        return all_options_dictionary_;
+/// Get all possible options for initializing sirius. It is a json dictionary.
+inline const json& get_options_dictionary()
+{
+    if (all_options_dictionary_.size() == 0) {
+        TERMINATE("Dictionary not initialized\n");
     }
+    return all_options_dictionary_;
+}
 
-
-    /// Set of basic parameters of a simulation.
+/// Set of basic parameters of a simulation.
 class Simulation_parameters
 {
   protected:
@@ -84,7 +82,7 @@ class Simulation_parameters
     /// json dictionary containing all runtime options set up through the interface
     json runtime_options_dictionary_;
 
-public:
+  public:
     /// Import parameters from a file or a serialized json string.
     void import(std::string const& str__)
     {
@@ -113,47 +111,54 @@ public:
     }
 
     /// Import parameters from a json dictionary.
-    void import(json const &dict)
-        {
-            PROFILE("sirius::Simulation_parameters::import");
+    void import(json const& dict)
+    {
+        PROFILE("sirius::Simulation_parameters::import");
 
-            if (dict.size() == 0) {
-                return;
-            }
-            /* read unit cell */
-            unit_cell_input_.read(dict);
-            /* read parameters of mixer */
-            mixer_input_.read(dict);
-            /* read parameters of iterative solver */
-            iterative_solver_input_.read(dict);
-            /* read controls */
-            control_input_.read(dict);
-            /* read parameters */
-            parameters_input_.read(dict);
-            /* read settings */
-            settings_input_.read(dict);
-            /* read hubbard parameters */
-            hubbard_input_.read(dict);
+        if (dict.size() == 0) {
+            return;
         }
-
+        /* read unit cell */
+        unit_cell_input_.read(dict);
+        /* read parameters of mixer */
+        mixer_input_.read(dict);
+        /* read parameters of iterative solver */
+        iterative_solver_input_.read(dict);
+        /* read controls */
+        control_input_.read(dict);
+        /* read parameters */
+        parameters_input_.read(dict);
+        /* read settings */
+        settings_input_.read(dict);
+        /* read hubbard parameters */
+        hubbard_input_.read(dict);
+    }
 
     /// Import from command line arguments.
     void import(cmd_args const& args__)
     {
-        control_input_.processing_unit_     = args__.value("control.processing_unit", control_input_.processing_unit_);
-        control_input_.mpi_grid_dims_       = args__.value("control.mpi_grid_dims", control_input_.mpi_grid_dims_);
-        control_input_.std_evp_solver_name_ = args__.value("control.std_evp_solver_name", control_input_.std_evp_solver_name_);
-        control_input_.gen_evp_solver_name_ = args__.value("control.gen_evp_solver_name", control_input_.gen_evp_solver_name_);
-        control_input_.fft_mode_            = args__.value("control.fft_mode", control_input_.fft_mode_);
-        control_input_.memory_usage_        = args__.value("control.memory_usage", control_input_.memory_usage_);
+        control_input_.processing_unit_     = args__.value("control.processing_unit",
+                                                           control_input_.processing_unit_);
+        control_input_.mpi_grid_dims_       = args__.value("control.mpi_grid_dims",
+                                                           control_input_.mpi_grid_dims_);
+        control_input_.std_evp_solver_name_ = args__.value("control.std_evp_solver_name",
+                                                           control_input_.std_evp_solver_name_);
+        control_input_.gen_evp_solver_name_ = args__.value("control.gen_evp_solver_name",
+                                                           control_input_.gen_evp_solver_name_);
+        control_input_.fft_mode_            = args__.value("control.fft_mode",
+                                                           control_input_.fft_mode_);
+        control_input_.memory_usage_        = args__.value("control.memory_usage",
+                                                           control_input_.memory_usage_);
 
-        parameters_input_.ngridk_           = args__.value("parameters.ngridk", parameters_input_.ngridk_);
-        parameters_input_.gamma_point_      = args__.value("parameters.gamma_point", parameters_input_.gamma_point_);
-        parameters_input_.pw_cutoff_        = args__.value("parameters.pw_cutoff", parameters_input_.pw_cutoff_);
+        parameters_input_.ngridk_           = args__.value("parameters.ngridk",
+                                                           parameters_input_.ngridk_);
+        parameters_input_.gamma_point_      = args__.value("parameters.gamma_point",
+                                                           parameters_input_.gamma_point_);
+        parameters_input_.pw_cutoff_        = args__.value("parameters.pw_cutoff",
+                                                           parameters_input_.pw_cutoff_);
 
         iterative_solver_input_.orthogonalize_ = args__.value("iterative_solver.orthogonalize",
                                                               iterative_solver_input_.orthogonalize_);
-
     }
 
     inline void set_lmax_apw(int lmax_apw__)
@@ -192,11 +197,6 @@ public:
     inline void set_gk_cutoff(double gk_cutoff__)
     {
         parameters_input_.gk_cutoff_ = gk_cutoff__;
-    }
-
-    inline void set_so_correction(bool so_correction__)
-    {
-        parameters_input_.so_correction_ = so_correction__;
     }
 
     inline void set_hubbard_correction(bool hubbard_correction__)
@@ -314,7 +314,7 @@ public:
     inline void set_processing_unit(device_t pu__)
     {
         if (acc::num_devices() == 0) {
-            processing_unit_ = device_t::CPU;
+            processing_unit_                = device_t::CPU;
             control_input_.processing_unit_ = "cpu";
         } else {
             processing_unit_ = pu__;
@@ -459,6 +459,12 @@ public:
 
     inline bool so_correction() const
     {
+        return parameters_input_.so_correction_;
+    }
+
+    inline bool so_correction(bool so_correction__)
+    {
+        parameters_input_.so_correction_ = so_correction__;
         return parameters_input_.so_correction_;
     }
 
@@ -642,46 +648,46 @@ public:
     }
 
     /// get the options set at runtime
-    json &get_runtime_options_dictionary()
-        {
-            return runtime_options_dictionary_;
-        }
+    json& get_runtime_options_dictionary()
+    {
+        return runtime_options_dictionary_;
+    }
 
     /// print all options in the terminal
     void print_options()
-        {
-            const json &dict = get_options_dictionary();
-            int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            if (rank != 0)
-                MPI_Barrier(MPI_COMM_WORLD);
-
-            std::cout << "the sirius library or the mini apps can be initialized through the interface" << std::endl;
-            std::cout << "using the api directly or through a json dictionary. The following contains " << std::endl;
-            std::cout << "a description of all the runtime options, that can be used directly to      " << std::endl;
-            std::cout << "initialize sirius.                                                          " << std::endl;
-
-            for (auto& el : dict.items()) {
-                std::cout << "============================================================================\n";
-                std::cout << "                                                                              ";
-                std::cout << "                      section : " << el.key() << "                             \n";
-                std::cout << "                                                                            \n";
-                std::cout << "============================================================================\n";
-
-                for (size_t s = 0; s < dict[el.key()].size(); s++) {
-                    std::cout << "name of the option : " << dict[el.key()][s]["name"].get<std::string>() << std::endl;
-                    std::cout << "description : " << dict[el.key()][s]["description"].get<std::string>() << std::endl;
-                    if (dict[el.key()][s].count("possible_values")) {
-                        const auto &v = dict[el.key()][s]["description"].get<std::vector<std::string>>();
-                        std::cout << "possible values : " << v[0];
-                        for (size_t st = 1; st < v.size(); st++)
-                            std::cout << " " << v[st];
-                    }
-                    std::cout << "default value : " << dict[el.key()]["default_values"].get<std::string>() << std::endl;
-                }
-            }
+    {
+        const json& dict = get_options_dictionary();
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if (rank != 0)
             MPI_Barrier(MPI_COMM_WORLD);
+
+        std::cout << "the sirius library or the mini apps can be initialized through the interface" << std::endl;
+        std::cout << "using the api directly or through a json dictionary. The following contains " << std::endl;
+        std::cout << "a description of all the runtime options, that can be used directly to      " << std::endl;
+        std::cout << "initialize sirius.                                                          " << std::endl;
+
+        for (auto& el : dict.items()) {
+            std::cout << "============================================================================\n";
+            std::cout << "                                                                              ";
+            std::cout << "                      section : " << el.key() << "                             \n";
+            std::cout << "                                                                            \n";
+            std::cout << "============================================================================\n";
+
+            for (size_t s = 0; s < dict[el.key()].size(); s++) {
+                std::cout << "name of the option : " << dict[el.key()][s]["name"].get<std::string>() << std::endl;
+                std::cout << "description : " << dict[el.key()][s]["description"].get<std::string>() << std::endl;
+                if (dict[el.key()][s].count("possible_values")) {
+                    const auto& v = dict[el.key()][s]["description"].get<std::vector<std::string>>();
+                    std::cout << "possible values : " << v[0];
+                    for (size_t st = 1; st < v.size(); st++)
+                        std::cout << " " << v[st];
+                }
+                std::cout << "default value : " << dict[el.key()]["default_values"].get<std::string>() << std::endl;
+            }
         }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
 };
 
 }; // namespace sirius
