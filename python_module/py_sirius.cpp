@@ -547,6 +547,11 @@ PYBIND11_MODULE(py_sirius, m)
                          wf_out.pw_coeffs(ispn).allocate(mpd);
                          wf.pw_coeffs(ispn).allocate(mpd);
                          wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
+                         if (swf) {
+                             swf->pw_coeffs(ispn).allocate(mpd);
+                             swf->pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
+                         }
+
                      }
                  }
                  #endif
