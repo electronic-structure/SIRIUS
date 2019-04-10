@@ -1402,6 +1402,9 @@ void sirius_get_forces(void* const* handler__,
         {"usnl",     &sirius::Force::calc_forces_usnl},
         {"scf_corr", &sirius::Force::calc_forces_scf_corr},
         {"hubbard",  &sirius::Force::calc_forces_hubbard},
+        {"ibs",      &sirius::Force::calc_forces_ibs},
+        {"hf",       &sirius::Force::calc_forces_hf},
+        {"rho",      &sirius::Force::calc_forces_rho}
     };
 
     try {
