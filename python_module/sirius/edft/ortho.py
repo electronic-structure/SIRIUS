@@ -1,5 +1,5 @@
 import numpy as np
-from ..coefficient_array import CoefficientArray, diag
+from ..coefficient_array import CoefficientArray, spdiag
 
 
 def _gram_schmidt(X):
@@ -32,5 +32,5 @@ def gram_schmidt(X):
 def loewdin(X):
     S = X.H @ X
     w, U = S.eigh()
-    Sm2 = U @ diag(1/np.sqrt(w)) @ U.H
+    Sm2 = U @ spdiag(1/np.sqrt(w)) @ U.H
     return X @ Sm2
