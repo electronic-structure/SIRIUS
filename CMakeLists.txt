@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.9) # Intel C++11 support starts from 3.6 or even later version
 project(SIRIUS)
 
-# allow {module}_ROOT variables to be set
-cmake_policy(SET CMP0074 NEW)
+if(POLICY CMP0074)
+  # allow {module}_ROOT variables to be set
+  cmake_policy(SET CMP0074 NEW)
+endif()
 
 # set language and standard
 enable_language(CXX Fortran)
