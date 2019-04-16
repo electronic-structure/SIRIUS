@@ -213,7 +213,6 @@ void sirius_import_parameters(void* const* handler__,
    @fortran argument in optional int num_mag_dims                Number of magnetic dimensions.
    @fortran argument in optional double pw_cutoff                Cutoff for G-vectors.
    @fortran argument in optional double gk_cutoff                Cutoff for G+k-vectors.
-   @fortran argument in optional double aw_cutoff                This is R_{mt} * gk_cutoff.
    @fortran argument in optional int fft_grid_size               Size of the fine-grain FFT grid.
    @fortran argument in optional int auto_rmt                    Set the automatic search of muffin-tin radii.
    @fortran argument in optional bool gamma_point                True if this is a Gamma-point calculation.
@@ -239,7 +238,7 @@ void sirius_set_parameters(void*  const* handler__,
                            int    const* num_mag_dims__,
                            double const* pw_cutoff__,
                            double const* gk_cutoff__,
-                           double const* aw_cutoff__,
+                           //double const* aw_cutoff__,
                            int    const* fft_grid_size__,
                            int    const* auto_rmt__,
                            bool   const* gamma_point__,
@@ -281,9 +280,9 @@ void sirius_set_parameters(void*  const* handler__,
     if (gk_cutoff__ != nullptr) {
         sim_ctx.set_gk_cutoff(*gk_cutoff__);
     }
-    if (aw_cutoff__ != nullptr) {
-        sim_ctx.set_aw_cutoff(*aw_cutoff__);
-    }
+    //if (aw_cutoff__ != nullptr) {
+    //    sim_ctx.set_aw_cutoff(*aw_cutoff__);
+    //}
     if (auto_rmt__ != nullptr) {
         sim_ctx.set_auto_rmt(*auto_rmt__);
     }
@@ -441,7 +440,8 @@ void sirius_set_periodic_function_ptr(void*  const* handler__,
         {"veff", &gs.potential().component(0)},
         {"bz",   &gs.potential().component(1)},
         {"bx",   &gs.potential().component(2)},
-        {"by",   &gs.potential().component(3)}
+        {"by",   &gs.potential().component(3)},
+        {"vha",  &gs.potential().hartree_potential()}
     };
 
     sirius::Periodic_function<double>* f;
@@ -654,12 +654,12 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
     auto& type = sim_ctx.unit_cell().atom_type(std::string(atom_type__));
     std::string label(label__);
 
-    if (label == "beta") {
+    if (label == "beta") { /* beta-projectors */
         if (l__ == nullptr) {
             TERMINATE("orbital quantum number must be provided for beta-projector");
         }
         type.add_beta_radial_function(*l__, std::vector<double>(rf__, rf__ + *num_points__));
-    } else if (label == "ps_atomic_wf") {
+    } else if (label == "ps_atomic_wf") { /* pseudo-atomic wave functions */
         if (l__ == nullptr) {
             TERMINATE("orbital quantum number must be provided for pseudo-atomic radial function");
         }
@@ -673,7 +673,7 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
         type.ps_total_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
     } else if (label == "vloc") {
         type.local_potential(std::vector<double>(rf__, rf__ + *num_points__));
-    } else if (label == "q_aug") {
+    } else if (label == "q_aug") { /* augmentation charge */
         if (l__ == nullptr) {
             TERMINATE("orbital quantum number must be provided for augmentation charge radial function");
         }
@@ -683,7 +683,7 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
         type.add_q_radial_function(*idxrf1__, *idxrf2__, *l__, std::vector<double>(rf__, rf__ + *num_points__));
     } else if (label == "ae_paw_wf") {
         type.add_ae_paw_wf(std::vector<double>(rf__, rf__ + *num_points__));
-    } else  if (label == "ps_paw_wf") {
+    } else if (label == "ps_paw_wf") {
         type.add_ps_paw_wf(std::vector<double>(rf__, rf__ + *num_points__));
     } else if (label == "ae_paw_core") {
         type.paw_ae_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
@@ -2889,6 +2889,27 @@ void sirius_get_fv_eigen_vectors(void*          const* handler__,
     mdarray<std::complex<double>, 2> fv_evec(fv_evec__, *ld__, *num_fv_states__);
     int ik = *ik__ - 1;
     ks[ik]->get_fv_eigen_vectors(fv_evec);
+}
+
+/* @fortran begin function void sirius_get_fv_eigen_values          Get the first-variational eigen values
+   @fortran argument in  required void*  handler                    K-point set handler
+   @fortran argument in  required int    ik                         Global index of the k-point
+   @fortran argument out required double fv_eval                    Output first-variational eigenvector array
+   @fortran argument in  required int    num_fv_states              Number of first-vaariational states
+   @fortran end */
+void sirius_get_fv_eigen_values(void*          const* handler__,
+                                int            const* ik__,
+                                double              * fv_eval__,
+                                int            const* num_fv_states__)
+{
+    GET_KS(handler__);
+    if (*num_fv_states__ != ks.ctx().num_fv_states()) {
+        TERMINATE("wrong number of first-variational states");
+    }
+    int ik = *ik__ - 1;
+    for (int i = 0; i < *num_fv_states__; i++) {
+        fv_eval__[i] = ks[ik]->fv_eigen_value(i);
+    }
 }
 
 } // extern "C"
