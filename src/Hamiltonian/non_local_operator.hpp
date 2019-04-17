@@ -382,7 +382,7 @@ class D_operator : public Non_local_operator<T>
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
 
-                        /* first compute \f[A^_\alpha I^{I,\alpha}_{xi,xi}\f] cf Eq.19 PRB 71 115106 */
+                        /* first compute \f[A^_\alpha I^{I,\alpha}_{xi,xi}\f] cf Eq.19 in doi:10.1103/PhysRevB.71.115106  */
 
                         /* note that the `I` integrals are already calculated and stored in atom.d_mtrx */
                         for (int sigma = 0; sigma < 2; sigma++) {
@@ -446,7 +446,7 @@ class D_operator : public Non_local_operator<T>
 
                 // the pseudo potential contains information about
                 // spin orbit coupling so we use a different formula
-                // Eq.19 PRB 71 115106 for calculating the D matrix
+                // Eq.19 doi:10.1103/PhysRevB.71.115106 for calculating the D matrix
 
                 // Note that the D matrices are stored and
                 // calculated in the up-down basis already not the
@@ -555,7 +555,7 @@ class Q_operator : public Non_local_operator<T>
                     /* The ultra soft pseudo potential has spin orbit coupling incorporated to it, so we
                        need to rotate the Q matrix */
                     if (this->ctx_.unit_cell().atom_type(iat).spin_orbit_coupling()) {
-                        /* this is nothing else than Eq.18 of Ref PRB 71, 115106 */
+                        /* this is nothing else than Eq.18 of doi:10.1103/PhysRevB.71.115106 */
                         for (auto si = 0; si < 2; si++) {
                             for (auto sj = 0; sj < 2; sj++) {
 
