@@ -52,10 +52,10 @@ class Atom_symmetry_class
 
     /// List of radial functions for the LAPW basis.
     /** This array stores all the radial functions (AW and LO) and their derivatives. Radial derivatives of functions 
-         *  are multiplied by \f$ x \f$.\n
-         *  1-st dimension: index of radial point \n
-         *  2-nd dimension: index of radial function \n
-         *  3-nd dimension: 0 - function itself, 1 - radial derivative */
+     *  are multiplied by \f$ x \f$.\n
+     *  1-st dimension: index of radial point \n
+     *  2-nd dimension: index of radial function \n
+     *  3-nd dimension: 0 - function itself, 1 - radial derivative */
     mdarray<double, 3> radial_functions_;
 
     /// Surface derivatives of AW radial functions.

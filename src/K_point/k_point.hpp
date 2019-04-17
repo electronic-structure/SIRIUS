@@ -425,14 +425,11 @@ class K_point
 
             int nsp = (ctx_.num_mag_dims() == 3) ? 1 : ctx_.num_spins();
 
-            for (int ispn = 0; ispn < nsp; ispn++)
-            {
+            for (int ispn = 0; ispn < nsp; ispn++) {
                 int offs = ctx_.num_fv_states() * ispn;
-                for (int jloc = 0; jloc < sv_eigen_vectors_[ispn].num_cols_local(); jloc++)
-                {
+                for (int jloc = 0; jloc < sv_eigen_vectors_[ispn].num_cols_local(); jloc++) {
                     int j = sv_eigen_vectors_[ispn].icol(jloc);
-                    for (int iloc = 0; iloc < sv_eigen_vectors_[ispn].num_rows_local(); iloc++)
-                    {
+                    for (int iloc = 0; iloc < sv_eigen_vectors_[ispn].num_rows_local(); iloc++) {
                         int i = sv_eigen_vectors_[ispn].irow(iloc);
                         sv_evec(i + offs, j + offs) = sv_eigen_vectors_[ispn](iloc, jloc);
                     }
