@@ -320,7 +320,7 @@ inline Smooth_periodic_function<double> divergence(Smooth_periodic_vector_functi
             auto G = f.gvec().gvec_cart<index_domain_t::local>(igloc);
             g_tmp.f_pw_local(igloc) = g__[x].f_pw_local(igloc) * double_complex(0, G[x]);
         }
-        g_tmp.fft_transform(1);
+        g_tmp.fft_transform(1); // TODO: can we do the summation in PW domain?
         for (int ir = 0; ir < f.fft().local_size(); ir++) {
             f.f_rg(ir) += g_tmp.f_rg(ir);
         }

@@ -47,8 +47,8 @@ inline void Density::init_paw()
 
         // allocate density arrays
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            pdd.ae_density_.push_back(Spheric_function<spectral, double>(lm_max_rho, pdd.atom_->radial_grid()));
-            pdd.ps_density_.push_back(Spheric_function<spectral, double>(lm_max_rho, pdd.atom_->radial_grid()));
+            pdd.ae_density_.push_back(Spheric_function<function_domain_t::spectral, double>(lm_max_rho, pdd.atom_->radial_grid()));
+            pdd.ps_density_.push_back(Spheric_function<function_domain_t::spectral, double>(lm_max_rho, pdd.atom_->radial_grid()));
         }
 
         paw_density_data_.push_back(std::move(pdd));

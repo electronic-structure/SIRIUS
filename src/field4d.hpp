@@ -218,7 +218,7 @@ class Field4D
 
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
             for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                auto& f_mt = const_cast<Spheric_function<spectral, double>&>(component(j).f_mt(ialoc));
+                auto& f_mt = const_cast<Spheric_function<function_domain_t::spectral, double>&>(component(j).f_mt(ialoc));
                 for (int i = 0; i < static_cast<int>(component(j).f_mt(ialoc).size()); i++) {
                     f_mt[i] = mixer_->output_local(k++);
                 }

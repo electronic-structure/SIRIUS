@@ -45,7 +45,7 @@ void test1_angular_radial()
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);
 
-    Spheric_function<spectral, T> f1(lmmax, r);
+    Spheric_function<function_domain_t::spectral, T> f1(lmmax, r);
 
     srand((int)time(NULL));
 
@@ -73,14 +73,14 @@ void test2(int lmax, int nr)
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, nr, 0.01, 2.0, 1.0);
 
     SHT sht(lmax);
-    Spheric_function<spectral, T> f1(lmmax, r);
+    Spheric_function<function_domain_t::spectral, T> f1(lmmax, r);
 
     for (int ir = 0; ir < nr; ir++)
     {
         for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = utils::random<T>();
     }
-    auto f2 = transform(&sht, f1);
-    auto f3 = transform(&sht, f2);
+    auto f2 = transform(sht, f1);
+    auto f3 = transform(sht, f2);
 
     double d = 0;
     for (int ir = 0; ir < nr; ir++)
@@ -100,20 +100,20 @@ void test3(int lmax, int nr)
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, nr, 0.01, 2.0, 1.0);
     SHT sht(lmax);
 
-    Spheric_function<spectral, double> f1(lmmax, r);
-    Spheric_function<spatial, double_complex> f3(sht.num_points(), r);
+    Spheric_function<function_domain_t::spectral, double> f1(lmmax, r);
+    Spheric_function<function_domain_t::spatial, double_complex> f3(sht.num_points(), r);
 
     for (int ir = 0; ir < nr; ir++)
     {
         for (int lm = 0; lm < lmmax; lm++) f1(lm, ir) = utils::random<double>();
     }
-    auto f2 = transform(&sht, f1);
+    auto f2 = transform(sht, f1);
     for (int ir = 0; ir < nr; ir++)
     {
         for (int tp = 0; tp < sht.num_points(); tp++) f3(tp, ir) = f2(tp, ir);
     }
 
-    auto f4 = transform(&sht, f3);
+    auto f4 = transform(sht, f3);
     auto f5 = convert(f4);
 
     double d = 0;
@@ -209,7 +209,7 @@ void test5()
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);
 
     int lmmax = 64;
-    Spheric_function<spectral, double_complex> f(lmmax, r);
+    Spheric_function<function_domain_t::spectral, double_complex> f(lmmax, r);
     f.zero();
     
     for (int ir = 0; ir < 1000; ir++)
@@ -235,7 +235,7 @@ void test6()
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, nr, 0.01, 2.0, 1.0);
 
-    Spheric_function<spectral, double> f(64, r);
+    Spheric_function<function_domain_t::spectral, double> f(64, r);
 
     for (int l1 = 0; l1 <= 5; l1++)
     {
@@ -439,8 +439,8 @@ void test10()
 {
     printf("test10: gradients\n");
     auto rgrid = Radial_grid_factory<double>(radial_grid_t::exponential, 2000, 1e-7, 2.0, 1.0);
-    Spheric_function<spectral, double> rho_up_lm(64, rgrid);
-    Spheric_function<spectral, double> rho_dn_lm(64, rgrid);
+    Spheric_function<function_domain_t::spectral, double> rho_up_lm(64, rgrid);
+    Spheric_function<function_domain_t::spectral, double> rho_dn_lm(64, rgrid);
 
     for (int ir = 0; ir < rgrid.num_points(); ir++) {
         for (int lm = 0; lm < 64; lm++) {
@@ -451,8 +451,8 @@ void test10()
 
     SHT sht(8);
 
-    Spheric_function_gradient<spatial, double> grad_rho_up_tp(sht.num_points(), rgrid);
-    Spheric_function_gradient<spatial, double> grad_rho_dn_tp(sht.num_points(), rgrid);
+    Spheric_function_vector3d<function_domain_t::spatial, double> grad_rho_up_tp(sht.num_points(), rgrid);
+    Spheric_function_vector3d<function_domain_t::spatial, double> grad_rho_dn_tp(sht.num_points(), rgrid);
 
     /* compute gradient in Rlm spherical harmonics */
     auto grad_rho_up_lm = gradient(rho_up_lm);
@@ -460,13 +460,13 @@ void test10()
 
     /* backward transform gradient from Rlm to (theta, phi) */
     for (int x = 0; x < 3; x++) {
-        grad_rho_up_tp[x] = transform(&sht, grad_rho_up_lm[x]);
-        grad_rho_dn_tp[x] = transform(&sht, grad_rho_dn_lm[x]);
+        grad_rho_up_tp[x] = transform(sht, grad_rho_up_lm[x]);
+        grad_rho_dn_tp[x] = transform(sht, grad_rho_dn_lm[x]);
     }
 
-    Spheric_function<spatial, double> grad_rho_up_grad_rho_up_tp;
-    Spheric_function<spatial, double> grad_rho_dn_grad_rho_dn_tp;
-    Spheric_function<spatial, double> grad_rho_up_grad_rho_dn_tp;
+    Spheric_function<function_domain_t::spatial, double> grad_rho_up_grad_rho_up_tp;
+    Spheric_function<function_domain_t::spatial, double> grad_rho_dn_grad_rho_dn_tp;
+    Spheric_function<function_domain_t::spatial, double> grad_rho_up_grad_rho_dn_tp;
 
     /* compute density gradient products */
     grad_rho_up_grad_rho_up_tp = grad_rho_up_tp * grad_rho_up_tp;
