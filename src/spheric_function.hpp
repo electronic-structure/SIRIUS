@@ -214,7 +214,7 @@ inline Spheric_function<function_domain_t::spatial, T> operator*(Spheric_functio
     T const* ptr_rhs = &b__(0, 0);
     T* ptr_res = &res(0, 0);
 
-    for (int i = 0; i < a__.size(); i++) {
+    for (size_t i = 0; i < a__.size(); i++) {
         ptr_res[i] = ptr_lhs[i] * ptr_rhs[i];
     }
 

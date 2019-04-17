@@ -34,7 +34,7 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
     bool is_gga = is_gradient_correction();
 
     Spheric_function_vector3d<function_domain_t::spatial, double> grad_rho_tp(rgrid);
-    Spheric_function<function_domain_t::spatial, double> lapl_rho_tp;
+    //Spheric_function<function_domain_t::spatial, double> lapl_rho_tp;
     Spheric_function<function_domain_t::spatial, double> grad_rho_grad_rho_tp;
 
     if (is_gga) {
@@ -49,11 +49,11 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
         /* compute density gradient product */
         grad_rho_grad_rho_tp = grad_rho_tp * grad_rho_tp;
 
-        /* compute Laplacian in Rlm spherical harmonics */
-        auto lapl_rho_lm = laplacian(rho_lm);
+        ///* compute Laplacian in Rlm spherical harmonics */
+        //auto lapl_rho_lm = laplacian(rho_lm);
 
-        /* backward transform Laplacian from Rlm to (theta, phi) */
-        lapl_rho_tp = transform(*sht_, lapl_rho_lm);
+        ///* backward transform Laplacian from Rlm to (theta, phi) */
+        //lapl_rho_tp = transform(*sht_, lapl_rho_lm);
     }
 
     exc_tp.zero();
@@ -101,7 +101,7 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
                         exc_tp(itp, ir) += exc_t[itp];
 
                         /* directly add to Vxc available contributions */
-                        vxc_tp(itp, ir) += (vrho_t[itp] - 2 * vsigma_t[itp] * lapl_rho_tp(itp, ir));
+                        vxc_tp(itp, ir) += vrho_t[itp];
 
                         /* save the sigma derivative */
                         vsigma_tp(itp, ir) += vsigma_t[itp];
@@ -112,25 +112,33 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
     }
 
     if (is_gga) {
-        /* forward transform vsigma to Rlm */
-        auto vsigma_lm = transform(*sht_, vsigma_tp);
-
-        /* compute gradient of vsgima in spherical harmonics */
-        auto grad_vsigma_lm = gradient(vsigma_lm);
-
-        /* backward transform gradient from Rlm to (theta, phi) */
-        Spheric_function_vector3d<function_domain_t::spatial, double> grad_vsigma_tp(rgrid);
-        for (int x = 0; x < 3; x++) {
-            grad_vsigma_tp[x] = transform(*sht_, grad_vsigma_lm[x]);
+        Spheric_function_vector3d<function_domain_t::spectral, double> vsigma_grad_rho_lm(ctx_.lmmax_pot(), rgrid);
+        for (int x: {0, 1, 2}) {
+            auto vsigma_grad_rho_tp = vsigma_tp * grad_rho_tp[x];
+            vsigma_grad_rho_lm[x] = transform(*sht_, vsigma_grad_rho_tp);
         }
+        auto div_vsigma_grad_rho_lm = divergence(vsigma_grad_rho_lm);
+        auto div_vsigma_grad_rho_tp = transform(*sht_, div_vsigma_grad_rho_lm);
 
-        /* compute scalar product of two gradients */
-        auto grad_vsigma_grad_rho_tp = grad_vsigma_tp * grad_rho_tp;
+        ///* forward transform vsigma to Rlm */
+        //auto vsigma_lm = transform(*sht_, vsigma_tp);
+
+        ///* compute gradient of vsgima in spherical harmonics */
+        //auto grad_vsigma_lm = gradient(vsigma_lm);
+
+        ///* backward transform gradient from Rlm to (theta, phi) */
+        //Spheric_function_vector3d<function_domain_t::spatial, double> grad_vsigma_tp(rgrid);
+        //for (int x = 0; x < 3; x++) {
+        //    grad_vsigma_tp[x] = transform(*sht_, grad_vsigma_lm[x]);
+        //}
+
+        ///* compute scalar product of two gradients */
+        //auto grad_vsigma_grad_rho_tp = grad_vsigma_tp * grad_rho_tp;
 
         /* add remaining term to Vxc */
         for (int ir = 0; ir < rgrid.num_points(); ir++) {
             for (int itp = 0; itp < sht_->num_points(); itp++) {
-                vxc_tp(itp, ir) -= 2 * grad_vsigma_grad_rho_tp(itp, ir);
+                vxc_tp(itp, ir) -= 2 * div_vsigma_grad_rho_tp(itp, ir);
             }
         }
     }
@@ -517,7 +525,6 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
     Smooth_periodic_function<double> lapl_rho;
     Smooth_periodic_function<double> grad_rho_grad_rho;
 
-    Smooth_periodic_vector_function<double> vsigma_grad_rho;
 
     Smooth_periodic_function<double> div_vsigma_grad_rho;
 
@@ -549,9 +556,6 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
                 //utils::print_hash("lapl_rho", h1);
                 utils::print_hash("grad_rho_grad_rho", h2);
             }
-        }
-        if (!use_2nd_deriv) {
-            vsigma_grad_rho = Smooth_periodic_vector_function<double>(ctx_.fft(), gvp);
         }
     }
 
@@ -694,6 +698,8 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
                 vxc_tmp(ir) -= 2 * (vsigma.f_rg(ir) * lapl_rho.f_rg(ir) + grad_vsigma_grad_rho.f_rg(ir));
             }
         } else {
+            Smooth_periodic_vector_function<double> vsigma_grad_rho(ctx_.fft(), gvp);
+
             for (int x: {0, 1, 2}) {
                 for (int ir = 0; ir < num_points; ir++) {
                     vsigma_grad_rho[x].f_rg(ir) = grad_rho[x].f_rg(ir) * vsigma.f_rg(ir);
@@ -702,7 +708,8 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
                 vsigma_grad_rho[x].fft_transform(-1);
             }
             div_vsigma_grad_rho = divergence(vsigma_grad_rho);
-            div_vsigma_grad_rho.fft_transform(-1);
+            /* transform to real space domain */
+            div_vsigma_grad_rho.fft_transform(1);
             for (int ir = 0; ir < num_points; ir++) {
                 vxc_tmp(ir) -= 2 * div_vsigma_grad_rho.f_rg(ir);
             }
@@ -975,19 +982,6 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
             vsigma_dd.f_rg(ir) = vsigma_dd_tmp[ir];
         }
 
-        // /* forward transform vsigma to plane-wave domain */
-        // not needed!
-        // vsigma_uu.fft_transform(-1);
-        // vsigma_ud.fft_transform(-1);
-        // vsigma_dd.fft_transform(-1);
-
-        // /* backward transform gradient from pw to real space */
-        // for (int x: {0, 1, 2}) {
-        //     grad_vsigma_uu[x].fft_transform(1);
-        //     grad_vsigma_ud[x].fft_transform(1);
-        //     grad_vsigma_dd[x].fft_transform(1);
-        // }
-
         Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.fft(), ctx_.gvec_partition());
         Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.fft(), ctx_.gvec_partition());
         for (int x: {0, 1, 2}) {
@@ -995,17 +989,15 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
               up_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_up[x].f_rg(ir) * vsigma_uu.f_rg(ir) + grad_rho_dn[x].f_rg(ir) * vsigma_ud.f_rg(ir);
               dn_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_dn[x].f_rg(ir) * vsigma_dd.f_rg(ir) + grad_rho_up[x].f_rg(ir) * vsigma_ud.f_rg(ir);
             }
-        }
-
-        /* transform to plane wave domain */
-        for (int x: {0, 1, 2}) {
+            /* transform to plane wave domain */
             up_gradrho_vsigma[x].fft_transform(-1);
             dn_gradrho_vsigma[x].fft_transform(-1);
         }
 
-        // divergence: plane-wave (input) to real-space domain (output)
         auto div_up_gradrho_vsigma = divergence(up_gradrho_vsigma);
+        div_up_gradrho_vsigma.fft_transform(1);
         auto div_dn_gradrho_vsigma = divergence(dn_gradrho_vsigma);
+        div_dn_gradrho_vsigma.fft_transform(1);
 
         /* add remaining term to Vxc */
         #pragma omp parallel for
