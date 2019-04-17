@@ -122,6 +122,7 @@ class Spheric_function: public mdarray<T, 2>
 
     inline Radial_grid<double> const& radial_grid() const
     {
+        assert(radial_grid_ != nullptr);
         return *radial_grid_;
     }
 
@@ -169,6 +170,7 @@ class Spheric_function_vector3d : public std::array<Spheric_function<domain_t, T
 
     /// Construct empty vector
     Spheric_function_vector3d(Radial_grid<double> const& radial_grid__)
+        : radial_grid_(&radial_grid__)
     {
     }
 
@@ -183,6 +185,7 @@ class Spheric_function_vector3d : public std::array<Spheric_function<domain_t, T
 
     inline Radial_grid<double> const& radial_grid() const
     {
+        assert(radial_grid_ != nullptr);
         return *radial_grid_;
     }
 
@@ -357,7 +360,7 @@ Spheric_function<function_domain_t::spectral, T> laplacian(Spheric_function<func
             s1.interpolate();
 
             for (int ir = 0; ir < s.num_points(); ir++) {
-                g(lm, ir) = 2 * s1(ir) * rgrid.x_inv(ir) + s1.deriv(1, ir) - s(ir) * ll / std::pow(rgrid[ir], 2);
+                g(lm, ir) = 2.0 * s1(ir) * rgrid.x_inv(ir) + s1.deriv(1, ir) - s(ir) * static_cast<double>(ll) / std::pow(rgrid[ir], 2);
             }
         }
     }
@@ -515,13 +518,13 @@ inline Spheric_function_vector3d<function_domain_t::spectral, double_complex> gr
 }
 
 /// Gradient of the function in real spherical harmonics.
-inline Spheric_function_vector3d<function_domain_t::spectral, double> gradient(Spheric_function<function_domain_t::spectral, double> const& f)
+inline Spheric_function_vector3d<function_domain_t::spectral, double> gradient(Spheric_function<function_domain_t::spectral, double> const& f__)
 {
-    int lmax = utils::lmax(f.angular_domain_size());
+    int lmax = utils::lmax(f__.angular_domain_size());
     SHT sht(lmax);
-    auto zf = convert(f);
+    auto zf = convert(f__);
     auto zg = gradient(zf);
-    Spheric_function_vector3d<function_domain_t::spectral, double> g(f.radial_grid());
+    Spheric_function_vector3d<function_domain_t::spectral, double> g(f__.angular_domain_size(), f__.radial_grid());
     for (int x: {0, 1, 2}) {
         g[x] = convert(zg[x]);
     }
@@ -529,13 +532,13 @@ inline Spheric_function_vector3d<function_domain_t::spectral, double> gradient(S
 }
 
 /// Divergence of the vector function in complex spherical harmonics.
-inline Spheric_function<function_domain_t::spectral, double_complex> divergence(Spheric_function_vector3d<function_domain_t::spectral, double_complex> const& vf)
+inline Spheric_function<function_domain_t::spectral, double_complex> divergence(Spheric_function_vector3d<function_domain_t::spectral, double_complex> const& vf__)
 {
-    Spheric_function<function_domain_t::spectral, double_complex> g(vf.angular_domain_size(), vf.radial_grid());
+    Spheric_function<function_domain_t::spectral, double_complex> g(vf__.angular_domain_size(), vf__.radial_grid());
     g.zero();
 
     for (int x: {0, 1, 2}) {
-        auto f = gradient(vf[x]);
+        auto f = gradient(vf__[x]);
         g += f[x];
     }
     return g;
