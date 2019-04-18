@@ -1683,6 +1683,9 @@ inline void Simulation_context::print_info() const
         printf("%s\n", xc.refs().c_str());
         i++;
     }
+    int vmajor, vminor, vmicro;
+    xc_version(&vmajor, &vminor, &vmicro);
+    printf("Libxc version: %d.%d.%d\n", vmajor, vminor, vmicro);
 }
 
 } // namespace sirius
