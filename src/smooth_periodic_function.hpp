@@ -261,6 +261,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     Gvec_partition const* gvecp_{nullptr};
 
   public:
+    /// Default constructor does nothing.
     Smooth_periodic_vector_function()
     {
     }

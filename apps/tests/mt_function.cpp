@@ -451,8 +451,8 @@ void test10()
 
     SHT sht(8);
 
-    Spheric_function_vector3d<function_domain_t::spatial, double> grad_rho_up_tp(sht.num_points(), rgrid);
-    Spheric_function_vector3d<function_domain_t::spatial, double> grad_rho_dn_tp(sht.num_points(), rgrid);
+    Spheric_vector_function<function_domain_t::spatial, double> grad_rho_up_tp(sht.num_points(), rgrid);
+    Spheric_vector_function<function_domain_t::spatial, double> grad_rho_dn_tp(sht.num_points(), rgrid);
 
     /* compute gradient in Rlm spherical harmonics */
     auto grad_rho_up_lm = gradient(rho_up_lm);

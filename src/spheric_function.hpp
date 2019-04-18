@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file spheric_function.hpp
- *   
+ *
  *  \brief Contains declaration and implementation of sirius::Spheric_function and 
  *         sirius::Spheric_function_gradient classes.
  */
@@ -156,25 +156,24 @@ class Spheric_function: public mdarray<T, 2>
 
 };
 
-/// Vector of spheric functions.
+/// 3D vector function.
 template <function_domain_t domain_t, typename T = double_complex>
-class Spheric_function_vector3d : public std::array<Spheric_function<domain_t, T>, 3>
+class Spheric_vector_function : public std::array<Spheric_function<domain_t, T>, 3>
 {
   private:
 
     Radial_grid<double> const* radial_grid_{nullptr};
 
-    int angular_domain_size_;
+    int angular_domain_size_{-1};
 
   public:
 
-    /// Construct empty vector
-    Spheric_function_vector3d(Radial_grid<double> const& radial_grid__)
-        : radial_grid_(&radial_grid__)
+    /// Default constructor does nothing
+    Spheric_vector_function()
     {
     }
 
-    Spheric_function_vector3d(int angular_domain_size__, Radial_grid<double> const& radial_grid__) 
+    Spheric_vector_function(int angular_domain_size__, Radial_grid<double> const& radial_grid__) 
         : radial_grid_(&radial_grid__)
         , angular_domain_size_(angular_domain_size__)
     {
@@ -196,7 +195,7 @@ class Spheric_function_vector3d : public std::array<Spheric_function<domain_t, T
 };
 
 /// Multiplication of two functions in spatial domain.
-/** The result of the operation is the scalar function in spatial domain */
+/** The result of the operation is a scalar function in spatial domain */
 template <typename T>
 inline Spheric_function<function_domain_t::spatial, T> operator*(Spheric_function<function_domain_t::spatial, T> const& a__,
                                                                  Spheric_function<function_domain_t::spatial, T> const& b__)
@@ -210,12 +209,10 @@ inline Spheric_function<function_domain_t::spatial, T> operator*(Spheric_functio
 
     Spheric_function<function_domain_t::spatial, T> res(a__.angular_domain_size(), a__.radial_grid());
 
-    T const* ptr_lhs = &a__(0, 0);
-    T const* ptr_rhs = &b__(0, 0);
-    T* ptr_res = &res(0, 0);
-
-    for (size_t i = 0; i < a__.size(); i++) {
-        ptr_res[i] = ptr_lhs[i] * ptr_rhs[i];
+    for (int ir = 0; ir < res.radial_grid().num_points(); ir++) {
+        for (int tp = 0; tp < res.angular_domain_size(); tp++) {
+            res(tp, ir) = a__(tp, ir) * b__(tp, ir);
+        }
     }
 
     return std::move(res);
@@ -223,8 +220,8 @@ inline Spheric_function<function_domain_t::spatial, T> operator*(Spheric_functio
 
 /// Dot product of two gradiensts of real functions in spatial domain.
 /** The result of the operation is the real scalar function in spatial domain */
-inline Spheric_function<function_domain_t::spatial, double> operator*(Spheric_function_vector3d<function_domain_t::spatial, double> const& f,
-                                                                      Spheric_function_vector3d<function_domain_t::spatial, double> const& g)
+inline Spheric_function<function_domain_t::spatial, double> operator*(Spheric_vector_function<function_domain_t::spatial, double> const& f,
+                                                                      Spheric_vector_function<function_domain_t::spatial, double> const& g)
 {
     if (f.radial_grid().hash() != g.radial_grid().hash()) {
         TERMINATE("wrong radial grids");
@@ -276,14 +273,19 @@ Spheric_function<domain_t, T> operator+(Spheric_function<domain_t, T> const& a__
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator-(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
 {
+    if (a__.radial_grid().hash() != b__.radial_grid().hash()) {
+        TERMINATE("wrong radial grids");
+    }
+    if (a__.angular_domain_size() != b__.angular_domain_size()) {
+        TERMINATE("wrong angular domain sizes");
+    }
+
     Spheric_function<domain_t, T> res(a__.angular_domain_size(), a__.radial_grid());
 
-    T const* ptr_lhs = &a__(0, 0);
-    T const* ptr_rhs = &b__(0, 0);
-    T* ptr_res = &res(0, 0);
-
-    for (size_t i = 0; i < a__.size(); i++) {
-        ptr_res[i] = ptr_lhs[i] - ptr_rhs[i];
+    for (int ir = 0; ir < a__.radial_grid().num_points(); ir++) {
+        for (int i = 0; i < a__.angular_domain_size(); i++) {
+            res(i, ir) = a__(i, ir) - b__(i, ir);
+        }
     }
 
     return std::move(res);
@@ -369,7 +371,8 @@ Spheric_function<function_domain_t::spectral, T> laplacian(Spheric_function<func
 }
 
 /// Convert from Ylm to Rlm representation.
-inline Spheric_function<function_domain_t::spectral, double> convert(Spheric_function<function_domain_t::spectral, double_complex> const& f__)
+inline void convert(Spheric_function<function_domain_t::spectral, double_complex> const& f__,
+                    Spheric_function<function_domain_t::spectral, double>& g__)
 {
     int lmax = utils::lmax(f__.angular_domain_size());
 
@@ -384,28 +387,33 @@ inline Spheric_function<function_domain_t::spectral, double> convert(Spheric_fun
         }
     }
 
-    Spheric_function<function_domain_t::spectral, double> g(f__.angular_domain_size(), f__.radial_grid());
-
     for (int ir = 0; ir < f__.radial_grid().num_points(); ir++) {
         int lm = 0;
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
                 if (m == 0) {
-                    g(lm, ir) = std::real(f__(lm, ir));
+                    g__(lm, ir) = std::real(f__(lm, ir));
                 } else {
                     int lm1 = utils::lm(l, -m);
-                    g(lm, ir) = std::real(tpp[lm] * f__(lm, ir) + tpm[lm] * f__(lm1, ir));
+                    g__(lm, ir) = std::real(tpp[lm] * f__(lm, ir) + tpm[lm] * f__(lm1, ir));
                 }
                 lm++;
             }
         }
     }
+}
 
+/// Convert from Ylm to Rlm representation.
+inline Spheric_function<function_domain_t::spectral, double> convert(Spheric_function<function_domain_t::spectral, double_complex> const& f__)
+{
+    Spheric_function<function_domain_t::spectral, double> g(f__.angular_domain_size(), f__.radial_grid());
+    convert(f__, g);
     return std::move(g);
 }
 
 /// Convert from Rlm to Ylm representation.
-inline Spheric_function<function_domain_t::spectral, double_complex> convert(Spheric_function<function_domain_t::spectral, double> const& f__)
+inline void convert(Spheric_function<function_domain_t::spectral, double> const& f__,
+                    Spheric_function<function_domain_t::spectral, double_complex>& g__)
 {
     int lmax = utils::lmax(f__.angular_domain_size());
 
@@ -420,53 +428,67 @@ inline Spheric_function<function_domain_t::spectral, double_complex> convert(Sph
         }
     }
 
-    Spheric_function<function_domain_t::spectral, double_complex> g(f__.angular_domain_size(), f__.radial_grid());
-
     for (int ir = 0; ir < f__.radial_grid().num_points(); ir++) {
         int lm = 0;
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
                 if (m == 0) {
-                    g(lm, ir) = f__(lm, ir);
+                    g__(lm, ir) = f__(lm, ir);
                 } else {
                     int lm1 = utils::lm(l, -m);
-                    g(lm, ir) = tpp[lm] * f__(lm, ir) + tpm[lm] * f__(lm1, ir);
+                    g__(lm, ir) = tpp[lm] * f__(lm, ir) + tpm[lm] * f__(lm1, ir);
                 }
                 lm++;
             }
         }
     }
+}
 
+/// Convert from Rlm to Ylm representation.
+inline Spheric_function<function_domain_t::spectral, double_complex> convert(Spheric_function<function_domain_t::spectral, double> const& f__)
+{
+    Spheric_function<function_domain_t::spectral, double_complex> g(f__.angular_domain_size(), f__.radial_grid());
+    convert(f__, g);
     return std::move(g);
+}
+
+template <typename T>
+inline void transform(SHT const& sht__, Spheric_function<function_domain_t::spectral, T> const& f__,
+                      Spheric_function<function_domain_t::spatial, T>& g__)
+{
+    sht__.backward_transform(f__.angular_domain_size(), &f__(0, 0), f__.radial_grid().num_points(),
+                             std::min(sht__.lmmax(), f__.angular_domain_size()), &g__(0, 0));
 }
 
 /// Transform to spatial domain (to r, \theta, \phi coordinates).
 template <typename T>
-Spheric_function<function_domain_t::spatial, T> transform(SHT const& sht__, Spheric_function<function_domain_t::spectral, T> const& f__)
+inline Spheric_function<function_domain_t::spatial, T> transform(SHT const& sht__, Spheric_function<function_domain_t::spectral, T> const& f__)
 {
     Spheric_function<function_domain_t::spatial, T> g(sht__.num_points(), f__.radial_grid());
-
-    sht__.backward_transform(f__.angular_domain_size(), &f__(0, 0), f__.radial_grid().num_points(), 
-                             std::min(sht__.lmmax(), f__.angular_domain_size()), &g(0, 0));
-
+    transform(sht__, f__, g);
     return std::move(g);
+}
+
+template <typename T>
+inline void transform(SHT const& sht__, Spheric_function<function_domain_t::spatial, T> const& f__,
+                      Spheric_function<function_domain_t::spectral, T>& g__)
+{
+    sht__.forward_transform(&f__(0, 0), f__.radial_grid().num_points(), sht__.lmmax(), sht__.lmmax(), &g__(0, 0));
 }
 
 /// Transform to spectral domain.
 template <typename T>
-Spheric_function<function_domain_t::spectral, T> transform(SHT const& sht__, Spheric_function<function_domain_t::spatial, T> const& f__)
+inline Spheric_function<function_domain_t::spectral, T> transform(SHT const& sht__, Spheric_function<function_domain_t::spatial, T> const& f__)
 {
     Spheric_function<function_domain_t::spectral, T> g(sht__.lmmax(), f__.radial_grid());
-
-    sht__.forward_transform(&f__(0, 0), f__.radial_grid().num_points(), sht__.lmmax(), sht__.lmmax(), &g(0, 0));
-
+    transform(sht__, f__, g);
     return std::move(g);
 }
 
 /// Gradient of the function in complex spherical harmonics.
-inline Spheric_function_vector3d<function_domain_t::spectral, double_complex> gradient(Spheric_function<function_domain_t::spectral, double_complex> const& f)
+inline Spheric_vector_function<function_domain_t::spectral, double_complex> gradient(Spheric_function<function_domain_t::spectral, double_complex> const& f)
 {
-    Spheric_function_vector3d<function_domain_t::spectral, double_complex> g(f.angular_domain_size(), f.radial_grid());
+    Spheric_vector_function<function_domain_t::spectral, double_complex> g(f.angular_domain_size(), f.radial_grid());
     for (int i = 0; i < 3; i++) {
         g[i].zero();
     }
@@ -518,13 +540,13 @@ inline Spheric_function_vector3d<function_domain_t::spectral, double_complex> gr
 }
 
 /// Gradient of the function in real spherical harmonics.
-inline Spheric_function_vector3d<function_domain_t::spectral, double> gradient(Spheric_function<function_domain_t::spectral, double> const& f__)
+inline Spheric_vector_function<function_domain_t::spectral, double> gradient(Spheric_function<function_domain_t::spectral, double> const& f__)
 {
     int lmax = utils::lmax(f__.angular_domain_size());
     SHT sht(lmax);
     auto zf = convert(f__);
     auto zg = gradient(zf);
-    Spheric_function_vector3d<function_domain_t::spectral, double> g(f__.angular_domain_size(), f__.radial_grid());
+    Spheric_vector_function<function_domain_t::spectral, double> g(f__.angular_domain_size(), f__.radial_grid());
     for (int x: {0, 1, 2}) {
         g[x] = convert(zg[x]);
     }
@@ -532,7 +554,7 @@ inline Spheric_function_vector3d<function_domain_t::spectral, double> gradient(S
 }
 
 /// Divergence of the vector function in complex spherical harmonics.
-inline Spheric_function<function_domain_t::spectral, double_complex> divergence(Spheric_function_vector3d<function_domain_t::spectral, double_complex> const& vf__)
+inline Spheric_function<function_domain_t::spectral, double_complex> divergence(Spheric_vector_function<function_domain_t::spectral, double_complex> const& vf__)
 {
     Spheric_function<function_domain_t::spectral, double_complex> g(vf__.angular_domain_size(), vf__.radial_grid());
     g.zero();
@@ -544,7 +566,7 @@ inline Spheric_function<function_domain_t::spectral, double_complex> divergence(
     return g;
 }
 
-inline Spheric_function<function_domain_t::spectral, double> divergence(Spheric_function_vector3d<function_domain_t::spectral, double> const& vf)
+inline Spheric_function<function_domain_t::spectral, double> divergence(Spheric_vector_function<function_domain_t::spectral, double> const& vf)
 {
     Spheric_function<function_domain_t::spectral, double> g(vf.angular_domain_size(), vf.radial_grid());
     g.zero();

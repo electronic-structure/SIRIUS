@@ -33,7 +33,7 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
 
     bool is_gga = is_gradient_correction();
 
-    Spheric_function_vector3d<function_domain_t::spatial, double> grad_rho_tp(rgrid);
+    Spheric_vector_function<function_domain_t::spatial, double> grad_rho_tp(sht_->num_points(), rgrid);
     //Spheric_function<function_domain_t::spatial, double> lapl_rho_tp;
     Spheric_function<function_domain_t::spatial, double> grad_rho_grad_rho_tp;
 
@@ -43,7 +43,7 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
 
         /* backward transform gradient from Rlm to (theta, phi) */
         for (int x = 0; x < 3; x++) {
-            grad_rho_tp[x] = transform(*sht_, grad_rho_lm[x]);
+            transform(*sht_, grad_rho_lm[x], grad_rho_tp[x]);
         }
 
         /* compute density gradient product */
@@ -112,10 +112,10 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
     }
 
     if (is_gga) {
-        Spheric_function_vector3d<function_domain_t::spectral, double> vsigma_grad_rho_lm(ctx_.lmmax_pot(), rgrid);
+        Spheric_vector_function<function_domain_t::spectral, double> vsigma_grad_rho_lm(ctx_.lmmax_pot(), rgrid);
         for (int x: {0, 1, 2}) {
             auto vsigma_grad_rho_tp = vsigma_tp * grad_rho_tp[x];
-            vsigma_grad_rho_lm[x] = transform(*sht_, vsigma_grad_rho_tp);
+            transform(*sht_, vsigma_grad_rho_tp, vsigma_grad_rho_lm[x]);
         }
         auto div_vsigma_grad_rho_lm = divergence(vsigma_grad_rho_lm);
         auto div_vsigma_grad_rho_tp = transform(*sht_, div_vsigma_grad_rho_lm);
@@ -127,7 +127,7 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
         //auto grad_vsigma_lm = gradient(vsigma_lm);
 
         ///* backward transform gradient from Rlm to (theta, phi) */
-        //Spheric_function_vector3d<function_domain_t::spatial, double> grad_vsigma_tp(rgrid);
+        //Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_tp(rgrid);
         //for (int x = 0; x < 3; x++) {
         //    grad_vsigma_tp[x] = transform(*sht_, grad_vsigma_lm[x]);
         //}
@@ -158,8 +158,8 @@ inline void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
 
     bool is_gga = is_gradient_correction();
 
-    Spheric_function_vector3d<function_domain_t::spatial, double> grad_rho_up_tp(sht_->num_points(), rgrid);
-    Spheric_function_vector3d<function_domain_t::spatial, double> grad_rho_dn_tp(sht_->num_points(), rgrid);
+    Spheric_vector_function<function_domain_t::spatial, double> grad_rho_up_tp(sht_->num_points(), rgrid);
+    Spheric_vector_function<function_domain_t::spatial, double> grad_rho_dn_tp(sht_->num_points(), rgrid);
 
     Spheric_function<function_domain_t::spatial, double> lapl_rho_up_tp(sht_->num_points(), rgrid);
     Spheric_function<function_domain_t::spatial, double> lapl_rho_dn_tp(sht_->num_points(), rgrid);
@@ -290,9 +290,9 @@ inline void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
         auto grad_vsigma_dd_lm = gradient(vsigma_dd_lm);
 
         /* backward transform gradient from Rlm to (theta, phi) */
-        Spheric_function_vector3d<function_domain_t::spatial, double> grad_vsigma_uu_tp(sht_->num_points(), rgrid);
-        Spheric_function_vector3d<function_domain_t::spatial, double> grad_vsigma_ud_tp(sht_->num_points(), rgrid);
-        Spheric_function_vector3d<function_domain_t::spatial, double> grad_vsigma_dd_tp(sht_->num_points(), rgrid);
+        Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_uu_tp(sht_->num_points(), rgrid);
+        Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_ud_tp(sht_->num_points(), rgrid);
+        Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_dd_tp(sht_->num_points(), rgrid);
         for (int x = 0; x < 3; x++) {
             grad_vsigma_uu_tp[x] = transform(*sht_, grad_vsigma_uu_lm[x]);
             grad_vsigma_ud_tp[x] = transform(*sht_, grad_vsigma_ud_lm[x]);
