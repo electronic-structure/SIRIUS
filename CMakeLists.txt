@@ -155,7 +155,7 @@ if(USE_ROCM)
 endif()
 
 # add required libraries
-set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${GSL_LIBRARY};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
+set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
 
 
 # include library headers
@@ -255,6 +255,8 @@ MACRO(SIRIUS_SETUP_TARGET _target)
   if(OpenMP_CXX_FOUND)
     target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
   endif()
+
+  target_link_libraries(${_target} PRIVATE GSL::gsl)
 
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_link_libraries(${_target} PRIVATE "-lgfortran")
