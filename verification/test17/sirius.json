@@ -11,7 +11,7 @@
     },
 
     "parameters" : {
-        "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
+        "xc_functionals" : ["XC_GGA_X_PBE", "XC_LDA_C_PZ"],
     
         "electronic_structure_method" : "full_potential_lapwlo",
     
@@ -23,24 +23,26 @@
 
         "num_dft_iter" : 100,
 
-        "ngridk" : [2,2,2],
+        "ngridk" : [4,4,4],
     
         "use_symmetry" : true,
 
-        "pw_cutoff" : 12,
+        "pw_cutoff" : 20,
 
-        "aw_cutoff" : 5,
+        "aw_cutoff" : 7,
     
         "lmax_apw" : 8,
         "lmax_pot" : 8,
         "lmax_rho" : 8,
 
-        "potential_tol" : 1e-7,
-        "energy_tol" : 1e-6
+        "potential_tol" : 1e-8,
+        "energy_tol" : 1e-8,
+
+        "smearing_width" : 0.05
     },
     
     "mixer" : {
-        "beta" : 0.85,
+        "beta" : 0.80,
         "type" : "broyden1",
         "max_history" : 8
     },
