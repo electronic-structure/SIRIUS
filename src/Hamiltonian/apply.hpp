@@ -87,12 +87,14 @@ void Hamiltonian::apply_h_s(K_point* kp__,
     }
 
     /* set intial sphi */
-    if (ispn__ == 2) {
-        for (int ispn = 0; (ispn < nsc) && (sphi__ != nullptr); ispn++) {
-            sphi__->copy_from(phi__, n__, ispn, N__, ispn, N__);
+    if (sphi__ != nullptr) {
+        if (ispn__ == 2) {
+            for (int ispn = 0; (ispn < nsc); ispn++) {
+                sphi__->copy_from(phi__, n__, ispn, N__, ispn, N__);
+            }
+        } else {
+            sphi__->copy_from(phi__, n__, ispn__, N__, ispn__, N__);
         }
-    } else {
-        sphi__->copy_from(phi__, n__, ispn__, N__, ispn__, N__);
     }
 
     /* return if there are no beta-projectors */
@@ -1052,14 +1054,14 @@ void Hamiltonian::apply_so_correction(K_point* kp__, Wave_functions& fv_states__
                             /* apply L_{-} operator; u-d part */
                             if (m + l) {
                                 hpsi__[2].mt_coeffs(0).prime(offset + idx1, ist) +=
-                                    fv_states__.mt_coeffs(0).prime(offset + idx3, ist) * 
+                                    fv_states__.mt_coeffs(0).prime(offset + idx3, ist) *
                                         sori * std::sqrt(double(l * (l + 1) - m * (m - 1)));
                             }
                             /* for the d-u part */
                             ///* apply L_{+} operator */
                             //if (m - l) {
                             //    hpsi[3].mt_coeffs(0).prime().at(memory_t::host, offset + idx1, ist) +=
-                            //        fv_states__.mt_coeffs(0).prime().at(memory_t::host, offset + idx4, ist) * 
+                            //        fv_states__.mt_coeffs(0).prime().at(memory_t::host, offset + idx4, ist) *
                             //            sori * std::sqrt(double(l * (l + 1) - m * (m + 1)));
                             //}
                         }
