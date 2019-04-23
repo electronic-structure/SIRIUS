@@ -48,12 +48,6 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
 
         /* compute density gradient product */
         grad_rho_grad_rho_tp = grad_rho_tp * grad_rho_tp;
-
-        ///* compute Laplacian in Rlm spherical harmonics */
-        //auto lapl_rho_lm = laplacian(rho_lm);
-
-        ///* backward transform Laplacian from Rlm to (theta, phi) */
-        //lapl_rho_tp = transform(*sht_, lapl_rho_lm);
     }
 
     exc_tp.zero();
@@ -119,6 +113,12 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
         }
         auto div_vsigma_grad_rho_lm = divergence(vsigma_grad_rho_lm);
         auto div_vsigma_grad_rho_tp = transform(*sht_, div_vsigma_grad_rho_lm);
+
+        ///* compute Laplacian in Rlm spherical harmonics */
+        //auto lapl_rho_lm = laplacian(rho_lm);
+
+        ///* backward transform Laplacian from Rlm to (theta, phi) */
+        //lapl_rho_tp = transform(*sht_, lapl_rho_lm);
 
         ///* forward transform vsigma to Rlm */
         //auto vsigma_lm = transform(*sht_, vsigma_tp);
