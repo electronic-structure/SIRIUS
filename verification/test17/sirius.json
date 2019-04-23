@@ -11,7 +11,7 @@
     },
 
     "parameters" : {
-        "xc_functionals" : ["XC_GGA_X_PBE", "XC_LDA_C_PZ"],
+        "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
     
         "electronic_structure_method" : "full_potential_lapwlo",
     
@@ -19,11 +19,9 @@
 
         "auto_rmt" : 1,
 
-        "num_mag_dims" : 0,
-
         "num_dft_iter" : 100,
 
-        "ngridk" : [4,4,4],
+        "ngridk" : [2,2,2],
     
         "use_symmetry" : true,
 
@@ -35,23 +33,23 @@
         "lmax_pot" : 8,
         "lmax_rho" : 8,
 
-        "potential_tol" : 1e-8,
+        "potential_tol" : 1e-7,
         "energy_tol" : 1e-8,
 
-        "smearing_width" : 0.05
+        "smearing_width" : 0.1
     },
     
     "mixer" : {
-        "beta" : 0.80,
+        "beta" : 0.25,
         "type" : "broyden1",
         "max_history" : 8
     },
     
     "unit_cell" : {
 
-        "lattice_vectors" : [ [1.0, 0.5, 0.5], 
-                              [0.5, 1.0, 0.5], 
-                              [0.5, 0.5, 1.0]
+        "lattice_vectors" : [ [0.0, 0.5, 0.5], 
+                              [0.5, 0.0, 0.5], 
+                              [0.5, 0.5, 0.0]
                             ],
 
         "lattice_vectors_scale" : 7.89357814,
@@ -60,12 +58,10 @@
 
         "atom_files" : {"Ni" : "Ni.json", "O" : "O.json"},
 
-        "atoms" : { "Ni" : [ [0,    0,    0,    0,  0,  2], 
-                             [0.5, 0.5, 0.5,    0,  0, -2] 
+        "atoms" : { "Ni" : [ [0,    0,    0]
                            ],
 
-                    "O" :  [ [0.25, 0.25, 0.25],
-                             [0.75, 0.75, 0.75]
+                    "O" :  [ [0.5, 0.5, 0.5]
                            ]
                   }
     },
