@@ -1,3 +1,5 @@
+from mpi4py import MPI
+
 class Singleton(type):
     _instances = {}
 
@@ -12,7 +14,6 @@ class Logger:
     __metaclass__ = Singleton
 
     def __init__(self, fout=None, comm=None, all_print=False):
-        from mpi4py import MPI
         self.fout = fout
         self._all_print = all_print
         if self.fout is not None:
@@ -31,6 +32,7 @@ class Logger:
             if self.fout is not None:
                 with open(self.fout, 'a') as fh:
                     print(arg1, *args, file=fh)
+                    print(arg1, *args, file=sys.stdout)
             else:
                 print(arg1, *args)
         elif self._all_print:

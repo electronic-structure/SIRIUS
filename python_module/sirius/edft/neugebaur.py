@@ -10,7 +10,7 @@ from .ortho import gram_schmidt, loewdin
 from mpi4py import MPI
 from copy import deepcopy
 
-logger = Logger(fout='neugebaur_cg_tmp.log')
+logger = Logger()
 
 
 kb = (physical_constants['Boltzmann constant in eV/K'][0] /
