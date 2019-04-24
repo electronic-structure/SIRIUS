@@ -26,7 +26,7 @@
 #define __UNIT_CELL_SYMMETRY_HPP__
 
 extern "C" {
-#include <spglib/spglib.h>
+#include <spglib.h>
 }
 
 #include "geometry3d.hpp"
