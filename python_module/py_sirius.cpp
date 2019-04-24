@@ -228,8 +228,16 @@ PYBIND11_MODULE(py_sirius, m)
         .def("atom", py::overload_cast<int>(&Unit_cell::atom), py::return_value_policy::reference)
         .def("atom_type", py::overload_cast<int>(&Unit_cell::atom_type), py::return_value_policy::reference)
         .def("lattice_vectors", &Unit_cell::lattice_vectors)
-        .def("set_lattice_vectors",
-             [](Unit_cell& obj, py::buffer l1, py::buffer l2, py::buffer l3) { set_lattice_vectors(obj, l1, l2, l3); })
+        .def(
+            "set_lattice_vectors",
+            [](Unit_cell& obj, py::buffer l1, py::buffer l2, py::buffer l3) { set_lattice_vectors(obj, l1, l2, l3); },
+            "l1"_a, "l2"_a, "l3"_a)
+        .def(
+            "set_lattice_vectors",
+            [](Unit_cell& obj, std::vector<double> l1, std::vector<double> l2, std::vector<double> l3) {
+                obj.set_lattice_vectors(vector3d<double>(l1), vector3d<double>(l2), vector3d<double>(l3));
+            },
+            "l1"_a, "l2"_a, "l3"_a)
         .def("get_symmetry", &Unit_cell::get_symmetry)
         .def("num_electrons", &Unit_cell::num_electrons)
         .def("num_valence_electrons", &Unit_cell::num_valence_electrons)
