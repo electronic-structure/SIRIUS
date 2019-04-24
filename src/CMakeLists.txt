@@ -13,7 +13,7 @@ if(USE_CUDA)
 endif()
 if(CREATE_FORTRAN_BINDINGS)
   add_library(sirius_f "sirius_api.cpp;sirius.f90")
-  add_dependencies(sirius_f generate_version_hpp runtime_options_json_hpp)
+  SIRIUS_SETUP_TARGET(sirius_f)
   INSTALL (TARGETS sirius_f ARCHIVE DESTINATION
     ${CMAKE_INSTALL_PREFIX}/lib/)
   set_target_properties(sirius_f PROPERTIES POSITION_INDEPENDENT_CODE ON)
