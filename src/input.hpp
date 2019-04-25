@@ -458,13 +458,13 @@ struct Parameters_input
     double smearing_width_{0.01}; // in Ha
 
     /// Cutoff for plane-waves (for density and potential expansion).
-    double pw_cutoff_{20.0}; // in a.u.^-1
+    double pw_cutoff_{0.0}; // in a.u.^-1
 
     /// Cutoff for augmented-wave functions.
-    double aw_cutoff_{7.0}; // this is R_{MT} * |G+k|_{max}
+    double aw_cutoff_{0.0}; // this is R_{MT} * |G+k|_{max}
 
     /// Cutoff for |G+k| plane-waves.
-    double gk_cutoff_{6.0}; // in a.u.^-1
+    double gk_cutoff_{0.0}; // in a.u.^-1
 
     /// Maximum l for APW functions.
     int lmax_apw_{8};

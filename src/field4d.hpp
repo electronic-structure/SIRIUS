@@ -26,7 +26,12 @@
 #define __FIELD4D_HPP__
 
 namespace sirius {
+
 // TODO: add symmetrize_scalar, symmetrize_vector
+
+/// Four-component function consisting of scalar and vector parts.
+/** This class is used to represents density/magnetisation and potential/magentic filed of the system.
+ */
 class Field4D
 {
   private:
@@ -131,25 +136,31 @@ class Field4D
     {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
             components_[i] = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, lmmax__));
+            /* allocate global MT array */
+            components_[i]->allocate_mt(true);
         }
     }
 
+    /// Return scalar part of the field.
     Periodic_function<double>& scalar()
     {
         return *(components_[0]);
     }
 
+    /// Return scalar part of the field.
     Periodic_function<double> const& scalar() const
     {
         return *(components_[0]);
     }
 
+    /// Return component of the vector part of the field.
     Periodic_function<double>& vector(int i)
     {
         assert(i >= 0 && i <= 2);
         return *(components_[i + 1]);
     }
 
+    /// Return component of the vector part of the field.
     Periodic_function<double> const& vector(int i) const
     {
         assert(i >= 0 && i <= 2);
@@ -175,12 +186,12 @@ class Field4D
         }
     }
 
-    void allocate()
-    {
-        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            components_[i]->allocate_mt(true);
-        }
-    }
+    //void allocate()
+    //{
+    //    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+    //        components_[i]->allocate_mt(true);
+    //    }
+    //}
 
     inline void fft_transform(int direction__)
     {
