@@ -5,7 +5,9 @@
 	"gen_evp_solver_type" : "lapack",
 	"verbosity" : 1,
 	"!print_checksum" : true,
-	"!verification" : 1
+	"!verification" : 1,
+	"print_forces" : false,
+        "print_stress" : false
     },
     "iterative_solver" : {
         "tolerance" : 1e-12,

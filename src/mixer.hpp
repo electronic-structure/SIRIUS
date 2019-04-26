@@ -28,9 +28,9 @@
 
 namespace sirius {
 
-/// Abstract mixer
+/// Abstract mixer.
 template <typename T>
-class Mixer // TODO: review mixer implementation, it's too obscure
+class Mixer
 {
   protected:
     /// Size of the vector which is global to (in other words, shared between) all MPI ranks.
@@ -39,14 +39,8 @@ class Mixer // TODO: review mixer implementation, it's too obscure
     /// Size of the vector which is local to MPI rank.
     int local_vector_size_;
 
-    /// Split shared vector size beteen all MPI ranks.
-    splindex<block, int> spl_shared_size_;
-
-    /// Local size of shared vector.
-    int spl_shared_local_size_{0};
-
     /// Local number of vector elements.
-    /** The local number of elements is a sum of local vector size and local size of shared vector. */
+    /** The local number of elements is a sum of local vector size and shared vector size. */
     int local_size_;
 
     /// Total number of vector elements.
@@ -72,8 +66,10 @@ class Mixer // TODO: review mixer implementation, it's too obscure
     /// History of previous vectors.
     mdarray<T, 2> vectors_;
 
-    /// Output buffer for the shared (global) part of the vector.
-    mdarray<T, 1> output_buffer_;
+    /// Residuals of the input andvectors
+    mdarray<T, 2> residuals_;
+
+    mdarray<double, 1> local_weight_;
 
     /// Base communicator.
     Communicator const& comm_;
@@ -93,17 +89,35 @@ class Mixer // TODO: review mixer implementation, it's too obscure
     /// Compute RMS deviation between current vector and input vector.
     double rms_deviation() const
     {
-        double rms{0};
         int ipos = idx_hist(count_);
+
+        double rms{0};
 
         #pragma omp parallel for schedule(static) reduction(+:rms)
         for (int i = 0; i < local_size_; i++) {
-            rms += std::pow(std::abs(vectors_(i, ipos) - input_buffer_(i)), 2);
+            rms += local_weight_[i] * std::pow(std::abs(vectors_(i, ipos) - input_buffer_(i)), 2);
         }
 
         comm_.allreduce(&rms, 1);
         rms = std::sqrt(rms / double(total_size_));
         return rms;
+    }
+
+    /// Compute residual and residual square sum.
+    void compute_rss()
+    {
+        /* current position in history */
+        int ipos = this->idx_hist(this->count_);
+
+        double rss{0};
+
+        #pragma omp parallel for schedule(static) reduction(+:rss)
+        for (int i = 0; i < local_size_; i++) {
+            residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
+            rss += local_weight_[i] * std::pow(std::abs(residuals_(i, ipos)), 2) * this->weights_(i);
+        }
+        this->comm_.allreduce(&rss, 1);
+        this->rss_ = rss;
     }
 
     /// Mix input buffer and previous vector and store result in the current vector.
@@ -116,11 +130,6 @@ class Mixer // TODO: review mixer implementation, it's too obscure
         for (int i = 0; i < local_size_; i++) {
             vectors_(i, ipos) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, ipos1);
         }
-
-        T* ptr = (this->output_buffer_.size() == 0) ? nullptr : this->output_buffer_.template at(memory_t::host);
-
-        /* collect shared data */
-        comm_.allgather(&vectors_(0, ipos), ptr, spl_shared_size_.global_offset(), spl_shared_size_.local_size());
     }
 
   public:
@@ -137,22 +146,27 @@ class Mixer // TODO: review mixer implementation, it's too obscure
 
         size_t n = local_vector_size__;
         comm_.allreduce(&n, 1);
+        /* get the total size */
         total_size_ = n + shared_vector_size_;
-
-        spl_shared_size_ = splindex<block>(shared_vector_size_, comm_.size(), comm_.rank());
-        if (shared_vector_size_) {
-            spl_shared_local_size_ = spl_shared_size_.local_size();
-        }
-        local_size_ = spl_shared_local_size_ + local_vector_size_;
+        /* get the local size */
+        local_size_ = local_vector_size_ + shared_vector_size_;
         /* allocate input buffer */
         input_buffer_ = mdarray<T, 1>(local_size_, memory_t::host, "Mixer::input_buffer_");
-        /* allocate output bffer */
-        output_buffer_ = mdarray<T, 1>(shared_vector_size_, memory_t::host, "Mixer::output_buffer_");
         /* allocate storage for previous vectors */
         vectors_ = mdarray<T, 2>(local_size_, max_history_, memory_t::host, "Mixer::vectors_");
         /* allocate weights */
         weights_ = mdarray<double, 1>(local_size_, memory_t::host, "Mixer::weights_");
         weights_.zero();
+
+        residuals_ = mdarray<T, 2>(local_size_, max_history__);
+
+        local_weight_ = mdarray<double, 1>(local_size_);
+        for (int i = 0; i < shared_vector_size_; i++) {
+            local_weight_[i] = 1.0 / comm_.size();
+        }
+        for (int i = 0; i < local_vector_size_; i++) {
+            local_weight_[shared_vector_size_ + i] = 1.0;
+        }
     }
 
     virtual ~Mixer()
@@ -161,32 +175,32 @@ class Mixer // TODO: review mixer implementation, it's too obscure
 
     void input_shared(int idx__, T value__, double w__ = 1.0)
     {
+        /* shared vector is first in the input buffer */
+
         assert(idx__ >= 0 && idx__ < shared_vector_size_);
 
-        auto offs_and_rank = spl_shared_size_.location(idx__);
-        if (offs_and_rank.rank == comm_.rank()) {
-            input_buffer_(offs_and_rank.local_index) = value__;
-            weights_(offs_and_rank.local_index)      = w__;
-        }
+        input_buffer_(idx__) = value__;
+        weights_(idx__)      = w__;
     }
 
     void input_local(int idx__, T value__, double w__ = 1.0)
     {
         assert(idx__ >= 0 && idx__ < local_vector_size_);
 
-        input_buffer_(spl_shared_local_size_ + idx__) = value__;
-        weights_(spl_shared_local_size_ + idx__)      = w__;
+        input_buffer_(shared_vector_size_ + idx__) = value__;
+        weights_(shared_vector_size_ + idx__)      = w__;
     }
 
     inline T output_shared(int idx) const
     {
-        return output_buffer_(idx);
+        int ipos = idx_hist(count_);
+        return vectors_(idx, ipos);
     }
 
     inline T output_local(int idx) const
     {
         int ipos = idx_hist(count_);
-        return vectors_(spl_shared_local_size_ + idx, ipos);
+        return vectors_(shared_vector_size_ + idx, ipos);
     }
 
     /// Initialize the mixer.
@@ -245,8 +259,6 @@ class Broyden1 : public Mixer<T>
     double beta0_;
     double beta_scaling_factor_;
 
-    mdarray<T, 2> residuals_;
-
   public:
     Broyden1(int shared_vector_size__, int local_vector_size__, int max_history__, double beta__, double beta0__,
              double beta_scaling_factor__, Communicator const& comm__)
@@ -254,7 +266,6 @@ class Broyden1 : public Mixer<T>
         , beta0_(beta0__)
         , beta_scaling_factor_(beta_scaling_factor__)
     {
-        residuals_ = mdarray<T, 2>(this->local_size_, max_history__);
     }
 
     double mix(double rss_min__)
@@ -265,28 +276,12 @@ class Broyden1 : public Mixer<T>
         int ipos = this->idx_hist(this->count_);
 
         /* compute residual square sum */
-        double rss{0};
-        #pragma omp parallel for schedule(static) reduction(+:rss)
-        for (int i = 0; i < this->local_size_; i++) {
-            residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
-            rss += std::pow(std::abs(residuals_(i, ipos)), 2) * this->weights_(i);
-        }
-        this->comm_.allreduce(&rss, 1);
-        this->rss_ = rss;
+        this->compute_rss();
 
         /* exit if the vector has converged */
         if (this->rss_ < rss_min__) {
             /* Warning: if the vector has converged to this degree, it will not be mixed;
              * the output buffer will contain the vector of the previous step */
-
-            // int i1 = this->idx_hist(this->count_);
-            ///* copy input to output */
-            // for (int i = 0; i < this->local_size_; i++) {
-            //    this->vectors_(i, i1) = this->input_buffer_(i);
-            //}
-
-            // this->comm_.allgather(&this->vectors_(0, i1), this->output_buffer_.template at(memory_t::host),
-            //                      this->spl_shared_size_.global_offset(), this->spl_shared_size_.local_size());
             return 0.0;
         }
 
@@ -303,10 +298,6 @@ class Broyden1 : public Mixer<T>
                 prev_rms.push_back(v);
             }
             rms_avg /= this->max_history_;
-
-            if (this->comm_.rank() == 0) {
-                std::cout << "[mixer] prev_rms: " << prev_rms << ", rmv_avg: " << rms_avg << ", rms: " << rms << "\n";
-            }
 
             if (rms > rms_avg) {
                 this->beta_ = std::max(beta0_, this->beta_ * beta_scaling_factor_);
@@ -335,10 +326,10 @@ class Broyden1 : public Mixer<T>
                     double t{0};
                     #pragma omp parallel for schedule(static) reduction(+:t)
                     for (int i = 0; i < this->local_size_; i++) {
-                        T dr1 = residuals_(i, i1) - residuals_(i, i2);
-                        T dr2 = residuals_(i, i3) - residuals_(i, i4);
+                        T dr1 = this->residuals_(i, i1) - this->residuals_(i, i2);
+                        T dr2 = this->residuals_(i, i3) - this->residuals_(i, i4);
 
-                        t += std::real(std::conj(dr1) * dr2) * this->weights_(i);
+                        t += std::real(std::conj(dr1) * dr2) * this->weights_(i) * this->local_weight_[i];
                     }
                     S(j2, j1) = S(j1, j2) = t;
                 }
@@ -376,8 +367,9 @@ class Broyden1 : public Mixer<T>
                 double t{0};
                 #pragma omp parallel for schedule(static) reduction(+:t)
                 for (int i = 0; i < this->local_size_; i++) {
-                    T dr = residuals_(i, i1) - residuals_(i, i2);
-                    t += std::real(std::conj(dr) * residuals_(i, ipos)) * this->weights_(i);
+                    T dr = this->residuals_(i, i1) - this->residuals_(i, i2);
+                    t += std::real(std::conj(dr) * this->residuals_(i, ipos)) * this->weights_(i) *
+                         this->local_weight_[i];
                 }
                 c(j) = t;
             }
@@ -394,7 +386,7 @@ class Broyden1 : public Mixer<T>
 
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < this->local_size_; i++) {
-                    T dr = residuals_(i, i1) - residuals_(i, i2);
+                    T dr = this->residuals_(i, i1) - this->residuals_(i, i2);
                     T dv = this->vectors_(i, i1) - this->vectors_(i, i2);
 
                     this->input_buffer_(i) -= gamma * (dr * this->beta_ + dv);
@@ -407,13 +399,8 @@ class Broyden1 : public Mixer<T>
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < this->local_size_; i++) {
             this->vectors_(i, i1) =
-                this->vectors_(i, ipos) + this->beta_ * residuals_(i, ipos) + this->input_buffer_(i);
+                this->vectors_(i, ipos) + this->beta_ * this->residuals_(i, ipos) + this->input_buffer_(i);
         }
-
-        T* ptr = (this->output_buffer_.size() == 0) ? nullptr : this->output_buffer_.template at(memory_t::host);
-
-        this->comm_.allgather(&this->vectors_(0, i1), ptr, this->spl_shared_size_.global_offset(),
-                              this->spl_shared_size_.local_size());
 
         /* increment the history step */
         this->count_++;
@@ -435,8 +422,6 @@ class Broyden2 : public Mixer<T>
     double beta_scaling_factor_;
     double linear_mix_rms_tol_;
 
-    mdarray<T, 2> residuals_;
-
   public:
     Broyden2(int shared_vector_size__, int local_vector_size__, int max_history__, double beta__, double beta0__,
              double linear_mix_rms_tol__, double beta_scaling_factor__, Communicator const& comm__)
@@ -445,26 +430,14 @@ class Broyden2 : public Mixer<T>
         , beta_scaling_factor_(beta_scaling_factor__)
         , linear_mix_rms_tol_(linear_mix_rms_tol__)
     {
-        residuals_ = mdarray<T, 2>(this->local_size_, max_history__);
     }
 
     double mix(double rss_min__)
     {
         PROFILE("sirius::Broyden2::mix");
 
-        /* current position in history */
-        int ipos = this->idx_hist(this->count_);
-
         /* compute residual square sum */
-        double rss{0};
-        #pragma omp parallel for schedule(static) reduction(+:rss)
-        for (int i = 0; i < this->local_size_; i++) {
-            /* curent residual f_k = x_k - g(x_k) */
-            residuals_(i, ipos) = this->vectors_(i, ipos) - this->input_buffer_(i);
-            rss += std::pow(std::abs(residuals_(i, ipos)), 2) * this->weights_(i);
-        }
-        this->comm_.allreduce(&rss, 1);
-        this->rss_ = rss;
+        this->compute_rss();
 
         /* exit if the vector has converged */
         if (this->rss_ < rss_min__) {
@@ -484,10 +457,6 @@ class Broyden2 : public Mixer<T>
                 prev_rms.push_back(v);
             }
             rms_avg /= this->max_history_;
-
-            if (this->comm_.rank() == 0) {
-                std::cout << "[mixer] prev_rms: " << prev_rms << ", rmv_avg: " << rms_avg << ", rms: " << rms << "\n";
-            }
 
             if (rms > rms_avg) {
                 this->beta_ = std::max(beta0_, this->beta_ * beta_scaling_factor_);
@@ -516,7 +485,8 @@ class Broyden2 : public Mixer<T>
                     long double t{0};
                     #pragma omp parallel for schedule(static) reduction(+:t)
                     for (int i = 0; i < this->local_size_; i++) {
-                        t += std::real(std::conj(residuals_(i, i1)) * residuals_(i, i2));
+                        t += std::real(std::conj(this->residuals_(i, i1)) * this->residuals_(i, i2)) *
+                             this->local_weight_[i];
                     }
                     S(j2, j1) = S(j1, j2) = t;
                 }
@@ -577,7 +547,7 @@ class Broyden2 : public Mixer<T>
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < this->local_size_; i++) {
                     this->input_buffer_(i) +=
-                        ((double)v2[j] * residuals_(i, i1) + (double)v2[j + N] * this->vectors_(i, i1));
+                        ((double)v2[j] * this->residuals_(i, i1) + (double)v2[j + N] * this->vectors_(i, i1));
                 }
             }
             /* mix last vector with the update vector \tilda x */

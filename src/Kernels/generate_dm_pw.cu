@@ -23,8 +23,8 @@
  */
 
 #include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/acc.hpp"
-#include "../SDDK/GPU/cublas.hpp"
+#include "../SDDK/GPU/acc_runtime.hpp"
+#include "../SDDK/GPU/gpublas_interface.hpp"
 
 __global__ void generate_phase_factors_conj_gpu_kernel
 (
@@ -34,7 +34,7 @@ __global__ void generate_phase_factors_conj_gpu_kernel
     int const* gvx__, 
     int const* gvy__, 
     int const* gvz__, 
-    cuDoubleComplex* phase_factors__
+    acc_complex_double_t* phase_factors__
 )
 {
     int ia = blockIdx.y;
@@ -50,7 +50,7 @@ __global__ void generate_phase_factors_conj_gpu_kernel
         int gvz = gvz__[igloc];
 
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
-        phase_factors__[array2D_offset(igloc, ia, num_gvec_loc__)] = make_cuDoubleComplex(cos(p), -sin(p));
+        phase_factors__[array2D_offset(igloc, ia, num_gvec_loc__)] = make_accDoubleComplex(cos(p), -sin(p));
     }
 }
 
@@ -68,26 +68,25 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
 {
     //CUDA_timer t("generate_dm_pw_gpu");
 
-    cudaStream_t stream = acc::stream(stream_id(stream_id__));
+    acc_stream_t stream = (acc_stream_t)acc::stream(stream_id(stream_id__));
 
     dim3 grid_t(32);
     dim3 grid_b(num_blocks(num_gvec_loc__, grid_t.x), num_atoms__);
 
-    generate_phase_factors_conj_gpu_kernel<<<grid_b, grid_t, 0, stream>>>
-    (
+    accLaunchKernel((generate_phase_factors_conj_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, stream, 
         num_gvec_loc__, 
         num_atoms__, 
         atom_pos__, 
         gvx__, 
         gvy__, 
         gvz__, 
-        (cuDoubleComplex*)phase_factors__
+        (acc_complex_double_t*)phase_factors__
     );
 
     double alpha = 1;
     double beta = 0;
 
-    cublas::dgemm('N', 'T', nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
+    gpublas::dgemm('N', 'T', nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
                   &alpha,
                   dm__, nbf__ * (nbf__ + 1) / 2,
                   phase_factors__, num_gvec_loc__ * 2,

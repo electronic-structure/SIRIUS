@@ -110,8 +110,8 @@ class Potential : public Field4D
 
         int ia_paw{-1};
 
-        std::vector<Spheric_function<spectral, double>> ae_potential_;
-        std::vector<Spheric_function<spectral, double>> ps_potential_;
+        std::vector<Spheric_function<function_domain_t::spectral, double>> ae_potential_;
+        std::vector<Spheric_function<function_domain_t::spectral, double>> ps_potential_;
 
         double hartree_energy_{0.0};
         double xc_energy_{0.0};
@@ -139,27 +139,27 @@ class Potential : public Field4D
 
     void init_PAW();
 
-    double xc_mt_PAW_nonmagnetic(Spheric_function<spectral, double>&       full_potential,
-                                 Spheric_function<spectral, double> const& full_density,
+    double xc_mt_PAW_nonmagnetic(Spheric_function<function_domain_t::spectral, double>&       full_potential,
+                                 Spheric_function<function_domain_t::spectral, double> const& full_density,
                                  std::vector<double> const&                rho_core);
 
-    double xc_mt_PAW_collinear(std::vector<Spheric_function<spectral, double>>&       potential,
-                               std::vector<Spheric_function<spectral, double>> const& density,
+    double xc_mt_PAW_collinear(std::vector<Spheric_function<function_domain_t::spectral, double>>&       potential,
+                               std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
                                std::vector<double> const&                             rho_core);
 
-    double xc_mt_PAW_noncollinear(std::vector<Spheric_function<spectral, double>>&       potential,
-                                  std::vector<Spheric_function<spectral, double>> const& density,
+    double xc_mt_PAW_noncollinear(std::vector<Spheric_function<function_domain_t::spectral, double>>&       potential,
+                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
                                   std::vector<double> const&                             rho_core);
 
     void calc_PAW_local_potential(paw_potential_data_t&                                  pdd,
-                                  std::vector<Spheric_function<spectral, double>> const& ae_density,
-                                  std::vector<Spheric_function<spectral, double>> const& ps_density);
+                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& ae_density,
+                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& ps_density);
 
     void calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>& paw_dij);
 
     double calc_PAW_hartree_potential(Atom&                                     atom,
-                                      Spheric_function<spectral, double> const& full_density,
-                                      Spheric_function<spectral, double>&       full_potential);
+                                      Spheric_function<function_domain_t::spectral, double> const& full_density,
+                                      Spheric_function<function_domain_t::spectral, double>&       full_potential);
 
     double calc_PAW_one_elec_energy(paw_potential_data_t&             pdd,
                                     const mdarray<double_complex, 4>& density_matrix,
@@ -276,21 +276,21 @@ class Potential : public Field4D
     /// Generate non-spin polarized XC potential in the muffin-tins.
     inline void xc_mt_nonmagnetic(Radial_grid<double> const&                rgrid,
                                   std::vector<XC_functional>&               xc_func,
-                                  Spheric_function<spectral, double> const& rho_lm,
-                                  Spheric_function<spatial, double>&        rho_tp,
-                                  Spheric_function<spatial, double>&        vxc_tp,
-                                  Spheric_function<spatial, double>&        exc_tp);
+                                  Spheric_function<function_domain_t::spectral, double> const& rho_lm,
+                                  Spheric_function<function_domain_t::spatial, double>&        rho_tp,
+                                  Spheric_function<function_domain_t::spatial, double>&        vxc_tp,
+                                  Spheric_function<function_domain_t::spatial, double>&        exc_tp);
 
     /// Generate spin-polarized XC potential in the muffin-tins.
     inline void xc_mt_magnetic(Radial_grid<double> const&          rgrid,
                                std::vector<XC_functional>&         xc_func,
-                               Spheric_function<spectral, double>& rho_up_lm,
-                               Spheric_function<spatial, double>&  rho_up_tp,
-                               Spheric_function<spectral, double>& rho_dn_lm,
-                               Spheric_function<spatial, double>&  rho_dn_tp,
-                               Spheric_function<spatial, double>&  vxc_up_tp,
-                               Spheric_function<spatial, double>&  vxc_dn_tp,
-                               Spheric_function<spatial, double>&  exc_tp);
+                               Spheric_function<function_domain_t::spectral, double>& rho_up_lm,
+                               Spheric_function<function_domain_t::spatial, double>&  rho_up_tp,
+                               Spheric_function<function_domain_t::spectral, double>& rho_dn_lm,
+                               Spheric_function<function_domain_t::spatial, double>&  rho_dn_tp,
+                               Spheric_function<function_domain_t::spatial, double>&  vxc_up_tp,
+                               Spheric_function<function_domain_t::spatial, double>&  vxc_dn_tp,
+                               Spheric_function<function_domain_t::spatial, double>&  exc_tp);
 
     /// Generate XC potential in the muffin-tins.
     inline void xc_mt(Density const& density__);
@@ -714,12 +714,22 @@ class Potential : public Field4D
     /** In case of spin-unpolarized GGA the XC potential has the following expression:
      *  \f[
      *      V_{XC}({\bf r}) = \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \nabla \rho) -
-     *        \nabla \frac{\partial}{\partial (\nabla \rho)} \varepsilon_{xc}(\rho, \nabla \rho)
+     *        \nabla \frac{\partial}{\partial (\nabla \rho)} \varepsilon_{xc}(\rho, \nabla \rho) = 
+     *     \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \nabla \rho) -
+     *     \sum_{\alpha} \frac{\partial}{\partial r_{\alpha}}
+     *     \frac{\partial \varepsilon_{xc}(\rho, \nabla \rho) }{\partial g_{\alpha}}
      *  \f]
+     *  where \f$ {\bf g}({\bf r}) = \nabla \rho({\bf r}) \f$.
+     *
      *  LibXC packs the gradient information into the so-called \a sigma array:
      *  \f[
-     *      \sigma = \nabla \rho \nabla \rho
+     *      \sigma = \nabla \rho \nabla \rho = \sum_{\alpha} g_{\alpha}^2({\bf r})
      *  \f]
+     * The derivative of \f$ \sigma \f$ with respect to the gradient of density is simply
+     *  \f[
+     *      \frac{\partial \sigma}{\partial g_{\alpha}} = 2 g_{\alpha}
+     *  \f]
+     *  
      *  Changing variables in \f$ V_{XC} \f$ expression gives:
      *  \f{eqnarray*}{
      *      V_{XC}({\bf r}) &=& \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) -
@@ -729,6 +739,14 @@ class Potential : public Field4D
      *        2 \nabla \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \nabla \rho -
      *        2 \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \nabla^2 \rho
      *  \f}
+     *  Alternative expression can be derived for the XC potential if we leave the gradient:
+     *  \f[
+     *    V_{XC}({\bf r}) = \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) - 
+     *     \sum_{\alpha} \frac{\partial}{\partial r_{\alpha}} 
+     *     \Big( \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} 2 g_{\alpha}  \Big) = 
+     *    \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) - 2 \nabla \Big(
+     *     \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} {\bf g}({\bf r}) \Big)
+     *  \f]
      *  The following sequence of functions must be computed:
      *      - density on the real space grid
      *      - gradient of density (in spectral representation)
@@ -1035,7 +1053,7 @@ class Potential : public Field4D
         return *dveff_;
     }
 
-    Spheric_function<spectral, double> const& effective_potential_mt(int ialoc) const
+    Spheric_function<function_domain_t::spectral, double> const& effective_potential_mt(int ialoc) const
     {
         return this->scalar().f_mt(ialoc);
     }
@@ -1055,7 +1073,7 @@ class Potential : public Field4D
         return *hartree_potential_;
     }
 
-    Spheric_function<spectral, double> const& hartree_potential_mt(int ialoc) const
+    Spheric_function<function_domain_t::spectral, double> const& hartree_potential_mt(int ialoc) const
     {
         return hartree_potential_->f_mt(ialoc);
     }

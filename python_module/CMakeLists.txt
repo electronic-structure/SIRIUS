@@ -28,16 +28,28 @@ if(CREATE_PYTHON_MODULE)
 
   SIRIUS_SETUP_TARGET(${libname})
   # collect python files in module dir
-  file(GLOB_RECURSE _pyfiles "sirius/*.py")
   # install to cmake prefix
-  install(TARGETS ${libname}
-    LIBRARY
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
-  install(DIRECTORY sirius
-    DESTINATION
-    ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/
-    FILES_MATCHING REGEX
-    ".*py"
-    )
+
+  if(NOT PYTHON2)
+    install(TARGETS ${libname}
+      LIBRARY
+      DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
+    install(DIRECTORY sirius
+      DESTINATION
+      ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/
+      FILES_MATCHING REGEX
+      ".*py"
+      )
+  else()
+    # minimal support for Python 2.7, full functionality is provided for Python >3.5 only
+    install(TARGETS ${libname}
+      LIBRARY
+      DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
+    install(DIRECTORY sirius_minimal/
+      DESTINATION
+      ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius
+      FILES_MATCHING REGEX
+      ".*py")
+  endif()
 
 endif(CREATE_PYTHON_MODULE)

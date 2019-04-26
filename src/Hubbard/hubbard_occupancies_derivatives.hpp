@@ -112,7 +112,7 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
     linalg_t la{linalg_t::blas};
     if (ctx_.processing_unit() == device_t::GPU) {
         mem = memory_t::device;
-        la = linalg_t::cublas;
+        la = linalg_t::gpublas;
     }
 
     /* compute <phi^I_m| S | psi_{nk}> */
@@ -284,7 +284,7 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
     linalg_t la{linalg_t::blas};
     if (ctx_.processing_unit() == device_t::GPU) {
         mem = memory_t::device;
-        la = linalg_t::cublas;
+        la = linalg_t::gpublas;
     }
 
     /* compute <phi^I_m| S | psi_{nk}> */
@@ -476,7 +476,7 @@ void Hubbard::compute_occupancies(K_point&                    kp,
     linalg_t la{linalg_t::blas};
     if (ctx_.processing_unit() == device_t::GPU) {
         mem = memory_t::device;
-        la = linalg_t::cublas;
+        la = linalg_t::gpublas;
     }
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {

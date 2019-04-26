@@ -37,7 +37,7 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     linalg_t la{linalg_t::blas};
     memory_t mem{memory_t::host};
     if (pu == device_t::GPU) {
-        la = linalg_t::cublas;
+        la = linalg_t::gpublas;
         mem = memory_t::device;
     }
 

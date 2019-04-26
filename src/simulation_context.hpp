@@ -65,6 +65,16 @@ inline void print_memory_usage(const char* file__, int line__)
 
 #define MEMORY_USAGE_INFO() print_memory_usage(__FILE__, __LINE__);
 
+/// Utility function to generate LAPW unit step function.
+inline double unit_step_function_form_factors(double R__, double g__)
+{
+    if (g__ < 1e-12) {
+        return std::pow(R__, 3) / 3.0;
+    } else {
+        return (std::sin(g__ * R__) - g__ * R__ * std::cos(g__ * R__)) / std::pow(g__, 3);
+    }
+}
+
 /// Simulation context is a set of parameters and objects describing a single simulation.
 /** The order of initialization of the simulation context is the following: first, the default parameter
  *  values are set in the constructor, then (optionally) import() method is called and the parameters are
@@ -339,11 +349,7 @@ class Simulation_context : public Simulation_parameters
     {
         auto v = make_periodic_function<index_domain_t::global>([&](int iat, double g) {
             auto R = unit_cell().atom_type(iat).mt_radius();
-            if (g < 1e-12) {
-                return std::pow(R, 3) / 3.0;
-            } else {
-                return (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
-            }
+            return unit_step_function_form_factors(R, g);
         });
 
         theta_    = mdarray<double, 1>(fft().local_size());
@@ -1306,10 +1312,14 @@ inline void Simulation_context::initialize()
         }
         case device_t::GPU: {
             if (control_input_.memory_usage_ == "high") {
-                blas_linalg_t_ = linalg_t::cublas;
+                blas_linalg_t_ = linalg_t::gpublas;
             }
             if (control_input_.memory_usage_ == "low" || control_input_.memory_usage_ == "medium") {
+#ifdef __ROCM
+                blas_linalg_t_ = linalg_t::gpublas;
+#else
                 blas_linalg_t_ = linalg_t::cublasxt;
+#endif
             }
             break;
         }
@@ -1327,13 +1337,28 @@ inline void Simulation_context::initialize()
             iterative_solver_input_.type_ = "davidson";
         }
     }
+    /* set default values for the G-vector cutoff */
+    if (pw_cutoff() <= 0) {
+        pw_cutoff(full_potential() ? 12 : 20);
+    }
 
     /* initialize variables related to the unit cell */
     unit_cell_.initialize();
 
-    /* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and minimum MT radius) */
+    /* set default values for the G+k-vector cutoff */
     if (full_potential()) {
-        set_gk_cutoff(aw_cutoff() / unit_cell_.min_mt_radius());
+        /* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and minimum MT radius) */
+        if (aw_cutoff() > 0) {
+            gk_cutoff(aw_cutoff() / unit_cell_.min_mt_radius());
+        }
+        if (gk_cutoff() <= 0) {
+            gk_cutoff(3);
+        }
+    } else {
+        /* in pseudopotential case */
+        if (gk_cutoff() <= 0) {
+            gk_cutoff(7);
+        }
     }
 
     /* check the G+k cutoff */
@@ -1673,6 +1698,9 @@ inline void Simulation_context::print_info() const
         printf("%s\n", xc.refs().c_str());
         i++;
     }
+    int vmajor, vminor, vmicro;
+    xc_version(&vmajor, &vminor, &vmicro);
+    printf("Libxc version: %d.%d.%d\n", vmajor, vminor, vmicro);
 }
 
 } // namespace sirius

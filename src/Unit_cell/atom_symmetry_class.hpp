@@ -52,10 +52,10 @@ class Atom_symmetry_class
 
     /// List of radial functions for the LAPW basis.
     /** This array stores all the radial functions (AW and LO) and their derivatives. Radial derivatives of functions 
-         *  are multiplied by \f$ x \f$.\n
-         *  1-st dimension: index of radial point \n
-         *  2-nd dimension: index of radial function \n
-         *  3-nd dimension: 0 - function itself, 1 - radial derivative */
+     *  are multiplied by \f$ x \f$.\n
+     *  1-st dimension: index of radial point \n
+     *  2-nd dimension: index of radial function \n
+     *  3-nd dimension: 0 - function itself, 1 - radial derivative */
     mdarray<double, 3> radial_functions_;
 
     /// Surface derivatives of AW radial functions.
@@ -74,8 +74,8 @@ class Atom_symmetry_class
     mdarray<double, 3> so_radial_integrals_;
 
     /// Core charge density.
-    /** All-electron core charge density of the LAPW method. It is recomputed on every SCF iteration due to 
-            the change of effective potential. */
+    /** All-electron core charge density of the LAPW method. It is recomputed on every SCF iteration due to
+        the change of effective potential. */
     std::vector<double> ae_core_charge_density_;
 
     /// Core eigen-value sum.
@@ -871,8 +871,7 @@ inline void Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
         }
     }
 
-    if (false) // TODO: if it's slow, compute only when spin-orbit is turned on
-    {
+    if (atom_type_.parameters().so_correction()) {
         double soc = std::pow(2 * speed_of_light, -2);
 
         Spline<double> s(atom_type_.radial_grid());
@@ -1017,31 +1016,56 @@ inline void Atom_symmetry_class::generate_core_charge_density(relativity_t core_
         level_energy[ist] = -1.0 * atom_type_.zn() / 2 / std::pow(double(atom_type_.atomic_level(ist).n), 2);
     }
 
-    #pragma omp parallel default(shared)
-    {
-        std::vector<double> rho_t(rho.num_points());
-        std::memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
+    mdarray<double, 2> rho_t(rgrid.num_points(), atom_type_.num_atomic_levels());
+    rho_t.zero();
+    #pragma omp parallel for
+    for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++) {
+        if (atom_type_.atomic_level(ist).core) {
+            /* serch for the bound state */
+            Bound_state bs(core_rel__, atom_type_.zn(), atom_type_.atomic_level(ist).n, atom_type_.atomic_level(ist).l,
+                           atom_type_.atomic_level(ist).k, rgrid, veff, level_energy[ist]);
 
-        #pragma omp for
-        for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++) {
-            if (atom_type_.atomic_level(ist).core) {
-                Bound_state bs(core_rel__, atom_type_.zn(), atom_type_.atomic_level(ist).n, atom_type_.atomic_level(ist).l,
-                               atom_type_.atomic_level(ist).k, rgrid, veff, level_energy[ist]);
-
-                auto& rho = bs.rho();
-                for (int i = 0; i < rgrid.num_points(); i++) {
-                    rho_t[i] += atom_type_.atomic_level(ist).occupancy * rho(i) / fourpi;
-                }
-
-                level_energy[ist] = bs.enu();
+            auto& rho = bs.rho();
+            for (int i = 0; i < rgrid.num_points(); i++) {
+                rho_t(i, ist) = atom_type_.atomic_level(ist).occupancy * rho(i) / fourpi;
             }
-        }
 
-        #pragma omp critical
-        for (int i = 0; i < rho.num_points(); i++) {
-            rho(i) += rho_t[i];
+            level_energy[ist] = bs.enu();
         }
     }
+    for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++) {
+        if (atom_type_.atomic_level(ist).core) {
+            for (int i = 0; i < rgrid.num_points(); i++) {
+                rho(i) += rho_t(i, ist);
+            }
+        }
+    }
+
+    //#pragma omp parallel default(shared)
+    //{
+    //    std::vector<double> rho_t(rho.num_points());
+    //    std::memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
+
+    //    #pragma omp for
+    //    for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++) {
+    //        if (atom_type_.atomic_level(ist).core) {
+    //            Bound_state bs(core_rel__, atom_type_.zn(), atom_type_.atomic_level(ist).n, atom_type_.atomic_level(ist).l,
+    //                           atom_type_.atomic_level(ist).k, rgrid, veff, level_energy[ist]);
+
+    //            auto& rho = bs.rho();
+    //            for (int i = 0; i < rgrid.num_points(); i++) {
+    //                rho_t[i] += atom_type_.atomic_level(ist).occupancy * rho(i) / fourpi;
+    //            }
+
+    //            level_energy[ist] = bs.enu();
+    //        }
+    //    }
+
+    //    #pragma omp critical
+    //    for (int i = 0; i < rho.num_points(); i++) {
+    //        rho(i) += rho_t[i];
+    //    }
+    //}
 
     for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
         ae_core_charge_density_[ir] = rho(ir);

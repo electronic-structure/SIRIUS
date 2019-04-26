@@ -5,13 +5,12 @@ include(FindPackageHandleStandardArgs)
 
 find_path(LIBSPG_INCLUDE_DIR
   NAMES spglib/spglib.h
-  PATH_SUFFIXES include inc
+  PATH_SUFFIXES include
   HINTS
   ENV EBROOTSPGLIB
   ENV SPG_DIR
   ENV LIBSPGROOT
   DOC "spglib include directory")
-
 
 find_library(LIBSPG_LIBRARIES
   NAMES symspg

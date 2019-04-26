@@ -80,12 +80,12 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
         }
 
         switch (ctx_.processing_unit()) {
-            case CPU: {
+            case device_t::CPU: {
                 linalg<CPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
                                   qa, pf, qapf);
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
 #if defined(__GPU)
                 qa.copy_to(memory_t::device);
                 linalg<GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),

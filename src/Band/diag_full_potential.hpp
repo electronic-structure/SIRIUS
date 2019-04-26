@@ -668,7 +668,9 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
     //==     }
     //== }
 
-    //== if (ctx_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
+    if (ctx_.so_correction()) {
+        hamiltonian__.apply_so_correction(&kp__, kp__.fv_states(), hpsi);
+    }
 
     int nfv = ctx_.num_fv_states();
     int bs  = ctx_.cyclic_block_size();
@@ -699,7 +701,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
     linalg_t la{linalg_t::blas};
     if (ctx_.processing_unit() == device_t::GPU) {
         mem = memory_t::device;
-        la = linalg_t::cublas;
+        la = linalg_t::gpublas;
     }
 
     if (ctx_.num_mag_dims() != 3) {
@@ -724,7 +726,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
             std_solver.solve(nfv, nfv, h, &band_energies(0, ispn), kp__.sv_eigen_vectors(ispn));
         }
     } else {
-        int                     nb = ctx_.num_bands();
+        int nb = ctx_.num_bands();
         dmatrix<double_complex> h(nb, nb, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == GPU) {
             h.allocate(memory_t::device);

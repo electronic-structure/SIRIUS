@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file beta_projectors_base.hpp
@@ -28,7 +28,7 @@
 
 namespace sirius {
 
-#ifdef __GPU
+#if defined(__GPU)
 extern "C" void create_beta_gk_gpu(int                   num_atoms,
                                    int                   num_gkvec,
                                    int const*            beta_desc,
@@ -46,13 +46,13 @@ enum beta_desc_idx
     ia       = 3
 };
 
-struct beta_chunk_t 
+struct beta_chunk_t
 {
     /// Number of beta-projectors in the current chunk.
     int num_beta_;
     /// Number of atoms in the current chunk.
     int num_atoms_;
-    /// Offset in the global index of beta projectors. 
+    /// Offset in the global index of beta projectors.
     int offset_;
     /// Descriptor of block of beta-projectors for an atom.
     mdarray<int, 2> desc_;
@@ -291,7 +291,7 @@ class Beta_projectors_base
     /** Beta-projectors are always generated and stored in the memory of a processing unit.
      *
      *  \param [in] ichunk Index of a chunk of atoms for which beta-projectors are generated.
-     *  \param [in] j index of the component (up to 9 components are used for the strain derivative) 
+     *  \param [in] j index of the component (up to 9 components are used for the strain derivative)
      */
     void generate(int ichunk__, int j__)
     {
@@ -314,7 +314,7 @@ class Beta_projectors_base
                     }
                     for (int xi = 0; xi < chunk(ichunk__).desc_(beta_desc_idx::nbf, i); xi++) {
                         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-                            pw_coeffs_a_(igk_loc, chunk(ichunk__).desc_(beta_desc_idx::offset, i) + xi) = 
+                            pw_coeffs_a_(igk_loc, chunk(ichunk__).desc_(beta_desc_idx::offset, i) + xi) =
                                 pw_coeffs_t_(igk_loc, chunk(ichunk__).desc_(beta_desc_idx::offset_t, i) + xi, j__) * phase_gk[igk_loc];
                         }
                     }
@@ -322,7 +322,7 @@ class Beta_projectors_base
                 break;
             }
             case device_t::GPU: {
-#ifdef __GPU
+#if defined(__GPU)
                 auto& desc = chunk(ichunk__).desc_;
                 create_beta_gk_gpu(chunk(ichunk__).num_atoms_,
                                    num_gkvec_loc(),
@@ -423,7 +423,7 @@ inline void Beta_projectors_base::local_inner_aux<double_complex>(double_complex
     auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
     if (pp && gkvec_.comm().rank() == 0) {
 #ifdef __GPU
-        if (ctx_.blas_linalg_t() == linalg_t::cublas) {
+        if (ctx_.blas_linalg_t() == linalg_t::gpublas) {
             acc::sync_stream(stream_id(-1));
         }
 #endif
@@ -453,7 +453,7 @@ inline void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs
         linalg_t la{linalg_t::none};
         /* both wave-functions and beta-projectors are on GPU */
         if (is_device_memory(ctx_.preferred_memory_t())) {
-            la = linalg_t::cublas;
+            la = linalg_t::gpublas;
         } else { /* wave-functions are on CPU but the beta-projectors are in the memory of main device */
             la = linalg_t::blas;
             switch (ctx_.processing_unit()) {

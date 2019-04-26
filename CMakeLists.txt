@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.9) # Intel C++11 support starts from 3.6 or even later version
 project(SIRIUS)
 
+if(POLICY CMP0074)
+  # allow {module}_ROOT variables to be set
+  cmake_policy(SET CMP0074 NEW)
+endif()
+
 # set language and standard
 enable_language(CXX Fortran)
 set(CMAKE_CXX_STANDARD 11)
@@ -12,6 +17,7 @@ set(BUILD_DOCS OFF CACHE BOOL "build doxygen doc")
 set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
 set(USE_CUDA OFF CACHE BOOL "use CUDA")
+set(USE_ROCM OFF CACHE BOOL "use ROCM AMD GPU code")
 set(USE_VDWXC OFF CACHE BOOL "use libvdwxc for van der Walls corrections")
 set(USE_MKL OFF CACHE BOOL "use Intel MKL")
 set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
@@ -39,12 +45,12 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
   set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb -DDEBUG")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -O2")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -DNDEBUG -O3")
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -DNDEBUG -O3")
 endif()
 
 # include custom defined FindPackage modules
@@ -79,7 +85,7 @@ else()
   find_package(LAPACK REQUIRED)
   if(USE_SCALAPACK)
     find_package(SCALAPACK REQUIRED) # just sets scalapack_DIR
-    include_directories(BEFORE ${SCALAPACK_INCLUDE_DIR})
+    #include_directories(BEFORE ${SCALAPACK_INCLUDE_DIR})
     set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${SCALAPACK_LIBRARIES}")
   endif()
 endif()
@@ -95,9 +101,6 @@ find_package(HDF5 REQUIRED C HL)
 
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
-  # if(NOT USE_SCALAPACK)
-  #   message(FATAL_ERROR "ELPA depends on ScaLAPACK, please set USE_SCALAPACK=On.")
-  # endif()
   include_directories(BEFORE SYSTEM "${ELPA_INCLUDE_DIR}")
   set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${ELPA_LIBRARIES}")
   add_definitions("-D__ELPA")
@@ -133,13 +136,27 @@ if(USE_MAGMA)
   set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MAGMA_LIBRARIES}")
 endif(USE_MAGMA)
 
-# add required libraries
-set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${GSL_LIBRARY};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
+if(USE_CUDA AND USE_ROCM)
+  message(FATAL_ERROR "USE_CUDA and USE_ROCM must not be enabled at the same time!")
+endif()
 
-# set OpenMP flags
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+if(USE_ROCM)
+    message(STATUS "WARNING: ROCM enabled, prototype feature! Only limited functionality available.")
+    find_package(ROCM COMPONENTS rocfft hipblas)
+    if(NOT ${ROCM_HIP_PLATFORM} STREQUAL hcc)
+  message(FATAL_ERROR "Compilation on Nvidia platform not supported with ROCM enabled!")
+    endif()
+    add_definitions("-D__GPU")
+    add_definitions("-D__ROCM")
+    add_definitions(${ROCM_DEFINITIONS})
+    include_directories(${ROCM_INCLUDE_DIRS})
+    add_subdirectory(src/SDDK/GPU/hipblas_port)
+    include_directories(src/SDDK/GPU/hipblas_port)
+endif()
+
+# add required libraries
+set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
+
 
 # include library headers
 include_directories(BEFORE SYSTEM ${FFTW_INCLUDE_DIR})
@@ -167,14 +184,14 @@ add_custom_command(
   )
 
 
-find_package(Python REQUIRED Interpreter)
+find_package(PythonInterp REQUIRED)
 
+# handle the generation of the version.hpp file
 add_custom_command(
   OUTPUT version.hpp-test
   DEPENDS _always_rebuild
-  COMMAND ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
+  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
   )
-
 set(version_hpp_path src/version.hpp)
 add_custom_command(
   OUTPUT ${version_hpp_path}
@@ -184,38 +201,27 @@ add_custom_command(
 
 add_custom_target(generate_version_hpp DEPENDS ${version_hpp_path})
 
+# handle the generation of runtime_options_json.hpp file
+add_custom_command(
+  OUTPUT runtime_options_json.hpp-test
+  DEPENDS _always_rebuild
+  COMMAND ${CMAKE_SOURCE_DIR}/generate_options_header_file.sh $(CMAKE_SOURCE_DIR)/src/options.json > runtime_options_json.hpp-test
+  )
 
 set(runtime_options_json_path src/runtime_options_json.hpp)
 add_custom_command(
-  OUTPUT ${runtime_options_json_path}
+  OUTPUT ${runtime_options_json_path}-test
   DEPENDS _always_rebuild
-  COMMAND ${CMAKE_SOURCE_DIR}/generate_options_header_file.sh $(CMAKE_SOURCE_DIR)/src/options.json > ${runtime_options_json_path}
-  COMMAND cp ${runtime_options_json_path} ${CMAKE_SOURCE_DIR}/src/runtime_options_json.hpp
+  COMMAND ${CMAKE_SOURCE_DIR}/generate_options_header_file.sh ${CMAKE_SOURCE_DIR}/src/options.json > ${runtime_options_json_path}-test
+  )
+add_custom_command(
+  OUTPUT ${runtime_options_json_path}
+  DEPENDS ${runtime_options_json_path}-test
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${runtime_options_json_path}-test ${runtime_options_json_path}
   )
 
 add_custom_target(runtime_options_json_hpp DEPENDS ${runtime_options_json_path})
 
-## configure version header
-#exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR}
-#  ARGS "rev-parse HEAD"
-#  OUTPUT_VARIABLE GIT_VERSION_SHA1
-#  RETURN_VALUE exit_code)
-#if(exit_code)
-#  set(GIT_VERSION_SHA1 "")
-#endif()
-#exec_program("date"
-#  ARGS "+\"%a, %e %b %Y %H:%M:%S\""
-#  OUTPUT_VARIABLE BUILD_DATE)
-#exec_program(
-#  "git"
-#  ${CMAKE_CURRENT_SOURCE_DIR}
-#  ARGS "describe --all"
-#  OUTPUT_VARIABLE GIT_BRANCHNAME
-#  RETURN_VALUE exit_code)
-#if(exit_code)
-#  set(GIT_BRANCHNAME "")
-#endif()
-#configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" "${PROJECT_BINARY_DIR}/src/version.hpp")
 include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
@@ -235,12 +241,22 @@ MACRO(SIRIUS_SETUP_TARGET _target)
       message(FATAL_ERROR "Unsupported compiler")
     endif()
   else()
-    target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
+    target_link_libraries(${_target} PRIVATE "${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
+  endif()
+
+  if(USE_CUDA)
+    target_link_libraries(${_target} PRIVATE "${sirius_cu_location}")
+  endif()
+
+  if(USE_ROCM)
+    target_link_libraries(${_target} PRIVATE sirius_rocm sirius_rocm_interface hipblas_port ${ROCM_LIBRARIES})
   endif()
 
   if(OpenMP_CXX_FOUND)
     target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
   endif()
+
+  target_link_libraries(${_target} PRIVATE GSL::gsl)
 
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_link_libraries(${_target} PRIVATE "-lgfortran")
@@ -254,12 +270,13 @@ if(USE_CUDA)
 endif()
 
 # applications
-add_subdirectory(apps/atoms)
-add_subdirectory(apps/dft_loop)
 if(BUILD_TESTS)
   add_subdirectory(apps/tests)
   add_subdirectory(apps/unit_tests)
 endif(BUILD_TESTS)
+
+add_subdirectory(apps/atoms)
+add_subdirectory(apps/dft_loop)
 add_subdirectory(apps/utils)
 add_subdirectory(python_module)
 add_subdirectory(doc)

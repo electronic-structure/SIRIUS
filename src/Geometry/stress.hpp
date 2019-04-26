@@ -1048,6 +1048,8 @@ class Stress {
             auto stress_us     = stress_us_     * au2kbar;
             auto stress_hubbard     = stress_hubbard_     * au2kbar;
 
+            printf("== stress tensor components [kbar] ===\n");
+
             printf("== stress_kin ==\n");
             print_stress(stress_kin);
 

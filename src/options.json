@@ -173,7 +173,13 @@
             "description" :  " Number of eigen-values that are printed to the standard output." ,
             "usage" :  "num_band_to_print (10)" ,
             "default_value" :  10
+        },
+        "memory_usage" :
+        {
+            "description": "control memory allocator: low, medium, high",
+            "default_value": "high"
         }
+
     },
     "parameters" :
     {

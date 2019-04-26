@@ -1374,7 +1374,8 @@ class mdarray
         mdarray_assert(idx0__ + n__ <= size());
         if (n__ && is_host_memory(mem__)) {
             mdarray_assert(raw_ptr_ != nullptr);
-            std::memset(&raw_ptr_[idx0__], 0, n__ * sizeof(T));
+            //std::fill(raw_ptr_ + idx0__, raw_ptr_ + idx0__ + n__, 0);
+            std::memset((void*)&raw_ptr_[idx0__], 0, n__ * sizeof(T));
         }
 #ifdef __GPU
         if (n__ && on_device() && is_device_memory(mem__)) {

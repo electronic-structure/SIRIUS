@@ -50,8 +50,8 @@ inline void Potential::init_PAW()
 
         /* allocate potential arrays */
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            ppd.ae_potential_.push_back(Spheric_function<spectral, double>(lm_max_rho, ppd.atom_->radial_grid()));
-            ppd.ps_potential_.push_back(Spheric_function<spectral, double>(lm_max_rho, ppd.atom_->radial_grid()));
+            ppd.ae_potential_.push_back(Spheric_function<function_domain_t::spectral, double>(lm_max_rho, ppd.atom_->radial_grid()));
+            ppd.ps_potential_.push_back(Spheric_function<function_domain_t::spectral, double>(lm_max_rho, ppd.atom_->radial_grid()));
         }
 
         ppd.core_energy_ = atom_type.paw_core_energy();
@@ -137,8 +137,8 @@ inline void Potential::generate_PAW_effective_potential(Density const& density)
     paw_total_core_energy_ = energies[3];
 }
 
-inline double Potential::xc_mt_PAW_nonmagnetic(Spheric_function<spectral, double>& full_potential,
-                                               Spheric_function<spectral, double> const& full_density,
+inline double Potential::xc_mt_PAW_nonmagnetic(Spheric_function<function_domain_t::spectral, double>& full_potential,
+                                               Spheric_function<function_domain_t::spectral, double> const& full_density,
                                                std::vector<double> const& rho_core)
 {
     int lmmax = static_cast<int>(full_density.size(0));
@@ -146,7 +146,7 @@ inline double Potential::xc_mt_PAW_nonmagnetic(Spheric_function<spectral, double
     Radial_grid<double> const& rgrid = full_density.radial_grid();
 
     /* new array to store core and valence densities */
-    Spheric_function<spectral, double> full_rho_lm_sf_new(lmmax, rgrid);
+    Spheric_function<function_domain_t::spectral, double> full_rho_lm_sf_new(lmmax, rgrid);
 
     full_rho_lm_sf_new.zero();
     full_rho_lm_sf_new += full_density;
@@ -158,26 +158,26 @@ inline double Potential::xc_mt_PAW_nonmagnetic(Spheric_function<spectral, double
         full_rho_lm_sf_new(0,ir) += invY00 * rho_core[ir];
     }
 
-    Spheric_function<spatial,double> full_rho_tp_sf = transform(sht_.get(), full_rho_lm_sf_new);
+    Spheric_function<function_domain_t::spatial, double> full_rho_tp_sf = transform(*sht_, full_rho_lm_sf_new);
 
     /* create potential in theta phi */
-    Spheric_function<spatial,double> vxc_tp_sf(sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> vxc_tp_sf(sht_->num_points(), rgrid);
 
     /* create energy in theta phi */
-    Spheric_function<spatial,double> exc_tp_sf(sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> exc_tp_sf(sht_->num_points(), rgrid);
 
     xc_mt_nonmagnetic(rgrid, xc_func_, full_rho_lm_sf_new, full_rho_tp_sf, vxc_tp_sf, exc_tp_sf);
 
-    full_potential += transform(sht_.get(), vxc_tp_sf);
+    full_potential += transform(*sht_, vxc_tp_sf);
 
     /* calculate energy */
-    Spheric_function<spectral,double> exc_lm_sf = transform(sht_.get(), exc_tp_sf );
+    Spheric_function<function_domain_t::spectral, double> exc_lm_sf = transform(*sht_, exc_tp_sf );
 
     return inner(exc_lm_sf, full_rho_lm_sf_new);
 }
 
-inline double Potential::xc_mt_PAW_collinear(std::vector<Spheric_function<spectral, double>>& potential,
-                                             std::vector<Spheric_function<spectral, double>> const& density,
+inline double Potential::xc_mt_PAW_collinear(std::vector<Spheric_function<function_domain_t::spectral, double>>& potential,
+                                             std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
                                              std::vector<double> const& rho_core)
 {
     int lmsize_rho = static_cast<int>(density[0].size(0));
@@ -185,7 +185,7 @@ inline double Potential::xc_mt_PAW_collinear(std::vector<Spheric_function<spectr
     Radial_grid<double> const& rgrid = density[0].radial_grid();
 
     /* new array to store core and valence densities */
-    Spheric_function<spectral, double> full_rho_lm_sf_new(lmsize_rho, rgrid);
+    Spheric_function<function_domain_t::spectral, double> full_rho_lm_sf_new(lmsize_rho, rgrid);
 
     full_rho_lm_sf_new.zero();
     full_rho_lm_sf_new += density[0];
@@ -199,19 +199,19 @@ inline double Potential::xc_mt_PAW_collinear(std::vector<Spheric_function<spectr
 
     // calculate spin up spin down density components in lm components
     // up = 1/2 ( rho + magn );  down = 1/2 ( rho - magn )
-    Spheric_function<spectral, double> rho_u_lm_sf = 0.5 * (full_rho_lm_sf_new + density[1]);
-    Spheric_function<spectral, double> rho_d_lm_sf = 0.5 * (full_rho_lm_sf_new - density[1]);
+    Spheric_function<function_domain_t::spectral, double> rho_u_lm_sf = 0.5 * (full_rho_lm_sf_new + density[1]);
+    Spheric_function<function_domain_t::spectral, double> rho_d_lm_sf = 0.5 * (full_rho_lm_sf_new - density[1]);
 
     // transform density to theta phi components
-    Spheric_function<spatial, double> rho_u_tp_sf = transform(sht_.get(), rho_u_lm_sf );
-    Spheric_function<spatial, double> rho_d_tp_sf = transform(sht_.get(), rho_d_lm_sf );
+    Spheric_function<function_domain_t::spatial, double> rho_u_tp_sf = transform(*sht_, rho_u_lm_sf);
+    Spheric_function<function_domain_t::spatial, double> rho_d_tp_sf = transform(*sht_, rho_d_lm_sf);
 
     // create potential in theta phi
-    Spheric_function<spatial, double> vxc_u_tp_sf(sht_->num_points(), rgrid);
-    Spheric_function<spatial, double> vxc_d_tp_sf(sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> vxc_u_tp_sf(sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> vxc_d_tp_sf(sht_->num_points(), rgrid);
 
     // create energy in theta phi
-    Spheric_function<spatial, double> exc_tp_sf(sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> exc_tp_sf(sht_->num_points(), rgrid);
 
     // calculate XC
     xc_mt_magnetic(rgrid, xc_func_,
@@ -221,20 +221,20 @@ inline double Potential::xc_mt_PAW_collinear(std::vector<Spheric_function<spectr
                    exc_tp_sf);
 
     // transform back in lm
-    potential[0] += transform(sht_.get(), 0.5 * (vxc_u_tp_sf + vxc_d_tp_sf) );
-    potential[1] += transform(sht_.get(), 0.5 * (vxc_u_tp_sf - vxc_d_tp_sf));
+    potential[0] += transform(*sht_, 0.5 * (vxc_u_tp_sf + vxc_d_tp_sf));
+    potential[1] += transform(*sht_, 0.5 * (vxc_u_tp_sf - vxc_d_tp_sf));
 
     //------------------------
     //--- calculate energy ---
     //------------------------
-    Spheric_function<spectral,double> exc_lm_sf = transform(sht_.get(), exc_tp_sf );
+    Spheric_function<function_domain_t::spectral, double> exc_lm_sf = transform(*sht_, exc_tp_sf );
 
     return inner(exc_lm_sf, full_rho_lm_sf_new);
 }
 
 
-inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spectral, double>>& potential,
-                            std::vector<Spheric_function<spectral, double>> const& density,
+inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<function_domain_t::spectral, double>>& potential,
+                            std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
                             std::vector<double> const& rho_core)
 {
     if (density.size() != 4 || potential.size() != 4){
@@ -244,15 +244,15 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
     Radial_grid<double> const& rgrid = density[0].radial_grid();
 
     /* transform density to theta phi components */
-    std::vector<Spheric_function<spatial, double>> rho_tp(density.size());
+    std::vector<Spheric_function<function_domain_t::spatial, double>> rho_tp(density.size());
 
     for (size_t i = 0; i < density.size(); i++){
-        rho_tp[i] = transform(sht_.get(), density[i]);
+        rho_tp[i] = transform(*sht_, density[i]);
     }
 
     /* transform 4D magnetization to spin-up, spin-down form (correct for LSDA)  rho ± |magn| */
-    Spheric_function<spatial, double> rho_u_tp(sht_->num_points(), rgrid);
-    Spheric_function<spatial, double> rho_d_tp(sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> rho_u_tp(sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> rho_d_tp(sht_->num_points(), rgrid);
 
     //#pragma omp parallel for
     for (int ir = 0; ir < rgrid.num_points(); ir++ ) {
@@ -266,15 +266,15 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
     }
 
     /* in lm representation */
-    Spheric_function<spectral, double> rho_u_lm = transform(sht_.get(), rho_u_tp);
-    Spheric_function<spectral, double> rho_d_lm = transform(sht_.get(), rho_d_tp);
+    auto rho_u_lm = transform(*sht_, rho_u_tp);
+    auto rho_d_lm = transform(*sht_, rho_d_tp);
 
     // allocate potential in theta phi
-    Spheric_function<spatial, double> vxc_u_tp(sht_->num_points(), rgrid);
-    Spheric_function<spatial, double> vxc_d_tp(sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> vxc_u_tp(sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> vxc_d_tp(sht_->num_points(), rgrid);
 
     // allocate energy in theta phi
-    Spheric_function<spatial, double> exc_tp(sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> exc_tp(sht_->num_points(), rgrid);
 
     // calculate XC
     xc_mt_magnetic(rgrid, xc_func_,
@@ -284,11 +284,11 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
                    exc_tp);
 
     /* allocate 4D potential in theta phi components */
-    std::vector<Spheric_function<spatial, double>> vxc_tp;
+    std::vector<Spheric_function<function_domain_t::spatial, double>> vxc_tp;
 
     /* allocate the rest */
     for (size_t i = 0; i < potential.size(); i++){
-        vxc_tp.push_back(Spheric_function<spatial, double>(sht_->num_points(), rgrid));
+        vxc_tp.push_back(Spheric_function<function_domain_t::spatial, double>(sht_->num_points(), rgrid));
     }
 
     /* transform back potential from up/down to 4D form*/
@@ -302,7 +302,7 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
             /* get unit magnetization vector*/
             vector3d<double> magn({rho_tp[1](itp, ir), rho_tp[2](itp, ir), rho_tp[3](itp, ir)});
             double norm = magn.length();
-            magn = magn * (norm > 0.0 ? field / norm : 0.0) ;
+            magn = magn * (norm > 0.0 ? field / norm : 0.0);
 
             /* add total potential and effective field values at current point */
             vxc_tp[0](itp, ir) = pot;
@@ -314,26 +314,26 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
 
     /* transform back to lm- domain */
     for(size_t i = 0; i < density.size(); i++){
-        potential[i] += transform(sht_.get(), vxc_tp[i]);
+        potential[i] += transform(*sht_, vxc_tp[i]);
     }
 
     /* transform to lm- domain */
-    Spheric_function<spectral, double> exc_lm = transform(sht_.get(), exc_tp);
+    auto exc_lm = transform(*sht_, exc_tp);
 
     return inner(exc_lm, rho_u_lm + rho_d_lm);
 }
 
 
 inline double Potential::calc_PAW_hartree_potential(Atom& atom,
-                                                    Spheric_function<spectral, double> const& full_density,
-                                                    Spheric_function<spectral, double>& full_potential)
+                                                    Spheric_function<function_domain_t::spectral, double> const& full_density,
+                                                    Spheric_function<function_domain_t::spectral, double>& full_potential)
 {
     int lmsize_rho = static_cast<int>(full_density.size(0));
 
-    const Radial_grid<double>& grid = full_density.radial_grid();
+    auto& grid = full_density.radial_grid();
 
     /* array passed to poisson solver */
-    Spheric_function<spectral, double> atom_pot_sf(lmsize_rho, grid);
+    Spheric_function<function_domain_t::spectral, double> atom_pot_sf(lmsize_rho, grid);
     atom_pot_sf.zero();
 
     poisson_vmt<true>(atom, full_density, atom_pot_sf);
@@ -365,8 +365,8 @@ inline double Potential::calc_PAW_hartree_potential(Atom& atom,
 }
 
 inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
-                                                std::vector<Spheric_function<spectral, double>> const& ae_density,
-                                                std::vector<Spheric_function<spectral, double>> const& ps_density)
+                                                std::vector<Spheric_function<function_domain_t::spectral, double>> const& ae_density,
+                                                std::vector<Spheric_function<function_domain_t::spectral, double>> const& ps_density)
 {
     /* calculation of Hartree potential */
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {

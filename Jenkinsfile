@@ -23,7 +23,8 @@ pipeline {
                         sh '''
                            #!/bin/bash -l
                            export ENVFILE=$(realpath ci/env-gnu-gpu)
-                           rm -f build-daint-gpu{.out,.err}
+                           rm -f build-daint-gpu.out
+                           rm -f build-daint-gpu.err
                            sbatch --wait ci/build-daint-gpu.sh
                            echo "---------- build-daint-gpu.out ----------"
                            cat build-daint-gpu.out
@@ -43,10 +44,49 @@ pipeline {
                            export SIRIUS_BINARIES=$(realpath apps/dft_loop)
                            type -f ${SIRIUS_BINARIES}/sirius.scf
                            export ENVFILE=$(realpath ../ci/env-gnu-gpu)
-                           rm -f sirius-mc-tests{.out,.err}
+                           rm -f sirius-mc-tests.out
+                           rm -rf sirius-mc-tests.err
                            sbatch --wait ../ci/run-mc-verification.sh
                            cat sirius-mc-tests.err
                            cat sirius-mc-tests.out
+                           cp *.{out,err} ../
+                           '''
+                    }
+                }
+            }
+        }
+        stage('Test GPU') {
+            steps {
+                node('ssl_daintvm1') {
+                    dir('SIRIUS') {
+                        sh '''
+                           cd build
+                           export SIRIUS_BINARIES=$(realpath apps/dft_loop)
+                           type -f ${SIRIUS_BINARIES}/sirius.scf
+                           export ENVFILE=$(realpath ../ci/env-gnu-gpu)
+                           rm -f sirius-gpu-tests{.out,.err}
+                           sbatch --wait ../ci/run-gpu-verification.sh
+                           cat sirius-gpu-tests.err
+                           cat sirius-gpu-tests.out
+                           cp *.{out,err} ../
+                           '''
+                    }
+                }
+            }
+        }
+        stage('Test GPU Parallel') {
+            steps {
+                node('ssl_daintvm1') {
+                    dir('SIRIUS') {
+                        sh '''
+                           cd build
+                           export SIRIUS_BINARIES=$(realpath apps/dft_loop)
+                           type -f ${SIRIUS_BINARIES}/sirius.scf
+                           export ENVFILE=$(realpath ../ci/env-gnu-gpu)
+                           rm -f sirius-gpup-tests{.out,.err}
+                           sbatch --wait ../ci/run-gpup-verification.sh
+                           cat sirius-gpup-tests.err
+                           cat sirius-gpup-tests.out
                            cp *.{out,err} ../
                            # delete some of the heavy directories
                            cd ../
@@ -56,6 +96,7 @@ pipeline {
                 }
             }
         }
+
     }
 
     post {

@@ -18,9 +18,29 @@ if(CREATE_FORTRAN_BINDINGS)
     ${CMAKE_INSTALL_PREFIX}/lib/)
   set_target_properties(sirius_f PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(sirius_f PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
+  target_link_libraries(sirius_f PUBLIC OpenMP::OpenMP_CXX)
   INSTALL ( CODE
     "EXECUTE_PROCESS (COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${PROJECT_BINARY_DIR}/src/mod_files\" \"${CMAKE_INSTALL_PREFIX}/fortran\")"
     )
+endif()
+
+if(USE_ROCM)
+  add_library(sirius_rocm_interface STATIC ./SDDK/GPU/rocfft_interface.cpp)
+  set_target_properties(sirius_rocm_interface PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  # don't install as it is STATIC and not meant to be used by external projects
+  target_link_libraries(sirius_rocm_interface PUBLIC OpenMP::OpenMP_CXX)
+
+  # use include directories and definitions of sirius_rocm_interface (using custom targets not possible with generators)
+  set(DEFINITIONS_PROP "$<TARGET_PROPERTY:sirius_rocm_interface,COMPILE_DEFINITIONS>")
+  set(DEFINITIONS_GENERATOR "$<$<BOOL:${DEFINITIONS_PROP}>:-D$<JOIN:${DEFINITIONS_PROP}, -D>>")
+  set(INCLUDE_DIR_PROP "$<TARGET_PROPERTY:sirius_rocm_interface,INCLUDE_DIRECTORIES>")
+  set(INCLUDE_DIR_GENERATOR "$<$<BOOL:${INCLUDE_DIR_PROP}>:-I$<JOIN:${INCLUDE_DIR_PROP}, -I>>")
+
+  # create gpu library compiled with hip
+  file(GLOB_RECURSE HIPFILES_KERNELS "Kernels/*.cu")
+  file(GLOB_RECURSE HIPFILES_SDDK "SDDK/*.cu")
+  rocm_hip_add_library(sirius_rocm SHARED ${HIPFILES_SDDK} ${HIPFILES_KERNELS}
+    FLAGS ${DEFINITIONS_GENERATOR} ${INCLUDE_DIR_GENERATOR} "-Wno-macro-redefined" OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 install(DIRECTORY ./ DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius" FILES_MATCHING REGEX ".*(hpp|h)$")

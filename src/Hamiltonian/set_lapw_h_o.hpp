@@ -319,7 +319,9 @@ inline void Hamiltonian::set_fv_h_o_apw_lo(K_point* kp,
         int idxrf = kp->lo_basis_descriptor_row(irow).idxrf;
         int order = kp->lo_basis_descriptor_row(irow).order;
 
-        std::memset(&ztmp[0], 0, kp->num_gkvec_col() * sizeof(double_complex));
+        std::fill(ztmp.begin(), ztmp.end(), 0);
+
+        //std::memset(&ztmp[0], 0, kp->num_gkvec_col() * sizeof(double_complex));
         /* loop over apw components */
         for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
             int lm1    = type.indexb(j1).lm;

@@ -74,7 +74,7 @@ inline void initialize(bool call_mpi_init__ = true)
     if (Communicator::world().rank() == 0) {
         printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version, minor_version, revision, git_hash);
 #if !defined(NDEBUG)
-        printf("Warning! Compiled in 'debug' mode with assert statemsnts enabled!\n");
+        printf("Warning! Compiled in 'debug' mode with assert statements enabled!\n");
 #endif
     }
     /* get number of ranks per node during the global call to sirius::initialize() */
@@ -87,8 +87,10 @@ inline void initialize(bool call_mpi_init__ = true)
             acc::set_device_id(devid);
         }
         acc::create_streams(omp_get_max_threads() + 1);
+#if defined(__GPU)
+        gpublas::create_stream_handles();
+#endif
 #if defined(__CUDA)
-        cublas::create_stream_handles();
         cublas::xt::create_handle();
         cusolver::create_handle();
 #endif
@@ -128,11 +130,14 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 
     if (acc::num_devices()) {
         //acc::set_device();
+#if defined(__GPU)
+        gpublas::destroy_stream_handles();
+#endif
 #if defined(__CUDA)
         cusolver::destroy_handle();
         cublas::xt::destroy_handle();
-        cublas::destroy_stream_handles();
 #endif
+
         acc::destroy_streams();
         if (reset_device__) {
             acc::reset();
