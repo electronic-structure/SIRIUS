@@ -185,6 +185,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("full_potential", &Simulation_context::full_potential)
         .def("hubbard_correction", &Simulation_context::hubbard_correction)
         .def("fft", &Simulation_context::fft, py::return_value_policy::reference_internal)
+        .def("fft_coarse", &Simulation_context::fft_coarse, py::return_value_policy::reference_internal)
         .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_),
              py::return_value_policy::reference)
         .def("pw_cutoff", py::overload_cast<>(&Simulation_context::pw_cutoff, py::const_))
@@ -714,6 +715,19 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("us", &Force::forces_us)
         .def_property_readonly("total", &Force::forces_total)
         .def("print_info", &Force::print_info);
+
+    py::class_<FFT3D_grid>(m, "FFT3D_grid")
+        .def_property_readonly("size", py::overload_cast<>(&FFT3D_grid::size, py::const_))
+        .def_property_readonly("shape", [](const FFT3D_grid& obj) -> std::array<int,3> {
+                return std::array<int,3>{obj.size(0), obj.size(1), obj.size(2)};
+            })
+        .def_property_readonly("grid_size", &FFT3D_grid::grid_size)
+        ;
+
+    py::class_<FFT3D, FFT3D_grid>(m, "FFT3D")
+        .def_property_readonly("comm", &FFT3D::comm)
+        .def_property_readonly("local_size", &FFT3D::local_size)
+        ;
 
     py::class_<matrix_storage_slab<complex_double>>(m, "MatrixStorageSlabC")
         .def("is_remapped", &matrix_storage_slab<complex_double>::is_remapped)
