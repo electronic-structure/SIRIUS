@@ -167,7 +167,7 @@ class Atom_type
     /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
     matrix<double_complex> p_mtrx_;
 
-    /// f_coefficients defined in Ref. PRB 71 115106 Eq.9 only
+    /// f_coefficients defined in doi:10.1103/PhysRevB.71.115106 Eq.9 only
     /// valid when SO interactions are on
     mdarray<double_complex, 4> f_coefficients_;
 
@@ -1320,7 +1320,7 @@ inline void Atom_type::print_info() const
     printf("total number of basis functions  : %i\n", indexb().size());
     printf("number of aw basis functions     : %i\n", indexb().size_aw());
     printf("number of lo basis functions     : %i\n", indexb().size_lo());
-    if (!parameters_.full_potential()) 
+    if (!parameters_.full_potential())
     {
         printf("number of ps wavefunctions       : %i\n", this->num_ps_atomic_wf());
     }
@@ -1575,8 +1575,13 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
 {
     is_paw_ = true;
 
+    auto& header = parser["pseudo_potential"]["header"];
     /* read core energy */
-    paw_core_energy(parser["pseudo_potential"]["header"]["paw_core_energy"]);
+    if (header.count("paw_core_energy")) {
+        paw_core_energy(header["paw_core_energy"]);
+    } else {
+        paw_core_energy(0);
+    }
 
     /* cutoff index */
     int cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"];
@@ -1764,7 +1769,7 @@ inline void Atom_type::generate_f_coefficients(void)
 
     // First thing, we need to compute the
     // \f[f^{\sigma\sigma^\prime}_{l,j,m;l\prime,j\prime,m\prime}\f]
-    // They are defined by Eq.9 of Ref PRB 71, 115106
+    // They are defined by Eq.9 of doi:10.1103/PhysRevB.71.115106
     // and correspond to transformations of the
     // spherical harmonics
     if (!this->spin_orbit_coupling()) {

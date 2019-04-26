@@ -886,8 +886,8 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
                 exc_tmp(i) += exc_t[i];
 
                 /* directly add to Vxc available contributions */
-                vxc_up_tmp(i) += vrho_up_t[i] - 2 * vsigma_uu_t[i] * lapl_rho_up.f_rg(i);
-                vxc_dn_tmp(i) += vrho_dn_t[i] - 2 * vsigma_dd_t[i] * lapl_rho_dn.f_rg(i);
+                vxc_up_tmp(i) += vrho_up_t[i];
+                vxc_dn_tmp(i) += vrho_dn_t[i];
 
                 /* save the sigma derivative */
                 vsigma_uu_tmp(i) += vsigma_uu_t[i];

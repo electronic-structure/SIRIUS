@@ -45,12 +45,12 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
   set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb -DDEBUG")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -O2")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -DNDEBUG -O3")
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -DNDEBUG -O3")
 endif()
 
 # include custom defined FindPackage modules
@@ -101,9 +101,6 @@ find_package(HDF5 REQUIRED C HL)
 
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
-  # if(NOT USE_SCALAPACK)
-  #   message(FATAL_ERROR "ELPA depends on ScaLAPACK, please set USE_SCALAPACK=On.")
-  # endif()
   include_directories(BEFORE SYSTEM "${ELPA_INCLUDE_DIR}")
   set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${ELPA_LIBRARIES}")
   add_definitions("-D__ELPA")
@@ -147,7 +144,7 @@ if(USE_ROCM)
     message(STATUS "WARNING: ROCM enabled, prototype feature! Only limited functionality available.")
     find_package(ROCM COMPONENTS rocfft hipblas)
     if(NOT ${ROCM_HIP_PLATFORM} STREQUAL hcc)
-	message(FATAL_ERROR "Compilation on Nvidia platform not supported with ROCM enabled!")
+  message(FATAL_ERROR "Compilation on Nvidia platform not supported with ROCM enabled!")
     endif()
     add_definitions("-D__GPU")
     add_definitions("-D__ROCM")
@@ -158,12 +155,8 @@ if(USE_ROCM)
 endif()
 
 # add required libraries
-set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${GSL_LIBRARY};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
+set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
 
-# set OpenMP flags
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 
 # include library headers
 include_directories(BEFORE SYSTEM ${FFTW_INCLUDE_DIR})
@@ -191,15 +184,14 @@ add_custom_command(
   )
 
 
-find_package(Python REQUIRED Interpreter)
+find_package(PythonInterp REQUIRED)
 
 # handle the generation of the version.hpp file
 add_custom_command(
   OUTPUT version.hpp-test
   DEPENDS _always_rebuild
-  COMMAND ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
+  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
   )
-
 set(version_hpp_path src/version.hpp)
 add_custom_command(
   OUTPUT ${version_hpp_path}
@@ -218,34 +210,18 @@ add_custom_command(
 
 set(runtime_options_json_path src/runtime_options_json.hpp)
 add_custom_command(
+  OUTPUT ${runtime_options_json_path}-test
+  DEPENDS _always_rebuild
+  COMMAND ${CMAKE_SOURCE_DIR}/generate_options_header_file.sh ${CMAKE_SOURCE_DIR}/src/options.json > ${runtime_options_json_path}-test
+  )
+add_custom_command(
   OUTPUT ${runtime_options_json_path}
-  DEPENDS runtime_options_json.hpp-test
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different runtime_options_json.hpp-test ${runtime_options_json_path}
+  DEPENDS ${runtime_options_json_path}-test
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${runtime_options_json_path}-test ${runtime_options_json_path}
   )
 
 add_custom_target(runtime_options_json_hpp DEPENDS ${runtime_options_json_path})
 
-## configure version header
-#exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR}
-#  ARGS "rev-parse HEAD"
-#  OUTPUT_VARIABLE GIT_VERSION_SHA1
-#  RETURN_VALUE exit_code)
-#if(exit_code)
-#  set(GIT_VERSION_SHA1 "")
-#endif()
-#exec_program("date"
-#  ARGS "+\"%a, %e %b %Y %H:%M:%S\""
-#  OUTPUT_VARIABLE BUILD_DATE)
-#exec_program(
-#  "git"
-#  ${CMAKE_CURRENT_SOURCE_DIR}
-#  ARGS "describe --all"
-#  OUTPUT_VARIABLE GIT_BRANCHNAME
-#  RETURN_VALUE exit_code)
-#if(exit_code)
-#  set(GIT_BRANCHNAME "")
-#endif()
-#configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" "${PROJECT_BINARY_DIR}/src/version.hpp")
 include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
@@ -279,6 +255,8 @@ MACRO(SIRIUS_SETUP_TARGET _target)
   if(OpenMP_CXX_FOUND)
     target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
   endif()
+
+  target_link_libraries(${_target} PRIVATE GSL::gsl)
 
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_link_libraries(${_target} PRIVATE "-lgfortran")

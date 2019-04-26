@@ -299,10 +299,6 @@ class Broyden1 : public Mixer<T>
             }
             rms_avg /= this->max_history_;
 
-            if (this->comm_.rank() == 0) {
-                std::cout << "[mixer] prev_rms: " << prev_rms << ", rmv_avg: " << rms_avg << ", rms: " << rms << "\n";
-            }
-
             if (rms > rms_avg) {
                 this->beta_ = std::max(beta0_, this->beta_ * beta_scaling_factor_);
                 // rms_history_.clear();
@@ -461,10 +457,6 @@ class Broyden2 : public Mixer<T>
                 prev_rms.push_back(v);
             }
             rms_avg /= this->max_history_;
-
-            if (this->comm_.rank() == 0) {
-                std::cout << "[mixer] prev_rms: " << prev_rms << ", rmv_avg: " << rms_avg << ", rms: " << rms << "\n";
-            }
 
             if (rms > rms_avg) {
                 this->beta_ = std::max(beta0_, this->beta_ * beta_scaling_factor_);

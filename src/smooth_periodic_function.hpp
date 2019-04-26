@@ -89,6 +89,16 @@ class Smooth_periodic_function
         f_rg_.zero();
     }
 
+    inline mdarray<double_complex, 1>& pw_array()
+    {
+        return f_pw_local_;
+    }
+
+    inline mdarray<T, 1>& rg_array()
+    {
+        return f_rg_;
+    }
+
     inline T& f_rg(int ir__)
     {
         return const_cast<T&>(static_cast<Smooth_periodic_function<T> const&>(*this).f_rg(ir__));
