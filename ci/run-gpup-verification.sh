@@ -11,6 +11,8 @@
 
 set -e
 
+export CRAY_CUDA_MPS=1
+
 source ${ENVFILE}
 
 (
