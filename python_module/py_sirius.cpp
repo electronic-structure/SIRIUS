@@ -250,7 +250,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("generate_radial_functions", &Unit_cell::generate_radial_functions)
         .def("min_mt_radius", &Unit_cell::min_mt_radius)
         .def("max_mt_radius", &Unit_cell::max_mt_radius)
-        .def("omega", &Unit_cell::omega);
+        .def("omega", &Unit_cell::omega)
         .def("print_info", &Unit_cell::print_info);
 
     py::class_<z_column_descriptor>(m, "z_column_descriptor")
