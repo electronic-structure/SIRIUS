@@ -18,6 +18,7 @@ if(CREATE_FORTRAN_BINDINGS)
     ${CMAKE_INSTALL_PREFIX}/lib/)
   set_target_properties(sirius_f PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(sirius_f PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
+  target_link_libraries(sirius_f PUBLIC OpenMP::OpenMP_CXX)
   INSTALL ( CODE
     "EXECUTE_PROCESS (COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${PROJECT_BINARY_DIR}/src/mod_files\" \"${CMAKE_INSTALL_PREFIX}/fortran\")"
     )
@@ -27,6 +28,7 @@ if(USE_ROCM)
   add_library(sirius_rocm_interface STATIC ./SDDK/GPU/rocfft_interface.cpp)
   set_target_properties(sirius_rocm_interface PROPERTIES POSITION_INDEPENDENT_CODE ON)
   # don't install as it is STATIC and not meant to be used by external projects
+  target_link_libraries(sirius_rocm_interface PUBLIC OpenMP::OpenMP_CXX)
 
   # use include directories and definitions of sirius_rocm_interface (using custom targets not possible with generators)
   set(DEFINITIONS_PROP "$<TARGET_PROPERTY:sirius_rocm_interface,COMPILE_DEFINITIONS>")

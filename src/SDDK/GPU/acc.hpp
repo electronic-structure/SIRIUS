@@ -30,6 +30,7 @@
 #include <cuda.h>
 #include <cublas_v2.h>
 #include <cublasXt.h>
+#include <cuda_profiler_api.h>
 #include <nvToolsExt.h>
 #include <cuComplex.h>
 #endif
@@ -237,6 +238,7 @@ inline void sync_stream(stream_id sid__)
 /// Reset device.
 inline void reset()
 {
+    CALL_DEVICE_API(ProfilerStop, ());
     CALL_DEVICE_API(DeviceReset, ());
 }
 
@@ -517,4 +519,3 @@ extern "C" void scale_matrix_elements_gpu(acc_complex_double_t* ptr__,
 #endif
 
 #endif // __ACC_HPP__
-

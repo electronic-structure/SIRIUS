@@ -17,6 +17,7 @@
 #include "utils/json.hpp"
 #include "Unit_cell/free_atom.hpp"
 #include "energy.hpp"
+#include "magnetization.hpp"
 #include "unit_cell_accessors.hpp"
 #include "make_sirius_comm.hpp"
 
@@ -162,6 +163,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def_readonly("shiftk", &Parameters_input::shiftk_)
         .def_readonly("ngridk", &Parameters_input::ngridk_);
 
+    py::class_<Mixer_input>(m, "Mixer_input");
+
     py::class_<Communicator>(m, "Communicator");
 
     py::class_<Simulation_context>(m, "Simulation_context")
@@ -194,6 +197,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("update", &Simulation_context::update)
         .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
         .def("preferred_memory_t", &Simulation_context::preferred_memory_t)
+        .def("mixer_input", &Simulation_context::mixer_input)
         .def("comm", [](Simulation_context& obj) { return make_pycomm(obj.comm()); },
              py::return_value_policy::reference_internal)
         .def("comm_k", [](Simulation_context& obj) { return make_pycomm(obj.comm_k()); },
@@ -224,12 +228,21 @@ PYBIND11_MODULE(py_sirius, m)
         .def("atom", py::overload_cast<int>(&Unit_cell::atom), py::return_value_policy::reference)
         .def("atom_type", py::overload_cast<int>(&Unit_cell::atom_type), py::return_value_policy::reference)
         .def("lattice_vectors", &Unit_cell::lattice_vectors)
-        .def("set_lattice_vectors",
-             [](Unit_cell& obj, py::buffer l1, py::buffer l2, py::buffer l3) { set_lattice_vectors(obj, l1, l2, l3); })
+        .def(
+            "set_lattice_vectors",
+            [](Unit_cell& obj, py::buffer l1, py::buffer l2, py::buffer l3) { set_lattice_vectors(obj, l1, l2, l3); },
+            "l1"_a, "l2"_a, "l3"_a)
+        .def(
+            "set_lattice_vectors",
+            [](Unit_cell& obj, std::vector<double> l1, std::vector<double> l2, std::vector<double> l3) {
+                obj.set_lattice_vectors(vector3d<double>(l1), vector3d<double>(l2), vector3d<double>(l3));
+            },
+            "l1"_a, "l2"_a, "l3"_a)
         .def("get_symmetry", &Unit_cell::get_symmetry)
         .def("num_electrons", &Unit_cell::num_electrons)
         .def("num_valence_electrons", &Unit_cell::num_valence_electrons)
         .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
+        .def("print_info", &Unit_cell::print_info)
         .def("generate_radial_functions", &Unit_cell::generate_radial_functions);
 
     py::class_<z_column_descriptor>(m, "z_column_descriptor")
@@ -335,10 +348,14 @@ PYBIND11_MODULE(py_sirius, m)
         .def("PAW_total_energy", &Potential::PAW_total_energy)
         .def("PAW_one_elec_energy", &Potential::PAW_one_elec_energy);
 
-    py::class_<Density>(m, "Density")
+    py::class_<Field4D>(m, "Field4D")
+        .def("component", py::overload_cast<int>(&Field4D::component), py::return_value_policy::reference_internal);
+
+    py::class_<Density, Field4D>(m, "Density")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>(), "ctx"_a)
         .def("initial_density", &Density::initial_density)
         .def("allocate", &Density::allocate)
+        .def("mixer_init", &Density::mixer_init)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("fft_transform", &Density::fft_transform)
         .def("mix", &Density::mix)
@@ -349,6 +366,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("save", &Density::save)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("load", &Density::load);
+
 
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
@@ -459,7 +477,7 @@ PYBIND11_MODULE(py_sirius, m)
                  }
              })
         .def("apply_ref",
-             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf) {
+             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions>& swf) {
                  int num_wf = wf.num_wf();
                  int num_sc = wf.num_sc();
                  if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
@@ -472,6 +490,7 @@ PYBIND11_MODULE(py_sirius, m)
                      auto& mpd = ctx.mem_pool(memory_t::device);
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
                          wf_out.pw_coeffs(ispn).allocate(mpd);
+                         wf.pw_coeffs(ispn).allocate(mpd);
                          wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
                      }
                  }
@@ -485,12 +504,12 @@ PYBIND11_MODULE(py_sirius, m)
                  kp.beta_projectors().prepare();
                  if (!hamiltonian.ctx().gamma_point()) {
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
+                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
                      }
                  } else {
                      std::cerr << "python module:: H applied at gamma-point\n";
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
+                         hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
                      }
                  }
                  kp.beta_projectors().dismiss();
@@ -506,13 +525,14 @@ PYBIND11_MODULE(py_sirius, m)
                  }
                  #endif // __GPU
              },
-             "kpoint"_a, "wf_out"_a, "wf_in"_a)
+             "kpoint"_a, "wf_out"_a, "wf_in"_a, py::arg("swf_out")=nullptr)
         .def("_apply_ref_inner_prepare",
              // must be called BEFORE _apply_ref_inner
              [](Hamiltonian& hamiltonian) { hamiltonian.prepare(); })
         .def("_apply_ref_inner_dismiss",
              // must be called AFTER _apply_ref_inner
              [](Hamiltonian& hamiltonian) {
+                 hamiltonian.local_op().dismiss();
                  if (!hamiltonian.ctx().full_potential()) {
                      hamiltonian.dismiss();
                  }
@@ -520,7 +540,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("_apply_ref_inner",
              // this is the same as apply_ref, but skipping hamiltonian.prepare() which will deadlock unless called by
              // all ranks
-             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf) {
+             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions> swf) {
                  int num_wf = wf.num_wf();
                  int num_sc = wf.num_sc();
                  if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
@@ -533,7 +553,13 @@ PYBIND11_MODULE(py_sirius, m)
                      auto& mpd = ctx.mem_pool(memory_t::device);
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
                          wf_out.pw_coeffs(ispn).allocate(mpd);
+                         wf.pw_coeffs(ispn).allocate(mpd);
                          wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
+                         if (swf) {
+                             swf->pw_coeffs(ispn).allocate(mpd);
+                             swf->pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
+                         }
+
                      }
                  }
                  #endif
@@ -545,24 +571,72 @@ PYBIND11_MODULE(py_sirius, m)
                  kp.beta_projectors().prepare();
                  if (!hamiltonian.ctx().gamma_point()) {
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
+                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
                      }
                  } else {
                      std::cerr << "python module:: H applied at gamma-point\n";
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
+                         hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
                      }
                  }
                  kp.beta_projectors().dismiss();
-                 hamiltonian.local_op().dismiss();
+                 //hamiltonian.local_op().dismiss();
                  hamiltonian.ctx().fft_coarse().dismiss();
                  #ifdef __GPU
                  if (is_device_memory(ctx.preferred_memory_t())) {
-                     for (int ispn = 0; ispn < num_sc; ++ispn)
+                     for (int ispn = 0; ispn < num_sc; ++ispn) {
                          wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
+                         if(swf) {
+                             swf->pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
+                         }
+                     }
                  }
                  #endif // __GPU
-             });
+             }, "kpoint"_a, "wf_out"_a, "wf_in"_a, py::arg("swf_out")=nullptr)
+        .def("_apply_overlap_inner",
+             // this is the same as apply_ref, but skipping hamiltonian.prepare() which will deadlock unless called by
+             // all ranks
+             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf) {
+                 int num_wf = wf.num_wf();
+                 int num_sc = wf.num_sc();
+                 if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
+                     throw std::runtime_error(
+                         "Hamiltonian::apply_s (python bindings): num_sc or num_wf do not match");
+                 }
+                 #ifdef __GPU
+                 auto& ctx = hamiltonian.ctx();
+                 if (is_device_memory(ctx.preferred_memory_t())) {
+                     auto& mpd = ctx.mem_pool(memory_t::device);
+                     for (int ispn = 0; ispn < num_sc; ++ispn) {
+                         wf_out.pw_coeffs(ispn).allocate(mpd);
+                         wf.pw_coeffs(ispn).allocate(mpd);
+                         wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
+                     }
+                 }
+                 #endif
+                 // hamiltonian.local_op().prepare(kp.gkvec_partition());
+                 // hamiltonian.ctx().fft_coarse().prepare(kp.gkvec_partition());
+                 kp.beta_projectors().prepare();
+                 if (!hamiltonian.ctx().gamma_point()) {
+                     for (int ispn = 0; ispn < num_sc; ++ispn) {
+                         hamiltonian.apply_s<complex_double>(&kp, ispn, wf, wf_out);
+                     }
+                 } else {
+                     std::cerr << "python module:: H applied at gamma-point\n";
+                     for (int ispn = 0; ispn < num_sc; ++ispn) {
+                         hamiltonian.apply_s<double>(&kp, ispn, wf, wf_out);
+                     }
+                 }
+                 kp.beta_projectors().dismiss();
+                 //hamiltonian.local_op().dismiss();
+                 // hamiltonian.ctx().fft_coarse().dismiss();
+                 #ifdef __GPU
+                 if (is_device_memory(ctx.preferred_memory_t())) {
+                     for (int ispn = 0; ispn < num_sc; ++ispn)
+                         wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_wf);
+                 }
+                 #endif // __GPU
+             }, "kpoint"_a, "wf_out"_a, "wf_in"_a);
 
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
@@ -616,6 +690,28 @@ PYBIND11_MODULE(py_sirius, m)
         .def("prime", py::overload_cast<>(&matrix_storage_slab<complex_double>::prime),
              py::return_value_policy::reference_internal);
 
+    py::class_<mdarray<complex_double, 1>>(m, "mdarray1c")
+        .def("on_device", &mdarray<complex_double, 1>::on_device)
+        .def("copy_to_host", [](mdarray<complex_double, 1>& mdarray) { mdarray.copy_to(memory_t::host); })
+        .def("__array__", [](py::object& obj) {
+                            mdarray<complex_double, 1>& arr = obj.cast<mdarray<complex_double, 1>&>();
+                            int nrows                       = arr.size(0);
+                            return py::array_t<complex_double>({nrows},
+                                                               {1 * sizeof(complex_double)},
+                                                               arr.at(memory_t::host), obj);
+                          });
+
+    py::class_<mdarray<double, 1>>(m, "mdarray1r")
+        .def("on_device", &mdarray<double, 1>::on_device)
+        .def("copy_to_host", [](mdarray<double, 1>& mdarray) { mdarray.copy_to(memory_t::host); })
+        .def("__array__", [](py::object& obj) {
+                            mdarray<double, 1>& arr = obj.cast<mdarray<double, 1>&>();
+                            int nrows                       = arr.size(0);
+                            return py::array_t<double>({nrows},
+                              {1 * sizeof(double)},
+                                                               arr.at(memory_t::host), obj);
+                          });
+
     py::class_<mdarray<complex_double, 2>>(m, "mdarray2c")
         .def("on_device", &mdarray<complex_double, 2>::on_device)
         .def("copy_to_host", [](mdarray<complex_double, 2>& mdarray) { mdarray.copy_to(memory_t::host); })
@@ -645,7 +741,8 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::enum_<sddk::memory_t>(m, "MemoryEnum").value("device", memory_t::device).value("host", memory_t::host);
 
-    py::class_<Wave_functions>(m, "Wave_functions")
+    // use std::shared_ptr as holder type, this required by Hamiltonian.apply_ref, apply_ref_inner
+    py::class_<Wave_functions, std::shared_ptr<Wave_functions>>(m, "Wave_functions")
         .def(py::init<Gvec_partition const&, int, memory_t, int>(), "gvecp"_a, "num_wf"_a, "mem"_a, "num_sc"_a)
         .def("num_sc", &Wave_functions::num_sc)
         .def("num_wf", &Wave_functions::num_wf)
@@ -705,6 +802,16 @@ PYBIND11_MODULE(py_sirius, m)
         .def("pw_coeffs_obj", py::overload_cast<int>(&Wave_functions::pw_coeffs, py::const_),
              py::return_value_policy::reference_internal);
 
+    py::class_<Smooth_periodic_function<complex_double>>(m, "CSmooth_periodic_function")
+        .def("pw", &Smooth_periodic_function<complex_double>::pw_array, py::return_value_policy::reference_internal)
+        .def("rg", &Smooth_periodic_function<complex_double>::rg_array, py::return_value_policy::reference_internal);
+
+    py::class_<Smooth_periodic_function<double>>(m, "RSmooth_periodic_function")
+        .def("pw", &Smooth_periodic_function<double>::pw_array, py::return_value_policy::reference_internal)
+        .def("rg", &Smooth_periodic_function<double>::rg_array, py::return_value_policy::reference_internal);
+
+    py::class_<Periodic_function<double>, Smooth_periodic_function<double>>(m, "RPeriodic_function");
+
     m.def("ewald_energy", &ewald_energy);
     m.def("set_atom_positions", &set_atom_positions);
     m.def("atom_positions", &atom_positions);
@@ -713,4 +820,5 @@ PYBIND11_MODULE(py_sirius, m)
     m.def("omp_get_num_threads", &omp_get_num_threads);
     m.def("make_sirius_comm", &make_sirius_comm);
     m.def("make_pycomm", &make_pycomm);
+    m.def("magnetization", &magnetization);
 }

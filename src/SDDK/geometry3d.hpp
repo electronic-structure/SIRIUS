@@ -439,7 +439,7 @@ std::ostream& operator<<(std::ostream& out, matrix3d<T>& v)
 
 inline std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<double> coord)
 {
-    const double eps{1e-6};
+    const double eps{1e-9};
 
     std::pair<vector3d<double>, vector3d<int>> v;
 
