@@ -119,7 +119,7 @@ class Smooth_periodic_function
         return f_pw_local_(ig__);
     }
 
-    inline mdarray<double_complex, 1>& pw_array()
+    inline mdarray<double_complex, 1>& f_pw_local()
     {
       return f_pw_local_;
     }
