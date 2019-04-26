@@ -183,22 +183,6 @@ class Simulation_parameters
         parameters_input_.num_mag_dims_ = num_mag_dims__;
     }
 
-    inline void set_aw_cutoff(double aw_cutoff__)
-    {
-        parameters_input_.aw_cutoff_ = aw_cutoff__;
-    }
-
-    /// Set plane-wave cutoff.
-    inline void set_pw_cutoff(double pw_cutoff__)
-    {
-        parameters_input_.pw_cutoff_ = pw_cutoff__;
-    }
-
-    inline void set_gk_cutoff(double gk_cutoff__)
-    {
-        parameters_input_.gk_cutoff_ = gk_cutoff__;
-    }
-
     inline void set_hubbard_correction(bool hubbard_correction__)
     {
         parameters_input_.hubbard_correction_         = hubbard_correction__;
@@ -375,15 +359,35 @@ class Simulation_parameters
         return parameters_input_.aw_cutoff_;
     }
 
+    inline double aw_cutoff(double aw_cutoff__)
+    {
+        parameters_input_.aw_cutoff_ = aw_cutoff__;
+        return parameters_input_.aw_cutoff_;
+    }
+
     /// Plane-wave cutoff for G-vectors (in 1/[a.u.]).
     inline double pw_cutoff() const
     {
         return parameters_input_.pw_cutoff_;
     }
 
+    /// Set plane-wave cutoff.
+    inline double pw_cutoff(double pw_cutoff__)
+    {
+        parameters_input_.pw_cutoff_ = pw_cutoff__;
+        return parameters_input_.pw_cutoff_;
+    }
+
     /// Cutoff for G+k vectors (in 1/[a.u.]).
     inline double gk_cutoff() const
     {
+        return parameters_input_.gk_cutoff_;
+    }
+
+    /// Set the cutoff for G+k vectors.
+    inline double gk_cutoff(double gk_cutoff__)
+    {
+        parameters_input_.gk_cutoff_ = gk_cutoff__;
         return parameters_input_.gk_cutoff_;
     }
 

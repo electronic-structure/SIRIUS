@@ -1337,14 +1337,29 @@ inline void Simulation_context::initialize()
             iterative_solver_input_.type_ = "davidson";
         }
     }
+    /* set default values for the G-vector cutoff */
+    if (pw_cutoff() <= 0) {
+        pw_cutoff(full_potential() ? 12 : 20);
+    }
 
     /* initialize variables related to the unit cell */
     unit_cell_.initialize();
 
-    ///* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and minimum MT radius) */
-    //if (full_potential()) {
-    //    set_gk_cutoff(aw_cutoff() / unit_cell_.min_mt_radius());
-    //}
+    /* set default values for the G+k-vector cutoff */
+    if (full_potential()) {
+        /* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and minimum MT radius) */
+        if (aw_cutoff() > 0) {
+            gk_cutoff(aw_cutoff() / unit_cell_.min_mt_radius());
+        }
+        if (gk_cutoff() <= 0) {
+            gk_cutoff(3);
+        }
+    } else {
+        /* in pseudopotential case */
+        if (gk_cutoff() <= 0) {
+            gk_cutoff(7);
+        }
+    }
 
     /* check the G+k cutoff */
     if (gk_cutoff() * 2 > pw_cutoff()) {
@@ -1683,6 +1698,9 @@ inline void Simulation_context::print_info() const
         printf("%s\n", xc.refs().c_str());
         i++;
     }
+    int vmajor, vminor, vmicro;
+    xc_version(&vmajor, &vminor, &vmicro);
+    printf("Libxc version: %d.%d.%d\n", vmajor, vminor, vmicro);
 }
 
 } // namespace sirius

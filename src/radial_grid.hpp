@@ -200,6 +200,11 @@ class Radial_grid
         return std::move(v);
     }
 
+    uint64_t hash() const
+    {
+        return 0;
+    }
+
     // uint64_t hash() const
     //{
     //    uint64_t h = Utils::hash(&x_(0), x_.size() * sizeof(double));

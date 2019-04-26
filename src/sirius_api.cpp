@@ -275,10 +275,10 @@ void sirius_set_parameters(void*  const* handler__,
         sim_ctx.set_num_mag_dims(*num_mag_dims__);
     }
     if (pw_cutoff__ != nullptr) {
-        sim_ctx.set_pw_cutoff(*pw_cutoff__);
+        sim_ctx.pw_cutoff(*pw_cutoff__);
     }
     if (gk_cutoff__ != nullptr) {
-        sim_ctx.set_gk_cutoff(*gk_cutoff__);
+        sim_ctx.gk_cutoff(*gk_cutoff__);
     }
     //if (aw_cutoff__ != nullptr) {
     //    sim_ctx.set_aw_cutoff(*aw_cutoff__);

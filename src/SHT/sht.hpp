@@ -103,10 +103,12 @@ class SHT // TODO: better name
 
         w_.resize(num_points_);
 
-        if (mesh_type_ == 0)
+        if (mesh_type_ == 0) {
             Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
-        if (mesh_type_ == 1)
+        }
+        if (mesh_type_ == 1) {
             uniform_coverage();
+        }
 
         ylm_backward_ = mdarray<double_complex, 2>(lmmax_, num_points_);
 
@@ -198,8 +200,9 @@ class SHT // TODO: better name
                 flm[lm] -= 1.0;
 
                 double t = 0.0;
-                for (int lm1 = 0; lm1 < lmmax_; lm1++)
+                for (int lm1 = 0; lm1 < lmmax_; lm1++) {
                     t += std::abs(flm[lm1]);
+                }
 
                 t /= lmmax_;
 
@@ -226,7 +229,7 @@ class SHT // TODO: better name
      *  \param [out] ftp Raw pointer to \f$ f(\theta, \phi, r) \f$.
      */
     template <typename T>
-    void backward_transform(int ld, T const* flm, int nr, int lmmax, T* ftp);
+    void backward_transform(int ld, T const* flm, int nr, int lmmax, T* ftp) const;
 
     /// Perform a forward transformation from spherical coordinates to spherical harmonics.
     /** \f[
@@ -241,7 +244,7 @@ class SHT // TODO: better name
      *  \param [out] flm Raw pointer to \f$ f_{\ell m}(r) \f$.
      */
     template <typename T>
-    void forward_transform(T const* ftp, int nr, int lmmax, int ld, T* flm);
+    void forward_transform(T const* ftp, int nr, int lmmax, int ld, T* flm) const;
 
     /// Convert form Rlm to Ylm representation.
     static void convert(int lmax__, double const* f_rlm__, double_complex* f_ylm__)
@@ -1260,7 +1263,7 @@ class SHT // TODO: better name
 };
 
 template <>
-inline void SHT::backward_transform<double>(int ld, double const* flm, int nr, int lmmax, double* ftp)
+inline void SHT::backward_transform<double>(int ld, double const* flm, int nr, int lmmax, double* ftp) const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
@@ -1268,7 +1271,7 @@ inline void SHT::backward_transform<double>(int ld, double const* flm, int nr, i
 }
 
 template <>
-inline void SHT::backward_transform<double_complex>(int ld, double_complex const* flm, int nr, int lmmax, double_complex* ftp)
+inline void SHT::backward_transform<double_complex>(int ld, double_complex const* flm, int nr, int lmmax, double_complex* ftp) const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
@@ -1276,7 +1279,7 @@ inline void SHT::backward_transform<double_complex>(int ld, double_complex const
 }
 
 template <>
-inline void SHT::forward_transform<double>(double const* ftp, int nr, int lmmax, int ld, double* flm)
+inline void SHT::forward_transform<double>(double const* ftp, int nr, int lmmax, int ld, double* flm) const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
@@ -1284,7 +1287,7 @@ inline void SHT::forward_transform<double>(double const* ftp, int nr, int lmmax,
 }
 
 template <>
-inline void SHT::forward_transform<double_complex>(double_complex const* ftp, int nr, int lmmax, int ld, double_complex* flm)
+inline void SHT::forward_transform<double_complex>(double_complex const* ftp, int nr, int lmmax, int ld, double_complex* flm) const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);

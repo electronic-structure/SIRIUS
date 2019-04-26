@@ -72,9 +72,6 @@ double ground_state(Simulation_context& ctx,
     auto& potential = dft.potential();
     auto& density = dft.density();
 
-    density.allocate();
-    potential.allocate();
-
     if (task == task_t::ground_state_restart) {
         if (!utils::file_exists(storage_file_name)) {
             TERMINATE("storage file is not found");
@@ -228,9 +225,9 @@ void run_tasks(cmd_args const& args)
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
-        if (ctx->full_potential()) {
-            ctx->set_gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
-        }
+        //if (ctx->full_potential()) {
+        //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
+        //}
         ground_state(*ctx, task, args, 1);
     }
 
@@ -239,21 +236,15 @@ void run_tasks(cmd_args const& args)
         ctx->set_iterative_solver_tolerance(1e-12);
         ctx->set_gamma_point(false);
         ctx->initialize();
-        if (ctx->full_potential()) {
-            ctx->set_gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
-        }
+        //if (ctx->full_potential()) {
+        //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
+        //}
 
         Potential potential(*ctx);
-        if (ctx->full_potential()) {
-            potential.allocate();
-        }
 
         Hamiltonian H(*ctx, potential);
 
         Density density(*ctx);
-        if (ctx->full_potential()) {
-            density.allocate();
-        }
 
         K_point_set ks(*ctx);
 

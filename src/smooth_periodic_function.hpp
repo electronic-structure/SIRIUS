@@ -271,6 +271,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     Gvec_partition const* gvecp_{nullptr};
 
   public:
+    /// Default constructor does nothing.
     Smooth_periodic_vector_function()
     {
     }
@@ -315,26 +316,22 @@ inline Smooth_periodic_vector_function<double> gradient(Smooth_periodic_function
     return std::move(g);
 }
 
-
 /// Divergence of the vecor function.
-/** Input is expected in the plane-wave domain, output is in real-space domain. */
+/** Input and output functions are in plane-wave domain */
 inline Smooth_periodic_function<double> divergence(Smooth_periodic_vector_function<double>& g__)
 {
     utils::timer t1("sirius::divergence");
 
+    /* resulting scalar function */
     Smooth_periodic_function<double> f(g__.fft(), g__.gvec_partition());
     f.zero();
-    Smooth_periodic_function<double> g_tmp(g__.fft(), g__.gvec_partition());
     for (int x : {0, 1, 2}) {
         for (int igloc = 0; igloc < f.gvec().count(); igloc++) {
             auto G = f.gvec().gvec_cart<index_domain_t::local>(igloc);
-            g_tmp.f_pw_local(igloc) = g__[x].f_pw_local(igloc) * double_complex(0, G[x]);
-        }
-        g_tmp.fft_transform(1);
-        for (int ir = 0; ir < f.fft().local_size(); ir++) {
-            f.f_rg(ir) += g_tmp.f_rg(ir);
+            f.f_pw_local(igloc) += g__[x].f_pw_local(igloc) * double_complex(0, G[x]);
         }
     }
+
     return std::move(f);
 }
 

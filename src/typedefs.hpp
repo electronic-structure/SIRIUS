@@ -62,7 +62,7 @@ enum class electronic_structure_method_t
 };
 
 /// Type of a function domain.
-enum function_domain_t
+enum class function_domain_t
 {
     /// Spatial domain.
     spatial,
