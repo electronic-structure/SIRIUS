@@ -317,9 +317,9 @@ class Potential : public Field4D
         }
 
         lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
-        sht_  = std::unique_ptr<SHT>(new SHT(lmax_));
 
         if (lmax_ >= 0) {
+            sht_  = std::unique_ptr<SHT>(new SHT(lmax_));
             l_by_lm_ = utils::l_by_lm(lmax_);
 
             /* precompute i^l */
