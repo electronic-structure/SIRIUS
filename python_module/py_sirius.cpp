@@ -373,6 +373,18 @@ PYBIND11_MODULE(py_sirius, m)
         .def("generate_paw_loc_density", &Density::generate_paw_loc_density)
         .def("save", &Density::save)
         .def("check_num_electrons", &Density::check_num_electrons)
+        .def("f_pw_local",
+             [](py::object& obj, int i) -> py::array_t<complex_double> {
+
+               Density& wf   = obj.cast<Density&>();
+               auto& matrix_storage = wf.component(i).f_pw_local();
+               int nrows            = matrix_storage.size(0);
+               /* return underlying data as numpy.ndarray view */
+               return py::array_t<complex_double>({nrows},
+                                                  {1 * sizeof(complex_double)},
+                                                  matrix_storage.at(memory_t::host), obj);
+             },
+             py::keep_alive<0, 1>())
         .def("load", &Density::load);
 
 
