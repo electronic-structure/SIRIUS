@@ -62,6 +62,7 @@ pybind11::array_t<double> atom_positions(Unit_cell& unit_cell)
             pos(offset + k, 1) = atom_coords(k, 1);
             pos(offset + k, 2) = atom_coords(k, 2);
         }
+        offset += n;
     }
 
     return positions;
