@@ -30,8 +30,16 @@ set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
 
+# include custom defined FindPackage modules
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
+include(GitSubmodule)
+list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
+
 if(PYTHON2)
+  # force cmake to use python2
   set(PYBIND11_PYTHON_VERSION 2.7)
+  find_package(Python2 REQUIRED)
+  set(PYTHON_EXECUTABLE ${Python2_EXECUTABLE})
 endif()
 
 # Set release as the default build type.
@@ -52,11 +60,6 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -DNDEBUG -O3")
 endif()
-
-# include custom defined FindPackage modules
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
-include(GitSubmodule)
-list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 
 # generate compile_commands.json with compile commands for each target
 set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")
@@ -183,8 +186,10 @@ add_custom_command(
   COMMAND true
   )
 
-
-find_package(PythonInterp REQUIRED)
+if(NOT PYTHON2)
+  # attempt to find python3
+  find_package(PythonInterp REQUIRED)
+endif()
 
 # handle the generation of the version.hpp file
 add_custom_command(
