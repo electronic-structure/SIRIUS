@@ -74,6 +74,8 @@ endif()
 
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
+set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${GSL_LIBRARY}")
+
 if(USE_MKL)
   set(USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
   find_package(MKL REQUIRED)
@@ -261,7 +263,7 @@ MACRO(SIRIUS_SETUP_TARGET _target)
     target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
   endif()
 
-  target_link_libraries(${_target} PRIVATE GSL::gsl)
+  # target_link_libraries(${_target} PRIVATE GSL::gsl)
 
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_link_libraries(${_target} PRIVATE "-lgfortran")
