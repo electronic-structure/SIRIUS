@@ -306,7 +306,7 @@ void sirius_set_parameters(void*  const* handler__,
         sim_ctx.parameters_input().enable_esm_ = true;
     }
     if (iter_solver_tol__ != nullptr) {
-        sim_ctx.set_iterative_solver_tolerance(*iter_solver_tol__);
+        sim_ctx.iterative_solver_tolerance(*iter_solver_tol__);
     }
     if (iter_solver_tol_empty__ != nullptr) {
         sim_ctx.empty_states_tolerance(*iter_solver_tol_empty__);
@@ -542,7 +542,7 @@ void sirius_find_ground_state(void* const* gs_handler__, bool const *save__)
         save = *save__;
     }
 
-    auto result = gs.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, save);
+    auto result = gs.find(inp.potential_tol_, inp.energy_tol_, ctx.iterative_solver_tolerance(), inp.num_dft_iter_, save);
 }
 
 /* @fortran begin function void sirius_update_ground_state   Update a ground state object after change of atomic coordinates or lattice vectors.
@@ -1067,7 +1067,7 @@ void sirius_find_eigen_states(void* const* gs_handler__,
     GET_GS(gs_handler__)
     GET_KS(ks_handler__)
     if (iter_solver_tol__ != nullptr) {
-        ks.ctx().set_iterative_solver_tolerance(*iter_solver_tol__);
+        ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
     }
     sirius::Band(ks.ctx()).solve(ks, gs.hamiltonian(), *precompute__);
 }
