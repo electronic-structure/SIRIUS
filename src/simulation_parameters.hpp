@@ -599,9 +599,10 @@ class Simulation_parameters
         return iterative_solver_input_.energy_tolerance_;
     }
 
-    inline void set_iterative_solver_tolerance(double tolerance__)
+    inline double iterative_solver_tolerance(double tolerance__)
     {
         iterative_solver_input_.energy_tolerance_ = tolerance__;
+        return iterative_solver_input_.energy_tolerance_;
     }
 
     inline void set_iterative_solver_type(std::string type__)
