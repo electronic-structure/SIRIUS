@@ -598,6 +598,7 @@ struct Settings_input
     int nprii_rho_core_{20};
     bool always_update_wf_{true};
     double mixer_rss_min_{1e-16};
+    double itsol_tol_min_{1e-13};
     double auto_enu_tol_{0};
     std::string radial_grid_{"exponential, 1.0"};
 
@@ -610,6 +611,7 @@ struct Settings_input
             nprii_rho_core_   = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
             always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
             mixer_rss_min_    = parser["settings"].value("mixer_rss_min", mixer_rss_min_);
+            itsol_tol_min_    = parser["settings"].value("itsol_tol_min", itsol_tol_min_);
             auto_enu_tol_     = parser["settings"].value("auto_enu_tol", auto_enu_tol_);
             radial_grid_      = parser["settings"].value("radial_grid", radial_grid_);
         }
