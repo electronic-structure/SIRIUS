@@ -97,7 +97,7 @@ class Mixer
         #pragma omp parallel for schedule(static) reduction(+:rms)
         for (int i = 0; i < local_size_; i++) {
             auto r = this->input_buffer_(i) - this->vectors_(i, ipos);
-            rms += local_weight_[i] * std::pow(std::abs(r), 2);
+            rms += local_weight_[i] * std::pow(std::abs(r), 2) * this->weights_(i);
         }
 
         comm_.allreduce(&rms, 1);
