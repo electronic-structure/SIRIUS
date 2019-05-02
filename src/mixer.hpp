@@ -75,7 +75,7 @@ class Mixer
     Communicator const& comm_;
 
     /// Residual sum of squares.
-    double rss_{0};
+    //double rss_{0};
 
     std::vector<double> rms_history_;
 
@@ -89,13 +89,15 @@ class Mixer
     /// Compute RMS deviation between current vector and input vector.
     double rms_deviation() const
     {
+        /* current position in history */
         int ipos = idx_hist(count_);
 
         double rms{0};
 
         #pragma omp parallel for schedule(static) reduction(+:rms)
         for (int i = 0; i < local_size_; i++) {
-            rms += local_weight_[i] * std::pow(std::abs(vectors_(i, ipos) - input_buffer_(i)), 2);
+            auto r = this->input_buffer_(i) - this->vectors_(i, ipos);
+            rms += local_weight_[i] * std::pow(std::abs(r), 2);
         }
 
         comm_.allreduce(&rms, 1);
@@ -103,8 +105,8 @@ class Mixer
         return rms;
     }
 
-    /// Compute residual and residual square sum.
-    void compute_rss()
+    /// Compute residual and return residual square sum.
+    double compute_residual()
     {
         /* current position in history */
         int ipos = this->idx_hist(this->count_);
@@ -117,7 +119,8 @@ class Mixer
             rss += local_weight_[i] * std::pow(std::abs(residuals_(i, ipos)), 2) * this->weights_(i);
         }
         this->comm_.allreduce(&rss, 1);
-        this->rss_ = rss;
+        //this->rss_ = rss;
+        return rss;
     }
 
     /// Mix input buffer and previous vector and store result in the current vector.
@@ -208,6 +211,7 @@ class Mixer
     inline void initialize()
     {
         std::memcpy(&vectors_(0, 0), &input_buffer_(0), local_size_ * sizeof(T));
+        this->count_ = 0;
     }
 
     inline double beta() const
@@ -215,11 +219,13 @@ class Mixer
         return beta_;
     }
 
-    inline double rss() const
-    {
-        return rss_;
-    }
+    //inline double rss() const
+    //{
+    //    return rss_;
+    //}
 
+    /// Mix the input vector with the values stored in mixer.
+    /** Return the RMS value */
     virtual double mix(double rss_min__) = 0;
 };
 
@@ -268,6 +274,8 @@ class Broyden1 : public Mixer<T>
     {
     }
 
+    /// Mix newly loaded vector with the previous vectors.
+    /** Do not mix vectors if the residual square sum is below the threshold. */
     double mix(double rss_min__)
     {
         PROFILE("sirius::Broyden1::mix");
@@ -276,13 +284,14 @@ class Broyden1 : public Mixer<T>
         int ipos = this->idx_hist(this->count_);
 
         /* compute residual square sum */
-        this->compute_rss();
+        auto rss = this->compute_residual();
 
         /* exit if the vector has converged */
-        if (this->rss_ < rss_min__) {
+        if (rss < rss_min__) {
             /* Warning: if the vector has converged to this degree, it will not be mixed;
              * the output buffer will contain the vector of the previous step */
-            return 0.0;
+            //return 0.0;
+            return this->rms_deviation();
         }
 
         double rms = this->rms_deviation();
@@ -437,11 +446,12 @@ class Broyden2 : public Mixer<T>
         PROFILE("sirius::Broyden2::mix");
 
         /* compute residual square sum */
-        this->compute_rss();
+        auto rss = this->compute_residual();
 
         /* exit if the vector has converged */
-        if (this->rss_ < rss_min__) {
-            return 0.0;
+        if (rss < rss_min__) {
+            //return 0.0;
+            return this->rms_deviation();
         }
 
         double rms = this->rms_deviation();
