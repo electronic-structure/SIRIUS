@@ -245,7 +245,7 @@ struct Iterative_solver_input
 
     /// Additional tolerance for empty states.
     /** Setting this variable to 0 will treat empty states with the same tolerance as occupied states. */
-    double empty_states_tolerance_{1e-5};
+    double empty_states_tolerance_{0};
 
     /// Defines the flavour of the iterative solver.
     /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
@@ -597,7 +597,7 @@ struct Settings_input
     int nprii_aug_{20};
     int nprii_rho_core_{20};
     bool always_update_wf_{true};
-    double mixer_rss_min_{1e-12};
+    double mixer_rss_min_{1e-16};
     double auto_enu_tol_{0};
     std::string radial_grid_{"exponential, 1.0"};
 
