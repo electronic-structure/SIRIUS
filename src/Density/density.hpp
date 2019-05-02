@@ -815,7 +815,8 @@ class Density : public Field4D
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 if (j == 0) {
                     for (int igloc = 0; igloc < ngv; igloc++) {
-                        mixer_->input_local(igloc + j * ngv, component(j).f_pw_local(igloc), gvec_mixer_weights_[igloc]);
+                        //mixer_->input_local(igloc + j * ngv, component(j).f_pw_local(igloc), gvec_mixer_weights_[igloc]);
+                        mixer_->input_local(igloc + j * ngv, component(j).f_pw_local(igloc));
                     }
                 } else {
                     for (int igloc = 0; igloc < ngv; igloc++) {
@@ -881,10 +882,10 @@ class Density : public Field4D
         return rms;
     }
 
-    inline double dr2() const
-    {
-        return mixer_->rss();
-    }
+    //inline double dr2() const
+    //{
+    //    return mixer_->rss();
+    //}
 
     mdarray<double_complex, 4> const& density_matrix() const
     {
