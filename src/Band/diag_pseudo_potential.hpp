@@ -92,6 +92,10 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 {
     PROFILE("sirius::Band::diag_pseudo_potential_exact");
 
+    if (ctx_.gamma_point()) {
+        TERMINATE("exact diagonalization for Gamma-point case is not implemented");
+    }
+
     const int bs = ctx_.cyclic_block_size();
     dmatrix<T> hmlt(kp__->num_gkvec(), kp__->num_gkvec(), ctx_.blacs_grid(), bs, bs);
     dmatrix<T> ovlp(kp__->num_gkvec(), kp__->num_gkvec(), ctx_.blacs_grid(), bs, bs);
@@ -145,6 +149,9 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
         }
     }
 
+    auto& Dop = H__.D<T>();
+    auto& Qop = H__.Q<T>();
+
     mdarray<double_complex, 2> dop(ctx_.unit_cell().max_mt_basis_size(), ctx_.unit_cell().max_mt_basis_size());
     mdarray<double_complex, 2> qop(ctx_.unit_cell().max_mt_basis_size(), ctx_.unit_cell().max_mt_basis_size());
 
@@ -166,50 +173,56 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
             int offs = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::offset, i);
             int ia   = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::ia, i);
 
-            const auto& augment_op = ctx_.augmentation_op(ctx_.unit_cell().atom(ia).type_id());
-
             for (int xi1 = 0; xi1 < nbf; xi1++) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    if (ctx_.num_mag_dims() == 1) {
-                        if (ispn__ == 0) {
-                            dop(xi1, xi2) = ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0) + ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 1);
-                        } else {
-                            dop(xi1, xi2) = ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0) - ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 1);
-                        }
-                    } else {
-                        dop(xi1, xi2) = ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0);
-                    }
-                    if(augment_op.atom_type().augment()) {
-                        qop(xi1, xi2) = augment_op.q_mtrx(xi1, xi2);
-                    }
+                    dop(xi1, xi2) = Dop(xi1, xi2, ispn__, ia);
+                    qop(xi1, xi2) = Qop(xi1, xi2, ispn__, ia);
                 }
             }
+            /* compute <G+k|beta> D */
             linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
                               &beta_row(0, offs), beta_row.ld(),
                               &dop(0, 0), dop.ld(),
                               &btmp(0, 0), btmp.ld());
+            /* compute (<G+k|beta> D ) <beta|G+k> */
             linalg<CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
                               linalg_const<double_complex>::one(),
                               &btmp(0, 0), btmp.ld(),
                               &beta_col(0, offs), beta_col.ld(),
                               linalg_const<double_complex>::one(),
                               &hmlt(0, 0), hmlt.ld());
-            if(augment_op.atom_type().augment()) {
+            /* update the overlap matrix */
+            if (ctx_.unit_cell().atom(ia).type().augment()) {
                 linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
                                   &beta_row(0, offs), beta_row.ld(),
                                   &qop(0, 0), qop.ld(),
                                   &btmp(0, 0), btmp.ld());
+                linalg<CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
+                                  linalg_const<double_complex>::one(),
+                                  &btmp(0, 0), btmp.ld(),
+                                  &beta_col(0, offs), beta_col.ld(),
+                                  linalg_const<double_complex>::one(),
+                                  &ovlp(0, 0), ovlp.ld());
             }
-            linalg<CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
-                              linalg_const<double_complex>::one(),
-                              &btmp(0, 0), btmp.ld(),
-                              &beta_col(0, offs), beta_col.ld(),
-                              linalg_const<double_complex>::one(),
-                              &ovlp(0, 0), ovlp.ld());
-        }
+        } // i (atoms in chunk)
     }
     kp__->beta_projectors_row().dismiss();
     kp__->beta_projectors_col().dismiss();
+
+    if (ctx_.control().verification_ >= 1) {
+        double max_diff = check_hermitian(ovlp, kp__->num_gkvec());
+        if (max_diff > 1e-12) {
+            std::stringstream s;
+            s << "overlap matrix is not hermitian, max_err = " << max_diff;
+            TERMINATE(s);
+        }
+        max_diff = check_hermitian(hmlt, kp__->num_gkvec());
+        if (max_diff > 1e-12) {
+            std::stringstream s;
+            s << "Hamiltonian matrix is not hermitian, max_err = " << max_diff;
+            TERMINATE(s);
+        }
+    }
 
     if (gen_solver.solve(kp__->num_gkvec(), ctx_.num_bands(), hmlt, ovlp, eval.data(), evec)) {
         std::stringstream s;
