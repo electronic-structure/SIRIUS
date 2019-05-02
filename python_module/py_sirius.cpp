@@ -208,7 +208,8 @@ PYBIND11_MODULE(py_sirius, m)
              py::return_value_policy::reference_internal)
         .def("comm_fft", [](Simulation_context& obj) { return make_pycomm(obj.comm_fft()); },
              py::return_value_policy::reference_internal)
-        .def("set_iterative_solver_tolerance", &Simulation_context::set_iterative_solver_tolerance);
+        .def("iterative_solver_tolerance", py::overload_cast<double>(&Simulation_context::iterative_solver_tolerance))
+        .def("iterative_solver_tolerance", py::overload_cast<>(&Simulation_context::iterative_solver_tolerance, py::const_));
 
     py::class_<Atom>(m, "Atom")
         .def("position", &Atom::position)
@@ -226,8 +227,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("num_atoms", [](const Atom_type& atype) { return atype.num_atoms(); });
 
     py::class_<Unit_cell>(m, "Unit_cell")
-        //.def("add_atom_type",
-        //     static_cast<void (Unit_cell::*)(const std::string, const std::string)>(&Unit_cell::add_atom_type))
         .def("add_atom_type", &Unit_cell::add_atom_type)
         .def("add_atom", py::overload_cast<const std::string, std::vector<double>>(&Unit_cell::add_atom))
         .def("atom", py::overload_cast<int>(&Unit_cell::atom), py::return_value_policy::reference)
@@ -347,7 +346,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def("generate", &Potential::generate)
         .def("symmetrize", &Potential::symmetrize)
         .def("fft_transform", &Potential::fft_transform)
-        //.def("allocate", &Potential::allocate)
         .def("save", &Potential::save)
         .def("load", &Potential::load)
         .def("energy_vha", &Potential::energy_vha)
@@ -362,7 +360,6 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<Density, Field4D>(m, "Density")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>(), "ctx"_a)
         .def("initial_density", &Density::initial_density)
-        //.def("allocate", &Density::allocate)
         .def("mixer_init", &Density::mixer_init)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("fft_transform", &Density::fft_transform)
@@ -401,11 +398,18 @@ PYBIND11_MODULE(py_sirius, m)
         .def("total_energy", &DFT_ground_state::total_energy)
         .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
         .def("find",
-             [](DFT_ground_state& dft, double potential_tol, double energy_tol, int num_dft_iter, bool write_state) {
-                 json js = dft.find(potential_tol, energy_tol, num_dft_iter, write_state);
+             [](DFT_ground_state& dft, double potential_tol, double energy_tol, double initial_tol, int num_dft_iter, bool write_state)
+             {
+                 json js = dft.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_state);
                  return pj_convert(js);
              },
-             "potential_tol"_a, "energy_tol"_a, "num_dft_iter"_a, "write_state"_a)
+             "potential_tol"_a, "energy_tol"_a, "initial_tol"_a, "num_dft_iter"_a, "write_state"_a)
+        .def("check_scf_density",
+             [](DFT_ground_state& dft)
+             {
+                 json js = dft.check_scf_density();
+                 return pj_convert(js);
+             })
         .def("k_point_set", &DFT_ground_state::k_point_set, py::return_value_policy::reference_internal)
         .def("hamiltonian", &DFT_ground_state::hamiltonian, py::return_value_policy::reference_internal)
         .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference_internal)
