@@ -81,11 +81,12 @@ inline void initialize(bool call_mpi_init__ = true)
     sddk::num_ranks_per_node();
     if (acc::num_devices() > 0) {
         int devid = sddk::get_device_id(acc::num_devices());
-        #pragma omp parallel
-        {
-            #pragma omp critical
-            acc::set_device_id(devid);
-        }
+        acc::set_device_id(devid);
+        // #pragma omp parallel
+        // {
+        //     #pragma omp critical
+        //     acc::set_device_id(devid);
+        // }
         acc::create_streams(omp_get_max_threads() + 1);
 #if defined(__GPU)
         gpublas::create_stream_handles();
