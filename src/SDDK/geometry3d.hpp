@@ -108,6 +108,11 @@ class vector3d : public std::array<T, 3>
         return std::sqrt(static_cast<double>(std::pow((*this)[0], 2) + std::pow((*this)[1], 2) + std::pow((*this)[2], 2)));
     }
 
+    inline double length2() const
+    {
+        return static_cast<double>(std::pow((*this)[0], 2) + std::pow((*this)[1], 2) + std::pow((*this)[2], 2));
+    }
+
     template <typename U>
     inline vector3d<decltype(T{} + U{})> operator+(vector3d<U> const& b) const
     {

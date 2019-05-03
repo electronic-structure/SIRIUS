@@ -415,7 +415,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference_internal)
         .def("forces", &DFT_ground_state::forces, py::return_value_policy::reference_internal)
         .def("stress", &DFT_ground_state::stress, py::return_value_policy::reference_internal)
-        .def("update", &DFT_ground_state::update);
+        .def("update", &DFT_ground_state::update)
+        .def("energy_kin_sum_pw", &DFT_ground_state::energy_kin_sum_pw);
 
     py::class_<K_point>(m, "K_point")
         .def("band_energy", py::overload_cast<int, int>(&K_point::band_energy, py::const_))
@@ -668,6 +669,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def("calc_stress_har", &Stress::calc_stress_har, py::return_value_policy::reference_internal)
         .def("calc_stress_ewald", &Stress::calc_stress_ewald, py::return_value_policy::reference_internal)
         .def("calc_stress_xc", &Stress::calc_stress_xc, py::return_value_policy::reference_internal)
+        .def("calc_stress_kin", &Stress::calc_stress_kin, py::return_value_policy::reference_internal)
+        .def("calc_stress_vloc", &Stress::calc_stress_vloc, py::return_value_policy::reference_internal)
         .def("print_info", &Stress::print_info);
 
     py::class_<Free_atom>(m, "Free_atom")

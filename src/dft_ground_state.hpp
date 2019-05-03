@@ -356,6 +356,36 @@ class DFT_ground_state
         return (eval_sum() - energy_veff() - energy_bxc());
     }
 
+    double energy_kin_sum_pw() const
+    {
+        double ekin{0};
+
+        for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+            int ik = kset_.spl_num_kpoints(ikloc);
+            auto kp = kset_[ik];
+
+            #pragma omp parallel for schedule(static) reduction(+:ekin)
+            for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
+                auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
+
+                double d{0};
+                for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
+                    for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
+                        double f = kp->band_occupancy(i, ispin);
+                        auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
+                        d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                    }
+                }
+                if (kp->gkvec().reduced()) {
+                    d *= 2;
+                }
+                ekin += 0.5 * d * kp->weight() * Gk.length2();
+            } // igloc
+        } // ikloc
+        ctx_.comm().allreduce(&ekin, 1);
+        return ekin;
+    }
+
     double energy_ewald() const
     {
         return ewald_energy_;
@@ -549,6 +579,9 @@ class DFT_ground_state
         dict["energy"]["eval_sum"]      = eval_sum();
         dict["energy"]["kin"]           = energy_kin();
         dict["energy"]["ewald"]         = energy_ewald();
+        if (!ctx_.full_potential()) {
+            dict["energy"]["vloc"]      = energy_vloc();
+        }
         dict["efermi"]                  = kset_.energy_fermi();
         dict["band_gap"]                = kset_.band_gap();
         dict["core_leakage"]            = density_.core_leakage();
