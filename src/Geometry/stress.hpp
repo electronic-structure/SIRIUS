@@ -612,7 +612,7 @@ class Stress {
                     auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
 
                     double d{0};
-                    for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
+                    for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
                         for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
                             double f = kp->band_occupancy(i, ispin);
                             auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);

@@ -40,8 +40,8 @@ void test1_mixer(int N, Mixer<double>& mixer)
         if (rms < 1e-12) {
             break;
         }
-        auto rss = mixer.rss();
-        std::cout << "rss=" << rss << " rms=" << rms << "\n";
+        //auto rss = mixer.rss();
+        std::cout << "rms=" << rms << "\n";
         for (int i = 0; i < N; i++) {
             a[i] = mixer.output_local(i);
         }
