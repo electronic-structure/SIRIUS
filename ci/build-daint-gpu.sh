@@ -19,6 +19,7 @@ mkdir -p build
           -DGPU_MODEL=P100 \
           -DUSE_MAGMA=On \
           -DUSE_CUDA=On \
+          -DCMAKE_BUILD_TYPE=RELWITHDEBINFO \
           -DCREATE_PYTHON_MODULE=On \
           ../
     make -j24 VERBOSE=1
