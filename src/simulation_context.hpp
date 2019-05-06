@@ -1701,9 +1701,17 @@ inline void Simulation_context::print_info() const
         printf("%s\n", xc.refs().c_str());
         i++;
     }
-    int vmajor, vminor, vmicro;
-    xc_version(&vmajor, &vminor, &vmicro);
-    printf("Libxc version: %d.%d.%d\n", vmajor, vminor, vmicro);
+    {
+        int vmajor, vminor, vmicro;
+        xc_version(&vmajor, &vminor, &vmicro);
+        printf("Libxc version: %d.%d.%d\n", vmajor, vminor, vmicro);
+    }
+    {
+        unsigned int vmajor, vminor, vmicro;
+        H5get_libversion(&vmajor, &vminor, &vmicro);
+        printf("HDF5 version: %d.%d.%d\n", vmajor, vminor, vmicro);
+    }
+    printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(), spg_get_micro_version());
 }
 
 } // namespace sirius
