@@ -35,8 +35,8 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     params.set_processing_unit(pu);
     params.unit_cell().set_lattice_vectors(M);
     params.set_mpi_grid_dims(mpi_grid_dims__);
-    params.set_pw_cutoff(cutoff__ + 1);
-    params.set_gk_cutoff(cutoff__ / 2);
+    params.pw_cutoff(cutoff__ + 1);
+    params.gk_cutoff(cutoff__ / 2);
     params.electronic_structure_method("pseudopotential");
     params.use_symmetry(false);
     params.initialize();

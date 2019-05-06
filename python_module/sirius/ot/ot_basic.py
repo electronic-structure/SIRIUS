@@ -44,59 +44,59 @@ class Energy:
         else:
             self.ctx = ctx
 
-    def __call__(self, cn, ek=None):
+    def compute(self, cn):
         """
         Keyword Arguments:
         cn  --
         ek  -- band energies
         """
-        from ..coefficient_array import PwCoeffs
 
-        if isinstance(cn, PwCoeffs):
-            # update coefficients for all items in PwCoeffs
-            for key, val in cn.items():
-                k, ispn = key
-                self.kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[:, :val.shape[1]] = val
-            # copy to device (if needed)
-            for ki in cn.kvalues():
-                psi = self.kpointset[ki].spinor_wave_functions()
-                if psi.preferred_memory_t() == MemoryEnum.device:
-                    psi.copy_to_gpu()
-            # update density, potential
-            self.density.generate(self.kpointset)
-            if self.ctx.use_symmetry():
-                self.density.symmetrize()
-                self.density.symmetrize_density_matrix()
+        assert isinstance(cn, PwCoeffs)
 
-            self.density.generate_paw_loc_density()
-            self.density.fft_transform(1)
-            self.potential.generate(self.density)
-            if self.ctx.use_symmetry():
-                self.potential.symmetrize()
+        for key, val in cn.items():
+            k, ispn = key
+            self.kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[:, :val.shape[1]] = val
+        # copy to device (if needed)
+        for ki in cn.kvalues():
+            psi = self.kpointset[ki].spinor_wave_functions()
+            if psi.preferred_memory_t() == MemoryEnum.device:
+                psi.copy_to_gpu()
+        # update density, potential
+        self.density.generate(self.kpointset)
+        if self.ctx.use_symmetry():
+            self.density.symmetrize()
+            self.density.symmetrize_density_matrix()
 
-            self.potential.fft_transform(1)
+        self.density.generate_paw_loc_density()
+        self.density.fft_transform(1)
+        self.potential.generate(self.density)
+        if self.ctx.use_symmetry():
+            self.potential.symmetrize()
 
-            # update band energies
-            if ek is None:
-                yn = self.H(cn, scale=False)
-                for key, val in yn.items():
-                    k, ispn = key
-                    benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex)
-                    benergies[:val.shape[1]] = np.einsum('ij,ij->j',
-                                                        val,
-                                                        np.conj(cn[key]))
+        self.potential.fft_transform(1)
 
-                    for j, ek in enumerate(benergies):
-                        self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
+        yn = self.H(cn, scale=False)
+        for key, val in yn.items():
+            k, ispn = key
+            benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex)
+            benergies[:val.shape[1]] = np.einsum('ij,ij->j',
+                                                val,
+                                                np.conj(cn[key]))
 
-                self.kpointset.sync_band_energies()
-            else:
-                self.kpointset.e = ek
+            for j, ek in enumerate(benergies):
+                self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
 
-            return pp_total_energy(self.potential, self.density,
-                                   self.kpointset, self.ctx)
-        else:
-            assert False
+        self.kpointset.sync_band_energies()
+
+        Etot = pp_total_energy(self.potential, self.density,
+                               self.kpointset, self.ctx)
+
+        return Etot, yn
+
+    def __call__(self, cn):
+        E, _ = self.compute(cn)
+        return E
+
 
 class ApplyHamiltonian:
     def __init__(self, hamiltonian, kpointset):
@@ -110,23 +110,22 @@ class ApplyHamiltonian:
         cn -- input coefficient array
         """
         from ..coefficient_array import PwCoeffs
-
-        num_sc = self.hamiltonian.ctx().num_spins()
+        ctx = self.hamiltonian.ctx()
+        num_sc = ctx.num_spins()
         self.hamiltonian._apply_ref_inner_prepare()
         if isinstance(cn, PwCoeffs):
             assert (ki is None)
             assert (ispn is None)
             out = PwCoeffs(dtype=cn.dtype)
-            cn._data.keys()
             for k, ispn_coeffs in cn.by_k().items():
                 kpoint = self.kpointset[k]
                 # spins might have different number of bands ...
                 num_wf = max(ispn_coeffs, key=lambda x: x[1].shape[1])[1].shape[1]
                 Psi_x = Wave_functions(kpoint.gkvec_partition(), num_wf,
-                                       MemoryEnum.host,
+                                       ctx.preferred_memory_t(),
                                        num_sc)
                 Psi_y = Wave_functions(kpoint.gkvec_partition(), num_wf,
-                                       MemoryEnum.host,
+                                       ctx.preferred_memory_t(),
                                        num_sc)
                 for i, val in ispn_coeffs:
                     Psi_x.pw_coeffs(i)[:, :val.shape[1]] = val
@@ -151,8 +150,8 @@ class ApplyHamiltonian:
             kpoint = self.kpointset[ki]
             w = kpoint.weight()
             num_wf = cn.shape[1]
-            Psi_y = Wave_functions(kpoint.gkvec_partition(), num_wf, MemoryEnum.host, num_sc)
-            Psi_x = Wave_functions(kpoint.gkvec_partition(), num_wf, MemoryEnum.host, num_sc)
+            Psi_y = Wave_functions(kpoint.gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc)
+            Psi_x = Wave_functions(kpoint.gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc)
             bnd_occ = np.array(kpoint.band_occupancy(ispn))
             Psi_x.pw_coeffs(ispn)[:] = cn
             self.hamiltonian.apply_ref(kpoint, Psi_y, Psi_x)

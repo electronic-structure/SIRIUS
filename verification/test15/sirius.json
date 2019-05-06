@@ -4,8 +4,14 @@
       "processing_unit" : "cpu",
       "std_evp_solver_type" : "lapack",
       "gen_evp_solver_type" : "lapack",
+      "!verbosity" : 2,
       "print_forces" : true,
-      "print_stress" : true
+      "print_stress" : true,
+      "!verification" : 1
+  },
+  "settings" : {
+    "mixer_rss_min" : 1e-30,
+    "itsol_tol_min" : 1e-16
   },
 
   "parameters" : {
@@ -23,8 +29,8 @@
 
       "num_mag_dims" : 0,
 
-      "gk_cutoff" : 6.0,
-      "pw_cutoff" : 20.00,
+      "gk_cutoff" : 7.0,
+      "pw_cutoff" : 30.00,
 
       "energy_tol" : 1e-8,
       "potential_tol" : 1e-8,
@@ -36,10 +42,10 @@
 
     "iterative_solver" : {
         "energy_tolerance" : 1e-2,
-        "residual_tolerance" : 1e-4,
+        "residual_tolerance" : 1e-8,
         "num_steps" : 20,
         "subspace_size" : 4,
-        "type" : "davidson",
+        "!type" : "exact",
         "converge_by_energy" : 1
     },
 

@@ -49,8 +49,6 @@ template <typename T>
 class Periodic_function : public Smooth_periodic_function<T>
 {
   private:
-    /// Complex counterpart for a given type T.
-    //typedef typename type_wrapper<T>::complex_t complex_t;
 
     Simulation_context const& ctx_;
 
@@ -59,7 +57,7 @@ class Periodic_function : public Smooth_periodic_function<T>
     Communicator const& comm_;
 
     /// Local part of muffin-tin functions.
-    mdarray<Spheric_function<spectral, T>, 1> f_mt_local_;
+    mdarray<Spheric_function<function_domain_t::spectral, T>, 1> f_mt_local_;
 
     /// Global muffin-tin array
     mdarray<T, 3> f_mt_;
@@ -74,8 +72,8 @@ class Periodic_function : public Smooth_periodic_function<T>
     {
         for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
             int ia             = unit_cell_.spl_num_atoms(ialoc);
-            f_mt_local_(ialoc) = Spheric_function<spectral, T>(&f_mt_(0, 0, ia), angular_domain_size_,
-                                                               unit_cell_.atom(ia).radial_grid());
+            f_mt_local_(ialoc) = Spheric_function<function_domain_t::spectral, T>(&f_mt_(0, 0, ia), angular_domain_size_,
+                                                                                  unit_cell_.atom(ia).radial_grid());
         }
     }
 
@@ -97,7 +95,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         , angular_domain_size_(angular_domain_size__)
     {
         if (ctx_.full_potential()) {
-            f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>(unit_cell_.spl_num_atoms().local_size());
+            f_mt_local_ = mdarray<Spheric_function<function_domain_t::spectral, T>, 1>(unit_cell_.spl_num_atoms().local_size());
         }
     }
 
@@ -111,7 +109,7 @@ class Periodic_function : public Smooth_periodic_function<T>
             } else {
                 for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                     int ia             = unit_cell_.spl_num_atoms(ialoc);
-                    f_mt_local_(ialoc) = Spheric_function<spectral, T>(angular_domain_size_, unit_cell_.atom(ia).radial_grid());
+                    f_mt_local_(ialoc) = Spheric_function<function_domain_t::spectral, T>(angular_domain_size_, unit_cell_.atom(ia).radial_grid());
                 }
             }
         }
@@ -289,7 +287,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         this->f_rg_ = mdarray<T, 1>(rg_ptr__, this->fft_->local_size());
     }
 
-    inline Spheric_function<spectral, T> const& f_mt(int ialoc__) const
+    inline Spheric_function<function_domain_t::spectral, T> const& f_mt(int ialoc__) const
     {
         return f_mt_local_(ialoc__);
     }

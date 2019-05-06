@@ -245,7 +245,7 @@ struct Iterative_solver_input
 
     /// Additional tolerance for empty states.
     /** Setting this variable to 0 will treat empty states with the same tolerance as occupied states. */
-    double empty_states_tolerance_{1e-5};
+    double empty_states_tolerance_{0};
 
     /// Defines the flavour of the iterative solver.
     /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
@@ -458,13 +458,13 @@ struct Parameters_input
     double smearing_width_{0.01}; // in Ha
 
     /// Cutoff for plane-waves (for density and potential expansion).
-    double pw_cutoff_{20.0}; // in a.u.^-1
+    double pw_cutoff_{0.0}; // in a.u.^-1
 
     /// Cutoff for augmented-wave functions.
-    double aw_cutoff_{7.0}; // this is R_{MT} * |G+k|_{max}
+    double aw_cutoff_{0.0}; // this is R_{MT} * |G+k|_{max}
 
     /// Cutoff for |G+k| plane-waves.
-    double gk_cutoff_{6.0}; // in a.u.^-1
+    double gk_cutoff_{0.0}; // in a.u.^-1
 
     /// Maximum l for APW functions.
     int lmax_apw_{8};
@@ -597,7 +597,8 @@ struct Settings_input
     int nprii_aug_{20};
     int nprii_rho_core_{20};
     bool always_update_wf_{true};
-    double mixer_rss_min_{1e-12};
+    double mixer_rss_min_{1e-16};
+    double itsol_tol_min_{1e-13};
     double auto_enu_tol_{0};
     std::string radial_grid_{"exponential, 1.0"};
 
@@ -610,6 +611,7 @@ struct Settings_input
             nprii_rho_core_   = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
             always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
             mixer_rss_min_    = parser["settings"].value("mixer_rss_min", mixer_rss_min_);
+            itsol_tol_min_    = parser["settings"].value("itsol_tol_min", itsol_tol_min_);
             auto_enu_tol_     = parser["settings"].value("auto_enu_tol", auto_enu_tol_);
             radial_grid_      = parser["settings"].value("radial_grid", radial_grid_);
         }

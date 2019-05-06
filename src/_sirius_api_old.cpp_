@@ -773,15 +773,6 @@
 //== //    //density->generate_pw_coefs();
 //== //}
 //==
-//== /// Get first-variational eigen-vectors
-//== /** Assume that the Fortran side holds the whole array */
-//== void sirius_get_fv_eigen_vectors(int32_t* kset_id__, int32_t* ik__, double_complex* fv_evec__, int32_t* ld__,
-//==                                  int32_t* num_fv_evec__)
-//== {
-//==     mdarray<double_complex, 2> fv_evec(fv_evec__, *ld__, *num_fv_evec__);
-//==     (*kset_list[*kset_id__])[*ik__ - 1]->get_fv_eigen_vectors(fv_evec);
-//== }
-//==
 //== /// Get second-variational eigen-vectors
 //== /** Assume that the Fortran side holds the whole array */
 //== void sirius_get_sv_eigen_vectors(int32_t* kset_id, int32_t* ik, double_complex* sv_evec__, int32_t* size)

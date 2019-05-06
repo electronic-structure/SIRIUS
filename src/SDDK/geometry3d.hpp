@@ -108,6 +108,11 @@ class vector3d : public std::array<T, 3>
         return std::sqrt(static_cast<double>(std::pow((*this)[0], 2) + std::pow((*this)[1], 2) + std::pow((*this)[2], 2)));
     }
 
+    inline double length2() const
+    {
+        return static_cast<double>(std::pow((*this)[0], 2) + std::pow((*this)[1], 2) + std::pow((*this)[2], 2));
+    }
+
     template <typename U>
     inline vector3d<decltype(T{} + U{})> operator+(vector3d<U> const& b) const
     {
@@ -439,7 +444,7 @@ std::ostream& operator<<(std::ostream& out, matrix3d<T>& v)
 
 inline std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<double> coord)
 {
-    const double eps{1e-6};
+    const double eps{1e-9};
 
     std::pair<vector3d<double>, vector3d<int>> v;
 

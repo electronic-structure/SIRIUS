@@ -110,8 +110,8 @@ class Potential : public Field4D
 
         int ia_paw{-1};
 
-        std::vector<Spheric_function<spectral, double>> ae_potential_;
-        std::vector<Spheric_function<spectral, double>> ps_potential_;
+        std::vector<Spheric_function<function_domain_t::spectral, double>> ae_potential_;
+        std::vector<Spheric_function<function_domain_t::spectral, double>> ps_potential_;
 
         double hartree_energy_{0.0};
         double xc_energy_{0.0};
@@ -139,27 +139,27 @@ class Potential : public Field4D
 
     void init_PAW();
 
-    double xc_mt_PAW_nonmagnetic(Spheric_function<spectral, double>&       full_potential,
-                                 Spheric_function<spectral, double> const& full_density,
+    double xc_mt_PAW_nonmagnetic(Spheric_function<function_domain_t::spectral, double>&       full_potential,
+                                 Spheric_function<function_domain_t::spectral, double> const& full_density,
                                  std::vector<double> const&                rho_core);
 
-    double xc_mt_PAW_collinear(std::vector<Spheric_function<spectral, double>>&       potential,
-                               std::vector<Spheric_function<spectral, double>> const& density,
+    double xc_mt_PAW_collinear(std::vector<Spheric_function<function_domain_t::spectral, double>>&       potential,
+                               std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
                                std::vector<double> const&                             rho_core);
 
-    double xc_mt_PAW_noncollinear(std::vector<Spheric_function<spectral, double>>&       potential,
-                                  std::vector<Spheric_function<spectral, double>> const& density,
+    double xc_mt_PAW_noncollinear(std::vector<Spheric_function<function_domain_t::spectral, double>>&       potential,
+                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
                                   std::vector<double> const&                             rho_core);
 
     void calc_PAW_local_potential(paw_potential_data_t&                                  pdd,
-                                  std::vector<Spheric_function<spectral, double>> const& ae_density,
-                                  std::vector<Spheric_function<spectral, double>> const& ps_density);
+                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& ae_density,
+                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& ps_density);
 
     void calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>& paw_dij);
 
     double calc_PAW_hartree_potential(Atom&                                     atom,
-                                      Spheric_function<spectral, double> const& full_density,
-                                      Spheric_function<spectral, double>&       full_potential);
+                                      Spheric_function<function_domain_t::spectral, double> const& full_density,
+                                      Spheric_function<function_domain_t::spectral, double>&       full_potential);
 
     double calc_PAW_one_elec_energy(paw_potential_data_t&             pdd,
                                     const mdarray<double_complex, 4>& density_matrix,
@@ -276,21 +276,21 @@ class Potential : public Field4D
     /// Generate non-spin polarized XC potential in the muffin-tins.
     inline void xc_mt_nonmagnetic(Radial_grid<double> const&                rgrid,
                                   std::vector<XC_functional>&               xc_func,
-                                  Spheric_function<spectral, double> const& rho_lm,
-                                  Spheric_function<spatial, double>&        rho_tp,
-                                  Spheric_function<spatial, double>&        vxc_tp,
-                                  Spheric_function<spatial, double>&        exc_tp);
+                                  Spheric_function<function_domain_t::spectral, double> const& rho_lm,
+                                  Spheric_function<function_domain_t::spatial, double>&        rho_tp,
+                                  Spheric_function<function_domain_t::spatial, double>&        vxc_tp,
+                                  Spheric_function<function_domain_t::spatial, double>&        exc_tp);
 
     /// Generate spin-polarized XC potential in the muffin-tins.
     inline void xc_mt_magnetic(Radial_grid<double> const&          rgrid,
                                std::vector<XC_functional>&         xc_func,
-                               Spheric_function<spectral, double>& rho_up_lm,
-                               Spheric_function<spatial, double>&  rho_up_tp,
-                               Spheric_function<spectral, double>& rho_dn_lm,
-                               Spheric_function<spatial, double>&  rho_dn_tp,
-                               Spheric_function<spatial, double>&  vxc_up_tp,
-                               Spheric_function<spatial, double>&  vxc_dn_tp,
-                               Spheric_function<spatial, double>&  exc_tp);
+                               Spheric_function<function_domain_t::spectral, double>& rho_up_lm,
+                               Spheric_function<function_domain_t::spatial, double>&  rho_up_tp,
+                               Spheric_function<function_domain_t::spectral, double>& rho_dn_lm,
+                               Spheric_function<function_domain_t::spatial, double>&  rho_dn_tp,
+                               Spheric_function<function_domain_t::spatial, double>&  vxc_up_tp,
+                               Spheric_function<function_domain_t::spatial, double>&  vxc_dn_tp,
+                               Spheric_function<function_domain_t::spatial, double>&  exc_tp);
 
     /// Generate XC potential in the muffin-tins.
     inline void xc_mt(Density const& density__);
@@ -1053,7 +1053,7 @@ class Potential : public Field4D
         return *dveff_;
     }
 
-    Spheric_function<spectral, double> const& effective_potential_mt(int ialoc) const
+    Spheric_function<function_domain_t::spectral, double> const& effective_potential_mt(int ialoc) const
     {
         return this->scalar().f_mt(ialoc);
     }
@@ -1073,7 +1073,7 @@ class Potential : public Field4D
         return *hartree_potential_;
     }
 
-    Spheric_function<spectral, double> const& hartree_potential_mt(int ialoc) const
+    Spheric_function<function_domain_t::spectral, double> const& hartree_potential_mt(int ialoc) const
     {
         return hartree_potential_->f_mt(ialoc);
     }

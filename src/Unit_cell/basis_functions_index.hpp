@@ -102,6 +102,27 @@ class basis_functions_index
 
   public:
 
+    //struct iterator
+    //{
+    //    int xi;
+    //    std::vector<basis_function_index_descriptor>& ref_basis_function_index_descriptors_;
+
+    //    iterator(int xi__)
+    //        : xi(xi__)
+    //    {
+    //    }
+
+    //    bool operator!=(int pos__) const
+    //    {
+    //        return xi != pos__;
+    //    }
+
+    //    iterator& operator++()
+    //    {
+    //        xi++;
+    //    }
+    //};
+
     void init(radial_functions_index& indexr__)
     {
         basis_function_index_descriptors_.clear();

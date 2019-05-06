@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse import dia_matrix
 
 __all__ = ['CoefficientArray', 'inner', 'l2norm',
            'PwCoeffs', 'diag', 'einsum', 'ones_like']
@@ -25,6 +26,21 @@ def diag(x):
         return out
     else:
         return np.diag(x)
+
+
+def spdiag(x):
+    """
+    Diagonal matrix (scipy.sparse.dia_matrix)
+    """
+    if isinstance(x, CoefficientArray):
+        out = type(x)(dtype=x.dtype, ctype=x.ctype)
+        for key, val in x._data.items():
+            n = np.size(val)
+            out[key] = dia_matrix((val, 0), shape=(n, n))
+        return out
+    else:
+        n = np.size(x)
+        return dia_matrix((x, 0), shape=(n, n))
 
 
 def ones_like(x, dtype=None):

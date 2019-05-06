@@ -72,9 +72,6 @@ double ground_state(Simulation_context& ctx,
     auto& potential = dft.potential();
     auto& density = dft.density();
 
-    density.allocate();
-    potential.allocate();
-
     if (task == task_t::ground_state_restart) {
         if (!utils::file_exists(storage_file_name)) {
             TERMINATE("storage file is not found");
@@ -85,40 +82,44 @@ double ground_state(Simulation_context& ctx,
         dft.initial_state();
     }
 
+    double initial_tol = ctx.iterative_solver_tolerance();
+
     /* launch the calculation */
-    auto result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
+    auto result = dft.find(inp.potential_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
+
+    if (ctx.control().verification_ >= 1) {
+        dft.check_scf_density();
+    }
 
     auto repeat_update = args.value<int>("repeat_update", 0);
     if (repeat_update) {
         for (int i = 0; i < repeat_update; i++) {
             dft.update();
-            result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
+            result = dft.find(inp.potential_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
         }
     }
 
     dft.print_magnetic_moment();
 
-    if (!ctx.full_potential()) {
-        if (ctx.control().print_stress_) {
-            Stress& s = dft.stress();
-            auto stress_tot = s.calc_stress_total();
-            s.print_info();
-            result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    result["stress"][i][j] = stress_tot(j, i);
-                }
+    if (ctx.control().print_stress_ && !ctx.full_potential()) {
+        Stress& s       = dft.stress();
+        auto stress_tot = s.calc_stress_total();
+        s.print_info();
+        result["stress"] = std::vector<std::vector<double>>(3, std::vector<double>(3));
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                result["stress"][i][j] = stress_tot(j, i);
             }
         }
-        if (ctx.control().print_forces_) {
-            Force& f = dft.forces();
-            auto& forces_tot = f.calc_forces_total();
-            f.print_info();
-            result["forces"] = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
-            for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
-                for (int j = 0; j < 3; j++) {
-                    result["forces"][i][j] = forces_tot(j, i);
-                }
+    }
+    if (ctx.control().print_forces_) {
+        Force& f         = dft.forces();
+        auto& forces_tot = f.calc_forces_total();
+        f.print_info();
+        result["forces"] = std::vector<std::vector<double>>(ctx.unit_cell().num_atoms(), std::vector<double>(3));
+        for (int i = 0; i < ctx.unit_cell().num_atoms(); i++) {
+            for (int j = 0; j < 3; j++) {
+                result["forces"][i][j] = forces_tot(j, i);
             }
         }
     }
@@ -230,26 +231,26 @@ void run_tasks(cmd_args const& args)
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
+        //if (ctx->full_potential()) {
+        //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
+        //}
         ground_state(*ctx, task, args, 1);
     }
 
     if (task == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
-        ctx->set_iterative_solver_tolerance(1e-12);
+        ctx->iterative_solver_tolerance(1e-12);
         ctx->set_gamma_point(false);
         ctx->initialize();
+        //if (ctx->full_potential()) {
+        //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
+        //}
 
         Potential potential(*ctx);
-        if (ctx->full_potential()) {
-            potential.allocate();
-        }
 
         Hamiltonian H(*ctx, potential);
 
         Density density(*ctx);
-        if (ctx->full_potential()) {
-            density.allocate();
-        }
 
         K_point_set ks(*ctx);
 

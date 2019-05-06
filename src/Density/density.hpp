@@ -140,8 +140,8 @@ class Density : public Field4D
         int ia{-1};
 
         /// ae and ps local unified densities+magnetization
-        std::vector<Spheric_function<spectral, double>> ae_density_;
-        std::vector<Spheric_function<spectral, double>> ps_density_;
+        std::vector<Spheric_function<function_domain_t::spectral, double>> ae_density_;
+        std::vector<Spheric_function<function_domain_t::spectral, double>> ps_density_;
     };
 
     std::vector<paw_density_data_t> paw_density_data_;
@@ -788,7 +788,7 @@ class Density : public Field4D
         return this->vector(i);
     }
 
-    Spheric_function<spectral, double> const& density_mt(int ialoc) const
+    Spheric_function<function_domain_t::spectral, double> const& density_mt(int ialoc) const
     {
         return rho().f_mt(ialoc);
     }
@@ -796,12 +796,12 @@ class Density : public Field4D
     /// Generate \f$ n_1 \f$  and \f$ \tilde{n}_1 \f$ in lm components.
     void generate_paw_loc_density();
 
-    std::vector<Spheric_function<spectral, double>> const& ae_paw_atom_density(int spl_paw_ind) const
+    std::vector<Spheric_function<function_domain_t::spectral, double>> const& ae_paw_atom_density(int spl_paw_ind) const
     {
         return paw_density_data_[spl_paw_ind].ae_density_;
     }
 
-    std::vector<Spheric_function<spectral, double>> const& ps_paw_atom_density(int spl_paw_ind) const
+    std::vector<Spheric_function<function_domain_t::spectral, double>> const& ps_paw_atom_density(int spl_paw_ind) const
     {
         return paw_density_data_[spl_paw_ind].ps_density_;
     }
@@ -815,7 +815,8 @@ class Density : public Field4D
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 if (j == 0) {
                     for (int igloc = 0; igloc < ngv; igloc++) {
-                        mixer_->input_local(igloc + j * ngv, component(j).f_pw_local(igloc), gvec_mixer_weights_[igloc]);
+                        //mixer_->input_local(igloc + j * ngv, component(j).f_pw_local(igloc), gvec_mixer_weights_[igloc]);
+                        mixer_->input_local(igloc + j * ngv, component(j).f_pw_local(igloc));
                     }
                 } else {
                     for (int igloc = 0; igloc < ngv; igloc++) {
@@ -881,10 +882,10 @@ class Density : public Field4D
         return rms;
     }
 
-    inline double dr2() const
-    {
-        return mixer_->rss();
-    }
+    //inline double dr2() const
+    //{
+    //    return mixer_->rss();
+    //}
 
     mdarray<double_complex, 4> const& density_matrix() const
     {
