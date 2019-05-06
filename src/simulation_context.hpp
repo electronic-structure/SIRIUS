@@ -35,6 +35,7 @@
 #include "Density/augmentation_operator.hpp"
 #include "Potential/xc_functional.hpp"
 #include "SDDK/GPU/acc.hpp"
+#include "Symmetry/check_gvec.hpp"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
@@ -562,9 +563,11 @@ class Simulation_context : public Simulation_parameters
         unit_cell().update();
 
         if (unit_cell_.num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
-            unit_cell_.symmetry().check_gvec_symmetry(gvec(), comm());
+            check_gvec(gvec(), unit_cell_.symmetry());
+            //unit_cell_.symmetry().check_gvec_symmetry(gvec(), comm());
             if (!full_potential()) {
-                unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse(), comm());
+                check_gvec(gvec_coarse(), unit_cell_.symmetry());
+                //unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse(), comm());
             }
         }
 
