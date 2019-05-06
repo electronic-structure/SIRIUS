@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from sirius import inner, l2norm, CoefficientArray, Logger, diag
 import h5py
@@ -7,7 +6,6 @@ from scipy.constants import physical_constants
 from mpi4py import MPI
 from .free_energy import FreeEnergy, s
 
-plt.interactive(True)
 
 logger = Logger()
 
@@ -142,7 +140,6 @@ class NPGMethod:
         else:
             taus.append(0)
             es.append(self.E)
-            plt.plot(taus, es, '-x')
             # TODO: add debug option to activate
             save_state(Zk, UZ, SZ**2, self.M.energy.kpointset)
             assert False
@@ -225,7 +222,6 @@ class NPGMethod:
                     logger('is NOT recoverable')
                     taus.append(0)
                     es.append(self.E)
-                    plt.plot(taus, es, '-x')
                     assert False
             # copy
             Zkm = deepcopy(Zk)
