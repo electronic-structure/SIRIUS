@@ -22,7 +22,6 @@
  *   \brief Diagonalization of pseudopotential Hamiltonian.
  */
 
-
 #if defined(__GPU) && defined(__CUDA)
 #include "../SDDK/GPU/acc.hpp"
 extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
@@ -77,7 +76,7 @@ int Band::diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const
     }
 
     /* check residuals */
-    if (ctx_.control().verification_ >= 1) {
+    if (ctx_.control().verification_ >= 2) {
         check_residuals<T>(kp__, H__);
     }
 

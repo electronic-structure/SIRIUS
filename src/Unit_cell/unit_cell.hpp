@@ -881,7 +881,8 @@ inline void Unit_cell::get_symmetry()
     }
 
     symmetry_ = std::unique_ptr<Unit_cell_symmetry>(
-        new Unit_cell_symmetry(lattice_vectors_, num_atoms(), positions, spins, types, parameters_.spglib_tolerance()));
+        new Unit_cell_symmetry(lattice_vectors_, num_atoms(), types, positions, spins, parameters_.so_correction(),
+                               parameters_.spglib_tolerance()));
 
     int atom_class_id{-1};
     std::vector<int> asc(num_atoms(), -1);

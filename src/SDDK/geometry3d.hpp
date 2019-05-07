@@ -379,19 +379,19 @@ matrix3d<T> transpose(matrix3d<T> src)
 }
 
 template <typename T>
-matrix3d<T> inverse_aux(matrix3d<T> src, T d)
+inline matrix3d<T> inverse_aux(matrix3d<T> src)
 {
     matrix3d<T> mtrx;
 
-    mtrx(0, 0) = d * (src(1, 1) * src(2, 2) - src(1, 2) * src(2, 1));
-    mtrx(0, 1) = d * (src(0, 2) * src(2, 1) - src(0, 1) * src(2, 2));
-    mtrx(0, 2) = d * (src(0, 1) * src(1, 2) - src(0, 2) * src(1, 1));
-    mtrx(1, 0) = d * (src(1, 2) * src(2, 0) - src(1, 0) * src(2, 2));
-    mtrx(1, 1) = d * (src(0, 0) * src(2, 2) - src(0, 2) * src(2, 0));
-    mtrx(1, 2) = d * (src(0, 2) * src(1, 0) - src(0, 0) * src(1, 2));
-    mtrx(2, 0) = d * (src(1, 0) * src(2, 1) - src(1, 1) * src(2, 0));
-    mtrx(2, 1) = d * (src(0, 1) * src(2, 0) - src(0, 0) * src(2, 1));
-    mtrx(2, 2) = d * (src(0, 0) * src(1, 1) - src(0, 1) * src(1, 0));
+    mtrx(0, 0) = (src(1, 1) * src(2, 2) - src(1, 2) * src(2, 1));
+    mtrx(0, 1) = (src(0, 2) * src(2, 1) - src(0, 1) * src(2, 2));
+    mtrx(0, 2) = (src(0, 1) * src(1, 2) - src(0, 2) * src(1, 1));
+    mtrx(1, 0) = (src(1, 2) * src(2, 0) - src(1, 0) * src(2, 2));
+    mtrx(1, 1) = (src(0, 0) * src(2, 2) - src(0, 2) * src(2, 0));
+    mtrx(1, 2) = (src(0, 2) * src(1, 0) - src(0, 0) * src(1, 2));
+    mtrx(2, 0) = (src(1, 0) * src(2, 1) - src(1, 1) * src(2, 0));
+    mtrx(2, 1) = (src(0, 1) * src(2, 0) - src(0, 0) * src(2, 1));
+    mtrx(2, 2) = (src(0, 0) * src(1, 1) - src(0, 1) * src(1, 0));
 
     return mtrx;
 }
@@ -403,7 +403,7 @@ matrix3d<int> inverse(matrix3d<int> src)
     if (std::abs(t1) != 1) {
         throw std::runtime_error("integer matrix can't be inverted");
     }
-    return inverse_aux(src, t1);
+    return inverse_aux(src) * t1;
 }
 
 /// Return inverse of the matrix.
@@ -416,8 +416,7 @@ matrix3d<T> inverse(matrix3d<T> src)
         throw std::runtime_error("matrix is degenerate");
     }
 
-    t1 = 1.0 / t1;
-    return inverse_aux(src, t1);
+    return inverse_aux(src) * (1.0 / t1);
 }
 
 template <typename T>
@@ -464,6 +463,12 @@ inline std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<do
         if (v.first[i] >= (1 - eps)) {
             v.first[i] = 0;
             v.second[i] += 1;
+        }
+        if (v.first[i] < 0 || v.first[i] >= 1) {
+            std::stringstream s;
+            s << "wrong fractional coordinates" << std::endl
+              << v.first[0] << " " << v.first[1] << " " << v.first[2];
+            throw std::runtime_error(s.str());
         }
     }
     for (int x : {0, 1, 2}) {

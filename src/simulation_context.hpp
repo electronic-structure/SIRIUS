@@ -36,6 +36,7 @@
 #include "Potential/xc_functional.hpp"
 #include "SDDK/GPU/acc.hpp"
 #include "Symmetry/check_gvec.hpp"
+#include "Symmetry/rotation.hpp"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,

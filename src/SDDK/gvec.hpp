@@ -357,6 +357,10 @@ class Gvec
     {
         PROFILE("sddk::Gvec::find_gvec_shells");
 
+        if (!bare_gvec_) {
+            return;
+        }
+
         /* list of pairs (length, index of G-vector) */
         std::vector<std::pair<uint64_t, int>> tmp(num_gvec_);
         #pragma omp parallel for schedule(static)
