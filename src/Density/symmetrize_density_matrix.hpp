@@ -46,7 +46,7 @@ inline void Density::symmetrize_density_matrix()
         auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
         int  isym = sym.magnetic_group_symmetry(i).isym;
         SHT::rotation_matrix(lmax, eang, pr, rotm);
-        auto spin_rot_su2 = SHT::rotation_matrix_su2(sym.magnetic_group_symmetry(i).spin_rotation);
+        auto spin_rot_su2 = rotation_matrix_su2(sym.magnetic_group_symmetry(i).spin_rotation);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto& atom_type = unit_cell_.atom(ia).type();
