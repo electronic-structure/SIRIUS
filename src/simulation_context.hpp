@@ -128,7 +128,7 @@ class Simulation_context : public Simulation_parameters
 
     std::unique_ptr<Gvec_partition> gvec_coarse_partition_;
 
-    std::unique_ptr<remap_gvec_to_shells> remap_gvec_;
+    std::unique_ptr<Gvec_shells> remap_gvec_;
 
     /// Creation time of the parameters.
     timeval start_time_;
@@ -250,7 +250,7 @@ class Simulation_context : public Simulation_parameters
 
         gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
 
-        remap_gvec_ = std::unique_ptr<remap_gvec_to_shells>(new remap_gvec_to_shells(comm(), gvec()));
+        remap_gvec_ = std::unique_ptr<Gvec_shells>(new Gvec_shells(gvec(), unit_cell().symmetry()));
 
         /* prepare fine-grained FFT driver for the entire simulation */
         fft_->prepare(*gvec_partition_);
@@ -704,7 +704,7 @@ class Simulation_context : public Simulation_parameters
         return *gvec_coarse_partition_;
     }
 
-    remap_gvec_to_shells const& remap_gvec() const
+    Gvec_shells const& remap_gvec() const
     {
         return *remap_gvec_;
     }
