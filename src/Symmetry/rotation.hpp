@@ -25,6 +25,12 @@
 #ifndef __ROTATION_HPP__
 #define __ROTATION_HPP__
 
+#include "memory.hpp"
+#include "geometry3d.hpp"
+
+using namespace geometry3d;
+using namespace sddk;
+
 namespace sirius {
 
 /// Generate SU(2) rotation matrix from the axes and angle.

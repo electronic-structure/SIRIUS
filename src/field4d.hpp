@@ -25,9 +25,9 @@
 #ifndef __FIELD4D_HPP__
 #define __FIELD4D_HPP__
 
-namespace sirius {
+#include "Symmetry/symmetrize.hpp"
 
-// TODO: add symmetrize_scalar, symmetrize_vector
+namespace sirius {
 
 /// Four-component function consisting of scalar and vector parts.
 /** This class is used to represents density/magnetisation and potential/magentic filed of the system.
@@ -67,7 +67,7 @@ class Field4D
             }
         }
 
-        ctx_.unit_cell().symmetry().symmetrize_function(&f__->f_pw_local(0), remap_gvec, ctx_.sym_phase_factors());
+        symmetrize_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(), &f__->f_pw_local(0));
 
         if (ctx_.control().print_hash_) {
             auto h = f__->hash_f_pw();
@@ -79,7 +79,8 @@ class Field4D
         /* symmetrize PW components */
         switch (ctx_.num_mag_dims()) {
             case 1: {
-                ctx_.unit_cell().symmetry().symmetrize_vector_function(&gz__->f_pw_local(0), remap_gvec, ctx_.sym_phase_factors());
+                symmetrize_vector_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(),
+                                           &gz__->f_pw_local(0));
                 break;
             }
             case 3: {
@@ -94,11 +95,8 @@ class Field4D
                     }
                 }
 
-                ctx_.unit_cell().symmetry().symmetrize_vector_function(&gx__->f_pw_local(0),
-                                                                       &gy__->f_pw_local(0),
-                                                                       &gz__->f_pw_local(0),
-                                                                       remap_gvec,
-                                                                       ctx_.sym_phase_factors());
+                symmetrize_vector_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(),
+                                           &gx__->f_pw_local(0), &gy__->f_pw_local(0), &gz__->f_pw_local(0));
 
                 if (ctx_.control().print_hash_) {
                     auto h1 = gx__->hash_f_pw();
@@ -116,14 +114,14 @@ class Field4D
 
         if (ctx_.full_potential()) {
             /* symmetrize MT components */
-            ctx_.unit_cell().symmetry().symmetrize_function(f__->f_mt(), comm);
+            symmetrize_function(ctx_.unit_cell().symmetry(), comm, f__->f_mt());
             switch (ctx_.num_mag_dims()) {
                 case 1: {
-                    ctx_.unit_cell().symmetry().symmetrize_vector_function(gz__->f_mt(), comm);
+                    symmetrize_vector_function(ctx_.unit_cell().symmetry(), comm, gz__->f_mt());
                     break;
                 }
                 case 3: {
-                    ctx_.unit_cell().symmetry().symmetrize_vector_function(gx__->f_mt(), gy__->f_mt(), gz__->f_mt(), comm);
+                    symmetrize_vector_function(ctx_.unit_cell().symmetry(), comm, gx__->f_mt(), gy__->f_mt(), gz__->f_mt());
                     break;
                 }
             }
