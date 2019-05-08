@@ -4,8 +4,8 @@
 include(FindPackageHandleStandardArgs)
 
 find_path(LIBSPG_INCLUDE_DIR
-  NAMES spglib/spglib.h
-  PATH_SUFFIXES include
+  NAMES spglib.h
+  PATH_SUFFIXES include include/spglib spglib
   HINTS
   ENV EBROOTSPGLIB
   ENV SPG_DIR
