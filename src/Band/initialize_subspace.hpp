@@ -310,7 +310,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
     }
 
     /* check residuals */
-    if (ctx_.control().verification_ >= 1) {
+    if (ctx_.control().verification_ >= 2) {
         check_residuals<T>(*kp__, H__);
         check_wave_functions<T>(*kp__, H__);
     }
