@@ -37,6 +37,7 @@
 #include "utils/utils.hpp"
 #include "utils/profiler.hpp"
 #include "Unit_cell/unit_cell_symmetry.hpp"
+#include "Symmetry/find_lat_sym.hpp"
 
 using namespace geometry3d;
 
@@ -64,7 +65,7 @@ struct z_column_descriptor
         , z(z__)
     {
     }
-
+    /// Default constructor.
     z_column_descriptor()
     {
     }
@@ -358,64 +359,20 @@ class Gvec
      */
     inline void find_gvec_shells()
     {
-        PROFILE("sddk::Gvec::find_gvec_shells");
-
         if (!bare_gvec_) {
             return;
         }
 
-        std::vector<matrix3d<int>> lat_sym;
+        PROFILE("sddk::Gvec::find_gvec_shells");
 
-        /* metric tensor */
-        auto mt = transpose(lattice_vectors_) * lattice_vectors_;
-        auto r = {-1, 0, 1};
-        for (int i00: r) {
-        for (int i01: r) {
-        for (int i02: r) {
-            for (int i10: r) {
-            for (int i11: r) {
-            for (int i12: r) {
-                for (int i20: r) {
-                for (int i21: r) {
-                for (int i22: r) {
-                    /* build a trial symmetry operation */
-                    matrix3d<int> S({{i00, i01, i02}, {i10, i11, i12}, {i20, i21, i22}});
-                    /* valid symmetry operation has a determinant of +/- 1 */
-                    if (std::abs(S.det()) == 1) {
-                        /* metric tensor should be invariant under symmetry operation */
-                        auto mt1 = transpose(S) * mt * S;
-                        double diff{0};
-                        for (int i: {0, 1, 2}) {
-                            for (int j: {0, 1, 2}) {
-                                diff += std::abs(mt1(i, j) - mt(i, j));
-                            }
-                        }
-                        if (diff < 1e-12) {
-                            lat_sym.push_back(S);
-                        }
-                    }
-                }
-                }
-                }
-            }
-            }
-            }
-        }
-        }
-        }
-
-        if (lat_sym.size() == 0 || lat_sym.size() > 48) {
-            std::stringstream s;
-            s << "wrong number of lattice symmetries: " << lat_sym.size() << "\n";
-            TERMINATE(s);
-        }
+        auto lat_sym = sirius::find_lat_sym(lattice_vectors_, 1e-6);
 
         num_gvec_shells_ = 0;
         gvec_shell_ = mdarray<int, 1>(num_gvec_);
 
         std::fill(&gvec_shell_[0], &gvec_shell_[0] + num_gvec_, -1);
 
-        /* find G-vector shells */
+        /* find G-vector shells using symmetry consideration */
         for (int ig = 0; ig < num_gvec_; ig++) {
             if (gvec_shell_[ig] == -1) {
                 auto G = gvec(ig);
@@ -423,6 +380,10 @@ class Gvec
                     auto R = lat_sym[isym];
                     auto G1 = R * G;
                     auto ig1 = index_by_gvec(G1);
+                    if (ig1 == -1) {
+                        auto G1 = R * (G * (-1));
+                        ig1 = index_by_gvec(G1);
+                    }
                     if (ig1 >= 0) {
                         gvec_shell_[ig1] = num_gvec_shells_;
                     }
@@ -445,17 +406,50 @@ class Gvec
             if (gvec_shell_len_[igsh] < 0) {
                 gvec_shell_len_[igsh] = g;
             } else {
-                if (std::abs(gvec_shell_len_[igsh] - g) > 1e-12) {
+                if (std::abs(gvec_shell_len_[igsh] - g) > 1e-10) {
                     std::stringstream s;
                     s << "wrong G-vector length" << "\n"
                       << "  length of G-shell : " << gvec_shell_len_[igsh] << "\n"
                       << "  length of current G-vector: " << g << "\n"
                       << "  index of G-vector: " << ig << "\n"
-                      << "  index of G-shell: " << igsh;
+                      << "  index of G-shell: " << igsh <<"\n"
+                      << "  length difference: " << std::abs(gvec_shell_len_[igsh] - g);
                     TERMINATE(s);
                 }
             }
         }
+
+        /* list of pairs (length, index of G-vector) */
+        std::vector<std::pair<uint64_t, int>> tmp(num_gvec_);
+        #pragma omp parallel for schedule(static)
+        for (int ig = 0; ig < num_gvec(); ig++) {
+            /* make some reasonable roundoff */
+            uint64_t len = static_cast<uint64_t>(gvec_shell_len_[gvec_shell_[ig]] * 1e10);
+            tmp[ig] = std::make_pair(len, ig);
+        }
+        /* sort by first element in pair (length) */
+        std::sort(tmp.begin(), tmp.end());
+
+        /* index of the first shell */
+        gvec_shell_(tmp[0].second) = 0;
+        num_gvec_shells_           = 1;
+        /* temporary vector to store G-shell radius */
+        std::vector<double> tmp_len;
+        /* radius of the first shell */
+        tmp_len.push_back(static_cast<double>(tmp[0].first) * 1e-10);
+        for (int ig = 1; ig < num_gvec_; ig++) {
+            /* if this G-vector has a different length */
+            if (tmp[ig].first != tmp[ig - 1].first) {
+                /* increment number of shells */
+                num_gvec_shells_++;
+                /* save the radius of the new shell */
+                tmp_len.push_back(static_cast<double>(tmp[ig].first) * 1e-10);
+            }
+            /* assign the index of the current shell */
+            gvec_shell_(tmp[ig].second) = num_gvec_shells_ - 1;
+        }
+        gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
+        std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at(memory_t::host));
 
         ///* list of pairs (length, index of G-vector) */
         //std::vector<std::pair<uint64_t, int>> tmp(num_gvec_);
@@ -594,7 +588,6 @@ class Gvec
      *  \param [in] M           Reciprocal lattice vecotors in comumn order
      *  \param [in] Gmax        Cutoff for G+k vectors
      *  \param [in] comm        Total communicator which is used to distribute G-vectors
-     *  \param [in] comm_fft    FFT communicator
      *  \param [in] reduce_gvec True if G-vectors need to be reduced by inversion symmetry.
      */
     Gvec(vector3d<double> vk__, matrix3d<double> M__, double Gmax__, Communicator const& comm__, bool reduce_gvec__)
@@ -609,6 +602,11 @@ class Gvec
     }
 
     /// Constructor for G-vectors.
+    /** \param [in] M           Reciprocal lattice vecotors in comumn order
+     *  \param [in] Gmax        Cutoff for G+k vectors
+     *  \param [in] comm        Total communicator which is used to distribute G-vectors
+     *  \param [in] reduce_gvec True if G-vectors need to be reduced by inversion symmetry.
+     */
     Gvec(matrix3d<double> M__, double Gmax__, Communicator const& comm__, bool reduce_gvec__)
         : Gmax_(Gmax__)
         , lattice_vectors_(M__)
@@ -619,6 +617,12 @@ class Gvec
     }
 
     /// Constructor for G-vectors.
+    /** \param [in] M           Reciprocal lattice vecotors in comumn order
+     *  \param [in] Gmax        Cutoff for G+k vectors
+     *  \param [in] fft_grid    Provide explicit boundaries for the G-vector min and max frequencies.
+     *  \param [in] comm        Total communicator which is used to distribute G-vectors
+     *  \param [in] reduce_gvec True if G-vectors need to be reduced by inversion symmetry.
+     */
     Gvec(matrix3d<double> M__, double Gmax__, FFT3D_grid const& fft_grid__, Communicator const& comm__, bool reduce_gvec__)
         : Gmax_(Gmax__)
         , lattice_vectors_(M__)
@@ -878,7 +882,8 @@ class Gvec
      *  column of G-vectors and column's size. Depending on the geometry of the reciprocal lattice,
      *  z-columns may have only negative, only positive or both negative and positive frequencies for
      *  a given x and y. This information is used to compute the offset which is added to the starting index
-     *  in order to get a full G-vector index. */
+     *  in order to get a full G-vector index. Check find_z_columns() to see how the z-columns are found and
+     *  added to the list of columns. */
     inline int index_by_gvec(vector3d<int> const& G__) const
     {
         /* reduced G-vector set does not have negative z for x=y=0 */
@@ -1319,41 +1324,13 @@ class Gvec_shells
     /// A mapping between G-vector and it's local index in the new distribution.
     std::map<vector3d<int>, int> idx_gvec;
 
-    //int num_shells_{0};
-
-    //mdarray<int, 1> shell_;
-
   public:
 
-    Gvec_shells(Gvec const& gvec__, sirius::Unit_cell_symmetry const& sym__)
+    Gvec_shells(Gvec const& gvec__)
         : comm_(gvec__.comm())
         , gvec_(gvec__)
     {
         PROFILE("sddk::Gvec_shell::Gvec_shells");
-
-        //shell_ = mdarray<int, 1>(gvec_.num_gvec());
-        //std::fill(&shell_[0], &shell_[0] + gvec_.num_gvec(), -1);
-
-        ///* find G-vector shells */
-        //for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
-        //    if (shell_[ig] == -1) {
-        //        auto G = gvec_.gvec(ig);
-        //        for (int isym = 0; isym < sym__.num_spg_sym(); isym++) {
-        //            auto R = sym__.space_group_symmetry(isym).R;
-        //            auto G1 = transpose(R) * G;
-        //            auto ig1 = gvec_.index_by_gvec(G1);
-        //            if (ig1 >= 0) {
-        //                shell_[ig1] = num_shells_;
-        //            }
-        //        }
-        //        num_shells_++;
-        //    }
-        //}
-        //for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
-        //    if (shell_[ig] == -1) {
-        //        TERMINATE("wrong G-vector shell");
-        //    }
-        //}
 
         a2a_send = block_data_descriptor(comm_.size());
         a2a_recv = block_data_descriptor(comm_.size());
@@ -1403,7 +1380,7 @@ class Gvec_shells
                 int igsh = gvec_.shell(ig);
                 auto G   = gvec_.gvec(ig);
                 if (spl_num_gsh.local_rank(igsh) == comm_.rank()) {
-                    for (int x = 0; x < 3; x++) {
+                    for (int x: {0, 1, 2}) {
                         gvec_remapped_(x, a2a_recv.offsets[r] + counts[r]) = G[x];
                     }
                     gvec_shell_remapped_(a2a_recv.offsets[r] + counts[r]) = igsh;
@@ -1413,6 +1390,18 @@ class Gvec_shells
         }
         for (int ig = 0; ig < gvec_count_remapped(); ig++) {
             idx_gvec[gvec_remapped(ig)] = ig;
+        }
+    }
+
+    inline void print_gvec() const
+    {
+        pstdout pout(gvec_.comm());
+        pout.printf("rank: %i\n", gvec_.comm().rank());
+        for (int igloc = 0; igloc < gvec_count_remapped(); igloc++) {
+            auto G = gvec_remapped(igloc);
+
+            int igsh = gvec_shell_remapped(igloc);
+            pout.printf("igloc=%i igsh=%i G=%i %i %i\n", igloc, igsh, G[0], G[1], G[2]);
         }
     }
 
@@ -1427,18 +1416,6 @@ class Gvec_shells
     {
         return vector3d<int>(gvec_remapped_(0, igloc__), gvec_remapped_(1, igloc__), gvec_remapped_(2, igloc__));
     }
-
-    ///// Number of G-vector shells.
-    //int num_shells() const
-    //{
-    //    return num_shells_;
-    //}
-
-    ///// Index of G-vector shell by G-vector index.
-    //int shell(int ig__) const
-    //{
-    //    return shell_[ig__];
-    //}
 
     /// Return local index of the G-vector in the remapped set.
     int index_by_gvec(vector3d<int> G__) const
@@ -1471,7 +1448,7 @@ class Gvec_shells
             counts[r]++;
         }
 
-        std::vector<T> recv_buf(a2a_recv.size());
+        std::vector<T> recv_buf(gvec_count_remapped());
 
         comm_.alltoall(send_buf.data(), a2a_send.counts.data(), a2a_send.offsets.data(), recv_buf.data(),
                        a2a_recv.counts.data(), a2a_recv.offsets.data());
@@ -1497,6 +1474,11 @@ class Gvec_shells
             data__[igloc] = recv_buf[a2a_send.offsets[r] + counts[r]];
             counts[r]++;
         }
+    }
+
+    inline Gvec const& gvec() const
+    {
+        return gvec_;
     }
 };
 
