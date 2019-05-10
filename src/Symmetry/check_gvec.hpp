@@ -27,7 +27,7 @@
 
 namespace sirius {
 
-inline void check_gvec(Gvec const& gvec__, Unit_cell_symmetry const& uc_sym__)
+inline void check_gvec(Gvec const& gvec__, Unit_cell_symmetry const& sym__)
 {
     PROFILE("sirius::check_gvec");
 
@@ -35,8 +35,8 @@ inline void check_gvec(Gvec const& gvec__, Unit_cell_symmetry const& uc_sym__)
     int gvec_offset = gvec__.offset();
 
     #pragma omp parallel for
-    for (int isym = 0; isym < uc_sym__.num_mag_sym(); isym++) {
-        auto sm = uc_sym__.magnetic_group_symmetry(isym).spg_op.R;
+    for (int isym = 0; isym < sym__.num_mag_sym(); isym++) {
+        auto sm = sym__.magnetic_group_symmetry(isym).spg_op.R;
 
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             int ig = gvec_offset + igloc;
@@ -84,6 +84,40 @@ inline void check_gvec(Gvec const& gvec__, Unit_cell_symmetry const& uc_sym__)
                   << "rotated G-vector index: " << ig_rot << std::endl
                   << "number of G-vectors: " << gvec__.num_gvec();
                   TERMINATE(s);
+            }
+        }
+    }
+}
+
+inline void check_gvec(Gvec_shells const& gvec_shells__, Unit_cell_symmetry const& sym__)
+{
+    /* check G-vector symmetries */
+    for (int igloc = 0; igloc < gvec_shells__.gvec_count_remapped(); igloc++) {
+        auto G = gvec_shells__.gvec_remapped(igloc);
+
+        for (int i = 0; i < sym__.num_mag_sym(); i++) {
+            auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
+            auto gv_rot = invRT * G;
+
+            /* local index of a rotated G-vector */
+            int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
+
+            if (ig_rot == -1) {
+                gv_rot = gv_rot * (-1);
+                ig_rot = gvec_shells__.index_by_gvec(gv_rot);
+                if (ig_rot == -1) {
+                    std::stringstream s;
+                    s << "Failed to find a rotated G-vector in the list\n"
+                      << "  local index of original vector: " << igloc << "\n"
+                      << "  global index of G-shell: " << gvec_shells__.gvec_shell_remapped(igloc) << "\n"
+                      << "  original G-vector: " << G << "\n"
+                      << "  rotated G-vector: " << gv_rot << "\n";
+                }
+            }
+            if (ig_rot >= gvec_shells__.gvec_count_remapped()) {
+                std::stringstream s;
+                s << "G-vector index is above the boundary";
+                TERMINATE(s);
             }
         }
     }
