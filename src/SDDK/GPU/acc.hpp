@@ -180,15 +180,21 @@ namespace acc {
 /// Get the number of devices.
 inline int num_devices()
 {
-    int count{0};
+    static int count{-1};
 #if defined(__CUDA) || defined(__ROCM)
-    if (GPU_PREFIX(GetDeviceCount)(&count) != GPU_PREFIX(Success)) {
-        return 0;
+    if (count == -1) {
+        if (GPU_PREFIX(GetDeviceCount)(&count) != GPU_PREFIX(Success)) {
+            return 0;
+        } else {
+            return count;
+        }
+    } else {
+        return count;
     }
+#else
+    return 0;
 #endif
-    return count;
 }
-
 
 /// Set the GPU id.
 inline void set_device_id(int id__)
