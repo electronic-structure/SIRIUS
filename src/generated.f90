@@ -631,25 +631,48 @@ end function sirius_create_ground_state
 
 !> @brief Find the ground state
 !> @param [in] gs_handler Handler of the ground state
-!> @param [in] save__ boolean variable indicating if we want to save the ground state
-subroutine sirius_find_ground_state(gs_handler,save__)
+!> @param [in] potential_tol Tolerance on RMS in potntial.
+!> @param [in] energy_tol Tolerance in total energy difference
+!> @param [in] niter Maximum number of SCF iterations.
+!> @param [in] save boolean variable indicating if we want to save the ground state
+subroutine sirius_find_ground_state(gs_handler,potential_tol,energy_tol,niter,save)
 implicit none
 type(C_PTR), intent(in) :: gs_handler
-logical(C_BOOL), optional, target, intent(in) :: save__
-type(C_PTR) :: save___ptr
+real(C_DOUBLE), optional, target, intent(in) :: potential_tol
+real(C_DOUBLE), optional, target, intent(in) :: energy_tol
+integer(C_INT), optional, target, intent(in) :: niter
+logical(C_BOOL), optional, target, intent(in) :: save
+type(C_PTR) :: potential_tol_ptr
+type(C_PTR) :: energy_tol_ptr
+type(C_PTR) :: niter_ptr
+type(C_PTR) :: save_ptr
 interface
-subroutine sirius_find_ground_state_aux(gs_handler,save__)&
+subroutine sirius_find_ground_state_aux(gs_handler,potential_tol,energy_tol,niter,&
+&save)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: gs_handler
-type(C_PTR), value, intent(in) :: save__
+type(C_PTR), value, intent(in) :: potential_tol
+type(C_PTR), value, intent(in) :: energy_tol
+type(C_PTR), value, intent(in) :: niter
+type(C_PTR), value, intent(in) :: save
 end subroutine
 end interface
 
-save___ptr = C_NULL_PTR
-if (present(save__)) save___ptr = C_LOC(save__)
+potential_tol_ptr = C_NULL_PTR
+if (present(potential_tol)) potential_tol_ptr = C_LOC(potential_tol)
 
-call sirius_find_ground_state_aux(gs_handler,save___ptr)
+energy_tol_ptr = C_NULL_PTR
+if (present(energy_tol)) energy_tol_ptr = C_LOC(energy_tol)
+
+niter_ptr = C_NULL_PTR
+if (present(niter)) niter_ptr = C_LOC(niter)
+
+save_ptr = C_NULL_PTR
+if (present(save)) save_ptr = C_LOC(save)
+
+call sirius_find_ground_state_aux(gs_handler,potential_tol_ptr,energy_tol_ptr,niter_ptr,&
+&save_ptr)
 end subroutine sirius_find_ground_state
 
 !> @brief Update a ground state object after change of atomic coordinates or lattice vectors.
