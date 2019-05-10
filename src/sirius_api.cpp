@@ -527,22 +527,41 @@ void* sirius_create_ground_state(void* const* ks_handler__)
 }
 
 /* @fortran begin function void sirius_find_ground_state        Find the ground state
-   @fortran argument in required void* gs_handler               Handler of the ground state
-   @fortran argument in optional bool  save__                   boolean variable indicating if we want to save the ground state
+   @fortran argument in required void*  gs_handler              Handler of the ground state
+   @fortran argument in optional double potential_tol           Tolerance on RMS in potntial.
+   @fortran argument in optional double energy_tol              Tolerance in total energy difference
+   @fortran argument in optional int    niter                   Maximum number of SCF iterations.
+   @fortran argument in optional bool   save                    boolean variable indicating if we want to save the ground state
    @fortran end */
-void sirius_find_ground_state(void* const* gs_handler__, bool const *save__)
+void sirius_find_ground_state(void* const* gs_handler__, double const* potential_tol__, double const* energy_tol__, 
+                              int const* niter__, bool const *save__)
 {
     GET_GS(gs_handler__)
     auto& ctx = gs.ctx();
     auto& inp = ctx.parameters_input();
     gs.initial_state();
 
+    double ptol = inp.potential_tol_;
+    if (potential_tol__) {
+        ptol = *potential_tol__;
+    }
+
+    double etol = inp.energy_tol_;
+    if (energy_tol__) {
+        etol = *energy_tol__;
+    }
+
+    int niter = inp.num_dft_iter_;
+    if (niter__) {
+        niter = *niter__;
+    }
+
     bool save{false};
     if (save__ != nullptr) {
         save = *save__;
     }
 
-    auto result = gs.find(inp.potential_tol_, inp.energy_tol_, ctx.iterative_solver_tolerance(), inp.num_dft_iter_, save);
+    auto result = gs.find(ptol, etol, ctx.iterative_solver_tolerance(), niter, save);
 }
 
 /* @fortran begin function void sirius_update_ground_state   Update a ground state object after change of atomic coordinates or lattice vectors.
