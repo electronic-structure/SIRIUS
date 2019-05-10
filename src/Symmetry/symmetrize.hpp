@@ -103,7 +103,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
                 double_complex zsym(0, 0);
 
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                    const auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
+                    auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
                     auto gv_rot = invRT * G;
                     double_complex phase = phase_factor(i, gv_rot);
 
@@ -124,7 +124,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
                 zsym *= norm;
 
                 for (int i = 0; i < sym__.num_mag_sym(); i++) {
-                    const auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
+                    auto& invRT = sym__.magnetic_group_symmetry(i).spg_op.invRT;
                     auto gv_rot = invRT * G;
                     /* index of a rotated G-vector */
                     int ig_rot = gvec_shells__.index_by_gvec(gv_rot);
@@ -142,6 +142,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
         } /* loop over igloc */
     }
     t1.stop();
+
 
     gvec_shells__.remap_backward(sym_f_pw, f_pw__);
 }
