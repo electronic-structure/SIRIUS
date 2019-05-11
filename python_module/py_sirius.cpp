@@ -99,6 +99,8 @@ std::string show_vec(const vector3d<T>& vec)
     return str;
 }
 
+void initialize_subspace(DFT_ground_state&, Simulation_context&);
+
 /* typedefs */
 template <typename T>
 using matrix_storage_slab = sddk::matrix_storage<T, sddk::matrix_storage_t::slab>;
@@ -865,4 +867,13 @@ PYBIND11_MODULE(py_sirius, m)
     m.def("make_sirius_comm", &make_sirius_comm);
     m.def("make_pycomm", &make_pycomm);
     m.def("magnetization", &magnetization);
+    m.def("initialize_subspace", &initialize_subspace);
+}
+
+
+void initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
+{
+    auto& kset = dft_gs.k_point_set();
+    auto& hamiltonian = dft_gs.hamiltonian();
+    Band(ctx).initialize_subspace(kset, hamiltonian);
 }
