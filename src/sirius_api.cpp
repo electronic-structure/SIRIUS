@@ -531,10 +531,10 @@ void* sirius_create_ground_state(void* const* ks_handler__)
    @fortran argument in optional double potential_tol           Tolerance on RMS in potntial.
    @fortran argument in optional double energy_tol              Tolerance in total energy difference
    @fortran argument in optional int    niter                   Maximum number of SCF iterations.
-   @fortran argument in optional bool   save                    boolean variable indicating if we want to save the ground state
+   @fortran argument in optional bool   save_state              boolean variable indicating if we want to save the ground state
    @fortran end */
 void sirius_find_ground_state(void* const* gs_handler__, double const* potential_tol__, double const* energy_tol__, 
-                              int const* niter__, bool const *save__)
+                              int const* niter__, bool const *save_state__)
 {
     GET_GS(gs_handler__)
     auto& ctx = gs.ctx();
@@ -557,8 +557,8 @@ void sirius_find_ground_state(void* const* gs_handler__, double const* potential
     }
 
     bool save{false};
-    if (save__ != nullptr) {
-        save = *save__;
+    if (save_state__ != nullptr) {
+        save = *save_state__;
     }
 
     auto result = gs.find(ptol, etol, ctx.iterative_solver_tolerance(), niter, save);
