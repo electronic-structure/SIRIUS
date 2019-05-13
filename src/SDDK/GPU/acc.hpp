@@ -177,10 +177,31 @@ inline void stack_backtrace()
 /// Namespace for accelerator-related functions.
 namespace acc {
 
+/// Get the number of devices.
+inline int num_devices()
+{
+    static int count{-1};
+#if defined(__CUDA) || defined(__ROCM)
+    if (count == -1) {
+        if (GPU_PREFIX(GetDeviceCount)(&count) != GPU_PREFIX(Success)) {
+            return 0;
+        } else {
+            return count;
+        }
+    } else {
+        return count;
+    }
+#else
+    return 0;
+#endif
+}
+
 /// Set the GPU id.
 inline void set_device_id(int id__)
 {
-    CALL_DEVICE_API(SetDevice, (id__));
+    if (num_devices() > 0) {
+        CALL_DEVICE_API(SetDevice, (id__));
+    }
 }
 
 /// Get current device ID.
@@ -257,18 +278,6 @@ inline size_t get_free_mem()
     CALL_DEVICE_API(MemGetInfo, (&free, &total));
 #endif
     return free;
-}
-
-/// Get the number of devices.
-inline int num_devices()
-{
-    int count{0};
-#if defined(__CUDA) || defined(__ROCM)
-    if (GPU_PREFIX(GetDeviceCount)(&count) != GPU_PREFIX(Success)) {
-        return 0;
-    }
-#endif
-    return count;
 }
 
 inline void print_device_info(int device_id__)
