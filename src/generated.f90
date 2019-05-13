@@ -634,28 +634,28 @@ end function sirius_create_ground_state
 !> @param [in] potential_tol Tolerance on RMS in potntial.
 !> @param [in] energy_tol Tolerance in total energy difference
 !> @param [in] niter Maximum number of SCF iterations.
-!> @param [in] save boolean variable indicating if we want to save the ground state
-subroutine sirius_find_ground_state(gs_handler,potential_tol,energy_tol,niter,save)
+!> @param [in] save_state boolean variable indicating if we want to save the ground state
+subroutine sirius_find_ground_state(gs_handler,potential_tol,energy_tol,niter,save_state)
 implicit none
 type(C_PTR), intent(in) :: gs_handler
 real(C_DOUBLE), optional, target, intent(in) :: potential_tol
 real(C_DOUBLE), optional, target, intent(in) :: energy_tol
 integer(C_INT), optional, target, intent(in) :: niter
-logical(C_BOOL), optional, target, intent(in) :: save
+logical(C_BOOL), optional, target, intent(in) :: save_state
 type(C_PTR) :: potential_tol_ptr
 type(C_PTR) :: energy_tol_ptr
 type(C_PTR) :: niter_ptr
-type(C_PTR) :: save_ptr
+type(C_PTR) :: save_state_ptr
 interface
 subroutine sirius_find_ground_state_aux(gs_handler,potential_tol,energy_tol,niter,&
-&save)&
+&save_state)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: gs_handler
 type(C_PTR), value, intent(in) :: potential_tol
 type(C_PTR), value, intent(in) :: energy_tol
 type(C_PTR), value, intent(in) :: niter
-type(C_PTR), value, intent(in) :: save
+type(C_PTR), value, intent(in) :: save_state
 end subroutine
 end interface
 
@@ -668,11 +668,11 @@ if (present(energy_tol)) energy_tol_ptr = C_LOC(energy_tol)
 niter_ptr = C_NULL_PTR
 if (present(niter)) niter_ptr = C_LOC(niter)
 
-save_ptr = C_NULL_PTR
-if (present(save)) save_ptr = C_LOC(save)
+save_state_ptr = C_NULL_PTR
+if (present(save_state)) save_state_ptr = C_LOC(save_state)
 
 call sirius_find_ground_state_aux(gs_handler,potential_tol_ptr,energy_tol_ptr,niter_ptr,&
-&save_ptr)
+&save_state_ptr)
 end subroutine sirius_find_ground_state
 
 !> @brief Update a ground state object after change of atomic coordinates or lattice vectors.
