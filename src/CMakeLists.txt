@@ -2,6 +2,8 @@
 # working correctly
 # list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 
+include(GNUInstallDirs)  # required to get a proper LIBDIR variable
+
 # keep two libraries: libsirius and libsirius_f
 
 if(USE_CUDA)
@@ -9,13 +11,18 @@ if(USE_CUDA)
   file(GLOB_RECURSE CUFILES_KERNELS "Kernels/*.cu")
   add_library(sirius_cu "${CUFILES_KERNELS};${CUFILES_SDDK}")
   set_target_properties(sirius_cu PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  INSTALL (TARGETS sirius_cu ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/)
+  INSTALL (TARGETS sirius_cu
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    )
 endif()
 if(CREATE_FORTRAN_BINDINGS)
   add_library(sirius_f "sirius_api.cpp;sirius.f90")
   SIRIUS_SETUP_TARGET(sirius_f)
   INSTALL (TARGETS sirius_f ARCHIVE DESTINATION
-    ${CMAKE_INSTALL_PREFIX}/lib/)
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    )
   set_target_properties(sirius_f PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(sirius_f PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
   target_link_libraries(sirius_f PUBLIC OpenMP::OpenMP_CXX)
