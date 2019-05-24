@@ -1385,7 +1385,6 @@ class XC_functional_base
 
         xc_func_type handler_;
 
-
         bool libxc_initialized_{false};
     private:
         /* forbid copy constructor */
