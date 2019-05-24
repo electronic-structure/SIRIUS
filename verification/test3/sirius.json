@@ -4,7 +4,8 @@
       "std_evp_solver_type" : "lapack",
       "gen_evp_solver_type" : "lapack",
       "print_forces" : true,
-      "print_stress" : true
+      "print_stress" : true,
+      "verbosity" : 1
   },
 
   "parameters" : {
