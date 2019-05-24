@@ -643,7 +643,7 @@ class DFT_ground_state
     }
 };
 
-inline json DFT_ground_state::find(double potential_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state)
+inline json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state)
 {
     PROFILE("sirius::DFT_ground_state::scf_loop");
 
@@ -750,32 +750,16 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, doub
         /* write some information */
         print_info();
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-            if (ctx_.full_potential()) {
-                printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E, mixing beta: %12.6F\n", iter, rms,
-                       etot - eold, potential_.mixer().beta());
-            } else {
-                printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
-            }
+            printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
         }
-
-        // TODO: improve this part
-        if (ctx_.full_potential()) {
-            if (std::abs(eold - etot) < energy_tol && rms < potential_tol) {
-                num_iter = iter;
-                break;
+        /* check if the calculation has converged */
+        if (std::abs(eold - etot) < energy_tol && rms < rms_tol) {
+            if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+                printf("\n");
+                printf("converged after %i SCF iterations!\n", iter + 1);
             }
-        } else {
-            //if (std::abs(eold - etot) < energy_tol && density_.dr2() < potential_tol) {
-            if (std::abs(eold - etot) < energy_tol && rms < potential_tol) {
-                if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-                    printf("\n");
-                    printf("converged after %i SCF iterations!\n", iter + 1);
-                    printf("energy difference  : %18.12E < %18.12E\n", std::abs(eold - etot), energy_tol);
-                    //printf("density difference : %18.12E < %18.12E\n", density_.dr2(), potential_tol);
-                }
-                num_iter = iter;
-                break;
-            }
+            num_iter = iter;
+            break;
         }
 
         /* Compute the hubbard correction */
