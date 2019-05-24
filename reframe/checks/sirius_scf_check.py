@@ -35,6 +35,17 @@ def stress_diff(filename, data_ref):
     else:
         return sn.abs(0)
 
+@sn.sanity_function
+def forces_diff(filename, data_ref):
+    ''' Return the difference between obtained and reference atomic forces'''
+    parsed_output = load_json(filename)
+    if 'forces' in parsed_output['ground_state'] and 'forces' in data_ref['ground_state']:
+        na = parsed_output['ground_state']['num_atoms'].evaluate()
+        return sn.sum(sn.abs(parsed_output['ground_state']['forces'][i][j] -
+                             data_ref['ground_state']['forces'][i][j]) for i in range(na) for j in [0, 1, 2])
+    else:
+        return sn.abs(0)
+
 class sirius_scf_base_test(rfm.RunOnlyRegressionTest):
     def __init__(self, num_ranks, test_folder):
         super().__init__()
@@ -53,7 +64,8 @@ class sirius_scf_base_test(rfm.RunOnlyRegressionTest):
         self.sanity_patterns = sn.all([
             sn.assert_found(r'converged after', self.stdout, msg="Calculation didn't converge"),
             sn.assert_lt(energy_diff(fout, data_ref), 1e-5, msg="Total energy is different"),
-            sn.assert_lt(stress_diff(fout, data_ref), 1e-5, msg="Stress tensor is different")
+            sn.assert_lt(stress_diff(fout, data_ref), 1e-5, msg="Stress tensor is different"),
+            sn.assert_lt(forces_diff(fout, data_ref), 1e-5, msg="Atomic forces are different")
         ])
 
         self.executable_opts = ['--output=output.json']
