@@ -31,10 +31,13 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
 {
     PROFILE("sirius::Potential::xc_mt_nonmagnetic");
 
+    /* use Laplacian (true) or divergence of gradient (false) */
+    bool use_lapl{false};
+
     bool is_gga = is_gradient_correction();
 
     Spheric_vector_function<function_domain_t::spatial, double> grad_rho_tp(sht_->num_points(), rgrid);
-    //Spheric_function<function_domain_t::spatial, double> lapl_rho_tp;
+    Spheric_function<function_domain_t::spatial, double> lapl_rho_tp;
     Spheric_function<function_domain_t::spatial, double> grad_rho_grad_rho_tp;
 
     if (is_gga) {
@@ -48,6 +51,15 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
 
         /* compute density gradient product */
         grad_rho_grad_rho_tp = grad_rho_tp * grad_rho_tp;
+
+        if (use_lapl) {
+            lapl_rho_tp = Spheric_function<function_domain_t::spatial, double>(sht_->num_points(), rgrid);
+            /* compute Laplacian in Rlm spherical harmonics */
+            auto lapl_rho_lm = laplacian(rho_lm);
+
+            /* backward transform Laplacian from Rlm to (theta, phi) */
+            transform(*sht_, lapl_rho_lm, lapl_rho_tp);
+        }
     }
 
     exc_tp.zero();
@@ -65,7 +77,6 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
         if (ixc.is_lda()) {
             #pragma omp parallel
             {
-
                 std::vector<double> exc_t(sht_->num_points());
                 std::vector<double> vxc_t(sht_->num_points());
                 #pragma omp for
@@ -97,6 +108,10 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
                         /* directly add to Vxc available contributions */
                         vxc_tp(itp, ir) += vrho_t[itp];
 
+                        if (use_lapl) {
+                            vxc_tp(itp, ir) -= 2 * vsigma_t[itp] * lapl_rho_tp(itp, ir);
+                        }
+
                         /* save the sigma derivative */
                         vsigma_tp(itp, ir) += vsigma_t[itp];
                     }
@@ -106,39 +121,42 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
     }
 
     if (is_gga) {
-        Spheric_vector_function<function_domain_t::spectral, double> vsigma_grad_rho_lm(ctx_.lmmax_pot(), rgrid);
-        for (int x: {0, 1, 2}) {
-            auto vsigma_grad_rho_tp = vsigma_tp * grad_rho_tp[x];
-            transform(*sht_, vsigma_grad_rho_tp, vsigma_grad_rho_lm[x]);
-        }
-        auto div_vsigma_grad_rho_lm = divergence(vsigma_grad_rho_lm);
-        auto div_vsigma_grad_rho_tp = transform(*sht_, div_vsigma_grad_rho_lm);
+        if (use_lapl) {
+            Spheric_function<function_domain_t::spectral, double> vsigma_lm(ctx_.lmmax_pot(), rgrid);
+            /* forward transform vsigma to Rlm */
+            transform(*sht_, vsigma_tp, vsigma_lm);
 
-        ///* compute Laplacian in Rlm spherical harmonics */
-        //auto lapl_rho_lm = laplacian(rho_lm);
+            /* compute gradient of vsgima in spherical harmonics */
+            auto grad_vsigma_lm = gradient(vsigma_lm);
 
-        ///* backward transform Laplacian from Rlm to (theta, phi) */
-        //lapl_rho_tp = transform(*sht_, lapl_rho_lm);
+            /* backward transform gradient from Rlm to (theta, phi) */
+            Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_tp(sht_->num_points(), rgrid);
+            for (int x = 0; x < 3; x++) {
+                transform(*sht_, grad_vsigma_lm[x], grad_vsigma_tp[x]);
+            }
 
-        ///* forward transform vsigma to Rlm */
-        //auto vsigma_lm = transform(*sht_, vsigma_tp);
+            /* compute scalar product of two gradients */
+            auto grad_vsigma_grad_rho_tp = grad_vsigma_tp * grad_rho_tp;
 
-        ///* compute gradient of vsgima in spherical harmonics */
-        //auto grad_vsigma_lm = gradient(vsigma_lm);
-
-        ///* backward transform gradient from Rlm to (theta, phi) */
-        //Spheric_vector_function<function_domain_t::spatial, double> grad_vsigma_tp(rgrid);
-        //for (int x = 0; x < 3; x++) {
-        //    grad_vsigma_tp[x] = transform(*sht_, grad_vsigma_lm[x]);
-        //}
-
-        ///* compute scalar product of two gradients */
-        //auto grad_vsigma_grad_rho_tp = grad_vsigma_tp * grad_rho_tp;
-
-        /* add remaining term to Vxc */
-        for (int ir = 0; ir < rgrid.num_points(); ir++) {
-            for (int itp = 0; itp < sht_->num_points(); itp++) {
-                vxc_tp(itp, ir) -= 2 * div_vsigma_grad_rho_tp(itp, ir);
+            /* add remaining term to Vxc */
+            for (int ir = 0; ir < rgrid.num_points(); ir++) {
+                for (int itp = 0; itp < sht_->num_points(); itp++) {
+                    vxc_tp(itp, ir) -= 2 * grad_vsigma_grad_rho_tp(itp, ir);
+                }
+            }
+        } else {
+            Spheric_vector_function<function_domain_t::spectral, double> vsigma_grad_rho_lm(ctx_.lmmax_pot(), rgrid);
+            for (int x: {0, 1, 2}) {
+                auto vsigma_grad_rho_tp = vsigma_tp * grad_rho_tp[x];
+                transform(*sht_, vsigma_grad_rho_tp, vsigma_grad_rho_lm[x]);
+            }
+            auto div_vsigma_grad_rho_lm = divergence(vsigma_grad_rho_lm);
+            auto div_vsigma_grad_rho_tp = transform(*sht_, div_vsigma_grad_rho_lm);
+            /* add remaining term to Vxc */
+            for (int ir = 0; ir < rgrid.num_points(); ir++) {
+                for (int itp = 0; itp < sht_->num_points(); itp++) {
+                    vxc_tp(itp, ir) -= 2 * div_vsigma_grad_rho_tp(itp, ir);
+                }
             }
         }
     }
@@ -525,7 +543,6 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
     Smooth_periodic_function<double> lapl_rho;
     Smooth_periodic_function<double> grad_rho_grad_rho;
 
-
     Smooth_periodic_function<double> div_vsigma_grad_rho;
 
     if (is_gga) {
@@ -610,7 +627,7 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
             TERMINATE("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
 #endif
         } else {
-#pragma omp parallel
+            #pragma omp parallel
             {
                 /* split local size between threads */
                 splindex<block> spl_np_t(num_points, omp_get_num_threads(), omp_get_thread_num());
