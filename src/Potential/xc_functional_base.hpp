@@ -1407,8 +1407,10 @@ class XC_functional_base
                 return;
             }
 
+            auto ns = (num_spins__ == 1) ? XC_UNPOLARIZED : XC_POLARIZED;
+
             /* init xc functional handler */
-            if (xc_func_init(&handler_, libxc_functionals.at(libxc_name_), num_spins_) != 0) {
+            if (xc_func_init(&handler_, libxc_functionals.at(libxc_name_), ns) != 0) {
                 TERMINATE("xc_func_init() failed");
             }
 
@@ -1439,10 +1441,7 @@ class XC_functional_base
         const std::string refs() const
         {
             std::stringstream s;
-            for (int i = 0; i < 5; i++) {
-                if (handler_.info->refs[i] == NULL) {
-                    break;
-                }
+            for (int i = 0; handler_.info->refs[i] != NULL; i++) {
                 s << std::string(handler_.info->refs[i]->ref);
                 if (strlen(handler_.info->refs[i]->doi) > 0) {
                     s << " (" << std::string(handler_.info->refs[i]->doi) << ")";
@@ -1596,10 +1595,8 @@ class XC_functional_base
             if (family() != XC_FAMILY_GGA) TERMINATE("wrong XC");
 
             /* check density */
-            for (int i = 0; i < size; i++)
-            {
-                if (rho[i] < 0.0)
-                {
+            for (int i = 0; i < size; i++) {
+                if (rho[i] < 0.0) {
                     std::stringstream s;
                     s << "rho is negative : " << utils::double_to_string(rho[i]);
                     TERMINATE(s);
@@ -1623,16 +1620,16 @@ class XC_functional_base
                      double* vsigma_dd,
                      double* e)
         {
-            if (family() != XC_FAMILY_GGA) TERMINATE("wrong XC");
+            if (family() != XC_FAMILY_GGA) {
+                TERMINATE("wrong XC");
+            }
 
             std::vector<double> rho(2 * size);
             std::vector<double> sigma(3 * size);
             /* check and rearrange density */
             /* rearrange sigma as well */
-            for (int i = 0; i < size; i++)
-            {
-                if (rho_up[i] < 0 || rho_dn[i] < 0)
-                {
+            for (int i = 0; i < size; i++) {
+                if (rho_up[i] < 0 || rho_dn[i] < 0) {
                     std::stringstream s;
                     s << "rho is negative : " << utils::double_to_string(rho_up[i])
                       << " " << utils::double_to_string(rho_dn[i]);
@@ -1653,8 +1650,7 @@ class XC_functional_base
             xc_gga_exc_vxc(&handler_, size, &rho[0], &sigma[0], e, &vrho[0], &vsigma[0]);
 
             /* extract vrho and vsigma */
-            for (int i = 0; i < size; i++)
-            {
+            for (int i = 0; i < size; i++) {
                 vrho_up[i] = vrho[2 * i];
                 vrho_dn[i] = vrho[2 * i + 1];
 
