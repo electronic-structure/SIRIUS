@@ -73,6 +73,7 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
     for a in func_args:
         if not a['required']:
             o.write('type(C_PTR) :: ' + a['name'] + '_ptr\n')
+# create interface section
     o.write('interface\n')
 
     if func_type == 'void':
@@ -94,12 +95,12 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
     for a in func_args:
         if not a['required']:
             o.write('type(C_PTR)')
-            o.write(', value')
+            o.write(', value :: ' + a['name'])
         else:
             o.write(in_type_map[a['type']])
             if a['type'] == 'string':
                 o.write(', dimension(*)')
-        o.write(', intent(' + a['intent'] + ') :: ' + a['name'])
+            o.write(', intent(' + a['intent'] + ') :: ' + a['name'])
         o.write('\n')
 
     if func_type != 'void':
