@@ -755,7 +755,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
             compute_apw_apw(alm_phi, halm_phi, num_mt_aw);
         }
 
-        if (!apw_only__) {
+        if (!apw_only__ && num_mt_lo) {
             /* local orbital coefficients for a block of atoms and all states */
             matrix<double_complex> phi_lo_block(num_mt_lo, n__);
             if (ctx_.processing_unit() == device_t::GPU) {

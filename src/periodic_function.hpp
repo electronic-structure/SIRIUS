@@ -173,8 +173,9 @@ class Periodic_function : public Smooth_periodic_function<T>
         Smooth_periodic_function<T>::add(g__);
         /* add muffin-tin part */
         if (ctx_.full_potential()) {
-            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                 f_mt_local_(ialoc) += g__.f_mt(ialoc);
+            }
         }
     }
 
