@@ -1,14 +1,11 @@
 import numpy as np
 import json
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import *
 from sirius import DFT_ground_state_find
 from sirius.ot.minimize import minimize, inner
 from sirius.ot import Energy, ApplyHamiltonian, ConstrainedGradient
 from sirius.baarman import stiefel_project_tangent, stiefel_decompose_tangent, stiefel_transport_operators
 from sirius.baarman import FreeEnergy
 from scipy.optimize import root
-# from sirius.baarman import ApplyHamiltonian as NewApplyHamiltonian
 from copy import copy, deepcopy
 import sirius.ot as ot
 import h5py

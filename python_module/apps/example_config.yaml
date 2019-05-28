@@ -1,0 +1,39 @@
+Preconditioners:
+  - &kinetic1
+    type: kinetic
+    # yaml does not support scientific notation: 1e-3
+    eps: 0.001
+  # kinetic preconditioner by Teter et. al.
+  - &kinetic2
+    type: teter
+
+System:
+  # temperature in Kelvin
+  T: 300
+  # either fermi-dirac or gaussian-spline
+  smearing: fermi-dirac
+
+Methods:
+  - &Marzari
+    type: Marzari
+    # number of inner iterations
+    inner: 2
+    # compute finite-difference slope (for checking)
+    fd_slope_check: False
+
+  - &Neugebaur
+    type: Neugebaur
+    # scalar preconditioner
+    kappa: 0.3
+
+CG:
+  method: *Marzari
+  # FR: Fletcher-Reeves, PR: Polak-Ribiere
+  type: FR
+  maxiter: 500
+  restart: 20
+  tau: 0.1
+  # number of scf iterations during initialization
+  nscf: 1
+  # Preconditioner
+  precond: *kinetic1

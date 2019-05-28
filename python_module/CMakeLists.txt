@@ -42,6 +42,14 @@ if(CREATE_PYTHON_MODULE)
     install(TARGETS ${libname}
       LIBRARY
       DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
+    install(
+      PROGRAMS
+      ${CMAKE_SOURCE_DIR}/python_module/apps/neugebaur_cg.py
+      ${CMAKE_SOURCE_DIR}/python_module/apps/marzari_cg.py
+      ${CMAKE_SOURCE_DIR}/python_module/apps/nlcg.py
+      ${CMAKE_SOURCE_DIR}/python_module/apps/nlcg
+      DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+      )
   else()
     # minimal support for Python 2.7, full functionality is provided for Python >3.5 only
     install(DIRECTORY sirius_minimal/
