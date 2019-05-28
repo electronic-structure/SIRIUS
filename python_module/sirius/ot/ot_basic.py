@@ -44,20 +44,23 @@ class Energy:
         else:
             self.ctx = ctx
 
-    def compute(self, cn):
+    def compute(self, X):
         """
         Keyword Arguments:
-        cn  --
-        ek  -- band energies
+        X  -- PW coefficients
+
+        Returns
+        Etot -- total energy
+        HX   -- Hamiltonian@X
         """
 
-        assert isinstance(cn, PwCoeffs)
+        assert isinstance(X, PwCoeffs)
 
-        for key, val in cn.items():
+        for key, val in X.items():
             k, ispn = key
             self.kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[:, :val.shape[1]] = val
         # copy to device (if needed)
-        for ki in cn.kvalues():
+        for ki in X.kvalues():
             psi = self.kpointset[ki].spinor_wave_functions()
             if psi.preferred_memory_t() == MemoryEnum.device:
                 psi.copy_to_gpu()
@@ -75,13 +78,13 @@ class Energy:
 
         self.potential.fft_transform(1)
 
-        yn = self.H(cn, scale=False)
+        yn = self.H(X, scale=False)
         for key, val in yn.items():
             k, ispn = key
             benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex)
             benergies[:val.shape[1]] = np.einsum('ij,ij->j',
-                                                val,
-                                                np.conj(cn[key]))
+                                                 val,
+                                                 np.conj(X[key]))
 
             for j, ek in enumerate(benergies):
                 self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
