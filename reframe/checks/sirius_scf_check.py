@@ -85,3 +85,26 @@ class sirius_scf_serial_parallel_k(sirius_scf_base_test):
         self.tags = {'parallel_k'}
 
 
+@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
+class sirius_scf_serial_parallel_band_22(sirius_scf_base_test):
+    def __init__(self, test_folder):
+        super().__init__(4, test_folder)
+        self.tags = {'parallel_band'}
+        self.executable_opts.append('--mpi_grid=2:2')
+
+
+@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
+class sirius_scf_serial_parallel_band_12(sirius_scf_base_test):
+    def __init__(self, test_folder):
+        super().__init__(2, test_folder)
+        self.tags = {'parallel_band'}
+        self.executable_opts.append('--mpi_grid=1:2')
+
+
+@rfm.parameterized_test(*([test_folder] for test_folder in test_folders))
+class sirius_scf_serial_parallel_band_21(sirius_scf_base_test):
+    def __init__(self, test_folder):
+        super().__init__(2, test_folder)
+        self.tags = {'parallel_band'}
+        self.executable_opts.append('--mpi_grid=2:1')
+
