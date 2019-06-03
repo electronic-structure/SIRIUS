@@ -796,6 +796,11 @@ class FFT3D : public FFT3D_grid
 #endif
     }
 
+    inline bool is_ready() const
+    {
+        return gvec_partition_ != nullptr;
+    }
+
     /// Load real-space values to the FFT buffer.
     /** \param [in] data CPU pointer to the real-space data. */
     template <typename T>

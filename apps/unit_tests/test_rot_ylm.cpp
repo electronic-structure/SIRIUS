@@ -20,7 +20,7 @@ int run_test(cmd_args& args)
     
     std::vector<int> types(num_atoms, 0);
 
-    Unit_cell_symmetry symmetry(lattice, num_atoms, positions, spins, types, 1e-4);
+    Unit_cell_symmetry symmetry(lattice, num_atoms, types, positions, spins, false, 1e-4, true);
 
     //printf("num_sym_op: %i\n", symmetry.num_mag_sym());
 

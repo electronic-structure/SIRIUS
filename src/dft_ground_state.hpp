@@ -251,7 +251,7 @@ class DFT_ground_state
     }
 
     /// Run the SCF ground state calculation and find a total energy minimum.
-    json find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
+    json find(double potential_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state);
 
     /// Print the basic information (total energy, charges, moments, etc.).
     void print_info();
@@ -354,6 +354,36 @@ class DFT_ground_state
     double energy_kin() const
     {
         return (eval_sum() - energy_veff() - energy_bxc());
+    }
+
+    double energy_kin_sum_pw() const
+    {
+        double ekin{0};
+
+        for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+            int ik = kset_.spl_num_kpoints(ikloc);
+            auto kp = kset_[ik];
+
+            #pragma omp parallel for schedule(static) reduction(+:ekin)
+            for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
+                auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
+
+                double d{0};
+                for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
+                    for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
+                        double f = kp->band_occupancy(i, ispin);
+                        auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
+                        d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                    }
+                }
+                if (kp->gkvec().reduced()) {
+                    d *= 2;
+                }
+                ekin += 0.5 * d * kp->weight() * Gk.length2();
+            } // igloc
+        } // ikloc
+        ctx_.comm().allreduce(&ekin, 1);
+        return ekin;
     }
 
     double energy_ewald() const
@@ -549,15 +579,71 @@ class DFT_ground_state
         dict["energy"]["eval_sum"]      = eval_sum();
         dict["energy"]["kin"]           = energy_kin();
         dict["energy"]["ewald"]         = energy_ewald();
+        if (!ctx_.full_potential()) {
+            dict["energy"]["vloc"]      = energy_vloc();
+        }
         dict["efermi"]                  = kset_.energy_fermi();
         dict["band_gap"]                = kset_.band_gap();
         dict["core_leakage"]            = density_.core_leakage();
 
         return std::move(dict);
     }
+
+    json check_scf_density()
+    {
+        std::vector<double_complex> rho_pw(ctx_.gvec().count());
+        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
+            rho_pw[ig] = density_.rho().f_pw_local(ig);
+        }
+
+        double etot = total_energy();
+
+        /* create new potential */
+        Potential pot(ctx_);
+        /* generate potential from existing density */
+        pot.generate(density_);
+        /* create new Hamiltonian */
+        Hamiltonian H(ctx_, pot);
+        /* set the high tolerance */
+        ctx_.iterative_solver_tolerance(ctx_.settings().itsol_tol_min_);
+        /* initialize the subspace */
+        Band(ctx_).initialize_subspace(kset_, H);
+        /* find new wave-functions */
+        Band(ctx_).solve(kset_, H, true);
+        /* find band occupancies */
+        kset_.find_band_occupancies();
+        /* generate new density from the occupied wave-functions */
+        density_.generate(kset_, true, false);
+        /* symmetrize density and magnetization */
+        if (ctx_.use_symmetry()) {
+            density_.symmetrize();
+            if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
+                density_.symmetrize_density_matrix();
+            }
+        }
+        density_.fft_transform(1);
+        double rms{0};
+        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
+            rms += std::pow(std::abs(density_.rho().f_pw_local(ig) - rho_pw[ig]), 2);
+        }
+        ctx_.comm().allreduce(&rms, 1);
+        json dict;
+        dict["rss"]   = rms;
+        dict["rms"]   = std::sqrt(rms / ctx_.gvec().num_gvec());
+        dict["detot"] = total_energy() - etot;
+
+        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+            printf("[check_scf_density] RSS: %18.12E\n", dict["rss"].get<double>());
+            printf("[check_scf_density] RMS: %18.12E\n", dict["rms"].get<double>());
+            printf("[check_scf_density] dEtot: %18.12E\n", dict["detot"].get<double>());
+            printf("[check_scf_density] Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
+        }
+
+        return std::move(dict);
+    }
 };
 
-inline json DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
+inline json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state)
 {
     PROFILE("sirius::DFT_ground_state::scf_loop");
 
@@ -578,11 +664,14 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
     }
 
     int num_iter{-1};
+    std::vector<double> rms_hist;
 
     if (ctx_.hubbard_correction()) {
         hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
         hamiltonian_.U().calculate_hubbard_potential_and_energy();
     }
+
+    ctx_.iterative_solver_tolerance(initial_tolerance);
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
         utils::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
@@ -612,13 +701,14 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
             /* mix density */
             rms = density_.mix();
             /* estimate new tolerance of iterative solver */
-            double tol = std::max(1e-12, 0.1 * density_.dr2() / ctx_.unit_cell().num_valence_electrons());
+            //double tol = std::max(1e-12, 0.1 * density_.dr2() / ctx_.unit_cell().num_valence_electrons());
+            double tol = std::max(ctx_.settings().itsol_tol_min_, 0.0001 * rms);
             /* print dr2 of mixer and current iterative solver tolerance */
-            if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-                printf("dr2: %18.12E, tol: %18.12E\n", density_.dr2(), tol);
-            }
+            //if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+            //    printf("dr2: %18.12E, tol: %18.12E\n", density_.dr2(), tol);
+            //}
             /* set new tolerance of iterative solver */
-            ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
+            ctx_.iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
             // TODO: this is horrible when PAW density is generated from the mixed
             //       density matrix here; better solution: generate in Density and
             //       then mix
@@ -651,39 +741,25 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         double etot = total_energy();
 
         if (ctx_.full_potential()) {
-            rms        = potential_.mix(1e-12);
-            double tol = std::max(1e-12, 0.001 * rms);
-            ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
+            rms        = potential_.mix(ctx_.settings().mixer_rss_min_);
+            double tol = std::max(ctx_.settings().itsol_tol_min_, 0.001 * rms);
+            ctx_.iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
+        rms_hist.push_back(rms);
 
         /* write some information */
         print_info();
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-            if (ctx_.full_potential()) {
-                printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E, mixing beta: %12.6F\n", iter, rms,
-                       etot - eold, potential_.mixer().beta());
-            } else {
-                printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
-            }
+            printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
         }
-
-        // TODO: improve this part
-        if (ctx_.full_potential()) {
-            if (std::abs(eold - etot) < energy_tol && rms < potential_tol) {
-                num_iter = iter;
-                break;
+        /* check if the calculation has converged */
+        if (std::abs(eold - etot) < energy_tol && rms < rms_tol) {
+            if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+                printf("\n");
+                printf("converged after %i SCF iterations!\n", iter + 1);
             }
-        } else {
-            if (std::abs(eold - etot) < energy_tol && density_.dr2() < potential_tol) {
-                if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-                    printf("\n");
-                    printf("converged after %i SCF iterations!\n", iter + 1);
-                    printf("energy difference  : %18.12E < %18.12E\n", std::abs(eold - etot), energy_tol);
-                    printf("density difference : %18.12E < %18.12E\n", density_.dr2(), potential_tol);
-                }
-                num_iter = iter;
-                break;
-            }
+            num_iter = iter;
+            break;
         }
 
         /* Compute the hubbard correction */
@@ -713,9 +789,14 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
     if (num_iter >= 0) {
         dict["converged"]          = true;
         dict["num_scf_iterations"] = num_iter;
+        dict["rms_history"]        = rms_hist;
     } else {
         dict["converged"] = false;
     }
+
+    //if (ctx_.control().verification_ >= 1) {
+    //    check_scf_density();
+    //}
 
     // dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
     // dict["volume_units"] = "angstrom^3";
@@ -886,23 +967,28 @@ inline void DFT_ground_state::print_info()
  *  \section section1 Preliminary notes
  *
  *  \note Here and below sybol \f$ {\boldsymbol \sigma} \f$ is reserved for the vector of Pauli matrices. Spin
- * components are labeled with \f$ \alpha \f$ or \f$ \beta \f$.
+ *        components are labeled with \f$ \alpha \f$ or \f$ \beta \f$.
  *
  *  Wave-function of spin-1/2 particle is a two-component spinor:
  *  \f[
- *      {\bf \Psi}({\bf r}) = \left( \begin{array}{c} \psi^{\uparrow}({\bf r}) \\ \psi^{\downarrow}({\bf r}) \end{array}
- * \right) \f] Operator of spin: \f[
- *      {\bf \hat S}=\frac{\hbar}{2}{\boldsymbol \sigma},
+ *    {\bf \Psi}({\bf r}) = \left( \begin{array}{c} \psi^{\uparrow}({\bf r}) \\
+ *                                                  \psi^{\downarrow}({\bf r}) 
+ *                                  \end{array}
+ *                          \right)
+ *  \f] 
+ *  Operator of spin: 
+ *  \f[
+ *    {\bf \hat S}=\frac{\hbar}{2}{\boldsymbol \sigma},
  *  \f]
  *  Pauli matrices:
  *  \f[
  *      \sigma_x=\left( \begin{array}{cc}
  *         0 & 1 \\
  *         1 & 0 \\ \end{array} \right) \,
- *           \sigma_y=\left( \begin{array}{cc}
+ *       \sigma_y=\left( \begin{array}{cc}
  *         0 & -i \\
  *         i & 0 \\ \end{array} \right) \,
- *           \sigma_z=\left( \begin{array}{cc}
+ *       \sigma_z=\left( \begin{array}{cc}
  *         1 & 0 \\
  *         0 & -1 \\ \end{array} \right)
  *  \f]
@@ -910,7 +996,8 @@ inline void DFT_ground_state::print_info()
  *  Spin moment of an electron in quantum state \f$ | \Psi \rangle \f$:
  *  \f[
  *     {\bf S}=\langle \Psi | {\bf \hat S} | \Psi \rangle  = \frac{\hbar}{2} \langle \Psi | {\boldsymbol \sigma} | \Psi
- * \rangle \f]
+ *     \rangle 
+ *  \f]
  *
  *  Spin magnetic moment of electron:
  *  \f[

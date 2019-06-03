@@ -82,14 +82,20 @@ double ground_state(Simulation_context& ctx,
         dft.initial_state();
     }
 
+    double initial_tol = ctx.iterative_solver_tolerance();
+
     /* launch the calculation */
-    auto result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
+    auto result = dft.find(inp.potential_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
+
+    if (ctx.control().verification_ >= 1) {
+        dft.check_scf_density();
+    }
 
     auto repeat_update = args.value<int>("repeat_update", 0);
     if (repeat_update) {
         for (int i = 0; i < repeat_update; i++) {
             dft.update();
-            result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
+            result = dft.find(inp.potential_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
         }
     }
 
@@ -233,7 +239,7 @@ void run_tasks(cmd_args const& args)
 
     if (task == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
-        ctx->set_iterative_solver_tolerance(1e-12);
+        ctx->iterative_solver_tolerance(1e-12);
         ctx->set_gamma_point(false);
         ctx->initialize();
         //if (ctx->full_potential()) {

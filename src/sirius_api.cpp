@@ -197,8 +197,7 @@ void sirius_import_parameters(void* const* handler__,
     GET_SIM_CTX(handler__);
     if (str__) {
         sim_ctx.import(std::string(str__));
-    }
-    else {
+    } else {
         sim_ctx.import(sim_ctx.get_runtime_options_dictionary());
     }
 }
@@ -306,7 +305,7 @@ void sirius_set_parameters(void*  const* handler__,
         sim_ctx.parameters_input().enable_esm_ = true;
     }
     if (iter_solver_tol__ != nullptr) {
-        sim_ctx.set_iterative_solver_tolerance(*iter_solver_tol__);
+        sim_ctx.iterative_solver_tolerance(*iter_solver_tol__);
     }
     if (iter_solver_tol_empty__ != nullptr) {
         sim_ctx.empty_states_tolerance(*iter_solver_tol_empty__);
@@ -527,22 +526,41 @@ void* sirius_create_ground_state(void* const* ks_handler__)
 }
 
 /* @fortran begin function void sirius_find_ground_state        Find the ground state
-   @fortran argument in required void* gs_handler               Handler of the ground state
-   @fortran argument in optional bool  save__                   boolean variable indicating if we want to save the ground state
+   @fortran argument in required void*  gs_handler              Handler of the ground state
+   @fortran argument in optional double potential_tol           Tolerance on RMS in potntial.
+   @fortran argument in optional double energy_tol              Tolerance in total energy difference
+   @fortran argument in optional int    niter                   Maximum number of SCF iterations.
+   @fortran argument in optional bool   save_state              boolean variable indicating if we want to save the ground state
    @fortran end */
-void sirius_find_ground_state(void* const* gs_handler__, bool const *save__)
+void sirius_find_ground_state(void* const* gs_handler__, double const* potential_tol__, double const* energy_tol__, 
+                              int const* niter__, bool const *save_state__)
 {
     GET_GS(gs_handler__)
     auto& ctx = gs.ctx();
     auto& inp = ctx.parameters_input();
     gs.initial_state();
 
-    bool save{false};
-    if (save__ != nullptr) {
-        save = *save__;
+    double ptol = inp.potential_tol_;
+    if (potential_tol__) {
+        ptol = *potential_tol__;
     }
 
-    auto result = gs.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, save);
+    double etol = inp.energy_tol_;
+    if (energy_tol__) {
+        etol = *energy_tol__;
+    }
+
+    int niter = inp.num_dft_iter_;
+    if (niter__) {
+        niter = *niter__;
+    }
+
+    bool save{false};
+    if (save_state__ != nullptr) {
+        save = *save_state__;
+    }
+
+    auto result = gs.find(ptol, etol, ctx.iterative_solver_tolerance(), niter, save);
 }
 
 /* @fortran begin function void sirius_update_ground_state   Update a ground state object after change of atomic coordinates or lattice vectors.
@@ -1067,7 +1085,7 @@ void sirius_find_eigen_states(void* const* gs_handler__,
     GET_GS(gs_handler__)
     GET_KS(ks_handler__)
     if (iter_solver_tol__ != nullptr) {
-        ks.ctx().set_iterative_solver_tolerance(*iter_solver_tol__);
+        ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
     }
     sirius::Band(ks.ctx()).solve(ks, gs.hamiltonian(), *precompute__);
 }
@@ -1946,45 +1964,48 @@ void sirius_generate_coulomb_potential(void* const* handler__,
 
     gs.density().rho().fft_transform(-1);
     gs.potential().poisson(gs.density().rho());
-    gs.potential().hartree_potential().copy_to_global_ptr(vclmt__, vclrg__);
+    gs.potential().hartree_potential().copy_to(vclmt__, vclrg__, true);
 }
 
 /* @fortran begin function void sirius_generate_xc_potential    Generate XC potential using LibXC
-   @fortran argument in required void*   handler   Ground state handler
-   @fortran argument out required double vxcmt     Muffin-tin part of potential
-   @fortran argument out required double vxcrg     Regular-grid part of potential
-   @fortran argument out required double bxcmt     Muffin-tin part of effective magentic field
-   @fortran argument out required double bxcrg     Regular-grid part of effective magnetic field
+   @fortran argument in required void*   handler     Ground state handler
+   @fortran argument in required bool    is_local_rg true if regular grid pointer is local
+   @fortran argument out required double vxcmt       Muffin-tin part of potential
+   @fortran argument out required double vxcrg       Regular-grid part of potential
+   @fortran argument out optional double bxcmt_x     Muffin-tin part of effective magentic field (x-component)
+   @fortran argument out optional double bxcmt_y     Muffin-tin part of effective magentic field (y-component)
+   @fortran argument out optional double bxcmt_z     Muffin-tin part of effective magentic field (z-component)
+   @fortran argument out optional double bxcrg_x     Regular-grid part of effective magnetic field (x-component)
+   @fortran argument out optional double bxcrg_y     Regular-grid part of effective magnetic field (y-component)
+   @fortran argument out optional double bxcrg_z     Regular-grid part of effective magnetic field (z-component)
    @fortran end */
 void sirius_generate_xc_potential(void* const* handler__,
+                                  bool  const* is_local_rg__,
                                   double*      vxcmt__,
                                   double*      vxcrg__,
-                                  double*      bxcmt__,
-                                  double*      bxcrg__)
+                                  double*      bxcmt_x__,
+                                  double*      bxcmt_y__,
+                                  double*      bxcmt_z__,
+                                  double*      bxcrg_x__,
+                                  double*      bxcrg_y__,
+                                  double*      bxcrg_z__)
 {
     GET_GS(handler__)
     gs.potential().xc(gs.density());
-    gs.potential().xc_potential().copy_to_global_ptr(vxcmt__, vxcrg__);
 
-    if (gs.ctx().num_mag_dims() == 0) {
-        return;
-    }
-
-    /* set temporary array wrapper */
-    mdarray<double, 4> bxcmt(bxcmt__, gs.ctx().lmmax_pot(), gs.ctx().unit_cell().max_num_mt_points(),
-                             gs.ctx().unit_cell().num_atoms(), gs.ctx().num_mag_dims());
-    mdarray<double, 2> bxcrg(bxcrg__, gs.ctx().fft().local_size(), gs.ctx().num_mag_dims());
+    gs.potential().xc_potential().copy_to(vxcmt__, vxcrg__, *is_local_rg__);
 
     if (gs.ctx().num_mag_dims() == 1) {
         /* z component */
-        gs.potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcrg(0, 0));
-    } else {
+        gs.potential().effective_magnetic_field(0).copy_to(bxcmt_z__, bxcrg_z__, *is_local_rg__);
+    }
+    if (gs.ctx().num_mag_dims() == 3) {
         /* z component */
-        gs.potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 2), &bxcrg(0, 2));
+        gs.potential().effective_magnetic_field(0).copy_to(bxcmt_z__, bxcrg_z__, *is_local_rg__);
         /* x component */
-        gs.potential().effective_magnetic_field(1).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcrg(0, 0));
+        gs.potential().effective_magnetic_field(1).copy_to(bxcmt_x__, bxcrg_x__, *is_local_rg__);
         /* y component */
-        gs.potential().effective_magnetic_field(2).copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcrg(0, 1));
+        gs.potential().effective_magnetic_field(2).copy_to(bxcmt_y__, bxcrg_y__, *is_local_rg__);
     }
 }
 

@@ -99,6 +99,8 @@ std::string show_vec(const vector3d<T>& vec)
     return str;
 }
 
+void initialize_subspace(DFT_ground_state&, Simulation_context&);
+
 /* typedefs */
 template <typename T>
 using matrix_storage_slab = sddk::matrix_storage<T, sddk::matrix_storage_t::slab>;
@@ -185,6 +187,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("full_potential", &Simulation_context::full_potential)
         .def("hubbard_correction", &Simulation_context::hubbard_correction)
         .def("fft", &Simulation_context::fft, py::return_value_policy::reference_internal)
+        .def("fft_coarse", &Simulation_context::fft_coarse, py::return_value_policy::reference_internal)
         .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_),
              py::return_value_policy::reference)
         .def("pw_cutoff", py::overload_cast<>(&Simulation_context::pw_cutoff, py::const_))
@@ -208,7 +211,8 @@ PYBIND11_MODULE(py_sirius, m)
              py::return_value_policy::reference_internal)
         .def("comm_fft", [](Simulation_context& obj) { return make_pycomm(obj.comm_fft()); },
              py::return_value_policy::reference_internal)
-        .def("set_iterative_solver_tolerance", &Simulation_context::set_iterative_solver_tolerance);
+        .def("iterative_solver_tolerance", py::overload_cast<double>(&Simulation_context::iterative_solver_tolerance))
+        .def("iterative_solver_tolerance", py::overload_cast<>(&Simulation_context::iterative_solver_tolerance, py::const_));
 
     py::class_<Atom>(m, "Atom")
         .def("position", &Atom::position)
@@ -226,8 +230,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("num_atoms", [](const Atom_type& atype) { return atype.num_atoms(); });
 
     py::class_<Unit_cell>(m, "Unit_cell")
-        //.def("add_atom_type",
-        //     static_cast<void (Unit_cell::*)(const std::string, const std::string)>(&Unit_cell::add_atom_type))
         .def("add_atom_type", &Unit_cell::add_atom_type)
         .def("add_atom", py::overload_cast<const std::string, std::vector<double>>(&Unit_cell::add_atom))
         .def("atom", py::overload_cast<int>(&Unit_cell::atom), py::return_value_policy::reference)
@@ -347,7 +349,6 @@ PYBIND11_MODULE(py_sirius, m)
         .def("generate", &Potential::generate)
         .def("symmetrize", &Potential::symmetrize)
         .def("fft_transform", &Potential::fft_transform)
-        //.def("allocate", &Potential::allocate)
         .def("save", &Potential::save)
         .def("load", &Potential::load)
         .def("energy_vha", &Potential::energy_vha)
@@ -362,7 +363,6 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<Density, Field4D>(m, "Density")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>(), "ctx"_a)
         .def("initial_density", &Density::initial_density)
-        //.def("allocate", &Density::allocate)
         .def("mixer_init", &Density::mixer_init)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("fft_transform", &Density::fft_transform)
@@ -401,17 +401,25 @@ PYBIND11_MODULE(py_sirius, m)
         .def("total_energy", &DFT_ground_state::total_energy)
         .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
         .def("find",
-             [](DFT_ground_state& dft, double potential_tol, double energy_tol, int num_dft_iter, bool write_state) {
-                 json js = dft.find(potential_tol, energy_tol, num_dft_iter, write_state);
+             [](DFT_ground_state& dft, double potential_tol, double energy_tol, double initial_tol, int num_dft_iter, bool write_state)
+             {
+                 json js = dft.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_state);
                  return pj_convert(js);
              },
-             "potential_tol"_a, "energy_tol"_a, "num_dft_iter"_a, "write_state"_a)
+             "potential_tol"_a, "energy_tol"_a, "initial_tol"_a, "num_dft_iter"_a, "write_state"_a)
+        .def("check_scf_density",
+             [](DFT_ground_state& dft)
+             {
+                 json js = dft.check_scf_density();
+                 return pj_convert(js);
+             })
         .def("k_point_set", &DFT_ground_state::k_point_set, py::return_value_policy::reference_internal)
         .def("hamiltonian", &DFT_ground_state::hamiltonian, py::return_value_policy::reference_internal)
         .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference_internal)
         .def("forces", &DFT_ground_state::forces, py::return_value_policy::reference_internal)
         .def("stress", &DFT_ground_state::stress, py::return_value_policy::reference_internal)
-        .def("update", &DFT_ground_state::update);
+        .def("update", &DFT_ground_state::update)
+        .def("energy_kin_sum_pw", &DFT_ground_state::energy_kin_sum_pw);
 
     py::class_<K_point>(m, "K_point")
         .def("band_energy", py::overload_cast<int, int>(&K_point::band_energy, py::const_))
@@ -664,6 +672,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def("calc_stress_har", &Stress::calc_stress_har, py::return_value_policy::reference_internal)
         .def("calc_stress_ewald", &Stress::calc_stress_ewald, py::return_value_policy::reference_internal)
         .def("calc_stress_xc", &Stress::calc_stress_xc, py::return_value_policy::reference_internal)
+        .def("calc_stress_kin", &Stress::calc_stress_kin, py::return_value_policy::reference_internal)
+        .def("calc_stress_vloc", &Stress::calc_stress_vloc, py::return_value_policy::reference_internal)
         .def("print_info", &Stress::print_info);
 
     py::class_<Free_atom>(m, "Free_atom")
@@ -707,6 +717,19 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("us", &Force::forces_us)
         .def_property_readonly("total", &Force::forces_total)
         .def("print_info", &Force::print_info);
+
+    py::class_<FFT3D_grid>(m, "FFT3D_grid")
+        .def_property_readonly("size", py::overload_cast<>(&FFT3D_grid::size, py::const_))
+        .def_property_readonly("shape", [](const FFT3D_grid& obj) -> std::array<int,3> {
+                return std::array<int,3>{obj.size(0), obj.size(1), obj.size(2)};
+            })
+        .def_property_readonly("grid_size", &FFT3D_grid::grid_size)
+        ;
+
+    py::class_<FFT3D, FFT3D_grid>(m, "FFT3D")
+        .def_property_readonly("comm", &FFT3D::comm)
+        .def_property_readonly("local_size", &FFT3D::local_size)
+        ;
 
     py::class_<matrix_storage_slab<complex_double>>(m, "MatrixStorageSlabC")
         .def("is_remapped", &matrix_storage_slab<complex_double>::is_remapped)
@@ -844,4 +867,13 @@ PYBIND11_MODULE(py_sirius, m)
     m.def("make_sirius_comm", &make_sirius_comm);
     m.def("make_pycomm", &make_pycomm);
     m.def("magnetization", &magnetization);
+    m.def("initialize_subspace", &initialize_subspace);
+}
+
+
+void initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
+{
+    auto& kset = dft_gs.k_point_set();
+    auto& hamiltonian = dft_gs.hamiltonian();
+    Band(ctx).initialize_subspace(kset, hamiltonian);
 }

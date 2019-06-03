@@ -26,9 +26,10 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
 {
     PROFILE("sirius::Band::diag_fv_exact");
 
-    auto                    mem_type = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
-    int                     ngklo    = kp.gklo_basis_size();
-    int                     bs       = ctx_.cyclic_block_size();
+    auto mem_type = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    int  ngklo    = kp.gklo_basis_size();
+    int  bs       = ctx_.cyclic_block_size();
+
     dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
 
@@ -123,7 +124,9 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
             ofv.allocate(spin_idx(0), memory_t::device);
         }
 
+        hamiltonian__.local_op().prepare(kp.gkvec_partition());
         hamiltonian__.apply_fv_h_o(&kp, false, false, 0, ctx_.num_fv_states(), kp.fv_eigen_vectors_slab(), nullptr, &ofv);
+        hamiltonian__.local_op().dismiss();
 
         if (ctx_.processing_unit() == device_t::GPU) {
             kp.fv_eigen_vectors_slab().deallocate(spin_idx(0), memory_t::device);

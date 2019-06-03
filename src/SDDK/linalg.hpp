@@ -39,6 +39,14 @@
 
 namespace sddk {
 
+namespace _local {
+/// check if device id has been set properly
+bool is_set_device_id()
+{
+    return acc::get_device_id() == sddk::get_device_id(acc::num_devices());
+}
+}
+
 class linalg2
 {
   private:
@@ -132,7 +140,7 @@ inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int 
         case linalg_t::gpublas: {
 #ifdef __GPU
             gpublas::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
-                          reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t const*>(B), 
+                          reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t const*>(B),
                           ldb, reinterpret_cast<acc_complex_double_t const*>(beta),
                           reinterpret_cast<acc_complex_double_t*>(C), ldc, sid());
 #else
@@ -236,7 +244,7 @@ inline void linalg2::trmm<ftn_double_complex>(char side, char uplo, char transa,
         }
         case  linalg_t::gpublas: {
 #ifdef __GPU
-            gpublas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha), 
+            gpublas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
                           reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t*>(B), ldb);
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
@@ -1183,6 +1191,7 @@ inline void linalg<GPU>::gemv<ftn_double_complex>(int trans__, ftn_int m, ftn_in
                                                   ftn_double_complex* beta, ftn_double_complex* y, ftn_int incy,
                                                   int stream_id)
 {
+    assert(_local::is_set_device_id());
     const char trans[] = {'N', 'T', 'C'};
     gpublas::zgemv(trans[trans__], m, n, (acc_complex_double_t*)alpha, (acc_complex_double_t*)A, lda, (acc_complex_double_t*)x, incx, (acc_complex_double_t*)beta, (acc_complex_double_t*)y, incy, stream_id);
 }
@@ -1194,6 +1203,7 @@ inline void linalg<GPU>::gemm<ftn_double_complex>(int transa__, int transb__, ft
                                                   ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const* beta,
                                                   ftn_double_complex* C, ftn_int ldc, int stream_id)
 {
+    assert(_local::is_set_device_id());
     assert(lda > 0);
     assert(ldb > 0);
     assert(ldc > 0);
@@ -1211,6 +1221,7 @@ inline void linalg<GPU>::gemm<ftn_double>(int transa__, int transb__, ftn_int m,
                                           ftn_double const* B, ftn_int ldb, ftn_double const* beta,
                                           ftn_double* C, ftn_int ldc, int stream_id)
 {
+    assert(_local::is_set_device_id());
     assert(lda > 0);
     assert(ldb > 0);
     assert(ldc > 0);
@@ -1261,6 +1272,7 @@ inline void linalg<GPU>::trmm<ftn_double>(char side,
                                           ftn_double* B,
                                           ftn_int ldb)
 {
+    assert(_local::is_set_device_id());
     gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
 }
 
@@ -1276,6 +1288,7 @@ inline void linalg<GPU>::trmm<ftn_double_complex>(char side,
                                                   ftn_double_complex* B,
                                                   ftn_int ldb)
 {
+    assert(_local::is_set_device_id());
     gpublas::ztrmm(side, uplo, transa, 'N', m, n, (acc_complex_double_t*)alpha, (acc_complex_double_t*)A, lda,
                    (acc_complex_double_t*)B, ldb);
 }
@@ -1288,6 +1301,7 @@ inline void linalg<GPU>::axpy<ftn_double_complex>(ftn_int n__,
                                                   ftn_double_complex* y__,
                                                   ftn_int incy__)
 {
+    assert(_local::is_set_device_id());
     gpublas::zaxpy(n__, (acc_complex_double_t const*)alpha__, (acc_complex_double_t*)x__, incx__,
                    (acc_complex_double_t*)y__, incy__);
 }

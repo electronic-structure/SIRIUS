@@ -388,10 +388,12 @@ inline void Hamiltonian::set_fv_h_o_it(K_point* kp,
 
             if (ctx_.valence_relativity() == relativity_t::none) {
                 h(igk_row, igk_col) += t1 * ctx_.theta_pw(ig12);
-            } else {
+            }
+            if (ctx_.valence_relativity() == relativity_t::zora) {
                 h(igk_row, igk_col) += t1 * this->potential().rm_inv_pw(ig12);
             }
             if (ctx_.valence_relativity() == relativity_t::iora) {
+                h(igk_row, igk_col) += t1 * this->potential().rm_inv_pw(ig12);
                 o(igk_row, igk_col) += t1 * sq_alpha_half * this->potential().rm2_inv_pw(ig12);
             }
         }

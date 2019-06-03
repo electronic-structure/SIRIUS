@@ -144,18 +144,23 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_bloc
     }
 
     /* compute O * <beta|phi> for atoms in a chunk */
-    #pragma omp parallel for
-    for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
-        /* number of beta functions for a given atom */
-        int nbf  = beta__.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
-        int offs = beta__.chunk(chunk__).desc_(beta_desc_idx::offset, i);
-        int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, i);
+    #pragma omp parallel
+    {
+        acc::set_device_id(sddk::get_device_id(acc::num_devices())); // avoid cuda mth bugs
 
-        if (nbf) {
-            linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
-                             op_.at(mem, packed_mtrx_offset_(ia), ispn_block__), nbf, beta_phi__.at(mem, offs, 0), nbeta,
-                             &linalg_const<double_complex>::zero(), work_.at(mem, offs), nbeta,
-                             stream_id(omp_get_thread_num()));
+        #pragma omp for
+        for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
+            /* number of beta functions for a given atom */
+            int nbf  = beta__.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
+            int offs = beta__.chunk(chunk__).desc_(beta_desc_idx::offset, i);
+            int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, i);
+
+            if (nbf) {
+                linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
+                                 op_.at(mem, packed_mtrx_offset_(ia), ispn_block__), nbf, beta_phi__.at(mem, offs, 0), nbeta,
+                                 &linalg_const<double_complex>::zero(), work_.at(mem, offs), nbeta,
+                                 stream_id(omp_get_thread_num()));
+            }
         }
     }
     switch (pu_) {

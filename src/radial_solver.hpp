@@ -674,6 +674,20 @@ class Radial_solver
                         chi_q(i) = -j * p[j - 1][i];
                     }
                     chi_q.interpolate();
+                } else if (rel__ == relativity_t::koelling_harmon) {
+                    double sq_alpha = std::pow(speed_of_light, -2);
+                    double ll_half  = l__ * (l__ + 1) / 2.0;
+                    if (j == 1) {
+                        for (int i = 0; i < nr; i++) {
+                            double x = radial_grid_[i];
+                            double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
+                            double M = 1 + 0.5 * sq_alpha * (enu__ - V);
+                            chi_p(i) = sq_alpha * q[j - 1][i];
+                            chi_q(i) = -p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
+                        }
+                    } else {
+                        TERMINATE_NOT_IMPLEMENTED
+                    }
                 } else if (rel__ == relativity_t::iora) {
                     double sq_alpha = std::pow(speed_of_light, -2);
                     double ll_half  = l__ * (l__ + 1) / 2.0;
