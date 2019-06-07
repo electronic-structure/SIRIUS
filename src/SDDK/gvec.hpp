@@ -406,7 +406,7 @@ class Gvec
             if (gvec_shell_len_[igsh] < 0) {
                 gvec_shell_len_[igsh] = g;
             } else {
-                if (std::abs(gvec_shell_len_[igsh] - g) > 1e-10) {
+                if (std::abs(gvec_shell_len_[igsh] - g) > 1e-7) {
                     std::stringstream s;
                     s << "wrong G-vector length" << "\n"
                       << "  length of G-shell : " << gvec_shell_len_[igsh] << "\n"
@@ -450,42 +450,6 @@ class Gvec
         }
         gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
         std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at(memory_t::host));
-
-        ///* list of pairs (length, index of G-vector) */
-        //std::vector<std::pair<uint64_t, int>> tmp(num_gvec_);
-        //#pragma omp parallel for schedule(static)
-        //for (int ig = 0; ig < num_gvec(); ig++) {
-        //    /* take G+k */
-        //    auto gk = gkvec_cart<index_domain_t::global>(ig);
-        //    /* make some reasonable roundoff */
-        //    uint64_t len = static_cast<uint64_t>(gk.length() * 1e8);
-
-        //    tmp[ig] = std::make_pair(len, ig);
-        //}
-        ///* sort by first element in pair (length) */
-        //std::sort(tmp.begin(), tmp.end());
-
-        //gvec_shell_ = mdarray<int, 1>(num_gvec_);
-        ///* index of the first shell */
-        //gvec_shell_(tmp[0].second) = 0;
-        //num_gvec_shells_           = 1;
-        ///* temporary vector to store G-shell radius */
-        //std::vector<double> tmp_len;
-        ///* radius of the first shell */
-        //tmp_len.push_back(static_cast<double>(tmp[0].first) * 1e-8);
-        //for (int ig = 1; ig < num_gvec_; ig++) {
-        //    /* if this G+k-vector has a different length */
-        //    if (tmp[ig].first != tmp[ig - 1].first) {
-        //        /* increment number of shells */
-        //        num_gvec_shells_++;
-        //        /* save the radius of the new shell */
-        //        tmp_len.push_back(static_cast<double>(tmp[ig].first) * 1e-8);
-        //    }
-        //    /* assign the index of the current shell */
-        //    gvec_shell_(tmp[ig].second) = num_gvec_shells_ - 1;
-        //}
-        //gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
-        //std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at(memory_t::host));
     }
 
     /// Compute the Cartesian coordinates.
