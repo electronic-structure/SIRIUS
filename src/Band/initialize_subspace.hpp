@@ -72,6 +72,16 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
+    if (ctx_.control().verification_ >= 1) {
+        auto eval = diag_S_davidson<T>(*kp__, H__);
+        if (eval[0] <= 0) {
+            std::stringstream s;
+            s << "S-operator matrix is not positive definite\n"
+              << "  lowest eigen-value: " << eval[0];
+            TERMINATE(s);
+        }
+    }
+
     /* number of non-zero spin components */
     const int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
 
@@ -210,7 +220,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
         if (ctx_.control().verification_ >= 1) {
 
             set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp);
-            if (ctx_.control().verification_ >= 2) {
+            if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
                 ovlp.serialize("overlap", num_phi_tot);
             }
 
@@ -239,7 +249,7 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
         set_subspace_mtrx<T>(0, num_phi_tot, phi, hphi, hmlt);
         set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp);
 
-        if (ctx_.control().verification_ >= 2) {
+        if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
             hmlt.serialize("hmlt", num_phi_tot);
             ovlp.serialize("ovlp", num_phi_tot);
         }
