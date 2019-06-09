@@ -149,13 +149,17 @@ class Simulation_parameters
                                                            control_input_.fft_mode_);
         control_input_.memory_usage_        = args__.value("control.memory_usage",
                                                            control_input_.memory_usage_);
+        control_input_.verbosity_           = args__.value("control.verbosity",
+                                                           control_input_.verbosity_);
+        control_input_.verification_        = args__.value("control.verification",
+                                                           control_input_.verification_);
 
-        parameters_input_.ngridk_           = args__.value("parameters.ngridk",
-                                                           parameters_input_.ngridk_);
-        parameters_input_.gamma_point_      = args__.value("parameters.gamma_point",
-                                                           parameters_input_.gamma_point_);
-        parameters_input_.pw_cutoff_        = args__.value("parameters.pw_cutoff",
-                                                           parameters_input_.pw_cutoff_);
+        parameters_input_.ngridk_      = args__.value("parameters.ngridk",
+                                                      parameters_input_.ngridk_);
+        parameters_input_.gamma_point_ = args__.value("parameters.gamma_point",
+                                                      parameters_input_.gamma_point_);
+        parameters_input_.pw_cutoff_   = args__.value("parameters.pw_cutoff",
+                                                      parameters_input_.pw_cutoff_);
 
         iterative_solver_input_.orthogonalize_ = args__.value("iterative_solver.orthogonalize",
                                                               iterative_solver_input_.orthogonalize_);
