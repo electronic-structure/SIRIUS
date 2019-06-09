@@ -352,7 +352,8 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
-            n = residuals(&kp__, 0, N, ncomp, eval, eval_old, evec, ophi, phi, opsi, psi, res, o_diag, diag1);
+            n = residuals(&kp__, 0, N, ncomp, eval, eval_old, evec, ophi, phi, opsi, psi, res, o_diag, diag1,
+                          itso.energy_tolerance_, itso.residual_tolerance_);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -583,7 +584,8 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            n = residuals(&kp__, 0, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
+            n = residuals(&kp__, 0, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag,
+                          itso.energy_tolerance_, itso.residual_tolerance_);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
