@@ -589,8 +589,12 @@ class DFT_ground_state
         return std::move(dict);
     }
 
+    /// A quick check of self-constent density in case of pseudopotential.
     json check_scf_density()
     {
+        if (ctx_.full_potential()) {
+            return json();
+        }
         std::vector<double_complex> rho_pw(ctx_.gvec().count());
         for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
             rho_pw[ig] = density_.rho().f_pw_local(ig);
