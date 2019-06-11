@@ -187,7 +187,8 @@ Hamiltonian::get_h_diag(K_point* kp__) const
 
 template <typename T>
 inline mdarray<double, 1>
-Hamiltonian::get_o_diag(K_point* kp__) const
+Hamiltonian::get_o_diag(K_point* kp__) const // TODO: this is not strictly true for SO case, but it is used only in
+                                             //       preconditioning, so it's ok
 {
     PROFILE("sirius::Hamiltonian::get_o_diag");
 

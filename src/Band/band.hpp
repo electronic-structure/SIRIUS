@@ -75,6 +75,9 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     template <typename T>
     inline int diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const;
 
+    template <typename T>
+    inline std::vector<double> diag_S_davidson(K_point& kp__, Hamiltonian& H__) const;
+
     /// RMM-DIIS diagonalization.
     template <typename T>
     inline void diag_pseudo_potential_rmm_diis(K_point* kp__, int ispn__, Hamiltonian& H__) const;
@@ -94,7 +97,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                                             mdarray<double, 2>& h_diag__,
                                             mdarray<double, 1>& o_diag__) const;
 
-    /// Compute residuals.
+    /// Compute preconditioned residuals
     template <typename T>
     inline int residuals(K_point* kp__,
                          int ispn__,
@@ -109,7 +112,9 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                          Wave_functions& opsi__,
                          Wave_functions& res__,
                          mdarray<double, 2>& h_diag__,
-                         mdarray<double, 1>& o_diag__) const;
+                         mdarray<double, 1>& o_diag__,
+                         double eval_tolerance__,
+                         double norm_tolerance__) const; //TODO: more documentation here
 
     template <typename T>
     void check_residuals(K_point& kp__, Hamiltonian& H__) const;
@@ -203,7 +208,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     template <typename T>
     inline void initialize_subspace(K_point* kp__, Hamiltonian& hamiltonian__, int num_ao__) const;
 
-    static double& evp_work_count()
+    static double& evp_work_count() // TODO: move counters to sim.ctx
     {
         static double evp_work_count_{0};
         return evp_work_count_;

@@ -548,6 +548,33 @@ class Q_operator : public Non_local_operator<T>
     void initialize()
     {
         auto& uc = this->ctx_.unit_cell();
+        /* check eigen-values of Q_{xi,xi'} matrix for each atom; 
+           not sure if it helps, so it's commented for now */
+        //if (this->ctx_.control().verification_ >= 1) {
+        //    for (int ia = 0; ia < uc.num_atoms(); ia++) {
+        //        int iat = uc.atom(ia).type().id();
+        //        if (!uc.atom_type(iat).augment()) {
+        //            continue;
+        //        }
+        //        int nbf = uc.atom(ia).mt_basis_size();
+        //        Eigensolver_lapack evs;
+        //        dmatrix<double> A(nbf, nbf);
+        //        dmatrix<double> Z(nbf, nbf);
+        //        std::vector<double> ev(nbf);
+        //        for (int xi1 = 0; xi1 < nbf; xi1++) {
+        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
+        //                A(xi1, xi2) = this->ctx_.augmentation_op(iat).q_mtrx(xi1, xi2);
+        //            }
+        //        }
+        //        evs.solve(nbf, A, ev.data(), Z);
+        //        if (this->ctx_.control().verbosity_ >= 0 && this->ctx_.comm().rank() == 0) {
+        //            printf("eigen-values of the Q-matrix for atom %i\n", ia);
+        //            for (int i = 0; i < nbf; i++) {
+        //                printf("%18.12f\n", ev[i]);
+        //            }
+        //        }
+        //    }
+        //}
         #pragma omp parallel for
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
             int iat = uc.atom(ia).type().id();
@@ -613,12 +640,12 @@ class Q_operator : public Non_local_operator<T>
     }
 
   public:
-    Q_operator(Simulation_context const& ctx_)
-        : Non_local_operator<T>(ctx_)
+    Q_operator(Simulation_context const& ctx__)
+        : Non_local_operator<T>(ctx__)
     {
         /* Q-operator is independent of spin if there is no spin-orbit; however, it simplifies the apply()
          * method if the Q-operator has a spin index */
-        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, this->ctx_.num_mag_dims() + 1);
         this->op_.zero();
         initialize();
     }
