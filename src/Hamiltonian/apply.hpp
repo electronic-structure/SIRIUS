@@ -44,17 +44,17 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 {
     PROFILE("sirius::Hamiltonian::apply_h_s");
 
-    if (hphi__ != nullptr) {
-        if (phi__.num_sc() != hphi__->num_sc()) {
-            TERMINATE("wrong number of spin components");
-        }
-    }
+    //if (hphi__ != nullptr) {
+    //    if (phi__.num_sc() != hphi__->num_sc()) {
+    //        TERMINATE("wrong number of spin components");
+    //    }
+    //}
 
-    if (sphi__ != nullptr) {
-        if (phi__.num_sc() != sphi__->num_sc()) {
-            TERMINATE("wrong number of spin components");
-        }
-    }
+    //if (sphi__ != nullptr) {
+    //    if (phi__.num_sc() != sphi__->num_sc()) {
+    //        TERMINATE("wrong number of spin components");
+    //    }
+    //}
 
     double t1 = -omp_get_wtime();
 
