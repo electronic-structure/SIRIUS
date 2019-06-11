@@ -102,12 +102,13 @@ class vector3d : public std::array<T, 3>
         return std::abs((*this)[0]) + std::abs((*this)[1]) + std::abs((*this)[2]);
     }
 
-    /// Return vector length
+    /// Return vector length (L2 norm).
     inline double length() const
     {
-        return std::sqrt(static_cast<double>(std::pow((*this)[0], 2) + std::pow((*this)[1], 2) + std::pow((*this)[2], 2)));
+        return std::sqrt(this->length2());
     }
 
+    /// Return square length of the vector.
     inline double length2() const
     {
         return static_cast<double>(std::pow((*this)[0], 2) + std::pow((*this)[1], 2) + std::pow((*this)[2], 2));
