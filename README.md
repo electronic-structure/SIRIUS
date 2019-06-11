@@ -33,8 +33,6 @@ $ mkdir -p libs
 $ python prerequisite.py ${PWD}/libs xc spg gsl fftw hdf5
 ```
 
-Hello ;)
-
 ## Examples
 
 
