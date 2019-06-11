@@ -535,6 +535,25 @@ class Simulation_context : public Simulation_parameters
         }
     }
 
+    inline void message(char const* fmt, ...) const
+    {
+        std::va_list arg;
+        va_start(arg, fmt);
+        if (comm_.rank() == 0) {
+            printf(fmt, arg);
+        }
+    }
+
+    inline void message(char const* label, char const* fmt, ...) const
+    {
+        std::va_list arg;
+        va_start(arg, fmt);
+        if (comm_.rank() == 0) {
+            printf("[%s] ", label);
+            printf(fmt, arg);
+        }
+    }
+
     /// Update context after setting new lattice vectors or atomic coordinates.
     void update()
     {
