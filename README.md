@@ -28,6 +28,8 @@ This will compile SIRIUS in a most simple way: CPU-only mode without parallel li
 In order to download and build the compulsory dependencies (xc, gsl, spg, fftw)
 the script `prerequisite.py` can be used:
 
+another change
+
 ```console
 $ mkdir -p libs
 $ python prerequisite.py ${PWD}/libs xc spg gsl fftw hdf5
