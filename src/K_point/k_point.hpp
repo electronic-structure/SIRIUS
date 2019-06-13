@@ -818,6 +818,18 @@ class K_point
         {
             return ctx_;
         }
+
+        /// Print message from the root rank.
+        template <typename... Args>
+        inline void message(int level__, char const* label__, Args... args) const
+        {
+            if (this->comm().rank() == 0 && this->ctx().control().verbosity_ >= level__) {
+                if (label__) {
+                    printf("[%s] ", label__);
+                }
+                printf(args...);
+            }
+        }
 };
 
 //== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)

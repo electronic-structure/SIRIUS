@@ -535,22 +535,15 @@ class Simulation_context : public Simulation_parameters
         }
     }
 
-    inline void message(char const* fmt, ...) const
+    /// Print message from the root rank.
+    template <typename... Args>
+    inline void message(int level__, char const* label__, Args... args) const
     {
-        std::va_list arg;
-        va_start(arg, fmt);
-        if (comm_.rank() == 0) {
-            printf(fmt, arg);
-        }
-    }
-
-    inline void message(char const* label, char const* fmt, ...) const
-    {
-        std::va_list arg;
-        va_start(arg, fmt);
-        if (comm_.rank() == 0) {
-            printf("[%s] ", label);
-            printf(fmt, arg);
+        if (comm_.rank() == 0 && this->control().verbosity_ >= level__) {
+            if (label__) {
+                printf("[%s] ", label__);
+            }
+            printf(args...);
         }
     }
 
