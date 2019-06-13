@@ -50,9 +50,20 @@ class sirius_scf_base_test(rfm.RunOnlyRegressionTest):
     def __init__(self, num_ranks, test_folder):
         super().__init__()
         self.descr = 'SCF check'
-        self.valid_systems = ['osx']
-        self.valid_prog_environs = ['PrgEnv-gnu']
+        self.valid_systems = ['osx', 'daint']
+        self.valid_prog_environs = ['PrgEnv-gnu', 'PrgEnv-intel']
+
         self.num_tasks = num_ranks
+        if self.current_system.name == 'daint':
+        #    self.modules = ['PrgEnv-intel', 'cray-hdf5', 'cudatoolkit', 'gcc', 'daint-gpu', 'EasyBuild-custom/cscs',
+        #                    'GSL/2.5-CrayIntel-18.08', 'libxc/4.2.3-CrayIntel-18.08', 'magma/2.4.0-CrayIntel-18.08-cuda-9.1',
+        #                    'spglib/1.12.0-CrayIntel-18.08']
+            self.num_tasks_per_node = 1
+            self.num_cpus_per_task = 12
+            self.variables = {
+                'OMP_NUM_THREADS': str(self.num_cpus_per_task),
+                'MKL_NUM_THREADS': str(self.num_cpus_per_task)
+            }
 
         self.executable = 'sirius.scf'
         self.sourcesdir = '../../verification/' + test_folder
