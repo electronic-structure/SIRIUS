@@ -223,7 +223,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
         }
     }
     if (ctx_.control().verification_ >= 2) {
-        ctx_.message("[diag_pseudo_potential_exact] checking eigen-values of S-matrix\n");
+        ctx_.message(1, __func__, "checking eigen-values of S-matrix\n");
 
         dmatrix<T> ovlp1(kp__->num_gkvec(), kp__->num_gkvec(), ctx_.blacs_grid(), bs, bs);
         dmatrix<T> evec(kp__->num_gkvec(), kp__->num_gkvec(), ctx_.blacs_grid(), bs, bs);
@@ -237,7 +237,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 
         for (int i = 0; i < kp__->num_gkvec(); i++) {
             if (eo[i] < 1e-6) {
-                ctx_.message("  small eigen-value: %18.10f\n", eo[i]);
+                ctx_.message(1, __func__, "small eigen-value: %18.10f\n", eo[i]);
             }
         }
     }
@@ -267,9 +267,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
-    if (ctx_.control().verbosity_ >= 2) {
-        ctx_.message("iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
-    }
+    ctx_.message(2, __func__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
 
     /* true if this is a non-collinear case */
     const bool nc_mag = (ctx_.num_mag_dims() == 3);

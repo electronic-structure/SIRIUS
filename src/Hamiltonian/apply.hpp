@@ -191,55 +191,55 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 }
 
 
-template<typename T>
-void Hamiltonian::apply_s(K_point* kp__, int ispn__, Wave_functions& phi__, Wave_functions& sphi__) const
-{
-    PROFILE("sirius::Hamiltonian::apply_s");
-    int N = phi__.num_wf();
-
-    if (phi__.num_sc() != sphi__.num_sc()) {
-        TERMINATE("wrong number of spin components");
-    }
-
-    if(phi__.num_wf() != sphi__.num_wf()) {
-        TERMINATE("wrong number of bands");
-    }
-
-    int nsc = (ispn__ == 2) ? 2 : 1;
-    /* set intial sphi */
-    if (ispn__ == 2) {
-        for (int ispn = 0; ispn < nsc; ispn++) {
-            sphi__.copy_from(phi__, N, ispn, 0, ispn, 0);
-        }
-    } else {
-        sphi__.copy_from(phi__, N, ispn__, 0, ispn__, 0);
-    }
-
-    /* return if there are no beta-projectors */
-    if (!ctx_.unit_cell().mt_lo_basis_size()) {
-        return;
-    }
-
-    for (int i = 0; i < kp__->beta_projectors().num_chunks(); i++) {
-        /* generate beta-projectors for a block of atoms */
-        kp__->beta_projectors().generate(i);
-        /* non-collinear case */
-        if (ispn__ == 2) {
-            for (int ispn = 0; ispn < 2; ispn++) {
-                auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn, 0, N);
-                /* apply Q operator (diagonal in spin) */
-                Q<T>().apply(i, ispn, sphi__, 0, N, kp__->beta_projectors(), beta_phi);
-                /* apply non-diagonal spin blocks */
-                if (ctx_.so_correction()) {
-                    Q<T>().apply(i, ispn ^ 3, sphi__, 0, N, kp__->beta_projectors(), beta_phi);
-                }
-            }
-        } else { /* non-magnetic or collinear case */
-            auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn__, 0, N);
-            Q<T>().apply(i, ispn__, sphi__, 0, N, kp__->beta_projectors(), beta_phi);
-        }
-    }
-}
+//template<typename T>
+//void Hamiltonian::apply_s(K_point* kp__, int ispn__, Wave_functions& phi__, Wave_functions& sphi__) const
+//{
+//    PROFILE("sirius::Hamiltonian::apply_s");
+//    int N = phi__.num_wf();
+//
+//    if (phi__.num_sc() != sphi__.num_sc()) {
+//        TERMINATE("wrong number of spin components");
+//    }
+//
+//    if(phi__.num_wf() != sphi__.num_wf()) {
+//        TERMINATE("wrong number of bands");
+//    }
+//
+//    int nsc = (ispn__ == 2) ? 2 : 1;
+//    /* set intial sphi */
+//    if (ispn__ == 2) {
+//        for (int ispn = 0; ispn < nsc; ispn++) {
+//            sphi__.copy_from(phi__, N, ispn, 0, ispn, 0);
+//        }
+//    } else {
+//        sphi__.copy_from(phi__, N, ispn__, 0, ispn__, 0);
+//    }
+//
+//    /* return if there are no beta-projectors */
+//    if (!ctx_.unit_cell().mt_lo_basis_size()) {
+//        return;
+//    }
+//
+//    for (int i = 0; i < kp__->beta_projectors().num_chunks(); i++) {
+//        /* generate beta-projectors for a block of atoms */
+//        kp__->beta_projectors().generate(i);
+//        /* non-collinear case */
+//        if (ispn__ == 2) {
+//            for (int ispn = 0; ispn < 2; ispn++) {
+//                auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn, 0, N);
+//                /* apply Q operator (diagonal in spin) */
+//                Q<T>().apply(i, ispn, sphi__, 0, N, kp__->beta_projectors(), beta_phi);
+//                /* apply non-diagonal spin blocks */
+//                if (ctx_.so_correction()) {
+//                    Q<T>().apply(i, ispn ^ 3, sphi__, 0, N, kp__->beta_projectors(), beta_phi);
+//                }
+//            }
+//        } else { /* non-magnetic or collinear case */
+//            auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn__, 0, N);
+//            Q<T>().apply(i, ispn__, sphi__, 0, N, kp__->beta_projectors(), beta_phi);
+//        }
+//    }
+//}
 
 
 inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
