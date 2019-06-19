@@ -1754,6 +1754,10 @@ inline void Simulation_context::print_info() const
             break;
         }
     }
+    printf("\n");
+    printf("iterative solver                   : %s\n", iterative_solver_input_.type_.c_str());
+    printf("number of steps                    : %i\n", iterative_solver_input_.num_steps_);
+    printf("subspace size                      : %i\n", iterative_solver_input_.subspace_size_);
 
     printf("\n");
     printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(), spg_get_micro_version());

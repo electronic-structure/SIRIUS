@@ -132,8 +132,9 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
         }
     }
     kset__.comm().allreduce(&num_dav_iter, 1);
-    if (ctx_.comm().rank() == 0 && !ctx_.full_potential() && ctx_.control().verbosity_ >= 1) {
-        printf("Average number of iterations: %12.6f\n", static_cast<double>(num_dav_iter) / kset__.num_kpoints());
+    if (!ctx_.full_potential()) {
+        ctx_.message(1, __func__, "average number of iterations: %12.6f\n",
+                     static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 
     hamiltonian__.dismiss();

@@ -406,7 +406,8 @@ class Gvec
             if (gvec_shell_len_[igsh] < 0) {
                 gvec_shell_len_[igsh] = g;
             } else {
-                /* tolerance on the metric tensor was 1e-6, so tolerance on length should be square root of that */
+                /* lattice symmetries were found wih 1e-6 tolererance for the metric tensor,
+                   so tolerance on length should be square root of that */
                 if (std::abs(gvec_shell_len_[igsh] - g) > 1e-3) {
                     std::stringstream s;
                     s << "wrong G-vector length" << "\n"
