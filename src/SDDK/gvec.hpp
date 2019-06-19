@@ -406,7 +406,8 @@ class Gvec
             if (gvec_shell_len_[igsh] < 0) {
                 gvec_shell_len_[igsh] = g;
             } else {
-                if (std::abs(gvec_shell_len_[igsh] - g) > 1e-7) {
+                /* tolerance on the metric tensor was 1e-6, so tolerance on length should be square root of that */
+                if (std::abs(gvec_shell_len_[igsh] - g) > 1e-3) {
                     std::stringstream s;
                     s << "wrong G-vector length" << "\n"
                       << "  length of G-shell : " << gvec_shell_len_[igsh] << "\n"
