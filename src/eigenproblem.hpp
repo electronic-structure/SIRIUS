@@ -62,8 +62,11 @@ enum class ev_solver_t
     /// ELPA 2-stage solver
     elpa2,
 
-    /// MAGMA
+    /// MAGMA with CPU pointers
     magma,
+
+    /// MAGMA with GPU pointers
+    magma_gpu,
 
     /// PLASMA
     plasma,
@@ -78,8 +81,8 @@ inline ev_solver_t get_ev_solver_t(std::string name__)
 
     static const std::map<std::string, ev_solver_t> map_to_type = {
         {"lapack", ev_solver_t::lapack}, {"scalapack", ev_solver_t::scalapack}, {"elpa1", ev_solver_t::elpa1},
-        {"elpa2", ev_solver_t::elpa2},   {"magma", ev_solver_t::magma},         {"plasma", ev_solver_t::plasma},
-        {"cusolver", ev_solver_t::cusolver}};
+        {"elpa2", ev_solver_t::elpa2},   {"magma", ev_solver_t::magma},         {"magma_gpu", ev_solver_t::magma_gpu},
+        {"plasma", ev_solver_t::plasma}, {"cusolver", ev_solver_t::cusolver}};
 
     if (map_to_type.count(name__) == 0) {
         std::stringstream s;
@@ -1307,7 +1310,7 @@ class Eigensolver_magma: public Eigensolver
         auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
         auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
 
-        magma_zheevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
+        magma_zheevdx_2stage(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
                       reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::host)), lda, 0.0, 0.0, 1,
                       nev__, &m, w.get(), reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork, rwork.get(),
                       lrwork, iwork.get(), liwork, &info);
@@ -1327,6 +1330,203 @@ class Eigensolver_magma: public Eigensolver
                 std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
                           Z__.at(memory_t::host, 0, i));
             }
+        }
+
+        return info;
+    }
+};
+
+class Eigensolver_magma_gpu: public Eigensolver
+{
+  public:
+
+    inline bool is_parallel()
+    {
+        return false;
+    }
+
+    ///// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    //int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
+    //          dmatrix<double>& Z__)
+    //{
+    //    int nt = omp_get_max_threads();
+    //    int result{-1};
+    //    int lda = A__.ld();
+    //    int ldb = B__.ld();
+
+    //    auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+
+    //    int m;
+    //    int info;
+
+    //    int lwork;
+    //    int liwork;
+    //    magma_dsyevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &liwork);
+
+    //    auto h_work = mp_hp_.get_unique_ptr<double>(lwork);
+    //    auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+
+    //    magma_dsygvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(memory_t::host), lda,
+    //                         B__.at(memory_t::host), ldb, 0.0, 0.0, 1, nev__, &m, w.get(), h_work.get(), lwork,
+    //                         iwork.get(), liwork, &info);
+
+
+    //    if (nt != omp_get_max_threads()) {
+    //        TERMINATE("magma has changed the number of threads");
+    //    }
+
+    //    if (m < nev__) {
+    //        return 1;
+    //    }
+
+    //    if (!info) {
+    //        std::copy(w.get(), w.get() + nev__, eval__);
+    //        #pragma omp parallel for schedule(static)
+    //        for (int i = 0; i < nev__; i++) {
+    //            std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+    //                      Z__.at(memory_t::host, 0, i));
+    //        }
+    //    }
+
+    //    return info;
+    //}
+
+    ///// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    //int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
+    //          double* eval__, dmatrix<double_complex>& Z__)
+    //{
+    //    int nt = omp_get_max_threads();
+    //    int result{-1};
+    //    int lda = A__.ld();
+    //    int ldb = B__.ld();
+
+    //    auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+
+    //    int m;
+    //    int info;
+
+    //    int lwork;
+    //    int lrwork;
+    //    int liwork;
+    //    magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
+
+    //    auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
+    //    auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
+    //    auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+
+    //    magma_zhegvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
+    //                         reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::host)), lda,
+    //                         reinterpret_cast<magmaDoubleComplex*>(B__.at(memory_t::host)), ldb, 0.0, 0.0,
+    //                         1, nev__, &m, w.get(), reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork,
+    //                         rwork.get(), lrwork, iwork.get(), liwork, &info);
+
+    //    if (nt != omp_get_max_threads()) {
+    //        TERMINATE("magma has changed the number of threads");
+    //    }
+
+    //    if (m < nev__) {
+    //        return 1;
+    //    }
+
+    //    if (!info) {
+    //        std::copy(w.get(), w.get() + nev__, eval__);
+    //        #pragma omp parallel for schedule(static)
+    //        for (int i = 0; i < nev__; i++) {
+    //            std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+    //                      Z__.at(memory_t::host, 0, i));
+    //        }
+    //    }
+
+    //    return info;
+    //}
+
+    ///// Solve a standard eigen-value problem for N lowest eigen-pairs.
+    //int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
+    //{
+    //    utils::timer t0("Eigensolver_magma|dsygvdx");
+
+    //    int nt = omp_get_max_threads();
+    //    int lda = A__.ld();
+    //    auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+
+    //    int lwork;
+    //    int liwork;
+    //    magma_dsyevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &liwork);
+
+    //    auto h_work = mp_hp_.get_unique_ptr<double>(lwork);
+    //    auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+
+    //    int info;
+    //    int m;
+
+    //    magma_dsyevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(memory_t::host), lda, 0.0, 0.0, 1,
+    //                  nev__, &m, w.get(), h_work.get(), lwork, iwork.get(), liwork, &info);
+    //    
+    //    if (nt != omp_get_max_threads()) {
+    //        TERMINATE("magma has changed the number of threads");
+    //    }
+
+    //    if (m < nev__) {
+    //        return 1;
+    //    }
+
+    //    if (!info) {
+    //        std::copy(w.get(), w.get() + nev__, eval__);
+    //        #pragma omp parallel for schedule(static)
+    //        for (int i = 0; i < nev__; i++) {
+    //            std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+    //                      Z__.at(memory_t::host, 0, i));
+    //        }
+    //    }
+
+    //    return info;
+    //}
+
+    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
+              dmatrix<double_complex>& Z__)
+    {
+        utils::timer t0("Eigensolver_magma_gpu|zheevdx");
+
+        int nt = omp_get_max_threads();
+        int lda = A__.ld();
+        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+
+        int info, m;
+
+        int lwork;
+        int lrwork;
+        int liwork;
+        magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
+
+        auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
+        auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
+        auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
+
+        magma_zheevdx_gpu(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
+                      reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::device)), lda, 0.0, 0.0, 1,
+                      nev__, &m, w.get(),
+                      reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::host)), lda,
+                      reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork, rwork.get(),
+                      lrwork, iwork.get(), liwork, &info);
+
+        if (nt != omp_get_max_threads()) {
+            TERMINATE("magma has changed the number of threads");
+        }
+
+        if (m < nev__) {
+            return 1;
+        }
+
+        if (!info) {
+            std::copy(w.get(), w.get() + nev__, eval__);
+            //#pragma omp parallel for schedule(static)
+            //for (int i = 0; i < nev__; i++) {
+            //    std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
+            //              Z__.at(memory_t::host, 0, i));
+            //}
+            acc::copyout(Z__.at(memory_t::host, 0, 0), Z__.ld(), A__.at(memory_t::device, 0, 0), A__.ld(),
+                         matrix_size__, nev__);
         }
 
         return info;
@@ -1561,6 +1761,10 @@ std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_type__)
         }
         case ev_solver_t::magma: {
             ptr = new Eigensolver_magma();
+            break;
+        }
+        case ev_solver_t::magma_gpu: {
+            ptr = new Eigensolver_magma_gpu();
             break;
         }
         case ev_solver_t::cusolver: {

@@ -1728,6 +1728,10 @@ inline void Simulation_context::print_info() const
                 printf("MAGMA\n");
                 break;
             }
+            case ev_solver_t::magma_gpu: {
+                printf("MAGMA with GPU pointers\n");
+                break;
+            }
             case ev_solver_t::plasma: {
                 printf("PLASMA\n");
                 break;

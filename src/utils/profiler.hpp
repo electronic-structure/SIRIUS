@@ -28,11 +28,15 @@
 #include <mpi.h>
 #include <string>
 #include "timer.hpp"
+#if defined(__GPU) && defined(__GPU_NVTX)
+#include "GPU/acc.hpp"
+#endif
 
 #define __PROFILE
 #define __PROFILE_TIME
 //#define __PROFILE_STACK
 //#define __PROFILE_FUNC
+//#define __GPU_NVTX // TODO: chanhge to __CUDA_NVTX
 
 namespace utils {
 
