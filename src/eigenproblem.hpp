@@ -1499,6 +1499,9 @@ class Eigensolver_magma_gpu: public Eigensolver
         int liwork;
         magma_zheevdx_getworksize(matrix_size__, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
 
+        int llda = matrix_size__ + 32;
+        auto z_work = mp_hp_.get_unique_ptr<double_complex>(llda * matrix_size__);
+
         auto h_work = mp_hp_.get_unique_ptr<double_complex>(lwork);
         auto rwork = mp_hp_.get_unique_ptr<double>(lrwork);
         auto iwork = mp_h_.get_unique_ptr<magma_int_t>(liwork);
@@ -1506,9 +1509,9 @@ class Eigensolver_magma_gpu: public Eigensolver
         magma_zheevdx_gpu(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__,
                       reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::device)), lda, 0.0, 0.0, 1,
                       nev__, &m, w.get(),
-                      reinterpret_cast<magmaDoubleComplex*>(A__.at(memory_t::host)), lda,
-                      reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork, rwork.get(),
-                      lrwork, iwork.get(), liwork, &info);
+                      reinterpret_cast<magmaDoubleComplex*>(z_work.get()), llda,
+                      reinterpret_cast<magmaDoubleComplex*>(h_work.get()), lwork,
+                      rwork.get(), lrwork, iwork.get(), liwork, &info);
 
         if (nt != omp_get_max_threads()) {
             TERMINATE("magma has changed the number of threads");
