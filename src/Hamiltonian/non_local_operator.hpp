@@ -30,7 +30,6 @@
 namespace sirius {
 
 /// Non-local part of the Hamiltonian and S-operator in the pseudopotential method.
-template <typename T>
 class Non_local_operator
 {
   protected:
@@ -43,9 +42,7 @@ class Non_local_operator
     mdarray<int, 1> packed_mtrx_offset_;
 
     /// Non-local operator matrix.
-    mdarray<T, 2> op_;
-
-    mdarray<T, 1> work_;
+    mdarray<double, 3> op_;
 
     bool is_null_{false};
 
@@ -85,27 +82,29 @@ class Non_local_operator
     }
 
     /// Apply chunk of beta-projectors to all wave functions.
+    template <typename T>
     inline void apply(int chunk__, int ispn_block__, Wave_functions& op_phi__, int idx0__, int n__,
                       Beta_projectors_base& beta__, matrix<T>& beta_phi__);
 
     /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
+    template <typename T>
     inline void apply(int chunk__, int ia__, int ispn_block__, Wave_functions& op_phi__, int idx0__, int n__,
                       Beta_projectors_base& beta__, matrix<T>& beta_phi__);
 
-    inline T operator()(int xi1__, int xi2__, int ia__)
-    {
-        return (*this)(xi1__, xi2__, 0, ia__);
-    }
+    //inline T operator()(int xi1__, int xi2__, int ia__)
+    //{
+    //    return (*this)(xi1__, xi2__, 0, ia__);
+    //}
 
-    inline T operator()(int xi1__, int xi2__, int ispn__, int ia__)
-    {
-        int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
-        return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
-    }
+    //inline T operator()(int xi1__, int xi2__, int ispn__, int ia__)
+    //{
+    //    int nbf = this->ctx_.unit_cell().atom(ia__).mt_basis_size();
+    //    return op_(packed_mtrx_offset_(ia__) + xi2__ * nbf + xi1__, ispn__);
+    //}
 };
 
 template <>
-inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_block__, Wave_functions& op_phi__,
+inline void Non_local_operator::apply<double_complex>(int chunk__, int ispn_block__, Wave_functions& op_phi__,
                                                       int idx0__, int n__, Beta_projectors_base& beta__,
                                                       matrix<double_complex>& beta_phi__)
 {
@@ -115,18 +114,10 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_bloc
         return;
     }
 
-    int jspn = ispn_block__ & 1;
-
     auto& beta_gk     = beta__.pw_coeffs_a();
     int num_gkvec_loc = beta__.num_gkvec_loc();
     int nbeta         = beta__.chunk(chunk__).num_beta_;
 
-    if (static_cast<size_t>(nbeta * n__) > work_.size()) {
-        work_ = mdarray<double_complex, 1>(nbeta * n__);
-        if (pu_ == device_t::GPU) {
-            work_.allocate(memory_t::device);
-        }
-    }
     /* setup linear algebra parameters */
     memory_t mem{memory_t::none};
     linalg_t la{linalg_t::none};
@@ -142,6 +133,8 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_bloc
             break;
         }
     }
+
+    auto work = mdarray<double_complex, 1>(ctx_.mem_pool(mem), nbeta * n__);
 
     /* compute O * <beta|phi> for atoms in a chunk */
     #pragma omp parallel
@@ -174,6 +167,8 @@ inline void Non_local_operator<double_complex>::apply(int chunk__, int ispn_bloc
             break;
         }
     }
+
+    int jspn = ispn_block__ & 1;
 
     /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
     linalg2(ctx_.blas_linalg_t()).gemm('N', 'N', num_gkvec_loc, n__, nbeta,
