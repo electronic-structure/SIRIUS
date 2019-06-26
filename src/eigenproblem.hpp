@@ -1544,6 +1544,14 @@ class Eigensolver_magma: public Eigensolver
         return false;
     }
 };
+class Eigensolver_magma_gpu: public Eigensolver
+{
+  public:
+    inline bool is_parallel()
+    {
+        return false;
+    }
+};
 #endif
 
 #if defined(__CUDA)
