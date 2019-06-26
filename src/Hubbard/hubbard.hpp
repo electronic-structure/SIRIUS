@@ -142,12 +142,12 @@ class Hubbard
                                                const int                 nu);
 
     /// apply the S operator in the us pp case. Otherwise it makes a simple copy
-    void apply_S_operator(K_point&                    kp,
-                          Q_operator<double_complex>& q_op,
-                          Wave_functions&             phi,
-                          Wave_functions&             ophi,
-                          const int                   idx0,
-                          const int                   num_phi);
+    void apply_S_operator(K_point&        kp,
+                          Q_operator&     q_op,
+                          Wave_functions& phi,
+                          Wave_functions& ophi,
+                          const int       idx0,
+                          const int       num_phi);
 
     /// orthogonize (normalize) the hubbard wave functions
     void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi);
@@ -219,13 +219,12 @@ class Hubbard
                                  Wave_functions& ophi);
 
     /// Generate the atomic orbitals.
-    void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op);
-    void generate_atomic_orbitals(K_point& kp, Q_operator<double>& q_op);
+    void generate_atomic_orbitals(K_point& kp, Q_operator& q_op);
 
     void hubbard_compute_occupation_numbers(K_point_set& kset_);
 
     void compute_occupancies_derivatives(K_point&                    kp,
-                                         Q_operator<double_complex>& q_op,
+                                         Q_operator& q_op,
                                          mdarray<double_complex, 6>& dn);
 
     /// Compute derivatives of the occupancy matrix w.r.t.atomic displacement.
@@ -234,7 +233,7 @@ class Hubbard
      *  \param [out] dn   Derivative of the occupation number compared to displacement of each atom.
      */
     void compute_occupancies_stress_derivatives(K_point&                    kp,
-                                                Q_operator<double_complex>& q_op,
+                                                Q_operator& q_op,
                                                 mdarray<double_complex, 5>& dn);
 
     void calculate_hubbard_potential_and_energy_colinear_case();
