@@ -735,7 +735,7 @@ template <typename T, int N>
 class mdarray
 {
   public:
-    typedef mdarray_index_descriptor::index_type index_type;
+    using index_type = mdarray_index_descriptor::index_type;
 
   private:
     /// Optional array label.
