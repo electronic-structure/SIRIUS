@@ -147,7 +147,7 @@ Hamiltonian::get_h_diag(K_point* kp__) const
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
             int nbf = atom_type.mt_basis_size();
-            matrix<double_complex> d_sum(nbf, nbf);
+            matrix<T> d_sum(nbf, nbf);
             d_sum.zero();
 
             for (int i = 0; i < atom_type.num_atoms(); i++) {
@@ -155,7 +155,7 @@ Hamiltonian::get_h_diag(K_point* kp__) const
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        d_sum(xi1, xi2) += this->D<T>().operator()(xi1, xi2, ispn, ia);
+                        d_sum(xi1, xi2) += this->D().value<T>(xi1, xi2, ispn, ia);
                     }
                 }
             }
@@ -209,7 +209,7 @@ Hamiltonian::get_o_diag(K_point* kp__) const // TODO: this is not strictly true 
 
         int nbf = atom_type.mt_basis_size();
 
-        matrix<double_complex> q_sum(nbf, nbf);
+        matrix<T> q_sum(nbf, nbf);
         q_sum.zero();
 
         for (int i = 0; i < atom_type.num_atoms(); i++) {
@@ -217,7 +217,7 @@ Hamiltonian::get_o_diag(K_point* kp__) const // TODO: this is not strictly true 
 
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 for (int xi1 = 0; xi1 < nbf; xi1++) {
-                    q_sum(xi1, xi2) += Q<T>().operator()(xi1, xi2, ia);
+                    q_sum(xi1, xi2) += Q().value<T>(xi1, xi2, ia);
                 }
             }
         }
