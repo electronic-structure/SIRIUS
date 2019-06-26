@@ -36,17 +36,24 @@
 namespace sirius {
 
 /// Representation of Kohn-Sham Hamiltonian.
+/** In general, Hamiltonian consists of kinetic term, local part of potential and non-local
+    part of potential:
+    \f[
+      H = -\frac{1}{2} \nabla^2 + V_{loc}({\bf r}) + \sum_{\alpha} \sum_{\xi \xi'} |\beta_{\xi}^{\alpha} \rangle
+        D_{\xi \xi'}^{\alpha} \langle \beta_{\xi'}^{\alpha}|
+    \f]
+*/
 class Hamiltonian
 {
   private:
     /// Simulation context.
     Simulation_context& ctx_;
 
-    /// Alias for the unit cell.
-    Unit_cell& unit_cell_;
-
-    /// alias for the potential
+    /// Alias for the potential.
     Potential& potential_;
+
+    /// Alias for unit cell.
+    Unit_cell& unit_cell_;
 
     /// Alias for the hubbard potential (note it is a pointer)
     std::unique_ptr<Hubbard> U_;
@@ -58,21 +65,22 @@ class Hamiltonian
     std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
 
     /// D operator (non-local part of Hamiltonian).
-    void* d_op_{nullptr};
+    std::unique_ptr<D_operator> d_op_;
 
     /// Q operator (non-local part of S-operator).
-    void* q_op_{nullptr};
+    std::unique_ptr<Q_operator> q_op_;
 
   public:
     /// Constructor.
     Hamiltonian(Simulation_context& ctx__, Potential& potential__)
         : ctx_(ctx__)
-        , unit_cell_(ctx__.unit_cell())
         , potential_(potential__)
+        , unit_cell_(ctx__.unit_cell())
     {
-        using gc_z = Gaunt_coefficients<double_complex>;
-
-        gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
+        if (ctx_.full_potential()) {
+            using gc_z = Gaunt_coefficients<double_complex>;
+            gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
+        }
 
         local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
 
@@ -91,11 +99,6 @@ class Hamiltonian
         return potential_;
     }
 
-    Unit_cell& unit_cell() const
-    {
-        return unit_cell_;
-    }
-
     Simulation_context& ctx() const
     {
         return ctx_;
@@ -110,41 +113,27 @@ class Hamiltonian
     inline void prepare()
     {
         if (!ctx_.full_potential()) {
-            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                d_op_ = static_cast<void*>(new D_operator<double>(ctx_));
-                q_op_ = static_cast<void*>(new Q_operator<double>(ctx_));
-            } else {
-                d_op_ = static_cast<void*>(new D_operator<double_complex>(ctx_));
-                q_op_ = static_cast<void*>(new Q_operator<double_complex>(ctx_));
-            }
+            d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));
+            q_op_ = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
         }
         local_op().prepare(potential_);
     }
 
     inline void dismiss()
     {
-        if (!ctx_.full_potential()) {
-            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                delete static_cast<D_operator<double>*>(d_op_);
-                delete static_cast<Q_operator<double>*>(q_op_);
-            } else {
-                delete static_cast<D_operator<double_complex>*>(d_op_);
-                delete static_cast<Q_operator<double_complex>*>(q_op_);
-            }
-        }
+        d_op_ = nullptr;
+        q_op_ = nullptr;
         local_op().dismiss();
     }
 
-    template <typename T>
-    inline Q_operator<T>& Q() const
+    inline Q_operator& Q() const
     {
-        return *static_cast<Q_operator<T>*>(q_op_);
+        return *q_op_;
     }
 
-    template <typename T>
-    inline D_operator<T>& D() const
+    inline D_operator& D() const
     {
-        return *static_cast<D_operator<T>*>(d_op_);
+        return *d_op_;
     }
 
     /// Apply pseudopotential H and S operators to the wavefunctions.
