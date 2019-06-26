@@ -65,23 +65,23 @@ inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian_
         }
     } else if (itso.type_ == "davidson") {
         niter = diag_pseudo_potential_davidson<T>(&kp__, hamiltonian__);
-    } else if (itso.type_ == "rmm-diis") {
-        if (ctx_.num_mag_dims() != 3) {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                diag_pseudo_potential_rmm_diis<T>(&kp__, ispn, hamiltonian__);
-            }
-        } else {
-            STOP();
-        }
-    } else if (itso.type_ == "chebyshev") {
-        P_operator<T> p_op(ctx_, kp__.p_mtrx());
-        if (ctx_.num_mag_dims() != 3) {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                diag_pseudo_potential_chebyshev<T>(&kp__, ispn, hamiltonian__, p_op);
-            }
-        } else {
-            STOP();
-        }
+    //} else if (itso.type_ == "rmm-diis") {
+    //    if (ctx_.num_mag_dims() != 3) {
+    //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //            diag_pseudo_potential_rmm_diis<T>(&kp__, ispn, hamiltonian__);
+    //        }
+    //    } else {
+    //        STOP();
+    //    }
+    //} else if (itso.type_ == "chebyshev") {
+    //    P_operator<T> p_op(ctx_, kp__.p_mtrx());
+    //    if (ctx_.num_mag_dims() != 3) {
+    //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //            diag_pseudo_potential_chebyshev<T>(&kp__, ispn, hamiltonian__, p_op);
+    //        }
+    //    } else {
+    //        STOP();
+    //    }
     } else {
         TERMINATE("unknown iterative solver type");
     }
