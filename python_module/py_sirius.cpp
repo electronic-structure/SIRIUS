@@ -647,12 +647,14 @@ PYBIND11_MODULE(py_sirius, m)
                  kp.beta_projectors().prepare();
                  if (!hamiltonian.ctx().gamma_point()) {
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_s<complex_double>(&kp, ispn, wf, wf_out);
+                         //hamiltonian.apply_s<complex_double>(&kp, ispn, wf, wf_out);
+                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, 0, num_wf, wf, nullptr, &wf_out);
                      }
                  } else {
                      std::cerr << "python module:: H applied at gamma-point\n";
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_s<double>(&kp, ispn, wf, wf_out);
+                         hamiltonian.apply_h_s<double>(&kp, ispn, 0, num_wf, wf, nullptr, &wf_out);
+                         //hamiltonian.apply_s<double>(&kp, ispn, wf, wf_out);
                      }
                  }
                  kp.beta_projectors().dismiss();

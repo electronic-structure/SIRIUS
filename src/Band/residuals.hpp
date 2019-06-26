@@ -281,7 +281,9 @@ inline int Band::residuals(K_point*             kp__,
                            Wave_functions&      opsi__,
                            Wave_functions&      res__,
                            mdarray<double, 2>&  h_diag__,
-                           mdarray<double, 1>&  o_diag__) const
+                           mdarray<double, 1>&  o_diag__,
+                           double               eval_tolerance__,
+                           double               norm_tolerance__) const
 {
     PROFILE("sirius::Band::residuals");
 
@@ -312,7 +314,7 @@ inline int Band::residuals(K_point*             kp__,
             return std::move(ev_idx);
         };
 
-        auto ev_idx = get_ev_idx(itso.energy_tolerance_);
+        auto ev_idx = get_ev_idx(eval_tolerance__);
 
         n = static_cast<int>(ev_idx.size());
 
@@ -369,7 +371,7 @@ inline int Band::residuals(K_point*             kp__,
             n = 0;
             for (int i = 0; i < nmax; i++) {
                 /* take the residual if it's norm is above the threshold */
-                if (res_norm[i] > itso.residual_tolerance_) {
+                if (res_norm[i] > norm_tolerance__) {
                     /* shift unconverged residuals to the beginning of array */
                     if (n != i) {
                         for (int ispn: spins) {
@@ -391,9 +393,8 @@ inline int Band::residuals(K_point*             kp__,
         auto res_norm = residuals_aux(kp__, ispn__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
         for (int i = 0; i < num_bands__; i++) {
-            double tol = itso.residual_tolerance_;// + 1e-3 * std::abs(kp__->band_occupancy(i + s * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
             /* take the residual if its norm is above the threshold */
-            if (res_norm[i] > tol) {
+            if (res_norm[i] > norm_tolerance__) {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) {
                     for (int ispn: spins) {
