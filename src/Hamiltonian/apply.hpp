@@ -119,18 +119,18 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
                 if (hphi__) {
                     /* apply diagonal spin blocks */
-                    D<T>().apply(i, ispn, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                    D().apply(i, ispn, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
                     /* apply non-diagonal spin blocks */
                     /* xor 3 operator will map 0 to 3 and 1 to 2 */
-                    D<T>().apply(i, ispn ^ 3, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                    D().apply(i, ispn ^ 3, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
                 }
 
                 if (sphi__) {
                     /* apply Q operator (diagonal in spin) */
-                    Q<T>().apply(i, ispn, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                    Q().apply(i, ispn, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
                     /* apply non-diagonal spin blocks */
                     if (ctx_.so_correction()) {
-                        Q<T>().apply(i, ispn ^ 3, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                        Q().apply(i, ispn ^ 3, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
                     }
                 }
             }
@@ -145,11 +145,11 @@ void Hamiltonian::apply_h_s(K_point* kp__,
             }
 
             if (hphi__) {
-                D<T>().apply(i, ispn__, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                D().apply(i, ispn__, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
             }
 
             if (sphi__) {
-                Q<T>().apply(i, ispn__, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                Q().apply(i, ispn__, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
             }
         }
     }
@@ -161,7 +161,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
        // return afterwards, or if they are not already calculated
        // compute the wave functions and copy them on GPU (if needed)
 
-        this->U().generate_atomic_orbitals(*kp__, Q<T>());
+        this->U().generate_atomic_orbitals(*kp__, Q());
 
         // Apply the hubbard potential and deallocate the hubbard wave
         // functions on GPU (if needed)
