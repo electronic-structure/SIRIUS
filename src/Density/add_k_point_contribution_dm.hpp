@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file add_k_point_contribution_dm.hpp
@@ -120,9 +120,9 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                         mdarray<double_complex, 2> bp2(nbeta, nbnd_loc);
                         #pragma omp for
                         for (int ia = 0; ia < kp__->beta_projectors().chunk(chunk).num_atoms_; ia++) {
-                            int nbf  = kp__->beta_projectors().chunk(chunk).desc_(beta_desc_idx::nbf, ia);
-                            int offs = kp__->beta_projectors().chunk(chunk).desc_(beta_desc_idx::offset, ia);
-                            int ja   = kp__->beta_projectors().chunk(chunk).desc_(beta_desc_idx::ia, ia);
+                            int nbf  = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::nbf), ia);
+                            int offs = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::offset), ia);
+                            int ja   = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::ia), ia);
 
                             for (int i = 0; i < nbnd_loc; i++) {
                                 int j = spl_nbnd[i];
@@ -175,9 +175,9 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                     }
                 }
                 for (int ia = 0; ia < kp__->beta_projectors().chunk(chunk).num_atoms_; ia++) {
-                    int nbf  = kp__->beta_projectors().chunk(chunk).desc_(beta_desc_idx::nbf, ia);
-                    int offs = kp__->beta_projectors().chunk(chunk).desc_(beta_desc_idx::offset, ia);
-                    int ja   = kp__->beta_projectors().chunk(chunk).desc_(beta_desc_idx::ia, ia);
+                    int nbf  = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::nbf), ia);
+                    int offs = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::offset), ia);
+                    int ja   = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::ia), ia);
                     if (ctx_.unit_cell().atom(ja).type().spin_orbit_coupling()) {
                         mdarray<double_complex, 3> bp3(nbf, nbnd_loc, 2);
                         bp3.zero();
@@ -248,9 +248,9 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                 if (nbnd_loc) {
                     #pragma omp parallel for
                     for (int ia = 0; ia < kp__->beta_projectors().chunk(chunk).num_atoms_; ia++) {
-                        int nbf  = kp__->beta_projectors().chunk(chunk).desc_(beta_desc_idx::nbf, ia);
-                        int offs = kp__->beta_projectors().chunk(chunk).desc_(beta_desc_idx::offset, ia);
-                        int ja   = kp__->beta_projectors().chunk(chunk).desc_(beta_desc_idx::ia, ia);
+                        int nbf  = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::nbf), ia);
+                        int offs = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::offset), ia);
+                        int ja   = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::ia), ia);
                         /* compute diagonal spin blocks */
                         for (int ispn = 0; ispn < 2; ispn++) {
                             linalg<CPU>::gemm(0, 1, nbf, nbf, nbnd_loc, linalg_const<double_complex>::one(),

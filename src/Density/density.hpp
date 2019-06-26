@@ -1004,11 +1004,13 @@ class Density : public Field4D
      *  \f]
      */
     void symmetrize_density_matrix();
-
+    void symmetrize_density_matrix_bis();
     void symmetrize()
     {
         Field4D::symmetrize(&rho(), &magnetization(0), &magnetization(1), &magnetization(2));
     }
+
+#include "Symmetrize.hpp"
 };
 
 #include "initial_density.hpp"

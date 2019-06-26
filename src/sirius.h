@@ -56,109 +56,108 @@ namespace sirius {
     json sirius_options_parser_;
 
 /// Return the status of the library (initialized or not).
-inline static bool& is_initialized()
-{
-    static bool b{false};
-    return b;
-}
+    inline static bool& is_initialized()
+    {
+        static bool b{false};
+        return b;
+    }
 
 /// Initialize the library.
-inline void initialize(bool call_mpi_init__ = true)
-{
-    if (is_initialized()) {
-        TERMINATE("SIRIUS library is already initialized");
-    }
-    if (call_mpi_init__) {
-        Communicator::initialize(MPI_THREAD_MULTIPLE);
-    }
-    if (Communicator::world().rank() == 0) {
-        printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version, minor_version, revision, git_hash);
+    inline void initialize(bool call_mpi_init__ = true)
+    {
+        if (is_initialized()) {
+            TERMINATE("SIRIUS library is already initialized");
+        }
+        if (call_mpi_init__) {
+            Communicator::initialize(MPI_THREAD_MULTIPLE);
+        }
+        if (Communicator::world().rank() == 0) {
+            printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version, minor_version, revision, git_hash);
 #if !defined(NDEBUG)
-        printf("Warning! Compiled in 'debug' mode with assert statements enabled!\n");
+            printf("Warning! Compiled in 'debug' mode with assert statements enabled!\n");
 #endif
-    }
-    /* get number of ranks per node during the global call to sirius::initialize() */
-    sddk::num_ranks_per_node();
-    if (acc::num_devices() > 0) {
-        int devid = sddk::get_device_id(acc::num_devices());
-        acc::set_device_id(devid);
-        // #pragma omp parallel
-        // {
-        //     #pragma omp critical
-        //     acc::set_device_id(devid);
-        // }
-        acc::create_streams(omp_get_max_threads() + 1);
+        }
+        /* get number of ranks per node during the global call to sirius::initialize() */
+        sddk::num_ranks_per_node();
+        if (acc::num_devices() > 0) {
+            int devid = sddk::get_device_id(acc::num_devices());
+            acc::set_device_id(devid);
+            // #pragma omp parallel
+            // {
+            //     #pragma omp critical
+            //     acc::set_device_id(devid);
+            // }
+            acc::create_streams(omp_get_max_threads() + 1);
 #if defined(__GPU)
-        gpublas::create_stream_handles();
+            gpublas::create_stream_handles();
 #endif
 #if defined(__CUDA)
-        cublas::xt::create_handle();
-        cusolver::create_handle();
+            cublas::xt::create_handle();
+            cusolver::create_handle();
 #endif
-    }
+        }
 #if defined(__APEX)
-    apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
+        apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
 #endif
-    utils::start_global_timer();
+        utils::start_global_timer();
 #if defined(__MAGMA)
-    magma::init();
+        magma::init();
 #endif
 #if defined(__PLASMA)
-    plasma_init(omp_get_max_threads());
+        plasma_init(omp_get_max_threads());
 #endif
 #if defined(__LIBSCI_ACC)
-    libsci_acc_init();
+        libsci_acc_init();
 #endif
-    /* for the fortran interface to blas/lapack */
-    assert(sizeof(int) == 4);
-    assert(sizeof(double) == 8);
+        /* for the fortran interface to blas/lapack */
+        assert(sizeof(int) == 4);
+        assert(sizeof(double) == 8);
 
-    is_initialized() = true;
-}
+        is_initialized() = true;
+    }
 
 /// Shut down the library.
-inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_cleanup__ = true)
-{
-    if (!is_initialized()) {
-        TERMINATE("SIRIUS library was not initialized");
-    }
+    inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_cleanup__ = true)
+    {
+        if (!is_initialized()) {
+            TERMINATE("SIRIUS library was not initialized");
+        }
 #if defined(__MAGMA)
-    magma::finalize();
+        magma::finalize();
 #endif
 #if defined(__LIBSCI_ACC)
-    libsci_acc_finalize();
+        libsci_acc_finalize();
 #endif
 
-    if (acc::num_devices()) {
-        //acc::set_device();
+        if (acc::num_devices()) {
+            //acc::set_device();
 #if defined(__GPU)
-        gpublas::destroy_stream_handles();
+            gpublas::destroy_stream_handles();
 #endif
 #if defined(__CUDA)
-        cusolver::destroy_handle();
-        cublas::xt::destroy_handle();
+            cusolver::destroy_handle();
+            cublas::xt::destroy_handle();
 #endif
 
-        acc::destroy_streams();
-        if (reset_device__) {
-            acc::reset();
+            acc::destroy_streams();
+            if (reset_device__) {
+                acc::reset();
+            }
         }
-    }
-    if (fftw_cleanup__) {
-        fftw_cleanup();
-    }
+        if (fftw_cleanup__) {
+            fftw_cleanup();
+        }
 
-    utils::stop_global_timer();
+        utils::stop_global_timer();
 #if defined(__APEX)
-    apex::finalize();
+        apex::finalize();
 #endif
-    if (call_mpi_fin__) {
-        Communicator::finalize();
+        if (call_mpi_fin__) {
+            Communicator::finalize();
+        }
+
+        is_initialized() = false;
     }
-
-    is_initialized() = false;
-}
-
 }
 #endif // __SIRIUS_H__
 

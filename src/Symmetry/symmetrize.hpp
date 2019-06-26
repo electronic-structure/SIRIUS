@@ -63,7 +63,7 @@ namespace sirius {
     which follows by using that \f$f_{\mathrm{sym}}({\bf \hat P} {\bf x}) = f_{\mathrm{sym}}({\bf x})\f$:
     \f{eqnarray*}{
       f_{\mathrm{sym}}(\hat{P}{\bf x}) &=& \sum_G e^{i G ({\bf R}{\bf x} + {\bf t} )} \hat{f}_{\mathrm{sym}}({\bf G}) \ \
-                                       &=& \sum_G e^{i {\bf G} {\bf x}} e^{i {\bf R}^{-T} {\bf G} {\bf t}} 
+                                       &=& \sum_G e^{i {\bf G} {\bf x}} e^{i {\bf R}^{-T} {\bf G} {\bf t}}
                                        \hat{f}_{\mathrm{sym}}({\bf R}^{-T} {\bf G}) \,.
     \f}
  */
@@ -254,7 +254,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
 
     double norm = 1 / double(sym__.num_mag_sym());
 
-    auto phase_factor = [&](int isym, const vector3d<int>& G) 
+    auto phase_factor = [&](int isym, const vector3d<int>& G)
     {
         return sym_phase_factors__(0, G[0], isym) *
                sym_phase_factors__(0, G[1], isym) *
@@ -494,7 +494,5 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
                          lmmax * nrmax * spl_atoms.local_size());
     }
 }
-
 }
-
 #endif // __SYMMETRIZE_HPP__

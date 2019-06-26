@@ -1229,6 +1229,97 @@ class SHT // TODO: better name
         }
         return std::move(data);
     }
+
+    inline static double ClebschGordan(const int l, const double j, const double mj, const int spin)
+    {
+        // l : orbital angular momentum
+        // m:  projection of the total angular momentum $m \pm /frac12$
+        // spin: Component of the spinor, 0 up, 1 down
+
+        double CG = 0.0; // Clebsch Gordan coeeficient cf PRB 71, 115106 page 3 first column
+
+        if ((spin != 0) && (spin != 1)) {
+            printf("Error : unkown spin direction\n");
+        }
+
+        const double denom = sqrt(1.0 / (2.0 * l + 1.0));
+
+        if (std::abs(j - l - 0.5) < 1e-8) { // check for j = l + 1/2
+            int m = static_cast<int>(mj - 0.5); // if mj is integer (2 * m), then int m = (mj-1) >> 1;
+            if (spin == 0) {
+                CG = sqrt(l + m + 1.0);
+            }
+            if (spin == 1) {
+                CG = sqrt((l - m));
+            }
+        } else {
+            if (std::abs(j - l + 0.5) < 1e-8) { // check for j = l - 1/2
+                int m = static_cast<int>(mj + 0.5);
+                if (m < (1 - l)) {
+                    CG = 0.0;
+                } else {
+                    if (spin == 0) {
+                        CG = sqrt(l - m + 1);
+                    }
+                    if (spin == 1) {
+                        CG = -sqrt(l + m);
+                    }
+                }
+            } else {
+                printf("Clebsch gordan coefficients do not exist for this combination of j=%.5lf and l=%d\n", j, l);
+                exit(0);
+            }
+        }
+        return (CG * denom);
+    }
+// this function computes the U^sigma_{ljm mj} coefficient that
+// rotates the complex spherical harmonics to the real one for the
+// spin orbit case
+
+// mj is normally half integer from -j to j but to avoid computation
+// error it is considered as integer so mj = 2 mj
+
+    inline static double_complex
+    calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma)
+    {
+
+        if ((sigma != 0) && (sigma != 1)) {
+            printf("SphericalIndex function : unkown spin direction\n");
+            return 0;
+        }
+
+        if (std::abs(j - l - 0.5) < 1e-8) {
+            // j = l + 1/2
+            // m = mj - 1/2
+
+            int m1 = (mj - 1) >> 1;
+            if (sigma == 0) { // up spin
+                if (m1 < -l) { // convention U^s_{mj,m'} = 0
+                    return 0.0;
+                } else {// U^s_{mj,mp} =
+                    return SHT::rlm_dot_ylm(l, m1, mp);
+                }
+            } else { // down spin
+                if ((m1 + 1) > l) {
+                    return 0.0;
+                } else {
+                    return SHT::rlm_dot_ylm(l, m1 + 1, mp);
+                }
+            }
+        } else {
+            if (std::abs(j - l + 0.5) < 1e-8) {
+                int m1 = (mj + 1) >> 1;
+                if (sigma == 0) {
+                    return SHT::rlm_dot_ylm(l, m1 - 1, mp);
+                } else {
+                    return SHT::rlm_dot_ylm(l, m1, mp);
+                }
+            } else {
+                printf("Spherical Index function : l and j are not compatible\n");
+                exit(0);
+            }
+        }
+    }
 };
 
 template <>

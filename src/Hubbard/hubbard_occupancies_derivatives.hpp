@@ -38,10 +38,17 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
     // derivatives of the hubbard wave functions are needed.
     auto& phi = kp.hubbard_wave_functions();
 
-    kp.generate_atomic_wave_functions_aux(this->number_of_hubbard_orbitals(),
-                                          phi,
-                                          this->offset,
-                                          true);
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom_type   = unit_cell_.atom(ia).type();
+        if (atom_type.hubbard_correction()) {
+
+            kp.generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(),
+                                              ia,
+                                              this->offset[ia],
+                                              true,
+                                              phi);
+        }
+    }
 
     Beta_projectors_gradient bp_grad_(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
     kp.beta_projectors().prepare();
@@ -161,7 +168,7 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                 for (int chunk__ = 0; chunk__ < kp.beta_projectors().num_chunks(); chunk__++) {
                     for (int i = 0; i < kp.beta_projectors().chunk(chunk__).num_atoms_; i++) {
                         // need to find the right atom in the chunks.
-                        if (kp.beta_projectors().chunk(chunk__).desc_(beta_desc_idx::ia, i) == atom_id) {
+                        if (kp.beta_projectors().chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i) == atom_id) {
                             kp.beta_projectors().generate(chunk__);
                             bp_grad_.generate(chunk__, dir);
 
@@ -255,7 +262,17 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
     bp_strain_deriv.prepare();
 
     /* compute the hubbard orbitals */
-    kp__.generate_atomic_wave_functions_aux(this->number_of_hubbard_orbitals(), phi, this->offset, true);
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom_type   = unit_cell_.atom(ia).type();
+        if (atom_type.hubbard_correction()) {
+
+            kp__.generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(),
+                                                ia,
+                                                this->offset[ia],
+                                                true,
+                                                phi);
+        }
+    }
 
     if (ctx_.processing_unit() == device_t::GPU) {
         dm.allocate(memory_t::device);
