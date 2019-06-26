@@ -82,9 +82,9 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     template <typename T>
     inline void diag_pseudo_potential_rmm_diis(K_point* kp__, int ispn__, Hamiltonian& H__) const;
 
-    template <typename T>
-    inline void
-    diag_pseudo_potential_chebyshev(K_point* kp__, int ispn__, Hamiltonian& H__, P_operator<T>& p_op__) const;
+    //template <typename T>
+    //inline void
+    //diag_pseudo_potential_chebyshev(K_point* kp__, int ispn__, Hamiltonian& H__, P_operator<T>& p_op__) const;
 
     /// Auxiliary function used internally by residuals() function.
     inline mdarray<double, 1> residuals_aux(K_point* kp__,
