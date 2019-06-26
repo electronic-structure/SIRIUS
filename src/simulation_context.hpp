@@ -185,7 +185,7 @@ class Simulation_context : public Simulation_parameters
     std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
     /// Storage for various memory pools.
-    std::map<memory_t, memory_pool> memory_pool_;
+    mutable std::map<memory_t, memory_pool> memory_pool_;
 
     /// Plane wave expansion coefficients of the step function.
     mdarray<double_complex, 1> theta_pw_;
@@ -1181,7 +1181,7 @@ class Simulation_context : public Simulation_parameters
 
     /// Return a reference to a memory pool.
     /** A memory pool is created when this function called for the first time. */
-    memory_pool& mem_pool(memory_t M__)
+    memory_pool& mem_pool(memory_t M__) const
     {
         if (memory_pool_.count(M__) == 0) {
             memory_pool_.emplace(M__, std::move(memory_pool(M__)));
