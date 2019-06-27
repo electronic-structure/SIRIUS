@@ -28,7 +28,7 @@
 #include "utils/timer.hpp"
 #include "linalg.hpp"
 
-#ifdef __ELPA
+#if defined(__ELPA)
 #include <elpa_constants.h>
 extern "C" {
 #include "elpa.h"
@@ -288,34 +288,38 @@ class Eigensolver_lapack : public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_lapack|zheevr");
+        utils::timer t0("Eigensolver_lapack|zheevx");
 
         double vl, vu;
         ftn_int il{1};
         ftn_int m{-1};
         ftn_int info;
 
-        auto w      = mp_h_.get_unique_ptr<double>(matrix_size__);
-        auto isuppz = mp_h_.get_unique_ptr<ftn_int>(2 * matrix_size__);
+        auto w     = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto ifail = mp_h_.get_unique_ptr<ftn_int>(matrix_size__);
 
         ftn_int lda = A__.ld();
         ftn_int ldz = Z__.ld();
 
         double abs_tol = 2 * linalg_base::dlamch('S');
 
-        ftn_int liwork = 10 * matrix_size__;
+        ftn_int liwork = 5 * matrix_size__;
         auto iwork     = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
         int nb        = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size__, -1, -1, -1);
         ftn_int lwork = (nb + 1) * matrix_size__;
         auto work     = mp_h_.get_unique_ptr<double_complex>(lwork);
 
-        ftn_int lrwork = 24 * matrix_size__;
+        ftn_int lrwork = 7 * matrix_size__;
         auto rwork     = mp_h_.get_unique_ptr<double>(lrwork);
 
-        FORTRAN(zheevr)
+        //FORTRAN(zheevr)
+        //("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, &vl, &vu, &il, &nev__, &abs_tol, &m, w.get(),
+        // Z__.at(memory_t::host), &ldz, isuppz.get(), work.get(), &lwork, rwork.get(), &lrwork, iwork.get(), &liwork,
+        // &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+        FORTRAN(zheevx)
         ("V", "I", "U", &matrix_size__, A__.at(memory_t::host), &lda, &vl, &vu, &il, &nev__, &abs_tol, &m, w.get(),
-         Z__.at(memory_t::host), &ldz, isuppz.get(), work.get(), &lwork, rwork.get(), &lrwork, iwork.get(), &liwork,
+         Z__.at(memory_t::host), &ldz, work.get(), &lwork, rwork.get(), iwork.get(), ifail.get(),
          &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
 
         if (m != nev__) {
@@ -599,6 +603,8 @@ class Eigensolver_elpa : public Eigensolver
             TERMINATE("number of columns in A and Z don't match");
         }
 
+        utils::timer t1("Eigensolver_elpa|solve_std|setup");
+
         int num_cols_loc = A__.num_cols_local();
         int bs           = A__.bs_row();
         int lda          = A__.ld();
@@ -607,22 +613,49 @@ class Eigensolver_elpa : public Eigensolver
         int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
         int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
 
+        int error;
+        elpa_t handle;
+
+        handle = elpa_allocate(&error);
+        elpa_set_integer(handle, "na", matrix_size__, &error);
+        elpa_set_integer(handle, "nev", nev__, &error);
+        elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
+        elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
+        elpa_set_integer(handle, "nblk", bs, &error);
+        elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
+        elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
+        elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
+        elpa_setup(handle);
+        if (stage_ == 1) {
+            elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
+        } else {
+            elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
+        }
+        t1.stop();
+
         auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
 
-        int success{-1};
-        if (stage_ == 1) {
-            success = elpa_solve_evp_real_1stage_double_precision(
-                matrix_size__, nev__, A__.at(memory_t::host), lda, w.get(), Z__.at(memory_t::host), ldz, bs,
-                num_cols_loc, mpi_comm_row, mpi_comm_col, mpi_comm_all, 0);
-        } else {
-            success = elpa_solve_evp_real_2stage_double_precision(
-                matrix_size__, nev__, A__.at(memory_t::host), lda, w.get(), Z__.at(memory_t::host), ldz, bs,
-                num_cols_loc, mpi_comm_row, mpi_comm_col, mpi_comm_all, ELPA_2STAGE_REAL_DEFAULT, 0, 0);
-        }
+        elpa_eigenvectors_d(handle, A__.at(memory_t::host), w.get(), Z__.at(memory_t::host), &error);
 
-        if (success != 1) {
-            return 1;
-        }
+
+
+        //int success{-1};
+
+
+        elpa_deallocate(handle, &error);
+        //if (stage_ == 1) {
+        //    success = elpa_solve_evp_real_1stage_double_precision(
+        //        matrix_size__, nev__, A__.at(memory_t::host), lda, w.get(), Z__.at(memory_t::host), ldz, bs,
+        //        num_cols_loc, mpi_comm_row, mpi_comm_col, mpi_comm_all, 0);
+        //} else {
+        //    success = elpa_solve_evp_real_2stage_double_precision(
+        //        matrix_size__, nev__, A__.at(memory_t::host), lda, w.get(), Z__.at(memory_t::host), ldz, bs,
+        //        num_cols_loc, mpi_comm_row, mpi_comm_col, mpi_comm_all, ELPA_2STAGE_REAL_DEFAULT, 0, 0);
+        //}
+
+        //if (success != 1) {
+        //    return 1;
+        //}
 
         std::copy(w.get(), w.get() + nev__, eval__);
 
@@ -639,6 +672,7 @@ class Eigensolver_elpa : public Eigensolver
             TERMINATE("number of columns in A and Z don't match");
         }
 
+        utils::timer t1("Eigensolver_elpa|solve_std|setup");
         int num_cols_loc = A__.num_cols_local();
         int bs           = A__.bs_row();
         int lda          = A__.ld();
@@ -647,23 +681,82 @@ class Eigensolver_elpa : public Eigensolver
         int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
         int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
 
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
-        int success{-1};
-        if (stage_ == 1) {
-            success = elpa_solve_evp_complex_1stage_double_precision(
-                matrix_size__, nev__, A__.at(memory_t::host), lda, w.get(), Z__.at(memory_t::host), ldz, bs,
-                num_cols_loc, mpi_comm_row, mpi_comm_col, mpi_comm_all, 0);
-        } else {
-            success = elpa_solve_evp_complex_2stage_double_precision(
-                matrix_size__, nev__, A__.at(memory_t::host), lda, w.get(), Z__.at(memory_t::host), ldz, bs,
-                num_cols_loc, mpi_comm_row, mpi_comm_col, mpi_comm_all, ELPA_2STAGE_COMPLEX_DEFAULT, 0);
-        }
+        int error;
+        elpa_t handle;
 
-        if (success != 1) {
-            return 1;
+        handle = elpa_allocate(&error);
+        elpa_set_integer(handle, "na", matrix_size__, &error);
+        elpa_set_integer(handle, "nev", nev__, &error);
+        elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
+        elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
+        elpa_set_integer(handle, "nblk", bs, &error);
+        elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
+        elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
+        elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
+        elpa_setup(handle);
+        if (stage_ == 1) {
+            elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
+        } else {
+            elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
         }
+        t1.stop();
+
+
+
+
+        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+
+        elpa_eigenvectors_dc(handle, A__.at(memory_t::host), w.get(), Z__.at(memory_t::host), &error);
+
+
+
+        //int success{-1};
+
+
+        elpa_deallocate(handle, &error);
+        //if (stage_ == 1) {
+        //    success = elpa_solve_evp_real_1stage_double_precision(
+        //        matrix_size__, nev__, A__.at(memory_t::host), lda, w.get(), Z__.at(memory_t::host), ldz, bs,
+        //        num_cols_loc, mpi_comm_row, mpi_comm_col, mpi_comm_all, 0);
+        //} else {
+        //    success = elpa_solve_evp_real_2stage_double_precision(
+        //        matrix_size__, nev__, A__.at(memory_t::host), lda, w.get(), Z__.at(memory_t::host), ldz, bs,
+        //        num_cols_loc, mpi_comm_row, mpi_comm_col, mpi_comm_all, ELPA_2STAGE_REAL_DEFAULT, 0, 0);
+        //}
+
+        //if (success != 1) {
+        //    return 1;
+        //}
 
         std::copy(w.get(), w.get() + nev__, eval__);
+
+        return 0;
+
+        //int num_cols_loc = A__.num_cols_local();
+        //int bs           = A__.bs_row();
+        //int lda          = A__.ld();
+        //int ldz          = Z__.ld();
+        //int mpi_comm_row = MPI_Comm_c2f(A__.blacs_grid().comm_row().mpi_comm());
+        //int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
+        //int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
+
+        //auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        //int success{-1};
+        ////if (stage_ == 1) {
+        ////    success = elpa_solve_evp_complex_1stage_double_precision(
+        ////        matrix_size__, nev__, A__.at(memory_t::host), lda, w.get(), Z__.at(memory_t::host), ldz, bs,
+        ////        num_cols_loc, mpi_comm_row, mpi_comm_col, mpi_comm_all, 0);
+        ////} else {
+        ////    success = elpa_solve_evp_complex_2stage_double_precision(
+        ////        matrix_size__, nev__, A__.at(memory_t::host), lda, w.get(), Z__.at(memory_t::host), ldz, bs,
+        ////        num_cols_loc, mpi_comm_row, mpi_comm_col, mpi_comm_all, ELPA_2STAGE_COMPLEX_DEFAULT, 0);
+        ////}
+
+        //if (success != 1) {
+        //    return 1;
+        //}
+
+        //std::copy(w.get(), w.get() + nev__, eval__);
 
         return 0;
     }

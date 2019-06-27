@@ -3,6 +3,20 @@
  *  \brief Interface to ELPA library.
  */
 
+using elpa_t = void*;
+
+int elpa_init(int);
+int elpa_uninit(int*);
+
+elpa_t elpa_allocate(int *error);
+void elpa_deallocate(elpa_t handle, int *error);
+int elpa_setup(elpa_t handle);
+void elpa_set_integer(elpa_t handle, const char *name, int value, int *error);
+void elpa_eigenvectors_d(elpa_t handle, double *a, double *ev, double *q, int *error);
+void elpa_eigenvectors_f(elpa_t handle, float *a, float *ev, float *q, int *error);
+void elpa_eigenvectors_dc(elpa_t handle, std::complex<double> *a, double *ev, std::complex<double> *q, int *error);
+void elpa_eigenvectors_fc(elpa_t handle, std::complex<float> *a, float *ev, std::complex<float> *q, int *error);
+
  /*! \brief C interface to driver function "elpa_solve_evp_real_double"
  *
  *  \param  na                        Order of matrix a

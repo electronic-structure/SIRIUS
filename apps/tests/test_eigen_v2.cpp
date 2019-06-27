@@ -188,7 +188,10 @@ void call_test(std::vector<int> mpi_grid__,
             } else {
                 t = test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__, *solver);
             }
-            m.push_back(t);
+            /* skip first "warmup" measurment */
+            if (i) {
+                m.push_back(t);
+            }
         }
         if (blacs_grid.comm().rank() == 0) {
             printf("average time: %f (sec.), sigma: %f (sec.) \n", m.average(), m.sigma());
