@@ -2,9 +2,10 @@ include(FindPackageHandleStandardArgs)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
   set(_sciname "sci_gnu_mpi_mp")
-elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "INTEL")
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
   set(_sciname "sci_intel_mpi_mp")
 else()
+  message(${CMAKE_CXX_COMPILER_ID})
   message(FATAL_ERROR "Unknown compiler. When using libsci use either GNU or INTEL compiler")
 endif()
 
