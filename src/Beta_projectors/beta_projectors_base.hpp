@@ -299,7 +299,7 @@ class Beta_projectors_base
 
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
-                #pragma omp for
+                #pragma omp parallel for
                 for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
                     int ia = chunk(ichunk__).desc_(beta_desc_idx::ia, i);
 
@@ -335,7 +335,7 @@ class Beta_projectors_base
                 /* wave-functions are on CPU but the beta-projectors are on GPU */
                 if (gkvec_.comm().rank() == 0 && is_host_memory(ctx_.preferred_memory_t())) {
                     /* make beta-projectors for G=0 on the CPU */
-                    #pragma omp for schedule(static)
+                    #pragma omp parallel for schedule(static)
                     for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
                         for (int xi = 0; xi < chunk(ichunk__).desc_(beta_desc_idx::nbf, i); xi++) {
                             pw_coeffs_a_g0_(chunk(ichunk__).desc_(beta_desc_idx::offset, i) + xi) =
@@ -360,8 +360,7 @@ class Beta_projectors_base
                 break;
             }
             case device_t::GPU: {
-                pw_coeffs_a_ = matrix<double_complex>(nullptr, num_gkvec_loc(), max_num_beta());
-                pw_coeffs_a_.allocate(ctx_.mem_pool(memory_t::device));
+                pw_coeffs_a_ = matrix<double_complex>(ctx_.mem_pool(memory_t::device), num_gkvec_loc(), max_num_beta());
                 pw_coeffs_a_g0_ = mdarray<double_complex, 1>(ctx_.mem_pool(memory_t::host), max_num_beta());
                 pw_coeffs_a_g0_.allocate(ctx_.mem_pool(memory_t::device));
                 break;
