@@ -586,7 +586,7 @@ class DFT_ground_state
         dict["band_gap"]                = kset_.band_gap();
         dict["core_leakage"]            = density_.core_leakage();
 
-        return std::move(dict);
+        return dict;
     }
 
     /// A quick check of self-constent density in case of pseudopotential.
