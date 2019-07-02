@@ -301,6 +301,8 @@ class Density : public Field4D
         : Field4D(ctx__, ctx__.lmmax_rho())
         , unit_cell_(ctx_.unit_cell())
     {
+        PROFILE("sirius::Density");
+
         if (!ctx_.initialized()) {
             TERMINATE("Simulation_context is not initialized");
         }
