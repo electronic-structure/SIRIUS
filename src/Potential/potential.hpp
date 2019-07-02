@@ -310,7 +310,7 @@ class Potential : public Field4D
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
     {
-        PROFILE("sirius::Potential::Potential");
+        PROFILE("sirius::Potential");
 
         if (!ctx_.initialized()) {
             TERMINATE("Simulation_context is not initialized");
