@@ -71,6 +71,11 @@ inline void initialize(bool call_mpi_init__ = true)
     if (call_mpi_init__) {
         Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
+#if defined(__APEX)
+    apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
+#endif
+    utils::start_global_timer();
+
     if (Communicator::world().rank() == 0) {
         printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version, minor_version, revision, git_hash);
 #if !defined(NDEBUG)
@@ -96,10 +101,6 @@ inline void initialize(bool call_mpi_init__ = true)
         cusolver::create_handle();
 #endif
     }
-#if defined(__APEX)
-    apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
-#endif
-    utils::start_global_timer();
 #if defined(__MAGMA)
     magma::init();
 #endif
