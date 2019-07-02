@@ -110,6 +110,11 @@ inline void initialize(bool call_mpi_init__ = true)
 #if defined(__LIBSCI_ACC)
     libsci_acc_init();
 #endif
+#if defined(__ELPA)
+    if (elpa_init(20170403) != ELPA_OK) {
+        TERMINATE("ELPA API version not supported");
+    }
+#endif
     /* for the fortran interface to blas/lapack */
     assert(sizeof(int) == 4);
     assert(sizeof(double) == 8);
@@ -156,6 +161,10 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     if (call_mpi_fin__) {
         Communicator::finalize();
     }
+#if defined(__ELPA)
+    int ierr;
+    elpa_uninit(&ierr);
+#endif
 
     is_initialized() = false;
 }
