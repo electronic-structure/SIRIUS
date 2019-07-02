@@ -204,14 +204,15 @@ class Unit_cell
     inline void initialize();
 
     /// Add new atom type to the list of atom types and read necessary data from the .json file
-    inline void add_atom_type(const std::string label, const std::string file_name = "")
+    inline Atom_type& add_atom_type(const std::string label__, const std::string file_name__ = "")
     {
         if (atoms_.size()) {
             TERMINATE("Can't add new atom type if atoms are already added");
         }
 
-        int id = next_atom_type_id(label);
-        atom_types_.push_back(std::move(Atom_type(parameters_, id, label, file_name)));
+        int id = next_atom_type_id(label__);
+        atom_types_.push_back(std::move(Atom_type(parameters_, id, label__, file_name__)));
+        return atom_types_.back();
     }
 
     /// Add new atom to the list of atom types.
