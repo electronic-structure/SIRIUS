@@ -56,7 +56,8 @@ class Non_local_operator
     Non_local_operator(Simulation_context const& ctx__)
         : ctx_(ctx__)
     {
-        PROFILE("sirius::Non_local_operator::Non_local_operator");
+        PROFILE("sirius::Non_local_operator");
+
         pu_                 = this->ctx_.processing_unit();
         auto& uc            = this->ctx_.unit_cell();
         packed_mtrx_offset_ = mdarray<int, 1>(uc.num_atoms());
