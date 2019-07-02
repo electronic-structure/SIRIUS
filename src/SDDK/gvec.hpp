@@ -1296,7 +1296,7 @@ class Gvec_shells
         : comm_(gvec__.comm())
         , gvec_(gvec__)
     {
-        PROFILE("sddk::Gvec_shell::Gvec_shells");
+        PROFILE("sddk::Gvec_shells");
 
         a2a_send = block_data_descriptor(comm_.size());
         a2a_recv = block_data_descriptor(comm_.size());
@@ -1402,7 +1402,7 @@ class Gvec_shells
     template <typename T>
     std::vector<T> remap_forward(T* data__) const
     {
-        PROFILE("sddk::remap_gvec_to_shells|remap_forward");
+        PROFILE("sddk::Gvec_shells::remap_forward");
 
         std::vector<T> send_buf(gvec_.count());
         std::vector<int> counts(comm_.size(), 0);
@@ -1425,7 +1425,7 @@ class Gvec_shells
     template <typename T>
     void remap_backward(std::vector<T> buf__, T* data__) const
     {
-        PROFILE("sddk::remap_gvec_to_shells|remap_backward");
+        PROFILE("sddk::Gvec_shells::remap_backward");
 
         std::vector<T> recv_buf(gvec_.count());
 
