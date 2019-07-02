@@ -46,7 +46,7 @@ inline mdarray<double_complex, 2> rotation_matrix_su2(std::array<double, 3> u__,
     rotm(0, 1) = double_complex(-u__[1] * sint, -u__[0] * sint);
     rotm(1, 0) = double_complex( u__[1] * sint, -u__[0] * sint);
 
-    return std::move(rotm);
+    return rotm;
 }
 
 /// Generate SU2(2) rotation matrix from a 3x3 rotation matrix in Cartesian coordinates.
@@ -80,7 +80,7 @@ inline mdarray<double_complex, 2> rotation_matrix_su2(matrix3d<double> R__)
     su2mat(0, 1) = double_complex(-y, -x);
     su2mat(1, 0) = double_complex(y, -x);
 
-    return std::move(su2mat);
+    return su2mat;
 }
 
 /// Get axis and angle from rotation matrix.
@@ -174,7 +174,7 @@ inline matrix3d<double> rot_mtrx_cart(vector3d<double> euler_angles__)
     rm(2, 1) = std::sin(beta) * std::sin(gamma);
     rm(2, 2) = std::cos(beta);
 
-    return std::move(rm);
+    return rm;
 }
 
 /// Compute Euler angles corresponding to the proper rotation martix.

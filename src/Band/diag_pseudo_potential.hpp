@@ -861,7 +861,7 @@ inline std::vector<double> Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__
 
     kp__.beta_projectors().dismiss();
 
-    return std::move(eval);
+    return eval;
 }
 
 //template <typename T>

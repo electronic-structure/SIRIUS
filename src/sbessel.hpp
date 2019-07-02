@@ -123,7 +123,7 @@ class Spherical_Bessel_functions
             }
         }
         s.interpolate();
-        return std::move(s);
+        return s;
     }
 };
 

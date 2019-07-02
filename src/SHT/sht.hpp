@@ -1211,7 +1211,7 @@ class SHT // TODO: better name
                 data[i] = 2 * data[0] * data[i - 1] - data[i - 2];
             }
         }
-        return std::move(data);
+        return data;
     }
 
     /// Generate \f$ \sin(m x) \f$ for m in [1, n] using recursion.
@@ -1227,7 +1227,7 @@ class SHT // TODO: better name
                 data[i] = 2 * cosx * data[i - 1] - data[i - 2];
             }
         }
-        return std::move(data);
+        return data;
     }
 };
 

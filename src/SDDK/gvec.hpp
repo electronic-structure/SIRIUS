@@ -1419,7 +1419,7 @@ class Gvec_shells
         comm_.alltoall(send_buf.data(), a2a_send.counts.data(), a2a_send.offsets.data(), recv_buf.data(),
                        a2a_recv.counts.data(), a2a_recv.offsets.data());
 
-        return std::move(recv_buf);
+        return recv_buf;
     }
 
     template <typename T>

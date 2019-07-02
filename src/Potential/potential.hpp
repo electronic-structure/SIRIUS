@@ -566,7 +566,7 @@ class Potential : public Field4D
         /* nuclear multipole moment */
         qmt[0] -= atom__.zn() * y00;
 
-        return std::move(qmt);
+        return qmt;
     }
 
     /// Poisson solver.

@@ -74,7 +74,7 @@ class Radial_integrals_base
         result.first = static_cast<int>((grid_q_.num_points() - 1) * q__ / grid_q_.last());
         /* delta q = q - q_i */
         result.second = q__ - grid_q_[result.first];
-        return std::move(result);
+        return result;
     }
 
     template <typename... Args>
@@ -169,7 +169,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
         for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
             val(i) = values_(i, iat__)(idx.first, idx.second);
         }
-        return std::move(val);
+        return val;
     }
 };
 
@@ -270,7 +270,7 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
                 val(i, l) = values_(i, l, iat__)(idx.first, idx.second);
             }
         }
-        return std::move(val);
+        return val;
     }
 };
 
@@ -430,7 +430,7 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
         for (int i = 0; i < atom_type.mt_radial_basis_size(); i++) {
             val(i) = values_(i, iat__)(idx.first, idx.second);
         }
-        return std::move(val);
+        return val;
     }
 };
 

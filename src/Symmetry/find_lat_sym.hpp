@@ -76,7 +76,7 @@ inline std::vector<matrix3d<int>> find_lat_sym(matrix3d<double> lat_vec__, doubl
         TERMINATE(s);
     }
 
-    return std::move(lat_sym);
+    return lat_sym;
 }
 
 }

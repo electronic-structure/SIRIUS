@@ -27,6 +27,9 @@
 
 #include <mpi.h>
 #include <string>
+#if defined(__APEX)
+#include <apex_api.hpp>
+#endif
 #include "timer.hpp"
 #if defined(__GPU) && defined(__GPU_NVTX)
 #include "GPU/acc.hpp"
@@ -59,6 +62,9 @@ class profiler
     /// Profiler's timer.
     std::unique_ptr<utils::timer> timer_;
 
+#if defined(__APEX)
+    apex::profiler* apex_p_;
+#endif
 #if defined(__PROFILE_STACK)
     static std::vector<std::string>& call_stack()
     {
@@ -105,6 +111,9 @@ class profiler
 #if defined(__GPU) && defined(__GPU_NVTX)
         acc::begin_range_marker(label_.c_str());
 #endif
+#if defined(__APEX)
+        apex_p_ = apex::start(label_);
+#endif
     }
 
     ~profiler()
@@ -130,6 +139,9 @@ class profiler
 
 #if defined(__GPU) && defined(__GPU_NVTX)
         acc::end_range_marker();
+#endif
+#if defined(__APEX)
+        apex::stop(apex_p_);
 #endif
     }
 

@@ -264,7 +264,7 @@ Band::residuals_aux(K_point*             kp__,
         }
     }
 
-   return std::move(res_norm);
+   return res_norm;
 }
 
 template <typename T>
@@ -311,7 +311,7 @@ inline int Band::residuals(K_point*             kp__,
                     ev_idx.push_back(i);
                 }
             }
-            return std::move(ev_idx);
+            return ev_idx;
         };
 
         auto ev_idx = get_ev_idx(eval_tolerance__);

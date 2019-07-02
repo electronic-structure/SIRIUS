@@ -1786,7 +1786,7 @@ std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_type__)
             TERMINATE("not implemented");
         }
     }
-    return std::move(std::unique_ptr<Eigensolver>(ptr));
+    return std::unique_ptr<Eigensolver>(ptr);
 }
 
 //== #ifdef __PLASMA

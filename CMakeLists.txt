@@ -28,6 +28,7 @@ set(GPU_MODEL "none" CACHE STRING "The target GPU architecture; one of {none,P10
 set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
 set(USE_OPENMP ON CACHE BOOL "use OpenMP")
 set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
+set(USE_TIMER ON CACHE BOOL "measure execution of functions with timer")
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
 
@@ -71,6 +72,10 @@ endif()
 
 if(USE_SCALAPACK)
   add_definitions("-D__SCALAPACK")
+endif()
+
+if (USE_TIMER)
+  add_definitions("-D__USE_TIMER")
 endif()
 
 find_package(MPI REQUIRED)

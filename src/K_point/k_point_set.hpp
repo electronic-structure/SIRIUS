@@ -354,7 +354,7 @@ class K_point_set
         if (rank__ == my_rank) {
             gkvec.send_recv(comm(), jrank, rank__, gkvec);
         }
-        return std::move(gkvec);
+        return gkvec;
     }
 };
 

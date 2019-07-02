@@ -347,7 +347,7 @@ class dmatrix : public matrix<T>
             }
         }
         blacs_grid_->comm().allreduce(d.template at(memory_t::host), n__);
-        return std::move(d);
+        return d;
     }
 
     inline splindex<block_cyclic> const& spl_col() const

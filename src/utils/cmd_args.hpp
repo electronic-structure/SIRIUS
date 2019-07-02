@@ -56,7 +56,7 @@ class cmd_args
             iss >> k;
             v.push_back(k);
         }
-        return std::move(v);
+        return v;
     }
 
     void check_for_key(std::string const key__) const

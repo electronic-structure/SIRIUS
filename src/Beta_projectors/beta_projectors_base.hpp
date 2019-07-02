@@ -219,7 +219,7 @@ class Beta_projectors_base
 
     matrix<double_complex> pw_coeffs_t(int j__)
     {
-        return std::move(matrix<double_complex>(&pw_coeffs_t_(0, 0, j__), num_gkvec_loc(), num_beta_t()));
+        return matrix<double_complex>(&pw_coeffs_t_(0, 0, j__), num_gkvec_loc(), num_beta_t());
     }
 
     /// Plane wave coefficients of |beta> projectors for a chunk of atoms.
@@ -284,7 +284,7 @@ class Beta_projectors_base
             case device_t::CPU: break;
         }
 
-        return std::move(beta_phi);
+        return beta_phi;
     }
 
     /// Generate beta-projectors for a chunk of atoms.

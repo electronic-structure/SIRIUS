@@ -218,6 +218,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 #include "residuals.hpp"
 #include "diag_full_potential.hpp"
 #include "diag_pseudo_potential.hpp"
+#include "davidson.hpp"
 #include "initialize_subspace.hpp"
 #include "solve.hpp"
 #include "set_subspace_mtrx.hpp"

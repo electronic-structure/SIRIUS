@@ -43,7 +43,7 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
 
     ctx.import(args__);
 
-    return std::move(ctx_ptr);
+    return ctx_ptr;
 }
 
 

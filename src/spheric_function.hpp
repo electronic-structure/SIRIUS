@@ -136,7 +136,8 @@ class Spheric_function: public mdarray<T, 2>
         for (int ir = 0; ir < radial_grid_->num_points(); ir++) {
             s(ir) = (*this)(lm__, ir);
         }
-        return std::move(s.interpolate());
+        s.interpolate();
+        return s;
     }
 
     T value(double theta__, double phi__, int jr__, double dr__) const
@@ -215,7 +216,7 @@ inline Spheric_function<function_domain_t::spatial, T> operator*(Spheric_functio
         }
     }
 
-    return std::move(res);
+    return res;
 }
 
 /// Dot product of two gradiensts of real functions in spatial domain.
@@ -266,7 +267,7 @@ Spheric_function<domain_t, T> operator+(Spheric_function<domain_t, T> const& a__
         }
     }
 
-    return std::move(result);
+    return result;
 }
 
 /// Subtraction of functions.
@@ -288,7 +289,7 @@ Spheric_function<domain_t, T> operator-(Spheric_function<domain_t, T> const& a__
         }
     }
 
-    return std::move(res);
+    return res;
 }
 
 /// Multiply function by a scalar.
@@ -304,13 +305,13 @@ Spheric_function<domain_t, T> operator*(T a__, Spheric_function<domain_t, T> con
         ptr_res[i] = a__ * ptr_rhs[i];
     }
 
-    return std::move(res);
+    return res;
 }
 /// Multiply function by a scalar (inverse order).
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& b__, T a__)
 {
-    return std::move(a__ * b__);
+    return (a__ * b__);
 }
 
 /// Inner product of two spherical functions.
@@ -367,7 +368,7 @@ Spheric_function<function_domain_t::spectral, T> laplacian(Spheric_function<func
         }
     }
 
-    return std::move(g);
+    return g;
 }
 
 /// Convert from Ylm to Rlm representation.
@@ -408,7 +409,7 @@ inline Spheric_function<function_domain_t::spectral, double> convert(Spheric_fun
 {
     Spheric_function<function_domain_t::spectral, double> g(f__.angular_domain_size(), f__.radial_grid());
     convert(f__, g);
-    return std::move(g);
+    return g;
 }
 
 /// Convert from Rlm to Ylm representation.
@@ -449,7 +450,7 @@ inline Spheric_function<function_domain_t::spectral, double_complex> convert(Sph
 {
     Spheric_function<function_domain_t::spectral, double_complex> g(f__.angular_domain_size(), f__.radial_grid());
     convert(f__, g);
-    return std::move(g);
+    return g;
 }
 
 template <typename T>
@@ -466,7 +467,7 @@ inline Spheric_function<function_domain_t::spatial, T> transform(SHT const& sht_
 {
     Spheric_function<function_domain_t::spatial, T> g(sht__.num_points(), f__.radial_grid());
     transform(sht__, f__, g);
-    return std::move(g);
+    return g;
 }
 
 template <typename T>
@@ -482,7 +483,7 @@ inline Spheric_function<function_domain_t::spectral, T> transform(SHT const& sht
 {
     Spheric_function<function_domain_t::spectral, T> g(sht__.lmmax(), f__.radial_grid());
     transform(sht__, f__, g);
-    return std::move(g);
+    return g;
 }
 
 /// Gradient of the function in complex spherical harmonics.

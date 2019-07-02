@@ -1193,7 +1193,7 @@ inline json Unit_cell::serialize()
             dict["atoms"][atom_type(iat).label()].push_back({v[0], v[1], v[2]});
         }
     }
-    return std::move(dict);
+    return dict;
 }
 
 inline void Unit_cell::find_nearest_neighbours(double cluster_radius)

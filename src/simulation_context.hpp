@@ -958,7 +958,7 @@ class Simulation_context : public Simulation_parameters
             comm_.allgather(&f_pw[0], gvec().offset(), gvec().count());
         }
 
-        return std::move(f_pw);
+        return f_pw;
     }
 
     /// Compute values of spherical Bessel functions at MT boundary.
@@ -975,7 +975,7 @@ class Simulation_context : public Simulation_parameters
                                        &sbessel_mt(0, igloc, iat));
             }
         }
-        return std::move(sbessel_mt);
+        return sbessel_mt;
     }
 
     /// Generate complex spherical harmoics for the local set of G-vectors.
@@ -989,7 +989,7 @@ class Simulation_context : public Simulation_parameters
             auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
             SHT::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
         }
-        return std::move(gvec_ylm);
+        return gvec_ylm;
     }
 
     /// Sum over the plane-wave coefficients and spherical harmonics that apperas in Poisson solver and finding of the
@@ -1087,7 +1087,7 @@ class Simulation_context : public Simulation_parameters
 
         comm().allreduce(&flm(0, 0), (int)flm.size());
 
-        return std::move(flm);
+        return flm;
     }
 
     inline Radial_integrals_beta<false> const& beta_ri() const
@@ -1275,7 +1275,7 @@ class Simulation_context : public Simulation_parameters
         /* number of blocks of G-vectors */
         int nb = ngv_loc / ngv_b;
         /* split local number of G-vectors between blocks */
-        return std::move(splindex<block>(ngv_loc, nb, 0));
+        return splindex<block>(ngv_loc, nb, 0);
     }
 
     inline void fft_grid_size(std::array<int, 3> fft_grid_size__)

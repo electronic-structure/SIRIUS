@@ -263,7 +263,7 @@ class Wave_functions
             s.copy_to(memory_t::host);
         }
         comm_.allreduce(s.at(memory_t::host), n__);
-        return std::move(s);
+        return s;
     }
 
   public:
@@ -569,7 +569,7 @@ class Wave_functions
             norm[i] = std::sqrt(norm[i]);
         }
 
-        return std::move(norm);
+        return norm;
     }
 
     void allocate(spin_idx sid__, memory_t mem__)
