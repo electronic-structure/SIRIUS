@@ -38,7 +38,7 @@ extern "C" void create_beta_gk_gpu(int                   num_atoms,
                                    double_complex*       beta_gk);
 #endif
 
-enum beta_desc_idx
+enum class beta_desc_idx
 {
     nbf      = 0,
     offset   = 1,
@@ -128,13 +128,13 @@ class Beta_projectors_base
                     beta_chunks_[ib].atom_pos_(x, i) = pos[x];
                 }
                 /* number of beta functions for atom */
-                beta_chunks_[ib].desc_(beta_desc_idx::nbf, i) = type.mt_basis_size();
+                beta_chunks_[ib].desc_(static_cast<int>(beta_desc_idx::nbf), i) = type.mt_basis_size();
                 /* offset in beta_gk*/
-                beta_chunks_[ib].desc_(beta_desc_idx::offset, i) = num_beta;
+                beta_chunks_[ib].desc_(static_cast<int>(beta_desc_idx::offset), i) = num_beta;
                 /* offset in beta_gk_t */
-                beta_chunks_[ib].desc_(beta_desc_idx::offset_t, i) = type.offset_lo();
+                beta_chunks_[ib].desc_(static_cast<int>(beta_desc_idx::offset_t), i) = type.offset_lo();
                 /* global index of atom */
-                beta_chunks_[ib].desc_(beta_desc_idx::ia, i) = ia;
+                beta_chunks_[ib].desc_(static_cast<int>(beta_desc_idx::ia), i) = ia;
 
                 num_beta += type.mt_basis_size();
             }
@@ -301,7 +301,7 @@ class Beta_projectors_base
             case device_t::CPU: {
                 #pragma omp for
                 for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
-                    int ia = chunk(ichunk__).desc_(beta_desc_idx::ia, i);
+                    int ia = chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::ia), i);
 
                     double phase = twopi * dot(gkvec_.vk(), ctx_.unit_cell().atom(ia).position());
                     double_complex phase_k = std::exp(double_complex(0.0, phase));
@@ -312,10 +312,10 @@ class Beta_projectors_base
                         /* total phase e^{i(G+k)r_{\alpha}} */
                         phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
                     }
-                    for (int xi = 0; xi < chunk(ichunk__).desc_(beta_desc_idx::nbf, i); xi++) {
+                    for (int xi = 0; xi < chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i); xi++) {
                         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-                            pw_coeffs_a_(igk_loc, chunk(ichunk__).desc_(beta_desc_idx::offset, i) + xi) =
-                                pw_coeffs_t_(igk_loc, chunk(ichunk__).desc_(beta_desc_idx::offset_t, i) + xi, j__) * phase_gk[igk_loc];
+                            pw_coeffs_a_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset), i) + xi) =
+                                pw_coeffs_t_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset_t), i) + xi, j__) * phase_gk[igk_loc];
                         }
                     }
                 }
@@ -337,9 +337,9 @@ class Beta_projectors_base
                     /* make beta-projectors for G=0 on the CPU */
                     #pragma omp for schedule(static)
                     for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
-                        for (int xi = 0; xi < chunk(ichunk__).desc_(beta_desc_idx::nbf, i); xi++) {
-                            pw_coeffs_a_g0_(chunk(ichunk__).desc_(beta_desc_idx::offset, i) + xi) =
-                                pw_coeffs_t_(0, chunk(ichunk__).desc_(beta_desc_idx::offset_t, i) + xi, j__);
+                        for (int xi = 0; xi < chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i); xi++) {
+                            pw_coeffs_a_g0_(chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset), i) + xi) =
+                                pw_coeffs_t_(0, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset_t), i) + xi, j__);
                         }
                     }
                 }
@@ -377,7 +377,7 @@ class Beta_projectors_base
     {
         PROFILE("sirius::Beta_projectors_base::dismiss");
 
-        if (ctx_.processing_unit() == GPU && reallocate_pw_coeffs_t_on_gpu_) {
+        if (ctx_.processing_unit() == device_t::GPU && reallocate_pw_coeffs_t_on_gpu_) {
             pw_coeffs_t_.deallocate(memory_t::device);
         }
         pw_coeffs_a_.deallocate(memory_t::device);

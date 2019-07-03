@@ -32,10 +32,10 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
     int ngv = ctx_.gvec().count();
 
     /* The following term is added to the plane-wave coefficients of the charge density:
-     * Integrate[SphericalBesselJ[l,a*x]*p[x,R]*x^2,{x,0,R},Assumptions->{l>=0,n>=0,R>0,a>0}] / 
+     * Integrate[SphericalBesselJ[l,a*x]*p[x,R]*x^2,{x,0,R},Assumptions->{l>=0,n>=0,R>0,a>0}] /
      *  Integrate[p[x,R]*x^(2+l),{x,0,R},Assumptions->{h>=0,n>=0,R>0}]
-     * i.e. contributon from pseudodensity to l-th channel of plane wave expansion multiplied by 
-     * the difference bethween true and interstitial-in-the-mt multipole moments and divided by the 
+     * i.e. contributon from pseudodensity to l-th channel of plane wave expansion multiplied by
+     * the difference bethween true and interstitial-in-the-mt multipole moments and divided by the
      * moment of the pseudodensity.
      */
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -81,24 +81,24 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
 
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
-                linalg<CPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
-                                  qa, pf, qapf);
+                linalg<device_t::CPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
+                                            qa, pf, qapf);
                 break;
             }
             case device_t::GPU: {
 #if defined(__GPU)
                 qa.copy_to(memory_t::device);
-                linalg<GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
-                                  qa.at(memory_t::device), qa.ld(),
-                                  pf.at(memory_t::device), pf.ld(),
-                                  qapf.at(memory_t::device), qapf.ld());
+                linalg<device_t::GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
+                                            qa.at(memory_t::device), qa.ld(),
+                                            pf.at(memory_t::device), pf.ld(),
+                                            qapf.at(memory_t::device), qapf.ld());
                 qapf.copy_to(memory_t::host);
 #endif
                 break;
             }
         }
 
-        /* add pseudo_density to interstitial charge density so that rho(G) has the correct 
+        /* add pseudo_density to interstitial charge density so that rho(G) has the correct
          * multipole moments in the muffin-tins */
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
@@ -115,7 +115,7 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
                     for (int m = -l; m <= l; m++, lm++) {
                         zt1 += gvec_ylm_(lm, igloc) * qapf(lm, igloc);
                     }
-                    rho_G += (fourpi / unit_cell_.omega()) * std::conj(zil_[l]) * zt1 * gamma_factors_R_(l, iat) * 
+                    rho_G += (fourpi / unit_cell_.omega()) * std::conj(zil_[l]) * zt1 * gamma_factors_R_(l, iat) *
                              sbessel_mt_(l + pseudo_density_order_ + 1, igloc, iat) * gRn;
                 } // l
             } else { // G=0
@@ -139,7 +139,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
         /* true multipole moments */
         mdarray<double_complex, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
         poisson_vmt(rho, qmt);
-        
+
         //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         //==     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
         //==         printf("qmt(%2i, %2i) = %18.12f %18.12f\n", lm, ia, qmt(lm, ia).real(), qmt(lm, ia).imag());
@@ -248,7 +248,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
                 int l = l_by_lm_[lm];
 
                 for (int ir = 0; ir < nmtp; ir++) {
-                    hartree_potential_->f_mt<index_domain_t::local>(lm, ir, ialoc) += 
+                    hartree_potential_->f_mt<index_domain_t::local>(lm, ir, ialoc) +=
                         vlm[lm] * rRl(ir, l, unit_cell_.atom(ia).type_id());
                 }
             }

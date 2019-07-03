@@ -152,7 +152,7 @@ class Wave_functions
     /// G+k vectors of the wave-function.
     Gvec_partition const& gkvecp_;
 
-    splindex<block> spl_num_atoms_;
+    splindex<splindex_t::block> spl_num_atoms_;
 
     /// Distribution of muffin-tin coefficients between ranks.
     block_data_descriptor mt_coeffs_distr_;
@@ -323,7 +323,7 @@ class Wave_functions
                 new matrix_storage<double_complex, matrix_storage_t::slab>(gkvecp_, num_wf_));
         }
 
-        spl_num_atoms_   = splindex<block>(num_atoms__, comm_.size(), comm_.rank());
+        spl_num_atoms_   = splindex<splindex_t::block>(num_atoms__, comm_.size(), comm_.rank());
         mt_coeffs_distr_ = block_data_descriptor(comm_.size());
 
         for (int ia = 0; ia < num_atoms__; ia++) {
@@ -401,7 +401,7 @@ class Wave_functions
         return num_sc_;
     }
 
-    inline splindex<block> const& spl_num_atoms() const
+    inline splindex<splindex_t::block> const& spl_num_atoms() const
     {
         return spl_num_atoms_;
     }
@@ -429,7 +429,7 @@ class Wave_functions
         int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
 
         switch (pu__) {
-            case CPU: {
+            case device_t::CPU: {
                 /* copy PW part */
                 std::copy(src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__),
                           src__.pw_coeffs(ispn__).prime().at(memory_t::host, 0, i0__) + ngv * n__,
@@ -442,7 +442,7 @@ class Wave_functions
                 }
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
 #ifdef __GPU
                 /* copy PW part */
                 acc::copy(pw_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
@@ -513,11 +513,11 @@ class Wave_functions
     {
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
             switch (pu__) {
-                case CPU: {
+            case device_t::CPU: {
                     pw_coeffs(s).zero(memory_t::host, i0__, n__);
                     break;
                 }
-                case GPU: {
+            case device_t::GPU: {
                     pw_coeffs(s).zero(memory_t::device, i0__, n__);
                     break;
                 }
@@ -532,11 +532,11 @@ class Wave_functions
         }
         for (int s = s0(ispn__); s <= s1(ispn__); s++) {
             switch (pu__) {
-                case CPU: {
+                case device_t::CPU: {
                     mt_coeffs(s).zero(memory_t::host, i0__, n__);
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
                     mt_coeffs(s).zero(memory_t::device, i0__, n__);
                     break;
                 }

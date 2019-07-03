@@ -96,7 +96,7 @@ class FFT3D : public FFT3D_grid
     device_t pu_;
 
     /// Split z-direction.
-    splindex<block> spl_z_;
+    splindex<splindex_t::block> spl_z_;
 
     /// Local size of z-dimension of FFT buffer.
     int local_size_z_;
@@ -235,10 +235,10 @@ class FFT3D : public FFT3D_grid
 
     /// Serial part of 1D transformation of columns.
     /** Transform local set of z-columns from G-domain to r-domain or vice versa. The G-domain is
-     *  located in data buffer, the r-domain is located in fft_buffer_aux. The template parameter mem 
-     *  specifies the location of the data: host or device. 
+     *  located in data buffer, the r-domain is located in fft_buffer_aux. The template parameter mem
+     *  specifies the location of the data: host or device.
      *
-     *  In case of backward transformation (direction = 1) output fft_buffer_aux will contain redistributed 
+     *  In case of backward transformation (direction = 1) output fft_buffer_aux will contain redistributed
      *  z-sticks ready for mpi_a2a. The size of the output array is num_zcol_local * size(z-direction).
      */
     template <int direction>
@@ -686,7 +686,7 @@ class FFT3D : public FFT3D_grid
         PROFILE("sddk::FFT3D::FFT3D");
 
         /* split z-direction */
-        spl_z_        = splindex<block>(size(2), comm_.size(), comm_.rank());
+        spl_z_        = splindex<splindex_t::block>(size(2), comm_.size(), comm_.rank());
         local_size_z_ = spl_z_.local_size();
         offset_z_     = spl_z_.global_offset();
 
@@ -831,11 +831,11 @@ class FFT3D : public FFT3D_grid
     inline void output(double_complex* data__)
     {
         switch (pu_) {
-            case CPU: {
+        case device_t::CPU: {
                 std::memcpy(data__, fft_buffer_.at(memory_t::host), local_size() * sizeof(double_complex));
                 break;
             }
-            case GPU: {
+        case device_t::GPU: {
                 acc::copyout(data__, fft_buffer_.at(memory_t::device), local_size());
                 break;
             }
@@ -896,7 +896,7 @@ class FFT3D : public FFT3D_grid
      *  make a preparatory step in order to find locations of non-zero z-sticks in a given FFT buffer.
      *  The following steps are performed here:
      *    - address of G-vector partition object is saved in the internal class variable
-     *    - positions of non-zero z-columns are stored in a buffer; this is actually a reason to make a preparatory 
+     *    - positions of non-zero z-columns are stored in a buffer; this is actually a reason to make a preparatory
      *      step: non-zero columns are different for different G-vector sets
      *
      *  In case of GPU the following additional steps are performed:
@@ -1040,7 +1040,7 @@ class FFT3D : public FFT3D_grid
     void dismiss()
     {
         switch (pu_) {
-            case GPU: {
+        case device_t::GPU: {
                 fft_buffer_aux1_.deallocate(memory_t::device);
                 fft_buffer_aux2_.deallocate(memory_t::device);
                 z_col_pos_.deallocate(memory_t::device);
@@ -1052,7 +1052,7 @@ class FFT3D : public FFT3D_grid
 #endif
                 break;
             }
-            case CPU: {
+        case device_t::CPU: {
                 break;
             }
         }

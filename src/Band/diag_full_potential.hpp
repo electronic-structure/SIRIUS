@@ -39,12 +39,12 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
 
     /* setup Hamiltonian and overlap */
     switch (ctx_.processing_unit()) {
-        case CPU: {
-            hamiltonian__.set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(&kp, h, o);
+        case device_t::CPU: {
+            hamiltonian__.set_fv_h_o<device_t::CPU, electronic_structure_method_t::full_potential_lapwlo>(&kp, h, o);
             break;
         }
 #ifdef __GPU
-        case GPU: {
+        case device_t::GPU: {
             hamiltonian__.set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(&kp, h, o);
             break;
         }
@@ -210,7 +210,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
         diag1[ig]  = 1;
     }
 
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         o_diag.allocate(memory_t::device).copy_to(memory_t::device);
         diag1.allocate(memory_t::device).copy_to(memory_t::device);
     }
@@ -711,7 +711,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
 
     if (ctx_.num_mag_dims() != 3) {
         dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
-        if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == GPU) {
+        if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == device_t::GPU) {
             h.allocate(memory_t::device);
         }
         /* perform one or two consecutive diagonalizations */
@@ -733,7 +733,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
     } else {
         int nb = ctx_.num_bands();
         dmatrix<double_complex> h(nb, nb, ctx_.blacs_grid(), bs, bs);
-        if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == GPU) {
+        if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == device_t::GPU) {
             h.allocate(memory_t::device);
         }
         /* compute <wf_i | h * wf_j> for up-up block */

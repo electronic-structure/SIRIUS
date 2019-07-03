@@ -169,7 +169,7 @@ class Local_operator
             /* release FFT driver */
             fft_coarse_.dismiss();
 
-            if (fft_coarse_.pu() == GPU) {
+            if (fft_coarse_.pu() == device_t::GPU) {
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
                 }
@@ -216,7 +216,7 @@ class Local_operator
             }
 
             /* copy veff to device */
-            if (fft_coarse_.pu() == GPU) {
+            if (fft_coarse_.pu() == device_t::GPU) {
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
                 }
@@ -273,7 +273,7 @@ class Local_operator
     /// Cleanup the local operator.
     inline void dismiss()
     {
-        if (fft_coarse_.pu() == GPU) {
+        if (fft_coarse_.pu() == device_t::GPU) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 veff_vec_[j].f_rg().deallocate(memory_t::device);
             }
@@ -560,7 +560,7 @@ class Local_operator
         };
 
         /* store the resulting hphi
-           spin block (ispn_block) is used as a bit mask: 
+           spin block (ispn_block) is used as a bit mask:
             - first bit: spin component which is updated
             - second bit: add or not kinetic energy term */
         auto add_to_hphi = [&](int ispn_block, bool gamma = false) {
@@ -636,7 +636,7 @@ class Local_operator
 
         int first{0};
         /* If G-vectors are reduced, wave-functions are real and we can transform two of them at once.
-           Non-collinear case is not treated here because nc wave-functions are complex and G+k vectors 
+           Non-collinear case is not treated here because nc wave-functions are complex and G+k vectors
            can't be reduced. In this case input spin index can only be 0 or 1. */
         if (gkvec_p_->gvec().reduced()) {
             int npairs = num_wf_loc / 2;
@@ -754,11 +754,11 @@ class Local_operator
                 mul_by_veff(buf_rg_, 2);
                 /* copy to FFT buffer */
                 switch (fft_coarse_.pu()) {
-                    case CPU: {
+                case device_t::CPU: {
                         fft_coarse_.input(buf_rg_.at(memory_t::host));
                         break;
                     }
-                    case GPU: {
+                case device_t::GPU: {
 #ifdef __GPU
                         acc::copy(fft_coarse_.buffer().at(memory_t::device), buf_rg_.at(memory_t::device), fft_coarse_.local_size());
 #endif
@@ -839,7 +839,7 @@ class Local_operator
         for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
             utils::timer t1("sirius::Local_operator::apply_h_o|pot");
             switch (fft_coarse_.pu()) {
-                case CPU: {
+                case device_t::CPU: {
                     /* phi(G) -> phi(r) */
                     fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
 
@@ -863,7 +863,7 @@ class Local_operator
                     if (hphi__ != nullptr) {
                         #pragma omp parallel for schedule(static)
                         for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                            /* multiply be effective potential, which itself was multiplied by the step function 
+                            /* multiply be effective potential, which itself was multiplied by the step function
                                    in the prepare() method */
                             fft_coarse_.buffer(ir) *= veff_vec_[0].f_rg(ir);
                         }
@@ -872,7 +872,7 @@ class Local_operator
                     }
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
 #if defined(__GPU)
                     /* phi(G) -> phi(r) */
                     fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
@@ -921,7 +921,7 @@ class Local_operator
                     /* transform Cartesian component of wave-function gradient to real space */
                     fft_coarse_.transform<1>(&buf_pw[0]);
                     switch (fft_coarse_.pu()) {
-                        case CPU: {
+                       case device_t::CPU: {
                             #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                                 /* multiply be step function */
@@ -929,7 +929,7 @@ class Local_operator
                             }
                             break;
                         }
-                        case GPU: {
+                        case device_t::GPU: {
 #if defined(__GPU)
                             /* multiply by step function */
                             scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
@@ -959,7 +959,7 @@ class Local_operator
 
         fft_coarse_.dismiss();
 
-        if (ctx_.processing_unit() == GPU) {
+        if (ctx_.processing_unit() == device_t::GPU) {
             if (hphi__ != nullptr) {
                 hphi__->pw_coeffs(0).copy_to(memory_t::device, N__, n__);
             }
@@ -1009,7 +1009,7 @@ class Local_operator
 
         for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
             switch (fft_coarse_.pu()) {
-                case CPU: {
+               case device_t::CPU: {
                     /* phi(G) -> phi(r) */
                     fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
                     /* save phi(r) */
@@ -1035,7 +1035,7 @@ class Local_operator
                     }
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
 #if defined(__GPU)
                     /* phi(G) -> phi(r) */
                     fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));

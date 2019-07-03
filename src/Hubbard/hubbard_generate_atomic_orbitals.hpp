@@ -61,7 +61,7 @@ void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& 
         augment = ctx_.unit_cell().atom_type(ia).augment();
     }
 
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
             /* allocate GPU memory */
             sphi.pw_coeffs(ispn).prime().allocate(memory_t::device);

@@ -34,7 +34,7 @@
 namespace sddk {
 
 /// Type of split index.
-enum splindex_t // TODO: enum class
+enum class splindex_t
 {
     /// Block distribution.
     block,
@@ -116,7 +116,7 @@ class splindex : public splindex_base<T>
 
 /// Specialization for the block distribution.
 template <typename T>
-class splindex<block, T> : public splindex_base<T>
+class splindex<splindex_t::block, T> : public splindex_base<T>
 {
   private:
     T block_size_;
@@ -252,7 +252,7 @@ class splindex<block, T> : public splindex_base<T>
 
 /// Specialization for the block-cyclic distribution.
 template <typename T>
-class splindex<block_cyclic, T> : public splindex_base<T>
+class splindex<splindex_t::block_cyclic, T> : public splindex_base<T>
 {
   private:
     /// cyclic block size of the distribution
@@ -418,7 +418,7 @@ class splindex<block_cyclic, T> : public splindex_base<T>
 
 /// Specialization for the block distribution.
 template <typename T>
-class splindex<chunk, T> : public splindex_base<T>
+class splindex<splindex_t::chunk, T> : public splindex_base<T>
 {
   private:
     std::vector<std::vector<T>> global_index_;

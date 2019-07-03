@@ -153,8 +153,8 @@ class SHT // TODO: better name
         }
 
         if (mesh_type_ == 1) {
-            linalg<CPU>::geinv(lmmax_, ylm_forward_);
-            linalg<CPU>::geinv(lmmax_, rlm_forward_);
+            linalg<device_t::CPU>::geinv(lmmax_, ylm_forward_);
+            linalg<device_t::CPU>::geinv(lmmax_, rlm_forward_);
         }
 
 #if (__VERIFICATION > 0)
@@ -1236,7 +1236,7 @@ inline void SHT::backward_transform<double>(int ld, double const* flm, int nr, i
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    linalg<CPU>::gemm(1, 0, num_points_, nr, lmmax, &rlm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
+    linalg<device_t::CPU>::gemm(1, 0, num_points_, nr, lmmax, &rlm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
 }
 
 template <>
@@ -1244,7 +1244,7 @@ inline void SHT::backward_transform<double_complex>(int ld, double_complex const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    linalg<CPU>::gemm(1, 0, num_points_, nr, lmmax, &ylm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
+    linalg<device_t::CPU>::gemm(1, 0, num_points_, nr, lmmax, &ylm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
 }
 
 template <>
@@ -1252,7 +1252,7 @@ inline void SHT::forward_transform<double>(double const* ftp, int nr, int lmmax,
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    linalg<CPU>::gemm(1, 0, lmmax, nr, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
+    linalg<device_t::CPU>::gemm(1, 0, lmmax, nr, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
 }
 
 template <>
@@ -1260,7 +1260,7 @@ inline void SHT::forward_transform<double_complex>(double_complex const* ftp, in
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    linalg<CPU>::gemm(1, 0, lmmax, nr, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
+    linalg<device_t::CPU>::gemm(1, 0, lmmax, nr, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
 }
 
 } // namespace sirius

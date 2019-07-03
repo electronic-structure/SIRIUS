@@ -168,9 +168,9 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 
         for (int i = 0; i <  kp__->beta_projectors_row().chunk(ichunk).num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::nbf, i);
-            int offs = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::offset, i);
-            int ia   = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::ia, i);
+            int nbf  = kp__->beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::nbf), i);
+            int offs = kp__->beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::offset), i);
+            int ia   = kp__->beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::ia), i);
 
             for (int xi1 = 0; xi1 < nbf; xi1++) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
@@ -179,12 +179,12 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
                 }
             }
             /* compute <G+k|beta> D */
-            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
+            linalg<device_t::CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
                               &beta_row(0, offs), beta_row.ld(),
                               &dop(0, 0), dop.ld(),
                               &btmp(0, 0), btmp.ld());
             /* compute (<G+k|beta> D ) <beta|G+k> */
-            linalg<CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
+            linalg<device_t::CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
                               linalg_const<double_complex>::one(),
                               &btmp(0, 0), btmp.ld(),
                               &beta_col(0, offs), beta_col.ld(),
@@ -192,11 +192,11 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
                               &hmlt(0, 0), hmlt.ld());
             /* update the overlap matrix */
             if (ctx_.unit_cell().atom(ia).type().augment()) {
-                linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
+                linalg<device_t::CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
                                   &beta_row(0, offs), beta_row.ld(),
                                   &qop(0, 0), qop.ld(),
                                   &btmp(0, 0), btmp.ld());
-                linalg<CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
+                linalg<device_t::CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
                                   linalg_const<double_complex>::one(),
                                   &btmp(0, 0), btmp.ld(),
                                   &beta_col(0, offs), beta_col.ld(),
@@ -887,7 +887,7 @@ inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
 //== //==
 //== //==     //auto& beta_pw_panel = kp__->beta_pw_panel();
 //== //==     //dmatrix<double_complex> S(unit_cell_.mt_basis_size(), unit_cell_.mt_basis_size(), kp__->blacs_grid());
-//== //==     //linalg<CPU>::gemm(2, 0, unit_cell_.mt_basis_size(), unit_cell_.mt_basis_size(), kp__->num_gkvec(), complex_one,
+//== //==     //linalg<device_t::CPU>::gemm(2, 0, unit_cell_.mt_basis_size(), unit_cell_.mt_basis_size(), kp__->num_gkvec(), complex_one,
 //== //==     //                  beta_pw_panel, beta_pw_panel, complex_zero, S);
 //== //==     //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //== //==     //{
@@ -896,13 +896,13 @@ inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
 //== //==     //    int ofs = unit_cell_.atom(ia)->offset_lo();
 //== //==     //    matrix<double_complex> qinv(nbf, nbf);
 //== //==     //    type->uspp().q_mtrx >> qinv;
-//== //==     //    linalg<CPU>::geinv(nbf, qinv);
+//== //==     //    linalg<device_t::CPU>::geinv(nbf, qinv);
 //== //==     //    for (int i = 0; i < nbf; i++)
 //== //==     //    {
 //== //==     //        for (int j = 0; j < nbf; j++) S.add(ofs + j, ofs + i, qinv(j, i));
 //== //==     //    }
 //== //==     //}
-//== //==     //linalg<CPU>::geinv(unit_cell_.mt_basis_size(), S);
+//== //==     //linalg<device_t::CPU>::geinv(unit_cell_.mt_basis_size(), S);
 //== //==
 //== //==
 //==     /* maximum order of Chebyshev polynomial*/
@@ -942,9 +942,9 @@ inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
 //==
 //==     //==     compute_inner_product_gpu(kp__->num_gkvec_row(),
 //==     //==                               (int)kp__->spl_fv_states().local_size(),
-//==     //==                               phi[0].at<GPU>(),
-//==     //==                               hphi.at<GPU>(),
-//==     //==                               e0_loc.at<GPU>());
+//==     //==                               phi[0].at<device_t::GPU>(),
+//==     //==                               hphi.at<device_t::GPU>(),
+//==     //==                               e0_loc.at<device_t::GPU>());
 //==     //==     e0_loc.copy_to_host();
 //==     //==     for (int iloc = 0; iloc < (int)kp__->spl_fv_states().local_size(); iloc++)
 //==     //==     {
@@ -994,7 +994,7 @@ inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
 //== //==     //{
 //== //==     //    #ifdef __GPU
 //== //==     //    compute_chebyshev_polynomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
-//== //==     //                                     phi[0].at<GPU>(), phi[1].at<GPU>(), NULL);
+//== //==     //                                     phi[0].at<device_t::GPU>(), phi[1].at<device_t::GPU>(), NULL);
 //== //==     //    phi[1].panel().copy_to_host();
 //== //==     //    #endif
 //== //==     //}
@@ -1019,7 +1019,7 @@ inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
 //==         //== {
 //==         //==     #ifdef __GPU
 //==         //==     compute_chebyshev_polynomial_gpu(kp__->num_gkvec(), num_bands, c, r,
-//==         //==                                      phi[k - 2].at<GPU>(), phi[k - 1].at<GPU>(), phi[k].at<GPU>());
+//==         //==                                      phi[k - 2].at<device_t::GPU>(), phi[k - 1].at<device_t::GPU>(), phi[k].at<device_t::GPU>());
 //==         //==     phi[k].copy_to_host();
 //==         //==     #endif
 //==         //== }
@@ -1398,8 +1398,8 @@ inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
 //                }
 //            }
 //        }
-//        kp__->comm().allreduce(A.template at<CPU>(), (int)A.size());
-//        kp__->comm().allreduce(B.template at<CPU>(), (int)B.size());
+//        kp__->comm().allreduce(A.template at<device_t::CPU>(), (int)A.size());
+//        kp__->comm().allreduce(B.template at<device_t::CPU>(), (int)B.size());
 //        t1.stop();
 //
 //        utils::timer t2("sirius::Band::diag_pseudo_potential_rmm_diis|phi");
@@ -1474,8 +1474,8 @@ inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
 //     * n is the number of new basis functions */
 //    set_subspace_mtrx(0, num_bands, phi_tmp, hphi_tmp, hmlt, hmlt_old);
 //
-//    if (std_evp_solver().solve(num_bands, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
-//                               eval.data(), evec.template at<CPU>(), evec.ld(),
+//    if (std_evp_solver().solve(num_bands, num_bands, hmlt.template at<device_t::CPU>(), hmlt.ld(),
+//                               eval.data(), evec.template at<device_t::CPU>(), evec.ld(),
 //                               hmlt.num_rows_local(), hmlt.num_cols_local())) {
 //        std::stringstream s;
 //        s << "error in diagonalziation";

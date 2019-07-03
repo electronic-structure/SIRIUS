@@ -32,7 +32,7 @@ namespace sirius {
 
 /// Data and methods specific to the symmetry class of the atom.
 /** Atoms transforming into each other under symmetry opeartions belong to the same symmetry class. They have the
- *  same spherical part of the on-site potential and, as a consequence, the same radial functions. 
+ *  same spherical part of the on-site potential and, as a consequence, the same radial functions.
  */
 class Atom_symmetry_class
 {
@@ -51,7 +51,7 @@ class Atom_symmetry_class
     std::vector<double> spherical_potential_;
 
     /// List of radial functions for the LAPW basis.
-    /** This array stores all the radial functions (AW and LO) and their derivatives. Radial derivatives of functions 
+    /** This array stores all the radial functions (AW and LO) and their derivatives. Radial derivatives of functions
      *  are multiplied by \f$ x \f$.\n
      *  1-st dimension: index of radial point \n
      *  2-nd dimension: index of radial function \n
@@ -478,7 +478,7 @@ inline void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__
             double b[]    = {0, 0, 0};
             b[num_rs - 1] = 1.0;
 
-            int info = linalg<CPU>::gesv(num_rs, 1, &a[0][0], 3, b, 3);
+            int info = linalg<device_t::CPU>::gesv(num_rs, 1, &a[0][0], 3, b, 3);
 
             if (info) {
                 std::stringstream s;
