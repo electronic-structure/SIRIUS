@@ -217,8 +217,7 @@ class Wave_functions
         mdarray<double, 1> s(n__, memory_t::host, "sumsqr");
         s.zero();
         if (pu__ == device_t::GPU) {
-            s.allocate(memory_t::device);
-            s.zero(memory_t::device);
+            s.allocate(memory_t::device).zero(memory_t::device);
         }
 
         for (int is = s0(ispn__); is <= s1(ispn__); is++) {
