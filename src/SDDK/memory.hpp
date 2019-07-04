@@ -1440,6 +1440,14 @@ class mdarray
 #endif
     }
 
+    mdarray<T, N>& operator=(std::function<T(void)> f__)
+    {
+        for (size_t i = 0; i < this->size(); i++) {
+            (*this)[i] = f__();
+        }
+        return *this;
+    }
+
     mdarray<T, N>& operator=(std::function<T(index_type)> f__)
     {
         static_assert(N == 1, "wrong number of dimensions");
