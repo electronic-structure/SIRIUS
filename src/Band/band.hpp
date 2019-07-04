@@ -60,9 +60,6 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     /** Singular components are the eigen-vectors with a very small eigen-value. */
     inline void get_singular_components(K_point& kp__, Hamiltonian& H__) const;
 
-    template <typename T>
-    inline int solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const;
-
     /// Diagonalize a pseudo-potential Hamiltonian.
     template <typename T>
     int diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const;
@@ -115,9 +112,6 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                          mdarray<double, 1>& o_diag__,
                          double eval_tolerance__,
                          double norm_tolerance__) const; //TODO: more documentation here
-
-    template <typename T>
-    void check_residuals(K_point& kp__, Hamiltonian& H__) const;
 
     /// Check wave-functions for orthonormalization.
     template <typename T>
@@ -175,17 +169,6 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
         }
     }
 
-    /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
-     *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
-     *  in the CPU pointer because most of the standard math libraries start from the CPU. */
-    template <typename T>
-    inline void set_subspace_mtrx(int N__,
-                                  int n__,
-                                  Wave_functions& phi__,
-                                  Wave_functions& op_phi__,
-                                  dmatrix<T>& mtrx__,
-                                  dmatrix<T>* mtrx_old__ = nullptr) const;
-
   public:
     /// Constructor
     Band(Simulation_context& ctx__)
@@ -197,6 +180,23 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
             TERMINATE("Simulation_context is not initialized");
         }
     }
+
+    /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
+     *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
+     *  in the CPU pointer because most of the standard math libraries start from the CPU. */
+    template <typename T>
+    inline void set_subspace_mtrx(int N__,
+                                  int n__,
+                                  Wave_functions& phi__,
+                                  Wave_functions& op_phi__,
+                                  dmatrix<T>& mtrx__,
+                                  dmatrix<T>* mtrx_old__ = nullptr) const;
+
+    template <typename T>
+    inline int solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const;
+
+    template <typename T>
+    void check_residuals(K_point& kp__, Hamiltonian& H__) const;
 
     /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
     inline void solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) const;
