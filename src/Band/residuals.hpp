@@ -48,8 +48,8 @@ extern "C" void apply_preconditioner_gpu(double_complex* res__,
                                          int num_rows_loc__,
                                          int num_bands__,
                                          double* eval__,
-                                         double* h_diag__,
-                                         double* o_diag__);
+                                         const double* h_diag__,
+                                         const double* o_diag__);
 
 extern "C" void make_real_g0_gpu(double_complex* res__,
                                  int ld__,
