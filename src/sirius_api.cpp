@@ -53,7 +53,7 @@ static inline std::vector<int> atomic_orbital_index_map_QE(sirius::Atom_type con
         int idxrf   = type__.indexb(xi).idxrf;
         idx_map[xi] = type__.indexb().index_by_idxrf(idxrf) + idx_m_qe(m); /* beginning of lm-block + new offset in lm block */
     }
-    return std::move(idx_map);
+    return idx_map;
 }
 
 static inline int phase_Rlm_QE(sirius::Atom_type const& type__, int xi__)

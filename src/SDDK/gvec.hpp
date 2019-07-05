@@ -406,7 +406,9 @@ class Gvec
             if (gvec_shell_len_[igsh] < 0) {
                 gvec_shell_len_[igsh] = g;
             } else {
-                if (std::abs(gvec_shell_len_[igsh] - g) > 1e-7) {
+                /* lattice symmetries were found wih 1e-6 tolererance for the metric tensor,
+                   so tolerance on length should be square root of that */
+                if (std::abs(gvec_shell_len_[igsh] - g) > 1e-3) {
                     std::stringstream s;
                     s << "wrong G-vector length" << "\n"
                       << "  length of G-shell : " << gvec_shell_len_[igsh] << "\n"
@@ -1294,7 +1296,7 @@ class Gvec_shells
         : comm_(gvec__.comm())
         , gvec_(gvec__)
     {
-        PROFILE("sddk::Gvec_shell::Gvec_shells");
+        PROFILE("sddk::Gvec_shells");
 
         a2a_send = block_data_descriptor(comm_.size());
         a2a_recv = block_data_descriptor(comm_.size());
@@ -1400,7 +1402,7 @@ class Gvec_shells
     template <typename T>
     std::vector<T> remap_forward(T* data__) const
     {
-        PROFILE("sddk::remap_gvec_to_shells|remap_forward");
+        PROFILE("sddk::Gvec_shells::remap_forward");
 
         std::vector<T> send_buf(gvec_.count());
         std::vector<int> counts(comm_.size(), 0);
@@ -1417,13 +1419,13 @@ class Gvec_shells
         comm_.alltoall(send_buf.data(), a2a_send.counts.data(), a2a_send.offsets.data(), recv_buf.data(),
                        a2a_recv.counts.data(), a2a_recv.offsets.data());
 
-        return std::move(recv_buf);
+        return recv_buf;
     }
 
     template <typename T>
     void remap_backward(std::vector<T> buf__, T* data__) const
     {
-        PROFILE("sddk::remap_gvec_to_shells|remap_backward");
+        PROFILE("sddk::Gvec_shells::remap_backward");
 
         std::vector<T> recv_buf(gvec_.count());
 

@@ -302,7 +302,6 @@ struct Iterative_solver_input
  *      "reduce_gvec" : (bool) use reduced G-vector set (reduce_gvec = true) or full set (reduce_gvec = false)
  *      "std_evp_solver_type" : (string) type of eigen-solver for the standard eigen-problem
  *      "gen_evp_solver_type" : (string) type of eigen-solver for the generalized eigen-problem
- *      "electronic_structure_method" : (string) electronic structure method
  *      "processing_unit" : (string) primary processing unit
  *      "fft_mode" : (string) serial or parallel FFT
  *    }

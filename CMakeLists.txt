@@ -18,6 +18,7 @@ set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
 set(USE_CUDA OFF CACHE BOOL "use CUDA")
 set(USE_ROCM OFF CACHE BOOL "use ROCM AMD GPU code")
+set(USE_NVTX OFF CACHE BOOL "use Nvidia profiling tools library")
 set(USE_VDWXC OFF CACHE BOOL "use libvdwxc for van der Walls corrections")
 set(USE_MKL OFF CACHE BOOL "use Intel MKL")
 set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
@@ -27,6 +28,7 @@ set(GPU_MODEL "none" CACHE STRING "The target GPU architecture; one of {none,P10
 set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
 set(USE_OPENMP ON CACHE BOOL "use OpenMP")
 set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
+set(USE_TIMER ON CACHE BOOL "measure execution of functions with timer")
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
 
@@ -70,6 +72,10 @@ endif()
 
 if(USE_SCALAPACK)
   add_definitions("-D__SCALAPACK")
+endif()
+
+if (USE_TIMER)
+  add_definitions("-D__USE_TIMER")
 endif()
 
 find_package(MPI REQUIRED)
@@ -128,6 +134,11 @@ if(USE_CUDA)
   elseif(GPU_MODEL MATCHES "G10x0")
     message("set nvcc flags for geforce 1000")
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_61")
+  endif()
+
+  if(USE_NVTX)
+    add_definitions("-D__GPU_NVTX")
+    set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};-lnvToolsExt")
   endif()
 endif(USE_CUDA)
 

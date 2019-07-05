@@ -36,17 +36,24 @@
 namespace sirius {
 
 /// Representation of Kohn-Sham Hamiltonian.
+/** In general, Hamiltonian consists of kinetic term, local part of potential and non-local
+    part of potential:
+    \f[
+      H = -\frac{1}{2} \nabla^2 + V_{loc}({\bf r}) + \sum_{\alpha} \sum_{\xi \xi'} |\beta_{\xi}^{\alpha} \rangle
+        D_{\xi \xi'}^{\alpha} \langle \beta_{\xi'}^{\alpha}|
+    \f]
+*/
 class Hamiltonian
 {
   private:
     /// Simulation context.
     Simulation_context& ctx_;
 
-    /// Alias for the unit cell.
-    Unit_cell& unit_cell_;
-
-    /// alias for the potential
+    /// Alias for the potential.
     Potential& potential_;
+
+    /// Alias for unit cell.
+    Unit_cell& unit_cell_;
 
     /// Alias for the hubbard potential (note it is a pointer)
     std::unique_ptr<Hubbard> U_;
@@ -58,21 +65,22 @@ class Hamiltonian
     std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
 
     /// D operator (non-local part of Hamiltonian).
-    void* d_op_{nullptr};
+    std::unique_ptr<D_operator> d_op_;
 
     /// Q operator (non-local part of S-operator).
-    void* q_op_{nullptr};
+    std::unique_ptr<Q_operator> q_op_;
 
   public:
     /// Constructor.
     Hamiltonian(Simulation_context& ctx__, Potential& potential__)
         : ctx_(ctx__)
-        , unit_cell_(ctx__.unit_cell())
         , potential_(potential__)
+        , unit_cell_(ctx__.unit_cell())
     {
-        using gc_z = Gaunt_coefficients<double_complex>;
-
-        gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
+        if (ctx_.full_potential()) {
+            using gc_z = Gaunt_coefficients<double_complex>;
+            gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
+        }
 
         local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
 
@@ -91,11 +99,6 @@ class Hamiltonian
         return potential_;
     }
 
-    Unit_cell& unit_cell() const
-    {
-        return unit_cell_;
-    }
-
     Simulation_context& ctx() const
     {
         return ctx_;
@@ -110,43 +113,30 @@ class Hamiltonian
     inline void prepare()
     {
         if (!ctx_.full_potential()) {
-            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                d_op_ = static_cast<void*>(new D_operator<double>(ctx_));
-                q_op_ = static_cast<void*>(new Q_operator<double>(ctx_));
-            } else {
-                d_op_ = static_cast<void*>(new D_operator<double_complex>(ctx_));
-                q_op_ = static_cast<void*>(new Q_operator<double_complex>(ctx_));
-            }
+            d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));
+            q_op_ = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
         }
         local_op().prepare(potential_);
     }
 
     inline void dismiss()
     {
-        if (!ctx_.full_potential()) {
-            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                delete static_cast<D_operator<double>*>(d_op_);
-                delete static_cast<Q_operator<double>*>(q_op_);
-            } else {
-                delete static_cast<D_operator<double_complex>*>(d_op_);
-                delete static_cast<Q_operator<double_complex>*>(q_op_);
-            }
-        }
+        d_op_ = nullptr;
+        q_op_ = nullptr;
         local_op().dismiss();
     }
 
-    template <typename T>
-    inline Q_operator<T>& Q() const
+    inline Q_operator& Q() const
     {
-        return *static_cast<Q_operator<T>*>(q_op_);
+        return *q_op_;
     }
 
-    template <typename T>
-    inline D_operator<T>& D() const
+    inline D_operator& D() const
     {
-        return *static_cast<D_operator<T>*>(d_op_);
+        return *d_op_;
     }
 
+    /// Apply pseudopotential H and S operators to the wavefunctions.
     template <typename T>
     inline void apply_h_s(K_point*        kp__,
                           int             ispn__,
@@ -155,12 +145,6 @@ class Hamiltonian
                           Wave_functions& phi__,
                           Wave_functions* hphi__,
                           Wave_functions* sphi__) const;
-
-    //template <typename T>
-    //inline void apply_s(K_point*        kp__,
-    //                    int             ispn__,
-    //                    Wave_functions& phi__,
-    //                    Wave_functions& sphi__) const;
 
     /// Apply magnetic field to first-variational LAPW wave-functions.
     inline void apply_magnetic_field(K_point*                     kp__,
@@ -504,6 +488,224 @@ class Hamiltonian
     template <typename T>
     inline mdarray<double, 1> get_o_diag(K_point* kp__) const;
 };
+
+/* forward declaration */
+class Hamiltonian_k;
+
+class Hamiltonian0
+{
+  private:
+    /// Simulation context.
+    Simulation_context& ctx_;
+
+    /// Alias for the potential.
+    Potential& potential_;
+
+    /// Alias for unit cell.
+    Unit_cell& unit_cell_;
+
+    /// Alias for the hubbard potential (note it is a pointer)
+    std::unique_ptr<Hubbard> U_;
+
+    /// Local part of the Hamiltonian operator.
+    std::unique_ptr<Local_operator> local_op_;
+
+    /// Non-zero Gaunt coefficients
+    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
+
+    /// D operator (non-local part of Hamiltonian).
+    std::unique_ptr<D_operator> d_op_;
+
+    /// Q operator (non-local part of S-operator).
+    std::unique_ptr<Q_operator> q_op_;
+
+    Hamiltonian0(Hamiltonian0 const& src) = delete;
+    Hamiltonian0& operator=(Hamiltonian0 const& src) = delete;
+
+  public:
+    /// Constructor.
+    Hamiltonian0(Simulation_context& ctx__, Potential& potential__)
+        : ctx_(ctx__)
+        , potential_(potential__)
+        , unit_cell_(ctx__.unit_cell())
+    {
+        PROFILE("sirius::Hamiltonian0");
+
+        if (ctx_.full_potential()) {
+            using gc_z = Gaunt_coefficients<double_complex>;
+            gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
+        }
+
+        local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
+
+        if (ctx_.hubbard_correction()) {
+            U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
+        }
+
+        if (!ctx_.full_potential()) {
+            d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));
+            q_op_ = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
+        }
+        local_op_->prepare(potential_);
+    }
+
+    ~Hamiltonian0()
+    {
+        local_op_->dismiss();
+    }
+
+    Hamiltonian0(Hamiltonian0&& src) = default;
+
+    Hamiltonian_k operator()(K_point& kp__);
+
+    //Potential& potential() const
+    //{
+    //    return potential_;
+    //}
+
+    Simulation_context& ctx() const
+    {
+        return ctx_;
+    }
+
+    Local_operator& local_op() const
+    {
+        return *local_op_;
+    }
+
+    inline Gaunt_coefficients<double_complex> const& gaunt_coefs() const
+    {
+        return *gaunt_coefs_;
+    }
+
+    /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
+    /** The following matrix is computed:
+     *  \f[
+     *    b_{L_2 \nu_2}^{\alpha}({\bf G'}) = \sum_{L_1 \nu_1} \sum_{L_3}
+     *      a_{L_1\nu_1}^{\alpha}({\bf G'})
+     *      \langle u_{\ell_1\nu_1}^{\alpha} | h_{L3}^{\alpha} |  u_{\ell_2\nu_2}^{\alpha}
+     *      \rangle  \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle
+     *  \f]
+     */
+    template <spin_block_t sblock>
+    void apply_hmt_to_apw(Atom const& atom__, int ngv__, mdarray<double_complex, 2>& alm__,
+                          mdarray<double_complex, 2>& halm__) const
+    {
+        auto& type = atom__.type();
+
+        // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is
+        // available
+        // TODO: for spin-collinear case hmt is Hermitian; compute upper triangular part and use zhemm
+        mdarray<double_complex, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
+        /* compute the muffin-tin Hamiltonian */
+        for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
+            int lm2    = type.indexb(j2).lm;
+            int idxrf2 = type.indexb(j2).idxrf;
+            for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
+                int lm1    = type.indexb(j1).lm;
+                int idxrf1 = type.indexb(j1).idxrf;
+                hmt(j1, j2) =
+                    atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
+            }
+        }
+        linalg<CPU>::gemm(0, 1, ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm__, hmt, halm__);
+    }
+
+    inline Q_operator& Q() const
+    {
+        return *q_op_;
+    }
+
+    inline D_operator& D() const
+    {
+        return *d_op_;
+    }
+};
+
+class Hamiltonian_k
+{
+  private:
+    Hamiltonian0& H0_;
+    K_point& kp_;
+
+    inline mdarray<double, 2> get_h_diag_lapw() const;
+
+    //template <typename T>
+    //inline mdarray<double, 2> get_h_diag_pw() const;
+
+    inline mdarray<double, 2> get_o_diag_lapw() const;
+
+    //template <typename T>
+    //inline mdarray<double, 2> get_o_diag_pw() const;
+
+    /// Copy constructor is forbidden.
+    Hamiltonian_k(Hamiltonian_k const& src__) = delete;
+
+    /// Assignment operator is forbidden.
+    Hamiltonian_k& operator=(Hamiltonian_k const& src__) = delete;
+
+  public:
+    Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__)
+        : H0_(H0__)
+        , kp_(kp__)
+    {
+        PROFILE("sirius::Hamiltonian_k");
+        H0_.local_op().prepare(kp_.gkvec_partition());
+        H0_.ctx().fft_coarse().prepare(kp_.gkvec_partition());
+        kp_.beta_projectors().prepare();
+    }
+
+    ~Hamiltonian_k()
+    {
+        kp_.beta_projectors().dismiss();
+        H0_.ctx().fft_coarse().dismiss();
+    }
+
+    Hamiltonian0 const& H0() const
+    {
+        return H0_;
+    }
+
+    K_point& kp()
+    {
+        return kp_;
+    }
+
+    Hamiltonian_k(Hamiltonian_k&& src__) = default;
+
+    template <typename T, int what>
+    inline std::pair<mdarray<double, 2>, mdarray<double, 2>> get_h_o_diag_pw() const;
+
+    /// Apply pseudopotential H and S operators to the wavefunctions.
+    template <typename T>
+    inline void apply_h_s(int ispn__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
+                          Wave_functions* sphi__);
+
+    //template <typename T>
+    //inline mdarray<double, 2> get_h_diag() const
+    //{
+    //    if (H0_.ctx().full_potential()) {
+    //        return get_h_diag_lapw();
+    //    } else {
+    //        return get_h_diag_pw<T>();
+    //    }
+    //}
+
+    //template <typename T>
+    //inline mdarray<double, 2> get_o_diag() const
+    //{
+    //    if (H0_.ctx().full_potential()) {
+    //        return get_o_diag_lapw();
+    //    } else {
+    //        return get_o_diag_pw<T>();
+    //    }
+    //}
+};
+
+Hamiltonian_k Hamiltonian0::operator()(K_point& kp__)
+{
+    return Hamiltonian_k(*this, kp__);
+}
 
 #include "apply.hpp"
 #include "set_lapw_h_o.hpp"

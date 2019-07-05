@@ -30,7 +30,7 @@
 // gradient of beta projectors. Needed for the computations of the forces
 
 void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
-                                              Q_operator<double_complex>& q_op, // overlap operator
+                                              Q_operator& q_op, // overlap operator
                                               mdarray<double_complex, 6>& dn__)  // Atom we shift
 {
     dn__.zero();
@@ -213,7 +213,7 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
 }
 
 void Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__,
-                                                     Q_operator<double_complex>& q_op__, // Compensnation operator or overlap operator
+                                                     Q_operator& q_op__, // Compensnation operator or overlap operator
                                                      mdarray<double_complex, 5>& dn__)  // derivative of the occupation number compared to displacement of atom aton_id
 {
     auto& phi = kp__.hubbard_wave_functions();
@@ -582,7 +582,7 @@ void Hubbard::compute_occupancies(K_point&                    kp,
 // included in hubbard but the other way around.
 
 void Hubbard::apply_S_operator(K_point&                    kp,
-                               Q_operator<double_complex>& q_op,
+                               Q_operator& q_op,
                                Wave_functions&             phi,
                                Wave_functions&             ophi,
                                const int                   idx0,

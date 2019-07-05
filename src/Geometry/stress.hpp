@@ -951,7 +951,7 @@ class Stress {
                                       ctx_.unit_cell().num_atoms(),
                                       9);
         //hamiltonian_.prepare<double_complex>();
-        Q_operator<double_complex> q_op(ctx_);
+        Q_operator q_op(ctx_);
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
             dn.zero();

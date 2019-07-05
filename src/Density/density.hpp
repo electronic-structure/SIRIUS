@@ -301,6 +301,8 @@ class Density : public Field4D
         : Field4D(ctx__, ctx__.lmmax_rho())
         , unit_cell_(ctx_.unit_cell())
     {
+        PROFILE("sirius::Density");
+
         if (!ctx_.initialized()) {
             TERMINATE("Simulation_context is not initialized");
         }
@@ -930,7 +932,7 @@ class Density : public Field4D
                 }
             }
         }
-        return std::move(dm);
+        return dm;
     }
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
@@ -958,7 +960,7 @@ class Density : public Field4D
             }
         }
         ctx_.fft().comm().allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
-        return std::move(mmom);
+        return mmom;
     }
 
     /// Symmetrize density matrix.

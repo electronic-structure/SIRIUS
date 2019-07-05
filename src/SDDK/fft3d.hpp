@@ -245,7 +245,7 @@ class FFT3D : public FFT3D_grid
     void transform_z_serial(double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__,
                             void* acc_fft_plan_z__, memory_t mem__)
     {
-        PROFILE("sddk::FFT3D::transform_z_serial");
+        utils::timer t0__("sddk::FFT3D::transform_z_serial");
 
         /* local number of z-columns to transform */
         int num_zcol_local = gvec_partition_->zcol_count_fft();
@@ -396,7 +396,7 @@ class FFT3D : public FFT3D_grid
     void transform_z(double_complex* data__, mdarray<double_complex, 1>& fft_buffer_aux__, void* acc_fft_plan_z__,
                      memory_t mem__)
     {
-        PROFILE("sddk::FFT3D::transform_z");
+        utils::timer t0__("sddk::FFT3D::transform_z");
 
         //int rank = comm_.rank();
 
@@ -482,7 +482,7 @@ class FFT3D : public FFT3D_grid
     template <int direction>
     void transform_xy(mdarray<double_complex, 1>& fft_buffer_aux__)
     {
-        PROFILE("sddk::FFT3D::transform_xy");
+        utils::timer t0__("sddk::FFT3D::transform_xy");
 
         int size_xy = size(0) * size(1);
 
@@ -573,7 +573,7 @@ class FFT3D : public FFT3D_grid
     template <int direction>
     void transform_xy(mdarray<double_complex, 1>& fft_buffer_aux1__, mdarray<double_complex, 1>& fft_buffer_aux2__)
     {
-        PROFILE("sddk::FFT3D::transform_xy");
+        utils::timer t0__("sddk::FFT3D::transform_xy");
 
         if (!gvec_partition_->gvec().reduced()) {
             TERMINATE("reduced set of G-vectors is required");
@@ -683,7 +683,7 @@ class FFT3D : public FFT3D_grid
         , comm_(comm__)
         , pu_(pu__)
     {
-        PROFILE("sddk::FFT3D::FFT3D");
+        utils::timer t0__("sddk::FFT3D::FFT3D");
 
         /* split z-direction */
         spl_z_        = splindex<block>(size(2), comm_.size(), comm_.rank());
@@ -908,7 +908,7 @@ class FFT3D : public FFT3D_grid
      */
     void prepare(Gvec_partition const& gvp__)
     {
-        PROFILE("sddk::FFT3D::prepare");
+        utils::timer t0__("sddk::FFT3D::prepare");
 
         if (gvec_partition_) {
             TERMINATE("FFT3D is already prepared for another G-vector partition");
@@ -1063,7 +1063,7 @@ class FFT3D : public FFT3D_grid
     template <int direction, memory_t mem = memory_t::host>
     void transform(double_complex* data__)
     {
-        PROFILE("sddk::FFT3D::transform");
+        utils::timer t0__("sddk::FFT3D::transform");
 
         if (!gvec_partition_) {
             TERMINATE("FFT3D is not ready");
@@ -1098,7 +1098,7 @@ class FFT3D : public FFT3D_grid
     template <int direction, memory_t mem = memory_t::host>
     void transform(double_complex* data1__, double_complex* data2__)
     {
-        PROFILE("sddk::FFT3D::transform");
+        utils::timer t0__("sddk::FFT3D::transform");
 
         if (!gvec_partition_) {
             TERMINATE("FFT3D is not ready");

@@ -33,6 +33,7 @@ namespace sirius {
 class Beta_projectors : public Beta_projectors_base
 {
   protected:
+    bool prepared_{false};
     matrix<double_complex> beta_pw_all_atoms_;
     /// Generate plane-wave coefficients for beta-projectors of atom types.
     void generate_pw_coefs_t(std::vector<int>& igk__)
@@ -88,7 +89,7 @@ class Beta_projectors : public Beta_projectors_base
     Beta_projectors(Simulation_context& ctx__, Gvec const& gkvec__, std::vector<int>& igk__)
         : Beta_projectors_base(ctx__, gkvec__, igk__, 1)
     {
-        PROFILE("sirius::Beta_projectors::Beta_projectors");
+        PROFILE("sirius::Beta_projectors");
         /* generate phase-factor independent projectors for atom types */
         generate_pw_coefs_t(igk__);
         /* special treatment for beta-projectors as they are mostly often used */
@@ -113,8 +114,11 @@ class Beta_projectors : public Beta_projectors_base
         }
     }
 
-    void prepare()
+    inline void prepare()
     {
+        if (prepared_) {
+            TERMINATE("beta projectors are already prepared");
+        }
         switch (ctx_.processing_unit()) {
             case device_t::GPU: {
                 Beta_projectors_base::prepare();
@@ -122,6 +126,22 @@ class Beta_projectors : public Beta_projectors_base
             }
             case device_t::CPU: break;
         }
+        prepared_ = true;
+    }
+
+    inline void dismiss()
+    {
+        if (!prepared_) {
+            TERMINATE("beta projectors are already dismissed");
+        }
+        switch (ctx_.processing_unit()) {
+            case device_t::GPU: {
+                Beta_projectors_base::dismiss();
+                break;
+            }
+            case device_t::CPU: break;
+        }
+        prepared_ = false;
     }
 
     void generate(int chunk__)

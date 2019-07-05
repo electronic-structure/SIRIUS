@@ -185,7 +185,7 @@ class Simulation_context : public Simulation_parameters
     std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
     /// Storage for various memory pools.
-    std::map<memory_t, memory_pool> memory_pool_;
+    mutable std::map<memory_t, memory_pool> memory_pool_;
 
     /// Plane wave expansion coefficients of the step function.
     mdarray<double_complex, 1> theta_pw_;
@@ -958,7 +958,7 @@ class Simulation_context : public Simulation_parameters
             comm_.allgather(&f_pw[0], gvec().offset(), gvec().count());
         }
 
-        return std::move(f_pw);
+        return f_pw;
     }
 
     /// Compute values of spherical Bessel functions at MT boundary.
@@ -975,7 +975,7 @@ class Simulation_context : public Simulation_parameters
                                        &sbessel_mt(0, igloc, iat));
             }
         }
-        return std::move(sbessel_mt);
+        return sbessel_mt;
     }
 
     /// Generate complex spherical harmoics for the local set of G-vectors.
@@ -989,7 +989,7 @@ class Simulation_context : public Simulation_parameters
             auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
             SHT::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
         }
-        return std::move(gvec_ylm);
+        return gvec_ylm;
     }
 
     /// Sum over the plane-wave coefficients and spherical harmonics that apperas in Poisson solver and finding of the
@@ -1087,7 +1087,7 @@ class Simulation_context : public Simulation_parameters
 
         comm().allreduce(&flm(0, 0), (int)flm.size());
 
-        return std::move(flm);
+        return flm;
     }
 
     inline Radial_integrals_beta<false> const& beta_ri() const
@@ -1181,7 +1181,7 @@ class Simulation_context : public Simulation_parameters
 
     /// Return a reference to a memory pool.
     /** A memory pool is created when this function called for the first time. */
-    memory_pool& mem_pool(memory_t M__)
+    memory_pool& mem_pool(memory_t M__) const
     {
         if (memory_pool_.count(M__) == 0) {
             memory_pool_.emplace(M__, std::move(memory_pool(M__)));
@@ -1275,7 +1275,7 @@ class Simulation_context : public Simulation_parameters
         /* number of blocks of G-vectors */
         int nb = ngv_loc / ngv_b;
         /* split local number of G-vectors between blocks */
-        return std::move(splindex<block>(ngv_loc, nb, 0));
+        return splindex<block>(ngv_loc, nb, 0);
     }
 
     inline void fft_grid_size(std::array<int, 3> fft_grid_size__)
@@ -1728,6 +1728,10 @@ inline void Simulation_context::print_info() const
                 printf("MAGMA\n");
                 break;
             }
+            case ev_solver_t::magma_gpu: {
+                printf("MAGMA with GPU pointers\n");
+                break;
+            }
             case ev_solver_t::plasma: {
                 printf("PLASMA\n");
                 break;
@@ -1754,6 +1758,10 @@ inline void Simulation_context::print_info() const
             break;
         }
     }
+    printf("\n");
+    printf("iterative solver                   : %s\n", iterative_solver_input_.type_.c_str());
+    printf("number of steps                    : %i\n", iterative_solver_input_.num_steps_);
+    printf("subspace size                      : %i\n", iterative_solver_input_.subspace_size_);
 
     printf("\n");
     printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(), spg_get_micro_version());
