@@ -590,7 +590,7 @@ inline std::unique_ptr<Mixer<T>> Mixer_factory(int shared_size__, int local_size
     } else {
         TERMINATE("wrong type of mixer");
     }
-    return std::move(mixer);
+    return mixer;
 }
 
 } // namespace sirius

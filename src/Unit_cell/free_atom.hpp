@@ -269,7 +269,7 @@ class Free_atom : public Atom_type_base
 
         free_atom_electronic_potential_ = Spline<double>(free_atom_radial_grid_, vrho);
 
-        return std::move(dict);
+        return dict;
 
         //double Eref = (rel) ? NIST_ScRLDA_Etot_ : NIST_LDA_Etot_;
 
@@ -344,7 +344,7 @@ class Free_atom : public Atom_type_base
     std::vector<double> radial_grid_points() const
     {
         std::vector<double> v = free_atom_radial_grid().values();
-        return std::move(v);
+        return v;
     }
 
     std::vector<double> free_atom_wave_function(int ist__) const
@@ -354,7 +354,7 @@ class Free_atom : public Atom_type_base
         for (int i = 0; i< np; i++) {
             v[i] = free_atom_wave_function(i, ist__);
         }
-        return std::move(v);
+        return v;
     }
 
     std::vector<double> free_atom_wave_function_x(int ist__) const
@@ -364,7 +364,7 @@ class Free_atom : public Atom_type_base
         for (int i = 0; i< np; i++) {
             v[i] = free_atom_wave_functions_x_(i, ist__);
         }
-        return std::move(v);
+        return v;
     }
 
     std::vector<double> free_atom_wave_function_x_deriv(int ist__) const
@@ -374,13 +374,13 @@ class Free_atom : public Atom_type_base
         for (int i = 0; i< np; i++) {
             v[i] = free_atom_wave_functions_x_deriv_(i, ist__);
         }
-        return std::move(v);
+        return v;
     }
 
     std::vector<double> free_atom_electronic_potential() const
     {
         std::vector<double> v = free_atom_electronic_potential_.values();
-        return std::move(v);
+        return v;
     }
 
     double atomic_level_energy(int ist__) const
@@ -404,7 +404,7 @@ class Free_atom : public Atom_type_base
             v[i] = -0.5 * p.deriv(2, i) + (free_atom_electronic_potential_(i) - zn() / x +
                    l * (l + 1) / x / x / 2) * p(i) - enu_[ist__] * p(i);
         }
-        return std::move(v);
+        return v;
     }
 };
 

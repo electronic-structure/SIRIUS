@@ -16,7 +16,7 @@ find_library(ELPA_LIBRARIES
 
 find_path(ELPA_INCLUDE_DIR
   NAMES elpa.h elpa_constants.h
-  PATH_SUFFIXES include/elpa_openmp-$ENV{EBVERSIONELPA}/elpa elpa
+  PATH_SUFFIXES include/elpa_openmp-$ENV{EBVERSIONELPA}/elpa include/elpa_openmp-$ENV{EBVERSIONELPA} elpa
   HINTS
   ${_ELPA_INCLUDE_DIRS}
   ENV ELPAROOT

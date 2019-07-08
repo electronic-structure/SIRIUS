@@ -203,7 +203,7 @@ class Force
      *
      *  It is based on this reference : PRB 84, 161102(R) (2011)
      */
-    void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator<double_complex>& q_op__,
+    void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__,
                                                    mdarray<double, 2>& forceh_)
     {
         mdarray<double_complex, 6> dn(2 * hamiltonian_.U().lmax() + 1, 2 * hamiltonian_.U().lmax() + 1, 2,
@@ -777,7 +777,7 @@ class Force
 
         if (ctx_.hubbard_correction()) {
             /* we can probably task run this in a task fashion */
-            Q_operator<double_complex> q_op(ctx_);
+            Q_operator q_op(ctx_);
 
             for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 

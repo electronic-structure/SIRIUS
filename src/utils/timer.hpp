@@ -27,9 +27,6 @@
 
 //#define __TIMER_SEQUENCE
 
-#if defined(__APEX)
-#include <apex_api.hpp>
-#endif
 #include <string>
 #include <sstream>
 #include <chrono>
@@ -79,9 +76,7 @@ class timer
 
     /// True if timer is active.
     bool active_{false};
-#if defined(__APEX)
-    apex::profiler* apex_p_;
-#endif
+
     /// List of child timers that we called inside another timer.
     static std::vector<std::string>& stack()
     {
@@ -145,19 +140,20 @@ class timer
         : label_(label__)
         , active_(true)
     {
+#if defined(__USE_TIMER)
         /* measure the starting time */
         starting_time_ = std::chrono::high_resolution_clock::now();
         /* add timer label to the list of called timers */
         stack().push_back(label_);
-#if defined(__APEX)
-        apex_p_ = apex::start(label_);
 #endif
     }
 
     /// Destructor.
     ~timer()
     {
+#if defined(__USE_TIMER)
         stop();
+#endif
     }
 
     /// Move asigment operator.
@@ -167,14 +163,12 @@ class timer
         this->starting_time_ = src__.starting_time_;
         this->active_        = src__.active_;
         src__.active_        = false;
-#if defined(__APEX)
-        this->apex_p_        = src__.apex_p_;
-#endif
     }
 
     /// Stop the timer and update the statistics.
     double stop()
     {
+#if defined(__USE_TIMER)
         if (!active_) {
             return 0;
         }
@@ -210,16 +204,17 @@ class timer
             }
             timer_values_ex()[parent_label][label_] += val;
         }
-#if defined(__APEX)
-        apex::stop(apex_p_);
-#endif
         active_ = false;
         return val;
+#else
+        return 0;
+#endif
     }
 
     /// Print the timer statistics.
     static void print()
     {
+#if defined(__USE_TIMER)
         for (int i = 0; i < 140; i++) {
             printf("-");
         }
@@ -250,10 +245,12 @@ class timer
                                                                           it.second.tot_val / it.second.count,
                                                                           (it.second.tot_val - te) / it.second.tot_val * 100);
         }
+#endif
     }
 
     static void print_tree()
     {
+#if defined(__USE_TIMER)
         if (!timer_values().count(main_timer_label)) {
             return;
         }
@@ -288,12 +285,13 @@ class timer
                 }
             }
         }
+#endif
     }
 
     static nlohmann::json serialize()
     {
         nlohmann::json dict;
-
+#if defined(__USE_TIMER)
         /* collect local timers */
         for (auto& it: timer::timer_values()) {
             timer_stats_t ts;
@@ -313,13 +311,14 @@ class timer
 #endif
             dict[it.first] = node;
         }
-        return std::move(dict);
+#endif
+        return dict;
     }
 
     static nlohmann::json serialize_tree()
     {
         nlohmann::json dict;
-
+#if defined(__USE_TIMER)
         if (!timer_values().count(main_timer_label)) {
             return {};
         }
@@ -353,8 +352,8 @@ class timer
                 dict[it.first] = node;
             }
         }
-
-        return std::move(dict);
+#endif
+        return dict;
     }
 
     inline static timer& global_timer()
@@ -377,14 +376,18 @@ class timer
 /** The global timer is the parent for all other timers. */
 inline void start_global_timer()
 {
+#if defined(__USE_TIMER)
     timer::global_timer();
+#endif
 }
 
 /// Stops the global timer.
 /** When global timer is stoped the timer tree can be build using timer::serialize_timers_tree() method. */
 inline void stop_global_timer()
 {
+#if defined(__USE_TIMER)
     timer::global_timer().stop();
+#endif
 }
 
 }

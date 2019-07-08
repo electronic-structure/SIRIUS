@@ -188,7 +188,7 @@ class Radial_grid
         std::memcpy(&r.dx_(0), &dx_(0), (num_points__ - 1) * sizeof(T));
         std::memcpy(&r.x_inv_(0), &x_inv_(0), num_points__ * sizeof(T));
 
-        return std::move(r);
+        return r;
     }
 
     std::vector<double> values() const
@@ -197,7 +197,7 @@ class Radial_grid
         for (int i = 0; i < num_points(); i++) {
             v[i] = x_[i];
         }
-        return std::move(v);
+        return v;
     }
 
     uint64_t hash() const
@@ -337,7 +337,7 @@ Radial_grid<T> Radial_grid_factory(radial_grid_t grid_type__, int num_points__, 
             TERMINATE("wrong radial grid type");
         }
     }
-    return std::move(rgrid);
+    return rgrid;
 };
 
 inline std::pair<radial_grid_t, double> get_radial_grid_t(std::string str__)
