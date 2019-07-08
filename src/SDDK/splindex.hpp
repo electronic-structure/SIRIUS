@@ -237,7 +237,7 @@ class splindex<splindex_t::block, T> : public splindex_base<T>
         for (int i = 0; i < this->num_ranks_; i++) {
             v[i] = global_offset(i);
         }
-        return std::move(v);
+        return v;
     }
 
     inline std::vector<T> counts() const
@@ -246,7 +246,7 @@ class splindex<splindex_t::block, T> : public splindex_base<T>
         for (int i = 0; i < this->num_ranks_; i++) {
             v[i] = local_size(i);
         }
-        return std::move(v);
+        return v;
     }
 };
 

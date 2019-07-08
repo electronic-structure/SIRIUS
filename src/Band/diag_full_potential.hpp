@@ -45,7 +45,7 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
         }
 #ifdef __GPU
         case device_t::GPU: {
-            hamiltonian__.set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(&kp, h, o);
+            hamiltonian__.set_fv_h_o<device_t::GPU, electronic_structure_method_t::full_potential_lapwlo>(&kp, h, o);
             break;
         }
 #endif

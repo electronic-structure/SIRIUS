@@ -86,8 +86,6 @@ class Simulation_parameters
     /// Import parameters from a file or a serialized json string.
     void import(std::string const& str__)
     {
-        PROFILE("sirius::Simulation_parameters::import");
-
         if (str__.size() == 0) {
             return;
         }
@@ -113,8 +111,6 @@ class Simulation_parameters
     /// Import parameters from a json dictionary.
     void import(json const& dict)
     {
-        PROFILE("sirius::Simulation_parameters::import");
-
         if (dict.size() == 0) {
             return;
         }

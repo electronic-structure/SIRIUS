@@ -315,7 +315,7 @@ Free_atom init_atom_configuration(const std::string& label, sirius::Simulation_p
     Free_atom a(param__, label, name, zn, mass, levels_nlk);
     a.NIST_LDA_Etot    = NIST_LDA_Etot;
     a.NIST_ScRLDA_Etot = NIST_ScRLDA_Etot;
-    return std::move(a);
+    return a;
 }
 
 void generate_atom_file(Free_atom&         a,

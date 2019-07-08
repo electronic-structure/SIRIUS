@@ -265,8 +265,8 @@ extern "C" void apply_preconditioner_gpu(acc_complex_double_t* res__,
                                          int num_rows_loc__,
                                          int num_bands__,
                                          double* eval__,
-                                         double* h_diag__,
-                                         double* o_diag__)
+                                         const double* h_diag__,
+                                         const double* o_diag__)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);

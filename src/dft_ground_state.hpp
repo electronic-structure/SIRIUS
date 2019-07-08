@@ -586,7 +586,7 @@ class DFT_ground_state
         dict["band_gap"]                = kset_.band_gap();
         dict["core_leakage"]            = density_.core_leakage();
 
-        return std::move(dict);
+        return dict;
     }
 
     /// A quick check of self-constent density in case of pseudopotential.
@@ -643,7 +643,7 @@ class DFT_ground_state
             printf("[check_scf_density] Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
         }
 
-        return std::move(dict);
+        return dict;
     }
 };
 
@@ -807,7 +807,7 @@ inline json DFT_ground_state::find(double rms_tol, double energy_tol, double ini
     // dict["energy"] = dft.total_energy() * ha2ev;
     // dict["energy_units"] = "eV";
 
-    return std::move(dict);
+    return dict;
 }
 
 inline void DFT_ground_state::print_info()

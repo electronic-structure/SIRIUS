@@ -119,18 +119,18 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
                 if (hphi__) {
                     /* apply diagonal spin blocks */
-                    D<T>().apply(i, ispn, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                    D().apply(i, ispn, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
                     /* apply non-diagonal spin blocks */
                     /* xor 3 operator will map 0 to 3 and 1 to 2 */
-                    D<T>().apply(i, ispn ^ 3, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                    D().apply(i, ispn ^ 3, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
                 }
 
                 if (sphi__) {
                     /* apply Q operator (diagonal in spin) */
-                    Q<T>().apply(i, ispn, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                    Q().apply(i, ispn, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
                     /* apply non-diagonal spin blocks */
                     if (ctx_.so_correction()) {
-                        Q<T>().apply(i, ispn ^ 3, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                        Q().apply(i, ispn ^ 3, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
                     }
                 }
             }
@@ -145,11 +145,11 @@ void Hamiltonian::apply_h_s(K_point* kp__,
             }
 
             if (hphi__) {
-                D<T>().apply(i, ispn__, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                D().apply(i, ispn__, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
             }
 
             if (sphi__) {
-                Q<T>().apply(i, ispn__, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+                Q().apply(i, ispn__, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
             }
         }
     }
@@ -161,7 +161,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
        // return afterwards, or if they are not already calculated
        // compute the wave functions and copy them on GPU (if needed)
 
-        this->U().generate_atomic_orbitals(*kp__, Q<T>());
+        this->U().generate_atomic_orbitals(*kp__, Q());
 
         // Apply the hubbard potential and deallocate the hubbard wave
         // functions on GPU (if needed)
@@ -189,58 +189,6 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         }
     }
 }
-
-
-//template<typename T>
-//void Hamiltonian::apply_s(K_point* kp__, int ispn__, Wave_functions& phi__, Wave_functions& sphi__) const
-//{
-//    PROFILE("sirius::Hamiltonian::apply_s");
-//    int N = phi__.num_wf();
-//
-//    if (phi__.num_sc() != sphi__.num_sc()) {
-//        TERMINATE("wrong number of spin components");
-//    }
-//
-//    if(phi__.num_wf() != sphi__.num_wf()) {
-//        TERMINATE("wrong number of bands");
-//    }
-//
-//    int nsc = (ispn__ == 2) ? 2 : 1;
-//    /* set intial sphi */
-//    if (ispn__ == 2) {
-//        for (int ispn = 0; ispn < nsc; ispn++) {
-//            sphi__.copy_from(phi__, N, ispn, 0, ispn, 0);
-//        }
-//    } else {
-//        sphi__.copy_from(phi__, N, ispn__, 0, ispn__, 0);
-//    }
-//
-//    /* return if there are no beta-projectors */
-//    if (!ctx_.unit_cell().mt_lo_basis_size()) {
-//        return;
-//    }
-//
-//    for (int i = 0; i < kp__->beta_projectors().num_chunks(); i++) {
-//        /* generate beta-projectors for a block of atoms */
-//        kp__->beta_projectors().generate(i);
-//        /* non-collinear case */
-//        if (ispn__ == 2) {
-//            for (int ispn = 0; ispn < 2; ispn++) {
-//                auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn, 0, N);
-//                /* apply Q operator (diagonal in spin) */
-//                Q<T>().apply(i, ispn, sphi__, 0, N, kp__->beta_projectors(), beta_phi);
-//                /* apply non-diagonal spin blocks */
-//                if (ctx_.so_correction()) {
-//                    Q<T>().apply(i, ispn ^ 3, sphi__, 0, N, kp__->beta_projectors(), beta_phi);
-//                }
-//            }
-//        } else { /* non-magnetic or collinear case */
-//            auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn__, 0, N);
-//            Q<T>().apply(i, ispn__, sphi__, 0, N, kp__->beta_projectors(), beta_phi);
-//        }
-//    }
-//}
-
 
 inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                                       bool            apw_only__,
@@ -1070,4 +1018,155 @@ void Hamiltonian::apply_so_correction(K_point* kp__, Wave_functions& fv_states__
             }
         }
     }
+}
+
+
+/** \param [in]  ispn Index of spin.
+ *  \param [in]  N    Starting index of wave-functions.
+ *  \param [in]  n    Number of wave-functions to which H and S are applied.
+ *  \param [in]  phi  Input wave-functions [storage: CPU && GPU].
+ *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
+ *  \param [out] sphi Overlap operator, applied to wave-functions [storage: CPU || GPU].
+ *
+ *  In non-collinear case (ispn = 2) the Hamiltonian and S operator are applied to both components of spinor
+ *  wave-functions. Otherwise they are applied to a single component.
+ */
+template <typename T>
+void Hamiltonian_k::apply_h_s(int ispn__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
+                              Wave_functions* sphi__)
+{
+    PROFILE("sirius::Hamiltonian_k::apply_h_s");
+
+    //double t1 = -omp_get_wtime();
+
+    if (hphi__ != nullptr) {
+        /* apply local part of Hamiltonian */
+        H0().local_op().apply_h(ispn__, phi__, *hphi__, N__, n__);
+    }
+
+    //t1 += omp_get_wtime();
+
+    //if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
+    //    printf("hloc performace: %12.6f bands/sec", n__ / t1);
+    //}
+
+    int nsc = (ispn__ == 2) ? 2 : 1;
+
+    //if (ctx_.control().print_checksum_ && (hphi__ != nullptr)) {
+    //    for (int ispn = 0; ispn < nsc; ispn++) {
+    //        auto cs1 = phi__.checksum(get_device_t(phi__.preferred_memory_t()), ispn, N__, n__);
+    //        auto cs2 = hphi__->checksum(get_device_t(hphi__->preferred_memory_t()), ispn, N__, n__);
+    //        if (kp__->comm().rank() == 0) {
+    //            std::stringstream s;
+    //            s << "phi_" << ispn;
+    //            utils::print_checksum(s.str(), cs1);
+    //            s.str("");
+    //            s << "hphi_" << ispn;
+    //            utils::print_checksum(s.str(), cs2);
+    //        }
+    //    }
+    //}
+
+    /* set intial sphi */
+    if (sphi__ != nullptr) {
+        if (ispn__ == 2) {
+            for (int ispn = 0; ispn < nsc; ispn++) {
+                sphi__->copy_from(phi__, n__, ispn, N__, ispn, N__);
+            }
+        } else {
+            sphi__->copy_from(phi__, n__, ispn__, N__, ispn__, N__);
+        }
+    }
+
+    /* return if there are no beta-projectors */
+    if (!H0().ctx().unit_cell().mt_lo_basis_size()) {
+        return;
+    }
+
+    for (int i = 0; i < kp().beta_projectors().num_chunks(); i++) {
+        /* generate beta-projectors for a block of atoms */
+        kp().beta_projectors().generate(i);
+        /* non-collinear case */
+        if (ispn__ == 2) {
+            for (int ispn = 0; ispn < 2; ispn++) {
+
+                auto beta_phi = kp().beta_projectors().inner<T>(i, phi__, ispn, N__, n__);
+                //if (ctx_.control().print_checksum_ && kp__->comm().rank() == 0) {
+                //    std::stringstream s;
+                //    s << "<beta|phi_" << ispn << ">";
+                //    auto cs = beta_phi.checksum();
+                //    utils::print_checksum(s.str(), cs);
+                //}
+
+                if (hphi__) {
+                    /* apply diagonal spin blocks */
+                    H0().D().apply(i, ispn, *hphi__, N__, n__, kp().beta_projectors(), beta_phi);
+                    /* apply non-diagonal spin blocks */
+                    /* xor 3 operator will map 0 to 3 and 1 to 2 */
+                    H0().D().apply(i, ispn ^ 3, *hphi__, N__, n__, kp().beta_projectors(), beta_phi);
+                }
+
+                if (sphi__) {
+                    /* apply Q operator (diagonal in spin) */
+                    H0().Q().apply(i, ispn, *sphi__, N__, n__, kp().beta_projectors(), beta_phi);
+                    /* apply non-diagonal spin blocks */
+                    if (H0().ctx().so_correction()) {
+                        H0().Q().apply(i, ispn ^ 3, *sphi__, N__, n__, kp().beta_projectors(), beta_phi);
+                    }
+                }
+            }
+        } else { /* non-magnetic or collinear case */
+
+            auto beta_phi = kp().beta_projectors().inner<T>(i, phi__, ispn__, N__, n__);
+            //if (ctx_.control().print_checksum_ && kp__->comm().rank() == 0) {
+            //    std::stringstream s;
+            //    s << "<beta|phi_" << ispn__ << ">";
+            //    auto cs = beta_phi.checksum();
+            //    utils::print_checksum(s.str(), cs);
+            //}
+
+            if (hphi__) {
+                H0().D().apply(i, ispn__, *hphi__, N__, n__, kp().beta_projectors(), beta_phi);
+            }
+
+            if (sphi__) {
+                H0().Q().apply(i, ispn__, *sphi__, N__, n__, kp().beta_projectors(), beta_phi);
+            }
+        }
+    }
+
+    ///* apply the hubbard potential if relevant */
+    //if (H0().ctx().hubbard_correction() && !H0().ctx().gamma_point() && hphi__) {
+
+    //   // copy the hubbard wave functions on GPU (if needed) and
+    //   // return afterwards, or if they are not already calculated
+    //   // compute the wave functions and copy them on GPU (if needed)
+
+    //    this->U().generate_atomic_orbitals(*kp__, Q());
+
+    //    // Apply the hubbard potential and deallocate the hubbard wave
+    //    // functions on GPU (if needed)
+    //    this->U().apply_hubbard_potential(*kp__, ispn__, N__, n__, phi__, *hphi__);
+
+    //    if (ctx_.processing_unit() == device_t::GPU) {
+    //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //            kp__->hubbard_wave_functions().deallocate(spin_idx(ispn), memory_t::device);
+    //        }
+    //    }
+    //}
+
+    //if ((ctx_.control().print_checksum_) && (hphi__ != nullptr) && (sphi__ != nullptr)) {
+    //    for (int ispn = 0; ispn < nsc; ispn++) {
+    //        auto cs1 = hphi__->checksum(get_device_t(hphi__->preferred_memory_t()), ispn, N__, n__);
+    //        auto cs2 = sphi__->checksum(get_device_t(sphi__->preferred_memory_t()), ispn, N__, n__);
+    //        if (kp__->comm().rank() == 0) {
+    //            std::stringstream s;
+    //            s << "hphi_" << ispn;
+    //            utils::print_checksum(s.str(), cs1);
+    //            s.str("");
+    //            s << "sphi_" << ispn;
+    //            utils::print_checksum(s.str(), cs2);
+    //        }
+    //    }
+    //}
 }

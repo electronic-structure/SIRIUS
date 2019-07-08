@@ -735,7 +735,7 @@ template <typename T, int N>
 class mdarray
 {
   public:
-    typedef mdarray_index_descriptor::index_type index_type;
+    using index_type = mdarray_index_descriptor::index_type;
 
   private:
     /// Optional array label.
@@ -1438,6 +1438,14 @@ class mdarray
 #else
         return false;
 #endif
+    }
+
+    mdarray<T, N>& operator=(std::function<T(void)> f__)
+    {
+        for (size_t i = 0; i < this->size(); i++) {
+            (*this)[i] = f__();
+        }
+        return *this;
     }
 
     mdarray<T, N>& operator=(std::function<T(index_type)> f__)

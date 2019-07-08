@@ -802,6 +802,12 @@ class K_point
             return *beta_projectors_;
         }
 
+        Beta_projectors const& beta_projectors() const
+        {
+            assert(beta_projectors_ != nullptr);
+            return *beta_projectors_;
+        }
+
         Beta_projectors& beta_projectors_row()
         {
             assert(beta_projectors_ != nullptr);

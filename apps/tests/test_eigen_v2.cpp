@@ -28,9 +28,16 @@ double test_diag(BLACS_grid const& blacs_grid__,
 
     std::vector<double> eval(nev__);
 
-    A.allocate(memory_t::device);
-    B.allocate(memory_t::device);
-    Z.allocate(memory_t::device);
+    if (acc::num_devices() > 0) {
+        A.allocate(memory_t::device);
+        A.copy_to(memory_t::device);
+
+        if (test_gen__) {
+            B.allocate(memory_t::device);
+            B.copy_to(memory_t::device);
+        }
+        Z.allocate(memory_t::device);
+    }
 
     if (blacs_grid__.comm().rank() == 0) {
         printf("N = %i\n", N__);
@@ -181,7 +188,10 @@ void call_test(std::vector<int> mpi_grid__,
             } else {
                 t = test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__, *solver);
             }
-            m.push_back(t);
+            /* skip first "warmup" measurment */
+            if (i) {
+                m.push_back(t);
+            }
         }
         if (blacs_grid.comm().rank() == 0) {
             printf("average time: %f (sec.), sigma: %f (sec.) \n", m.average(), m.sigma());

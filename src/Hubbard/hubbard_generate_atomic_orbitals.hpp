@@ -22,12 +22,7 @@
  *  \brief Generate atomic orbitals for Hubbard correction.
  */
 
-void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator<double>& q_op)
-{
-    TERMINATE("Not implemented for gamma point only");
-}
-
-void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
+void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator& q_op)
 {
 
     const int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
