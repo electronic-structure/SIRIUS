@@ -244,26 +244,23 @@ include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
   if(USE_CUDA)
-    add_dependencies(${_target} sirius_cu)
+    add_dependencies(${_target} sirius)
   endif()
 
   add_dependencies(${_target} generate_version_hpp)
   add_dependencies(${_target} runtime_options_json_hpp)
 
+  target_link_libraries(${_target} PRIVATE "${sirius_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
   if(USE_MKL)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-Wl,--no-as-needed;${MKL_LIBRARIES}")
+      target_link_libraries(${_target} PRIVATE "-Wl,--no-as-needed;${MKL_LIBRARIES}")
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${MKL_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
+      target_link_libraries(${_target} PRIVATE "${MKL_LIBRARIES}")
     else()
       message(FATAL_ERROR "Unsupported compiler")
     endif()
   else()
-    target_link_libraries(${_target} PRIVATE "${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
-  endif()
-
-  if(USE_CUDA)
-    target_link_libraries(${_target} PRIVATE "${sirius_cu_location}")
+    target_link_libraries(${_target} PRIVATE "${LAPACK_LIBRARIES};${FFTW_LIBRARIES}")
   endif()
 
   if(USE_ROCM)
@@ -284,7 +281,7 @@ ENDMACRO()
 # sirius library
 add_subdirectory(src)
 if(USE_CUDA)
-  set(sirius_cu_location $<TARGET_FILE:sirius_cu>)
+  set(sirius_location $<TARGET_FILE:sirius>)
 endif()
 
 # applications

@@ -6,28 +6,32 @@ include(GNUInstallDirs)  # required to get a proper LIBDIR variable
 
 # keep two libraries: libsirius and libsirius_f
 
+if(CREATE_FORTRAN_BININGS)
+  set(_FSOURCES "sirius_api.cpp;sirius.f90")
+endif()
+
 if(USE_CUDA)
   file(GLOB_RECURSE CUFILES_SDDK "SDDK/*.cu")
   file(GLOB_RECURSE CUFILES_KERNELS "Kernels/*.cu")
-  add_library(sirius_cu "${CUFILES_KERNELS};${CUFILES_SDDK}")
-  set_target_properties(sirius_cu PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  INSTALL (TARGETS sirius_cu
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    )
+  set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
-if(CREATE_FORTRAN_BINDINGS)
-  add_library(sirius_f "sirius_api.cpp;sirius.f90")
-  SIRIUS_SETUP_TARGET(sirius_f)
-  INSTALL (TARGETS sirius_f ARCHIVE DESTINATION
+
+
+if(CREATE_FORTRAN_BININGS OR USE_CUDA)
+  add_library(sirius STATIC "${_CUSOURCES};${_FSOURCES}")
+  set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
+  INSTALL (TARGETS sirius ARCHIVE DESTINATION
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     )
-  set_target_properties(sirius_f PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  set_target_properties(sirius_f PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
-  target_link_libraries(sirius_f PUBLIC OpenMP::OpenMP_CXX)
+  target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX)
+
+endif()
+
+if(CREATE_FORTRAN_BININGS)
   INSTALL ( CODE
-    "EXECUTE_PROCESS (COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${PROJECT_BINARY_DIR}/src/mod_files\" \"${CMAKE_INSTALL_PREFIX}/fortran\")"
+    "EXECUTE_PROCESS (COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${PROJECT_BINARY_DIR}/src/mod_files\" \"${CMAKE_INSTALL_PREFIX}/include/sirius/\")"
     )
 endif()
 
