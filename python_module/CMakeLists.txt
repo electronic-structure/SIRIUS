@@ -18,7 +18,7 @@ if(CREATE_PYTHON_MODULE)
   pybind11_add_module(${libname} py_sirius.cpp)
 
   if(USE_CUDA)
-    add_dependencies(${libname} sirius_cu)
+    add_dependencies(${libname} sirius)
   endif()
   target_include_directories(${libname} PRIVATE ${MPI4PY_INCLUDE_DIR})
   if(USE_MKL)

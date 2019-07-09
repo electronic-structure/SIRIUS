@@ -4,9 +4,7 @@
 
 include(GNUInstallDirs)  # required to get a proper LIBDIR variable
 
-# keep two libraries: libsirius and libsirius_f
-
-if(CREATE_FORTRAN_BININGS)
+if(CREATE_FORTRAN_BINDINGS)
   set(_FSOURCES "sirius_api.cpp;sirius.f90")
 endif()
 
@@ -17,7 +15,7 @@ if(USE_CUDA)
 endif()
 
 
-if(CREATE_FORTRAN_BININGS OR USE_CUDA)
+if(CREATE_FORTRAN_BINDINGS OR USE_CUDA)
   add_library(sirius STATIC "${_CUSOURCES};${_FSOURCES}")
   set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
@@ -29,7 +27,7 @@ if(CREATE_FORTRAN_BININGS OR USE_CUDA)
 
 endif()
 
-if(CREATE_FORTRAN_BININGS)
+if(CREATE_FORTRAN_BINDINGS)
   INSTALL ( CODE
     "EXECUTE_PROCESS (COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${PROJECT_BINARY_DIR}/src/mod_files\" \"${CMAKE_INSTALL_PREFIX}/include/sirius/\")"
     )

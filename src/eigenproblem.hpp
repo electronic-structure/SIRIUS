@@ -1250,7 +1250,6 @@ class Eigensolver_magma: public Eigensolver
               dmatrix<double>& Z__)
     {
         int nt = omp_get_max_threads();
-        int result{-1};
         int lda = A__.ld();
         int ldb = B__.ld();
 
@@ -1296,7 +1295,6 @@ class Eigensolver_magma: public Eigensolver
               double* eval__, dmatrix<double_complex>& Z__)
     {
         int nt = omp_get_max_threads();
-        int result{-1};
         int lda = A__.ld();
         int ldb = B__.ld();
 
