@@ -38,11 +38,16 @@ extern "C" void create_beta_gk_gpu(int                   num_atoms,
                                    double_complex*       beta_gk);
 #endif
 
+/// Named index of a descriptor of beta-projectors. The same order is used by the GPU kernel.
 enum class beta_desc_idx
 {
+    /// Number of beta-functions for this atom.
     nbf      = 0,
+    /// Offset of beta-projectors in this chunk.
     offset   = 1,
+    /// Offset of beta-projectors in the array for atom types.
     offset_t = 2,
+    /// Global index of atom.
     ia       = 3
 };
 
