@@ -69,7 +69,7 @@ static void compute_res(device_t            pu__,
 
     for (int ispn: spins) {
         switch (pu__) {
-            case CPU: {
+            case device_t::CPU: {
                 /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
                 #pragma omp parallel for
                 for (int i = 0; i < num_bands__; i++) {
@@ -86,7 +86,7 @@ static void compute_res(device_t            pu__,
                 }
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
 #if defined(__GPU)
                 compute_residuals_gpu(hpsi__.pw_coeffs(ispn).prime().at(memory_t::device),
                                       opsi__.pw_coeffs(ispn).prime().at(memory_t::device),
@@ -122,7 +122,7 @@ static void apply_p(device_t            pu__,
 
     for (int ispn = s0; ispn <= s1; ispn++) {
         switch (pu__) {
-            case CPU: {
+            case device_t::CPU: {
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < num_bands__; i++) {
                     for (int ig = 0; ig < res__.pw_coeffs(ispn).num_rows_loc(); ig++) {
@@ -132,7 +132,7 @@ static void apply_p(device_t            pu__,
                     }
                     if (res__.has_mt()) {
                         for (int j = 0; j < res__.mt_coeffs(ispn).num_rows_loc(); j++) {
-                            double p = h_diag__(res__.pw_coeffs(ispn).num_rows_loc() + j, ispn) - 
+                            double p = h_diag__(res__.pw_coeffs(ispn).num_rows_loc() + j, ispn) -
                                        o_diag__[res__.pw_coeffs(ispn).num_rows_loc() + j] * eval__[i];
                             p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
                             res__.mt_coeffs(ispn).prime(j, i) /= p;
@@ -141,7 +141,7 @@ static void apply_p(device_t            pu__,
                 }
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
 #if defined(__GPU)
                 apply_preconditioner_gpu(res__.pw_coeffs(ispn).prime().at(memory_t::device),
                                          res__.pw_coeffs(ispn).num_rows_loc(),
@@ -177,7 +177,7 @@ static void normalize_res(device_t            pu__,
 
     for (int ispn: spins) {
         switch (pu__) {
-            case CPU: {
+            case device_t::CPU: {
             #pragma omp parallel for schedule(static)
                 for (int i = 0; i < num_bands__; i++) {
                     for (int ig = 0; ig < res__.pw_coeffs(ispn).num_rows_loc(); ig++) {
@@ -191,7 +191,7 @@ static void normalize_res(device_t            pu__,
                 }
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
                 #ifdef __GPU
                 scale_matrix_columns_gpu(res__.pw_coeffs(ispn).num_rows_loc(), num_bands__,
                                          (acc_complex_double_t*)res__.pw_coeffs(ispn).prime().at(memory_t::device),
@@ -486,7 +486,7 @@ void Band::check_residuals(K_point& kp__, Hamiltonian& H__) const
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 for (int ig = 0; ig < kp__.num_gkvec_loc(); ig++) {
                     res.pw_coeffs(ispn).prime(ig, j) = hpsi.pw_coeffs(ispn).prime(ig, j) -
-                                                       spsi.pw_coeffs(ispn).prime(ig, j) * 
+                                                       spsi.pw_coeffs(ispn).prime(ig, j) *
                                                        kp__.band_energy(j, ispin_step);
                 }
             }

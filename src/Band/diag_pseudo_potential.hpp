@@ -168,9 +168,9 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 
         for (int i = 0; i <  kp__->beta_projectors_row().chunk(ichunk).num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::nbf, i);
-            int offs = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::offset, i);
-            int ia   = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::ia, i);
+            int nbf  = kp__->beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::nbf), i);
+            int offs = kp__->beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::offset), i);
+            int ia   = kp__->beta_projectors_row().chunk(ichunk).desc_(static_cast<int>(beta_desc_idx::ia), i);
 
             for (int xi1 = 0; xi1 < nbf; xi1++) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
@@ -179,12 +179,12 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
                 }
             }
             /* compute <G+k|beta> D */
-            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
+            linalg<device_t::CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
                               &beta_row(0, offs), beta_row.ld(),
                               &dop(0, 0), dop.ld(),
                               &btmp(0, 0), btmp.ld());
             /* compute (<G+k|beta> D ) <beta|G+k> */
-            linalg<CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
+            linalg<device_t::CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
                               linalg_const<double_complex>::one(),
                               &btmp(0, 0), btmp.ld(),
                               &beta_col(0, offs), beta_col.ld(),
@@ -192,11 +192,11 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
                               &hmlt(0, 0), hmlt.ld());
             /* update the overlap matrix */
             if (ctx_.unit_cell().atom(ia).type().augment()) {
-                linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
+                linalg<device_t::CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
                                   &beta_row(0, offs), beta_row.ld(),
                                   &qop(0, 0), qop.ld(),
                                   &btmp(0, 0), btmp.ld());
-                linalg<CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
+                linalg<device_t::CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
                                   linalg_const<double_complex>::one(),
                                   &btmp(0, 0), btmp.ld(),
                                   &beta_col(0, offs), beta_col.ld(),

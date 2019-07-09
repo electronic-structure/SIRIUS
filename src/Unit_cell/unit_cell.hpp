@@ -56,16 +56,16 @@ class Unit_cell
     std::vector<Atom> atoms_;
 
     /// Split index of atoms.
-    splindex<block> spl_num_atoms_;
+    splindex<splindex_t::block> spl_num_atoms_;
 
     /// Global index of atom by index of PAW atom.
     std::vector<int> paw_atom_index_;
 
     /// Split index of PAW atoms.
-    splindex<block> spl_num_paw_atoms_;
+    splindex<splindex_t::block> spl_num_paw_atoms_;
 
     /// Split index of atom symmetry classes.
-    splindex<block> spl_num_atom_symmetry_classes_;
+    splindex<splindex_t::block> spl_num_atom_symmetry_classes_;
 
     /// Bravais lattice vectors in column order.
     /** The following convention is used to transform fractional coordinates to Cartesian:
@@ -255,7 +255,7 @@ class Unit_cell
             }
         }
 
-        spl_num_paw_atoms_ = splindex<block>(num_paw_atoms(), comm_.size(), comm_.rank());
+        spl_num_paw_atoms_ = splindex<splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
     }
 
     /// Return number of PAW atoms.
@@ -265,7 +265,7 @@ class Unit_cell
     }
 
     /// Get split index of PAW atoms.
-    inline splindex<block> spl_num_paw_atoms() const
+    inline splindex<splindex_t::block> spl_num_paw_atoms() const
     {
         return spl_num_paw_atoms_;
     }
@@ -437,7 +437,7 @@ class Unit_cell
 
         get_symmetry();
 
-        spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
+        spl_num_atom_symmetry_classes_ = splindex<splindex_t::block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
 
         volume_mt_ = 0.0;
         if (parameters_.full_potential()) {
@@ -666,7 +666,7 @@ class Unit_cell
         std::memcpy(&equivalent_atoms_[0], equivalent_atoms__, num_atoms() * sizeof(int));
     }
 
-    inline splindex<block> const& spl_num_atoms() const
+    inline splindex<splindex_t::block> const& spl_num_atoms() const
     {
         return spl_num_atoms_;
     }
@@ -676,7 +676,7 @@ class Unit_cell
         return static_cast<int>(spl_num_atoms_[i]);
     }
 
-    inline splindex<block> const& spl_num_atom_symmetry_classes() const
+    inline splindex<splindex_t::block> const& spl_num_atom_symmetry_classes() const
     {
         return spl_num_atom_symmetry_classes_;
     }
@@ -795,7 +795,7 @@ inline void Unit_cell::initialize()
     PROFILE("sirius::Unit_cell::initialize");
 
     /* split number of atom between all MPI ranks */
-    spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
+    spl_num_atoms_ = splindex<splindex_t::block>(num_atoms(), comm_.size(), comm_.rank());
 
     /* initialize atom types */
     int offs_lo{0};
@@ -834,7 +834,7 @@ inline void Unit_cell::initialize()
         int nat = atom_type(iat).num_atoms();
         if (nat > 0) {
             atom_coord_.push_back(std::move(mdarray<double, 2>(nat, 3, memory_t::host)));
-            if (parameters_.processing_unit() == GPU) {
+            if (parameters_.processing_unit() == device_t::GPU) {
                 atom_coord_.back().allocate(memory_t::device);
             }
         } else {

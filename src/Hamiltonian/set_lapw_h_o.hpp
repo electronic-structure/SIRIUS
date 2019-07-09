@@ -23,9 +23,9 @@
  */
 
 template<>
-inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(K_point* kp__,
-                                                                                               dmatrix<double_complex>& h__,
-                                                                                               dmatrix<double_complex>& o__) const
+inline void Hamiltonian::set_fv_h_o<device_t::CPU, electronic_structure_method_t::full_potential_lapwlo>(K_point* kp__,
+                                                                                                         dmatrix<double_complex>& h__,
+                                                                                                         dmatrix<double_complex>& o__) const
 {
     PROFILE("sirius::Hamiltonian::set_fv_h_o");
 
@@ -113,19 +113,19 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
             utils::print_checksum("alm_col", z2);
             utils::print_checksum("halm_col", z3);
         }
-        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw,
-                          linalg_const<double_complex>::one(),
-                          alm_row.at(memory_t::host), alm_row.ld(),
-                          oalm_col.at(memory_t::host), oalm_col.ld(),
-                          linalg_const<double_complex>::one(),
-                          o__.at(memory_t::host), o__.ld());
+        linalg<device_t::CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw,
+                                    linalg_const<double_complex>::one(),
+                                    alm_row.at(memory_t::host), alm_row.ld(),
+                                    oalm_col.at(memory_t::host), oalm_col.ld(),
+                                    linalg_const<double_complex>::one(),
+                                    o__.at(memory_t::host), o__.ld());
 
-        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw,
-                          linalg_const<double_complex>::one(),
-                          alm_row.at(memory_t::host), alm_row.ld(),
-                          halm_col.at(memory_t::host), halm_col.ld(),
-                          linalg_const<double_complex>::one(),
-                          h__.at(memory_t::host), h__.ld());
+        linalg<device_t::CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw,
+                                    linalg_const<double_complex>::one(),
+                                    alm_row.at(memory_t::host), alm_row.ld(),
+                                    halm_col.at(memory_t::host), halm_col.ld(),
+                                    linalg_const<double_complex>::one(),
+                                    h__.at(memory_t::host), h__.ld());
     }
     double tval = t1.stop();
     if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
@@ -142,9 +142,9 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
 
 #ifdef __GPU
 template<>
-inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(K_point* kp__,
-                                                                                               dmatrix<double_complex>& h__,
-                                                                                               dmatrix<double_complex>& o__) const
+inline void Hamiltonian::set_fv_h_o<device_t::GPU, electronic_structure_method_t::full_potential_lapwlo>(K_point* kp__,
+                                              		                                                 dmatrix<double_complex>& h__,
+                                                        	                                         dmatrix<double_complex>& o__) const
 {
     PROFILE("sirius::Hamiltonian::set_fv_h_o");
 
@@ -233,13 +233,13 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
             acc::sync_stream(stream_id(tid));
         }
         acc::sync_stream(stream_id(omp_get_max_threads()));
-        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &linalg_const<double_complex>::one(),
-                          alm_row.at(memory_t::device, 0, 0, s), alm_row.ld(), alm_col.at(memory_t::device, 0, 0, s), alm_col.ld(), &linalg_const<double_complex>::one(),
-                          o__.at(memory_t::device), o__.ld(), omp_get_max_threads());
+        linalg<device_t::GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &linalg_const<double_complex>::one(),
+                                    alm_row.at(memory_t::device, 0, 0, s), alm_row.ld(), alm_col.at(memory_t::device, 0, 0, s), alm_col.ld(), &linalg_const<double_complex>::one(),
+                                    o__.at(memory_t::device), o__.ld(), omp_get_max_threads());
 
-        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &linalg_const<double_complex>::one(),
-                          alm_row.at(memory_t::device, 0, 0, s), alm_row.ld(), halm_col.at(memory_t::device, 0, 0, s), halm_col.ld(), &linalg_const<double_complex>::one(),
-                          h__.at(memory_t::device), h__.ld(), omp_get_max_threads());
+        linalg<device_t::GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &linalg_const<double_complex>::one(),
+                                    alm_row.at(memory_t::device, 0, 0, s), alm_row.ld(), halm_col.at(memory_t::device, 0, 0, s), halm_col.ld(), &linalg_const<double_complex>::one(),
+                                    h__.at(memory_t::device), h__.ld(), omp_get_max_threads());
     }
 
     acc::copyout(h__.at(memory_t::host), h__.ld(), h__.at(memory_t::device), h__.ld(), kp__->num_gkvec_row(), kp__->num_gkvec_col());

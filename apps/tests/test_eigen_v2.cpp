@@ -89,12 +89,12 @@ double test_diag(BLACS_grid const& blacs_grid__,
     }
     if (test_gen__) {
         /* lambda * B * Z */
-        linalg<CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), B_ref, A, linalg_const<T>::zero(), B);
+        linalg<device_t::CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), B_ref, A, linalg_const<T>::zero(), B);
         B >> A;
     }
 
     /* A * Z - lambda * B * Z */
-    linalg<CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), A_ref, Z, linalg_const<T>::m_one(), A);
+    linalg<device_t::CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), A_ref, Z, linalg_const<T>::m_one(), A);
 
     double diff{0};
     for (int j = 0; j < A.num_cols_local(); j++) {

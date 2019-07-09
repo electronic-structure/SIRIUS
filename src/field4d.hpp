@@ -201,7 +201,7 @@ class Field4D
     void mixer_input()
     {
         /* split real-space points between available ranks */
-        splindex<block> spl_np(ctx_.fft().local_size(), ctx_.comm_ortho_fft().size(), ctx_.comm_ortho_fft().rank());
+        splindex<splindex_t::block> spl_np(ctx_.fft().local_size(), ctx_.comm_ortho_fft().size(), ctx_.comm_ortho_fft().rank());
 
         int k{0};
 
@@ -221,7 +221,7 @@ class Field4D
     void mixer_output()
     {
         /* split real-space points between available ranks */
-        splindex<block> spl_np(ctx_.fft().local_size(), ctx_.comm_ortho_fft().size(), ctx_.comm_ortho_fft().rank());
+        splindex<splindex_t::block> spl_np(ctx_.fft().local_size(), ctx_.comm_ortho_fft().size(), ctx_.comm_ortho_fft().rank());
 
         int k{0};
 

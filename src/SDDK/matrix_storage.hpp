@@ -76,7 +76,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     mdarray<T, 1> send_recv_buf_;
 
     /// Column distribution in auxiliary matrix.
-    splindex<block> spl_num_col_;
+    splindex<splindex_t::block> spl_num_col_;
 
   public:
     /// Constructor.
@@ -126,8 +126,8 @@ class matrix_storage<T, matrix_storage_t::slab>
      *
      *  \image html matrix_storage.png "Redistribution of wave-functions between MPI ranks"
      *
-     *  The extra storage is always created in the CPU memory. If the data distribution doesn't 
-     *  change (no swapping between comm_col ranks is performed) – then the extra storage will mirror 
+     *  The extra storage is always created in the CPU memory. If the data distribution doesn't
+     *  change (no swapping between comm_col ranks is performed) – then the extra storage will mirror
      *  the prime storage (both on CPU and GPU) irrespective of the target processing unit. If
      *  data remapping is necessary extra storage is allocated only in the host memory because MPI is done using the
      *  host pointers.
@@ -139,7 +139,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         auto& comm_col = gvp_->comm_ortho_fft();
 
         /* this is how n columns of the matrix will be distributed between columns of the MPI grid */
-        spl_num_col_ = splindex<block>(n__, comm_col.size(), comm_col.rank());
+        spl_num_col_ = splindex<splindex_t::block>(n__, comm_col.size(), comm_col.rank());
 
         T* ptr{nullptr};
         T* ptr_d{nullptr};
@@ -315,8 +315,8 @@ class matrix_storage<T, matrix_storage_t::slab>
         /* actual number of columns in the submatrix */
         int ncol = num_cols_;
 
-        splindex<block_cyclic> spl_col_begin(j0, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
-        splindex<block_cyclic> spl_col_end(j0 + ncol, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
+        splindex<splindex_t::block_cyclic> spl_col_begin(j0, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
+        splindex<splindex_t::block_cyclic> spl_col_end(j0 + ncol, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
 
         int local_size_col = spl_col_end.local_size() - spl_col_begin.local_size();
 
@@ -331,9 +331,9 @@ class matrix_storage<T, matrix_storage_t::slab>
 
             assert(nrow != 0);
 
-            splindex<block_cyclic> spl_row_begin(irow0__ + i0, mtrx__.num_ranks_row(), mtrx__.rank_row(),
+            splindex<splindex_t::block_cyclic> spl_row_begin(irow0__ + i0, mtrx__.num_ranks_row(), mtrx__.rank_row(),
                                                  mtrx__.bs_row());
-            splindex<block_cyclic> spl_row_end(irow0__ + i0 + nrow, mtrx__.num_ranks_row(), mtrx__.rank_row(),
+            splindex<splindex_t::block_cyclic> spl_row_end(irow0__ + i0 + nrow, mtrx__.num_ranks_row(), mtrx__.rank_row(),
                                                mtrx__.bs_row());
 
             int local_size_row = spl_row_end.local_size() - spl_row_begin.local_size();
@@ -414,7 +414,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         return num_rows_loc_;
     }
 
-    inline splindex<block> const& spl_num_col() const
+    inline splindex<splindex_t::block> const& spl_num_col() const
     {
         return spl_num_col_;
     }
@@ -517,7 +517,7 @@ class matrix_storage<T, matrix_storage_t::slab>
 //==         mdarray<T, 1> extra_buf_;
 //==
 //==         /// Column distribution in auxiliary matrix.
-//==         splindex<block> spl_num_col_;
+//==         splindex<splindex_t::block> spl_num_col_;
 //==
 //==     public:
 //==

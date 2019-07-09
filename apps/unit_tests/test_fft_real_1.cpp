@@ -30,7 +30,7 @@ int run_test(cmd_args& args, device_t pu__)
     }
     phi(0) = 1.0;
     fft.transform<1>(&phi[0]);
-    if (pu__ == GPU) {
+    if (pu__ == device_t::GPU) {
         fft.buffer().copy_to(memory_t::host);
     }
 
@@ -59,7 +59,7 @@ int main(int argn, char** argv)
 
     sirius::initialize(true);
     printf("running %-30s : ", argv[0]);
-    int result = run_test(args, CPU);
+    int result = run_test(args, device_t::CPU);
     if (result) {
         printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
     } else {

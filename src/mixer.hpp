@@ -353,7 +353,7 @@ class Broyden1 : public Mixer<T>
             // }
 
             /* invert matrix */
-            linalg<CPU>::syinv(N, S);
+            linalg<device_t::CPU>::syinv(N, S);
             /* restore lower triangular part */
             for (int j1 = 0; j1 < N; j1++) {
                 for (int j2 = 0; j2 < j1; j2++) {

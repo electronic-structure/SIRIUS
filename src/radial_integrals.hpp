@@ -42,7 +42,7 @@ class Radial_integrals_base
     Radial_grid<double> grid_q_;
 
     /// Split index of q-points.
-    splindex<block> spl_q_;
+    splindex<splindex_t::block> spl_q_;
 
     /// Array with integrals.
     mdarray<Spline<double>, N> values_;
@@ -53,7 +53,7 @@ class Radial_integrals_base
         : unit_cell_(unit_cell__)
     {
         grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax__), 0, qmax__);
-        spl_q_  = splindex<block>(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
+        spl_q_  = splindex<splindex_t::block>(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
     }
 
     /// Get starting index iq and delta dq for the q-point on the linear grid.

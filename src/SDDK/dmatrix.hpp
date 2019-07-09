@@ -54,10 +54,10 @@ class dmatrix : public matrix<T>
     BLACS_grid const* blacs_grid_{nullptr};
 
     /// Split index of matrix rows.
-    splindex<block_cyclic> spl_row_;
+    splindex<splindex_t::block_cyclic> spl_row_;
 
     /// Split index of matrix columns.
-    splindex<block_cyclic> spl_col_;
+    splindex<splindex_t::block_cyclic> spl_col_;
 
     /// ScaLAPACK matrix descriptor.
     ftn_int descriptor_[9];
@@ -89,8 +89,8 @@ class dmatrix : public matrix<T>
             int bs_row__,
             int bs_col__,
             memory_t mem_type__ = memory_t::host)
-        : matrix<T>(splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
-                    splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size(),
+        : matrix<T>(splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
+                    splindex<splindex_t::block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size(),
                     mem_type__)
         , num_rows_(num_rows__)
         , num_cols_(num_cols__)
@@ -123,8 +123,8 @@ class dmatrix : public matrix<T>
             int bs_row__,
             int bs_col__)
         : matrix<T>(ptr__,
-                    splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
-                    splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size())
+                    splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
+                    splindex<splindex_t::block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size())
         , num_rows_(num_rows__)
         , num_cols_(num_cols__)
         , bs_row_(bs_row__)
@@ -143,8 +143,8 @@ class dmatrix : public matrix<T>
             int bs_row__,
             int bs_col__)
         : matrix<T>(mp__,
-                    splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
-                    splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size())
+                    splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
+                    splindex<splindex_t::block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size())
         , num_rows_(num_rows__)
         , num_cols_(num_cols__)
         , bs_row_(bs_row__)
@@ -236,32 +236,32 @@ class dmatrix : public matrix<T>
 
     //void zero(int ir0__, int ic0__, int nr__, int nc__)
     //{
-    //    splindex<block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
-    //    splindex<block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+    //    splindex<splindex_t::block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+    //    splindex<splindex_t::block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
 
-    //    splindex<block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
-    //    splindex<block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+    //    splindex<splindex_t::block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+    //    splindex<splindex_t::block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
 
     //    int m0 = spl_r0.local_size();
     //    int m1 = spl_r1.local_size();
     //    int n0 = spl_c0.local_size();
     //    int n1 = spl_c1.local_size();
     //    for (int j = n0; j < n1; j++) {
-    //        std::fill(this->template at<CPU>(m0, j), this->template at<CPU>(m1, j), 0);
+    //        std::fill(this->template at<device_t::CPU>(m0, j), this->template at<CPU>(m1, j), 0);
     //    }
 
     //    if (this->on_device()) {
-    //        acc::zero(this->template at<GPU>(m0, n0), this->ld(), m1 - m0, n1 - n0);
+    //        acc::zero(this->template at<device_t::GPU>(m0, n0), this->ld(), m1 - m0, n1 - n0);
     //    }
     //}
 
     void set(int ir0__, int jc0__, int mr__, int nc__, T* ptr__, int ld__)
     {
-        splindex<block_cyclic> spl_r0(ir0__,        blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
-        splindex<block_cyclic> spl_r1(ir0__ + mr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+        splindex<splindex_t::block_cyclic> spl_r0(ir0__,        blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+        splindex<splindex_t::block_cyclic> spl_r1(ir0__ + mr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
 
-        splindex<block_cyclic> spl_c0(jc0__,        blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
-        splindex<block_cyclic> spl_c1(jc0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+        splindex<splindex_t::block_cyclic> spl_c0(jc0__,        blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+        splindex<splindex_t::block_cyclic> spl_c1(jc0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
 
         int m0 = spl_r0.local_size();
         int m1 = spl_r1.local_size();
@@ -350,12 +350,12 @@ class dmatrix : public matrix<T>
         return d;
     }
 
-    inline splindex<block_cyclic> const& spl_col() const
+    inline splindex<splindex_t::block_cyclic> const& spl_col() const
     {
         return spl_col_;
     }
 
-    inline splindex<block_cyclic> const& spl_row() const
+    inline splindex<splindex_t::block_cyclic> const& spl_row() const
     {
         return spl_row_;
     }

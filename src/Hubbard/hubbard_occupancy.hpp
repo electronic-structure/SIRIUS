@@ -27,7 +27,7 @@
  *
  * These quantities are defined by
  * \f[
- *    n_{m,m'}^I \sigma = \sum_{kv} f(\varepsilon_{kv}) |<\psi_{kv}| phi_I_m>|^2 
+ *    n_{m,m'}^I \sigma = \sum_{kv} f(\varepsilon_{kv}) |<\psi_{kv}| phi_I_m>|^2
  * \f]
  * where \f[m=-l\cdot l$ (same for m')\f], I is the atom.
  *
@@ -117,7 +117,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
             }
         }
 
-        if (ctx_.processing_unit() == GPU) {
+        if (ctx_.processing_unit() == device_t::GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
@@ -156,7 +156,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 
         // now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk}
         const double scal = (ctx_.num_mag_dims() == 0) ? 0.5 : 1.0;
-        linalg<CPU>::gemm(2, 0, this->number_of_hubbard_orbitals() * Ncf, this->number_of_hubbard_orbitals() * Ncf, HowManyBands,
+        linalg<device_t::CPU>::gemm(2, 0, this->number_of_hubbard_orbitals() * Ncf, this->number_of_hubbard_orbitals() * Ncf, HowManyBands,
                           double_complex(kp->weight() * scal, 0.0), dynamic_cast<matrix<double_complex>&>(dm), dm1,
                           linalg_const<double_complex>::zero(), Op);
 

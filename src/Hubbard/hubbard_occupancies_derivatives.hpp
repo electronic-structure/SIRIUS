@@ -161,7 +161,7 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                 for (int chunk__ = 0; chunk__ < kp.beta_projectors().num_chunks(); chunk__++) {
                     for (int i = 0; i < kp.beta_projectors().chunk(chunk__).num_atoms_; i++) {
                         // need to find the right atom in the chunks.
-                        if (kp.beta_projectors().chunk(chunk__).desc_(beta_desc_idx::ia, i) == atom_id) {
+                        if (kp.beta_projectors().chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i) == atom_id) {
                             kp.beta_projectors().generate(chunk__);
                             bp_grad_.generate(chunk__, dir);
 
@@ -203,7 +203,7 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                     sizeof(double_complex) * dn_tmp.size());
     } // atom_id
 
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == device_t::GPU) {
         phi.deallocate(spin_range(0), memory_t::device);
         kp.spinor_wave_functions().deallocate(spin_range(ctx_.num_spins()), memory_t::device);
     }
@@ -510,49 +510,49 @@ void Hubbard::compute_occupancies(K_point&                    kp,
     switch (ctx_.processing_unit()) {
         case device_t::CPU: {
             dm.zero();
-            linalg<CPU>::gemm(2, 0,
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              HowManyBands,
-                              double_complex(kp.weight(), 0.0),
-                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                              linalg_const<double_complex>::zero(),
-                              dm);
+            linalg<device_t::CPU>::gemm(2, 0,
+                                        this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                        this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                        HowManyBands,
+                                        double_complex(kp.weight(), 0.0),
+                                        dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                                        dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                                        linalg_const<double_complex>::zero(),
+                                        dm);
 
-            linalg<CPU>::gemm(2, 0,
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              HowManyBands,
-                              double_complex(kp.weight(), 0.0),
-                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                              linalg_const<double_complex>::one(),
-                              dm);
+            linalg<device_t::CPU>::gemm(2, 0,
+                                        this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                        this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                        HowManyBands,
+                                        double_complex(kp.weight(), 0.0),
+                                        dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                                        dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                                        linalg_const<double_complex>::one(),
+                                        dm);
             break;
         }
         case device_t::GPU: {
 #if defined(__GPU)
             dm.zero(memory_t::device);
-            linalg<GPU>::gemm(2, 0,
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              HowManyBands,
-                              &weight,
-                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                              &linalg_const<double_complex>::zero(),
-                              dm);
+            linalg<device_t::GPU>::gemm(2, 0,
+                                        this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                        this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                        HowManyBands,
+                                        &weight,
+                                        dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                                        dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                                        &linalg_const<double_complex>::zero(),
+                                        dm);
 
-            linalg<GPU>::gemm(2, 0,
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              HowManyBands,
-                              &weight,
-                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                              &linalg_const<double_complex>::one(),
-                              dm);
+            linalg<device_t::GPU>::gemm(2, 0,
+                                        this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                        this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                        HowManyBands,
+                                        &weight,
+                                        dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                                        dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                                        &linalg_const<double_complex>::one(),
+                                        dm);
 
             dm.copy_to(memory_t::host);
 #endif

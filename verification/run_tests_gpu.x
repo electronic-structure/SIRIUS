@@ -20,7 +20,7 @@ for f in ./*; do
         echo "running '${f}'"
         (
             cd ${f}
-            ${SRUN_CMD} ${exe} --test_against=output_ref.json --processing_unit=gpu
+            ${SRUN_CMD} ${exe} --test_against=output_ref.json --control.processing_unit=gpu
             err=$?
 
             if [ ${err} == 0 ]; then
