@@ -169,7 +169,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
         if (ctx_.processing_unit() == device_t::GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                kp__->hubbard_wave_functions().deallocate(spin_idx(ispn), memory_t::device);
+                kp__->hubbard_wave_functions().deallocate(spin_range(ispn), memory_t::device);
             }
         }
     }

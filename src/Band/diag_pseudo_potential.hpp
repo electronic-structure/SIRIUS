@@ -423,13 +423,15 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
         /* apply Hamiltonian and S operators to the basis functions */
         H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, 0, num_bands, phi, &hphi, &sphi);
+        
+        orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, 0, num_bands, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
         set_subspace_mtrx(0, num_bands, phi, hphi, hmlt, &hmlt_old);
         /* setup overlap matrix */
-        set_subspace_mtrx(0, num_bands, phi, sphi, ovlp, &ovlp_old);
+       // set_subspace_mtrx(0, num_bands, phi, sphi, ovlp, &ovlp_old);
 
         if (ctx_.control().verification_ >= 1) {
             double max_diff = check_hermitian(hmlt, num_bands);
@@ -438,25 +440,25 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 s << "H matrix is not hermitian, max_err = " << max_diff;
                 WARNING(s);
             }
-            max_diff = check_hermitian(ovlp, num_bands);
-            if (max_diff > 1e-12) {
-                std::stringstream s;
-                s << "S matrix is not hermitian, max_err = " << max_diff;
-                WARNING(s);
-            }
+            //max_diff = check_hermitian(ovlp, num_bands);
+            //if (max_diff > 1e-12) {
+            //    std::stringstream s;
+            //    s << "S matrix is not hermitian, max_err = " << max_diff;
+            //    WARNING(s);
+            //}
 
         }
-        if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
-            hmlt.serialize("H matrix", num_bands);
-            ovlp.serialize("S matrix", num_bands);
-        }
+        //if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
+        //    hmlt.serialize("H matrix", num_bands);
+        //    ovlp.serialize("S matrix", num_bands);
+        //}
 
         /* current subspace size */
         int N = num_bands;
 
         utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (gen_solver.solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
+        if (std_solver.solve(N, num_bands, hmlt, eval.data(), evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);

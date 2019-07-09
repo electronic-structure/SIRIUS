@@ -22,10 +22,14 @@
  *  \brief Find the lattice symmetries
  */
 
+#include "geometry3d.hpp"
+
 #ifndef __FIND_LAT_SYM_HPP__
 #define __FIND_LAT_SYM_HPP__
 
 namespace sirius {
+
+using namespace geometry3d;
 
 inline std::vector<matrix3d<int>> find_lat_sym(matrix3d<double> lat_vec__, double tol__)
 {

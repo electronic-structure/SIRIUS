@@ -36,7 +36,7 @@
 #include "splindex.hpp"
 #include "utils/utils.hpp"
 #include "utils/profiler.hpp"
-#include "Unit_cell/unit_cell_symmetry.hpp"
+//#include "Unit_cell/unit_cell_symmetry.hpp"
 #include "Symmetry/find_lat_sym.hpp"
 
 using namespace geometry3d;

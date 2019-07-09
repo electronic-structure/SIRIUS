@@ -822,7 +822,7 @@ PYBIND11_MODULE(py_sirius, m)
                      }
                  }
                  for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-                     wf.copy_to(spin_idx(ispn), memory_t::device, 0, wf.num_wf());
+                     wf.copy_to(spin_range(ispn), memory_t::device, 0, wf.num_wf());
                  }
              })
         .def("copy_to_cpu",
@@ -835,7 +835,7 @@ PYBIND11_MODULE(py_sirius, m)
                  if (!is_on_device) {
                  } else {
                      for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-                         wf.copy_to(spin_idx(ispn), memory_t::host, 0, wf.num_wf());
+                         wf.copy_to(spin_range(ispn), memory_t::host, 0, wf.num_wf());
                      }
                  }
              })

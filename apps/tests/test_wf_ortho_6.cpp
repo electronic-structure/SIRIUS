@@ -42,9 +42,9 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
     if (is_device_memory(mem__)) {
         ovlp.allocate(mem__);
         for (int ispn = 0; ispn < nsp; ispn++) {
-            phi.allocate(spin_idx(ispn), mem__);
-            phi.copy_to(spin_idx(ispn), mem__, 0, 2 * num_bands__);
-            tmp.allocate(spin_idx(ispn), mem__);
+            phi.allocate(spin_range(ispn), mem__);
+            phi.copy_to(spin_range(ispn), mem__, 0, 2 * num_bands__);
+            tmp.allocate(spin_range(ispn), mem__);
         }
     }
 
