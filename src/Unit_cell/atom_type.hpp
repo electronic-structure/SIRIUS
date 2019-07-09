@@ -282,7 +282,7 @@ class Atom_type
     inline void set_radial_grid(int num_points__, double const* points__)
     {
         radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
-        if (parameters_.processing_unit() == GPU) {
+        if (parameters_.processing_unit() == device_t::GPU) {
             radial_grid_.copy_to_device();
         }
     }

@@ -527,12 +527,12 @@ class Density : public Field4D
 
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
-                generate_rho_aug<CPU>(rho_aug);
+                generate_rho_aug<device_t::CPU>(rho_aug);
                 break;
             }
             case device_t::GPU: {
                 rho_aug.allocate(memory_t::device);
-                generate_rho_aug<GPU>(rho_aug);
+                generate_rho_aug<device_t::GPU>(rho_aug);
                 break;
             }
         }

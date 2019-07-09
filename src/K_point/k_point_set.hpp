@@ -52,7 +52,7 @@ class K_point_set
     std::vector<std::unique_ptr<K_point>> kpoints_;
 
     /// Split index of k-points.
-    splindex<chunk> spl_num_kpoints_;
+    splindex<splindex_t::chunk> spl_num_kpoints_;
 
     double energy_fermi_{0};
 
@@ -155,10 +155,10 @@ class K_point_set
         PROFILE("sirius::K_point_set::initialize");
         /* distribute k-points along the 1-st dimension of the MPI grid */
         if (counts.empty()) {
-            splindex<block> spl_tmp(num_kpoints(), comm().size(), comm().rank());
-            spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm().size(), comm().rank(), spl_tmp.counts());
+            splindex<splindex_t::block> spl_tmp(num_kpoints(), comm().size(), comm().rank());
+            spl_num_kpoints_ = splindex<splindex_t::chunk>(num_kpoints(), comm().size(), comm().rank(), spl_tmp.counts());
         } else {
-            spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm().size(), comm().rank(), counts);
+            spl_num_kpoints_ = splindex<splindex_t::chunk>(num_kpoints(), comm().size(), comm().rank(), counts);
         }
 
         for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
@@ -271,7 +271,7 @@ class K_point_set
         return static_cast<int>(kpoints_.size());
     }
 
-    inline splindex<chunk> const& spl_num_kpoints() const
+    inline splindex<splindex_t::chunk> const& spl_num_kpoints() const
     {
         return spl_num_kpoints_;
     }

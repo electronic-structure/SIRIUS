@@ -630,7 +630,7 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
             #pragma omp parallel
             {
                 /* split local size between threads */
-                splindex<block> spl_np_t(num_points, omp_get_num_threads(), omp_get_thread_num());
+                splindex<splindex_t::block> spl_np_t(num_points, omp_get_num_threads(), omp_get_thread_num());
 
                 std::vector<double> exc_t(spl_np_t.local_size());
 
@@ -918,7 +918,7 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
 #pragma omp parallel
             {
                 /* split local size between threads */
-                splindex<block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
+                splindex<splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
 
                 std::vector<double> exc_t(spl_t.local_size());
 

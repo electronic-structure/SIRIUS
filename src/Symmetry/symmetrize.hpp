@@ -63,7 +63,7 @@ namespace sirius {
     which follows by using that \f$f_{\mathrm{sym}}({\bf \hat P} {\bf x}) = f_{\mathrm{sym}}({\bf x})\f$:
     \f{eqnarray*}{
       f_{\mathrm{sym}}(\hat{P}{\bf x}) &=& \sum_G e^{i G ({\bf R}{\bf x} + {\bf t} )} \hat{f}_{\mathrm{sym}}({\bf G}) \ \
-                                       &=& \sum_G e^{i {\bf G} {\bf x}} e^{i {\bf R}^{-T} {\bf G} {\bf t}} 
+                                       &=& \sum_G e^{i {\bf G} {\bf x}} e^{i {\bf R}^{-T} {\bf G} {\bf t}}
                                        \hat{f}_{\mathrm{sym}}({\bf R}^{-T} {\bf G}) \,.
     \f}
  */
@@ -254,7 +254,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Gvec_she
 
     double norm = 1 / double(sym__.num_mag_sym());
 
-    auto phase_factor = [&](int isym, const vector3d<int>& G) 
+    auto phase_factor = [&](int isym, const vector3d<int>& G)
     {
         return sym_phase_factors__(0, G[0], isym) *
                sym_phase_factors__(0, G[1], isym) *
@@ -349,7 +349,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator co
         TERMINATE("wrong number of atoms");
     }
 
-    splindex<block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
+    splindex<splindex_t::block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
 
     int lmax = utils::lmax(lmmax);
 
@@ -371,9 +371,9 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator co
             int ja = sym__.sym_table(ia, isym);
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
-                linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at(memory_t::host), rotm.ld(),
-                                  frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), 1.0,
-                                  fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
+                linalg<device_t::CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at(memory_t::host), rotm.ld(),
+                                            frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), 1.0,
+                                            fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
             }
         }
     }
@@ -391,7 +391,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
     int lmmax = (int)vz_rlm__.size(0);
     int nrmax = (int)vz_rlm__.size(1);
 
-    splindex<block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
+    splindex<splindex_t::block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
 
     if (sym__.num_atoms() != (int)vz_rlm__.size(2)) {
         TERMINATE("wrong number of atoms");
@@ -418,7 +418,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
             int ja = sym__.sym_table(ia, isym);
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
-                linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha * S(2, 2), rotm.at(memory_t::host), rotm.ld(),
+                linalg<device_t::CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha * S(2, 2), rotm.at(memory_t::host), rotm.ld(),
                                   vz_rlm__.at(memory_t::host, 0, 0, ia), vz_rlm__.ld(), 1.0,
                                   fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
             }
@@ -440,7 +440,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
     int lmmax = (int)vx_rlm__.size(0);
     int nrmax = (int)vx_rlm__.size(1);
 
-    splindex<block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
+    splindex<splindex_t::block> spl_atoms(sym__.num_atoms(), comm__.size(), comm__.rank());
 
     int lmax = utils::lmax(lmmax);
 
@@ -468,9 +468,9 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
                 for (int k: {0, 1, 2}) {
-                    linalg<CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at(memory_t::host), rotm.ld(),
-                                      vrlm[k]->at(memory_t::host, 0, 0, ia), vrlm[k]->ld(), 0.0,
-                                      vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
+                    linalg<device_t::CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at(memory_t::host), rotm.ld(),
+                                                vrlm[k]->at(memory_t::host, 0, 0, ia), vrlm[k]->ld(), 0.0,
+                                                vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
                 }
                 #pragma omp parallel
                 for (int k: {0, 1, 2}) {

@@ -737,11 +737,11 @@ class Stress {
 
             memory_pool* mp{nullptr};
             switch (ctx_.processing_unit()) {
-                case CPU: {
+                case device_t::CPU: {
                     mp = &ctx_.mem_pool(memory_t::host);
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
                     mp = &ctx_.mem_pool(memory_t::host_pinned);
                     break;
                 }
@@ -777,7 +777,7 @@ class Stress {
                         t2.stop();
 
                         utils::timer t1("sirius::Stress|us|gemm");
-                        linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                        linalg<device_t::CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                                           q_deriv.q_pw(), v_tmp, tmp);
                         t1.stop();
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {

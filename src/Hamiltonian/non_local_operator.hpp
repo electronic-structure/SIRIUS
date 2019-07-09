@@ -155,9 +155,9 @@ inline void Non_local_operator::apply<double_complex>(int chunk__, int ispn_bloc
         #pragma omp for
         for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = beta__.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
-            int offs = beta__.chunk(chunk__).desc_(beta_desc_idx::offset, i);
-            int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, i);
+            int nbf  = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i);
+            int offs = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::offset), i);
+            int ia   = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i);
 
             if (nbf) {
                 linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
@@ -211,9 +211,9 @@ inline void Non_local_operator::apply<double_complex>(int chunk__, int ia__, int
     auto& beta_gk     = beta__.pw_coeffs_a();
     int num_gkvec_loc = beta__.num_gkvec_loc();
 
-    int nbf  = beta__.chunk(chunk__).desc_(beta_desc_idx::nbf, ia__);
-    int offs = beta__.chunk(chunk__).desc_(beta_desc_idx::offset, ia__);
-    int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, ia__);
+    int nbf  = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::nbf), ia__);
+    int offs = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::offset), ia__);
+    int ia   = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), ia__);
 
     if (nbf == 0) {
         return;
@@ -301,9 +301,9 @@ inline void Non_local_operator::apply<double>(int chunk__, int ispn_block__, Wav
     #pragma omp parallel for
     for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
-        int nbf  = beta__.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
-        int offs = beta__.chunk(chunk__).desc_(beta_desc_idx::offset, i);
-        int ia   = beta__.chunk(chunk__).desc_(beta_desc_idx::ia, i);
+        int nbf  = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i);
+        int offs = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::offset), i);
+        int ia   = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i);
 
         if (nbf == 0) {
             continue;

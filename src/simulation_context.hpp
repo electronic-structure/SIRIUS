@@ -690,11 +690,11 @@ class Simulation_context : public Simulation_parameters
             augmentation_op_.clear();
             memory_pool* mp{nullptr};
             switch (processing_unit()) {
-                case CPU: {
+                case device_t::CPU: {
                     mp = &mem_pool(memory_t::host);
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
                     mp = &mem_pool(memory_t::host_pinned);
                     break;
                 }
@@ -1063,15 +1063,15 @@ class Simulation_context : public Simulation_parameters
             utils::timer t2("sirius::Simulation_context::sum_fg_fl_yg|mul");
             switch (processing_unit()) {
                 case device_t::CPU: {
-                    linalg<CPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::host), zm.ld(), phase_factors.at(memory_t::host),
+                    linalg<device_t::CPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::host), zm.ld(), phase_factors.at(memory_t::host),
                                       phase_factors.ld(), tmp.at(memory_t::host), tmp.ld());
                     break;
                 }
                 case device_t::GPU: {
 #if defined(__GPU)
                     zm.copy_to(memory_t::device);
-                    linalg<GPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::device), zm.ld(), phase_factors.at(memory_t::device),
-                                      phase_factors.ld(), tmp.at(memory_t::device), tmp.ld());
+                    linalg<device_t::GPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::device), zm.ld(), phase_factors.at(memory_t::device),
+                                      		phase_factors.ld(), tmp.at(memory_t::device), tmp.ld());
                     tmp.copy_to(memory_t::host);
 #endif
                     break;
@@ -1258,7 +1258,7 @@ class Simulation_context : public Simulation_parameters
         return blas_linalg_t_;
     }
 
-    inline splindex<block> split_gvec_local() const
+    inline splindex<splindex_t::block> split_gvec_local() const
     {
         /* local number of G-vectors for this MPI rank */
         int ngv_loc = gvec().count();
@@ -1275,7 +1275,7 @@ class Simulation_context : public Simulation_parameters
         /* number of blocks of G-vectors */
         int nb = ngv_loc / ngv_b;
         /* split local number of G-vectors between blocks */
-        return splindex<block>(ngv_loc, nb, 0);
+        return splindex<splindex_t::block>(ngv_loc, nb, 0);
     }
 
     inline void fft_grid_size(std::array<int, 3> fft_grid_size__)

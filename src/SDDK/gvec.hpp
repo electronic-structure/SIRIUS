@@ -355,7 +355,7 @@ class Gvec
 
     /// Find a list of G-vector shells.
     /** G-vectors belonging to the same shell have the same length and transform to each other
-        under a lattice symmetry operation 
+        under a lattice symmetry operation
      */
     inline void find_gvec_shells()
     {
@@ -666,7 +666,7 @@ class Gvec
     }
 
     /// Set the new reciprocal lattice vectors.
-    /** For the varibale-cell relaxation runs we need an option to preserve the number of G- and G+k vectors. 
+    /** For the varibale-cell relaxation runs we need an option to preserve the number of G- and G+k vectors.
      *  Here we can set the new lattice vectors and update the relevant members of the Gvec class. */
     inline matrix3d<double> const& lattice_vectors(matrix3d<double> lattice_vectors__)
     {
@@ -999,7 +999,7 @@ class Gvec
 //        serialize(s, gv__.zcol_distr_);
 //        serialize(s, gv__.gvec_base_mapping_);
 //    }
-//    
+//
 //    s.send_recv(comm__, source__, dest__);
 //
 //    if (comm__.rank() == dest__) {
@@ -1274,7 +1274,7 @@ class Gvec_shells
     block_data_descriptor a2a_recv;
 
     /// Split global index of G-shells between MPI ranks.
-    splindex<block_cyclic> spl_num_gsh;
+    splindex<splindex_t::block_cyclic> spl_num_gsh;
 
     /// List of G-vectors in the remapped storage.
     mdarray<int, 2> gvec_remapped_;
@@ -1302,7 +1302,7 @@ class Gvec_shells
         a2a_recv = block_data_descriptor(comm_.size());
 
         /* split G-vector shells between ranks in cyclic order */
-        spl_num_gsh = splindex<block_cyclic>(gvec_.num_shells(), comm_.size(), comm_.rank(), 1);
+        spl_num_gsh = splindex<splindex_t::block_cyclic>(gvec_.num_shells(), comm_.size(), comm_.rank(), 1);
 
         /* each rank sends a fraction of its local G-vectors to other ranks */
         /* count this fraction */
