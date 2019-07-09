@@ -13,19 +13,18 @@ endif()
 if(USE_CUDA)
   file(GLOB_RECURSE CUFILES_SDDK "SDDK/*.cu")
   file(GLOB_RECURSE CUFILES_KERNELS "Kernels/*.cu")
-  set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_KERNELS}")
+  set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
 
 
 if(CREATE_FORTRAN_BININGS OR USE_CUDA)
-  add_library(sirius STATIC "${_FSOURCES};${_CUSOURCES}")
+  add_library(sirius STATIC "${_CUSOURCES};${_FSOURCES}")
+  set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
   INSTALL (TARGETS sirius ARCHIVE DESTINATION
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     )
-
-  set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
   target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX)
 
 endif()
