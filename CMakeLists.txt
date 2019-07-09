@@ -262,10 +262,6 @@ MACRO(SIRIUS_SETUP_TARGET _target)
     target_link_libraries(${_target} PRIVATE "${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
   endif()
 
-  if(USE_CUDA)
-    target_link_libraries(${_target} PRIVATE "${sirius_cu_location}")
-  endif()
-
   if(USE_ROCM)
     target_link_libraries(${_target} PRIVATE sirius_rocm sirius_rocm_interface hipblas_port ${ROCM_LIBRARIES})
   endif()
