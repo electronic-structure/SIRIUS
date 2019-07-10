@@ -43,7 +43,7 @@ using namespace geometry3d;
 
 namespace sddk {
 
-FFT3D_grid get_min_fft_grid(double cutoff__, matrix3d<double> M__)
+inline FFT3D_grid get_min_fft_grid(double cutoff__, matrix3d<double> M__)
 {
     return FFT3D_grid(find_translations(cutoff__, M__) + vector3d<int>({2, 2, 2}));
 }

@@ -29,9 +29,10 @@
 
 // gradient of beta projectors. Needed for the computations of the forces
 
-void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
-                                              Q_operator& q_op, // overlap operator
-                                              mdarray<double_complex, 6>& dn__)  // Atom we shift
+inline void
+Hubbard::compute_occupancies_derivatives(K_point& kp,
+                                         Q_operator& q_op, // overlap operator
+                                         mdarray<double_complex, 6>& dn__)  // Atom we shift
 {
     dn__.zero();
     // check if we have a norm conserving pseudo potential only. OOnly
@@ -212,9 +213,10 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
     bp_grad_.dismiss();
 }
 
-void Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__,
-                                                     Q_operator& q_op__, // Compensnation operator or overlap operator
-                                                     mdarray<double_complex, 5>& dn__)  // derivative of the occupation number compared to displacement of atom aton_id
+inline void
+Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__,
+                                                Q_operator& q_op__, // Compensnation operator or overlap operator
+                                                mdarray<double_complex, 5>& dn__)  // derivative of the occupation number compared to displacement of atom aton_id
 {
     auto& phi = kp__.hubbard_wave_functions();
 
@@ -390,11 +392,12 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
     bp_strain_deriv.dismiss();
 }
 
-void Hubbard::compute_gradient_strain_wavefunctions(K_point&                  kp__,
-                                                    Wave_functions&           dphi,
-                                                    const mdarray<double, 2>& rlm_g,
-                                                    const mdarray<double, 3>& rlm_dg,
-                                                    const int nu, const int mu)
+inline void
+Hubbard::compute_gradient_strain_wavefunctions(K_point&                  kp__,
+                                               Wave_functions&           dphi,
+                                               const mdarray<double, 2>& rlm_g,
+                                               const mdarray<double, 3>& rlm_dg,
+                                               const int nu, const int mu)
 {
     #pragma omp parallel for schedule(static)
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
@@ -453,13 +456,14 @@ void Hubbard::compute_gradient_strain_wavefunctions(K_point&                  kp
     }
 }
 
-void Hubbard::compute_occupancies(K_point&                    kp,
-                                  dmatrix<double_complex>&    phi_s_psi,
-                                  dmatrix<double_complex>&    dphi_s_psi,
-                                  Wave_functions&             dphi,
-                                  mdarray<double_complex, 5>& dn__,
-                                  matrix<double_complex>&     dm,
-                                  const int                   index)
+inline void
+Hubbard::compute_occupancies(K_point&                    kp,
+                             dmatrix<double_complex>&    phi_s_psi,
+                             dmatrix<double_complex>&    dphi_s_psi,
+                             Wave_functions&             dphi,
+                             mdarray<double_complex, 5>& dn__,
+                             matrix<double_complex>&     dm,
+                             const int                   index)
 {
     #if defined(__GPU)
     const double_complex weight = double_complex(kp.weight(), 0.0);
@@ -581,12 +585,13 @@ void Hubbard::compute_occupancies(K_point&                    kp,
 // possible. Problem right now is that the class hamiltonian is not
 // included in hubbard but the other way around.
 
-void Hubbard::apply_S_operator(K_point&                    kp,
-                               Q_operator& q_op,
-                               Wave_functions&             phi,
-                               Wave_functions&             ophi,
-                               const int                   idx0,
-                               const int                   num_phi)
+inline void
+Hubbard::apply_S_operator(K_point&                    kp,
+                          Q_operator& q_op,
+                          Wave_functions&             phi,
+                          Wave_functions&             ophi,
+                          const int                   idx0,
+                          const int                   num_phi)
 {
     ophi.copy_from(ctx_.processing_unit(), num_phi, phi, 0, idx0, 0, idx0);
 

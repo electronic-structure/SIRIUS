@@ -27,6 +27,7 @@
 
 #include "typedefs.hpp"
 #include "input.hpp"
+#include "utils/cmd_args.hpp"
 
 namespace sirius {
 

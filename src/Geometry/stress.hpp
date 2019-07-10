@@ -27,6 +27,9 @@
 
 #include "Beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "non_local_functor.hpp"
+#include "Density/density.hpp"
+#include "Potential/potential.hpp"
+#include "Hamiltonian/hamiltonian.hpp"
 
 namespace sirius {
 

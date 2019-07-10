@@ -24,7 +24,9 @@
 
 #ifndef __BETA_PROJECTORS_BASE_HPP__
 #define __BETA_PROJECTORS_BASE_HPP__
+
 #include "utils/env.hpp"
+#include "simulation_context.hpp"
 
 namespace sirius {
 

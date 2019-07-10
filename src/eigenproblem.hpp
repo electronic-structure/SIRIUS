@@ -1841,7 +1841,7 @@ class Eigensolver_cuda: public Eigensolver
 //    }
 //};
 
-std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_type__)
+inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_type__)
 {
     Eigensolver* ptr;
     switch (ev_solver_type__) {

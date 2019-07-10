@@ -22,41 +22,6 @@
  *  \brief Contains implementation of various sirius::Hamiltonian apply() functions.
  */
 
-template <typename T>
-inline void apply_non_local_d_q(spin_range spins__, bool nc__, bool so__, int N__, int n__, Beta_projectors& beta__,
-                                Wave_functions& phi__, D_operator* d_op__, Wave_functions* hphi__,
-                                Q_operator* q_op__, Wave_functions* sphi__)
-
-{
-
-    for (int i = 0; i < beta__.num_chunks(); i++) {
-        /* generate beta-projectors for a block of atoms */
-        beta__.generate(i);
-
-        for (int ispn: spins__) {
-            auto beta_phi = beta__.inner<T>(i, phi__, ispn, N__, n__);
-
-            if (hphi__ && d_op__) {
-                /* apply diagonal spin blocks */
-                d_op__->apply(i, ispn, *hphi__, N__, n__, beta__, beta_phi);
-                if (nc__) {
-                    /* apply non-diagonal spin blocks */
-                    /* xor 3 operator will map 0 to 3 and 1 to 2 */
-                    d_op__->apply(i, ispn ^ 3, *hphi__, N__, n__, beta__, beta_phi);
-                }
-            }
-
-            if (sphi__ && q_op__) {
-                /* apply Q operator (diagonal in spin) */
-                q_op__->apply(i, ispn, *sphi__, N__, n__, beta__, beta_phi);
-                if (so__) {
-                    q_op__->apply(i, ispn ^ 3, *sphi__, N__, n__, beta__, beta_phi);
-                }
-            }
-        }
-    }
-}
-
 /** \param [in]  kp   Pointer to k-point.
  *  \param [in]  ispn Index of spin.
  *  \param [in]  N    Starting index of wave-functions.
@@ -123,12 +88,8 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
     /* set intial sphi */
     if (sphi__ != nullptr) {
-        if (ispn__ == 2) {
-            for (int ispn = 0; (ispn < nsc); ispn++) {
-                sphi__->copy_from(phi__, n__, ispn, N__, ispn, N__);
-            }
-        } else {
-            sphi__->copy_from(phi__, n__, ispn__, N__, ispn__, N__);
+        for (auto ispn: spin_range(ispn__)) {
+            sphi__->copy_from(phi__, n__, ispn, N__, ispn, N__);
         }
     }
 
@@ -137,8 +98,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         return;
     }
 
-    apply_non_local_d_q<T>(spin_range(ispn__), ctx_.num_mag_dims() == 3, ctx_.so_correction(), N__, n__,
-                           kp__->beta_projectors(), phi__, &D(), hphi__, &Q(), sphi__);
+    apply_non_local_d_q<T>(spin_range(ispn__), N__, n__, kp__->beta_projectors(), phi__, &D(), hphi__, &Q(), sphi__);
 
     //for (int i = 0; i < kp__->beta_projectors().num_chunks(); i++) {
     //    /* generate beta-projectors for a block of atoms */
@@ -1006,8 +966,9 @@ inline void Hamiltonian::apply_magnetic_field(K_point*                     kp__,
 //==     }
 //== }
 
-void Hamiltonian::apply_so_correction(K_point* kp__, Wave_functions& fv_states__,
-                                      std::vector<Wave_functions>& hpsi__) const
+inline void
+Hamiltonian::apply_so_correction(K_point* kp__, Wave_functions& fv_states__,
+                                 std::vector<Wave_functions>& hpsi__) const
 {
     PROFILE("sirius::Hamiltonian::apply_so_correction");
 

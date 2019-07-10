@@ -53,8 +53,8 @@ inline std::vector<int> get_spins(int ispn__)
 }
 
 /// Helper class to wrap spin index range.
-/** Depending on the collinear or non-collinear case, the spin index of the wave-functions is either a single number
-    0 or 1 or a range [0,1] */
+/** Depending on the collinear or non-collinear case, the spin index range of the wave-functions is either
+ *  [0, 0] or [1, 1] (trivial cases of single spin channel) or [0, 1] (spinor wave-functions). */
 class spin_range
 {
   private:

@@ -25,6 +25,9 @@
 #ifndef __MATCHING_COEFFICIENTS_HPP__
 #define __MATCHING_COEFFICIENTS_HPP__
 
+#include <gsl/gsl_sf_bessel.h>
+#include "Unit_cell/unit_cell.hpp"
+
 namespace sirius {
 
 /** The following matching conditions must be fulfilled:
