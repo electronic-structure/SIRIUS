@@ -1657,6 +1657,7 @@ inline void Simulation_context::print_info() const
     printf("number of core electrons           : %f\n", unit_cell().num_core_electrons());
     printf("number of valence electrons        : %f\n", unit_cell().num_valence_electrons());
     printf("total number of electrons          : %f\n", unit_cell().num_electrons());
+    printf("extra charge                       : %f\n", parameters_input().extra_charge_);
     printf("total number of aw basis functions : %i\n", unit_cell().mt_aw_basis_size());
     printf("total number of lo basis functions : %i\n", unit_cell().mt_lo_basis_size());
     printf("number of first-variational states : %i\n", num_fv_states());

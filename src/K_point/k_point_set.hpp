@@ -444,9 +444,12 @@ inline void K_point_set::find_band_occupancies()
 
     double ne{0};
 
+    /* target number of electrons */
+    double ne_target = unit_cell_.num_valence_electrons() - ctx_.parameters_input().extra_charge_;
+
     int step{0};
     /* calculate occupations */
-    while (std::abs(ne - unit_cell_.num_valence_electrons()) >= 1e-11) {
+    while (std::abs(ne - ne_target) >= 1e-11) {
         /* update Efermi */
         ef += de;
         /* compute total number of electrons */
@@ -454,7 +457,8 @@ inline void K_point_set::find_band_occupancies()
         for (int ik = 0; ik < num_kpoints(); ik++) {
             for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    bnd_occ(j, ispn, ik) = smearing::gaussian(kpoints_[ik]->band_energy(j, ispn) - ef, ctx_.smearing_width()) *
+                    bnd_occ(j, ispn, ik) =
+                        smearing::gaussian(kpoints_[ik]->band_energy(j, ispn) - ef, ctx_.smearing_width()) *
                                            ctx_.max_occupancy();
                     ne += bnd_occ(j, ispn, ik) * kpoints_[ik]->weight();
                 }
@@ -462,7 +466,7 @@ inline void K_point_set::find_band_occupancies()
         }
 
         sp = s;
-        s  = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;
+        s  = (ne > ne_target) ? -1 : 1;
         /* reduce de step if we change the direction, otherwise increase the step */
         de = (s != sp) ? (-de * 0.5) : (de * 1.25);
 
@@ -470,18 +474,6 @@ inline void K_point_set::find_band_occupancies()
             std::stringstream s;
             s << "search of band occupancies failed after 10000 steps";
             TERMINATE(s);
-
-            //ef = 0;
-
-            //for (int ik = 0; ik < num_kpoints(); ik++) {
-            //    ne = unit_cell_.num_valence_electrons();
-            //    for (int j = 0; j < ctx_.num_bands(); j++) {
-            //        bnd_occ(j, ik) = std::min(ne, static_cast<double>(ctx_.max_occupancy()));
-            //        ne = std::max(ne - ctx_.max_occupancy(), 0.0);
-            //    }
-            //}
-
-            //break;
         }
         step++;
     }
@@ -498,9 +490,8 @@ inline void K_point_set::find_band_occupancies()
 
     band_gap_ = 0.0;
 
-    int nve = static_cast<int>(unit_cell_.num_valence_electrons() + 1e-12);
-    if (ctx_.num_spins() == 2 ||
-        (std::abs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0)) {
+    int nve = static_cast<int>(ne_target + 1e-12);
+    if (ctx_.num_spins() == 2 || (std::abs(nve - ne_target) < 1e-12 && nve % 2 == 0)) {
         /* find band gap */
         std::vector<std::pair<double, double>> eband;
         std::pair<double, double>              eminmax;

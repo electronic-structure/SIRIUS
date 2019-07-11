@@ -506,7 +506,7 @@ void DFT_ground_state::print_info()
 
     if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
         if (ctx_.full_potential()) {
-            double total_core_leakage = 0.0;
+            double total_core_leakage{0.0};
             printf("\n");
             printf("Charges and magnetic moments\n");
             for (int i = 0; i < 80; i++) {

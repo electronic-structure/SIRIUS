@@ -523,6 +523,9 @@ struct Parameters_input
     /// Reduction of the auxiliary magnetic field at each SCF step.
     double reduce_aux_bf_{0.0};
 
+    /// Introduce extra charge to the system. Positive charge means extra holes, negative charge - extra electrons.
+    double extra_charge_{0.0};
+
     void read(json const& parser)
     {
         if (parser.count("parameters")) {
@@ -570,6 +573,7 @@ struct Parameters_input
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
             reduce_aux_bf_  = parser["parameters"].value("reduce_aux_bf", reduce_aux_bf_);
+            extra_charge_   = parser["parameters"].value("extra_charge", extra_charge_);
 
             if (parser["parameters"].count("spin_orbit")) {
                 so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);

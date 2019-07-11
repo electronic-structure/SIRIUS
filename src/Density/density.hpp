@@ -139,7 +139,7 @@ class Density : public Field4D
 
         int ia{-1};
 
-        /// ae and ps local unified densities+magnetization
+        /* AE and PS local unified densities + magnetization */
         std::vector<Spheric_function<function_domain_t::spectral, double>> ae_density_;
         std::vector<Spheric_function<function_domain_t::spectral, double>> ps_density_;
     };
