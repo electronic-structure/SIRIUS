@@ -54,7 +54,7 @@ Gvec gvec(M, Gmax, Communicator::world(), false);
 /* dimensions of the FFT box */
 std::array<int, 3> dims = {20, 20, 20};
 /* create parallel FFT driver with CPU backend */
-FFT3D fft(dims, Communicator::world(), CPU);
+FFT3D fft(dims, Communicator::world(), device_t::CPU);
 /* create G-vector partition; second communicator 
    is used in remappting data for FFT */
 Gvec_partition gvp(gvec, fft.comm(), Communicator::self());
@@ -156,7 +156,7 @@ double Gmax = 10;
    inversion symmetry */
 Gvec gvec(M, Gmax, Communicator::world(), false);
 /* create sequential FFT driver with CPU backend */
-FFT3D fft(dims, Communicator::self(), CPU);
+FFT3D fft(dims, Communicator::self(), device_t::CPU);
 /* potential on a real-space grid */
 std::vector<double> v(fft.local_size(), 1);
 /* create G-vector partition; second communicator 
@@ -177,9 +177,9 @@ wf.pw_coeffs(ispn).prime() = [](int64_t, int64_t){
 /* resulting |v*wf> */
 Wave_functions vwf(gvp, N, memory_t::host);
 /* remap wave-functions */
-wf.pw_coeffs(ispn).remap_forward(CPU, N, 0);
+wf.pw_coeffs(ispn).remap_forward(N, 0, nullptr);
 /* prepare the target wave-functions */
-vwf.pw_coeffs(ispn).set_num_extra(CPU, N, 0);
+vwf.pw_coeffs(ispn).set_num_extra(N, 0, nullptr);
 /* loop over local number of bands */
 for (int i = 0; i < wf.pw_coeffs(ispn).spl_num_col().local_size(); i++) {
     /* transform to real-space */

@@ -2568,7 +2568,6 @@ void sirius_option_get_int(char * section, char * name, int *default_value, int 
    @fortran argument out required double default_value                       table containing the default values (if vector)
    @fortran argument out required int    length                              length of the table containing the default values
    @fortran end */
-
 void sirius_option_get_double(char * section, char * name, double *default_value, int *length)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2595,7 +2594,6 @@ void sirius_option_get_double(char * section, char * name, double *default_value
    @fortran argument out required bool   default_value                       table containing the default values
    @fortran argument out required int    length                              length of the table containing the default values
    @fortran end */
-
 void sirius_option_get_logical(char * section, char * name, bool *default_value, int *length)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2620,7 +2618,6 @@ void sirius_option_get_logical(char * section, char * name, bool *default_value,
    @fortran argument in  required string  name                               name of the option
    @fortran argument out required string  default_value                      table containing the string
    @fortran end */
-
 void sirius_option_get_string(char* section, char * name, char *default_value)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2640,7 +2637,6 @@ void sirius_option_get_string(char* section, char * name, char *default_value)
    @fortran argument in  required string  name                               name of the option
    @fortran argument out required int   num_                                 number of elements
    @fortran end */
-
 void sirius_option_get_number_of_possible_values(char* section, char * name, int *num_)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2663,7 +2659,6 @@ void sirius_option_get_number_of_possible_values(char* section, char * name, int
    @fortran argument in  required int    elem_                               index of the value
    @fortran argument out required string  value_n                            string containing the value
    @fortran end */
-
 void sirius_option_string_get_value(char* section, char * name, int *elem_, char *value_n)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2687,7 +2682,6 @@ void sirius_option_string_get_value(char* section, char * name, int *elem_, char
    @fortran argument in  required int     elem_                              index of the section
    @fortran argument out  required string  section_name                      name of the section
    @fortran end */
-
 void sirius_option_get_section_name(int *elem, char *section_name)
 {
     const json &dict = sirius::get_options_dictionary();
@@ -2706,7 +2700,6 @@ void sirius_option_get_section_name(int *elem, char *section_name)
 /* @fortran begin function void sirius_option_get_number_of_sections         return the number of sections
    @fortran argument out  required int     length                            number of sections
    @fortran end */
-
 void sirius_option_get_number_of_sections(int *length)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2721,7 +2714,6 @@ void sirius_option_get_number_of_sections(int *length)
    @fortran argument in required int    default_values                       table containing the values
    @fortran argument in required int    length                               length of the table containing the values
    @fortran end */
-
 void sirius_option_set_int(void* const* handler__, char*section, char *name, int *default_values, int *length)
 {
     GET_SIM_CTX(handler__);
@@ -2756,7 +2748,6 @@ void sirius_option_set_int(void* const* handler__, char*section, char *name, int
    @fortran argument in required double default_values                       table containing the values
    @fortran argument in required int    length                               length of the table containing the values
    @fortran end */
-
 void sirius_option_set_double(void* const* handler__, char*section, char *name, double *default_values, int *length)
 {
     GET_SIM_CTX(handler__);
@@ -2788,7 +2779,6 @@ void sirius_option_set_double(void* const* handler__, char*section, char *name, 
    @fortran argument in required int   default_values                        table containing the values
    @fortran argument in required int    length                               length of the table containing the values
    @fortran end */
-
 void sirius_option_set_logical(void* const* handler__, char*section, char *name, int *default_values, int *length)
 {
     GET_SIM_CTX(handler__);
@@ -2821,7 +2811,6 @@ void sirius_option_set_logical(void* const* handler__, char*section, char *name,
    @fortran argument in  required string  name                               name of the element to pick
    @fortran argument in required string   default_values                     table containing the values
    @fortran end */
-
 void sirius_option_set_string(void* const* handler__, char * section, char * name, char *default_values)
 {
     GET_SIM_CTX(handler__);
@@ -2850,7 +2839,6 @@ void sirius_option_set_string(void* const* handler__, char * section, char * nam
    @fortran argument in  required string  name                               name of the element to pick
    @fortran argument in required string   default_values                     string to be added
    @fortran end */
-
 void sirius_option_add_string_to(void* const* handler__, char * section, char * name, char *default_values)
 {
     GET_SIM_CTX(handler__);
@@ -2883,7 +2871,6 @@ void sirius_option_add_string_to(void* const* handler__, char * section, char * 
    @fortran argument in  required void*  handler                             Simulation context handler.
    @fortran argument in  required string filename                            string containing the name of the file
    @fortran end */
-
 void sirius_dump_runtime_setup(void* const* handler__, char *filename)
 {
     GET_SIM_CTX(handler__);

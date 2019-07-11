@@ -236,11 +236,11 @@ Band::residuals_aux(K_point*             kp__,
     compute_res(pu, ispn__, num_bands__, eval, hpsi__, opsi__, res__);
 
     /* compute norm */
-    auto res_norm = res__.l2norm(pu, ispn__, num_bands__);
+    auto res_norm = res__.l2norm(pu, spin_range(ispn__), num_bands__);
 
     apply_p(pu, ispn__, num_bands__, res__, h_diag__, o_diag__, eval);
 
-    auto p_norm = res__.l2norm(pu, ispn__, num_bands__);
+    auto p_norm = res__.l2norm(pu, spin_range(ispn__), num_bands__);
     for (int i = 0; i < num_bands__; i++) {
         p_norm[i] = 1.0 / p_norm[i];
     }
@@ -252,7 +252,7 @@ Band::residuals_aux(K_point*             kp__,
     normalize_res(pu, ispn__, num_bands__, res__, p_norm);
 
     if (ctx_.control().verbosity_ >= 5) {
-        auto n_norm = res__.l2norm(pu, ispn__, num_bands__);
+        auto n_norm = res__.l2norm(pu, spin_range(ispn__), num_bands__);
         if (kp__->comm().rank() == 0) {
             for (int i = 0; i < num_bands__; i++) {
                 printf("norms of residual %3i: %18.14f %24.14f %18.14f", i, res_norm[i], p_norm[i], n_norm[i]);
@@ -479,8 +479,8 @@ void Band::check_residuals(K_point& kp__, Hamiltonian& H__) const
 
         for (int ispn = 0; ispn < num_sc; ispn++) {
             if (is_device_memory(ctx_.preferred_memory_t())) {
-                hpsi.copy_to(spin_idx(ispn), memory_t::host, 0, ctx_.num_bands());
-                spsi.copy_to(spin_idx(ispn), memory_t::host, 0, ctx_.num_bands());
+                hpsi.copy_to(spin_range(ispn), memory_t::host, 0, ctx_.num_bands());
+                spsi.copy_to(spin_range(ispn), memory_t::host, 0, ctx_.num_bands());
             }
             #pragma omp parallel for schedule(static)
             for (int j = 0; j < ctx_.num_bands(); j++) {
@@ -492,7 +492,7 @@ void Band::check_residuals(K_point& kp__, Hamiltonian& H__) const
             }
         }
         /* get the norm */
-        auto l2norm = res.l2norm(device_t::CPU, nc_mag ? 2 : 0, ctx_.num_bands());
+        auto l2norm = res.l2norm(device_t::CPU, nc_mag ? spin_range(2) : spin_range(0), ctx_.num_bands());
 
         if (kp__.comm().rank() == 0) {
             for (int j = 0; j < ctx_.num_bands(); j++) {

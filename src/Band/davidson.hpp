@@ -29,14 +29,13 @@
 
 // TODO: experiment with pointers to functions, pass poiner(mem_type__) to the cpu or gpu function
 
-/// Compute r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
+/// Compute unnormalized residuals.
+/** R_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
 static void
-compute_res(memory_t mem_type__, int ispn__, int num_bands__, mdarray<double, 1>& eval__, Wave_functions& hpsi__,
-            Wave_functions& opsi__, Wave_functions& res__)
+compute_residuals(memory_t mem_type__, spin_range spins__, int num_bands__, mdarray<double, 1>& eval__,
+                  Wave_functions& hpsi__, Wave_functions& opsi__, Wave_functions& res__)
 {
-    auto spins = get_spins(ispn__);
-
-    for (int ispn: spins) {
+    for (int ispn: spins__) {
         if (is_host_memory(mem_type__)) {
             /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
             #pragma omp parallel for
@@ -75,12 +74,10 @@ compute_res(memory_t mem_type__, int ispn__, int num_bands__, mdarray<double, 1>
 
 /// Apply preconditioner to the residuals.
 static void
-apply_p(memory_t mem_type__, int ispn__, int num_bands__, Wave_functions& res__,
-        mdarray<double, 2> const& h_diag__, mdarray<double, 2> const& o_diag__, mdarray<double, 1>& eval__)
+apply_preconditioner(memory_t mem_type__, spin_range spins__, int num_bands__, Wave_functions& res__,
+                     mdarray<double, 2> const& h_diag__, mdarray<double, 2> const& o_diag__, mdarray<double, 1>& eval__)
 {
-    auto spins = get_spins(ispn__);
-
-    for (int ispn: spins) {
+    for (int ispn: spins__) {
         if (is_host_memory(mem_type__)) {
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < num_bands__; i++) {
@@ -119,94 +116,66 @@ apply_p(memory_t mem_type__, int ispn__, int num_bands__, Wave_functions& res__,
     }
 }
 
-/// Normalize residuals.
-/** This not strictly necessary as the wave-function orthoronormalization can take care of this.
- *  However, normalization of residuals is harmless and gives a better numerical stability. */
-static void
-normalize_res(memory_t mem_type__, int ispn__, int num_bands__, Wave_functions& res__, mdarray<double, 1>& p_norm__)
+template <typename T>
+static inline int
+normalized_preconditioned_residuals(memory_t mem_type__, spin_range spins__, int num_bands__, mdarray<double,1>& eval__,
+                                    Wave_functions& hpsi__, Wave_functions& opsi__, Wave_functions& res__,
+                                    mdarray<double, 2> const& h_diag__, mdarray<double, 2> const& o_diag__,
+                                    double norm_tolerance__)
 {
-    auto spins = get_spins(ispn__);
-
-    for (int ispn: spins) {
-        if (is_host_memory(mem_type__)) {
-            #pragma omp parallel for schedule(static)
-            for (int i = 0; i < num_bands__; i++) {
-                for (int ig = 0; ig < res__.pw_coeffs(ispn).num_rows_loc(); ig++) {
-                    res__.pw_coeffs(ispn).prime(ig, i) *= p_norm__[i];
-                }
-                if (res__.has_mt()) {
-                    for (int j = 0; j < res__.mt_coeffs(ispn).num_rows_loc(); j++) {
-                        res__.mt_coeffs(ispn).prime(j, i) *= p_norm__[i];
-                    }
-                }
-            }
-        } else {
-            #ifdef __GPU
-            scale_matrix_columns_gpu(res__.pw_coeffs(ispn).num_rows_loc(), num_bands__,
-                                     (acc_complex_double_t*)res__.pw_coeffs(ispn).prime().at(memory_t::device),
-                                     p_norm__.at(memory_t::device));
-
-            if (res__.has_mt()) {
-                scale_matrix_columns_gpu(res__.mt_coeffs(ispn).num_rows_loc(),
-                                         num_bands__,
-                                         (acc_complex_double_t *)res__.mt_coeffs(ispn).prime().at(memory_t::device),
-                                         p_norm__.at(memory_t::device));
-            }
-            #endif
-        }
-    }
-}
-
-inline mdarray<double, 1>
-residuals_aux(memory_t mem_type__, int ispn__, int num_bands__, mdarray<double,1>& eval__, Wave_functions& hpsi__,
-              Wave_functions& opsi__, Wave_functions& res__, mdarray<double, 2> const&  h_diag__,
-              mdarray<double, 2> const&  o_diag__)
-{
-    PROFILE("sirius::residuals_aux");
+    PROFILE("sirius::normalized_preconditioned_residuals");
 
     assert(num_bands__ != 0);
 
     auto pu = get_device_t(mem_type__);
 
-    /* compute residuals */
-    compute_res(mem_type__, ispn__, num_bands__, eval__, hpsi__, opsi__, res__);
+    /* compute "raw" residuals */
+    compute_residuals(mem_type__, spins__, num_bands__, eval__, hpsi__, opsi__, res__);
 
-    /* compute norm */
-    auto res_norm = res__.l2norm(pu, ispn__, num_bands__);
+    /* compute norm of the "raw" residuals */
+    auto res_norm = res__.l2norm(pu, spins__, num_bands__);
 
     /* apply preconditioner */
-    apply_p(mem_type__, ispn__, num_bands__, res__, h_diag__, o_diag__, eval__);
+    apply_preconditioner(mem_type__, spins__, num_bands__, res__, h_diag__, o_diag__, eval__);
 
-    auto p_norm = res__.l2norm(pu, ispn__, num_bands__);
+    /* this not strictly necessary as the wave-function orthoronormalization can take care of this;
+       however, normalization of residuals is harmless and gives a better numerical stability */
+    res__.normalize(pu, spins__, num_bands__);
+
+    int n{0};
     for (int i = 0; i < num_bands__; i++) {
-        p_norm[i] = 1.0 / p_norm[i];
+        /* take the residual if it's norm is above the threshold */
+        if (res_norm[i] > norm_tolerance__) {
+            /* shift unconverged residuals to the beginning of array */
+            if (n != i) {
+                for (int ispn: spins__) {
+                    res__.copy_from(res__, 1, ispn, i, ispn, n);
+                }
+            }
+            n++;
+        }
     }
-    if (is_device_memory(mem_type__)) {
-        p_norm.copy_to(memory_t::device);
+
+    /* prevent numerical noise */
+    /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
+    if (std::is_same<T, double>::value && res__.comm().rank() == 0 && n != 0 && spins__() != 2) {
+        if (is_device_memory(res__.preferred_memory_t())) {
+#if defined(__GPU)
+            make_real_g0_gpu(res__.pw_coeffs(spins__()).prime().at(memory_t::device), res__.pw_coeffs(spins__()).prime().ld(), n);
+#endif
+        } else {
+            for (int i = 0; i < n; i++) {
+                res__.pw_coeffs(spins__()).prime(0, i) = res__.pw_coeffs(spins__()).prime(0, i).real();
+            }
+        }
     }
 
-    /* normalize preconditioned residuals */
-    normalize_res(mem_type__, ispn__, num_bands__, res__, p_norm);
-
-    //if (ctx_.control().verbosity_ >= 5) {
-    //    auto n_norm = res__.l2norm(pu, ispn__, num_bands__);
-    //    if (kp__->comm().rank() == 0) {
-    //        for (int i = 0; i < num_bands__; i++) {
-    //            printf("norms of residual %3i: %18.14f %24.14f %18.14f", i, res_norm[i], p_norm[i], n_norm[i]);
-    //            if (res_norm[i] > ctx_.iterative_solver_input().residual_tolerance_) {
-    //                printf(" +");
-    //            }
-    //            printf("\n");
-    //        }
-    //    }
-    //}
-
-   return res_norm;
+    return n;
 }
 
 /// Compute residuals from eigen-vectors.
 template <typename T>
-inline int
+static inline int
 residuals(memory_t mem_type__, linalg_t la_type__, int ispn__, int N__, int num_bands__, mdarray<double, 1>& eval__,
           dmatrix<T>& evec__, Wave_functions& hphi__, Wave_functions& ophi__, Wave_functions& hpsi__,
           Wave_functions& opsi__, Wave_functions& res__, mdarray<double, 2> const& h_diag__,
@@ -216,8 +185,6 @@ residuals(memory_t mem_type__, linalg_t la_type__, int ispn__, int N__, int num_
     PROFILE("sirius:residuals");
 
     assert(N__ != 0);
-
-    auto spins = get_spins(ispn__);
 
     mdarray<double, 1> res_norm;
     dmatrix<T> evec_tmp;
@@ -273,63 +240,24 @@ residuals(memory_t mem_type__, linalg_t la_type__, int ispn__, int N__, int num_
         eval_ptr = &eval__;
         n = num_bands__;
     }
+    if (!n) {
+        return 0;
+    }
 
     /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-    transform<T>(mem_type__, la_type__, ispn__, {&hphi__, &ophi__}, 0, N__, *evec_ptr, 0, 0, {&hpsi__, &opsi__},
-                 0, n);
+    transform<T>(mem_type__, la_type__, ispn__, {&hphi__, &ophi__}, 0, N__, *evec_ptr, 0, 0, {&hpsi__, &opsi__}, 0, n);
 
-    res_norm = residuals_aux(mem_type__, ispn__, n, *eval_ptr, hpsi__, opsi__, res__, h_diag__, o_diag__);
-
-    int nmax = n;
-    n = 0;
-    for (int i = 0; i < nmax; i++) {
-        /* take the residual if it's norm is above the threshold */
-        if (res_norm[i] > norm_tolerance__) {
-            /* shift unconverged residuals to the beginning of array */
-            if (n != i) {
-                for (int ispn: spins) {
-                    res__.copy_from(res__, 1, ispn, i, ispn, n);
-                }
-            }
-            n++;
-        }
-    }
-
-    /* prevent numerical noise */
-    /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
-    if (std::is_same<T, double>::value && res__.comm().rank() == 0 && n != 0) {
-        assert(ispn__ == 0 || ispn__ == 1);
-        if (is_device_memory(res__.preferred_memory_t())) {
-#if defined(__GPU)
-            make_real_g0_gpu(res__.pw_coeffs(ispn__).prime().at(memory_t::device), res__.pw_coeffs(ispn__).prime().ld(), n);
-#endif
-        } else {
-            for (int i = 0; i < n; i++) {
-                res__.pw_coeffs(ispn__).prime(0, i) = res__.pw_coeffs(ispn__).prime(0, i).real();
-            }
-        }
-    }
-
-    ///* print checksums */
-    //if (ctx_.control().print_checksum_ && n != 0) {
-    //    for (int ispn: spins) {
-    //        auto cs = res__.checksum(get_device_t(res__.preferred_memory_t()), ispn, 0, n);
-    //        if (kp__->comm().rank() == 0) {
-    //            std::stringstream s;
-    //            s << "res_" << ispn;
-    //            utils::print_checksum(s.str(), cs);
-    //        }
-    //    }
-    //}
+    n = normalized_preconditioned_residuals<T>(mem_type__, spin_range(ispn__), n, *eval_ptr, hpsi__, opsi__, res__,
+                                               h_diag__, o_diag__, norm_tolerance__);
 
     return n;
 }
 
 template <typename T>
-inline void
+inline mdarray<double, 1>
 davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int subspace_size__, int num_steps__,
          double eval_tolerance__, double eval_tolerance_empty__, double norm_tolerance__,
-         std::function<double(int, int)> occupancy__)
+         std::function<double(int, int)> occupancy__, bool keep_phi_orthogonal__ = true)
 {
     PROFILE("sirius::davidson");
 
@@ -338,9 +266,9 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
     /* number of spins */
     int const num_spins = psi__.num_sc();
 
-    bool const keep_phi_orthogonal{true};
-
     bool const estimate_eval{true};
+
+    bool const skip_initial_diag{false};
 
     //ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -444,54 +372,14 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
     int niter{0};
 
+    mdarray<double, 1> eval_out(num_bands);
+
     //utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
 
         mdarray<double, 1> eval(num_bands);
         mdarray<double, 1> eval_old(num_bands);
         eval_old = [](){return 1e10;};
-
-        /* trial basis functions */
-        for (int ispn = 0; ispn < num_sc; ispn++) {
-            phi.copy_from(psi__, num_bands, nc_mag ? ispn : ispin_step, 0, ispn, 0);
-        }
-
-        /* fisrt phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
-         * this is done before the main itertive loop */
-
-        /* apply Hamiltonian and S operators to the basis functions */
-        Hk__.apply_h_s<T>(nc_mag ? 2 : ispin_step, 0, num_bands, phi, &hphi, &sphi);
-
-        // TODO: estimate RR-values <psi|H|psi> / <psi|S|psi>
-
-        /* setup eigen-value problem
-         * N is the number of previous basis functions
-         * n is the number of new basis functions */
-        //Band(ctx).set_subspace_mtrx<T>(0, num_bands, phi, hphi, hmlt, &hmlt_old); // TODO: this is wrong
-        /* setup overlap matrix */
-        //Band(ctx).set_subspace_mtrx<T>(0, num_bands, phi, sphi, ovlp, &ovlp_old);
-
-        orthogonalize<T>(ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, 0, num_bands, ovlp, res);
-
-        Band(ctx).set_subspace_mtrx<T>(0, num_bands, phi, hphi, hmlt, &hmlt_old); // TODO: this is wrong
-
-        /* current subspace size */
-        int N = num_bands;
-
-        utils::timer t1("sirius::davidson|evp");
-        /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (std_solver.solve(N, num_bands, hmlt, eval.at(memory_t::host), evec)) {
-            std::stringstream s;
-            s << "error in diagonalziation";
-            TERMINATE(s);
-        }
-        t1.stop();
-
-        //if (ctx_.control().verbosity_ >= 4 && kp__->comm().rank() == 0) {
-            for (int i = 0; i < num_bands; i++) {
-                printf("eval[%i]=%20.16f\n", i, eval[i]);
-            }
-        //}
 
         /* check if band energy is converged */
         auto is_converged = [&](int j__, int ispn__) -> bool
@@ -507,6 +395,68 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
             }
         };
 
+        /* trial basis functions */
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            phi.copy_from(psi__, num_bands, nc_mag ? ispn : ispin_step, 0, ispn, 0);
+        }
+
+        /* fisrt phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
+         * this is done before the main itertive loop */
+
+        /* apply Hamiltonian and S operators to the basis functions */
+        Hk__.apply_h_s<T>(nc_mag ? 2 : ispin_step, 0, num_bands, phi, &hphi, &sphi);
+
+        if (keep_phi_orthogonal__) {
+            orthogonalize<T>(ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, 0, num_bands, ovlp, res);
+        }
+
+        /* setup eigen-value problem */
+        Band(ctx).set_subspace_mtrx<T>(0, num_bands, phi, hphi, hmlt, &hmlt_old);
+        if (!keep_phi_orthogonal__) {
+            /* setup overlap matrix */
+            Band(ctx).set_subspace_mtrx<T>(0, num_bands, phi, sphi, ovlp, &ovlp_old);
+        }
+
+        /* current subspace size */
+        int N = num_bands;
+
+        if (skip_initial_diag) {
+            mdarray<double, 2> hsdiag(num_bands, 2);
+            hsdiag.zero();
+            #pragma omp parallel for
+            for (int i = 0; i < num_bands; i++) {
+                for (int ig = 0; ig < gkvecp.gvec().count(); ig++) {
+                    hsdiag(i, 0) += std::real(std::conj(phi.pw_coeffs(0).prime(ig, i)) * hphi.pw_coeffs(0).prime(ig, i));
+                    hsdiag(i, 1) += std::real(std::conj(phi.pw_coeffs(0).prime(ig, i)) * sphi.pw_coeffs(0).prime(ig, i));
+                }
+            }
+            for (int i = 0; i < num_bands; i++) {
+                eval[i] = hsdiag(i, 0) / hsdiag(i, 1);
+            }
+        } else {
+            utils::timer t1("sirius::davidson|evp");
+            /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
+            if (keep_phi_orthogonal__) {
+                if (std_solver.solve(N, num_bands, hmlt, eval.at(memory_t::host), evec)) {
+                    std::stringstream s;
+                    s << "error in diagonalziation";
+                    TERMINATE(s);
+                }
+            } else  {
+                if (gen_solver.solve(N, num_bands, hmlt, ovlp, eval.at(memory_t::host), evec)) {
+                    std::stringstream s;
+                    s << "error in diagonalziation";
+                    TERMINATE(s);
+                }
+            }
+        }
+
+        ////if (ctx_.control().verbosity_ >= 4 && kp__->comm().rank() == 0) {
+        //    for (int i = 0; i < num_bands; i++) {
+        //        printf("eval[%i]=%20.16f\n", i, eval[i]);
+        //    }
+        ////}
+
         /* number of newly added basis functions */
         int n{0};
 
@@ -515,11 +465,17 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
             /* don't compute residuals on last iteration */
             if (k != num_steps__) {
-                /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-                n = residuals<T>(ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : ispin_step,
-                                 N, num_bands, eval, evec, hphi, sphi, hpsi, spsi, res, h_o_diag.first, h_o_diag.second,
-                                 estimate_eval, 1e-4, is_converged);
-
+                if (k == 1 && skip_initial_diag) {
+                    /* get residuals */
+                    n = normalized_preconditioned_residuals<T>(ctx.preferred_memory_t(), nc_mag ? spin_range(2) : spin_range(ispin_step),
+                                                           num_bands, eval, hphi, sphi, res, h_o_diag.first,
+                                                           h_o_diag.second, norm_tolerance__);
+                } else {
+                    /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
+                    n = residuals<T>(ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : ispin_step,
+                                     N, num_bands, eval, evec, hphi, sphi, hpsi, spsi, res, h_o_diag.first, h_o_diag.second,
+                                     estimate_eval, norm_tolerance__, is_converged);
+                }
             }
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -532,14 +488,14 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
                              evec, 0, 0, {&psi__}, 0, num_bands);
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-                if (n ==0 || k == num_steps__) {
+                if (n == 0 || k == num_steps__) {
                     break;
                 } else { /* otherwise, set Psi as a new trial basis */
                     hmlt_old.zero();
                     for (int i = 0; i < num_bands; i++) {
                         hmlt_old.set(i, i, eval[i]);
                     }
-                    if (!keep_phi_orthogonal) {
+                    if (!keep_phi_orthogonal__) {
                         ovlp_old.zero();
                         for (int i = 0; i < num_bands; i++) {
                             ovlp_old.set(i, i, 1);
@@ -572,7 +528,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
             /* apply Hamiltonian and S operators to the new basis functions */
             Hk__.apply_h_s<T>(nc_mag ? 2 : ispin_step, N, n, phi, &hphi, &sphi);
 
-            if (keep_phi_orthogonal) {
+            if (keep_phi_orthogonal__) {
                 orthogonalize<T>(ctx.preferred_memory_t(), ctx.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, N, n, ovlp, res);
             }
 
@@ -590,7 +546,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
             //    }
             //}
 
-            if (!keep_phi_orthogonal) {
+            if (!keep_phi_orthogonal__) {
                 /* setup overlap matrix */
                 Band(ctx).set_subspace_mtrx<T>(N, n, phi, sphi, ovlp, &ovlp_old);
 
@@ -610,7 +566,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
             eval >> eval_old;
 
             utils::timer t1("sirius::davidson|evp");
-            if (keep_phi_orthogonal) {
+            if (keep_phi_orthogonal__) {
                 /* solve standard eigen-value problem with the size N */
                 if (std_solver.solve(N, num_bands, hmlt, eval.at(memory_t::host), evec)) {
                     std::stringstream s;
@@ -638,17 +594,19 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
             //}
             //niter++;
         } /* loop over iterative steps k */
+        for (int i = 0; i < num_bands; i++) {
+            eval_out[i] = eval[i];
+        }
     } /* loop over ispin_step */
     //t3.stop();
 
     if (is_device_memory(ctx.preferred_memory_t())) {
-        for (int ispn = 0; ispn < psi__.num_sc(); ispn++) {
-            psi__.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_bands);
-            psi__.pw_coeffs(ispn).deallocate(memory_t::device);
-        }
+        psi__.copy_to(spin_range(psi__.num_sc()), memory_t::host, 0, num_bands);
+        psi__.deallocate(spin_range(psi__.num_sc()), memory_t::device);
     }
 
     //return niter;
+    return eval_out;
 }
 
 #endif

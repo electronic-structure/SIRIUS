@@ -119,9 +119,9 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
                            [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
                            ctx_.preferred_memory_t(), 1);
         if (ctx_.processing_unit() == device_t::GPU) {
-            kp.fv_eigen_vectors_slab().allocate(spin_idx(0), memory_t::device);
-            kp.fv_eigen_vectors_slab().copy_to(spin_idx(0), memory_t::device, 0, ctx_.num_fv_states());
-            ofv.allocate(spin_idx(0), memory_t::device);
+            kp.fv_eigen_vectors_slab().allocate(spin_range(0), memory_t::device);
+            kp.fv_eigen_vectors_slab().copy_to(spin_range(0), memory_t::device, 0, ctx_.num_fv_states());
+            ofv.allocate(spin_range(0), memory_t::device);
         }
 
         hamiltonian__.local_op().prepare(kp.gkvec_partition());
@@ -129,7 +129,7 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
         hamiltonian__.local_op().dismiss();
 
         if (ctx_.processing_unit() == device_t::GPU) {
-            kp.fv_eigen_vectors_slab().deallocate(spin_idx(0), memory_t::device);
+            kp.fv_eigen_vectors_slab().deallocate(spin_range(0), memory_t::device);
         }
 
         std::vector<double> norm(ctx_.num_fv_states(), 0);
@@ -492,19 +492,19 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
     }
 
     if (ctx_.processing_unit() == device_t::GPU) {
-        psi.allocate(spin_idx(0), memory_t::device);
-        psi.copy_to(spin_idx(0), memory_t::device, 0, num_bands);
+        psi.allocate(spin_range(0), memory_t::device);
+        psi.copy_to(spin_range(0), memory_t::device, 0, num_bands);
 
-        phi.allocate(spin_idx(0), memory_t::device);
-        phi.copy_to(spin_idx(0), memory_t::device, 0, nlo + ncomp);
+        phi.allocate(spin_range(0), memory_t::device);
+        phi.copy_to(spin_range(0), memory_t::device, 0, nlo + ncomp);
 
-        res.allocate(spin_idx(0), memory_t::device);
+        res.allocate(spin_range(0), memory_t::device);
 
-        hphi.allocate(spin_idx(0), memory_t::device);
-        ophi.allocate(spin_idx(0), memory_t::device);
+        hphi.allocate(spin_range(0), memory_t::device);
+        ophi.allocate(spin_range(0), memory_t::device);
 
-        hpsi.allocate(spin_idx(0), memory_t::device);
-        opsi.allocate(spin_idx(0), memory_t::device);
+        hpsi.allocate(spin_range(0), memory_t::device);
+        opsi.allocate(spin_range(0), memory_t::device);
 
         if (ctx_.blacs_grid().comm().size() == 1) {
             evec.allocate(memory_t::device);
@@ -620,7 +620,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
     if (ctx_.processing_unit() == device_t::GPU) {
         psi.pw_coeffs(0).copy_to(memory_t::host, 0, num_bands);
         psi.mt_coeffs(0).copy_to(memory_t::host, 0, num_bands);
-        psi.deallocate(spin_idx(0), memory_t::device);
+        psi.deallocate(spin_range(0), memory_t::device);
     }
     kp__.set_fv_eigen_values(&eval[0]);
 }
@@ -681,11 +681,11 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
     int bs  = ctx_.cyclic_block_size();
 
     if (ctx_.processing_unit() == device_t::GPU) {
-        kp__.fv_states().allocate(spin_idx(0), memory_t::device);
-        kp__.fv_states().copy_to(spin_idx(0), memory_t::device, 0, nfv);
+        kp__.fv_states().allocate(spin_range(0), memory_t::device);
+        kp__.fv_states().copy_to(spin_range(0), memory_t::device, 0, nfv);
         for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-            hpsi[i].allocate(spin_idx(0), memory_t::device);
-            hpsi[i].copy_to(spin_idx(0), memory_t::device, 0, nfv);
+            hpsi[i].allocate(spin_range(0), memory_t::device);
+            hpsi[i].copy_to(spin_range(0), memory_t::device, 0, nfv);
         }
     }
 
@@ -766,9 +766,9 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
     }
 
     if (ctx_.processing_unit() == device_t::GPU) {
-        kp__.fv_states().deallocate(spin_idx(0), memory_t::device);
+        kp__.fv_states().deallocate(spin_range(0), memory_t::device);
         for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-            hpsi[i].deallocate(spin_idx(0), memory_t::device);
+            hpsi[i].deallocate(spin_range(0), memory_t::device);
         }
     }
     for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {

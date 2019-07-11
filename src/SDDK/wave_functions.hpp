@@ -27,10 +27,13 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <omp.h>
 #include "linalg.hpp"
 #include "eigenproblem.hpp"
 #include "hdf5_tree.hpp"
 #include "utils/env.hpp"
+#include "gvec.hpp"
+#include "matrix_storage.hpp"
 #ifdef __GPU
 extern "C" void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, int reduced__,
                                    int mpi_rank__, double* result__);
@@ -49,22 +52,40 @@ inline std::vector<int> get_spins(int ispn__)
     return (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
 }
 
-/// Helper class to wrap spin index (integer number).
-class spin_idx
+/// Helper class to wrap spin index range.
+/** Depending on the collinear or non-collinear case, the spin index range of the wave-functions is either
+ *  [0, 0] or [1, 1] (trivial cases of single spin channel) or [0, 1] (spinor wave-functions). */
+class spin_range
 {
   private:
     int idx_;
+    std::vector<int> v_;
   public:
-    explicit spin_idx(int idx__)
+    explicit spin_range(int idx__)
         : idx_(idx__)
     {
         if (!(idx_ == 0 || idx_ == 1 || idx_ == 2)) {
-            TERMINATE("wrong spin index");
+            throw std::runtime_error("wrong spin index");
+        }
+        if (idx_ == 2) {
+            v_ = std::vector<int>({0, 1});
+        } else {
+            v_ = std::vector<int>({idx_});
         }
     }
     inline int operator()() const
     {
         return idx_;
+    }
+
+    inline std::vector<int>::const_iterator begin() const
+    {
+        return v_.begin();
+    }
+
+    inline std::vector<int>::const_iterator end() const
+    {
+        return v_.end();
     }
 };
 
@@ -212,7 +233,9 @@ class Wave_functions
         return (num_sc_ == 1) ? 0 : ispn__;
     }
 
-    inline mdarray<double, 1> sumsqr(device_t pu__, int ispn__, int n__) const
+    /// Compute the sum of squares of expansion coefficients.
+    /** The result is always returned in the host memory */
+    inline mdarray<double, 1> sumsqr(device_t pu__, spin_range spins__, int n__) const
     {
         mdarray<double, 1> s(n__, memory_t::host, "sumsqr");
         s.zero();
@@ -220,7 +243,7 @@ class Wave_functions
             s.allocate(memory_t::device).zero(memory_t::device);
         }
 
-        for (int is = s0(ispn__); is <= s1(ispn__); is++) {
+        for (int is: spins__) {
             switch (pu__) {
                 case device_t::CPU: {
                     #pragma omp parallel for
@@ -559,11 +582,11 @@ class Wave_functions
         }
     }
 
-    inline mdarray<double, 1> l2norm(device_t pu__, int ispn__, int n__) const
+    inline mdarray<double, 1> l2norm(device_t pu__, spin_range spins__, int n__) const
     {
         assert(n__ != 0);
 
-        auto norm = sumsqr(pu__, ispn__, n__);
+        auto norm = sumsqr(pu__, spins__, n__);
         for (int i = 0; i < n__; i++) {
             norm[i] = std::sqrt(norm[i]);
         }
@@ -571,9 +594,53 @@ class Wave_functions
         return norm;
     }
 
-    void allocate(spin_idx sid__, memory_t mem__)
+    /// Normalize the functions.
+    inline void normalize(device_t pu__, spin_range spins__, int n__)
     {
-        for (int s = s0(sid__()); s <= s1(sid__()); s++) {
+        auto norm = this->l2norm(pu__, spins__, n__);
+        for (int i = 0; i < n__; i++) {
+            norm[i] = 1.0 / norm[i];
+        }
+        if (pu__ == device_t::GPU) {
+            norm.copy_to(memory_t::device);
+        }
+        for (int ispn: spins__) {
+            switch (pu__) {
+                case device_t::CPU: {
+                    #pragma omp parallel for schedule(static)
+                    for (int i = 0; i < n__; i++) {
+                        for (int ig = 0; ig < this->pw_coeffs(ispn).num_rows_loc(); ig++) {
+                            this->pw_coeffs(ispn).prime(ig, i) *= norm[i];
+                        }
+                        if (this->has_mt()) {
+                            for (int j = 0; j < this->mt_coeffs(ispn).num_rows_loc(); j++) {
+                                this->mt_coeffs(ispn).prime(j, i) *= norm[i];
+                            }
+                        }
+                    }
+                    break;
+                }
+                case device_t::GPU: {
+#if defined(__GPU)
+                    scale_matrix_columns_gpu(this->pw_coeffs(ispn).num_rows_loc(), n__,
+                                             (acc_complex_double_t*)this->pw_coeffs(ispn).prime().at(memory_t::device),
+                                             norm.at(memory_t::device));
+
+                    if (this->has_mt()) {
+                        scale_matrix_columns_gpu(this->mt_coeffs(ispn).num_rows_loc(), n__,
+                                                 (acc_complex_double_t *)this->mt_coeffs(ispn).prime().at(memory_t::device),
+                                                 norm.at(memory_t::device));
+                    }
+#endif
+                }
+                break;
+            }
+        }
+    }
+
+    void allocate(spin_range spins__, memory_t mem__)
+    {
+        for (int s: spins__) {
             pw_coeffs(s).allocate(mem__);
             if (has_mt()) {
                 mt_coeffs(s).allocate(mem__);
@@ -581,9 +648,9 @@ class Wave_functions
         }
     }
 
-    void deallocate(spin_idx sid__, memory_t mem__)
+    void deallocate(spin_range spins__, memory_t mem__)
     {
-        for (int s = s0(sid__()); s <= s1(sid__()); s++) {
+        for (int s: spins__) {
             pw_coeffs(s).deallocate(mem__);
             if (has_mt()) {
                 mt_coeffs(s).deallocate(mem__);
@@ -591,9 +658,9 @@ class Wave_functions
         }
     }
 
-    void copy_to(spin_idx ispn__, memory_t mem__, int i0__, int n__)
+    void copy_to(spin_range spins__, memory_t mem__, int i0__, int n__)
     {
-        for (int s = s0(ispn__()); s <= s1(ispn__()); s++) {
+        for (int s: spins__) {
             pw_coeffs(s).copy_to(mem__, i0__, n__);
             if (has_mt()) {
                 mt_coeffs(s).copy_to(mem__, i0__, n__);

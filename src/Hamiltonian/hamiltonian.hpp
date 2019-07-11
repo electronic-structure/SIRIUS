@@ -556,7 +556,7 @@ class Hamiltonian0
 
     Hamiltonian0(Hamiltonian0&& src) = default;
 
-    Hamiltonian_k operator()(K_point& kp__);
+    inline Hamiltonian_k operator()(K_point& kp__);
 
     //Potential& potential() const
     //{
@@ -702,7 +702,7 @@ class Hamiltonian_k
     //}
 };
 
-Hamiltonian_k Hamiltonian0::operator()(K_point& kp__)
+inline Hamiltonian_k Hamiltonian0::operator()(K_point& kp__)
 {
     return Hamiltonian_k(*this, kp__);
 }

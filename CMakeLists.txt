@@ -243,10 +243,8 @@ add_custom_target(runtime_options_json_hpp DEPENDS ${runtime_options_json_path})
 include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
-  if(USE_CUDA)
-    add_dependencies(${_target} sirius)
-  endif()
 
+  add_dependencies(${_target} sirius)
   add_dependencies(${_target} generate_version_hpp)
   add_dependencies(${_target} runtime_options_json_hpp)
 
@@ -280,9 +278,7 @@ ENDMACRO()
 
 # sirius library
 add_subdirectory(src)
-if(USE_CUDA)
-  set(sirius_location $<TARGET_FILE:sirius>)
-endif()
+set(sirius_location $<TARGET_FILE:sirius>)
 
 # applications
 if(BUILD_TESTS)

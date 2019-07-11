@@ -7,7 +7,7 @@ void test1(void)
     printf("\n");
     for (int i = 0; i < 4; i++)
     {
-        splindex<block> spl(17, 4, i);
+        splindex<splindex_t::block> spl(17, 4, i);
         printf("rank : %i, local size : %i\n", i, (int)spl.local_size());
         
         printf("local index and rank for each element:\n");
@@ -27,7 +27,7 @@ void test1a(void)
     printf("\n");
     for (int i = 0; i < 4; i++)
     {
-        splindex<block_cyclic> spl(17, 4, i, 2);
+        splindex<splindex_t::block_cyclic> spl(17, 4, i, 2);
         printf("rank : %i, local size : %i\n", i, (int)spl.local_size());
         
         printf("local index and rank for each element:\n");
@@ -67,7 +67,7 @@ void test3()
     {
         for (int N = 1; N < 1130; N++)
         {
-            splindex<block> spl(N, num_ranks, 0);
+            splindex<splindex_t::block> spl(N, num_ranks, 0);
             int sz = 0;
             for (int i = 0; i < num_ranks; i++) sz += (int)spl.local_size(i);
             if (sz != N) 
@@ -113,7 +113,7 @@ void test4()
         {
             for (int N = 1; N < 1113; N++)
             {
-                splindex<block_cyclic> spl(N, num_ranks, 0, bs);
+                splindex<splindex_t::block_cyclic> spl(N, num_ranks, 0, bs);
                 int sz = 0;
                 for (int i = 0; i < num_ranks; i++) sz += (int)spl.local_size(i);
                 if (sz != N) 
@@ -150,9 +150,9 @@ void test5()
     printf("test5\n");
     for (int num_ranks = 1; num_ranks < 20; num_ranks++) {
         for (int N = 1; N < 1130; N++) {
-            splindex<block> spl_tmp(N, num_ranks, 0);
+            splindex<splindex_t::block> spl_tmp(N, num_ranks, 0);
 
-            splindex<chunk> spl(N, num_ranks, 0, spl_tmp.counts());
+            splindex<splindex_t::chunk> spl(N, num_ranks, 0, spl_tmp.counts());
 
             for (int i = 0; i < N; i++) {
                 int rank = spl.local_rank(i);

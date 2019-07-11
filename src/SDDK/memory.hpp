@@ -99,7 +99,6 @@ inline memory_t get_memory_t(std::string name__)
     return map_to_type.at(name__);
 }
 
-// TODO: change to enum class
 /// Type of the main processing unit.
 /** List the processing units on which the code can run. */
 enum class device_t
