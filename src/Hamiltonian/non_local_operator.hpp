@@ -534,7 +534,7 @@ class Q_operator : public Non_local_operator
     void initialize()
     {
         auto& uc = this->ctx_.unit_cell();
-        /* check eigen-values of Q_{xi,xi'} matrix for each atom; 
+        /* check eigen-values of Q_{xi,xi'} matrix for each atom;
            not sure if it helps, so it's commented for now */
         //if (this->ctx_.control().verification_ >= 1) {
         //    for (int ia = 0; ia < uc.num_atoms(); ia++) {

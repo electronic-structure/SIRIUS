@@ -19,19 +19,16 @@
 
 /** \file generate_atomic_wave_functions.hpp
  *
- *  \brief Generation of initial guess atomic wave-functions.
+ *  \brief Generation of initial guess atomic wave-functions and hubbard orbitals.
  */
 
-// TODO: pass a list of atomic orbitals to generate
-//       this list should contain: index of atom, index of wave-function and some flag to indicate if we average
-//       wave-functions in case of spin-orbit; this should be sufficient to generate a desired sub-set of atomic wave-functions
-
-inline void K_point::generate_atomic_wave_functions_aux(const int         num_ao__,
-                                                        Wave_functions&   phi,
-                                                        std::vector<int>& offset,
-                                                        const bool        hubbard)
+inline void K_point::generate_atomic_wave_functions(const basis_functions_index &index,
+                                                    const int atom,
+                                                    const int offset,
+                                                    const bool hubbard,
+                                                    Wave_functions&   phi)
 {
-    if (!num_ao__) {
+    if (index.size() == 0) {
         return;
     }
 
@@ -42,80 +39,96 @@ inline void K_point::generate_atomic_wave_functions_aux(const int         num_ao
     }
     lmax = std::max(lmax, unit_cell_.lmax());
 
-    for (int ispn = 0; ispn < phi.num_sc(); ispn++) {
-        phi.pw_coeffs(ispn).prime().zero();
-    }
-
-    #pragma omp parallel for schedule(static)
+    auto& atom_type   = unit_cell_.atom(atom).type();
+#pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
         /* global index of G+k vector */
         int igk = this->idxgk(igk_loc);
         /* vs = {r, theta, phi} */
         auto vs = SHT::spherical_coordinates(this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc));
+
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(utils::lmmax(lmax));
         SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
-        /* get values of radial integrals for a given G+k vector length */
-        std::vector<mdarray<double, 1>> ri_values(unit_cell_.num_atom_types());
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            ri_values[iat] = ctx_.atomic_wf_ri().values(iat, vs[0]);
-        }
+
+        /* need to find the index of the atom type get values of radial
+           integrals for a given G+k vector length */
+        mdarray<double, 1> ri_values;
+        ri_values = ctx_.atomic_wf_ri().values(atom_type.id(), vs[0]);
 
         int n{0};
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto phase        = twopi * dot(gkvec().gkvec(igk), unit_cell_.atom(ia).position());
-            auto phase_factor = std::exp(double_complex(0.0, phase));
-            auto& atom_type   = unit_cell_.atom(ia).type();
+        for (int xi = 0; xi < index.size();) {
+            int l  = index[xi].l;
+            // index of the radial function
+            int index_radial_function = index[xi].idxrf;
+
+            const auto phase        = twopi * dot(gkvec().gkvec(igk), unit_cell_.atom(atom).position());
+            const auto phase_factor = std::exp(double_complex(0.0, phase));
+            const auto& atom_type   = unit_cell_.atom(atom).type();
+            const auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+
             if (!hubbard) {
-                for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
-                    auto l = std::abs(atom_type.ps_atomic_wf(i).first);
-                    auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+                /* for spin orbit coupling the initial wave functions of a given
+                 * shell are full spinors with a different radial part. the
+                 * orbitals j = l - 1/2 and j = l + 1/2 are next to each other
+                 * in the index structure, so I explicitely compute the
+                 * average */
+
+                // if (!atom_type.spin_orbit_coupling()) {
                     for (int m = -l; m <= l; m++) {
-                        int lm = utils::lm(l, m);
-                        phi.pw_coeffs(0).prime(igk_loc, n) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
+                        const int lm = utils::lm(l, m);
+                        phi.pw_coeffs(0).prime(igk_loc, n + offset) = z * std::conj(phase_factor) * rlm[lm] * ri_values[index_radial_function];
                         n++;
                     }
-                } // i
+                    xi += 2 * l + 1;
+                // } else {
+                //     const auto average = ri_values[index_radial_function] +
+                //         ri_values[index_radial_function + 1];
+
+                //     for (int m = -l; m <= l; m++) {
+                //         const int lm = utils::lm(l, m);
+                //         phi.pw_coeffs(0).prime(igk_loc, n + offset) += 0.5 * z * std::conj(phase_factor) * rlm[lm] *
+                //             average;
+                //         n += 2;
+                //     }
+                //     xi += 2 * (2 * l + 1);
+                // }
+                // the -1 is for compensating the xi++ in the for loop.
             } else {
-                if (atom_type.hubbard_correction()) {
-                    if (atom_type.spin_orbit_coupling()) {
-                        // one channel only now
-                        for (int i = 0; i < 2; i++) {
-                            auto &orb = atom_type.hubbard_orbital(i);
-                            const int l = std::abs(orb.l());
-                            auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                            for (int m = -l; m <= l; m++) {
-                                int lm = utils::lm(l, m);
-                                phi.pw_coeffs(0).prime(igk_loc, offset[ia] + l + m) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];
-                                phi.pw_coeffs(1).prime(igk_loc, offset[ia] + 3 * l + m + 1) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];
-                            }
-                        }
-                    } else {
-                        // add the loop over different channels. need to compute the offsets accordingly
-                        for (int channel = 0, offset__ = 0; channel < atom_type.number_of_hubbard_channels(); channel++) {
-                            auto &orb = atom_type.hubbard_orbital(channel);
-                            const int l = std::abs(orb.l());
-                            auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                            for (int m = -l; m <= l; m++) {
-                                int lm = utils::lm(l, m);
-                                phi.pw_coeffs(0).prime(igk_loc, offset[ia] + offset__  + l + m) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];
-                                if (ctx_.num_mag_dims() == 3) {
-                                    phi.pw_coeffs(1).prime(igk_loc, offset[ia] + offset__  + 3 * l + m + 1) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];
-                                }
-                            }
-                            offset__ += (ctx_.num_mag_dims() == 3) ? (2 * (2 * l + 1)) : (2 * l + 1);
-                        }
+                /* hubbard atomic orbitals */
+
+                if (atom_type.spin_orbit_coupling()) {
+                    /* in that case each atomic orbital has a distinct j and are
+                       considered as independent orbitals. */
+                    const auto average = (ri_values[atom_type.hubbard_orbital(index_radial_function).rindex()] +
+                                          ri_values[atom_type.hubbard_orbital(index_radial_function + 1).rindex()]);
+
+                    for (int m = -l; m <= l; m++) {
+                        const int lm = utils::lm(l, m);
+                        phi.pw_coeffs(1).prime(igk_loc, n + offset + 2 * l + 1) = 0.5 * z * std::conj(phase_factor) * rlm[lm] * average;
+                        phi.pw_coeffs(0).prime(igk_loc, n + offset) = 0.5 * z * std::conj(phase_factor) * rlm[lm] * average;
+                        n += 1;
                     }
+                    xi += 2 * (2 * l + 1);
+                    n += 2 * l + 1;
+                } else {
+
+                    /* it is a one orbital but with degeneracy 2. we should
+                       consider the magnetic and non magnetic case */
+                    for (int m = -l; m <= l; m++) {
+                        const int lm = utils::lm(l, m);
+                        phi.pw_coeffs(0).prime(igk_loc, n + offset) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.hubbard_orbital(index_radial_function + 1).rindex()];
+                        if (ctx_.num_mag_dims() == 3) {
+                            phi.pw_coeffs(1).prime(igk_loc, n + offset + 2 * l + 1) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.hubbard_orbital(index_radial_function + 1).rindex()];
+
+                        }
+                        n++;
+                    }
+                    xi += 2 * l + 1;
                 }
             }
         }
-    } // igk_loc
-}
-
-inline void K_point::generate_atomic_wave_functions(const int num_ao__, Wave_functions& phi)
-{
-    std::vector<int> vs(1, 0);
-    generate_atomic_wave_functions_aux(num_ao__, phi, vs, false);
+    }
 }
 
 inline void K_point::compute_gradient_wave_functions(Wave_functions& phi,
@@ -132,11 +145,11 @@ inline void K_point::compute_gradient_wave_functions(Wave_functions& phi,
         qalpha[igk_loc] = double_complex(0.0, -G[direction]);
     }
 
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int nphi = 0; nphi < num_wf; nphi++) {
         for (int ispn = 0; ispn < phi.num_sc(); ispn++) {
             for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
-                dphi.pw_coeffs(ispn).prime(igk_loc, nphi + starting_position_j) = qalpha[igk_loc] * 
+                dphi.pw_coeffs(ispn).prime(igk_loc, nphi + starting_position_j) = qalpha[igk_loc] *
                     phi.pw_coeffs(ispn).prime(igk_loc, nphi + starting_position_i);
             }
         }

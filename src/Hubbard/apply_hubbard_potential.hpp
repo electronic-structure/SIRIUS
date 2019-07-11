@@ -84,7 +84,7 @@ void Hubbard::apply_hubbard_potential(K_point&        kp__,
                         for (int nbd = 0; nbd < n__; nbd++) {
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    Up(this->offset[ia] + s1 * lmax_at + m1, nbd) += this->hubbard_potential_(m2, m1, ind, ia, 0) *
+                                    Up(this->offset[ia] + s1 * lmax_at + m1, nbd) += this->hubbard_potential_(m2, m1, ind, ia) *
                                         dm(this->offset[ia] + s2 * lmax_at + m2, nbd);
                                 }
                             }
@@ -96,7 +96,7 @@ void Hubbard::apply_hubbard_potential(K_point&        kp__,
                 for (int nbd = 0; nbd < n__; nbd++) {
                     for (int m1 = 0; m1 < lmax_at; m1++) {
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            Up(this->offset[ia] + m1, nbd) += this->hubbard_potential_(m2, m1, ispn__, ia, 0) *
+                            Up(this->offset[ia] + m1, nbd) += this->hubbard_potential_(m2, m1, ispn__, ia) *
                                 dm(this->offset[ia] + m2, nbd);
                         }
                     }
