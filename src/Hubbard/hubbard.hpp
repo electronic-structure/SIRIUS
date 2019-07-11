@@ -42,7 +42,7 @@ namespace sirius {
 /// Apply Hubbard correction in the colinear case
 class Hubbard
 {
-  private:
+private:
     Simulation_context& ctx_;
 
     Unit_cell& unit_cell_;
@@ -51,7 +51,7 @@ class Hubbard
 
     int number_of_hubbard_orbitals_{0};
 
-    mdarray<double_complex, 5> occupancy_number_;
+    mdarray<double_complex, 4> occupancy_number_;
 
     double hubbard_energy_{0.0};
     double hubbard_energy_u_{0.0};
@@ -59,7 +59,7 @@ class Hubbard
     double hubbard_energy_noflip_{0.0};
     double hubbard_energy_flip_{0.0};
 
-    mdarray<double_complex, 5> hubbard_potential_;
+    mdarray<double_complex, 4> hubbard_potential_;
 
     /// Type of hubbard correction to be considered.
     /** True if we consider a simple hubbard correction. Not valid if spin orbit coupling is included */
@@ -73,6 +73,7 @@ class Hubbard
 
     /// hubbard correction with next nearest neighbors
     bool hubbard_U_plus_V_{false};
+
 
     /// hubbard projection method. By default we use the wave functions
     /// provided by the pseudo potentials.
@@ -105,25 +106,21 @@ class Hubbard
 
         int counter = 0;
 
-        // we loop over atoms to check which atom has hubbard orbitals
-        // and then compute the number of hubbard orbitals associated to
-        // it.
+        /* we loop over atoms to check which atom has hubbard orbitals and then
+         compute the number of hubbard orbitals associated to it. */
+
         for (auto ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto& atom = unit_cell_.atom(ia);
             if (atom.type().hubbard_correction()) {
                 offset[ia] = counter;
-                if (ctx_.num_mag_dims() == 3) {
-                    for (auto&& orb : atom.type().hubbard_orbital()) {
-                        if (atom.type().spin_orbit_coupling()) {
-                            counter += (2 * orb.l() + 1);
-                        } else {
-                            counter += 2 * (2 * orb.l() + 1);
-                        }
-                    }
-                } else {
-                    for (auto&& orb : atom.type().hubbard_orbital()) {
-                        counter += (2 * orb.l() + 1);
-                    }
+                counter += atom.type().hubbard_indexb_wfc().size();
+                /* there is a factor two when the pseudo-potential has no SO but
+                   we do full non colinear magnetism. Note that we can consider
+                   now multiple orbitals calculations. The API still does not
+                   support it */
+
+                if ((ctx_.num_mag_dims() == 3) && (!atom.type().spin_orbit_coupling())) {
+                    counter += atom.type().hubbard_indexb_wfc().size();
                 }
             }
         }
@@ -182,22 +179,12 @@ class Hubbard
 
     double_complex U(int m1, int m2, int m3, int m4) const
     {
-        return hubbard_potential_(m1, m2, m3, m4, 0);
+        return hubbard_potential_(m1, m2, m3, m4);
     }
 
     double_complex& U(int m1, int m2, int m3, int m4)
     {
-        return hubbard_potential_(m1, m2, m3, m4, 0);
-    }
-
-    double_complex U(int m1, int m2, int m3, int m4, int channel) const
-    {
-        return hubbard_potential_(m1, m2, m3, m4, channel);
-    }
-
-    double_complex& U(int m1, int m2, int m3, int m4, int channel)
-    {
-        return hubbard_potential_(m1, m2, m3, m4, channel);
+        return hubbard_potential_(m1, m2, m3, m4);
     }
 
     bool orthogonalize_hubbard_orbitals() const
@@ -284,39 +271,39 @@ class Hubbard
             this->wave_function_file_ = ctx_.Hubbard().wave_function_file_;
         }
 
+        int indexb_max = -1;
+
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            auto& atom_type = ctx_.unit_cell().atom(ia).type();
             if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
-                for (int channel = 0; channel < atom_type.number_of_hubbard_channels(); channel++) {
-                    this->lmax_ = std::max(this->lmax_, atom_type.hubbard_orbital(channel).l());
+                if (ctx__.unit_cell().atom(ia).type().spin_orbit_coupling()) {
+                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size() / 2);
+                } else {
+                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size());
                 }
             }
         }
 
-        /// if spin orbit coupling or non colinear magnetisms are
-        /// activated, then we consider the full spherical hubbard
-        /// correction
+        /* if spin orbit coupling or non colinear magnetisms are activated, then
+         we consider the full spherical hubbard correction */
+
         if ((ctx_.so_correction()) || (ctx_.num_mag_dims() == 3)) {
             approximation_ = false;
         }
 
-        // prepare things for the multi channel case. The last index
-        // indicates which channel we consider. By default we only have
-        // one channel per atomic type
-        occupancy_number_  = mdarray<double_complex, 5>(2 * lmax_ + 1, 2 * lmax_ + 1, 4, ctx_.unit_cell().num_atoms(), 1);
-        hubbard_potential_ = mdarray<double_complex, 5>(2 * lmax_ + 1, 2 * lmax_ + 1, 4, ctx_.unit_cell().num_atoms(), 1);
+        occupancy_number_  = mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms());
+        hubbard_potential_ = mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms());
 
         calculate_wavefunction_with_U_offset();
         calculate_initial_occupation_numbers();
         calculate_hubbard_potential_and_energy();
     }
 
-    mdarray<double_complex, 5>& occupation_matrix()
+    mdarray<double_complex, 4>& occupation_matrix()
     {
         return occupancy_number_;
     }
 
-    mdarray<double_complex, 5>& potential_matrix()
+    mdarray<double_complex, 4>& potential_matrix()
     {
         return hubbard_potential_;
     }
@@ -328,6 +315,8 @@ class Hubbard
     void access_hubbard_occupancies(char const*     what,
                                     double_complex* occ,
                                     int const*      ld);
+
+#include "Density/Symmetrize.hpp"
 };
 
 #include "hubbard_generate_atomic_orbitals.hpp"
