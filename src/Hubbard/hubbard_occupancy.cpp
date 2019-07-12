@@ -32,7 +32,11 @@
  * where \f[m=-l\cdot l$ (same for m')\f], I is the atom.
  *
  * Requires symmetrization. */
-inline void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
+
+#include "hubbard.hpp"
+
+namespace sirius {
+void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 {
     if (!ctx_.hubbard_correction()) {
         return;
@@ -242,7 +246,7 @@ inline void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 // fill the d (f) states according to the hund's rules and with majority
 // spin first and the remaining electrons distributed among the minority
 // states.
-inline void
+void
 Hubbard::calculate_initial_occupation_numbers()
 {
     this->occupancy_number_.zero();
@@ -327,7 +331,7 @@ Hubbard::calculate_initial_occupation_numbers()
     print_occupancies();
 }
 
-inline void Hubbard::print_occupancies()
+void Hubbard::print_occupancies()
 {
     if (ctx_.control().verbosity_ > 1 && ctx_.comm().rank() == 0) {
         printf("\n");
@@ -402,7 +406,7 @@ inline void Hubbard::print_occupancies()
     }
 }
 
-inline void Hubbard::symmetrize_occupancy_matrix()
+void Hubbard::symmetrize_occupancy_matrix()
 {
     auto& sym = unit_cell_.symmetry();
 
@@ -482,7 +486,7 @@ inline void Hubbard::symmetrize_occupancy_matrix()
  * return the occupancy matrix if the first parameter is set to "get"
  */
 
-inline void
+void
 Hubbard::access_hubbard_occupancies(char const*     what__,
                                     double_complex* occ__,
                                     int const*      ld__)
@@ -527,4 +531,5 @@ Hubbard::access_hubbard_occupancies(char const*     what__,
             }
         }
     }
+}
 }

@@ -22,7 +22,9 @@
  *  \brief Generate Hubbard potential correction matrix from the occupancy matrix.
  */
 
-inline void
+#include "hubbard.hpp"
+namespace sirius {
+void
 Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
 {
     this->hubbard_energy_u_               = 0.0;
@@ -195,7 +197,7 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
     }
 }
 
-inline void
+void
 Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
 {
     this->hubbard_potential_.zero();
@@ -368,7 +370,7 @@ Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
  * return the potential if the first parameter is set to "get"
  */
 
-inline void 
+void
 Hubbard::access_hubbard_potential(char const*     what__,
                                   double_complex* occ__,
                                   int const*      ld__)
@@ -415,4 +417,5 @@ Hubbard::access_hubbard_potential(char const*     what__,
             }
         }
     }
+}
 }
