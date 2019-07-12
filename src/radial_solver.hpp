@@ -686,7 +686,7 @@ class Radial_solver
                             chi_q(i) = -p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
                         }
                     } else {
-                        TERMINATE_NOT_IMPLEMENTED
+                        throw std::runtime_error("not implemented");
                     }
                 } else if (rel__ == relativity_t::iora) {
                     double sq_alpha = std::pow(speed_of_light, -2);
@@ -711,12 +711,12 @@ class Radial_solver
                             chi_q(i) = -p[j - 1][i] * 2 * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
                         }
                     } else {
-                        TERMINATE_NOT_IMPLEMENTED
+                        throw std::runtime_error("not implemented");
                     }
                     chi_p.interpolate();
                     chi_q.interpolate();
                 } else {
-                    TERMINATE_NOT_IMPLEMENTED
+                    throw std::runtime_error("not implemented");
                 }
             }
 
@@ -742,7 +742,7 @@ class Radial_solver
                     break;
                 }
                 default: {
-                    TERMINATE_NOT_IMPLEMENTED
+                    throw std::runtime_error("not implemented");
                 }
             }
         }
@@ -897,7 +897,7 @@ class Bound_state : public Radial_solver
                     break;
                 }
                 default: {
-                    TERMINATE_NOT_IMPLEMENTED
+                    throw std::runtime_error("not implemented");
                 }
             }
 
@@ -916,8 +916,7 @@ class Bound_state : public Radial_solver
             std::stringstream s;
             s << "enu is not converged for n = " << n_ << " and l = " << l_ << std::endl
               << "enu = " << enu_ << ", denu = " << denu;
-
-            TERMINATE(s);
+            throw std::runtime_error(s.str());
         }
 
         /* compute r * u'(r) */
@@ -1102,7 +1101,7 @@ class Enu_finder : public Radial_solver
                     break;
                 }
                 default: {
-                    TERMINATE_NOT_IMPLEMENTED
+                    throw std::runtime_error("not implemented");
                 }
             }
             nnd -= (n_ - l_ - 1);
@@ -1157,7 +1156,7 @@ class Enu_finder : public Radial_solver
                     break;
                 }
                 default: {
-                    TERMINATE_NOT_IMPLEMENTED
+                    throw std::runtime_error("not implemented");
                 }
             }
             if (surface_deriv() * sd <= 0) {
@@ -1190,7 +1189,7 @@ class Enu_finder : public Radial_solver
                     break;
                 }
                 default: {
-                    TERMINATE_NOT_IMPLEMENTED
+                   throw std::runtime_error("not implemented"); 
                 }
             }
             /* derivative at the boundary */
@@ -1227,7 +1226,7 @@ class Enu_finder : public Radial_solver
                 break;
             }
             default: {
-                TERMINATE_NOT_IMPLEMENTED
+                throw std::runtime_error("not implemented");
             }
         }
 

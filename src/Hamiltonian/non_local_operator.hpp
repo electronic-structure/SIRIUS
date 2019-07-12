@@ -46,6 +46,9 @@ class Non_local_operator
 
     bool is_null_{false};
 
+    /// True if the operator is diagonal in spin.
+    bool is_diag_{true};
+
     /* copy assigment operrator is forbidden */
     Non_local_operator& operator=(Non_local_operator const& src) = delete;
     /* copy constructor is forbidden */
@@ -97,6 +100,11 @@ class Non_local_operator
 
     template <typename T>
     inline T value(int xi1__, int xi2__, int ispn__, int ia__);
+
+    inline bool is_diag() const
+    {
+        return is_diag_;
+    }
 };
 
 template<>
@@ -206,7 +214,9 @@ inline void Non_local_operator::apply<double_complex>(int chunk__, int ia__, int
                                                       int idx0__, int n__, Beta_projectors_base& beta__,
                                                       matrix<double_complex>& beta_phi__)
 {
-    int jspn = ispn_block__ & 1;
+    if (is_null_) {
+        return;
+    }
 
     auto& beta_gk     = beta__.pw_coeffs_a();
     int num_gkvec_loc = beta__.num_gkvec_loc();
@@ -244,6 +254,8 @@ inline void Non_local_operator::apply<double_complex>(int chunk__, int ia__, int
                      beta_phi__.at(mem, offs, 0), beta_phi__.ld(),
                      &linalg_const<double_complex>::zero(),
                      work.at(mem), nbf);
+
+    int jspn = ispn_block__ & 1;
 
     linalg2(ctx_.blas_linalg_t()).gemm('N', 'N', num_gkvec_loc, n__, nbf,
                                        &linalg_const<double_complex>::one(),
@@ -359,7 +371,7 @@ class D_operator : public Non_local_operator
 
         #pragma omp parallel for
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
-            auto& atom = this->ctx_.unit_cell().atom(ia);
+            auto& atom = uc.atom(ia);
             int nbf    = atom.mt_basis_size();
             auto& dion = atom.type().d_mtrx_ion();
 
@@ -377,7 +389,7 @@ class D_operator : public Non_local_operator
                         /* note that the `I` integrals are already calculated and stored in atom.d_mtrx */
                         for (int sigma = 0; sigma < 2; sigma++) {
                             for (int sigmap = 0; sigmap < 2; sigmap++) {
-                                double_complex result = {0.0, 0.0};
+                                double_complex result(0, 0);
                                 for (auto xi2p = 0; xi2p < nbf; xi2p++) {
                                     if (atom.type().compare_index_beta_functions(xi2, xi2p)) {
                                         /* just sum over m2, all other indices are the same */
@@ -385,7 +397,8 @@ class D_operator : public Non_local_operator
                                             if (atom.type().compare_index_beta_functions(xi1, xi1p)) {
                                                 /* just sum over m1, all other indices are the same */
 
-                                                for (int alpha = 0; alpha < 4; alpha++) { // loop over the 0, z,x,y coordinates
+                                                /* loop over the 0, z,x,y coordinates */
+                                                for (int alpha = 0; alpha < 4; alpha++) {
                                                     for (int sigma1 = 0; sigma1 < 2; sigma1++) {
                                                         for (int sigma2 = 0; sigma2 < 2; sigma2++) {
                                                             result +=
@@ -512,6 +525,12 @@ class D_operator : public Non_local_operator
         if (this->pu_ == device_t::GPU) {
             this->op_.allocate(memory_t::device).copy_to(memory_t::device);
         }
+
+        /* D-operator is not diagonal in spin in case of non-collinear magnetism
+           (spin-orbit coupling falls into this case) */
+        if (ctx_.num_mag_dims() == 3) {
+            this->is_diag_ = false;
+        }
     }
 
   public:
@@ -572,7 +591,7 @@ class Q_operator : public Non_local_operator
                 for (int xi1 = 0; xi1 < nbf; xi1++) {
                     /* The ultra soft pseudo potential has spin orbit coupling incorporated to it, so we
                        need to rotate the Q matrix */
-                    if (this->ctx_.unit_cell().atom_type(iat).spin_orbit_coupling()) {
+                    if (uc.atom_type(iat).spin_orbit_coupling()) {
                         /* this is nothing else than Eq.18 of doi:10.1103/PhysRevB.71.115106 */
                         for (auto si = 0; si < 2; si++) {
                             for (auto sj = 0; sj < 2; sj++) {
@@ -623,6 +642,17 @@ class Q_operator : public Non_local_operator
         if (this->pu_ == device_t::GPU) {
             this->op_.allocate(memory_t::device).copy_to(memory_t::device);
         }
+
+        this->is_null_ = true;
+        for (int iat = 0; iat < uc.num_atom_types(); iat++) {
+            if (uc.atom_type(iat).augment()) {
+                this->is_null_ = false;
+            }
+            /* Q-operator is not diagonal in spin only in the case of spin-orbit coupling */
+            if (uc.atom_type(iat).spin_orbit_coupling()) {
+                this->is_diag_ = false;
+            }
+       }
     }
 
   public:
@@ -671,6 +701,55 @@ class Q_operator : public Non_local_operator
 //        }
 //    }
 //};
+
+/// Apply non-local part of the Hamiltonian and S operators.
+/** This operations must be combined becuase of the expensive inner product between wave-functions and beta
+ *  projectors, which is computed only once. 
+ *  \param [in]  spins   Range of the spin index 
+ *  \param [in]  N       Starting index of the wave-functions.
+ *  \param [in]  n       Number of wave-functions to which D and Q are applied.
+ *  \param [in]  beta    Beta-projectors.
+ *  \param [in]  phi     Wave-functions.
+ *  \param [in]  d_op    Pointer to D-operator.
+ *  \param [out] hphi    Resulting |beta>D<beta|phi>
+ *  \param [in]  q_op    Pointer to Q-operator.
+ *  \param [out] sphi    Resulting |beta>Q<beta|phi>
+ */
+template <typename T>
+inline void
+apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+                    Wave_functions& phi__, D_operator* d_op__, Wave_functions* hphi__, Q_operator* q_op__,
+                    Wave_functions* sphi__)
+
+{
+
+    for (int i = 0; i < beta__.num_chunks(); i++) {
+        /* generate beta-projectors for a block of atoms */
+        beta__.generate(i);
+
+        for (int ispn: spins__) {
+            auto beta_phi = beta__.inner<T>(i, phi__, ispn, N__, n__);
+
+            if (hphi__ && d_op__) {
+                /* apply diagonal spin blocks */
+                d_op__->apply(i, ispn, *hphi__, N__, n__, beta__, beta_phi);
+                if (!d_op__->is_diag()) {
+                    /* apply non-diagonal spin blocks */
+                    /* xor 3 operator will map 0 to 3 and 1 to 2 */
+                    d_op__->apply(i, ispn ^ 3, *hphi__, N__, n__, beta__, beta_phi);
+                }
+            }
+
+            if (sphi__ && q_op__) {
+                /* apply Q operator (diagonal in spin) */
+                q_op__->apply(i, ispn, *sphi__, N__, n__, beta__, beta_phi);
+                if (!q_op__->is_diag()) {
+                    q_op__->apply(i, ispn ^ 3, *sphi__, N__, n__, beta__, beta_phi);
+                }
+            }
+        }
+    }
+}
 
 } // namespace sirius
 

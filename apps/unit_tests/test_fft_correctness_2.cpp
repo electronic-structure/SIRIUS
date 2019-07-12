@@ -45,9 +45,9 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
 
 int run_test(cmd_args& args)
 {
-    int result = test_fft_complex(args, CPU);
+    int result = test_fft_complex(args, device_t::CPU);
 #ifdef __GPU
-    result += test_fft_complex(args, GPU);
+    result += test_fft_complex(args, device_t::GPU);
 #endif
     return result;
 }

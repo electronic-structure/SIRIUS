@@ -32,8 +32,7 @@
  * where \f[m=-l\cdot l$ (same for m')\f], I is the atom.
  *
  * Requires symmetrization. */
-
-void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
+inline void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 {
     if (!ctx_.hubbard_correction()) {
         return;
@@ -243,7 +242,8 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 // fill the d (f) states according to the hund's rules and with majority
 // spin first and the remaining electrons distributed among the minority
 // states.
-void Hubbard::calculate_initial_occupation_numbers()
+inline void
+Hubbard::calculate_initial_occupation_numbers()
 {
     this->occupancy_number_.zero();
 #pragma omp parallel for schedule(static)
@@ -482,9 +482,10 @@ inline void Hubbard::symmetrize_occupancy_matrix()
  * return the occupancy matrix if the first parameter is set to "get"
  */
 
-void Hubbard::access_hubbard_occupancies(char const*     what__,
-                                         double_complex* occ__,
-                                         int const*      ld__)
+inline void
+Hubbard::access_hubbard_occupancies(char const*     what__,
+                                    double_complex* occ__,
+                                    int const*      ld__)
 {
     std::string what(what__);
 

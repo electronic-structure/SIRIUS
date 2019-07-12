@@ -27,12 +27,12 @@
 
 // the S matrix is already applied to phi_i
 
-void Hubbard::apply_hubbard_potential(K_point&        kp__,
-                                      const int       ispn__,
-                                      const int       idx__,
-                                      const int       n__,
-                                      Wave_functions& phi,
-                                      Wave_functions& hphi)
+#ifndef __APPLY_HUBBARD_POTENTIAL_HPP__
+#define __APPLY_HUBBARD_POTENTIAL_HPP__
+
+inline void 
+Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int idx__, const int n__,
+                                 Wave_functions& phi, Wave_functions& hphi)
 {
     auto& hub_wf = kp__.hubbard_wave_functions();
 
@@ -125,3 +125,5 @@ void Hubbard::apply_hubbard_potential(K_point&        kp__,
                               idx__,
                               n__);
 }
+
+#endif

@@ -18,7 +18,7 @@ int test_fft(cmd_args& args, device_t pu__)
     fft.prepare(gvecp);
 
     mdarray<double_complex, 1> f(gvec.num_gvec());
-    if (pu__ == GPU) {
+    if (pu__ == device_t::GPU) {
         f.allocate(memory_t::device);
     }
     mdarray<double_complex, 1> ftmp(gvecp.gvec_count_fft());
@@ -37,11 +37,11 @@ int test_fft(cmd_args& args, device_t pu__)
             ftmp[igloc] = f[gvecp.idx_gvec(igloc)];
         }
         switch (pu__) {
-            case CPU: {
+            case device_t::CPU: {
                 fft.transform<1>(&ftmp[0]);
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
                 //f.copy<memory_t::host, memory_t::device>();
                 //fft.transform<1, GPU>(gvec.partition(), f.at<GPU>(gvec.partition().gvec_offset_fft()));
                 fft.transform<1, memory_t::host>(ftmp.at(memory_t::host));
@@ -80,9 +80,9 @@ int test_fft(cmd_args& args, device_t pu__)
 
 int run_test(cmd_args& args)
 {
-    int result = test_fft(args, CPU);
+    int result = test_fft(args, device_t::CPU);
 #ifdef __GPU
-    result += test_fft(args, GPU);
+    result += test_fft(args, device_t::GPU);
 #endif
     return result;
 }
