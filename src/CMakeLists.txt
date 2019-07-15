@@ -17,10 +17,10 @@ endif()
 set(_SOURSES "dft_ground_state.cpp"
   "Hubbard/apply_hubbard_potential.cpp"
   "Hubbard/Hubbard.cpp"
-"Hubbard/hubbard_generate_atomic_orbitals.cpp"
-"Hubbard/hubbard_occupancies_derivatives.cpp"
-"Hubbard/hubbard_occupancy.cpp"
-"Hubbard/hubbard_potential_energy.cpp")
+  "Hubbard/hubbard_generate_atomic_orbitals.cpp"
+  "Hubbard/hubbard_occupancies_derivatives.cpp"
+  "Hubbard/hubbard_occupancy.cpp"
+  "Hubbard/hubbard_potential_energy.cpp")
 
 # create library with .cpp, .cu and .f90 sources
 add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
@@ -41,13 +41,6 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX)
 
 if(CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
-endif()
-
-#if(USE_CUDA)
-#  add_library(sirius STATIC "${_CUSOURCES}")
-#endif()
-
-if(CREATE_FORTRAN_BINDINGS)
   INSTALL ( CODE
     "EXECUTE_PROCESS (COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${PROJECT_BINARY_DIR}/src/mod_files\" \"${CMAKE_INSTALL_PREFIX}/include/sirius/\")"
     )

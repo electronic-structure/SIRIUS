@@ -154,8 +154,9 @@ class radial_functions_index
             int order = radial_function_index_descriptors_[i].order;
             int idxlo = radial_function_index_descriptors_[i].idxlo;
             index_by_l_order_(l, order) = i;
-            if (idxlo >= 0)
+            if (idxlo >= 0) {
                 index_by_idxlo_(idxlo) = i;
+            }
         }
     }
 
