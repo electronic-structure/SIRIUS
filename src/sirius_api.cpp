@@ -2979,10 +2979,9 @@ void sirius_get_total_magnetization(void* const* handler__,
 
     mdarray<double, 1> total_mag(mag__, 3);
     total_mag.zero();
-    std::vector<double> mt_mag[3];
-    double it_mag[3];
     for (int j = 0; j < gs.ctx().num_mag_dims(); j++) {
-        total_mag[j] = gs.density().magnetization(j).integrate(mt_mag[j], it_mag[j]);
+        auto result = gs.density().magnetization(j).integrate();
+        total_mag[j] = std::get<0>(result);
     }
     if (gs.ctx().num_mag_dims() == 3) {
         /* swap z and x and change order from z,x,y to x,z,y */
