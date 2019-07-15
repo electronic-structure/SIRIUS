@@ -58,14 +58,22 @@ struct linalg_const
     }
 };
 
+/// Type of linear algebra backend.
 enum class linalg_t
 {
+    /// None
     none,
+    /// CPU BLAS
     blas,
+    /// CPU LAPACK
     lapack,
+    /// CPU ScaLAPACK
     scalapack,
+    /// GPU BLAS (cuBlas or ROCblas)
     gpublas,
+    /// cuBlasXt (cuBlas with CPU pointers and large matrices support)
     cublasxt,
+    /// MAGMA with CPU pointers
     magma
 };
 
