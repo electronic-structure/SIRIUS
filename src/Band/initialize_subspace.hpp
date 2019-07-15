@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file initialize_subspace.hpp
@@ -106,15 +106,19 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
     utils::timer t1("sirius::Band::initialize_subspace|kp|wf");
     /* get proper lmax */
     int lmax{0};
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-        lmax = std::max(lmax, atom_type.lmax_ps_atomic_wf());
-    }
-    lmax = std::max(lmax, unit_cell_.lmax());
 
-    if (num_ao__ > 0) {
-        kp__->generate_atomic_wave_functions(num_ao__, phi);
+    /* generate the initial atomic wavefunctions */
+
+    int offset = 0;
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom_type = unit_cell_.atom(ia).type();
+        lmax = std::max(lmax, atom_type.lmax_ps_atomic_wf());
+        // generate the atomic wave functions
+        kp__->generate_atomic_wave_functions(atom_type.indexb_wfc(), ia, offset, false, phi);
+        offset += atom_type.indexb_wfc().size();
     }
+
+    lmax = std::max(lmax, unit_cell_.lmax());
 
     /* fill remaining wave-functions with pseudo-random guess */
     assert(kp__->num_gkvec() > num_phi + 10);

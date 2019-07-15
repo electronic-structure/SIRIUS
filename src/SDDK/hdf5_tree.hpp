@@ -40,7 +40,7 @@ enum class hdf5_access_t {
 template <typename T>
 struct hdf5_type_wrapper;
 
-template<> 
+template<>
 struct hdf5_type_wrapper<double>
 {
     static hid_t type_id()
@@ -49,7 +49,7 @@ struct hdf5_type_wrapper<double>
     }
 };
 
-template<> 
+template<>
 struct hdf5_type_wrapper<std::complex<double>>
 {
     static hid_t type_id()
@@ -58,7 +58,7 @@ struct hdf5_type_wrapper<std::complex<double>>
     }
 };
 
-template<> 
+template<>
 struct hdf5_type_wrapper<int>
 {
     static hid_t type_id()
@@ -67,7 +67,7 @@ struct hdf5_type_wrapper<int>
     }
 };
 
-template<> 
+template<>
 struct hdf5_type_wrapper<uint8_t>
 {
     static hid_t type_id()
@@ -273,18 +273,18 @@ class HDF5_tree
 
         switch (access__) {
             case hdf5_access_t::truncate: {
-                file_id_ = H5Fcreate(file_name_.c_str(), H5F_ACC_TRUNC | H5F_ACC_SWMR_WRITE, H5P_DEFAULT, H5P_DEFAULT);
+                file_id_ = H5Fcreate(file_name_.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
                 if (file_id_ < 0) {
                     TERMINATE("error in H5Fcreate()");
                 }
                 break;
             }
             case hdf5_access_t::read_write: {
-                file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
+                file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
                 break;
             }
             case hdf5_access_t::read_only: {
-                file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDONLY | H5F_ACC_SWMR_READ, H5P_DEFAULT);
+                file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
                 break;
             }
         }

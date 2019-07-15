@@ -33,6 +33,7 @@
 #include "radial_functions_index.hpp"
 #include "basis_functions_index.hpp"
 #include "hubbard_orbitals_descriptor.hpp"
+#include "SHT/sht.hpp"
 
 namespace sirius {
 
@@ -102,9 +103,18 @@ class Atom_type
         Beta-projectors must be loaded before loading the Q radial functions. */
     mdarray<Spline<double>, 2> q_radial_functions_l_;
 
+    /// index for the radial hubbard basis functions
+    radial_functions_index indexr_wfc_;
+
+    /// Index of atomic  wavefunctions (radial function * spherical harmonic).
+    basis_functions_index indexb_wfc_;
+
     /// Atomic wave-functions used to setup the initial subspace and to apply U-correction.
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
     std::vector<std::pair<int, Spline<double>>> ps_atomic_wfs_;
+
+    /// List of radial descriptor sets used to construct localized orbitals.
+    std::vector<local_orbital_descriptor> wfc_lo_descriptors_;
 
     /// Total occupancy of the (hubbard) wave functions.
     std::vector<double> ps_atomic_wf_occ_;
@@ -159,6 +169,15 @@ class Atom_type
 
     /// Vector containing all orbitals informations that are relevant for the Hubbard correction.
     std::vector<hubbard_orbital_descriptor> hubbard_orbitals_;
+
+    /// index for the radial hubbard basis functions
+    radial_functions_index hubbard_indexr_;
+
+    /// Index of atomic basis functions (radial function * spherical harmonic).
+    basis_functions_index hubbard_indexb_;
+
+    /// List of radial descriptor sets used to construct hubbard orbitals.
+    std::vector<local_orbital_descriptor> hubbard_lo_descriptors_;
 
     /// Hubbard correction.
     bool hubbard_correction_{false};
@@ -229,7 +248,7 @@ class Atom_type
     /* forbid assignment operator */
     Atom_type& operator=(Atom_type const& src) = delete;
 
-  protected:
+protected:
     /// Radial grid of the muffin-tin sphere.
     Radial_grid<double> radial_grid_;
 
@@ -243,7 +262,7 @@ class Atom_type
     /// Radial grid of a free atom.
     Radial_grid<double> free_atom_radial_grid_;
 
-  public:
+public:
     Atom_type(Simulation_parameters const&                parameters__,
               std::string                                 symbol__,
               std::string                                 name__,
@@ -256,16 +275,16 @@ class Atom_type
         , zn_(zn__)
         , mass_(mass__)
         , atomic_levels_(levels__)
-    {
-    }
+        {
+        }
 
     Atom_type(Simulation_parameters const& parameters__, int id__, std::string label__, std::string file_name__)
         : parameters_(parameters__)
         , id_(id__)
         , label_(label__)
         , file_name_(file_name__)
-    {
-    }
+        {
+        }
 
     Atom_type(Atom_type&& src) = default;
 
@@ -360,19 +379,28 @@ class Atom_type
         lo_descriptors_.push_back(lod__);
     }
 
-    inline void add_ps_atomic_wf(int n__, int l__, std::vector<double> f__)
-    {
-        Spline<double> s(radial_grid_, f__);
-        ps_atomic_wfs_.push_back(std::move(std::make_pair(l__, std::move(s))));
-        ps_atomic_wf_level_.push_back(n__);
-    }
-
     inline void add_ps_atomic_wf(int n__, int l__, std::vector<double> f__, double occ_)
     {
+        local_orbital_descriptor lod;
+
         Spline<double> s(radial_grid_, f__);
         ps_atomic_wfs_.push_back(std::move(std::make_pair(l__, std::move(s))));
         ps_atomic_wf_occ_.push_back(occ_);
         ps_atomic_wf_level_.push_back(n__);
+        lod.l = std::abs(l__);
+
+        if (l__ < 0) {
+            lod.total_angular_momentum = lod.l - 0.5;
+        } else {
+            lod.total_angular_momentum = lod.l + 0.5;
+        }
+
+        wfc_lo_descriptors_.push_back(lod);
+    }
+
+    inline void add_ps_atomic_wf(int n__, int l__, std::vector<double> f__)
+    {
+        add_ps_atomic_wf(n__, l__, f__, 0.0);
     }
 
     std::pair<int, Spline<double>> const& ps_atomic_wf(int idx__) const
@@ -589,20 +617,27 @@ class Atom_type
     {
         for (int s = 0; s < static_cast<int>(ps_atomic_wf_level_.size()); s++) {
             if (ps_atomic_wf_level_[s] >= 0) {
-                if ((ps_atomic_wf_level_[s] ==  n) && (std::abs(ps_atomic_wf(s).first) == l)) {
+                auto &e = ps_atomic_wf(s);
+                if ((ps_atomic_wf_level_[s] ==  n) && (std::abs(e.first) == l)) {
                     hubbard_orbital_descriptor hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
                     hubbard_orbitals_.push_back(std::move(hub));
+                    local_orbital_descriptor lod;
+                    lod.l = std::abs(e.first);
 
+                    if (e.first < 0) {
+                        lod.total_angular_momentum = lod.l - 0.5;
+                    } else {
+                        lod.total_angular_momentum = lod.l + 0.5;
+                    }
                     // we nedd to consider the case where spin orbit
                     // coupling is included. if so is included then we need
                     // to search for its partner with same n, l, but
                     // different j. if not we can stop the for loop
-
+                    hubbard_lo_descriptors_.push_back(lod);
                     if (!this->spin_orbit_coupling_)
                         break;
                 }
             } else {
-
                 auto &wfc = ps_atomic_wfs_[s];
                 // we do a search per angular momentum
                 // we pick the first atomic wave function we
@@ -612,7 +647,9 @@ class Atom_type
                 if (std::abs(wfc.first) == l) {
                     hubbard_orbital_descriptor hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
                     hubbard_orbitals_.push_back(std::move(hub));
-
+                    local_orbital_descriptor lod;
+                    lod.l = std::abs(ps_atomic_wf(s).first);
+                    hubbard_lo_descriptors_.push_back(lod);
                     if (!this->spin_orbit_coupling_)
                         break;
                 }
@@ -620,7 +657,7 @@ class Atom_type
         }
     }
 
-    inline int number_of_hubbard_channels() const
+    inline int number_of_hubbard_orbitals() const
     {
         return static_cast<int>(hubbard_orbitals_.size());
     }
@@ -838,6 +875,21 @@ class Atom_type
         return indexr_.size();
     }
 
+    inline basis_functions_index const& indexb_wfc() const
+    {
+        return indexb_wfc_;
+    }
+
+    inline basis_functions_index const& hubbard_indexb_wfc() const
+    {
+        return hubbard_indexb_;
+    }
+
+    inline radial_functions_index const& hubbard_indexr() const
+    {
+        return hubbard_indexr_;
+    }
+
     inline void set_symbol(const std::string symbol__)
     {
         symbol_ = symbol__;
@@ -1017,13 +1069,13 @@ class Atom_type
   private:
     void read_hubbard_input();
     void generate_f_coefficients(void);
-    inline double ClebschGordan(const int l, const double j, const double m, const int spin);
-    inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
+    // inline double ClebschGordan(const int l, const double j, const double m, const int spin);
+    // inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
 };
 
-inline void Atom_type::init(int offset_lo__)
-{
-    PROFILE("sirius::Atom_type::init");
+    inline void Atom_type::init(int offset_lo__)
+    {
+        PROFILE("sirius::Atom_type::init");
 
     /* check if the class instance was already initialized */
     if (initialized_) {
@@ -1091,7 +1143,7 @@ inline void Atom_type::init(int offset_lo__)
             lod.l = std::abs(e.first);
 
             /* for spin orbit coupling; we can always do that there is
-               no insidence on the reset when calculations exclude SO */
+               no insidence on the rest when calculations exclude SO */
             if (e.first < 0) {
                 lod.total_angular_momentum = lod.l - 0.5;
             } else {
@@ -1106,6 +1158,17 @@ inline void Atom_type::init(int offset_lo__)
 
     /* initialize index of muffin-tin basis functions */
     indexb_.init(indexr_);
+
+    /* initialize index for wave functions */
+
+    indexr_wfc_.init(wfc_lo_descriptors_);
+    indexb_wfc_.init(indexr_wfc_);
+
+    if (hubbard_correction_) {
+        /* circus for the hubbard orbitals */
+        hubbard_indexr_.init(hubbard_lo_descriptors_);
+        hubbard_indexb_.init(hubbard_indexr_);
+    }
 
     if (!parameters_.full_potential()) {
         assert(mt_radial_basis_size() == num_beta_radial_functions());
@@ -1193,38 +1256,6 @@ inline void Atom_type::init_free_atom_density(bool smooth)
         int irmt = free_atom_radial_grid_.index_of(mt_radius());
         /* interpolate at this point near MT radius */
         double R = free_atom_radial_grid_[irmt];
-
-        //std::vector<double> g;
-        //double nel = fourpi * free_atom_density_spline_.integrate(g, 2);
-
-        //std::cout << "number of electrons: " << nel << ", inside MT: " << g[irmt] * fourpi << "\n";
-
-
-        //mdarray<double, 1> b(2);
-        //mdarray<double, 2> A(2, 2);
-        //A(0, 0) = std::pow(R, 2);
-        //A(0, 1) = std::pow(R, 3);
-        //A(1, 0) = 2 * R;
-        //A(1, 1) = 3 * std::pow(R, 2);
-        ////A(0, 0) = 4; //std::pow(R, 1);
-        ////A(0, 1) = std::pow(R, 1);
-        ////A(1, 0) = 0;
-        ////A(1, 1) = 1; //2 * std::pow(R, 1);
-
-        //b(0) = free_atom_density_spline_(irmt);
-        //b(1) = free_atom_density_spline_.deriv(1, irmt);
-
-        //linalg<CPU>::gesv<double>(2, 1, A.at<CPU>(), 2, b.at<CPU>(), 2);
-
-        //////== /* write initial density */
-        //std::stringstream sstr;
-        //sstr << "free_density_" << id_ << ".dat";
-        //FILE* fout = fopen(sstr.str().c_str(), "w");
-
-        //for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++) {
-        //    fprintf(fout, "%18.12f %18.12f \n", free_atom_radial_grid(ir), free_atom_density_[ir]);
-        //}
-        //fclose(fout);
 
         /* make smooth free atom density inside muffin-tin */
         for (int i = 0; i <= irmt; i++) {
@@ -1670,98 +1701,6 @@ inline void Atom_type::read_input(std::string const& str__)
     read_hubbard_input();
 }
 
-// TODO: this is not an atom type property, move to SHT or utils class
-inline double Atom_type::ClebschGordan(const int l, const double j, const double mj, const int spin)
-{
-    // l : orbital angular momentum
-    // m:  projection of the total angular momentum $m \pm /frac12$
-    // spin: Component of the spinor, 0 up, 1 down
-
-    double CG = 0.0; // Clebsch Gordan coeeficient cf PRB 71, 115106 page 3 first column
-
-    if ((spin != 0) && (spin != 1)) {
-        printf("Error : unkown spin direction\n");
-    }
-
-    const double denom = sqrt(1.0 / (2.0 * l + 1.0));
-
-    if (std::abs(j - l - 0.5) < 1e-8) { // check for j = l + 1/2
-        int m = static_cast<int>(mj - 0.5); // if mj is integer (2 * m), then int m = (mj-1) >> 1;
-        if (spin == 0) {
-            CG = sqrt(l + m + 1.0);
-        }
-        if (spin == 1) {
-            CG = sqrt((l - m));
-        }
-    } else {
-        if (std::abs(j - l + 0.5) < 1e-8) { // check for j = l - 1/2
-            int m = static_cast<int>(mj + 0.5);
-            if (m < (1 - l)) {
-                CG = 0.0;
-            } else {
-                if (spin == 0) {
-                    CG = sqrt(l - m + 1);
-                }
-                if (spin == 1) {
-                    CG = -sqrt(l + m);
-                }
-            }
-        } else {
-            printf("Clebsch gordan coefficients do not exist for this combination of j=%.5lf and l=%d\n", j, l);
-            exit(0);
-        }
-    }
-    return (CG * denom);
-}
-
-// this function computes the U^sigma_{ljm mj} coefficient that
-// rotates the complex spherical harmonics to the real one for the
-// spin orbit case
-
-// mj is normally half integer from -j to j but to avoid computation
-// error it is considered as integer so mj = 2 mj
-
-inline double_complex
-Atom_type::calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma)
-{
-
-    if ((sigma != 0) && (sigma != 1)) {
-        printf("SphericalIndex function : unkown spin direction\n");
-        return 0;
-    }
-
-    if (std::abs(j - l - 0.5) < 1e-8) {
-        // j = l + 1/2
-        // m = mj - 1/2
-
-        int m1 = (mj - 1) >> 1;
-        if (sigma == 0) { // up spin
-            if (m1 < -l) { // convention U^s_{mj,m'} = 0
-                return 0.0;
-            } else {// U^s_{mj,mp} =
-                return SHT::rlm_dot_ylm(l, m1, mp);
-            }
-        } else { // down spin
-            if ((m1 + 1) > l) {
-                return 0.0;
-            } else {
-                return SHT::rlm_dot_ylm(l, m1 + 1, mp);
-            }
-        }
-    } else {
-        if (std::abs(j - l + 0.5) < 1e-8) {
-            int m1 = (mj + 1) >> 1;
-            if (sigma == 0) {
-                return SHT::rlm_dot_ylm(l, m1 - 1, mp);
-            } else {
-                return SHT::rlm_dot_ylm(l, m1, mp);
-            }
-        } else {
-            printf("Spherical Index function : l and j are not compatible\n");
-            exit(0);
-        }
-    }
-}
 
 inline void Atom_type::generate_f_coefficients(void)
 {
@@ -1803,10 +1742,10 @@ inline void Atom_type::generate_f_coefficients(void)
 
                         int jj1 = static_cast<int>(2.0 * j1 + 1e-8);
                         for (int mj = -jj1; mj <= jj1; mj += 2) {
-                            coef += calculate_U_sigma_m(l1, j1, mj, m1, sigma1) *
-                                    this->ClebschGordan(l1, j1, mj / 2.0, sigma1) *
-                                    std::conj(calculate_U_sigma_m(l2, j2, mj, m2, sigma2)) *
-                                    this->ClebschGordan(l2, j2, mj / 2.0, sigma2);
+                            coef += SHT::calculate_U_sigma_m(l1, j1, mj, m1, sigma1) *
+                                SHT::ClebschGordan(l1, j1, mj / 2.0, sigma1) *
+                                std::conj(SHT::calculate_U_sigma_m(l2, j2, mj, m2, sigma2)) *
+                                SHT::ClebschGordan(l2, j2, mj / 2.0, sigma2);
                         }
                         f_coefficients_(xi1, xi2, sigma1, sigma2) = coef;
                     }
