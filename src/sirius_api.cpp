@@ -2944,15 +2944,15 @@ void sirius_set_rg_values(void*  const* handler__,
     }
 
     std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-        {"rho",   &gs.density().rho()},
-        {"magz",  &gs.density().magnetization(0)},
-        {"magx",  &gs.density().magnetization(1)},
-        {"magy",  &gs.density().magnetization(2)},
-        {"veff",  &gs.potential().effective_potential()},
-        {"bz",    &gs.potential().effective_magnetic_field(0)},
-        {"bx",    &gs.potential().effective_magnetic_field(1)},
-        {"by",    &gs.potential().effective_magnetic_field(2)},
-        {"vxc",   &gs.potential().xc_potential()},
+        {"rho",  &gs.density().rho()},
+        {"magz", &gs.density().magnetization(0)},
+        {"magx", &gs.density().magnetization(1)},
+        {"magy", &gs.density().magnetization(2)},
+        {"veff", &gs.potential().effective_potential()},
+        {"bz",   &gs.potential().effective_magnetic_field(0)},
+        {"bx",   &gs.potential().effective_magnetic_field(1)},
+        {"by",   &gs.potential().effective_magnetic_field(2)},
+        {"vxc",  &gs.potential().xc_potential()},
     };
 
     try {

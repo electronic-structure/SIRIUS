@@ -703,9 +703,10 @@ class Q_operator : public Non_local_operator
 //};
 
 /// Apply non-local part of the Hamiltonian and S operators.
-/** This operations must be combined becuase of the expensive inner product between wave-functions and beta
- *  projectors, which is computed only once. 
- *  \param [in]  spins   Range of the spin index 
+/** This operations must be combined because of the expensive inner product between wave-functions and beta
+ *  projectors, which is computed only once.
+ *
+ *  \param [in]  spins   Range of the spin index.
  *  \param [in]  N       Starting index of the wave-functions.
  *  \param [in]  n       Number of wave-functions to which D and Q are applied.
  *  \param [in]  beta    Beta-projectors.
