@@ -1070,8 +1070,8 @@ class Simulation_context : public Simulation_parameters
                 case device_t::GPU: {
 #if defined(__GPU)
                     zm.copy_to(memory_t::device);
-                    linalg<GPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::device), zm.ld(), phase_factors.at(memory_t::device),
-                                      phase_factors.ld(), tmp.at(memory_t::device), tmp.ld());
+                    linalg<device_t::GPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::device), zm.ld(), phase_factors.at(memory_t::device),
+                                      		phase_factors.ld(), tmp.at(memory_t::device), tmp.ld());
                     tmp.copy_to(memory_t::host);
 #endif
                     break;

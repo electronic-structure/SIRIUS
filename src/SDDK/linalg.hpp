@@ -41,7 +41,7 @@ namespace sddk {
 
 namespace _local {
 /// check if device id has been set properly
-bool is_set_device_id()
+inline bool is_set_device_id()
 {
     return acc::get_device_id() == sddk::get_device_id(acc::num_devices());
 }

@@ -84,7 +84,7 @@ inline mdarray<double_complex, 2> rotation_matrix_su2(matrix3d<double> R__)
 }
 
 /// Get axis and angle from rotation matrix.
-std::pair<vector3d<double>, double> axis_angle(matrix3d<double> R__)
+inline std::pair<vector3d<double>, double> axis_angle(matrix3d<double> R__)
 {
     vector3d<double> u;
     /* make proper rotation */

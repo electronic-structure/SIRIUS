@@ -142,9 +142,9 @@ inline void Hamiltonian::set_fv_h_o<device_t::CPU, electronic_structure_method_t
 
 #ifdef __GPU
 template<>
-inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(K_point* kp__,
-                                                                                               dmatrix<double_complex>& h__,
-                                                                                               dmatrix<double_complex>& o__) const
+inline void Hamiltonian::set_fv_h_o<device_t::GPU, electronic_structure_method_t::full_potential_lapwlo>(K_point* kp__,
+                                              		                                                 dmatrix<double_complex>& h__,
+                                                        	                                         dmatrix<double_complex>& o__) const
 {
     PROFILE("sirius::Hamiltonian::set_fv_h_o");
 
