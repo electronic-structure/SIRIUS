@@ -27,12 +27,10 @@
 
 // the S matrix is already applied to phi_i
 
-#ifndef __APPLY_HUBBARD_POTENTIAL_HPP__
-#define __APPLY_HUBBARD_POTENTIAL_HPP__
-
-inline void 
-Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int idx__, const int n__,
-                                 Wave_functions& phi, Wave_functions& hphi)
+#include "hubbard.hpp"
+namespace sirius {
+void Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int idx__, const int n__,
+                                      Wave_functions& phi, Wave_functions& hphi)
 {
     auto& hub_wf = kp__.hubbard_wave_functions();
 
@@ -84,7 +82,7 @@ Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int idx_
                         for (int nbd = 0; nbd < n__; nbd++) {
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    Up(this->offset[ia] + s1 * lmax_at + m1, nbd) += this->hubbard_potential_(m2, m1, ind, ia, 0) *
+                                    Up(this->offset[ia] + s1 * lmax_at + m1, nbd) += this->hubbard_potential_(m2, m1, ind, ia) *
                                         dm(this->offset[ia] + s2 * lmax_at + m2, nbd);
                                 }
                             }
@@ -96,7 +94,7 @@ Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int idx_
                 for (int nbd = 0; nbd < n__; nbd++) {
                     for (int m1 = 0; m1 < lmax_at; m1++) {
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            Up(this->offset[ia] + m1, nbd) += this->hubbard_potential_(m2, m1, ispn__, ia, 0) *
+                            Up(this->offset[ia] + m1, nbd) += this->hubbard_potential_(m2, m1, ispn__, ia) *
                                 dm(this->offset[ia] + m2, nbd);
                         }
                     }
@@ -125,5 +123,4 @@ Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int idx_
                               idx__,
                               n__);
 }
-
-#endif
+}

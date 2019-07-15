@@ -14,7 +14,13 @@ if(USE_CUDA)
   set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
 
-set(_SOURSES "dft_ground_state.cpp")
+set(_SOURSES "dft_ground_state.cpp"
+  "Hubbard/apply_hubbard_potential.cpp"
+  "Hubbard/Hubbard.cpp"
+"Hubbard/hubbard_generate_atomic_orbitals.cpp"
+"Hubbard/hubbard_occupancies_derivatives.cpp"
+"Hubbard/hubbard_occupancy.cpp"
+"Hubbard/hubbard_potential_energy.cpp")
 
 # create library with .cpp, .cu and .f90 sources
 add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
@@ -24,6 +30,8 @@ add_dependencies(sirius generate_version_hpp)
 add_dependencies(sirius runtime_options_json_hpp)
 
 set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+include_directories(".")
 
 INSTALL (TARGETS sirius ARCHIVE DESTINATION
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
