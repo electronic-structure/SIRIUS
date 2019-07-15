@@ -22,10 +22,10 @@
  *  \brief Generate atomic orbitals for Hubbard correction.
  */
 
-#ifndef __HUBBARD_GENERATE_ATOMIC_ORBITALS_HPP__
-#define __HUBBARD_GENERATE_ATOMIC_ORBITALS_HPP__
+#include "hubbard.hpp"
 
-inline void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator& q_op)
+namespace sirius {
+void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator& q_op)
 {
 
     const int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
@@ -51,7 +51,20 @@ inline void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator& q_op)
     // temporary wave functions
     Wave_functions sphi(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), ctx_.preferred_memory_t(), num_sc);
 
-    kp.generate_atomic_wave_functions_aux(this->number_of_hubbard_orbitals(), sphi, this->offset, true);
+    for (int ispn = 0; ispn < num_sc; ispn++) {
+        sphi.pw_coeffs(ispn).prime().zero();
+    }
+
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom_type   = unit_cell_.atom(ia).type();
+        if (atom_type.hubbard_correction()) {
+            kp.generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(),
+                                              ia,
+                                              offset[ia],
+                                              true,
+                                              sphi);
+        }
+    }
 
     // check if we have a norm conserving pseudo potential only
     bool augment{false};
@@ -107,7 +120,7 @@ inline void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator& q_op)
     }
 }
 
-inline void 
+void
 Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
 {
     // do we orthogonalize the all thing
@@ -208,8 +221,6 @@ Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
         // Apply the transform on the wave functions
         transform<double_complex>(mem, la, (ctx_.num_mag_dims() == 3) ? 2 : 0, sphi, 0, this->number_of_hubbard_orbitals(),
                                   S, 0, 0, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals());
-
     }
 }
-
-#endif
+}

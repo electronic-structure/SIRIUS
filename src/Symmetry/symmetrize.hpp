@@ -494,7 +494,5 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
                          lmmax * nrmax * spl_atoms.local_size());
     }
 }
-
 }
-
 #endif // __SYMMETRIZE_HPP__

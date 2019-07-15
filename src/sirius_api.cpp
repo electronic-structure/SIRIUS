@@ -56,7 +56,7 @@ static inline std::vector<int> atomic_orbital_index_map_QE(sirius::Atom_type con
     return idx_map;
 }
 
-static inline int phase_Rlm_QE(sirius::Atom_type const& type__, int xi__)
+static inline int phase_Rlm_QE(::sirius::Atom_type const& type__, int xi__)
 {
     return (type__.indexb(xi__).m < 0 && (-type__.indexb(xi__).m) % 2 == 0) ? -1 : 1;
 }
@@ -532,7 +532,7 @@ void* sirius_create_ground_state(void* const* ks_handler__)
    @fortran argument in optional int    niter                   Maximum number of SCF iterations.
    @fortran argument in optional bool   save_state              boolean variable indicating if we want to save the ground state
    @fortran end */
-void sirius_find_ground_state(void* const* gs_handler__, double const* potential_tol__, double const* energy_tol__, 
+void sirius_find_ground_state(void* const* gs_handler__, double const* potential_tol__, double const* energy_tol__,
                               int const* niter__, bool const *save_state__)
 {
     GET_GS(gs_handler__)
