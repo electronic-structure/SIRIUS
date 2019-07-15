@@ -26,8 +26,12 @@
 #define __GAUNT_HPP__
 
 #include "memory.hpp"
+#include "typedefs.hpp"
+#include "utils/utils.hpp"
 
 namespace sirius {
+
+using namespace sddk;
 
 /// Used in the {lm1, lm2} : {lm3, coefficient} way of grouping non-zero Gaunt coefficients
 template <typename T>

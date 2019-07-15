@@ -88,9 +88,10 @@ void Symmetrize(const mdarray<double_complex, 4> &ns_,
 
             //} the hubbard treatment when spin orbit coupling is present is
             // foundamentally wrong since we consider the full hubbard
-            // coorection with an averaged wave function (meaning we neglect the
+            // correction with a averaged wave function (meaning we neglect the
             // L.S correction within hubbard). A better option (although still
             // wrong from physics pov) would be to consider a multi orbital case.
+
             if ((hubbard_)&&(xi2 >= (2 * l2 + 1))) {
                 break;
             }
@@ -105,7 +106,8 @@ void Symmetrize(const mdarray<double_complex, 4> &ns_,
                     for (int m4 = -l2; m4 <= l2; m4++) {
                         int lm4 = utils::lm(l2, m4);
                         int xi4 = indexb.index_by_lm_order(lm4, o2);
-                        dm_rot_spatial[j] += ns_(xi3, xi4, j, ja) * rotm(lm1, lm3) * rotm(lm2, lm4);
+                        dm_rot_spatial[j] += ns_(xi3, xi4, j, ja) *
+                            rotm(lm1, lm3) * rotm(lm2, lm4);
                     }
                 }
             }

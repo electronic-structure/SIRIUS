@@ -22,6 +22,9 @@
  *  \brief Generate atomic orbitals for Hubbard correction.
  */
 
+#include "hubbard.hpp"
+
+namespace sirius {
 void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator& q_op)
 {
 
@@ -117,7 +120,8 @@ void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator& q_op)
     }
 }
 
-void Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
+void
+Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
 {
     // do we orthogonalize the all thing
 
@@ -218,4 +222,5 @@ void Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
         transform<double_complex>(mem, la, (ctx_.num_mag_dims() == 3) ? 2 : 0, sphi, 0, this->number_of_hubbard_orbitals(),
                                   S, 0, 0, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals());
     }
+}
 }

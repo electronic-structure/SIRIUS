@@ -25,6 +25,8 @@
 #ifndef __HUBBARD_ORBITALS_DESCRIPTOR_HPP__
 #define __HUBBARD_ORBITALS_DESCRIPTOR_HPP__
 
+#include "SHT/sht.hpp"
+
 namespace sirius {
 
 /// Structure containing all informations about a specific hubbard orbital (including the index of the radial function).

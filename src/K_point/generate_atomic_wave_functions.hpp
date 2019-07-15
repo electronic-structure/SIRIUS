@@ -74,26 +74,12 @@ inline void K_point::generate_atomic_wave_functions(const basis_functions_index 
                  * in the index structure, so I explicitely compute the
                  * average */
 
-                // if (!atom_type.spin_orbit_coupling()) {
-                    for (int m = -l; m <= l; m++) {
-                        const int lm = utils::lm(l, m);
-                        phi.pw_coeffs(0).prime(igk_loc, n + offset) = z * std::conj(phase_factor) * rlm[lm] * ri_values[index_radial_function];
-                        n++;
-                    }
-                    xi += 2 * l + 1;
-                // } else {
-                //     const auto average = ri_values[index_radial_function] +
-                //         ri_values[index_radial_function + 1];
-
-                //     for (int m = -l; m <= l; m++) {
-                //         const int lm = utils::lm(l, m);
-                //         phi.pw_coeffs(0).prime(igk_loc, n + offset) += 0.5 * z * std::conj(phase_factor) * rlm[lm] *
-                //             average;
-                //         n += 2;
-                //     }
-                //     xi += 2 * (2 * l + 1);
-                // }
-                // the -1 is for compensating the xi++ in the for loop.
+                for (int m = -l; m <= l; m++) {
+                    const int lm = utils::lm(l, m);
+                    phi.pw_coeffs(0).prime(igk_loc, n + offset) = z * std::conj(phase_factor) * rlm[lm] * ri_values[index_radial_function];
+                    n++;
+                }
+                xi += 2 * l + 1;
             } else {
                 /* hubbard atomic orbitals */
 

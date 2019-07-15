@@ -88,12 +88,8 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
     /* set intial sphi */
     if (sphi__ != nullptr) {
-        if (ispn__ == 2) {
-            for (int ispn = 0; (ispn < nsc); ispn++) {
-                sphi__->copy_from(phi__, n__, ispn, N__, ispn, N__);
-            }
-        } else {
-            sphi__->copy_from(phi__, n__, ispn__, N__, ispn__, N__);
+        for (auto ispn: spin_range(ispn__)) {
+            sphi__->copy_from(phi__, n__, ispn, N__, ispn, N__);
         }
     }
 
@@ -102,57 +98,59 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         return;
     }
 
-    for (int i = 0; i < kp__->beta_projectors().num_chunks(); i++) {
-        /* generate beta-projectors for a block of atoms */
-        kp__->beta_projectors().generate(i);
-        /* non-collinear case */
-        if (ispn__ == 2) {
-            for (int ispn = 0; ispn < 2; ispn++) {
+    apply_non_local_d_q<T>(spin_range(ispn__), N__, n__, kp__->beta_projectors(), phi__, &D(), hphi__, &Q(), sphi__);
 
-                auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn, N__, n__);
-                if (ctx_.control().print_checksum_ && kp__->comm().rank() == 0) {
-                    std::stringstream s;
-                    s << "<beta|phi_" << ispn << ">";
-                    auto cs = beta_phi.checksum();
-                    utils::print_checksum(s.str(), cs);
-                }
+    //for (int i = 0; i < kp__->beta_projectors().num_chunks(); i++) {
+    //    /* generate beta-projectors for a block of atoms */
+    //    kp__->beta_projectors().generate(i);
+    //    /* non-collinear case */
+    //    if (ispn__ == 2) {
+    //        for (int ispn = 0; ispn < 2; ispn++) {
 
-                if (hphi__) {
-                    /* apply diagonal spin blocks */
-                    D().apply(i, ispn, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
-                    /* apply non-diagonal spin blocks */
-                    /* xor 3 operator will map 0 to 3 and 1 to 2 */
-                    D().apply(i, ispn ^ 3, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
-                }
+    //            auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn, N__, n__);
+    //            if (ctx_.control().print_checksum_ && kp__->comm().rank() == 0) {
+    //                std::stringstream s;
+    //                s << "<beta|phi_" << ispn << ">";
+    //                auto cs = beta_phi.checksum();
+    //                utils::print_checksum(s.str(), cs);
+    //            }
 
-                if (sphi__) {
-                    /* apply Q operator (diagonal in spin) */
-                    Q().apply(i, ispn, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
-                    /* apply non-diagonal spin blocks */
-                    if (ctx_.so_correction()) {
-                        Q().apply(i, ispn ^ 3, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
-                    }
-                }
-            }
-        } else { /* non-magnetic or collinear case */
+    //            if (hphi__) {
+    //                /* apply diagonal spin blocks */
+    //                D().apply(i, ispn, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+    //                /* apply non-diagonal spin blocks */
+    //                /* xor 3 operator will map 0 to 3 and 1 to 2 */
+    //                D().apply(i, ispn ^ 3, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+    //            }
 
-            auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn__, N__, n__);
-            if (ctx_.control().print_checksum_ && kp__->comm().rank() == 0) {
-                std::stringstream s;
-                s << "<beta|phi_" << ispn__ << ">";
-                auto cs = beta_phi.checksum();
-                utils::print_checksum(s.str(), cs);
-            }
+    //            if (sphi__) {
+    //                /* apply Q operator (diagonal in spin) */
+    //                Q().apply(i, ispn, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+    //                /* apply non-diagonal spin blocks */
+    //                if (ctx_.so_correction()) {
+    //                    Q().apply(i, ispn ^ 3, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+    //                }
+    //            }
+    //        }
+    //    } else { /* non-magnetic or collinear case */
 
-            if (hphi__) {
-                D().apply(i, ispn__, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
-            }
+    //        auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn__, N__, n__);
+    //        if (ctx_.control().print_checksum_ && kp__->comm().rank() == 0) {
+    //            std::stringstream s;
+    //            s << "<beta|phi_" << ispn__ << ">";
+    //            auto cs = beta_phi.checksum();
+    //            utils::print_checksum(s.str(), cs);
+    //        }
 
-            if (sphi__) {
-                Q().apply(i, ispn__, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
-            }
-        }
-    }
+    //        if (hphi__) {
+    //            D().apply(i, ispn__, *hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+    //        }
+
+    //        if (sphi__) {
+    //            Q().apply(i, ispn__, *sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+    //        }
+    //    }
+    //}
 
     /* apply the hubbard potential if relevant */
     if (ctx_.hubbard_correction() && !ctx_.gamma_point() && (hphi__ != NULL)) {
@@ -169,7 +167,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
         if (ctx_.processing_unit() == device_t::GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                kp__->hubbard_wave_functions().deallocate(spin_idx(ispn), memory_t::device);
+                kp__->hubbard_wave_functions().deallocate(spin_range(ispn), memory_t::device);
             }
         }
     }
@@ -968,8 +966,9 @@ inline void Hamiltonian::apply_magnetic_field(K_point*                     kp__,
 //==     }
 //== }
 
-void Hamiltonian::apply_so_correction(K_point* kp__, Wave_functions& fv_states__,
-                                      std::vector<Wave_functions>& hpsi__) const
+inline void
+Hamiltonian::apply_so_correction(K_point* kp__, Wave_functions& fv_states__,
+                                 std::vector<Wave_functions>& hpsi__) const
 {
     PROFILE("sirius::Hamiltonian::apply_so_correction");
 
@@ -1170,3 +1169,4 @@ void Hamiltonian_k::apply_h_s(int ispn__, int N__, int n__, Wave_functions& phi_
     //    }
     //}
 }
+

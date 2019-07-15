@@ -4,9 +4,7 @@
 
 include(GNUInstallDirs)  # required to get a proper LIBDIR variable
 
-# keep two libraries: libsirius and libsirius_f
-
-if(CREATE_FORTRAN_BININGS)
+if(CREATE_FORTRAN_BINDINGS)
   set(_FSOURCES "sirius_api.cpp;sirius.f90")
 endif()
 
@@ -16,20 +14,40 @@ if(USE_CUDA)
   set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
 
+set(_SOURSES "dft_ground_state.cpp"
+  "Hubbard/apply_hubbard_potential.cpp"
+  "Hubbard/Hubbard.cpp"
+"Hubbard/hubbard_generate_atomic_orbitals.cpp"
+"Hubbard/hubbard_occupancies_derivatives.cpp"
+"Hubbard/hubbard_occupancy.cpp"
+"Hubbard/hubbard_potential_energy.cpp")
 
-if(CREATE_FORTRAN_BININGS OR USE_CUDA)
-  add_library(sirius STATIC "${_CUSOURCES};${_FSOURCES}")
-  set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
+# create library with .cpp, .cu and .f90 sources
+add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
+
+# add dependency on auto-generated headers
+add_dependencies(sirius generate_version_hpp)
+add_dependencies(sirius runtime_options_json_hpp)
+
+set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+include_directories(".")
+
+INSTALL (TARGETS sirius ARCHIVE DESTINATION
+  ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  )
+target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX)
+
+if(CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
-  INSTALL (TARGETS sirius ARCHIVE DESTINATION
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    )
-  target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX)
-
 endif()
 
-if(CREATE_FORTRAN_BININGS)
+#if(USE_CUDA)
+#  add_library(sirius STATIC "${_CUSOURCES}")
+#endif()
+
+if(CREATE_FORTRAN_BINDINGS)
   INSTALL ( CODE
     "EXECUTE_PROCESS (COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${PROJECT_BINARY_DIR}/src/mod_files\" \"${CMAKE_INSTALL_PREFIX}/include/sirius/\")"
     )

@@ -47,8 +47,8 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
 
     if (is_device_memory(mem__)) {
         for (int ispn = 0; ispn < nsp; ispn++) {
-            phi.allocate(spin_idx(ispn), memory_t::device);
-            phi.copy_to(spin_idx(ispn), memory_t::device, 0, num_bands__);
+            phi.allocate(spin_range(ispn), memory_t::device);
+            phi.copy_to(spin_range(ispn), memory_t::device, 0, num_bands__);
         }
         ovlp.allocate(memory_t::device);
     }

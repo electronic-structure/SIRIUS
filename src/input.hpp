@@ -31,6 +31,7 @@
 #include "sddk.hpp"
 
 using namespace geometry3d;
+using namespace nlohmann;
 
 namespace sirius {
 

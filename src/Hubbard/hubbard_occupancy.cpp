@@ -33,6 +33,9 @@
  *
  * Requires symmetrization. */
 
+#include "hubbard.hpp"
+
+namespace sirius {
 void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 {
     if (!ctx_.hubbard_correction()) {
@@ -170,7 +173,6 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 const auto& atom = unit_cell_.atom(ia);
                 if (atom.type().hubbard_correction()) {
-                    int offset_ = 0;
 
                     /* loop over the different channels */
                     /* note that for atom with SO interactions, we need to jump
@@ -190,12 +192,11 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
                                 for (int mp = 0; mp < lmax_at; mp++) {
                                     for (int m = 0; m < lmax_at; m++) {
                                         this->occupancy_number_(m, mp, s, ia) +=
-                                            Op(this->offset[ia] + m + s1 * lmax_at + offset_, this->offset[ia] + mp + s2 * lmax_at + offset_);
+                                            Op(this->offset[ia] + m + s1 * lmax_at, this->offset[ia] + mp + s2 * lmax_at);
                                     }
                                 }
                             }
                         }
-                        offset_ = 2 * lmax_at;
                     }
                 }
             }
@@ -212,8 +213,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 const auto& atom = unit_cell_.atom(ia);
                 if (atom.type().hubbard_correction()) {
-                    int offset_ = 0;
-                    for (int orb = 0; orb < atom.type().hubbard_orbital().size(); orb++) {
+                    for (int orb = 0; orb < (int)atom.type().hubbard_orbital().size(); orb++) {
                         const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                             for (int mp = 0; mp < lmax_at; mp++) {
@@ -224,7 +224,6 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
                                 }
                             }
                         }
-                        offset_ += lmax_at;
                     }
                 }
             }
@@ -236,7 +235,9 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
                                                            static_cast<int>(this->occupancy_number_.size()));
 
     // Now symmetrization procedure. We need to review that
-    symmetrize_occupancy_matrix();
+    if (0) {
+        symmetrize_occupancy_matrix();
+    }
 
     print_occupancies();
 }
@@ -245,7 +246,8 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 // fill the d (f) states according to the hund's rules and with majority
 // spin first and the remaining electrons distributed among the minority
 // states.
-void Hubbard::calculate_initial_occupation_numbers()
+void
+Hubbard::calculate_initial_occupation_numbers()
 {
     this->occupancy_number_.zero();
 #pragma omp parallel for schedule(static)
@@ -329,7 +331,7 @@ void Hubbard::calculate_initial_occupation_numbers()
     print_occupancies();
 }
 
-inline void Hubbard::print_occupancies()
+void Hubbard::print_occupancies()
 {
     if (ctx_.control().verbosity_ > 1 && ctx_.comm().rank() == 0) {
         printf("\n");
@@ -404,7 +406,7 @@ inline void Hubbard::print_occupancies()
     }
 }
 
-inline void Hubbard::symmetrize_occupancy_matrix()
+void Hubbard::symmetrize_occupancy_matrix()
 {
     auto& sym = unit_cell_.symmetry();
 
@@ -451,7 +453,7 @@ inline void Hubbard::symmetrize_occupancy_matrix()
                 for(auto d0 = 0u; d0 < dm_.size(0); d0++) {
                     dm_(d0, d1, 0, d3) = dm_(d0, d1, 0, d3) * alpha;
                     dm_(d0, d1, 1, d3) = dm_(d0, d1, 1, d3) * alpha;
-                    dm_(d0, d1, 2, d3) = std::conj(dm_(d0, d1, 2, d3));
+                    dm_(d0, d1, 2, d3) = std::conj(dm_(d0, d1, 2, d3))  * alpha;
                         dm_(d0, d1, 3, d3) = dm_(d0, d1, 2, d3) * alpha;
                 }
             }
@@ -484,9 +486,10 @@ inline void Hubbard::symmetrize_occupancy_matrix()
  * return the occupancy matrix if the first parameter is set to "get"
  */
 
-void Hubbard::access_hubbard_occupancies(char const*     what__,
-                                         double_complex* occ__,
-                                         int const*      ld__)
+void
+Hubbard::access_hubbard_occupancies(char const*     what__,
+                                    double_complex* occ__,
+                                    int const*      ld__)
 {
     std::string what(what__);
 
@@ -528,4 +531,5 @@ void Hubbard::access_hubbard_occupancies(char const*     what__,
             }
         }
     }
+}
 }

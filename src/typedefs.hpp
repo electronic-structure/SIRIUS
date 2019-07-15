@@ -28,6 +28,8 @@
 #include <cstdlib>
 #include <assert.h>
 #include <complex>
+#include <vector>
+#include <array>
 #include <limits>
 
 using double_complex = std::complex<double>;

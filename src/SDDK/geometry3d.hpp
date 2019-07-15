@@ -368,7 +368,7 @@ class matrix3d
 
 /// Return transpose of the matrix.
 template <typename T>
-matrix3d<T> transpose(matrix3d<T> src)
+inline matrix3d<T> transpose(matrix3d<T> src)
 {
     matrix3d<T> mtrx;
     for (int i = 0; i < 3; i++) {
@@ -398,7 +398,7 @@ inline matrix3d<T> inverse_aux(matrix3d<T> src)
 }
 
 /// Return inverse of the integer matrix
-matrix3d<int> inverse(matrix3d<int> src)
+inline matrix3d<int> inverse(matrix3d<int> src)
 {
     int t1 = src.det();
     if (std::abs(t1) != 1) {
@@ -409,7 +409,7 @@ matrix3d<int> inverse(matrix3d<int> src)
 
 /// Return inverse of the matrix.
 template <typename T>
-matrix3d<T> inverse(matrix3d<T> src)
+inline matrix3d<T> inverse(matrix3d<T> src)
 {
     T t1 = src.det();
 
@@ -421,7 +421,7 @@ matrix3d<T> inverse(matrix3d<T> src)
 }
 
 template <typename T>
-std::ostream& operator<<(std::ostream& out, matrix3d<T>& v)
+inline std::ostream& operator<<(std::ostream& out, matrix3d<T>& v)
 {
     out << "{";
     for (int i = 0; i < 3; i++) {

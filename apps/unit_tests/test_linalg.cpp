@@ -19,8 +19,8 @@ void test1()
     }
     A >> B;
 
-    linalg<CPU>::heinv(N, A);
-    linalg<CPU>::hemm(0, 0, N, N, double_complex(1, 0), A, B, double_complex(0, 0), C);
+    linalg<device_t::CPU>::heinv(N, A);
+    linalg<device_t::CPU>::hemm(0, 0, N, N, double_complex(1, 0), A, B, double_complex(0, 0), C);
 
     int err = 0;
     for (int i = 0; i < N; i++)
@@ -33,7 +33,7 @@ void test1()
         }
     }
 
-    linalg<CPU>::hemm(1, 0, N, N, double_complex(1, 0), A, B, double_complex(0, 0), C);
+    linalg<device_t::CPU>::hemm(1, 0, N, N, double_complex(1, 0), A, B, double_complex(0, 0), C);
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++)
@@ -62,44 +62,42 @@ void test2()
     matrix<T> A(N, N);
     matrix<T> B(N, N);
     matrix<T> C(N, N);
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < N; j++) A(j, i) = utils::random<T>();
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            A(j, i) = utils::random<T>();
+        }
     }
     A >> B;
 
-    linalg<CPU>::geinv(N, A);
-    linalg<CPU>::gemm(0, 0, N, N, N, A, B, C);
+    linalg<device_t::CPU>::geinv(N, A);
+    linalg<device_t::CPU>::gemm(0, 0, N, N, N, A, B, C);
 
     int err = 0;
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < N; j++)
-        {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            T c = C(i, j);
+            if (i == j) {
+                c -= 1.0;
+            }
+            if (std::abs(c) > 1e-10) {
+                err++;
+            }
+        }
+    }
+
+    linalg<device_t::CPU>::gemm(0, 0, N, N, N, A, B, C);
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
             T c = C(i, j);
             if (i == j) c -= 1.0;
             if (std::abs(c) > 1e-10) err++;
         }
     }
 
-    linalg<CPU>::gemm(0, 0, N, N, N, A, B, C);
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < N; j++)
-        {
-            T c = C(i, j);
-            if (i == j) c -= 1.0;
-            if (std::abs(c) > 1e-10) err++;
-        }
-    }
-
-    if (err)
-    {
+    if (err) {
         printf("test2 failed!\n");
         exit(1);
-    }
-    else
-    {
+    } else {
         printf("test2 passed!\n");
     }
 }
@@ -132,9 +130,9 @@ void test3()
     T alpha = 1.0;
     T beta = 0.0;
 
-    linalg<CPU>::geinv(N, A);
+    linalg<device_t::CPU>::geinv(N, A);
     
-    linalg<CPU>::gemm(0, 0, N, N, N, alpha, A, B, beta, C);
+    linalg<device_t::CPU>::gemm(0, 0, N, N, N, alpha, A, B, beta, C);
 
     int err = 0;
     for (int i = 0; i < C.num_cols_local(); i++)
@@ -147,7 +145,7 @@ void test3()
         }
     }
     
-    linalg<CPU>::gemm(0, 0, N, N, N, alpha, B, A, beta, C);
+    linalg<device_t::CPU>::gemm(0, 0, N, N, N, alpha, B, A, beta, C);
 
     for (int i = 0; i < C.num_cols_local(); i++)
     {
