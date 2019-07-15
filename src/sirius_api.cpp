@@ -2920,4 +2920,76 @@ void sirius_get_fv_eigen_values(void*          const* handler__,
     }
 }
 
+/* @fortran begin function void sirius_set_rg_values          Set the values of the function on the regular grid.
+   @fortran argument in  required void*  handler              DFT ground state handler.
+   @fortran argument in  required string label                Label of the function.
+   @fortran argument in  required double values               Values of the function.
+   @fortran argument in  required int    grid_dims            Dimensions of the FFT grid.
+   @fortran argument in  optional bool   transform_to_pw      If true, transform function to PW domain.
+   @fortran end */
+void sirius_set_rg_values(void*  const* handler__,
+                          char   const* label__,
+                          double const* values__,
+                          int    const* grid_dims__,
+                          bool   const* transform_to_pw__)
+{
+    GET_GS(handler__);
+
+    std::string label(label__);
+
+    for (int x: {0, 1, 2}) {
+        if (grid_dims__[x] != gs.ctx().fft().size(x)) {
+            TERMINATE("wrong FFT grid size");
+        }
+    }
+
+    std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
+        {"rho",   &gs.density().rho()},
+        {"magz",  &gs.density().magnetization(0)},
+        {"magx",  &gs.density().magnetization(1)},
+        {"magy",  &gs.density().magnetization(2)},
+        {"veff",  &gs.potential().effective_potential()},
+        {"bz",    &gs.potential().effective_magnetic_field(0)},
+        {"bx",    &gs.potential().effective_magnetic_field(1)},
+        {"by",    &gs.potential().effective_magnetic_field(2)},
+        {"vxc",   &gs.potential().xc_potential()},
+    };
+
+    try {
+        auto& f = func.at(label);
+        auto offset = gs.ctx().fft().offset_z() * gs.ctx().fft().size(0) * gs.ctx().fft().size(1);
+        /* copy local part of the buffer */
+        std::copy(values__ + offset, values__ + offset + gs.ctx().fft().local_size(), &f->f_rg(0));
+        if (transform_to_pw__ && *transform_to_pw__) {
+            f->fft_transform(-1);
+        }
+    } catch(...) {
+        TERMINATE("wrong label");
+    }
+}
+
+/* @fortran begin function void sirius_get_total_magnetization  Get the total magnetization of the system.
+   @fortran argument in  required void*  handler                DFT ground state handler.
+   @fortran argument out required double mag                    3D magnetization vector (x,y,z components).
+   @fortran end */
+void sirius_get_total_magnetization(void* const* handler__,
+                                    double*      mag__)
+{
+    GET_GS(handler__);
+
+    mdarray<double, 1> total_mag(mag__, 3);
+    total_mag.zero();
+    std::vector<double> mt_mag[3];
+    double it_mag[3];
+    for (int j = 0; j < gs.ctx().num_mag_dims(); j++) {
+        total_mag[j] = gs.density().magnetization(j).integrate(mt_mag[j], it_mag[j]);
+    }
+    if (gs.ctx().num_mag_dims() == 3) {
+        /* swap z and x and change order from z,x,y to x,z,y */
+        std::swap(total_mag[0], total_mag[1]);
+        /* swap z and y and change order x,z,y to x,y,z */
+        std::swap(total_mag[1], total_mag[2]);
+    }
+}
+
 } // extern "C"

@@ -2964,3 +2964,54 @@ end interface
 call sirius_get_fv_eigen_values_aux(handler,ik,fv_eval,num_fv_states)
 end subroutine sirius_get_fv_eigen_values
 
+!> @brief Set the values of the function on the regular grid.
+!> @param [in] handler DFT ground state handler.
+!> @param [in] label Label of the function.
+!> @param [in] values Values of the function.
+!> @param [in] grid_dims Dimensions of the FFT grid.
+!> @param [in] transform_to_pw If true, transform function to PW domain.
+subroutine sirius_set_rg_values(handler,label,values,grid_dims,transform_to_pw)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(in) :: values
+integer(C_INT), intent(in) :: grid_dims
+logical(C_BOOL), optional, target, intent(in) :: transform_to_pw
+type(C_PTR) :: transform_to_pw_ptr
+interface
+subroutine sirius_set_rg_values_aux(handler,label,values,grid_dims,transform_to_pw)&
+&bind(C, name="sirius_set_rg_values")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(in) :: values
+integer(C_INT), intent(in) :: grid_dims
+type(C_PTR), value :: transform_to_pw
+end subroutine
+end interface
+
+transform_to_pw_ptr = C_NULL_PTR
+if (present(transform_to_pw)) transform_to_pw_ptr = C_LOC(transform_to_pw)
+
+call sirius_set_rg_values_aux(handler,label,values,grid_dims,transform_to_pw_ptr)
+end subroutine sirius_set_rg_values
+
+!> @brief Get the total magnetization of the system.
+!> @param [in] handler DFT ground state handler.
+!> @param [out] mag 3D magnetization vector (x,y,z components).
+subroutine sirius_get_total_magnetization(handler,mag)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: mag
+interface
+subroutine sirius_get_total_magnetization_aux(handler,mag)&
+&bind(C, name="sirius_get_total_magnetization")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: mag
+end subroutine
+end interface
+
+call sirius_get_total_magnetization_aux(handler,mag)
+end subroutine sirius_get_total_magnetization
+
