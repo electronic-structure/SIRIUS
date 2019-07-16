@@ -229,7 +229,8 @@ int main(int argn, char** argv)
     cmd_args args(argn, argv, {{"device=", "(string) CPU or GPU"},
                                {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
                                {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
-                               {"N=", "(int) cell multiplicity"}
+                               {"N=", "(int) cell multiplicity"},
+                               {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"}
                               });
 
     if (args.exist("help")) {
@@ -238,10 +239,11 @@ int main(int argn, char** argv)
         return 0;
     }
 
-    auto pu = get_device_t(args.value<std::string>("device", "CPU"));
+    auto pu        = get_device_t(args.value<std::string>("device", "CPU"));
     auto pw_cutoff = args.value<double>("pw_cutoff", 30);
     auto gk_cutoff = args.value<double>("gk_cutoff", 10);
-    auto N = args.value<int>("N", 1);
+    auto N         = args.value<int>("N", 1);
+    auto mpi_grid  = args.value<std::vector<int>>("mpi_grid", {1, 1});
 
     sirius::initialize(1);
     test_davidson(pu, pw_cutoff, gk_cutoff, N);
