@@ -161,17 +161,21 @@ inline void transform(memory_t                     mem__,
     /* trivial case */
     if (comm.size() == 1) {
         if (is_device_memory(mem__)) {
+            //acc::copyin(mtrx__.at(memory_t::device, irow0__, jcol0__), mtrx__.ld(),
+            //            mtrx__.at(memory_t::host, irow0__, jcol0__), mtrx__.ld(), m__, n__, stream_id(0));
             acc::copyin(mtrx__.at(memory_t::device, irow0__, jcol0__), mtrx__.ld(),
-                        mtrx__.at(memory_t::host, irow0__, jcol0__), mtrx__.ld(), m__, n__, stream_id(0));
+                        mtrx__.at(memory_t::host, irow0__, jcol0__), mtrx__.ld(), m__, n__);
         }
         for (int iv = 0; iv < nwf; iv++) {
             transform_local(la__, ispn__, &alpha, wf_in__[iv], i0__, m__, mtrx__.at(mem__, irow0__, jcol0__),
-                            mtrx__.ld(), wf_out__[iv], j0__, n__, stream_id(0));
+                            mtrx__.ld(), wf_out__[iv], j0__, n__, stream_id(iv));
 
         }
         if (is_device_memory(mem__)) {
             /* wait for the stream to finish zgemm */
-            acc::sync_stream(stream_id(0));
+            for (int iv = 0; iv < nwf; iv++) {
+                acc::sync_stream(stream_id(iv));
+            }
         }
         if (sddk_pp) {
             time += omp_get_wtime();

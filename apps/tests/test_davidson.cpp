@@ -135,31 +135,33 @@ void test_davidson(device_t pu__, double pw_cutoff__, double gk_cutoff__, int N_
     pot.zero();
 
 
-    double vk[] = {0.1, 0.1, 0.1};
-    K_point kp(ctx, vk, 1.0);
-    kp.initialize();
-    std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
-    for (int i = 0; i < ctx.num_bands(); i++) {
-        kp.band_occupancy(i, 0, 2);
-    }
-    init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
+    for (int r = 0; r < 2; r++) {
+        double vk[] = {0.1, 0.1, 0.1};
+        K_point kp(ctx, vk, 1.0);
+        kp.initialize();
+        std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
+        for (int i = 0; i < ctx.num_bands(); i++) {
+            kp.band_occupancy(i, 0, 2);
+        }
+        init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
 
 
 
-    Hamiltonian H(ctx, pot);
-    H.prepare();
-    Band(ctx).solve_pseudo_potential<double_complex>(kp, H);
-    //for (int i = 0; i < ctx.num_bands(); i++) {
-    //    std::cout << "energy[" << i << "]=" << kp.band_energy(i, 0) << "\n";
-    //}
-    std::vector<double> ekin(kp.num_gkvec());
-    for (int i = 0; i < kp.num_gkvec(); i++) {
-        ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
-    }
-    std::sort(ekin.begin(), ekin.end());
+        Hamiltonian H(ctx, pot);
+        H.prepare();
+        Band(ctx).solve_pseudo_potential<double_complex>(kp, H);
+        //for (int i = 0; i < ctx.num_bands(); i++) {
+        //    std::cout << "energy[" << i << "]=" << kp.band_energy(i, 0) << "\n";
+        //}
+        std::vector<double> ekin(kp.num_gkvec());
+        for (int i = 0; i < kp.num_gkvec(); i++) {
+            ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
+        }
+        std::sort(ekin.begin(), ekin.end());
 
-    for (int i = 0; i < ctx.num_bands(); i++) {
-        printf("%20.16f %20.16f %20.16e\n", ekin[i], kp.band_energy(i, 0), std::abs(ekin[i] - kp.band_energy(i, 0)));
+        for (int i = 0; i < ctx.num_bands(); i++) {
+            printf("%20.16f %20.16f %20.16e\n", ekin[i], kp.band_energy(i, 0), std::abs(ekin[i] - kp.band_energy(i, 0)));
+        }
     }
 
     //ctx.set_iterative_solver_type("davidson");

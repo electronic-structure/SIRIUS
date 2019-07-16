@@ -2,7 +2,7 @@ if(CREATE_PYTHON_MODULE)
   set(CMAKE_CXX_STANDARD 14)
   find_package(mpi4py REQUIRED)
 
-  set(PYBIND11_CPP14 1)
+  add_definitions("-DPYBIND11_CPP14")
 
   set(pb11_src_dir "${PROJECT_SOURCE_DIR}/python_module/pybind11")
   check_git_submodule(pybind11 "${pb11_src_dir}")

@@ -231,34 +231,26 @@ inline void dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k,
 }
 
 inline void dtrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
-                  double const* alpha__, double const* A__, int lda__, double* B__, int ldb__)
+                  double const* alpha__, double const* A__, int lda__, double* B__, int ldb__, int stream_id)
 {
     cublasSideMode_t side = get_cublasSideMode_t(side__);
     cublasFillMode_t uplo = get_cublasFillMode_t(uplo__);
     cublasOperation_t transa = get_cublasOperation_t(transa__);
     cublasDiagType_t diag = get_cublasDiagType_t(diag__);
     //acc::set_device();
-    CALL_CUBLAS(cublasDtrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
+    CALL_CUBLAS(cublasDtrmm, (stream_handle(stream_id), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
 }
 
-inline void ztrmm(char             side__,
-                  char             uplo__,
-                  char             transa__,
-                  char             diag__,
-                  int              m__,
-                  int              n__,
-                  cuDoubleComplex const* alpha__,
-                  cuDoubleComplex const* A__,
-                  int              lda__,
-                  cuDoubleComplex* B__,
-                  int              ldb__)
+inline void ztrmm(char side__, char uplo__, char transa__, char diag__, int m__, int n__,
+                  cuDoubleComplex const* alpha__, cuDoubleComplex const* A__, int lda__, cuDoubleComplex* B__,
+                  int ldb__, int stream_id)
 {
     cublasSideMode_t side = get_cublasSideMode_t(side__);
     cublasFillMode_t uplo = get_cublasFillMode_t(uplo__);
     cublasOperation_t transa = get_cublasOperation_t(transa__);
     cublasDiagType_t diag = get_cublasDiagType_t(diag__);
     //acc::set_device();
-    CALL_CUBLAS(cublasZtrmm, (null_stream_handle(), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
+    CALL_CUBLAS(cublasZtrmm, (stream_handle(stream_id), side, uplo, transa, diag, m__, n__, alpha__, A__, lda__, B__, ldb__, B__, ldb__));
 }
 
 inline void dger(int           m,
