@@ -30,6 +30,7 @@
 #include <map>
 #include <sstream>
 #include <algorithm>
+#include <iostream>
 
 /// Simple command line arguments handler.
 class cmd_args
@@ -75,6 +76,15 @@ class cmd_args
         register_key("--help", "print this help and exit");
     }
 
+    cmd_args(int argn__, char** argv__, std::initializer_list<std::pair<std::string, std::string>> keys__)
+    {
+        register_key("--help", "print this help and exit");
+        for (auto key: keys__) {
+            register_key("--" + key.first, key.second);
+        }
+        parse_args(argn__, argv__);
+    }
+
     void register_key(std::string const key__, std::string const description__)
     {
         key_desc_.push_back(std::pair<std::string, std::string>(key__, description__));
@@ -88,7 +98,9 @@ class cmd_args
         }
 
         if (known_keys_.count(key) != 0) {
-            throw std::runtime_error("key is already added");
+            std::stringstream s;
+            s << "key (" << key << ") is already registered";
+            throw std::runtime_error(s.str());
         }
 
         known_keys_[key] = key_type;
@@ -129,7 +141,9 @@ class cmd_args
             }
 
             if (keys_.count(key) != 0) {
-                throw std::runtime_error("key is already added");
+                std::stringstream s;
+                s << "key (" << key << ") is already added";
+                throw std::runtime_error(s.str());
             }
 
             keys_[key] = val;

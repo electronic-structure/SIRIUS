@@ -38,7 +38,7 @@ void init_wf(K_point* kp__, Wave_functions& phi__, int num_bands__, int num_mag_
     }
 }
 
-void test_davidson()
+void test_davidson(device_t pu__, double pw_cutoff__, double gk_cutoff__, int N__)
 {
     utils::timer t1("test_davidson|setup");
 
@@ -98,18 +98,17 @@ void test_davidson()
     }
     atype.ps_total_charge_density(arho);
 
-    int N{2};
     /* lattice constant */
     double a{5};
     /* set lattice vectors */
-    ctx.unit_cell().set_lattice_vectors({{a * N, 0, 0}, 
-                                         {0, a * N, 0}, 
-                                         {0, 0, a * N}});
+    ctx.unit_cell().set_lattice_vectors({{a * N__, 0, 0}, 
+                                         {0, a * N__, 0}, 
+                                         {0, 0, a * N__}});
     /* add atoms */
-    double p = 1.0 / N;
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            for (int k = 0; k < N; k++) {
+    double p = 1.0 / N__;
+    for (int i = 0; i < N__; i++) {
+        for (int j = 0; j < N__; j++) {
+            for (int k = 0; k < N__; k++) {
                 ctx.unit_cell().add_atom("Cu", {i * p, j * p, k * p});
             }
         }
@@ -117,12 +116,14 @@ void test_davidson()
 
     /* initialize the context */
     ctx.set_verbosity(1);
-    ctx.pw_cutoff(40);
-    ctx.gk_cutoff(10);
+    ctx.pw_cutoff(pw_cutoff__);
+    ctx.gk_cutoff(gk_cutoff__);
+    ctx.set_processing_unit(pu__);
     t1.stop();
-    ctx.set_verbosity(5);
+
+    ctx.set_verbosity(1);
     ctx.iterative_solver_tolerance(1e-12);
-    ctx.set_iterative_solver_type("exact");
+    //ctx.set_iterative_solver_type("exact");
     ctx.initialize();
 
     Density rho(ctx);
@@ -147,10 +148,19 @@ void test_davidson()
 
     Hamiltonian H(ctx, pot);
     H.prepare();
-    //Band(ctx).solve_pseudo_potential<double_complex>(kp, H);
+    Band(ctx).solve_pseudo_potential<double_complex>(kp, H);
     //for (int i = 0; i < ctx.num_bands(); i++) {
     //    std::cout << "energy[" << i << "]=" << kp.band_energy(i, 0) << "\n";
     //}
+    std::vector<double> ekin(kp.num_gkvec());
+    for (int i = 0; i < kp.num_gkvec(); i++) {
+        ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
+    }
+    std::sort(ekin.begin(), ekin.end());
+
+    for (int i = 0; i < ctx.num_bands(); i++) {
+        printf("%20.16f %20.16f %20.16e\n", ekin[i], kp.band_energy(i, 0), std::abs(ekin[i] - kp.band_energy(i, 0)));
+    }
 
     //ctx.set_iterative_solver_type("davidson");
     //Band(ctx).solve_pseudo_potential<double_complex>(kp, H);
@@ -161,22 +171,22 @@ void test_davidson()
     //    K_point kp(ctx, vk, 1.0);
     //    kp.initialize();
 
-    Hamiltonian0 h0(ctx, pot);
-    auto hk = h0(kp);
+    //Hamiltonian0 h0(ctx, pot);
+    //auto hk = h0(kp);
 
-    //    init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
+    ////    init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
 
-    auto eval = davidson<double_complex>(hk, kp.spinor_wave_functions(), 0, 4, 40, 1e-12, 0, 1e-7, [](int i, int ispn){return 1.0;}, false);
+    //auto eval = davidson<double_complex>(hk, kp.spinor_wave_functions(), 0, 4, 40, 1e-12, 0, 1e-7, [](int i, int ispn){return 1.0;}, false);
 
-    std::vector<double> ekin(kp.num_gkvec());
-    for (int i = 0; i < kp.num_gkvec(); i++) {
-        ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
-    }
-    std::sort(ekin.begin(), ekin.end());
+    //std::vector<double> ekin(kp.num_gkvec());
+    //for (int i = 0; i < kp.num_gkvec(); i++) {
+    //    ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
+    //}
+    //std::sort(ekin.begin(), ekin.end());
 
-    for (int i = 0; i < ctx.num_bands(); i++) {
-        printf("%20.16f %20.16f %20.16e\n", ekin[i], eval[i], std::abs(ekin[i] - eval[i]));
-    }
+    //for (int i = 0; i < ctx.num_bands(); i++) {
+    //    printf("%20.16f %20.16f %20.16e\n", ekin[i], eval[i], std::abs(ekin[i] - eval[i]));
+    //}
 
     //}
 
@@ -216,17 +226,25 @@ void test_davidson()
 
 int main(int argn, char** argv)
 {
-    cmd_args args;
+    cmd_args args(argn, argv, {{"device=", "(string) CPU or GPU"},
+                               {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
+                               {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
+                               {"N=", "(int) cell multiplicity"}
+                              });
 
-    args.parse_args(argn, argv);
     if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         return 0;
     }
 
+    auto pu = get_device_t(args.value<std::string>("device", "CPU"));
+    auto pw_cutoff = args.value<double>("pw_cutoff", 30);
+    auto gk_cutoff = args.value<double>("gk_cutoff", 10);
+    auto N = args.value<int>("N", 1);
+
     sirius::initialize(1);
-    test_davidson();
+    test_davidson(pu, pw_cutoff, gk_cutoff, N);
     int rank = Communicator::world().rank();
     sirius::finalize();
     if (!rank) {
