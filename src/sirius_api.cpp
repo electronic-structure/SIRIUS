@@ -2920,19 +2920,66 @@ void sirius_get_fv_eigen_values(void*          const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_set_rg_values          Set the values of the function on the regular grid.
-   @fortran argument in  required void*  handler              DFT ground state handler.
-   @fortran argument in  required string label                Label of the function.
-   @fortran argument in  required double values               Values of the function.
-   @fortran argument in  required int    grid_dims            Dimensions of the FFT grid.
-   @fortran argument in  optional bool   transform_to_pw      If true, transform function to PW domain.
-   @fortran end */
+///* @fortran begin function void sirius_set_rg_values          Set the values of the function on the regular grid.
+//   @fortran argument in  required void*  handler              DFT ground state handler.
+//   @fortran argument in  required string label                Label of the function.
+//   @fortran argument in  required double values               Values of the function.
+//   @fortran argument in  required int    grid_dims            Dimensions of the FFT grid.
+//   @fortran argument in  optional bool   transform_to_pw      If true, transform function to PW domain.
+//   @fortran end */
+//void sirius_set_rg_values(void*  const* handler__,
+//                          char   const* label__,
+//                          double const* values__,
+//                          int    const* grid_dims__,
+//                          bool   const* transform_to_pw__)
+//{
+//    GET_GS(handler__);
+//
+//    std::string label(label__);
+//
+//    for (int x: {0, 1, 2}) {
+//        if (grid_dims__[x] != gs.ctx().fft().size(x)) {
+//            TERMINATE("wrong FFT grid size");
+//        }
+//    }
+//
+//    std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
+//        {"rho",  &gs.density().rho()},
+//        {"magz", &gs.density().magnetization(0)},
+//        {"magx", &gs.density().magnetization(1)},
+//        {"magy", &gs.density().magnetization(2)},
+//        {"veff", &gs.potential().effective_potential()},
+//        {"bz",   &gs.potential().effective_magnetic_field(0)},
+//        {"bx",   &gs.potential().effective_magnetic_field(1)},
+//        {"by",   &gs.potential().effective_magnetic_field(2)},
+//        {"vxc",  &gs.potential().xc_potential()},
+//    };
+//
+//    try {
+//        auto& f = func.at(label);
+//        auto offset = gs.ctx().fft().offset_z() * gs.ctx().fft().size(0) * gs.ctx().fft().size(1);
+//        /* copy local part of the buffer */
+//        std::copy(values__ + offset, values__ + offset + gs.ctx().fft().local_size(), &f->f_rg(0));
+//        if (transform_to_pw__ && *transform_to_pw__) {
+//            f->fft_transform(-1);
+//        }
+//    } catch(...) {
+//        TERMINATE("wrong label");
+//    }
+//}
+
 void sirius_set_rg_values(void*  const* handler__,
                           char   const* label__,
                           double const* values__,
                           int    const* grid_dims__,
+                          int    const* local_box_origin__,
+                          int    const* local_box_size__,
+                          int    const* fcomm__,
                           bool   const* transform_to_pw__)
+
 {
+    PROFILE("sirius_api::sirius_set_rg_values");
+
     GET_GS(handler__);
 
     std::string label(label__);
@@ -2957,9 +3004,46 @@ void sirius_set_rg_values(void*  const* handler__,
 
     try {
         auto& f = func.at(label);
-        auto offset = gs.ctx().fft().offset_z() * gs.ctx().fft().size(0) * gs.ctx().fft().size(1);
-        /* copy local part of the buffer */
-        std::copy(values__ + offset, values__ + offset + gs.ctx().fft().local_size(), &f->f_rg(0));
+
+        auto& comm = Communicator::map_fcomm(*fcomm__);
+
+        mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
+        mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
+
+        for (int rank = 0; rank < comm.size(); rank++) {
+            /* dimensions of this rank's local box */
+            int nx = local_box_size(0, rank);
+            int ny = local_box_size(1, rank);
+            int nz = local_box_size(2, rank);
+
+            mdarray<double, 3> buf(nx, ny, nz);
+            /* if this is that rank's turn to broadcast */
+            if (comm.rank() == rank) {
+                /* copy values to buf */
+                std::copy(values__, values__ + nx * ny * nz, &buf[0]);
+            }
+            /* send a copy of local box to all ranks */
+            comm.bcast(&buf[0], nx * ny * nz, rank);
+
+            for (int iz = 0; iz < nz; iz++) {
+                /* global z coordinate inside FFT box */
+                int z = local_box_origin(2, rank) + iz - 1; /* Fortran counts from 1 */
+                /* each rank on SIRIUS side, for which this condition is fulfilled copies data from the local box */
+                if (z >= gs.ctx().fft().offset_z() && z < gs.ctx().fft().offset_z() + gs.ctx().fft().local_size_z()) {
+                    /* make z local for SIRIUS FFT partitioning */
+                    z -= gs.ctx().fft().offset_z();
+                    for (int iy = 0; iy < ny; iy++) {
+                        /* global y coordinate inside FFT box */
+                        int y = local_box_origin(1, rank) + iy - 1; /* Fortran counts from 1 */
+                        for (int ix = 0; ix < nx; ix++) {
+                            /* global x coordinate inside FFT box */
+                            int x = local_box_origin(0, rank) + ix - 1; /* Fortran counts from 1 */
+                            f->f_rg(gs.ctx().fft().index_by_coord(x, y, z)) = buf(ix, iy, iz);
+                        }
+                    }
+                }
+            }
+        } /* loop over ranks */
         if (transform_to_pw__ && *transform_to_pw__) {
             f->fft_transform(-1);
         }
