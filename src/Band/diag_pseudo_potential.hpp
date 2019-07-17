@@ -887,7 +887,7 @@ inline std::vector<double> Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__
 ////== //==
 ////== //==     //auto& beta_pw_panel = kp__->beta_pw_panel();
 ////== //==     //dmatrix<double_complex> S(unit_cell_.mt_basis_size(), unit_cell_.mt_basis_size(), kp__->blacs_grid());
-////== //==     //linalg<CPU>::gemm(2, 0, unit_cell_.mt_basis_size(), unit_cell_.mt_basis_size(), kp__->num_gkvec(), complex_one,
+////== //==     //linalg<device_t::CPU>::gemm(2, 0, unit_cell_.mt_basis_size(), unit_cell_.mt_basis_size(), kp__->num_gkvec(), complex_one,
 ////== //==     //                  beta_pw_panel, beta_pw_panel, complex_zero, S);
 ////== //==     //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 ////== //==     //{
@@ -896,13 +896,13 @@ inline std::vector<double> Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__
 ////== //==     //    int ofs = unit_cell_.atom(ia)->offset_lo();
 ////== //==     //    matrix<double_complex> qinv(nbf, nbf);
 ////== //==     //    type->uspp().q_mtrx >> qinv;
-////== //==     //    linalg<CPU>::geinv(nbf, qinv);
+////== //==     //    linalg<device_t::CPU>::geinv(nbf, qinv);
 ////== //==     //    for (int i = 0; i < nbf; i++)
 ////== //==     //    {
 ////== //==     //        for (int j = 0; j < nbf; j++) S.add(ofs + j, ofs + i, qinv(j, i));
 ////== //==     //    }
 ////== //==     //}
-////== //==     //linalg<CPU>::geinv(unit_cell_.mt_basis_size(), S);
+////== //==     //linalg<device_t::CPU>::geinv(unit_cell_.mt_basis_size(), S);
 ////== //==
 ////== //==
 ////==     /* maximum order of Chebyshev polynomial*/

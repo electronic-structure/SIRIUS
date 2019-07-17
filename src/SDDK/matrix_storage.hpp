@@ -558,7 +558,7 @@ class matrix_storage<T, matrix_storage_t::slab>
 //==             set_num_extra(n__);
 //==             if (blacs_grid_.comm().size() > 1) {
 //==                 #ifdef __SCALAPACK
-//==                 linalg<CPU>::gemr2d(num_rows_, n__, prime_, 0, idx0__, extra_, 0, 0, blacs_grid_.context());
+//==                 linalg<device_t::CPU>::gemr2d(num_rows_, n__, prime_, 0, idx0__, extra_, 0, 0, blacs_grid_.context());
 //==                 #else
 //==                 TERMINATE_NO_SCALAPACK
 //==                 #endif
@@ -570,7 +570,7 @@ class matrix_storage<T, matrix_storage_t::slab>
 //==             PROFILE("sddk::matrix_storage::remap_backward");
 //==             if (blacs_grid_.comm().size() > 1) {
 //==                 #ifdef __SCALAPACK
-//==                 linalg<CPU>::gemr2d(num_rows_, n__, extra_, 0, 0, prime_, 0, idx0__, blacs_grid_.context());
+//==                 linalg<device_t::CPU>::gemr2d(num_rows_, n__, extra_, 0, 0, prime_, 0, idx0__, blacs_grid_.context());
 //==                 #else
 //==                 TERMINATE_NO_SCALAPACK
 //==                 #endif

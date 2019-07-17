@@ -366,7 +366,7 @@ void generate_density(int lmmax__,
     matrix<double_complex> zdens(N, N);
     mdarray<double, 3> dens(radial_functions_desc__.size(), radial_functions_desc__.size(), lmmax__);
     
-    linalg<CPU>::gemm(0, 2, N, N, num_states__, double_complex(1, 0), evec__, evec__, double_complex(0, 0), zdens);
+    linalg<device_t::CPU>::gemm(0, 2, N, N, num_states__, double_complex(1, 0), evec__, evec__, double_complex(0, 0), zdens);
 
     dens.zero();
     for (int i1 = 0; i1 < N; i1++)
