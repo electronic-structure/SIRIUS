@@ -23,11 +23,11 @@ void test_nested_gemm()
     c.zero();
     
     /* warmup */
-    linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+    linalg<device_t::CPU>::gemm(2, 0, m, n, k, a, b, c);
 
     double t = omp_get_wtime();
     
-    linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+    linalg<device_t::CPU>::gemm(2, 0, m, n, k, a, b, c);
 
     double t0 = omp_get_wtime() - t;
     double perf = 8e-9 * m * n * k / t0;
@@ -46,7 +46,7 @@ void test_nested_gemm()
             omp_set_num_threads(i);
 
             double t = omp_get_wtime();
-            linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+            linalg<device_t::CPU>::gemm(2, 0, m, n, k, a, b, c);
             double perf = 8e-9 * m * n * k / (omp_get_wtime() - t);
 
             printf("performance (%i threads): %f Gflops\n", i, perf);

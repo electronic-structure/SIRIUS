@@ -497,10 +497,10 @@ class Eigensolver_elpa : public Eigensolver
         }
         /* transform to standard eigen-problem */
         /* A * U{-1} -> Z */
-        linalg<CPU>::gemm(0, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double>::one(), A__, B__,
+        linalg<device_t::CPU>::gemm(0, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double>::one(), A__, B__,
                           linalg_const<double>::zero(), Z__);
         /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
-        linalg<CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double>::one(), B__, Z__,
+        linalg<device_t::CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double>::one(), B__, Z__,
                           linalg_const<double>::zero(), A__);
         t1.stop();
 
@@ -512,7 +512,7 @@ class Eigensolver_elpa : public Eigensolver
 
         utils::timer t3("Eigensolver_elpa|bt");
         /* back-transform of eigen-vectors */
-        linalg<CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<double>::one(), B__, Z__,
+        linalg<device_t::CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<double>::one(), B__, Z__,
                           linalg_const<double>::zero(), A__);
         A__ >> Z__;
         t3.stop();
@@ -558,10 +558,10 @@ class Eigensolver_elpa : public Eigensolver
         }
         /* transform to standard eigen-problem */
         /* A * U{-1} -> Z */
-        linalg<CPU>::gemm(0, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double_complex>::one(), A__,
+        linalg<device_t::CPU>::gemm(0, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double_complex>::one(), A__,
                           B__, linalg_const<double_complex>::zero(), Z__);
         /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
-        linalg<CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double_complex>::one(), B__,
+        linalg<device_t::CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double_complex>::one(), B__,
                           Z__, linalg_const<double_complex>::zero(), A__);
         t1.stop();
 
@@ -573,7 +573,7 @@ class Eigensolver_elpa : public Eigensolver
 
         utils::timer t3("Eigensolver_elpa|bt");
         /* back-transform of eigen-vectors */
-        linalg<CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<double_complex>::one(), B__, Z__,
+        linalg<device_t::CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<double_complex>::one(), B__, Z__,
                           linalg_const<double_complex>::zero(), A__);
         A__ >> Z__;
         t3.stop();

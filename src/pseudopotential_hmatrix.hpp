@@ -112,23 +112,23 @@ inline dmatrix<T> pseudopotential_hmatrix(K_point& kp__,
                     }
                 }
             }
-            linalg<CPU>::gemm(0, 0, kp__.num_gkvec_row(), nbf, nbf,
+            linalg<device_t::CPU>::gemm(0, 0, kp__.num_gkvec_row(), nbf, nbf,
                               &beta_row(0, offs), beta_row.ld(),
                               &dop(0, 0), dop.ld(),
                               &btmp(0, 0), btmp.ld());
-            linalg<CPU>::gemm(0, 2, kp__.num_gkvec_row(), kp__.num_gkvec_col(), nbf,
+            linalg<device_t::CPU>::gemm(0, 2, kp__.num_gkvec_row(), kp__.num_gkvec_col(), nbf,
                               linalg_const<double_complex>::one(),
                               &btmp(0, 0), btmp.ld(),
                               &beta_col(0, offs), beta_col.ld(),
                               linalg_const<double_complex>::one(),
                               &hmlt(0, 0), hmlt.ld());
             // if(augment_op.atom_type().augment()) {
-            //     linalg<CPU>::gemm(0, 0, kp__.num_gkvec_row(), nbf, nbf,
+            //     linalg<device_t::CPU>::gemm(0, 0, kp__.num_gkvec_row(), nbf, nbf,
             //                       &beta_row(0, offs), beta_row.ld(),
             //                       &qop(0, 0), qop.ld(),
             //                       &btmp(0, 0), btmp.ld());
             // }
-            // linalg<CPU>::gemm(0, 2, kp__.num_gkvec_row(), kp__.num_gkvec_col(), nbf,
+            // linalg<device_t::CPU>::gemm(0, 2, kp__.num_gkvec_row(), kp__.num_gkvec_col(), nbf,
             //                   linalg_const<double_complex>::one(),
             //                   &btmp(0, 0), btmp.ld(),
             //                   &beta_col(0, offs), beta_col.ld(),

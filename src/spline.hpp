@@ -326,7 +326,7 @@ class Spline : public Radial_grid<U>
         // d[0] = d[ns-1] = 1;
 
         /* solve tridiagonal system */
-        // int info = linalg<CPU>::gtsv(ns, 1, &dl[0], &d[0], &du[0], &m[0], ns);
+        // int info = linalg<device_t::CPU>::gtsv(ns, 1, &dl[0], &d[0], &du[0], &m[0], ns);
         int info = solve(dl, d, du, &m[0], ns);
 
         if (info) {
