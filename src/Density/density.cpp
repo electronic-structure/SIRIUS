@@ -1502,8 +1502,6 @@ void Density::symmetrize_density_matrix()
     int lmmax = utils::lmmax(lmax);
     mdarray<double, 2> rotm(lmmax, lmmax);
 
-    double alpha = 1.0 / double(sym.num_mag_sym());
-
     for (int i = 0; i < sym.num_mag_sym(); i++) {
         int  pr   = sym.magnetic_group_symmetry(i).spg_op.proper;
         auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
@@ -1512,22 +1510,16 @@ void Density::symmetrize_density_matrix()
         auto spin_rot_su2 = rotation_matrix_su2(sym.magnetic_group_symmetry(i).spin_rotation);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            int   ja        = sym.sym_table(ia, isym);
+            int ja = sym.sym_table(ia, isym);
 
-            Symmetrize(density_matrix_,
-                       unit_cell_.atom(ia).type().indexb(),
-                       ia,
-                       ja,
-                       ndm,
-                       rotm,
-                       spin_rot_su2,
-                       dm,
-                       false);
+            sirius::symmetrize(density_matrix_, unit_cell_.atom(ia).type().indexb(), ia, ja, ndm, rotm,
+                               spin_rot_su2, dm, false);
         }
     }
 
-    // multiply by alpha which is the inverse of the number of symmetries.
-    std::complex<double> *a = dm.at(memory_t::host);
+    double alpha = 1.0 / double(sym.num_mag_sym());
+    /* multiply by alpha which is the inverse of the number of symmetries */
+    auto a = dm.at(memory_t::host);
     for (auto i = 0u; i < dm.size(); i++) {
         a[i] *= alpha;
     }

@@ -876,18 +876,7 @@ class Density : public Field4D
     {
         Field4D::symmetrize(&rho(), &magnetization(0), &magnetization(1), &magnetization(2));
     }
-
-#include "Symmetrize.hpp"
 };
-
-//#include "initial_density.hpp"
-//#include "add_k_point_contribution_rg.hpp"
-//#include "add_k_point_contribution_dm.hpp"
-//#include "generate_valence.hpp"
-//#include "generate_rho_aug.hpp"
-//#include "symmetrize_density_matrix.hpp"
-//#include "generate_valence_mt.hpp"
-//#include "paw_density.hpp"
 
 } // namespace sirius
 
