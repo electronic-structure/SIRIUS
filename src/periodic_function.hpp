@@ -140,9 +140,15 @@ class Periodic_function : public Smooth_periodic_function<T>
         }
     }
 
-    inline void copy_to_global_ptr(T* f_mt__, T* f_it__) const
+    /// Copy the values of the function to the external location.
+    inline void copy_to(T* f_mt__, T* f_rg__, bool is_local_rg__) const
     {
-        std::memcpy(f_it__, this->f_rg_.at(memory_t::host), this->fft_->local_size() * sizeof(T));
+        int offs = (is_local_rg__) ? 0 : this->fft_->size(0) * this->fft_->size(1) * this->fft_->offset_z();
+        std::copy(this->f_rg_.at(memory_t::host), this->f_rg_.at(memory_t::host) + this->fft_->local_size(),
+                  f_rg__ + offs);
+        if (!is_local_rg__) {
+            this->fft_->comm().allgather(f_rg__, offs, this->fft_->local_size());
+        }
 
         if (ctx_.full_potential()) {
             mdarray<T, 3> f_mt(f_mt__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
@@ -167,16 +173,18 @@ class Periodic_function : public Smooth_periodic_function<T>
         Smooth_periodic_function<T>::add(g__);
         /* add muffin-tin part */
         if (ctx_.full_potential()) {
-            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
+            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                 f_mt_local_(ialoc) += g__.f_mt(ialoc);
+            }
         }
     }
 
-    T integrate(std::vector<T>& mt_val, T& it_val) const
+    inline std::tuple<T, T, std::vector<T>>
+    integrate() const
     {
         PROFILE("sirius::Periodic_function::integrate");
 
-        it_val = 0;
+        T it_val = 0;
 
         if (!ctx_.full_potential()) {
             #pragma omp parallel for schedule(static) reduction(+:it_val)
@@ -193,6 +201,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         this->fft_->comm().allreduce(&it_val, 1);
         T total = it_val;
 
+        std::vector<T> mt_val;
         if (ctx_.full_potential()) {
             mt_val = std::vector<T>(unit_cell_.num_atoms(), 0);
 
@@ -207,7 +216,7 @@ class Periodic_function : public Smooth_periodic_function<T>
             }
         }
 
-        return total;
+        return std::make_tuple(total, it_val, mt_val);
     }
 
     template <index_domain_t index_domain>

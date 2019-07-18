@@ -56,16 +56,16 @@ class Unit_cell
     std::vector<Atom> atoms_;
 
     /// Split index of atoms.
-    splindex<block> spl_num_atoms_;
+    splindex<splindex_t::block> spl_num_atoms_;
 
     /// Global index of atom by index of PAW atom.
     std::vector<int> paw_atom_index_;
 
     /// Split index of PAW atoms.
-    splindex<block> spl_num_paw_atoms_;
+    splindex<splindex_t::block> spl_num_paw_atoms_;
 
     /// Split index of atom symmetry classes.
-    splindex<block> spl_num_atom_symmetry_classes_;
+    splindex<splindex_t::block> spl_num_atom_symmetry_classes_;
 
     /// Bravais lattice vectors in column order.
     /** The following convention is used to transform fractional coordinates to Cartesian:
@@ -204,14 +204,15 @@ class Unit_cell
     inline void initialize();
 
     /// Add new atom type to the list of atom types and read necessary data from the .json file
-    inline void add_atom_type(const std::string label, const std::string file_name = "")
+    inline Atom_type& add_atom_type(const std::string label__, const std::string file_name__ = "")
     {
         if (atoms_.size()) {
             TERMINATE("Can't add new atom type if atoms are already added");
         }
 
-        int id = next_atom_type_id(label);
-        atom_types_.push_back(std::move(Atom_type(parameters_, id, label, file_name)));
+        int id = next_atom_type_id(label__);
+        atom_types_.push_back(std::move(Atom_type(parameters_, id, label__, file_name__)));
+        return atom_types_.back();
     }
 
     /// Add new atom to the list of atom types.
@@ -254,7 +255,7 @@ class Unit_cell
             }
         }
 
-        spl_num_paw_atoms_ = splindex<block>(num_paw_atoms(), comm_.size(), comm_.rank());
+        spl_num_paw_atoms_ = splindex<splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
     }
 
     /// Return number of PAW atoms.
@@ -264,7 +265,7 @@ class Unit_cell
     }
 
     /// Get split index of PAW atoms.
-    inline splindex<block> spl_num_paw_atoms() const
+    inline splindex<splindex_t::block> spl_num_paw_atoms() const
     {
         return spl_num_paw_atoms_;
     }
@@ -434,11 +435,9 @@ class Unit_cell
             }
         }
 
-        if (parameters_.use_symmetry()) {
-            get_symmetry();
-        }
+        get_symmetry();
 
-        spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
+        spl_num_atom_symmetry_classes_ = splindex<splindex_t::block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
 
         volume_mt_ = 0.0;
         if (parameters_.full_potential()) {
@@ -667,7 +666,7 @@ class Unit_cell
         std::memcpy(&equivalent_atoms_[0], equivalent_atoms__, num_atoms() * sizeof(int));
     }
 
-    inline splindex<block> const& spl_num_atoms() const
+    inline splindex<splindex_t::block> const& spl_num_atoms() const
     {
         return spl_num_atoms_;
     }
@@ -677,7 +676,7 @@ class Unit_cell
         return static_cast<int>(spl_num_atoms_[i]);
     }
 
-    inline splindex<block> const& spl_num_atom_symmetry_classes() const
+    inline splindex<splindex_t::block> const& spl_num_atom_symmetry_classes() const
     {
         return spl_num_atom_symmetry_classes_;
     }
@@ -796,7 +795,7 @@ inline void Unit_cell::initialize()
     PROFILE("sirius::Unit_cell::initialize");
 
     /* split number of atom between all MPI ranks */
-    spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
+    spl_num_atoms_ = splindex<splindex_t::block>(num_atoms(), comm_.size(), comm_.rank());
 
     /* initialize atom types */
     int offs_lo{0};
@@ -835,7 +834,7 @@ inline void Unit_cell::initialize()
         int nat = atom_type(iat).num_atoms();
         if (nat > 0) {
             atom_coord_.push_back(std::move(mdarray<double, 2>(nat, 3, memory_t::host)));
-            if (parameters_.processing_unit() == GPU) {
+            if (parameters_.processing_unit() == device_t::GPU) {
                 atom_coord_.back().allocate(memory_t::device);
             }
         } else {
@@ -881,7 +880,8 @@ inline void Unit_cell::get_symmetry()
     }
 
     symmetry_ = std::unique_ptr<Unit_cell_symmetry>(
-        new Unit_cell_symmetry(lattice_vectors_, num_atoms(), positions, spins, types, parameters_.spglib_tolerance()));
+        new Unit_cell_symmetry(lattice_vectors_, num_atoms(), types, positions, spins, parameters_.so_correction(),
+                               parameters_.spglib_tolerance(), parameters_.use_symmetry()));
 
     int atom_class_id{-1};
     std::vector<int> asc(num_atoms(), -1);
@@ -1193,7 +1193,7 @@ inline json Unit_cell::serialize()
             dict["atoms"][atom_type(iat).label()].push_back({v[0], v[1], v[2]});
         }
     }
-    return std::move(dict);
+    return dict;
 }
 
 inline void Unit_cell::find_nearest_neighbours(double cluster_radius)

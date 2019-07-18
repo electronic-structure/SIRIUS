@@ -27,6 +27,9 @@
 
 #include "Beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "non_local_functor.hpp"
+#include "Density/density.hpp"
+#include "Potential/potential.hpp"
+#include "Hamiltonian/hamiltonian.hpp"
 
 namespace sirius {
 
@@ -737,11 +740,11 @@ class Stress {
 
             memory_pool* mp{nullptr};
             switch (ctx_.processing_unit()) {
-                case CPU: {
+                case device_t::CPU: {
                     mp = &ctx_.mem_pool(memory_t::host);
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
                     mp = &ctx_.mem_pool(memory_t::host_pinned);
                     break;
                 }
@@ -777,7 +780,7 @@ class Stress {
                         t2.stop();
 
                         utils::timer t1("sirius::Stress|us|gemm");
-                        linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                        linalg<device_t::CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                                           q_deriv.q_pw(), v_tmp, tmp);
                         t1.stop();
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
@@ -951,7 +954,7 @@ class Stress {
                                       ctx_.unit_cell().num_atoms(),
                                       9);
         //hamiltonian_.prepare<double_complex>();
-        Q_operator<double_complex> q_op(ctx_);
+        Q_operator q_op(ctx_);
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
             dn.zero();

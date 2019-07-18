@@ -153,8 +153,8 @@ class SHT // TODO: better name
         }
 
         if (mesh_type_ == 1) {
-            linalg<CPU>::geinv(lmmax_, ylm_forward_);
-            linalg<CPU>::geinv(lmmax_, rlm_forward_);
+            linalg<device_t::CPU>::geinv(lmmax_, ylm_forward_);
+            linalg<device_t::CPU>::geinv(lmmax_, rlm_forward_);
         }
 
 #if (__VERIFICATION > 0)
@@ -1130,37 +1130,6 @@ class SHT // TODO: better name
         data[80] = (-3 * std::sqrt(12155 / pi) * sin_phi[7] * std::pow(sin_theta[0], 7)) / 32.;
     }
 
-    /// convert 3x3 transformation matrix to SU2 2x2 matrix
-    /// Create quaternion components from the 3x3 matrix. The components are just a w = Cos(\Omega/2)
-    /// and {x,y,z} = unit rotation vector multiplied by Sin[\Omega/2]
-    /// see https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
-    /// and https://en.wikipedia.org/wiki/Rotation_group_SO(3)#Quaternions_of_unit_norm
-    static mdarray<double_complex, 2> rotation_matrix_su2(const matrix3d<double>& m)
-    {
-        double det = m.det() > 0 ? 1.0 : -1.0;
-
-        matrix3d<double>           mat = m * det;
-        mdarray<double_complex, 2> su2mat(2, 2);
-
-        su2mat.zero();
-
-        /* make quaternion components*/
-        double w = sqrt(std::max(0., 1. + mat(0, 0) + mat(1, 1) + mat(2, 2))) / 2.;
-        double x = sqrt(std::max(0., 1. + mat(0, 0) - mat(1, 1) - mat(2, 2))) / 2.;
-        double y = sqrt(std::max(0., 1. - mat(0, 0) + mat(1, 1) - mat(2, 2))) / 2.;
-        double z = sqrt(std::max(0., 1. - mat(0, 0) - mat(1, 1) + mat(2, 2))) / 2.;
-        x        = std::copysign(x, mat(2, 1) - mat(1, 2));
-        y        = std::copysign(y, mat(0, 2) - mat(2, 0));
-        z        = std::copysign(z, mat(1, 0) - mat(0, 1));
-
-        su2mat(0, 0) = double_complex(w, -z);
-        su2mat(1, 1) = double_complex(w, z);
-        su2mat(0, 1) = double_complex(-y, -x);
-        su2mat(1, 0) = double_complex(y, -x);
-
-        return std::move(su2mat);
-    }
-
     /// Compute the derivatives of real spherical harmonics over the components of cartesian vector.
     /** The following derivative is computed:
       *  \f[
@@ -1242,7 +1211,7 @@ class SHT // TODO: better name
                 data[i] = 2 * data[0] * data[i - 1] - data[i - 2];
             }
         }
-        return std::move(data);
+        return data;
     }
 
     /// Generate \f$ \sin(m x) \f$ for m in [1, n] using recursion.
@@ -1258,7 +1227,98 @@ class SHT // TODO: better name
                 data[i] = 2 * cosx * data[i - 1] - data[i - 2];
             }
         }
-        return std::move(data);
+        return data;
+    }
+
+    inline static double ClebschGordan(const int l, const double j, const double mj, const int spin)
+    {
+        // l : orbital angular momentum
+        // m:  projection of the total angular momentum $m \pm /frac12$
+        // spin: Component of the spinor, 0 up, 1 down
+
+        double CG = 0.0; // Clebsch Gordan coeeficient cf PRB 71, 115106 page 3 first column
+
+        if ((spin != 0) && (spin != 1)) {
+            printf("Error : unkown spin direction\n");
+        }
+
+        const double denom = sqrt(1.0 / (2.0 * l + 1.0));
+
+        if (std::abs(j - l - 0.5) < 1e-8) { // check for j = l + 1/2
+            int m = static_cast<int>(mj - 0.5); // if mj is integer (2 * m), then int m = (mj-1) >> 1;
+            if (spin == 0) {
+                CG = sqrt(l + m + 1.0);
+            }
+            if (spin == 1) {
+                CG = sqrt((l - m));
+            }
+        } else {
+            if (std::abs(j - l + 0.5) < 1e-8) { // check for j = l - 1/2
+                int m = static_cast<int>(mj + 0.5);
+                if (m < (1 - l)) {
+                    CG = 0.0;
+                } else {
+                    if (spin == 0) {
+                        CG = sqrt(l - m + 1);
+                    }
+                    if (spin == 1) {
+                        CG = -sqrt(l + m);
+                    }
+                }
+            } else {
+                printf("Clebsch gordan coefficients do not exist for this combination of j=%.5lf and l=%d\n", j, l);
+                exit(0);
+            }
+        }
+        return (CG * denom);
+    }
+// this function computes the U^sigma_{ljm mj} coefficient that
+// rotates the complex spherical harmonics to the real one for the
+// spin orbit case
+
+// mj is normally half integer from -j to j but to avoid computation
+// error it is considered as integer so mj = 2 mj
+
+    inline static double_complex
+    calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma)
+    {
+
+        if ((sigma != 0) && (sigma != 1)) {
+            printf("SphericalIndex function : unkown spin direction\n");
+            return 0;
+        }
+
+        if (std::abs(j - l - 0.5) < 1e-8) {
+            // j = l + 1/2
+            // m = mj - 1/2
+
+            int m1 = (mj - 1) >> 1;
+            if (sigma == 0) { // up spin
+                if (m1 < -l) { // convention U^s_{mj,m'} = 0
+                    return 0.0;
+                } else {// U^s_{mj,mp} =
+                    return SHT::rlm_dot_ylm(l, m1, mp);
+                }
+            } else { // down spin
+                if ((m1 + 1) > l) {
+                    return 0.0;
+                } else {
+                    return SHT::rlm_dot_ylm(l, m1 + 1, mp);
+                }
+            }
+        } else {
+            if (std::abs(j - l + 0.5) < 1e-8) {
+                int m1 = (mj + 1) >> 1;
+                if (sigma == 0) {
+                    return SHT::rlm_dot_ylm(l, m1 - 1, mp);
+                } else {
+                    return SHT::rlm_dot_ylm(l, m1, mp);
+                }
+            } else {
+                printf("Spherical Index function : l and j are not compatible\n");
+                exit(0);
+            }
+        }
     }
 };
 
@@ -1267,7 +1327,7 @@ inline void SHT::backward_transform<double>(int ld, double const* flm, int nr, i
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    linalg<CPU>::gemm(1, 0, num_points_, nr, lmmax, &rlm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
+    linalg<device_t::CPU>::gemm(1, 0, num_points_, nr, lmmax, &rlm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
 }
 
 template <>
@@ -1275,7 +1335,7 @@ inline void SHT::backward_transform<double_complex>(int ld, double_complex const
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    linalg<CPU>::gemm(1, 0, num_points_, nr, lmmax, &ylm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
+    linalg<device_t::CPU>::gemm(1, 0, num_points_, nr, lmmax, &ylm_backward_(0, 0), lmmax_, flm, ld, ftp, num_points_);
 }
 
 template <>
@@ -1283,7 +1343,7 @@ inline void SHT::forward_transform<double>(double const* ftp, int nr, int lmmax,
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    linalg<CPU>::gemm(1, 0, lmmax, nr, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
+    linalg<device_t::CPU>::gemm(1, 0, lmmax, nr, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
 }
 
 template <>
@@ -1291,7 +1351,7 @@ inline void SHT::forward_transform<double_complex>(double_complex const* ftp, in
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    linalg<CPU>::gemm(1, 0, lmmax, nr, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
+    linalg<device_t::CPU>::gemm(1, 0, lmmax, nr, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_, flm, ld);
 }
 
 } // namespace sirius

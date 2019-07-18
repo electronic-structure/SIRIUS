@@ -54,13 +54,12 @@ class Free_atom : public sirius::Atom_type
 
         free_atom_orbital_density_ = mdarray<double, 2>(np, num_atomic_levels());
         free_atom_wave_functions_  = mdarray<double, 2>(np, num_atomic_levels());
-    
+
         sirius::XC_functional_base *Ex;
         sirius::XC_functional_base Ec("XC_LDA_C_VWN", 1);
 
         if (rel) {
-            TERMINATE("Fixme : the libxc staring with version 4 changed the way to set relativitic LDA exchange");
-            Ex = new sirius::XC_functional_base("XC_LDA_X", 1);
+            Ex = new sirius::XC_functional_base("XC_LDA_X_REL", 1);
         } else {
             Ex = new sirius::XC_functional_base("XC_LDA_X", 1);
         }
@@ -316,7 +315,7 @@ Free_atom init_atom_configuration(const std::string& label, sirius::Simulation_p
     Free_atom a(param__, label, name, zn, mass, levels_nlk);
     a.NIST_LDA_Etot    = NIST_LDA_Etot;
     a.NIST_ScRLDA_Etot = NIST_ScRLDA_Etot;
-    return std::move(a);
+    return a;
 }
 
 void generate_atom_file(Free_atom&         a,

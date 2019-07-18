@@ -43,7 +43,7 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
 
     ctx.import(args__);
 
-    return std::move(ctx_ptr);
+    return ctx_ptr;
 }
 
 
@@ -359,6 +359,8 @@ int main(int argn, char** argv)
     args.register_key("--processing_unit=", "{string} type of the processing unit");
     args.register_key("--repeat_update=", "{int} number of times to repeat update()");
     args.register_key("--control.processing_unit=", "");
+    args.register_key("--control.verbosity=", "");
+    args.register_key("--control.verification=", "");
     args.register_key("--control.mpi_grid_dims=","");
     args.register_key("--control.std_evp_solver_name=", "");
     args.register_key("--control.gen_evp_solver_name=", "");

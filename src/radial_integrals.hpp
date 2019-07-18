@@ -42,7 +42,7 @@ class Radial_integrals_base
     Radial_grid<double> grid_q_;
 
     /// Split index of q-points.
-    splindex<block> spl_q_;
+    splindex<splindex_t::block> spl_q_;
 
     /// Array with integrals.
     mdarray<Spline<double>, N> values_;
@@ -53,7 +53,7 @@ class Radial_integrals_base
         : unit_cell_(unit_cell__)
     {
         grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax__), 0, qmax__);
-        spl_q_  = splindex<block>(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
+        spl_q_  = splindex<splindex_t::block>(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
     }
 
     /// Get starting index iq and delta dq for the q-point on the linear grid.
@@ -74,7 +74,7 @@ class Radial_integrals_base
         result.first = static_cast<int>((grid_q_.num_points() - 1) * q__ / grid_q_.last());
         /* delta q = q - q_i */
         result.second = q__ - grid_q_[result.first];
-        return std::move(result);
+        return result;
     }
 
     template <typename... Args>
@@ -169,7 +169,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
         for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
             val(i) = values_(i, iat__)(idx.first, idx.second);
         }
-        return std::move(val);
+        return val;
     }
 };
 
@@ -270,7 +270,7 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
                 val(i, l) = values_(i, l, iat__)(idx.first, idx.second);
             }
         }
-        return std::move(val);
+        return val;
     }
 };
 
@@ -430,7 +430,7 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
         for (int i = 0; i < atom_type.mt_radial_basis_size(); i++) {
             val(i) = values_(i, iat__)(idx.first, idx.second);
         }
-        return std::move(val);
+        return val;
     }
 };
 

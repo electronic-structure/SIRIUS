@@ -65,23 +65,23 @@ inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian_
         }
     } else if (itso.type_ == "davidson") {
         niter = diag_pseudo_potential_davidson<T>(&kp__, hamiltonian__);
-    } else if (itso.type_ == "rmm-diis") {
-        if (ctx_.num_mag_dims() != 3) {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                diag_pseudo_potential_rmm_diis<T>(&kp__, ispn, hamiltonian__);
-            }
-        } else {
-            STOP();
-        }
-    } else if (itso.type_ == "chebyshev") {
-        P_operator<T> p_op(ctx_, kp__.p_mtrx());
-        if (ctx_.num_mag_dims() != 3) {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                diag_pseudo_potential_chebyshev<T>(&kp__, ispn, hamiltonian__, p_op);
-            }
-        } else {
-            STOP();
-        }
+    //} else if (itso.type_ == "rmm-diis") {
+    //    if (ctx_.num_mag_dims() != 3) {
+    //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //            diag_pseudo_potential_rmm_diis<T>(&kp__, ispn, hamiltonian__);
+    //        }
+    //    } else {
+    //        STOP();
+    //    }
+    //} else if (itso.type_ == "chebyshev") {
+    //    P_operator<T> p_op(ctx_, kp__.p_mtrx());
+    //    if (ctx_.num_mag_dims() != 3) {
+    //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //            diag_pseudo_potential_chebyshev<T>(&kp__, ispn, hamiltonian__, p_op);
+    //        }
+    //    } else {
+    //        STOP();
+    //    }
     } else {
         TERMINATE("unknown iterative solver type");
     }
@@ -132,8 +132,9 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
         }
     }
     kset__.comm().allreduce(&num_dav_iter, 1);
-    if (ctx_.comm().rank() == 0 && !ctx_.full_potential() && ctx_.control().verbosity_ >= 1) {
-        printf("Average number of iterations: %12.6f\n", static_cast<double>(num_dav_iter) / kset__.num_kpoints());
+    if (!ctx_.full_potential()) {
+        ctx_.message(1, __func__, "average number of iterations: %12.6f\n",
+                     static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 
     hamiltonian__.dismiss();

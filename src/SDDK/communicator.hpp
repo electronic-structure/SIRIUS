@@ -352,7 +352,7 @@ class Communicator
         new_comm.mpi_comm_ = std::unique_ptr<MPI_Comm, mpi_comm_deleter>(new MPI_Comm);
         CALL_MPI(MPI_Cart_create, (mpi_comm(), ndims__, dims__, periods__, 0, new_comm.mpi_comm_.get()));
         new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
-        return std::move(new_comm);
+        return new_comm;
     }
 
     inline Communicator cart_sub(int const* remain_dims__) const
@@ -361,7 +361,7 @@ class Communicator
         new_comm.mpi_comm_ = std::unique_ptr<MPI_Comm, mpi_comm_deleter>(new MPI_Comm);
         CALL_MPI(MPI_Cart_sub, (mpi_comm(), remain_dims__, new_comm.mpi_comm_.get()));
         new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
-        return std::move(new_comm);
+        return new_comm;
     }
 
     inline Communicator split(int color__) const
@@ -370,7 +370,7 @@ class Communicator
         new_comm.mpi_comm_ = std::unique_ptr<MPI_Comm, mpi_comm_deleter>(new MPI_Comm);
         CALL_MPI(MPI_Comm_split, (mpi_comm(), color__, rank(), new_comm.mpi_comm_.get()));
         new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
-        return std::move(new_comm);
+        return new_comm;
     }
 
     inline Communicator duplicate() const
@@ -379,7 +379,7 @@ class Communicator
         new_comm.mpi_comm_ = std::unique_ptr<MPI_Comm, mpi_comm_deleter>(new MPI_Comm);
         CALL_MPI(MPI_Comm_dup, (mpi_comm(), new_comm.mpi_comm_.get()));
         new_comm.mpi_comm_raw_ = *new_comm.mpi_comm_;
-        return std::move(new_comm);
+        return new_comm;
     }
 
     /// Mapping between Fortran and SIRIUS MPI communicators.
@@ -623,7 +623,7 @@ class Communicator
         PROFILE("MPI_Isend");
 #endif
         CALL_MPI(MPI_Isend, (buffer__, count__, mpi_type_wrapper<T>::kind(), dest__, tag__, mpi_comm(), &req.handler()));
-        return std::move(req);
+        return req;
     }
 
     template <typename T>
@@ -644,7 +644,7 @@ class Communicator
         PROFILE("MPI_Irecv");
 #endif
         CALL_MPI(MPI_Irecv, (buffer__, count__, mpi_type_wrapper<T>::kind(), source__, tag__, mpi_comm(), &req.handler()));
-        return std::move(req);
+        return req;
     }
 
     template <typename T>
@@ -835,26 +835,27 @@ inline int get_device_id(int num_devices__)
         return id;
     }
     if (id == -1) {
-        int r = Communicator::world().rank();
-        char name[MPI_MAX_PROCESSOR_NAME];
-        int len;
-        CALL_MPI(MPI_Get_processor_name, (name, &len));
-        std::vector<size_t> hash(Communicator::world().size());
-        hash[r] = std::hash<std::string>{}(std::string(name, len));
-        Communicator::world().allgather(hash.data(), r, 1);
-        std::map<size_t, std::vector<int>> rank_map;
-        for (int i = 0; i < Communicator::world().size(); i++) {
-            rank_map[hash[i]].push_back(i);
-        }
-        for (int i = 0; i < (int)rank_map[hash[r]].size(); i++) {
-            if (rank_map[hash[r]][i] == r) {
-                id = i % num_devices__;
-                break;
+        #pragma omp single
+        {
+            int r = Communicator::world().rank();
+            char name[MPI_MAX_PROCESSOR_NAME];
+            int len;
+            CALL_MPI(MPI_Get_processor_name, (name, &len));
+            std::vector<size_t> hash(Communicator::world().size());
+            hash[r] = std::hash<std::string>{}(std::string(name, len));
+            Communicator::world().allgather(hash.data(), r, 1);
+            std::map<size_t, std::vector<int>> rank_map;
+            for (int i = 0; i < Communicator::world().size(); i++) {
+                rank_map[hash[i]].push_back(i);
+            }
+            for (int i = 0; i < (int)rank_map[hash[r]].size(); i++) {
+                if (rank_map[hash[r]][i] == r) {
+                    id = i % num_devices__;
+                    break;
+                }
             }
         }
-        if (id == -1) {
-            throw std::runtime_error("get_device_id(): wrong device id was found");
-        }
+        assert(id >= 0);
     }
     return id;
 }

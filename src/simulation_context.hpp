@@ -35,6 +35,8 @@
 #include "Density/augmentation_operator.hpp"
 #include "Potential/xc_functional.hpp"
 #include "SDDK/GPU/acc.hpp"
+#include "Symmetry/check_gvec.hpp"
+#include "Symmetry/rotation.hpp"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
@@ -126,7 +128,7 @@ class Simulation_context : public Simulation_parameters
 
     std::unique_ptr<Gvec_partition> gvec_coarse_partition_;
 
-    std::unique_ptr<remap_gvec_to_shells> remap_gvec_;
+    std::unique_ptr<Gvec_shells> remap_gvec_;
 
     /// Creation time of the parameters.
     timeval start_time_;
@@ -183,7 +185,7 @@ class Simulation_context : public Simulation_parameters
     std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
     /// Storage for various memory pools.
-    std::map<memory_t, memory_pool> memory_pool_;
+    mutable std::map<memory_t, memory_pool> memory_pool_;
 
     /// Plane wave expansion coefficients of the step function.
     mdarray<double_complex, 1> theta_pw_;
@@ -237,44 +239,26 @@ class Simulation_context : public Simulation_parameters
         fft_coarse_ = std::unique_ptr<FFT3D>(
             new FFT3D(get_min_fft_grid(2 * gk_cutoff(), rlv).grid_size(), comm_fft_coarse(), processing_unit()));
 
-        /* create a list of G-vectors for corase FFT grid */
-        gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
+        ///* create a list of G-vectors for corase FFT grid */
+        //gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
 
-        gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
-            new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
+        //gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
+        //    new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
 
-        /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
-        gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
+        ///* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
+        //gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
 
-        gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
+        //gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
 
-        remap_gvec_ = std::unique_ptr<remap_gvec_to_shells>(new remap_gvec_to_shells(comm(), gvec()));
+        //remap_gvec_ = std::unique_ptr<Gvec_shells>(new Gvec_shells(gvec()));
+
+        //if (control().verification_ >= 1) {
+        //    check_gvec(*remap_gvec_, unit_cell().symmetry());
+        //}
 
         /* prepare fine-grained FFT driver for the entire simulation */
-        fft_->prepare(*gvec_partition_);
+        //fft_->prepare(*gvec_partition_);
 
-        #pragma omp parallel for
-        for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            int ig = gvec().offset() + igloc;
-
-            auto gv = gvec().gvec(ig);
-            /* check limits */
-            for (int x: {0, 1, 2}) {
-                auto limits = fft().limits(x);
-                /* check boundaries */
-                if (gv[x] < limits.first || gv[x] > limits.second) {
-                    std::stringstream s;
-                    s << "G-vector is outside of grid limits" << std::endl
-                      << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << std::endl
-                      << "limits: "
-                      << fft().limits(0).first << " " << fft().limits(0).second << " "
-                      << fft().limits(1).first << " " << fft().limits(1).second << " "
-                      << fft().limits(2).first << " " << fft().limits(2).second;
-
-                      TERMINATE(s);
-                }
-            }
-        }
     }
 
     /// Initialize communicators.
@@ -347,7 +331,8 @@ class Simulation_context : public Simulation_parameters
      */
     void init_step_function()
     {
-        auto v = make_periodic_function<index_domain_t::global>([&](int iat, double g) {
+        auto v = make_periodic_function<index_domain_t::global>([&](int iat, double g)
+        {
             auto R = unit_cell().atom_type(iat).mt_radius();
             return unit_step_function_form_factors(R, g);
         });
@@ -513,8 +498,7 @@ class Simulation_context : public Simulation_parameters
     {
         std::vector<std::string> names({"host", "host_pinned", "device"});
 
-        if ((!comm().is_finalized() && comm().rank() == 0)
-            && control().verbosity_ >= 2) {
+        if ((!comm().is_finalized() && comm().rank() == 0) && control().verbosity_ >= 2) {
             for (auto name: names) {
                 auto& mp = mem_pool(get_memory_t(name));
                 printf("memory_pool(%s): total size: %li MB, free size: %li MB\n", name.c_str(), mp.total_size() >> 20,
@@ -551,20 +535,84 @@ class Simulation_context : public Simulation_parameters
         }
     }
 
+    /// Print message from the root rank.
+    template <typename... Args>
+    inline void message(int level__, char const* label__, Args... args) const
+    {
+        if (comm_.rank() == 0 && this->control().verbosity_ >= level__) {
+            if (label__) {
+                printf("[%s] ", label__);
+            }
+            printf(args...);
+        }
+    }
+
     /// Update context after setting new lattice vectors or atomic coordinates.
     void update()
     {
         PROFILE("sirius::Simulation_context::update");
 
-        gvec_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
-        gvec_coarse_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
-
         unit_cell().update();
 
+        auto rlv = unit_cell_.reciprocal_lattice_vectors();
+
+        /* create a list of G-vectors for corase FFT grid */
+        if (!gvec_coarse_) {
+            gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
+        } else {
+            gvec_coarse_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
+        }
+
+        if (!gvec_coarse_partition_) {
+            gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
+                new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
+        }
+
+        /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
+        if (!gvec_) {
+            gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
+        } else {
+            gvec_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
+        }
+
+        if (!gvec_partition_) {
+            gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
+        }
+
+        if (!remap_gvec_) {
+            remap_gvec_ = std::unique_ptr<Gvec_shells>(new Gvec_shells(gvec()));
+        }
+
         if (unit_cell_.num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
-            unit_cell_.symmetry().check_gvec_symmetry(gvec(), comm());
+            check_gvec(gvec(), unit_cell_.symmetry());
             if (!full_potential()) {
-                unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse(), comm());
+                check_gvec(gvec_coarse(), unit_cell_.symmetry());
+            }
+            check_gvec(*remap_gvec_, unit_cell().symmetry());
+        }
+
+        if (control().verification_ >= 1) {
+            #pragma omp parallel for
+            for (int igloc = 0; igloc < gvec().count(); igloc++) {
+                int ig = gvec().offset() + igloc;
+
+                auto gv = gvec().gvec(ig);
+                /* check limits */
+                for (int x: {0, 1, 2}) {
+                    auto limits = fft().limits(x);
+                    /* check boundaries */
+                    if (gv[x] < limits.first || gv[x] > limits.second) {
+                        std::stringstream s;
+                        s << "G-vector is outside of grid limits" << std::endl
+                          << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << std::endl
+                          << "limits: "
+                          << fft().limits(0).first << " " << fft().limits(0).second << " "
+                          << fft().limits(1).first << " " << fft().limits(1).second << " "
+                          << fft().limits(2).first << " " << fft().limits(2).second;
+
+                          TERMINATE(s);
+                    }
+                }
             }
         }
 
@@ -629,6 +677,11 @@ class Simulation_context : public Simulation_parameters
             gvec_coord_.copy_to(memory_t::device);
         }
 
+        /* prepare fine-grained FFT driver for the entire simulation */
+        if (!fft_->is_ready()) {
+            fft_->prepare(*gvec_partition_);
+        }
+
         if (full_potential()) {
             init_step_function();
         }
@@ -637,11 +690,11 @@ class Simulation_context : public Simulation_parameters
             augmentation_op_.clear();
             memory_pool* mp{nullptr};
             switch (processing_unit()) {
-                case CPU: {
+                case device_t::CPU: {
                     mp = &mem_pool(memory_t::host);
                     break;
                 }
-                case GPU: {
+                case device_t::GPU: {
                     mp = &mem_pool(memory_t::host_pinned);
                     break;
                 }
@@ -700,7 +753,7 @@ class Simulation_context : public Simulation_parameters
         return *gvec_coarse_partition_;
     }
 
-    remap_gvec_to_shells const& remap_gvec() const
+    Gvec_shells const& remap_gvec() const
     {
         return *remap_gvec_;
     }
@@ -905,7 +958,7 @@ class Simulation_context : public Simulation_parameters
             comm_.allgather(&f_pw[0], gvec().offset(), gvec().count());
         }
 
-        return std::move(f_pw);
+        return f_pw;
     }
 
     /// Compute values of spherical Bessel functions at MT boundary.
@@ -922,7 +975,7 @@ class Simulation_context : public Simulation_parameters
                                        &sbessel_mt(0, igloc, iat));
             }
         }
-        return std::move(sbessel_mt);
+        return sbessel_mt;
     }
 
     /// Generate complex spherical harmoics for the local set of G-vectors.
@@ -936,7 +989,7 @@ class Simulation_context : public Simulation_parameters
             auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
             SHT::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
         }
-        return std::move(gvec_ylm);
+        return gvec_ylm;
     }
 
     /// Sum over the plane-wave coefficients and spherical harmonics that apperas in Poisson solver and finding of the
@@ -1010,15 +1063,15 @@ class Simulation_context : public Simulation_parameters
             utils::timer t2("sirius::Simulation_context::sum_fg_fl_yg|mul");
             switch (processing_unit()) {
                 case device_t::CPU: {
-                    linalg<CPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::host), zm.ld(), phase_factors.at(memory_t::host),
+                    linalg<device_t::CPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::host), zm.ld(), phase_factors.at(memory_t::host),
                                       phase_factors.ld(), tmp.at(memory_t::host), tmp.ld());
                     break;
                 }
                 case device_t::GPU: {
 #if defined(__GPU)
                     zm.copy_to(memory_t::device);
-                    linalg<GPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::device), zm.ld(), phase_factors.at(memory_t::device),
-                                      phase_factors.ld(), tmp.at(memory_t::device), tmp.ld());
+                    linalg<device_t::GPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::device), zm.ld(), phase_factors.at(memory_t::device),
+                                      		phase_factors.ld(), tmp.at(memory_t::device), tmp.ld());
                     tmp.copy_to(memory_t::host);
 #endif
                     break;
@@ -1034,7 +1087,7 @@ class Simulation_context : public Simulation_parameters
 
         comm().allreduce(&flm(0, 0), (int)flm.size());
 
-        return std::move(flm);
+        return flm;
     }
 
     inline Radial_integrals_beta<false> const& beta_ri() const
@@ -1128,7 +1181,7 @@ class Simulation_context : public Simulation_parameters
 
     /// Return a reference to a memory pool.
     /** A memory pool is created when this function called for the first time. */
-    memory_pool& mem_pool(memory_t M__)
+    memory_pool& mem_pool(memory_t M__) const
     {
         if (memory_pool_.count(M__) == 0) {
             memory_pool_.emplace(M__, std::move(memory_pool(M__)));
@@ -1205,7 +1258,7 @@ class Simulation_context : public Simulation_parameters
         return blas_linalg_t_;
     }
 
-    inline splindex<block> split_gvec_local() const
+    inline splindex<splindex_t::block> split_gvec_local() const
     {
         /* local number of G-vectors for this MPI rank */
         int ngv_loc = gvec().count();
@@ -1222,7 +1275,7 @@ class Simulation_context : public Simulation_parameters
         /* number of blocks of G-vectors */
         int nb = ngv_loc / ngv_b;
         /* split local number of G-vectors between blocks */
-        return std::move(splindex<block>(ngv_loc, nb, 0));
+        return splindex<splindex_t::block>(ngv_loc, nb, 0);
     }
 
     inline void fft_grid_size(std::array<int, 3> fft_grid_size__)
@@ -1344,6 +1397,30 @@ inline void Simulation_context::initialize()
 
     /* initialize variables related to the unit cell */
     unit_cell_.initialize();
+
+    auto lv = matrix3d<double>(unit_cell_.lattice_vectors());
+
+    auto lat_sym = find_lat_sym(lv, 1e-6);
+
+    for (int i = 0; i < unit_cell_.symmetry().num_mag_sym(); i++) {
+        auto& spgR = unit_cell_.symmetry().magnetic_group_symmetry(i).spg_op.R;
+        bool found{false};
+        for (size_t i = 0; i < lat_sym.size(); i++) {
+            auto latR = lat_sym[i];
+            found = true;
+            for (int x: {0, 1, 2}) {
+                for (int y: {0, 1, 2}) {
+                    found = found && (spgR(x, y) == latR(x, y));
+                }
+            }
+            if (found) {
+                break;
+            }
+        }
+        if (!found) {
+            TERMINATE("spglib lattice symetry was not found in the list of SIRIUS generated symmetries");
+        }
+    }
 
     /* set default values for the G+k-vector cutoff */
     if (full_potential()) {
@@ -1499,10 +1576,6 @@ inline void Simulation_context::initialize()
             new Radial_integrals_vloc<true>(unit_cell(), 2 * pw_cutoff(), settings().nprii_vloc_));
     }
 
-    if (control().verbosity_ >= 1 && comm().rank() == 0) {
-        print_info();
-    }
-
     if (control().verbosity_ >= 3) {
         pstdout pout(comm());
         if (comm().rank() == 0) {
@@ -1516,6 +1589,10 @@ inline void Simulation_context::initialize()
 
     if (comm_.rank() == 0 && control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
+    }
+
+    if (control().verbosity_ >= 1 && comm().rank() == 0) {
+        print_info();
     }
 
     initialized_ = true;
@@ -1580,6 +1657,7 @@ inline void Simulation_context::print_info() const
     printf("number of core electrons           : %f\n", unit_cell().num_core_electrons());
     printf("number of valence electrons        : %f\n", unit_cell().num_valence_electrons());
     printf("total number of electrons          : %f\n", unit_cell().num_electrons());
+    printf("extra charge                       : %f\n", parameters_input().extra_charge_);
     printf("total number of aw basis functions : %i\n", unit_cell().mt_aw_basis_size());
     printf("total number of lo basis functions : %i\n", unit_cell().mt_lo_basis_size());
     printf("number of first-variational states : %i\n", num_fv_states());
@@ -1633,11 +1711,13 @@ inline void Simulation_context::print_info() const
                 printf("LAPACK\n");
                 break;
             }
-#ifdef __SCALAPACK
+#if defined(__SCALAPACK)
             case ev_solver_t::scalapack: {
                 printf("ScaLAPACK\n");
                 break;
             }
+#endif
+#if defined(__ELPA)
             case ev_solver_t::elpa1: {
                 printf("ELPA1\n");
                 break;
@@ -1647,20 +1727,30 @@ inline void Simulation_context::print_info() const
                 break;
             }
 #endif
+#if defined(__MAGMA)
             case ev_solver_t::magma: {
                 printf("MAGMA\n");
                 break;
             }
+            case ev_solver_t::magma_gpu: {
+                printf("MAGMA with GPU pointers\n");
+                break;
+            }
+#endif
             case ev_solver_t::plasma: {
                 printf("PLASMA\n");
                 break;
             }
+#if defined(__CUDA)
             case ev_solver_t::cusolver: {
                 printf("cuSOLVER\n");
                 break;
             }
+#endif
             default: {
-                TERMINATE("wrong eigen-value solver");
+                std::stringstream s;
+                s << "wrong eigen-value solver: " << evsn[i];
+                throw std::runtime_error(s.str());
             }
         }
     }
@@ -1676,6 +1766,23 @@ inline void Simulation_context::print_info() const
             acc::print_device_info(0);
             break;
         }
+    }
+    printf("\n");
+    printf("iterative solver                   : %s\n", iterative_solver_input_.type_.c_str());
+    printf("number of steps                    : %i\n", iterative_solver_input_.num_steps_);
+    printf("subspace size                      : %i\n", iterative_solver_input_.subspace_size_);
+
+    printf("\n");
+    printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(), spg_get_micro_version());
+    {
+        unsigned int vmajor, vminor, vmicro;
+        H5get_libversion(&vmajor, &vminor, &vmicro);
+        printf("HDF5 version: %d.%d.%d\n", vmajor, vminor, vmicro);
+    }
+    {
+        int vmajor, vminor, vmicro;
+        xc_version(&vmajor, &vminor, &vmicro);
+        printf("Libxc version: %d.%d.%d\n", vmajor, vminor, vmicro);
     }
 
     int i{1};
@@ -1698,9 +1805,6 @@ inline void Simulation_context::print_info() const
         printf("%s\n", xc.refs().c_str());
         i++;
     }
-    int vmajor, vminor, vmicro;
-    xc_version(&vmajor, &vminor, &vmicro);
-    printf("Libxc version: %d.%d.%d\n", vmajor, vminor, vmicro);
 }
 
 } // namespace sirius

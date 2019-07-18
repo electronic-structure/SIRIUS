@@ -125,7 +125,7 @@ inline std::vector<int> l_by_lm(int lmax__)
             v[lm(l, m)] = l;
         }
     }
-    return std::move(v);
+    return v;
 }
 
 /// Check if file exists.
@@ -310,7 +310,7 @@ inline nlohmann::json read_json_from_file_or_string(std::string const& str__)
 {
     nlohmann::json dict = {};
     if (str__.size() == 0) {
-        return std::move(dict);
+        return dict;
     }
 
     if (str__.find("{") == std::string::npos) { /* this is a file */
@@ -340,7 +340,7 @@ inline nlohmann::json read_json_from_file_or_string(std::string const& str__)
         }
     }
 
-    return std::move(dict);
+    return dict;
 }
 
 /// Get high water mark and resident space size values of a given process.

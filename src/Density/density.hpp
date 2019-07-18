@@ -139,7 +139,7 @@ class Density : public Field4D
 
         int ia{-1};
 
-        /// ae and ps local unified densities+magnetization
+        /* AE and PS local unified densities + magnetization */
         std::vector<Spheric_function<function_domain_t::spectral, double>> ae_density_;
         std::vector<Spheric_function<function_domain_t::spectral, double>> ps_density_;
     };
@@ -301,6 +301,8 @@ class Density : public Field4D
         : Field4D(ctx__, ctx__.lmmax_rho())
         , unit_cell_(ctx_.unit_cell())
     {
+        PROFILE("sirius::Density");
+
         if (!ctx_.initialized()) {
             TERMINATE("Simulation_context is not initialized");
         }
@@ -383,9 +385,7 @@ class Density : public Field4D
 
     inline void normalize()
     {
-        std::vector<double> nel_mt;
-        double              nel_it;
-        double nel   = rho().integrate(nel_mt, nel_it);
+        double nel = std::get<0>(rho().integrate());
         double scale = unit_cell_.num_electrons() / nel;
 
         /* renormalize interstitial part */
@@ -408,9 +408,7 @@ class Density : public Field4D
     {
         double nel{0};
         if (ctx_.full_potential()) {
-            std::vector<double> nel_mt;
-            double              nel_it;
-            nel = rho().integrate(nel_mt, nel_it);
+            nel = std::get<0>(rho().integrate());
         } else {
             nel = rho().f_0().real() * unit_cell_.omega();
         }
@@ -525,12 +523,12 @@ class Density : public Field4D
 
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
-                generate_rho_aug<CPU>(rho_aug);
+                generate_rho_aug<device_t::CPU>(rho_aug);
                 break;
             }
             case device_t::GPU: {
                 rho_aug.allocate(memory_t::device);
-                generate_rho_aug<GPU>(rho_aug);
+                generate_rho_aug<device_t::GPU>(rho_aug);
                 break;
             }
         }
@@ -930,7 +928,7 @@ class Density : public Field4D
                 }
             }
         }
-        return std::move(dm);
+        return dm;
     }
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
@@ -958,7 +956,7 @@ class Density : public Field4D
             }
         }
         ctx_.fft().comm().allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
-        return std::move(mmom);
+        return mmom;
     }
 
     /// Symmetrize density matrix.
@@ -1004,11 +1002,13 @@ class Density : public Field4D
      *  \f]
      */
     void symmetrize_density_matrix();
-
+    void symmetrize_density_matrix_bis();
     void symmetrize()
     {
         Field4D::symmetrize(&rho(), &magnetization(0), &magnetization(1), &magnetization(2));
     }
+
+#include "Symmetrize.hpp"
 };
 
 #include "initial_density.hpp"

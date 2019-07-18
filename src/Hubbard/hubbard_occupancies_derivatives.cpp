@@ -29,19 +29,31 @@
 
 // gradient of beta projectors. Needed for the computations of the forces
 
-void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
-                                              Q_operator<double_complex>& q_op, // overlap operator
-                                              mdarray<double_complex, 6>& dn__)  // Atom we shift
+#include "hubbard.hpp"
+
+namespace sirius {
+
+void
+Hubbard::compute_occupancies_derivatives(K_point& kp,
+                                         Q_operator& q_op, // overlap operator
+                                         mdarray<double_complex, 6>& dn__)  // Atom we shift
 {
     dn__.zero();
     // check if we have a norm conserving pseudo potential only. OOnly
     // derivatives of the hubbard wave functions are needed.
     auto& phi = kp.hubbard_wave_functions();
 
-    kp.generate_atomic_wave_functions_aux(this->number_of_hubbard_orbitals(),
-                                          phi,
-                                          this->offset,
-                                          true);
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom_type   = unit_cell_.atom(ia).type();
+        if (atom_type.hubbard_correction()) {
+
+            kp.generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(),
+                                              ia,
+                                              this->offset[ia],
+                                              true,
+                                              phi);
+        }
+    }
 
     Beta_projectors_gradient bp_grad_(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
     kp.beta_projectors().prepare();
@@ -94,13 +106,13 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
         dphi_s_psi.allocate(memory_t::device);
 
         /* wave functions */
-        phitmp.allocate(spin_idx(0), memory_t::device);
-        phi.allocate(spin_idx(0), memory_t::device);
-        dphi.allocate(spin_idx(0), memory_t::device);
-        phi.copy_to(spin_idx(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
-        kp.spinor_wave_functions().allocate(spin_idx(ctx_.num_spins()), memory_t::device);
+        phitmp.allocate(spin_range(0), memory_t::device);
+        phi.allocate(spin_range(0), memory_t::device);
+        dphi.allocate(spin_range(0), memory_t::device);
+        phi.copy_to(spin_range(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
+        kp.spinor_wave_functions().allocate(spin_range(ctx_.num_spins()), memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            kp.spinor_wave_functions().copy_to(spin_idx(ispn), memory_t::device, 0, kp.num_occupied_bands(ispn));
+            kp.spinor_wave_functions().copy_to(spin_range(ispn), memory_t::device, 0, kp.num_occupied_bands(ispn));
         }
     }
     phi_s_psi.zero(memory_t::host);
@@ -146,7 +158,7 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                 kp.compute_gradient_wave_functions(phi, this->offset[atom_id], lmax_at, phitmp, this->offset[atom_id], dir);
 
                 if (ctx_.processing_unit() == device_t::GPU) {
-                    phitmp.copy_to(spin_idx(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
+                    phitmp.copy_to(spin_range(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
                 }
 
                 // For norm conserving pp, it is enough to have the derivatives
@@ -161,7 +173,7 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                 for (int chunk__ = 0; chunk__ < kp.beta_projectors().num_chunks(); chunk__++) {
                     for (int i = 0; i < kp.beta_projectors().chunk(chunk__).num_atoms_; i++) {
                         // need to find the right atom in the chunks.
-                        if (kp.beta_projectors().chunk(chunk__).desc_(beta_desc_idx::ia, i) == atom_id) {
+                        if (kp.beta_projectors().chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i) == atom_id) {
                             kp.beta_projectors().generate(chunk__);
                             bp_grad_.generate(chunk__, dir);
 
@@ -203,18 +215,19 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                     sizeof(double_complex) * dn_tmp.size());
     } // atom_id
 
-    if (ctx_.processing_unit() == GPU) {
-        phi.deallocate(spin_idx(0), memory_t::device);
-        kp.spinor_wave_functions().deallocate(spin_idx(ctx_.num_spins()), memory_t::device);
+    if (ctx_.processing_unit() == device_t::GPU) {
+        phi.deallocate(spin_range(0), memory_t::device);
+        kp.spinor_wave_functions().deallocate(spin_range(ctx_.num_spins()), memory_t::device);
     }
 
     kp.beta_projectors().dismiss();
     bp_grad_.dismiss();
 }
 
-void Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__,
-                                                     Q_operator<double_complex>& q_op__, // Compensnation operator or overlap operator
-                                                     mdarray<double_complex, 5>& dn__)  // derivative of the occupation number compared to displacement of atom aton_id
+void
+Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__,
+                                                Q_operator& q_op__, // Compensnation operator or overlap operator
+                                                mdarray<double_complex, 5>& dn__)  // derivative of the occupation number compared to displacement of atom aton_id
 {
     auto& phi = kp__.hubbard_wave_functions();
 
@@ -255,24 +268,34 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
     bp_strain_deriv.prepare();
 
     /* compute the hubbard orbitals */
-    kp__.generate_atomic_wave_functions_aux(this->number_of_hubbard_orbitals(), phi, this->offset, true);
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom_type   = unit_cell_.atom(ia).type();
+        if (atom_type.hubbard_correction()) {
+
+            kp__.generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(),
+                                                ia,
+                                                this->offset[ia],
+                                                true,
+                                                phi);
+        }
+    }
 
     if (ctx_.processing_unit() == device_t::GPU) {
         dm.allocate(memory_t::device);
         phi_s_psi.allocate(memory_t::device);
         dphi_s_psi.allocate(memory_t::device);
 
-        phi.allocate(spin_idx(0), memory_t::device);
-        phi.copy_to(spin_idx(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
+        phi.allocate(spin_range(0), memory_t::device);
+        phi.copy_to(spin_range(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            kp__.spinor_wave_functions().allocate(spin_idx(ispn), memory_t::device);
-            kp__.spinor_wave_functions().copy_to(spin_idx(ispn), memory_t::device, 0, kp__.num_occupied_bands(ispn));
+            kp__.spinor_wave_functions().allocate(spin_range(ispn), memory_t::device);
+            kp__.spinor_wave_functions().copy_to(spin_range(ispn), memory_t::device, 0, kp__.num_occupied_bands(ispn));
         }
 
-        dphi.allocate(spin_idx(0), memory_t::device);
+        dphi.allocate(spin_range(0), memory_t::device);
 
-        phitmp.allocate(spin_idx(0), memory_t::device);
+        phitmp.allocate(spin_range(0), memory_t::device);
     }
     /* compute the S|phi^I_ia> */
     apply_S_operator(kp__, q_op__, phi, dphi, 0, this->number_of_hubbard_orbitals());
@@ -313,7 +336,7 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
 
             compute_gradient_strain_wavefunctions(kp__, phitmp, rlm_g, rlm_dg, nu, mu);
             if (ctx_.processing_unit() == device_t::GPU) {
-                phitmp.copy_to(spin_idx(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
+                phitmp.copy_to(spin_range(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
             }
             // computes the S|d phi^I_ia>. It just happens that doing
             // this is equivalent to
@@ -380,9 +403,9 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
     }
 
     if (ctx_.processing_unit() == device_t::GPU) {
-        phi.deallocate(spin_idx(0), memory_t::device);
+        phi.deallocate(spin_range(0), memory_t::device);
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            kp__.spinor_wave_functions().deallocate(spin_idx(ispn), memory_t::device);
+            kp__.spinor_wave_functions().deallocate(spin_range(ispn), memory_t::device);
         }
     }
 
@@ -390,11 +413,12 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
     bp_strain_deriv.dismiss();
 }
 
-void Hubbard::compute_gradient_strain_wavefunctions(K_point&                  kp__,
-                                                    Wave_functions&           dphi,
-                                                    const mdarray<double, 2>& rlm_g,
-                                                    const mdarray<double, 3>& rlm_dg,
-                                                    const int nu, const int mu)
+void
+Hubbard::compute_gradient_strain_wavefunctions(K_point&                  kp__,
+                                               Wave_functions&           dphi,
+                                               const mdarray<double, 2>& rlm_g,
+                                               const mdarray<double, 3>& rlm_dg,
+                                               const int nu, const int mu)
 {
     #pragma omp parallel for schedule(static)
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
@@ -453,13 +477,14 @@ void Hubbard::compute_gradient_strain_wavefunctions(K_point&                  kp
     }
 }
 
-void Hubbard::compute_occupancies(K_point&                    kp,
-                                  dmatrix<double_complex>&    phi_s_psi,
-                                  dmatrix<double_complex>&    dphi_s_psi,
-                                  Wave_functions&             dphi,
-                                  mdarray<double_complex, 5>& dn__,
-                                  matrix<double_complex>&     dm,
-                                  const int                   index)
+void
+Hubbard::compute_occupancies(K_point&                    kp,
+                             dmatrix<double_complex>&    phi_s_psi,
+                             dmatrix<double_complex>&    dphi_s_psi,
+                             Wave_functions&             dphi,
+                             mdarray<double_complex, 5>& dn__,
+                             matrix<double_complex>&     dm,
+                             const int                   index)
 {
     #if defined(__GPU)
     const double_complex weight = double_complex(kp.weight(), 0.0);
@@ -508,56 +533,56 @@ void Hubbard::compute_occupancies(K_point&                    kp,
 
     /* maybe dispatch this on the GPU */
     switch (ctx_.processing_unit()) {
-        case device_t::CPU: {
-            dm.zero();
-            linalg<CPU>::gemm(2, 0,
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              HowManyBands,
-                              double_complex(kp.weight(), 0.0),
-                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                              linalg_const<double_complex>::zero(),
-                              dm);
+    case device_t::CPU: {
+        dm.zero();
+        linalg<device_t::CPU>::gemm(2, 0,
+                                    this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                    this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                    HowManyBands,
+                                    double_complex(kp.weight(), 0.0),
+                                    dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                                    dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                                    linalg_const<double_complex>::zero(),
+                                    dm);
 
-            linalg<CPU>::gemm(2, 0,
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              HowManyBands,
-                              double_complex(kp.weight(), 0.0),
-                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                              linalg_const<double_complex>::one(),
-                              dm);
-            break;
-        }
-        case device_t::GPU: {
-#if defined(__GPU)
-            dm.zero(memory_t::device);
-            linalg<GPU>::gemm(2, 0,
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              HowManyBands,
-                              &weight,
-                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                              &linalg_const<double_complex>::zero(),
-                              dm);
+        linalg<device_t::CPU>::gemm(2, 0,
+                                    this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                    this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                    HowManyBands,
+                                    double_complex(kp.weight(), 0.0),
+                                    dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                                    dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                                    linalg_const<double_complex>::one(),
+                                    dm);
+        break;
+    }
+    case device_t::GPU: {
+    #if defined(__GPU)
+        dm.zero(memory_t::device);
+        linalg<device_t::GPU>::gemm(2, 0,
+                                    this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                    this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                    HowManyBands,
+                                    &weight,
+                                    dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                                    dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                                    &linalg_const<double_complex>::zero(),
+                                    dm);
 
-            linalg<GPU>::gemm(2, 0,
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                              HowManyBands,
-                              &weight,
-                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                              &linalg_const<double_complex>::one(),
-                              dm);
+        linalg<device_t::GPU>::gemm(2, 0,
+                                    this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                    this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                                    HowManyBands,
+                                    &weight,
+                                    dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                                    dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                                    &linalg_const<double_complex>::one(),
+                                    dm);
 
-            dm.copy_to(memory_t::host);
-#endif
-            break;
-        }
+        dm.copy_to(memory_t::host);
+     #endif
+        break;
+    }
     }
 
     #pragma omp parallel for schedule(static)
@@ -581,12 +606,13 @@ void Hubbard::compute_occupancies(K_point&                    kp,
 // possible. Problem right now is that the class hamiltonian is not
 // included in hubbard but the other way around.
 
-void Hubbard::apply_S_operator(K_point&                    kp,
-                               Q_operator<double_complex>& q_op,
-                               Wave_functions&             phi,
-                               Wave_functions&             ophi,
-                               const int                   idx0,
-                               const int                   num_phi)
+void
+Hubbard::apply_S_operator(K_point&                    kp,
+                          Q_operator& q_op,
+                          Wave_functions&             phi,
+                          Wave_functions&             ophi,
+                          const int                   idx0,
+                          const int                   num_phi)
 {
     ophi.copy_from(ctx_.processing_unit(), num_phi, phi, 0, idx0, 0, idx0);
 
@@ -610,4 +636,5 @@ void Hubbard::apply_S_operator(K_point&                    kp,
             q_op.apply(i, 0, ophi, idx0, num_phi, kp.beta_projectors(), beta_phi);
         }
     }
+}
 }

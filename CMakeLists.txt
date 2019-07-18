@@ -18,6 +18,7 @@ set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
 set(USE_CUDA OFF CACHE BOOL "use CUDA")
 set(USE_ROCM OFF CACHE BOOL "use ROCM AMD GPU code")
+set(USE_NVTX OFF CACHE BOOL "use Nvidia profiling tools library")
 set(USE_VDWXC OFF CACHE BOOL "use libvdwxc for van der Walls corrections")
 set(USE_MKL OFF CACHE BOOL "use Intel MKL")
 set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
@@ -27,6 +28,7 @@ set(GPU_MODEL "none" CACHE STRING "The target GPU architecture; one of {none,P10
 set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
 set(USE_OPENMP ON CACHE BOOL "use OpenMP")
 set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
+set(USE_TIMER ON CACHE BOOL "measure execution of functions with timer")
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
 
@@ -72,8 +74,14 @@ if(USE_SCALAPACK)
   add_definitions("-D__SCALAPACK")
 endif()
 
+if (USE_TIMER)
+  add_definitions("-D__USE_TIMER")
+endif()
+
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
+set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${GSL_LIBRARY}")
+
 if(USE_MKL)
   set(USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
   find_package(MKL REQUIRED)
@@ -126,6 +134,11 @@ if(USE_CUDA)
   elseif(GPU_MODEL MATCHES "G10x0")
     message("set nvcc flags for geforce 1000")
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_61")
+  endif()
+
+  if(USE_NVTX)
+    add_definitions("-D__GPU_NVTX")
+    set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};-lnvToolsExt")
   endif()
 endif(USE_CUDA)
 
@@ -230,27 +243,22 @@ add_custom_target(runtime_options_json_hpp DEPENDS ${runtime_options_json_path})
 include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
-  if(USE_CUDA)
-    add_dependencies(${_target} sirius_cu)
-  endif()
 
+  add_dependencies(${_target} sirius)
   add_dependencies(${_target} generate_version_hpp)
   add_dependencies(${_target} runtime_options_json_hpp)
 
+  target_link_libraries(${_target} PRIVATE "${sirius_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
   if(USE_MKL)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES};-Wl,--no-as-needed;${MKL_LIBRARIES}")
+      target_link_libraries(${_target} PRIVATE "-Wl,--no-as-needed;${MKL_LIBRARIES}")
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-      target_link_libraries(${_target} PRIVATE "${sirius_cu_location};${SYSTEM_LIBRARIES};${MKL_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
+      target_link_libraries(${_target} PRIVATE "${MKL_LIBRARIES}")
     else()
       message(FATAL_ERROR "Unsupported compiler")
     endif()
   else()
-    target_link_libraries(${_target} PRIVATE "${SYSTEM_LIBRARIES};${LAPACK_LIBRARIES};${FFTW_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
-  endif()
-
-  if(USE_CUDA)
-    target_link_libraries(${_target} PRIVATE "${sirius_cu_location}")
+    target_link_libraries(${_target} PRIVATE "${LAPACK_LIBRARIES};${FFTW_LIBRARIES}")
   endif()
 
   if(USE_ROCM)
@@ -261,7 +269,7 @@ MACRO(SIRIUS_SETUP_TARGET _target)
     target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
   endif()
 
-  target_link_libraries(${_target} PRIVATE GSL::gsl)
+  # target_link_libraries(${_target} PRIVATE GSL::gsl)
 
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_link_libraries(${_target} PRIVATE "-lgfortran")
@@ -270,9 +278,7 @@ ENDMACRO()
 
 # sirius library
 add_subdirectory(src)
-if(USE_CUDA)
-  set(sirius_cu_location $<TARGET_FILE:sirius_cu>)
-endif()
+set(sirius_location $<TARGET_FILE:sirius>)
 
 # applications
 if(BUILD_TESTS)

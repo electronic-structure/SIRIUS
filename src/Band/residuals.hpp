@@ -48,8 +48,8 @@ extern "C" void apply_preconditioner_gpu(double_complex* res__,
                                          int num_rows_loc__,
                                          int num_bands__,
                                          double* eval__,
-                                         double* h_diag__,
-                                         double* o_diag__);
+                                         const double* h_diag__,
+                                         const double* o_diag__);
 
 extern "C" void make_real_g0_gpu(double_complex* res__,
                                  int ld__,
@@ -69,7 +69,7 @@ static void compute_res(device_t            pu__,
 
     for (int ispn: spins) {
         switch (pu__) {
-            case CPU: {
+            case device_t::CPU: {
                 /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
                 #pragma omp parallel for
                 for (int i = 0; i < num_bands__; i++) {
@@ -86,7 +86,7 @@ static void compute_res(device_t            pu__,
                 }
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
 #if defined(__GPU)
                 compute_residuals_gpu(hpsi__.pw_coeffs(ispn).prime().at(memory_t::device),
                                       opsi__.pw_coeffs(ispn).prime().at(memory_t::device),
@@ -122,7 +122,7 @@ static void apply_p(device_t            pu__,
 
     for (int ispn = s0; ispn <= s1; ispn++) {
         switch (pu__) {
-            case CPU: {
+            case device_t::CPU: {
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < num_bands__; i++) {
                     for (int ig = 0; ig < res__.pw_coeffs(ispn).num_rows_loc(); ig++) {
@@ -132,7 +132,7 @@ static void apply_p(device_t            pu__,
                     }
                     if (res__.has_mt()) {
                         for (int j = 0; j < res__.mt_coeffs(ispn).num_rows_loc(); j++) {
-                            double p = h_diag__(res__.pw_coeffs(ispn).num_rows_loc() + j, ispn) - 
+                            double p = h_diag__(res__.pw_coeffs(ispn).num_rows_loc() + j, ispn) -
                                        o_diag__[res__.pw_coeffs(ispn).num_rows_loc() + j] * eval__[i];
                             p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
                             res__.mt_coeffs(ispn).prime(j, i) /= p;
@@ -141,7 +141,7 @@ static void apply_p(device_t            pu__,
                 }
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
 #if defined(__GPU)
                 apply_preconditioner_gpu(res__.pw_coeffs(ispn).prime().at(memory_t::device),
                                          res__.pw_coeffs(ispn).num_rows_loc(),
@@ -177,7 +177,7 @@ static void normalize_res(device_t            pu__,
 
     for (int ispn: spins) {
         switch (pu__) {
-            case CPU: {
+            case device_t::CPU: {
             #pragma omp parallel for schedule(static)
                 for (int i = 0; i < num_bands__; i++) {
                     for (int ig = 0; ig < res__.pw_coeffs(ispn).num_rows_loc(); ig++) {
@@ -191,7 +191,7 @@ static void normalize_res(device_t            pu__,
                 }
                 break;
             }
-            case GPU: {
+            case device_t::GPU: {
                 #ifdef __GPU
                 scale_matrix_columns_gpu(res__.pw_coeffs(ispn).num_rows_loc(), num_bands__,
                                          (acc_complex_double_t*)res__.pw_coeffs(ispn).prime().at(memory_t::device),
@@ -236,11 +236,11 @@ Band::residuals_aux(K_point*             kp__,
     compute_res(pu, ispn__, num_bands__, eval, hpsi__, opsi__, res__);
 
     /* compute norm */
-    auto res_norm = res__.l2norm(pu, ispn__, num_bands__);
+    auto res_norm = res__.l2norm(pu, spin_range(ispn__), num_bands__);
 
     apply_p(pu, ispn__, num_bands__, res__, h_diag__, o_diag__, eval);
 
-    auto p_norm = res__.l2norm(pu, ispn__, num_bands__);
+    auto p_norm = res__.l2norm(pu, spin_range(ispn__), num_bands__);
     for (int i = 0; i < num_bands__; i++) {
         p_norm[i] = 1.0 / p_norm[i];
     }
@@ -252,7 +252,7 @@ Band::residuals_aux(K_point*             kp__,
     normalize_res(pu, ispn__, num_bands__, res__, p_norm);
 
     if (ctx_.control().verbosity_ >= 5) {
-        auto n_norm = res__.l2norm(pu, ispn__, num_bands__);
+        auto n_norm = res__.l2norm(pu, spin_range(ispn__), num_bands__);
         if (kp__->comm().rank() == 0) {
             for (int i = 0; i < num_bands__; i++) {
                 printf("norms of residual %3i: %18.14f %24.14f %18.14f", i, res_norm[i], p_norm[i], n_norm[i]);
@@ -264,7 +264,7 @@ Band::residuals_aux(K_point*             kp__,
         }
     }
 
-   return std::move(res_norm);
+   return res_norm;
 }
 
 template <typename T>
@@ -281,7 +281,9 @@ inline int Band::residuals(K_point*             kp__,
                            Wave_functions&      opsi__,
                            Wave_functions&      res__,
                            mdarray<double, 2>&  h_diag__,
-                           mdarray<double, 1>&  o_diag__) const
+                           mdarray<double, 1>&  o_diag__,
+                           double               eval_tolerance__,
+                           double               norm_tolerance__) const
 {
     PROFILE("sirius::Band::residuals");
 
@@ -309,10 +311,10 @@ inline int Band::residuals(K_point*             kp__,
                     ev_idx.push_back(i);
                 }
             }
-            return std::move(ev_idx);
+            return ev_idx;
         };
 
-        auto ev_idx = get_ev_idx(itso.energy_tolerance_);
+        auto ev_idx = get_ev_idx(eval_tolerance__);
 
         n = static_cast<int>(ev_idx.size());
 
@@ -369,7 +371,7 @@ inline int Band::residuals(K_point*             kp__,
             n = 0;
             for (int i = 0; i < nmax; i++) {
                 /* take the residual if it's norm is above the threshold */
-                if (res_norm[i] > itso.residual_tolerance_) {
+                if (res_norm[i] > norm_tolerance__) {
                     /* shift unconverged residuals to the beginning of array */
                     if (n != i) {
                         for (int ispn: spins) {
@@ -391,9 +393,8 @@ inline int Band::residuals(K_point*             kp__,
         auto res_norm = residuals_aux(kp__, ispn__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
         for (int i = 0; i < num_bands__; i++) {
-            double tol = itso.residual_tolerance_;// + 1e-3 * std::abs(kp__->band_occupancy(i + s * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
             /* take the residual if its norm is above the threshold */
-            if (res_norm[i] > tol) {
+            if (res_norm[i] > norm_tolerance__) {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) {
                     for (int ispn: spins) {
@@ -478,20 +479,20 @@ void Band::check_residuals(K_point& kp__, Hamiltonian& H__) const
 
         for (int ispn = 0; ispn < num_sc; ispn++) {
             if (is_device_memory(ctx_.preferred_memory_t())) {
-                hpsi.copy_to(spin_idx(ispn), memory_t::host, 0, ctx_.num_bands());
-                spsi.copy_to(spin_idx(ispn), memory_t::host, 0, ctx_.num_bands());
+                hpsi.copy_to(spin_range(ispn), memory_t::host, 0, ctx_.num_bands());
+                spsi.copy_to(spin_range(ispn), memory_t::host, 0, ctx_.num_bands());
             }
             #pragma omp parallel for schedule(static)
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 for (int ig = 0; ig < kp__.num_gkvec_loc(); ig++) {
                     res.pw_coeffs(ispn).prime(ig, j) = hpsi.pw_coeffs(ispn).prime(ig, j) -
-                                                       spsi.pw_coeffs(ispn).prime(ig, j) * 
+                                                       spsi.pw_coeffs(ispn).prime(ig, j) *
                                                        kp__.band_energy(j, ispin_step);
                 }
             }
         }
         /* get the norm */
-        auto l2norm = res.l2norm(device_t::CPU, nc_mag ? 2 : 0, ctx_.num_bands());
+        auto l2norm = res.l2norm(device_t::CPU, nc_mag ? spin_range(2) : spin_range(0), ctx_.num_bands());
 
         if (kp__.comm().rank() == 0) {
             for (int j = 0; j < ctx_.num_bands(); j++) {

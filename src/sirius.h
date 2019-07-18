@@ -71,6 +71,11 @@ inline void initialize(bool call_mpi_init__ = true)
     if (call_mpi_init__) {
         Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
+#if defined(__APEX)
+    apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
+#endif
+    utils::start_global_timer();
+
     if (Communicator::world().rank() == 0) {
         printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version, minor_version, revision, git_hash);
 #if !defined(NDEBUG)
@@ -81,12 +86,11 @@ inline void initialize(bool call_mpi_init__ = true)
     sddk::num_ranks_per_node();
     if (acc::num_devices() > 0) {
         int devid = sddk::get_device_id(acc::num_devices());
-        #pragma omp parallel
-        {
-            #pragma omp critical
-            acc::set_device_id(devid);
-        }
-        acc::create_streams(omp_get_max_threads() + 1);
+        acc::set_device_id(devid);
+        /* create extensive amount of streams */
+        /* some parts of the code rely on the number of streams not related to the
+           number of OMP threads */
+        acc::create_streams(omp_get_max_threads() + 100);
 #if defined(__GPU)
         gpublas::create_stream_handles();
 #endif
@@ -95,10 +99,6 @@ inline void initialize(bool call_mpi_init__ = true)
         cusolver::create_handle();
 #endif
     }
-#if defined(__APEX)
-    apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
-#endif
-    utils::start_global_timer();
 #if defined(__MAGMA)
     magma::init();
 #endif
@@ -107,6 +107,11 @@ inline void initialize(bool call_mpi_init__ = true)
 #endif
 #if defined(__LIBSCI_ACC)
     libsci_acc_init();
+#endif
+#if defined(__ELPA)
+    if (elpa_init(20170403) != ELPA_OK) {
+        TERMINATE("ELPA API version not supported");
+    }
 #endif
     /* for the fortran interface to blas/lapack */
     assert(sizeof(int) == 4);
@@ -154,6 +159,10 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     if (call_mpi_fin__) {
         Communicator::finalize();
     }
+#if defined(__ELPA)
+    int ierr;
+    elpa_uninit(&ierr);
+#endif
 
     is_initialized() = false;
 }

@@ -173,7 +173,7 @@ class Atom
             TERMINATE("not yet mpi parallel");
         }
 
-        splindex<block> spl_lm(lmmax, comm__.size(), comm__.rank());
+        splindex<splindex_t::block> spl_lm(lmmax, comm__.size(), comm__.rank());
 
         auto l_by_lm = utils::l_by_lm(lmax_pot_);
 
@@ -216,7 +216,7 @@ class Atom
 
         mdarray<double, 1> result(idx_ri.size(1));
 
-        if (pu__ == GPU) {
+        if (pu__ == device_t::GPU) {
 #ifdef __GPU
             auto& rgrid    = type().radial_grid();
             auto& rf_coef  = type().rf_coef();
@@ -272,7 +272,7 @@ class Atom
             TERMINATE_NO_GPU
 #endif
         }
-        if (pu__ == CPU) {
+        if (pu__ == device_t::CPU) {
             utils::timer t1("sirius::Atom::generate_radial_integrals|interp");
             #pragma omp parallel
             {

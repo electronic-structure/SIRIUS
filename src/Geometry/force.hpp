@@ -171,7 +171,7 @@ class Force
                         }
                     }
 
-                    linalg<CPU>::gemm(0, 1, ctx_.num_fv_states(), ctx_.num_fv_states(),
+                    linalg<device_t::CPU>::gemm(0, 1, ctx_.num_fv_states(), ctx_.num_fv_states(),
                                       ctx_.num_fv_states(), linalg_const<double_complex>::one(), ev1, ev,
                                       linalg_const<double_complex>::one(), dm__);
                 }
@@ -190,7 +190,7 @@ class Force
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     int offs = ispn * ctx_.num_fv_states();
 
-                    linalg<CPU>::gemm(0, 1, ctx_.num_fv_states(), ctx_.num_fv_states(),
+                    linalg<device_t::CPU>::gemm(0, 1, ctx_.num_fv_states(), ctx_.num_fv_states(),
                                       ctx_.num_bands(), linalg_const<double_complex>::one(), ev1, offs, 0, ev,
                                       offs, 0, linalg_const<double_complex>::one(), dm__, 0, 0);
                 }
@@ -203,7 +203,7 @@ class Force
      *
      *  It is based on this reference : PRB 84, 161102(R) (2011)
      */
-    void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator<double_complex>& q_op__,
+    void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__,
                                                    mdarray<double, 2>& forceh_)
     {
         mdarray<double_complex, 6> dn(2 * hamiltonian_.U().lmax() + 1, 2 * hamiltonian_.U().lmax() + 1, 2,
@@ -294,12 +294,12 @@ class Force
             hamiltonian_.apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
 
             /* apw-apw block of the overlap matrix */
-            linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+            linalg<device_t::CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
                               alm_row.at(memory_t::host), alm_row.ld(), alm_col.at(memory_t::host), alm_col.ld(),
                               o.at(memory_t::host), o.ld());
 
             /* apw-apw block of the Hamiltonian matrix */
-            linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+            linalg<device_t::CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
                               alm_row.at(memory_t::host), alm_row.ld(), halm_col.at(memory_t::host), halm_col.ld(),
                               h.at(memory_t::host), h.ld());
 
@@ -366,7 +366,7 @@ class Force
                 }
 
                 /* zm1 = dO * V */
-                linalg<CPU>::gemm(0, 0, ngklo, nfv, ngklo, linalg_const<double_complex>::one(), o1, fv_evec,
+                linalg<device_t::CPU>::gemm(0, 0, ngklo, nfv, ngklo, linalg_const<double_complex>::one(), o1, fv_evec,
                                   linalg_const<double_complex>::zero(), zm1);
                 /* multiply by energy: zm1 = E * (dO * V)  */
                 for (int i = 0; i < zm1.num_cols_local(); i++) {
@@ -376,11 +376,11 @@ class Force
                     }
                 }
                 /* compute zm1 = dH * V - E * (dO * V) */
-                linalg<CPU>::gemm(0, 0, ngklo, nfv, ngklo, linalg_const<double_complex>::one(), h1, fv_evec,
+                linalg<device_t::CPU>::gemm(0, 0, ngklo, nfv, ngklo, linalg_const<double_complex>::one(), h1, fv_evec,
                                   linalg_const<double_complex>::m_one(), zm1);
 
                 /* compute zf = V^{+} * zm1 = V^{+} * (dH * V - E * (dO * V)) */
-                linalg<CPU>::gemm(2, 0, nfv, nfv, ngklo, linalg_const<double_complex>::one(), fv_evec, zm1,
+                linalg<device_t::CPU>::gemm(2, 0, nfv, nfv, ngklo, linalg_const<double_complex>::one(), fv_evec, zm1,
                                   linalg_const<double_complex>::zero(), zf);
 
                 for (int i = 0; i < dm.num_cols_local(); i++) {
@@ -658,7 +658,7 @@ class Force
                     }
 
                     /* multiply tmp matrices, or sum over G*/
-                    linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                    linalg<device_t::CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                                       aug_op.q_pw(), v_tmp, tmp);
 
                     #pragma omp parallel for
@@ -777,7 +777,7 @@ class Force
 
         if (ctx_.hubbard_correction()) {
             /* we can probably task run this in a task fashion */
-            Q_operator<double_complex> q_op(ctx_);
+            Q_operator q_op(ctx_);
 
             for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 

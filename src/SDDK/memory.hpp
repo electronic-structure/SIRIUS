@@ -99,10 +99,9 @@ inline memory_t get_memory_t(std::string name__)
     return map_to_type.at(name__);
 }
 
-// TODO: change to enum class
 /// Type of the main processing unit.
 /** List the processing units on which the code can run. */
-enum device_t
+enum class device_t
 {
     /// CPU device.
     CPU = 0,
@@ -125,6 +124,19 @@ inline device_t get_device_t(memory_t mem__)
         default: {
             throw std::runtime_error("get_device_t(): wrong memory type");
         }
+    }
+    return device_t::CPU; // make compiler happy
+}
+
+inline device_t get_device_t(std::string name__)
+{
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+    if (name__ == "cpu") {
+        return device_t::CPU;
+    } else if (name__ == "gpu") {
+        return device_t::GPU;
+    } else {
+        throw std::runtime_error("wrong processing unit");
     }
     return device_t::CPU; // make compiler happy
 }
@@ -425,7 +437,7 @@ struct memory_subblock_descriptor
 
 //// Memory pool.
 /** This class stores list of allocated memory blocks. Each of the blocks can be devided into subblocks. When subblock
- *  is deallocated it is merged with previous or next free subblock in the memory block. If this was the last subblock 
+ *  is deallocated it is merged with previous or next free subblock in the memory block. If this was the last subblock
  *  in the block of memory, the (now) free block of memory is merged with the neighbours (if any are available).
  */
 class memory_pool
@@ -706,7 +718,7 @@ class mdarray_index_descriptor
 };
 
 /// Multidimensional array with the column-major (Fortran) order.
-/** The implementation supports two memory pointers: one is accessible by CPU and second is accessible by a device. 
+/** The implementation supports two memory pointers: one is accessible by CPU and second is accessible by a device.
     The following constructors are implemented:
     \code{.cpp}
     // wrap a host memory pointer and create 2D array 10 x 20.
@@ -735,7 +747,7 @@ template <typename T, int N>
 class mdarray
 {
   public:
-    typedef mdarray_index_descriptor::index_type index_type;
+    using index_type = mdarray_index_descriptor::index_type;
 
   private:
     /// Optional array label.
@@ -1438,6 +1450,14 @@ class mdarray
 #else
         return false;
 #endif
+    }
+
+    mdarray<T, N>& operator=(std::function<T(void)> f__)
+    {
+        for (size_t i = 0; i < this->size(); i++) {
+            (*this)[i] = f__();
+        }
+        return *this;
     }
 
     mdarray<T, N>& operator=(std::function<T(index_type)> f__)

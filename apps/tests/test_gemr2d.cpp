@@ -85,8 +85,8 @@ void test_gemr2d(int M, int N, int repeat)
     double t0 = -Utils::current_time();
     for (int i = 0; i < repeat; i++)
     {
-        linalg<CPU>::gemr2d(M, N, A, 0, 0, B, 0, 0, gcontext);
-        linalg<CPU>::gemr2d(M, N, B, 0, 0, A, 0, 0, gcontext);
+        linalg<device_t::CPU>::gemr2d(M, N, A, 0, 0, B, 0, 0, gcontext);
+        linalg<device_t::CPU>::gemr2d(M, N, B, 0, 0, A, 0, 0, gcontext);
     }
     t0 += Utils::current_time();
 

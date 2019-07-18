@@ -185,7 +185,7 @@ class Augmentation_operator
 
     void dismiss()
     {
-        if (atom_type_.parameters().processing_unit() == GPU && atom_type_.augment()) {
+        if (atom_type_.parameters().processing_unit() == device_t::GPU && atom_type_.augment()) {
             q_pw_.deallocate(memory_t::device);
             sym_weight_.deallocate(memory_t::device);
         }

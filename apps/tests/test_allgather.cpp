@@ -7,7 +7,7 @@ void test_allgather()
     int N = 11;
     std::vector<double> vec(N, 0.0);
 
-    splindex<block> spl(N, Communicator::world().size(), Communicator::world().rank());
+    splindex<splindex_t::block> spl(N, Communicator::world().size(), Communicator::world().rank());
 
     for (int i = 0; i < spl.local_size(); i++)
     {

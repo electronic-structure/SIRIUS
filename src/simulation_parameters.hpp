@@ -27,6 +27,7 @@
 
 #include "typedefs.hpp"
 #include "input.hpp"
+#include "utils/cmd_args.hpp"
 
 namespace sirius {
 
@@ -86,8 +87,6 @@ class Simulation_parameters
     /// Import parameters from a file or a serialized json string.
     void import(std::string const& str__)
     {
-        PROFILE("sirius::Simulation_parameters::import");
-
         if (str__.size() == 0) {
             return;
         }
@@ -113,8 +112,6 @@ class Simulation_parameters
     /// Import parameters from a json dictionary.
     void import(json const& dict)
     {
-        PROFILE("sirius::Simulation_parameters::import");
-
         if (dict.size() == 0) {
             return;
         }
@@ -149,13 +146,17 @@ class Simulation_parameters
                                                            control_input_.fft_mode_);
         control_input_.memory_usage_        = args__.value("control.memory_usage",
                                                            control_input_.memory_usage_);
+        control_input_.verbosity_           = args__.value("control.verbosity",
+                                                           control_input_.verbosity_);
+        control_input_.verification_        = args__.value("control.verification",
+                                                           control_input_.verification_);
 
-        parameters_input_.ngridk_           = args__.value("parameters.ngridk",
-                                                           parameters_input_.ngridk_);
-        parameters_input_.gamma_point_      = args__.value("parameters.gamma_point",
-                                                           parameters_input_.gamma_point_);
-        parameters_input_.pw_cutoff_        = args__.value("parameters.pw_cutoff",
-                                                           parameters_input_.pw_cutoff_);
+        parameters_input_.ngridk_      = args__.value("parameters.ngridk",
+                                                      parameters_input_.ngridk_);
+        parameters_input_.gamma_point_ = args__.value("parameters.gamma_point",
+                                                      parameters_input_.gamma_point_);
+        parameters_input_.pw_cutoff_   = args__.value("parameters.pw_cutoff",
+                                                      parameters_input_.pw_cutoff_);
 
         iterative_solver_input_.orthogonalize_ = args__.value("iterative_solver.orthogonalize",
                                                               iterative_solver_input_.orthogonalize_);

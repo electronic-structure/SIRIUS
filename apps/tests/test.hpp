@@ -59,7 +59,7 @@ dmatrix<T> random_symmetric(int N__, int bs__, BLACS_grid const& blacs_grid__)
         A.set(i, i, 50.0);
     }
 
-    return std::move(A);
+    return A;
 }
 
 template <typename T>
@@ -83,12 +83,12 @@ dmatrix<T> random_positive_definite(int N__, int bs__, BLACS_grid const& blacs_g
         }
     }
 #endif
-    linalg<CPU>::gemm(2, 0, N__, N__, N__, linalg_const<T>::one(), A, A, linalg_const<T>::zero(), B);
+    linalg<device_t::CPU>::gemm(2, 0, N__, N__, N__, linalg_const<T>::one(), A, A, linalg_const<T>::zero(), B);
 
     for (int i = 0; i < N__; i++) {
         B.set(i, i, N__);
     }
 
-    return std::move(B);
+    return B;
 }
 

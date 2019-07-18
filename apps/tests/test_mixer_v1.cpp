@@ -17,7 +17,7 @@ std::vector<double> get_values(int N__)
     std::generate(a.begin(), a.end(), [](){return utils::random<double>();});
     //double norm = std::accumulate(a.begin(), a.end(), 0.0);
     //std::transform(a.begin(), a.end(), a.begin(), [&](double v){return v / norm;});
-    return std::move(a);
+    return a;
 }
 
 void test1_mixer(int N, Mixer<double>& mixer)

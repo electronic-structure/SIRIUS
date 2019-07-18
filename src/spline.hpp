@@ -326,7 +326,7 @@ class Spline : public Radial_grid<U>
         // d[0] = d[ns-1] = 1;
 
         /* solve tridiagonal system */
-        // int info = linalg<CPU>::gtsv(ns, 1, &dl[0], &d[0], &du[0], &m[0], ns);
+        // int info = linalg<device_t::CPU>::gtsv(ns, 1, &dl[0], &d[0], &du[0], &m[0], ns);
         int info = solve(dl, d, du, &m[0], ns);
 
         if (info) {
@@ -553,7 +553,7 @@ class Spline : public Radial_grid<U>
         for (int ir = 0; ir < this->num_points(); ir++) {
             val[ir] = coeffs_(ir, 0);
         }
-        return std::move(val);
+        return val;
     }
 };
 
@@ -574,7 +574,7 @@ inline Spline<T, U> operator*(Spline<T, U> const& a__, Spline<T, U> const& b__)
             coeffs_a(ir, 3) * coeffs_b(ir, 0) + coeffs_a(ir, 2) * coeffs_b(ir, 1) + coeffs_a(ir, 1) * coeffs_b(ir, 2) + coeffs_a(ir, 0) * coeffs_b(ir, 3);
     }
 
-    return std::move(s12);
+    return s12;
 }
 
 #ifdef __GPU

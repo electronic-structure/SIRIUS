@@ -24,7 +24,9 @@
 
 #ifndef __BETA_PROJECTORS_BASE_HPP__
 #define __BETA_PROJECTORS_BASE_HPP__
+
 #include "utils/env.hpp"
+#include "simulation_context.hpp"
 
 namespace sirius {
 
@@ -38,11 +40,16 @@ extern "C" void create_beta_gk_gpu(int                   num_atoms,
                                    double_complex*       beta_gk);
 #endif
 
-enum beta_desc_idx
+/// Named index of a descriptor of beta-projectors. The same order is used by the GPU kernel.
+enum class beta_desc_idx
 {
+    /// Number of beta-functions for this atom.
     nbf      = 0,
+    /// Offset of beta-projectors in this chunk.
     offset   = 1,
+    /// Offset of beta-projectors in the array for atom types.
     offset_t = 2,
+    /// Global index of atom.
     ia       = 3
 };
 
@@ -128,13 +135,13 @@ class Beta_projectors_base
                     beta_chunks_[ib].atom_pos_(x, i) = pos[x];
                 }
                 /* number of beta functions for atom */
-                beta_chunks_[ib].desc_(beta_desc_idx::nbf, i) = type.mt_basis_size();
+                beta_chunks_[ib].desc_(static_cast<int>(beta_desc_idx::nbf), i) = type.mt_basis_size();
                 /* offset in beta_gk*/
-                beta_chunks_[ib].desc_(beta_desc_idx::offset, i) = num_beta;
+                beta_chunks_[ib].desc_(static_cast<int>(beta_desc_idx::offset), i) = num_beta;
                 /* offset in beta_gk_t */
-                beta_chunks_[ib].desc_(beta_desc_idx::offset_t, i) = type.offset_lo();
+                beta_chunks_[ib].desc_(static_cast<int>(beta_desc_idx::offset_t), i) = type.offset_lo();
                 /* global index of atom */
-                beta_chunks_[ib].desc_(beta_desc_idx::ia, i) = ia;
+                beta_chunks_[ib].desc_(static_cast<int>(beta_desc_idx::ia), i) = ia;
 
                 num_beta += type.mt_basis_size();
             }
@@ -219,7 +226,7 @@ class Beta_projectors_base
 
     matrix<double_complex> pw_coeffs_t(int j__)
     {
-        return std::move(matrix<double_complex>(&pw_coeffs_t_(0, 0, j__), num_gkvec_loc(), num_beta_t()));
+        return matrix<double_complex>(&pw_coeffs_t_(0, 0, j__), num_gkvec_loc(), num_beta_t());
     }
 
     /// Plane wave coefficients of |beta> projectors for a chunk of atoms.
@@ -284,7 +291,7 @@ class Beta_projectors_base
             case device_t::CPU: break;
         }
 
-        return std::move(beta_phi);
+        return beta_phi;
     }
 
     /// Generate beta-projectors for a chunk of atoms.
@@ -299,9 +306,9 @@ class Beta_projectors_base
 
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
-                #pragma omp for
+                #pragma omp parallel for
                 for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
-                    int ia = chunk(ichunk__).desc_(beta_desc_idx::ia, i);
+                    int ia = chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::ia), i);
 
                     double phase = twopi * dot(gkvec_.vk(), ctx_.unit_cell().atom(ia).position());
                     double_complex phase_k = std::exp(double_complex(0.0, phase));
@@ -312,10 +319,10 @@ class Beta_projectors_base
                         /* total phase e^{i(G+k)r_{\alpha}} */
                         phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
                     }
-                    for (int xi = 0; xi < chunk(ichunk__).desc_(beta_desc_idx::nbf, i); xi++) {
+                    for (int xi = 0; xi < chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i); xi++) {
                         for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-                            pw_coeffs_a_(igk_loc, chunk(ichunk__).desc_(beta_desc_idx::offset, i) + xi) =
-                                pw_coeffs_t_(igk_loc, chunk(ichunk__).desc_(beta_desc_idx::offset_t, i) + xi, j__) * phase_gk[igk_loc];
+                            pw_coeffs_a_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset), i) + xi) =
+                                pw_coeffs_t_(igk_loc, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset_t), i) + xi, j__) * phase_gk[igk_loc];
                         }
                     }
                 }
@@ -335,11 +342,11 @@ class Beta_projectors_base
                 /* wave-functions are on CPU but the beta-projectors are on GPU */
                 if (gkvec_.comm().rank() == 0 && is_host_memory(ctx_.preferred_memory_t())) {
                     /* make beta-projectors for G=0 on the CPU */
-                    #pragma omp for schedule(static)
+                    #pragma omp parallel for schedule(static)
                     for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
-                        for (int xi = 0; xi < chunk(ichunk__).desc_(beta_desc_idx::nbf, i); xi++) {
-                            pw_coeffs_a_g0_(chunk(ichunk__).desc_(beta_desc_idx::offset, i) + xi) =
-                                pw_coeffs_t_(0, chunk(ichunk__).desc_(beta_desc_idx::offset_t, i) + xi, j__);
+                        for (int xi = 0; xi < chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i); xi++) {
+                            pw_coeffs_a_g0_(chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset), i) + xi) =
+                                pw_coeffs_t_(0, chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::offset_t), i) + xi, j__);
                         }
                     }
                 }
@@ -360,8 +367,7 @@ class Beta_projectors_base
                 break;
             }
             case device_t::GPU: {
-                pw_coeffs_a_ = matrix<double_complex>(nullptr, num_gkvec_loc(), max_num_beta());
-                pw_coeffs_a_.allocate(ctx_.mem_pool(memory_t::device));
+                pw_coeffs_a_ = matrix<double_complex>(ctx_.mem_pool(memory_t::device), num_gkvec_loc(), max_num_beta());
                 pw_coeffs_a_g0_ = mdarray<double_complex, 1>(ctx_.mem_pool(memory_t::host), max_num_beta());
                 pw_coeffs_a_g0_.allocate(ctx_.mem_pool(memory_t::device));
                 break;
@@ -377,7 +383,7 @@ class Beta_projectors_base
     {
         PROFILE("sirius::Beta_projectors_base::dismiss");
 
-        if (ctx_.processing_unit() == GPU && reallocate_pw_coeffs_t_on_gpu_) {
+        if (ctx_.processing_unit() == device_t::GPU && reallocate_pw_coeffs_t_on_gpu_) {
             pw_coeffs_t_.deallocate(memory_t::device);
         }
         pw_coeffs_a_.deallocate(memory_t::device);

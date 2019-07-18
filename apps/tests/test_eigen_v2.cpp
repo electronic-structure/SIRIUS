@@ -28,9 +28,16 @@ double test_diag(BLACS_grid const& blacs_grid__,
 
     std::vector<double> eval(nev__);
 
-    A.allocate(memory_t::device);
-    B.allocate(memory_t::device);
-    Z.allocate(memory_t::device);
+    if (acc::num_devices() > 0) {
+        A.allocate(memory_t::device);
+        A.copy_to(memory_t::device);
+
+        if (test_gen__) {
+            B.allocate(memory_t::device);
+            B.copy_to(memory_t::device);
+        }
+        Z.allocate(memory_t::device);
+    }
 
     if (blacs_grid__.comm().rank() == 0) {
         printf("N = %i\n", N__);
@@ -82,12 +89,12 @@ double test_diag(BLACS_grid const& blacs_grid__,
     }
     if (test_gen__) {
         /* lambda * B * Z */
-        linalg<CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), B_ref, A, linalg_const<T>::zero(), B);
+        linalg<device_t::CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), B_ref, A, linalg_const<T>::zero(), B);
         B >> A;
     }
 
     /* A * Z - lambda * B * Z */
-    linalg<CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), A_ref, Z, linalg_const<T>::m_one(), A);
+    linalg<device_t::CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), A_ref, Z, linalg_const<T>::m_one(), A);
 
     double diff{0};
     for (int j = 0; j < A.num_cols_local(); j++) {
@@ -181,7 +188,10 @@ void call_test(std::vector<int> mpi_grid__,
             } else {
                 t = test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__, *solver);
             }
-            m.push_back(t);
+            /* skip first "warmup" measurment */
+            if (i) {
+                m.push_back(t);
+            }
         }
         if (blacs_grid.comm().rank() == 0) {
             printf("average time: %f (sec.), sigma: %f (sec.) \n", m.average(), m.sigma());

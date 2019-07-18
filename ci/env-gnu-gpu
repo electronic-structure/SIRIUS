@@ -1,3 +1,5 @@
+export MPICH_MAX_THREAD_SAFETY=multiple
+
 module purge
 export EASYBUILD_PREFIX=/users/simonpi/jenkins/daint-haswell
 module load modules

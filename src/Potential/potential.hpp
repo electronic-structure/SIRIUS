@@ -310,16 +310,16 @@ class Potential : public Field4D
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
     {
-        PROFILE("sirius::Potential::Potential");
+        PROFILE("sirius::Potential");
 
         if (!ctx_.initialized()) {
             TERMINATE("Simulation_context is not initialized");
         }
 
         lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
-        sht_  = std::unique_ptr<SHT>(new SHT(lmax_));
 
         if (lmax_ >= 0) {
+            sht_  = std::unique_ptr<SHT>(new SHT(lmax_));
             l_by_lm_ = utils::l_by_lm(lmax_);
 
             /* precompute i^l */
@@ -566,7 +566,7 @@ class Potential : public Field4D
         /* nuclear multipole moment */
         qmt[0] -= atom__.zn() * y00;
 
-        return std::move(qmt);
+        return qmt;
     }
 
     /// Poisson solver.

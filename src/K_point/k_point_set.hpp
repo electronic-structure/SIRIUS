@@ -28,6 +28,7 @@
 #include "k_point.hpp"
 #include "geometry3d.hpp"
 #include "smearing.hpp"
+#include "Symmetry/get_irreducible_reciprocal_mesh.hpp"
 
 namespace sirius {
 
@@ -51,7 +52,7 @@ class K_point_set
     std::vector<std::unique_ptr<K_point>> kpoints_;
 
     /// Split index of k-points.
-    splindex<chunk> spl_num_kpoints_;
+    splindex<splindex_t::chunk> spl_num_kpoints_;
 
     double energy_fermi_{0};
 
@@ -71,7 +72,16 @@ class K_point_set
         mdarray<double, 2>  kp;
         std::vector<double> wk;
         if (use_symmetry__) {
-            nk = unit_cell_.symmetry().get_irreducible_reciprocal_mesh(k_grid__, k_shift__, kp, wk);
+            auto result = get_irreducible_reciprocal_mesh(unit_cell_.symmetry(), k_grid__, k_shift__);
+            nk = std::get<0>(result);
+            wk = std::get<1>(result);
+            auto tmp = std::get<2>(result);
+            kp = mdarray<double, 2>(3, nk);
+            for (int i = 0; i < nk; i++) {
+                for (int x: {0, 1, 2}) {
+                    kp(x, i) = tmp[i][x];
+                }
+            }
         } else {
             nk = k_grid__[0] * k_grid__[1] * k_grid__[2];
             wk = std::vector<double>(nk, 1.0 / nk);
@@ -90,67 +100,10 @@ class K_point_set
             }
         }
 
-        //if (use_symmetry__)
-        //{
-        //    mdarray<int, 2> kmap(parameters_.unit_cell()->symmetry()->num_sym_op(), nk);
-        //    for (int ik = 0; ik < nk; ik++)
-        //    {
-        //        for (int isym = 0; isym < parameters_.unit_cell()->symmetry()->num_sym_op(); isym++)
-        //        {
-        //            auto vk_rot = matrix3d<double>(transpose(parameters_.unit_cell()->symmetry()->rot_mtrx(isym))) *
-        //                          vector3d<double>(vk(0, ik), vk(1, ik), vk(2, ik));
-        //            for (int x = 0; x < 3; x++)
-        //            {
-        //                if (vk_rot[x] < 0) vk_rot[x] += 1;
-        //                if (vk_rot[x] < 0 || vk_rot[x] >= 1) TERMINATE("wrong rotated k-point");
-        //            }
-
-        //            for (int jk = 0; jk < nk; jk++)
-        //            {
-        //                if (std::abs(vk_rot[0] - vk(0, jk)) < 1e-10 &&
-        //                    std::abs(vk_rot[1] - vk(1, jk)) < 1e-10 &&
-        //                    std::abs(vk_rot[2] - vk(2, jk)) < 1e-10)
-        //                {
-        //                    kmap(isym, ik) = jk;
-        //                }
-        //            }
-        //        }
-        //    }
-
-        //    //== std::cout << "sym.table" << std::endl;
-        //    //== for (int isym = 0; isym < parameters_.unit_cell()->symmetry().num_sym_op(); isym++)
-        //    //== {
-        //    //==     printf("sym: %2i, ", isym);
-        //    //==     for (int ik = 0; ik < nk; ik++) printf(" %2i", kmap(isym, ik));
-        //    //==     printf("\n");
-        //    //== }
-
-        //    std::vector<int> flag(nk, 1);
-        //    for (int ik = 0; ik < nk; ik++)
-        //    {
-        //        if (flag[ik])
-        //        {
-        //            int ndeg = 0;
-        //            for (int isym = 0; isym < parameters_.unit_cell()->symmetry()->num_sym_op(); isym++)
-        //            {
-        //                if (flag[kmap(isym, ik)])
-        //                {
-        //                    flag[kmap(isym, ik)] = 0;
-        //                    ndeg++;
-        //                }
-        //            }
-        //            add_kpoint(&vk(0, ik), double(ndeg) / nk);
-        //        }
-        //    }
-        //}
-        //else
-        //{
-        //    for (int ik = 0; ik < nk; ik++) add_kpoint(&vk(0, ik), wk[ik]);
-        //}
-
         for (int ik = 0; ik < nk; ik++) {
             add_kpoint(&kp(0, ik), wk[ik]);
         }
+
         initialize();
     }
 
@@ -202,10 +155,10 @@ class K_point_set
         PROFILE("sirius::K_point_set::initialize");
         /* distribute k-points along the 1-st dimension of the MPI grid */
         if (counts.empty()) {
-            splindex<block> spl_tmp(num_kpoints(), comm().size(), comm().rank());
-            spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm().size(), comm().rank(), spl_tmp.counts());
+            splindex<splindex_t::block> spl_tmp(num_kpoints(), comm().size(), comm().rank());
+            spl_num_kpoints_ = splindex<splindex_t::chunk>(num_kpoints(), comm().size(), comm().rank(), spl_tmp.counts());
         } else {
-            spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm().size(), comm().rank(), counts);
+            spl_num_kpoints_ = splindex<splindex_t::chunk>(num_kpoints(), comm().size(), comm().rank(), counts);
         }
 
         for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
@@ -318,7 +271,7 @@ class K_point_set
         return static_cast<int>(kpoints_.size());
     }
 
-    inline splindex<chunk> const& spl_num_kpoints() const
+    inline splindex<splindex_t::chunk> const& spl_num_kpoints() const
     {
         return spl_num_kpoints_;
     }
@@ -401,7 +354,7 @@ class K_point_set
         if (rank__ == my_rank) {
             gkvec.send_recv(comm(), jrank, rank__, gkvec);
         }
-        return std::move(gkvec);
+        return gkvec;
     }
 };
 
@@ -491,9 +444,12 @@ inline void K_point_set::find_band_occupancies()
 
     double ne{0};
 
+    /* target number of electrons */
+    double ne_target = unit_cell_.num_valence_electrons() - ctx_.parameters_input().extra_charge_;
+
     int step{0};
     /* calculate occupations */
-    while (std::abs(ne - unit_cell_.num_valence_electrons()) >= 1e-11) {
+    while (std::abs(ne - ne_target) >= 1e-11) {
         /* update Efermi */
         ef += de;
         /* compute total number of electrons */
@@ -501,7 +457,8 @@ inline void K_point_set::find_band_occupancies()
         for (int ik = 0; ik < num_kpoints(); ik++) {
             for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    bnd_occ(j, ispn, ik) = smearing::gaussian(kpoints_[ik]->band_energy(j, ispn) - ef, ctx_.smearing_width()) *
+                    bnd_occ(j, ispn, ik) =
+                        smearing::gaussian(kpoints_[ik]->band_energy(j, ispn) - ef, ctx_.smearing_width()) *
                                            ctx_.max_occupancy();
                     ne += bnd_occ(j, ispn, ik) * kpoints_[ik]->weight();
                 }
@@ -509,7 +466,7 @@ inline void K_point_set::find_band_occupancies()
         }
 
         sp = s;
-        s  = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;
+        s  = (ne > ne_target) ? -1 : 1;
         /* reduce de step if we change the direction, otherwise increase the step */
         de = (s != sp) ? (-de * 0.5) : (de * 1.25);
 
@@ -517,18 +474,6 @@ inline void K_point_set::find_band_occupancies()
             std::stringstream s;
             s << "search of band occupancies failed after 10000 steps";
             TERMINATE(s);
-
-            //ef = 0;
-
-            //for (int ik = 0; ik < num_kpoints(); ik++) {
-            //    ne = unit_cell_.num_valence_electrons();
-            //    for (int j = 0; j < ctx_.num_bands(); j++) {
-            //        bnd_occ(j, ik) = std::min(ne, static_cast<double>(ctx_.max_occupancy()));
-            //        ne = std::max(ne - ctx_.max_occupancy(), 0.0);
-            //    }
-            //}
-
-            //break;
         }
         step++;
     }
@@ -545,9 +490,8 @@ inline void K_point_set::find_band_occupancies()
 
     band_gap_ = 0.0;
 
-    int nve = static_cast<int>(unit_cell_.num_valence_electrons() + 1e-12);
-    if (ctx_.num_spins() == 2 ||
-        (std::abs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0)) {
+    int nve = static_cast<int>(ne_target + 1e-12);
+    if (ctx_.num_spins() == 2 || (std::abs(nve - ne_target) < 1e-12 && nve % 2 == 0)) {
         /* find band gap */
         std::vector<std::pair<double, double>> eband;
         std::pair<double, double>              eminmax;

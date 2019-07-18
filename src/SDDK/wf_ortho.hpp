@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file wf_ortho.hpp
@@ -85,7 +85,7 @@ inline void orthogonalize(memory_t                     mem__,
         }
         inner(mem__, la__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
-        linalg<CPU>::geqrf(n__, n__, o__, 0, 0);
+        linalg<device_t::CPU>::geqrf(n__, n__, o__, 0, 0);
         auto diag = o__.get_diag(n__);
         if (o__.comm().rank() == 0) {
             for (int i = 0; i < n__; i++) {
@@ -193,6 +193,7 @@ inline void orthogonalize(memory_t                     mem__,
 
         utils::timer t2("sddk::orthogonalize|transform");
 
+        int sid{0};
         for (int s: spins) {
             /* multiplication by triangular matrix */
             for (auto& e: wfs__) {
@@ -201,13 +202,15 @@ inline void orthogonalize(memory_t                     mem__,
                     linalg2(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__,
                                        &linalg_const<double_complex>::one(),
                                        reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
-                                       e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__), e->pw_coeffs(s).prime().ld());
+                                       e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
+                                       e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
                         linalg2(la__).trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__,
                                            &linalg_const<double_complex>::one(),
                                            reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
-                                           e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__), e->mt_coeffs(s).prime().ld());
+                                           e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
+                                           e->mt_coeffs(s).prime().ld(), stream_id(sid++));
                     }
                 }
                 /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
@@ -216,17 +219,20 @@ inline void orthogonalize(memory_t                     mem__,
                                        &linalg_const<double>::one(),
                                        reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
                                        reinterpret_cast<double*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
-                                       2 * e->pw_coeffs(s).prime().ld());
+                                       2 * e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
                         linalg2(la__).trmm('R', 'U', 'N', 2 * e->mt_coeffs(s).num_rows_loc(), n__,
                                            &linalg_const<double>::one(),
                                            reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
                                            reinterpret_cast<double*>(e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
-                                           2 * e->mt_coeffs(s).prime().ld());
+                                           2 * e->mt_coeffs(s).prime().ld(), stream_id(sid++));
                     }
                 }
             }
+        }
+        for (int i = 0; i < sid; i++) {
+            acc::sync_stream(stream_id(i));
         }
         t2.stop();
     } else { /* parallel transformation */

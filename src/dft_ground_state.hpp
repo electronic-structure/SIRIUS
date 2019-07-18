@@ -30,6 +30,7 @@
 #include "Hubbard/hubbard.hpp"
 #include "Geometry/stress.hpp"
 #include "Geometry/force.hpp"
+#include "Band/band.hpp"
 
 using json = nlohmann::json;
 
@@ -149,57 +150,7 @@ class DFT_ground_state
      *      \frac{N_{el}^2}{4 \lambda}
      *  \f]
      */
-    double ewald_energy() const
-    {
-        PROFILE("sirius::DFT_ground_state::ewald_energy");
-
-        double alpha = ctx_.ewald_lambda();
-
-        double ewald_g{0};
-
-        int ig0 = ctx_.gvec().skip_g0();
-
-        #pragma omp parallel for schedule(static) reduction(+:ewald_g)
-        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-            int ig = ctx_.gvec().offset() + igloc;
-
-            double g2 = std::pow(ctx_.gvec().gvec_len(ig), 2);
-
-            double_complex rho(0, 0);
-
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                rho += ctx_.gvec_phase_factor(ig, ia) * static_cast<double>(unit_cell_.atom(ia).zn());
-            }
-
-            ewald_g += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
-        }
-
-        ctx_.comm().allreduce(&ewald_g, 1);
-        if (ctx_.gvec().reduced()) {
-            ewald_g *= 2;
-        }
-        /* remaining G=0 contribution */
-        ewald_g -= std::pow(unit_cell_.num_electrons(), 2) / alpha / 4;
-        ewald_g *= (twopi / unit_cell_.omega());
-
-        /* remove self-interaction */
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            ewald_g -= std::sqrt(alpha / pi) * std::pow(unit_cell_.atom(ia).zn(), 2);
-        }
-
-        double ewald_r{0};
-        #pragma omp parallel for reduction(+:ewald_r)
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            for (int i = 1; i < unit_cell_.num_nearest_neighbours(ia); i++) {
-                int ja   = unit_cell_.nearest_neighbour(i, ia).atom_id;
-                double d = unit_cell_.nearest_neighbour(i, ia).distance;
-                ewald_r += 0.5 * unit_cell_.atom(ia).zn() * unit_cell_.atom(ja).zn() *
-                           std::erfc(std::sqrt(alpha) * d) / d;
-            }
-        }
-
-        return (ewald_g + ewald_r);
-    }
+    double ewald_energy() const;
 
   public:
     /// Constructor.
@@ -219,36 +170,47 @@ class DFT_ground_state
         }
     }
 
-    /// Generate initial densty, potential and a subspace of wave-functions.
-    void initial_state()
-    {
-        density_.initial_density();
-        potential_.generate(density_);
-        if (!ctx_.full_potential()) {
-            Band(ctx_).initialize_subspace(kset_, hamiltonian_);
-        }
-    }
-
-    /// Update the parameters after the change of lattice vectors or atomic positions.
-    void update()
-    {
-        PROFILE("sirius::DFT_ground_state::update");
-
-        ctx_.update();
-        kset_.update();
-        potential_.update();
-        density_.update();
-
-        if (!ctx_.full_potential()) {
-            ewald_energy_ = ewald_energy();
-        }
-    }
-
     /// Return reference to a simulation context.
-    Simulation_context const& ctx() const
+    inline Simulation_context const& ctx() const
     {
         return ctx_;
     }
+
+    inline Density& density()
+    {
+        return density_;
+    }
+
+    inline Potential& potential()
+    {
+        return potential_;
+    }
+
+    inline K_point_set& k_point_set()
+    {
+        return kset_;
+    }
+
+    inline Hamiltonian& hamiltonian()
+    {
+        return hamiltonian_;
+    }
+
+    inline Force& forces()
+    {
+        return forces_;
+    }
+
+    inline Stress& stress()
+    {
+        return stress_;
+    }
+
+    /// Generate initial densty, potential and a subspace of wave-functions.
+    void initial_state();
+
+    /// Update the parameters after the change of lattice vectors or atomic positions.
+    void update();
 
     /// Run the SCF ground state calculation and find a total energy minimum.
     json find(double potential_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state);
@@ -257,56 +219,15 @@ class DFT_ground_state
     void print_info();
 
     /// Print an estimation of magnetic moments in case of pseudopotential.
-    void print_magnetic_moment() const
-    {
-        mdarray<double, 2> mmom;
-        if (!ctx_.full_potential() && ctx_.num_mag_dims()) {
-            mmom = density_.compute_atomic_mag_mom();
-        }
-
-        if (!ctx_.full_potential() && ctx_.num_mag_dims() && ctx_.comm().rank() == 0) {
-            printf("Magnetic moments\n");
-            for (int i = 0; i < 80; i++)
-                printf("-");
-            printf("\n");
-            printf("atom                 moment               |moment|");
-            printf("\n");
-            for (int i = 0; i < 80; i++)
-                printf("-");
-            printf("\n");
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                vector3d<double> v({mmom(1, ia), mmom(2, ia), mmom(0, ia)});
-                printf("%4i    [%8.4f, %8.4f, %8.4f]  %10.6f\n", ia, v[0], v[1], v[2], v.length());
-            }
-        }
-    }
+    void print_magnetic_moment() const;
 
     /// Return nucleus energy in the electrostatic field.
     /** Compute energy of nucleus in the electrostatic potential generated by the total (electrons + nuclei)
      *  charge density. Diverging self-interaction term z*z/|r=0| is excluded. */
-    double energy_enuc() const
-    {
-        double enuc{0};
-        if (ctx_.full_potential()) {
-            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                int ia = unit_cell_.spl_num_atoms(ialoc);
-                int zn = unit_cell_.atom(ia).zn();
-                enuc -= 0.5 * zn * potential_.vh_el(ia);
-            }
-            ctx_.comm().allreduce(&enuc, 1);
-        }
-        return enuc;
-    }
+    double energy_enuc() const;
 
     /// Return eigen-value sum of core states.
-    double core_eval_sum() const
-    {
-        double sum{0};
-        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-            sum += unit_cell_.atom_symmetry_class(ic).core_eval_sum() * unit_cell_.atom_symmetry_class(ic).num_atoms();
-        }
-        return sum;
-    }
+    double core_eval_sum() const;
 
     double energy_vha() const
     {
@@ -356,35 +277,7 @@ class DFT_ground_state
         return (eval_sum() - energy_veff() - energy_bxc());
     }
 
-    double energy_kin_sum_pw() const
-    {
-        double ekin{0};
-
-        for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-            int ik = kset_.spl_num_kpoints(ikloc);
-            auto kp = kset_[ik];
-
-            #pragma omp parallel for schedule(static) reduction(+:ekin)
-            for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-                auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
-
-                double d{0};
-                for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
-                    for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
-                        double f = kp->band_occupancy(i, ispin);
-                        auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
-                        d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
-                    }
-                }
-                if (kp->gkvec().reduced()) {
-                    d *= 2;
-                }
-                ekin += 0.5 * d * kp->weight() * Gk.length2();
-            } // igloc
-        } // ikloc
-        ctx_.comm().allreduce(&ekin, 1);
-        return ekin;
-    }
+    double energy_kin_sum_pw() const;
 
     double energy_ewald() const
     {
@@ -491,489 +384,13 @@ class DFT_ground_state
      *     E^{XC}[\rho + \rho_{core}, |{\bf m}|]
      *  \f]
      */
-    double total_energy() const
-    {
-        double tot_en{0};
+    double total_energy() const;
 
-        switch (ctx_.electronic_structure_method()) {
-            case electronic_structure_method_t::full_potential_lapwlo: {
-                tot_en = (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
-                break;
-            }
+    json serialize();
 
-            case electronic_structure_method_t::pseudopotential: {
-                tot_en = (kset_.valence_eval_sum() - energy_vxc() - energy_bxc() - potential_.PAW_one_elec_energy()) -
-                         0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() + ewald_energy_;
-                break;
-            }
-        }
-
-        if (ctx_.hubbard_correction()) {
-            tot_en += hamiltonian_.U().hubbard_energy();
-        }
-
-        return tot_en;
-    }
-
-    inline Density& density()
-    {
-        return density_;
-    }
-
-    inline Potential& potential()
-    {
-        return potential_;
-    }
-
-    inline K_point_set& k_point_set()
-    {
-        return kset_;
-    }
-
-    inline Hamiltonian& hamiltonian()
-    {
-        return hamiltonian_;
-    }
-
-    inline Force& forces()
-    {
-        return forces_;
-    }
-
-    inline Stress& stress()
-    {
-        return stress_;
-    }
-
-    json serialize()
-    {
-        json dict;
-
-        dict["mpi_grid"] = ctx_.mpi_grid_dims();
-
-        std::vector<int> fftgrid(3);
-        for (int i = 0; i < 3; i++) {
-            fftgrid[i] = ctx_.fft().size(i);
-        }
-        dict["fft_grid"] = fftgrid;
-        for (int i = 0; i < 3; i++) {
-            fftgrid[i] = ctx_.fft_coarse().size(i);
-        }
-        dict["fft_coarse_grid"]         = fftgrid;
-        dict["num_fv_states"]           = ctx_.num_fv_states();
-        dict["num_bands"]               = ctx_.num_bands();
-        dict["aw_cutoff"]               = ctx_.aw_cutoff();
-        dict["pw_cutoff"]               = ctx_.pw_cutoff();
-        dict["omega"]                   = ctx_.unit_cell().omega();
-        dict["chemical_formula"]        = ctx_.unit_cell().chemical_formula();
-        dict["num_atoms"]               = ctx_.unit_cell().num_atoms();
-        dict["energy"]                  = json::object();
-        dict["energy"]["total"]         = total_energy();
-        dict["energy"]["enuc"]          = energy_enuc();
-        dict["energy"]["core_eval_sum"] = core_eval_sum();
-        dict["energy"]["vha"]           = energy_vha();
-        dict["energy"]["vxc"]           = energy_vxc();
-        dict["energy"]["exc"]           = energy_exc();
-        dict["energy"]["bxc"]           = energy_bxc();
-        dict["energy"]["veff"]          = energy_veff();
-        dict["energy"]["eval_sum"]      = eval_sum();
-        dict["energy"]["kin"]           = energy_kin();
-        dict["energy"]["ewald"]         = energy_ewald();
-        if (!ctx_.full_potential()) {
-            dict["energy"]["vloc"]      = energy_vloc();
-        }
-        dict["efermi"]                  = kset_.energy_fermi();
-        dict["band_gap"]                = kset_.band_gap();
-        dict["core_leakage"]            = density_.core_leakage();
-
-        return std::move(dict);
-    }
-
-    json check_scf_density()
-    {
-        std::vector<double_complex> rho_pw(ctx_.gvec().count());
-        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-            rho_pw[ig] = density_.rho().f_pw_local(ig);
-        }
-
-        double etot = total_energy();
-
-        /* create new potential */
-        Potential pot(ctx_);
-        /* generate potential from existing density */
-        pot.generate(density_);
-        /* create new Hamiltonian */
-        Hamiltonian H(ctx_, pot);
-        /* set the high tolerance */
-        ctx_.iterative_solver_tolerance(ctx_.settings().itsol_tol_min_);
-        /* initialize the subspace */
-        Band(ctx_).initialize_subspace(kset_, H);
-        /* find new wave-functions */
-        Band(ctx_).solve(kset_, H, true);
-        /* find band occupancies */
-        kset_.find_band_occupancies();
-        /* generate new density from the occupied wave-functions */
-        density_.generate(kset_, true, false);
-        /* symmetrize density and magnetization */
-        if (ctx_.use_symmetry()) {
-            density_.symmetrize();
-            if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
-                density_.symmetrize_density_matrix();
-            }
-        }
-        density_.fft_transform(1);
-        double rms{0};
-        for (int ig = 0; ig < ctx_.gvec().count(); ig++) {
-            rms += std::pow(std::abs(density_.rho().f_pw_local(ig) - rho_pw[ig]), 2);
-        }
-        ctx_.comm().allreduce(&rms, 1);
-        json dict;
-        dict["rss"]   = rms;
-        dict["rms"]   = std::sqrt(rms / ctx_.gvec().num_gvec());
-        dict["detot"] = total_energy() - etot;
-
-        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-            printf("[check_scf_density] RSS: %18.12E\n", dict["rss"].get<double>());
-            printf("[check_scf_density] RMS: %18.12E\n", dict["rms"].get<double>());
-            printf("[check_scf_density] dEtot: %18.12E\n", dict["detot"].get<double>());
-            printf("[check_scf_density] Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
-        }
-
-        return std::move(dict);
-    }
+    /// A quick check of self-constent density in case of pseudopotential.
+    json check_scf_density();
 };
-
-inline json DFT_ground_state::find(double potential_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state)
-{
-    PROFILE("sirius::DFT_ground_state::scf_loop");
-
-    double eold{0}, rms{0};
-
-    bool mix_density_and_potential{false};
-
-    if (ctx_.full_potential()) {
-        potential_.mixer_init(ctx_.mixer_input());
-        if (mix_density_and_potential) {
-            Mixer_input i1 = ctx_.mixer_input();
-            i1.type_ = "linear";
-            i1.beta_ = 0.1;
-            density_.mixer_init(i1);
-        }
-    } else {
-        density_.mixer_init(ctx_.mixer_input());
-    }
-
-    int num_iter{-1};
-    std::vector<double> rms_hist;
-
-    if (ctx_.hubbard_correction()) {
-        hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
-        hamiltonian_.U().calculate_hubbard_potential_and_energy();
-    }
-
-    ctx_.iterative_solver_tolerance(initial_tolerance);
-
-    for (int iter = 0; iter < num_dft_iter; iter++) {
-        utils::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
-
-        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-            printf("\n");
-            printf("+------------------------------+\n");
-            printf("| SCF iteration %3i out of %3i |\n", iter, num_dft_iter);
-            printf("+------------------------------+\n");
-        }
-
-        /* find new wave-functions */
-        Band(ctx_).solve(kset_, hamiltonian_, true);
-        /* find band occupancies */
-        kset_.find_band_occupancies();
-        /* generate new density from the occupied wave-functions */
-        density_.generate(kset_, true, false);
-        /* symmetrize density and magnetization */
-        if (ctx_.use_symmetry()) {
-            density_.symmetrize();
-            if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
-                density_.symmetrize_density_matrix();
-            }
-        }
-
-        if (!ctx_.full_potential()) {
-            /* mix density */
-            rms = density_.mix();
-            /* estimate new tolerance of iterative solver */
-            //double tol = std::max(1e-12, 0.1 * density_.dr2() / ctx_.unit_cell().num_valence_electrons());
-            double tol = std::max(ctx_.settings().itsol_tol_min_, 0.0001 * rms);
-            /* print dr2 of mixer and current iterative solver tolerance */
-            //if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-            //    printf("dr2: %18.12E, tol: %18.12E\n", density_.dr2(), tol);
-            //}
-            /* set new tolerance of iterative solver */
-            ctx_.iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
-            // TODO: this is horrible when PAW density is generated from the mixed
-            //       density matrix here; better solution: generate in Density and
-            //       then mix
-            /* generate PAW density from density matrix */
-            density_.generate_paw_loc_density();
-        }
-
-        /* transform density to real space after mixing and symmetrization */
-        density_.fft_transform(1);
-
-        /* check number of elctrons */
-        density_.check_num_electrons();
-
-        if (ctx_.full_potential() && mix_density_and_potential) {
-            density_.mix();
-        }
-
-        /* compute new potential */
-        potential_.generate(density_);
-
-        /* symmetrize potential and effective magnetic field */
-        if (ctx_.use_symmetry()) {
-            potential_.symmetrize();
-        }
-
-        /* transform potential to real space after symmetrization */
-        potential_.fft_transform(1);
-
-        /* compute new total energy for a new density */
-        double etot = total_energy();
-
-        if (ctx_.full_potential()) {
-            rms        = potential_.mix(ctx_.settings().mixer_rss_min_);
-            double tol = std::max(ctx_.settings().itsol_tol_min_, 0.001 * rms);
-            ctx_.iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
-        }
-        rms_hist.push_back(rms);
-
-        /* write some information */
-        print_info();
-        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-            if (ctx_.full_potential()) {
-                printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E, mixing beta: %12.6F\n", iter, rms,
-                       etot - eold, potential_.mixer().beta());
-            } else {
-                printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
-            }
-        }
-
-        // TODO: improve this part
-        if (ctx_.full_potential()) {
-            if (std::abs(eold - etot) < energy_tol && rms < potential_tol) {
-                num_iter = iter;
-                break;
-            }
-        } else {
-            //if (std::abs(eold - etot) < energy_tol && density_.dr2() < potential_tol) {
-            if (std::abs(eold - etot) < energy_tol && rms < potential_tol) {
-                if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-                    printf("\n");
-                    printf("converged after %i SCF iterations!\n", iter + 1);
-                    printf("energy difference  : %18.12E < %18.12E\n", std::abs(eold - etot), energy_tol);
-                    //printf("density difference : %18.12E < %18.12E\n", density_.dr2(), potential_tol);
-                }
-                num_iter = iter;
-                break;
-            }
-        }
-
-        /* Compute the hubbard correction */
-        if (ctx_.hubbard_correction()) {
-            hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
-            // hamiltonian_.U().mix();
-            hamiltonian_.U().calculate_hubbard_potential_and_energy();
-        }
-
-        eold = etot;
-    }
-
-    if (write_state) {
-        ctx_.create_storage_file();
-        if (ctx_.full_potential()) { // TODO: why this is necessary?
-            density_.rho().fft_transform(-1);
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                density_.magnetization(j).fft_transform(-1);
-            }
-        }
-        potential_.save();
-        density_.save();
-        //kset_.save(storage_file_name);
-    }
-
-    json dict = serialize();
-    if (num_iter >= 0) {
-        dict["converged"]          = true;
-        dict["num_scf_iterations"] = num_iter;
-        dict["rms_history"]        = rms_hist;
-    } else {
-        dict["converged"] = false;
-    }
-
-    //if (ctx_.control().verification_ >= 1) {
-    //    check_scf_density();
-    //}
-
-    // dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
-    // dict["volume_units"] = "angstrom^3";
-    // dict["energy"] = dft.total_energy() * ha2ev;
-    // dict["energy_units"] = "eV";
-
-    return std::move(dict);
-}
-
-inline void DFT_ground_state::print_info()
-{
-    double evalsum1 = kset_.valence_eval_sum();
-    double evalsum2 = core_eval_sum();
-    double ekin     = energy_kin();
-    double evxc     = energy_vxc();
-    double eexc     = energy_exc();
-    double ebxc     = energy_bxc();
-    double evha     = energy_vha();
-    double etot     = total_energy();
-    double gap      = kset_.band_gap() * ha2ev;
-    double ef       = kset_.energy_fermi();
-    double enuc     = energy_enuc();
-
-    double one_elec_en = evalsum1 - (evxc + evha);
-
-    if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
-        one_elec_en -= potential_.PAW_one_elec_energy();
-    }
-
-    std::vector<double> mt_charge;
-    double it_charge;
-    double total_charge = density_.rho().integrate(mt_charge, it_charge);
-
-    double total_mag[3];
-    std::vector<double> mt_mag[3];
-    double it_mag[3];
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        total_mag[j] = density_.magnetization(j).integrate(mt_mag[j], it_mag[j]);
-    }
-
-    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-        if (ctx_.full_potential()) {
-            double total_core_leakage = 0.0;
-            printf("\n");
-            printf("Charges and magnetic moments\n");
-            for (int i = 0; i < 80; i++) {
-                printf("-");
-            }
-            printf("\n");
-            printf("atom      charge    core leakage");
-            if (ctx_.num_mag_dims()) {
-                printf("              moment                |moment|");
-            }
-            printf("\n");
-            for (int i = 0; i < 80; i++) {
-                printf("-");
-            }
-            printf("\n");
-
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
-                total_core_leakage += core_leakage;
-                printf("%4i  %10.6f  %10.8e", ia, mt_charge[ia], core_leakage);
-                if (ctx_.num_mag_dims()) {
-                    vector3d<double> v;
-                    v[2] = mt_mag[0][ia];
-                    if (ctx_.num_mag_dims() == 3) {
-                        v[0] = mt_mag[1][ia];
-                        v[1] = mt_mag[2][ia];
-                    }
-                    printf("  [%8.4f, %8.4f, %8.4f]  %10.6f", v[0], v[1], v[2], v.length());
-                }
-                printf("\n");
-            }
-
-            printf("\n");
-            printf("total core leakage    : %10.8e\n", total_core_leakage);
-            printf("interstitial charge   : %10.6f\n", it_charge);
-            if (ctx_.num_mag_dims()) {
-                vector3d<double> v;
-                v[2] = it_mag[0];
-                if (ctx_.num_mag_dims() == 3) {
-                    v[0] = it_mag[1];
-                    v[1] = it_mag[2];
-                }
-                printf("interstitial moment   : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", v[0], v[1], v[2],
-                       v.length());
-            }
-        }
-        printf("total charge          : %10.6f\n", total_charge);
-
-        if (ctx_.num_mag_dims()) {
-            vector3d<double> v;
-            v[2] = total_mag[0];
-            if (ctx_.num_mag_dims() == 3) {
-                v[0] = total_mag[1];
-                v[1] = total_mag[2];
-            }
-            printf("total moment          : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", v[0], v[1], v[2], v.length());
-        }
-
-        printf("\n");
-        printf("Energy\n");
-        for (int i = 0; i < 80; i++) {
-            printf("-");
-        }
-        printf("\n");
-
-        printf("valence_eval_sum          : %18.8f\n", evalsum1);
-        if (ctx_.full_potential()) {
-            printf("core_eval_sum             : %18.8f\n", evalsum2);
-            printf("kinetic energy            : %18.8f\n", ekin);
-            printf("enuc                      : %18.8f\n", enuc);
-        }
-        printf("<rho|V^{XC}>              : %18.8f\n", evxc);
-        printf("<rho|E^{XC}>              : %18.8f\n", eexc);
-        printf("<mag|B^{XC}>              : %18.8f\n", ebxc);
-        printf("<rho|V^{H}>               : %18.8f\n", evha);
-        if (!ctx_.full_potential()) {
-            printf("one-electron contribution : %18.8f (Ha), %18.8f (Ry)\n", one_elec_en,
-                   one_elec_en * 2); // eband + deband in QE
-            printf("hartree contribution      : %18.8f\n", 0.5 * evha);
-            printf("xc contribution           : %18.8f\n", eexc);
-            printf("ewald contribution        : %18.8f\n", ewald_energy_);
-            printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
-        }
-        if (ctx_.hubbard_correction()) {
-            printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", hamiltonian_.U().hubbard_energy(),
-                   hamiltonian_.U().hubbard_energy() * 2.0);
-        }
-
-        printf("Total energy              : %18.8f (Ha), %18.8f (Ry)\n", etot, etot * 2);
-
-        printf("\n");
-        printf("band gap (eV) : %18.8f\n", gap);
-        printf("Efermi        : %18.8f\n", ef);
-        printf("\n");
-        // if (ctx_.control().verbosity_ >= 3 && !ctx_.full_potential()) {
-        //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //        printf("atom: %i\n", ia);
-        //        int nbf = unit_cell_.atom(ia).type().mt_basis_size();
-        //        for (int j = 0; j < ctx_.num_mag_comp(); j++) {
-        //            //printf("component of density matrix: %i\n", j);
-        //            //for (int xi1 = 0; xi1 < nbf; xi1++) {
-        //            //    for (int xi2 = 0; xi2 < nbf; xi2++) {
-        //            //        auto z = density_.density_matrix()(xi1, xi2, j, ia);
-        //            //        printf("(%f, %f) ", z.real(), z.imag());
-        //            //    }
-        //            //    printf("\n");
-        //            //}
-        //            printf("diagonal components of density matrix: %i\n", j);
-        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
-        //                auto z = density_.density_matrix()(xi2, xi2, j, ia);
-        //                printf("(%10.6f, %10.6f) ", z.real(), z.imag());
-        //            }
-        //            printf("\n");
-        //        }
-        //    }
-        //}
-    }
-}
 
 } // namespace sirius
 

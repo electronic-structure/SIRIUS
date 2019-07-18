@@ -208,7 +208,7 @@ class Smooth_periodic_function
         std::vector<double_complex> fpw(gvecp_->gvec().num_gvec());
         gvec().comm().allgather(&f_pw_local_[0], fpw.data(), gvec().offset(), gvec().count());
 
-        return std::move(fpw);
+        return fpw;
     }
 
     inline void scatter_f_pw(std::vector<double_complex> const& f_pw__)
@@ -318,7 +318,7 @@ inline Smooth_periodic_vector_function<double> gradient(Smooth_periodic_function
             g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(0, G[x]);
         }
     }
-    return std::move(g);
+    return g;
 }
 
 /// Divergence of the vecor function.
@@ -337,7 +337,7 @@ inline Smooth_periodic_function<double> divergence(Smooth_periodic_vector_functi
         }
     }
 
-    return std::move(f);
+    return f;
 }
 
 /// Laplacian of the function in the plane-wave domain.
@@ -353,7 +353,7 @@ inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<doubl
         g.f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(-std::pow(G.length(), 2), 0);
     }
 
-    return std::move(g);
+    return g;
 }
 
 template <typename T>
@@ -374,7 +374,7 @@ inline Smooth_periodic_function<T> dot(Smooth_periodic_vector_function<T>& vf__,
         result.f_rg(ir) = d;
     }
 
-    return std::move(result);
+    return result;
 }
 
 /// Compute inner product <f|g>

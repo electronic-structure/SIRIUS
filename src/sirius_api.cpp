@@ -53,10 +53,10 @@ static inline std::vector<int> atomic_orbital_index_map_QE(sirius::Atom_type con
         int idxrf   = type__.indexb(xi).idxrf;
         idx_map[xi] = type__.indexb().index_by_idxrf(idxrf) + idx_m_qe(m); /* beginning of lm-block + new offset in lm block */
     }
-    return std::move(idx_map);
+    return idx_map;
 }
 
-static inline int phase_Rlm_QE(sirius::Atom_type const& type__, int xi__)
+static inline int phase_Rlm_QE(::sirius::Atom_type const& type__, int xi__)
 {
     return (type__.indexb(xi__).m < 0 && (-type__.indexb(xi__).m) % 2 == 0) ? -1 : 1;
 }
@@ -197,8 +197,7 @@ void sirius_import_parameters(void* const* handler__,
     GET_SIM_CTX(handler__);
     if (str__) {
         sim_ctx.import(std::string(str__));
-    }
-    else {
+    } else {
         sim_ctx.import(sim_ctx.get_runtime_options_dictionary());
     }
 }
@@ -527,22 +526,41 @@ void* sirius_create_ground_state(void* const* ks_handler__)
 }
 
 /* @fortran begin function void sirius_find_ground_state        Find the ground state
-   @fortran argument in required void* gs_handler               Handler of the ground state
-   @fortran argument in optional bool  save__                   boolean variable indicating if we want to save the ground state
+   @fortran argument in required void*  gs_handler              Handler of the ground state
+   @fortran argument in optional double potential_tol           Tolerance on RMS in potntial.
+   @fortran argument in optional double energy_tol              Tolerance in total energy difference
+   @fortran argument in optional int    niter                   Maximum number of SCF iterations.
+   @fortran argument in optional bool   save_state              boolean variable indicating if we want to save the ground state
    @fortran end */
-void sirius_find_ground_state(void* const* gs_handler__, bool const *save__)
+void sirius_find_ground_state(void* const* gs_handler__, double const* potential_tol__, double const* energy_tol__,
+                              int const* niter__, bool const *save_state__)
 {
     GET_GS(gs_handler__)
     auto& ctx = gs.ctx();
     auto& inp = ctx.parameters_input();
     gs.initial_state();
 
-    bool save{false};
-    if (save__ != nullptr) {
-        save = *save__;
+    double ptol = inp.potential_tol_;
+    if (potential_tol__) {
+        ptol = *potential_tol__;
     }
 
-    auto result = gs.find(inp.potential_tol_, inp.energy_tol_, ctx.iterative_solver_tolerance(), inp.num_dft_iter_, save);
+    double etol = inp.energy_tol_;
+    if (energy_tol__) {
+        etol = *energy_tol__;
+    }
+
+    int niter = inp.num_dft_iter_;
+    if (niter__) {
+        niter = *niter__;
+    }
+
+    bool save{false};
+    if (save_state__ != nullptr) {
+        save = *save_state__;
+    }
+
+    auto result = gs.find(ptol, etol, ctx.iterative_solver_tolerance(), niter, save);
 }
 
 /* @fortran begin function void sirius_update_ground_state   Update a ground state object after change of atomic coordinates or lattice vectors.
@@ -1946,45 +1964,48 @@ void sirius_generate_coulomb_potential(void* const* handler__,
 
     gs.density().rho().fft_transform(-1);
     gs.potential().poisson(gs.density().rho());
-    gs.potential().hartree_potential().copy_to_global_ptr(vclmt__, vclrg__);
+    gs.potential().hartree_potential().copy_to(vclmt__, vclrg__, true);
 }
 
 /* @fortran begin function void sirius_generate_xc_potential    Generate XC potential using LibXC
-   @fortran argument in required void*   handler   Ground state handler
-   @fortran argument out required double vxcmt     Muffin-tin part of potential
-   @fortran argument out required double vxcrg     Regular-grid part of potential
-   @fortran argument out required double bxcmt     Muffin-tin part of effective magentic field
-   @fortran argument out required double bxcrg     Regular-grid part of effective magnetic field
+   @fortran argument in required void*   handler     Ground state handler
+   @fortran argument in required bool    is_local_rg true if regular grid pointer is local
+   @fortran argument out required double vxcmt       Muffin-tin part of potential
+   @fortran argument out required double vxcrg       Regular-grid part of potential
+   @fortran argument out optional double bxcmt_x     Muffin-tin part of effective magentic field (x-component)
+   @fortran argument out optional double bxcmt_y     Muffin-tin part of effective magentic field (y-component)
+   @fortran argument out optional double bxcmt_z     Muffin-tin part of effective magentic field (z-component)
+   @fortran argument out optional double bxcrg_x     Regular-grid part of effective magnetic field (x-component)
+   @fortran argument out optional double bxcrg_y     Regular-grid part of effective magnetic field (y-component)
+   @fortran argument out optional double bxcrg_z     Regular-grid part of effective magnetic field (z-component)
    @fortran end */
 void sirius_generate_xc_potential(void* const* handler__,
+                                  bool  const* is_local_rg__,
                                   double*      vxcmt__,
                                   double*      vxcrg__,
-                                  double*      bxcmt__,
-                                  double*      bxcrg__)
+                                  double*      bxcmt_x__,
+                                  double*      bxcmt_y__,
+                                  double*      bxcmt_z__,
+                                  double*      bxcrg_x__,
+                                  double*      bxcrg_y__,
+                                  double*      bxcrg_z__)
 {
     GET_GS(handler__)
     gs.potential().xc(gs.density());
-    gs.potential().xc_potential().copy_to_global_ptr(vxcmt__, vxcrg__);
 
-    if (gs.ctx().num_mag_dims() == 0) {
-        return;
-    }
-
-    /* set temporary array wrapper */
-    mdarray<double, 4> bxcmt(bxcmt__, gs.ctx().lmmax_pot(), gs.ctx().unit_cell().max_num_mt_points(),
-                             gs.ctx().unit_cell().num_atoms(), gs.ctx().num_mag_dims());
-    mdarray<double, 2> bxcrg(bxcrg__, gs.ctx().fft().local_size(), gs.ctx().num_mag_dims());
+    gs.potential().xc_potential().copy_to(vxcmt__, vxcrg__, *is_local_rg__);
 
     if (gs.ctx().num_mag_dims() == 1) {
         /* z component */
-        gs.potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcrg(0, 0));
-    } else {
+        gs.potential().effective_magnetic_field(0).copy_to(bxcmt_z__, bxcrg_z__, *is_local_rg__);
+    }
+    if (gs.ctx().num_mag_dims() == 3) {
         /* z component */
-        gs.potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 2), &bxcrg(0, 2));
+        gs.potential().effective_magnetic_field(0).copy_to(bxcmt_z__, bxcrg_z__, *is_local_rg__);
         /* x component */
-        gs.potential().effective_magnetic_field(1).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcrg(0, 0));
+        gs.potential().effective_magnetic_field(1).copy_to(bxcmt_x__, bxcrg_x__, *is_local_rg__);
         /* y component */
-        gs.potential().effective_magnetic_field(2).copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcrg(0, 1));
+        gs.potential().effective_magnetic_field(2).copy_to(bxcmt_y__, bxcrg_y__, *is_local_rg__);
     }
 }
 
@@ -2547,7 +2568,6 @@ void sirius_option_get_int(char * section, char * name, int *default_value, int 
    @fortran argument out required double default_value                       table containing the default values (if vector)
    @fortran argument out required int    length                              length of the table containing the default values
    @fortran end */
-
 void sirius_option_get_double(char * section, char * name, double *default_value, int *length)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2574,7 +2594,6 @@ void sirius_option_get_double(char * section, char * name, double *default_value
    @fortran argument out required bool   default_value                       table containing the default values
    @fortran argument out required int    length                              length of the table containing the default values
    @fortran end */
-
 void sirius_option_get_logical(char * section, char * name, bool *default_value, int *length)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2599,7 +2618,6 @@ void sirius_option_get_logical(char * section, char * name, bool *default_value,
    @fortran argument in  required string  name                               name of the option
    @fortran argument out required string  default_value                      table containing the string
    @fortran end */
-
 void sirius_option_get_string(char* section, char * name, char *default_value)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2619,7 +2637,6 @@ void sirius_option_get_string(char* section, char * name, char *default_value)
    @fortran argument in  required string  name                               name of the option
    @fortran argument out required int   num_                                 number of elements
    @fortran end */
-
 void sirius_option_get_number_of_possible_values(char* section, char * name, int *num_)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2642,7 +2659,6 @@ void sirius_option_get_number_of_possible_values(char* section, char * name, int
    @fortran argument in  required int    elem_                               index of the value
    @fortran argument out required string  value_n                            string containing the value
    @fortran end */
-
 void sirius_option_string_get_value(char* section, char * name, int *elem_, char *value_n)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2666,7 +2682,6 @@ void sirius_option_string_get_value(char* section, char * name, int *elem_, char
    @fortran argument in  required int     elem_                              index of the section
    @fortran argument out  required string  section_name                      name of the section
    @fortran end */
-
 void sirius_option_get_section_name(int *elem, char *section_name)
 {
     const json &dict = sirius::get_options_dictionary();
@@ -2685,7 +2700,6 @@ void sirius_option_get_section_name(int *elem, char *section_name)
 /* @fortran begin function void sirius_option_get_number_of_sections         return the number of sections
    @fortran argument out  required int     length                            number of sections
    @fortran end */
-
 void sirius_option_get_number_of_sections(int *length)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2700,7 +2714,6 @@ void sirius_option_get_number_of_sections(int *length)
    @fortran argument in required int    default_values                       table containing the values
    @fortran argument in required int    length                               length of the table containing the values
    @fortran end */
-
 void sirius_option_set_int(void* const* handler__, char*section, char *name, int *default_values, int *length)
 {
     GET_SIM_CTX(handler__);
@@ -2735,7 +2748,6 @@ void sirius_option_set_int(void* const* handler__, char*section, char *name, int
    @fortran argument in required double default_values                       table containing the values
    @fortran argument in required int    length                               length of the table containing the values
    @fortran end */
-
 void sirius_option_set_double(void* const* handler__, char*section, char *name, double *default_values, int *length)
 {
     GET_SIM_CTX(handler__);
@@ -2767,7 +2779,6 @@ void sirius_option_set_double(void* const* handler__, char*section, char *name, 
    @fortran argument in required int   default_values                        table containing the values
    @fortran argument in required int    length                               length of the table containing the values
    @fortran end */
-
 void sirius_option_set_logical(void* const* handler__, char*section, char *name, int *default_values, int *length)
 {
     GET_SIM_CTX(handler__);
@@ -2800,7 +2811,6 @@ void sirius_option_set_logical(void* const* handler__, char*section, char *name,
    @fortran argument in  required string  name                               name of the element to pick
    @fortran argument in required string   default_values                     table containing the values
    @fortran end */
-
 void sirius_option_set_string(void* const* handler__, char * section, char * name, char *default_values)
 {
     GET_SIM_CTX(handler__);
@@ -2829,7 +2839,6 @@ void sirius_option_set_string(void* const* handler__, char * section, char * nam
    @fortran argument in  required string  name                               name of the element to pick
    @fortran argument in required string   default_values                     string to be added
    @fortran end */
-
 void sirius_option_add_string_to(void* const* handler__, char * section, char * name, char *default_values)
 {
     GET_SIM_CTX(handler__);
@@ -2862,7 +2871,6 @@ void sirius_option_add_string_to(void* const* handler__, char * section, char * 
    @fortran argument in  required void*  handler                             Simulation context handler.
    @fortran argument in  required string filename                            string containing the name of the file
    @fortran end */
-
 void sirius_dump_runtime_setup(void* const* handler__, char *filename)
 {
     GET_SIM_CTX(handler__);
@@ -2909,6 +2917,220 @@ void sirius_get_fv_eigen_values(void*          const* handler__,
     int ik = *ik__ - 1;
     for (int i = 0; i < *num_fv_states__; i++) {
         fv_eval__[i] = ks[ik]->fv_eigen_value(i);
+    }
+}
+
+/* @fortran begin function void sirius_set_rg_values          Set the values of the function on the regular grid.
+   @fortran argument in  required void*  handler              DFT ground state handler.
+   @fortran argument in  required string label                Label of the function.
+   @fortran argument in  required int    grid_dims            Dimensions of the FFT grid.
+   @fortran argument in  required int    local_box_origin     Coordinates of the local box origin for each MPI rank
+   @fortran argument in  required int    local_box_size       Dimensions of the local box for each MPI rank.
+   @fortran argument in  required int    fcomm                Fortran communicator used to partition FFT grid into local boxes.
+   @fortran argument in  required double values               Values of the function (local buffer for each MPI rank).
+   @fortran argument in  optional bool   transform_to_pw      If true, transform function to PW domain.
+   @fortran end */
+void sirius_set_rg_values(void*  const* handler__,
+                          char   const* label__,
+                          int    const* grid_dims__,
+                          int    const* local_box_origin__,
+                          int    const* local_box_size__,
+                          int    const* fcomm__,
+                          double const* values__,
+                          bool   const* transform_to_pw__)
+{
+    PROFILE("sirius_api::sirius_set_rg_values");
+
+    GET_GS(handler__);
+
+    std::string label(label__);
+
+    for (int x: {0, 1, 2}) {
+        if (grid_dims__[x] != gs.ctx().fft().size(x)) {
+            TERMINATE("wrong FFT grid size");
+        }
+    }
+
+    std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
+        {"rho",  &gs.density().rho()},
+        {"magz", &gs.density().magnetization(0)},
+        {"magx", &gs.density().magnetization(1)},
+        {"magy", &gs.density().magnetization(2)},
+        {"veff", &gs.potential().effective_potential()},
+        {"bz",   &gs.potential().effective_magnetic_field(0)},
+        {"bx",   &gs.potential().effective_magnetic_field(1)},
+        {"by",   &gs.potential().effective_magnetic_field(2)},
+        {"vxc",  &gs.potential().xc_potential()},
+    };
+
+    try {
+        auto& f = func.at(label);
+
+        auto& comm = Communicator::map_fcomm(*fcomm__);
+
+        mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
+        mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
+
+        for (int rank = 0; rank < comm.size(); rank++) {
+            /* dimensions of this rank's local box */
+            int nx = local_box_size(0, rank);
+            int ny = local_box_size(1, rank);
+            int nz = local_box_size(2, rank);
+
+            mdarray<double, 3> buf(nx, ny, nz);
+            /* if this is that rank's turn to broadcast */
+            if (comm.rank() == rank) {
+                /* copy values to buf */
+                std::copy(values__, values__ + nx * ny * nz, &buf[0]);
+            }
+            /* send a copy of local box to all ranks */
+            comm.bcast(&buf[0], nx * ny * nz, rank);
+
+            for (int iz = 0; iz < nz; iz++) {
+                /* global z coordinate inside FFT box */
+                int z = local_box_origin(2, rank) + iz - 1; /* Fortran counts from 1 */
+                /* each rank on SIRIUS side, for which this condition is fulfilled copies data from the local box */
+                if (z >= gs.ctx().fft().offset_z() && z < gs.ctx().fft().offset_z() + gs.ctx().fft().local_size_z()) {
+                    /* make z local for SIRIUS FFT partitioning */
+                    z -= gs.ctx().fft().offset_z();
+                    for (int iy = 0; iy < ny; iy++) {
+                        /* global y coordinate inside FFT box */
+                        int y = local_box_origin(1, rank) + iy - 1; /* Fortran counts from 1 */
+                        for (int ix = 0; ix < nx; ix++) {
+                            /* global x coordinate inside FFT box */
+                            int x = local_box_origin(0, rank) + ix - 1; /* Fortran counts from 1 */
+                            f->f_rg(gs.ctx().fft().index_by_coord(x, y, z)) = buf(ix, iy, iz);
+                        }
+                    }
+                }
+            }
+        } /* loop over ranks */
+        if (transform_to_pw__ && *transform_to_pw__) {
+            f->fft_transform(-1);
+        }
+    } catch(...) {
+        TERMINATE("wrong label");
+    }
+}
+
+/* @fortran begin function void sirius_get_rg_values          Get the values of the function on the regular grid.
+   @fortran argument in  required void*  handler              DFT ground state handler.
+   @fortran argument in  required string label                Label of the function.
+   @fortran argument in  required int    grid_dims            Dimensions of the FFT grid.
+   @fortran argument in  required int    local_box_origin     Coordinates of the local box origin for each MPI rank
+   @fortran argument in  required int    local_box_size       Dimensions of the local box for each MPI rank.
+   @fortran argument in  required int    fcomm                Fortran communicator used to partition FFT grid into local boxes.
+   @fortran argument out required double values               Values of the function (local buffer for each MPI rank).
+   @fortran argument in  optional bool   transform_to_rg      If true, transform function to regular grid before fetching the values.
+   @fortran end */
+void sirius_get_rg_values(void*  const* handler__,
+                          char   const* label__,
+                          int    const* grid_dims__,
+                          int    const* local_box_origin__,
+                          int    const* local_box_size__,
+                          int    const* fcomm__,
+                          double*       values__,
+                          bool   const* transform_to_rg__)
+{
+    PROFILE("sirius_api::sirius_get_rg_values");
+
+    GET_GS(handler__);
+
+    std::string label(label__);
+
+    for (int x: {0, 1, 2}) {
+        if (grid_dims__[x] != gs.ctx().fft().size(x)) {
+            TERMINATE("wrong FFT grid size");
+        }
+    }
+
+    std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
+        {"rho",  &gs.density().rho()},
+        {"magz", &gs.density().magnetization(0)},
+        {"magx", &gs.density().magnetization(1)},
+        {"magy", &gs.density().magnetization(2)},
+        {"veff", &gs.potential().effective_potential()},
+        {"bz",   &gs.potential().effective_magnetic_field(0)},
+        {"bx",   &gs.potential().effective_magnetic_field(1)},
+        {"by",   &gs.potential().effective_magnetic_field(2)},
+        {"vxc",  &gs.potential().xc_potential()},
+    };
+
+    try {
+        auto& f = func.at(label);
+
+        auto& comm = Communicator::map_fcomm(*fcomm__);
+
+        if (transform_to_rg__ && *transform_to_rg__) {
+            f->fft_transform(1);
+        }
+
+        auto& spl_z = f->fft().spl_z();
+
+        mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
+        mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
+
+        for (int rank = 0; rank < f->fft().comm().size(); rank++) {
+            /* slab of FFT grid for a given rank */
+            mdarray<double, 3> buf(f->fft().size(0), f->fft().size(1), spl_z.local_size(rank));
+            if (rank == f->fft().comm().rank()) {
+                std::copy(&f->f_rg(0), &f->f_rg(0) + f->fft().local_size(), &buf[0]);
+            }
+            f->fft().comm().bcast(&buf[0], static_cast<int>(buf.size()), rank);
+
+            /* ranks on the F90 side */
+            int r = comm.rank();
+
+            /* dimensions of this rank's local box */
+            int nx = local_box_size(0, r);
+            int ny = local_box_size(1, r);
+            int nz = local_box_size(2, r);
+            mdarray<double, 3> values(values__, nx, ny, nz);
+
+            for (int iz = 0; iz < nz; iz++) {
+                /* global z coordinate inside FFT box */
+                int z = local_box_origin(2, r) + iz - 1; /* Fortran counts from 1 */
+                if (z >= spl_z.global_offset(rank) && z < spl_z.global_offset(rank) + spl_z.local_size(rank)) {
+                    /* make z local for SIRIUS FFT partitioning */
+                    z -= spl_z.global_offset(rank);
+                    for (int iy = 0; iy < ny; iy++) {
+                        /* global y coordinate inside FFT box */
+                        int y = local_box_origin(1, r) + iy - 1; /* Fortran counts from 1 */
+                        for (int ix = 0; ix < nx; ix++) {
+                            /* global x coordinate inside FFT box */
+                            int x = local_box_origin(0, r) + ix - 1; /* Fortran counts from 1 */
+                            values(ix, iy, iz) = buf(x, y, z);
+                        }
+                    }
+                }
+            }
+        } /* loop over ranks */
+    } catch(...) {
+        TERMINATE("wrong label");
+    }
+}
+
+
+/* @fortran begin function void sirius_get_total_magnetization  Get the total magnetization of the system.
+   @fortran argument in  required void*  handler                DFT ground state handler.
+   @fortran argument out required double mag                    3D magnetization vector (x,y,z components).
+   @fortran end */
+void sirius_get_total_magnetization(void* const* handler__,
+                                    double*      mag__)
+{
+    GET_GS(handler__);
+
+    mdarray<double, 1> total_mag(mag__, 3);
+    total_mag.zero();
+    for (int j = 0; j < gs.ctx().num_mag_dims(); j++) {
+        auto result = gs.density().magnetization(j).integrate();
+        total_mag[j] = std::get<0>(result);
+    }
+    if (gs.ctx().num_mag_dims() == 3) {
+        /* swap z and x and change order from z,x,y to x,z,y */
+        std::swap(total_mag[0], total_mag[1]);
+        /* swap z and y and change order x,z,y to x,y,z */
+        std::swap(total_mag[1], total_mag[2]);
     }
 }
 

@@ -35,9 +35,9 @@ interface
 subroutine sirius_finalize_aux(call_mpi_fin,call_device_reset,call_fftw_fin)&
 &bind(C, name="sirius_finalize")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value, intent(in) :: call_mpi_fin
-type(C_PTR), value, intent(in) :: call_device_reset
-type(C_PTR), value, intent(in) :: call_fftw_fin
+type(C_PTR), value :: call_mpi_fin
+type(C_PTR), value :: call_device_reset
+type(C_PTR), value :: call_fftw_fin
 end subroutine
 end interface
 
@@ -194,7 +194,7 @@ subroutine sirius_import_parameters_aux(handler,str)&
 &bind(C, name="sirius_import_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-type(C_PTR), value, intent(in) :: str
+type(C_PTR), value :: str
 end subroutine
 end interface
 
@@ -289,29 +289,29 @@ subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_s
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-type(C_PTR), value, intent(in) :: lmax_apw
-type(C_PTR), value, intent(in) :: lmax_rho
-type(C_PTR), value, intent(in) :: lmax_pot
-type(C_PTR), value, intent(in) :: num_fv_states
-type(C_PTR), value, intent(in) :: num_bands
-type(C_PTR), value, intent(in) :: num_mag_dims
-type(C_PTR), value, intent(in) :: pw_cutoff
-type(C_PTR), value, intent(in) :: gk_cutoff
-type(C_PTR), value, intent(in) :: fft_grid_size
-type(C_PTR), value, intent(in) :: auto_rmt
-type(C_PTR), value, intent(in) :: gamma_point
-type(C_PTR), value, intent(in) :: use_symmetry
-type(C_PTR), value, intent(in) :: so_correction
-type(C_PTR), value, intent(in) :: valence_rel
-type(C_PTR), value, intent(in) :: core_rel
-type(C_PTR), value, intent(in) :: esm_bc
-type(C_PTR), value, intent(in) :: iter_solver_tol
-type(C_PTR), value, intent(in) :: iter_solver_tol_empty
-type(C_PTR), value, intent(in) :: iter_solver_type
-type(C_PTR), value, intent(in) :: verbosity
-type(C_PTR), value, intent(in) :: hubbard_correction
-type(C_PTR), value, intent(in) :: hubbard_correction_kind
-type(C_PTR), value, intent(in) :: hubbard_orbitals
+type(C_PTR), value :: lmax_apw
+type(C_PTR), value :: lmax_rho
+type(C_PTR), value :: lmax_pot
+type(C_PTR), value :: num_fv_states
+type(C_PTR), value :: num_bands
+type(C_PTR), value :: num_mag_dims
+type(C_PTR), value :: pw_cutoff
+type(C_PTR), value :: gk_cutoff
+type(C_PTR), value :: fft_grid_size
+type(C_PTR), value :: auto_rmt
+type(C_PTR), value :: gamma_point
+type(C_PTR), value :: use_symmetry
+type(C_PTR), value :: so_correction
+type(C_PTR), value :: valence_rel
+type(C_PTR), value :: core_rel
+type(C_PTR), value :: esm_bc
+type(C_PTR), value :: iter_solver_tol
+type(C_PTR), value :: iter_solver_tol_empty
+type(C_PTR), value :: iter_solver_type
+type(C_PTR), value :: verbosity
+type(C_PTR), value :: hubbard_correction
+type(C_PTR), value :: hubbard_correction_kind
+type(C_PTR), value :: hubbard_orbitals
 end subroutine
 end interface
 
@@ -540,8 +540,8 @@ subroutine sirius_set_periodic_function_ptr_aux(handler,label,f_mt,f_rg)&
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
-type(C_PTR), value, intent(in) :: f_mt
-type(C_PTR), value, intent(in) :: f_rg
+type(C_PTR), value :: f_mt
+type(C_PTR), value :: f_rg
 end subroutine
 end interface
 
@@ -631,25 +631,48 @@ end function sirius_create_ground_state
 
 !> @brief Find the ground state
 !> @param [in] gs_handler Handler of the ground state
-!> @param [in] save__ boolean variable indicating if we want to save the ground state
-subroutine sirius_find_ground_state(gs_handler,save__)
+!> @param [in] potential_tol Tolerance on RMS in potntial.
+!> @param [in] energy_tol Tolerance in total energy difference
+!> @param [in] niter Maximum number of SCF iterations.
+!> @param [in] save_state boolean variable indicating if we want to save the ground state
+subroutine sirius_find_ground_state(gs_handler,potential_tol,energy_tol,niter,save_state)
 implicit none
 type(C_PTR), intent(in) :: gs_handler
-logical(C_BOOL), optional, target, intent(in) :: save__
-type(C_PTR) :: save___ptr
+real(C_DOUBLE), optional, target, intent(in) :: potential_tol
+real(C_DOUBLE), optional, target, intent(in) :: energy_tol
+integer(C_INT), optional, target, intent(in) :: niter
+logical(C_BOOL), optional, target, intent(in) :: save_state
+type(C_PTR) :: potential_tol_ptr
+type(C_PTR) :: energy_tol_ptr
+type(C_PTR) :: niter_ptr
+type(C_PTR) :: save_state_ptr
 interface
-subroutine sirius_find_ground_state_aux(gs_handler,save__)&
+subroutine sirius_find_ground_state_aux(gs_handler,potential_tol,energy_tol,niter,&
+&save_state)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: gs_handler
-type(C_PTR), value, intent(in) :: save__
+type(C_PTR), value :: potential_tol
+type(C_PTR), value :: energy_tol
+type(C_PTR), value :: niter
+type(C_PTR), value :: save_state
 end subroutine
 end interface
 
-save___ptr = C_NULL_PTR
-if (present(save__)) save___ptr = C_LOC(save__)
+potential_tol_ptr = C_NULL_PTR
+if (present(potential_tol)) potential_tol_ptr = C_LOC(potential_tol)
 
-call sirius_find_ground_state_aux(gs_handler,save___ptr)
+energy_tol_ptr = C_NULL_PTR
+if (present(energy_tol)) energy_tol_ptr = C_LOC(energy_tol)
+
+niter_ptr = C_NULL_PTR
+if (present(niter)) niter_ptr = C_LOC(niter)
+
+save_state_ptr = C_NULL_PTR
+if (present(save_state)) save_state_ptr = C_LOC(save_state)
+
+call sirius_find_ground_state_aux(gs_handler,potential_tol_ptr,energy_tol_ptr,niter_ptr,&
+&save_state_ptr)
 end subroutine sirius_find_ground_state
 
 !> @brief Update a ground state object after change of atomic coordinates or lattice vectors.
@@ -696,11 +719,11 @@ subroutine sirius_add_atom_type_aux(handler,label,fname,zn,symbol,mass,spin_orbi
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
-type(C_PTR), value, intent(in) :: fname
-type(C_PTR), value, intent(in) :: zn
-type(C_PTR), value, intent(in) :: symbol
-type(C_PTR), value, intent(in) :: mass
-type(C_PTR), value, intent(in) :: spin_orbit
+type(C_PTR), value :: fname
+type(C_PTR), value :: zn
+type(C_PTR), value :: symbol
+type(C_PTR), value :: mass
+type(C_PTR), value :: spin_orbit
 end subroutine
 end interface
 
@@ -815,11 +838,11 @@ character(C_CHAR), dimension(*), intent(in) :: atom_type
 character(C_CHAR), dimension(*), intent(in) :: label
 real(C_DOUBLE), intent(in) :: rf
 integer(C_INT), intent(in) :: num_points
-type(C_PTR), value, intent(in) :: n
-type(C_PTR), value, intent(in) :: l
-type(C_PTR), value, intent(in) :: idxrf1
-type(C_PTR), value, intent(in) :: idxrf2
-type(C_PTR), value, intent(in) :: occ
+type(C_PTR), value :: n
+type(C_PTR), value :: l
+type(C_PTR), value :: idxrf1
+type(C_PTR), value :: idxrf2
+type(C_PTR), value :: occ
 end subroutine
 end interface
 
@@ -958,7 +981,7 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
 real(C_DOUBLE), intent(in) :: position
-type(C_PTR), value, intent(in) :: vector_field
+type(C_PTR), value :: vector_field
 end subroutine
 end interface
 
@@ -1020,10 +1043,10 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
 complex(C_DOUBLE), intent(in) :: pw_coeffs
-type(C_PTR), value, intent(in) :: transform_to_rg
-type(C_PTR), value, intent(in) :: ngv
-type(C_PTR), value, intent(in) :: gvl
-type(C_PTR), value, intent(in) :: comm
+type(C_PTR), value :: transform_to_rg
+type(C_PTR), value :: ngv
+type(C_PTR), value :: gvl
+type(C_PTR), value :: comm
 end subroutine
 end interface
 
@@ -1068,9 +1091,9 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
 complex(C_DOUBLE), intent(in) :: pw_coeffs
-type(C_PTR), value, intent(in) :: ngv
-type(C_PTR), value, intent(in) :: gvl
-type(C_PTR), value, intent(in) :: comm
+type(C_PTR), value :: ngv
+type(C_PTR), value :: gvl
+type(C_PTR), value :: comm
 end subroutine
 end interface
 
@@ -1115,9 +1138,9 @@ type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: atom_type
 character(C_CHAR), dimension(*), intent(in) :: label
 real(C_DOUBLE), intent(in) :: pw_coeffs
-type(C_PTR), value, intent(in) :: ngv
-type(C_PTR), value, intent(in) :: gvl
-type(C_PTR), value, intent(in) :: comm
+type(C_PTR), value :: ngv
+type(C_PTR), value :: gvl
+type(C_PTR), value :: comm
 end subroutine
 end interface
 
@@ -1172,7 +1195,7 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: gs_handler
 type(C_PTR), intent(in) :: ks_handler
 logical(C_BOOL), intent(in) :: precompute
-type(C_PTR), value, intent(in) :: iter_solver_tol
+type(C_PTR), value :: iter_solver_tol
 end subroutine
 end interface
 
@@ -1246,8 +1269,8 @@ subroutine sirius_generate_density_aux(gs_handler,add_core,transform_to_rg)&
 &bind(C, name="sirius_generate_density")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: gs_handler
-type(C_PTR), value, intent(in) :: add_core
-type(C_PTR), value, intent(in) :: transform_to_rg
+type(C_PTR), value :: add_core
+type(C_PTR), value :: transform_to_rg
 end subroutine
 end interface
 
@@ -1650,7 +1673,7 @@ character(C_CHAR), dimension(*), intent(in) :: atom_type
 character(C_CHAR), dimension(*), intent(in) :: label
 real(C_DOUBLE), intent(in) :: q
 integer(C_INT), intent(in) :: idx
-type(C_PTR), value, intent(in) :: l
+type(C_PTR), value :: l
 real(C_DOUBLE) :: res
 end function
 end interface
@@ -1896,30 +1919,72 @@ end subroutine sirius_generate_coulomb_potential
 
 !> @brief Generate XC potential using LibXC
 !> @param [in] handler Ground state handler
+!> @param [in] is_local_rg true if regular grid pointer is local
 !> @param [out] vxcmt Muffin-tin part of potential
 !> @param [out] vxcrg Regular-grid part of potential
-!> @param [out] bxcmt Muffin-tin part of effective magentic field
-!> @param [out] bxcrg Regular-grid part of effective magnetic field
-subroutine sirius_generate_xc_potential(handler,vxcmt,vxcrg,bxcmt,bxcrg)
+!> @param [out] bxcmt_x Muffin-tin part of effective magentic field (x-component)
+!> @param [out] bxcmt_y Muffin-tin part of effective magentic field (y-component)
+!> @param [out] bxcmt_z Muffin-tin part of effective magentic field (z-component)
+!> @param [out] bxcrg_x Regular-grid part of effective magnetic field (x-component)
+!> @param [out] bxcrg_y Regular-grid part of effective magnetic field (y-component)
+!> @param [out] bxcrg_z Regular-grid part of effective magnetic field (z-component)
+subroutine sirius_generate_xc_potential(handler,is_local_rg,vxcmt,vxcrg,bxcmt_x,&
+&bxcmt_y,bxcmt_z,bxcrg_x,bxcrg_y,bxcrg_z)
 implicit none
 type(C_PTR), intent(in) :: handler
+logical(C_BOOL), intent(in) :: is_local_rg
 real(C_DOUBLE), intent(out) :: vxcmt
 real(C_DOUBLE), intent(out) :: vxcrg
-real(C_DOUBLE), intent(out) :: bxcmt
-real(C_DOUBLE), intent(out) :: bxcrg
+real(C_DOUBLE), optional, target, intent(out) :: bxcmt_x
+real(C_DOUBLE), optional, target, intent(out) :: bxcmt_y
+real(C_DOUBLE), optional, target, intent(out) :: bxcmt_z
+real(C_DOUBLE), optional, target, intent(out) :: bxcrg_x
+real(C_DOUBLE), optional, target, intent(out) :: bxcrg_y
+real(C_DOUBLE), optional, target, intent(out) :: bxcrg_z
+type(C_PTR) :: bxcmt_x_ptr
+type(C_PTR) :: bxcmt_y_ptr
+type(C_PTR) :: bxcmt_z_ptr
+type(C_PTR) :: bxcrg_x_ptr
+type(C_PTR) :: bxcrg_y_ptr
+type(C_PTR) :: bxcrg_z_ptr
 interface
-subroutine sirius_generate_xc_potential_aux(handler,vxcmt,vxcrg,bxcmt,bxcrg)&
+subroutine sirius_generate_xc_potential_aux(handler,is_local_rg,vxcmt,vxcrg,bxcmt_x,&
+&bxcmt_y,bxcmt_z,bxcrg_x,bxcrg_y,bxcrg_z)&
 &bind(C, name="sirius_generate_xc_potential")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
+logical(C_BOOL), intent(in) :: is_local_rg
 real(C_DOUBLE), intent(out) :: vxcmt
 real(C_DOUBLE), intent(out) :: vxcrg
-real(C_DOUBLE), intent(out) :: bxcmt
-real(C_DOUBLE), intent(out) :: bxcrg
+type(C_PTR), value :: bxcmt_x
+type(C_PTR), value :: bxcmt_y
+type(C_PTR), value :: bxcmt_z
+type(C_PTR), value :: bxcrg_x
+type(C_PTR), value :: bxcrg_y
+type(C_PTR), value :: bxcrg_z
 end subroutine
 end interface
 
-call sirius_generate_xc_potential_aux(handler,vxcmt,vxcrg,bxcmt,bxcrg)
+bxcmt_x_ptr = C_NULL_PTR
+if (present(bxcmt_x)) bxcmt_x_ptr = C_LOC(bxcmt_x)
+
+bxcmt_y_ptr = C_NULL_PTR
+if (present(bxcmt_y)) bxcmt_y_ptr = C_LOC(bxcmt_y)
+
+bxcmt_z_ptr = C_NULL_PTR
+if (present(bxcmt_z)) bxcmt_z_ptr = C_LOC(bxcmt_z)
+
+bxcrg_x_ptr = C_NULL_PTR
+if (present(bxcrg_x)) bxcrg_x_ptr = C_LOC(bxcrg_x)
+
+bxcrg_y_ptr = C_NULL_PTR
+if (present(bxcrg_y)) bxcrg_y_ptr = C_LOC(bxcrg_y)
+
+bxcrg_z_ptr = C_NULL_PTR
+if (present(bxcrg_z)) bxcrg_z_ptr = C_LOC(bxcrg_z)
+
+call sirius_generate_xc_potential_aux(handler,is_local_rg,vxcmt,vxcrg,bxcmt_x_ptr,&
+&bxcmt_y_ptr,bxcmt_z_ptr,bxcrg_x_ptr,bxcrg_y_ptr,bxcrg_z_ptr)
 end subroutine sirius_generate_xc_potential
 
 !> @brief Get communicator which is used to split k-points
@@ -2019,10 +2084,10 @@ subroutine sirius_get_gvec_arrays_aux(handler,gvec,gvec_cart,gvec_len,index_by_g
 &bind(C, name="sirius_get_gvec_arrays")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-type(C_PTR), value, intent(in) :: gvec
-type(C_PTR), value, intent(in) :: gvec_cart
-type(C_PTR), value, intent(in) :: gvec_len
-type(C_PTR), value, intent(in) :: index_by_gvec
+type(C_PTR), value :: gvec
+type(C_PTR), value :: gvec_cart
+type(C_PTR), value :: gvec_len
+type(C_PTR), value :: index_by_gvec
 end subroutine
 end interface
 
@@ -2215,12 +2280,12 @@ type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ia
 integer(C_INT), intent(in) :: lmmax
 real(C_DOUBLE), intent(in) :: val
-type(C_PTR), value, intent(in) :: l1
-type(C_PTR), value, intent(in) :: o1
-type(C_PTR), value, intent(in) :: ilo1
-type(C_PTR), value, intent(in) :: l2
-type(C_PTR), value, intent(in) :: o2
-type(C_PTR), value, intent(in) :: ilo2
+type(C_PTR), value :: l1
+type(C_PTR), value :: o1
+type(C_PTR), value :: ilo1
+type(C_PTR), value :: l2
+type(C_PTR), value :: o2
+type(C_PTR), value :: ilo2
 end subroutine
 end interface
 
@@ -2277,10 +2342,10 @@ type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ia
 real(C_DOUBLE), intent(in) :: val
 integer(C_INT), intent(in) :: l
-type(C_PTR), value, intent(in) :: o1
-type(C_PTR), value, intent(in) :: ilo1
-type(C_PTR), value, intent(in) :: o2
-type(C_PTR), value, intent(in) :: ilo2
+type(C_PTR), value :: o1
+type(C_PTR), value :: ilo1
+type(C_PTR), value :: o2
+type(C_PTR), value :: ilo2
 end subroutine
 end interface
 
@@ -2333,12 +2398,12 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ia
 real(C_DOUBLE), intent(in) :: val
-type(C_PTR), value, intent(in) :: l1
-type(C_PTR), value, intent(in) :: o1
-type(C_PTR), value, intent(in) :: ilo1
-type(C_PTR), value, intent(in) :: l2
-type(C_PTR), value, intent(in) :: o2
-type(C_PTR), value, intent(in) :: ilo2
+type(C_PTR), value :: l1
+type(C_PTR), value :: o1
+type(C_PTR), value :: ilo1
+type(C_PTR), value :: l2
+type(C_PTR), value :: o2
+type(C_PTR), value :: ilo2
 end subroutine
 end interface
 
@@ -2392,9 +2457,9 @@ type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ia
 integer(C_INT), intent(in) :: deriv_order
 real(C_DOUBLE), intent(in) :: f
-type(C_PTR), value, intent(in) :: l
-type(C_PTR), value, intent(in) :: o
-type(C_PTR), value, intent(in) :: ilo
+type(C_PTR), value :: l
+type(C_PTR), value :: o
+type(C_PTR), value :: ilo
 end subroutine
 end interface
 
@@ -2898,4 +2963,111 @@ end interface
 
 call sirius_get_fv_eigen_values_aux(handler,ik,fv_eval,num_fv_states)
 end subroutine sirius_get_fv_eigen_values
+
+!> @brief Set the values of the function on the regular grid.
+!> @param [in] handler DFT ground state handler.
+!> @param [in] label Label of the function.
+!> @param [in] grid_dims Dimensions of the FFT grid.
+!> @param [in] local_box_origin Coordinates of the local box origin for each MPI rank
+!> @param [in] local_box_size Dimensions of the local box for each MPI rank.
+!> @param [in] fcomm Fortran communicator used to partition FFT grid into local boxes.
+!> @param [in] values Values of the function (local buffer for each MPI rank).
+!> @param [in] transform_to_pw If true, transform function to PW domain.
+subroutine sirius_set_rg_values(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_pw)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: grid_dims
+integer(C_INT), intent(in) :: local_box_origin
+integer(C_INT), intent(in) :: local_box_size
+integer(C_INT), intent(in) :: fcomm
+real(C_DOUBLE), intent(in) :: values
+logical(C_BOOL), optional, target, intent(in) :: transform_to_pw
+type(C_PTR) :: transform_to_pw_ptr
+interface
+subroutine sirius_set_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_pw)&
+&bind(C, name="sirius_set_rg_values")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: grid_dims
+integer(C_INT), intent(in) :: local_box_origin
+integer(C_INT), intent(in) :: local_box_size
+integer(C_INT), intent(in) :: fcomm
+real(C_DOUBLE), intent(in) :: values
+type(C_PTR), value :: transform_to_pw
+end subroutine
+end interface
+
+transform_to_pw_ptr = C_NULL_PTR
+if (present(transform_to_pw)) transform_to_pw_ptr = C_LOC(transform_to_pw)
+
+call sirius_set_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_pw_ptr)
+end subroutine sirius_set_rg_values
+
+!> @brief Get the values of the function on the regular grid.
+!> @param [in] handler DFT ground state handler.
+!> @param [in] label Label of the function.
+!> @param [in] grid_dims Dimensions of the FFT grid.
+!> @param [in] local_box_origin Coordinates of the local box origin for each MPI rank
+!> @param [in] local_box_size Dimensions of the local box for each MPI rank.
+!> @param [in] fcomm Fortran communicator used to partition FFT grid into local boxes.
+!> @param [out] values Values of the function (local buffer for each MPI rank).
+!> @param [in] transform_to_rg If true, transform function to regular grid before fetching the values.
+subroutine sirius_get_rg_values(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_rg)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: grid_dims
+integer(C_INT), intent(in) :: local_box_origin
+integer(C_INT), intent(in) :: local_box_size
+integer(C_INT), intent(in) :: fcomm
+real(C_DOUBLE), intent(out) :: values
+logical(C_BOOL), optional, target, intent(in) :: transform_to_rg
+type(C_PTR) :: transform_to_rg_ptr
+interface
+subroutine sirius_get_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_rg)&
+&bind(C, name="sirius_get_rg_values")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: grid_dims
+integer(C_INT), intent(in) :: local_box_origin
+integer(C_INT), intent(in) :: local_box_size
+integer(C_INT), intent(in) :: fcomm
+real(C_DOUBLE), intent(out) :: values
+type(C_PTR), value :: transform_to_rg
+end subroutine
+end interface
+
+transform_to_rg_ptr = C_NULL_PTR
+if (present(transform_to_rg)) transform_to_rg_ptr = C_LOC(transform_to_rg)
+
+call sirius_get_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_rg_ptr)
+end subroutine sirius_get_rg_values
+
+!> @brief Get the total magnetization of the system.
+!> @param [in] handler DFT ground state handler.
+!> @param [out] mag 3D magnetization vector (x,y,z components).
+subroutine sirius_get_total_magnetization(handler,mag)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: mag
+interface
+subroutine sirius_get_total_magnetization_aux(handler,mag)&
+&bind(C, name="sirius_get_total_magnetization")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: mag
+end subroutine
+end interface
+
+call sirius_get_total_magnetization_aux(handler,mag)
+end subroutine sirius_get_total_magnetization
 

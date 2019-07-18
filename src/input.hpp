@@ -31,6 +31,7 @@
 #include "sddk.hpp"
 
 using namespace geometry3d;
+using namespace nlohmann;
 
 namespace sirius {
 
@@ -302,7 +303,6 @@ struct Iterative_solver_input
  *      "reduce_gvec" : (bool) use reduced G-vector set (reduce_gvec = true) or full set (reduce_gvec = false)
  *      "std_evp_solver_type" : (string) type of eigen-solver for the standard eigen-problem
  *      "gen_evp_solver_type" : (string) type of eigen-solver for the generalized eigen-problem
- *      "electronic_structure_method" : (string) electronic structure method
  *      "processing_unit" : (string) primary processing unit
  *      "fft_mode" : (string) serial or parallel FFT
  *    }
@@ -523,6 +523,9 @@ struct Parameters_input
     /// Reduction of the auxiliary magnetic field at each SCF step.
     double reduce_aux_bf_{0.0};
 
+    /// Introduce extra charge to the system. Positive charge means extra holes, negative charge - extra electrons.
+    double extra_charge_{0.0};
+
     void read(json const& parser)
     {
         if (parser.count("parameters")) {
@@ -570,6 +573,7 @@ struct Parameters_input
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
             reduce_aux_bf_  = parser["parameters"].value("reduce_aux_bf", reduce_aux_bf_);
+            extra_charge_   = parser["parameters"].value("extra_charge", extra_charge_);
 
             if (parser["parameters"].count("spin_orbit")) {
                 so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);

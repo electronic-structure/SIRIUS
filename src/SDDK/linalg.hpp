@@ -39,6 +39,14 @@
 
 namespace sddk {
 
+namespace _local {
+/// check if device id has been set properly
+inline bool is_set_device_id()
+{
+    return acc::get_device_id() == sddk::get_device_id(acc::num_devices());
+}
+}
+
 class linalg2
 {
   private:
@@ -58,15 +66,16 @@ class linalg2
                     stream_id sid = stream_id(-1)) const;
 
     template <typename T>
-    inline void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T const* aplha, T const* A, ftn_int lda, T* B, ftn_int ldb);
+    inline void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T const* aplha, T const* A, ftn_int lda,
+                     T* B, ftn_int ldb, stream_id sid = stream_id(-1)) const;
 
     /// Cholesky factorization
     template <typename T>
-    inline int potrf(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr);
+    inline int potrf(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr) const;
 
     /// Inversion of a triangular matrix.
     template <typename T>
-    inline int trtri(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr);
+    inline int trtri(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr) const;
 };
 
 template <>
@@ -132,7 +141,7 @@ inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int 
         case linalg_t::gpublas: {
 #ifdef __GPU
             gpublas::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
-                          reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t const*>(B), 
+                          reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t const*>(B),
                           ldb, reinterpret_cast<acc_complex_double_t const*>(beta),
                           reinterpret_cast<acc_complex_double_t*>(C), ldc, sid());
 #else
@@ -192,7 +201,7 @@ inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alp
 
 template <>
 inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double const* alpha,
-                                      ftn_double const* A, ftn_int lda, ftn_double* B, ftn_int ldb)
+                                      ftn_double const* A, ftn_int lda, ftn_double* B, ftn_int ldb, stream_id sid) const
 {
     switch (la_) {
         case linalg_t::blas: {
@@ -201,8 +210,8 @@ inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int
             break;
         }
         case  linalg_t::gpublas: {
-#ifdef __GPU
-            gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+#if defined(__GPU)
+            gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -226,18 +235,20 @@ inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int
 template <>
 inline void linalg2::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n,
                                               ftn_double_complex const* alpha, ftn_double_complex const* A,
-                                              ftn_int lda, ftn_double_complex* B, ftn_int ldb)
+                                              ftn_int lda, ftn_double_complex* B, ftn_int ldb, stream_id sid) const
 {
     switch (la_) {
         case linalg_t::blas: {
             FORTRAN(ztrmm)(&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_double_complex*>(alpha),
-                           const_cast<ftn_double_complex*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+                           const_cast<ftn_double_complex*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1,
+                           (ftn_len)1, (ftn_len)1);
             break;
         }
         case  linalg_t::gpublas: {
-#ifdef __GPU
-            gpublas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha), 
-                          reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t*>(B), ldb);
+#if defined(__GPU)
+            gpublas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
+                          reinterpret_cast<acc_complex_double_t const*>(A), lda,
+                          reinterpret_cast<acc_complex_double_t*>(B), ldb, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -260,7 +271,7 @@ inline void linalg2::trmm<ftn_double_complex>(char side, char uplo, char transa,
 }
 
 template<>
-inline int linalg2::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca)
+inline int linalg2::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case linalg_t::lapack: {
@@ -299,7 +310,7 @@ inline int linalg2::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn
 }
 
 template<>
-inline int linalg2::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca)
+inline int linalg2::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case linalg_t::lapack: {
@@ -338,7 +349,7 @@ inline int linalg2::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, 
 }
 
 template<>
-inline int linalg2::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca)
+inline int linalg2::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case linalg_t::lapack: {
@@ -377,7 +388,7 @@ inline int linalg2::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn
 }
 
 template<>
-inline int linalg2::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca)
+inline int linalg2::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case linalg_t::lapack: {
@@ -480,7 +491,7 @@ template <device_t pu>
 class linalg;
 
 template<>
-class linalg<CPU>: public linalg_base
+class linalg<device_t::CPU>: public linalg_base
 {
     public:
 
@@ -619,7 +630,7 @@ class linalg<CPU>: public linalg_base
 
 #ifdef __GPU
 template<>
-class linalg<GPU>: public linalg_base
+class linalg<device_t::GPU>: public linalg_base
 {
     public:
 
@@ -668,12 +679,12 @@ class linalg<GPU>: public linalg_base
 
 // C = alpha * op(A) * op(B) + beta * op(C), double
 template<>
-inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-                                          ftn_double alpha,
-                                          ftn_double const* A, ftn_int lda,
-                                          ftn_double const* B, ftn_int ldb,
-                                          ftn_double beta,
-                                          ftn_double* C, ftn_int ldc)
+inline void linalg<device_t::CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                                    ftn_double alpha,
+                                                    ftn_double const* A, ftn_int lda,
+                                                    ftn_double const* B, ftn_int ldb,
+                                                    ftn_double beta,
+                                                    ftn_double* C, ftn_int ldc)
 {
     assert(lda > 0);
     assert(ldb > 0);
@@ -690,12 +701,12 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
 
 // C = alpha * op(A) * op(B) + beta * op(C), double_complex
 template<>
-inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-                                                  ftn_double_complex alpha,
-                                                  ftn_double_complex const* A, ftn_int lda,
-                                                  ftn_double_complex const* B, ftn_int ldb,
-                                                  ftn_double_complex beta,
-                                                  ftn_double_complex* C, ftn_int ldc)
+inline void linalg<device_t::CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                                            ftn_double_complex alpha,
+                                                            ftn_double_complex const* A, ftn_int lda,
+                                                            ftn_double_complex const* B, ftn_int ldb,
+                                                            ftn_double_complex beta,
+                                                            ftn_double_complex* C, ftn_int ldc)
 {
     assert(lda > 0);
     assert(ldb > 0);
@@ -712,17 +723,17 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
 
 
 template<>
-inline void linalg<CPU>::gemv<ftn_double_complex>(int trans,
-                                                  ftn_int m,
-                                                  ftn_int n,
-                                                  ftn_double_complex alpha,
-                                                  ftn_double_complex const* A,
-                                                  ftn_int lda,
-                                                  ftn_double_complex const* x,
-                                                  ftn_int incx,
-                                                  ftn_double_complex beta,
-                                                  ftn_double_complex* y,
-                                                  ftn_int incy)
+inline void linalg<device_t::CPU>::gemv<ftn_double_complex>(int trans,
+                                                            ftn_int m,
+                                                            ftn_int n,
+                                                            ftn_double_complex alpha,
+                                                            ftn_double_complex const* A,
+                                                            ftn_int lda,
+                                                            ftn_double_complex const* x,
+                                                            ftn_int incx,
+                                                            ftn_double_complex beta,
+                                                            ftn_double_complex* y,
+                                                            ftn_int incy)
 {
     const char *trans_c[] = {"N", "T", "C"};
 
@@ -730,17 +741,17 @@ inline void linalg<CPU>::gemv<ftn_double_complex>(int trans,
 }
 
 template<>
-inline void linalg<CPU>::gemv<ftn_double>(int trans,
-                                          ftn_int m,
-                                          ftn_int n,
-                                          ftn_double alpha,
-                                          ftn_double const* A,
-                                          ftn_int lda,
-                                          ftn_double const* x,
-                                          ftn_int incx,
-                                          ftn_double beta,
-                                          ftn_double* y,
-                                          ftn_int incy)
+inline void linalg<device_t::CPU>::gemv<ftn_double>(int trans,
+                                                    ftn_int m,
+                                                    ftn_int n,
+                                                    ftn_double alpha,
+                                                    ftn_double const* A,
+                                                    ftn_int lda,
+                                                    ftn_double const* x,
+                                                    ftn_int incx,
+                                                    ftn_double beta,
+                                                    ftn_double* y,
+                                                    ftn_int incy)
 {
     const char *trans_c[] = {"N", "T", "C"};
 
@@ -748,9 +759,9 @@ inline void linalg<CPU>::gemv<ftn_double>(int trans,
 }
 
 template<>
-inline void linalg<CPU>::hemm<ftn_double_complex>(int side, int uplo, ftn_int m, ftn_int n, ftn_double_complex alpha,
-                                                  ftn_double_complex* A, ftn_int lda, ftn_double_complex* B, ftn_int ldb,
-                                                  ftn_double_complex beta, ftn_double_complex* C, ftn_int ldc)
+inline void linalg<device_t::CPU>::hemm<ftn_double_complex>(int side, int uplo, ftn_int m, ftn_int n, ftn_double_complex alpha,
+                                                            ftn_double_complex* A, ftn_int lda, ftn_double_complex* B, ftn_int ldb,
+                                                            ftn_double_complex beta, ftn_double_complex* C, ftn_int ldc)
 {
     const char *sidestr[] = {"L", "R"};
     const char *uplostr[] = {"U", "L"};
@@ -760,7 +771,7 @@ inline void linalg<CPU>::hemm<ftn_double_complex>(int side, int uplo, ftn_int m,
 
 // LU factorization, double
 template<>
-inline ftn_int linalg<CPU>::getrf<ftn_double>(ftn_int m, ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
+inline ftn_int linalg<device_t::CPU>::getrf<ftn_double>(ftn_int m, ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
 {
     ftn_int info;
     FORTRAN(dgetrf)(&m, &n, A, &lda, ipiv, &info);
@@ -769,7 +780,7 @@ inline ftn_int linalg<CPU>::getrf<ftn_double>(ftn_int m, ftn_int n, ftn_double* 
 
 // LU factorization, double_complex
 template<>
-inline ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
+inline ftn_int linalg<device_t::CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
 {
     ftn_int info;
     FORTRAN(zgetrf)(&m, &n, A, &lda, ipiv, &info);
@@ -778,7 +789,7 @@ inline ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, ftn_
 
 // Inversion of LU factorized matrix, double
 template<>
-inline ftn_int linalg<CPU>::getri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
+inline ftn_int linalg<device_t::CPU>::getri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
 {
     ftn_int nb = ilaenv(1, "dgetri", "U", n, -1, -1, -1);
     ftn_int lwork = n * nb;
@@ -791,7 +802,7 @@ inline ftn_int linalg<CPU>::getri<ftn_double>(ftn_int n, ftn_double* A, ftn_int 
 
 // Inversion of LU factorized matrix, double_complex
 template<>
-inline ftn_int linalg<CPU>::getri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
+inline ftn_int linalg<device_t::CPU>::getri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
 {
     ftn_int nb = ilaenv(1, "zgetri", "U", n, -1, -1, -1);
     ftn_int lwork = n * nb;
@@ -804,7 +815,7 @@ inline ftn_int linalg<CPU>::getri<ftn_double_complex>(ftn_int n, ftn_double_comp
 
 // Inversion of general matrix, double
 template <>
-inline void linalg<CPU>::geinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
+inline void linalg<device_t::CPU>::geinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
 {
     std::vector<int> ipiv(n);
     int info = getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
@@ -824,7 +835,7 @@ inline void linalg<CPU>::geinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
 
 // Inversion of general matrix, double_complex
 template <>
-inline void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex>& A)
+inline void linalg<device_t::CPU>::geinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex>& A)
 {
     std::vector<int> ipiv(n);
     int info = getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
@@ -843,7 +854,7 @@ inline void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_
 }
 
 template<>
-inline ftn_int linalg<CPU>::hetrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
+inline ftn_int linalg<device_t::CPU>::hetrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
 {
     ftn_int nb = ilaenv(1, "zhetrf", "U", n, -1, -1, -1);
     ftn_int lwork = n * nb;
@@ -855,7 +866,7 @@ inline ftn_int linalg<CPU>::hetrf<ftn_double_complex>(ftn_int n, ftn_double_comp
 }
 
 template<>
-inline ftn_int linalg<CPU>::hetri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
+inline ftn_int linalg<device_t::CPU>::hetri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
 {
     std::vector<ftn_double_complex> work(n);
     ftn_int info;
@@ -865,7 +876,7 @@ inline ftn_int linalg<CPU>::hetri<ftn_double_complex>(ftn_int n, ftn_double_comp
 
 // Inversion of hermitian matrix, double_complex
 template <>
-inline void linalg<CPU>::heinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex>& A)
+inline void linalg<device_t::CPU>::heinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex>& A)
 {
     std::vector<int> ipiv(n);
     int info = hetrf(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
@@ -882,7 +893,7 @@ inline void linalg<CPU>::heinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_
 }
 
 template<>
-inline ftn_int linalg<CPU>::sytrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
+inline ftn_int linalg<device_t::CPU>::sytrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
 {
     ftn_int nb = ilaenv(1, "dsytrf", "U", n, -1, -1, -1);
     ftn_int lwork = n * nb;
@@ -894,7 +905,7 @@ inline ftn_int linalg<CPU>::sytrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int 
 }
 
 template<>
-inline ftn_int linalg<CPU>::sytri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
+inline ftn_int linalg<device_t::CPU>::sytri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
 {
     std::vector<ftn_double> work(n);
     ftn_int info;
@@ -903,7 +914,7 @@ inline ftn_int linalg<CPU>::sytri<ftn_double>(ftn_int n, ftn_double* A, ftn_int 
 }
 
 template <>
-inline void linalg<CPU>::syinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
+inline void linalg<device_t::CPU>::syinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
 {
     std::vector<int> ipiv(n);
     int info = sytrf(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
@@ -922,7 +933,7 @@ inline void linalg<CPU>::syinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
 }
 
 template<>
-inline ftn_int linalg<CPU>::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb)
+inline ftn_int linalg<device_t::CPU>::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb)
 {
     ftn_int info;
     std::vector<ftn_int> ipiv(n);
@@ -931,7 +942,7 @@ inline ftn_int linalg<CPU>::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double
 }
 
 template<>
-inline ftn_int linalg<CPU>::gesv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* A, ftn_int lda,
+inline ftn_int linalg<device_t::CPU>::gesv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* A, ftn_int lda,
                                                      ftn_double_complex* B, ftn_int ldb)
 {
     ftn_int info;
@@ -941,7 +952,7 @@ inline ftn_int linalg<CPU>::gesv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ft
 }
 
 template<>
-inline ftn_int linalg<CPU>::gtsv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* dl, ftn_double* d, ftn_double* du,
+inline ftn_int linalg<device_t::CPU>::gtsv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* dl, ftn_double* d, ftn_double* du,
                                              ftn_double* b, ftn_int ldb)
 {
     ftn_int info;
@@ -950,7 +961,7 @@ inline ftn_int linalg<CPU>::gtsv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double
 }
 
 template<>
-inline ftn_int linalg<CPU>::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* dl, ftn_double_complex* d,
+inline ftn_int linalg<device_t::CPU>::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* dl, ftn_double_complex* d,
                                                      ftn_double_complex* du, ftn_double_complex* b, ftn_int ldb)
 {
     ftn_int info;
@@ -959,14 +970,14 @@ inline ftn_int linalg<CPU>::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ft
 }
 
 template <>
-inline void linalg<CPU>::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double alpha,
+inline void linalg<device_t::CPU>::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double alpha,
                                           ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb)
 {
     FORTRAN(dtrmm)(&side, &uplo, &transa, "N", &m, &n, &alpha, A, &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
 }
 
 template <>
-inline void linalg<CPU>::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double_complex alpha,
+inline void linalg<device_t::CPU>::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double_complex alpha,
                                                   ftn_double_complex* A, ftn_int lda, ftn_double_complex* B, ftn_int ldb)
 {
     FORTRAN(ztrmm)(&side, &uplo, &transa, "N", &m, &n, &alpha, A, &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
@@ -974,7 +985,7 @@ inline void linalg<CPU>::trmm<ftn_double_complex>(char side, char uplo, char tra
 
 #ifdef __SCALAPACK
 template<>
-inline ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,
+inline ftn_int linalg<device_t::CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,
                                                       ftn_int ia, ftn_int ja, ftn_int* ipiv)
 {
     ftn_int info;
@@ -985,7 +996,7 @@ inline ftn_int linalg<CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmat
 }
 
 template<>
-inline ftn_int linalg<CPU>::getri<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+inline ftn_int linalg<device_t::CPU>::getri<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
                                                       ftn_int* ipiv)
 {
     ftn_int info;
@@ -1009,7 +1020,7 @@ inline ftn_int linalg<CPU>::getri<ftn_double_complex>(ftn_int n, dmatrix<ftn_dou
 }
 
 template<>
-inline void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
+inline void linalg<device_t::CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
 {
     std::vector<ftn_int> ipiv(A.num_rows_local() + A.bs_row());
     ftn_int info = getrf(n, n, A, 0, 0, &ipiv[0]);
@@ -1026,7 +1037,7 @@ inline void linalg<CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<ftn_double
 }
 
 template <>
-inline void linalg<CPU>::gemr2d(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
+inline void linalg<device_t::CPU>::gemr2d(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
                                 dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb, ftn_int gcontext)
 {
     ia++; ja++;
@@ -1035,7 +1046,7 @@ inline void linalg<CPU>::gemr2d(ftn_int m, ftn_int n, dmatrix<ftn_double_complex
 }
 
 template<>
-inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+inline void linalg<device_t::CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                           ftn_double alpha, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
                                           dmatrix<ftn_double>& B, ftn_int ib, ftn_int jb, ftn_double beta,
                                           dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
@@ -1055,7 +1066,7 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
 }
 
 template<>
-inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+inline void linalg<device_t::CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                                   ftn_double_complex alpha,
                                                   dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
                                                   dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb,
@@ -1077,7 +1088,7 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
 }
 
 template <>
-inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
+inline void linalg<device_t::CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
 {
     ia++; ja++;
     ftn_int lwork = -1;
@@ -1091,7 +1102,7 @@ inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix
 }
 
 template <>
-inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
+inline void linalg<device_t::CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
 {
     ia++; ja++;
     ftn_int lwork = -1;
@@ -1106,7 +1117,7 @@ inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_dou
 
 #else
 template <>
-inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
+inline void linalg<device_t::CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
 {
     ftn_int lwork = -1;
     ftn_double_complex z;
@@ -1120,7 +1131,7 @@ inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix
 }
 
 template <>
-inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
+inline void linalg<device_t::CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
 {
     ftn_int lwork = -1;
     ftn_double z;
@@ -1134,7 +1145,7 @@ inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_dou
 }
 
 template<>
-inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+inline void linalg<device_t::CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                                   ftn_double_complex alpha,
                                                   dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
                                                   dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb,
@@ -1146,7 +1157,7 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
 }
 
 template<>
-inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+inline void linalg<device_t::CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                                   ftn_double_complex alpha,
                                                   dmatrix<ftn_double_complex>& A, dmatrix<ftn_double_complex>& B,
                                                   ftn_double_complex beta, dmatrix<ftn_double_complex>& C)
@@ -1155,7 +1166,7 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
 }
 
 template<>
-inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+inline void linalg<device_t::CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                           ftn_double alpha,
                                           dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
                                           dmatrix<ftn_double>& B, ftn_int ib, ftn_int jb,
@@ -1167,7 +1178,7 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
 }
 
 template<>
-inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+inline void linalg<device_t::CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                           ftn_double alpha,
                                           dmatrix<ftn_double>& A, dmatrix<ftn_double>& B,
                                           ftn_double beta, dmatrix<ftn_double>& C)
@@ -1178,22 +1189,24 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
 
 #ifdef __GPU
 template<>
-inline void linalg<GPU>::gemv<ftn_double_complex>(int trans__, ftn_int m, ftn_int n, ftn_double_complex* alpha,
-                                                  ftn_double_complex* A, ftn_int lda, ftn_double_complex* x, ftn_int incx,
-                                                  ftn_double_complex* beta, ftn_double_complex* y, ftn_int incy,
-                                                  int stream_id)
+inline void linalg<device_t::GPU>::gemv<ftn_double_complex>(int trans__, ftn_int m, ftn_int n, ftn_double_complex* alpha,
+                                                            ftn_double_complex* A, ftn_int lda, ftn_double_complex* x, ftn_int incx,
+                                                            ftn_double_complex* beta, ftn_double_complex* y, ftn_int incy,
+                                                            int stream_id)
 {
+    assert(_local::is_set_device_id());
     const char trans[] = {'N', 'T', 'C'};
     gpublas::zgemv(trans[trans__], m, n, (acc_complex_double_t*)alpha, (acc_complex_double_t*)A, lda, (acc_complex_double_t*)x, incx, (acc_complex_double_t*)beta, (acc_complex_double_t*)y, incy, stream_id);
 }
 
 // Generic interface to zgemm
 template<>
-inline void linalg<GPU>::gemm<ftn_double_complex>(int transa__, int transb__, ftn_int m, ftn_int n, ftn_int k,
-                                                  ftn_double_complex const* alpha, ftn_double_complex const* A, ftn_int lda,
-                                                  ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const* beta,
-                                                  ftn_double_complex* C, ftn_int ldc, int stream_id)
+inline void linalg<device_t::GPU>::gemm<ftn_double_complex>(int transa__, int transb__, ftn_int m, ftn_int n, ftn_int k,
+                                                            ftn_double_complex const* alpha, ftn_double_complex const* A, ftn_int lda,
+                                                            ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const* beta,
+                                                            ftn_double_complex* C, ftn_int ldc, int stream_id)
 {
+    assert(_local::is_set_device_id());
     assert(lda > 0);
     assert(ldb > 0);
     assert(ldc > 0);
@@ -1206,11 +1219,12 @@ inline void linalg<GPU>::gemm<ftn_double_complex>(int transa__, int transb__, ft
 
 // Generic interface to dgemm
 template<>
-inline void linalg<GPU>::gemm<ftn_double>(int transa__, int transb__, ftn_int m, ftn_int n, ftn_int k,
-                                          ftn_double const* alpha, ftn_double const* A, ftn_int lda,
-                                          ftn_double const* B, ftn_int ldb, ftn_double const* beta,
-                                          ftn_double* C, ftn_int ldc, int stream_id)
+inline void linalg<device_t::GPU>::gemm<ftn_double>(int transa__, int transb__, ftn_int m, ftn_int n, ftn_int k,
+                                                    ftn_double const* alpha, ftn_double const* A, ftn_int lda,
+                                                    ftn_double const* B, ftn_int ldb, ftn_double const* beta,
+                                                    ftn_double* C, ftn_int ldc, int stream_id)
 {
+    assert(_local::is_set_device_id());
     assert(lda > 0);
     assert(ldb > 0);
     assert(ldc > 0);
@@ -1222,7 +1236,7 @@ inline void linalg<GPU>::gemm<ftn_double>(int transa__, int transb__, ftn_int m,
 }
 
 //template <>
-//inline ftn_int linalg<GPU>::trtri<ftn_double>(ftn_int n,
+//inline ftn_int linalg<device_t::GPU>::trtri<ftn_double>(ftn_int n,
 //                                              ftn_double* A,
 //                                              ftn_int lda)
 //{
@@ -1236,7 +1250,7 @@ inline void linalg<GPU>::gemm<ftn_double>(int transa__, int transb__, ftn_int m,
 //}
 //
 //template <>
-//inline ftn_int linalg<GPU>::trtri<ftn_double_complex>(ftn_int n,
+//inline ftn_int linalg<device_t::GPU>::trtri<ftn_double_complex>(ftn_int n,
 //                                                      ftn_double_complex* A,
 //                                                      ftn_int lda)
 //{
@@ -1250,48 +1264,51 @@ inline void linalg<GPU>::gemm<ftn_double>(int transa__, int transb__, ftn_int m,
 //}
 
 template <>
-inline void linalg<GPU>::trmm<ftn_double>(char side,
-                                          char uplo,
-                                          char transa,
-                                          ftn_int m,
-                                          ftn_int n,
-                                          ftn_double* alpha,
-                                          ftn_double* A,
-                                          ftn_int lda,
-                                          ftn_double* B,
-                                          ftn_int ldb)
+inline void linalg<device_t::GPU>::trmm<ftn_double>(char side,
+                                                    char uplo,
+                                                    char transa,
+                                                    ftn_int m,
+                                                    ftn_int n,
+                                                    ftn_double* alpha,
+                                                    ftn_double* A,
+                                                    ftn_int lda,
+                                                    ftn_double* B,
+                                                    ftn_int ldb)
 {
-    gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+    assert(_local::is_set_device_id());
+    gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, -1);
 }
 
 template <>
-inline void linalg<GPU>::trmm<ftn_double_complex>(char side,
-                                                  char uplo,
-                                                  char transa,
-                                                  ftn_int m,
-                                                  ftn_int n,
-                                                  ftn_double_complex* alpha,
-                                                  ftn_double_complex* A,
-                                                  ftn_int lda,
-                                                  ftn_double_complex* B,
-                                                  ftn_int ldb)
+inline void linalg<device_t::GPU>::trmm<ftn_double_complex>(char side,
+                                                            char uplo,
+                                                            char transa,
+                                                            ftn_int m,
+                                                            ftn_int n,
+                                                            ftn_double_complex* alpha,
+                                                            ftn_double_complex* A,
+                                                            ftn_int lda,
+                                                            ftn_double_complex* B,
+                                                            ftn_int ldb)
 {
+    assert(_local::is_set_device_id());
     gpublas::ztrmm(side, uplo, transa, 'N', m, n, (acc_complex_double_t*)alpha, (acc_complex_double_t*)A, lda,
-                   (acc_complex_double_t*)B, ldb);
+                   (acc_complex_double_t*)B, ldb, -1);
 }
 
 template <>
-inline void linalg<GPU>::axpy<ftn_double_complex>(ftn_int n__,
-                                                  ftn_double_complex const* alpha__,
-                                                  ftn_double_complex const* x__,
-                                                  ftn_int incx__,
-                                                  ftn_double_complex* y__,
-                                                  ftn_int incy__)
+inline void linalg<device_t::GPU>::axpy<ftn_double_complex>(ftn_int n__,
+                                                            ftn_double_complex const* alpha__,
+                                                            ftn_double_complex const* x__,
+                                                            ftn_int incx__,
+                                                            ftn_double_complex* y__,
+                                                            ftn_int incy__)
 {
+    assert(_local::is_set_device_id());
     gpublas::zaxpy(n__, (acc_complex_double_t const*)alpha__, (acc_complex_double_t*)x__, incx__,
                    (acc_complex_double_t*)y__, incy__);
 }
-#endif // __GPU
+#endif // GPU
 
 template <typename T>
 inline void check_hermitian(const std::string& name, matrix<T> const& mtrx, int n = -1)

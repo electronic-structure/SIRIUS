@@ -39,9 +39,9 @@ inline void Band::set_subspace_mtrx(int N__,
 
     /* copy old N x N distributed matrix */
     if (N__ > 0) {
-        splindex<block_cyclic> spl_row(N__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(),
+        splindex<splindex_t::block_cyclic> spl_row(N__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(),
                                        mtrx__.bs_row());
-        splindex<block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(),
+        splindex<splindex_t::block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(),
                                        mtrx__.bs_col());
 
         if (mtrx_old__) {
@@ -84,10 +84,10 @@ inline void Band::set_subspace_mtrx(int N__,
     }
 
     if (ctx_.control().print_checksum_) {
-        splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(),
-                                       mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(),
-                                       mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+        splindex<splindex_t::block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(),
+                                                   mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+        splindex<splindex_t::block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(),
+                                                   mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
         double_complex cs(0, 0);
         for (int i = 0; i < spl_col.local_size(); i++) {
             for (int j = 0; j < spl_row.local_size(); j++) {
@@ -105,12 +105,12 @@ inline void Band::set_subspace_mtrx(int N__,
 
     /* save new matrix */
     if (mtrx_old__) {
-        splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(),
-                                       mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(),
-                                       mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+        splindex<splindex_t::block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(),
+                                                   mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+        splindex<splindex_t::block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(),
+                                                   mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
-        #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
         for (int i = 0; i < spl_col.local_size(); i++) {
             std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &(*mtrx_old__)(0, i));
         }
