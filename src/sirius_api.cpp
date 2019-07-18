@@ -2920,63 +2920,24 @@ void sirius_get_fv_eigen_values(void*          const* handler__,
     }
 }
 
-///* @fortran begin function void sirius_set_rg_values          Set the values of the function on the regular grid.
-//   @fortran argument in  required void*  handler              DFT ground state handler.
-//   @fortran argument in  required string label                Label of the function.
-//   @fortran argument in  required double values               Values of the function.
-//   @fortran argument in  required int    grid_dims            Dimensions of the FFT grid.
-//   @fortran argument in  optional bool   transform_to_pw      If true, transform function to PW domain.
-//   @fortran end */
-//void sirius_set_rg_values(void*  const* handler__,
-//                          char   const* label__,
-//                          double const* values__,
-//                          int    const* grid_dims__,
-//                          bool   const* transform_to_pw__)
-//{
-//    GET_GS(handler__);
-//
-//    std::string label(label__);
-//
-//    for (int x: {0, 1, 2}) {
-//        if (grid_dims__[x] != gs.ctx().fft().size(x)) {
-//            TERMINATE("wrong FFT grid size");
-//        }
-//    }
-//
-//    std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-//        {"rho",  &gs.density().rho()},
-//        {"magz", &gs.density().magnetization(0)},
-//        {"magx", &gs.density().magnetization(1)},
-//        {"magy", &gs.density().magnetization(2)},
-//        {"veff", &gs.potential().effective_potential()},
-//        {"bz",   &gs.potential().effective_magnetic_field(0)},
-//        {"bx",   &gs.potential().effective_magnetic_field(1)},
-//        {"by",   &gs.potential().effective_magnetic_field(2)},
-//        {"vxc",  &gs.potential().xc_potential()},
-//    };
-//
-//    try {
-//        auto& f = func.at(label);
-//        auto offset = gs.ctx().fft().offset_z() * gs.ctx().fft().size(0) * gs.ctx().fft().size(1);
-//        /* copy local part of the buffer */
-//        std::copy(values__ + offset, values__ + offset + gs.ctx().fft().local_size(), &f->f_rg(0));
-//        if (transform_to_pw__ && *transform_to_pw__) {
-//            f->fft_transform(-1);
-//        }
-//    } catch(...) {
-//        TERMINATE("wrong label");
-//    }
-//}
-
+/* @fortran begin function void sirius_set_rg_values          Set the values of the function on the regular grid.
+   @fortran argument in  required void*  handler              DFT ground state handler.
+   @fortran argument in  required string label                Label of the function.
+   @fortran argument in  required int    grid_dims            Dimensions of the FFT grid.
+   @fortran argument in  required int    local_box_origin     Coordinates of the local box origin for each MPI rank
+   @fortran argument in  required int    local_box_size       Dimensions of the local box for each MPI rank.
+   @fortran argument in  required int    fcomm                Fortran communicator used to partition FFT grid into local boxes.
+   @fortran argument in  required double values               Values of the function (local buffer for each MPI rank).
+   @fortran argument in  optional bool   transform_to_pw      If true, transform function to PW domain.
+   @fortran end */
 void sirius_set_rg_values(void*  const* handler__,
                           char   const* label__,
-                          double const* values__,
                           int    const* grid_dims__,
                           int    const* local_box_origin__,
                           int    const* local_box_size__,
                           int    const* fcomm__,
+                          double const* values__,
                           bool   const* transform_to_pw__)
-
 {
     PROFILE("sirius_api::sirius_set_rg_values");
 
@@ -3051,6 +3012,104 @@ void sirius_set_rg_values(void*  const* handler__,
         TERMINATE("wrong label");
     }
 }
+
+/* @fortran begin function void sirius_get_rg_values          Get the values of the function on the regular grid.
+   @fortran argument in  required void*  handler              DFT ground state handler.
+   @fortran argument in  required string label                Label of the function.
+   @fortran argument in  required int    grid_dims            Dimensions of the FFT grid.
+   @fortran argument in  required int    local_box_origin     Coordinates of the local box origin for each MPI rank
+   @fortran argument in  required int    local_box_size       Dimensions of the local box for each MPI rank.
+   @fortran argument in  required int    fcomm                Fortran communicator used to partition FFT grid into local boxes.
+   @fortran argument out required double values               Values of the function (local buffer for each MPI rank).
+   @fortran argument in  optional bool   transform_to_rg      If true, transform function to regular grid before fetching the values.
+   @fortran end */
+void sirius_get_rg_values(void*  const* handler__,
+                          char   const* label__,
+                          int    const* grid_dims__,
+                          int    const* local_box_origin__,
+                          int    const* local_box_size__,
+                          int    const* fcomm__,
+                          double*       values__,
+                          bool   const* transform_to_rg__)
+{
+    PROFILE("sirius_api::sirius_get_rg_values");
+
+    GET_GS(handler__);
+
+    std::string label(label__);
+
+    for (int x: {0, 1, 2}) {
+        if (grid_dims__[x] != gs.ctx().fft().size(x)) {
+            TERMINATE("wrong FFT grid size");
+        }
+    }
+
+    std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
+        {"rho",  &gs.density().rho()},
+        {"magz", &gs.density().magnetization(0)},
+        {"magx", &gs.density().magnetization(1)},
+        {"magy", &gs.density().magnetization(2)},
+        {"veff", &gs.potential().effective_potential()},
+        {"bz",   &gs.potential().effective_magnetic_field(0)},
+        {"bx",   &gs.potential().effective_magnetic_field(1)},
+        {"by",   &gs.potential().effective_magnetic_field(2)},
+        {"vxc",  &gs.potential().xc_potential()},
+    };
+
+    try {
+        auto& f = func.at(label);
+
+        auto& comm = Communicator::map_fcomm(*fcomm__);
+
+        if (transform_to_rg__ && *transform_to_rg__) {
+            f->fft_transform(1);
+        }
+
+        auto& spl_z = f->fft().spl_z();
+
+        mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
+        mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
+
+        for (int rank = 0; rank < f->fft().comm().size(); rank++) {
+            /* slab of FFT grid for a given rank */
+            mdarray<double, 3> buf(f->fft().size(0), f->fft().size(1), spl_z.local_size(rank));
+            if (rank == f->fft().comm().rank()) {
+                std::copy(&f->f_rg(0), &f->f_rg(0) + f->fft().local_size(), &buf[0]);
+            }
+            f->fft().comm().bcast(&buf[0], static_cast<int>(buf.size()), rank);
+
+            /* ranks on the F90 side */
+            int r = comm.rank();
+
+            /* dimensions of this rank's local box */
+            int nx = local_box_size(0, r);
+            int ny = local_box_size(1, r);
+            int nz = local_box_size(2, r);
+            mdarray<double, 3> values(values__, nx, ny, nz);
+
+            for (int iz = 0; iz < nz; iz++) {
+                /* global z coordinate inside FFT box */
+                int z = local_box_origin(2, r) + iz - 1; /* Fortran counts from 1 */
+                if (z >= spl_z.global_offset(rank) && z < spl_z.global_offset(rank) + spl_z.local_size(rank)) {
+                    /* make z local for SIRIUS FFT partitioning */
+                    z -= spl_z.global_offset(rank);
+                    for (int iy = 0; iy < ny; iy++) {
+                        /* global y coordinate inside FFT box */
+                        int y = local_box_origin(1, r) + iy - 1; /* Fortran counts from 1 */
+                        for (int ix = 0; ix < nx; ix++) {
+                            /* global x coordinate inside FFT box */
+                            int x = local_box_origin(0, r) + ix - 1; /* Fortran counts from 1 */
+                            values(ix, iy, iz) = buf(x, y, z);
+                        }
+                    }
+                }
+            }
+        } /* loop over ranks */
+    } catch(...) {
+        TERMINATE("wrong label");
+    }
+}
+
 
 /* @fortran begin function void sirius_get_total_magnetization  Get the total magnetization of the system.
    @fortran argument in  required void*  handler                DFT ground state handler.
