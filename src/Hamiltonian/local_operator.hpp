@@ -1047,8 +1047,6 @@ class Local_operator
                                           veff_vec_[1].f_rg().at(memory_t::device));
                     /* phi(r) * Bz(r) -> bphi[0](G) */
                     fft_coarse_.transform<-1>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j));
-#else
-                    TERMINATE_NO_GPU
 #endif
                     break;
                 }

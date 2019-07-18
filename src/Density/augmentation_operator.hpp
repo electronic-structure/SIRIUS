@@ -26,6 +26,7 @@
 #define __AUGMENTATION_OPERATOR_HPP__
 
 #include "radial_integrals.hpp"
+#include "SDDK/gvec.hpp"
 
 namespace sirius {
 

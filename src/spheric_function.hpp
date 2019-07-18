@@ -329,7 +329,7 @@ T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> c
             }
         }
     } else {
-        TERMINATE_NOT_IMPLEMENTED
+        throw std::runtime_error("not implemented");
     }
     return s.interpolate().integrate(2);
 }

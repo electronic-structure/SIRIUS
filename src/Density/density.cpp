@@ -535,8 +535,6 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
 #ifdef __GPU
                         update_density_rg_1_gpu(fft.local_size(), fft.buffer().at(memory_t::device), w,
                                                 density_rg.at(memory_t::device, 0, ispn));
-#else
-                        TERMINATE_NO_GPU
 #endif
                         break;
                     }
