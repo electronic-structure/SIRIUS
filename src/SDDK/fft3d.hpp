@@ -1136,6 +1136,11 @@ class FFT3D : public FFT3D_grid
             }
         }
     }
+
+    inline splindex<splindex_t::block> const& spl_z() const
+    {
+        return spl_z_;
+    }
 };
 
 } // namespace sddk
