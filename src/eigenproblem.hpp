@@ -25,6 +25,7 @@
 #ifndef __EIGENPROBLEM_HPP__
 #define __EIGENPROBLEM_HPP__
 
+#include <omp.h>
 #include "utils/timer.hpp"
 #include "linalg.hpp"
 
