@@ -34,6 +34,7 @@
 #include "basis_functions_index.hpp"
 #include "hubbard_orbitals_descriptor.hpp"
 #include "SHT/sht.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -202,6 +203,11 @@ class Atom_type
 
     mutable mdarray<double, 3> rf_coef_;
     mutable mdarray<double, 3> vrf_coef_;
+
+    void read_hubbard_input();
+    void generate_f_coefficients(void);
+    // inline double ClebschGordan(const int l, const double j, const double m, const int spin);
+    // inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
 
     bool initialized_{false};
 
@@ -1068,17 +1074,11 @@ public:
         return ((indexb(xi).l == indexb(xj).l) && (indexb(xi).idxrf == indexb(xj).idxrf) &&
                 (std::abs(indexb(xi).j - indexb(xj).j) < 1e-8));
     }
-
-  private:
-    void read_hubbard_input();
-    void generate_f_coefficients(void);
-    // inline double ClebschGordan(const int l, const double j, const double m, const int spin);
-    // inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
 };
 
-    inline void Atom_type::init(int offset_lo__)
-    {
-        PROFILE("sirius::Atom_type::init");
+inline void Atom_type::init(int offset_lo__)
+{
+    PROFILE("sirius::Atom_type::init");
 
     /* check if the class instance was already initialized */
     if (initialized_) {

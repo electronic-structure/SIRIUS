@@ -25,6 +25,12 @@
 #ifndef __SYMMETRIZE_HPP__
 #define __SYMMETRIZE_HPP__
 
+#include <omp.h>
+#include "Unit_cell/unit_cell_symmetry.hpp"
+#include "SDDK/gvec.hpp"
+#include "typedefs.hpp"
+#include "SHT/sht.hpp"
+
 namespace sirius {
 
 /// Symmetrize scalar function.
