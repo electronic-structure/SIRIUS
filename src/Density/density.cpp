@@ -1269,7 +1269,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                                            ctx_.augmentation_op(iat).q_pw().at(memory_t::device, 0, 2 * g_begin),
                                            dm_pw.at(memory_t::device),
                                            ctx_.augmentation_op(iat).sym_weight().at(memory_t::device),
-                                           rho_aug__.at(memory_t::device, g_begin, iv),
+                                           rho_aug.at(memory_t::device, g_begin, iv),
                                            1);
                     }
 #endif
