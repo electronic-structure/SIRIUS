@@ -66,15 +66,16 @@ class linalg2
                     stream_id sid = stream_id(-1)) const;
 
     template <typename T>
-    inline void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T const* aplha, T const* A, ftn_int lda, T* B, ftn_int ldb);
+    inline void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T const* aplha, T const* A, ftn_int lda,
+                     T* B, ftn_int ldb, stream_id sid = stream_id(-1)) const;
 
     /// Cholesky factorization
     template <typename T>
-    inline int potrf(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr);
+    inline int potrf(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr) const;
 
     /// Inversion of a triangular matrix.
     template <typename T>
-    inline int trtri(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr);
+    inline int trtri(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr) const;
 };
 
 template <>
@@ -200,7 +201,7 @@ inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alp
 
 template <>
 inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int m, ftn_int n, ftn_double const* alpha,
-                                      ftn_double const* A, ftn_int lda, ftn_double* B, ftn_int ldb)
+                                      ftn_double const* A, ftn_int lda, ftn_double* B, ftn_int ldb, stream_id sid) const
 {
     switch (la_) {
         case linalg_t::blas: {
@@ -209,8 +210,8 @@ inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int
             break;
         }
         case  linalg_t::gpublas: {
-#ifdef __GPU
-            gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+#if defined(__GPU)
+            gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -234,18 +235,20 @@ inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int
 template <>
 inline void linalg2::trmm<ftn_double_complex>(char side, char uplo, char transa, ftn_int m, ftn_int n,
                                               ftn_double_complex const* alpha, ftn_double_complex const* A,
-                                              ftn_int lda, ftn_double_complex* B, ftn_int ldb)
+                                              ftn_int lda, ftn_double_complex* B, ftn_int ldb, stream_id sid) const
 {
     switch (la_) {
         case linalg_t::blas: {
             FORTRAN(ztrmm)(&side, &uplo, &transa, "N", &m, &n, const_cast<ftn_double_complex*>(alpha),
-                           const_cast<ftn_double_complex*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1, (ftn_len)1, (ftn_len)1);
+                           const_cast<ftn_double_complex*>(A), &lda, B, &ldb, (ftn_len)1, (ftn_len)1,
+                           (ftn_len)1, (ftn_len)1);
             break;
         }
         case  linalg_t::gpublas: {
-#ifdef __GPU
+#if defined(__GPU)
             gpublas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
-                          reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t*>(B), ldb);
+                          reinterpret_cast<acc_complex_double_t const*>(A), lda,
+                          reinterpret_cast<acc_complex_double_t*>(B), ldb, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
 #endif
@@ -268,7 +271,7 @@ inline void linalg2::trmm<ftn_double_complex>(char side, char uplo, char transa,
 }
 
 template<>
-inline int linalg2::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca)
+inline int linalg2::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case linalg_t::lapack: {
@@ -307,7 +310,7 @@ inline int linalg2::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn
 }
 
 template<>
-inline int linalg2::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca)
+inline int linalg2::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case linalg_t::lapack: {
@@ -346,7 +349,7 @@ inline int linalg2::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, 
 }
 
 template<>
-inline int linalg2::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca)
+inline int linalg2::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case linalg_t::lapack: {
@@ -385,7 +388,7 @@ inline int linalg2::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn
 }
 
 template<>
-inline int linalg2::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca)
+inline int linalg2::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int const* desca) const
 {
     switch (la_) {
         case linalg_t::lapack: {
@@ -1273,7 +1276,7 @@ inline void linalg<device_t::GPU>::trmm<ftn_double>(char side,
                                                     ftn_int ldb)
 {
     assert(_local::is_set_device_id());
-    gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+    gpublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, -1);
 }
 
 template <>
@@ -1290,7 +1293,7 @@ inline void linalg<device_t::GPU>::trmm<ftn_double_complex>(char side,
 {
     assert(_local::is_set_device_id());
     gpublas::ztrmm(side, uplo, transa, 'N', m, n, (acc_complex_double_t*)alpha, (acc_complex_double_t*)A, lda,
-                   (acc_complex_double_t*)B, ldb);
+                   (acc_complex_double_t*)B, ldb, -1);
 }
 
 template <>

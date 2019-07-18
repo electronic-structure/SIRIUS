@@ -139,7 +139,7 @@ class Density : public Field4D
 
         int ia{-1};
 
-        /// ae and ps local unified densities+magnetization
+        /* AE and PS local unified densities + magnetization */
         std::vector<Spheric_function<function_domain_t::spectral, double>> ae_density_;
         std::vector<Spheric_function<function_domain_t::spectral, double>> ps_density_;
     };
@@ -385,9 +385,7 @@ class Density : public Field4D
 
     inline void normalize()
     {
-        std::vector<double> nel_mt;
-        double              nel_it;
-        double nel   = rho().integrate(nel_mt, nel_it);
+        double nel = std::get<0>(rho().integrate());
         double scale = unit_cell_.num_electrons() / nel;
 
         /* renormalize interstitial part */
@@ -410,9 +408,7 @@ class Density : public Field4D
     {
         double nel{0};
         if (ctx_.full_potential()) {
-            std::vector<double> nel_mt;
-            double              nel_it;
-            nel = rho().integrate(nel_mt, nel_it);
+            nel = std::get<0>(rho().integrate());
         } else {
             nel = rho().f_0().real() * unit_cell_.omega();
         }

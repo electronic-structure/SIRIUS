@@ -87,12 +87,10 @@ inline void initialize(bool call_mpi_init__ = true)
     if (acc::num_devices() > 0) {
         int devid = sddk::get_device_id(acc::num_devices());
         acc::set_device_id(devid);
-        // #pragma omp parallel
-        // {
-        //     #pragma omp critical
-        //     acc::set_device_id(devid);
-        // }
-        acc::create_streams(omp_get_max_threads() + 1);
+        /* create extensive amount of streams */
+        /* some parts of the code rely on the number of streams not related to the
+           number of OMP threads */
+        acc::create_streams(omp_get_max_threads() + 100);
 #if defined(__GPU)
         gpublas::create_stream_handles();
 #endif

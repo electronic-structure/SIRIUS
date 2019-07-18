@@ -179,11 +179,12 @@ class Periodic_function : public Smooth_periodic_function<T>
         }
     }
 
-    T integrate(std::vector<T>& mt_val, T& it_val) const
+    inline std::tuple<T, T, std::vector<T>>
+    integrate() const
     {
         PROFILE("sirius::Periodic_function::integrate");
 
-        it_val = 0;
+        T it_val = 0;
 
         if (!ctx_.full_potential()) {
             #pragma omp parallel for schedule(static) reduction(+:it_val)
@@ -200,6 +201,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         this->fft_->comm().allreduce(&it_val, 1);
         T total = it_val;
 
+        std::vector<T> mt_val;
         if (ctx_.full_potential()) {
             mt_val = std::vector<T>(unit_cell_.num_atoms(), 0);
 
@@ -214,7 +216,7 @@ class Periodic_function : public Smooth_periodic_function<T>
             }
         }
 
-        return total;
+        return std::make_tuple(total, it_val, mt_val);
     }
 
     template <index_domain_t index_domain>

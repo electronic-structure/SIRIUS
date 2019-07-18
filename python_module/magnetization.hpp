@@ -12,11 +12,9 @@ std::tuple<std::list<std::vector<double>>, std::list<double>> magnetization(Dens
     std::list<double> lm;
 
     for (int j=0; j < ctx.num_mag_dims(); ++j) {
-        std::vector<double> vec(3);
-        double m;
-        density.magnetization(j).integrate(vec, m);
-        lvec.push_back(vec);
-        lm.push_back(m);
+        auto result = density.magnetization(j).integrate();
+        lvec.push_back(std::get<2>(result));
+        lm.push_back(std::get<1>(result));
     }
 
     return std::make_tuple(lvec, lm);

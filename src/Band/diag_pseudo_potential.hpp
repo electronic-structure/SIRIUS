@@ -456,14 +456,15 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         /* current subspace size */
         int N = num_bands;
 
-        utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
+        auto p1 = std::unique_ptr<utils::profiler>(new utils::profiler(__function_name__, __FILE__, __LINE__,
+            "sirius::Band::diag_pseudo_potential_davidson|evp"));
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands, hmlt, eval.data(), evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
         }
-        t1.stop();
+        p1 = nullptr;
 
         evp_work_count() += 1;
 
@@ -585,7 +586,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
             eval_old = eval;
 
-            utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
+            auto p1 = std::unique_ptr<utils::profiler>(new utils::profiler(__function_name__, __FILE__, __LINE__,
+                "sirius::Band::diag_pseudo_potential_davidson|evp"));
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N */
                 if (std_solver.solve(N, num_bands, hmlt, eval.data(), evec)) {
@@ -601,7 +603,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                     TERMINATE(s);
                 }
             }
-            t1.stop();
+            p1 = nullptr;
 
             evp_work_count() += std::pow(static_cast<double>(N) / num_bands, 3);
 
