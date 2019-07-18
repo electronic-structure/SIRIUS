@@ -1,29 +1,37 @@
 import json
 import sys
 import re
-import upf1_to_json
-import upf2_to_json
+import os
+from upf1_to_json import parse_upf1_from_string
+from upf2_to_json import parse_upf2_from_string
 
-def get_upf_version(file_name):
-    with open(file_name) as inp:
-        line = inp.readline()
+def get_upf_version(upf):
+    line = upf.split('\n')[0]
     if "<PP_INFO>" in line:
         return 1
     elif "UPF version" in line:
         return 2
     return 0
 
-def parse_upf_from_file(file_name):
-    version = get_upf_version(file_name)
+def parse_upf_from_string(upf_str):
+    version = get_upf_version(upf_str)
     if version == 0:
         return None
     if version == 1:
-        return upf1_to_json.parse_upf1_from_file(file_name)
+        return parse_upf1_from_string(upf_str)
     if version == 2:
-        return upf2_to_json.parse_upf2_from_file(file_name)
+        return parse_upf2_from_string(upf_str)
 
 def main():
-    pp_dict = parse_upf_from_file(sys.argv[1])
+
+    fname = sys.argv[1]
+    if not os.path.exists(fname):
+        raise FileNotFoundError('invalid path for UPF file')
+
+    with open(sys.argv[1], 'r') as fh:
+        upf_str = fh.read()
+
+    pp_dict = parse_upf_from_string(upf_str)
     element = pp_dict['pseudo_potential']['header']['element']
     pp_dict['pseudo_potential']['header']['original_upf_file'] = sys.argv[1]
 
