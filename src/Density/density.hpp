@@ -281,84 +281,12 @@ class Density : public Field4D
 
   public:
     /// Constructor
-    Density(Simulation_context& ctx__)
-        : Field4D(ctx__, ctx__.lmmax_rho())
-        , unit_cell_(ctx_.unit_cell())
-    {
-        PROFILE("sirius::Density");
+    Density(Simulation_context& ctx__);
 
-        if (!ctx_.initialized()) {
-            TERMINATE("Simulation_context is not initialized");
-        }
-
-        using spf = Smooth_periodic_function<double>;
-
-        /*  allocate charge density and magnetization on a coarse grid */
-        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            rho_mag_coarse_[i] = std::unique_ptr<spf>(new spf(ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
-        }
-
-        /* core density of the pseudopotential method */
-        if (!ctx_.full_potential()) {
-            rho_pseudo_core_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
-        }
-
-        if (ctx_.full_potential()) {
-            using gc_z   = Gaunt_coefficients<double_complex>;
-            gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_rho(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
-        }
-
-        l_by_lm_ = utils::l_by_lm(ctx_.lmax_rho());
-
-        density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
-                                                     ctx_.num_mag_comp(), unit_cell_.num_atoms());
-        density_matrix_.zero();
-
-        /* split local G-vectors to low-frequency and high-frequency */
-        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-            int  ig = ctx_.gvec().offset() + igloc;
-            auto gv = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
-            if (ig) {
-                gvec_mixer_weights_.push_back(fourpi * unit_cell_.omega() / std::pow(gv.length(), 2));
-            } else {
-                gvec_mixer_weights_.push_back(0);
-            }
-        }
-
-        update();
-    }
-
-    void update()
-    {
-        PROFILE("sirius::Density::update");
-
-        if (!ctx_.full_potential()) {
-            rho_pseudo_core_->zero();
-            bool is_empty{true};
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                is_empty &= unit_cell_.atom_type(iat).ps_core_charge_density().empty();
-            }
-            if (!is_empty) {
-                generate_pseudo_core_charge_density();
-            }
-        }
-    }
+    void update();
 
     /// Find the total leakage of the core states out of the muffin-tins
-    double core_leakage() const
-    {
-        double sum = 0.0;
-        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-            sum += core_leakage(ic) * unit_cell_.atom_symmetry_class(ic).num_atoms();
-        }
-        return sum;
-    }
-
-    /// Return core leakage for a specific atom symmetry class
-    double core_leakage(int ic) const
-    {
-        return unit_cell_.atom_symmetry_class(ic).core_leakage();
-    }
+    double core_leakage() const;
 
     /// Generate initial charge density and magnetization
     void initial_density();
@@ -623,32 +551,40 @@ class Density : public Field4D
         //== fclose(fout);
     }
 
-    Periodic_function<double>& rho()
+    /// Return core leakage for a specific atom symmetry class
+    inline double core_leakage(int ic) const
+    {
+        return unit_cell_.atom_symmetry_class(ic).core_leakage();
+    }
+
+    /// Return charge density (scalar functions).
+    inline Periodic_function<double>& rho()
+    {
+        return const_cast<Periodic_function<double>&>(static_cast<Density const&>(*this).rho());
+    }
+
+    /// Return const reference to charge density (scalar functions).
+    inline Periodic_function<double> const& rho() const
     {
         return this->scalar();
     }
 
-    Periodic_function<double> const& rho() const
-    {
-        return this->scalar();
-    }
-
-    Smooth_periodic_function<double>& rho_pseudo_core()
+    inline Smooth_periodic_function<double>& rho_pseudo_core()
     {
         return *rho_pseudo_core_;
     }
 
-    Smooth_periodic_function<double> const& rho_pseudo_core() const
+    inline Smooth_periodic_function<double> const& rho_pseudo_core() const
     {
         return *rho_pseudo_core_;
     }
 
-    Periodic_function<double>& magnetization(int i)
+    inline Periodic_function<double>& magnetization(int i)
     {
         return this->vector(i);
     }
 
-    Periodic_function<double> const& magnetization(int i) const
+    inline Periodic_function<double> const& magnetization(int i) const
     {
         return this->vector(i);
     }
@@ -763,68 +699,10 @@ class Density : public Field4D
     }
 
     /// Return density matrix in auxiliary form.
-    inline mdarray<double, 3> density_matrix_aux(int iat__)
-    {
-        auto& atom_type = unit_cell_.atom_type(iat__);
-        int   nbf       = atom_type.mt_basis_size();
-
-        /* convert to real matrix */
-        mdarray<double, 3> dm(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.num_mag_dims() + 1);
-        #pragma omp parallel for
-        for (int i = 0; i < atom_type.num_atoms(); i++) {
-            int ia = atom_type.atom_id(i);
-
-            for (int xi2 = 0; xi2 < nbf; xi2++) {
-                for (int xi1 = 0; xi1 <= xi2; xi1++) {
-                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                    switch (ctx_.num_mag_dims()) {
-                        case 3: {
-                            dm(idx12, i, 2) = 2 * std::real(density_matrix_(xi2, xi1, 2, ia));
-                            dm(idx12, i, 3) = -2 * std::imag(density_matrix_(xi2, xi1, 2, ia));
-                        }
-                        case 1: {
-                            dm(idx12, i, 0) = std::real(density_matrix_(xi2, xi1, 0, ia) + density_matrix_(xi2, xi1, 1, ia));
-                            dm(idx12, i, 1) = std::real(density_matrix_(xi2, xi1, 0, ia) - density_matrix_(xi2, xi1, 1, ia));
-                            break;
-                        }
-                        case 0: {
-                            dm(idx12, i, 0) = density_matrix_(xi2, xi1, 0, ia).real();
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        return dm;
-    }
+    mdarray<double, 3> density_matrix_aux(int iat__);
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
-    mdarray<double, 2> compute_atomic_mag_mom() const
-    {
-        PROFILE("sirius::Density::compute_atomic_mag_mom");
-
-        mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
-        mmom.zero();
-
-        #pragma omp parallel for
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-
-            auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map(ia);
-
-            for (auto coord : atom_to_grid_map) {
-                int ir = coord.first;
-                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                    mmom(j, ia) += magnetization(j).f_rg(ir);
-                }
-            }
-
-            for (int j : {0, 1, 2}) {
-                mmom(j, ia) *= (unit_cell_.omega() / ctx_.fft().size());
-            }
-        }
-        ctx_.fft().comm().allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
-        return mmom;
-    }
+    mdarray<double, 2> compute_atomic_mag_mom() const;
 
     /// Symmetrize density matrix.
     /** Initially, density matrix is obtained with summation over irreducible BZ:
@@ -869,8 +747,6 @@ class Density : public Field4D
      *  \f]
      */
     void symmetrize_density_matrix();
-
-    void symmetrize_density_matrix_bis();
 
     void symmetrize()
     {

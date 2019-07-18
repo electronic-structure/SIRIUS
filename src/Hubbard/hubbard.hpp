@@ -247,7 +247,7 @@ private:
                                     double_complex* occ,
                                     int const*      ld);
 
-#include "Density/Symmetrize.hpp"
+//#include "Density/Symmetrize.hpp"
 };
 } // namespace sirius
 
