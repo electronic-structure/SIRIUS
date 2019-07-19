@@ -25,9 +25,14 @@
 #ifndef __SIMULATION_PARAMETERS_HPP__
 #define __SIMULATION_PARAMETERS_HPP__
 
+#include <mpi.h>
 #include "typedefs.hpp"
 #include "input.hpp"
 #include "utils/cmd_args.hpp"
+#include "utils/utils.hpp"
+#include "memory.hpp"
+
+using namespace sddk;
 
 namespace sirius {
 
@@ -38,7 +43,7 @@ namespace sirius {
 inline const json& get_options_dictionary()
 {
     if (all_options_dictionary_.size() == 0) {
-        TERMINATE("Dictionary not initialized\n");
+        throw std::runtime_error("Dictionary not initialized\n");
     }
     return all_options_dictionary_;
 }

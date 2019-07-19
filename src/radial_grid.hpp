@@ -25,6 +25,9 @@
 #ifndef __RADIAL_GRID_HPP__
 #define __RADIAL_GRID_HPP__
 
+#include "memory.hpp"
+using namespace sddk;
+
 namespace sirius {
 
 /// Types of radial grid.
@@ -334,7 +337,7 @@ Radial_grid<T> Radial_grid_factory(radial_grid_t grid_type__, int num_points__, 
             break;
         }
         default: {
-            TERMINATE("wrong radial grid type");
+            throw std::runtime_error("wrong radial grid type");
         }
     }
     return rgrid;

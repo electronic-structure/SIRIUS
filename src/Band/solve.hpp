@@ -39,7 +39,7 @@ inline void Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__
         /* generate spinor wave-functions */
         kp__.generate_spinor_wave_functions();
     } else {
-        TERMINATE_NOT_IMPLEMENTED
+        throw std::runtime_error("not implemented");
         //diag_full_potential_single_variation();
     }
 }

@@ -59,7 +59,7 @@ inline void K_point::generate_spinor_wave_functions()
                 /* in case of non-collinear magnetism sv_eigen_vectors is a single 2Nx2N matrix */
                 s = 0;
                 o = ispn * nfv; /* offset for spin up is 0, for spin dn is nfv */
-            } else { 
+            } else {
                 /* sv_eigen_vectors is composed of two NxN matrices */
                 s = ispn;
                 o = 0;
@@ -79,6 +79,6 @@ inline void K_point::generate_spinor_wave_functions()
             }
         }
     } else {
-        TERMINATE_NOT_IMPLEMENTED;
+        throw std::runtime_error("not implemented");
     }
 }

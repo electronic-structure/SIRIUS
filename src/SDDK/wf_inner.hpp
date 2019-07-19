@@ -23,14 +23,14 @@
  */
 
 template <typename T>
-static void inner_local(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__,
+inline void inner_local(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__,
                         int i0__, int m__, Wave_functions& ket__, int j0__, int n__, T* beta__,
                         T* buf__, int ld__, stream_id sid__);
 
 template<>
-void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__,
-                         int i0__, int m__, Wave_functions& ket__, int j0__, int n__, double* beta__,
-                         double* buf__, int ld__, stream_id sid__)
+inline void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__,
+                                int i0__, int m__, Wave_functions& ket__, int j0__, int n__, double* beta__,
+                                double* buf__, int ld__, stream_id sid__)
 {
     utils::timer t1("sddk::inner|local");
     auto& comm = bra__.comm();
@@ -62,9 +62,9 @@ void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functio
 }
 
 template<>
-void inner_local<double_complex>(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__,
-                                 int i0__, int m__, Wave_functions& ket__, int j0__, int n__, double_complex* beta__,
-                                 double_complex* buf__, int ld__, stream_id sid__)
+inline void inner_local<double_complex>(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__,
+                                        int i0__, int m__, Wave_functions& ket__, int j0__, int n__, double_complex* beta__,
+                                        double_complex* buf__, int ld__, stream_id sid__)
 
 {
     utils::timer t1("sddk::inner|local");

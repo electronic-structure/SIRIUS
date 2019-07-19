@@ -922,8 +922,6 @@ class Simulation_context : public Simulation_parameters
                 //acc::set_device();
                 generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(memory_t::device),
                                            unit_cell().atom_coord(iat__).at(memory_t::device), phase_factors__.at(memory_t::device));
-#else
-                TERMINATE_NO_GPU
 #endif
                 break;
             }
@@ -1307,7 +1305,7 @@ inline void Simulation_context::initialize()
     /* check if we can use a GPU device */
     if (processing_unit() == device_t::GPU) {
 #if !defined(__GPU)
-        TERMINATE_NO_GPU;
+        throw std::runtime_error("not compiled with GPU support!");
 #endif
     }
 

@@ -27,6 +27,7 @@
 
 #include "utils/env.hpp"
 #include "simulation_context.hpp"
+#include "SDDK/wave_functions.hpp"
 
 namespace sirius {
 

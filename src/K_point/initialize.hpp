@@ -151,7 +151,7 @@ inline void K_point::initialize()
                                                                               }, nst, ctx_.preferred_memory_t(),
                                                                               ctx_.num_spins()));
         } else {
-            TERMINATE_NOT_IMPLEMENTED
+            throw std::runtime_error("not implemented");
         }
     } else {
         spinor_wave_functions_ = std::unique_ptr<Wave_functions>(

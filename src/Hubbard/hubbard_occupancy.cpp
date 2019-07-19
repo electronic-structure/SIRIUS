@@ -34,6 +34,7 @@
  * Requires symmetrization. */
 
 #include "hubbard.hpp"
+#include "Symmetry/symmetrize.hpp"
 
 namespace sirius {
 void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
@@ -435,15 +436,8 @@ void Hubbard::symmetrize_occupancy_matrix()
                 auto& atom_type = unit_cell_.atom(ia).type();
                 int   ja        = sym.sym_table(ia, isym);
                 if (atom_type.hubbard_correction()) {
-                    Symmetrize(occupancy_number_,
-                               unit_cell_.atom(ia).type().hubbard_indexb_wfc(),
-                               ia,
-                               ja,
-                               ctx_.num_mag_comp(),
-                               rotm,
-                               spin_rot_su2,
-                               dm_,
-                               true);
+                    sirius::symmetrize(occupancy_number_, unit_cell_.atom(ia).type().hubbard_indexb_wfc(), ia, ja,
+                                       ctx_.num_mag_comp(), rotm, spin_rot_su2, dm_, true);
                 }
             }
         }
