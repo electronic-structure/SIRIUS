@@ -397,7 +397,7 @@ class DFT_ground_state
 #endif // __DFT_GROUND_STATE_HPP__
 
 /** \page dft Spin-polarized DFT
- *  \section section1 Preliminary notes
+ *  \section s1dft Preliminary notes
  *
  *  \note Here and below sybol \f$ {\boldsymbol \sigma} \f$ is reserved for the vector of Pauli matrices. Spin
  *        components are labeled with \f$ \alpha \f$ or \f$ \beta \f$.
@@ -449,7 +449,7 @@ class DFT_ground_state
  *    U=-{\bf B}{\bf \mu}={\bf \mu}_B {\bf B} \langle \Psi | {\boldsymbol \sigma} | \Psi \rangle
  *  \f]
  *
- *  \section section2 Density and magnetization
+ *  \section s2dft Density and magnetization
  *  In magnetic calculations we have charge density \f$ \rho({\bf r}) \f$ (scalar function) and magnetization density
  *  \f$ {\bf m}({\bf r}) \f$ (vector function). Density is defined as:
  *  \f[
@@ -506,7 +506,7 @@ class DFT_ground_state
  * exactly \f$ \int \rho({\bf r}) v^{ext}({\bf r}) + \mu_{B}{\bf m}({\bf r})
  *   {\bf B}^{ext}({\bf r}) d{\bf r}\f$
  *
- *  \section section3 Total energy variation
+ *  \section s3dft Total energy variation
  *
  *  To derive Kohn-Sham equations we need to write total energy functional of density matrix \f$ \rho_{\alpha\beta}({\bf
  * r}) \f$: \f[ E^{tot}[\rho_{\alpha\beta}] = E^{kin}[\rho_{\alpha\beta}] + E^{H}[\rho_{\alpha\beta}] +
@@ -598,7 +598,7 @@ class DFT_ground_state
  * \varepsilon_i \left(\begin{array}{c} \psi_{i}^{\uparrow}({\bf r}) \\ \psi_{i}^{\downarrow}({\bf r}) \end{array}
  * \right) \f]
  *
- *  \section section4 Second-variational approach
+ *  \section s4dft Second-variational approach
  *
  *  Suppose that we know first \f$ N_{fv} \f$ solutions of the following equation (so-called first variational
  * equation): \f[ \Big(-\frac{1}{2}\nabla^2+v^{H}({\bf r})+v^{ext}({\bf r})+v^{XC}({\bf r}) \Big)\phi_{i}({\bf r}) =

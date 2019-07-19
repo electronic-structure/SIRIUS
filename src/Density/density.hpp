@@ -194,9 +194,10 @@ class Density : public Field4D
     /// Allocate PAW data.
     void init_paw();
 
+    /// Generate atomic densities in the case of PAW.
     void generate_paw_atom_density(paw_density_data_t& pdd);
 
-    /// Initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW).
+    /// Initialize PAW density matrix.
     void init_density_matrix_for_paw();
 
     /// Reduce complex density matrix over magnetic quantum numbers
