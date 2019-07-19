@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,12 +17,109 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file initialize_subspace.hpp
+/** \file band.cpp
  *
- *  \brief Initialize subspace for iterative diagonalization.
+ *   \brief Contains implementation of sirius::Band class.
  */
 
-inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) const
+#include "band.hpp"
+
+namespace sirius {
+
+template <typename T>
+void
+Band::set_subspace_mtrx(int N__, int n__, Wave_functions& phi__, Wave_functions& op_phi__, dmatrix<T>& mtrx__,
+                        dmatrix<T>* mtrx_old__) const
+{
+    PROFILE("sirius::Band::set_subspace_mtrx");
+
+    assert(n__ != 0);
+    if (mtrx_old__ && mtrx_old__->size()) {
+        assert(&mtrx__.blacs_grid() == &mtrx_old__->blacs_grid());
+    }
+
+    /* copy old N x N distributed matrix */
+    if (N__ > 0) {
+        splindex<splindex_t::block_cyclic> spl_row(N__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(),
+                                       mtrx__.bs_row());
+        splindex<splindex_t::block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(),
+                                       mtrx__.bs_col());
+
+        if (mtrx_old__) {
+            #pragma omp parallel for schedule(static)
+            for (int i = 0; i < spl_col.local_size(); i++) {
+                std::copy(&(*mtrx_old__)(0, i), &(*mtrx_old__)(0, i) + spl_row.local_size(), &mtrx__(0, i));
+            }
+        }
+
+        if (ctx_.control().print_checksum_) {
+            double_complex cs(0, 0);
+            for (int i = 0; i < spl_col.local_size(); i++) {
+                for (int j = 0; j < spl_row.local_size(); j++) {
+                    cs += mtrx__(j, i);
+                }
+            }
+            mtrx__.blacs_grid().comm().allreduce(&cs, 1);
+            if (ctx_.comm_band().rank() == 0) {
+                utils::print_checksum("subspace_mtrx_old", cs);
+            }
+        }
+    }
+
+    /* <{phi,phi_new}|Op|phi_new> */
+    inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, 0, N__ + n__,
+          op_phi__, N__, n__, mtrx__, 0, N__);
+
+    /* restore lower part */
+    if (N__ > 0) {
+        if (mtrx__.blacs_grid().comm().size() == 1) {
+            #pragma omp parallel for
+            for (int i = 0; i < N__; i++) {
+                for (int j = N__; j < N__ + n__; j++) {
+                    mtrx__(j, i) = utils::conj(mtrx__(i, j));
+                }
+            }
+        } else {
+            tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
+        }
+    }
+
+    if (ctx_.control().print_checksum_) {
+        splindex<splindex_t::block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(),
+                                                   mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+        splindex<splindex_t::block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(),
+                                                   mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+        double_complex cs(0, 0);
+        for (int i = 0; i < spl_col.local_size(); i++) {
+            for (int j = 0; j < spl_row.local_size(); j++) {
+                cs += mtrx__(j, i);
+            }
+        }
+        mtrx__.blacs_grid().comm().allreduce(&cs, 1);
+        if (ctx_.comm_band().rank() == 0) {
+            utils::print_checksum("subspace_mtrx", cs);
+        }
+    }
+
+    /* kill any numerical noise */
+    mtrx__.make_real_diag(N__ + n__);
+
+    /* save new matrix */
+    if (mtrx_old__) {
+        splindex<splindex_t::block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(),
+                                                   mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+        splindex<splindex_t::block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(),
+                                                   mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < spl_col.local_size(); i++) {
+            std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &(*mtrx_old__)(0, i));
+        }
+    }
+}
+
+void
+Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::initialize_subspace");
 
@@ -68,7 +165,7 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
 }
 
 template <typename T>
-inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_ao__) const
+void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
@@ -334,3 +431,85 @@ inline void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_a
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 }
+
+template <typename T>
+void Band::check_residuals(K_point& kp__, Hamiltonian& H__) const
+{
+    if (kp__.comm().rank() == 0) {
+        printf("checking residuals\n");
+    }
+
+    const bool nc_mag = (ctx_.num_mag_dims() == 3);
+    const int num_sc = nc_mag ? 2 : 1;
+
+    auto& psi = kp__.spinor_wave_functions();
+    Wave_functions hpsi(kp__.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+    Wave_functions spsi(kp__.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+    Wave_functions res(kp__.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+
+    if (is_device_memory(ctx_.preferred_memory_t())) {
+        auto& mpd = ctx_.mem_pool(memory_t::device);
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            psi.pw_coeffs(ispn).allocate(mpd);
+            psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
+        }
+        for (int i = 0; i < num_sc; i++) {
+            res.pw_coeffs(i).allocate(mpd);
+            hpsi.pw_coeffs(i).allocate(mpd);
+            spsi.pw_coeffs(i).allocate(mpd);
+        }
+    }
+    kp__.beta_projectors().prepare();
+    /* compute residuals */
+    for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
+        if (nc_mag) {
+            /* apply Hamiltonian and S operators to the wave-functions */
+            H__.apply_h_s<T>(&kp__, 2, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
+        } else {
+            /* apply Hamiltonian and S operators to the wave-functions */
+            H__.apply_h_s<T>(&kp__, ispin_step, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
+        }
+
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            if (is_device_memory(ctx_.preferred_memory_t())) {
+                hpsi.copy_to(spin_range(ispn), memory_t::host, 0, ctx_.num_bands());
+                spsi.copy_to(spin_range(ispn), memory_t::host, 0, ctx_.num_bands());
+            }
+            #pragma omp parallel for schedule(static)
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                for (int ig = 0; ig < kp__.num_gkvec_loc(); ig++) {
+                    res.pw_coeffs(ispn).prime(ig, j) = hpsi.pw_coeffs(ispn).prime(ig, j) -
+                                                       spsi.pw_coeffs(ispn).prime(ig, j) *
+                                                       kp__.band_energy(j, ispin_step);
+                }
+            }
+        }
+        /* get the norm */
+        auto l2norm = res.l2norm(device_t::CPU, nc_mag ? spin_range(2) : spin_range(0), ctx_.num_bands());
+
+        if (kp__.comm().rank() == 0) {
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                printf("band: %3i, residual l2norm: %18.12f\n", j, l2norm[j]);
+            }
+        }
+    }
+    kp__.beta_projectors().dismiss();
+    if (is_device_memory(ctx_.preferred_memory_t())) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            psi.pw_coeffs(ispn).deallocate(memory_t::device);
+        }
+    }
+}
+
+template
+void
+Band::set_subspace_mtrx<double>(int N__, int n__, Wave_functions& phi__, Wave_functions& op_phi__,
+                                dmatrix<double>& mtrx__, dmatrix<double>* mtrx_old__) const;
+
+template
+void
+Band::set_subspace_mtrx<double_complex>(int N__, int n__, Wave_functions& phi__, Wave_functions& op_phi__,
+                                        dmatrix<double_complex>& mtrx__, dmatrix<double_complex>* mtrx_old__) const;
+
+}
+

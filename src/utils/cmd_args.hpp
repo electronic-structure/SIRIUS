@@ -79,7 +79,7 @@ class cmd_args
     cmd_args(int argn__, char** argv__, std::initializer_list<std::pair<std::string, std::string>> keys__)
     {
         register_key("--help", "print this help and exit");
-        for (auto key: keys__) {
+        for (auto key : keys__) {
             register_key("--" + key.first, key.second);
         }
         parse_args(argn__, argv__);

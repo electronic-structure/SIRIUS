@@ -17,12 +17,16 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file solve.hpp
+/** \file solve.cpp
  *
  *   \brief Contains interfaces to the sirius::Band solvers.
  */
+#include "band.hpp"
 
-inline void Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
+namespace sirius {
+
+void
+Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
 {
     if (ctx_.control().use_second_variation_) {
         /* solve non-magnetic Hamiltonian (so-called first variation) */
@@ -45,7 +49,8 @@ inline void Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__
 }
 
 template <typename T>
-inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
+int
+Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
 {
     hamiltonian__.local_op().prepare(kp__.gkvec_partition());
     ctx_.fft_coarse().prepare(kp__.gkvec_partition());
@@ -99,7 +104,8 @@ inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian_
     return niter;
 }
 
-inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) const
+void
+Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) const
 {
     PROFILE("sirius::Band::solve");
 
@@ -159,3 +165,5 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
         }
     }
 }
+
+} // namespace
