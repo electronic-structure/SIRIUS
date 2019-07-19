@@ -29,40 +29,6 @@
 #include "K_point/k_point_set.hpp"
 #include "Hamiltonian/hamiltonian.hpp"
 
-#if defined(__GPU)
-extern "C" void residuals_aux_gpu(int num_gvec_loc__,
-                                  int num_res_local__,
-                                  int* res_idx__,
-                                  double* eval__,
-                                  double_complex const* hpsi__,
-                                  double_complex const* opsi__,
-                                  double const* h_diag__,
-                                  double const* o_diag__,
-                                  double_complex* res__,
-                                  double* res_norm__,
-                                  double* p_norm__,
-                                  int gkvec_reduced__,
-                                  int mpi_rank__);
-
-extern "C" void compute_residuals_gpu(double_complex* hpsi__,
-                                      double_complex* opsi__,
-                                      double_complex* res__,
-                                      int num_gvec_loc__,
-                                      int num_bands__,
-                                      double* eval__);
-
-extern "C" void apply_preconditioner_gpu(double_complex* res__,
-                                         int num_rows_loc__,
-                                         int num_bands__,
-                                         double* eval__,
-                                         const double* h_diag__,
-                                         const double* o_diag__);
-
-extern "C" void make_real_g0_gpu(double_complex* res__,
-                                 int ld__,
-                                 int n__);
-#endif
-
 namespace sirius {
 
 /// Setup and solve the eigen value problem.
@@ -107,41 +73,11 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     int diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const;
 
     template <typename T>
-    std::vector<double> diag_S_davidson(K_point& kp__, Hamiltonian& H__) const;
+    mdarray<double, 1> diag_S_davidson(K_point& kp__, Hamiltonian& H__) const;
 
     ///// RMM-DIIS diagonalization.
     //template <typename T>
     //void diag_pseudo_potential_rmm_diis(K_point* kp__, int ispn__, Hamiltonian& H__) const;
-
-    /// Auxiliary function used internally by residuals() function.
-    mdarray<double, 1> residuals_aux(K_point* kp__,
-                                     int ispn__,
-                                     int num_bands__,
-                                     std::vector<double>& eval__,
-                                     Wave_functions& hpsi__,
-                                     Wave_functions& opsi__,
-                                     Wave_functions& res__,
-                                     mdarray<double, 2>& h_diag__,
-                                     mdarray<double, 1>& o_diag__) const;
-
-    /// Compute preconditioned residuals
-    template <typename T>
-    int residuals(K_point* kp__,
-                  int ispn__,
-                  int N__,
-                  int num_bands__,
-                  std::vector<double>& eval__,
-                  std::vector<double>& eval_old__,
-                  dmatrix<T>& evec__,
-                  Wave_functions& hphi__,
-                  Wave_functions& ophi__,
-                  Wave_functions& hpsi__,
-                  Wave_functions& opsi__,
-                  Wave_functions& res__,
-                  mdarray<double, 2>& h_diag__,
-                  mdarray<double, 1>& o_diag__,
-                  double eval_tolerance__,
-                  double norm_tolerance__) const; //TODO: more documentation here
 
     /// Check wave-functions for orthonormalization.
     template <typename T>
@@ -244,14 +180,6 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
         return evp_work_count_;
     }
 };
-
-//#include "residuals.hpp"
-//#include "diag_full_potential.hpp"
-//#include "diag_pseudo_potential.hpp"
-//#include "davidson.hpp"
-//#include "initialize_subspace.hpp"
-//#include "solve.hpp"
-//#include "set_subspace_mtrx.hpp"
 
 }
 

@@ -453,7 +453,7 @@ Band::diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const
 
         /* apply Hamiltonian and S operators to the basis functions */
         H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, 0, num_bands, phi, &hphi, &sphi);
-        
+
         orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, 0, num_bands, ovlp, res);
 
         /* setup eigen-value problem
@@ -514,12 +514,8 @@ Band::diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const
             if (k != itso.num_steps_ - 1) {
                 /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
                 n = sirius::residuals<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step,
-                                 N, num_bands, eval, evec, hphi, sphi, hpsi, spsi, res, h_diag, o_diag,
-                                 itso.converge_by_energy_, itso.residual_tolerance_, is_converged);
-
-                //n = residuals<T>(kp__, nc_mag ? 2 : ispin_step, N, num_bands, eval, eval_old, evec, hphi,
-                //                 sphi, hpsi, spsi, res, h_diag, o_diag, itso.energy_tolerance_,
-                //                 itso.residual_tolerance_);
+                                         N, num_bands, eval, evec, hphi, sphi, hpsi, spsi, res, h_diag, o_diag,
+                                         itso.converge_by_energy_, itso.residual_tolerance_, is_converged);
             }
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -690,7 +686,7 @@ Band::diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const
 }
 
 template <typename T>
-std::vector<double>
+mdarray<double, 1>
 Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::diag_S_davidson");
@@ -795,14 +791,12 @@ Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__) const
     auto o_diag_tmp = H__.get_o_diag<T>(&kp__);
 
     mdarray<double, 2> o_diag(kp__.num_gkvec_loc(), num_sc, memory_t::host, "o_diag");
-    mdarray<double, 1> o_diag1(kp__.num_gkvec_loc());
+    mdarray<double, 2> o_diag1(kp__.num_gkvec_loc(), num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
         for (int ig = 0; ig < kp__.num_gkvec_loc(); ig++) {
             o_diag(ig, ispn) = o_diag_tmp[ig];
+            o_diag1(ig, ispn) = 1.0;
         }
-    }
-    for (int ig = 0; ig < kp__.num_gkvec_loc(); ig++) {
-        o_diag1[ig] = 1;
     }
 
     auto& std_solver = ctx_.std_evp_solver();
@@ -818,8 +812,9 @@ Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__) const
     /* number of newly added basis functions */
     int n = nevec;
 
-    std::vector<double> eval(nevec);
-    std::vector<double> eval_old(nevec, 1e100);
+    mdarray<double, 1> eval(nevec);
+    mdarray<double, 1> eval_old(nevec);
+    eval_old = [](){return 1e10;};
 
     for (int k = 0; k < itso.num_steps_; k++) {
 
@@ -836,10 +831,10 @@ Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__) const
         /* increase size of the variation space */
         N += n;
 
-        eval_old = eval;
+        eval >> eval_old;
 
         /* solve standard eigen-value problem with the size N */
-        if (std_solver.solve(N, nevec, ovlp, eval.data(), evec)) {
+        if (std_solver.solve(N, nevec, ovlp, &eval[0], evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
@@ -857,8 +852,10 @@ Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__) const
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
-            n = residuals(&kp__, nc_mag ? 2 : 0, N, nevec, eval, eval_old, evec, sphi, phi, spsi, psi, res, o_diag, o_diag1,
-                          iterative_solver_tolerance, itso.residual_tolerance_);
+            n = sirius::residuals<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0,
+                                     N, nevec, eval, evec, sphi, phi, spsi, psi, res, o_diag, o_diag1,
+                                     itso.converge_by_energy_, itso.residual_tolerance_,
+                                     [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < iterative_solver_tolerance;});
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -1536,16 +1533,12 @@ Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__) const
 //}
 
 template
-std::vector<double>
+mdarray<double, 1>
 Band::diag_S_davidson<double>(K_point& kp__, Hamiltonian& H__) const;
 
 template
-std::vector<double>
+mdarray<double, 1>
 Band::diag_S_davidson<double_complex>(K_point& kp__, Hamiltonian& H__) const;
-
-//template
-//void
-//Band::diag_pseudo_potential_exact<double>(K_point* kp__, int ispn__, Hamiltonian& H__) const;
 
 template
 void
