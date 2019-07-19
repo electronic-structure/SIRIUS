@@ -17,10 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file diag_pseudo_potential.hpp
+/** \file diag_pseudo_potential.cpp
  *
  *   \brief Diagonalization of pseudopotential Hamiltonian.
  */
+
+#include "band.hpp"
+#include "residuals.hpp"
 
 #if defined(__GPU) && defined(__CUDA)
 #include "../SDDK/GPU/acc.hpp"
@@ -32,6 +35,8 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  acc_complex_double_t* phi1,
                                                  acc_complex_double_t* phi2);
 #endif
+
+namespace sirius {
 
 template <typename T>
 int Band::diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const
@@ -85,9 +90,8 @@ int Band::diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const
 }
 
 template <typename T>
-inline void Band::diag_pseudo_potential_exact(K_point* kp__,
-                                              int ispn__,
-                                              Hamiltonian& H__) const
+void
+Band::diag_pseudo_potential_exact(K_point* kp__, int ispn__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential_exact");
 
@@ -256,8 +260,8 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 }
 
 template <typename T>
-inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
-                                                Hamiltonian&   H__) const
+int
+Band::diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential_davidson");
 
@@ -362,7 +366,13 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     /* get diagonal elements for preconditioning */
     auto h_diag = H__.get_h_diag<T>(kp__);
-    auto o_diag = H__.get_o_diag<T>(kp__);
+    auto o_diag1 = H__.get_o_diag<T>(kp__);
+    mdarray<double, 2> o_diag(kp__->num_gkvec_loc(), ctx_.num_spins());
+    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+        for (int j = 0; j < kp__->num_gkvec_loc(); j++) {
+            o_diag(j, ispn) = o_diag1[j];
+        }
+    }
 
     if (ctx_.control().print_checksum_) {
         auto cs1 = h_diag.checksum();
@@ -394,13 +404,33 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
 
-        std::vector<double> eval(num_bands);
-        std::vector<double> eval_old(num_bands, 1e100);
+        mdarray<double, 1> eval(num_bands);
+        mdarray<double, 1> eval_old(num_bands);
+        eval_old = [](){return 1e10;};
+
+        /* check if band energy is converged */
+        auto is_converged = [&](int j__, int ispn__) -> bool
+        {
+            double o1 = std::abs(kp__->band_occupancy(j__, ispn__));
+            double o2 = std::abs(1 - o1);
+
+            double tol = o1 * ctx_.iterative_solver_tolerance() +
+                         o2 * (ctx_.iterative_solver_tolerance() + itso.empty_states_tolerance_);
+            if (std::abs(eval[j__] - eval_old[j__]) > tol) {
+                return false;
+            } else {
+                return true;
+            }
+        };
+
+        //std::vector<double> eval(num_bands);
+        //std::vector<double> eval_old(num_bands, 1e100);
 
         if (itso.init_eval_old_) {
-            for (int j = 0; j < num_bands; j++) {
-                eval_old[j] = kp__->band_energy(j, ispin_step);
-            }
+            //for (int j = 0; j < num_bands; j++) {
+            //    eval_old[j] = kp__->band_energy(j, ispin_step);
+            //}
+            eval_old = [&](int64_t j) {return kp__->band_energy(j, ispin_step);};
         }
 
         /* trial basis functions */
@@ -459,7 +489,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         auto p1 = std::unique_ptr<utils::profiler>(new utils::profiler(__function_name__, __FILE__, __LINE__,
             "sirius::Band::diag_pseudo_potential_davidson|evp"));
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (std_solver.solve(N, num_bands, hmlt, eval.data(), evec)) {
+        if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
@@ -483,9 +513,13 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             /* don't compute residuals on last iteration */
             if (k != itso.num_steps_ - 1) {
                 /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-                n = residuals<T>(kp__, nc_mag ? 2 : ispin_step, N, num_bands, eval, eval_old, evec, hphi,
-                                 sphi, hpsi, spsi, res, h_diag, o_diag, itso.energy_tolerance_,
-                                 itso.residual_tolerance_);
+                n = sirius::residuals<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step,
+                                 N, num_bands, eval, evec, hphi, sphi, hpsi, spsi, res, h_diag, o_diag,
+                                 itso.converge_by_energy_, itso.residual_tolerance_, is_converged);
+
+                //n = residuals<T>(kp__, nc_mag ? 2 : ispin_step, N, num_bands, eval, eval_old, evec, hphi,
+                //                 sphi, hpsi, spsi, res, h_diag, o_diag, itso.energy_tolerance_,
+                //                 itso.residual_tolerance_);
             }
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -584,20 +618,20 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             /* increase size of the variation space */
             N += n;
 
-            eval_old = eval;
+            eval >> eval_old;
 
             auto p1 = std::unique_ptr<utils::profiler>(new utils::profiler(__function_name__, __FILE__, __LINE__,
                 "sirius::Band::diag_pseudo_potential_davidson|evp"));
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N */
-                if (std_solver.solve(N, num_bands, hmlt, eval.data(), evec)) {
+                if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
                     std::stringstream s;
                     s << "error in diagonalziation";
                     TERMINATE(s);
                 }
             } else {
                 /* solve generalized eigen-value problem with the size N */
-                if (gen_solver.solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
+                if (gen_solver.solve(N, num_bands, hmlt, ovlp, &eval[0], evec)) {
                     std::stringstream s;
                     s << "error in diagonalziation";
                     TERMINATE(s);
@@ -656,7 +690,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 }
 
 template <typename T>
-inline std::vector<double> Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__) const
+std::vector<double>
+Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::diag_S_davidson");
 
@@ -1499,3 +1534,29 @@ inline std::vector<double> Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__
 ////        delete ophi[i];
 ////    }
 //}
+
+template
+std::vector<double>
+Band::diag_S_davidson<double>(K_point& kp__, Hamiltonian& H__) const;
+
+template
+std::vector<double>
+Band::diag_S_davidson<double_complex>(K_point& kp__, Hamiltonian& H__) const;
+
+//template
+//void
+//Band::diag_pseudo_potential_exact<double>(K_point* kp__, int ispn__, Hamiltonian& H__) const;
+
+template
+void
+Band::diag_pseudo_potential_exact<double_complex>(K_point* kp__, int ispn__, Hamiltonian& H__) const;
+
+template
+int
+Band::diag_pseudo_potential_davidson<double>(K_point* kp__, Hamiltonian& H__) const;
+
+template
+int
+Band::diag_pseudo_potential_davidson<double_complex>(K_point* kp__, Hamiltonian& H__) const;
+
+}

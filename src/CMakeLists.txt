@@ -14,7 +14,8 @@ if(USE_CUDA)
   set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
 
-set(_SOURSES "Density/density.cpp;dft_ground_state.cpp"
+set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.cpp"
+  "Band/diag_pseudo_potential.cpp;Band/diag_full_potential.cpp;Band/residuals.cpp"
   "Hubbard/apply_hubbard_potential.cpp"
   "Hubbard/Hubbard.cpp"
   "Hubbard/hubbard_generate_atomic_orbitals.cpp"

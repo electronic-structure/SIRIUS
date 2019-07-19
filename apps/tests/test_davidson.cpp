@@ -78,7 +78,7 @@ void test_davidson(device_t pu__, double pw_cutoff__, double gk_cutoff__, int N_
     /* set local part of potential */
     std::vector<double> vloc(atype.radial_grid().num_points());
     for (int i = 0; i < atype.radial_grid().num_points(); i++) {
-        double x =  atype.radial_grid(i);
+        //double x =  atype.radial_grid(i);
         vloc[i] = 0.0; //-atype.zn() / (std::exp(-x * (x + 1)) + x);
     }
     atype.local_potential(vloc);

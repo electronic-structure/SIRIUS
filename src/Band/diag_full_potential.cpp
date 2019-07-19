@@ -17,12 +17,17 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file diag_full_potential.hpp
+/** \file diag_full_potential.cpp
  *
  *   \brief Diagonalization of full-potential Hamiltonian.
  */
 
-inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamiltonian__) const
+#include "band.hpp"
+
+namespace sirius {
+
+void
+Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamiltonian__) const
 {
     PROFILE("sirius::Band::diag_fv_exact");
 
@@ -43,7 +48,7 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
             hamiltonian__.set_fv_h_o<device_t::CPU, electronic_structure_method_t::full_potential_lapwlo>(&kp, h, o);
             break;
         }
-#ifdef __GPU
+#if defined(__GPU)
         case device_t::GPU: {
             hamiltonian__.set_fv_h_o<device_t::GPU, electronic_structure_method_t::full_potential_lapwlo>(&kp, h, o);
             break;
@@ -197,7 +202,7 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
     }
 }
 
-inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
+void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::get_singular_components");
 
@@ -400,7 +405,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
     }
 }
 
-inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltonian& H__) const
+void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::diag_fv_davidson");
 
@@ -625,7 +630,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
     kp__.set_fv_eigen_values(&eval[0]);
 }
 
-inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonian& hamiltonian__) const
+void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonian& hamiltonian__) const
 {
     PROFILE("sirius::Band::diag_sv");
 
@@ -833,3 +838,5 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
 //    kp->set_band_energies(&eval[0]);
 //    return niter;
 //}
+
+} // namespace
