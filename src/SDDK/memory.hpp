@@ -128,6 +128,19 @@ inline device_t get_device_t(memory_t mem__)
     return device_t::CPU; // make compiler happy
 }
 
+inline device_t get_device_t(std::string name__)
+{
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+    if (name__ == "cpu") {
+        return device_t::CPU;
+    } else if (name__ == "gpu") {
+        return device_t::GPU;
+    } else {
+        throw std::runtime_error("wrong processing unit");
+    }
+    return device_t::CPU; // make compiler happy
+}
+
 /// Allocate n elements in a specified memory.
 /** Allocate a memory block of the memory_t type. Return a nullptr if this memory is not available, otherwise
  *  return a pointer to an allocated block. */

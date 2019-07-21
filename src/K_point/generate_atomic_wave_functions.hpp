@@ -40,7 +40,7 @@ inline void K_point::generate_atomic_wave_functions(const basis_functions_index 
     lmax = std::max(lmax, unit_cell_.lmax());
 
     auto& atom_type   = unit_cell_.atom(atom).type();
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
         /* global index of G+k vector */
         int igk = this->idxgk(igk_loc);
@@ -131,7 +131,7 @@ inline void K_point::compute_gradient_wave_functions(Wave_functions& phi,
         qalpha[igk_loc] = double_complex(0.0, -G[direction]);
     }
 
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (int nphi = 0; nphi < num_wf; nphi++) {
         for (int ispn = 0; ispn < phi.num_sc(); ispn++) {
             for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {

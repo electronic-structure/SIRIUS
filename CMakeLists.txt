@@ -76,6 +76,8 @@ endif()
 
 if (USE_TIMER)
   add_definitions("-D__USE_TIMER")
+  add_definitions("-D__PROFILE")
+  add_definitions("-D__PROFILE_TIME")
 endif()
 
 find_package(MPI REQUIRED)
@@ -137,7 +139,7 @@ if(USE_CUDA)
   endif()
 
   if(USE_NVTX)
-    add_definitions("-D__GPU_NVTX")
+    add_definitions("-D__CUDA_NVTX")
     set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};-lnvToolsExt")
   endif()
 endif(USE_CUDA)

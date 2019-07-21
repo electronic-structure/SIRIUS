@@ -143,7 +143,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
 //    sirius::Timer t1("gemm_only", comm); 
 //    gemm_type one = 1;
 //    gemm_type zero = 0;
-//    linalg<CPU>::gemm(2, 0, M, M, K, one, a, 0, 0, a, 0, 0, zero, c, 0, 0);
+//    linalg<device_t::CPU>::gemm(2, 0, M, M, K, one, a, 0, 0, a, 0, 0, zero, c, 0, 0);
 //    #ifdef _GPU_
 //    cuda_device_synchronize();
 //    #endif

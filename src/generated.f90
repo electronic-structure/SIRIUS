@@ -2964,3 +2964,110 @@ end interface
 call sirius_get_fv_eigen_values_aux(handler,ik,fv_eval,num_fv_states)
 end subroutine sirius_get_fv_eigen_values
 
+!> @brief Set the values of the function on the regular grid.
+!> @param [in] handler DFT ground state handler.
+!> @param [in] label Label of the function.
+!> @param [in] grid_dims Dimensions of the FFT grid.
+!> @param [in] local_box_origin Coordinates of the local box origin for each MPI rank
+!> @param [in] local_box_size Dimensions of the local box for each MPI rank.
+!> @param [in] fcomm Fortran communicator used to partition FFT grid into local boxes.
+!> @param [in] values Values of the function (local buffer for each MPI rank).
+!> @param [in] transform_to_pw If true, transform function to PW domain.
+subroutine sirius_set_rg_values(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_pw)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: grid_dims
+integer(C_INT), intent(in) :: local_box_origin
+integer(C_INT), intent(in) :: local_box_size
+integer(C_INT), intent(in) :: fcomm
+real(C_DOUBLE), intent(in) :: values
+logical(C_BOOL), optional, target, intent(in) :: transform_to_pw
+type(C_PTR) :: transform_to_pw_ptr
+interface
+subroutine sirius_set_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_pw)&
+&bind(C, name="sirius_set_rg_values")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: grid_dims
+integer(C_INT), intent(in) :: local_box_origin
+integer(C_INT), intent(in) :: local_box_size
+integer(C_INT), intent(in) :: fcomm
+real(C_DOUBLE), intent(in) :: values
+type(C_PTR), value :: transform_to_pw
+end subroutine
+end interface
+
+transform_to_pw_ptr = C_NULL_PTR
+if (present(transform_to_pw)) transform_to_pw_ptr = C_LOC(transform_to_pw)
+
+call sirius_set_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_pw_ptr)
+end subroutine sirius_set_rg_values
+
+!> @brief Get the values of the function on the regular grid.
+!> @param [in] handler DFT ground state handler.
+!> @param [in] label Label of the function.
+!> @param [in] grid_dims Dimensions of the FFT grid.
+!> @param [in] local_box_origin Coordinates of the local box origin for each MPI rank
+!> @param [in] local_box_size Dimensions of the local box for each MPI rank.
+!> @param [in] fcomm Fortran communicator used to partition FFT grid into local boxes.
+!> @param [out] values Values of the function (local buffer for each MPI rank).
+!> @param [in] transform_to_rg If true, transform function to regular grid before fetching the values.
+subroutine sirius_get_rg_values(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_rg)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: grid_dims
+integer(C_INT), intent(in) :: local_box_origin
+integer(C_INT), intent(in) :: local_box_size
+integer(C_INT), intent(in) :: fcomm
+real(C_DOUBLE), intent(out) :: values
+logical(C_BOOL), optional, target, intent(in) :: transform_to_rg
+type(C_PTR) :: transform_to_rg_ptr
+interface
+subroutine sirius_get_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_rg)&
+&bind(C, name="sirius_get_rg_values")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: grid_dims
+integer(C_INT), intent(in) :: local_box_origin
+integer(C_INT), intent(in) :: local_box_size
+integer(C_INT), intent(in) :: fcomm
+real(C_DOUBLE), intent(out) :: values
+type(C_PTR), value :: transform_to_rg
+end subroutine
+end interface
+
+transform_to_rg_ptr = C_NULL_PTR
+if (present(transform_to_rg)) transform_to_rg_ptr = C_LOC(transform_to_rg)
+
+call sirius_get_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
+&fcomm,values,transform_to_rg_ptr)
+end subroutine sirius_get_rg_values
+
+!> @brief Get the total magnetization of the system.
+!> @param [in] handler DFT ground state handler.
+!> @param [out] mag 3D magnetization vector (x,y,z components).
+subroutine sirius_get_total_magnetization(handler,mag)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: mag
+interface
+subroutine sirius_get_total_magnetization_aux(handler,mag)&
+&bind(C, name="sirius_get_total_magnetization")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: mag
+end subroutine
+end interface
+
+call sirius_get_total_magnetization_aux(handler,mag)
+end subroutine sirius_get_total_magnetization
+

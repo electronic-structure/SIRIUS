@@ -34,6 +34,7 @@
 #include "basis_functions_index.hpp"
 #include "hubbard_orbitals_descriptor.hpp"
 #include "SHT/sht.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -82,6 +83,7 @@ class Atom_type
     std::vector<radial_solution_descriptor_set> aw_descriptors_;
 
     /// List of radial descriptor sets used to construct local orbitals.
+    /** This list defines all local orbitals for a given atom type */
     std::vector<local_orbital_descriptor> lo_descriptors_;
 
     /// Maximum number of AW radial functions across angular momentums.
@@ -90,9 +92,11 @@ class Atom_type
     int offset_lo_{-1}; // TODO: better name
 
     /// Index of radial basis functions.
+    /** This index is used in LAPW to combine APW and local-orbital radial functions */
     radial_functions_index indexr_;
 
     /// Index of atomic basis functions (radial function * spherical harmonic).
+    /** This index is used in LAPW to combine APW and local-orbital muffin-tin functions */
     basis_functions_index indexb_;
 
     /// Radial functions of beta-projectors.
@@ -103,10 +107,10 @@ class Atom_type
         Beta-projectors must be loaded before loading the Q radial functions. */
     mdarray<Spline<double>, 2> q_radial_functions_l_;
 
-    /// index for the radial hubbard basis functions
+    /// Index for the radial hubbard basis functions.
     radial_functions_index indexr_wfc_;
 
-    /// Index of atomic  wavefunctions (radial function * spherical harmonic).
+    /// Index of atomic wavefunctions (radial function * spherical harmonic).
     basis_functions_index indexb_wfc_;
 
     /// Atomic wave-functions used to setup the initial subspace and to apply U-correction.
@@ -199,6 +203,11 @@ class Atom_type
 
     mutable mdarray<double, 3> rf_coef_;
     mutable mdarray<double, 3> vrf_coef_;
+
+    void read_hubbard_input();
+    void generate_f_coefficients(void);
+    // inline double ClebschGordan(const int l, const double j, const double m, const int spin);
+    // inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
 
     bool initialized_{false};
 
@@ -1065,17 +1074,11 @@ public:
         return ((indexb(xi).l == indexb(xj).l) && (indexb(xi).idxrf == indexb(xj).idxrf) &&
                 (std::abs(indexb(xi).j - indexb(xj).j) < 1e-8));
     }
-
-  private:
-    void read_hubbard_input();
-    void generate_f_coefficients(void);
-    // inline double ClebschGordan(const int l, const double j, const double m, const int spin);
-    // inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
 };
 
-    inline void Atom_type::init(int offset_lo__)
-    {
-        PROFILE("sirius::Atom_type::init");
+inline void Atom_type::init(int offset_lo__)
+{
+    PROFILE("sirius::Atom_type::init");
 
     /* check if the class instance was already initialized */
     if (initialized_) {

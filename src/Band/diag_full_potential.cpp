@@ -17,12 +17,18 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file diag_full_potential.hpp
+/** \file diag_full_potential.cpp
  *
  *   \brief Diagonalization of full-potential Hamiltonian.
  */
 
-inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamiltonian__) const
+#include "band.hpp"
+#include "residuals.hpp"
+
+namespace sirius {
+
+void
+Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamiltonian__) const
 {
     PROFILE("sirius::Band::diag_fv_exact");
 
@@ -43,7 +49,7 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
             hamiltonian__.set_fv_h_o<device_t::CPU, electronic_structure_method_t::full_potential_lapwlo>(&kp, h, o);
             break;
         }
-#ifdef __GPU
+#if defined(__GPU)
         case device_t::GPU: {
             hamiltonian__.set_fv_h_o<device_t::GPU, electronic_structure_method_t::full_potential_lapwlo>(&kp, h, o);
             break;
@@ -197,14 +203,14 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
     }
 }
 
-inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
+void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::get_singular_components");
 
     auto o_diag_tmp = H__.get_o_diag(&kp__, ctx_.theta_pw(0).real());
 
     mdarray<double, 2> o_diag(kp__.num_gkvec_loc(), 1, memory_t::host, "o_diag");
-    mdarray<double, 1> diag1(kp__.num_gkvec_loc(), memory_t::host, "diag1");
+    mdarray<double, 2> diag1(kp__.num_gkvec_loc(), 1, memory_t::host, "diag1");
     for (int ig = 0; ig < kp__.num_gkvec_loc(); ig++) {
         o_diag[ig] = o_diag_tmp[ig];
         diag1[ig]  = 1;
@@ -251,8 +257,9 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
         }
     }
 
-    std::vector<double> eval(ncomp, 1e10);
-    std::vector<double> eval_old(ncomp);
+    mdarray<double, 1> eval(ncomp);
+    mdarray<double, 1> eval_old(ncomp);
+    eval_old = [](){return 1e10;};
 
     if (ctx_.control().print_checksum_) {
         auto cs2 = phi.checksum(ctx_.processing_unit(), 0, 0, ncomp);
@@ -307,7 +314,6 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
         set_subspace_mtrx(N, n, phi, ophi, ovlp, &ovlp_old);
 
         if (ctx_.control().verification_ >= 1) {
-
             if (ctx_.control().verification_ >= 2) {
                 ovlp.serialize("overlap_ortho", N + n);
             }
@@ -323,17 +329,17 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
         /* increase size of the variation space */
         N += n;
 
-        eval_old = eval;
+        eval >> eval_old;
 
         /* solve standard eigen-value problem with the size N */
-        if (std_solver.solve(N, ncomp, ovlp, eval.data(), evec)) {
+        if (std_solver.solve(N, ncomp, ovlp, &eval[0], evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
         }
 
-        for (auto e : eval) {
-            if (e < 0) {
+        for (int i = 0; i < ncomp; i++) {
+            if (eval[i] < 0) {
                 std::stringstream s;
                 s << "overlap matrix is not positively defined";
                 TERMINATE(s);
@@ -352,8 +358,10 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
-            n = residuals(&kp__, 0, N, ncomp, eval, eval_old, evec, ophi, phi, opsi, psi, res, o_diag, diag1,
-                          itso.energy_tolerance_, itso.residual_tolerance_);
+            n = sirius::residuals(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0,
+                                  N, ncomp, eval, evec, ophi, phi, opsi, psi, res, o_diag, diag1,
+                                  itso.converge_by_energy_, itso.residual_tolerance_,
+                                  [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -396,11 +404,11 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
     }
 
     if (ctx_.control().verbosity_ >= 2 && kp__.comm().rank() == 0) {
-        printf("lowest and highest eigen-values of the singular components: %20.16f %20.16f\n", eval.front(), eval.back());
+        printf("smallest eigen-value of the singular components: %20.16f\n", eval[0]);
     }
 }
 
-inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltonian& H__) const
+void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::diag_fv_davidson");
 
@@ -409,7 +417,14 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
     get_singular_components(kp__, H__);
 
     auto h_diag = H__.get_h_diag(&kp__, H__.local_op().v0(0), ctx_.theta_pw(0).real());
-    auto o_diag = H__.get_o_diag(&kp__, ctx_.theta_pw(0).real());
+    auto o_diag1 = H__.get_o_diag(&kp__, ctx_.theta_pw(0).real());
+
+    mdarray<double, 2> o_diag(o_diag1.size(), ctx_.num_spins());
+    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+        for (int j = 0; j < static_cast<int>(o_diag1.size()); j++) {
+            o_diag(j, ispn) = o_diag1[j];
+        }
+    }
 
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
@@ -513,11 +528,13 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         }
     }
 
-    std::vector<double> eval(num_bands);
+    mdarray<double, 1> eval(num_bands);
+    mdarray<double, 1> eval_old(num_bands);
+    eval_old = [](){return 1e10;};
+
     for (int i = 0; i < num_bands; i++) {
         eval[i] = kp__.fv_eigen_value(i);
     }
-    std::vector<double> eval_old(num_bands);
 
     /* trial basis functions */
     phi.copy_from(ctx_.processing_unit(), num_bands, psi, 0, 0, 0, nlo + ncomp);
@@ -563,10 +580,10 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         /* increase size of the variation space */
         N += n;
 
-        eval_old = eval;
+        eval >> eval_old;
 
         /* solve standard eigen-value problem with the size N */
-        if (std_solver.solve(N, num_bands, hmlt, eval.data(), evec)) {
+        if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
@@ -584,8 +601,10 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            n = residuals(&kp__, 0, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag,
-                          itso.energy_tolerance_, itso.residual_tolerance_);
+            n = sirius::residuals(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0,
+                                  N, num_bands, eval, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag,
+                                  itso.converge_by_energy_, itso.residual_tolerance_,
+                                  [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -625,7 +644,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
     kp__.set_fv_eigen_values(&eval[0]);
 }
 
-inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonian& hamiltonian__) const
+void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonian& hamiltonian__) const
 {
     PROFILE("sirius::Band::diag_sv");
 
@@ -833,3 +852,5 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
 //    kp->set_band_energies(&eval[0]);
 //    return niter;
 //}
+
+} // namespace

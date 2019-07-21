@@ -45,7 +45,7 @@ double test_gemm(int M, int N, int K, int transa)
     c.zero();
 
     sirius::Timer t1("gemm_only"); 
-    linalg<CPU>::gemm(transa, 0, M, N, K, a.at<CPU>(), a.ld(), b.at<CPU>(), b.ld(), c.at<CPU>(), c.ld());
+    linalg<device_t::CPU>::gemm(transa, 0, M, N, K, a.at<device_t::CPU>(), a.ld(), b.at<device_t::CPU>(), b.ld(), c.at<device_t::CPU>(), c.ld());
     double tval = t1.stop();
     double perf = nop_gemm * 1e-9 * M * N * K / tval;
     return perf;
@@ -97,7 +97,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     sirius::Timer t1("gemm_only", comm); 
     gemm_type one = 1;
     gemm_type zero = 0;
-    linalg<CPU>::gemm(transa, 0, M, N - n, K, one, a, 0, 0, b, 0, n, zero, c, 0, 0);
+    linalg<device_t::CPU>::gemm(transa, 0, M, N - n, K, one, a, 0, 0, b, 0, n, zero, c, 0, 0);
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif
@@ -143,7 +143,7 @@ double test_pgemm_aHa(int M, int K, int nrow, int ncol, int bs)
     sirius::Timer t1("gemm_only", comm); 
     gemm_type one = 1;
     gemm_type zero = 0;
-    linalg<CPU>::gemm(2, 0, M, M, K, one, a, 0, 0, a, 0, 0, zero, c, 0, 0);
+    linalg<device_t::CPU>::gemm(2, 0, M, M, K, one, a, 0, 0, a, 0, 0, zero, c, 0, 0);
     #ifdef _GPU_
     cuda_device_synchronize();
     #endif

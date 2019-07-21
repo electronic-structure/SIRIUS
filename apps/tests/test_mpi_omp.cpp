@@ -85,7 +85,7 @@ void kernel_fft(int size, double_complex* buf)
 
 void kernel_zgemm(int size, double_complex* in, double_complex* out)
 {
-    linalg<CPU>::gemm(0, 0, size, size, size, double_complex(1, 0), in, size, in, size, double_complex(0, 0), out, size);
+    linalg<device_t::CPU>::gemm(0, 0, size, size, size, double_complex(1, 0), in, size, in, size, double_complex(0, 0), out, size);
 }
 
 void kernel_memcpy(int size, double_complex* in, double_complex* out)

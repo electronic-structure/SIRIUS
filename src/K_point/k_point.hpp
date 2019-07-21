@@ -300,10 +300,10 @@ class K_point
                 //                qinv(xi2, xi1) = ctx_.augmentation_op(iat).q_mtrx(xi2, xi1);
                 //            }
                 //        }
-                //        linalg<CPU>::geinv(nbf, qinv);
+                //        linalg<device_t::CPU>::geinv(nbf, qinv);
                 //
                 //        /* compute P^{+}*P */
-                //        linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(),
+                //        linalg<device_t::CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(),
                 //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
                 //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
                 //                          &p_mtrx_(0, 0, iat), p_mtrx_.ld());
@@ -315,7 +315,7 @@ class K_point
                 //            }
                 //        }
                 //        /* compute (Q^{-1} + P^{+}*P)^{-1} */
-                //        linalg<CPU>::geinv(nbf, qinv);
+                //        linalg<device_t::CPU>::geinv(nbf, qinv);
                 //        for (int xi1 = 0; xi1 < nbf; xi1++) {
                 //            for (int xi2 = 0; xi2 < nbf; xi2++) {
                 //                p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);

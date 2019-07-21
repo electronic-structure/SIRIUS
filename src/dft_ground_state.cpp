@@ -493,20 +493,26 @@ void DFT_ground_state::print_info()
         one_elec_en -= potential_.PAW_one_elec_energy();
     }
 
-    std::vector<double> mt_charge;
-    double it_charge;
-    double total_charge = density_.rho().integrate(mt_charge, it_charge);
+    auto result = density_.rho().integrate();
+
+    auto total_charge = std::get<0>(result);
+    auto it_charge    = std::get<1>(result);
+    auto mt_charge    = std::get<2>(result);
 
     double total_mag[3];
     std::vector<double> mt_mag[3];
     double it_mag[3];
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        total_mag[j] = density_.magnetization(j).integrate(mt_mag[j], it_mag[j]);
+        auto result = density_.magnetization(j).integrate();
+
+        total_mag[j] = std::get<0>(result);
+        it_mag[j]    = std::get<1>(result);
+        mt_mag[j]    = std::get<2>(result);
     }
 
     if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
         if (ctx_.full_potential()) {
-            double total_core_leakage = 0.0;
+            double total_core_leakage{0.0};
             printf("\n");
             printf("Charges and magnetic moments\n");
             for (int i = 0; i < 80; i++) {

@@ -26,6 +26,7 @@
 #define __FFT3D_HPP__
 
 #include <fftw3.h>
+#include <omp.h>
 #include "geometry3d.hpp"
 #include "fft3d_grid.hpp"
 #include "gvec.hpp"
@@ -1135,6 +1136,11 @@ class FFT3D : public FFT3D_grid
                 TERMINATE("wrong direction");
             }
         }
+    }
+
+    inline splindex<splindex_t::block> const& spl_z() const
+    {
+        return spl_z_;
     }
 };
 

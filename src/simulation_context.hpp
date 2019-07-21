@@ -922,8 +922,6 @@ class Simulation_context : public Simulation_parameters
                 //acc::set_device();
                 generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(memory_t::device),
                                            unit_cell().atom_coord(iat__).at(memory_t::device), phase_factors__.at(memory_t::device));
-#else
-                TERMINATE_NO_GPU
 #endif
                 break;
             }
@@ -1307,7 +1305,7 @@ inline void Simulation_context::initialize()
     /* check if we can use a GPU device */
     if (processing_unit() == device_t::GPU) {
 #if !defined(__GPU)
-        TERMINATE_NO_GPU;
+        throw std::runtime_error("not compiled with GPU support!");
 #endif
     }
 
@@ -1657,6 +1655,7 @@ inline void Simulation_context::print_info() const
     printf("number of core electrons           : %f\n", unit_cell().num_core_electrons());
     printf("number of valence electrons        : %f\n", unit_cell().num_valence_electrons());
     printf("total number of electrons          : %f\n", unit_cell().num_electrons());
+    printf("extra charge                       : %f\n", parameters_input().extra_charge_);
     printf("total number of aw basis functions : %i\n", unit_cell().mt_aw_basis_size());
     printf("total number of lo basis functions : %i\n", unit_cell().mt_lo_basis_size());
     printf("number of first-variational states : %i\n", num_fv_states());
@@ -1710,11 +1709,13 @@ inline void Simulation_context::print_info() const
                 printf("LAPACK\n");
                 break;
             }
-#ifdef __SCALAPACK
+#if defined(__SCALAPACK)
             case ev_solver_t::scalapack: {
                 printf("ScaLAPACK\n");
                 break;
             }
+#endif
+#if defined(__ELPA)
             case ev_solver_t::elpa1: {
                 printf("ELPA1\n");
                 break;
@@ -1724,6 +1725,7 @@ inline void Simulation_context::print_info() const
                 break;
             }
 #endif
+#if defined(__MAGMA)
             case ev_solver_t::magma: {
                 printf("MAGMA\n");
                 break;
@@ -1732,16 +1734,21 @@ inline void Simulation_context::print_info() const
                 printf("MAGMA with GPU pointers\n");
                 break;
             }
+#endif
             case ev_solver_t::plasma: {
                 printf("PLASMA\n");
                 break;
             }
+#if defined(__CUDA)
             case ev_solver_t::cusolver: {
                 printf("cuSOLVER\n");
                 break;
             }
+#endif
             default: {
-                TERMINATE("wrong eigen-value solver");
+                std::stringstream s;
+                s << "wrong eigen-value solver: " << evsn[i];
+                throw std::runtime_error(s.str());
             }
         }
     }

@@ -193,6 +193,7 @@ inline void orthogonalize(memory_t                     mem__,
 
         utils::timer t2("sddk::orthogonalize|transform");
 
+        int sid{0};
         for (int s: spins) {
             /* multiplication by triangular matrix */
             for (auto& e: wfs__) {
@@ -201,13 +202,15 @@ inline void orthogonalize(memory_t                     mem__,
                     linalg2(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__,
                                        &linalg_const<double_complex>::one(),
                                        reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
-                                       e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__), e->pw_coeffs(s).prime().ld());
+                                       e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
+                                       e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
                         linalg2(la__).trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__,
                                            &linalg_const<double_complex>::one(),
                                            reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
-                                           e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__), e->mt_coeffs(s).prime().ld());
+                                           e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
+                                           e->mt_coeffs(s).prime().ld(), stream_id(sid++));
                     }
                 }
                 /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
@@ -216,17 +219,20 @@ inline void orthogonalize(memory_t                     mem__,
                                        &linalg_const<double>::one(),
                                        reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
                                        reinterpret_cast<double*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
-                                       2 * e->pw_coeffs(s).prime().ld());
+                                       2 * e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
                         linalg2(la__).trmm('R', 'U', 'N', 2 * e->mt_coeffs(s).num_rows_loc(), n__,
                                            &linalg_const<double>::one(),
                                            reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
                                            reinterpret_cast<double*>(e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
-                                           2 * e->mt_coeffs(s).prime().ld());
+                                           2 * e->mt_coeffs(s).prime().ld(), stream_id(sid++));
                     }
                 }
             }
+        }
+        for (int i = 0; i < sid; i++) {
+            acc::sync_stream(stream_id(i));
         }
         t2.stop();
     } else { /* parallel transformation */

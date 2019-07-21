@@ -19,7 +19,7 @@
 
 /** \file radial_functions_index.hpp
  *
- *  \brief Contains definitiona and implementation of sirius::radial_functions_index class.
+ *  \brief Contains definition and implementation of sirius::radial_functions_index class.
  */
 
 #ifndef __RADIAL_FUNCTIONS_INDEX_HPP__
@@ -29,7 +29,7 @@ namespace sirius {
 
 /// Descriptor for the atomic radial functions.
 /** The radial functions \f$ f_{\ell \nu}(r) \f$ are labeled by two indices: orbital quantum number \f$ \ell \f$ and
- *  an order \f$ \nu \f$ for a given $\f \ell \f$.
+ *  an order \f$ \nu \f$ for a given \f$ \ell \f$.
  */
 struct radial_function_index_descriptor
 {
@@ -154,8 +154,9 @@ class radial_functions_index
             int order = radial_function_index_descriptors_[i].order;
             int idxlo = radial_function_index_descriptors_[i].idxlo;
             index_by_l_order_(l, order) = i;
-            if (idxlo >= 0)
+            if (idxlo >= 0) {
                 index_by_idxlo_(idxlo) = i;
+            }
         }
     }
 

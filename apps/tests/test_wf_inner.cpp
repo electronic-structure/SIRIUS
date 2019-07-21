@@ -76,11 +76,11 @@ void test_nested_omp(int BS)
     c.zero();
     
     /* warmup */
-    linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+    linalg<device_t::CPU>::gemm(2, 0, m, n, k, a, b, c);
 
     double t = omp_get_wtime();
     
-    linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+    linalg<device_t::CPU>::gemm(2, 0, m, n, k, a, b, c);
 
     double t0 = omp_get_wtime() - t;
     double perf = 8e-9 * m * n * k / t0;
@@ -106,7 +106,7 @@ void test_nested_omp(int BS)
             omp_set_num_threads(nt - 1);
 
             double t = omp_get_wtime();
-            linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+            linalg<device_t::CPU>::gemm(2, 0, m, n, k, a, b, c);
             tcomp = omp_get_wtime() - t;
         }
         else // thread#0
@@ -131,7 +131,7 @@ void test_nested_omp(int BS)
 
     t = omp_get_wtime();
     
-    linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+    linalg<device_t::CPU>::gemm(2, 0, m, n, k, a, b, c);
 
     t0 = omp_get_wtime() - t;
     perf = 8e-9 * m * n * k / t0;
@@ -155,7 +155,7 @@ void test_nested_omp(int BS)
             for (int i = 0; i < 4; i++)
             {
                 double t = omp_get_wtime();
-                linalg<CPU>::gemm(2, 0, m, n, k, a, b, c);
+                linalg<device_t::CPU>::gemm(2, 0, m, n, k, a, b, c);
                 double perf = 8e-9 * m * n * k / (omp_get_wtime() - t);
                 if (mpi_comm_world().rank() == 0)
                 {
@@ -193,7 +193,7 @@ double wf_inner_simple(int M, int N, int K, std::vector<int> mpi_grid)
     mpi_comm_world().barrier();
     double t0 = omp_get_wtime();
     
-    linalg<CPU>::gemm(2, 0, M, N, spl_K.local_size(), a, b, c_tmp);
+    linalg<device_t::CPU>::gemm(2, 0, M, N, spl_K.local_size(), a, b, c_tmp);
 
     double t1 = omp_get_wtime();
 
@@ -265,9 +265,9 @@ double wf_inner_reduce_to_one(int M, int N, int K, std::vector<int> mpi_grid)
             //    std::memcpy(&b_tmp(0, i), &b(0, c.spl_col().global_index(i, rank_col)), spl_K.local_size() * sizeof(double_complex));
 
             double t2 = omp_get_wtime();
-            //linalg<CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
+            //linalg<device_t::CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
             //                  a_tmp.at<CPU>(), a_tmp.ld(), b_tmp.at<CPU>(), b_tmp.ld(), c_tmp.at<CPU>(), c.num_rows_local(rank_row));
-            linalg<CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
+            linalg<device_t::CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
                               a.at<CPU>(0, bdd.offsets[rank_row]), a.ld(), b.at<CPU>(0, bdd.offsets[rank_col]), b.ld(),
                               c_tmp.at<CPU>(), c.num_rows_local(rank_row));
 
@@ -354,9 +354,9 @@ double wf_inner_reduce_to_one_async(int M, int N, int K, std::vector<int> mpi_gr
 
             double t3 = omp_get_wtime();
 
-            //linalg<CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
+            //linalg<device_t::CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
             //                  a_tmp.at<CPU>(), a_tmp.ld(), b_tmp.at<CPU>(), b_tmp.ld(), c_tmp.at<CPU>(0, s % 2), c.num_rows_local(rank_row));
-            linalg<CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
+            linalg<device_t::CPU>::gemm(2, 0, c.num_rows_local(rank_row), c.num_cols_local(rank_col), spl_K.local_size(),
                               a.at<CPU>(0, bdd.offsets[rank_row]), a.ld(), b.at<CPU>(0, bdd.offsets[rank_col]), b.ld(),
                               c_tmp.at<CPU>(0, s % 2), c.num_rows_local(rank_row));
 
@@ -434,7 +434,7 @@ double wf_inner_allreduce(int M, int N, int K, std::vector<int> mpi_grid, int BS
             int nrow = std::min(M, (ibr + 1) * BS) - row0;
 
             double t = omp_get_wtime();
-            linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
+            linalg<device_t::CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
                               a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
                               c_tmp.at<CPU>(), nrow);
             tcomp += (omp_get_wtime() - t);
@@ -537,7 +537,7 @@ double wf_inner_allreduce_async(int M, int N, int K, std::vector<int> mpi_grid, 
             dims[s % 2][3] = ncol;
             
             double t = omp_get_wtime();
-            linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
+            linalg<device_t::CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
                               a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
                               c_tmp.at<CPU>(0, s % 2), nrow);
             tcomp += (omp_get_wtime() - t);
@@ -650,7 +650,7 @@ double wf_inner_overlap_allreduce_omp(int M, int N, int K, std::vector<int> mpi_
                     }
                     
                     double t = omp_get_wtime();
-                    linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
+                    linalg<device_t::CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
                                       a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
                                       c_tmp.at<CPU>(0, s % 2), nrow);
                     tcomp += (omp_get_wtime() - t);
@@ -803,7 +803,7 @@ double wf_inner_overlap_allreduce_async_omp(int M, int N, int K, std::vector<int
                     dims[s % 2][2] = nrow;
                     dims[s % 2][3] = ncol;
 
-                    linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
+                    linalg<device_t::CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
                                       a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
                                       c_tmp.at<CPU>(0, s % 2), nrow);
 
@@ -917,7 +917,7 @@ double wf_inner_overlap_allreduce_pt(int M, int N, int K, std::vector<int> mpi_g
                 /* wait for the release of the buffer */
                 while (buf_lock[s % 2].load());
 
-                linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
+                linalg<device_t::CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
                                   a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
                                   c_tmp.at<CPU>(0, s % 2), nrow);
 
@@ -1042,7 +1042,7 @@ double wf_inner_overlap_allreduce_async_pt(int M, int N, int K, std::vector<int>
                 dims[s % 2][2] = nrow;
                 dims[s % 2][3] = ncol;
 
-                linalg<CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
+                linalg<device_t::CPU>::gemm(2, 0, nrow, ncol, spl_K.local_size(),
                                   a.at<CPU>(0, row0), a.ld(), b.at<CPU>(0, col0), b.ld(),
                                   c_tmp.at<CPU>(0, s % 2), nrow);
 

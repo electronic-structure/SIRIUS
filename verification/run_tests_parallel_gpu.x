@@ -24,7 +24,7 @@ for f in ./*; do
                    --test_against=output_ref.json \
                    --std_evp_solver_name=scalapack \
                    --gen_evp_solver_name=scalapack \
-                   --processing_unit=gpu --mpi_grid="2 2"
+                   --control.processing_unit=gpu --mpi_grid="2 2"
             err=$?
 
             if [ ${err} == 0 ]; then

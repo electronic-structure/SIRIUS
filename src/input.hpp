@@ -27,8 +27,12 @@
 #ifndef __INPUT_HPP__
 #define __INPUT_HPP__
 
+#include <list>
 #include "constants.hpp"
-#include "sddk.hpp"
+#include "SDDK/geometry3d.hpp"
+#include "utils/json.hpp"
+
+//#include "sddk.hpp"
 
 using namespace geometry3d;
 using namespace nlohmann;
@@ -114,7 +118,7 @@ struct Unit_cell_input
             auto a2 = section["lattice_vectors"][2].get<std::vector<double>>();
 
             if (a0.size() != 3 || a1.size() != 3 || a2.size() != 3) {
-                TERMINATE("wrong lattice vectors");
+                throw std::runtime_error("wrong lattice vectors");
             }
 
             double scale = section.value("lattice_vectors_scale", 1.0);
@@ -140,7 +144,7 @@ struct Unit_cell_input
 
             for (auto& label : section["atom_types"]) {
                 if (std::find(std::begin(labels_), std::end(labels_), label) != std::end(labels_)) {
-                    TERMINATE("duplicate atom type label");
+                    throw std::runtime_error("duplicate atom type label");
                 }
                 labels_.push_back(label);
             }
@@ -157,7 +161,7 @@ struct Unit_cell_input
                     auto v = section["atoms"][labels_[iat]][ia].get<std::vector<double>>();
 
                     if (!(v.size() == 3 || v.size() == 6)) {
-                        TERMINATE("wrong coordinates size");
+                        throw std::runtime_error("wrong coordinates size");
                     }
                     if (v.size() == 3) {
                         v.resize(6, 0.0);
@@ -425,7 +429,7 @@ struct Control_input
             std::list<std::string> kw;
             kw = {"low", "medium", "high"};
             if (std::find(kw.begin(), kw.end(), memory_usage_) == kw.end()) {
-                TERMINATE("wrong memory_usage input");
+                throw std::runtime_error("wrong memory_usage input");
             }
         }
     }
@@ -523,6 +527,9 @@ struct Parameters_input
     /// Reduction of the auxiliary magnetic field at each SCF step.
     double reduce_aux_bf_{0.0};
 
+    /// Introduce extra charge to the system. Positive charge means extra holes, negative charge - extra electrons.
+    double extra_charge_{0.0};
+
     void read(json const& parser)
     {
         if (parser.count("parameters")) {
@@ -570,6 +577,7 @@ struct Parameters_input
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
             reduce_aux_bf_  = parser["parameters"].value("reduce_aux_bf", reduce_aux_bf_);
+            extra_charge_   = parser["parameters"].value("extra_charge", extra_charge_);
 
             if (parser["parameters"].count("spin_orbit")) {
                 so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);
@@ -669,7 +677,7 @@ struct Hubbard_input
 
         for (auto& label : parser["unit_cell"]["atom_types"]) {
             if (std::find(std::begin(labels_), std::end(labels_), label) != std::end(labels_)) {
-                TERMINATE("duplicate atom type label");
+                throw std::runtime_error("duplicate atom type label");
             }
             labels_.push_back(label);
         }
@@ -685,7 +693,7 @@ struct Hubbard_input
                     this->wave_function_file_ = parser["hubbard"]["wave_function_file"].get<std::string>();
                     this->projection_method_  = 1;
                 } else {
-                    TERMINATE(
+                    throw std::runtime_error(
                         "The hubbard projection method 'file' requires the option 'wave_function_file' to be defined");
                 }
             }
@@ -758,7 +766,7 @@ struct Hubbard_input
                     coef__.level = parser["hubbard"][label]["hubbard_orbital"].get<std::string>();
                 } else {
                     if (hubbard_correction_) {
-                        TERMINATE(
+                        throw std::runtime_error(
                             "you selected the hubbard correction for this atom but did not specify the atomic level");
                     }
                 }
@@ -767,7 +775,7 @@ struct Hubbard_input
             if (parser["hubbard"][label].count("occupancy")) {
                 coef__.occupancy_ = parser["hubbard"][label]["occupancy"].get<double>();
             } else {
-                TERMINATE(
+                throw std::runtime_error(
                     "This atom has hubbard correction but the occupancy is not set up. Please check your input file");
             }
 
@@ -777,7 +785,7 @@ struct Hubbard_input
         }
 
         if (!hubbard_correction_) {
-            TERMINATE("The hubbard section is empty");
+            throw std::runtime_error("The hubbard section is empty");
         }
     }
 };

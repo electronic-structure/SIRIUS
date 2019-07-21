@@ -66,7 +66,7 @@ inline void K_point::test_fv_states()
     //dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
     //                             ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
     //
-    //linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), wf_size(), double_complex(1, 0),
+    //linalg<device_t::CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), wf_size(), double_complex(1, 0),
     //                  fv_states<true>().prime(), o_fv.prime(), double_complex(0, 0), ovlp);
     //
     //double max_err = 0;

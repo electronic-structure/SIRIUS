@@ -26,6 +26,7 @@
 #define __AUGMENTATION_OPERATOR_HPP__
 
 #include "radial_integrals.hpp"
+#include "SDDK/gvec.hpp"
 
 namespace sirius {
 
@@ -273,8 +274,9 @@ class Augmentation_operator_gvec_deriv
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             auto rtp = SHT::spherical_coordinates(gvec__.gvec_cart<index_domain_t::local>(igloc));
 
-            double           theta = rtp[1];
-            double           phi   = rtp[2];
+            double theta = rtp[1];
+            double phi   = rtp[2];
+
             vector3d<double> dtheta_dq({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
             vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
 

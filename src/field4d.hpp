@@ -25,6 +25,8 @@
 #ifndef __FIELD4D_HPP__
 #define __FIELD4D_HPP__
 
+#include "periodic_function.hpp"
+#include "mixer.hpp"
 #include "Symmetry/symmetrize.hpp"
 
 namespace sirius {
