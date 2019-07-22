@@ -28,6 +28,8 @@
 // the S matrix is already applied to phi_i
 
 #include "hubbard.hpp"
+#include "SDDK/wf_inner.hpp"
+
 namespace sirius {
 void Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int idx__, const int n__,
                                       Wave_functions& phi, Wave_functions& hphi)
@@ -43,7 +45,7 @@ void Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int
 
     /* First calculate the local part of the projections
        dm(i, n) = <phi_i| S |psi_{nk}> */
-    inner(ctx_.preferred_memory_t(),
+    ::sddk::inner(ctx_.preferred_memory_t(),
           ctx_.blas_linalg_t(),
           ispn__,
           hub_wf,
@@ -108,19 +110,5 @@ void Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int
         Up.copy_to(memory_t::device);
     }
 
-    transform<double_complex>(ctx_.preferred_memory_t(),
-                              ctx_.blas_linalg_t(),
-                              ispn__,
-                              1.0,
-                              {&hub_wf},
-                              0,
-                              this->number_of_hubbard_orbitals(),
-                              Up,
-                              0,
-                              0,
-                              1.0,
-                              {&hphi},
-                              idx__,
-                              n__);
 }
 }

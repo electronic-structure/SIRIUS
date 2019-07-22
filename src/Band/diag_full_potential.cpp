@@ -22,8 +22,10 @@
  *   \brief Diagonalization of full-potential Hamiltonian.
  */
 
+#include "SDDK/wf_trans.hpp"
 #include "band.hpp"
 #include "residuals.hpp"
+#include "SDDK/wf_ortho.hpp"
 
 namespace sirius {
 
@@ -306,7 +308,7 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
             }
         }
 
-        orthogonalize(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, ophi, N, n, ovlp, res);
+        ::sddk::orthogonalize(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, ophi, N, n, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -369,7 +371,7 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
             utils::timer t1("sirius::Band::get_singular_components|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
+            ::sddk::transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
@@ -380,7 +382,7 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
                 }
 
                 if (itso.converge_by_energy_) {
-                    transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
+                    ::sddk::transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
                 }
 
                 ovlp_old.zero();

@@ -22,7 +22,9 @@
  *   \brief Contains implementation of sirius::Band class.
  */
 
+#include "SDDK/wf_trans.hpp"
 #include "band.hpp"
+#include "SDDK/wf_inner.hpp"
 
 namespace sirius {
 
@@ -383,7 +385,7 @@ void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_ao__) co
 
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-        transform<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step,
+        ::sddk::transform<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step,
                      {&phi}, 0, num_phi_tot, evec, 0, 0, {&kp__->spinor_wave_functions()}, 0, num_bands);
 
         for (int j = 0; j < num_bands; j++) {

@@ -111,7 +111,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 
         if (ctx_.num_mag_dims() == 3) {
             /* full non colinear magnetism */
-            inner(mem, la, 2, kp->spinor_wave_functions(), 0, kp->num_occupied_bands(), kp->hubbard_wave_functions(), 0,
+            ::sddk::inner(mem, la, 2, kp->spinor_wave_functions(), 0, kp->num_occupied_bands(), kp->hubbard_wave_functions(), 0,
                   this->number_of_hubbard_orbitals(), dm, 0, 0);
         } else {
             /* SLDA + U, we need to do the explicit calculation. The hubbard

@@ -1324,6 +1324,7 @@ inline void K_point::load(HDF5_tree h5in, int id)
 //== }
 
 #include "initialize.hpp"
+#include "SDDK/wf_trans.hpp"
 #include "generate_fv_states.hpp"
 #include "generate_spinor_wave_functions.hpp"
 #include "generate_gklo_basis.hpp"

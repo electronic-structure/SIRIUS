@@ -25,6 +25,8 @@
 #ifndef __FFT3D_GRID_HPP__
 #define __FFT3D_GRID_HPP__
 
+#include <array>
+
 namespace sddk {
 
 /// Handling of FFT grids.

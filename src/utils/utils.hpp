@@ -253,10 +253,10 @@ double confined_polynomial(double r, double R, int p1, int p2, int dm);
 nlohmann::json read_json_from_file_or_string(std::string const& str__);
 
 /// Get high water mark and resident space size values of a given process.
-inline void get_proc_status(size_t* VmHWM__, size_t* VmRSS__);
+void get_proc_status(size_t* VmHWM__, size_t* VmRSS__);
 
 /// Get number of threads currently running for this process.
-inline int get_proc_threads();
+int get_proc_threads();
 
 /// Get a host name.
 inline std::string hostname()

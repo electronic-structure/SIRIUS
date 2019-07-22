@@ -158,7 +158,7 @@ inline void Non_local_operator::apply<double_complex>(int chunk__, int ispn_bloc
     /* compute O * <beta|phi> for atoms in a chunk */
     #pragma omp parallel
     {
-        acc::set_device_id(sddk::get_device_id(acc::num_devices())); // avoid cuda mth bugs
+        acc::set_device_id(::sddk::get_device_id(acc::num_devices())); // avoid cuda mth bugs
 
         #pragma omp for
         for (int i = 0; i < beta__.chunk(chunk__).num_atoms_; i++) {

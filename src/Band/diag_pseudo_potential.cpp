@@ -22,6 +22,7 @@
  *   \brief Diagonalization of pseudopotential Hamiltonian.
  */
 
+#include "SDDK/wf_trans.hpp"
 #include "band.hpp"
 #include "residuals.hpp"
 
@@ -454,7 +455,7 @@ Band::diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const
         /* apply Hamiltonian and S operators to the basis functions */
         H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, 0, num_bands, phi, &hphi, &sphi);
 
-        orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, 0, num_bands, ovlp, res);
+        ::sddk::orthogonalize(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, 0, num_bands, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -580,7 +581,7 @@ Band::diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const
             H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, N, n, phi, &hphi, &sphi);
 
             if (itso.orthogonalize_) {
-                orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, N, n, ovlp, res);
+                ::sddk::orthogonalize(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, N, n, ovlp, res);
             }
 
             /* setup eigen-value problem
@@ -821,7 +822,7 @@ Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__) const
         /* apply Hamiltonian and S operators to the basis functions */
         H__.apply_h_s<T>(&kp__, nc_mag ? 2 : 0, N, n, phi, nullptr, &sphi);
 
-        orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, sphi, N, n, ovlp, res);
+        ::sddk::orthogonalize(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, sphi, N, n, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -862,7 +863,7 @@ Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__) const
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, 0, N, evec, 0, 0, psi, 0, nevec);
+            ::sddk::transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, 0, N, evec, 0, 0, psi, 0, nevec);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {

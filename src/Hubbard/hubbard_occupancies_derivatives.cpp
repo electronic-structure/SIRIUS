@@ -30,6 +30,7 @@
 // gradient of beta projectors. Needed for the computations of the forces
 
 #include "hubbard.hpp"
+#include "SDDK/wf_inner.hpp"
 
 namespace sirius {
 
@@ -129,7 +130,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
 
     /* compute <phi^I_m| S | psi_{nk}> */
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        inner(mem, la, ispn, kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn), dphi, 0,
+        ::sddk::inner(mem, la, ispn, kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn), dphi, 0,
               this->number_of_hubbard_orbitals(), phi_s_psi, 0, ispn * this->number_of_hubbard_orbitals());
     }
 

@@ -21,7 +21,19 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "Hubbard/hubbard_generate_atomic_orbitals.cpp"
   "Hubbard/hubbard_occupancies_derivatives.cpp"
   "Hubbard/hubbard_occupancy.cpp"
-  "Hubbard/hubbard_potential_energy.cpp")
+  "Hubbard/hubbard_potential_energy.cpp"
+  "utils/cmd_args.cpp"
+  "utils/timer.cpp"
+  "utils/utils.cpp"
+  "SDDK/communicator.cpp"
+  "SDDK/dmatrix.cpp"
+  "SDDK/gvec.cpp"
+  "SDDK/matrix_storage.cpp"
+  "SDDK/wave_functions.cpp"
+  "SDDK/wf_inner.cpp"
+  "SDDK/wf_ortho.cpp"
+  "SDDK/wf_trans.cpp"
+  )
 
 # create library with .cpp, .cu and .f90 sources
 add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}")

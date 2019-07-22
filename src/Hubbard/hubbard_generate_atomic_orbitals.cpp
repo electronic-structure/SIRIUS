@@ -22,7 +22,9 @@
  *  \brief Generate atomic orbitals for Hubbard correction.
  */
 
+#include "SDDK/wf_trans.hpp"
 #include "hubbard.hpp"
+#include "SDDK/wf_inner.hpp"
 
 namespace sirius {
 void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator& q_op)
@@ -148,13 +150,13 @@ Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
         }
 
         if (ctx_.num_mag_dims() == 3) {
-            inner<double_complex>(mem, la, 2, sphi, 0, this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(), 0,
+            ::sddk::inner<double_complex>(mem, la, 2, sphi, 0, this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(), 0,
                                   this->number_of_hubbard_orbitals(), S, 0, 0);
         } else {
             // we do not need to treat both up and down spins for the
             // colinear case because the up and down components are
             // identical
-            inner<double_complex>(mem, la, 0, sphi, 0, this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(), 0,
+            ::sddk::inner<double_complex>(mem, la, 0, sphi, 0, this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(), 0,
                                   this->number_of_hubbard_orbitals(), S, 0, 0);
 
             // for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
@@ -219,7 +221,7 @@ Hubbard::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi)
 
         // now apply the overlap matrix
         // Apply the transform on the wave functions
-        transform<double_complex>(mem, la, (ctx_.num_mag_dims() == 3) ? 2 : 0, sphi, 0, this->number_of_hubbard_orbitals(),
+        ::sddk::transform(mem, la, (ctx_.num_mag_dims() == 3) ? 2 : 0, sphi, 0, this->number_of_hubbard_orbitals(),
                                   S, 0, 0, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals());
     }
 }

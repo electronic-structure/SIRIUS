@@ -608,7 +608,7 @@ class Hamiltonian0
                     atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
             }
         }
-        linalg<sddk::device_t::CPU>::gemm(0, 1, ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm__, hmt, halm__);
+        linalg<::sddk::device_t::CPU>::gemm(0, 1, ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm__, hmt, halm__);
     }
 
     inline Q_operator& Q() const

@@ -240,7 +240,7 @@ residuals(memory_t mem_type__, linalg_t la_type__, int ispn__, int N__, int num_
     }
 
     /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-    transform<T>(mem_type__, la_type__, ispn__, {&hphi__, &ophi__}, 0, N__, *evec_ptr, 0, 0, {&hpsi__, &opsi__}, 0, n);
+    ::sddk::transform(mem_type__, la_type__, ispn__, {&hphi__, &ophi__}, 0, N__, *evec_ptr, 0, 0, {&hpsi__, &opsi__}, 0, n);
 
     n = normalized_preconditioned_residuals<T>(mem_type__, spin_range(ispn__), n, *eval_ptr, hpsi__, opsi__, res__,
                                                h_diag__, o_diag__, norm_tolerance__);
