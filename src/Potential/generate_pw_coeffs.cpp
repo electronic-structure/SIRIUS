@@ -22,7 +22,11 @@
  *  \brief Generate plane-wave coefficients of the potential for the LAPW Hamiltonian.
  */
 
-inline void Potential::generate_pw_coefs()
+#include "potential.hpp"
+
+namespace sirius {
+
+void Potential::generate_pw_coefs()
 {
     PROFILE("sirius::Potential::generate_pw_coefs");
 
@@ -73,3 +77,6 @@ inline void Potential::generate_pw_coefs()
         throw std::runtime_error("not implemented");
     }
 }
+
+
+}  // sirius

@@ -33,6 +33,15 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "SDDK/wf_inner.cpp"
   "SDDK/wf_ortho.cpp"
   "SDDK/wf_trans.cpp"
+  "Hubbard/hubbard_potential_energy.cpp"
+  "Potential/generate_d_operator_matrix.cpp"
+  "Potential/generate_pw_coeffs.cpp"
+  "Potential/paw_potential.cpp"
+  "Potential/poisson.cpp"
+  "Potential/xc.cpp"
+  "Unit_cell/unit_cell.cpp"
+  "simulation_context.cpp"
+  "simulation_parameters.cpp"
   )
 
 # create library with .cpp, .cu and .f90 sources
