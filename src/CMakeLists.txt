@@ -33,6 +33,9 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "field4d.cpp"
   "radial_integrals.cpp"
   "sbessel.cpp"
+  "utils/cmd_args.cpp"
+  "utils/timer.cpp"
+  "utils/utils.cpp"
   )
 
 # create library with .cpp, .cu and .f90 sources
