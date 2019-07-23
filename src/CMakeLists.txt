@@ -36,6 +36,9 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "utils/cmd_args.cpp"
   "utils/timer.cpp"
   "utils/utils.cpp"
+  "SDDK/wf_inner.cpp"
+  "SDDK/wf_ortho.cpp"
+  "SDDK/wf_trans.cpp"
   )
 
 # create library with .cpp, .cu and .f90 sources
