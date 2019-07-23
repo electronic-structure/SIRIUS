@@ -32,7 +32,20 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "simulation_parameters.cpp"
   "Geometry/force.cpp"
   "Geometry/stress.cpp"
-  "Geometry/non_local_functor.cpp")
+  "Geometry/non_local_functor.cpp"
+  "Hamiltonian/apply.cpp"
+  "Hamiltonian/set_lapw_h_o.cpp"
+  "Hamiltonian/local_operator.cpp"
+  "Hamiltonian/non_local_operator.cpp"
+  "Hamiltonian/get_h_o_diag.cpp"
+  "K_point/generate_atomic_wave_functions.cpp"
+  "K_point/generate_fv_states.cpp"
+  "K_point/generate_spinor_wave_functions.cpp"
+  "K_point/k_point.cpp"
+  "K_point/k_point_set.cpp"
+  "K_point/initialize.cpp"
+        "K_point/generate_gklo_basis.cpp"
+        "K_point/test_fv_states.cpp")
 
 # create library with .cpp, .cu and .f90 sources
 add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
