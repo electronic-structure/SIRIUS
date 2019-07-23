@@ -21,6 +21,11 @@
  *
  *  \brief Contains implementation of inner product for wave-functions.
  */
+#ifndef __WF_INNER_HPP__
+#define __WF_INNER_HPP__
+#include "wave_functions.hpp"
+
+namespace sddk {
 
 template <typename T>
 inline void inner_local(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__,
@@ -428,3 +433,5 @@ inline void inner(memory_t        mem__,
         }
     }
 }
+}
+#endif

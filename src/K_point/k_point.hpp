@@ -28,6 +28,9 @@
 #include "matching_coefficients.hpp"
 #include "Beta_projectors/beta_projectors.hpp"
 #include "wave_functions.hpp"
+#include "wf_inner.hpp"
+#include "wf_ortho.hpp"
+#include "wf_trans.hpp"
 
 namespace sirius {
 

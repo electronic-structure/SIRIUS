@@ -21,6 +21,10 @@
  *
  *  \brief Wave-function linear transformation.
  */
+#ifndef __WF_TRANS_HPP__
+#define __WF_TRANS_HPP__
+#include "wave_functions.hpp"
+namespace sddk {
 
 template <typename T>
 static inline void transform_local(linalg_t la__, int ispn__, T* alpha__, Wave_functions* wf_in__,
@@ -356,3 +360,6 @@ inline void transform(memory_t        mem__,
 {
     transform<T>(mem__, la__, ispn__, 1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, {&wf_out__}, j0__, n__);
 }
+
+}
+#endif

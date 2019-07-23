@@ -674,9 +674,6 @@ class Wave_functions
     }
 };
 
-#include "wf_inner.hpp"
-#include "wf_trans.hpp"
-#include "wf_ortho.hpp"
 
 } // namespace sddk
 

@@ -21,6 +21,11 @@
  *
  *  \brief Wave-function orthonormalization.
  */
+#ifndef __WF_ORTHO_HPP__
+#define __WF_ORTHO_HPP__
+#include "wave_functions.hpp"
+
+namespace sddk {
 
 /// Orthogonalize n new wave-functions to the N old wave-functions
 template <typename T, int idx_bra__, int idx_ket__>
@@ -311,3 +316,7 @@ inline void orthogonalize(memory_t        mem__,
 
     orthogonalize<T, 0, 2>(mem__, la__, ispn__, wfs, N__, n__, o__, tmp__);
 }
+
+
+}
+#endif
