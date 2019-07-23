@@ -17,6 +17,12 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file cmd_args.cpp
+ *
+ *  \brief Definitions.
+ *
+ */
+
 #include "utils/cmd_args.hpp"
 
 void cmd_args::check_for_key(std::string const key__) const
