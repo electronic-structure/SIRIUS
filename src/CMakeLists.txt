@@ -39,6 +39,11 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "SDDK/wf_inner.cpp"
   "SDDK/wf_ortho.cpp"
   "SDDK/wf_trans.cpp"
+  "SDDK/wave_functions.cpp"
+  "SDDK/communicator.cpp"
+  "SDDK/dmatrix.cpp"
+  "SDDK/gvec.cpp"
+  "SDDK/matrix_storage.cpp"
   )
 
 # create library with .cpp, .cu and .f90 sources
