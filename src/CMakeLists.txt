@@ -11,7 +11,7 @@ endif()
 if(USE_CUDA)
   file(GLOB_RECURSE CUFILES_SDDK "SDDK/*.cu")
   file(GLOB_RECURSE CUFILES_KERNELS "Kernels/*.cu")
-  set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK};SDDK/GPU/acc.cpp")
+  set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
 
 set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.cpp"
@@ -60,7 +60,7 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "SDDK/dmatrix.cpp"
   "SDDK/gvec.cpp"
   "SDDK/matrix_storage.cpp"
-        "SDDK/GPU/acc.cpp"
+  "SDDK/GPU/acc.cpp"
   )
 
 # create library with .cpp, .cu and .f90 sources
