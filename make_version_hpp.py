@@ -36,7 +36,7 @@ def get_sha(vstr, dirname):
         if p.returncode is not 0:
             raise RuntimeError
         return to_string(sha_str)
-    except RuntimeError or OSError:
+    except (RuntimeError, FileNotFoundError, OSError):
         # python2 and python3 handle URL requests differently
         try:
             if sys.version_info < (3, 0):
@@ -70,7 +70,7 @@ def get_branch(sha_str, vstr):
         branch_name = p.communicate()[0].strip()
         if p.returncode is not 0:
             raise RuntimeError
-    except RuntimeError:
+    except (RuntimeError, FileNotFoundError):
         if sha_str:
             branch_name = 'release tag v%s' % vstr
     return to_string(branch_name)
