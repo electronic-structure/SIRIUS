@@ -26,6 +26,9 @@
 #define __ENV_HPP__
 
 #include <cstdlib>
+#include <string>
+#include <algorithm>
+#include <map>
 
 namespace utils {
 
