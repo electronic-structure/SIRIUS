@@ -60,6 +60,7 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "SDDK/dmatrix.cpp"
   "SDDK/gvec.cpp"
   "SDDK/matrix_storage.cpp"
+        "SDDK/GPU/acc.cpp"
   )
 
 # create library with .cpp, .cu and .f90 sources
