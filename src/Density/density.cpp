@@ -23,6 +23,7 @@
  */
 
 #include "density.hpp"
+#include "../Symmetry/symmetrize.hpp"
 
 namespace sirius {
 

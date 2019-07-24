@@ -25,6 +25,9 @@
 #include "memory.hpp"
 #include "linalg.hpp"
 #include "wave_functions.hpp"
+#include "wf_inner.hpp"
+#include "wf_ortho.hpp"
+#include "wf_trans.hpp"
 
 #if defined(__GPU)
 extern "C" void residuals_aux_gpu(int num_gvec_loc__,

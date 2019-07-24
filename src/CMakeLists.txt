@@ -11,7 +11,7 @@ endif()
 if(USE_CUDA)
   file(GLOB_RECURSE CUFILES_SDDK "SDDK/*.cu")
   file(GLOB_RECURSE CUFILES_KERNELS "Kernels/*.cu")
-  set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
+  set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK};SDDK/GPU/acc.cpp")
 endif()
 
 set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.cpp"
@@ -44,11 +44,26 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "K_point/k_point.cpp"
   "K_point/k_point_set.cpp"
   "K_point/initialize.cpp"
-        "K_point/generate_gklo_basis.cpp"
-        "K_point/test_fv_states.cpp")
+  "K_point/generate_gklo_basis.cpp"
+  "K_point/test_fv_states.cpp"
+  "field4d.cpp"
+  "radial_integrals.cpp"
+  "sbessel.cpp"
+  "utils/cmd_args.cpp"
+  "utils/timer.cpp"
+  "utils/utils.cpp"
+  "SDDK/wf_inner.cpp"
+  "SDDK/wf_ortho.cpp"
+  "SDDK/wf_trans.cpp"
+  "SDDK/wave_functions.cpp"
+  "SDDK/communicator.cpp"
+  "SDDK/dmatrix.cpp"
+  "SDDK/gvec.cpp"
+  "SDDK/matrix_storage.cpp"
+  )
 
 # create library with .cpp, .cu and .f90 sources
-add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
+add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}" SHT/sht.cpp)
 
 # add dependency on auto-generated headers
 add_dependencies(sirius generate_version_hpp)

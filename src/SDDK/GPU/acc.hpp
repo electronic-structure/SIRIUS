@@ -178,20 +178,7 @@ inline void stack_backtrace()
 namespace acc {
 
 /// Get the number of devices.
-inline int num_devices()
-{
-#if defined(__CUDA) || defined(__ROCM)
-    static int count{-1};
-    if (count == -1) {
-        if (GPU_PREFIX(GetDeviceCount)(&count) != GPU_PREFIX(Success)) {
-            count = 0;
-        }
-    }
-    return count;
-#else
-    return 0;
-#endif
-}
+int num_devices();
 
 /// Set the GPU id.
 inline void set_device_id(int id__)
@@ -210,11 +197,7 @@ inline int get_device_id()
 }
 
 /// Vector of device streams.
-inline std::vector<acc_stream_t>& streams()
-{
-    static std::vector<acc_stream_t> streams_;
-    return streams_;
-}
+std::vector<acc_stream_t>& streams();
 
 /// Return a single device stream.
 inline acc_stream_t stream(stream_id sid__)
