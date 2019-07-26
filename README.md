@@ -18,6 +18,37 @@ SIRIUS is a domain specific library for electronic structure calculations. It is
 SIRIUS depends on the following libraries: MPI, BLAS, LAPACK, GSL, LibXC, HDF5, spglib, FFTW and optionally on ScaLAPACK, ELPA, MAGMA and CUDA.
 We use CMake as a building tool.
 
+### Manual installation
+The minimal dependencies dependencies (GSL, LibXC, HDF5, spglib, FFTW) can be downloaded and configured automatically by the helper Python script ``prerequisite.py``, other libraries must be provided by a system or a developer. To compile and install SIRIUS (assuming that all the libraries are installed in the standard paths) run a cmake command from an empty directory followed by a make command:
+```console
+$ mkdir _build
+$ cd _build
+$ CXX=mpic++ CC=mpicc FC=mpif90 cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/local
+$ make
+$ make install
+```
+This will compile SIRIUS in a most simple way: CPU-only mode without parallel linear algebra routines.
+
+In order to download and build the compulsory dependencies (xc, gsl, spg, fftw)
+the script `prerequisite.py` can be used:
+
+```console
+$ mkdir -p libs
+$ python prerequisite.py ${PWD}/libs xc spg gsl fftw hdf5
+```
+
+Unless the dependencies are installed system wide, set the following
+environment variables to the installation path of FFTW, SPGLIB, and LibXC
+respectively:
+- `FFTWROOT`
+- `LIBSPGROOT`
+- `LIBXCROOT`
+- `HDF5_ROOT`
+- `GSL_ROOT_DIR`
+- `MAGMAROOT` (optional)
+- `MKLROOT` (optional)
+- `ELPAROOT` (optional)
+
 
 ### Installation on Piz Daint
 We provide an EasyBuild script on Piz Daint. See also the [CSCS EasyBuild Documentation](https://user.cscs.ch/computing/compilation/easybuild/).
@@ -68,24 +99,6 @@ spack load sirius +cuda
 Consult the [Spack documentation](https://spack.readthedocs.io/en/latest/) for more information on how to use Spack.
 
 
-### Manual installation
-Some of the dependencies (GSL, LibXC, HDF5, spglib, FFTW) can be downloaded and configured automatically by the helper Python script ``prerequisite.py``, other libraries must be provided by a system or a developer. To compile and install SIRIUS (assuming that all the libraries are installed in the standard paths) run a cmake command from an empty directory followed by a make command:
-```console
-$ mkdir _build
-$ cd _build
-$ CXX=mpic++ CC=mpicc FC=mpif90 cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/local
-$ make
-$ make install
-```
-This will compile SIRIUS in a most simple way: CPU-only mode without parallel linear algebra routines.
-
-In order to download and build the compulsory dependencies (xc, gsl, spg, fftw)
-the script `prerequisite.py` can be used:
-
-```console
-$ mkdir -p libs
-$ python prerequisite.py ${PWD}/libs xc spg gsl fftw hdf5
-```
 
 ### Archlinux
 Archlinux users can find SIRIUS in the [AUR](https://aur.archlinux.org/packages/sirius-git/).
