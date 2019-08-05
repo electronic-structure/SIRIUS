@@ -1661,4 +1661,4 @@ class XC_functional_base
         }
 };
 }
-#endif // __XC_FUNCTIONAL_H__
+#endif // __XC_FUNCTIONAL_BASE_H__

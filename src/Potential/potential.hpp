@@ -168,7 +168,7 @@ class Potential : public Field4D
     void add_paw_Dij_to_atom_Dmtrx();
 
     /// Compute MT part of the potential and MT multipole moments
-    inline void poisson_vmt(Periodic_function<double> const& rho__,
+    void poisson_vmt(Periodic_function<double> const& rho__,
                             mdarray<double_complex, 2>&      qmt__)
     {
         PROFILE("sirius::Potential::poisson_vmt");
@@ -188,7 +188,7 @@ class Potential : public Field4D
     }
 
     /// Add contribution from the pseudocharge to the plane-wave expansion
-    inline void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
+    void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
 
     /// Generate local part of pseudo potential.
     /** Total local potential is a lattice sum:
@@ -248,7 +248,7 @@ class Potential : public Field4D
      *   4\pi \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr -  Z_{\alpha}^p \frac{e^{-\frac{G^2}{4}}}{G^2}
      * \f]
      */
-    inline void generate_local_potential()
+    void generate_local_potential()
     {
         PROFILE("sirius::Potential::generate_local_potential");
 
@@ -274,7 +274,7 @@ class Potential : public Field4D
     }
 
     /// Generate non-spin polarized XC potential in the muffin-tins.
-    inline void xc_mt_nonmagnetic(Radial_grid<double> const&                rgrid,
+    void xc_mt_nonmagnetic(Radial_grid<double> const&                rgrid,
                                   std::vector<XC_functional>&               xc_func,
                                   Spheric_function<function_domain_t::spectral, double> const& rho_lm,
                                   Spheric_function<function_domain_t::spatial, double>&        rho_tp,
@@ -282,7 +282,7 @@ class Potential : public Field4D
                                   Spheric_function<function_domain_t::spatial, double>&        exc_tp);
 
     /// Generate spin-polarized XC potential in the muffin-tins.
-    inline void xc_mt_magnetic(Radial_grid<double> const&          rgrid,
+    void xc_mt_magnetic(Radial_grid<double> const&          rgrid,
                                std::vector<XC_functional>&         xc_func,
                                Spheric_function<function_domain_t::spectral, double>& rho_up_lm,
                                Spheric_function<function_domain_t::spatial, double>&  rho_up_tp,
@@ -293,15 +293,15 @@ class Potential : public Field4D
                                Spheric_function<function_domain_t::spatial, double>&  exc_tp);
 
     /// Generate XC potential in the muffin-tins.
-    inline void xc_mt(Density const& density__);
+    void xc_mt(Density const& density__);
 
     /// Generate non-magnetic XC potential on the regular real-space grid.
     template <bool add_pseudo_core__>
-    inline void xc_rg_nonmagnetic(Density const& density__);
+    void xc_rg_nonmagnetic(Density const& density__);
 
     /// Generate magnetic XC potential on the regular real-space grid.
     template <bool add_pseudo_core__>
-    inline void xc_rg_magnetic(Density const& density__);
+    void xc_rg_magnetic(Density const& density__);
 
   public:
     /// Constructor
@@ -478,7 +478,7 @@ class Potential : public Field4D
 
     /// Solve Poisson equation for a single atom.
     template <bool free_atom, typename T>
-    inline std::vector<T>
+    std::vector<T>
     poisson_vmt(Atom const&                                             atom__,
                 Spheric_function<function_domain_t::spectral, T> const& rho_mt__,
                 Spheric_function<function_domain_t::spectral, T>&       vha_mt__) const
@@ -708,13 +708,13 @@ class Potential : public Field4D
      *          Y_{\ell m}^{*}({\bf \hat x'}) Y_{\ell m}(\hat {\bf x})
      *  \f]
      */
-    inline void poisson(Periodic_function<double> const& rho);
+  void poisson(Periodic_function<double> const& rho);
 
     /// Generate XC potential and energy density
     /** In case of spin-unpolarized GGA the XC potential has the following expression:
      *  \f[
      *      V_{XC}({\bf r}) = \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \nabla \rho) -
-     *        \nabla \frac{\partial}{\partial (\nabla \rho)} \varepsilon_{xc}(\rho, \nabla \rho) = 
+     *        \nabla \frac{\partial}{\partial (\nabla \rho)} \varepsilon_{xc}(\rho, \nabla \rho) =
      *     \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \nabla \rho) -
      *     \sum_{\alpha} \frac{\partial}{\partial r_{\alpha}}
      *     \frac{\partial \varepsilon_{xc}(\rho, \nabla \rho) }{\partial g_{\alpha}}
@@ -729,7 +729,7 @@ class Potential : public Field4D
      *  \f[
      *      \frac{\partial \sigma}{\partial g_{\alpha}} = 2 g_{\alpha}
      *  \f]
-     *  
+     *
      *  Changing variables in \f$ V_{XC} \f$ expression gives:
      *  \f{eqnarray*}{
      *      V_{XC}({\bf r}) &=& \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) -
@@ -741,9 +741,9 @@ class Potential : public Field4D
      *  \f}
      *  Alternative expression can be derived for the XC potential if we leave the gradient:
      *  \f[
-     *    V_{XC}({\bf r}) = \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) - 
-     *     \sum_{\alpha} \frac{\partial}{\partial r_{\alpha}} 
-     *     \Big( \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} 2 g_{\alpha}  \Big) = 
+     *    V_{XC}({\bf r}) = \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) -
+     *     \sum_{\alpha} \frac{\partial}{\partial r_{\alpha}}
+     *     \Big( \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} 2 g_{\alpha}  \Big) =
      *    \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) - 2 \nabla \Big(
      *     \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} {\bf g}({\bf r}) \Big)
      *  \f]
@@ -793,7 +793,7 @@ class Potential : public Field4D
     void xc(Density const& rho__);
 
     /// Generate effective potential and magnetic field from charge density and magnetization.
-    inline void generate(Density const& density__)
+    void generate(Density const& density__)
     {
         PROFILE("sirius::Potential::generate");
 
@@ -866,7 +866,7 @@ class Potential : public Field4D
         }
     }
 
-    inline void save()
+    void save()
     {
         effective_potential().hdf5_write(storage_file_name, "effective_potential");
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
@@ -1098,12 +1098,12 @@ class Potential : public Field4D
         return *xc_energy_density_;
     }
 
-    inline double vh_el(int ia) const
+    double vh_el(int ia) const
     {
         return vh_el_(ia);
     }
 
-    inline double energy_vha() const
+    double energy_vha() const
     {
         return energy_vha_;
     }
@@ -1113,7 +1113,7 @@ class Potential : public Field4D
         return veff_pw_(ig__);
     }
 
-    inline void set_veff_pw(double_complex const* veff_pw__)
+    void set_veff_pw(double_complex const* veff_pw__)
     {
         std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at(memory_t::host));
     }
@@ -1123,7 +1123,7 @@ class Potential : public Field4D
         return rm_inv_pw_(ig__);
     }
 
-    inline void set_rm_inv_pw(double_complex const* rm_inv_pw__)
+    void set_rm_inv_pw(double_complex const* rm_inv_pw__)
     {
         std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at(memory_t::host));
     }
@@ -1182,11 +1182,11 @@ class Potential : public Field4D
     }
 };
 
-#include "generate_d_operator_matrix.hpp"
-#include "generate_pw_coefs.hpp"
-#include "xc.hpp"
-#include "poisson.hpp"
-#include "paw_potential.hpp"
+// #include "generate_d_operator_matrix.hpp"
+// #include "generate_pw_coefs.hpp"
+// #include "xc.hpp"
+// #include "poisson.hpp"
+// #include "paw_potential.hpp"
 
 }; // namespace sirius
 

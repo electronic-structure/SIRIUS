@@ -32,6 +32,7 @@
 #include <cstring>
 #include <functional>
 #include <algorithm>
+#include <array>
 #include "GPU/acc.hpp"
 
 namespace sddk {
