@@ -7,6 +7,11 @@ import os
 # Use github REST API to query the tags
 request_str = 'https://api.github.com/repos/electronic-structure/SIRIUS/tags'
 
+# Python2 compatibility
+try:
+    FileNotFoundError
+except:
+    FileNotFoundError = IOError
 
 def to_string(s):
     """
