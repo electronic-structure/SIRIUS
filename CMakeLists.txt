@@ -290,6 +290,7 @@ endif(BUILD_TESTS)
 
 add_subdirectory(apps/atoms)
 add_subdirectory(apps/dft_loop)
+add_subdirectory(apps/upf)
 add_subdirectory(apps/utils)
 add_subdirectory(python_module)
 add_subdirectory(doc)
