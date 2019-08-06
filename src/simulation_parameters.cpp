@@ -72,31 +72,31 @@ void Simulation_parameters::set_core_relativity(std::string name__)
 {
     parameters_input_.core_relativity_ = name__;
 
-    std::map<std::string, relativity_t> m = {{"none", relativity_t::none}, {"dirac", relativity_t::dirac}};
+    std::map<std::string, relativity_t> const m = {{"none", relativity_t::none}, {"dirac", relativity_t::dirac}};
 
-    if (m.count(name__) == -1) {
+    if (m.count(name__) == 0) {
         std::stringstream s;
         s << "wrong type of core relativity: " << name__;
         TERMINATE(s);
     }
-    core_relativity_ = m[name__];
+    core_relativity_ = m.at(name__);
 }
 
 void Simulation_parameters::set_valence_relativity(std::string name__)
 {
     parameters_input_.valence_relativity_ = name__;
 
-    std::map<std::string, relativity_t> m = {{"none", relativity_t::none},
-                                             {"zora", relativity_t::zora},
-                                             {"iora", relativity_t::iora},
-                                             {"koelling_harmon", relativity_t::koelling_harmon}};
+    std::map<std::string, relativity_t> const m = {{"none", relativity_t::none},
+                                                   {"zora", relativity_t::zora},
+                                                   {"iora", relativity_t::iora},
+                                                   {"koelling_harmon", relativity_t::koelling_harmon}};
 
     if (m.count(name__) == 0) {
         std::stringstream s;
         s << "wrong type of valence relativity: " << name__;
         TERMINATE(s);
     }
-    valence_relativity_ = m[name__];
+    valence_relativity_ = m.at(name__);
 }
 
 void Simulation_parameters::set_processing_unit(std::string name__)

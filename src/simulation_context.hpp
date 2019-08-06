@@ -27,7 +27,6 @@
 
 #include <algorithm>
 
-#include "version.hpp"
 #include "simulation_parameters.hpp"
 #include "mpi_grid.hpp"
 #include "radial_integrals.hpp"
