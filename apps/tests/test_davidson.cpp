@@ -168,8 +168,13 @@ void test_davidson(cmd_args const& args__)
         }
         std::sort(ekin.begin(), ekin.end());
 
-        for (int i = 0; i < ctx.num_bands(); i++) {
-            printf("%20.16f %20.16f %20.16e\n", ekin[i], kp.band_energy(i, 0), std::abs(ekin[i] - kp.band_energy(i, 0)));
+        if (Communicator::world().rank() == 0) {
+            double max_diff = 0;
+            for (int i = 0; i < ctx.num_bands(); i++) {
+                max_diff = std::max(max_diff, std::abs(ekin[i] - kp.band_energy(i, 0)));
+                //printf("%20.16f %20.16f %20.16e\n", ekin[i], kp.band_energy(i, 0), std::abs(ekin[i] - kp.band_energy(i, 0)));
+            }
+            printf("maximum eigen-value difference: %20.16e\n", max_diff);
         }
     }
 
