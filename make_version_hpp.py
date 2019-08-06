@@ -112,7 +112,7 @@ def main():
 
     print("const char* const git_hash = \"%s\";" % sha_str)
     print("const char* const git_branchname = \"%s\";" % branch_name)
-    print("const char* const build_date = \"%s\";"%(now.strftime("%a, %e %b %Y %H:%M:%S")))
+    #print("const char* const build_date = \"%s\";"%(now.strftime("%a, %e %b %Y %H:%M:%S")))
     print("const int major_version = %i;" % major_version)
     print("const int minor_version = %i;" % minor_version);
     print("const int revision      = %i;" % revision);
