@@ -38,8 +38,15 @@ void init_wf(K_point* kp__, Wave_functions& phi__, int num_bands__, int num_mag_
     }
 }
 
-void test_davidson(device_t pu__, double pw_cutoff__, double gk_cutoff__, int N__)
+void test_davidson(cmd_args const& args__)
 {
+    auto pu        = get_device_t(args__.value<std::string>("device", "CPU"));
+    auto pw_cutoff = args__.value<double>("pw_cutoff", 30);
+    auto gk_cutoff = args__.value<double>("gk_cutoff", 10);
+    auto N         = args__.value<int>("N", 1);
+    auto mpi_grid  = args__.value<std::vector<int>>("mpi_grid", {1, 1});
+    auto solver    = args__.value<std::string>("solver", "lapack");
+
     utils::timer t1("test_davidson|setup");
 
     /* create simulation context */
@@ -101,14 +108,14 @@ void test_davidson(device_t pu__, double pw_cutoff__, double gk_cutoff__, int N_
     /* lattice constant */
     double a{5};
     /* set lattice vectors */
-    ctx.unit_cell().set_lattice_vectors({{a * N__, 0, 0}, 
-                                         {0, a * N__, 0}, 
-                                         {0, 0, a * N__}});
+    ctx.unit_cell().set_lattice_vectors({{a * N, 0, 0},
+                                         {0, a * N, 0},
+                                         {0, 0, a * N}});
     /* add atoms */
-    double p = 1.0 / N__;
-    for (int i = 0; i < N__; i++) {
-        for (int j = 0; j < N__; j++) {
-            for (int k = 0; k < N__; k++) {
+    double p = 1.0 / N;
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            for (int k = 0; k < N; k++) {
                 ctx.unit_cell().add_atom("Cu", {i * p, j * p, k * p});
             }
         }
@@ -116,9 +123,13 @@ void test_davidson(device_t pu__, double pw_cutoff__, double gk_cutoff__, int N_
 
     /* initialize the context */
     ctx.set_verbosity(1);
-    ctx.pw_cutoff(pw_cutoff__);
-    ctx.gk_cutoff(gk_cutoff__);
-    ctx.set_processing_unit(pu__);
+    ctx.pw_cutoff(pw_cutoff);
+    ctx.gk_cutoff(gk_cutoff);
+    ctx.set_processing_unit(pu);
+    ctx.set_mpi_grid_dims(mpi_grid);
+    ctx.gen_evp_solver_name(solver);
+    ctx.std_evp_solver_name(solver);
+
     t1.stop();
 
     ctx.set_verbosity(1);
@@ -144,8 +155,6 @@ void test_davidson(device_t pu__, double pw_cutoff__, double gk_cutoff__, int N_
             kp.band_occupancy(i, 0, 2);
         }
         init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-
-
 
         Hamiltonian H(ctx, pot);
         H.prepare();
@@ -232,7 +241,8 @@ int main(int argn, char** argv)
                                {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
                                {"gk_cutoff=", "(double) plane-wave cutoff for wave-functions"},
                                {"N=", "(int) cell multiplicity"},
-                               {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"}
+                               {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"},
+                               {"solver=", "eigen-value solver"}
                               });
 
     if (args.exist("help")) {
@@ -241,14 +251,8 @@ int main(int argn, char** argv)
         return 0;
     }
 
-    auto pu        = get_device_t(args.value<std::string>("device", "CPU"));
-    auto pw_cutoff = args.value<double>("pw_cutoff", 30);
-    auto gk_cutoff = args.value<double>("gk_cutoff", 10);
-    auto N         = args.value<int>("N", 1);
-    auto mpi_grid  = args.value<std::vector<int>>("mpi_grid", {1, 1});
-
     sirius::initialize(1);
-    test_davidson(pu, pw_cutoff, gk_cutoff, N);
+    test_davidson(args);
     int rank = Communicator::world().rank();
     sirius::finalize();
     if (!rank) {
