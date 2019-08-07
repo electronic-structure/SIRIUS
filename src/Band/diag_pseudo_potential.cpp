@@ -374,6 +374,10 @@ Band::diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const
         }
     }
 
+    if (ctx_.processing_unit() == device_t::GPU) {
+        o_diag1.allocate(memory_t::device).copy_to(memory_t::device);
+    }
+
     if (ctx_.control().print_checksum_) {
         auto cs1 = h_diag.checksum();
         auto cs2 = o_diag.checksum();
@@ -797,6 +801,10 @@ Band::diag_S_davidson(K_point& kp__, Hamiltonian& H__) const
             o_diag(ig, ispn) = o_diag_tmp[ig];
             o_diag1(ig, ispn) = 1.0;
         }
+    }
+    if (ctx_.processing_unit() == device_t::GPU) {
+        o_diag.allocate(memory_t::device).copy_to(memory_t::device);
+        o_diag1.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
     auto& std_solver = ctx_.std_evp_solver();

@@ -741,7 +741,7 @@ class Hamiltonian_k
                     }
                 }
 
-#pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static)
                 for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
                     for (int xi2 = 0; xi2 < nbf; xi2++) {
                         for (int xi1 = 0; xi1 < nbf; xi1++) {
