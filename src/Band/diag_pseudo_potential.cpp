@@ -375,7 +375,7 @@ Band::diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const
     }
 
     if (ctx_.processing_unit() == device_t::GPU) {
-        o_diag1.allocate(memory_t::device).copy_to(memory_t::device);
+        o_diag.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
     if (ctx_.control().print_checksum_) {
