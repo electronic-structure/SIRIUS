@@ -231,6 +231,9 @@ residuals(memory_t mem_type__, linalg_t la_type__, int ispn__, int N__, int num_
             }
         }
     } else { /* compute all residuals first */
+        if (is_device_memory(mem_type__)) {
+            eval__.allocate(memory_t::device).copy_to(memory_t::device);
+        }
         evec_ptr = &evec__;
         eval_ptr = &eval__;
         n = num_bands__;

@@ -1,3 +1,4 @@
+#include "version.hpp"
 #include "simulation_context.hpp"
 #include <gsl/gsl_sf_bessel.h>
 
@@ -51,26 +52,6 @@ void Simulation_context::init_fft()
     /* create FFT driver for coarse mesh */
     fft_coarse_ = std::unique_ptr<FFT3D>(
         new FFT3D(get_min_fft_grid(2 * gk_cutoff(), rlv).grid_size(), comm_fft_coarse(), processing_unit()));
-
-    ///* create a list of G-vectors for corase FFT grid */
-    // gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
-
-    // gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
-    //    new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
-
-    ///* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
-    // gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
-
-    // gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
-
-    // remap_gvec_ = std::unique_ptr<Gvec_shells>(new Gvec_shells(gvec()));
-
-    // if (control().verification_ >= 1) {
-    //    check_gvec(*remap_gvec_, unit_cell().symmetry());
-    //}
-
-    /* prepare fine-grained FFT driver for the entire simulation */
-    // fft_->prepare(*gvec_partition_);
 }
 
 mdarray<double, 3> Simulation_context::generate_sbessel_mt(int lmax__) const
@@ -79,7 +60,7 @@ mdarray<double, 3> Simulation_context::generate_sbessel_mt(int lmax__) const
 
     mdarray<double, 3> sbessel_mt(lmax__ + 1, gvec().count(), unit_cell().num_atom_types());
     for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-#pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             auto gv = gvec().gvec_cart<index_domain_t::local>(igloc);
             gsl_sf_bessel_jl_array(lmax__, gv.length() * unit_cell().atom_type(iat).mt_radius(),
@@ -94,7 +75,7 @@ matrix<double_complex> Simulation_context::generate_gvec_ylm(int lmax__)
     PROFILE("sirius::Simulation_context::generate_gvec_ylm");
 
     matrix<double_complex> gvec_ylm(utils::lmmax(lmax__), gvec().count(), memory_t::host, "gvec_ylm");
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
         auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
         SHT::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
@@ -153,7 +134,7 @@ mdarray<double_complex, 2> Simulation_context::sum_fg_fl_yg(int lmax__, double_c
         int na = unit_cell_.atom_type(iat).num_atoms();
         generate_phase_factors(iat, phase_factors);
         utils::timer t1("sirius::Simulation_context::sum_fg_fl_yg|zm");
-#pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ngv_loc; igloc++) {
             for (int l = 0, lm = 0; l <= lmax__; l++) {
                 double_complex z = fourpi * fl__(l, igloc, iat) * zil[l] * fpw__[igloc];
@@ -562,6 +543,7 @@ void Simulation_context::print_info() const
     printf("SIRIUS version : %i.%i.%i\n", major_version, minor_version, revision);
     printf("git hash       : %s\n", git_hash);
     printf("git branch     : %s\n", git_branchname);
+    //printf("build time     : %s\n", build_date);
     printf("start time     : %s\n", buf);
     printf("\n");
     printf("number of MPI ranks           : %i\n", comm_.size());
@@ -758,395 +740,393 @@ void Simulation_context::print_info() const
     }
 }
 
-    void Simulation_context::update() {
-        PROFILE("sirius::Simulation_context::update");
+void Simulation_context::update() {
+    PROFILE("sirius::Simulation_context::update");
 
-        unit_cell().update();
+    unit_cell().update();
 
-        auto rlv = unit_cell_.reciprocal_lattice_vectors();
+    auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
-        /* create a list of G-vectors for corase FFT grid */
-        if (!gvec_coarse_) {
-            gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
-        } else {
-            gvec_coarse_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
-        }
+    /* create a list of G-vectors for corase FFT grid */
+    if (!gvec_coarse_) {
+        gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
+    } else {
+        gvec_coarse_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
+    }
 
-        if (!gvec_coarse_partition_) {
-            gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
-                    new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
-        }
+    if (!gvec_coarse_partition_) {
+        gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
+                new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
+    }
 
-        /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
-        if (!gvec_) {
-            gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
-        } else {
-            gvec_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
-        }
+    /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
+    if (!gvec_) {
+        gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
+    } else {
+        gvec_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
+    }
 
-        if (!gvec_partition_) {
-            gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
-        }
+    if (!gvec_partition_) {
+        gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
+    }
 
-        if (!remap_gvec_) {
-            remap_gvec_ = std::unique_ptr<Gvec_shells>(new Gvec_shells(gvec()));
-        }
+    if (!remap_gvec_) {
+        remap_gvec_ = std::unique_ptr<Gvec_shells>(new Gvec_shells(gvec()));
+    }
 
-        if (unit_cell_.num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
-            check_gvec(gvec(), unit_cell_.symmetry());
-            if (!full_potential()) {
-                check_gvec(gvec_coarse(), unit_cell_.symmetry());
-            }
-            check_gvec(*remap_gvec_, unit_cell().symmetry());
-        }
-
-        if (control().verification_ >= 1) {
-#pragma omp parallel for
-            for (int igloc = 0; igloc < gvec().count(); igloc++) {
-                int ig = gvec().offset() + igloc;
-
-                auto gv = gvec().gvec(ig);
-                /* check limits */
-                for (int x: {0, 1, 2}) {
-                    auto limits = fft().limits(x);
-                    /* check boundaries */
-                    if (gv[x] < limits.first || gv[x] > limits.second) {
-                        std::stringstream s;
-                        s << "G-vector is outside of grid limits" << std::endl
-                          << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << std::endl
-                          << "limits: "
-                          << fft().limits(0).first << " " << fft().limits(0).second << " "
-                          << fft().limits(1).first << " " << fft().limits(1).second << " "
-                          << fft().limits(2).first << " " << fft().limits(2).second;
-
-                        TERMINATE(s);
-                    }
-                }
-            }
-        }
-
-        init_atoms_to_grid_idx(control().rmt_max_);
-
-        std::pair<int, int> limits(0, 0);
-        for (int x : {0, 1, 2}) {
-            limits.first  = std::min(limits.first, fft().limits(x).first);
-            limits.second = std::max(limits.second, fft().limits(x).second);
-        }
-
-        phase_factors_ =
-                mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), memory_t::host, "phase_factors_");
-#pragma omp parallel for
-        for (int i = limits.first; i <= limits.second; i++) {
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                auto pos = unit_cell_.atom(ia).position();
-                for (int x : {0, 1, 2}) {
-                    phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
-                }
-            }
-        }
-
-        phase_factors_t_ = mdarray<double_complex, 2>(gvec().count(), unit_cell().num_atom_types());
-#pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            /* global index of G-vector */
-            int ig = gvec().offset() + igloc;
-            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-                double_complex z(0, 0);
-                for (int ia = 0; ia < unit_cell().atom_type(iat).num_atoms(); ia++) {
-                    z += gvec_phase_factor(ig, unit_cell().atom_type(iat).atom_id(ia));
-                }
-                phase_factors_t_(igloc, iat) = z;
-            }
-        }
-
-        if (use_symmetry()) {
-            sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
-
-#pragma omp parallel for
-            for (int i = limits.first; i <= limits.second; i++) {
-                for (int isym = 0; isym < unit_cell().symmetry().num_mag_sym(); isym++) {
-                    auto t = unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.t;
-                    for (int x : {0, 1, 2}) {
-                        sym_phase_factors_(x, i, isym) = std::exp(double_complex(0.0, twopi * (i * t[x])));
-                    }
-                }
-            }
-        }
-
-        if (processing_unit() == device_t::GPU) {
-            gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
-            gvec_coord_.allocate(memory_t::device);
-            for (int igloc = 0; igloc < gvec().count(); igloc++) {
-                int ig = gvec().offset() + igloc;
-                auto G = gvec().gvec(ig);
-                for (int x : {0, 1, 2}) {
-                    gvec_coord_(igloc, x) = G[x];
-                }
-            }
-            gvec_coord_.copy_to(memory_t::device);
-        }
-
-        /* prepare fine-grained FFT driver for the entire simulation */
-        if (!fft_->is_ready()) {
-            fft_->prepare(*gvec_partition_);
-        }
-
-        if (full_potential()) {
-            init_step_function();
-        }
-
+    if (unit_cell_.num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
+        check_gvec(gvec(), unit_cell_.symmetry());
         if (!full_potential()) {
-            augmentation_op_.clear();
-            memory_pool* mp{nullptr};
-            switch (processing_unit()) {
-                case device_t::CPU: {
-                    mp = &mem_pool(memory_t::host);
-                    break;
+            check_gvec(gvec_coarse(), unit_cell_.symmetry());
+        }
+        check_gvec(*remap_gvec_, unit_cell().symmetry());
+    }
+
+    if (control().verification_ >= 1) {
+        #pragma omp parallel for
+        for (int igloc = 0; igloc < gvec().count(); igloc++) {
+            int ig = gvec().offset() + igloc;
+
+            auto gv = gvec().gvec(ig);
+            /* check limits */
+            for (int x: {0, 1, 2}) {
+                auto limits = fft().limits(x);
+                /* check boundaries */
+                if (gv[x] < limits.first || gv[x] > limits.second) {
+                    std::stringstream s;
+                    s << "G-vector is outside of grid limits" << std::endl
+                      << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << std::endl
+                      << "limits: "
+                      << fft().limits(0).first << " " << fft().limits(0).second << " "
+                      << fft().limits(1).first << " " << fft().limits(1).second << " "
+                      << fft().limits(2).first << " " << fft().limits(2).second;
+
+                    TERMINATE(s);
                 }
-                case device_t::GPU: {
-                    mp = &mem_pool(memory_t::host_pinned);
-                    break;
-                }
-            }
-            /* create augmentation operator Q_{xi,xi'}(G) here */
-            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-                augmentation_op_.push_back(
-                        std::move(Augmentation_operator(unit_cell().atom_type(iat), gvec(), comm())));
-                augmentation_op_.back().generate_pw_coeffs(aug_ri(), *mp);
             }
         }
     }
 
-    void Simulation_context::create_storage_file() const {
-        if (comm_.rank() == 0) {
-            /* create new hdf5 file */
-            HDF5_tree fout(storage_file_name, hdf5_access_t::truncate);
-            fout.create_node("parameters");
-            fout.create_node("effective_potential");
-            fout.create_node("effective_magnetic_field");
-            fout.create_node("density");
-            fout.create_node("magnetization");
+    init_atoms_to_grid_idx(control().rmt_max_);
 
-            for (int j = 0; j < num_mag_dims(); j++) {
-                fout["magnetization"].create_node(j);
-                fout["effective_magnetic_field"].create_node(j);
+    std::pair<int, int> limits(0, 0);
+    for (int x : {0, 1, 2}) {
+        limits.first  = std::min(limits.first, fft().limits(x).first);
+        limits.second = std::max(limits.second, fft().limits(x).second);
+    }
+
+    phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), memory_t::host, "phase_factors_");
+    #pragma omp parallel for
+    for (int i = limits.first; i <= limits.second; i++) {
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            auto pos = unit_cell_.atom(ia).position();
+            for (int x : {0, 1, 2}) {
+                phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
             }
+        }
+    }
 
-            fout["parameters"].write("num_spins", num_spins());
-            fout["parameters"].write("num_mag_dims", num_mag_dims());
-            fout["parameters"].write("num_bands", num_bands());
+    phase_factors_t_ = mdarray<double_complex, 2>(gvec().count(), unit_cell().num_atom_types());
+    #pragma omp parallel for schedule(static)
+    for (int igloc = 0; igloc < gvec().count(); igloc++) {
+        /* global index of G-vector */
+        int ig = gvec().offset() + igloc;
+        for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+            double_complex z(0, 0);
+            for (int ia = 0; ia < unit_cell().atom_type(iat).num_atoms(); ia++) {
+                z += gvec_phase_factor(ig, unit_cell().atom_type(iat).atom_id(ia));
+            }
+            phase_factors_t_(igloc, iat) = z;
+        }
+    }
 
-            mdarray<int, 2> gv(3, gvec().num_gvec());
-            for (int ig = 0; ig < gvec().num_gvec(); ig++) {
-                auto G = gvec().gvec(ig);
+    if (use_symmetry()) {
+        sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
+
+        #pragma omp parallel for
+        for (int i = limits.first; i <= limits.second; i++) {
+            for (int isym = 0; isym < unit_cell().symmetry().num_mag_sym(); isym++) {
+                auto t = unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.t;
                 for (int x : {0, 1, 2}) {
-                    gv(x, ig) = G[x];
+                    sym_phase_factors_(x, i, isym) = std::exp(double_complex(0.0, twopi * (i * t[x])));
                 }
-            }
-            fout["parameters"].write("num_gvec", gvec().num_gvec());
-            fout["parameters"].write("gvec", gv);
-
-            fout.create_node("unit_cell");
-            fout["unit_cell"].create_node("atoms");
-            for (int j = 0; j < unit_cell().num_atoms(); j++) {
-                fout["unit_cell"]["atoms"].create_node(j);
-                fout["unit_cell"]["atoms"][j].write("mt_basis_size", unit_cell().atom(j).mt_basis_size());
             }
         }
-        comm_.barrier();
     }
 
-    void Simulation_context::generate_phase_factors(int iat__, mdarray<double_complex, 2> &phase_factors__) const {
-        PROFILE("sirius::Simulation_context::generate_phase_factors");
-        int na = unit_cell_.atom_type(iat__).num_atoms();
-        switch (processing_unit_) {
+    if (processing_unit() == device_t::GPU) {
+        gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
+        gvec_coord_.allocate(memory_t::device);
+        for (int igloc = 0; igloc < gvec().count(); igloc++) {
+            int ig = gvec().offset() + igloc;
+            auto G = gvec().gvec(ig);
+            for (int x : {0, 1, 2}) {
+                gvec_coord_(igloc, x) = G[x];
+            }
+        }
+        gvec_coord_.copy_to(memory_t::device);
+    }
+
+    /* prepare fine-grained FFT driver for the entire simulation */
+    if (!fft_->is_ready()) {
+        fft_->prepare(*gvec_partition_);
+    }
+
+    if (full_potential()) {
+        init_step_function();
+    }
+
+    if (!full_potential()) {
+        augmentation_op_.clear();
+        memory_pool* mp{nullptr};
+        switch (processing_unit()) {
             case device_t::CPU: {
-#pragma omp parallel for
-                for (int igloc = 0; igloc < gvec().count(); igloc++) {
-                    int ig = gvec().offset() + igloc;
-                    for (int i = 0; i < na; i++) {
-                        int ia                    = unit_cell().atom_type(iat__).atom_id(i);
-                        phase_factors__(igloc, i) = gvec_phase_factor(ig, ia);
-                    }
-                }
+                mp = &mem_pool(memory_t::host);
                 break;
             }
             case device_t::GPU: {
-#if defined(__GPU)
-                //acc::set_device();
-                generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(memory_t::device),
-                                           unit_cell().atom_coord(iat__).at(memory_t::device), phase_factors__.at(memory_t::device));
-#endif
+                mp = &mem_pool(memory_t::host_pinned);
                 break;
             }
         }
-    }
-
-    void Simulation_context::print_memory_usage(const char *file__, int line__) {
-        if (comm().rank() == 0 && control().print_memory_usage_) {
-            sirius::print_memory_usage(file__, line__);
-
-            printf("memory_t::host pool:        %li %li %li %li\n", mem_pool(memory_t::host).total_size() >> 20,
-                   mem_pool(memory_t::host).free_size() >> 20,
-                   mem_pool(memory_t::host).num_blocks(),
-                   mem_pool(memory_t::host).num_stored_ptr());
-
-            printf("memory_t::host_pinned pool: %li %li %li %li\n", mem_pool(memory_t::host_pinned).total_size() >> 20,
-                   mem_pool(memory_t::host_pinned).free_size() >> 20,
-                   mem_pool(memory_t::host_pinned).num_blocks(),
-                   mem_pool(memory_t::host_pinned).num_stored_ptr());
-
-            printf("memory_t::device pool:      %li %li %li %li\n", mem_pool(memory_t::device).total_size() >> 20,
-                   mem_pool(memory_t::device).free_size() >> 20,
-                   mem_pool(memory_t::device).num_blocks(),
-                   mem_pool(memory_t::device).num_stored_ptr());
+        /* create augmentation operator Q_{xi,xi'}(G) here */
+        for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+            augmentation_op_.push_back(
+                    std::move(Augmentation_operator(unit_cell().atom_type(iat), gvec(), comm())));
+            augmentation_op_.back().generate_pw_coeffs(aug_ri(), *mp);
         }
     }
+}
 
-    void Simulation_context::init_atoms_to_grid_idx(double R__) {
-        PROFILE("sirius::Simulation_context::init_atoms_to_grid_idx");
+void Simulation_context::create_storage_file() const {
+    if (comm_.rank() == 0) {
+        /* create new hdf5 file */
+        HDF5_tree fout(storage_file_name, hdf5_access_t::truncate);
+        fout.create_node("parameters");
+        fout.create_node("effective_potential");
+        fout.create_node("effective_magnetic_field");
+        fout.create_node("density");
+        fout.create_node("magnetization");
 
-        atoms_to_grid_idx_.resize(unit_cell_.num_atoms());
+        for (int j = 0; j < num_mag_dims(); j++) {
+            fout["magnetization"].create_node(j);
+            fout["effective_magnetic_field"].create_node(j);
+        }
 
-        vector3d<double> delta(1.0 / fft_->size(0), 1.0 / fft_->size(1), 1.0 / fft_->size(2));
+        fout["parameters"].write("num_spins", num_spins());
+        fout["parameters"].write("num_mag_dims", num_mag_dims());
+        fout["parameters"].write("num_bands", num_bands());
 
-        int z_off = fft_->offset_z();
-        vector3d<int> grid_beg(0, 0, z_off);
-        vector3d<int> grid_end(fft_->size(0), fft_->size(1), z_off + fft_->local_size_z());
-        std::vector<vector3d<double>> verts_cart{{-R__, -R__, -R__}, {R__, -R__, -R__}, {-R__, R__, -R__},
-                                                 {R__, R__, -R__},   {-R__, -R__, R__}, {R__, -R__, R__},
-                                                 {-R__, R__, R__},   {R__, R__, R__}};
-
-        auto bounds_box = [&](vector3d<double> pos) {
-            std::vector<vector3d<double>> verts;
-
-            /* pos is a position of atom */
-            for (auto v : verts_cart) {
-                verts.push_back(pos + unit_cell_.get_fractional_coordinates(v));
-            }
-
-            std::pair<vector3d<int>, vector3d<int>> bounds_ind;
-
+        mdarray<int, 2> gv(3, gvec().num_gvec());
+        for (int ig = 0; ig < gvec().num_gvec(); ig++) {
+            auto G = gvec().gvec(ig);
             for (int x : {0, 1, 2}) {
-                std::sort(verts.begin(), verts.end(),
-                          [x](vector3d<double>& a, vector3d<double>& b) { return a[x] < b[x]; });
-                bounds_ind.first[x]  = std::max(static_cast<int>(verts[0][x] / delta[x]) - 1, grid_beg[x]);
-                bounds_ind.second[x] = std::min(static_cast<int>(verts[5][x] / delta[x]) + 1, grid_end[x]);
+                gv(x, ig) = G[x];
             }
+        }
+        fout["parameters"].write("num_gvec", gvec().num_gvec());
+        fout["parameters"].write("gvec", gv);
 
-            return bounds_ind;
-        };
+        fout.create_node("unit_cell");
+        fout["unit_cell"].create_node("atoms");
+        for (int j = 0; j < unit_cell().num_atoms(); j++) {
+            fout["unit_cell"]["atoms"].create_node(j);
+            fout["unit_cell"]["atoms"][j].write("mt_basis_size", unit_cell().atom(j).mt_basis_size());
+        }
+    }
+    comm_.barrier();
+}
 
-#pragma omp parallel for
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+void Simulation_context::generate_phase_factors(int iat__, mdarray<double_complex, 2> &phase_factors__) const {
+    PROFILE("sirius::Simulation_context::generate_phase_factors");
+    int na = unit_cell_.atom_type(iat__).num_atoms();
+    switch (processing_unit_) {
+        case device_t::CPU: {
+            #pragma omp parallel for
+            for (int igloc = 0; igloc < gvec().count(); igloc++) {
+                int ig = gvec().offset() + igloc;
+                for (int i = 0; i < na; i++) {
+                    int ia                    = unit_cell().atom_type(iat__).atom_id(i);
+                    phase_factors__(igloc, i) = gvec_phase_factor(ig, ia);
+                }
+            }
+            break;
+        }
+        case device_t::GPU: {
+#if defined(__GPU)
+            generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(memory_t::device),
+                                       unit_cell().atom_coord(iat__).at(memory_t::device), phase_factors__.at(memory_t::device));
+#endif
+            break;
+        }
+    }
+}
 
-            std::vector<std::pair<int, double>> atom_to_ind_map;
+void Simulation_context::print_memory_usage(const char *file__, int line__) {
+    if (comm().rank() == 0 && control().print_memory_usage_) {
+        sirius::print_memory_usage(file__, line__);
 
-            for (int t0 = -1; t0 <= 1; t0++) {
-                for (int t1 = -1; t1 <= 1; t1++) {
-                    for (int t2 = -1; t2 <= 1; t2++) {
-                        auto pos = unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2);
+        printf("memory_t::host pool:        %li %li %li %li\n", mem_pool(memory_t::host).total_size() >> 20,
+               mem_pool(memory_t::host).free_size() >> 20,
+               mem_pool(memory_t::host).num_blocks(),
+               mem_pool(memory_t::host).num_stored_ptr());
 
-                        /* find the small box around this atom */
-                        auto box = bounds_box(pos);
+        printf("memory_t::host_pinned pool: %li %li %li %li\n", mem_pool(memory_t::host_pinned).total_size() >> 20,
+               mem_pool(memory_t::host_pinned).free_size() >> 20,
+               mem_pool(memory_t::host_pinned).num_blocks(),
+               mem_pool(memory_t::host_pinned).num_stored_ptr());
 
-                        for (int j0 = box.first[0]; j0 < box.second[0]; j0++) {
-                            for (int j1 = box.first[1]; j1 < box.second[1]; j1++) {
-                                for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
-                                    auto v = pos - vector3d<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
-                                    auto r  = unit_cell_.get_cartesian_coordinates(v).length();
-                                    if (r < R__) {
-                                        auto ir = fft_->index_by_coord(j0, j1, j2 - z_off);
-                                        atom_to_ind_map.push_back({ir, r});
-                                    }
+        printf("memory_t::device pool:      %li %li %li %li\n", mem_pool(memory_t::device).total_size() >> 20,
+               mem_pool(memory_t::device).free_size() >> 20,
+               mem_pool(memory_t::device).num_blocks(),
+               mem_pool(memory_t::device).num_stored_ptr());
+    }
+}
+
+void Simulation_context::init_atoms_to_grid_idx(double R__) {
+    PROFILE("sirius::Simulation_context::init_atoms_to_grid_idx");
+
+    atoms_to_grid_idx_.resize(unit_cell_.num_atoms());
+
+    vector3d<double> delta(1.0 / fft_->size(0), 1.0 / fft_->size(1), 1.0 / fft_->size(2));
+
+    int z_off = fft_->offset_z();
+    vector3d<int> grid_beg(0, 0, z_off);
+    vector3d<int> grid_end(fft_->size(0), fft_->size(1), z_off + fft_->local_size_z());
+    std::vector<vector3d<double>> verts_cart{{-R__, -R__, -R__}, {R__, -R__, -R__}, {-R__, R__, -R__},
+                                             {R__, R__, -R__},   {-R__, -R__, R__}, {R__, -R__, R__},
+                                             {-R__, R__, R__},   {R__, R__, R__}};
+
+    auto bounds_box = [&](vector3d<double> pos) {
+        std::vector<vector3d<double>> verts;
+
+        /* pos is a position of atom */
+        for (auto v : verts_cart) {
+            verts.push_back(pos + unit_cell_.get_fractional_coordinates(v));
+        }
+
+        std::pair<vector3d<int>, vector3d<int>> bounds_ind;
+
+        for (int x : {0, 1, 2}) {
+            std::sort(verts.begin(), verts.end(),
+                      [x](vector3d<double>& a, vector3d<double>& b) { return a[x] < b[x]; });
+            bounds_ind.first[x]  = std::max(static_cast<int>(verts[0][x] / delta[x]) - 1, grid_beg[x]);
+            bounds_ind.second[x] = std::min(static_cast<int>(verts[5][x] / delta[x]) + 1, grid_end[x]);
+        }
+
+        return bounds_ind;
+    };
+
+    #pragma omp parallel for
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+
+        std::vector<std::pair<int, double>> atom_to_ind_map;
+
+        for (int t0 = -1; t0 <= 1; t0++) {
+            for (int t1 = -1; t1 <= 1; t1++) {
+                for (int t2 = -1; t2 <= 1; t2++) {
+                    auto pos = unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2);
+
+                    /* find the small box around this atom */
+                    auto box = bounds_box(pos);
+
+                    for (int j0 = box.first[0]; j0 < box.second[0]; j0++) {
+                        for (int j1 = box.first[1]; j1 < box.second[1]; j1++) {
+                            for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
+                                auto v = pos - vector3d<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
+                                auto r  = unit_cell_.get_cartesian_coordinates(v).length();
+                                if (r < R__) {
+                                    auto ir = fft_->index_by_coord(j0, j1, j2 - z_off);
+                                    atom_to_ind_map.push_back({ir, r});
                                 }
                             }
                         }
                     }
                 }
             }
+        }
 
-            atoms_to_grid_idx_[ia] = std::move(atom_to_ind_map);
+        atoms_to_grid_idx_[ia] = std::move(atom_to_ind_map);
+    }
+}
+
+void Simulation_context::init_step_function() {
+    auto v = make_periodic_function<index_domain_t::global>([&](int iat, double g)
+                                                            {
+                                                                auto R = unit_cell().atom_type(iat).mt_radius();
+                                                                return unit_step_function_form_factors(R, g);
+                                                            });
+
+    theta_    = mdarray<double, 1>(fft().local_size());
+    theta_pw_ = mdarray<double_complex, 1>(gvec().num_gvec());
+
+    for (int ig = 0; ig < gvec().num_gvec(); ig++) {
+        theta_pw_[ig] = -v[ig];
+    }
+    theta_pw_[0] += 1.0;
+
+    std::vector<double_complex> ftmp(gvec_partition().gvec_count_fft());
+    for (int i = 0; i < gvec_partition().gvec_count_fft(); i++) {
+        ftmp[i] = theta_pw_[gvec_partition().idx_gvec(i)];
+    }
+    fft().transform<1>(ftmp.data());
+    fft().output(&theta_[0]);
+
+    double vit{0};
+    for (int i = 0; i < fft().local_size(); i++) {
+        vit += theta_[i];
+    }
+    vit *= (unit_cell().omega() / fft().size());
+    fft().comm().allreduce(&vit, 1);
+
+    if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
+        std::stringstream s;
+        s << "step function gives a wrong volume for IT region" << std::endl
+          << "  difference with exact value : " << std::abs(vit - unit_cell().volume_it());
+        if (comm().rank() == 0) {
+            WARNING(s);
         }
     }
-
-    void Simulation_context::init_step_function() {
-        auto v = make_periodic_function<index_domain_t::global>([&](int iat, double g)
-                                                                {
-                                                                    auto R = unit_cell().atom_type(iat).mt_radius();
-                                                                    return unit_step_function_form_factors(R, g);
-                                                                });
-
-        theta_    = mdarray<double, 1>(fft().local_size());
-        theta_pw_ = mdarray<double_complex, 1>(gvec().num_gvec());
-
-        for (int ig = 0; ig < gvec().num_gvec(); ig++) {
-            theta_pw_[ig] = -v[ig];
-        }
-        theta_pw_[0] += 1.0;
-
-        std::vector<double_complex> ftmp(gvec_partition().gvec_count_fft());
-        for (int i = 0; i < gvec_partition().gvec_count_fft(); i++) {
-            ftmp[i] = theta_pw_[gvec_partition().idx_gvec(i)];
-        }
-        fft().transform<1>(ftmp.data());
-        fft().output(&theta_[0]);
-
-        double vit{0};
-        for (int i = 0; i < fft().local_size(); i++) {
-            vit += theta_[i];
-        }
-        vit *= (unit_cell().omega() / fft().size());
-        fft().comm().allreduce(&vit, 1);
-
-        if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
-            std::stringstream s;
-            s << "step function gives a wrong volume for IT region" << std::endl
-              << "  difference with exact value : " << std::abs(vit - unit_cell().volume_it());
-            if (comm().rank() == 0) {
-                WARNING(s);
-            }
-        }
-        if (control().print_checksum_) {
-            double_complex z1 = theta_pw_.checksum();
-            double d1         = theta_.checksum();
-            fft().comm().allreduce(&d1, 1);
-            if (comm().rank() == 0) {
-                utils::print_checksum("theta", d1);
-                utils::print_checksum("theta_pw", z1);
-            }
+    if (control().print_checksum_) {
+        double_complex z1 = theta_pw_.checksum();
+        double d1         = theta_.checksum();
+        fft().comm().allreduce(&d1, 1);
+        if (comm().rank() == 0) {
+            utils::print_checksum("theta", d1);
+            utils::print_checksum("theta_pw", z1);
         }
     }
+}
 
-    void Simulation_context::init_comm() {
-        PROFILE("sirius::Simulation_context::init_comm");
+void Simulation_context::init_comm() {
+    PROFILE("sirius::Simulation_context::init_comm");
 
-        /* check MPI grid dimensions and set a default grid if needed */
-        if (!control().mpi_grid_dims_.size()) {
-            set_mpi_grid_dims({1, 1});
-        }
-        if (control().mpi_grid_dims_.size() != 2) {
-            TERMINATE("wrong MPI grid");
-        }
-
-        int npr = control_input_.mpi_grid_dims_[0];
-        int npc = control_input_.mpi_grid_dims_[1];
-        int npb = npr * npc;
-        int npk = comm_.size() / npb;
-        if (npk * npb != comm_.size()) {
-            std::stringstream s;
-            s << "Can't divide " << comm_.size() << " ranks into groups of size " << npb;
-            TERMINATE(s);
-        }
-
-        /* setup MPI grid */
-        mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
-
-        comm_ortho_fft_ = comm().split(comm_fft().rank());
-
-        comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
-
-        comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
+    /* check MPI grid dimensions and set a default grid if needed */
+    if (!control().mpi_grid_dims_.size()) {
+        set_mpi_grid_dims({1, 1});
     }
+    if (control().mpi_grid_dims_.size() != 2) {
+        TERMINATE("wrong MPI grid");
+    }
+
+    int npr = control_input_.mpi_grid_dims_[0];
+    int npc = control_input_.mpi_grid_dims_[1];
+    int npb = npr * npc;
+    int npk = comm_.size() / npb;
+    if (npk * npb != comm_.size()) {
+        std::stringstream s;
+        s << "Can't divide " << comm_.size() << " ranks into groups of size " << npb;
+        TERMINATE(s);
+    }
+
+    /* setup MPI grid */
+    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
+
+    comm_ortho_fft_ = comm().split(comm_fft().rank());
+
+    comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
+
+    comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
+}
 
 } // namespace sirius

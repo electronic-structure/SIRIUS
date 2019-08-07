@@ -1,9 +1,0 @@
-/** \file version.hpp
- *  \brief Auto-generated version file.
- */
-#ifndef __SIRIUS_VERSION_HPP__
-#define __SIRIUS_VERSION_HPP__
-const char* const git_hash = "@GIT_VERSION_SHA1@";
-const char* const git_branchname = "@GIT_BRANCHNAME@";
-const char* const build_date = "@BUILD_DATE@";
-#endif // __SIRIUS_VERSION_HPP__

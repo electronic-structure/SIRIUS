@@ -425,6 +425,9 @@ void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltoni
             o_diag(j, ispn) = o_diag1[j];
         }
     }
+    if (ctx_.processing_unit() == device_t::GPU) {
+        o_diag.allocate(memory_t::device).copy_to(memory_t::device);
+    }
 
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
