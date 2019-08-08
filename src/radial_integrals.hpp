@@ -62,7 +62,7 @@ class Radial_integrals_base
     {
         if (q__ > grid_q_.last()) {
             std::stringstream s;
-            s << "[sirius::Radial_integrals_base::iddq] q-point is out of range" << std::endl
+            s << "[sirius::Radial_integrals_base::iqdq] q-point is out of range" << std::endl
               << "  q : " << q__ << std::endl
               << "  last point of the q-grid : " << grid_q_.last();
             std::cout << s.str() << "\n";
