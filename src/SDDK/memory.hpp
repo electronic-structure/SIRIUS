@@ -33,6 +33,8 @@
 #include <functional>
 #include <algorithm>
 #include <array>
+#include <complex>
+#include <cassert>
 #include "GPU/acc.hpp"
 
 namespace sddk {
@@ -83,7 +85,7 @@ inline memory_t get_memory_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 
-    static const std::map<std::string, memory_t> map_to_type = {
+    std::map<std::string, memory_t> const map_to_type = {
         {"none",        memory_t::none},
         {"host",        memory_t::host},
         {"host_pinned", memory_t::host_pinned},
@@ -137,7 +139,7 @@ inline device_t get_device_t(std::string name__)
     } else if (name__ == "gpu") {
         return device_t::GPU;
     } else {
-        throw std::runtime_error("wrong processing unit");
+        throw std::runtime_error("get_device_t(): wrong processing unit");
     }
     return device_t::CPU; // make compiler happy
 }
@@ -170,7 +172,7 @@ inline T* allocate(size_t n__, memory_t M__)
 #endif
         }
         default: {
-            throw std::runtime_error("unknown memory type");
+            throw std::runtime_error("allocate(): unknown memory type");
         }
     }
 }
@@ -199,11 +201,12 @@ inline void deallocate(void* ptr__, memory_t M__)
             break;
         }
         default: {
-            throw std::runtime_error("unknown memory type");
+            throw std::runtime_error("deallocate(): unknown memory type");
         }
     }
 }
 
+/// Copy between different memory types.
 template <typename T>
 inline void copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T* to_ptr__, size_t n__)
 {
@@ -301,13 +304,15 @@ class memory_pool_deleter: public memory_t_deleter_base
     }
 };
 
+/// Allocate n elements and return a unique pointer.
 template <typename T>
 inline std::unique_ptr<T, memory_t_deleter_base> get_unique_ptr(size_t n__, memory_t M__)
 {
-    return std::move(std::unique_ptr<T, memory_t_deleter_base>(allocate<T>(n__, M__), memory_t_deleter(M__)));
+    return std::unique_ptr<T, memory_t_deleter_base>(allocate<T>(n__, M__), memory_t_deleter(M__));
 }
 
 /// Descriptor of the allocated memory block.
+/** Internally the block might be split into sub-blocks. */
 struct memory_block_descriptor
 {
     /// Storage buffer for the memory blocks.
@@ -333,6 +338,12 @@ struct memory_block_descriptor
         return (free_subblocks_.size() == 1 &&
                 free_subblocks_.front().first == 0 &&
                 free_subblocks_.front().second == size_);
+    }
+
+    /// Return total size of the block.
+    inline size_t size() const
+    {
+        return size_;
     }
 
     /// Try to allocate a subblock of memory.
@@ -412,7 +423,7 @@ struct memory_block_descriptor
                 return;
             }
         }
-        /* otherwise this is the tail subblock */
+        /* otherwise this will be the last free subblock */
         free_subblocks_.push_back(std::make_pair(offset, size__));
         check_free_subblocks();
     }
@@ -431,8 +442,13 @@ struct memory_block_descriptor
 /// Store information about the allocated subblock: iterator in the list of memory blocks and subblock size;
 struct memory_subblock_descriptor
 {
+    /// Iterator in the list of block descriptors stored by memory pool.
+    /** Iterator points to a memory block in which this sub-block was allocated */
     std::list<memory_block_descriptor>::iterator it_;
+    /// Size of the sub-block.
     size_t size_;
+    /// This is the precise beginning of the memory sub-block.
+    /** Used to compute the exact location of the sub-block inside a memory block. */
     uint8_t* unaligned_ptr_;
 };
 
@@ -466,6 +482,7 @@ class memory_pool
     template <typename T>
     T* allocate(size_t num_elements__)
     {
+        /* memory block descriptor returns an unaligned memory; here we compute the the aligment value */
         size_t align_size = std::max(size_t(64), alignof(T));
         /* size of the memory block in bytes */
         size_t size = num_elements__ * sizeof(T) + align_size;
@@ -482,9 +499,24 @@ class memory_pool
                 break;
             }
         }
+
         /* if memory chunk was not found in the list of available blocks, add a new memory block with enough capacity */
         if (!ptr) {
-            memory_blocks_.push_back(memory_block_descriptor(size, M_));
+            /* free all empty blocks and get their total size */
+            size_t new_size{0};
+            auto i = memory_blocks_.begin();
+            while (i != memory_blocks_.end()) {
+                if (i->is_empty()) {
+                    new_size += i->size();
+                    memory_blocks_.erase(i++);
+                } else {
+                    ++i;
+                }
+            }
+            /* get upper limit for the size of the new block */
+            new_size = std::max(new_size, size);
+
+            memory_blocks_.push_back(memory_block_descriptor(new_size, M_));
             it = memory_blocks_.end();
             it--;
             ptr = it->allocate_subblock(size);
@@ -492,16 +524,20 @@ class memory_pool
         if (!ptr) {
             throw std::runtime_error("memory allocation failed");
         }
+        /* save the information about the allocated memory sub-block */
         memory_subblock_descriptor msb;
+        /* location in the list of blocks */
         msb.it_ = it;
+        /* total size including the aligment */
         msb.size_ = size;
+        /* beginning of the block (unaligned) */
         msb.unaligned_ptr_ = ptr;
         auto uip = reinterpret_cast<std::uintptr_t>(ptr);
         /* align the pointer */
         if (uip % align_size) {
             uip += (align_size - uip % align_size);
         }
-        uint8_t* aligned_ptr = reinterpret_cast<uint8_t*>(uip);
+        auto aligned_ptr = reinterpret_cast<uint8_t*>(uip);
         /* add to the hash table */
         map_ptr_[aligned_ptr] = msb;
         return reinterpret_cast<T*>(aligned_ptr);
@@ -510,50 +546,49 @@ class memory_pool
     /// Delete a pointer and add its memory back to the pool.
     void free(void* ptr__)
     {
-        uint8_t* ptr = reinterpret_cast<uint8_t*>(ptr__);
+        auto ptr = reinterpret_cast<uint8_t*>(ptr__);
+        /* get a descriptor of this pointer */
         auto& msb = map_ptr_.at(ptr);
+        /* free the sub-block */
         msb.it_->free_subblock(msb.unaligned_ptr_, msb.size_);
 
-        auto merge_blocks = [&](std::list<memory_block_descriptor>::iterator it0,
-                                std::list<memory_block_descriptor>::iterator it)
-        {
-            if (it0->is_empty()) {
-                size_t size = it->size_ + it0->size_;
-                it->buffer_ = nullptr;
-                it0->buffer_ = nullptr;
-                (*it) = memory_block_descriptor(size, M_);
-                memory_blocks_.erase(it0);
-            }
-        };
+        //auto merge_blocks = [&](std::list<memory_block_descriptor>::iterator it0,
+        //                        std::list<memory_block_descriptor>::iterator it)
+        //{
+        //    if (it0->is_empty()) {
+        //        size_t size = it->size_ + it0->size_;
+        //        it->buffer_ = nullptr;
+        //        it0->buffer_ = nullptr;
+        //        (*it) = memory_block_descriptor(size, M_);
+        //        memory_blocks_.erase(it0);
+        //    }
+        //};
 
-        /* merge memory blocks; this is not strictly necessary but can lead to a better performance */
-        auto it = msb.it_;
-        if (it->is_empty()) {
-            /* try the previous block */
-            if (it != memory_blocks_.begin()) {
-                auto it0 = it;
-                it0--;
-                merge_blocks(it0, it);
-            }
-            /* try the next block */
-            auto it0 = it;
-            it0++;
-            if (it0 != memory_blocks_.end()) {
-                merge_blocks(it0, it);
-            }
-        }
+        ///* merge memory blocks; this is not strictly necessary but can lead to a better performance */
+        //auto it = msb.it_;
+        //if (it->is_empty()) {
+        //    /* try the previous block */
+        //    if (it != memory_blocks_.begin()) {
+        //        auto it0 = it;
+        //        it0--;
+        //        merge_blocks(it0, it);
+        //    }
+        //    /* try the next block */
+        //    auto it0 = it;
+        //    it0++;
+        //    if (it0 != memory_blocks_.end()) {
+        //        merge_blocks(it0, it);
+        //    }
+        //}
         /* remove this pointer from the hash table */
         map_ptr_.erase(ptr);
     }
 
+    /// Return a unique pointer to the allocated memory.
     template <typename T>
     std::unique_ptr<T, memory_t_deleter_base> get_unique_ptr(size_t n__)
     {
-#if !defined(__DEBUG_MEMORY_POOL)
-        return std::move(std::unique_ptr<T, memory_t_deleter_base>(allocate<T>(n__), memory_pool_deleter(this)));
-#else
-        return std::move(sddk::get_unique_ptr<T>(n__, M_));
-#endif
+        return std::unique_ptr<T, memory_t_deleter_base>(allocate<T>(n__), memory_pool_deleter(this));
     }
 
     /// Free all the allocated blocks.
