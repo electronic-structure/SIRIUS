@@ -22,7 +22,11 @@
  *  \brief Generate PAW potential.
  */
 
-inline void Potential::init_PAW()
+#include "potential.hpp"
+
+namespace sirius {
+
+void Potential::init_PAW()
 {
     paw_potential_data_.clear();
     if (!unit_cell_.num_paw_atoms()) {
@@ -76,7 +80,7 @@ inline void Potential::init_PAW()
     paw_one_elec_energies_.resize(unit_cell_.num_paw_atoms());
 }
 
-inline void Potential::generate_PAW_effective_potential(Density const& density)
+void Potential::generate_PAW_effective_potential(Density const& density)
 {
     PROFILE("sirius::Potential::generate_PAW_effective_potential");
 
@@ -137,7 +141,7 @@ inline void Potential::generate_PAW_effective_potential(Density const& density)
     paw_total_core_energy_ = energies[3];
 }
 
-inline double Potential::xc_mt_PAW_nonmagnetic(Spheric_function<function_domain_t::spectral, double>& full_potential,
+double Potential::xc_mt_PAW_nonmagnetic(Spheric_function<function_domain_t::spectral, double>& full_potential,
                                                Spheric_function<function_domain_t::spectral, double> const& full_density,
                                                std::vector<double> const& rho_core)
 {
@@ -176,7 +180,7 @@ inline double Potential::xc_mt_PAW_nonmagnetic(Spheric_function<function_domain_
     return inner(exc_lm_sf, full_rho_lm_sf_new);
 }
 
-inline double Potential::xc_mt_PAW_collinear(std::vector<Spheric_function<function_domain_t::spectral, double>>& potential,
+double Potential::xc_mt_PAW_collinear(std::vector<Spheric_function<function_domain_t::spectral, double>>& potential,
                                              std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
                                              std::vector<double> const& rho_core)
 {
@@ -233,7 +237,7 @@ inline double Potential::xc_mt_PAW_collinear(std::vector<Spheric_function<functi
 }
 
 
-inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<function_domain_t::spectral, double>>& potential,
+double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<function_domain_t::spectral, double>>& potential,
                             std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
                             std::vector<double> const& rho_core)
 {
@@ -324,7 +328,7 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<fun
 }
 
 
-inline double Potential::calc_PAW_hartree_potential(Atom& atom,
+double Potential::calc_PAW_hartree_potential(Atom& atom,
                                                     Spheric_function<function_domain_t::spectral, double> const& full_density,
                                                     Spheric_function<function_domain_t::spectral, double>& full_potential)
 {
@@ -364,7 +368,7 @@ inline double Potential::calc_PAW_hartree_potential(Atom& atom,
     return hartree_energy;
 }
 
-inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
+void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
                                                 std::vector<Spheric_function<function_domain_t::spectral, double>> const& ae_density,
                                                 std::vector<Spheric_function<function_domain_t::spectral, double>> const& ps_density)
 {
@@ -419,7 +423,7 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
     ppd.xc_energy_ = ae_xc_energy - ps_xc_energy;
 }
 
-inline void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>& paw_dij)
+void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>& paw_dij)
 {
     int paw_ind = pdd.ia_paw;
 
@@ -457,7 +461,7 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<dou
                     /* fill array */
                     for (int irad = 0; irad < rgrid.num_points(); irad++) {
                         double ae_part = paw_ae_wfs(irad, irb1) * paw_ae_wfs(irad, irb2);
-                        double ps_part = paw_ps_wfs(irad, irb1) * paw_ps_wfs(irad, irb2) + 
+                        double ps_part = paw_ps_wfs(irad, irb1) * paw_ps_wfs(irad, irb2) +
                                          atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3])(irad);
 
                         intdata[irad] = ae_atom_pot(lm3, irad) * ae_part - ps_atom_pot(lm3, irad) * ps_part;
@@ -508,7 +512,7 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<dou
     }
 }
 
-inline double Potential::calc_PAW_one_elec_energy(paw_potential_data_t& pdd,
+double Potential::calc_PAW_one_elec_energy(paw_potential_data_t& pdd,
                                                   const mdarray<double_complex, 4>& density_matrix,
                                                   const mdarray<double, 4>& paw_dij)
 {
@@ -556,7 +560,7 @@ inline double Potential::calc_PAW_one_elec_energy(paw_potential_data_t& pdd,
     return energy.real();
 }
 
-inline void Potential::add_paw_Dij_to_atom_Dmtrx()
+void Potential::add_paw_Dij_to_atom_Dmtrx()
 {
     #pragma omp parallel for
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
@@ -573,3 +577,4 @@ inline void Potential::add_paw_Dij_to_atom_Dmtrx()
     }
 }
 
+} // namespace sirius

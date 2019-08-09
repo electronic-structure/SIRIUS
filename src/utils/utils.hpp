@@ -141,17 +141,7 @@ inline bool file_exists(std::string file_name)
 /// Return the timestamp string in a specified format.
 /** Typical format strings: "%Y%m%d_%H%M%S", "%Y-%m-%d %H:%M:%S", "%H:%M:%S" 
  */
-inline std::string timestamp(std::string fmt)
-{
-    timeval t;
-    gettimeofday(&t, NULL);
-
-    char buf[128];
-
-    tm* ptm = localtime(&t.tv_sec);
-    strftime(buf, sizeof(buf), fmt.c_str(), ptm);
-    return std::string(buf);
-}
+std::string timestamp(std::string fmt);
 
 /// Wall-clock time in seconds.
 inline double wtime()
@@ -189,35 +179,7 @@ inline int packed_index(int i__, int j__)
 }
 
 /// Convert double to a string with a given precision.
-inline std::string double_to_string(double val, int precision = -1)
-{
-    char buf[100];
-
-    double abs_val = std::abs(val);
-
-    if (precision == -1) {
-        if (abs_val > 1.0) {
-            precision = 6;
-        } else if (abs_val > 1e-14) {
-            precision = int(-std::log(abs_val) / std::log(10.0)) + 7;
-        } else {
-            return std::string("0.0");
-        }
-    }
-
-    std::stringstream fmt;
-    fmt << "%." << precision << "f";
-
-    int len = snprintf(buf, 100, fmt.str().c_str(), val);
-    for (int i = len - 1; i >= 1; i--) {
-        if (buf[i] == '0' && buf[i - 1] == '0') {
-            buf[i] = 0;
-        } else {
-            break;
-        }
-    }
-    return std::string(buf);
-}
+std::string double_to_string(double val, int precision = -1);
 
 /// Return angle phi in the range [0, 2Pi) by its values of sin(phi) and cos(phi).
 inline double phi_by_sin_cos(double sinp, double cosp)
@@ -284,126 +246,17 @@ inline uint32_t rand()
     return a;
 }
 
-inline double confined_polynomial(double r, double R, int p1, int p2, int dm)
-{
-    double t = 1.0 - std::pow(r / R, 2);
-    switch (dm) {
-        case 0: {
-            return (std::pow(r, p1) * std::pow(t, p2));
-        }
-        case 2: {
-            return (-4 * p1 * p2 * std::pow(r, p1) * std::pow(t, p2 - 1) / std::pow(R, 2) +
-                    p1 * (p1 - 1) * std::pow(r, p1 - 2) * std::pow(t, p2) +
-                    std::pow(r, p1) * (4 * (p2 - 1) * p2 * std::pow(r, 2) * std::pow(t, p2 - 2) / std::pow(R, 4) -
-                                       2 * p2 * std::pow(t, p2 - 1) / std::pow(R, 2)));
-        }
-        default: {
-            TERMINATE("wrong derivative order");
-            return 0.0;
-        }
-    }
-}
+double confined_polynomial(double r, double R, int p1, int p2, int dm);
 
 /// Read json dictionary from file or string.
 /** Terminate if file doesn't exist. */
-inline nlohmann::json read_json_from_file_or_string(std::string const& str__)
-{
-    nlohmann::json dict = {};
-    if (str__.size() == 0) {
-        return dict;
-    }
-
-    if (str__.find("{") == std::string::npos) { /* this is a file */
-        if (file_exists(str__)) {
-            try {
-                std::ifstream(str__) >> dict;
-            } catch(std::exception& e) {
-                std::stringstream s;
-                s << "wrong input json file" << std::endl
-                  << e.what();
-                TERMINATE(s);
-            }
-        } 
-        else {
-            std::stringstream s;
-            s << "file " << str__ << " doesn't exist";
-            TERMINATE(s);
-        }
-    } else { /* this is a json string */
-        try {
-            std::istringstream(str__) >> dict;
-        } catch (std::exception& e) {
-            std::stringstream s;
-            s << "wrong input json string" << std::endl
-              << e.what();
-            TERMINATE(s);
-        }
-    }
-
-    return dict;
-}
+nlohmann::json read_json_from_file_or_string(std::string const& str__);
 
 /// Get high water mark and resident space size values of a given process.
-inline void get_proc_status(size_t* VmHWM__, size_t* VmRSS__)
-{
-    *VmHWM__ = 0;
-    *VmRSS__ = 0;
-
-    std::ifstream ifs("/proc/self/status");
-    if (ifs.is_open()) {
-        size_t tmp;
-        std::string str; 
-        std::string units;
-        while (std::getline(ifs, str)) {
-            auto p = str.find("VmHWM:");
-            if (p != std::string::npos) {
-                std::stringstream s(str.substr(p + 7));
-                s >> tmp;
-                s >> units;
-
-                if (units != "kB") {
-                    printf("runtime::get_proc_status(): wrong units");
-                } else {
-                    *VmHWM__ = tmp * 1024;
-                }
-            }
-
-            p = str.find("VmRSS:");
-            if (p != std::string::npos) {
-                std::stringstream s(str.substr(p + 7));
-                s >> tmp;
-                s >> units;
-
-                if (units != "kB") {
-                    printf("runtime::get_proc_status(): wrong units");
-                } else {
-                    *VmRSS__ = tmp * 1024;
-                }
-            }
-        } 
-    }
-}
+void get_proc_status(size_t* VmHWM__, size_t* VmRSS__);
 
 /// Get number of threads currently running for this process.
-inline int get_proc_threads()
-{
-    int num_threads{-1};
-
-    std::ifstream ifs("/proc/self/status");
-    if (ifs.is_open()) {
-        std::string str;
-        while (std::getline(ifs, str)) {
-            auto p = str.find("Threads:");
-            if (p != std::string::npos) {
-                std::stringstream s(str.substr(p + 9));
-                s >> num_threads;
-                break;
-            }
-        }
-    }
-
-    return num_threads;
-}
+int get_proc_threads();
 
 /// Get a host name.
 inline std::string hostname()
@@ -460,6 +313,7 @@ inline double random<double>()
 {
     return static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
 }
+
 
 template <>
 inline std::complex<double> random<std::complex<double>>()

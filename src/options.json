@@ -431,7 +431,7 @@
         "atom_coordinate_units" : {
             "description" : "units used to report the atoms coordinates (a.u. or A)",
             "usage" : "atom_coordinate_units a.u or A",
-            "possible_values" : ["A", "a.u"],
+            "possible_values" : ["A", "au"],
             "default_value" : ""
         },
         "atoms" : {

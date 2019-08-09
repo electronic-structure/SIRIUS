@@ -138,7 +138,7 @@ class Hamiltonian
 
     /// Apply pseudopotential H and S operators to the wavefunctions.
     template <typename T>
-    inline void apply_h_s(K_point*        kp__,
+    void apply_h_s(K_point*        kp__,
                           int             ispn__,
                           int             N__,
                           int             n__,
@@ -147,7 +147,7 @@ class Hamiltonian
                           Wave_functions* sphi__) const;
 
     /// Apply magnetic field to first-variational LAPW wave-functions.
-    inline void apply_magnetic_field(K_point*                     kp__,
+    void apply_magnetic_field(K_point*                     kp__,
                                      Wave_functions&              fv_states__,
                                      std::vector<Wave_functions>& hpsi__) const;
 
@@ -164,28 +164,28 @@ class Hamiltonian
     void apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi);
 
     /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
-    inline void set_fv_h_o_it(K_point* kp__, matrix<double_complex>& h__, matrix<double_complex>& o__) const;
+    void set_fv_h_o_it(K_point* kp__, matrix<double_complex>& h__, matrix<double_complex>& o__) const;
 
-    inline void set_o_it(K_point* kp, mdarray<double_complex, 2>& o) const;
+    void set_o_it(K_point* kp, mdarray<double_complex, 2>& o) const;
 
     template <spin_block_t sblock>
-    inline void set_h_it(K_point* kp,
+    void set_h_it(K_point* kp,
                          Periodic_function<double>* effective_potential,
                          Periodic_function<double>* effective_magnetic_field[3],
                          matrix<double_complex>& h) const;
 
     /// Setup lo-lo block of Hamiltonian and overlap matrices
-    inline void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const;
+    void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const;
 
     template <spin_block_t sblock>
-    inline void set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const;
+    void set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const;
 
-    inline void set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o) const;
+    void set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o) const;
 
-    inline void set_o(K_point* kp, mdarray<double_complex, 2>& o);
+    void set_o(K_point* kp, mdarray<double_complex, 2>& o);
 
     template <spin_block_t sblock>
-    inline void set_h(K_point* kp,
+    void set_h(K_point* kp,
                       Periodic_function<double>* effective_potential,
                       Periodic_function<double>* effective_magnetic_field[3],
                       mdarray<double_complex, 2>& h);
@@ -340,7 +340,7 @@ class Hamiltonian
      *  \f]
      */
     template <device_t pu, electronic_structure_method_t basis>
-    inline void set_fv_h_o(K_point* kp, dmatrix<double_complex>& h, dmatrix<double_complex>& o) const;
+    void set_fv_h_o(K_point* kp, dmatrix<double_complex>& h, dmatrix<double_complex>& o) const;
 
     /// Apply LAPW Hamiltonain and overlap to the trial wave-functions.
     /** Check the documentation of Band::set_fv_h_o() for the expressions of Hamiltonian and overlap
@@ -465,7 +465,7 @@ class Hamiltonian
      *            \delta_{\alpha_j \alpha_{j'}} \delta_{\ell_j \ell_{j'}} \delta_{m_j m_{j'}}
      *  \f]
      */
-    inline void apply_fv_h_o(K_point*        kp__,
+    void apply_fv_h_o(K_point*        kp__,
                              bool            apw_only__,
                              bool            phi_is_lo__,
                              int             N__,
@@ -475,18 +475,18 @@ class Hamiltonian
                              Wave_functions* ophi__) const;
 
     /// Get diagonal elements of LAPW Hamiltonian.
-    inline mdarray<double, 2> get_h_diag(K_point* kp__, double v0__, double theta0__) const;
+    mdarray<double, 2> get_h_diag(K_point* kp__, double v0__, double theta0__) const;
 
     /// Get diagonal elements of pseudopotential Hamiltonian.
     template <typename T>
-    inline mdarray<double, 2> get_h_diag(K_point* kp__) const;
+    mdarray<double, 2> get_h_diag(K_point* kp__) const;
 
     /// Get diagonal elements of LAPW overlap.
-    inline mdarray<double, 1> get_o_diag(K_point* kp__, double theta0__) const;
+    mdarray<double, 1> get_o_diag(K_point* kp__, double theta0__) const;
 
     /// Get diagonal elements of pseudopotential overlap matrix.
     template <typename T>
-    inline mdarray<double, 1> get_o_diag(K_point* kp__) const;
+    mdarray<double, 1> get_o_diag(K_point* kp__) const;
 };
 
 /* forward declaration */
@@ -628,12 +628,12 @@ class Hamiltonian_k
     Hamiltonian0& H0_;
     K_point& kp_;
 
-    inline mdarray<double, 2> get_h_diag_lapw() const;
+    mdarray<double, 2> get_h_diag_lapw() const;
 
     //template <typename T>
     //inline mdarray<double, 2> get_h_diag_pw() const;
 
-    inline mdarray<double, 2> get_o_diag_lapw() const;
+    mdarray<double, 2> get_o_diag_lapw() const;
 
     //template <typename T>
     //inline mdarray<double, 2> get_o_diag_pw() const;
@@ -674,11 +674,105 @@ class Hamiltonian_k
     Hamiltonian_k(Hamiltonian_k&& src__) = default;
 
     template <typename T, int what>
-    inline std::pair<mdarray<double, 2>, mdarray<double, 2>> get_h_o_diag_pw() const;
+    inline std::pair<mdarray<double, 2>, mdarray<double, 2>> get_h_o_diag_pw() const
+    {
+        PROFILE("sirius::Hamiltonian_k::get_h_o_diag");
 
+        auto const& uc = H0_.ctx().unit_cell();
+
+        mdarray<double, 2> h_diag(kp_.num_gkvec_loc(), H0_.ctx().num_spins());
+        mdarray<double, 2> o_diag(kp_.num_gkvec_loc(), H0_.ctx().num_spins());
+
+        h_diag.zero();
+        o_diag.zero();
+
+        for (int ispn = 0; ispn < H0_.ctx().num_spins(); ispn++) {
+
+            /* local H contribution */
+            for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
+                if (what & 1) {
+                    auto ekin = 0.5 * kp_.gkvec().gkvec_cart<index_domain_t::local>(ig_loc).length2();
+                    h_diag(ig_loc, ispn) = ekin + H0_.local_op().v0(ispn);
+                }
+                if (what & 2) {
+                    o_diag(ig_loc, ispn) = 1;
+                }
+            }
+
+            /* non-local H contribution */
+            auto beta_gk_t = kp_.beta_projectors().pw_coeffs_t(0);
+            matrix<double_complex> beta_gk_tmp(uc.max_mt_basis_size(), kp_.num_gkvec_loc());
+
+            for (int iat = 0; iat < uc.num_atom_types(); iat++) {
+                auto& atom_type = uc.atom_type(iat);
+                int nbf = atom_type.mt_basis_size();
+
+                matrix<T> d_sum;
+                if (what & 1) {
+                    d_sum = matrix<T>(nbf, nbf);
+                    d_sum.zero();
+                }
+
+                matrix<T> q_sum;
+                if (what & 2) {
+                    q_sum = matrix<T>(nbf, nbf);
+                    q_sum.zero();
+                }
+
+                for (int i = 0; i < atom_type.num_atoms(); i++) {
+                    int ia = atom_type.atom_id(i);
+
+                    for (int xi2 = 0; xi2 < nbf; xi2++) {
+                        for (int xi1 = 0; xi1 < nbf; xi1++) {
+                            if (what & 1) {
+                                d_sum(xi1, xi2) += H0_.D().value<T>(xi1, xi2, ispn, ia);
+                            }
+                            if (what & 2) {
+                                q_sum(xi1, xi2) += H0_.Q().value<T>(xi1, xi2, ispn, ia);
+                            }
+                        }
+                    }
+                }
+
+                int offs = uc.atom_type(iat).offset_lo();
+                for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
+                    for (int xi = 0; xi < nbf; xi++) {
+                        beta_gk_tmp(xi, ig_loc) = beta_gk_t(ig_loc, offs + xi);
+                    }
+                }
+
+                #pragma omp parallel for schedule(static)
+                for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
+                    for (int xi2 = 0; xi2 < nbf; xi2++) {
+                        for (int xi1 = 0; xi1 < nbf; xi1++) {
+                            if (what & 1) {
+                                /* compute <G+k|beta_xi1> D_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
+                                auto z = beta_gk_tmp(xi1, ig_loc) * d_sum(xi1, xi2) * std::conj(beta_gk_tmp(xi2, ig_loc));
+                                h_diag(ig_loc, ispn) += z.real();
+                            }
+                            if (what & 2) {
+                                /* compute <G+k|beta_xi1> Q_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
+                                auto z = beta_gk_tmp(xi1, ig_loc) * q_sum(xi1, xi2) * std::conj(beta_gk_tmp(xi2, ig_loc));
+                                o_diag(ig_loc, ispn) += z.real();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (H0_.ctx().processing_unit() == device_t::GPU) {
+            if (what & 1) {
+                h_diag.allocate(memory_t::device).copy_to(memory_t::device);
+            }
+            if (what & 2) {
+                o_diag.allocate(memory_t::device).copy_to(memory_t::device);
+            }
+        }
+        return std::make_pair(std::move(h_diag), std::move(o_diag));
+    }
     /// Apply pseudopotential H and S operators to the wavefunctions.
     template <typename T>
-    inline void apply_h_s(int ispn__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
+    void apply_h_s(int ispn__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
                           Wave_functions* sphi__);
 
     //template <typename T>
@@ -702,14 +796,12 @@ class Hamiltonian_k
     //}
 };
 
-inline Hamiltonian_k Hamiltonian0::operator()(K_point& kp__)
+Hamiltonian_k Hamiltonian0::operator()(K_point& kp__)
 {
     return Hamiltonian_k(*this, kp__);
 }
 
-#include "apply.hpp"
 #include "set_lapw_h_o.hpp"
-#include "get_h_o_diag.hpp"
 
 }
 

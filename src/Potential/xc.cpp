@@ -17,17 +17,24 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file xc.hpp
+/** \file xc.cpp
  *
  *  \brief Generate XC potential.
  */
 
-inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
-                                         std::vector<XC_functional>& xc_func,
-                                         Spheric_function<function_domain_t::spectral, double> const& rho_lm,
-                                         Spheric_function<function_domain_t::spatial, double>& rho_tp,
-                                         Spheric_function<function_domain_t::spatial, double>& vxc_tp,
-                                         Spheric_function<function_domain_t::spatial, double>& exc_tp)
+#include <vector>
+
+#include "potential.hpp"
+#include "../typedefs.hpp"
+
+namespace sirius {
+
+void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
+                                  std::vector<XC_functional>& xc_func,
+                                  Spheric_function<function_domain_t::spectral, double> const& rho_lm,
+                                  Spheric_function<function_domain_t::spatial, double>& rho_tp,
+                                  Spheric_function<function_domain_t::spatial, double>& vxc_tp,
+                                  Spheric_function<function_domain_t::spatial, double>& exc_tp)
 {
     PROFILE("sirius::Potential::xc_mt_nonmagnetic");
 
@@ -162,15 +169,15 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
     }
 }
 
-inline void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
-                                      std::vector<XC_functional>& xc_func,
-                                      Spheric_function<function_domain_t::spectral, double>& rho_up_lm,
-                                      Spheric_function<function_domain_t::spatial, double>& rho_up_tp,
-                                      Spheric_function<function_domain_t::spectral, double>& rho_dn_lm,
-                                      Spheric_function<function_domain_t::spatial, double>& rho_dn_tp,
-                                      Spheric_function<function_domain_t::spatial, double>& vxc_up_tp,
-                                      Spheric_function<function_domain_t::spatial, double>& vxc_dn_tp,
-                                      Spheric_function<function_domain_t::spatial, double>& exc_tp)
+void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
+                               std::vector<XC_functional>& xc_func,
+                               Spheric_function<function_domain_t::spectral, double>& rho_up_lm,
+                               Spheric_function<function_domain_t::spatial, double>& rho_up_tp,
+                               Spheric_function<function_domain_t::spectral, double>& rho_dn_lm,
+                               Spheric_function<function_domain_t::spatial, double>& rho_dn_tp,
+                               Spheric_function<function_domain_t::spatial, double>& vxc_up_tp,
+                               Spheric_function<function_domain_t::spatial, double>& vxc_dn_tp,
+                               Spheric_function<function_domain_t::spatial, double>& exc_tp)
 {
     PROFILE("sirius::Potential::xc_mt_magnetic");
 
@@ -333,7 +340,7 @@ inline void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
     }
 }
 
-inline void Potential::xc_mt(Density const& density__)
+void Potential::xc_mt(Density const& density__)
 {
     PROFILE("sirius::Potential::xc_mt");
 
@@ -474,7 +481,7 @@ inline void Potential::xc_mt(Density const& density__)
 }
 
 template <bool add_pseudo_core__>
-inline void Potential::xc_rg_nonmagnetic(Density const& density__)
+void Potential::xc_rg_nonmagnetic(Density const& density__)
 {
     PROFILE("sirius::Potential::xc_rg_nonmagnetic");
 
@@ -751,7 +758,7 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
 }
 
 template <bool add_pseudo_core__>
-inline void Potential::xc_rg_magnetic(Density const& density__)
+void Potential::xc_rg_magnetic(Density const& density__)
 {
     PROFILE("sirius::Potential::xc_rg_magnetic");
 
@@ -1044,8 +1051,10 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
 }
 
 template <bool add_pseudo_core__>
-inline void Potential::xc(Density const& density__)
+void Potential::xc(Density const& density__)
 {
+
+
     PROFILE("sirius::Potential::xc");
 
     if (ctx_.xc_functionals().size() == 0) {
@@ -1074,3 +1083,13 @@ inline void Potential::xc(Density const& density__)
         }
     }
 }
+
+// explicit instantiation
+template void Potential::xc_rg_nonmagnetic<true>(Density const&);
+template void Potential::xc_rg_nonmagnetic<false>(Density const&);
+template void Potential::xc_rg_magnetic<true>(Density const&);
+template void Potential::xc_rg_magnetic<false>(Density const&);
+template void Potential::xc<true>(Density const&);
+template void Potential::xc<false>(Density const&);
+
+} // namespace sirius

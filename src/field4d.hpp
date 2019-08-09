@@ -25,15 +25,22 @@
 #ifndef __FIELD4D_HPP__
 #define __FIELD4D_HPP__
 
-#include "periodic_function.hpp"
-#include "mixer.hpp"
-#include "Symmetry/symmetrize.hpp"
+#include <memory>
+#include <array>
+#include <cassert>
 
 namespace sirius {
 
 /// Four-component function consisting of scalar and vector parts.
 /** This class is used to represents density/magnetisation and potential/magentic filed of the system.
  */
+
+// forward declarations
+class Simulation_context;
+template<class> class Periodic_function;
+template<class> class Mixer;
+class Mixer_input;
+
 class Field4D
 {
   private:
@@ -49,109 +56,16 @@ class Field4D
     void symmetrize(Periodic_function<double>* f__,
                     Periodic_function<double>* gz__,
                     Periodic_function<double>* gx__,
-                    Periodic_function<double>* gy__)
-    {
-        PROFILE("sirius::Field4D::symmetrize");
-
-        /* quick exit: the only symmetry operation is identity */
-        if (ctx_.unit_cell().symmetry().num_mag_sym() == 1) {
-            return;
-        }
-
-        auto& comm = ctx_.comm();
-
-        auto& remap_gvec = ctx_.remap_gvec();
-
-        if (ctx_.control().print_hash_) {
-            auto h = f__->hash_f_pw();
-            if (ctx_.comm().rank() == 0) {
-                utils::print_hash("f_unsymmetrized(G)", h);
-            }
-        }
-
-        symmetrize_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(), &f__->f_pw_local(0));
-
-        if (ctx_.control().print_hash_) {
-            auto h = f__->hash_f_pw();
-            if (ctx_.comm().rank() == 0) {
-                utils::print_hash("f_symmetrized(G)", h);
-            }
-        }
-
-        /* symmetrize PW components */
-        switch (ctx_.num_mag_dims()) {
-            case 1: {
-                symmetrize_vector_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(),
-                                           &gz__->f_pw_local(0));
-                break;
-            }
-            case 3: {
-                if (ctx_.control().print_hash_) {
-                    auto h1 = gx__->hash_f_pw();
-                    auto h2 = gy__->hash_f_pw();
-                    auto h3 = gz__->hash_f_pw();
-                    if (ctx_.comm().rank() == 0) {
-                        utils::print_hash("fx_unsymmetrized(G)", h1);
-                        utils::print_hash("fy_unsymmetrized(G)", h2);
-                        utils::print_hash("fz_unsymmetrized(G)", h3);
-                    }
-                }
-
-                symmetrize_vector_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(),
-                                           &gx__->f_pw_local(0), &gy__->f_pw_local(0), &gz__->f_pw_local(0));
-
-                if (ctx_.control().print_hash_) {
-                    auto h1 = gx__->hash_f_pw();
-                    auto h2 = gy__->hash_f_pw();
-                    auto h3 = gz__->hash_f_pw();
-                    if (ctx_.comm().rank() == 0) {
-                        utils::print_hash("fx_symmetrized(G)", h1);
-                        utils::print_hash("fy_symmetrized(G)", h2);
-                        utils::print_hash("fz_symmetrized(G)", h3);
-                    }
-                }
-                break;
-            }
-        }
-
-        if (ctx_.full_potential()) {
-            /* symmetrize MT components */
-            symmetrize_function(ctx_.unit_cell().symmetry(), comm, f__->f_mt());
-            switch (ctx_.num_mag_dims()) {
-                case 1: {
-                    symmetrize_vector_function(ctx_.unit_cell().symmetry(), comm, gz__->f_mt());
-                    break;
-                }
-                case 3: {
-                    symmetrize_vector_function(ctx_.unit_cell().symmetry(), comm, gx__->f_mt(), gy__->f_mt(), gz__->f_mt());
-                    break;
-                }
-            }
-        }
-    }
+                    Periodic_function<double>* gy__);
 
   public:
-    Field4D(Simulation_context& ctx__, int lmmax__)
-        : ctx_(ctx__)
-    {
-        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            components_[i] = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, lmmax__));
-            /* allocate global MT array */
-            components_[i]->allocate_mt(true);
-        }
-    }
+    Field4D(Simulation_context& ctx__, int lmmax__);
 
     /// Return scalar part of the field.
-    Periodic_function<double>& scalar()
-    {
-        return *(components_[0]);
-    }
+    Periodic_function<double>& scalar();
 
     /// Return scalar part of the field.
-    Periodic_function<double> const& scalar() const
-    {
-        return *(components_[0]);
-    }
+    Periodic_function<double> const& scalar() const;
 
     /// Return component of the vector part of the field.
     Periodic_function<double>& vector(int i)
@@ -179,95 +93,19 @@ class Field4D
         return *(components_[i]);
     }
 
-    void zero()
-    {
-        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            component(i).zero();
-        }
-    }
+    void zero();
 
-    //void allocate()
-    //{
-    //    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-    //        components_[i]->allocate_mt(true);
-    //    }
-    //}
+    void fft_transform(int direction__);
 
-    inline void fft_transform(int direction__)
-    {
-        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            component(i).fft_transform(direction__);
-        }
-    }
+    void mixer_input();
 
-    void mixer_input()
-    {
-        /* split real-space points between available ranks */
-        splindex<splindex_t::block> spl_np(ctx_.fft().local_size(), ctx_.comm_ortho_fft().size(), ctx_.comm_ortho_fft().rank());
+    void mixer_output();
 
-        int k{0};
+    void mixer_init(Mixer_input mixer_cfg__);
 
-        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                for (int i = 0; i < static_cast<int>(component(j).f_mt(ialoc).size()); i++) {
-                    mixer_->input_local(k++, component(j).f_mt(ialoc)[i]);
-                }
-            }
-            //for (int i = 0; i < ctx_.fft().local_size(); i++) {
-            for (int i = 0; i < spl_np.local_size(); i++) {
-                mixer_->input_local(k++, component(j).f_rg(spl_np[i]));
-            }
-        }
-    }
+    double mix(double rss_min__);
 
-    void mixer_output()
-    {
-        /* split real-space points between available ranks */
-        splindex<splindex_t::block> spl_np(ctx_.fft().local_size(), ctx_.comm_ortho_fft().size(), ctx_.comm_ortho_fft().rank());
-
-        int k{0};
-
-        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
-                auto& f_mt = const_cast<Spheric_function<function_domain_t::spectral, double>&>(component(j).f_mt(ialoc));
-                for (int i = 0; i < static_cast<int>(component(j).f_mt(ialoc).size()); i++) {
-                    f_mt[i] = mixer_->output_local(k++);
-                }
-            }
-            //for (int i = 0; i < ctx_.fft().local_size(); i++) {
-            for (int i = 0; i < spl_np.local_size(); i++) {
-                component(j).f_rg(spl_np[i]) = mixer_->output_local(k++);
-            }
-            ctx_.comm_ortho_fft().allgather(&component(j).f_rg(0), spl_np.global_offset(), spl_np.local_size());
-            component(j).sync_mt();
-        }
-    }
-
-    void mixer_init(Mixer_input mixer_cfg__)
-    {
-        int sz{0};
-        for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
-            sz += static_cast<int>(scalar().f_mt(ialoc).size());
-        }
-        sz += ctx_.fft().local_size();
-
-        mixer_ = Mixer_factory<double>(0, (ctx_.num_mag_dims() + 1) * sz, mixer_cfg__, ctx_.comm());
-        mixer_input();
-        mixer_->initialize();
-    }
-
-    double mix(double rss_min__)
-    {
-        mixer_input();
-        double rms = mixer_->mix(rss_min__);
-        mixer_output();
-        return rms;
-    }
-
-    Mixer<double>& mixer()
-    {
-        return *mixer_;
-    }
+    Mixer<double>& mixer();
 };
 
 } // namespace sirius

@@ -22,9 +22,13 @@
  *  \brief Implementation of the Poisson solver for the full-potential muffin-tin case.
  */
 
-inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
-                                             mdarray<double_complex, 2>& qit__,
-                                             double_complex* rho_pw__)
+#include "potential.hpp"
+
+namespace sirius {
+
+void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
+                                      mdarray<double_complex, 2>& qit__,
+                                      double_complex* rho_pw__)
 {
     PROFILE("sirius::Potential::poisson_add_pseudo_pw");
 
@@ -129,7 +133,7 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
     }
 }
 
-inline void Potential::poisson(Periodic_function<double> const& rho)
+void Potential::poisson(Periodic_function<double> const& rho)
 {
     PROFILE("sirius::Potential::poisson");
 
@@ -296,3 +300,5 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
     }
 #endif
 }
+
+} // namespace sirius
