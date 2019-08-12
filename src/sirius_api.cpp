@@ -2947,7 +2947,12 @@ void sirius_set_rg_values(void*  const* handler__,
 
     for (int x: {0, 1, 2}) {
         if (grid_dims__[x] != gs.ctx().fft().size(x)) {
-            TERMINATE("wrong FFT grid size");
+            std::stringstream s;
+            s << "wrong FFT grid size\n"
+                 "  SIRIUS internal: " << gs.ctx().fft().size(0) << " " <<  gs.ctx().fft().size(1) << " " 
+                                       << gs.ctx().fft().size(2) << "\n"
+                 "  host code:       " << grid_dims__[0] << " " << grid_dims__[1] << " " << grid_dims__[2];
+            TERMINATE(s.str());
         }
     }
 

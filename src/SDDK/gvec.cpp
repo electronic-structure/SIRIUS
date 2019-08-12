@@ -95,7 +95,8 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
         }
     }
 
-    for (int i = fft_box__.limits(0).first; i <= fft_box__.limits(0).second; i++) {
+    // Check all z-columns and add if within sphere. Only allow non-negative x-indices for reduced case
+    for (int i = reduce_gvec_? 0 : fft_box__.limits(0).first; i <= fft_box__.limits(0).second; i++) {
         for (int j = fft_box__.limits(1).first; j <= fft_box__.limits(1).second; j++) {
             add_new_column(i, j);
         }

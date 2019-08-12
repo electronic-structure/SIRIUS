@@ -600,9 +600,25 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
 
                 auto inp_wf = kp__->spinor_wave_functions().pw_coeffs(ispn).extra().at(memory_t::host, 0, i);
 
+                /* transform to real space */
                 kp__->spfft_transform().backward(reinterpret_cast<const double*>(inp_wf),
                                                  kp__->spfft_transform().processing_unit());
 
+                if (ctx_.gamma_point()) {
+                    auto data = reinterpret_cast<double*>(kp__->spfft_transform().space_domain_data(SPFFT_PU_HOST));
+                    #pragma omp parallel for schedule(static)
+                    for (int ir = 0; ir < fft.local_size(); ir++) {
+                        auto z = data[ir];
+                        density_rg(ir, ispn) += w * std::pow(data[ir], 2);
+                    }
+                } else {
+                    auto data = reinterpret_cast<double_complex*>(kp__->spfft_transform().space_domain_data(SPFFT_PU_HOST));
+                    #pragma omp parallel for schedule(static)
+                    for (int ir = 0; ir < fft.local_size(); ir++) {
+                        auto z = data[ir];
+                        density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                    }
+                }
 //                /* transform to real space; in case of GPU wave-function stays in GPU memory */
 //                fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(ispn).extra().at(memory_t::host, 0, i));
 //                /* add to density */
@@ -623,12 +639,6 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
 //                        break;
 //                    }
 //                }
-                auto data = reinterpret_cast<double_complex*>(kp__->spfft_transform().space_domain_data(SPFFT_PU_HOST));
-                #pragma omp parallel for schedule(static)
-                for (int ir = 0; ir < fft.local_size(); ir++) {
-                    auto z = data[ir];
-                    density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
-                }
             }
         }
     } else { /* non-collinear case */
