@@ -1,5 +1,6 @@
 #include "version.hpp"
 #include "simulation_context.hpp"
+#include "symmetry/find_lat_sym.hpp"
 #include <gsl/gsl_sf_bessel.h>
 
 namespace sirius {
@@ -32,6 +33,7 @@ double unit_step_function_form_factors(double R__, double g__)
     }
 }
 
+
 void Simulation_context::init_fft()
 {
     PROFILE("sirius::Simulation_context::init_fft");
@@ -44,14 +46,16 @@ void Simulation_context::init_fft()
 
     /* create FFT driver for dense mesh (density and potential) */
     auto fft_grid = fft_grid_size_;
+    /* if input grid size was not initialized, create a default grid size */
     if (fft_grid[0] * fft_grid[1] * fft_grid[2] == 0) {
         fft_grid = get_min_fft_grid(pw_cutoff(), rlv).grid_size();
     }
     fft_ = std::unique_ptr<FFT3D>(new FFT3D(fft_grid, comm_fft(), processing_unit()));
 
     /* create FFT driver for coarse mesh */
-    fft_coarse_ = std::unique_ptr<FFT3D>(
-        new FFT3D(get_min_fft_grid(2 * gk_cutoff(), rlv).grid_size(), comm_fft_coarse(), processing_unit()));
+    const auto fft_grid_size_coarse = get_min_fft_grid(2 * gk_cutoff(), rlv).grid_size();
+
+    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_grid_size_coarse, comm_fft_coarse(), processing_unit()));
 }
 
 mdarray<double, 3> Simulation_context::generate_sbessel_mt(int lmax__) const
@@ -83,9 +87,9 @@ matrix<double_complex> Simulation_context::generate_gvec_ylm(int lmax__)
     return gvec_ylm;
 }
 
-mdarray<double_complex, 2> Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__,
-                                                            mdarray<double, 3>& fl__,
-                                                            matrix<double_complex>& gvec_ylm__)
+mdarray<double_complex, 2>
+Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarray<double, 3>& fl__,
+                                 matrix<double_complex>& gvec_ylm__)
 {
     PROFILE("sirius::Simulation_context::sum_fg_fl_yg");
 
@@ -333,27 +337,30 @@ void Simulation_context::initialize()
     /* initialize variables related to the unit cell */
     unit_cell_.initialize();
 
-    auto lv = matrix3d<double>(unit_cell_.lattice_vectors());
+    /* check the lattice symmetries */
+    if (use_symmetry()) {
+        auto lv = matrix3d<double>(unit_cell_.lattice_vectors());
 
-    auto lat_sym = find_lat_sym(lv, 1e-6);
+        auto lat_sym = find_lat_sym(lv, 1e-6);
 
-    for (int i = 0; i < unit_cell_.symmetry().num_mag_sym(); i++) {
-        auto& spgR = unit_cell_.symmetry().magnetic_group_symmetry(i).spg_op.R;
-        bool found{false};
-        for (size_t i = 0; i < lat_sym.size(); i++) {
-            auto latR = lat_sym[i];
-            found     = true;
-            for (int x : {0, 1, 2}) {
-                for (int y : {0, 1, 2}) {
-                    found = found && (spgR(x, y) == latR(x, y));
+        for (int i = 0; i < unit_cell_.symmetry().num_mag_sym(); i++) {
+            auto& spgR = unit_cell_.symmetry().magnetic_group_symmetry(i).spg_op.R;
+            bool found{false};
+            for (size_t i = 0; i < lat_sym.size(); i++) {
+                auto latR = lat_sym[i];
+                found     = true;
+                for (int x : {0, 1, 2}) {
+                    for (int y : {0, 1, 2}) {
+                        found = found && (spgR(x, y) == latR(x, y));
+                    }
+                }
+                if (found) {
+                    break;
                 }
             }
-            if (found) {
-                break;
+            if (!found) {
+                TERMINATE("spglib lattice symetry was not found in the list of SIRIUS generated symmetries");
             }
-        }
-        if (!found) {
-            TERMINATE("spglib lattice symetry was not found in the list of SIRIUS generated symmetries");
         }
     }
 
@@ -486,29 +493,38 @@ void Simulation_context::initialize()
     }
 
     if (!full_potential()) {
-        /* add extra length to the cutoffs in order to interpolate radial integrals for q > cutoff */
         beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(
             new Radial_integrals_beta<false>(unit_cell(), 2 * gk_cutoff(), settings().nprii_beta_));
+
         beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
             new Radial_integrals_beta<true>(unit_cell(), 2 * gk_cutoff(), settings().nprii_beta_));
+
         aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
-            new Radial_integrals_aug<false>(unit_cell(), 2 * pw_cutoff(), settings().nprii_aug_));
+            new Radial_integrals_aug<false>(unit_cell(), pw_cutoff(), settings().nprii_aug_));
+
         aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
-            new Radial_integrals_aug<true>(unit_cell(), 2 * pw_cutoff(), settings().nprii_aug_));
+            new Radial_integrals_aug<true>(unit_cell(), pw_cutoff(), settings().nprii_aug_));
+
         atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
             new Radial_integrals_atomic_wf<false>(unit_cell(), 2 * gk_cutoff(), 20));
+
         atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
             new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20));
+
         ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
-            new Radial_integrals_rho_core_pseudo<false>(unit_cell(), 2 * pw_cutoff(), settings().nprii_rho_core_));
+            new Radial_integrals_rho_core_pseudo<false>(unit_cell(), pw_cutoff(), settings().nprii_rho_core_));
+
         ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
-            new Radial_integrals_rho_core_pseudo<true>(unit_cell(), 2 * pw_cutoff(), settings().nprii_rho_core_));
+            new Radial_integrals_rho_core_pseudo<true>(unit_cell(), pw_cutoff(), settings().nprii_rho_core_));
+
         ps_rho_ri_ = std::unique_ptr<Radial_integrals_rho_pseudo>(
-            new Radial_integrals_rho_pseudo(unit_cell(), 2 * pw_cutoff(), 20));
+            new Radial_integrals_rho_pseudo(unit_cell(), pw_cutoff(), 20));
+
         vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(
-            new Radial_integrals_vloc<false>(unit_cell(), 2 * pw_cutoff(), settings().nprii_vloc_));
+            new Radial_integrals_vloc<false>(unit_cell(), pw_cutoff(), settings().nprii_vloc_));
+
         vloc_ri_djl_ = std::unique_ptr<Radial_integrals_vloc<true>>(
-            new Radial_integrals_vloc<true>(unit_cell(), 2 * pw_cutoff(), settings().nprii_vloc_));
+            new Radial_integrals_vloc<true>(unit_cell(), pw_cutoff(), settings().nprii_vloc_));
     }
 
     if (control().verbosity_ >= 3) {
@@ -520,7 +536,14 @@ void Simulation_context::initialize()
                     comm_band().rank(), comm_k().rank(), utils::hostname().c_str());
     }
 
+    /* create G-vectors on the first call to update() */
     update();
+
+    /* create spfft buffers */
+    spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(
+        new spfft::Grid(fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2),
+                        gvec_coarse_partition_->zcol_count_fft(), fft_coarse_->local_size_z(), SPFFT_PU_HOST, -1,
+                        comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
 
     if (comm_.rank() == 0 && control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
@@ -740,14 +763,21 @@ void Simulation_context::print_info() const
     }
 }
 
-void Simulation_context::update() {
+/** The update of the lattice vectors or atomic positions has an impact on many quantities which have to be 
+    recomputed in the correct order. First, the unit cell is updated and the new reciprocal lattice vectors
+    are obtained. Then the G-vectors are recomputed. */
+void Simulation_context::update()
+{
     PROFILE("sirius::Simulation_context::update");
 
+    /* update unit cell (reciprocal lattice, etc.) */
     unit_cell().update();
 
+    /* get new reciprocal vector */
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
-    /* create a list of G-vectors for corase FFT grid */
+    /* create a list of G-vectors for corase FFT grid; this is done only once,
+       the next time only reciprocal lattice of the G-vectors is updated */
     if (!gvec_coarse_) {
         gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
     } else {
@@ -774,6 +804,7 @@ void Simulation_context::update() {
         remap_gvec_ = std::unique_ptr<Gvec_shells>(new Gvec_shells(gvec()));
     }
 
+    /* check symmetry of G-vectors */
     if (unit_cell_.num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
         check_gvec(gvec(), unit_cell_.symmetry());
         if (!full_potential()) {
@@ -815,6 +846,7 @@ void Simulation_context::update() {
         limits.second = std::max(limits.second, fft().limits(x).second);
     }
 
+    /* recompute phase factors for atoms */
     phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), memory_t::host, "phase_factors_");
     #pragma omp parallel for
     for (int i = limits.first; i <= limits.second; i++) {
@@ -826,6 +858,7 @@ void Simulation_context::update() {
         }
     }
 
+    /* recompute phase factors for atom types */
     phase_factors_t_ = mdarray<double_complex, 2>(gvec().count(), unit_cell().num_atom_types());
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
@@ -856,7 +889,6 @@ void Simulation_context::update() {
 
     if (processing_unit() == device_t::GPU) {
         gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
-        gvec_coord_.allocate(memory_t::device);
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             int ig = gvec().offset() + igloc;
             auto G = gvec().gvec(ig);
@@ -864,7 +896,7 @@ void Simulation_context::update() {
                 gvec_coord_(igloc, x) = G[x];
             }
         }
-        gvec_coord_.copy_to(memory_t::device);
+        gvec_coord_.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
     /* prepare fine-grained FFT driver for the entire simulation */
@@ -898,7 +930,8 @@ void Simulation_context::update() {
     }
 }
 
-void Simulation_context::create_storage_file() const {
+void Simulation_context::create_storage_file() const
+{
     if (comm_.rank() == 0) {
         /* create new hdf5 file */
         HDF5_tree fout(storage_file_name, hdf5_access_t::truncate);
@@ -937,7 +970,8 @@ void Simulation_context::create_storage_file() const {
     comm_.barrier();
 }
 
-void Simulation_context::generate_phase_factors(int iat__, mdarray<double_complex, 2> &phase_factors__) const {
+void Simulation_context::generate_phase_factors(int iat__, mdarray<double_complex, 2> &phase_factors__) const 
+{
     PROFILE("sirius::Simulation_context::generate_phase_factors");
     int na = unit_cell_.atom_type(iat__).num_atoms();
     switch (processing_unit_) {
@@ -962,7 +996,8 @@ void Simulation_context::generate_phase_factors(int iat__, mdarray<double_comple
     }
 }
 
-void Simulation_context::print_memory_usage(const char *file__, int line__) {
+void Simulation_context::print_memory_usage(const char *file__, int line__) 
+{
     if (comm().rank() == 0 && control().print_memory_usage_) {
         sirius::print_memory_usage(file__, line__);
 
@@ -983,7 +1018,8 @@ void Simulation_context::print_memory_usage(const char *file__, int line__) {
     }
 }
 
-void Simulation_context::init_atoms_to_grid_idx(double R__) {
+void Simulation_context::init_atoms_to_grid_idx(double R__)
+{
     PROFILE("sirius::Simulation_context::init_atoms_to_grid_idx");
 
     atoms_to_grid_idx_.resize(unit_cell_.num_atoms());
@@ -1050,7 +1086,8 @@ void Simulation_context::init_atoms_to_grid_idx(double R__) {
     }
 }
 
-void Simulation_context::init_step_function() {
+void Simulation_context::init_step_function()
+{
     auto v = make_periodic_function<index_domain_t::global>([&](int iat, double g)
                                                             {
                                                                 auto R = unit_cell().atom_type(iat).mt_radius();
@@ -1098,7 +1135,8 @@ void Simulation_context::init_step_function() {
     }
 }
 
-void Simulation_context::init_comm() {
+void Simulation_context::init_comm()
+{
     PROFILE("sirius::Simulation_context::init_comm");
 
     /* check MPI grid dimensions and set a default grid if needed */

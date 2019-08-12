@@ -18,6 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "K_point/k_point.hpp"
+#include "wf_trans.hpp"
 
 namespace sirius {
 /** \file generate_spinor_wave_functions.hpp

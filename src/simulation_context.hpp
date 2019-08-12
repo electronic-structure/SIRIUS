@@ -36,6 +36,7 @@
 #include "SDDK/GPU/acc.hpp"
 #include "Symmetry/check_gvec.hpp"
 #include "Symmetry/rotation.hpp"
+#include "spfft/spfft.hpp"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
@@ -92,6 +93,8 @@ class Simulation_context : public Simulation_parameters
 
     /// Coarse-grained FFT for application of local potential and density summation.
     std::unique_ptr<FFT3D> fft_coarse_;
+    std::unique_ptr<spfft::Transform> spfft_transform_coarse_;
+    std::unique_ptr<spfft::Grid> spfft_grid_coarse_;
 
     /// G-vectors within the Gmax cutoff.
     std::unique_ptr<Gvec> gvec_;
@@ -235,15 +238,15 @@ class Simulation_context : public Simulation_parameters
      */
     void init_step_function();
 
+    /// Find a list of real-space grid points around each atom.
+    void init_atoms_to_grid_idx(double R__);
+
     /// Get the stsrting time stamp.
     void start()
     {
         gettimeofday(&start_time_, NULL);
         start_time_tag_ = utils::timestamp("%Y%m%d_%H%M%S");
     }
-
-    /// Find a list of real-space grid points around each atom.
-    void init_atoms_to_grid_idx(double R__);
 
     /* copy constructor is forbidden */
     Simulation_context(Simulation_context const&) = delete;
@@ -678,6 +681,11 @@ class Simulation_context : public Simulation_parameters
     void fft_grid_size(std::array<int, 3> fft_grid_size__)
     {
         fft_grid_size_ = fft_grid_size__;
+    }
+
+    spfft::Grid& spfft_grid_coarse()
+    {
+        return *spfft_grid_coarse_;
     }
 };
 

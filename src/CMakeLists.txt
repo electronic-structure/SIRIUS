@@ -62,10 +62,11 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "SDDK/gvec.cpp"
   "SDDK/matrix_storage.cpp"
   "SDDK/GPU/acc.cpp"
+  "SHT/sht.cpp"
   )
 
 # create library with .cpp, .cu and .f90 sources
-add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}" SHT/sht.cpp)
+add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
 
 # add dependency on auto-generated headers
 add_dependencies(sirius generate_version_hpp)
@@ -79,7 +80,8 @@ INSTALL (TARGETS sirius ARCHIVE DESTINATION
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   )
-target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX)
+target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX spfft)
+
 
 if(CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)

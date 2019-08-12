@@ -19,9 +19,10 @@
 
 /** \file gvec.cpp
  *
- *  \brief Definitions.
+ *  \brief Contains the implementation of Gvec class.
  *
  */
+#include "Symmetry/find_lat_sym.hpp"
 #include "gvec.hpp"
 
 namespace sddk {
@@ -247,7 +248,7 @@ void Gvec::find_gvec_shells()
 
     /* list of pairs (length, index of G-vector) */
     std::vector<std::pair<uint64_t, int>> tmp(num_gvec_);
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (int ig = 0; ig < num_gvec(); ig++) {
         /* make some reasonable roundoff */
         uint64_t len = static_cast<uint64_t>(gvec_shell_len_[gvec_shell_[ig]] * 1e10);
@@ -603,13 +604,22 @@ Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm_
     int ig{0};
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
         for (int k = 0; k < gvec_.gvec_count(rank_map_(fft_comm_.rank(), i)); k++) {
-            idx_gvec_(ig) = gvec_.gvec_offset(rank_map_(fft_comm_.rank(), i)) + k;
+            idx_gvec_[ig] = gvec_.gvec_offset(rank_map_(fft_comm_.rank(), i)) + k;
             ig++;
         }
     }
 
     calc_offsets();
     pile_gvec();
+
+    gvec_coord_ = mdarray<int, 2>(3, gvec_count_fft());
+    for (int i = 0; i < gvec_count_fft(); i++) {
+        int ig = idx_gvec_[i];
+        auto gv = gvec_.gvec(ig);
+        for (int x: {0, 1, 2}) {
+            gvec_coord_(x, i) = gv[x];
+        }
+    }
 }
 
 void Gvec_partition::gather_pw_fft(std::complex<double>* f_pw_local__, std::complex<double>* f_pw_fft__) const
@@ -696,4 +706,5 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
         idx_gvec[gvec_remapped(ig)] = ig;
     }
 }
+
 } // namespace sddk

@@ -579,8 +579,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
     density_rg.zero();
 
     if (fft.pu() == device_t::GPU) {
-        density_rg.allocate(ctx_.mem_pool(memory_t::device));
-        density_rg.zero(memory_t::device);
+        density_rg.allocate(ctx_.mem_pool(memory_t::device)).zero(memory_t::device);
     }
 
     fft.prepare(kp__->gkvec_partition());
@@ -595,28 +594,40 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
             }
 
             for (int i = 0; i < kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col().local_size(); i++) {
+                /* global index of the band */
                 int j = kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col()[i];
                 double w = kp__->band_occupancy(j, ispn) * kp__->weight() / omega;
 
-                /* transform to real space; in case of GPU wave-function stays in GPU memory */
-                fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(ispn).extra().at(memory_t::host, 0, i));
-                /* add to density */
-                switch (fft.pu()) {
-                    case device_t::CPU: {
-                        #pragma omp parallel for schedule(static)
-                        for (int ir = 0; ir < fft.local_size(); ir++) {
-                            auto z = fft.buffer(ir);
-                            density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
-                        }
-                        break;
-                    }
-                    case device_t::GPU: {
-#ifdef __GPU
-                        update_density_rg_1_gpu(fft.local_size(), fft.buffer().at(memory_t::device), w,
-                                                density_rg.at(memory_t::device, 0, ispn));
-#endif
-                        break;
-                    }
+                auto inp_wf = kp__->spinor_wave_functions().pw_coeffs(ispn).extra().at(memory_t::host, 0, i);
+
+                kp__->spfft_transform().backward(reinterpret_cast<const double*>(inp_wf),
+                                                 kp__->spfft_transform().processing_unit());
+
+//                /* transform to real space; in case of GPU wave-function stays in GPU memory */
+//                fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(ispn).extra().at(memory_t::host, 0, i));
+//                /* add to density */
+//                switch (fft.pu()) {
+//                    case device_t::CPU: {
+//                        #pragma omp parallel for schedule(static)
+//                        for (int ir = 0; ir < fft.local_size(); ir++) {
+//                            auto z = fft.buffer(ir);
+//                            density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+//                        }
+//                        break;
+//                    }
+//                    case device_t::GPU: {
+//#ifdef __GPU
+//                        update_density_rg_1_gpu(fft.local_size(), fft.buffer().at(memory_t::device), w,
+//                                                density_rg.at(memory_t::device, 0, ispn));
+//#endif
+//                        break;
+//                    }
+//                }
+                auto data = reinterpret_cast<double_complex*>(kp__->spfft_transform().space_domain_data(SPFFT_PU_HOST));
+                #pragma omp parallel for schedule(static)
+                for (int ir = 0; ir < fft.local_size(); ir++) {
+                    auto z = data[ir];
+                    density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                 }
             }
         }
