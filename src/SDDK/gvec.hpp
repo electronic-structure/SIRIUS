@@ -34,8 +34,8 @@
 #include "geometry3d.hpp"
 #include "serializer.hpp"
 #include "splindex.hpp"
-#include "utils/utils.hpp"
-#include "utils/profiler.hpp"
+//#include "utils/utils.hpp"
+#include "../utils/profiler.hpp"
 
 using namespace geometry3d;
 
@@ -464,11 +464,11 @@ class Gvec
 
     std::pair<int, bool> index_g12_safe(vector3d<int> const& g1__, vector3d<int> const& g2__) const;
 
-    inline int index_g12_safe(int ig1__, int ig2__) const
-    {
-        STOP();
-        return 0;
-    }
+    //inline int index_g12_safe(int ig1__, int ig2__) const
+    //{
+    //    STOP();
+    //    return 0;
+    //}
 
     /// Return a global G-vector index in the range [0, num_gvec) by the G-vector.
     /** The information about a G-vector index is encoded by two numbers: a starting index for the

@@ -178,7 +178,7 @@ void Gvec::distribute_z_columns()
         ng += gvec_distr_.counts[rank];
     }
     if (ng != num_gvec_) {
-        TERMINATE("wrong number of G-vectors");
+        throw std::runtime_error("wrong number of G-vectors");
     }
 }
 
@@ -218,7 +218,7 @@ void Gvec::find_gvec_shells()
     }
     for (int ig = 0; ig < num_gvec_; ig++) {
         if (gvec_shell_[ig] == -1) {
-            TERMINATE("wrong G-vector shell");
+            throw std::runtime_error("wrong G-vector shell");
         }
     }
 
@@ -242,7 +242,7 @@ void Gvec::find_gvec_shells()
                   << "  index of G-vector: " << ig << "\n"
                   << "  index of G-shell: " << igsh << "\n"
                   << "  length difference: " << std::abs(gvec_shell_len_[igsh] - g);
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
         }
     }
@@ -323,21 +323,21 @@ void Gvec::init(FFT3D_grid const& fft_grid)
         }
     }
     if (ig != num_gvec_) {
-        TERMINATE("wrong G-vector count");
+        throw std::runtime_error("wrong G-vector count");
     }
     for (int ig = 0; ig < num_gvec_; ig++) {
         auto gv = gvec(ig);
         if (index_by_gvec(gv) != ig) {
             std::stringstream s;
             s << "wrong G-vector index: ig=" << ig << " gv=" << gv << " index_by_gvec(gv)=" << index_by_gvec(gv);
-            TERMINATE(s);
+            throw std::runtime_error(s.str());
         }
     }
 
     /* first G-vector must be (0, 0, 0); never reomove this check!!! */
     auto g0 = gvec_by_full_index(gvec_full_index_(0));
     if (g0[0] || g0[1] || g0[2]) {
-        TERMINATE("first G-vector is not zero");
+        throw std::runtime_error("first G-vector is not zero");
     }
 
     init_gvec_cart();
@@ -366,7 +366,7 @@ void Gvec::init(FFT3D_grid const& fft_grid)
                   << " G-vector index in new distribution : " << index_by_gvec(G) << std::endl
                   << " offset in G-vector index for this rank: " << offset() << std::endl
                   << " local number of G-vectors for this rank: " << count();
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
         }
     }
@@ -411,7 +411,7 @@ std::pair<int, bool> Gvec::index_g12_safe(vector3d<int> const& g1__, vector3d<in
           << "  G': " << g2__ << std::endl
           << "  G - G': " << v << std::endl
           << " idx: " << idx;
-        TERMINATE(s);
+        throw std::runtime_error(s.str());
     }
     return std::make_pair(idx, conj);
 }
@@ -578,7 +578,7 @@ Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm_
           << "  fft_comm_.size()       = " << fft_comm_.size() << std::endl
           << "  comm_ortho_fft_.size() = " << comm_ortho_fft_.size() << std::endl
           << "  gvec_.comm().size()    = " << gvec_.comm().size();
-        TERMINATE(s);
+        throw std::runtime_error(s.str());
     }
     rank_map_ = mdarray<int, 2>(fft_comm_.size(), comm_ortho_fft_.size());
     rank_map_.zero();
@@ -663,7 +663,7 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     a2a_send.calc_offsets();
     /* sanity check: total number of elements to send is equal to the local number of G-vector */
     if (a2a_send.size() != gvec_.count()) {
-        TERMINATE("wrong number of G-vectors");
+        throw std::runtime_error("wrong number of G-vectors");
     }
     /* count the number of elements to receive */
     for (int r = 0; r < comm_.size(); r++) {
@@ -682,7 +682,7 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     int ng = gvec_count_remapped();
     comm_.allreduce(&ng, 1);
     if (ng != gvec_.num_gvec()) {
-        TERMINATE("wrong number of G-vectors");
+        throw std::runtime_error("wrong number of G-vectors");
     }
 
     /* local set of G-vectors in the remapped order */

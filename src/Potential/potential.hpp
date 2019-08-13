@@ -354,12 +354,12 @@ class Potential : public Field4D
         xc_energy_density_->allocate_mt(false);
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            vsigma_[ispn] = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
+            vsigma_[ispn] = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition()));
         }
 
         if (!ctx_.full_potential()) {
-            local_potential_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
-            dveff_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
+            local_potential_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition()));
+            dveff_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition()));
             dveff_->zero();
         }
 

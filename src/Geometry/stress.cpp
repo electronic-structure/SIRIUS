@@ -246,7 +246,7 @@ matrix3d<double> Stress::calc_stress_xc()
 
     if (potential_.is_gradient_correction()) {
 
-        Smooth_periodic_function<double> rhovc(ctx_.fft(), ctx_.gvec_partition());
+        Smooth_periodic_function<double> rhovc(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition());
         rhovc.zero();
         rhovc.add(density_.rho());
         rhovc.add(density_.rho_pseudo_core());

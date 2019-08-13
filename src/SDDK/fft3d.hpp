@@ -44,6 +44,8 @@ namespace gpufft = rocfft;
 
 namespace sddk {
 
+using double_complex = std::complex<double>;
+
 /// Implementation of FFT3D.
 /** FFT convention:
  *  \f[
@@ -308,7 +310,7 @@ class FFT3D : public FFT3D_grid
                     break;
                 }
                 default: {
-                    TERMINATE("wrong direction");
+                    throw std::runtime_error("wrong FFT direction");
                 }
             }
             acc::sync_stream(stream_id(acc_fft_stream_id_));
@@ -385,7 +387,7 @@ class FFT3D : public FFT3D_grid
                         break;
                     }
                     default: {
-                        TERMINATE("wrong direction");
+                        throw std::runtime_error("wrong FFT direction");
                     }
                 }
             }
@@ -560,7 +562,7 @@ class FFT3D : public FFT3D_grid
                             break;
                         }
                         default: {
-                            TERMINATE("wrong direction");
+                            throw std::runtime_error("wrong FFT direction");
                         }
                     }
                 }
@@ -577,7 +579,7 @@ class FFT3D : public FFT3D_grid
         utils::timer t0__("sddk::FFT3D::transform_xy");
 
         if (!gvec_partition_->gvec().reduced()) {
-            TERMINATE("reduced set of G-vectors is required");
+            throw std::runtime_error("reduced set of G-vectors is required");
         }
 
         int size_xy = size(0) * size(1);
@@ -669,7 +671,7 @@ class FFT3D : public FFT3D_grid
                             break;
                         }
                         default: {
-                            TERMINATE("wrong direction");
+                            throw std::runtime_error("wrong FFT direction");
                         }
                     }
                 }
@@ -912,7 +914,7 @@ class FFT3D : public FFT3D_grid
         utils::timer t0__("sddk::FFT3D::prepare");
 
         if (gvec_partition_) {
-            TERMINATE("FFT3D is already prepared for another G-vector partition");
+            throw std::runtime_error("FFT3D is already prepared for another G-vector partition");
         }
 
         /* copy pointer to G-vector partition */
@@ -1067,7 +1069,7 @@ class FFT3D : public FFT3D_grid
         utils::timer t0__("sddk::FFT3D::transform");
 
         if (!gvec_partition_) {
-            TERMINATE("FFT3D is not ready");
+            throw std::runtime_error("FFT3D is not ready");
         }
 
         switch (direction) {
@@ -1090,7 +1092,7 @@ class FFT3D : public FFT3D_grid
                 break;
             }
             default: {
-                TERMINATE("wrong direction");
+                throw std::runtime_error("wrong FFT direction");
             }
         }
     }
@@ -1102,11 +1104,11 @@ class FFT3D : public FFT3D_grid
         utils::timer t0__("sddk::FFT3D::transform");
 
         if (!gvec_partition_) {
-            TERMINATE("FFT3D is not ready");
+            throw std::runtime_error("FFT3D is not ready");
         }
 
         if (!gvec_partition_->gvec().reduced()) {
-            TERMINATE("reduced set of G-vectors is required");
+            throw std::runtime_error("reduced set of G-vectors is required");
         }
 
         switch (direction) {
@@ -1133,7 +1135,7 @@ class FFT3D : public FFT3D_grid
                 break;
             }
             default: {
-                TERMINATE("wrong direction");
+                throw std::runtime_error("wrong direction");
             }
         }
     }

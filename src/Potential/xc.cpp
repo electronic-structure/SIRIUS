@@ -509,8 +509,8 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     int num_points = ctx_.fft().local_size();
 
-    Smooth_periodic_function<double> rho(ctx_.fft(), gvp);
-    Smooth_periodic_function<double> vsigma(ctx_.fft(), gvp);
+    Smooth_periodic_function<double> rho(ctx_.fft(), ctx_.spfft(), gvp);
+    Smooth_periodic_function<double> vsigma(ctx_.fft(), ctx_.spfft(), gvp);
 
     /* we can use this comm for parallelization */
     //auto& comm = ctx_.gvec().comm_ortho_fft();
@@ -722,7 +722,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
                 vxc_tmp(ir) -= 2 * (vsigma.f_rg(ir) * lapl_rho.f_rg(ir) + grad_vsigma_grad_rho.f_rg(ir));
             }
         } else {
-            Smooth_periodic_vector_function<double> vsigma_grad_rho(ctx_.fft(), gvp);
+            Smooth_periodic_vector_function<double> vsigma_grad_rho(ctx_.fft(), ctx_.spfft(), gvp);
 
             for (int x: {0, 1, 2}) {
                 for (int ir = 0; ir < num_points; ir++) {
@@ -766,8 +766,8 @@ void Potential::xc_rg_magnetic(Density const& density__)
 
     int num_points = ctx_.fft().local_size();
 
-    Smooth_periodic_function<double> rho_up(ctx_.fft(), ctx_.gvec_partition());
-    Smooth_periodic_function<double> rho_dn(ctx_.fft(), ctx_.gvec_partition());
+    Smooth_periodic_function<double> rho_up(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition());
+    Smooth_periodic_function<double> rho_dn(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition());
 
     utils::timer t1("sirius::Potential::xc_rg_magnetic|up_dn");
     /* compute "up" and "dn" components and also check for negative values of density */
@@ -995,19 +995,19 @@ void Potential::xc_rg_magnetic(Density const& density__)
         utils::timer t4("sirius::Potential::xc_rg_magnetic|grad2");
         /* gather vsigma */
         // vsigma_uu: dϵ/dσ↑↑
-        Smooth_periodic_function<double> vsigma_uu(ctx_.fft(), ctx_.gvec_partition());
+        Smooth_periodic_function<double> vsigma_uu(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition());
         // vsigma_ud: dϵ/dσ↑↓
-        Smooth_periodic_function<double> vsigma_ud(ctx_.fft(), ctx_.gvec_partition());
+        Smooth_periodic_function<double> vsigma_ud(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition());
         // vsigma_dd: dϵ/dσ↓↓
-        Smooth_periodic_function<double> vsigma_dd(ctx_.fft(), ctx_.gvec_partition());
+        Smooth_periodic_function<double> vsigma_dd(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition());
         for (int ir = 0; ir < num_points; ir++) {
             vsigma_uu.f_rg(ir) = vsigma_uu_tmp[ir];
             vsigma_ud.f_rg(ir) = vsigma_ud_tmp[ir];
             vsigma_dd.f_rg(ir) = vsigma_dd_tmp[ir];
         }
 
-        Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.fft(), ctx_.gvec_partition());
-        Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.fft(), ctx_.gvec_partition());
+        Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition());
+        Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition());
         for (int x: {0, 1, 2}) {
             for(int ir = 0; ir < num_points; ++ir) {
               up_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_up[x].f_rg(ir) * vsigma_uu.f_rg(ir) + grad_rho_dn[x].f_rg(ir) * vsigma_ud.f_rg(ir);

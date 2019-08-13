@@ -85,9 +85,8 @@ class Periodic_function : public Smooth_periodic_function<T>
 
   public:
     /// Constructor
-    Periodic_function(Simulation_context& ctx__,
-                      int                 angular_domain_size__)
-        : Smooth_periodic_function<T>(ctx__.fft(), ctx__.gvec_partition())
+    Periodic_function(Simulation_context& ctx__, int angular_domain_size__)
+        : Smooth_periodic_function<T>(ctx__.fft(), ctx__.spfft(), ctx__.gvec_partition())
         , ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())

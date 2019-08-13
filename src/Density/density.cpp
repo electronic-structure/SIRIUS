@@ -41,12 +41,12 @@ Density::Density(Simulation_context& ctx__)
 
     /*  allocate charge density and magnetization on a coarse grid */
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        rho_mag_coarse_[i] = std::unique_ptr<spf>(new spf(ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
+        rho_mag_coarse_[i] = std::unique_ptr<spf>(new spf(ctx_.fft_coarse(), ctx_.spfft_coarse(), ctx_.gvec_coarse_partition()));
     }
 
     /* core density of the pseudopotential method */
     if (!ctx_.full_potential()) {
-        rho_pseudo_core_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
+        rho_pseudo_core_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition()));
     }
 
     if (ctx_.full_potential()) {
@@ -605,10 +605,9 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
                                                  kp__->spfft_transform().processing_unit());
 
                 if (ctx_.gamma_point()) {
-                    auto data = reinterpret_cast<double*>(kp__->spfft_transform().space_domain_data(SPFFT_PU_HOST));
+                    auto data = kp__->spfft_transform().space_domain_data(SPFFT_PU_HOST);
                     #pragma omp parallel for schedule(static)
                     for (int ir = 0; ir < fft.local_size(); ir++) {
-                        auto z = data[ir];
                         density_rg(ir, ispn) += w * std::pow(data[ir], 2);
                     }
                 } else {

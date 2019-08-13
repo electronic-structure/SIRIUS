@@ -90,6 +90,8 @@ class Simulation_context : public Simulation_parameters
     /** This is the FFT driver to transform periodic functions such as density and potential on the fine-grained
      *  FFT grid. The transformation is parallel. */
     std::unique_ptr<FFT3D> fft_;
+    std::unique_ptr<spfft::Transform> spfft_transform_;
+    std::unique_ptr<spfft::Grid> spfft_grid_;
 
     /// Coarse-grained FFT for application of local potential and density summation.
     std::unique_ptr<FFT3D> fft_coarse_;
@@ -686,6 +688,16 @@ class Simulation_context : public Simulation_parameters
     spfft::Grid& spfft_grid_coarse()
     {
         return *spfft_grid_coarse_;
+    }
+
+    spfft::Transform& spfft()
+    {
+        return *spfft_transform_;
+    }
+
+    spfft::Transform& spfft_coarse()
+    {
+        return *spfft_transform_coarse_;
     }
 };
 

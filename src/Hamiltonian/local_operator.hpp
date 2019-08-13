@@ -25,8 +25,21 @@
 #ifndef __LOCAL_OPERATOR_HPP__
 #define __LOCAL_OPERATOR_HPP__
 
-#include "Potential/potential.hpp"
 #include "../SDDK/GPU/acc.hpp"
+#include "../SDDK/memory.hpp"
+#include "../smooth_periodic_function.hpp"
+#include "spfft/spfft.hpp"
+
+/* forward declarations */
+namespace sirius {
+class Potential;
+class Simulation_context;
+}
+namespace sddk {
+class FFT3D;
+class Gvec_partition;
+class Wave_functions;
+}
 
 #ifdef __GPU
 extern "C" void mul_by_veff_gpu(int ispn__, int size__, double* const* veff__, double_complex* buf__);
@@ -55,61 +68,37 @@ class Local_operator
     Simulation_context const& ctx_;
 
     /// Coarse-grid FFT driver for this operator.
-    FFT3D& fft_coarse_;
+    sddk::FFT3D& fft_coarse_;
 
     /// Distribution of the G-vectors for the FFT transformation.
-    Gvec_partition const& gvec_coarse_p_;
+    sddk::Gvec_partition const& gvec_coarse_p_;
 
-    Gvec_partition const* gkvec_p_{nullptr};
+    sddk::Gvec_partition const* gkvec_p_{nullptr};
 
     /// Kinetic energy of G+k plane-waves.
-    mdarray<double, 1> pw_ekin_;
+    sddk::mdarray<double, 1> pw_ekin_;
 
     /// Effective potential components on a coarse FFT grid.
     std::array<Smooth_periodic_function<double>, 4> veff_vec_;
 
     /// Temporary array to store [V*phi](G)
-    mdarray<double_complex, 2> vphi_;
+    sddk::mdarray<double_complex, 1> vphi_;
 
     /// LAPW unit step function on a coarse FFT grid.
     Smooth_periodic_function<double> theta_;
 
     /// Temporary array to store psi_{up}(r).
     /** The size of the array is equal to the size of FFT buffer. */
-    mdarray<double_complex, 1> buf_rg_;
+    sddk::mdarray<double_complex, 1> buf_rg_;
 
     /// V(G=0) matrix elements.
     double v0_[2];
 
   public:
     /// Constructor.
-    Local_operator(Simulation_context const& ctx__,
-                   FFT3D&                    fft_coarse__,
-                   Gvec_partition     const& gvec_coarse_p__)
-        : ctx_(ctx__)
-        , fft_coarse_(fft_coarse__)
-        , gvec_coarse_p_(gvec_coarse_p__)
-
-    {
-        PROFILE("sirius::Local_operator");
-
-        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            veff_vec_[j] = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
-            for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                veff_vec_[j].f_rg(ir) = 2.71828;
-            }
-        }
-        if (ctx_.full_potential()) {
-            theta_ = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
-        }
-
-        if (fft_coarse_.pu() == device_t::GPU) {
-            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
-            }
-            buf_rg_.allocate(memory_t::device);
-        }
-    }
+    Local_operator(Simulation_context   const& ctx__,
+                   sddk::FFT3D&                fft_coarse__,
+                   sddk::Gvec_partition const& gvec_coarse_p__);
 
     /// Keep track of the total number of wave-functions to which the local operator was applied.
     static int num_applied(int n = 0)
@@ -129,7 +118,7 @@ class Local_operator
     void prepare(Potential& potential__);
 
     /// Prepare the k-point dependent arrays.
-    void prepare(Gvec_partition const& gkvec_p__);
+    void prepare(sddk::Gvec_partition const& gkvec_p__);
 
     /// Cleanup the local operator.
     void dismiss();
@@ -148,13 +137,13 @@ class Local_operator
      *
      *  In the current implementation for the GPUs sequential FFT is assumed.
      */
-    void apply_h(int ispn__, Wave_functions& phi__, Wave_functions& hphi__, int idx0__, int n__);
+    void apply_h(spfft::Transform& spfft__, int ispn__, sddk::Wave_functions& phi__, sddk::Wave_functions& hphi__, int idx0__, int n__);
 
     void apply_h_o(int             N__,
                    int             n__,
-                   Wave_functions& phi__,
-                   Wave_functions* hphi__,
-                   Wave_functions* ophi__);
+                   sddk::Wave_functions& phi__,
+                   sddk::Wave_functions* hphi__,
+                   sddk::Wave_functions* ophi__);
 
     /// Apply magnetic field to the wave-functions.
     /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
@@ -162,8 +151,8 @@ class Local_operator
      *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. */
     void apply_b(int                          N__,
                  int                          n__,
-                 Wave_functions&              phi__,
-                 std::vector<Wave_functions>& bphi__);
+                 sddk::Wave_functions&              phi__,
+                 std::vector<sddk::Wave_functions>& bphi__);
 
     inline double v0(int ispn__) const
     {
