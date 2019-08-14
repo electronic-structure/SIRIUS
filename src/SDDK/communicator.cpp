@@ -67,7 +67,7 @@ int get_device_id(int num_devices__)
         return id;
     }
     if (id == -1) {
-#pragma omp single
+        #pragma omp single
         {
             int r = Communicator::world().rank();
             char name[MPI_MAX_PROCESSOR_NAME];

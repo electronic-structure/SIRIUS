@@ -194,49 +194,36 @@ class Smooth_periodic_function
         return *gvecp_;
     }
 
-    inline void fft_transform(int direction__);
+    void fft_transform(int direction__)
+    {
+        PROFILE("sirius::Smooth_periodic_function::fft_transform");
 
-    //void fft_transform(int direction__)
-    //{
-    //    PROFILE("sirius::Smooth_periodic_function::fft_transform");
+        assert(gvecp_ != nullptr);
 
-    //    assert(gvecp_ != nullptr);
+        switch (direction__) {
+            case 1: {
+                gather_f_pw_fft();
+                spfft_->backward(reinterpret_cast<double const*>(f_pw_fft_.at(sddk::memory_t::host)),
+                                 spfft_->processing_unit());
 
-    //    switch (direction__) {
-    //        case 1: {
-    //            gather_f_pw_fft();
-    //            //fft_->transform<1>(f_pw_fft_.at(sddk::memory_t::host));
-    //            //fft_->output(f_rg_.at(sddk::memory_t::host));
-    //            spfft_->backward(reinterpret_cast<double const*>(f_pw_fft_.at(sddk::memory_t::host)),
-    //                             spfft_->processing_unit());
-
-    //            if (gvec().reduced()) {
-    //                auto ptr = reinterpret_cast<double*>(spfft_->space_domain_data(SPFFT_PU_HOST));
-    //                for (int i = 0; i < fft().local_size(); i++) {
-    //                    f_rg_[i] = ptr[i];
-    //                }
-    //            } else {
-    //                auto ptr = reinterpret_cast<double_complex*>(spfft_->space_domain_data(SPFFT_PU_HOST));
-    //                for (int i = 0; i < fft().local_size(); i++) {
-    //                    f_rg_[i] = ptr[i];
-    //                }
-    //            }
-    //            break;
-    //        }
-    //        case -1: {
-    //            fft_->input(f_rg_.at(sddk::memory_t::host));
-    //            fft_->transform<-1>(f_pw_fft_.at(sddk::memory_t::host));
-    //            int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
-    //            int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
-    //            std::memcpy(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host, offset),
-    //                        count * sizeof(double_complex));
-    //            break;
-    //        }
-    //        default: {
-    //            throw std::runtime_error("wrong FFT direction");
-    //        }
-    //    }
-    //}
+                spfft_output(*spfft_, &f_rg_[0]);
+                break;
+            }
+            case -1: {
+                spfft_input(*spfft_, &f_rg_[0]);
+                spfft_->forward(spfft_->processing_unit(), reinterpret_cast<double*>(f_pw_fft_.at(sddk::memory_t::host)),
+                                SPFFT_FULL_SCALING);
+                int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
+                int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
+                std::memcpy(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host, offset),
+                            count * sizeof(double_complex));
+                break;
+            }
+            default: {
+                throw std::runtime_error("wrong FFT direction");
+            }
+        }
+    }
 
     inline std::vector<double_complex> gather_f_pw()
     {
@@ -300,58 +287,6 @@ class Smooth_periodic_function
         return h;
     }
 };
-
-template<>
-inline void Smooth_periodic_function<double>::fft_transform(int direction__)
-{
-    assert(gvecp_ != nullptr);
-
-    assert(fft().local_size() == spfft_->local_slice_size());
-
-    switch (direction__) {
-        case 1: {
-            gather_f_pw_fft();
-            //fft_->transform<1>(f_pw_fft_.at(sddk::memory_t::host));
-            //fft_->output(f_rg_.at(sddk::memory_t::host));
-            spfft_->backward(reinterpret_cast<double const*>(f_pw_fft_.at(sddk::memory_t::host)),
-                             spfft_->processing_unit());
-
-            if (gvec().reduced()) {
-                auto ptr = reinterpret_cast<double*>(spfft_->space_domain_data(SPFFT_PU_HOST));
-                for (int i = 0; i < fft().local_size(); i++) {
-                    f_rg_[i] = ptr[i];
-                }
-            } else {
-                auto ptr = reinterpret_cast<double_complex*>(spfft_->space_domain_data(SPFFT_PU_HOST));
-                for (int i = 0; i < fft().local_size(); i++) {
-                    f_rg_[i] = std::real(ptr[i]);
-                }
-            }
-            break;
-        }
-        case -1: {
-            fft_->input(f_rg_.at(sddk::memory_t::host));
-            fft_->transform<-1>(f_pw_fft_.at(sddk::memory_t::host));
-            int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
-            int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
-            std::memcpy(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host, offset),
-                        count * sizeof(double_complex));
-            break;
-        }
-        default: {
-            throw std::runtime_error("wrong FFT direction");
-        }
-    }
-
-}
-
-template<>
-inline void Smooth_periodic_function<double_complex>::fft_transform(int direction__)
-{
-    throw std::runtime_error("not implemented");
-}
-
-
 
 /// Vector of the smooth periodic functions.
 template <typename T>

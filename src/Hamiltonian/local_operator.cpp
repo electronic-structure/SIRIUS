@@ -28,6 +28,7 @@ Local_operator::Local_operator(Simulation_context const& ctx__, FFT3D& fft_coars
                                Gvec_partition const& gvec_coarse_p__)
     : ctx_(ctx__)
     , fft_coarse_(fft_coarse__)
+    , spfft_coarse_(const_cast<Simulation_context&>(ctx__).spfft_coarse())
     , gvec_coarse_p_(gvec_coarse_p__)
 
 {
@@ -58,8 +59,6 @@ void Local_operator::prepare(Potential& potential__)
     if (!buf_rg_.size()) {
         buf_rg_ = mdarray<double_complex, 1>(fft_coarse_.local_size(), memory_t::host, "Local_operator::buf_rg_");
     }
-
-    fft_coarse_.prepare(gvec_coarse_p_);
 
     if (ctx_.full_potential()) {
 
@@ -93,8 +92,6 @@ void Local_operator::prepare(Potential& potential__)
                 ctx_.theta_pw(gvec_dense_p.gvec().gvec_base_mapping(igloc) + gvec_dense_p.gvec().offset());
         }
         theta_.fft_transform(1);
-        /* release FFT driver */
-        fft_coarse_.dismiss();
 
         if (fft_coarse_.pu() == device_t::GPU) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -162,8 +159,6 @@ void Local_operator::prepare(Potential& potential__)
             }
         }
     }
-
-    fft_coarse_.dismiss();
 }
 
 void Local_operator::prepare(Gvec_partition const& gkvec_p__)
@@ -651,8 +646,6 @@ void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_fun
 
     num_applied(n__);
 
-    fft_coarse_.prepare(*gkvec_p_);
-
     mdarray<double_complex, 1> buf_pw(gkvec_p_->gvec_count_fft());
 
     if (ctx_.processing_unit() == device_t::GPU) {
@@ -682,68 +675,74 @@ void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_fun
         switch (fft_coarse_.pu()) {
             case device_t::CPU: {
                 /* phi(G) -> phi(r) */
-                fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
+                spfft_coarse_.backward(reinterpret_cast<double const*>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                 spfft_coarse_.processing_unit());
 
                 if (ophi__ != nullptr) {
                     /* save phi(r) */
                     if (hphi__ != nullptr) {
-                        fft_coarse_.output(buf_rg_.at(memory_t::host));
+                        spfft_output(spfft_coarse_, &buf_rg_[0]);
                     }
-                    #pragma omp parallel for schedule(static)
-                    for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                        /* multiply phi(r) by step function */
-                        fft_coarse_.buffer(ir) *= theta_.f_rg(ir);
-                    }
+                    /* multiply phi(r) by step function */
+                    spfft_multiply(spfft_coarse_, [&](int ir)
+                                                  {
+                                                      return theta_.f_rg(ir);
+                                                  });
                     /* phi(r) * Theta(r) -> ophi(G) */
-                    fft_coarse_.transform<-1>(ophi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
+                    spfft_coarse_.forward(spfft_coarse_.processing_unit(),
+                                          reinterpret_cast<double*>(ophi__->pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                          SPFFT_FULL_SCALING);
                     /* load phi(r) back */
                     if (hphi__ != nullptr) {
-                        fft_coarse_.input(buf_rg_.at(memory_t::host));
+                        spfft_input(spfft_coarse_, buf_rg_.at(memory_t::host));
                     }
                 }
                 if (hphi__ != nullptr) {
-                    #pragma omp parallel for schedule(static)
-                    for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                        /* multiply be effective potential, which itself was multiplied by the step function
-                               in the prepare() method */
-                        fft_coarse_.buffer(ir) *= veff_vec_[0].f_rg(ir);
-                    }
+                    /* multiply be effective potential, which itself was multiplied by the step function
+                           in the prepare() method */
+                    spfft_multiply(spfft_coarse_, [&](int ir)
+                                                  {
+                                                      return veff_vec_[0].f_rg(ir);
+                                                  });
                     /* phi(r) * Theta(r) * V(r) -> hphi(G) */
-                    fft_coarse_.transform<-1>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
+                    spfft_coarse_.forward(spfft_coarse_.processing_unit(),
+                                          reinterpret_cast<double*>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                          SPFFT_FULL_SCALING);
                 }
                 break;
             }
             case device_t::GPU: {
 #if defined(__GPU)
-                /* phi(G) -> phi(r) */
-                fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
+                STOP();
+                ///* phi(G) -> phi(r) */
+                //fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
 
-                if (ophi__ != nullptr) {
-                    /* save phi(r) */
-                    if (hphi__ != nullptr) {
-                        acc::copy(buf_rg_.at(memory_t::device), fft_coarse_.buffer().at(memory_t::device),
-                                  fft_coarse_.local_size());
-                    }
-                    /* multiply by step function */
-                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
-                                          (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
-                                          theta_.f_rg().at(memory_t::device));
-                    /* phi(r) * Theta(r) -> ophi(G) */
-                    fft_coarse_.transform<-1>(ophi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
-                    /* load phi(r) back */
-                    if (hphi__ != nullptr) {
-                        acc::copy(fft_coarse_.buffer().at(memory_t::device), buf_rg_.at(memory_t::device),
-                                  fft_coarse_.local_size());
-                    }
-                }
-                if (hphi__ != nullptr) {
-                    /* multiply by effective potential */
-                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
-                                          (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
-                                          veff_vec_[0].f_rg().at(memory_t::device));
-                    /* phi(r) * Theta(r) * V(r) -> hphi(G) */
-                    fft_coarse_.transform<-1>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
-                }
+                //if (ophi__ != nullptr) {
+                //    /* save phi(r) */
+                //    if (hphi__ != nullptr) {
+                //        acc::copy(buf_rg_.at(memory_t::device), fft_coarse_.buffer().at(memory_t::device),
+                //                  fft_coarse_.local_size());
+                //    }
+                //    /* multiply by step function */
+                //    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
+                //                          (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
+                //                          theta_.f_rg().at(memory_t::device));
+                //    /* phi(r) * Theta(r) -> ophi(G) */
+                //    fft_coarse_.transform<-1>(ophi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
+                //    /* load phi(r) back */
+                //    if (hphi__ != nullptr) {
+                //        acc::copy(fft_coarse_.buffer().at(memory_t::device), buf_rg_.at(memory_t::device),
+                //                  fft_coarse_.local_size());
+                //    }
+                //}
+                //if (hphi__ != nullptr) {
+                //    /* multiply by effective potential */
+                //    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
+                //                          (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
+                //                          veff_vec_[0].f_rg().at(memory_t::device));
+                //    /* phi(r) * Theta(r) * V(r) -> hphi(G) */
+                //    fft_coarse_.transform<-1>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j));
+                //}
 #endif
                 break;
             }
@@ -763,18 +762,21 @@ void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_fun
                                     gkvec_p_->gvec().gkvec_cart<index_domain_t::global>(ig)[x];
                 }
                 /* transform Cartesian component of wave-function gradient to real space */
-                fft_coarse_.transform<1>(&buf_pw[0]);
+                spfft_coarse_.backward(reinterpret_cast<double const*>(&buf_pw[0]),
+                                 spfft_coarse_.processing_unit());
                 switch (fft_coarse_.pu()) {
                     case device_t::CPU: {
-                        #pragma omp parallel for schedule(static)
-                        for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                            /* multiply be step function */
-                            fft_coarse_.buffer(ir) *= theta_.f_rg(ir);
-                        }
+                        /* multiply be step function */
+                        spfft_multiply(spfft_coarse_, [&](int ir)
+                                                      {
+                                                          return theta_.f_rg(ir);
+                                                      });
+
                         break;
                     }
                     case device_t::GPU: {
 #if defined(__GPU)
+                        STOP();
                         /* multiply by step function */
                         scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
                                               (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
@@ -784,7 +786,8 @@ void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_fun
                     }
                 }
                 /* transform back to PW domain */
-                fft_coarse_.transform<-1>(&buf_pw[0]);
+                spfft_coarse_.forward(spfft_coarse_.processing_unit(), reinterpret_cast<double*>(&buf_pw[0]),
+                                      SPFFT_FULL_SCALING);
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gkvec_p_->gvec_count_fft(); igloc++) {
                     int ig = gkvec_p_->idx_gvec(igloc);
@@ -801,8 +804,6 @@ void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_fun
     if (ophi__ != nullptr) {
         ophi__->pw_coeffs(0).remap_backward(n__, N__);
     }
-
-    fft_coarse_.dismiss();
 
     if (ctx_.processing_unit() == device_t::GPU) {
         if (hphi__ != nullptr) {
@@ -830,8 +831,6 @@ void Local_operator::apply_b(int N__, int n__, Wave_functions& phi__, std::vecto
         TERMINATE("Local operator is not prepared");
     }
 
-    fft_coarse_.prepare(*gkvec_p_);
-
     /* components of H|psi> to which H is applied */
     std::vector<int> iv(1, 0);
     if (bphi__.size() == 3) {
@@ -849,41 +848,49 @@ void Local_operator::apply_b(int N__, int n__, Wave_functions& phi__, std::vecto
         switch (fft_coarse_.pu()) {
             case device_t::CPU: {
                 /* phi(G) -> phi(r) */
-                fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
+                spfft_coarse_.backward(reinterpret_cast<double const*>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                       spfft_coarse_.processing_unit());
+
                 /* save phi(r) */
                 if (bphi__.size() == 3) {
-                    fft_coarse_.output(buf_rg_.at(memory_t::host));
+                    spfft_output(spfft_coarse_, buf_rg_.at(memory_t::host));
                 }
-                #pragma omp parallel for schedule(static)
-                for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                    /* multiply by Bz */
-                    fft_coarse_.buffer(ir) *= veff_vec_[1].f_rg(ir);
-                }
+                /* multiply by Bz */
+                spfft_multiply(spfft_coarse_, [&](int ir)
+                                              {
+                                                  return veff_vec_[1].f_rg(ir);
+                                              });
+
                 /* phi(r) * Bz(r) -> bphi[0](G) */
-                fft_coarse_.transform<-1>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j));
+                spfft_coarse_.forward(spfft_coarse_.processing_unit(),
+                                      reinterpret_cast<double*>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                      SPFFT_FULL_SCALING);
+
                 /* non-collinear case */
                 if (bphi__.size() == 3) {
-                    #pragma omp parallel for schedule(static)
-                    for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                        /* multiply by Bx-iBy */
-                        fft_coarse_.buffer(ir) =
-                            buf_rg_[ir] * double_complex(veff_vec_[2].f_rg(ir), -veff_vec_[3].f_rg(ir));
-                    }
+                    /* multiply by Bx-iBy */
+                    spfft_input(spfft_coarse_, [&](int ir)
+                                               {
+                                                   return buf_rg_[ir] * double_complex(veff_vec_[2].f_rg(ir), -veff_vec_[3].f_rg(ir));
+                                               });
                     /* phi(r) * (Bx(r)-iBy(r)) -> bphi[2](G) */
-                    fft_coarse_.transform<-1>(bphi__[2].pw_coeffs(0).extra().at(memory_t::host, 0, j));
+                    spfft_coarse_.forward(spfft_coarse_.processing_unit(),
+                                      reinterpret_cast<double*>(bphi__[2].pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                      SPFFT_FULL_SCALING);
                 }
                 break;
             }
             case device_t::GPU: {
 #if defined(__GPU)
-                /* phi(G) -> phi(r) */
-                fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
-                /* multiply by Bz */
-                scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
-                                      (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
-                                      veff_vec_[1].f_rg().at(memory_t::device));
-                /* phi(r) * Bz(r) -> bphi[0](G) */
-                fft_coarse_.transform<-1>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j));
+                STOP();
+                ///* phi(G) -> phi(r) */
+                //fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j));
+                ///* multiply by Bz */
+                //scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
+                //                      (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
+                //                      veff_vec_[1].f_rg().at(memory_t::device));
+                ///* phi(r) * Bz(r) -> bphi[0](G) */
+                //fft_coarse_.transform<-1>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j));
 #endif
                 break;
             }
@@ -893,8 +900,6 @@ void Local_operator::apply_b(int N__, int n__, Wave_functions& phi__, std::vecto
     for (int i : iv) {
         bphi__[i].pw_coeffs(0).remap_backward(n__, N__);
     }
-
-    fft_coarse_.dismiss();
 }
 
 } // namespace sirius

@@ -500,11 +500,6 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     auto& gvp = (use_all_gvec) ? (*gvp_ptr) : ctx_.gvec_partition();
 
-    if (use_all_gvec) {
-        ctx_.fft().dismiss();
-        ctx_.fft().prepare(gvp);
-    }
-
     bool is_gga = is_gradient_correction();
 
     int num_points = ctx_.fft().local_size();
@@ -746,11 +741,6 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
     for (int ir = 0; ir < num_points; ir++) {
         xc_energy_density_->f_rg(ir) = exc_tmp(ir);
         xc_potential_->f_rg(ir) = vxc_tmp(ir);
-    }
-
-    if (use_all_gvec) {
-        ctx_.fft().dismiss();
-        ctx_.fft().prepare(ctx_.gvec_partition());
     }
 
     /* forward transform vsigma to plane-wave domain */

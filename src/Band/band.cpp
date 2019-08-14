@@ -255,7 +255,7 @@ void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_ao__) co
     }
     t1.stop();
 
-    ctx_.fft_coarse().prepare(kp__->gkvec_partition());
+    //ctx_.fft_coarse().prepare(kp__->gkvec_partition());
     H__.local_op().prepare(kp__->gkvec_partition());
 
     /* allocate wave-functions */
@@ -427,7 +427,7 @@ void Band::initialize_subspace(K_point* kp__, Hamiltonian& H__, int num_ao__) co
     }
 
     kp__->beta_projectors().dismiss();
-    ctx_.fft_coarse().dismiss();
+    //ctx_.fft_coarse().dismiss();
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 }

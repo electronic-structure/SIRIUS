@@ -44,7 +44,7 @@ int Band::diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const
     PROFILE("sirius::Band::diag_pseudo_potential");
 
     H__.local_op().prepare(kp__->gkvec_partition());
-    ctx_.fft_coarse().prepare(kp__->gkvec_partition());
+    //ctx_.fft_coarse().prepare(kp__->gkvec_partition());
 
     int niter{0};
 
@@ -85,7 +85,7 @@ int Band::diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const
         check_residuals<T>(kp__, H__);
     }
 
-    ctx_.fft_coarse().dismiss();
+    //ctx_.fft_coarse().dismiss();
     return niter;
 }
 

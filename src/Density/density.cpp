@@ -582,7 +582,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
         density_rg.allocate(ctx_.mem_pool(memory_t::device)).zero(memory_t::device);
     }
 
-    fft.prepare(kp__->gkvec_partition());
+    //fft.prepare(kp__->gkvec_partition());
 
     /* non-magnetic or collinear case */
     if (ctx_.num_mag_dims() != 3) {
@@ -645,41 +645,52 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
                kp__->spinor_wave_functions().pw_coeffs(1).spl_num_col().local_size());
 
         /* allocate on CPU or GPU */
-        mdarray<double_complex, 1> psi_r(ctx_.mem_pool(memory_t::host), fft.local_size());
+        mdarray<double_complex, 1> psi_r_up(ctx_.mem_pool(memory_t::host), fft.local_size());
         if (fft.pu() == device_t::GPU) {
-            psi_r.allocate(ctx_.mem_pool(memory_t::device));
+            psi_r_up.allocate(ctx_.mem_pool(memory_t::device));
         }
         for (int i = 0; i < kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col().local_size(); i++) {
             int j    = kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col()[i];
             double w = kp__->band_occupancy(j, 0) * kp__->weight() / omega;
 
             /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU memory */
-            fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(0).extra().at(memory_t::host, 0, i));
-            /* save in auxiliary buffer */
-            switch (fft.pu()) {
-                case device_t::CPU: {
-                    fft.output(&psi_r[0]);
-                    break;
-                }
-                case device_t::GPU: {
-#ifdef __GPU
-                    acc::copyout(psi_r.at(memory_t::device), fft.buffer().at(memory_t::device), fft.local_size());
-#endif
-                    break;
-                }
-            }
+            auto inp_wf_up = kp__->spinor_wave_functions().pw_coeffs(0).extra().at(memory_t::host, 0, i);
+            /* transform to real space */
+            kp__->spfft_transform().backward(reinterpret_cast<const double*>(inp_wf_up),
+                                             kp__->spfft_transform().processing_unit());
+
+            spfft_output(kp__->spfft_transform(), &psi_r_up[0]);
+
+//            fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(0).extra().at(memory_t::host, 0, i));
+//            /* save in auxiliary buffer */
+//            switch (fft.pu()) {
+//                case device_t::CPU: {
+//                    fft.output(&psi_r[0]);
+//                    break;
+//                }
+//                case device_t::GPU: {
+//#ifdef __GPU
+//                    acc::copyout(psi_r.at(memory_t::device), fft.buffer().at(memory_t::device), fft.local_size());
+//#endif
+//                    break;
+//                }
+//            }
 
             /* transform dn- component of spinor wave function */
-            fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(1).extra().at(memory_t::host, 0, i));
+            auto inp_wf_dn = kp__->spinor_wave_functions().pw_coeffs(1).extra().at(memory_t::host, 0, i);
+            kp__->spfft_transform().backward(reinterpret_cast<const double*>(inp_wf_dn),
+                                             kp__->spfft_transform().processing_unit());
+
+            auto psi_r_dn = reinterpret_cast<double_complex*>(kp__->spfft_transform().space_domain_data(SPFFT_PU_HOST));
 
             switch (fft.pu()) {
                 case device_t::CPU: {
                     #pragma omp parallel for schedule(static)
                     for (int ir = 0; ir < fft.local_size(); ir++) {
-                        auto r0 = (std::pow(psi_r[ir].real(), 2) + std::pow(psi_r[ir].imag(), 2)) * w;
-                        auto r1 = (std::pow(fft.buffer(ir).real(), 2) + std::pow(fft.buffer(ir).imag(), 2)) * w;
+                        auto r0 = (std::pow(psi_r_up[ir].real(), 2) + std::pow(psi_r_up[ir].imag(), 2)) * w;
+                        auto r1 = (std::pow(psi_r_dn[ir].real(), 2) + std::pow(psi_r_dn[ir].imag(), 2)) * w;
 
-                        auto z2 = psi_r[ir] * std::conj(fft.buffer(ir)) * w;
+                        auto z2 = psi_r_up[ir] * std::conj(psi_r_dn[ir]) * w;
 
                         density_rg(ir, 0) += r0;
                         density_rg(ir, 1) += r1;
@@ -690,15 +701,15 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
                 }
                 case device_t::GPU: {
 #ifdef __GPU
-                    /* add up-up contribution */
-                    update_density_rg_1_gpu(fft.local_size(), psi_r.at(memory_t::device), w,
-                                            density_rg.at(memory_t::device, 0, 0));
-                    /* add dn-dn contribution */
-                    update_density_rg_1_gpu(fft.local_size(), fft.buffer().at(memory_t::device), w,
-                                            density_rg.at(memory_t::device, 0, 1));
-                    /* add off-diagonal contribution */
-                    update_density_rg_2_gpu(fft.local_size(), psi_r.at(memory_t::device), fft.buffer().at(memory_t::device), w,
-                                            density_rg.at(memory_t::device, 0, 2), density_rg.at(memory_t::device, 0, 3));
+//                    /* add up-up contribution */
+//                    update_density_rg_1_gpu(fft.local_size(), psi_r.at(memory_t::device), w,
+//                                            density_rg.at(memory_t::device, 0, 0));
+//                    /* add dn-dn contribution */
+//                    update_density_rg_1_gpu(fft.local_size(), fft.buffer().at(memory_t::device), w,
+//                                            density_rg.at(memory_t::device, 0, 1));
+//                    /* add off-diagonal contribution */
+//                    update_density_rg_2_gpu(fft.local_size(), psi_r.at(memory_t::device), fft.buffer().at(memory_t::device), w,
+//                                            density_rg.at(memory_t::device, 0, 2), density_rg.at(memory_t::device, 0, 3));
 #endif
                     break;
                 }
@@ -735,7 +746,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
         }
     }
 
-    fft.dismiss();
+    //fft.dismiss();
 }
 
 template <typename T>
@@ -1186,7 +1197,7 @@ void Density::generate_valence(K_point_set const& ks__)
         ctx_.comm().allreduce(density_matrix_.at(memory_t::host), static_cast<int>(density_matrix_.size()));
     }
 
-    ctx_.fft_coarse().prepare(ctx_.gvec_coarse_partition());
+    //ctx_.fft_coarse().prepare(ctx_.gvec_coarse_partition());
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         /* reduce arrays; assume that each rank did its own fraction of the density */
@@ -1207,7 +1218,7 @@ void Density::generate_valence(K_point_set const& ks__)
             component(j).f_pw_local(ctx_.gvec().gvec_base_mapping(igloc)) = rho_mag_coarse_[j]->f_pw_local(igloc);
         }
     }
-    ctx_.fft_coarse().dismiss();
+    //ctx_.fft_coarse().dismiss();
 
     if (!ctx_.full_potential()) {
         augment();

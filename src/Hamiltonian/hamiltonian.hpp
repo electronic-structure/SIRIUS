@@ -651,14 +651,14 @@ class Hamiltonian_k
     {
         PROFILE("sirius::Hamiltonian_k");
         H0_.local_op().prepare(kp_.gkvec_partition());
-        H0_.ctx().fft_coarse().prepare(kp_.gkvec_partition());
+        //H0_.ctx().fft_coarse().prepare(kp_.gkvec_partition());
         kp_.beta_projectors().prepare();
     }
 
     ~Hamiltonian_k()
     {
         kp_.beta_projectors().dismiss();
-        H0_.ctx().fft_coarse().dismiss();
+        //H0_.ctx().fft_coarse().dismiss();
     }
 
     Hamiltonian0 const& H0() const

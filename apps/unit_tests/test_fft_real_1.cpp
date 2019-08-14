@@ -7,40 +7,40 @@ using namespace sirius;
 
 int run_test(cmd_args& args, device_t pu__)
 {
-    std::vector<int> vd = args.value< std::vector<int> >("dims", {132, 132, 132});
-    vector3d<int> dims(vd[0], vd[1], vd[2]); 
-    double cutoff = args.value<double>("cutoff", 50);
+    //std::vector<int> vd = args.value< std::vector<int> >("dims", {132, 132, 132});
+    //vector3d<int> dims(vd[0], vd[1], vd[2]); 
+    //double cutoff = args.value<double>("cutoff", 50);
 
-    matrix3d<double> M;
-    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+    //matrix3d<double> M;
+    //M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
-    FFT3D fft(find_translations(cutoff, M), Communicator::world(), pu__);
+    //FFT3D fft(find_translations(cutoff, M), Communicator::world(), pu__);
 
-    Gvec gvec(M, cutoff, Communicator::world(), false);
-    Gvec_partition gvecp(gvec, Communicator::world(), Communicator::self());
+    //Gvec gvec(M, cutoff, Communicator::world(), false);
+    //Gvec_partition gvecp(gvec, Communicator::world(), Communicator::self());
 
-    Gvec gvec_r(M, cutoff, Communicator::world(), true);
-    Gvec_partition gvecp_r(gvec_r, Communicator::world(), Communicator::self());
+    //Gvec gvec_r(M, cutoff, Communicator::world(), true);
+    //Gvec_partition gvecp_r(gvec_r, Communicator::world(), Communicator::self());
 
-    fft.prepare(gvecp_r);
+    //fft.prepare(gvecp_r);
 
-    mdarray<double_complex, 1> phi(gvecp_r.gvec_count_fft());
-    for (int i = 0; i < gvecp_r.gvec_count_fft(); i++) {
-        phi(i) = utils::random<double_complex>();
-    }
-    phi(0) = 1.0;
-    fft.transform<1>(&phi[0]);
-    if (pu__ == device_t::GPU) {
-        fft.buffer().copy_to(memory_t::host);
-    }
+    //mdarray<double_complex, 1> phi(gvecp_r.gvec_count_fft());
+    //for (int i = 0; i < gvecp_r.gvec_count_fft(); i++) {
+    //    phi(i) = utils::random<double_complex>();
+    //}
+    //phi(0) = 1.0;
+    //fft.transform<1>(&phi[0]);
+    //if (pu__ == device_t::GPU) {
+    //    fft.buffer().copy_to(memory_t::host);
+    //}
 
-    for (int i = 0; i < fft.local_size(); i++) {
-        if (fft.buffer(i).imag() > 1e-10) {
-            return 1;
-        }
-    }
+    //for (int i = 0; i < fft.local_size(); i++) {
+    //    if (fft.buffer(i).imag() > 1e-10) {
+    //        return 1;
+    //    }
+    //}
 
-    fft.dismiss();
+    //fft.dismiss();
     return 0;
 }
 

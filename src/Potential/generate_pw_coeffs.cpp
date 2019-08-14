@@ -17,7 +17,7 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file generate_pw_coefs.hpp
+/** \file generate_pw_coefs.cpp
  *
  *  \brief Generate plane-wave coefficients of the potential for the LAPW Hamiltonian.
  */
@@ -34,40 +34,45 @@ void Potential::generate_pw_coefs()
 
     int gv_count  = ctx_.gvec_partition().gvec_count_fft();
 
+    auto& fft = ctx_.spfft();
+
     /* temporaty output buffer */
     mdarray<double_complex, 1> fpw_fft(gv_count);
 
     switch (ctx_.valence_relativity()) {
         case relativity_t::iora: {
-            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-                double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
-                ctx_.fft().buffer(ir) = ctx_.theta(ir) / std::pow(M, 2);
-            }
+            spfft_input(fft, [&](int ir) -> double
+                             {
+                                  double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
+                                  return ctx_.theta(ir) / std::pow(M, 2);
+                             });
             if (ctx_.fft().pu() == device_t::GPU) {
-                ctx_.fft().buffer().copy_to(memory_t::device);
+                //ctx_.fft().buffer().copy_to(memory_t::device);
             }
-            ctx_.fft().transform<-1>(&fpw_fft[0]);
+            fft.forward(fft.processing_unit(), reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
             ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm2_inv_pw_[0]);
         }
         case relativity_t::zora: {
-            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-                double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
-                ctx_.fft().buffer(ir) = ctx_.theta(ir) / M;
-            }
+            spfft_input(fft, [&](int ir)
+                             {
+                                 double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
+                                 return ctx_.theta(ir) / M;
+                             });
             if (ctx_.fft().pu() == device_t::GPU) {
-                ctx_.fft().buffer().copy_to(memory_t::device);
+                //ctx_.fft().buffer().copy_to(memory_t::device);
             }
-            ctx_.fft().transform<-1>(&fpw_fft[0]);
+            fft.forward(fft.processing_unit(), reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
             ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm_inv_pw_[0]);
         }
         default: {
-            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-                ctx_.fft().buffer(ir) = effective_potential().f_rg(ir) * ctx_.theta(ir);
-            }
+            spfft_input(fft, [&](int ir)
+                             {
+                                 return effective_potential().f_rg(ir) * ctx_.theta(ir);
+                             });
             if (ctx_.fft().pu() == device_t::GPU) {
-                ctx_.fft().buffer().copy_to(memory_t::device);
+                //ctx_.fft().buffer().copy_to(memory_t::device);
             }
-            ctx_.fft().transform<-1>(&fpw_fft[0]);
+            fft.forward(fft.processing_unit(), reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
             ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &veff_pw_[0]);
         }
     }

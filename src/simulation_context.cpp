@@ -539,33 +539,33 @@ void Simulation_context::initialize()
     /* create G-vectors on the first call to update() */
     update();
 
-    /* create spfft buffer for coarse transform */
-    spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(
-        new spfft::Grid(fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2),
-                        gvec_coarse_partition_->zcol_count_fft(), fft_coarse_->local_size_z(), SPFFT_PU_HOST, -1,
-                        comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
-
-    /* create spfft transformations */
-    const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
-
-    spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
-        SPFFT_PU_HOST, fft_type_coarse, fft_coarse().size(0), fft_coarse().size(1), fft_coarse().size(2),
-        fft_coarse().local_size_z(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
-        gvec_coarse_partition_->gvec_coord().at(memory_t::host))));
-
-
-    /* create spfft buffer for fine-grained transform */
-    spfft_grid_ = std::unique_ptr<spfft::Grid>(
-        new spfft::Grid(fft_->size(0), fft_->size(1), fft_->size(2),
-                        gvec_partition_->zcol_count_fft(), fft_->local_size_z(), SPFFT_PU_HOST, -1,
-                        comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
-
-    const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
-
-    spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
-        SPFFT_PU_HOST, fft_type, fft().size(0), fft().size(1), fft().size(2),
-        fft().local_size_z(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
-        gvec_partition_->gvec_coord().at(memory_t::host))));
+//    /* create spfft buffer for coarse transform */
+//    spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(
+//        new spfft::Grid(fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2),
+//                        gvec_coarse_partition_->zcol_count_fft(), fft_coarse_->local_size_z(), SPFFT_PU_HOST, -1,
+//                        comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
+//
+//    /* create spfft transformations */
+//    const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
+//
+//    spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
+//        SPFFT_PU_HOST, fft_type_coarse, fft_coarse().size(0), fft_coarse().size(1), fft_coarse().size(2),
+//        fft_coarse().local_size_z(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+//        gvec_coarse_partition_->gvec_coord().at(memory_t::host))));
+//
+//
+//    /* create spfft buffer for fine-grained transform */
+//    spfft_grid_ = std::unique_ptr<spfft::Grid>(
+//        new spfft::Grid(fft_->size(0), fft_->size(1), fft_->size(2),
+//                        gvec_partition_->zcol_count_fft(), fft_->local_size_z(), SPFFT_PU_HOST, -1,
+//                        comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
+//
+//    const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
+//
+//    spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
+//        SPFFT_PU_HOST, fft_type, fft().size(0), fft().size(1), fft().size(2),
+//        fft().local_size_z(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+//        gvec_partition_->gvec_coord().at(memory_t::host))));
 
     if (comm_.rank() == 0 && control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
@@ -787,7 +787,9 @@ void Simulation_context::print_info() const
 
 /** The update of the lattice vectors or atomic positions has an impact on many quantities which have to be 
     recomputed in the correct order. First, the unit cell is updated and the new reciprocal lattice vectors
-    are obtained. Then the G-vectors are recomputed. */
+    are obtained. Then the G-vectors are computed (if this is the first call to update()) or recomputed with a
+    new reciprocal lattice, but without rebuilding a new list. On the first call the spfft objects are created
+    after G-vectors. */
 void Simulation_context::update()
 {
     PROFILE("sirius::Simulation_context::update");
@@ -802,24 +804,45 @@ void Simulation_context::update()
        the next time only reciprocal lattice of the G-vectors is updated */
     if (!gvec_coarse_) {
         gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
+        gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
+            new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
+
+        /* create spfft buffer for coarse transform */
+        spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(
+            new spfft::Grid(fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2),
+                            gvec_coarse_partition_->zcol_count_fft(), fft_coarse_->local_size_z(), SPFFT_PU_HOST, -1,
+                            comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
+
+        /* create spfft transformations */
+        const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
+
+        spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
+            SPFFT_PU_HOST, fft_type_coarse, fft_coarse().size(0), fft_coarse().size(1), fft_coarse().size(2),
+            fft_coarse().local_size_z(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+            gvec_coarse_partition_->gvec_coord().at(memory_t::host))));
     } else {
         gvec_coarse_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
-    }
-
-    if (!gvec_coarse_partition_) {
-        gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
-                new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
     }
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     if (!gvec_) {
         gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
+        gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
+
+        /* create spfft buffer for fine-grained transform */
+        spfft_grid_ = std::unique_ptr<spfft::Grid>(
+            new spfft::Grid(fft_->size(0), fft_->size(1), fft_->size(2),
+                            gvec_partition_->zcol_count_fft(), fft_->local_size_z(), SPFFT_PU_HOST, -1,
+                            comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
+
+        const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
+
+        spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
+            SPFFT_PU_HOST, fft_type, fft().size(0), fft().size(1), fft().size(2),
+            fft().local_size_z(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+            gvec_partition_->gvec_coord().at(memory_t::host))));
     } else {
         gvec_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
-    }
-
-    if (!gvec_partition_) {
-        gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
     }
 
     if (!remap_gvec_) {
@@ -919,11 +942,6 @@ void Simulation_context::update()
             }
         }
         gvec_coord_.allocate(memory_t::device).copy_to(memory_t::device);
-    }
-
-    /* prepare fine-grained FFT driver for the entire simulation */
-    if (!fft_->is_ready()) {
-        fft_->prepare(*gvec_partition_);
     }
 
     if (full_potential()) {
@@ -1128,8 +1146,8 @@ void Simulation_context::init_step_function()
     for (int i = 0; i < gvec_partition().gvec_count_fft(); i++) {
         ftmp[i] = theta_pw_[gvec_partition().idx_gvec(i)];
     }
-    fft().transform<1>(ftmp.data());
-    fft().output(&theta_[0]);
+    spfft().backward(reinterpret_cast<double const*>(ftmp.data()), spfft().processing_unit());
+    spfft_output(spfft(), &theta_[0]);
 
     double vit{0};
     for (int i = 0; i < fft().local_size(); i++) {

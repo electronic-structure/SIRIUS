@@ -53,7 +53,7 @@ int
 Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
 {
     hamiltonian__.local_op().prepare(kp__.gkvec_partition());
-    ctx_.fft_coarse().prepare(kp__.gkvec_partition());
+    //ctx_.fft_coarse().prepare(kp__.gkvec_partition());
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -97,7 +97,7 @@ Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
         check_wave_functions<T>(kp__, hamiltonian__);
     }
 
-    ctx_.fft_coarse().dismiss();
+    //ctx_.fft_coarse().dismiss();
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 

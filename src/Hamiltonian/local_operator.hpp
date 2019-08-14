@@ -40,6 +40,9 @@ class FFT3D;
 class Gvec_partition;
 class Wave_functions;
 }
+namespace spfft {
+class Transform;
+}
 
 #ifdef __GPU
 extern "C" void mul_by_veff_gpu(int ispn__, int size__, double* const* veff__, double_complex* buf__);
@@ -69,6 +72,8 @@ class Local_operator
 
     /// Coarse-grid FFT driver for this operator.
     sddk::FFT3D& fft_coarse_;
+
+    spfft::Transform& spfft_coarse_;
 
     /// Distribution of the G-vectors for the FFT transformation.
     sddk::Gvec_partition const& gvec_coarse_p_;
