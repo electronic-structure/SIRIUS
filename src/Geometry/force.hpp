@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Ilia Sivkov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Ilia Sivkov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -19,7 +19,7 @@
 
 /** \file force.hpp
  *
- *  \brief Contains defintion and implementation of sirius::Force class.
+ *  \brief Contains defintion of sirius::Force class.
  */
 
 #ifndef __FORCE_HPP__
@@ -97,8 +97,7 @@ class Force
      *
      *  It is based on this reference : PRB 84, 161102(R) (2011)
      */
-    void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__,
-                                                   mdarray<double, 2>& forceh_);
+    void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_);
 
     void add_ibs_force(K_point* kp__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const;
 
@@ -112,81 +111,81 @@ class Force
     {
     }
 
-     mdarray<double, 2> const& calc_forces_vloc();
+    mdarray<double, 2> const& calc_forces_vloc();
 
-     inline mdarray<double, 2> const& forces_vloc() const
+    inline mdarray<double, 2> const& forces_vloc() const
     {
         return forces_vloc_;
     }
 
-     mdarray<double, 2> const& calc_forces_nonloc();
+    mdarray<double, 2> const& calc_forces_nonloc();
 
-     inline mdarray<double, 2> const& forces_nonloc() const
+    inline mdarray<double, 2> const& forces_nonloc() const
     {
         return forces_nonloc_;
     }
 
-     mdarray<double, 2> const& calc_forces_core();
+    mdarray<double, 2> const& calc_forces_core();
 
-     inline mdarray<double, 2> const& forces_core() const
+    inline mdarray<double, 2> const& forces_core() const
     {
         return forces_core_;
     }
 
-     mdarray<double, 2> const& calc_forces_scf_corr();
+    mdarray<double, 2> const& calc_forces_scf_corr();
 
-     inline mdarray<double, 2> const& forces_scf_corr() const
+    inline mdarray<double, 2> const& forces_scf_corr() const
     {
         return forces_scf_corr_;
     }
 
-     mdarray<double, 2> const& calc_forces_us();
+    mdarray<double, 2> const& calc_forces_us();
 
-     inline mdarray<double, 2> const& forces_us() const
+    inline mdarray<double, 2> const& forces_us() const
     {
         return forces_us_;
     }
 
-     mdarray<double, 2> const& calc_forces_ewald();
+    mdarray<double, 2> const& calc_forces_ewald();
 
-     mdarray<double, 2> const& forces_ewald() const
+    mdarray<double, 2> const& forces_ewald() const
     {
         return forces_ewald_;
     }
 
-     mdarray<double, 2> const& calc_forces_hubbard();
+    mdarray<double, 2> const& calc_forces_hubbard();
 
-     inline mdarray<double, 2> const& forces_hubbard() const
+    inline mdarray<double, 2> const& forces_hubbard() const
     {
         return forces_hubbard_;
     }
 
-     mdarray<double, 2> const& calc_forces_usnl();
+    mdarray<double, 2> const& calc_forces_usnl();
 
-     mdarray<double, 2> const& calc_forces_hf();
+    mdarray<double, 2> const& calc_forces_hf();
 
-     inline mdarray<double, 2> const& forces_hf() const
+    inline mdarray<double, 2> const& forces_hf() const
     {
         return forces_hf_;
     }
 
-     mdarray<double, 2> const& calc_forces_rho();
+    mdarray<double, 2> const& calc_forces_rho();
 
-     inline mdarray<double, 2> const& forces_rho() const
+    inline mdarray<double, 2> const& forces_rho() const
     {
         return forces_rho_;
     }
 
-     mdarray<double, 2> const& calc_forces_ibs();
+    mdarray<double, 2> const& calc_forces_ibs();
 
-     inline mdarray<double, 2> const& forces_ibs() const
+    inline mdarray<double, 2> const& forces_ibs() const
     {
         return forces_ibs_;
     }
 
-     mdarray<double, 2> const& calc_forces_total();
+    mdarray<double, 2> const& calc_forces_total();
 
-     inline mdarray<double, 2> const& forces_total() const
+    inline mdarray<double, 2> const& forces_total() const
     {
         return forces_total_;
     }
@@ -225,7 +224,6 @@ class Force
             }
         }
     }
-
 };
 
 } // namespace sirius

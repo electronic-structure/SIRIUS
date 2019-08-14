@@ -71,9 +71,9 @@ void sirius_initialize(bool const* call_mpi_init__)
     sirius::initialize(*call_mpi_init__);
 }
 
-/* @fortran begin function void sirius_finalize         Shut down the SIRIUS library
-   @fortran argument in optional bool call_mpi_fin      If .true. then MPI_Finalize must be called after the shutdown.
-   @fortran argument in optional bool call_device_reset      If .true. then cuda device is reset after shutdown.
+/* @fortran begin function void sirius_finalize          Shut down the SIRIUS library
+   @fortran argument in optional bool call_mpi_fin       If .true. then MPI_Finalize must be called after the shutdown.
+   @fortran argument in optional bool call_device_reset  If .true. then cuda device is reset after shutdown.
    @fortran argument in optional bool call_fftw_fin      If .true. then fft_cleanup must be called after the shutdown.
    @fortran end */
 
@@ -338,6 +338,102 @@ void sirius_set_parameters(void*  const* handler__,
     }
 }
 
+/* @fortran begin function void sirius_get_parameters             Get parameters of the simulation.
+   @fortran argument in  required void* handler                   Simulation context handler
+   @fortran argument out optional int lmax_apw                    Maximum orbital quantum number for APW functions.
+   @fortran argument out optional int lmax_rho                    Maximum orbital quantum number for density.
+   @fortran argument out optional int lmax_pot                    Maximum orbital quantum number for potential.
+   @fortran argument out optional int num_fv_states               Number of first-variational states.
+   @fortran argument out optional int num_bands                   Number of bands.
+   @fortran argument out optional int num_mag_dims                Number of magnetic dimensions.
+   @fortran argument out optional double pw_cutoff                Cutoff for G-vectors.
+   @fortran argument out optional double gk_cutoff                Cutoff for G+k-vectors.
+   @fortran argument out optional int fft_grid_size               Size of the fine-grain FFT grid.
+   @fortran argument out optional int auto_rmt                    Set the automatic search of muffin-tin radii.
+   @fortran argument out optional bool gamma_point                True if this is a Gamma-point calculation.
+   @fortran argument out optional bool use_symmetry               True if crystal symmetry is taken into account.
+   @fortran argument out optional bool so_correction              True if spin-orbit correnctio is enabled.
+   @fortran argument out optional double iter_solver_tol          Tolerance of the iterative solver.
+   @fortran argument out optional double iter_solver_tol_empty    Tolerance for the empty states.
+   @fortran argument out optional int    verbosity                Verbosity level.
+   @fortran argument out optional bool   hubbard_correction       True if LDA+U correction is enabled.
+   @fortran end */
+void sirius_get_parameters(void* const* handler__,
+                           int*         lmax_apw__,
+                           int*         lmax_rho__,
+                           int*         lmax_pot__,
+                           int*         num_fv_states__,
+                           int*         num_bands__,
+                           int*         num_mag_dims__,
+                           double*      pw_cutoff__,
+                           double*      gk_cutoff__,
+                           int*         fft_grid_size__,
+                           int*         auto_rmt__,
+                           bool*        gamma_point__,
+                           bool*        use_symmetry__,
+                           bool*        so_correction__,
+                           double*      iter_solver_tol__,
+                           double*      iter_solver_tol_empty__,
+                           int*         verbosity__,
+                           bool*        hubbard_correction__)
+{
+    GET_SIM_CTX(handler__);
+    if (lmax_apw__ != nullptr) {
+        *lmax_apw__ = sim_ctx.lmax_apw();
+    }
+    if (lmax_rho__ != nullptr) {
+        *lmax_rho__ = sim_ctx.lmax_rho();
+    }
+    if (lmax_pot__ != nullptr) {
+        *lmax_pot__ = sim_ctx.lmax_pot();
+    }
+    if (num_fv_states__ != nullptr) {
+        *num_fv_states__ = sim_ctx.num_fv_states();
+    }
+    if (num_bands__ != nullptr) {
+        *num_bands__ = sim_ctx.num_bands();
+    }
+    if (num_mag_dims__ != nullptr) {
+        *num_mag_dims__ = sim_ctx.num_mag_dims();
+    }
+    if (pw_cutoff__ != nullptr) {
+        *pw_cutoff__ = sim_ctx.pw_cutoff();
+    }
+    if (gk_cutoff__ != nullptr) {
+        *gk_cutoff__ = sim_ctx.gk_cutoff();
+    }
+    if (auto_rmt__ != nullptr) {
+        *auto_rmt__ = sim_ctx.auto_rmt();
+    }
+    if (gamma_point__ != nullptr) {
+        *gamma_point__ = sim_ctx.gamma_point();
+    }
+    if (use_symmetry__ != nullptr) {
+        *use_symmetry__ = sim_ctx.use_symmetry();
+    }
+    if (so_correction__ != nullptr) {
+        *so_correction__ = sim_ctx.so_correction();
+    }
+    if (iter_solver_tol__ != nullptr) {
+        *iter_solver_tol__ = sim_ctx.iterative_solver_tolerance();
+    }
+    if (iter_solver_tol_empty__ != nullptr) {
+        *iter_solver_tol_empty__ = sim_ctx.iterative_solver_input().empty_states_tolerance_;
+    }
+    if (verbosity__ != nullptr) {
+        *verbosity__ = sim_ctx.control().verbosity_;
+    }
+    if (hubbard_correction__ != nullptr) {
+        *hubbard_correction__ = sim_ctx.hubbard_correction();
+    }
+    if (fft_grid_size__ != nullptr) {
+        for (int x: {0, 1, 2}) {
+            fft_grid_size__[x] = sim_ctx.fft().size(x);
+        }
+    }
+}
+
+
 /* @fortran begin function void sirius_add_xc_functional         Add one of the XC functionals.
    @fortran argument in required void* handler                   Simulation context handler
    @fortran argument in required string name                     LibXC label of the functional.
@@ -532,8 +628,11 @@ void* sirius_create_ground_state(void* const* ks_handler__)
    @fortran argument in optional int    niter                   Maximum number of SCF iterations.
    @fortran argument in optional bool   save_state              boolean variable indicating if we want to save the ground state
    @fortran end */
-void sirius_find_ground_state(void* const* gs_handler__, double const* potential_tol__, double const* energy_tol__,
-                              int const* niter__, bool const *save_state__)
+void sirius_find_ground_state(void*  const* gs_handler__,
+                              double const* potential_tol__,
+                              double const* energy_tol__,
+                              int    const* niter__,
+                              bool   const* save_state__)
 {
     GET_GS(gs_handler__)
     auto& ctx = gs.ctx();
