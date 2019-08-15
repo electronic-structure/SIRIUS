@@ -789,9 +789,9 @@ void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_fun
 #if defined(__GPU)
                         STOP();
                         /* multiply by step function */
-                        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
-                                              (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
-                                              theta_.f_rg().at(memory_t::device));
+                        //scale_matrix_rows_gpu(fft_coarse_.local_size(), 1,
+                        //                      (acc_complex_double_t*)fft_coarse_.buffer().at(memory_t::device),
+                        //                      theta_.f_rg().at(memory_t::device));
 #endif
                         break;
                     }

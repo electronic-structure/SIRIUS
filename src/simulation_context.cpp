@@ -1,6 +1,6 @@
 #include "version.hpp"
 #include "simulation_context.hpp"
-#include "symmetry/find_lat_sym.hpp"
+#include "Symmetry/find_lat_sym.hpp"
 #include <gsl/gsl_sf_bessel.h>
 
 namespace sirius {
