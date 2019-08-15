@@ -79,7 +79,7 @@ extern "C" void update_density_rg_1_real_gpu(int size__,
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(size__, grid_t.x));
 
-    accLaunchKernel((update_density_rg_1_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
+    accLaunchKernel((update_density_rg_1_real_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
         size__,
         psi_rg__,
         wt__,

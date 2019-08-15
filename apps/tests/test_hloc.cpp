@@ -103,8 +103,6 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     if (diff > 1e-12) {
         TERMINATE("RMS is too large");
     }
-
-    fft.dismiss();
 }
 
 int main(int argn, char** argv)
