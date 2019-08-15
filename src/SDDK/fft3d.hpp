@@ -42,6 +42,8 @@ namespace gpufft = cufft;
 namespace gpufft = rocfft;
 #endif
 
+#include "utils/utils.hpp"
+
 #include "spfft/spfft.hpp"
 
 using double_complex = std::complex<double>;
@@ -51,7 +53,8 @@ using enable_return = typename std::enable_if<std::is_same<typename std::result_
 
 /// Load data from real-valued lambda.
 template <typename F>
-inline enable_return<F, double, int> spfft_input(spfft::Transform& spfft__, F&& fr__)
+inline enable_return<F, double, int>
+spfft_input(spfft::Transform& spfft__, F&& fr__)
 {
     switch (spfft__.type()) {
         case SPFFT_TRANS_C2C: {
@@ -78,7 +81,8 @@ inline enable_return<F, double, int> spfft_input(spfft::Transform& spfft__, F&& 
 
 /// Loda data from complex-valued lambda.
 template <typename F>
-inline enable_return<F, std::complex<double>, int> spfft_input(spfft::Transform& spfft__, F&& fr__)
+inline enable_return<F, std::complex<double>, int>
+spfft_input(spfft::Transform& spfft__, F&& fr__)
 {
     switch (spfft__.type()) {
         case SPFFT_TRANS_C2C: {
@@ -116,6 +120,7 @@ inline void spfft_multiply(spfft::Transform& spfft__, F&& fr__)
             break;
         }
         case SPFFT_TRANS_R2C: {
+            std::cout << "in spfft_multiply() R2C\n";
             auto ptr = reinterpret_cast<double*>(spfft__.space_domain_data(SPFFT_PU_HOST));
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < spfft__.local_slice_size(); i++) {
@@ -831,104 +836,104 @@ class FFT3D : public FFT3D_grid
             host_memory_type_ = memory_t::host_pinned;
         }
 
-        /* allocate main buffer */
-        fft_buffer_ = mdarray<double_complex, 1>(local_size(), host_memory_type_, "FFT3D.fft_buffer_");
-
-        /* allocate 1d and 2d buffers */
-        for (int i = 0; i < omp_get_max_threads(); i++) {
-            fftw_buffer_z_.push_back((double_complex*)fftw_malloc(size(2) * sizeof(double_complex)));
-            fftw_buffer_xy_.push_back((double_complex*)fftw_malloc(size(0) * size(1) * sizeof(double_complex)));
-        }
-
-        plan_forward_z_   = std::vector<fftw_plan>(omp_get_max_threads());
-        plan_forward_xy_  = std::vector<fftw_plan>(omp_get_max_threads());
-        plan_backward_z_  = std::vector<fftw_plan>(omp_get_max_threads());
-        plan_backward_xy_ = std::vector<fftw_plan>(omp_get_max_threads());
-
-        for (int i = 0; i < omp_get_max_threads(); i++) {
-            plan_forward_z_[i] = fftw_plan_dft_1d(size(2), (fftw_complex*)fftw_buffer_z_[i],
-                                                  (fftw_complex*)fftw_buffer_z_[i], FFTW_FORWARD, FFTW_ESTIMATE);
-
-            plan_backward_z_[i] = fftw_plan_dft_1d(size(2), (fftw_complex*)fftw_buffer_z_[i],
-                                                   (fftw_complex*)fftw_buffer_z_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
-
-            plan_forward_xy_[i] = fftw_plan_dft_2d(size(1), size(0), (fftw_complex*)fftw_buffer_xy_[i],
-                                                   (fftw_complex*)fftw_buffer_xy_[i], FFTW_FORWARD, FFTW_ESTIMATE);
-
-            plan_backward_xy_[i] = fftw_plan_dft_2d(size(1), size(0), (fftw_complex*)fftw_buffer_xy_[i],
-                                                    (fftw_complex*)fftw_buffer_xy_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
-        }
-
-#if defined(__GPU)
-        if (pu_ == device_t::GPU) {
-
-#if defined(__ROCM)
-            rocfft::initialize();
-#endif
-
-#if defined(__GPU_DIRECT)
-#pragma message "=========== GPU direct is enabled =============="
-            is_gpu_direct_ = true;
-            a2a_mem_type = memory_t::device;
-#endif
-
-            bool auto_alloc{false};
-            int dim_xy[] = {size(1), size(0)};
-            /* create plan for xy transform */
-            acc_fft_plan_xy_ = gpufft::create_batch_plan(2, dim_xy, dim_xy, 1, size(0) * size(1), local_size_z(),
-                                                                auto_alloc);
-            /* stream #0 will execute FFTs */
-            gpufft::set_stream(acc_fft_plan_xy_, stream_id(acc_fft_stream_id_));
-            /* allocate arrays with z- offsets and sizes on the host and device*/
-            z_offsets_ = mdarray<int, 1>(comm_.size());
-            z_sizes_ = mdarray<int, 1>(comm_.size());
-
-            /* copy z- offsets and sizes in mdarray since we can store it also on device*/
-            for (int r = 0; r < comm_.size(); r++) {
-                z_offsets_(r) = spl_z_.global_offset(r);
-                z_sizes_(r)   = spl_z_.local_size(r);
-
-                if (max_zloc_size_ < z_sizes_(r)) {
-                    max_zloc_size_ = z_sizes_(r);
-                }
-            }
-
-            /* copy to device */
-            z_offsets_.allocate(memory_t::device).copy_to(memory_t::device);
-            z_sizes_.allocate(memory_t::device).copy_to(memory_t::device);
-        }
-#endif
+//        /* allocate main buffer */
+//        fft_buffer_ = mdarray<double_complex, 1>(local_size(), host_memory_type_, "FFT3D.fft_buffer_");
+//
+//        /* allocate 1d and 2d buffers */
+//        for (int i = 0; i < omp_get_max_threads(); i++) {
+//            fftw_buffer_z_.push_back((double_complex*)fftw_malloc(size(2) * sizeof(double_complex)));
+//            fftw_buffer_xy_.push_back((double_complex*)fftw_malloc(size(0) * size(1) * sizeof(double_complex)));
+//        }
+//
+//        plan_forward_z_   = std::vector<fftw_plan>(omp_get_max_threads());
+//        plan_forward_xy_  = std::vector<fftw_plan>(omp_get_max_threads());
+//        plan_backward_z_  = std::vector<fftw_plan>(omp_get_max_threads());
+//        plan_backward_xy_ = std::vector<fftw_plan>(omp_get_max_threads());
+//
+//        for (int i = 0; i < omp_get_max_threads(); i++) {
+//            plan_forward_z_[i] = fftw_plan_dft_1d(size(2), (fftw_complex*)fftw_buffer_z_[i],
+//                                                  (fftw_complex*)fftw_buffer_z_[i], FFTW_FORWARD, FFTW_ESTIMATE);
+//
+//            plan_backward_z_[i] = fftw_plan_dft_1d(size(2), (fftw_complex*)fftw_buffer_z_[i],
+//                                                   (fftw_complex*)fftw_buffer_z_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
+//
+//            plan_forward_xy_[i] = fftw_plan_dft_2d(size(1), size(0), (fftw_complex*)fftw_buffer_xy_[i],
+//                                                   (fftw_complex*)fftw_buffer_xy_[i], FFTW_FORWARD, FFTW_ESTIMATE);
+//
+//            plan_backward_xy_[i] = fftw_plan_dft_2d(size(1), size(0), (fftw_complex*)fftw_buffer_xy_[i],
+//                                                    (fftw_complex*)fftw_buffer_xy_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
+//        }
+//
+//#if defined(__GPU)
+//        if (pu_ == device_t::GPU) {
+//
+//#if defined(__ROCM)
+//            rocfft::initialize();
+//#endif
+//
+//#if defined(__GPU_DIRECT)
+//#pragma message "=========== GPU direct is enabled =============="
+//            is_gpu_direct_ = true;
+//            a2a_mem_type = memory_t::device;
+//#endif
+//
+//            bool auto_alloc{false};
+//            int dim_xy[] = {size(1), size(0)};
+//            /* create plan for xy transform */
+//            acc_fft_plan_xy_ = gpufft::create_batch_plan(2, dim_xy, dim_xy, 1, size(0) * size(1), local_size_z(),
+//                                                                auto_alloc);
+//            /* stream #0 will execute FFTs */
+//            gpufft::set_stream(acc_fft_plan_xy_, stream_id(acc_fft_stream_id_));
+//            /* allocate arrays with z- offsets and sizes on the host and device*/
+//            z_offsets_ = mdarray<int, 1>(comm_.size());
+//            z_sizes_ = mdarray<int, 1>(comm_.size());
+//
+//            /* copy z- offsets and sizes in mdarray since we can store it also on device*/
+//            for (int r = 0; r < comm_.size(); r++) {
+//                z_offsets_(r) = spl_z_.global_offset(r);
+//                z_sizes_(r)   = spl_z_.local_size(r);
+//
+//                if (max_zloc_size_ < z_sizes_(r)) {
+//                    max_zloc_size_ = z_sizes_(r);
+//                }
+//            }
+//
+//            /* copy to device */
+//            z_offsets_.allocate(memory_t::device).copy_to(memory_t::device);
+//            z_sizes_.allocate(memory_t::device).copy_to(memory_t::device);
+//        }
+//#endif
     }
 
     /// Destructor.
     ~FFT3D()
     {
-        if (gvec_partition_) {
-            //dismiss();
-        }
-        for (int i = 0; i < omp_get_max_threads(); i++) {
-            fftw_free(fftw_buffer_z_[i]);
-            fftw_free(fftw_buffer_xy_[i]);
-
-            fftw_destroy_plan(plan_forward_z_[i]);
-            fftw_destroy_plan(plan_forward_xy_[i]);
-            fftw_destroy_plan(plan_backward_z_[i]);
-            fftw_destroy_plan(plan_backward_xy_[i]);
-        }
-#if defined(__GPU)
-        if (pu_ == device_t::GPU) {
-            gpufft::destroy_plan_handle(acc_fft_plan_xy_);
-            if (acc_fft_plan_z_gvec_) {
-                gpufft::destroy_plan_handle(acc_fft_plan_z_gvec_);
-            }
-            if (acc_fft_plan_z_gkvec_) {
-                gpufft::destroy_plan_handle(acc_fft_plan_z_gkvec_);
-            }
-#if defined(__ROCM)
-            rocfft::finalize();
-#endif
-        }
-#endif
+//        if (gvec_partition_) {
+//            //dismiss();
+//        }
+//        for (int i = 0; i < omp_get_max_threads(); i++) {
+//            fftw_free(fftw_buffer_z_[i]);
+//            fftw_free(fftw_buffer_xy_[i]);
+//
+//            fftw_destroy_plan(plan_forward_z_[i]);
+//            fftw_destroy_plan(plan_forward_xy_[i]);
+//            fftw_destroy_plan(plan_backward_z_[i]);
+//            fftw_destroy_plan(plan_backward_xy_[i]);
+//        }
+//#if defined(__GPU)
+//        if (pu_ == device_t::GPU) {
+//            gpufft::destroy_plan_handle(acc_fft_plan_xy_);
+//            if (acc_fft_plan_z_gvec_) {
+//                gpufft::destroy_plan_handle(acc_fft_plan_z_gvec_);
+//            }
+//            if (acc_fft_plan_z_gkvec_) {
+//                gpufft::destroy_plan_handle(acc_fft_plan_z_gkvec_);
+//            }
+//#if defined(__ROCM)
+//            rocfft::finalize();
+//#endif
+//        }
+//#endif
     }
 
     inline bool is_ready() const

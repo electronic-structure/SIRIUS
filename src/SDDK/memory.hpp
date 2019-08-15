@@ -482,6 +482,7 @@ class memory_pool
     template <typename T>
     T* allocate(size_t num_elements__)
     {
+#if defined(__USE_MEMORY_POOL)
         /* memory block descriptor returns an unaligned memory; here we compute the the aligment value */
         size_t align_size = std::max(size_t(64), alignof(T));
         /* size of the memory block in bytes */
@@ -541,54 +542,36 @@ class memory_pool
         /* add to the hash table */
         map_ptr_[aligned_ptr] = msb;
         return reinterpret_cast<T*>(aligned_ptr);
+#else
+        return allocate<T>(num_elements__, M_);
+#endif
     }
 
     /// Delete a pointer and add its memory back to the pool.
     void free(void* ptr__)
     {
+#if defined(__USE_MEMORY_POOL)
         auto ptr = reinterpret_cast<uint8_t*>(ptr__);
         /* get a descriptor of this pointer */
         auto& msb = map_ptr_.at(ptr);
         /* free the sub-block */
         msb.it_->free_subblock(msb.unaligned_ptr_, msb.size_);
-
-        //auto merge_blocks = [&](std::list<memory_block_descriptor>::iterator it0,
-        //                        std::list<memory_block_descriptor>::iterator it)
-        //{
-        //    if (it0->is_empty()) {
-        //        size_t size = it->size_ + it0->size_;
-        //        it->buffer_ = nullptr;
-        //        it0->buffer_ = nullptr;
-        //        (*it) = memory_block_descriptor(size, M_);
-        //        memory_blocks_.erase(it0);
-        //    }
-        //};
-
-        ///* merge memory blocks; this is not strictly necessary but can lead to a better performance */
-        //auto it = msb.it_;
-        //if (it->is_empty()) {
-        //    /* try the previous block */
-        //    if (it != memory_blocks_.begin()) {
-        //        auto it0 = it;
-        //        it0--;
-        //        merge_blocks(it0, it);
-        //    }
-        //    /* try the next block */
-        //    auto it0 = it;
-        //    it0++;
-        //    if (it0 != memory_blocks_.end()) {
-        //        merge_blocks(it0, it);
-        //    }
-        //}
         /* remove this pointer from the hash table */
         map_ptr_.erase(ptr);
+#else
+        deallocate(ptr__, M_);
+#endif
     }
 
     /// Return a unique pointer to the allocated memory.
     template <typename T>
     std::unique_ptr<T, memory_t_deleter_base> get_unique_ptr(size_t n__)
     {
-        return std::unique_ptr<T, memory_t_deleter_base>(allocate<T>(n__), memory_pool_deleter(this));
+#if defined(__USE_MEMORY_POOL)
+        return std::unique_ptr<T, memory_t_deleter_base>(this->allocate<T>(n__), memory_pool_deleter(this));
+#else
+        return sddk::get_unique_ptr<T>(n__, M_);
+#endif
     }
 
     /// Free all the allocated blocks.

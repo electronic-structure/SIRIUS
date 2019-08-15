@@ -336,6 +336,13 @@ inline long get_total_memory()
     return get_page_size() * get_num_pages();
 }
 
+///// Check if lambda F(Args) is of type T.
+//template <typename T, typename F, typename ...Args>
+//constexpr bool check_lambda_type()
+//{
+//    return std::is_same<typedef std::result_of<F(Args...)>::type, T>::value;
+//}
+
 } // namespace
 
 template <typename T>

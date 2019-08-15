@@ -101,14 +101,22 @@ void Local_operator::prepare(Potential& potential__)
             buf_rg_.allocate(memory_t::device);
         }
 
-        // if (ctx_.control().print_checksum_) {
-        //    double cs[] = {veff_vec_.checksum(), theta_.checksum()};
-        //    fft_coarse_.comm().allreduce(&cs[0], 2);
-        //    if (mpi_comm_world().rank() == 0) {
-        //        print_checksum("veff_vec", cs[0]);
-        //        print_checksum("theta", cs[1]);
-        //    }
-        //}
+        if (ctx_.control().print_checksum_) {
+            auto cs1 = theta_.checksum_pw();
+            auto cs2 = theta_.checksum_rg();
+            if (ctx_.comm().rank() == 0) {
+                utils::print_checksum("theta_pw", cs1);
+                utils::print_checksum("theta_rg", cs2);
+            }
+            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                cs1 = veff_vec_[j].checksum_pw();
+                cs2 = veff_vec_[j].checksum_rg();
+                if (ctx_.comm().rank() == 0) {
+                    utils::print_checksum("veff_pw", cs1);
+                    utils::print_checksum("veff_rg", cs2);
+                }
+            }
+        }
 
     } else {
 
@@ -683,11 +691,14 @@ void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_fun
                     if (hphi__ != nullptr) {
                         spfft_output(spfft_coarse_, &buf_rg_[0]);
                     }
+                    auto p = reinterpret_cast<double_complex*>(spfft_coarse_.space_domain_data(SPFFT_PU_HOST));
+                    std::cout << "phi: " << std::accumulate(p, p + spfft_coarse_.local_slice_size(), double_complex(0, 0)) << "\n";
                     /* multiply phi(r) by step function */
                     spfft_multiply(spfft_coarse_, [&](int ir)
                                                   {
                                                       return theta_.f_rg(ir);
                                                   });
+                    std::cout << "phi*theta: " << std::accumulate(p, p + spfft_coarse_.local_slice_size(), double_complex(0, 0)) << "\n";
                     /* phi(r) * Theta(r) -> ophi(G) */
                     spfft_coarse_.forward(spfft_coarse_.processing_unit(),
                                           reinterpret_cast<double*>(ophi__->pw_coeffs(0).extra().at(memory_t::host, 0, j)),
