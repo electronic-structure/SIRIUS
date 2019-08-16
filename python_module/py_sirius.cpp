@@ -528,7 +528,6 @@ PYBIND11_MODULE(py_sirius, m)
                  int n = num_wf;
                  hamiltonian.prepare();
                  hamiltonian.local_op().prepare(kp.gkvec_partition());
-                 hamiltonian.ctx().fft_coarse().prepare(kp.gkvec_partition());
                  kp.beta_projectors().prepare();
                  if (!hamiltonian.ctx().gamma_point()) {
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
@@ -542,7 +541,6 @@ PYBIND11_MODULE(py_sirius, m)
                  }
                  kp.beta_projectors().dismiss();
                  hamiltonian.local_op().dismiss();
-                 hamiltonian.ctx().fft_coarse().dismiss();
                  if (!hamiltonian.ctx().full_potential()) {
                      hamiltonian.dismiss();
                  }
@@ -595,7 +593,6 @@ PYBIND11_MODULE(py_sirius, m)
                  int N = 0;
                  int n = num_wf;
                  hamiltonian.local_op().prepare(kp.gkvec_partition());
-                 hamiltonian.ctx().fft_coarse().prepare(kp.gkvec_partition());
                  kp.beta_projectors().prepare();
                  if (!hamiltonian.ctx().gamma_point()) {
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
@@ -609,7 +606,6 @@ PYBIND11_MODULE(py_sirius, m)
                  }
                  kp.beta_projectors().dismiss();
                  //hamiltonian.local_op().dismiss();
-                 hamiltonian.ctx().fft_coarse().dismiss();
                  #ifdef __GPU
                  if (is_device_memory(ctx.preferred_memory_t())) {
                      for (int ispn = 0; ispn < num_sc; ++ispn) {
