@@ -6,42 +6,46 @@ using namespace sirius;
 
 int test_fft_complex(cmd_args& args, device_t fft_pu__)
 {
-    STOP();
-    //double cutoff = args.value<double>("cutoff", 40);
+    double cutoff = args.value<double>("cutoff", 40);
 
-    //matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    //FFT3D fft(find_translations(cutoff, M), Communicator::world(), fft_pu__);
+    FFT3D fft(find_translations(cutoff, M), Communicator::world(), fft_pu__);
 
-    //Gvec gvec(M, cutoff, Communicator::world(), false);
+    Gvec gvec(M, cutoff, Communicator::world(), false);
 
-    //Gvec_partition gvp(gvec, fft.comm(), Communicator::self());
+    Gvec_partition gvp(gvec, fft.comm(), Communicator::self());
 
-    //fft.prepare(gvp);
+    spfft::Grid spfft_grid(fft.size(0), fft.size(1), fft.size(2), gvp.zcol_count_fft(), fft.local_size_z(),
+                           SPFFT_PU_HOST, -1, fft.comm().mpi_comm(), SPFFT_EXCH_DEFAULT);
 
-    //mdarray<double_complex, 1> f(gvp.gvec_count_fft());
-    //for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
-    //    f[ig] = utils::random<double_complex>();
-    //}
-    //mdarray<double_complex, 1> g(gvp.gvec_count_fft());
+    const auto fft_type = gvec.reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
-    //fft.transform<1>(f.at(memory_t::host));
-    //fft.transform<-1>(g.at(memory_t::host));
+    spfft::Transform spfft(spfft_grid.create_transform(SPFFT_PU_HOST, fft_type, fft.size(0), fft.size(1), fft.size(2),
+        fft.local_size_z(), gvp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        gvp.gvec_coord().at(memory_t::host)));
 
-    //double diff{0};
-    //for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
-    //    diff += std::pow(std::abs(f[ig] - g[ig]), 2);
-    //}
-    //Communicator::world().allreduce(&diff, 1);
-    //diff = std::sqrt(diff / gvec.num_gvec());
+    mdarray<double_complex, 1> f(gvp.gvec_count_fft());
+    for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
+        f[ig] = utils::random<double_complex>();
+    }
+    mdarray<double_complex, 1> g(gvp.gvec_count_fft());
 
-    //fft.dismiss();
+    spfft.backward(reinterpret_cast<double const*>(&f[0]), spfft.processing_unit());
+    spfft.forward(spfft.processing_unit(), reinterpret_cast<double*>(&g[0]), SPFFT_FULL_SCALING);
 
-    //if (diff > 1e-10) {
-    //    return 1;
-    //} else {
-    //    return 0;
-    //}
+    double diff{0};
+    for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
+        diff += std::pow(std::abs(f[ig] - g[ig]), 2);
+    }
+    Communicator::world().allreduce(&diff, 1);
+    diff = std::sqrt(diff / gvec.num_gvec());
+
+    if (diff > 1e-10) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 int run_test(cmd_args& args)
