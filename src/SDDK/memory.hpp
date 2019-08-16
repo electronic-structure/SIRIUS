@@ -543,7 +543,7 @@ class memory_pool
         map_ptr_[aligned_ptr] = msb;
         return reinterpret_cast<T*>(aligned_ptr);
 #else
-        return allocate<T>(num_elements__, M_);
+        return sddk::allocate<T>(num_elements__, M_);
 #endif
     }
 
@@ -559,7 +559,7 @@ class memory_pool
         /* remove this pointer from the hash table */
         map_ptr_.erase(ptr);
 #else
-        deallocate(ptr__, M_);
+        sddk::deallocate(ptr__, M_);
 #endif
     }
 

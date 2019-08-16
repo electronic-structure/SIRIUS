@@ -120,7 +120,6 @@ inline void spfft_multiply(spfft::Transform& spfft__, F&& fr__)
             break;
         }
         case SPFFT_TRANS_R2C: {
-            std::cout << "in spfft_multiply() R2C\n";
             auto ptr = reinterpret_cast<double*>(spfft__.space_domain_data(SPFFT_PU_HOST));
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < spfft__.local_slice_size(); i++) {

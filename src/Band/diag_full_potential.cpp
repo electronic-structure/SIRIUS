@@ -103,7 +103,7 @@ Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamilt
 
     if (ctx_.control().verbosity_ >= 4 && kp.comm().rank() == 0) {
         for (int i = 0; i < ctx_.num_fv_states(); i++) {
-            printf("eval[%i]=%20.16f", i, eval[i]);
+            printf("eval[%i]=%20.16f\n", i, eval[i]);
         }
     }
 
