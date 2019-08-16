@@ -2110,7 +2110,7 @@ void sirius_get_gvec_arrays(void* const* handler__,
 int sirius_get_num_fft_grid_points(void* const* handler__)
 {
     GET_SIM_CTX(handler__);
-    return sim_ctx.fft().local_size();
+    return sim_ctx.spfft().local_slice_size();
 }
 
 /* @fortran begin function void sirius_get_fft_index   Get mapping between G-vector index and FFT index
@@ -2204,7 +2204,7 @@ void sirius_get_step_function(void* const*          handler__,
                               double*               cfunrg__)
 {
     GET_SIM_CTX(handler__);
-    for (int i = 0; i < sim_ctx.fft().local_size(); i++) {
+    for (int i = 0; i < sim_ctx.spfft().local_slice_size(); i++) {
         cfunrg__[i] = sim_ctx.theta(i);
     }
     for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
@@ -2995,9 +2995,9 @@ void sirius_set_rg_values(void*  const* handler__,
                 /* global z coordinate inside FFT box */
                 int z = local_box_origin(2, rank) + iz - 1; /* Fortran counts from 1 */
                 /* each rank on SIRIUS side, for which this condition is fulfilled copies data from the local box */
-                if (z >= gs.ctx().fft().offset_z() && z < gs.ctx().fft().offset_z() + gs.ctx().fft().local_size_z()) {
+                if (z >= gs.ctx().spfft().local_z_offset() && z < gs.ctx().spfft().local_z_offset() + gs.ctx().spfft().local_z_length()) {
                     /* make z local for SIRIUS FFT partitioning */
-                    z -= gs.ctx().fft().offset_z();
+                    z -= gs.ctx().spfft().local_z_offset();
                     for (int iy = 0; iy < ny; iy++) {
                         /* global y coordinate inside FFT box */
                         int y = local_box_origin(1, rank) + iy - 1; /* Fortran counts from 1 */
@@ -3070,18 +3070,19 @@ void sirius_get_rg_values(void*  const* handler__,
             f->fft_transform(1);
         }
 
-        auto& spl_z = f->fft().spl_z();
+        auto& spl_z = gs.ctx().fft().spl_z();
+        auto fft_comm = sddk::Communicator(gs.ctx().spfft().communicator());
 
         mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
         mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
 
-        for (int rank = 0; rank < f->fft().comm().size(); rank++) {
+        for (int rank = 0; rank < fft_comm.size(); rank++) {
             /* slab of FFT grid for a given rank */
-            mdarray<double, 3> buf(f->fft().size(0), f->fft().size(1), spl_z.local_size(rank));
-            if (rank == f->fft().comm().rank()) {
-                std::copy(&f->f_rg(0), &f->f_rg(0) + f->fft().local_size(), &buf[0]);
+            mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(rank));
+            if (rank == fft_comm.rank()) {
+                std::copy(&f->f_rg(0), &f->f_rg(0) + f->spfft().local_slice_size(), &buf[0]);
             }
-            f->fft().comm().bcast(&buf[0], static_cast<int>(buf.size()), rank);
+            fft_comm.bcast(&buf[0], static_cast<int>(buf.size()), rank);
 
             /* ranks on the F90 side */
             int r = comm.rank();

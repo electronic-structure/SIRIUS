@@ -53,10 +53,11 @@ void K_point::generate_gkvec(double gk_cutoff__)
     gkvec_offset_ = gkvec().gvec_offset(comm().rank());
 
     const auto fft_type = gkvec_->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
+    const auto spfft_pu = ctx_.processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
     /* create transformation */
     spfft_transform_.reset(new spfft::Transform(ctx_.spfft_grid_coarse().create_transform(
-        SPFFT_PU_HOST, fft_type, ctx_.fft_coarse().size(0), ctx_.fft_coarse().size(1), ctx_.fft_coarse().size(2),
-        ctx_.fft_coarse().local_size_z(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        spfft_pu, fft_type, ctx_.fft_coarse().size(0), ctx_.fft_coarse().size(1), ctx_.fft_coarse().size(2),
+        ctx_.spfft_coarse().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
         gkvec_partition_->gvec_coord().at(memory_t::host))));
 }
 

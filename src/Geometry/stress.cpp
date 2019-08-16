@@ -246,7 +246,7 @@ matrix3d<double> Stress::calc_stress_xc()
 
     if (potential_.is_gradient_correction()) {
 
-        Smooth_periodic_function<double> rhovc(ctx_.fft(), ctx_.spfft(), ctx_.gvec_partition());
+        Smooth_periodic_function<double> rhovc(ctx_.spfft(), ctx_.gvec_partition());
         rhovc.zero();
         rhovc.add(density_.rho());
         rhovc.add(density_.rho_pseudo_core());
@@ -263,7 +263,7 @@ matrix3d<double> Stress::calc_stress_xc()
         }
 
         matrix3d<double> t;
-        for (int irloc = 0; irloc < ctx_.fft().local_size(); irloc++) {
+        for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
             for (int mu = 0; mu < 3; mu++) {
                 for (int nu = 0; nu < 3; nu++) {
                     t(mu, nu) += grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) * potential_.vsigma(0).f_rg(irloc);

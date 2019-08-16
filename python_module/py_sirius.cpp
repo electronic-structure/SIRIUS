@@ -724,10 +724,11 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("grid_size", &FFT3D_grid::grid_size)
         ;
 
-    py::class_<FFT3D, FFT3D_grid>(m, "FFT3D")
-        .def_property_readonly("comm", &FFT3D::comm)
-        .def_property_readonly("local_size", &FFT3D::local_size)
-        ;
+    // TODO: adjust to spfft
+    //py::class_<FFT3D, FFT3D_grid>(m, "FFT3D")
+    //    .def_property_readonly("comm", &FFT3D::comm)
+    //    .def_property_readonly("local_size", &FFT3D::local_size)
+    //    ;
 
     py::class_<matrix_storage_slab<complex_double>>(m, "MatrixStorageSlabC")
         .def("is_remapped", &matrix_storage_slab<complex_double>::is_remapped)

@@ -48,8 +48,6 @@ class Smooth_periodic_function
 {
   protected:
     /// FFT driver.
-    sddk::FFT3D* fft_{nullptr};
-
     spfft::Transform* spfft_{nullptr};
 
     /// Distribution of G-vectors.
@@ -76,12 +74,11 @@ class Smooth_periodic_function
     {
     }
 
-    Smooth_periodic_function(sddk::FFT3D& fft__, spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__)
-        : fft_(&fft__)
-        , spfft_(&spfft__)
+    Smooth_periodic_function(spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__)
+        : spfft_(&spfft__)
         , gvecp_(&gvecp__)
     {
-        f_rg_ = sddk::mdarray<T, 1>(fft_->local_size(), sddk::memory_t::host, "Smooth_periodic_function.f_rg_");
+        f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), sddk::memory_t::host, "Smooth_periodic_function.f_rg_");
         f_rg_.zero();
 
         f_pw_fft_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec_count_fft(), sddk::memory_t::host,
@@ -159,18 +156,6 @@ class Smooth_periodic_function
         return z;
     }
 
-    sddk::FFT3D& fft()
-    {
-        assert(fft_ != nullptr);
-        return *fft_;
-    }
-
-    sddk::FFT3D const& fft() const
-    {
-        assert(fft_ != nullptr);
-        return *fft_;
-    }
-
     spfft::Transform& spfft()
     {
         assert(spfft_ != nullptr);
@@ -244,7 +229,7 @@ class Smooth_periodic_function
     void add(Smooth_periodic_function<T> const& g__)
     {
         #pragma omp parallel for schedule(static)
-        for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+        for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
             this->f_rg_(irloc) += g__.f_rg(irloc);
         }
     }
@@ -252,7 +237,7 @@ class Smooth_periodic_function
     inline T checksum_rg() const
     {
         T cs = this->f_rg_.checksum();
-        this->fft_->comm().allreduce(&cs, 1);
+        sddk::Communicator(this->spfft_->communicator()).allreduce(&cs, 1);
         return cs;
     }
 
@@ -277,12 +262,16 @@ class Smooth_periodic_function
 
     inline uint64_t hash_f_rg() const
     {
-        auto h = f_rg_.hash();
-        fft_->comm().bcast(&h, 1, 0);
+        auto comm = sddk::Communicator(spfft_->communicator());
 
-        for (int r = 1; r < fft_->comm().size(); r++) {
-            h = f_rg_.hash(h);
-            fft_->comm().bcast(&h, 1, r);
+        uint64_t h;
+        for (int r = 0; r < comm.size(); r++) {
+            if (r == 0) {
+                h = f_rg_.hash();
+            } else {
+                h = f_rg_.hash(h);
+            }
+            comm.bcast(&h, 1, r);
         }
         return h;
     }
@@ -294,8 +283,6 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
 {
   private:
     /// FFT driver.
-    sddk::FFT3D* fft_{nullptr};
-
     spfft::Transform* spfft_{nullptr};
 
     /// Distribution of G-vectors.
@@ -307,20 +294,13 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     {
     }
 
-    Smooth_periodic_vector_function(sddk::FFT3D& fft__, spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__)
-        : fft_(&fft__)
-        , spfft_(&spfft__)
+    Smooth_periodic_vector_function(spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__)
+        : spfft_(&spfft__)
         , gvecp_(&gvecp__)
     {
         for (int x : {0, 1, 2}) {
-            (*this)[x] = Smooth_periodic_function<T>(fft__, spfft__, gvecp__);
+            (*this)[x] = Smooth_periodic_function<T>(spfft__, gvecp__);
         }
-    }
-
-    sddk::FFT3D& fft() const
-    {
-        assert(fft_ != nullptr);
-        return *fft_;
     }
 
     spfft::Transform& spfft() const
@@ -343,7 +323,7 @@ inline Smooth_periodic_vector_function<double> gradient(Smooth_periodic_function
 {
     utils::timer t1("sirius::gradient");
 
-    Smooth_periodic_vector_function<double> g(f__.fft(), f__.spfft(), f__.gvec_partition());
+    Smooth_periodic_vector_function<double> g(f__.spfft(), f__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
@@ -362,7 +342,7 @@ inline Smooth_periodic_function<double> divergence(Smooth_periodic_vector_functi
     utils::timer t1("sirius::divergence");
 
     /* resulting scalar function */
-    Smooth_periodic_function<double> f(g__.fft(), g__.spfft(), g__.gvec_partition());
+    Smooth_periodic_function<double> f(g__.spfft(), g__.gvec_partition());
     f.zero();
     for (int x : {0, 1, 2}) {
         for (int igloc = 0; igloc < f.gvec().count(); igloc++) {
@@ -379,7 +359,7 @@ inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<doubl
 {
     utils::timer t1("sirius::laplacian");
 
-    Smooth_periodic_function<double> g(f__.fft(), f__.spfft(), f__.gvec_partition());
+    Smooth_periodic_function<double> g(f__.spfft(), f__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
@@ -397,10 +377,10 @@ inline Smooth_periodic_function<T> dot(Smooth_periodic_vector_function<T>& vf__,
 {
     utils::timer t1("sirius::dot");
 
-    Smooth_periodic_function<T> result(vf__.fft(), vf__.spfft(), vf__.gvec_partition());
+    Smooth_periodic_function<T> result(vf__.spfft(), vf__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
-    for (int ir = 0; ir < vf__.fft().local_size(); ir++) {
+    for (int ir = 0; ir < vf__.spfft().local_slice_size(); ir++) {
         double d{0};
         for (int x : {0, 1, 2}) {
             d += vf__[x].f_rg(ir) * vg__[x].f_rg(ir);
@@ -422,13 +402,13 @@ T inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> cons
     T result_rg{0};
 
     #pragma omp parallel for schedule(static) reduction(+:result_rg)
-    for (int irloc = 0; irloc < f__.fft().local_size(); irloc++) {
+    for (int irloc = 0; irloc < f__.spfft().local_slice_size(); irloc++) {
         result_rg += utils::conj(f__.f_rg(irloc)) * g__.f_rg(irloc);
     }
 
-    result_rg *= (f__.gvec().omega() / f__.fft().size());
+    result_rg *= (f__.gvec().omega() / spfft_grid_size(f__.spfft()));
 
-    f__.fft().comm().allreduce(&result_rg, 1);
+    sddk::Communicator(f__.spfft().communicator()).allreduce(&result_rg, 1);
 
     return result_rg;
 }

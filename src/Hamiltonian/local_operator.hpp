@@ -71,9 +71,7 @@ class Local_operator
     Simulation_context const& ctx_;
 
     /// Coarse-grid FFT driver for this operator.
-    sddk::FFT3D& fft_coarse_;
-
-    spfft::Transform& spfft_coarse_;
+    spfft::Transform& fft_coarse_;
 
     /// Distribution of the G-vectors for the FFT transformation.
     sddk::Gvec_partition const& gvec_coarse_p_;
@@ -102,7 +100,7 @@ class Local_operator
   public:
     /// Constructor.
     Local_operator(Simulation_context   const& ctx__,
-                   sddk::FFT3D&                fft_coarse__,
+                   spfft::Transform&           fft_coarse__,
                    sddk::Gvec_partition const& gvec_coarse_p__);
 
     /// Keep track of the total number of wave-functions to which the local operator was applied.

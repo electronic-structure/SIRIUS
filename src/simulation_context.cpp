@@ -744,7 +744,7 @@ void Simulation_context::print_info() const
     printf("==============\n");
     for (auto& xc_label : xc_functionals()) {
         XC_functional xc(fft(), unit_cell().lattice_vectors(), xc_label, num_spins());
-#ifdef USE_VDWXC
+#if defined(__USE_VDWXC)
         if (xc.is_vdw()) {
             printf("Van der Walls functional\n");
             printf("%s\n", xc.refs().c_str());
@@ -772,6 +772,8 @@ void Simulation_context::update()
     /* get new reciprocal vector */
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
+    auto spfft_pu = this->processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
+
     /* create a list of G-vectors for corase FFT grid; this is done only once,
        the next time only reciprocal lattice of the G-vectors is updated */
     if (!gvec_coarse_) {
@@ -779,18 +781,20 @@ void Simulation_context::update()
         gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
             new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
 
+        auto spl_z = split_fft_z(fft_coarse_->size(2), comm_fft_coarse());
+
         /* create spfft buffer for coarse transform */
         spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(
             new spfft::Grid(fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2),
-                            gvec_coarse_partition_->zcol_count_fft(), fft_coarse_->local_size_z(), SPFFT_PU_HOST, -1,
+                            gvec_coarse_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
                             comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
 
         /* create spfft transformations */
         const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
         spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
-            SPFFT_PU_HOST, fft_type_coarse, fft_coarse().size(0), fft_coarse().size(1), fft_coarse().size(2),
-            fft_coarse().local_size_z(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+            spfft_pu, fft_type_coarse, fft_coarse().size(0), fft_coarse().size(1), fft_coarse().size(2),
+            spl_z.local_size(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
             gvec_coarse_partition_->gvec_coord().at(memory_t::host))));
     } else {
         gvec_coarse_->lattice_vectors(rlv);
@@ -801,17 +805,19 @@ void Simulation_context::update()
         gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
         gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
 
+        auto spl_z = split_fft_z(fft_->size(2), comm_fft());
+
         /* create spfft buffer for fine-grained transform */
         spfft_grid_ = std::unique_ptr<spfft::Grid>(
             new spfft::Grid(fft_->size(0), fft_->size(1), fft_->size(2),
-                            gvec_partition_->zcol_count_fft(), fft_->local_size_z(), SPFFT_PU_HOST, -1,
+                            gvec_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
                             comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
 
         const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
-            SPFFT_PU_HOST, fft_type, fft().size(0), fft().size(1), fft().size(2),
-            fft().local_size_z(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+            spfft_pu, fft_type, fft().size(0), fft().size(1), fft().size(2),
+            spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
             gvec_partition_->gvec_coord().at(memory_t::host))));
     } else {
         gvec_->lattice_vectors(rlv);
@@ -1038,9 +1044,9 @@ void Simulation_context::init_atoms_to_grid_idx(double R__)
 
     vector3d<double> delta(1.0 / fft_->size(0), 1.0 / fft_->size(1), 1.0 / fft_->size(2));
 
-    int z_off = fft_->offset_z();
+    int z_off = spfft().local_z_offset();
     vector3d<int> grid_beg(0, 0, z_off);
-    vector3d<int> grid_end(fft_->size(0), fft_->size(1), z_off + fft_->local_size_z());
+    vector3d<int> grid_end(fft_->size(0), fft_->size(1), z_off + spfft().local_z_length());
     std::vector<vector3d<double>> verts_cart{{-R__, -R__, -R__}, {R__, -R__, -R__}, {-R__, R__, -R__},
                                              {R__, R__, -R__},   {-R__, -R__, R__}, {R__, -R__, R__},
                                              {-R__, R__, R__},   {R__, R__, R__}};
@@ -1106,7 +1112,7 @@ void Simulation_context::init_step_function()
                                                                 return unit_step_function_form_factors(R, g);
                                                             });
 
-    theta_    = mdarray<double, 1>(fft().local_size());
+    theta_    = mdarray<double, 1>(spfft().local_slice_size());
     theta_pw_ = mdarray<double_complex, 1>(gvec().num_gvec());
 
     for (int ig = 0; ig < gvec().num_gvec(); ig++) {
@@ -1122,7 +1128,7 @@ void Simulation_context::init_step_function()
     spfft_output(spfft(), &theta_[0]);
 
     double vit{0};
-    for (int i = 0; i < fft().local_size(); i++) {
+    for (int i = 0; i < spfft().local_slice_size(); i++) {
         vit += theta_[i];
     }
     vit *= (unit_cell().omega() / fft().size());

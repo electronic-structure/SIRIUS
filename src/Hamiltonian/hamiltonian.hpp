@@ -82,7 +82,7 @@ class Hamiltonian
             gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
         }
 
-        local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
+        local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition()));
 
         if (ctx_.hubbard_correction()) {
             U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
@@ -536,7 +536,7 @@ class Hamiltonian0
             gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
         }
 
-        local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
+        local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition()));
 
         if (ctx_.hubbard_correction()) {
             U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));

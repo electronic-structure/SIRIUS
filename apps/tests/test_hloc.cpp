@@ -43,12 +43,12 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     auto& gvec = params.gvec();
     auto& gvecp = params.gvec_partition();
-    auto& fft = params.fft();
+    auto& fft = params.spfft();
     
     if (Communicator::world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
         printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
-        printf("FFT grid size: %i %i %i\n", fft.size(0), fft.size(1), fft.size(2));
+        printf("FFT grid size: %i %i %i\n", fft.dim_x(), fft.dim_y(), fft.dim_z());
         printf("number of FFT threads: %i\n", omp_get_max_threads());
         printf("number of FFT groups: %i\n", params.comm_ortho_fft().size());
         //printf("MPI grid: %i %i\n", mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size());

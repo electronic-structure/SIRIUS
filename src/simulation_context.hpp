@@ -405,6 +405,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Communicator of the dense FFT grid.
+    /** This communicator is passed to the spfft::Transform constructor. */
     Communicator const& comm_fft() const
     {
         /* 3rd dimension of MPI grid is used */
@@ -417,6 +418,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Communicator of the coarse FFT grid.
+    /** This communicator is passed to the spfft::Transform constructor. */
     Communicator const& comm_fft_coarse() const
     {
         if (control().fft_mode_ == "serial") {
@@ -695,7 +697,17 @@ class Simulation_context : public Simulation_parameters
         return *spfft_transform_;
     }
 
+    spfft::Transform const& spfft() const
+    {
+        return *spfft_transform_;
+    }
+
     spfft::Transform& spfft_coarse()
+    {
+        return *spfft_transform_coarse_;
+    }
+
+    spfft::Transform const& spfft_coarse() const
     {
         return *spfft_transform_coarse_;
     }

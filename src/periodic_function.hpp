@@ -86,7 +86,7 @@ class Periodic_function : public Smooth_periodic_function<T>
   public:
     /// Constructor
     Periodic_function(Simulation_context& ctx__, int angular_domain_size__)
-        : Smooth_periodic_function<T>(ctx__.fft(), ctx__.spfft(), ctx__.gvec_partition())
+        : Smooth_periodic_function<T>(ctx__.spfft(), ctx__.gvec_partition())
         , ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
         , comm_(ctx__.comm())
@@ -142,11 +142,11 @@ class Periodic_function : public Smooth_periodic_function<T>
     /// Copy the values of the function to the external location.
     inline void copy_to(T* f_mt__, T* f_rg__, bool is_local_rg__) const
     {
-        int offs = (is_local_rg__) ? 0 : this->fft_->size(0) * this->fft_->size(1) * this->fft_->offset_z();
-        std::copy(this->f_rg_.at(memory_t::host), this->f_rg_.at(memory_t::host) + this->fft_->local_size(),
+        int offs = (is_local_rg__) ? 0 : this->spfft_->dim_x() * this->spfft_->dim_y() * this->spfft_->local_z_offset();
+        std::copy(this->f_rg_.at(memory_t::host), this->f_rg_.at(memory_t::host) + this->spfft_->local_slice_size(),
                   f_rg__ + offs);
         if (!is_local_rg__) {
-            this->fft_->comm().allgather(f_rg__, offs, this->fft_->local_size());
+            sddk::Communicator(this->spfft_->communicator()).allgather(f_rg__, offs, this->spfft_->local_slice_size());
         }
 
         if (ctx_.full_potential()) {
@@ -187,17 +187,17 @@ class Periodic_function : public Smooth_periodic_function<T>
 
         if (!ctx_.full_potential()) {
             #pragma omp parallel for schedule(static) reduction(+:it_val)
-            for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+            for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
                 it_val += this->f_rg_(irloc);
             }
         } else {
             #pragma omp parallel for schedule(static) reduction(+:it_val)
-            for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+            for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
                 it_val += this->f_rg_(irloc) * ctx_.theta(irloc);
             }
         }
-        it_val *= (unit_cell_.omega() / this->fft_->size());
-        this->fft_->comm().allreduce(&it_val, 1);
+        it_val *= (unit_cell_.omega() / spfft_grid_size(this->spfft()));
+        Communicator(this->spfft_->communicator()).allreduce(&it_val, 1);
         T total = it_val;
 
         std::vector<T> mt_val;
@@ -292,7 +292,7 @@ class Periodic_function : public Smooth_periodic_function<T>
     /// Set the pointer to the interstitial part
     void set_rg_ptr(T* rg_ptr__)
     {
-        this->f_rg_ = mdarray<T, 1>(rg_ptr__, this->fft_->local_size());
+        this->f_rg_ = mdarray<T, 1>(rg_ptr__, this->spfft_->local_slice_size());
     }
 
     inline Spheric_function<function_domain_t::spectral, T> const& f_mt(int ialoc__) const
@@ -352,14 +352,12 @@ class Periodic_function : public Smooth_periodic_function<T>
             result_rg = sirius::inner(static_cast<Smooth_periodic_function<T> const&>(*this),
                                       static_cast<Smooth_periodic_function<T> const&>(g__));
         } else {
-            for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                //result_rg += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__.f_rg(irloc) *
-                //             this->ctx_.theta(irloc);
+            for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
                 result_rg += utils::conj(this->f_rg(irloc)) * g__.f_rg(irloc) *
                              this->ctx_.theta(irloc);
             }
-            result_rg *= (unit_cell_.omega() / this->fft_->size());
-            this->fft_->comm().allreduce(&result_rg, 1);
+            result_rg *= (unit_cell_.omega() / (this->spfft_->dim_x() * this->spfft_->dim_y() * this->spfft_->dim_z()));
+            sddk::Communicator(this->spfft_->communicator()).allreduce(&result_rg, 1);
         }
 
         T result_mt{0};

@@ -12,17 +12,19 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
 
     FFT3D fft(find_translations(cutoff, M), Communicator::world(), fft_pu__);
 
+    auto spl_z = split_fft_z(fft.size(2), Communicator::world());
+
     Gvec gvec(M, cutoff, Communicator::world(), false);
 
     Gvec_partition gvp(gvec, fft.comm(), Communicator::self());
 
-    spfft::Grid spfft_grid(fft.size(0), fft.size(1), fft.size(2), gvp.zcol_count_fft(), fft.local_size_z(),
+    spfft::Grid spfft_grid(fft.size(0), fft.size(1), fft.size(2), gvp.zcol_count_fft(), spl_z.local_size(),
                            SPFFT_PU_HOST, -1, fft.comm().mpi_comm(), SPFFT_EXCH_DEFAULT);
 
     const auto fft_type = gvec.reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
     spfft::Transform spfft(spfft_grid.create_transform(SPFFT_PU_HOST, fft_type, fft.size(0), fft.size(1), fft.size(2),
-        fft.local_size_z(), gvp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        spl_z.local_size(), gvp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
         gvp.gvec_coord().at(memory_t::host)));
 
     mdarray<double_complex, 1> f(gvp.gvec_count_fft());

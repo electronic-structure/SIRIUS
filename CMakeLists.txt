@@ -195,7 +195,7 @@ if(USE_VDWXC)
   find_package(LibVDWXC 0.3.0 REQUIRED)
   include_directories(${LIBVDWXC_INCLUDE_DIR})
   set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${LIBVDWXC_LIBRARIES}")
-  add_definitions("-DUSE_VDWXC")
+  add_definitions("-D__USE_VDWXC")
 endif(USE_VDWXC)
 
 # project header locations
