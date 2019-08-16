@@ -19,7 +19,7 @@
 
 /** \file non_local_operator.hpp
  *
- *  \brief Contains declaration and implementation of sirius::Non_local_operator class.
+ *  \brief Contains declaration of sirius::Non_local_operator class.
  */
 
 #ifndef __NON_LOCAL_OPERATOR_HPP__

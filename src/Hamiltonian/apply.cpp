@@ -210,7 +210,7 @@ void Hamiltonian::apply_fv_h_o(K_point* kp__, bool apw_only__, bool phi_is_lo__,
 
     if (!phi_is_lo__) {
         /* interstitial part */
-        local_op_->apply_h_o(N__, n__, phi__, hphi__, ophi__);
+        local_op_->apply_h_o(kp__->spfft_transform(), N__, n__, phi__, hphi__, ophi__);
     } else {
         /* zero the APW part */
         switch (ctx_.processing_unit()) {
@@ -804,7 +804,7 @@ void Hamiltonian::apply_magnetic_field(K_point* kp__, Wave_functions& fv_states_
 
     assert(hpsi__.size() == 2 || hpsi__.size() == 3);
 
-    local_op_->apply_b(0, ctx_.num_fv_states(), fv_states__, hpsi__);
+    local_op_->apply_b(kp__->spfft_transform(), 0, ctx_.num_fv_states(), fv_states__, hpsi__);
 
     mdarray<double_complex, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
 

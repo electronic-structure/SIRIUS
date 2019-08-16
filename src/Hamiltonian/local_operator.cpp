@@ -644,7 +644,7 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
        was used for the device memory allocation, device storage is destroyed */
 }
 
-void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__, Wave_functions* ophi__)
+void Local_operator::apply_h_o(spfft::Transform& spfftk__,int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__, Wave_functions* ophi__)
 {
     PROFILE("sirius::Local_operator::apply_h_o");
 
@@ -683,42 +683,41 @@ void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_fun
         switch (fft_coarse_.pu()) {
             case device_t::CPU: {
                 /* phi(G) -> phi(r) */
-                spfft_coarse_.backward(reinterpret_cast<double const*>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j)),
-                                 spfft_coarse_.processing_unit());
+                spfftk__.backward(reinterpret_cast<double const*>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                 spfftk__.processing_unit());
 
                 if (ophi__ != nullptr) {
                     /* save phi(r) */
                     if (hphi__ != nullptr) {
-                        spfft_output(spfft_coarse_, &buf_rg_[0]);
+                        spfft_output(spfftk__, &buf_rg_[0]);
                     }
-                    auto p = reinterpret_cast<double_complex*>(spfft_coarse_.space_domain_data(SPFFT_PU_HOST));
-                    std::cout << "phi: " << std::accumulate(p, p + spfft_coarse_.local_slice_size(), double_complex(0, 0)) << "\n";
+                    auto p = reinterpret_cast<double_complex*>(spfftk__.space_domain_data(SPFFT_PU_HOST));
                     /* multiply phi(r) by step function */
-                    spfft_multiply(spfft_coarse_, [&](int ir)
-                                                  {
-                                                      return theta_.f_rg(ir);
-                                                  });
-                    std::cout << "phi*theta: " << std::accumulate(p, p + spfft_coarse_.local_slice_size(), double_complex(0, 0)) << "\n";
+                    spfft_multiply(spfftk__, [&](int ir)
+                                             {
+                                                 return theta_.f_rg(ir);
+                                             });
+                    std::cout << "phi*theta: " << std::accumulate(p, p + spfftk__.local_slice_size(), double_complex(0, 0)) << "\n";
                     /* phi(r) * Theta(r) -> ophi(G) */
-                    spfft_coarse_.forward(spfft_coarse_.processing_unit(),
-                                          reinterpret_cast<double*>(ophi__->pw_coeffs(0).extra().at(memory_t::host, 0, j)),
-                                          SPFFT_FULL_SCALING);
+                    spfftk__.forward(spfftk__.processing_unit(),
+                                     reinterpret_cast<double*>(ophi__->pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                     SPFFT_FULL_SCALING);
                     /* load phi(r) back */
                     if (hphi__ != nullptr) {
-                        spfft_input(spfft_coarse_, buf_rg_.at(memory_t::host));
+                        spfft_input(spfftk__, buf_rg_.at(memory_t::host));
                     }
                 }
                 if (hphi__ != nullptr) {
                     /* multiply be effective potential, which itself was multiplied by the step function
                            in the prepare() method */
-                    spfft_multiply(spfft_coarse_, [&](int ir)
-                                                  {
-                                                      return veff_vec_[0].f_rg(ir);
-                                                  });
+                    spfft_multiply(spfftk__, [&](int ir)
+                                             {
+                                                 return veff_vec_[0].f_rg(ir);
+                                             });
                     /* phi(r) * Theta(r) * V(r) -> hphi(G) */
-                    spfft_coarse_.forward(spfft_coarse_.processing_unit(),
-                                          reinterpret_cast<double*>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j)),
-                                          SPFFT_FULL_SCALING);
+                    spfftk__.forward(spfftk__.processing_unit(),
+                                     reinterpret_cast<double*>(hphi__->pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                     SPFFT_FULL_SCALING);
                 }
                 break;
             }
@@ -773,15 +772,15 @@ void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_fun
                                     gkvec_p_->gvec().gkvec_cart<index_domain_t::global>(ig)[x];
                 }
                 /* transform Cartesian component of wave-function gradient to real space */
-                spfft_coarse_.backward(reinterpret_cast<double const*>(&buf_pw[0]),
-                                 spfft_coarse_.processing_unit());
+                spfftk__.backward(reinterpret_cast<double const*>(&buf_pw[0]),
+                                  spfftk__.processing_unit());
                 switch (fft_coarse_.pu()) {
                     case device_t::CPU: {
                         /* multiply be step function */
-                        spfft_multiply(spfft_coarse_, [&](int ir)
-                                                      {
-                                                          return theta_.f_rg(ir);
-                                                      });
+                        spfft_multiply(spfftk__, [&](int ir)
+                                                 {
+                                                     return theta_.f_rg(ir);
+                                                 });
 
                         break;
                     }
@@ -797,8 +796,8 @@ void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_fun
                     }
                 }
                 /* transform back to PW domain */
-                spfft_coarse_.forward(spfft_coarse_.processing_unit(), reinterpret_cast<double*>(&buf_pw[0]),
-                                      SPFFT_FULL_SCALING);
+                spfftk__.forward(spfftk__.processing_unit(), reinterpret_cast<double*>(&buf_pw[0]),
+                                 SPFFT_FULL_SCALING);
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gkvec_p_->gvec_count_fft(); igloc++) {
                     int ig = gkvec_p_->idx_gvec(igloc);
@@ -834,7 +833,7 @@ void Local_operator::apply_h_o(int N__, int n__, Wave_functions& phi__, Wave_fun
     //}
 }
 
-void Local_operator::apply_b(int N__, int n__, Wave_functions& phi__, std::vector<Wave_functions>& bphi__)
+void Local_operator::apply_b(spfft::Transform& spfftk__, int N__, int n__, Wave_functions& phi__, std::vector<Wave_functions>& bphi__)
 {
     PROFILE("sirius::Local_operator::apply_b");
 
@@ -859,35 +858,35 @@ void Local_operator::apply_b(int N__, int n__, Wave_functions& phi__, std::vecto
         switch (fft_coarse_.pu()) {
             case device_t::CPU: {
                 /* phi(G) -> phi(r) */
-                spfft_coarse_.backward(reinterpret_cast<double const*>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j)),
-                                       spfft_coarse_.processing_unit());
+                spfftk__.backward(reinterpret_cast<double const*>(phi__.pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                  spfftk__.processing_unit());
 
                 /* save phi(r) */
                 if (bphi__.size() == 3) {
-                    spfft_output(spfft_coarse_, buf_rg_.at(memory_t::host));
+                    spfft_output(spfftk__, buf_rg_.at(memory_t::host));
                 }
                 /* multiply by Bz */
-                spfft_multiply(spfft_coarse_, [&](int ir)
-                                              {
-                                                  return veff_vec_[1].f_rg(ir);
-                                              });
+                spfft_multiply(spfftk__, [&](int ir)
+                                         {
+                                             return veff_vec_[1].f_rg(ir);
+                                         });
 
                 /* phi(r) * Bz(r) -> bphi[0](G) */
-                spfft_coarse_.forward(spfft_coarse_.processing_unit(),
-                                      reinterpret_cast<double*>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j)),
-                                      SPFFT_FULL_SCALING);
+                spfftk__.forward(spfftk__.processing_unit(),
+                                 reinterpret_cast<double*>(bphi__[0].pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                 SPFFT_FULL_SCALING);
 
                 /* non-collinear case */
                 if (bphi__.size() == 3) {
                     /* multiply by Bx-iBy */
-                    spfft_input(spfft_coarse_, [&](int ir)
-                                               {
-                                                   return buf_rg_[ir] * double_complex(veff_vec_[2].f_rg(ir), -veff_vec_[3].f_rg(ir));
-                                               });
+                    spfft_input(spfftk__, [&](int ir)
+                                          {
+                                              return buf_rg_[ir] * double_complex(veff_vec_[2].f_rg(ir), -veff_vec_[3].f_rg(ir));
+                                          });
                     /* phi(r) * (Bx(r)-iBy(r)) -> bphi[2](G) */
-                    spfft_coarse_.forward(spfft_coarse_.processing_unit(),
-                                      reinterpret_cast<double*>(bphi__[2].pw_coeffs(0).extra().at(memory_t::host, 0, j)),
-                                      SPFFT_FULL_SCALING);
+                    spfftk__.forward(spfftk__.processing_unit(),
+                                     reinterpret_cast<double*>(bphi__[2].pw_coeffs(0).extra().at(memory_t::host, 0, j)),
+                                     SPFFT_FULL_SCALING);
                 }
                 break;
             }

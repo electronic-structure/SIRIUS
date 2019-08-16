@@ -854,9 +854,9 @@ class mdarray
         return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at_idx(mem__, idx__));
     }
 
+    // Call constructor on non-trivial data. Complex numbers are treated as trivial.
     inline void call_constructor()
     {
-        /* call constructor on non-trivial data */
         if (!(std::is_trivial<T>::value || is_complex<T>::value)) {
             for (size_t i = 0; i < size(); i++) {
                 new (raw_ptr_ + i) T();
@@ -864,6 +864,7 @@ class mdarray
         }
     }
 
+    // Call destructor on non-trivial data. Complex numbers are treated as trivial.
     inline void call_destructor()
     {
         if (!(std::is_trivial<T>::value || is_complex<T>::value)) {
@@ -881,10 +882,12 @@ class mdarray
 
   public:
 
+    /// Default constructor.
     mdarray()
     {
     }
 
+    /// Destructor.
     ~mdarray()
     {
         deallocate(memory_t::host);
@@ -926,6 +929,7 @@ class mdarray
         this->allocate(memory__);
     }
 
+    /// 3D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
             mdarray_index_descriptor const& d1,
             mdarray_index_descriptor const& d2,

@@ -144,19 +144,14 @@ class Local_operator
      */
     void apply_h(spfft::Transform& spfft__, int ispn__, sddk::Wave_functions& phi__, sddk::Wave_functions& hphi__, int idx0__, int n__);
 
-    void apply_h_o(int             N__,
-                   int             n__,
-                   sddk::Wave_functions& phi__,
-                   sddk::Wave_functions* hphi__,
-                   sddk::Wave_functions* ophi__);
+    void apply_h_o(spfft::Transform& spfft__, int N__, int n__, sddk::Wave_functions& phi__,
+                   sddk::Wave_functions* hphi__, sddk::Wave_functions* ophi__);
 
     /// Apply magnetic field to the wave-functions.
     /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
      *  <tt>bphi</tt>. In case of non-collinear magnetims Bx-iBy is also applied and stored in the third
      *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. */
-    void apply_b(int                          N__,
-                 int                          n__,
-                 sddk::Wave_functions&              phi__,
+    void apply_b(spfft::Transform& spfft__, int N__, int n__, sddk::Wave_functions& phi__,
                  std::vector<sddk::Wave_functions>& bphi__);
 
     inline double v0(int ispn__) const
