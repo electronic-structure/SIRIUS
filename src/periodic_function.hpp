@@ -342,7 +342,7 @@ class Periodic_function : public Smooth_periodic_function<T>
     {
         PROFILE("sirius::Periodic_function::inner");
 
-        assert(this->fft_ == g__.fft_);
+        assert(this->spfft_ == g__.spfft_);
         assert(&unit_cell_ == &g__.unit_cell_);
         assert(&comm_ == &g__.comm_);
 
@@ -356,7 +356,7 @@ class Periodic_function : public Smooth_periodic_function<T>
                 result_rg += utils::conj(this->f_rg(irloc)) * g__.f_rg(irloc) *
                              this->ctx_.theta(irloc);
             }
-            result_rg *= (unit_cell_.omega() / (this->spfft_->dim_x() * this->spfft_->dim_y() * this->spfft_->dim_z()));
+            result_rg *= (unit_cell_.omega() / spfft_grid_size(*(this->spfft_)));
             sddk::Communicator(this->spfft_->communicator()).allreduce(&result_rg, 1);
         }
 

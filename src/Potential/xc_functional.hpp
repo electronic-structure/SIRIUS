@@ -28,7 +28,7 @@
 #include <xc.h>
 #include <string.h>
 #include "xc_functional_base.hpp"
-#include "SDDK/fft3d.hpp"
+#include "SDDK/fft.hpp"
 #if defined(__USE_VDWXC)
 #include <vdwxc.h>
 #if VDWXC_FFTW_MPI == 1
@@ -57,7 +57,8 @@ namespace sirius {
     public:
     /* we need the context because libvdwxc asks for lattice vectors and fft parameters */
 
-    XC_functional(const FFT3D& fft, const matrix3d<double>& lattice_vectors_, const std::string libxc_name__, int num_spins__)
+    XC_functional(spfft::Transform const& fft__, const matrix3d<double>& lattice_vectors__,
+                  const std::string libxc_name__, int num_spins__)
         :  XC_functional_base(libxc_name__, num_spins__)
         {
 

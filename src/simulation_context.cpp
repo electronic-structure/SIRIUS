@@ -33,29 +33,20 @@ double unit_step_function_form_factors(double R__, double g__)
     }
 }
 
-
-void Simulation_context::init_fft()
+void Simulation_context::init_fft_grid()
 {
-    PROFILE("sirius::Simulation_context::init_fft");
-
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
-    if (!(control().fft_mode_ == "serial" || control().fft_mode_ == "parallel")) {
-        TERMINATE("wrong FFT mode");
+    /* if input grid size was not initialized, create a default grid */
+    if (fft_grid_size_[0] * fft_grid_size_[1] * fft_grid_size_[2] == 0) {
+        fft_grid_ = get_min_fft_grid(pw_cutoff(), rlv);
+    } else {
+        /* else create a grid with user-specified dimensions */
+        fft_grid_ = sddk::FFT3D_grid(fft_grid_size_);
     }
 
-    /* create FFT driver for dense mesh (density and potential) */
-    auto fft_grid = fft_grid_size_;
-    /* if input grid size was not initialized, create a default grid size */
-    if (fft_grid[0] * fft_grid[1] * fft_grid[2] == 0) {
-        fft_grid = get_min_fft_grid(pw_cutoff(), rlv).grid_size();
-    }
-    fft_ = std::unique_ptr<FFT3D>(new FFT3D(fft_grid, comm_fft(), processing_unit()));
-
-    /* create FFT driver for coarse mesh */
-    const auto fft_grid_size_coarse = get_min_fft_grid(2 * gk_cutoff(), rlv).grid_size();
-
-    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_grid_size_coarse, comm_fft_coarse(), processing_unit()));
+    /* create FFT grid for coarse mesh */
+    fft_coarse_grid_ = get_min_fft_grid(2 * gk_cutoff(), rlv);
 }
 
 mdarray<double, 3> Simulation_context::generate_sbessel_mt(int lmax__) const
@@ -395,8 +386,8 @@ void Simulation_context::initialize()
         set_lmax_apw(-1);
     }
 
-    /* initialize FFT interface */
-    init_fft();
+    /* initialize FFT grid dimensions */
+    init_fft_grid();
 
     int nbnd = static_cast<int>(unit_cell_.num_valence_electrons() / 2.0) +
                std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons()));
@@ -580,7 +571,7 @@ void Simulation_context::print_info() const
     std::string headers[]         = {"FFT context for density and potential", "FFT context for coarse grid"};
     double cutoffs[]              = {pw_cutoff(), 2 * gk_cutoff()};
     Communicator const* comms[]   = {&comm_fft(), &comm_fft_coarse()};
-    FFT3D_grid const* fft_grids[] = {&fft(), &fft_coarse()};
+    FFT3D_grid fft_grids[]        = {this->fft_grid_, this->fft_coarse_grid_};
     Gvec const* gvecs[]           = {&gvec(), &gvec_coarse()};
 
     printf("\n");
@@ -589,11 +580,11 @@ void Simulation_context::print_info() const
         printf("=====================================\n");
         printf("  comm size                             : %i\n", comms[i]->size());
         printf("  plane wave cutoff                     : %f\n", cutoffs[i]);
-        printf("  grid size                             : %i %i %i   total : %i\n", fft_grids[i]->size(0),
-               fft_grids[i]->size(1), fft_grids[i]->size(2), fft_grids[i]->size());
-        printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grids[i]->limits(0).first,
-               fft_grids[i]->limits(0).second, fft_grids[i]->limits(1).first, fft_grids[i]->limits(1).second,
-               fft_grids[i]->limits(2).first, fft_grids[i]->limits(2).second);
+        printf("  grid size                             : %i %i %i   total : %i\n", fft_grids[i][0],
+               fft_grids[i][1], fft_grids[i][2], fft_grids[i].num_points());
+        printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grids[i].limits(0).first,
+               fft_grids[i].limits(0).second, fft_grids[i].limits(1).first, fft_grids[i].limits(1).second,
+               fft_grids[i].limits(2).first, fft_grids[i].limits(2).second);
         printf("  number of G-vectors within the cutoff : %i\n", gvecs[i]->num_gvec());
         printf("  local number of G-vectors             : %i\n", gvecs[i]->count());
         printf("  number of G-shells                    : %i\n", gvecs[i]->num_shells());
@@ -743,7 +734,7 @@ void Simulation_context::print_info() const
     printf("XC functionals\n");
     printf("==============\n");
     for (auto& xc_label : xc_functionals()) {
-        XC_functional xc(fft(), unit_cell().lattice_vectors(), xc_label, num_spins());
+        XC_functional xc(spfft(), unit_cell().lattice_vectors(), xc_label, num_spins());
 #if defined(__USE_VDWXC)
         if (xc.is_vdw()) {
             printf("Van der Walls functional\n");
@@ -777,25 +768,30 @@ void Simulation_context::update()
     /* create a list of G-vectors for corase FFT grid; this is done only once,
        the next time only reciprocal lattice of the G-vectors is updated */
     if (!gvec_coarse_) {
+        /* create list of coarse G-vectors */
         gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
+        /* create FFT friendly partiton */
         gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
             new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
 
-        auto spl_z = split_fft_z(fft_coarse_->size(2), comm_fft_coarse());
+        auto spl_z = split_fft_z(fft_coarse_grid_[2], comm_fft_coarse());
 
         /* create spfft buffer for coarse transform */
         spfft_grid_coarse_ = std::unique_ptr<spfft::Grid>(
-            new spfft::Grid(fft_coarse_->size(0), fft_coarse_->size(1), fft_coarse_->size(2),
+            new spfft::Grid(fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
                             gvec_coarse_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
                             comm_fft_coarse().mpi_comm(), SPFFT_EXCH_DEFAULT));
 
         /* create spfft transformations */
         const auto fft_type_coarse = gvec_coarse().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
+        auto gv = gvec_coarse_partition_->get_gvec();
+
+        /* create actual transform object */
         spfft_transform_coarse_.reset(new spfft::Transform(spfft_grid_coarse_->create_transform(
-            spfft_pu, fft_type_coarse, fft_coarse().size(0), fft_coarse().size(1), fft_coarse().size(2),
+            spfft_pu, fft_type_coarse, fft_coarse_grid_[0], fft_coarse_grid_[1], fft_coarse_grid_[2],
             spl_z.local_size(), gvec_coarse_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
-            gvec_coarse_partition_->gvec_coord().at(memory_t::host))));
+            gv.at(memory_t::host))));
     } else {
         gvec_coarse_->lattice_vectors(rlv);
     }
@@ -805,20 +801,21 @@ void Simulation_context::update()
         gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
         gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
 
-        auto spl_z = split_fft_z(fft_->size(2), comm_fft());
+        auto spl_z = split_fft_z(fft_grid_[2], comm_fft());
 
         /* create spfft buffer for fine-grained transform */
         spfft_grid_ = std::unique_ptr<spfft::Grid>(
-            new spfft::Grid(fft_->size(0), fft_->size(1), fft_->size(2),
+            new spfft::Grid(fft_grid_[0], fft_grid_[1], fft_grid_[2],
                             gvec_partition_->zcol_count_fft(), spl_z.local_size(), spfft_pu, -1,
                             comm_fft().mpi_comm(), SPFFT_EXCH_DEFAULT));
 
         const auto fft_type = gvec().reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
+        auto gv = gvec_partition_->get_gvec();
+
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
-            spfft_pu, fft_type, fft().size(0), fft().size(1), fft().size(2),
-            spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
-            gvec_partition_->gvec_coord().at(memory_t::host))));
+            spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
+            spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
     } else {
         gvec_->lattice_vectors(rlv);
     }
@@ -844,16 +841,16 @@ void Simulation_context::update()
             auto gv = gvec().gvec(ig);
             /* check limits */
             for (int x: {0, 1, 2}) {
-                auto limits = fft().limits(x);
+                auto limits = fft_grid().limits(x);
                 /* check boundaries */
                 if (gv[x] < limits.first || gv[x] > limits.second) {
                     std::stringstream s;
                     s << "G-vector is outside of grid limits" << std::endl
                       << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << std::endl
                       << "limits: "
-                      << fft().limits(0).first << " " << fft().limits(0).second << " "
-                      << fft().limits(1).first << " " << fft().limits(1).second << " "
-                      << fft().limits(2).first << " " << fft().limits(2).second;
+                      << fft_grid().limits(0).first << " " << fft_grid().limits(0).second << " "
+                      << fft_grid().limits(1).first << " " << fft_grid().limits(1).second << " "
+                      << fft_grid().limits(2).first << " " << fft_grid().limits(2).second;
 
                     TERMINATE(s);
                 }
@@ -865,8 +862,8 @@ void Simulation_context::update()
 
     std::pair<int, int> limits(0, 0);
     for (int x : {0, 1, 2}) {
-        limits.first  = std::min(limits.first, fft().limits(x).first);
-        limits.second = std::max(limits.second, fft().limits(x).second);
+        limits.first  = std::min(limits.first, fft_grid().limits(x).first);
+        limits.second = std::max(limits.second, fft_grid().limits(x).second);
     }
 
     /* recompute phase factors for atoms */
@@ -1042,11 +1039,11 @@ void Simulation_context::init_atoms_to_grid_idx(double R__)
 
     atoms_to_grid_idx_.resize(unit_cell_.num_atoms());
 
-    vector3d<double> delta(1.0 / fft_->size(0), 1.0 / fft_->size(1), 1.0 / fft_->size(2));
+    vector3d<double> delta(1.0 / spfft().dim_x(), 1.0 / spfft().dim_y(), 1.0 / spfft().dim_z());
 
     int z_off = spfft().local_z_offset();
     vector3d<int> grid_beg(0, 0, z_off);
-    vector3d<int> grid_end(fft_->size(0), fft_->size(1), z_off + spfft().local_z_length());
+    vector3d<int> grid_end(spfft().dim_x(), spfft().dim_y(), z_off + spfft().local_z_length());
     std::vector<vector3d<double>> verts_cart{{-R__, -R__, -R__}, {R__, -R__, -R__}, {-R__, R__, -R__},
                                              {R__, R__, -R__},   {-R__, -R__, R__}, {R__, -R__, R__},
                                              {-R__, R__, R__},   {R__, R__, R__}};
@@ -1090,7 +1087,7 @@ void Simulation_context::init_atoms_to_grid_idx(double R__)
                                 auto v = pos - vector3d<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
                                 auto r  = unit_cell_.get_cartesian_coordinates(v).length();
                                 if (r < R__) {
-                                    auto ir = fft_->index_by_coord(j0, j1, j2 - z_off);
+                                    auto ir = fft_grid_.index_by_coord(j0, j1, j2 - z_off);
                                     atom_to_ind_map.push_back({ir, r});
                                 }
                             }
@@ -1131,8 +1128,8 @@ void Simulation_context::init_step_function()
     for (int i = 0; i < spfft().local_slice_size(); i++) {
         vit += theta_[i];
     }
-    vit *= (unit_cell().omega() / fft().size());
-    fft().comm().allreduce(&vit, 1);
+    vit *= (unit_cell().omega() / fft_grid().num_points());
+    Communicator(spfft().communicator()).allreduce(&vit, 1);
 
     if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
         std::stringstream s;
@@ -1145,7 +1142,7 @@ void Simulation_context::init_step_function()
     if (control().print_checksum_) {
         double_complex z1 = theta_pw_.checksum();
         double d1         = theta_.checksum();
-        fft().comm().allreduce(&d1, 1);
+        Communicator(spfft().communicator()).allreduce(&d1, 1);
         if (comm().rank() == 0) {
             utils::print_checksum("theta", d1);
             utils::print_checksum("theta_pw", z1);

@@ -252,7 +252,7 @@ class Unit_cell
     void write_cif();
 
     /// Write structure to JSON file.
-    json serialize();
+    json serialize(bool cart_pos__ = false) const;
 
     /// Set matrix of lattice vectors.
     /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the

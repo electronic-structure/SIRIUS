@@ -2039,7 +2039,7 @@ void sirius_get_fft_comm(void * const* handler__,
                          int*          fcomm__)
 {
     GET_SIM_CTX(handler__);
-    *fcomm__ = MPI_Comm_c2f(sim_ctx.fft().comm().mpi_comm());
+    *fcomm__ = MPI_Comm_c2f(sim_ctx.comm_fft().mpi_comm());
 }
 
 /* @fortran begin function int sirius_get_num_gvec  Get total number of G-vectors
@@ -2090,9 +2090,9 @@ void sirius_get_gvec_arrays(void* const* handler__,
         }
     }
     if (index_by_gvec__ != nullptr) {
-        auto d0 = sim_ctx.fft().limits(0);
-        auto d1 = sim_ctx.fft().limits(1);
-        auto d2 = sim_ctx.fft().limits(2);
+        auto d0 = sim_ctx.fft_grid().limits(0);
+        auto d1 = sim_ctx.fft_grid().limits(1);
+        auto d2 = sim_ctx.fft_grid().limits(2);
 
         mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
         std::fill(index_by_gvec.at(memory_t::host), index_by_gvec.at(memory_t::host) + index_by_gvec.size(), -1);
@@ -2123,7 +2123,7 @@ void sirius_get_fft_index(void* const* handler__,
     GET_SIM_CTX(handler__);
     for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
         auto G = sim_ctx.gvec().gvec(ig);
-        fft_index__[ig] = sim_ctx.fft().index_by_freq(G[0], G[1], G[2]) + 1;
+        fft_index__[ig] = sim_ctx.fft_grid().index_by_freq(G[0], G[1], G[2]) + 1;
     }
 }
 
@@ -2946,11 +2946,11 @@ void sirius_set_rg_values(void*  const* handler__,
     std::string label(label__);
 
     for (int x: {0, 1, 2}) {
-        if (grid_dims__[x] != gs.ctx().fft().size(x)) {
+        if (grid_dims__[x] != gs.ctx().fft_grid()[x]) {
             std::stringstream s;
             s << "wrong FFT grid size\n"
-                 "  SIRIUS internal: " << gs.ctx().fft().size(0) << " " <<  gs.ctx().fft().size(1) << " " 
-                                       << gs.ctx().fft().size(2) << "\n"
+                 "  SIRIUS internal: " << gs.ctx().fft_grid()[0] << " " <<  gs.ctx().fft_grid()[1] << " " 
+                                       << gs.ctx().fft_grid()[2] << "\n"
                  "  host code:       " << grid_dims__[0] << " " << grid_dims__[1] << " " << grid_dims__[2];
             TERMINATE(s.str());
         }
@@ -3004,7 +3004,7 @@ void sirius_set_rg_values(void*  const* handler__,
                         for (int ix = 0; ix < nx; ix++) {
                             /* global x coordinate inside FFT box */
                             int x = local_box_origin(0, rank) + ix - 1; /* Fortran counts from 1 */
-                            f->f_rg(gs.ctx().fft().index_by_coord(x, y, z)) = buf(ix, iy, iz);
+                            f->f_rg(gs.ctx().fft_grid().index_by_coord(x, y, z)) = buf(ix, iy, iz);
                         }
                     }
                 }
@@ -3044,7 +3044,7 @@ void sirius_get_rg_values(void*  const* handler__,
     std::string label(label__);
 
     for (int x: {0, 1, 2}) {
-        if (grid_dims__[x] != gs.ctx().fft().size(x)) {
+        if (grid_dims__[x] != gs.ctx().fft_grid()[x]) {
             TERMINATE("wrong FFT grid size");
         }
     }
@@ -3070,8 +3070,8 @@ void sirius_get_rg_values(void*  const* handler__,
             f->fft_transform(1);
         }
 
-        auto& spl_z = gs.ctx().fft().spl_z();
-        auto fft_comm = sddk::Communicator(gs.ctx().spfft().communicator());
+        auto& fft_comm = gs.ctx().comm_fft();
+        auto spl_z = split_fft_z(gs.ctx().fft_grid()[2], fft_comm);
 
         mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
         mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());

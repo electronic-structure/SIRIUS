@@ -186,8 +186,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def("gvec", &Simulation_context::gvec, py::return_value_policy::reference_internal)
         .def("full_potential", &Simulation_context::full_potential)
         .def("hubbard_correction", &Simulation_context::hubbard_correction)
-        .def("fft", &Simulation_context::fft, py::return_value_policy::reference_internal)
-        .def("fft_coarse", &Simulation_context::fft_coarse, py::return_value_policy::reference_internal)
+        //.def("fft", &Simulation_context::fft, py::return_value_policy::reference_internal)
+        //.def("fft_coarse", &Simulation_context::fft_coarse, py::return_value_policy::reference_internal)
         .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_),
              py::return_value_policy::reference)
         .def("pw_cutoff", py::overload_cast<>(&Simulation_context::pw_cutoff, py::const_))
@@ -717,11 +717,11 @@ PYBIND11_MODULE(py_sirius, m)
         .def("print_info", &Force::print_info);
 
     py::class_<FFT3D_grid>(m, "FFT3D_grid")
-        .def_property_readonly("size", py::overload_cast<>(&FFT3D_grid::size, py::const_))
+        .def_property_readonly("num_points", py::overload_cast<>(&FFT3D_grid::num_points, py::const_))
         .def_property_readonly("shape", [](const FFT3D_grid& obj) -> std::array<int,3> {
-                return std::array<int,3>{obj.size(0), obj.size(1), obj.size(2)};
+                return {obj[0], obj[1], obj[2]};
             })
-        .def_property_readonly("grid_size", &FFT3D_grid::grid_size)
+        //.def_property_readonly("grid_size", &FFT3D_grid::grid_size) // TODO: is this needed?
         ;
 
     // TODO: adjust to spfft

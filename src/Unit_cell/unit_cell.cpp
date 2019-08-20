@@ -254,7 +254,7 @@ void Unit_cell::write_cif()
     }
 }
 
-json Unit_cell::serialize()
+json Unit_cell::serialize(bool cart_pos__) const
 {
     json dict;
 
@@ -275,6 +275,10 @@ json Unit_cell::serialize()
         for (int i = 0; i < atom_type(iat).num_atoms(); i++) {
             int ia = atom_type(iat).atom_id(i);
             auto v = atom(ia).position();
+            /* convert to Cartesian coordinates */
+            if (cart_pos__) {
+                v = lattice_vectors_ * v;
+            }
             dict["atoms"][atom_type(iat).label()].push_back({v[0], v[1], v[2]});
         }
     }

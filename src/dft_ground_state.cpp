@@ -215,14 +215,9 @@ json DFT_ground_state::serialize()
 
     dict["mpi_grid"] = ctx_.mpi_grid_dims();
 
-    std::vector<int> fftgrid(3);
-    for (int i = 0; i < 3; i++) {
-        fftgrid[i] = ctx_.fft().size(i);
-    }
+    std::vector<int> fftgrid = {ctx_.spfft().dim_x(),ctx_.spfft().dim_y(), ctx_.spfft().dim_z()};
     dict["fft_grid"] = fftgrid;
-    for (int i = 0; i < 3; i++) {
-        fftgrid[i] = ctx_.fft_coarse().size(i);
-    }
+    fftgrid = {ctx_.spfft_coarse().dim_x(),ctx_.spfft_coarse().dim_y(), ctx_.spfft_coarse().dim_z()};
     dict["fft_coarse_grid"]         = fftgrid;
     dict["num_fv_states"]           = ctx_.num_fv_states();
     dict["num_bands"]               = ctx_.num_bands();

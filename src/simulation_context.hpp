@@ -86,15 +86,19 @@ class Simulation_context : public Simulation_parameters
     /// Initial dimenstions for the fine-grain FFT grid.
     std::array<int, 3> fft_grid_size_{{0, 0, 0}};
 
+    /// Grid descriptor for the fine-grained FFT transform.
+    sddk::FFT3D_grid fft_grid_;
+
     /// Fine-grained FFT for density and potential.
     /** This is the FFT driver to transform periodic functions such as density and potential on the fine-grained
      *  FFT grid. The transformation is parallel. */
-    std::unique_ptr<FFT3D> fft_;
     std::unique_ptr<spfft::Transform> spfft_transform_;
     std::unique_ptr<spfft::Grid> spfft_grid_;
 
+    /// Grid descriptor for the coarse-grained FFT transform.
+    sddk::FFT3D_grid fft_coarse_grid_;
+
     /// Coarse-grained FFT for application of local potential and density summation.
-    std::unique_ptr<FFT3D> fft_coarse_;
     std::unique_ptr<spfft::Transform> spfft_transform_coarse_;
     std::unique_ptr<spfft::Grid> spfft_grid_coarse_;
 
@@ -197,8 +201,8 @@ class Simulation_context : public Simulation_parameters
     /// True if the context is already initialized.
     bool initialized_{false};
 
-    /// Initialize FFT drivers.
-    void init_fft();
+    /// Initialize FFT coarse and fine grids.
+    void init_fft_grid();
 
     /// Initialize communicators.
     void init_comm();
@@ -339,16 +343,6 @@ class Simulation_context : public Simulation_parameters
     Unit_cell const& unit_cell() const
     {
         return unit_cell_;
-    }
-
-    inline FFT3D& fft() const
-    {
-        return *fft_;
-    }
-
-    inline FFT3D& fft_coarse() const
-    {
-        return *fft_coarse_;
     }
 
     Gvec const& gvec() const
@@ -710,6 +704,16 @@ class Simulation_context : public Simulation_parameters
     spfft::Transform const& spfft_coarse() const
     {
         return *spfft_transform_coarse_;
+    }
+
+    sddk::FFT3D_grid const& fft_grid() const
+    {
+        return fft_grid_;
+    }
+
+    sddk::FFT3D_grid const& fft_coarse_grid() const
+    {
+        return fft_coarse_grid_;
     }
 };
 

@@ -28,6 +28,7 @@
 #if defined(__APEX)
 #include <apex_api.hpp>
 #endif
+#include <fftw3.h>
 
 #include "utils/cmd_args.hpp"
 #include "utils/json.hpp"
@@ -54,7 +55,8 @@ extern "C" void libsci_acc_finalize();
 
 /// Namespace of the SIRIUS library.
 namespace sirius {
-    json sirius_options_parser_;
+
+json sirius_options_parser_;
 
 /// Return the status of the library (initialized or not).
 inline static bool& is_initialized()

@@ -61,7 +61,7 @@ namespace sddk {
 #include "dmatrix.hpp"
 #include "matrix_storage.hpp"
 #include "gvec.hpp"
-#include "fft3d.hpp"
+#include "fft.hpp"
 #include "wave_functions.hpp"
 #include "wf_inner.hpp"
 #include "wf_ortho.hpp"

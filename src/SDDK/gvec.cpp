@@ -52,7 +52,7 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
         std::vector<int> zcol;
 
         /* in general case take z in [0, Nz) */
-        int zmax = fft_box__.size(2) - 1;
+        int zmax = fft_box__[2] - 1;
         /* in case of G-vector reduction take z in [0, Nz/2] for {x=0,y=0} stick */
         if (reduce_gvec_ && !i && !j) {
             zmax = fft_box__.limits(2).second;
@@ -612,15 +612,19 @@ Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm_
 
     calc_offsets();
     pile_gvec();
+}
 
-    gvec_coord_ = mdarray<int, 2>(3, gvec_count_fft());
+mdarray<int, 2> Gvec_partition::get_gvec() const
+{
+    mdarray<int, 2> gv(3, gvec_count_fft());
     for (int i = 0; i < gvec_count_fft(); i++) {
         int ig = idx_gvec_[i];
-        auto gv = gvec_.gvec(ig);
+        auto G = gvec_.gvec(ig);
         for (int x: {0, 1, 2}) {
-            gvec_coord_(x, i) = gv[x];
+            gv(x, i) = G[x];
         }
     }
+    return gv;
 }
 
 void Gvec_partition::gather_pw_fft(std::complex<double>* f_pw_local__, std::complex<double>* f_pw_fft__) const

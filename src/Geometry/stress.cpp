@@ -270,8 +270,8 @@ matrix3d<double> Stress::calc_stress_xc()
                 }
             }
         }
-        ctx_.fft().comm().allreduce(&t(0, 0), 9);
-        t *= (-2.0 / ctx_.fft().size()); // factor 2 comes from the derivative of sigma (which is grad(rho) * grad(rho))
+        Communicator(ctx_.spfft().communicator()).allreduce(&t(0, 0), 9);
+        t *= (-2.0 / ctx_.fft_grid().num_points()); // factor 2 comes from the derivative of sigma (which is grad(rho) * grad(rho))
         // with respect to grad(rho) components
         stress_xc_ += t;
     }

@@ -43,13 +43,10 @@ void Potential::generate_pw_coefs()
         case relativity_t::iora: {
             spfft_input(fft, [&](int ir) -> double
                              {
-                                  double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
-                                  return ctx_.theta(ir) / std::pow(M, 2);
+                                 double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
+                                 return ctx_.theta(ir) / std::pow(M, 2);
                              });
-            if (ctx_.fft().pu() == device_t::GPU) {
-                //ctx_.fft().buffer().copy_to(memory_t::device);
-            }
-            fft.forward(fft.processing_unit(), reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
+            fft.forward(SPFFT_PU_HOST, reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
             ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm2_inv_pw_[0]);
         }
         case relativity_t::zora: {
@@ -58,10 +55,7 @@ void Potential::generate_pw_coefs()
                                  double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
                                  return ctx_.theta(ir) / M;
                              });
-            if (ctx_.fft().pu() == device_t::GPU) {
-                //ctx_.fft().buffer().copy_to(memory_t::device);
-            }
-            fft.forward(fft.processing_unit(), reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
+            fft.forward(SPFFT_PU_HOST, reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
             ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm_inv_pw_[0]);
         }
         default: {
@@ -69,10 +63,7 @@ void Potential::generate_pw_coefs()
                              {
                                  return effective_potential().f_rg(ir) * ctx_.theta(ir);
                              });
-            if (ctx_.fft().pu() == device_t::GPU) {
-                //ctx_.fft().buffer().copy_to(memory_t::device);
-            }
-            fft.forward(fft.processing_unit(), reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
+            fft.forward(SPFFT_PU_HOST, reinterpret_cast<double*>(&fpw_fft[0]), SPFFT_FULL_SCALING);
             ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &veff_pw_[0]);
         }
     }

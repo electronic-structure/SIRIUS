@@ -492,10 +492,11 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
     std::unique_ptr<Gvec> gv_ptr;
     std::unique_ptr<Gvec_partition> gvp_ptr;
     if (use_all_gvec) {
-        /* this will create a full list of G-vectors of the size of the FFT box */
-        gv_ptr = std::unique_ptr<Gvec>(new Gvec(ctx_.unit_cell().reciprocal_lattice_vectors(),
-                                                ctx_.pw_cutoff() * 2000, ctx_.fft(), ctx_.comm(), false));
-        gvp_ptr = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gv_ptr, ctx_.comm_fft(), ctx_.comm_ortho_fft()));
+        STOP();
+        ///* this will create a full list of G-vectors of the size of the FFT box */
+        //gv_ptr = std::unique_ptr<Gvec>(new Gvec(ctx_.unit_cell().reciprocal_lattice_vectors(),
+        //                                        ctx_.pw_cutoff() * 2000, ctx_.fft(), ctx_.comm(), false));
+        //gvp_ptr = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gv_ptr, ctx_.comm_fft(), ctx_.comm_ortho_fft()));
     }
 
     auto& gvp = (use_all_gvec) ? (*gvp_ptr) : ctx_.gvec_partition();
@@ -525,7 +526,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         rhomin = std::min(rhomin, d);
         rho.f_rg(ir) = std::max(d, 0.0);
     }
-    ctx_.fft().comm().allreduce<double, mpi_op_t::min>(&rhomin, 1);
+    Communicator(ctx_.spfft().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
     /* even a small negative density is a sign of something bing wrong; don't remove this check */
     if (rhomin < 0.0 && ctx_.comm().rank() == 0) {
         std::stringstream s;
@@ -788,7 +789,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
     }
     t1.stop();
 
-    ctx_.fft().comm().allreduce<double, mpi_op_t::min>(&rhomin, 1);
+    Communicator(ctx_.spfft().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
     if (rhomin < 0.0 && ctx_.comm().rank() == 0) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl

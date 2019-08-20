@@ -34,7 +34,6 @@
 #include "geometry3d.hpp"
 #include "serializer.hpp"
 #include "splindex.hpp"
-//#include "utils/utils.hpp"
 #include "../utils/profiler.hpp"
 
 using namespace geometry3d;
@@ -614,9 +613,6 @@ class Gvec_partition
     /// Stack together the G-vector slabs to make a larger ("fat") slab for a FFT driver.
     void pile_gvec();
 
-    /// List of G-vector coordinates (three integer values) in the "fat" slab.
-    mdarray<int, 2> gvec_coord_;
-
   public:
     Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm__, Communicator const& comm_ortho_fft__);
 
@@ -688,10 +684,7 @@ class Gvec_partition
         return gvec_;
     }
 
-    mdarray<int, 2> const& gvec_coord() const
-    {
-        return gvec_coord_;
-    }
+    mdarray<int, 2> get_gvec() const;
 
     void gather_pw_fft(std::complex<double>* f_pw_local__, std::complex<double>* f_pw_fft__) const;
 

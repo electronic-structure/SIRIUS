@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,33 +17,16 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file fft3d.hpp
+/** \file fft.hpp
  *
- *  \brief Contains declaration and partial implementation of sddk::FFT3D class.
+ *  \brief Contains helper functions for the interface with SpFFT library.
  */
 
-#ifndef __FFT3D_HPP__
-#define __FFT3D_HPP__
+#ifndef __FFT_HPP__
+#define __FFT_HPP__
 
-#include <fftw3.h>
-#include <omp.h>
-#include "geometry3d.hpp"
-#include "fft3d_grid.hpp"
-#include "gvec.hpp"
-
-#if defined(__GPU) && defined(__CUDA)
-#include "GPU/cufft.hpp"
-#include "GPU/fft_kernels.hpp"
-namespace gpufft = cufft;
-
-#elif defined(__GPU) && defined(__ROCM)
-#include "GPU/rocfft_interface.hpp"
-#include "GPU/fft_kernels.hpp"
-namespace gpufft = rocfft;
-#endif
-
-#include "utils/utils.hpp"
-
+#include "splindex.hpp"
+#include "communicator.hpp"
 #include "spfft/spfft.hpp"
 
 using double_complex = std::complex<double>;
@@ -188,12 +171,11 @@ inline sddk::splindex<sddk::splindex_t::block> split_fft_z(int size_z__, sddk::C
     return sddk::splindex<sddk::splindex_t::block>(size_z__, comm_fft__.size(), comm_fft__.rank());
 }
 
-namespace sddk {
+#endif // __FFT3D_H__
 
-using double_complex = std::complex<double>;
-
-/// Implementation of FFT3D.
-/** FFT convention:
+/** \page ft_pw Fourier transform and plane wave normalization
+ *
+ *  FFT convention:
  *  \f[
  *      f({\bf r}) = \sum_{{\bf G}} e^{i{\bf G}{\bf r}} f({\bf G})
  *  \f]
@@ -204,95 +186,7 @@ using double_complex = std::complex<double>;
  *          \frac{1}{N} \sum_{{\bf r}_j} e^{-i{\bf G}{\bf r}_j} f({\bf r}_j)
  *  \f]
  *  is a \em forward transformation from a function to a set of coefficients.
- *
- *  The following cases are handeled by the FFT driver:
- *    - transformation of a single real / complex function (serial / parallel, cpu / gpu)
- *    - transformation of two real functions (serial / parallel, cpu / gpu)
- *    - input / ouput data buffer pointer (cpu / gpu). GPU input pointer works only in serial.
- *
- *  The transformation of two real functions is done as one transformation of complex function:
- *  \f[
- *    \Psi({\bf r}) = \psi_1({\bf r}) + i \psi_2({\bf r})
- *  \f]
- *  For each of the real wave functions the following condition is fulfilled:
- *  \f[
- *    \psi_{1,2}({\bf r}) = \psi_{1,2}^{*}({\bf r})
- *  \f]
- *  from which it follows that
- *  \f[
- *    \psi_{1,2}({\bf G}) = \psi_{1,2}^{*}(-{\bf G})
- *  \f]
- *  When z-direction is transformed
- *  \f[
- *    \psi_{1,2}(G_x, G_y, z) = \sum_{G_z} e^{izG_z} \psi_{1,2}(G_x, G_y, G_z)
- *  \f]
- *  it leads to the following symmetry
- *  \f[
- *   \psi_{1,2}^{*}(G_x, G_y, z) = \sum_{G_z} e^{-izG_z} \psi_{1,2}^{*}(G_x, G_y, G_z) =
- *      \sum_{G_z} e^{-izG_z} \psi_{1,2}(-G_x, -G_y, -G_z) = \psi_{1,2}(-G_x, -G_y, z)
- *  \f]
- *
- *  \todo GPU input ponter for parallel FFT
- *  \todo decompose 3D fft into three consecutive 1D ffts
- */
-class FFT3D : public FFT3D_grid
-{
-  protected:
-    /// Communicator for the parallel FFT.
-    Communicator const& comm_;
 
-    /// Main processing unit of this FFT.
-    device_t pu_;
-
-    /// Split z-direction.
-    splindex<splindex_t::block> spl_z_;
-
-  public:
-    /// Constructor.
-    FFT3D(std::array<int, 3> initial_dims__, Communicator const& comm__, device_t pu__)
-        : FFT3D_grid(initial_dims__)
-        , comm_(comm__)
-        , pu_(pu__)
-    {
-        /* split z-direction */
-        spl_z_        = splindex<splindex_t::block>(size(2), comm_.size(), comm_.rank());
-    }
-
-    /// Destructor.
-    ~FFT3D()
-    {
-    }
-
-    /// Communicator of the FFT transform.
-    Communicator const& comm() const
-    {
-        return comm_;
-    }
-
-    /// True if this FFT transformation is parallel.
-    inline bool parallel() const
-    {
-        return (comm_.size() != 1);
-    }
-
-    /// Return the type of processing unit.
-    inline device_t pu() const
-    {
-        return pu_;
-    }
-
-    inline splindex<splindex_t::block> const& spl_z() const
-    {
-        return spl_z_;
-    }
-};
-
-} // namespace sddk
-
-#endif // __FFT3D_H__
-
-/** \page ft_pw Fourier transform and plane wave normalization
- *
  *  We use plane waves in two different cases: a) plane waves (or augmented plane waves in the case of APW+lo method)
  *  as a basis for expanding Kohn-Sham wave functions and b) plane waves are used to expand charge density and
  *  potential. When we are dealing with plane wave basis functions it is convenient to adopt the following

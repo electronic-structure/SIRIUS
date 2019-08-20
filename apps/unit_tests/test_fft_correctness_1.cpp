@@ -6,31 +6,33 @@ using namespace sirius;
 
 int test_fft(cmd_args& args, device_t pu__)
 {
-    double cutoff = args.value<double>("cutoff", 10);
+    double cutoff = args.value<double>("cutoff", 40);
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    FFT3D fft(find_translations(cutoff, M), Communicator::world(), pu__);
+    auto fft_grid = get_min_fft_grid(cutoff, M);
 
-    auto spl_z = split_fft_z(fft.size(2), Communicator::world());
+    auto spl_z = split_fft_z(fft_grid[2], Communicator::world());
 
     Gvec gvec(M, cutoff, Communicator::world(), false);
-    Gvec_partition gvecp(gvec, Communicator::world(), Communicator::self());
 
-    spfft::Grid spfft_grid(fft.size(0), fft.size(1), fft.size(2), gvecp.zcol_count_fft(), spl_z.local_size(),
-                           SPFFT_PU_HOST, -1, fft.comm().mpi_comm(), SPFFT_EXCH_DEFAULT);
+    Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
+
+    spfft::Grid spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
+                           SPFFT_PU_HOST, -1, Communicator::world().mpi_comm(), SPFFT_EXCH_DEFAULT);
 
     const auto fft_type = gvec.reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
 
-    spfft::Transform spfft(spfft_grid.create_transform(SPFFT_PU_HOST, fft_type, fft.size(0), fft.size(1), fft.size(2),
-        spl_z.local_size(), gvecp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
-        gvecp.gvec_coord().at(memory_t::host)));
+    auto gv = gvp.get_gvec();
+    spfft::Transform spfft(spfft_grid.create_transform(SPFFT_PU_HOST, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
+        spl_z.local_size(), gvp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        gv.at(memory_t::host)));
 
     mdarray<double_complex, 1> f(gvec.num_gvec());
     if (pu__ == device_t::GPU) {
         f.allocate(memory_t::device);
     }
-    mdarray<double_complex, 1> ftmp(gvecp.gvec_count_fft());
+    mdarray<double_complex, 1> ftmp(gvp.gvec_count_fft());
 
     int result{0};
 
@@ -42,8 +44,8 @@ int test_fft(cmd_args& args, device_t pu__)
         f.zero();
         f[ig] = 1.0;
         /* load local set of PW coefficients */
-        for (int igloc = 0; igloc < gvecp.gvec_count_fft(); igloc++) {
-            ftmp[igloc] = f[gvecp.idx_gvec(igloc)];
+        for (int igloc = 0; igloc < gvp.gvec_count_fft(); igloc++) {
+            ftmp[igloc] = f[gvp.idx_gvec(igloc)];
         }
         switch (pu__) {
             case device_t::CPU: {
@@ -64,14 +66,14 @@ int test_fft(cmd_args& args, device_t pu__)
 
         double diff = 0;
         /* loop over 3D array (real space) */
-        for (int j0 = 0; j0 < fft.size(0); j0++) {
-            for (int j1 = 0; j1 < fft.size(1); j1++) {
+        for (int j0 = 0; j0 < fft_grid[0]; j0++) {
+            for (int j1 = 0; j1 < fft_grid[1]; j1++) {
                 for (int j2 = 0; j2 < spfft.local_z_length(); j2++) {
                     /* get real space fractional coordinate */
-                    auto rl = vector3d<double>(double(j0) / fft.size(0), 
-                                               double(j1) / fft.size(1), 
-                                               double(spfft.local_z_offset() + j2) / fft.size(2));
-                    int idx = fft.index_by_coord(j0, j1, j2);
+                    auto rl = vector3d<double>(double(j0) / fft_grid[0], 
+                                               double(j1) / fft_grid[1], 
+                                               double(spfft.local_z_offset() + j2) / fft_grid[2]);
+                    int idx = fft_grid.index_by_coord(j0, j1, j2);
 
                     /* compare value with the exponent */
                     diff += std::pow(std::abs(ptr[idx] - std::exp(double_complex(0.0, twopi * dot(rl, v)))), 2);
@@ -79,7 +81,7 @@ int test_fft(cmd_args& args, device_t pu__)
             }
         }
         Communicator::world().allreduce(&diff, 1);
-        diff = std::sqrt(diff / fft.size());
+        diff = std::sqrt(diff / fft_grid.num_points());
         if (diff > 1e-10) {
             result++;
         }

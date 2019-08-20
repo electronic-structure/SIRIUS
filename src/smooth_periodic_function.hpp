@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -23,9 +23,9 @@
  *         sirius::Smooth_periodic_function_gradient classes.
  */
 
-#include "SDDK/fft3d.hpp"
+#include "SDDK/fft.hpp"
+#include "SDDK/gvec.hpp"
 #include "utils/utils.hpp"
-#include "spfft/spfft.hpp"
 
 #ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
 #define __SMOOTH_PERIODIC_FUNCTION_HPP__
@@ -36,7 +36,7 @@ using double_complex = std::complex<double>;
 
 /// Representation of a smooth (Fourier-transformable) periodic function.
 /** The class is designed to handle periodic functions such as density or potential, defined on a regular FFT grid.
- *  The following functionality is expected:
+ *  The following functionality is provided:
  *    - access to real-space values
  *    - access to plane-wave coefficients
  *    - distribution of plane-wave coefficients over entire communicator
@@ -397,7 +397,7 @@ T inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> cons
 {
     utils::timer t1("sirius::Smooth_periodic_function|inner");
 
-    assert(&f__.fft() == &g__.fft());
+    assert(&f__.spfft() == &g__.spfft());
 
     T result_rg{0};
 
