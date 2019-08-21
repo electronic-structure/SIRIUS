@@ -5,7 +5,7 @@
 
 namespace sirius {
 
-void print_memory_usage(const char* file__, int line__)
+inline void print_memory_usage(const char* file__, int line__)
 {
     size_t VmRSS, VmHWM;
     utils::get_proc_status(&VmHWM, &VmRSS);
@@ -24,7 +24,7 @@ void print_memory_usage(const char* file__, int line__)
     printf("%s\n", &str[0]);
 }
 
-double unit_step_function_form_factors(double R__, double g__)
+inline double unit_step_function_form_factors(double R__, double g__)
 {
     if (g__ < 1e-12) {
         return std::pow(R__, 3) / 3.0;
@@ -222,14 +222,19 @@ void Simulation_context::initialize()
     if (initialized_) {
         TERMINATE("Simulation parameters are already initialized.");
     }
+    electronic_structure_method(parameters_input().electronic_structure_method_);
+    set_core_relativity(parameters_input().core_relativity_);
+    set_valence_relativity(parameters_input().valence_relativity_);
+
+    /* can't run fp-lapw with Gamma point trick */
+    if (full_potential()) {
+        set_gamma_point(false);
+    }
+
     /* Gamma-point calculation and non-collinear magnetism are not compatible */
     if (num_mag_dims() == 3) {
         set_gamma_point(false);
     }
-
-    electronic_structure_method(parameters_input().electronic_structure_method_);
-    set_core_relativity(parameters_input().core_relativity_);
-    set_valence_relativity(parameters_input().valence_relativity_);
 
     /* set processing unit type */
     set_processing_unit(control().processing_unit_);

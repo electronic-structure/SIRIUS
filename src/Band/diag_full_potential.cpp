@@ -408,7 +408,7 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
     }
 }
 
-void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltonian& H__) const
+void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltonian& H__, Hamiltonian_k& Hk__) const
 {
     PROFILE("sirius::Band::diag_fv_davidson");
 

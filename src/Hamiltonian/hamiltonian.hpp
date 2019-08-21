@@ -170,9 +170,9 @@ class Hamiltonian
 
     template <spin_block_t sblock>
     void set_h_it(K_point* kp,
-                         Periodic_function<double>* effective_potential,
-                         Periodic_function<double>* effective_magnetic_field[3],
-                         matrix<double_complex>& h) const;
+                  Periodic_function<double>* effective_potential,
+                  Periodic_function<double>* effective_magnetic_field[3],
+                  matrix<double_complex>& h) const;
 
     /// Setup lo-lo block of Hamiltonian and overlap matrices
     void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const;
@@ -343,7 +343,7 @@ class Hamiltonian
     void set_fv_h_o(K_point* kp, dmatrix<double_complex>& h, dmatrix<double_complex>& o) const;
 
     /// Apply LAPW Hamiltonain and overlap to the trial wave-functions.
-    /** Check the documentation of Band::set_fv_h_o() for the expressions of Hamiltonian and overlap
+    /** Check the documentation of Hamiltonain::set_fv_h_o() for the expressions of Hamiltonian and overlap
      *  matrices and \ref basis for the definition of the LAPW+lo basis.
      *
      *  For the set of wave-functions expanded in LAPW+lo basis (k-point index is dropped for simplicity)
@@ -492,6 +492,7 @@ class Hamiltonian
 /* forward declaration */
 class Hamiltonian_k;
 
+/// Represent the k-point independent part of Hamiltonian.
 class Hamiltonian0
 {
   private:
@@ -519,7 +520,9 @@ class Hamiltonian0
     /// Q operator (non-local part of S-operator).
     std::unique_ptr<Q_operator> q_op_;
 
+    /* copy constructor is forbidden */
     Hamiltonian0(Hamiltonian0 const& src) = delete;
+    /* copy assigment operator is forbidden */
     Hamiltonian0& operator=(Hamiltonian0 const& src) = delete;
 
   public:
@@ -554,8 +557,10 @@ class Hamiltonian0
         local_op_->dismiss();
     }
 
+    /// Default move constructor.
     Hamiltonian0(Hamiltonian0&& src) = default;
 
+    /// Return a Hamiltonian for the given k-point.
     inline Hamiltonian_k operator()(K_point& kp__);
 
     //Potential& potential() const
@@ -651,14 +656,16 @@ class Hamiltonian_k
     {
         PROFILE("sirius::Hamiltonian_k");
         H0_.local_op().prepare(kp_.gkvec_partition());
-        //H0_.ctx().fft_coarse().prepare(kp_.gkvec_partition());
-        kp_.beta_projectors().prepare();
+        if (!H0_.ctx().full_potential()) {
+            kp_.beta_projectors().prepare();
+        }
     }
 
     ~Hamiltonian_k()
     {
-        kp_.beta_projectors().dismiss();
-        //H0_.ctx().fft_coarse().dismiss();
+        if (!H0_.ctx().full_potential()) {
+            kp_.beta_projectors().dismiss();
+        }
     }
 
     Hamiltonian0 const& H0() const
@@ -674,7 +681,8 @@ class Hamiltonian_k
     Hamiltonian_k(Hamiltonian_k&& src__) = default;
 
     template <typename T, int what>
-    inline std::pair<mdarray<double, 2>, mdarray<double, 2>> get_h_o_diag_pw() const
+    inline std::pair<mdarray<double, 2>, mdarray<double, 2>>
+    get_h_o_diag_pw() const
     {
         PROFILE("sirius::Hamiltonian_k::get_h_o_diag");
 
@@ -689,6 +697,7 @@ class Hamiltonian_k
         for (int ispn = 0; ispn < H0_.ctx().num_spins(); ispn++) {
 
             /* local H contribution */
+            #pragma omp parallel for schedule(static)
             for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
                 if (what & 1) {
                     auto ekin = 0.5 * kp_.gkvec().gkvec_cart<index_domain_t::local>(ig_loc).length2();
@@ -770,30 +779,121 @@ class Hamiltonian_k
         }
         return std::make_pair(std::move(h_diag), std::move(o_diag));
     }
+
+    template <int what>
+    inline std::pair<mdarray<double, 2>, mdarray<double, 2>>
+    get_h_o_diag_lapw(double v0__, double theta0__) const
+    {
+        PROFILE("sirius::Hamiltonian::get_h_o_diag");
+
+        auto const& uc = H0_.ctx().unit_cell();
+
+        splindex<splindex_t::block> spl_num_atoms(uc.num_atoms(), kp().comm().size(), kp().comm().rank());
+        int nlo{0};
+        for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
+            int ia = spl_num_atoms[ialoc];
+            nlo += unit_cell_.atom(ia).mt_lo_basis_size();
+        }
+
+        mdarray<double, 2> h_diag(kp_.num_gkvec_loc() + nlo, 1);
+        mdarray<double, 2> o_diag(kp_.num_gkvec_loc() + nlo, 1);
+
+        #pragma omp parallel for schedule(static)
+        for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
+            auto gvc = kp__->gkvec().gkvec_cart<index_domain_t::local>(igloc);
+
+            double ekin = 0.5 * dot(gvc, gvc);
+            h_diag[igloc] = local_op().v0(0) + ekin * ctx_.theta_pw(0).real();
+            o_diag[igloc] = ctx_.theta_pw(0).real();
+        }
+
+        matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
+        matrix<double_complex> halm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
+    
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            auto& atom = unit_cell_.atom(ia);
+            int nmt = atom.mt_aw_basis_size();
+    
+            kp__->alm_coeffs_loc().generate(ia, alm);
+            apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_loc(), alm, halm);
+    
+            for (int xi = 0; xi < nmt; xi++) {
+                for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
+                    h_diag[igloc] += std::real(std::conj(alm(igloc, xi)) * halm(igloc, xi));
+                }
+            }
+        }
+    
+        nlo = 0;
+        for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
+            int ia = spl_num_atoms[ialoc];
+            auto& atom = unit_cell_.atom(ia);
+            auto& type = atom.type();
+            for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
+                int xi_lo = type.mt_aw_basis_size() + ilo;
+                /* local orbital indices */
+                int lm_lo = type.indexb(xi_lo).lm;
+                int idxrf_lo = type.indexb(xi_lo).idxrf;
+    
+                h_diag[kp__->num_gkvec_loc() + nlo] = atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo,
+                                                                                                     gaunt_coefs_->gaunt_vector(
+                                                                                                             lm_lo,
+                                                                                                             lm_lo)).real();
+                nlo++;
+            }
+        }
+        if (ctx_.processing_unit() == device_t::GPU) {
+            h_diag.allocate(memory_t::device).copy_to(memory_t::device);
+        }
+        return h_diag;
+    }
+    
+    mdarray<double, 1>
+    Hamiltonian::get_o_diag(K_point *kp__, double theta0__) const
+    {
+        PROFILE("sirius::Hamiltonian::get_o_diag");
+    
+        splindex<splindex_t::block> spl_num_atoms(unit_cell_.num_atoms(), kp__->comm().size(), kp__->comm().rank());
+        int nlo{0};
+        for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
+            int ia = spl_num_atoms[ialoc];
+            nlo += unit_cell_.atom(ia).mt_lo_basis_size();
+        }
+    
+        mdarray<double, 1> o_diag(kp__->num_gkvec_loc() + nlo);
+        for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
+            o_diag[igloc] = theta0__;
+        }
+        for (size_t i = kp__->num_gkvec_loc(); i < o_diag.size(); i++) {
+            o_diag[i] = 1;
+        }
+    
+        matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
+    
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            auto &atom = unit_cell_.atom(ia);
+            int nmt = atom.mt_aw_basis_size();
+    
+            kp__->alm_coeffs_loc().generate(ia, alm);
+    
+            for (int xi = 0; xi < nmt; xi++) {
+                for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
+                    o_diag[igloc] += std::real(std::conj(alm(igloc, xi)) * alm(igloc, xi));
+                }
+            }
+        }
+        if (ctx_.processing_unit() == device_t::GPU) {
+            o_diag.allocate(memory_t::device).copy_to(memory_t::device);
+        }
+        return o_diag;
+    }
+
+
+
     /// Apply pseudopotential H and S operators to the wavefunctions.
     template <typename T>
     void apply_h_s(int ispn__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
-                          Wave_functions* sphi__);
-
-    //template <typename T>
-    //inline mdarray<double, 2> get_h_diag() const
-    //{
-    //    if (H0_.ctx().full_potential()) {
-    //        return get_h_diag_lapw();
-    //    } else {
-    //        return get_h_diag_pw<T>();
-    //    }
-    //}
-
-    //template <typename T>
-    //inline mdarray<double, 2> get_o_diag() const
-    //{
-    //    if (H0_.ctx().full_potential()) {
-    //        return get_o_diag_lapw();
-    //    } else {
-    //        return get_o_diag_pw<T>();
-    //    }
-    //}
+                   Wave_functions* sphi__);
 };
 
 Hamiltonian_k Hamiltonian0::operator()(K_point& kp__)

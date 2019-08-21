@@ -34,13 +34,13 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
     PROFILE("sirius::Local_operator");
 
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        veff_vec_[j] = Smooth_periodic_function<double>(const_cast<Simulation_context&>(ctx__).spfft_coarse(), gvec_coarse_p__);
-        for (int ir = 0; ir < ctx__.spfft_coarse().local_slice_size(); ir++) {
+        veff_vec_[j] = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
+        for (int ir = 0; ir < fft_coarse__.local_slice_size(); ir++) {
             veff_vec_[j].f_rg(ir) = 2.71828;
         }
     }
     if (ctx_.full_potential()) {
-        theta_ = Smooth_periodic_function<double>(const_cast<Simulation_context&>(ctx__).spfft_coarse(), gvec_coarse_p__);
+        theta_ = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
     }
 
     if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
@@ -707,7 +707,6 @@ void Local_operator::apply_h_o(spfft::Transform& spfftk__,int N__, int n__, Wave
                                              {
                                                  return theta_.f_rg(ir);
                                              });
-                    std::cout << "phi*theta: " << std::accumulate(p, p + spfftk__.local_slice_size(), double_complex(0, 0)) << "\n";
                     /* phi(r) * Theta(r) -> ophi(G) */
                     spfftk__.forward(spfftk__.processing_unit(),
                                      reinterpret_cast<double*>(ophi__->pw_coeffs(0).extra().at(memory_t::host, 0, j)),

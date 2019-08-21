@@ -52,7 +52,7 @@ Hamiltonian::get_h_diag(K_point *kp__, double v0__, double theta0__) const
     matrix<double_complex> halm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        auto &atom = unit_cell_.atom(ia);
+        auto& atom = unit_cell_.atom(ia);
         int nmt = atom.mt_aw_basis_size();
 
         kp__->alm_coeffs_loc().generate(ia, alm);
@@ -68,8 +68,8 @@ Hamiltonian::get_h_diag(K_point *kp__, double v0__, double theta0__) const
     nlo = 0;
     for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
         int ia = spl_num_atoms[ialoc];
-        auto &atom = unit_cell_.atom(ia);
-        auto &type = atom.type();
+        auto& atom = unit_cell_.atom(ia);
+        auto& type = atom.type();
         for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
             int xi_lo = type.mt_aw_basis_size() + ilo;
             /* local orbital indices */
@@ -252,7 +252,8 @@ Hamiltonian::get_o_diag(K_point *kp__) const // TODO: this is not strictly true 
 }
 
 mdarray<double, 2>
-Hamiltonian_k::get_h_diag_lapw() const {
+Hamiltonian_k::get_h_diag_lapw() const 
+{
     PROFILE("sirius::Hamiltonian_k::get_h_diag");
 
     auto const &uc = H0_.ctx().unit_cell();

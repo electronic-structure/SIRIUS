@@ -26,7 +26,7 @@
 namespace sirius {
 
 void
-Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
+Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__, Hamiltonian_k& Hk__) const
 {
     if (ctx_.control().use_second_variation_) {
         /* solve non-magnetic Hamiltonian (so-called first variation) */
@@ -34,7 +34,7 @@ Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
         if (itso.type_ == "exact") {
             diag_full_potential_first_variation_exact(kp__, hamiltonian__);
         } else if (itso.type_ == "davidson") {
-            diag_full_potential_first_variation_davidson(kp__, hamiltonian__);
+            diag_full_potential_first_variation_davidson(kp__, hamiltonian__, Hk__);
         }
         /* generate first-variational states */
         kp__.generate_fv_states();
@@ -119,6 +119,8 @@ Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) 
     /* prepare k-independent part */
     hamiltonian__.prepare();
 
+    Hamiltonian0 H0(ctx_, hamiltonian__.potential());
+
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     int num_dav_iter{0};
@@ -127,8 +129,10 @@ Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) 
         int ik  = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
 
+
         if (ctx_.full_potential()) {
-            solve_full_potential(*kp, hamiltonian__);
+            auto Hk = H0(*kp);
+            solve_full_potential(*kp, hamiltonian__, Hk);
         } else {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
                 num_dav_iter += solve_pseudo_potential<double>(*kp, hamiltonian__);
