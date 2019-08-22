@@ -285,16 +285,16 @@ class K_point
         void get_fv_eigen_vectors(mdarray<double_complex, 2>& fv_evec__) const;
 
         /// Collect distributed second-variational vectors into a global array.
-        void get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec) const
+        void get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec__) const
         {
-            assert((int)sv_evec.size(0) == ctx_.num_bands());
-            assert((int)sv_evec.size(1) == ctx_.num_bands());
+            assert((int)sv_evec__.size(0) == ctx_.num_spins() * ctx_.num_fv_states());
+            assert((int)sv_evec__.size(1) == ctx_.num_spins() * ctx_.num_fv_states());
 
-            sv_evec.zero();
+            sv_evec__.zero();
 
             if (!ctx_.need_sv()) {
                 for (int i = 0; i < ctx_.num_fv_states(); i++) {
-                    sv_evec(i, i) = 1;
+                    sv_evec__(i, i) = 1;
                 }
                 return;
             }
@@ -307,22 +307,22 @@ class K_point
                     int j = sv_eigen_vectors_[ispn].icol(jloc);
                     for (int iloc = 0; iloc < sv_eigen_vectors_[ispn].num_rows_local(); iloc++) {
                         int i = sv_eigen_vectors_[ispn].irow(iloc);
-                        sv_evec(i + offs, j + offs) = sv_eigen_vectors_[ispn](iloc, jloc);
+                        sv_evec__(i + offs, j + offs) = sv_eigen_vectors_[ispn](iloc, jloc);
                     }
                 }
             }
 
-            comm_.allreduce(sv_evec.at(memory_t::host), (int)sv_evec.size());
+            comm().allreduce(sv_evec__.at(memory_t::host), (int)sv_evec__.size());
         }
 
         /// Test orthonormalization of spinor wave-functions
         void test_spinor_wave_functions(int use_fft);
 
-        /// Get the number of bands
-        inline int num_bands() const
-        {
-            return ctx_.num_bands();
-        }
+        ///// Get the number of bands
+        //inline int num_bands() const
+        //{
+        //    return ctx_.num_bands();
+        //}
 
         /// Get the number of occupied bands for each spin channel.
         inline int num_occupied_bands(int ispn__ = -1) const
