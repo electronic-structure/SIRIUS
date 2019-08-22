@@ -428,8 +428,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def("set_band_energy", [](K_point& kpoint, int j, int ispn, double val) { kpoint.band_energy(j, ispn, val); })
         .def("band_energies",
              [](K_point const& kpoint, int ispn) {
-                 std::vector<double> energies(kpoint.num_bands());
-                 for (int i = 0; i < kpoint.num_bands(); ++i) {
+                 std::vector<double> energies(kpoint.ctx().num_bands());
+                 for (int i = 0; i < kpoint.ctx().num_bands(); ++i) {
                      energies[i] = kpoint.band_energy(i, ispn);
                  }
                  return energies;
@@ -437,15 +437,15 @@ PYBIND11_MODULE(py_sirius, m)
              py::return_value_policy::copy)
         .def("band_occupancy",
              [](K_point const& kpoint, int ispn) {
-                 std::vector<double> occ(kpoint.num_bands());
-                 for (int i = 0; i < kpoint.num_bands(); ++i) {
+                 std::vector<double> occ(kpoint.ctx().num_bands());
+                 for (int i = 0; i < kpoint.ctx().num_bands(); ++i) {
                      occ[i] = kpoint.band_occupancy(i, ispn);
                  }
                  return occ;
              })
         .def("set_band_occupancy",
              [](K_point& kpoint, int ispn, const std::vector<double>& fn) {
-                 assert(static_cast<int>(fn.size()) == kpoint.num_bands());
+                 assert(static_cast<int>(fn.size()) == kpoint.ctx().num_bands());
                  for (size_t i = 0; i < fn.size(); ++i) {
                      kpoint.band_occupancy(i, ispn, fn[i]);
                  }

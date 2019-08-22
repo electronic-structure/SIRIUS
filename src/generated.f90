@@ -391,6 +391,148 @@ call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,nu
 &hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr)
 end subroutine sirius_set_parameters
 
+!> @brief Get parameters of the simulation.
+!> @param [in] handler Simulation context handler
+!> @param [out] lmax_apw Maximum orbital quantum number for APW functions.
+!> @param [out] lmax_rho Maximum orbital quantum number for density.
+!> @param [out] lmax_pot Maximum orbital quantum number for potential.
+!> @param [out] num_fv_states Number of first-variational states.
+!> @param [out] num_bands Number of bands.
+!> @param [out] num_mag_dims Number of magnetic dimensions.
+!> @param [out] pw_cutoff Cutoff for G-vectors.
+!> @param [out] gk_cutoff Cutoff for G+k-vectors.
+!> @param [out] fft_grid_size Size of the fine-grain FFT grid.
+!> @param [out] auto_rmt Set the automatic search of muffin-tin radii.
+!> @param [out] gamma_point True if this is a Gamma-point calculation.
+!> @param [out] use_symmetry True if crystal symmetry is taken into account.
+!> @param [out] so_correction True if spin-orbit correnctio is enabled.
+!> @param [out] iter_solver_tol Tolerance of the iterative solver.
+!> @param [out] iter_solver_tol_empty Tolerance for the empty states.
+!> @param [out] verbosity Verbosity level.
+!> @param [out] hubbard_correction True if LDA+U correction is enabled.
+subroutine sirius_get_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
+&num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
+&so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), optional, target, intent(out) :: lmax_apw
+integer(C_INT), optional, target, intent(out) :: lmax_rho
+integer(C_INT), optional, target, intent(out) :: lmax_pot
+integer(C_INT), optional, target, intent(out) :: num_fv_states
+integer(C_INT), optional, target, intent(out) :: num_bands
+integer(C_INT), optional, target, intent(out) :: num_mag_dims
+real(C_DOUBLE), optional, target, intent(out) :: pw_cutoff
+real(C_DOUBLE), optional, target, intent(out) :: gk_cutoff
+integer(C_INT), optional, target, intent(out) :: fft_grid_size
+integer(C_INT), optional, target, intent(out) :: auto_rmt
+logical(C_BOOL), optional, target, intent(out) :: gamma_point
+logical(C_BOOL), optional, target, intent(out) :: use_symmetry
+logical(C_BOOL), optional, target, intent(out) :: so_correction
+real(C_DOUBLE), optional, target, intent(out) :: iter_solver_tol
+real(C_DOUBLE), optional, target, intent(out) :: iter_solver_tol_empty
+integer(C_INT), optional, target, intent(out) :: verbosity
+logical(C_BOOL), optional, target, intent(out) :: hubbard_correction
+type(C_PTR) :: lmax_apw_ptr
+type(C_PTR) :: lmax_rho_ptr
+type(C_PTR) :: lmax_pot_ptr
+type(C_PTR) :: num_fv_states_ptr
+type(C_PTR) :: num_bands_ptr
+type(C_PTR) :: num_mag_dims_ptr
+type(C_PTR) :: pw_cutoff_ptr
+type(C_PTR) :: gk_cutoff_ptr
+type(C_PTR) :: fft_grid_size_ptr
+type(C_PTR) :: auto_rmt_ptr
+type(C_PTR) :: gamma_point_ptr
+type(C_PTR) :: use_symmetry_ptr
+type(C_PTR) :: so_correction_ptr
+type(C_PTR) :: iter_solver_tol_ptr
+type(C_PTR) :: iter_solver_tol_empty_ptr
+type(C_PTR) :: verbosity_ptr
+type(C_PTR) :: hubbard_correction_ptr
+interface
+subroutine sirius_get_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
+&num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
+&so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction)&
+&bind(C, name="sirius_get_parameters")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: lmax_apw
+type(C_PTR), value :: lmax_rho
+type(C_PTR), value :: lmax_pot
+type(C_PTR), value :: num_fv_states
+type(C_PTR), value :: num_bands
+type(C_PTR), value :: num_mag_dims
+type(C_PTR), value :: pw_cutoff
+type(C_PTR), value :: gk_cutoff
+type(C_PTR), value :: fft_grid_size
+type(C_PTR), value :: auto_rmt
+type(C_PTR), value :: gamma_point
+type(C_PTR), value :: use_symmetry
+type(C_PTR), value :: so_correction
+type(C_PTR), value :: iter_solver_tol
+type(C_PTR), value :: iter_solver_tol_empty
+type(C_PTR), value :: verbosity
+type(C_PTR), value :: hubbard_correction
+end subroutine
+end interface
+
+lmax_apw_ptr = C_NULL_PTR
+if (present(lmax_apw)) lmax_apw_ptr = C_LOC(lmax_apw)
+
+lmax_rho_ptr = C_NULL_PTR
+if (present(lmax_rho)) lmax_rho_ptr = C_LOC(lmax_rho)
+
+lmax_pot_ptr = C_NULL_PTR
+if (present(lmax_pot)) lmax_pot_ptr = C_LOC(lmax_pot)
+
+num_fv_states_ptr = C_NULL_PTR
+if (present(num_fv_states)) num_fv_states_ptr = C_LOC(num_fv_states)
+
+num_bands_ptr = C_NULL_PTR
+if (present(num_bands)) num_bands_ptr = C_LOC(num_bands)
+
+num_mag_dims_ptr = C_NULL_PTR
+if (present(num_mag_dims)) num_mag_dims_ptr = C_LOC(num_mag_dims)
+
+pw_cutoff_ptr = C_NULL_PTR
+if (present(pw_cutoff)) pw_cutoff_ptr = C_LOC(pw_cutoff)
+
+gk_cutoff_ptr = C_NULL_PTR
+if (present(gk_cutoff)) gk_cutoff_ptr = C_LOC(gk_cutoff)
+
+fft_grid_size_ptr = C_NULL_PTR
+if (present(fft_grid_size)) fft_grid_size_ptr = C_LOC(fft_grid_size)
+
+auto_rmt_ptr = C_NULL_PTR
+if (present(auto_rmt)) auto_rmt_ptr = C_LOC(auto_rmt)
+
+gamma_point_ptr = C_NULL_PTR
+if (present(gamma_point)) gamma_point_ptr = C_LOC(gamma_point)
+
+use_symmetry_ptr = C_NULL_PTR
+if (present(use_symmetry)) use_symmetry_ptr = C_LOC(use_symmetry)
+
+so_correction_ptr = C_NULL_PTR
+if (present(so_correction)) so_correction_ptr = C_LOC(so_correction)
+
+iter_solver_tol_ptr = C_NULL_PTR
+if (present(iter_solver_tol)) iter_solver_tol_ptr = C_LOC(iter_solver_tol)
+
+iter_solver_tol_empty_ptr = C_NULL_PTR
+if (present(iter_solver_tol_empty)) iter_solver_tol_empty_ptr = C_LOC(iter_solver_tol_empty)
+
+verbosity_ptr = C_NULL_PTR
+if (present(verbosity)) verbosity_ptr = C_LOC(verbosity)
+
+hubbard_correction_ptr = C_NULL_PTR
+if (present(hubbard_correction)) hubbard_correction_ptr = C_LOC(hubbard_correction)
+
+call sirius_get_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,num_fv_states_ptr,&
+&num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,auto_rmt_ptr,&
+&gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,&
+&verbosity_ptr,hubbard_correction_ptr)
+end subroutine sirius_get_parameters
+
 !> @brief Add one of the XC functionals.
 !> @param [in] handler Simulation context handler
 !> @param [in] name LibXC label of the functional.
@@ -1332,6 +1474,31 @@ end interface
 
 call sirius_get_band_energies_aux(ks_handler,ik,ispn,band_energies)
 end subroutine sirius_get_band_energies
+
+!> @brief Get band occupancies.
+!> @param [in] ks_handler K-point set handler.
+!> @param [in] ik Global index of k-point.
+!> @param [in] ispn Spin component.
+!> @param [out] band_occupancies Array of band occupancies.
+subroutine sirius_get_band_occupancies(ks_handler,ik,ispn,band_occupancies)
+implicit none
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: band_occupancies
+interface
+subroutine sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)&
+&bind(C, name="sirius_get_band_occupancies")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: band_occupancies
+end subroutine
+end interface
+
+call sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)
+end subroutine sirius_get_band_occupancies
 
 !> @brief Get D-operator matrix
 !> @param [in] handler Simulation context handler.
@@ -2475,6 +2642,52 @@ if (present(ilo)) ilo_ptr = C_LOC(ilo)
 call sirius_set_radial_function_aux(handler,ia,deriv_order,f,l_ptr,o_ptr,ilo_ptr)
 end subroutine sirius_set_radial_function
 
+!> @brief Get LAPW radial functions
+!> @param [in] handler Simulation context handler.
+!> @param [in] ia Index of atom.
+!> @param [in] deriv_order Radial derivative order.
+!> @param [out] f Values of the radial function.
+!> @param [in] l Orbital quantum number.
+!> @param [in] o Order of radial function for l.
+!> @param [in] ilo Local orbital index.
+subroutine sirius_get_radial_function(handler,ia,deriv_order,f,l,o,ilo)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: deriv_order
+real(C_DOUBLE), intent(out) :: f
+integer(C_INT), optional, target, intent(in) :: l
+integer(C_INT), optional, target, intent(in) :: o
+integer(C_INT), optional, target, intent(in) :: ilo
+type(C_PTR) :: l_ptr
+type(C_PTR) :: o_ptr
+type(C_PTR) :: ilo_ptr
+interface
+subroutine sirius_get_radial_function_aux(handler,ia,deriv_order,f,l,o,ilo)&
+&bind(C, name="sirius_get_radial_function")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: deriv_order
+real(C_DOUBLE), intent(out) :: f
+type(C_PTR), value :: l
+type(C_PTR), value :: o
+type(C_PTR), value :: ilo
+end subroutine
+end interface
+
+l_ptr = C_NULL_PTR
+if (present(l)) l_ptr = C_LOC(l)
+
+o_ptr = C_NULL_PTR
+if (present(o)) o_ptr = C_LOC(o)
+
+ilo_ptr = C_NULL_PTR
+if (present(ilo)) ilo_ptr = C_LOC(ilo)
+
+call sirius_get_radial_function_aux(handler,ia,deriv_order,f,l_ptr,o_ptr,ilo_ptr)
+end subroutine sirius_get_radial_function
+
 !> @brief Set equivalent atoms.
 !> @param [in] handler Simulation context handler.
 !> @param [in] equivalent_atoms Array with equivalent atom IDs.
@@ -2916,7 +3129,7 @@ end subroutine sirius_dump_runtime_setup
 !> @param [in] ik Global index of the k-point
 !> @param [out] fv_evec Output first-variational eigenvector array
 !> @param [in] ld Leading dimension of fv_evec
-!> @param [in] num_fv_states Number of first-vaariational states
+!> @param [in] num_fv_states Number of first-variational states
 subroutine sirius_get_fv_eigen_vectors(handler,ik,fv_evec,ld,num_fv_states)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -2943,7 +3156,7 @@ end subroutine sirius_get_fv_eigen_vectors
 !> @param [in] handler K-point set handler
 !> @param [in] ik Global index of the k-point
 !> @param [out] fv_eval Output first-variational eigenvector array
-!> @param [in] num_fv_states Number of first-vaariational states
+!> @param [in] num_fv_states Number of first-variational states
 subroutine sirius_get_fv_eigen_values(handler,ik,fv_eval,num_fv_states)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -2963,6 +3176,31 @@ end interface
 
 call sirius_get_fv_eigen_values_aux(handler,ik,fv_eval,num_fv_states)
 end subroutine sirius_get_fv_eigen_values
+
+!> @brief Get the second-variational eigen vectors
+!> @param [in] handler K-point set handler
+!> @param [in] ik Global index of the k-point
+!> @param [out] sv_evec Output second-variational eigenvector array
+!> @param [in] num_bands Number of second-variational bands.
+subroutine sirius_get_sv_eigen_vectors(handler,ik,sv_evec,num_bands)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ik
+complex(C_DOUBLE), intent(out) :: sv_evec
+integer(C_INT), intent(in) :: num_bands
+interface
+subroutine sirius_get_sv_eigen_vectors_aux(handler,ik,sv_evec,num_bands)&
+&bind(C, name="sirius_get_sv_eigen_vectors")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ik
+complex(C_DOUBLE), intent(out) :: sv_evec
+integer(C_INT), intent(in) :: num_bands
+end subroutine
+end interface
+
+call sirius_get_sv_eigen_vectors_aux(handler,ik,sv_evec,num_bands)
+end subroutine sirius_get_sv_eigen_vectors
 
 !> @brief Set the values of the function on the regular grid.
 !> @param [in] handler DFT ground state handler.

@@ -71,9 +71,9 @@ void sirius_initialize(bool const* call_mpi_init__)
     sirius::initialize(*call_mpi_init__);
 }
 
-/* @fortran begin function void sirius_finalize         Shut down the SIRIUS library
-   @fortran argument in optional bool call_mpi_fin      If .true. then MPI_Finalize must be called after the shutdown.
-   @fortran argument in optional bool call_device_reset      If .true. then cuda device is reset after shutdown.
+/* @fortran begin function void sirius_finalize          Shut down the SIRIUS library
+   @fortran argument in optional bool call_mpi_fin       If .true. then MPI_Finalize must be called after the shutdown.
+   @fortran argument in optional bool call_device_reset  If .true. then cuda device is reset after shutdown.
    @fortran argument in optional bool call_fftw_fin      If .true. then fft_cleanup must be called after the shutdown.
    @fortran end */
 
@@ -338,6 +338,102 @@ void sirius_set_parameters(void*  const* handler__,
     }
 }
 
+/* @fortran begin function void sirius_get_parameters             Get parameters of the simulation.
+   @fortran argument in  required void* handler                   Simulation context handler
+   @fortran argument out optional int lmax_apw                    Maximum orbital quantum number for APW functions.
+   @fortran argument out optional int lmax_rho                    Maximum orbital quantum number for density.
+   @fortran argument out optional int lmax_pot                    Maximum orbital quantum number for potential.
+   @fortran argument out optional int num_fv_states               Number of first-variational states.
+   @fortran argument out optional int num_bands                   Number of bands.
+   @fortran argument out optional int num_mag_dims                Number of magnetic dimensions.
+   @fortran argument out optional double pw_cutoff                Cutoff for G-vectors.
+   @fortran argument out optional double gk_cutoff                Cutoff for G+k-vectors.
+   @fortran argument out optional int fft_grid_size               Size of the fine-grain FFT grid.
+   @fortran argument out optional int auto_rmt                    Set the automatic search of muffin-tin radii.
+   @fortran argument out optional bool gamma_point                True if this is a Gamma-point calculation.
+   @fortran argument out optional bool use_symmetry               True if crystal symmetry is taken into account.
+   @fortran argument out optional bool so_correction              True if spin-orbit correnctio is enabled.
+   @fortran argument out optional double iter_solver_tol          Tolerance of the iterative solver.
+   @fortran argument out optional double iter_solver_tol_empty    Tolerance for the empty states.
+   @fortran argument out optional int    verbosity                Verbosity level.
+   @fortran argument out optional bool   hubbard_correction       True if LDA+U correction is enabled.
+   @fortran end */
+void sirius_get_parameters(void* const* handler__,
+                           int*         lmax_apw__,
+                           int*         lmax_rho__,
+                           int*         lmax_pot__,
+                           int*         num_fv_states__,
+                           int*         num_bands__,
+                           int*         num_mag_dims__,
+                           double*      pw_cutoff__,
+                           double*      gk_cutoff__,
+                           int*         fft_grid_size__,
+                           int*         auto_rmt__,
+                           bool*        gamma_point__,
+                           bool*        use_symmetry__,
+                           bool*        so_correction__,
+                           double*      iter_solver_tol__,
+                           double*      iter_solver_tol_empty__,
+                           int*         verbosity__,
+                           bool*        hubbard_correction__)
+{
+    GET_SIM_CTX(handler__);
+    if (lmax_apw__ != nullptr) {
+        *lmax_apw__ = sim_ctx.lmax_apw();
+    }
+    if (lmax_rho__ != nullptr) {
+        *lmax_rho__ = sim_ctx.lmax_rho();
+    }
+    if (lmax_pot__ != nullptr) {
+        *lmax_pot__ = sim_ctx.lmax_pot();
+    }
+    if (num_fv_states__ != nullptr) {
+        *num_fv_states__ = sim_ctx.num_fv_states();
+    }
+    if (num_bands__ != nullptr) {
+        *num_bands__ = sim_ctx.num_bands();
+    }
+    if (num_mag_dims__ != nullptr) {
+        *num_mag_dims__ = sim_ctx.num_mag_dims();
+    }
+    if (pw_cutoff__ != nullptr) {
+        *pw_cutoff__ = sim_ctx.pw_cutoff();
+    }
+    if (gk_cutoff__ != nullptr) {
+        *gk_cutoff__ = sim_ctx.gk_cutoff();
+    }
+    if (auto_rmt__ != nullptr) {
+        *auto_rmt__ = sim_ctx.auto_rmt();
+    }
+    if (gamma_point__ != nullptr) {
+        *gamma_point__ = sim_ctx.gamma_point();
+    }
+    if (use_symmetry__ != nullptr) {
+        *use_symmetry__ = sim_ctx.use_symmetry();
+    }
+    if (so_correction__ != nullptr) {
+        *so_correction__ = sim_ctx.so_correction();
+    }
+    if (iter_solver_tol__ != nullptr) {
+        *iter_solver_tol__ = sim_ctx.iterative_solver_tolerance();
+    }
+    if (iter_solver_tol_empty__ != nullptr) {
+        *iter_solver_tol_empty__ = sim_ctx.iterative_solver_input().empty_states_tolerance_;
+    }
+    if (verbosity__ != nullptr) {
+        *verbosity__ = sim_ctx.control().verbosity_;
+    }
+    if (hubbard_correction__ != nullptr) {
+        *hubbard_correction__ = sim_ctx.hubbard_correction();
+    }
+    if (fft_grid_size__ != nullptr) {
+        for (int x: {0, 1, 2}) {
+            fft_grid_size__[x] = sim_ctx.fft().size(x);
+        }
+    }
+}
+
+
 /* @fortran begin function void sirius_add_xc_functional         Add one of the XC functionals.
    @fortran argument in required void* handler                   Simulation context handler
    @fortran argument in required string name                     LibXC label of the functional.
@@ -532,8 +628,11 @@ void* sirius_create_ground_state(void* const* ks_handler__)
    @fortran argument in optional int    niter                   Maximum number of SCF iterations.
    @fortran argument in optional bool   save_state              boolean variable indicating if we want to save the ground state
    @fortran end */
-void sirius_find_ground_state(void* const* gs_handler__, double const* potential_tol__, double const* energy_tol__,
-                              int const* niter__, bool const *save_state__)
+void sirius_find_ground_state(void*  const* gs_handler__,
+                              double const* potential_tol__,
+                              double const* energy_tol__,
+                              int    const* niter__,
+                              bool   const* save_state__)
 {
     GET_GS(gs_handler__)
     auto& ctx = gs.ctx();
@@ -1172,6 +1271,24 @@ void sirius_get_band_energies(void*  const* ks_handler__,
     int ik = *ik__ - 1;
     for (int i = 0; i < ks.ctx().num_bands(); i++) {
         band_energies__[i] = ks[ik]->band_energy(i, *ispn__);
+    }
+}
+
+/* @fortran begin function void sirius_get_band_occupancies      Get band occupancies.
+   @fortran argument in  required void*   ks_handler             K-point set handler.
+   @fortran argument in  required int     ik                     Global index of k-point.
+   @fortran argument in  required int     ispn                   Spin component.
+   @fortran argument out required double  band_occupancies       Array of band occupancies.
+   @fortran end */
+void sirius_get_band_occupancies(void*  const* ks_handler__,
+                                 int    const* ik__,
+                                 int    const* ispn__,
+                                 double*       band_occupancies__)
+{
+    GET_KS(ks_handler__)
+    int ik = *ik__ - 1;
+    for (int i = 0; i < ks.ctx().num_bands(); i++) {
+        band_occupancies__[i] = ks[ik]->band_occupancy(i, *ispn__);
     }
 }
 
@@ -2381,13 +2498,13 @@ void sirius_set_o1_radial_integral(void* const* handler__,
    @fortran argument in optional int    o                    Order of radial function for l.
    @fortran argument in optional int    ilo                  Local orbital index.
    @fortran end */
-void sirius_set_radial_function(void* const* handler__,
-                                int*         ia__,
-                                int*         deriv_order__,
-                                double*      f__,
-                                int*         l__,
-                                int*         o__,
-                                int*         ilo__)
+void sirius_set_radial_function(void*  const* handler__,
+                                int    const* ia__,
+                                int    const* deriv_order__,
+                                double const* f__,
+                                int    const* l__,
+                                int    const* o__,
+                                int    const* ilo__)
 {
     GET_SIM_CTX(handler__);
 
@@ -2423,6 +2540,56 @@ void sirius_set_radial_function(void* const* handler__,
     if (l__ != nullptr && o__ != nullptr) {
         int n = atom.num_mt_points();
         atom.symmetry_class().set_aw_surface_deriv(*l__, *o__ - 1, *deriv_order__, f__[n - 1]);
+    }
+}
+
+/* @fortran begin function void sirius_get_radial_function   Get LAPW radial functions
+   @fortran argument in required void*  handler              Simulation context handler.
+   @fortran argument in required int    ia                   Index of atom.
+   @fortran argument in required int    deriv_order          Radial derivative order.
+   @fortran argument out required double f                   Values of the radial function.
+   @fortran argument in optional int    l                    Orbital quantum number.
+   @fortran argument in optional int    o                    Order of radial function for l.
+   @fortran argument in optional int    ilo                  Local orbital index.
+   @fortran end */
+void sirius_get_radial_function(void* const* handler__,
+                                int   const* ia__,
+                                int   const* deriv_order__,
+                                double*      f__,
+                                int   const* l__,
+                                int   const* o__,
+                                int   const* ilo__)
+{
+    GET_SIM_CTX(handler__);
+
+    int ia = *ia__ - 1;
+
+    auto& atom = sim_ctx.unit_cell().atom(ia);
+
+    if (l__ != nullptr && o__ != nullptr && ilo__ != nullptr) {
+        TERMINATE("wrong combination of radial function indices");
+    }
+    if (!(*deriv_order__ == 0 || *deriv_order__ == 1)) {
+        TERMINATE("wrond radial derivative order");
+    }
+
+    int idxrf{-1};
+    if (l__ != nullptr && o__ != nullptr) {
+        idxrf = atom.type().indexr_by_l_order(*l__, *o__ - 1);
+    } else if (ilo__ != nullptr) {
+        idxrf = atom.type().indexr_by_idxlo(*ilo__ - 1);
+    } else {
+        TERMINATE("radial function index is not valid");
+    }
+
+    if (*deriv_order__ == 0) {
+        for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+            f__[ir] = atom.symmetry_class().radial_function(ir, idxrf);
+        }
+    } else {
+        for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+            f__[ir] = atom.symmetry_class().radial_function_derivative(ir, idxrf) / atom.type().radial_grid()[ir];
+        }
     }
 }
 
@@ -2867,9 +3034,9 @@ void sirius_option_add_string_to(void* const* handler__, char * section, char * 
     }
 }
 
-/* @fortran begin function void sirius_dump_runtime_setup                    dump the runtime setup in a file
+/* @fortran begin function void sirius_dump_runtime_setup                    Dump the runtime setup in a file.
    @fortran argument in  required void*  handler                             Simulation context handler.
-   @fortran argument in  required string filename                            string containing the name of the file
+   @fortran argument in  required string filename                            String containing the name of the file.
    @fortran end */
 void sirius_dump_runtime_setup(void* const* handler__, char *filename)
 {
@@ -2885,7 +3052,7 @@ void sirius_dump_runtime_setup(void* const* handler__, char *filename)
    @fortran argument in  required int   ik                          Global index of the k-point
    @fortran argument out required complex fv_evec                   Output first-variational eigenvector array
    @fortran argument in  required int    ld                         Leading dimension of fv_evec
-   @fortran argument in  required int    num_fv_states              Number of first-vaariational states
+   @fortran argument in  required int    num_fv_states              Number of first-variational states
    @fortran end */
 void sirius_get_fv_eigen_vectors(void*          const* handler__,
                                  int            const* ik__,
@@ -2903,7 +3070,7 @@ void sirius_get_fv_eigen_vectors(void*          const* handler__,
    @fortran argument in  required void*  handler                    K-point set handler
    @fortran argument in  required int    ik                         Global index of the k-point
    @fortran argument out required double fv_eval                    Output first-variational eigenvector array
-   @fortran argument in  required int    num_fv_states              Number of first-vaariational states
+   @fortran argument in  required int    num_fv_states              Number of first-variational states
    @fortran end */
 void sirius_get_fv_eigen_values(void*          const* handler__,
                                 int            const* ik__,
@@ -2918,6 +3085,23 @@ void sirius_get_fv_eigen_values(void*          const* handler__,
     for (int i = 0; i < *num_fv_states__; i++) {
         fv_eval__[i] = ks[ik]->fv_eigen_value(i);
     }
+}
+
+/* @fortran begin function void sirius_get_sv_eigen_vectors         Get the second-variational eigen vectors
+   @fortran argument in  required void*   handler                   K-point set handler
+   @fortran argument in  required int     ik                        Global index of the k-point
+   @fortran argument out required complex sv_evec                   Output second-variational eigenvector array
+   @fortran argument in  required int     num_bands                 Number of second-variational bands.
+   @fortran end */
+void sirius_get_sv_eigen_vectors(void*          const* handler__,
+                                 int            const* ik__,
+                                 std::complex<double>* sv_evec__,
+                                 int            const* num_bands__)
+{
+    GET_KS(handler__);
+    mdarray<std::complex<double>, 2> sv_evec(sv_evec__, *num_bands__, *num_bands__);
+    int ik = *ik__ - 1;
+    ks[ik]->get_sv_eigen_vectors(sv_evec);
 }
 
 /* @fortran begin function void sirius_set_rg_values          Set the values of the function on the regular grid.
