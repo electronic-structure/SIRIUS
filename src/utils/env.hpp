@@ -29,6 +29,7 @@
 #include <string>
 #include <algorithm>
 #include <map>
+#include <sstream>
 
 namespace utils {
 
