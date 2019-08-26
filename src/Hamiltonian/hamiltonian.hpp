@@ -678,6 +678,11 @@ class Hamiltonian_k
         return kp_;
     }
 
+    K_point const& kp() const
+    {
+        return kp_;
+    }
+
     Hamiltonian_k(Hamiltonian_k&& src__) = default;
 
     template <typename T, int what>
@@ -782,113 +787,118 @@ class Hamiltonian_k
 
     template <int what>
     inline std::pair<mdarray<double, 2>, mdarray<double, 2>>
-    get_h_o_diag_lapw(double v0__, double theta0__) const
+    get_h_o_diag_lapw() const
     {
         PROFILE("sirius::Hamiltonian::get_h_o_diag");
 
         auto const& uc = H0_.ctx().unit_cell();
 
-        splindex<splindex_t::block> spl_num_atoms(uc.num_atoms(), kp().comm().size(), kp().comm().rank());
+        splindex<splindex_t::block> spl_num_atoms(uc.num_atoms(), kp_.comm().size(), kp_.comm().rank());
         int nlo{0};
         for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
             int ia = spl_num_atoms[ialoc];
-            nlo += unit_cell_.atom(ia).mt_lo_basis_size();
+            nlo += uc.atom(ia).mt_lo_basis_size();
         }
 
-        mdarray<double, 2> h_diag(kp_.num_gkvec_loc() + nlo, 1);
-        mdarray<double, 2> o_diag(kp_.num_gkvec_loc() + nlo, 1);
+        mdarray<double, 2> h_diag = (what & 1) ? mdarray<double, 2>(kp_.num_gkvec_loc() + nlo, 1) : mdarray<double, 2>();
+        mdarray<double, 2> o_diag = (what & 2) ? mdarray<double, 2>(kp_.num_gkvec_loc() + nlo, 1) : mdarray<double, 2>();
 
         #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
-            auto gvc = kp__->gkvec().gkvec_cart<index_domain_t::local>(igloc);
-
-            double ekin = 0.5 * dot(gvc, gvc);
-            h_diag[igloc] = local_op().v0(0) + ekin * ctx_.theta_pw(0).real();
-            o_diag[igloc] = ctx_.theta_pw(0).real();
+        for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
+            if (what & 1) {
+                auto gvc = kp_.gkvec().gkvec_cart<index_domain_t::local>(igloc);
+                double ekin = 0.5 * dot(gvc, gvc);
+                h_diag[igloc] = H0_.local_op().v0(0) + ekin * H0_.ctx().theta_pw(0).real();
+            }
+            if (what & 2) {
+                o_diag[igloc] = H0_.ctx().theta_pw(0).real();
+            }
         }
 
-        matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
-        matrix<double_complex> halm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
-    
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto& atom = unit_cell_.atom(ia);
-            int nmt = atom.mt_aw_basis_size();
-    
-            kp__->alm_coeffs_loc().generate(ia, alm);
-            apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_loc(), alm, halm);
-    
-            for (int xi = 0; xi < nmt; xi++) {
-                for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
-                    h_diag[igloc] += std::real(std::conj(alm(igloc, xi)) * halm(igloc, xi));
+        #pragma omp parallel
+        {
+            matrix<double_complex> alm(kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size());
+            matrix<double_complex> halm(kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size());
+
+            auto h_diag_omp = (what & 1) ? mdarray<double, 1>(kp_.num_gkvec_loc()) : mdarray<double, 1>();
+            if (what & 1) {
+                h_diag_omp.zero();
+            }
+
+            auto o_diag_omp = (what & 2) ? mdarray<double, 1>(kp_.num_gkvec_loc()) : mdarray<double, 1>();
+            if (what & 2) {
+                o_diag_omp.zero();
+            }
+
+            #pragma omp for
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
+                auto& atom = uc.atom(ia);
+                int nmt = atom.mt_aw_basis_size();
+
+                kp_.alm_coeffs_loc().generate(ia, alm);
+                H0_.apply_hmt_to_apw<spin_block_t::nm>(atom, kp_.num_gkvec_loc(), alm, halm);
+
+                for (int xi = 0; xi < nmt; xi++) {
+                    for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
+                        if (what & 1) {
+                            h_diag_omp[igloc] += std::real(std::conj(alm(igloc, xi)) * halm(igloc, xi));
+                        }
+                        if (what & 2) {
+                            o_diag_omp[igloc] += std::real(std::conj(alm(igloc, xi)) * alm(igloc, xi));
+                        }
+                    }
+                }
+            }
+
+            #pragma omp single
+            for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
+                if (what & 1) {
+                    h_diag[igloc] += h_diag_omp[igloc];
+                }
+                if (what & 2) {
+                    o_diag[igloc] += o_diag_omp[igloc];
                 }
             }
         }
-    
+
         nlo = 0;
         for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
             int ia = spl_num_atoms[ialoc];
-            auto& atom = unit_cell_.atom(ia);
+            auto& atom = uc.atom(ia);
             auto& type = atom.type();
+            #pragma omp parallel for
             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
                 int xi_lo = type.mt_aw_basis_size() + ilo;
                 /* local orbital indices */
                 int lm_lo = type.indexb(xi_lo).lm;
                 int idxrf_lo = type.indexb(xi_lo).idxrf;
-    
-                h_diag[kp__->num_gkvec_loc() + nlo] = atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo,
-                                                                                                     gaunt_coefs_->gaunt_vector(
-                                                                                                             lm_lo,
-                                                                                                             lm_lo)).real();
-                nlo++;
-            }
-        }
-        if (ctx_.processing_unit() == device_t::GPU) {
-            h_diag.allocate(memory_t::device).copy_to(memory_t::device);
-        }
-        return h_diag;
-    }
-    
-    mdarray<double, 1>
-    Hamiltonian::get_o_diag(K_point *kp__, double theta0__) const
-    {
-        PROFILE("sirius::Hamiltonian::get_o_diag");
-    
-        splindex<splindex_t::block> spl_num_atoms(unit_cell_.num_atoms(), kp__->comm().size(), kp__->comm().rank());
-        int nlo{0};
-        for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
-            int ia = spl_num_atoms[ialoc];
-            nlo += unit_cell_.atom(ia).mt_lo_basis_size();
-        }
-    
-        mdarray<double, 1> o_diag(kp__->num_gkvec_loc() + nlo);
-        for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
-            o_diag[igloc] = theta0__;
-        }
-        for (size_t i = kp__->num_gkvec_loc(); i < o_diag.size(); i++) {
-            o_diag[i] = 1;
-        }
-    
-        matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
-    
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto &atom = unit_cell_.atom(ia);
-            int nmt = atom.mt_aw_basis_size();
-    
-            kp__->alm_coeffs_loc().generate(ia, alm);
-    
-            for (int xi = 0; xi < nmt; xi++) {
-                for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
-                    o_diag[igloc] += std::real(std::conj(alm(igloc, xi)) * alm(igloc, xi));
+
+                if (what & 1) {
+                    h_diag[kp_.num_gkvec_loc() + nlo + ilo] =
+                        atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_lo, idxrf_lo, H0_.gaunt_coefs().gaunt_vector(
+                                                                                            lm_lo, lm_lo)).real();
+                }
+                if (what & 2) {
+                    o_diag[kp_.num_gkvec_loc() + nlo + ilo] = 1;
                 }
             }
+            nlo += atom.mt_lo_basis_size();
         }
-        if (ctx_.processing_unit() == device_t::GPU) {
-            o_diag.allocate(memory_t::device).copy_to(memory_t::device);
+
+        if (H0_.ctx().processing_unit() == device_t::GPU) {
+            if (what & 1) {
+                h_diag.allocate(memory_t::device).copy_to(memory_t::device);
+            }
+            if (what & 2) {
+                o_diag.allocate(memory_t::device).copy_to(memory_t::device);
+            }
         }
-        return o_diag;
+        return std::make_pair(std::move(h_diag), std::move(o_diag));
     }
 
-
+    /// Apply first-variational LAPW Hamiltonian and overlap matrices.
+    void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__, Wave_functions& phi__,
+                      Wave_functions* hphi__, Wave_functions* ophi__);
 
     /// Apply pseudopotential H and S operators to the wavefunctions.
     template <typename T>

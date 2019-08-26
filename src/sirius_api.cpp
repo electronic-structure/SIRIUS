@@ -428,7 +428,7 @@ void sirius_get_parameters(void* const* handler__,
     }
     if (fft_grid_size__ != nullptr) {
         for (int x: {0, 1, 2}) {
-            fft_grid_size__[x] = sim_ctx.fft().size(x);
+            fft_grid_size__[x] = sim_ctx.fft_grid()[x];
         }
     }
 }

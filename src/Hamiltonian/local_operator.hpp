@@ -142,6 +142,7 @@ class Local_operator
      */
     void apply_h(spfft::Transform& spfft__, int ispn__, sddk::Wave_functions& phi__, sddk::Wave_functions& hphi__, int idx0__, int n__);
 
+    /// Apply local part of LAPW Hamiltonian and overlap operators.
     void apply_h_o(spfft::Transform& spfft__, int N__, int n__, sddk::Wave_functions& phi__,
                    sddk::Wave_functions* hphi__, sddk::Wave_functions* ophi__);
 

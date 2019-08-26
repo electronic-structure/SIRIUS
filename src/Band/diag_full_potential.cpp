@@ -203,21 +203,16 @@ Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamilt
     }
 }
 
-void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
+void Band::get_singular_components(K_point& kp__, Hamiltonian& H__, Hamiltonian_k& Hk__, mdarray<double, 2>& o_diag__) const
 {
     PROFILE("sirius::Band::get_singular_components");
 
-    auto o_diag_tmp = H__.get_o_diag(&kp__, ctx_.theta_pw(0).real());
-
-    mdarray<double, 2> o_diag(kp__.num_gkvec_loc(), 1, memory_t::host, "o_diag");
     mdarray<double, 2> diag1(kp__.num_gkvec_loc(), 1, memory_t::host, "diag1");
     for (int ig = 0; ig < kp__.num_gkvec_loc(); ig++) {
-        o_diag[ig] = o_diag_tmp[ig];
         diag1[ig]  = 1;
     }
 
     if (ctx_.processing_unit() == device_t::GPU) {
-        o_diag.allocate(memory_t::device).copy_to(memory_t::device);
         diag1.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
@@ -359,7 +354,7 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
         if (k != itso.num_steps_ - 1) {
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
             n = sirius::residuals(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0,
-                                  N, ncomp, eval, evec, ophi, phi, opsi, psi, res, o_diag, diag1,
+                                  N, ncomp, eval, evec, ophi, phi, opsi, psi, res, o_diag__, diag1,
                                   itso.converge_by_energy_, itso.residual_tolerance_,
                                   [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
         }
@@ -414,7 +409,9 @@ void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltoni
 
     H__.local_op().prepare(kp__.gkvec_partition());
 
-    get_singular_components(kp__, H__);
+    auto h_o_diag = Hk__.get_h_o_diag_lapw<3>();
+
+    get_singular_components(kp__, H__, Hk__, h_o_diag.second);
 
     auto h_diag = H__.get_h_diag(&kp__, H__.local_op().v0(0), ctx_.theta_pw(0).real());
     auto o_diag1 = H__.get_o_diag(&kp__, ctx_.theta_pw(0).real());

@@ -58,7 +58,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Get singular components of the LAPW overlap matrix.
     /** Singular components are the eigen-vectors with a very small eigen-value. */
-    void get_singular_components(K_point& kp__, Hamiltonian& H__) const;
+    void get_singular_components(K_point& kp__, Hamiltonian& H__, Hamiltonian_k& Hk__, mdarray<double, 2>& odiag__) const;
 
     /// Diagonalize a pseudo-potential Hamiltonian.
     template <typename T>

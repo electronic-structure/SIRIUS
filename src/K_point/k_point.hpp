@@ -700,6 +700,11 @@ class K_point
     {
         return *spfft_transform_;
     }
+
+    spfft::Transform const& spfft_transform() const
+    {
+        return *spfft_transform_;
+    }
 };
 
 } // namespace sirius

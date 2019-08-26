@@ -701,7 +701,6 @@ void Local_operator::apply_h_o(spfft::Transform& spfftk__,int N__, int n__, Wave
                     if (hphi__ != nullptr) {
                         spfft_output(spfftk__, &buf_rg_[0]);
                     }
-                    auto p = reinterpret_cast<double_complex*>(spfftk__.space_domain_data(SPFFT_PU_HOST));
                     /* multiply phi(r) by step function */
                     spfft_multiply(spfftk__, [&](int ir)
                                              {

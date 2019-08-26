@@ -55,11 +55,11 @@ inline std::vector<int> get_spins(int ispn__)
 /// Helper class to wrap spin index range.
 /** Depending on the collinear or non-collinear case, the spin index range of the wave-functions is either
  *  [0, 0] or [1, 1] (trivial cases of single spin channel) or [0, 1] (spinor wave-functions). */
-class spin_range
+class spin_range : public std::vector<int>
 {
   private:
     int idx_;
-    std::vector<int> v_;
+    //std::vector<int> v_;
   public:
     explicit spin_range(int idx__)
         : idx_(idx__)
@@ -68,24 +68,17 @@ class spin_range
             throw std::runtime_error("wrong spin index");
         }
         if (idx_ == 2) {
-            v_ = std::vector<int>({0, 1});
+            this->reserve(2);
+            this->push_back(0);
+            this->push_back(1);
         } else {
-            v_ = std::vector<int>({idx_});
+            this->reserve(1);
+            this->push_back(idx_);
         }
     }
     inline int operator()() const
     {
         return idx_;
-    }
-
-    inline std::vector<int>::const_iterator begin() const
-    {
-        return v_.begin();
-    }
-
-    inline std::vector<int>::const_iterator end() const
-    {
-        return v_.end();
     }
 };
 
