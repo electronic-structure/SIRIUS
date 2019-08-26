@@ -67,7 +67,7 @@ class Simulation_context : public Simulation_parameters
     /// Auxiliary communicator for the fine-grid FFT transformation.
     /** This communicator is orthogonal to the FFT communicator for density and potential within the full
      *  communicator of the simulation context. In other words, comm_ortho_fft_ \otimes comm_fft() = ctx_.comm() */
-    Communicator comm_ortho_fft_;
+    Communicator comm_ortho_fft_{MPI_COMM_SELF};
 
     /// Auxiliary communicator for the coarse-grid FFT transformation.
     Communicator comm_ortho_fft_coarse_;
@@ -403,7 +403,8 @@ class Simulation_context : public Simulation_parameters
     Communicator const& comm_fft() const
     {
         /* 3rd dimension of MPI grid is used */
-        return mpi_grid_->communicator(1 << 2);
+        //return mpi_grid_->communicator(1 << 2);
+        return comm();
     }
 
     Communicator const& comm_ortho_fft() const

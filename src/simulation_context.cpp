@@ -5,7 +5,7 @@
 
 namespace sirius {
 
-inline void print_memory_usage(const char* file__, int line__)
+void print_memory_usage(const char* file__, int line__)
 {
     size_t VmRSS, VmHWM;
     utils::get_proc_status(&VmHWM, &VmRSS);
@@ -24,7 +24,7 @@ inline void print_memory_usage(const char* file__, int line__)
     printf("%s\n", &str[0]);
 }
 
-inline double unit_step_function_form_factors(double R__, double g__)
+double unit_step_function_form_factors(double R__, double g__)
 {
     if (g__ < 1e-12) {
         return std::pow(R__, 3) / 3.0;
@@ -1180,7 +1180,7 @@ void Simulation_context::init_comm()
     /* setup MPI grid */
     mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
 
-    comm_ortho_fft_ = comm().split(comm_fft().rank());
+    //comm_ortho_fft_ = comm().split(comm_fft().rank());
 
     comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
 

@@ -81,13 +81,17 @@ class Smooth_periodic_function
         f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), sddk::memory_t::host, "Smooth_periodic_function.f_rg_");
         f_rg_.zero();
 
-        f_pw_fft_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec_count_fft(), sddk::memory_t::host,
-                                                     "Smooth_periodic_function.f_pw_fft_");
-        f_pw_fft_.zero();
-
         f_pw_local_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec().count(), sddk::memory_t::host,
                                                        "Smooth_periodic_function.f_pw_local_");
         f_pw_local_.zero();
+        if (gvecp_->comm_ortho_fft().size() != 1) {
+            f_pw_fft_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec_count_fft(), sddk::memory_t::host,
+                                                     "Smooth_periodic_function.f_pw_fft_");
+            f_pw_fft_.zero();
+        } else {
+            /* alias to f_pw_local array */
+            f_pw_fft_ = sddk::mdarray<double_complex, 1>(&f_pw_local_[0], gvecp_->gvec().count());
+        }
     }
 
     inline void zero()
@@ -187,7 +191,9 @@ class Smooth_periodic_function
 
         switch (direction__) {
             case 1: {
-                gather_f_pw_fft();
+                if (gvecp_->comm_ortho_fft().size() != 1) {
+                    gather_f_pw_fft();
+                }
                 spfft_->backward(reinterpret_cast<double const*>(f_pw_fft_.at(sddk::memory_t::host)),
                                  spfft_->processing_unit());
 
@@ -198,10 +204,12 @@ class Smooth_periodic_function
                 spfft_input(*spfft_, &f_rg_[0]);
                 spfft_->forward(spfft_->processing_unit(), reinterpret_cast<double*>(f_pw_fft_.at(sddk::memory_t::host)),
                                 SPFFT_FULL_SCALING);
-                int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
-                int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
-                std::memcpy(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host, offset),
-                            count * sizeof(double_complex));
+                if (gvecp_->comm_ortho_fft().size() != 1) {
+                    int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
+                    int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
+                    std::memcpy(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host, offset),
+                                count * sizeof(double_complex));
+                }
                 break;
             }
             default: {
