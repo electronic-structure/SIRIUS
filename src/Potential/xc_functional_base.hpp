@@ -1675,16 +1675,27 @@ class XC_functional_base
             std::vector<double> vrho(2 * size);
             std::vector<double> vsigma(3 * size);
 
-            xc_gga_exc_vxc(handler_.get(), size, &rho[0], &sigma[0], e, &vrho[0], &vsigma[0]);
+            if (handler_) {
+                xc_gga_exc_vxc(handler_.get(), size, &rho[0], &sigma[0], e, &vrho[0], &vsigma[0]);
 
-            /* extract vrho and vsigma */
-            for (int i = 0; i < size; i++) {
-                vrho_up[i] = vrho[2 * i];
-                vrho_dn[i] = vrho[2 * i + 1];
+                /* extract vrho and vsigma */
+                for (int i = 0; i < size; i++) {
+                    vrho_up[i] = vrho[2 * i];
+                    vrho_dn[i] = vrho[2 * i + 1];
 
-                vsigma_uu[i] = vsigma[3 * i];
-                vsigma_ud[i] = vsigma[3 * i + 1];
-                vsigma_dd[i] = vsigma[3 * i + 2];
+                    vsigma_uu[i] = vsigma[3 * i];
+                    vsigma_ud[i] = vsigma[3 * i + 1];
+                    vsigma_dd[i] = vsigma[3 * i + 2];
+                }
+            } else {
+                for (int i = 0; i < size; i++) {
+                    e[i] = -0.001 * ((rho_up[i] + rho_dn[i]) * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]));
+                    vrho_up[i] = -0.001 * rho_dn[i] * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
+                    vrho_dn[i] = -0.001 * rho_up[i] * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
+                    vsigma_uu[i] = -0.001 * (rho_up[i] + rho_dn[i]);
+                    vsigma_ud[i] = -0.001 * (rho_up[i] + rho_dn[i]);
+                    vsigma_dd[i] = -0.001 * (rho_up[i] + rho_dn[i]);
+                }
             }
         }
 };
