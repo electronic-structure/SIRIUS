@@ -1401,7 +1401,7 @@ class XC_functional_base
               num_spins_(num_spins__)
         {
             /* check if functional name is in list */
-            if (libxc_functionals.count(libxc_name_) == 0 && libxc_name_ != "XC_GGA_DEBUG") {
+            if (libxc_functionals.count(libxc_name_) == 0 && libxc_name_ != "XC_GGA_DEBUG" && libxc_name_ != "XC_LDA_DEBUG") {
                 /* if not just return since van der walls functionals can be
                  * used */
                 libxc_initialized_ = false;
@@ -1410,7 +1410,7 @@ class XC_functional_base
 
             auto ns = (num_spins__ == 1) ? XC_UNPOLARIZED : XC_POLARIZED;
 
-            if (libxc_name_ != "XC_GGA_DEBUG") {
+            if (libxc_name_ != "XC_GGA_DEBUG" && libxc_name_ != "XC_LDA_DEBUG") {
                 handler_ = std::unique_ptr<xc_func_type>(new xc_func_type);
 
                 /* init xc functional handler */
@@ -1469,7 +1469,11 @@ class XC_functional_base
             if (handler_) {
                 return handler_->info->family;
             } else {
-                return XC_FAMILY_GGA;
+                if (libxc_name_ == "XC_GGA_DEBUG") {
+                    return XC_FAMILY_GGA;
+                } else {
+                    return XC_FAMILY_LDA;
+                }
             }
         }
 
@@ -1555,54 +1559,62 @@ class XC_functional_base
                 rho_ud[2 * i + 1] = rho_dn[i];
             }
 
-            std::vector<double> v_ud(size * 2);
+            if (handler_) {
+                std::vector<double> v_ud(size * 2);
 
-            xc_lda_exc_vxc(handler_.get(), size, &rho_ud[0], &e[0], &v_ud[0]);
+                xc_lda_exc_vxc(handler_.get(), size, &rho_ud[0], &e[0], &v_ud[0]);
 
-            /* extract potential */
-            for (int i = 0; i < size; i++) {
-                v_up[i] = v_ud[2 * i];
-                v_dn[i] = v_ud[2 * i + 1];
-            }
-        }
-
-        void add_lda(const int size,
-                     const double* rho_up,
-                     const double* rho_dn,
-                     double* v_up,
-                     double* v_dn,
-                     double* e)
-        {
-            if (family() != XC_FAMILY_LDA) {
-                TERMINATE("wrong XC");
-            }
-
-            std::vector<double> rho_ud(size * 2);
-            /* check and rearrange density */
-            for (int i = 0; i < size; i++) {
-                if (rho_up[i] < 0 || rho_dn[i] < 0) {
-                    std::stringstream s;
-                    s << "rho is negative : " << utils::double_to_string(rho_up[i])
-                      << " " << utils::double_to_string(rho_dn[i]);
-                    TERMINATE(s);
+                /* extract potential */
+                for (int i = 0; i < size; i++) {
+                    v_up[i] = v_ud[2 * i];
+                    v_dn[i] = v_ud[2 * i + 1];
                 }
-
-                rho_ud[2 * i]     = rho_up[i];
-                rho_ud[2 * i + 1] = rho_dn[i];
-            }
-
-            std::vector<double> v_ud(size * 2);
-            std::vector<double> e_tmp(size);
-
-            xc_lda_exc_vxc(handler_.get(), size, &rho_ud[0], &e_tmp[0], &v_ud[0]);
-
-            /* extract potential */
-            for (int i = 0; i < size; i++) {
-                v_up[i] += v_ud[2 * i];
-                v_dn[i] += v_ud[2 * i + 1];
-                e[i]    += e_tmp[i];
+            } else {
+                for (int i = 0; i < size; i++) {
+                    e[i] = -0.001 * (rho_up[i] * rho_up[i] + rho_dn[i] * rho_dn[i]);
+                    v_up[i] = -0.002 * rho_up[i];
+                    v_dn[i] = -0.002 * rho_dn[i];
+                }
             }
         }
+
+        //void add_lda(const int size,
+        //             const double* rho_up,
+        //             const double* rho_dn,
+        //             double* v_up,
+        //             double* v_dn,
+        //             double* e)
+        //{
+        //    if (family() != XC_FAMILY_LDA) {
+        //        TERMINATE("wrong XC");
+        //    }
+
+        //    std::vector<double> rho_ud(size * 2);
+        //    /* check and rearrange density */
+        //    for (int i = 0; i < size; i++) {
+        //        if (rho_up[i] < 0 || rho_dn[i] < 0) {
+        //            std::stringstream s;
+        //            s << "rho is negative : " << utils::double_to_string(rho_up[i])
+        //              << " " << utils::double_to_string(rho_dn[i]);
+        //            TERMINATE(s);
+        //        }
+
+        //        rho_ud[2 * i]     = rho_up[i];
+        //        rho_ud[2 * i + 1] = rho_dn[i];
+        //    }
+
+        //    std::vector<double> v_ud(size * 2);
+        //    std::vector<double> e_tmp(size);
+
+        //    xc_lda_exc_vxc(handler_.get(), size, &rho_ud[0], &e_tmp[0], &v_ud[0]);
+
+        //    /* extract potential */
+        //    for (int i = 0; i < size; i++) {
+        //        v_up[i] += v_ud[2 * i];
+        //        v_dn[i] += v_ud[2 * i + 1];
+        //        e[i]    += e_tmp[i];
+        //    }
+        //}
 
         /// Get GGA contribution.
         void get_gga(const int size,
@@ -1690,8 +1702,8 @@ class XC_functional_base
             } else {
                 for (int i = 0; i < size; i++) {
                     e[i] = -0.001 * ((rho_up[i] + rho_dn[i]) * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]));
-                    vrho_up[i] = -0.001 * rho_dn[i] * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
-                    vrho_dn[i] = -0.001 * rho_up[i] * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
+                    vrho_up[i] = -0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
+                    vrho_dn[i] = -0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
                     vsigma_uu[i] = -0.001 * (rho_up[i] + rho_dn[i]);
                     vsigma_ud[i] = -0.001 * (rho_up[i] + rho_dn[i]);
                     vsigma_dd[i] = -0.001 * (rho_up[i] + rho_dn[i]);
