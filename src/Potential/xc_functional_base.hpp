@@ -1530,7 +1530,16 @@ class XC_functional_base
                 }
             }
 
-            xc_lda_exc_vxc(handler_.get(), size, rho, e, v);
+            if (handler_) {
+                xc_lda_exc_vxc(handler_.get(), size, rho, e, v);
+            } else {
+                for (int i = 0; i < size; i++) {
+                    /* E = \int e * rho * dr */
+                    e[i] = -0.001 * (rho[i] * rho[i]);
+                    /* var E / var rho = (de/drho) rho + e */
+                    v[i] = -0.002 * rho[i] * rho[i] + e[i];
+                }
+            }
         }
 
         /// Get LSDA contribution.
@@ -1572,8 +1581,8 @@ class XC_functional_base
             } else {
                 for (int i = 0; i < size; i++) {
                     e[i] = -0.001 * (rho_up[i] * rho_up[i] + rho_dn[i] * rho_dn[i]);
-                    v_up[i] = -0.002 * rho_up[i];
-                    v_dn[i] = -0.002 * rho_dn[i];
+                    v_up[i] = -0.002 * rho_up[i] * (rho_up[i] + rho_dn[i]) + e[i];
+                    v_dn[i] = -0.002 * rho_dn[i] * (rho_up[i] + rho_dn[i]) + e[i];
                 }
             }
         }
