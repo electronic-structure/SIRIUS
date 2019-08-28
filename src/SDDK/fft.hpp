@@ -67,7 +67,7 @@ spfft_input(spfft::Transform& spfft__, F&& fr__)
     }
 }
 
-/// Loda data from complex-valued lambda.
+/// Load data from complex-valued lambda.
 template <typename F>
 inline enable_return<F, std::complex<double>, int>
 spfft_input(spfft::Transform& spfft__, F&& fr__)
