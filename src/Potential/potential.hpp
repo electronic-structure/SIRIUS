@@ -137,6 +137,10 @@ class Potential : public Field4D
 
     mdarray<double, 2> aux_bf_;
 
+    /// A debug variable to scale the density when computing the XC potential.
+    /** This is used to verify the variational derivative of Exc */
+    double scale_rho_xc_{1};
+
     void init_PAW();
 
     double xc_mt_PAW_nonmagnetic(Spheric_function<function_domain_t::spectral, double>&       full_potential,
@@ -1147,9 +1151,9 @@ class Potential : public Field4D
     /// Integral of \f$ \rho({\bf r}) \epsilon^{XC}({\bf r}) \f$.
     double energy_exc(Density const& density__) const
     {
-        double exc = density__.rho().inner(xc_energy_density());
+        double exc = scale_rho_xc_ * density__.rho().inner(xc_energy_density());
         if (!ctx_.full_potential()) {
-            exc += inner(density__.rho_pseudo_core(), xc_energy_density());
+            exc += scale_rho_xc_ * inner(density__.rho_pseudo_core(), xc_energy_density());
         }
         return exc;
     }
@@ -1180,13 +1184,13 @@ class Potential : public Field4D
         Field4D::symmetrize(&effective_potential(), &effective_magnetic_field(0),
                             &effective_magnetic_field(1), &effective_magnetic_field(2));
     }
-};
 
-// #include "generate_d_operator_matrix.hpp"
-// #include "generate_pw_coefs.hpp"
-// #include "xc.hpp"
-// #include "poisson.hpp"
-// #include "paw_potential.hpp"
+    /// Set the scale_rho_xc variable.
+    inline void scale_rho_xc(double d__)
+    {
+        scale_rho_xc_ = d__;
+    }
+};
 
 }; // namespace sirius
 

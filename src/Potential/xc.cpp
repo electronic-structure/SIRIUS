@@ -526,6 +526,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         if (add_pseudo_core__) {
             d += density__.rho_pseudo_core().f_rg(ir);
         }
+        d *= scale_rho_xc_;
 
         rhomin = std::min(rhomin, d);
         rho.f_rg(ir) = std::max(d, 0.0);
