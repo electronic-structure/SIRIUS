@@ -233,9 +233,9 @@ ctx.unit_cell().add_atom("H", {0, 0, 0});
 /* initialize the context */
 ctx.initialize();
 /* get FFT driver */
-auto& fft = ctx.spfft();
+//auto& fft = ctx.spfft();
 /* get G-vectors */
-auto& gvec = ctx.gvec();
+//auto& gvec = ctx.gvec();
 }
 
 int main(int argn, char** argv)
