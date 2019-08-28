@@ -120,7 +120,8 @@ __global__ void mul_by_veff_complex_real_gpu_kernel(int nr__, acc_complex_double
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < nr__) {
-        buf__[i] *= veff__[i];
+        buf__[i].x *= veff__[i];
+        buf__[i].y *= veff__[i];
     }
 }
 
@@ -150,6 +151,6 @@ extern "C" void mul_by_veff_complex_complex_gpu(int nr__, acc_complex_double_t* 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(nr__, grid_t.x));
 
-    accLaunchKernel((mul_by_veff_complex_real_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, nr__, buf__, pref__,
+    accLaunchKernel((mul_by_veff_complex_complex_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, nr__, buf__, pref__,
                      vx__, vy__);
 }
