@@ -212,7 +212,7 @@ void Local_operator::dismiss()
     gkvec_p_ = nullptr;
 }
 
-void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functions& phi__, Wave_functions& hphi__,
+void Local_operator::apply_h(spfft::Transform& spfftk__, int ispn__, Wave_functions& phi__, Wave_functions& hphi__,
                              int idx0__, int n__)
 {
     PROFILE("sirius::Local_operator::apply_h");
@@ -284,36 +284,16 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
             mdarray<double_complex, 2>(hphi__.pw_coeffs(ispn).extra().at(memory_t::host), ptr_d, ngv_fft, num_wf_loc);
     }
 
-#if defined(__GPU)
-    /* pointers to effective potential on GPU */
-    mdarray<double*, 1> vptr(4);
-    vptr.zero();
-    switch (spfft__.processing_unit()) {
-        case SPFFT_PU_HOST: {
-            vptr.allocate(memory_t::device);
-            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                vptr[j] = veff_vec_[j].f_rg().at(memory_t::device);
-            }
-            vptr.copy_to(memory_t::device);
-            break;
-        }
-        case SPFFT_PU_GPU:
-            break;
-    }
-#endif
-
     auto prepare_phi_hphi = [&](int i) {
         for (int ispn : spins) {
-            switch (spfft__.processing_unit()) {
+            switch (spfftk__.processing_unit()) {
                 case SPFFT_PU_HOST: {              /* FFT is done on CPU */
                     if (is_host_memory(mem_phi)) { /* wave-functions are also on host memory */
                         phi1[ispn] = mdarray<double_complex, 1>(phi[ispn].at(memory_t::host, 0, i), ngv_fft);
                     } else { /* wave-functions are on the device memory */
                         phi1[ispn] = mdarray<double_complex, 1>(mp, ngv_fft);
-#if defined(__GPU)
                         /* copy wave-functions to host memory */
                         acc::copyout(phi1[ispn].at(memory_t::host), phi[ispn].at(memory_t::device, 0, i), ngv_fft);
-#endif
                     }
                     if (is_host_memory(mem_hphi)) {
                         hphi1[ispn] = mdarray<double_complex, 1>(hphi[ispn].at(memory_t::host, 0, i), ngv_fft);
@@ -350,17 +330,16 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
     };
 
     auto store_hphi = [&](int i) {
-#ifdef __GPU
         for (int ispn : spins) {
-            switch (spfft__.pu()) {
-                case device_t::CPU: { /* FFT is done on CPU */
+            switch (spfftk__.processing_unit()) {
+                case SPFFT_PU_HOST: { /* FFT is done on CPU */
                     if (is_device_memory(mem_hphi)) {
                         /* copy to device */
                         acc::copyin(hphi[ispn].at(memory_t::device, 0, i), hphi1[ispn].at(memory_t::host), ngv_fft);
                     }
                     break;
                 }
-                case device_t::GPU: { /* FFT is done on GPU */
+                case SPFFT_PU_GPU: { /* FFT is done on GPU */
                     if (is_host_memory(mem_hphi)) {
                         /* copy back to host */
                         acc::copyout(hphi[ispn].at(memory_t::host, 0, i), hphi1[ispn].at(memory_t::device), ngv_fft);
@@ -369,47 +348,30 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
                 }
             }
         }
-#endif
     };
 
     /* transform wave-function to real space; the result of the transformation is stored in the FFT buffer */
     auto phi_to_r = [&](int ispn) {
-        switch (spfft__.processing_unit()) {
-            case SPFFT_PU_HOST: {
-                spfft__.backward(reinterpret_cast<double const*>(phi1[ispn].at(memory_t::host)),
-                                 SPFFT_PU_HOST);
-                break;
-            }
-            case SPFFT_PU_GPU: {
-                ///* parallel FFT starting from device pointer is not implemented */
-                // assert(fft_coarse_.comm().size() == 1);
-                // if (gamma) { /* warning: GPU pointer works only in case of serial FFT */
-                //    fft_coarse_.transform<1, memory_t::device>(phi1[ispn].at(memory_t::device, 0, 0),
-                //                                               phi1[ispn].at(memory_t::device, 0, 1));
-                //} else {
-                //    fft_coarse_.transform<1, memory_t::device>(phi1[ispn].at(memory_t::device, 0, 0));
-                //}
-                spfft__.backward(reinterpret_cast<double const*>(phi1[ispn].at(memory_t::device)),
-                                 SPFFT_PU_GPU);
-                break;
-            }
-        }
+        spfftk__.backward(reinterpret_cast<double const*>(phi1[ispn].at(spfft_memory_t.at(spfftk__.processing_unit()))),
+                          spfftk__.processing_unit());
     };
 
     auto mul_by_veff = [&](double* buf, int ispn_block) {
-        switch (spfft__.processing_unit()) {
+        /* number of real-space points in the local part of FFT buffer */
+        int nr = spfftk__.local_slice_size();
+        switch (spfftk__.processing_unit()) {
             case SPFFT_PU_HOST: {
                 if (ispn_block < 2) { /* up-up or dn-dn block */
                     if (ctx_.gamma_point()) {
                         #pragma omp parallel for schedule(static)
-                        for (int ir = 0; ir < spfft__.local_slice_size(); ir++) {
+                        for (int ir = 0; ir < nr; ir++) {
                             /* multiply by V+Bz or V-Bz */
                             buf[ir] *= veff_vec_[ispn_block].f_rg(ir);
                         }
                     } else {
                         auto wf = reinterpret_cast<double_complex*>(buf);
                         #pragma omp parallel for schedule(static)
-                        for (int ir = 0; ir < spfft__.local_slice_size(); ir++) {
+                        for (int ir = 0; ir < nr; ir++) {
                             /* multiply by V+Bz or V-Bz */
                             wf[ir] *= veff_vec_[ispn_block].f_rg(ir);
                         }
@@ -418,7 +380,7 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
                     double pref = (ispn_block == 2) ? -1 : 1;
                     auto wf     = reinterpret_cast<double_complex*>(buf);
                     #pragma omp parallel for schedule(static)
-                    for (int ir = 0; ir < spfft__.local_slice_size(); ir++) {
+                    for (int ir = 0; ir < nr; ir++) {
                         /* multiply by Bx +/- i*By */
                         wf[ir] *= double_complex(veff_vec_[2].f_rg(ir), pref * veff_vec_[3].f_rg(ir));
                     }
@@ -426,11 +388,28 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
                 break;
             }
             case SPFFT_PU_GPU: {
-                STOP();
-                //#ifdef __GPU
-                //                mul_by_veff_gpu(ispn_block, fft_coarse_.local_size(), vptr.at(memory_t::device),
-                //                                buf.at(memory_t::device));
-                //#endif
+                if (ispn_block < 2) { /* up-up or dn-dn block */
+                    if (ctx_.gamma_point()) {
+#if defined(__GPU)
+                        /* multiply by V+Bz or V-Bz */
+                        mul_by_veff_real_real_gpu(nr, buf, veff_vec_[ispn_block].f_rg().at(memory_t::device));
+#endif
+                    } else {
+#if defined(__GPU)
+                        auto wf = reinterpret_cast<double_complex*>(buf);
+                        /* multiply by V+Bz or V-Bz */
+                        mul_by_veff_complex_real_gpu(nr, wf, veff_vec_[ispn_block].f_rg().at(memory_t::device));
+#endif
+                    }
+                } else {
+#if defined(__GPU)
+                    /* multiply by Bx +/- i*By */
+                    double pref = (ispn_block == 2) ? -1 : 1;
+                    auto wf     = reinterpret_cast<double_complex*>(buf);
+                    mul_by_veff_complex_complex_gpu(nr, wf, pref, veff_vec_[2].f_rg().at(memory_t::device),
+                        veff_vec_[3].f_rg().at(memory_t::device));
+#endif
+                }
                 break;
             }
         }
@@ -438,23 +417,9 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
 
     /* transform one or two functions to PW domain */
     auto vphi_to_G = [&]() {
-        switch (spfft__.processing_unit()) {
-            case SPFFT_PU_HOST: {
-                spfft__.forward(spfft__.processing_unit(), reinterpret_cast<double*>(vphi_.at(memory_t::host)),
-                                SPFFT_FULL_SCALING);
-                break;
-            }
-            case SPFFT_PU_GPU: {
-                STOP();
-                // if (gamma) {
-                //    fft_coarse_.transform<-1, memory_t::device>(vphi_.at(memory_t::device, 0, 0),
-                //                                                vphi_.at(memory_t::device, 0, 1));
-                //} else {
-                //    fft_coarse_.transform<-1, memory_t::device>(vphi_.at(memory_t::device, 0, 0));
-                //}
-                break;
-            }
-        }
+        spfftk__.forward(spfftk__.processing_unit(),
+                         reinterpret_cast<double*>(vphi_.at(spfft_memory_t.at((spfftk__.processing_unit())))),
+                         SPFFT_FULL_SCALING);
     };
 
     /* store the resulting hphi
@@ -467,7 +432,7 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
         /* add kinetic energy if this is a diagonal block */
         int ekin = (ispn_block & 2) ? 0 : 1;
 
-        switch (spfft__.processing_unit()) {
+        switch (spfftk__.processing_unit()) {
             case SPFFT_PU_HOST: {
                 /* CPU case */
                 if (ekin) {
@@ -484,7 +449,7 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
                 break;
             }
             case SPFFT_PU_GPU: {
-#ifdef __GPU
+#if defined(__GPU)
                 double alpha = static_cast<double>(ekin);
                 add_pw_ekin_gpu(gkvec_p_->gvec_count_fft(), alpha, pw_ekin_.at(memory_t::device),
                                 phi1[ispn].at(memory_t::device), vphi_.at(memory_t::device),
@@ -528,10 +493,10 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
             /* phi_u(G) -> phi_u(r) */
             phi_to_r(0);
             /* save phi_u(r) */
-            switch (spfft__.processing_unit()) {
+            switch (spfftk__.processing_unit()) {
                 case SPFFT_PU_HOST: {
                     // fft_coarse_.output(buf_rg_.at(memory_t::host));
-                    spfft_output(spfft__, buf_rg_.at(memory_t::host));
+                    spfft_output(spfftk__, buf_rg_.at(memory_t::host));
                     //auto ptr = reinterpret_cast<double_complex*>(spfft__.space_domain_data(SPFFT_PU_HOST));
                     //std::copy(ptr, ptr + fft_coarse_.local_slice_size(), buf_rg_.at(memory_t::host));
                     break;
@@ -546,7 +511,7 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
                 }
             }
             /* multiply phi_u(r) by effective potential */
-            mul_by_veff(spfft__.space_domain_data(SPFFT_PU_HOST), 0);
+            mul_by_veff(spfftk__.space_domain_data(SPFFT_PU_HOST), 0);
             /* V_{uu}(r)phi_{u}(r) -> [V*phi]_{u}(G) */
             vphi_to_G();
             /* add kinetic energy */
@@ -554,12 +519,12 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
             /* multiply phi_{u} by V_{du} */
             mul_by_veff(reinterpret_cast<double*>(buf_rg_.at(memory_t::host)), 3);
             /* copy to FFT buffer */
-            switch (spfft__.processing_unit()) {
+            switch (spfftk__.processing_unit()) {
                 case SPFFT_PU_HOST: {
                     // fft_coarse_.input(buf_rg_.at(memory_t::host));
                     //auto ptr = reinterpret_cast<double_complex*>(spfft__.space_domain_data(SPFFT_PU_HOST));
                     //std::copy(buf_rg_.at(memory_t::host), buf_rg_.at(memory_t::host) + fft_coarse_.local_size(), ptr);
-                    spfft_input(spfft__, buf_rg_.at(memory_t::host));
+                    spfft_input(spfftk__, buf_rg_.at(memory_t::host));
                     break;
                 }
                 case SPFFT_PU_GPU: {
@@ -581,12 +546,12 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
             /* phi_d(G) -> phi_d(r) */
             phi_to_r(1);
             /* save phi_d(r) */
-            switch (spfft__.processing_unit()) {
+            switch (spfftk__.processing_unit()) {
                 case SPFFT_PU_HOST: {
                     // fft_coarse_.output(buf_rg_.at(memory_t::host));
                     //auto ptr = reinterpret_cast<double_complex*>(spfft__.space_domain_data(SPFFT_PU_HOST));
                     //std::copy(ptr, ptr + fft_coarse_.local_size(), buf_rg_.at(memory_t::host));
-                    spfft_output(spfft__, buf_rg_.at(memory_t::host));
+                    spfft_output(spfftk__, buf_rg_.at(memory_t::host));
                     break;
                 }
                 case SPFFT_PU_GPU: {
@@ -599,7 +564,7 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
                 }
             }
             /* multiply phi_d(r) by effective potential */
-            mul_by_veff(spfft__.space_domain_data(SPFFT_PU_HOST), 1);
+            mul_by_veff(spfftk__.space_domain_data(SPFFT_PU_HOST), 1);
             /* V_{dd}(r)phi_{d}(r) -> [V*phi]_{d}(G) */
             vphi_to_G();
             /* add kinetic energy */
@@ -607,9 +572,9 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
             /* multiply phi_{d} by V_{ud} */
             mul_by_veff(reinterpret_cast<double*>(buf_rg_.at(memory_t::host)), 2);
             /* copy to FFT buffer */
-            switch (spfft__.processing_unit()) {
+            switch (spfftk__.processing_unit()) {
                 case SPFFT_PU_HOST: {
-                    spfft_input(spfft__, buf_rg_.at(memory_t::host));
+                    spfft_input(spfftk__, buf_rg_.at(memory_t::host));
                     //auto ptr = reinterpret_cast<double_complex*>(spfft__.space_domain_data(SPFFT_PU_HOST));
                     //std::copy(buf_rg_.at(memory_t::host), buf_rg_.at(memory_t::host) + fft_coarse_.local_size(), ptr);
                     break;
@@ -634,7 +599,7 @@ void Local_operator::apply_h(spfft::Transform& spfft__, int ispn__, Wave_functio
             /* phi(G) -> phi(r) */
             phi_to_r(ispn__);
             /* multiply by effective potential */
-            mul_by_veff(spfft__.space_domain_data(SPFFT_PU_HOST), ispn__);
+            mul_by_veff(spfftk__.space_domain_data(spfftk__.processing_unit()), ispn__);
             /* V(r)phi(r) -> [V*phi](G) */
             vphi_to_G();
             /* add kinetic energy */

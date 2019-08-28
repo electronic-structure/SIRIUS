@@ -45,7 +45,11 @@ class Transform;
 }
 
 #ifdef __GPU
-extern "C" void mul_by_veff_gpu(int ispn__, int size__, double* const* veff__, double_complex* buf__);
+extern "C" void mul_by_veff_real_real_gpu(int nr__, double* buf__, double* veff__);
+
+extern "C" void mul_by_veff_complex_real_gpu(int nr__, double_complex* buf__, double* veff__);
+
+extern "C" void mul_by_veff_complex_complex_gpu(int nr__, double_complex* buf__, double pref__, double* vx__, double* vy__);
 
 extern "C" void add_pw_ekin_gpu(int                   num_gvec__,
                                 double                alpha__,
