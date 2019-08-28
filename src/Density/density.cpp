@@ -582,8 +582,6 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
         density_rg.allocate(ctx_.mem_pool(memory_t::device)).zero(memory_t::device);
     }
 
-    //fft.prepare(kp__->gkvec_partition());
-
     /* non-magnetic or collinear case */
     if (ctx_.num_mag_dims() != 3) {
         /* loop over pure spinor components */
@@ -604,40 +602,39 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
                 kp__->spfft_transform().backward(reinterpret_cast<const double*>(inp_wf),
                                                  kp__->spfft_transform().processing_unit());
 
-                if (ctx_.gamma_point()) {
-                    auto data = kp__->spfft_transform().space_domain_data(SPFFT_PU_HOST);
-                    #pragma omp parallel for schedule(static)
-                    for (int ir = 0; ir < fft.local_slice_size(); ir++) {
-                        density_rg(ir, ispn) += w * std::pow(data[ir], 2);
+                auto data_ptr = kp__->spfft_transform().space_domain_data(kp__->spfft_transform().processing_unit());
+
+                switch (kp__->spfft_transform().processing_unit()) {
+                    case SPFFT_PU_HOST: {
+                        if (ctx_.gamma_point()) {
+                            #pragma omp parallel for schedule(static)
+                            for (int ir = 0; ir < fft.local_slice_size(); ir++) {
+                                density_rg(ir, ispn) += w * std::pow(data_ptr[ir], 2);
+                            }
+                        } else {
+                            auto data = reinterpret_cast<double_complex*>(data_ptr);
+                            #pragma omp parallel for schedule(static)
+                            for (int ir = 0; ir < fft.local_slice_size(); ir++) {
+                                auto z = data[ir];
+                                density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                            }
+                        }
+                        break;
                     }
-                } else {
-                    auto data = reinterpret_cast<double_complex*>(kp__->spfft_transform().space_domain_data(SPFFT_PU_HOST));
-                    #pragma omp parallel for schedule(static)
-                    for (int ir = 0; ir < fft.local_slice_size(); ir++) {
-                        auto z = data[ir];
-                        density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                    case SPFFT_PU_GPU: {
+#if defined(__GPU)
+                        if (ctx_.gamma_point()) {
+                            update_density_rg_1_real_gpu(fft.local_slice_size(), data_ptr, w,
+                                                         density_rg.at(memory_t::device, 0, ispn));
+                        } else {
+                            auto data = reinterpret_cast<double_complex*>(data_ptr);
+                            update_density_rg_1_complex_gpu(fft.local_slice_size(), data, w,
+                                                            density_rg.at(memory_t::device, 0, ispn));
+                        }
+#endif
+                        break;
                     }
                 }
-//                /* transform to real space; in case of GPU wave-function stays in GPU memory */
-//                fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(ispn).extra().at(memory_t::host, 0, i));
-//                /* add to density */
-//                switch (fft.pu()) {
-//                    case device_t::CPU: {
-//                        #pragma omp parallel for schedule(static)
-//                        for (int ir = 0; ir < fft.local_size(); ir++) {
-//                            auto z = fft.buffer(ir);
-//                            density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
-//                        }
-//                        break;
-//                    }
-//                    case device_t::GPU: {
-//#ifdef __GPU
-//                        update_density_rg_1_gpu(fft.local_size(), fft.buffer().at(memory_t::device), w,
-//                                                density_rg.at(memory_t::device, 0, ispn));
-//#endif
-//                        break;
-//                    }
-//                }
             }
         }
     } else { /* non-collinear case */

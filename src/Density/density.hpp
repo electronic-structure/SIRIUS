@@ -32,15 +32,15 @@
 #include "mixer.hpp"
 
 #if defined(__GPU)
-extern "C" void update_density_rg_1_gpu(int                   size__,
-                                        double_complex const* psi_rg__,
-                                        double                wt__,
-                                        double*               density_rg__);
-
 extern "C" void update_density_rg_1_real_gpu(int size__,
                                              double const* psi_rg__,
                                              double wt__,
                                              double* density_rg__);
+
+extern "C" void update_density_rg_1_complex_gpu(int size__,
+                                                double_complex const* psi_rg__,
+                                                double wt__,
+                                                double* density_rg__);
 
 extern "C" void update_density_rg_2_gpu(int                   size__,
                                         double_complex const* psi_rg_up__,
