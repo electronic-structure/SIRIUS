@@ -784,6 +784,8 @@ void Potential::xc_rg_magnetic(Density const& density__)
         if (add_pseudo_core__) {
             rho += density__.rho_pseudo_core().f_rg(ir);
         }
+        rho *= scale_rho_xc_;
+        mag *= scale_rho_xc_;
 
         /* remove numerical noise at high values of magnetization */
         mag = std::min(mag, rho);
