@@ -11,25 +11,9 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     matrix3d<double> M = {{10, 0, 0}, {0, 10, 0}, {0, 0, 10}};
 
-    //matrix3d<double> M = transpose(matrix3d<double>({{0.1876146971, 0.1083182969, -0.0001874171},
-    //                                                 {0.0003106919, 0.2160983064, -0.0000921806},
-    //                                                 {-0.0000819370, -0.0000453654, 0.1171347286}}));
-
     for (int i = 0; i < 3; i++) {
         printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, M(0, i), M(1, i), M(2, i));
     }
-
-    //FFT3D_grid fft_box(find_translations(2 * cutoff__, M));
-
-    //FFT3D fft(find_translations(2 * cutoff__, M), mpi_grid.communicator(1 << 0), pu);
-
-    //Communicator comm_ortho_fft = Communicator::world().split(fft.comm().rank());
-
-
-    //Gvec gvec(M, cutoff__, Communicator::world(), reduce_gvec__);
-
-    //Gvec_partition gvecp(gvec,  fft.comm(), comm_ortho_fft);
-
 
     Simulation_context params;
     params.set_processing_unit(pu);
@@ -44,7 +28,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     auto& gvec = params.gvec();
     auto& gvecp = params.gvec_partition();
     auto& fft = params.spfft();
-    
+
     if (Communicator::world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
         printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
@@ -75,9 +59,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     Communicator::world().barrier();
     utils::timer t1("h_loc");
     for (int i = 0; i < 4; i++) {
-        STOP();
-        // fix this call, pass spfft_transform()
-        //hloc.apply_h(0, phi, hphi, i * num_bands__, num_bands__);
+        hloc.apply_h(fft, 0, phi, hphi, i * num_bands__, num_bands__);
     }
     Communicator::world().barrier();
     t1.stop();
