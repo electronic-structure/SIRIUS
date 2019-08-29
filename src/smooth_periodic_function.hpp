@@ -194,15 +194,13 @@ class Smooth_periodic_function
                 if (gvecp_->comm_ortho_fft().size() != 1) {
                     gather_f_pw_fft();
                 }
-                spfft_->backward(reinterpret_cast<double const*>(f_pw_fft_.at(sddk::memory_t::host)),
-                                 spfft_->processing_unit());
-
+                spfft_->backward(reinterpret_cast<double const*>(f_pw_fft_.at(sddk::memory_t::host)), SPFFT_PU_HOST);
                 spfft_output(*spfft_, &f_rg_[0]);
                 break;
             }
             case -1: {
                 spfft_input(*spfft_, &f_rg_[0]);
-                spfft_->forward(spfft_->processing_unit(), reinterpret_cast<double*>(f_pw_fft_.at(sddk::memory_t::host)),
+                spfft_->forward(SPFFT_PU_HOST, reinterpret_cast<double*>(f_pw_fft_.at(sddk::memory_t::host)),
                                 SPFFT_FULL_SCALING);
                 if (gvecp_->comm_ortho_fft().size() != 1) {
                     int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];

@@ -415,7 +415,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, int ispn__, Wave_functi
         }
     };
 
-    /* transform one or two functions to PW domain */
+    /* transform function to PW domain */
     auto vphi_to_G = [&]() {
         spfftk__.forward(spfftk__.processing_unit(),
                          reinterpret_cast<double*>(vphi_.at(spfft_memory_t.at((spfftk__.processing_unit())))),

@@ -89,6 +89,7 @@ spfft_input(spfft::Transform& spfft__, F&& fr__)
     }
 }
 
+/// Input CPU data to CPU buffer of SpFFT.
 template <typename T>
 inline void spfft_input(spfft::Transform& spfft__, T const* data__)
 {
@@ -121,6 +122,7 @@ inline void spfft_multiply(spfft::Transform& spfft__, F&& fr__)
     }
 }
 
+/// Output CPU data from the CPU buffer of SpFFT.
 inline void spfft_output(spfft::Transform& spfft__, double* data__)
 {
     switch (spfft__.type()) {

@@ -1126,7 +1126,7 @@ void Simulation_context::init_step_function()
     for (int i = 0; i < gvec_partition().gvec_count_fft(); i++) {
         ftmp[i] = theta_pw_[gvec_partition().idx_gvec(i)];
     }
-    spfft().backward(reinterpret_cast<double const*>(ftmp.data()), spfft().processing_unit());
+    spfft().backward(reinterpret_cast<double const*>(ftmp.data()), SPFFT_PU_HOST);
     spfft_output(spfft(), &theta_[0]);
 
     double vit{0};
