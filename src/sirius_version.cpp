@@ -52,5 +52,10 @@ std::string git_branchname()
     return std::string(::git_branchname);
 }
 
+std::string build_date()
+{
+    return std::string(::build_date);
+}
+
 }
 

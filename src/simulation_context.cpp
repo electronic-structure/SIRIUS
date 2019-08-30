@@ -543,7 +543,7 @@ void Simulation_context::print_info() const
     printf("SIRIUS version : %i.%i.%i\n", sirius::major_version(), sirius::minor_version(), sirius::revision());
     printf("git hash       : %s\n", sirius::git_hash().c_str());
     printf("git branch     : %s\n", sirius::git_branchname().c_str());
-    //printf("build time     : %s\n", build_date);
+    printf("build time     : %s\n", sirius::build_date().c_str());
     printf("start time     : %s\n", buf);
     printf("\n");
     printf("number of MPI ranks           : %i\n", comm_.size());

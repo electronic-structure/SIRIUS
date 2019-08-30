@@ -39,6 +39,8 @@ std::string git_hash();
 
 std::string git_branchname();
 
+std::string build_date();
+
 }
 
 #endif
