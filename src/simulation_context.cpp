@@ -1,6 +1,6 @@
-#include "version.hpp"
-#include "simulation_context.hpp"
 #include <gsl/gsl_sf_bessel.h>
+#include "sirius_version.hpp"
+#include "simulation_context.hpp"
 
 namespace sirius {
 
@@ -43,7 +43,7 @@ void Simulation_context::init_fft()
     }
 
     /* create FFT driver for dense mesh (density and potential) */
-    auto fft_grid = fft_grid_size_;
+    auto fft_grid = settings().fft_grid_size_;
     if (fft_grid[0] * fft_grid[1] * fft_grid[2] == 0) {
         fft_grid = get_min_fft_grid(pw_cutoff(), rlv).grid_size();
     }
@@ -540,9 +540,9 @@ void Simulation_context::print_info() const
     strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
 
     printf("\n");
-    printf("SIRIUS version : %i.%i.%i\n", major_version, minor_version, revision);
-    printf("git hash       : %s\n", git_hash);
-    printf("git branch     : %s\n", git_branchname);
+    printf("SIRIUS version : %i.%i.%i\n", sirius::major_version(), sirius::minor_version(), sirius::revision());
+    printf("git hash       : %s\n", sirius::git_hash().c_str());
+    printf("git branch     : %s\n", sirius::git_branchname().c_str());
     //printf("build time     : %s\n", build_date);
     printf("start time     : %s\n", buf);
     printf("\n");

@@ -82,9 +82,6 @@ class Simulation_context : public Simulation_parameters
     /// 2D BLACS grid for distributed linear algebra operations.
     std::unique_ptr<BLACS_grid> blacs_grid_;
 
-    /// Initial dimenstions for the fine-grain FFT grid.
-    std::array<int, 3> fft_grid_size_{{0, 0, 0}};
-
     /// Fine-grained FFT for density and potential.
     /** This is the FFT driver to transform periodic functions such as density and potential on the fine-grained
      *  FFT grid. The transformation is parallel. */
@@ -675,9 +672,10 @@ class Simulation_context : public Simulation_parameters
 
     splindex<splindex_t::block> split_gvec_local() const;
 
+    /// Set the size of the fine-grained FFT grid.
     void fft_grid_size(std::array<int, 3> fft_grid_size__)
     {
-        fft_grid_size_ = fft_grid_size__;
+        settings_input_.fft_grid_size_ = fft_grid_size__;
     }
 };
 
