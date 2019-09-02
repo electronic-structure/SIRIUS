@@ -6,6 +6,8 @@ using namespace sirius;
 
 int test_fft(cmd_args& args, device_t pu__)
 {
+    bool verbose{true};
+
     double cutoff = args.value<double>("cutoff", 40);
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
@@ -18,15 +20,16 @@ int test_fft(cmd_args& args, device_t pu__)
 
     Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
 
-    spfft::Grid spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
-                           SPFFT_PU_HOST, -1, Communicator::world().mpi_comm(), SPFFT_EXCH_DEFAULT);
+    auto spfft_pu = (pu__ == device_t::CPU) ? SPFFT_PU_HOST : SPFFT_PU_GPU;
 
-    const auto fft_type = gvec.reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
+    spfft::Grid spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
+                           spfft_pu, -1, Communicator::world().mpi_comm(), SPFFT_EXCH_DEFAULT);
+
+    const auto fft_type = SPFFT_TRANS_C2C;
 
     auto gv = gvp.get_gvec();
-    spfft::Transform spfft(spfft_grid.create_transform(SPFFT_PU_HOST, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
-        spl_z.local_size(), gvp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
-        gv.at(memory_t::host)));
+    spfft::Transform spfft(spfft_grid.create_transform(spfft_pu, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
+        spl_z.local_size(), gvp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host)));
 
     mdarray<double_complex, 1> f(gvec.num_gvec());
     if (pu__ == device_t::GPU) {
@@ -36,31 +39,23 @@ int test_fft(cmd_args& args, device_t pu__)
 
     int result{0};
 
+    if (Communicator::world().rank() == 0 && verbose) {
+        std::cout << "Number of G-vectors: " << gvec.num_gvec() << "\n"; 
+        std::cout << "FFT grid: " << spfft.dim_x() << " " << spfft.dim_y() << " " << spfft.dim_z() << "\n";
+    }
+
     for (int ig = 0; ig < gvec.num_gvec(); ig++) {
         auto v = gvec.gvec(ig);
-        //if (Communicator::world().rank() == 0) {
-        //    printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
-        //}
+        if (Communicator::world().rank() == 0 && verbose) {
+            printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
+        }
         f.zero();
         f[ig] = 1.0;
         /* load local set of PW coefficients */
         for (int igloc = 0; igloc < gvp.gvec_count_fft(); igloc++) {
             ftmp[igloc] = f[gvp.idx_gvec(igloc)];
         }
-        switch (pu__) {
-            case device_t::CPU: {
-                //fft.transform<1>(&ftmp[0]);
-                spfft.backward(reinterpret_cast<double const*>(&ftmp[0]), spfft.processing_unit());
-                break;
-            }
-            case device_t::GPU: {
-                //f.copy<memory_t::host, memory_t::device>();
-                //fft.transform<1, GPU>(gvec.partition(), f.at<GPU>(gvec.partition().gvec_offset_fft()));
-                //fft.transform<1, memory_t::host>(ftmp.at(memory_t::host));
-                //fft.buffer().copy_to(memory_t::host);
-                break;
-            }
-        }
+        spfft.backward(reinterpret_cast<double const*>(&ftmp[0]), SPFFT_PU_HOST);
 
         auto ptr = reinterpret_cast<double_complex*>(spfft.space_domain_data(SPFFT_PU_HOST));
 
@@ -84,6 +79,13 @@ int test_fft(cmd_args& args, device_t pu__)
         diff = std::sqrt(diff / fft_grid.num_points());
         if (diff > 1e-10) {
             result++;
+        }
+        if (verbose) {
+            if (diff > 1e-10) {
+                printf("Fail\n");
+            } else {
+                printf("OK\n");
+            }
         }
     }
 
