@@ -184,7 +184,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
             double d = 0.0;
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-                    d += abs(qmt(lm, ia) - qit(lm, ia));
+                    d += std::abs(qmt(lm, ia) - qit(lm, ia));
                 }
             }
             printf("pseudocharge error: %18.10f\n", d);

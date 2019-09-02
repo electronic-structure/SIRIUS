@@ -203,12 +203,14 @@ Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamilt
     }
 }
 
-void Band::get_singular_components(K_point& kp__, Hamiltonian& H__, Hamiltonian_k& Hk__, mdarray<double, 2>& o_diag__) const
+void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_diag__) const
 {
     PROFILE("sirius::Band::get_singular_components");
 
-    mdarray<double, 2> diag1(kp__.num_gkvec_loc(), 1, memory_t::host, "diag1");
-    for (int ig = 0; ig < kp__.num_gkvec_loc(); ig++) {
+    auto& kp = Hk__.kp();
+
+    mdarray<double, 2> diag1(kp.num_gkvec_loc(), 1, memory_t::host, "diag1");
+    for (int ig = 0; ig < kp.num_gkvec_loc(); ig++) {
         diag1[ig]  = 1;
     }
 
@@ -216,7 +218,7 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__, Hamiltonian_
         diag1.allocate(memory_t::device).copy_to(memory_t::device);
     }
 
-    auto& psi = kp__.singular_components();
+    auto& psi = kp.singular_components();
 
     int ncomp = psi.num_wf();
 
@@ -228,10 +230,10 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__, Hamiltonian_
 
     int num_phi = itso.subspace_size_ * ncomp;
 
-    Wave_functions phi(kp__.gkvec_partition(), num_phi, ctx_.preferred_memory_t());
-    Wave_functions ophi(kp__.gkvec_partition(), num_phi, ctx_.preferred_memory_t());
-    Wave_functions opsi(kp__.gkvec_partition(), ncomp, ctx_.preferred_memory_t());
-    Wave_functions res(kp__.gkvec_partition(), ncomp, ctx_.preferred_memory_t());
+    Wave_functions phi(kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t());
+    Wave_functions ophi(kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t());
+    Wave_functions opsi(kp.gkvec_partition(), ncomp, ctx_.preferred_memory_t());
+    Wave_functions res(kp.gkvec_partition(), ncomp, ctx_.preferred_memory_t());
 
     int bs = ctx_.cyclic_block_size();
 
@@ -258,7 +260,7 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__, Hamiltonian_
 
     if (ctx_.control().print_checksum_) {
         auto cs2 = phi.checksum(ctx_.processing_unit(), 0, 0, ncomp);
-        if (kp__.comm().rank() == 0) {
+        if (kp.comm().rank() == 0) {
             utils::print_checksum("phi", cs2);
         }
     }
@@ -271,11 +273,11 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__, Hamiltonian_
     /* number of newly added basis functions */
     int n = ncomp;
 
-    if (ctx_.control().verbosity_ >= 3 && kp__.comm().rank() == 0) {
+    if (ctx_.control().verbosity_ >= 3 && kp.comm().rank() == 0) {
         printf("iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
     }
 
-    if (kp__.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+    if (kp.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
 
@@ -284,7 +286,7 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__, Hamiltonian_
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        H__.apply_fv_h_o(&kp__, true, false, N, n, phi, nullptr, &ophi);
+        Hk__.apply_fv_h_o(true, false, N, n, phi, nullptr, &ophi);
 
         if (ctx_.control().verification_ >= 1) {
             set_subspace_mtrx(0, N + n, phi, ophi, ovlp);
@@ -341,7 +343,7 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__, Hamiltonian_
             }
         }
 
-        if (ctx_.control().verbosity_ >= 3 && kp__.comm().rank() == 0) {
+        if (ctx_.control().verbosity_ >= 3 && kp.comm().rank() == 0) {
             printf("step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
             if (ctx_.control().verbosity_ >= 4) {
                 for (int i = 0; i < ncomp; i++) {
@@ -370,7 +372,7 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__, Hamiltonian_
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                 break;
             } else { /* otherwise, set Psi as a new trial basis */
-                if (ctx_.control().verbosity_ >= 3 && kp__.comm().rank() == 0) {
+                if (ctx_.control().verbosity_ >= 3 && kp.comm().rank() == 0) {
                     printf("subspace size limit reached\n");
                 }
 
@@ -398,7 +400,7 @@ void Band::get_singular_components(K_point& kp__, Hamiltonian& H__, Hamiltonian_
         psi.pw_coeffs(0).deallocate(memory_t::device);
     }
 
-    if (ctx_.control().verbosity_ >= 2 && kp__.comm().rank() == 0) {
+    if (ctx_.control().verbosity_ >= 2 && kp.comm().rank() == 0) {
         printf("smallest eigen-value of the singular components: %20.16f\n", eval[0]);
     }
 }
@@ -411,7 +413,7 @@ void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltoni
 
     auto h_o_diag = Hk__.get_h_o_diag_lapw<3>();
 
-    get_singular_components(kp__, H__, Hk__, h_o_diag.second);
+    get_singular_components(Hk__, h_o_diag.second);
 
     auto h_diag = H__.get_h_diag(&kp__, H__.local_op().v0(0), ctx_.theta_pw(0).real());
     auto o_diag1 = H__.get_o_diag(&kp__, ctx_.theta_pw(0).real());

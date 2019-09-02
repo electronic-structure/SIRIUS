@@ -818,7 +818,9 @@ class Hamiltonian_k
         #pragma omp parallel
         {
             matrix<double_complex> alm(kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size());
-            matrix<double_complex> halm(kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size());
+
+            matrix<double_complex> halm = (what & 1) ?
+                matrix<double_complex>(kp_.num_gkvec_loc(), uc.max_mt_aw_basis_size()) : matrix<double_complex>();
 
             auto h_diag_omp = (what & 1) ? mdarray<double, 1>(kp_.num_gkvec_loc()) : mdarray<double, 1>();
             if (what & 1) {
@@ -836,7 +838,9 @@ class Hamiltonian_k
                 int nmt = atom.mt_aw_basis_size();
 
                 kp_.alm_coeffs_loc().generate(ia, alm);
-                H0_.apply_hmt_to_apw<spin_block_t::nm>(atom, kp_.num_gkvec_loc(), alm, halm);
+                if (what & 1) {
+                    H0_.apply_hmt_to_apw<spin_block_t::nm>(atom, kp_.num_gkvec_loc(), alm, halm);
+                }
 
                 for (int xi = 0; xi < nmt; xi++) {
                     for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {

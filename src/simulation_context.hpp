@@ -479,8 +479,8 @@ class Simulation_context : public Simulation_parameters
 
     /// Make periodic function out of form factors.
     /** Return vector of plane-wave coefficients */ // TODO: return mdarray
-    template <index_domain_t index_domain>
-    inline std::vector<double_complex> make_periodic_function(std::function<double(int, double)> form_factors__) const
+    template <index_domain_t index_domain, typename F>
+    inline std::vector<double_complex> make_periodic_function(F&& form_factors__) const
     {
         PROFILE("sirius::Simulation_context::make_periodic_function");
 

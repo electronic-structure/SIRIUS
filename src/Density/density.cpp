@@ -162,7 +162,7 @@ Density::initial_density_pseudo()
     if (ctx_.control().print_checksum_) {
         auto cs = rho().checksum_rg();
         if (ctx_.comm().rank() == 0) {
-            utils::print_checksum("rho_rg", cs);
+            utils::print_checksum("rho_rg_init", cs);
         }
     }
 
@@ -204,26 +204,25 @@ Density::initial_density_pseudo()
         }
     }
 
-    if (ctx_.control().print_checksum_) {
-        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            auto cs = component(i).checksum_rg();
-            if (ctx_.comm().rank() == 0) {
-                std::stringstream s;
-                s << "component[" << i << "]";
-                utils::print_checksum(s.str(), cs);
-            }
-        }
-    }
-
     rho().fft_transform(-1);
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         magnetization(j).fft_transform(-1);
     }
 
-    //if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
-    //    double_complex cs = mdarray<double_complex, 1>(&rho_->f_pw(0), ctx_.gvec().num_gvec()).checksum();
-    //    DUMP("checksum(rho_pw): %20.14f %20.14f", std::real(cs), std::imag(cs));
-    //}
+    if (ctx_.control().print_checksum_) {
+        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+            auto cs = component(i).checksum_rg();
+            auto cs1 = component(i).checksum_pw();
+            if (ctx_.comm().rank() == 0) {
+                std::stringstream s;
+                s << "component[" << i << "]_rg";
+                utils::print_checksum(s.str(), cs);
+                std::stringstream s1;
+                s1 << "component[" << i << "]_pw";
+                utils::print_checksum(s1.str(), cs1);
+            }
+        }
+    }
 }
 
 void

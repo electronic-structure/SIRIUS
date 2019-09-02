@@ -391,7 +391,6 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* compute new potential */
         potential_.generate(density_);
 
-
         if (!ctx_.full_potential() && ctx_.control().verification_ >= 1) {
             double eps{0.1};
             for (int i = 0; i < 10; i++) {
