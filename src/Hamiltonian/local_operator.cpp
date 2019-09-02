@@ -160,8 +160,10 @@ void Local_operator::prepare(Potential& potential__)
         if (ctx_.control().print_checksum_) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 auto cs = veff_vec_[j].checksum_pw();
+                auto cs1 = veff_vec_[j].checksum_rg();
                 if (gvec_coarse_p_.gvec().comm().rank() == 0) {
-                    utils::print_checksum("veff_vec", cs);
+                    utils::print_checksum("veff_vec_pw", cs);
+                    utils::print_checksum("veff_vec_rg", cs1);
                 }
             }
         }
