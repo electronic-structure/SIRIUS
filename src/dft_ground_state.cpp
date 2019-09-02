@@ -391,6 +391,25 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* compute new potential */
         potential_.generate(density_);
 
+
+        if (!ctx_.full_potential() && ctx_.control().verification_ >= 1) {
+            double eps{0.1};
+            for (int i = 0; i < 10; i++) {
+                Potential p1(ctx_);
+                p1.scale_rho_xc(1 + eps);
+                p1.generate(density_);
+
+                double evxc = potential_.energy_vxc(density_) + potential_.energy_vxc_core(density_) + energy_bxc();
+                double deriv = (p1.energy_exc(density_) - potential_.energy_exc(density_)) / eps;
+
+                printf("eps              : %18.12f\n", eps);
+                printf("Energy Vxc       : %18.12f\n", evxc);
+                printf("numerical deriv  : %18.12f\n", deriv);
+                printf("difference       : %18.12f\n", std::abs(evxc - deriv));
+                eps /= 10;
+            }
+        }
+
         /* symmetrize potential and effective magnetic field */
         if (ctx_.use_symmetry()) {
             potential_.symmetrize();

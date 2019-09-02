@@ -362,18 +362,23 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, int ispn__, Wave_functi
         switch (spfftk__.processing_unit()) {
             case SPFFT_PU_HOST: {
                 if (ispn_block < 2) { /* up-up or dn-dn block */
-                    if (ctx_.gamma_point()) {
-                        #pragma omp parallel for schedule(static)
-                        for (int ir = 0; ir < nr; ir++) {
-                            /* multiply by V+Bz or V-Bz */
-                            buf[ir] *= veff_vec_[ispn_block].f_rg(ir);
+                    switch (spfftk__.type()) {
+                        case SPFFT_TRANS_R2C: {
+                            #pragma omp parallel for schedule(static)
+                            for (int ir = 0; ir < nr; ir++) {
+                                /* multiply by V+Bz or V-Bz */
+                                buf[ir] *= veff_vec_[ispn_block].f_rg(ir);
+                            }
+                            break;
                         }
-                    } else {
-                        auto wf = reinterpret_cast<double_complex*>(buf);
-                        #pragma omp parallel for schedule(static)
-                        for (int ir = 0; ir < nr; ir++) {
-                            /* multiply by V+Bz or V-Bz */
-                            wf[ir] *= veff_vec_[ispn_block].f_rg(ir);
+                        case SPFFT_TRANS_C2C: {
+                            auto wf = reinterpret_cast<double_complex*>(buf);
+                            #pragma omp parallel for schedule(static)
+                            for (int ir = 0; ir < nr; ir++) {
+                                /* multiply by V+Bz or V-Bz */
+                                wf[ir] *= veff_vec_[ispn_block].f_rg(ir);
+                            }
+                            break;
                         }
                     }
                 } else {
@@ -388,30 +393,32 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, int ispn__, Wave_functi
                 break;
             }
             case SPFFT_PU_GPU: {
+#if defined(__GPU)
                 if (ispn_block < 2) { /* up-up or dn-dn block */
-                    if (ctx_.gamma_point()) {
-#if defined(__GPU)
-                        /* multiply by V+Bz or V-Bz */
-                        mul_by_veff_real_real_gpu(nr, buf, veff_vec_[ispn_block].f_rg().at(memory_t::device));
-#endif
-                    } else {
-#if defined(__GPU)
-                        auto wf = reinterpret_cast<double_complex*>(buf);
-                        /* multiply by V+Bz or V-Bz */
-                        mul_by_veff_complex_real_gpu(nr, wf, veff_vec_[ispn_block].f_rg().at(memory_t::device));
-#endif
+                    switch (spfftk__.type()) {
+                        case SPFFT_TRANS_R2C: {
+                            /* multiply by V+Bz or V-Bz */
+                            mul_by_veff_real_real_gpu(nr, buf, veff_vec_[ispn_block].f_rg().at(memory_t::device));
+                            break;
+                        }
+                        case SPFFT_TRANS_C2C: {
+                            auto wf = reinterpret_cast<double_complex*>(buf);
+                            /* multiply by V+Bz or V-Bz */
+                            mul_by_veff_complex_real_gpu(nr, wf, veff_vec_[ispn_block].f_rg().at(memory_t::device));
+                            break;
+                        }
                     }
                 } else {
-#if defined(__GPU)
                     /* multiply by Bx +/- i*By */
                     double pref = (ispn_block == 2) ? -1 : 1;
                     auto wf     = reinterpret_cast<double_complex*>(buf);
                     mul_by_veff_complex_complex_gpu(nr, wf, pref, veff_vec_[2].f_rg().at(memory_t::device),
                         veff_vec_[3].f_rg().at(memory_t::device));
-#endif
                 }
                 break;
+#endif
             }
+            break;
         }
     };
 

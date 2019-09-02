@@ -27,6 +27,7 @@
 
 #include <xc.h>
 #include <string.h>
+#include <memory>
 
 namespace sirius {
 
@@ -1383,7 +1384,7 @@ class XC_functional_base
 
         int num_spins_;
 
-        xc_func_type handler_;
+        std::unique_ptr<xc_func_type> handler_{nullptr};
 
         bool libxc_initialized_{false};
     private:
@@ -1400,7 +1401,7 @@ class XC_functional_base
               num_spins_(num_spins__)
         {
             /* check if functional name is in list */
-            if (libxc_functionals.count(libxc_name_) == 0) {
+            if (libxc_functionals.count(libxc_name_) == 0 && libxc_name_ != "XC_GGA_DEBUG" && libxc_name_ != "XC_LDA_DEBUG") {
                 /* if not just return since van der walls functionals can be
                  * used */
                 libxc_initialized_ = false;
@@ -1409,9 +1410,13 @@ class XC_functional_base
 
             auto ns = (num_spins__ == 1) ? XC_UNPOLARIZED : XC_POLARIZED;
 
-            /* init xc functional handler */
-            if (xc_func_init(&handler_, libxc_functionals.at(libxc_name_), ns) != 0) {
-                TERMINATE("xc_func_init() failed");
+            if (libxc_name_ != "XC_GGA_DEBUG" && libxc_name_ != "XC_LDA_DEBUG") {
+                handler_ = std::unique_ptr<xc_func_type>(new xc_func_type);
+
+                /* init xc functional handler */
+                if (xc_func_init(handler_.get(), libxc_functionals.at(libxc_name_), ns) != 0) {
+                    TERMINATE("xc_func_init() failed");
+                }
             }
 
             libxc_initialized_ = true;
@@ -1421,40 +1426,55 @@ class XC_functional_base
         {
             this->libxc_name_  = src__.libxc_name_;
             this->num_spins_   = src__.num_spins_;
-            this->handler_     = src__.handler_;
+            this->handler_     = std::move(src__.handler_);
             this->libxc_initialized_ = src__.libxc_initialized_;
             src__.libxc_initialized_ = false;
         }
 
         ~XC_functional_base()
         {
-            if (libxc_initialized_) {
-                xc_func_end(&handler_);
+            if (handler_) {
+                xc_func_end(handler_.get());
             }
         }
 
         const std::string name() const
         {
-            return std::string(handler_.info->name);
+            if (handler_) {
+                return std::string(handler_->info->name);
+            } else {
+                return libxc_name_;
+            }
         }
 
         const std::string refs() const
         {
-            std::stringstream s;
-            for (int i = 0; handler_.info->refs[i] != NULL; i++) {
-                s << std::string(handler_.info->refs[i]->ref);
-                if (strlen(handler_.info->refs[i]->doi) > 0) {
-                    s << " (" << std::string(handler_.info->refs[i]->doi) << ")";
+            if (handler_) {
+                std::stringstream s;
+                for (int i = 0; handler_->info->refs[i] != NULL; i++) {
+                    s << std::string(handler_->info->refs[i]->ref);
+                    if (strlen(handler_->info->refs[i]->doi) > 0) {
+                        s << " (" << std::string(handler_->info->refs[i]->doi) << ")";
+                    }
+                    s << std::endl;
                 }
-                s << std::endl;
+                return s.str();
+            } else {
+                return "";
             }
-
-            return s.str();
         }
 
         int family() const
         {
-            return handler_.info->family;
+            if (handler_) {
+                return handler_->info->family;
+            } else {
+                if (libxc_name_ == "XC_GGA_DEBUG") {
+                    return XC_FAMILY_GGA;
+                } else {
+                    return XC_FAMILY_LDA;
+                }
+            }
         }
 
         bool is_lda() const
@@ -1469,7 +1489,11 @@ class XC_functional_base
 
         int kind() const
         {
-            return handler_.info->kind;
+            if (handler_) {
+                return handler_->info->kind;
+            } else {
+                return XC_EXCHANGE_CORRELATION;
+            }
         }
 
         bool is_exchange() const
@@ -1506,7 +1530,16 @@ class XC_functional_base
                 }
             }
 
-            xc_lda_exc_vxc(&handler_, size, rho, e, v);
+            if (handler_) {
+                xc_lda_exc_vxc(handler_.get(), size, rho, e, v);
+            } else {
+                for (int i = 0; i < size; i++) {
+                    /* E = \int e * rho * dr */
+                    e[i] = -0.001 * (rho[i] * rho[i]);
+                    /* var E / var rho = (de/drho) rho + e */
+                    v[i] = -0.002 * rho[i] * rho[i] + e[i];
+                }
+            }
         }
 
         /// Get LSDA contribution.
@@ -1535,52 +1568,22 @@ class XC_functional_base
                 rho_ud[2 * i + 1] = rho_dn[i];
             }
 
-            std::vector<double> v_ud(size * 2);
+            if (handler_) {
+                std::vector<double> v_ud(size * 2);
 
-            xc_lda_exc_vxc(&handler_, size, &rho_ud[0], &e[0], &v_ud[0]);
+                xc_lda_exc_vxc(handler_.get(), size, &rho_ud[0], &e[0], &v_ud[0]);
 
-            /* extract potential */
-            for (int i = 0; i < size; i++) {
-                v_up[i] = v_ud[2 * i];
-                v_dn[i] = v_ud[2 * i + 1];
-            }
-        }
-
-        void add_lda(const int size,
-                     const double* rho_up,
-                     const double* rho_dn,
-                     double* v_up,
-                     double* v_dn,
-                     double* e)
-        {
-            if (family() != XC_FAMILY_LDA) {
-                TERMINATE("wrong XC");
-            }
-
-            std::vector<double> rho_ud(size * 2);
-            /* check and rearrange density */
-            for (int i = 0; i < size; i++) {
-                if (rho_up[i] < 0 || rho_dn[i] < 0) {
-                    std::stringstream s;
-                    s << "rho is negative : " << utils::double_to_string(rho_up[i])
-                      << " " << utils::double_to_string(rho_dn[i]);
-                    TERMINATE(s);
+                /* extract potential */
+                for (int i = 0; i < size; i++) {
+                    v_up[i] = v_ud[2 * i];
+                    v_dn[i] = v_ud[2 * i + 1];
                 }
-
-                rho_ud[2 * i]     = rho_up[i];
-                rho_ud[2 * i + 1] = rho_dn[i];
-            }
-
-            std::vector<double> v_ud(size * 2);
-            std::vector<double> e_tmp(size);
-
-            xc_lda_exc_vxc(&handler_, size, &rho_ud[0], &e_tmp[0], &v_ud[0]);
-
-            /* extract potential */
-            for (int i = 0; i < size; i++) {
-                v_up[i] += v_ud[2 * i];
-                v_dn[i] += v_ud[2 * i + 1];
-                e[i]    += e_tmp[i];
+            } else {
+                for (int i = 0; i < size; i++) {
+                    e[i] = -0.001 * (rho_up[i] * rho_up[i] + rho_dn[i] * rho_dn[i]);
+                    v_up[i] = -0.002 * rho_up[i] * (rho_up[i] + rho_dn[i]) + e[i];
+                    v_dn[i] = -0.002 * rho_dn[i] * (rho_up[i] + rho_dn[i]) + e[i];
+                }
             }
         }
 
@@ -1603,7 +1606,15 @@ class XC_functional_base
                 }
             }
 
-            xc_gga_exc_vxc(&handler_, size, rho, sigma, e, vrho, vsigma);
+            if (handler_) {
+                xc_gga_exc_vxc(handler_.get(), size, rho, sigma, e, vrho, vsigma);
+            } else {
+                for (int i = 0; i < size; i++) {
+                    e[i] = -0.001 * (rho[i] * sigma[i]);
+                    vrho[i] = -0.001 * sigma[i];
+                    vsigma[i] = -0.001 * rho[i];
+                }
+            }
         }
 
         /// Get spin-resolved GGA contribution.
@@ -1647,16 +1658,27 @@ class XC_functional_base
             std::vector<double> vrho(2 * size);
             std::vector<double> vsigma(3 * size);
 
-            xc_gga_exc_vxc(&handler_, size, &rho[0], &sigma[0], e, &vrho[0], &vsigma[0]);
+            if (handler_) {
+                xc_gga_exc_vxc(handler_.get(), size, &rho[0], &sigma[0], e, &vrho[0], &vsigma[0]);
 
-            /* extract vrho and vsigma */
-            for (int i = 0; i < size; i++) {
-                vrho_up[i] = vrho[2 * i];
-                vrho_dn[i] = vrho[2 * i + 1];
+                /* extract vrho and vsigma */
+                for (int i = 0; i < size; i++) {
+                    vrho_up[i] = vrho[2 * i];
+                    vrho_dn[i] = vrho[2 * i + 1];
 
-                vsigma_uu[i] = vsigma[3 * i];
-                vsigma_ud[i] = vsigma[3 * i + 1];
-                vsigma_dd[i] = vsigma[3 * i + 2];
+                    vsigma_uu[i] = vsigma[3 * i];
+                    vsigma_ud[i] = vsigma[3 * i + 1];
+                    vsigma_dd[i] = vsigma[3 * i + 2];
+                }
+            } else {
+                for (int i = 0; i < size; i++) {
+                    e[i] = -0.001 * ((rho_up[i] + rho_dn[i]) * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]));
+                    vrho_up[i] = -0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
+                    vrho_dn[i] = -0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
+                    vsigma_uu[i] = -0.001 * (rho_up[i] + rho_dn[i]);
+                    vsigma_ud[i] = -0.001 * (rho_up[i] + rho_dn[i]);
+                    vsigma_dd[i] = -0.001 * (rho_up[i] + rho_dn[i]);
+                }
             }
         }
 };

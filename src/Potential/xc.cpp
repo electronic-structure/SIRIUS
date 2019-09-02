@@ -522,6 +522,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         if (add_pseudo_core__) {
             d += density__.rho_pseudo_core().f_rg(ir);
         }
+        d *= scale_rho_xc_;
 
         rhomin = std::min(rhomin, d);
         rho.f_rg(ir) = std::max(d, 0.0);
@@ -774,6 +775,8 @@ void Potential::xc_rg_magnetic(Density const& density__)
         if (add_pseudo_core__) {
             rho += density__.rho_pseudo_core().f_rg(ir);
         }
+        rho *= scale_rho_xc_;
+        mag *= scale_rho_xc_;
 
         /* remove numerical noise at high values of magnetization */
         mag = std::min(mag, rho);

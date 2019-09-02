@@ -42,7 +42,7 @@ using json = nlohmann::json;
 #include "hdf5_tree.hpp"
 #include "Band/band.hpp"
 #include "dft_ground_state.hpp"
-#include "version.hpp"
+#include "sirius_version.hpp"
 
 #if defined(__PLASMA)
 extern "C" void plasma_init(int num_cores);
@@ -80,7 +80,8 @@ inline void initialize(bool call_mpi_init__ = true)
     utils::start_global_timer();
 
     if (Communicator::world().rank() == 0) {
-        printf("SIRIUS %i.%i.%i, git hash: %s\n", major_version, minor_version, revision, git_hash);
+        printf("SIRIUS %i.%i.%i, git hash: %s\n", sirius::major_version(), sirius::minor_version(),
+               sirius::revision(), sirius::git_hash().c_str());
 #if !defined(NDEBUG)
         printf("Warning! Compiled in 'debug' mode with assert statements enabled!\n");
 #endif

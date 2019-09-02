@@ -1,7 +1,7 @@
-#include "version.hpp"
+#include <gsl/gsl_sf_bessel.h>
+#include "sirius_version.hpp"
 #include "simulation_context.hpp"
 #include "Symmetry/find_lat_sym.hpp"
-#include <gsl/gsl_sf_bessel.h>
 
 namespace sirius {
 
@@ -35,14 +35,19 @@ double unit_step_function_form_factors(double R__, double g__)
 
 void Simulation_context::init_fft_grid()
 {
+    if (!(control().fft_mode_ == "serial" || control().fft_mode_ == "parallel")) {
+        TERMINATE("wrong FFT mode");
+    }
+
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
-    /* if input grid size was not initialized, create a default grid */
-    if (fft_grid_size_[0] * fft_grid_size_[1] * fft_grid_size_[2] == 0) {
+    /* create FFT driver for dense mesh (density and potential) */
+    auto fft_grid = settings().fft_grid_size_;
+    if (fft_grid[0] * fft_grid[1] * fft_grid[2] == 0) {
         fft_grid_ = get_min_fft_grid(pw_cutoff(), rlv);
     } else {
         /* else create a grid with user-specified dimensions */
-        fft_grid_ = sddk::FFT3D_grid(fft_grid_size_);
+        fft_grid_ = sddk::FFT3D_grid(fft_grid);
     }
 
     /* create FFT grid for coarse mesh */
@@ -553,10 +558,10 @@ void Simulation_context::print_info() const
     strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
 
     printf("\n");
-    printf("SIRIUS version : %i.%i.%i\n", major_version, minor_version, revision);
-    printf("git hash       : %s\n", git_hash);
-    printf("git branch     : %s\n", git_branchname);
-    //printf("build time     : %s\n", build_date);
+    printf("SIRIUS version : %i.%i.%i\n", sirius::major_version(), sirius::minor_version(), sirius::revision());
+    printf("git hash       : %s\n", sirius::git_hash().c_str());
+    printf("git branch     : %s\n", sirius::git_branchname().c_str());
+    printf("build time     : %s\n", sirius::build_date().c_str());
     printf("start time     : %s\n", buf);
     printf("\n");
     printf("number of MPI ranks           : %i\n", comm_.size());
