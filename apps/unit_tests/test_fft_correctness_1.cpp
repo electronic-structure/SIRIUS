@@ -65,8 +65,8 @@ int test_fft(cmd_args& args, device_t pu__)
             for (int j1 = 0; j1 < fft_grid[1]; j1++) {
                 for (int j2 = 0; j2 < spfft.local_z_length(); j2++) {
                     /* get real space fractional coordinate */
-                    auto rl = vector3d<double>(double(j0) / fft_grid[0], 
-                                               double(j1) / fft_grid[1], 
+                    auto rl = vector3d<double>(double(j0) / fft_grid[0],
+                                               double(j1) / fft_grid[1],
                                                double(spfft.local_z_offset() + j2) / fft_grid[2]);
                     int idx = fft_grid.index_by_coord(j0, j1, j2);
 

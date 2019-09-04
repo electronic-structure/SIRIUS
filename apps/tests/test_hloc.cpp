@@ -59,7 +59,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     Communicator::world().barrier();
     utils::timer t1("h_loc");
     for (int i = 0; i < 4; i++) {
-        hloc.apply_h(fft, 0, phi, hphi, i * num_bands__, num_bands__);
+        hloc.apply_h(fft, spin_range(0), phi, hphi, i * num_bands__, num_bands__);
     }
     Communicator::world().barrier();
     t1.stop();
