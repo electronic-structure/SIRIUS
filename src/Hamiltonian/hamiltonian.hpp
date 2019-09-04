@@ -342,138 +342,6 @@ class Hamiltonian
     template <device_t pu, electronic_structure_method_t basis>
     void set_fv_h_o(K_point* kp, dmatrix<double_complex>& h, dmatrix<double_complex>& o) const;
 
-    /// Apply LAPW Hamiltonain and overlap to the trial wave-functions.
-    /** Check the documentation of Hamiltonain::set_fv_h_o() for the expressions of Hamiltonian and overlap
-     *  matrices and \ref basis for the definition of the LAPW+lo basis.
-     *
-     *  For the set of wave-functions expanded in LAPW+lo basis (k-point index is dropped for simplicity)
-     *  \f[
-     *      \psi_{i} = \sum_{\mu} \phi_{\mu} C_{\mu i}
-     *  \f]
-     *  where \f$ \mu = \{ {\bf G}, j \} \f$ is a combined index of LAPW and local orbitals we want to contrusct
-     *  a subspace Hamiltonian and overlap matrices:
-     *  \f[
-     *      H_{i' i} = \langle \psi_{i'} | \hat H | \psi_i \rangle =
-     *          \sum_{\mu' \mu} C_{\mu' i'}^{*} \langle \phi_{\mu'} | \hat H | \phi_{\mu} \rangle C_{\mu i} =
-     *          \sum_{\mu'} C_{\mu' i'}^{*} h_{\mu' i}(\psi)
-     *  \f]
-     *  \f[
-     *      O_{i' i} = \langle \psi_{i'} | \psi_i \rangle =
-     *          \sum_{\mu' \mu} C_{\mu' i'}^{*} \langle \phi_{\mu'} | \phi_{\mu} \rangle C_{\mu i} =
-     *          \sum_{\mu'} C_{\mu' i'}^{*} o_{\mu' i}(\psi)
-     *  \f]
-     *  where
-     *  \f[
-     *      h_{\mu' i}(\psi) = \sum_{\mu} \langle \phi_{\mu'} | \hat H | \phi_{\mu} \rangle C_{\mu i}
-     *  \f]
-     *  and
-     *  \f[
-     *      o_{\mu' i}(\psi) = \sum_{\mu} \langle \phi_{\mu'} | \phi_{\mu} \rangle C_{\mu i}
-     *  \f]
-     *  For the APW block of \f$  h_{\mu' i}(\psi)  \f$ and \f$  o_{\mu' i}(\psi)  \f$ we have:
-     *  \f[
-     *       h_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} +
-     *          \sum_{j} \langle \phi_{\bf G'} | \hat H | \phi_{j} \rangle C_{j i}
-     *  \f]
-     *  \f[
-     *       o_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \phi_{\bf G} \rangle C_{{\bf G} i} +
-     *          \sum_{j} \langle \phi_{\bf G'} | \phi_{j} \rangle C_{j i}
-     *  \f]
-     *  and for the lo block:
-     *  \f[
-     *       h_{j' i}(\psi) = \sum_{{\bf G}} \langle \phi_{j'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} +
-     *          \sum_{j} \langle \phi_{j'} | \hat H | \phi_{j} \rangle C_{j i}
-     *  \f]
-     *  \f[
-     *       o_{j' i}(\psi) = \sum_{{\bf G}} \langle \phi_{j'} |  \phi_{\bf G} \rangle C_{{\bf G} i} +
-     *          \sum_{j} \langle \phi_{j'} | \phi_{j} \rangle C_{j i}
-     *  \f]
-     *
-     *  APW-APW contribution, muffin-tin part:
-     *  \f[
-     *      h_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} =
-     *          \sum_{{\bf G}} \sum_{\alpha} \sum_{\xi'} a_{\xi'}^{\alpha *}({\bf G'}) b_{\xi'}^{\alpha}({\bf G})
-     *           C_{{\bf G} i}
-     *  \f]
-     *  \f[
-     *      o_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \phi_{\bf G} \rangle C_{{\bf G} i} =
-     *          \sum_{{\bf G}} \sum_{\alpha} \sum_{\xi'} a_{\xi'}^{\alpha *}({\bf G'}) a_{\xi'}^{\alpha}({\bf G})
-     *           C_{{\bf G} i}
-     *  \f]
-     *  APW-APW contribution, interstitial effective potential part:
-     *  \f[
-     *      h_{{\bf G'} i}(\psi) = \int \Theta({\bf r}) e^{-i{\bf G'}{\bf r}} V({\bf r}) \psi_{i}({\bf r}) d{\bf r}
-     *  \f]
-     *  This is done by transforming \f$ \psi_i({\bf G}) \f$ to the real space, multiplying by effectvive potential
-     *  and step function and transforming the result back to the \f$ {\bf G} \f$ domain.
-     *
-     *  APW-APW contribution, interstitial kinetic energy part:
-     *  \f[
-     *      h_{{\bf G'} i}(\psi) = \int \Theta({\bf r}) e^{-i{\bf G'}{\bf r}} \Big( -\frac{1}{2} \nabla \Big)
-     *          \Big( \nabla \psi_{i}({\bf r}) \Big) d{\bf r}
-     *  \f]
-     *  and the gradient of the wave-function is computed with FFT as:
-     *  \f[
-     *      \Big( \nabla \psi_{i}({\bf r}) \Big) = \sum_{\bf G} i{\bf G}e^{i{\bf G}{\bf r}}\psi_i({\bf G})
-     *  \f]
-     *
-     *  APW-APW contribution, interstitial overlap:
-     *  \f[
-     *      o_{{\bf G'} i}(\psi) = \int \Theta({\bf r}) e^{-i{\bf G'}{\bf r}} \psi_{i}({\bf r}) d{\bf r}
-     *  \f]
-     *
-     *  APW-lo contribution:
-     *  \f[
-     *      h_{{\bf G'} i}(\psi) =  \sum_{j} \langle \phi_{\bf G'} | \hat H | \phi_{j} \rangle C_{j i} =
-     *      \sum_{j} C_{j i}   \sum_{L'\nu'} a_{L'\nu'}^{\alpha_j *}({\bf G'})
-     *          \langle  u_{\ell' \nu'}^{\alpha_j}Y_{\ell' m'}|\hat h^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j}
-     * Y_{\ell_j m_j} \rangle =
-     *      \sum_{j} C_{j i} \sum_{\xi'} a_{\xi'}^{\alpha_j *}({\bf G'}) h_{\xi' \xi_j}^{\alpha_j}
-     *  \f]
-     *  \f[
-     *      o_{{\bf G'} i}(\psi) =  \sum_{j} \langle \phi_{\bf G'} | \phi_{j} \rangle C_{j i} =
-     *      \sum_{j} C_{j i}   \sum_{L'\nu'} a_{L'\nu'}^{\alpha_j *}({\bf G'})
-     *          \langle  u_{\ell' \nu'}^{\alpha_j}Y_{\ell' m'}| \phi_{\ell_j}^{\zeta_j \alpha_j} Y_{\ell_j m_j} \rangle
-     * =
-     *      \sum_{j} C_{j i} \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'}) o_{\nu' \zeta_j \ell_j}^{\alpha_j}
-     *  \f]
-     *  lo-APW contribution:
-     *  \f[
-     *     h_{j' i}(\psi) = \sum_{\bf G} \langle \phi_{j'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} =
-     *      \sum_{\bf G} C_{{\bf G} i} \sum_{L\nu} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'}
-     * m_{j'}}
-     *          |\hat h^{\alpha_{j'}} | u_{\ell \nu}^{\alpha_{j'}}Y_{\ell m}  \rangle a_{L\nu}^{\alpha_{j'}}({\bf G}) =
-     *      \sum_{\bf G} C_{{\bf G} i} \sum_{\xi} h_{\xi_{j'} \xi}^{\alpha_{j'}} a_{\xi}^{\alpha_{j'}}({\bf G})
-     *  \f]
-     *  \f[
-     *     o_{j' i}(\psi) = \sum_{\bf G} \langle \phi_{j'} |  \phi_{\bf G} \rangle C_{{\bf G} i} =
-     *      \sum_{\bf G} C_{{\bf G} i} \sum_{L\nu} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'}
-     * m_{j'}}
-     *          | u_{\ell \nu}^{\alpha_{j'}}Y_{\ell m}  \rangle a_{L\nu}^{\alpha_{j'}}({\bf G}) =
-     *      \sum_{\bf G} C_{{\bf G} i} \sum_{\nu} o_{\zeta_{j'} \nu \ell_{j'}}^{\alpha_{j'}} a_{\ell_{j'} m_{j'}
-     * \nu}^{\alpha_{j'}}({\bf G})
-     *  \f]
-     *  lo-lo contribution:
-     *  \f[
-     *      h_{j' i}(\psi) = \sum_{j} \langle \phi_{j'} | \hat H | \phi_{j} \rangle C_{j i} = \sum_{j} C_{j i}
-     * h_{\xi_{j'} \xi_j}^{\alpha_j}
-     *          \delta_{\alpha_j \alpha_{j'}}
-     *  \f]
-     *  \f[
-     *      o_{j' i}(\psi) = \sum_{j} \langle \phi_{j'} | \phi_{j} \rangle C_{j i} = \sum_{j} C_{j i}
-     *          o_{\zeta_{j'} \zeta_{j} \ell_j}^{\alpha_j}
-     *            \delta_{\alpha_j \alpha_{j'}} \delta_{\ell_j \ell_{j'}} \delta_{m_j m_{j'}}
-     *  \f]
-     */
-    void apply_fv_h_o(K_point*        kp__,
-                             bool            apw_only__,
-                             bool            phi_is_lo__,
-                             int             N__,
-                             int             n__,
-                             Wave_functions& phi__,
-                             Wave_functions* hphi__,
-                             Wave_functions* ophi__) const;
-
     /// Get diagonal elements of LAPW Hamiltonian.
     mdarray<double, 2> get_h_diag(K_point* kp__, double v0__, double theta0__) const;
 
@@ -895,6 +763,128 @@ class Hamiltonian_k
     }
 
     /// Apply first-variational LAPW Hamiltonian and overlap matrices.
+    /** Check the documentation of Hamiltonain::set_fv_h_o() for the expressions of Hamiltonian and overlap
+     *  matrices and \ref basis for the definition of the LAPW+lo basis.
+     *
+     *  For the set of wave-functions expanded in LAPW+lo basis (k-point index is dropped for simplicity)
+     *  \f[
+     *      \psi_{i} = \sum_{\mu} \phi_{\mu} C_{\mu i}
+     *  \f]
+     *  where \f$ \mu = \{ {\bf G}, j \} \f$ is a combined index of LAPW and local orbitals we want to contrusct
+     *  a subspace Hamiltonian and overlap matrices:
+     *  \f[
+     *      H_{i' i} = \langle \psi_{i'} | \hat H | \psi_i \rangle =
+     *          \sum_{\mu' \mu} C_{\mu' i'}^{*} \langle \phi_{\mu'} | \hat H | \phi_{\mu} \rangle C_{\mu i} =
+     *          \sum_{\mu'} C_{\mu' i'}^{*} h_{\mu' i}(\psi)
+     *  \f]
+     *  \f[
+     *      O_{i' i} = \langle \psi_{i'} | \psi_i \rangle =
+     *          \sum_{\mu' \mu} C_{\mu' i'}^{*} \langle \phi_{\mu'} | \phi_{\mu} \rangle C_{\mu i} =
+     *          \sum_{\mu'} C_{\mu' i'}^{*} o_{\mu' i}(\psi)
+     *  \f]
+     *  where
+     *  \f[
+     *      h_{\mu' i}(\psi) = \sum_{\mu} \langle \phi_{\mu'} | \hat H | \phi_{\mu} \rangle C_{\mu i}
+     *  \f]
+     *  and
+     *  \f[
+     *      o_{\mu' i}(\psi) = \sum_{\mu} \langle \phi_{\mu'} | \phi_{\mu} \rangle C_{\mu i}
+     *  \f]
+     *  For the APW block of \f$  h_{\mu' i}(\psi)  \f$ and \f$  o_{\mu' i}(\psi)  \f$ we have:
+     *  \f[
+     *       h_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} +
+     *          \sum_{j} \langle \phi_{\bf G'} | \hat H | \phi_{j} \rangle C_{j i}
+     *  \f]
+     *  \f[
+     *       o_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \phi_{\bf G} \rangle C_{{\bf G} i} +
+     *          \sum_{j} \langle \phi_{\bf G'} | \phi_{j} \rangle C_{j i}
+     *  \f]
+     *  and for the lo block:
+     *  \f[
+     *       h_{j' i}(\psi) = \sum_{{\bf G}} \langle \phi_{j'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} +
+     *          \sum_{j} \langle \phi_{j'} | \hat H | \phi_{j} \rangle C_{j i}
+     *  \f]
+     *  \f[
+     *       o_{j' i}(\psi) = \sum_{{\bf G}} \langle \phi_{j'} |  \phi_{\bf G} \rangle C_{{\bf G} i} +
+     *          \sum_{j} \langle \phi_{j'} | \phi_{j} \rangle C_{j i}
+     *  \f]
+     *
+     *  APW-APW contribution, muffin-tin part:
+     *  \f[
+     *      h_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} =
+     *          \sum_{{\bf G}} \sum_{\alpha} \sum_{\xi'} a_{\xi'}^{\alpha *}({\bf G'}) b_{\xi'}^{\alpha}({\bf G})
+     *           C_{{\bf G} i}
+     *  \f]
+     *  \f[
+     *      o_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \phi_{\bf G} \rangle C_{{\bf G} i} =
+     *          \sum_{{\bf G}} \sum_{\alpha} \sum_{\xi'} a_{\xi'}^{\alpha *}({\bf G'}) a_{\xi'}^{\alpha}({\bf G})
+     *           C_{{\bf G} i}
+     *  \f]
+     *  APW-APW contribution, interstitial effective potential part:
+     *  \f[
+     *      h_{{\bf G'} i}(\psi) = \int \Theta({\bf r}) e^{-i{\bf G'}{\bf r}} V({\bf r}) \psi_{i}({\bf r}) d{\bf r}
+     *  \f]
+     *  This is done by transforming \f$ \psi_i({\bf G}) \f$ to the real space, multiplying by effectvive potential
+     *  and step function and transforming the result back to the \f$ {\bf G} \f$ domain.
+     *
+     *  APW-APW contribution, interstitial kinetic energy part:
+     *  \f[
+     *      h_{{\bf G'} i}(\psi) = \int \Theta({\bf r}) e^{-i{\bf G'}{\bf r}} \Big( -\frac{1}{2} \nabla \Big)
+     *          \Big( \nabla \psi_{i}({\bf r}) \Big) d{\bf r}
+     *  \f]
+     *  and the gradient of the wave-function is computed with FFT as:
+     *  \f[
+     *      \Big( \nabla \psi_{i}({\bf r}) \Big) = \sum_{\bf G} i{\bf G}e^{i{\bf G}{\bf r}}\psi_i({\bf G})
+     *  \f]
+     *
+     *  APW-APW contribution, interstitial overlap:
+     *  \f[
+     *      o_{{\bf G'} i}(\psi) = \int \Theta({\bf r}) e^{-i{\bf G'}{\bf r}} \psi_{i}({\bf r}) d{\bf r}
+     *  \f]
+     *
+     *  APW-lo contribution:
+     *  \f[
+     *      h_{{\bf G'} i}(\psi) =  \sum_{j} \langle \phi_{\bf G'} | \hat H | \phi_{j} \rangle C_{j i} =
+     *      \sum_{j} C_{j i}   \sum_{L'\nu'} a_{L'\nu'}^{\alpha_j *}({\bf G'})
+     *          \langle  u_{\ell' \nu'}^{\alpha_j}Y_{\ell' m'}|\hat h^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j}
+     * Y_{\ell_j m_j} \rangle =
+     *      \sum_{j} C_{j i} \sum_{\xi'} a_{\xi'}^{\alpha_j *}({\bf G'}) h_{\xi' \xi_j}^{\alpha_j}
+     *  \f]
+     *  \f[
+     *      o_{{\bf G'} i}(\psi) =  \sum_{j} \langle \phi_{\bf G'} | \phi_{j} \rangle C_{j i} =
+     *      \sum_{j} C_{j i}   \sum_{L'\nu'} a_{L'\nu'}^{\alpha_j *}({\bf G'})
+     *          \langle  u_{\ell' \nu'}^{\alpha_j}Y_{\ell' m'}| \phi_{\ell_j}^{\zeta_j \alpha_j} Y_{\ell_j m_j} \rangle
+     * =
+     *      \sum_{j} C_{j i} \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'}) o_{\nu' \zeta_j \ell_j}^{\alpha_j}
+     *  \f]
+     *  lo-APW contribution:
+     *  \f[
+     *     h_{j' i}(\psi) = \sum_{\bf G} \langle \phi_{j'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} =
+     *      \sum_{\bf G} C_{{\bf G} i} \sum_{L\nu} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'}
+     * m_{j'}}
+     *          |\hat h^{\alpha_{j'}} | u_{\ell \nu}^{\alpha_{j'}}Y_{\ell m}  \rangle a_{L\nu}^{\alpha_{j'}}({\bf G}) =
+     *      \sum_{\bf G} C_{{\bf G} i} \sum_{\xi} h_{\xi_{j'} \xi}^{\alpha_{j'}} a_{\xi}^{\alpha_{j'}}({\bf G})
+     *  \f]
+     *  \f[
+     *     o_{j' i}(\psi) = \sum_{\bf G} \langle \phi_{j'} |  \phi_{\bf G} \rangle C_{{\bf G} i} =
+     *      \sum_{\bf G} C_{{\bf G} i} \sum_{L\nu} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'}
+     * m_{j'}}
+     *          | u_{\ell \nu}^{\alpha_{j'}}Y_{\ell m}  \rangle a_{L\nu}^{\alpha_{j'}}({\bf G}) =
+     *      \sum_{\bf G} C_{{\bf G} i} \sum_{\nu} o_{\zeta_{j'} \nu \ell_{j'}}^{\alpha_{j'}} a_{\ell_{j'} m_{j'}
+     * \nu}^{\alpha_{j'}}({\bf G})
+     *  \f]
+     *  lo-lo contribution:
+     *  \f[
+     *      h_{j' i}(\psi) = \sum_{j} \langle \phi_{j'} | \hat H | \phi_{j} \rangle C_{j i} = \sum_{j} C_{j i}
+     * h_{\xi_{j'} \xi_j}^{\alpha_j}
+     *          \delta_{\alpha_j \alpha_{j'}}
+     *  \f]
+     *  \f[
+     *      o_{j' i}(\psi) = \sum_{j} \langle \phi_{j'} | \phi_{j} \rangle C_{j i} = \sum_{j} C_{j i}
+     *          o_{\zeta_{j'} \zeta_{j} \ell_j}^{\alpha_j}
+     *            \delta_{\alpha_j \alpha_{j'}} \delta_{\ell_j \ell_{j'}} \delta_{m_j m_{j'}}
+     *  \f]
+     */
     void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__, Wave_functions& phi__,
                       Wave_functions* hphi__, Wave_functions* ophi__);
 

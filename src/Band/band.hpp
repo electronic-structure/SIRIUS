@@ -48,7 +48,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Solve the first-variational (non-magnetic) problem with exact diagonalization.
     /** This is only used by the LAPW method. */
-    void diag_full_potential_first_variation_exact(K_point& kp__, Hamiltonian& hamiltonian__) const;
+    void diag_full_potential_first_variation_exact(K_point& kp__, Hamiltonian& hamiltonian__, Hamiltonian_k& Hk__) const;
 
     /// Solve the first-variational (non-magnetic) problem with iterative Davidson diagonalization.
     void diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltonian& hamiltonian__, Hamiltonian_k& Hk__) const;

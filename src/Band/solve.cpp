@@ -32,7 +32,7 @@ Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__, Hamiltonia
         /* solve non-magnetic Hamiltonian (so-called first variation) */
         auto& itso = ctx_.iterative_solver_input();
         if (itso.type_ == "exact") {
-            diag_full_potential_first_variation_exact(kp__, hamiltonian__);
+            diag_full_potential_first_variation_exact(kp__, hamiltonian__, Hk__);
         } else if (itso.type_ == "davidson") {
             diag_full_potential_first_variation_davidson(kp__, hamiltonian__, Hk__);
         }

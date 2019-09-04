@@ -28,7 +28,7 @@
 namespace sirius {
 
 void
-Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamiltonian__) const
+Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamiltonian__, Hamiltonian_k& Hk__) const
 {
     PROFILE("sirius::Band::diag_fv_exact");
 
@@ -130,9 +130,9 @@ Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamilt
             ofv.allocate(spin_range(0), memory_t::device);
         }
 
-        hamiltonian__.local_op().prepare(kp.gkvec_partition());
-        hamiltonian__.apply_fv_h_o(&kp, false, false, 0, ctx_.num_fv_states(), kp.fv_eigen_vectors_slab(), nullptr, &ofv);
-        hamiltonian__.local_op().dismiss();
+        //hamiltonian__.local_op().prepare(kp.gkvec_partition());
+        Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), kp.fv_eigen_vectors_slab(), nullptr, &ofv);
+        //hamiltonian__.local_op().dismiss();
 
         if (ctx_.processing_unit() == device_t::GPU) {
             kp.fv_eigen_vectors_slab().deallocate(spin_range(0), memory_t::device);
@@ -409,7 +409,7 @@ void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltoni
 {
     PROFILE("sirius::Band::diag_fv_davidson");
 
-    H__.local_op().prepare(kp__.gkvec_partition());
+    //H__.local_op().prepare(kp__.gkvec_partition());
 
     auto h_o_diag = Hk__.get_h_o_diag_lapw<3>();
 
@@ -566,10 +566,10 @@ void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltoni
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         if (k == 0) {
-            H__.apply_fv_h_o(&kp__, false, true, 0, nlo, phi, &hphi, &ophi);
-            H__.apply_fv_h_o(&kp__, false, false, nlo, ncomp + num_bands, phi, &hphi, &ophi);
+            Hk__.apply_fv_h_o(false, true, 0, nlo, phi, &hphi, &ophi);
+            Hk__.apply_fv_h_o(false, false, nlo, ncomp + num_bands, phi, &hphi, &ophi);
         } else {
-            H__.apply_fv_h_o(&kp__, false, false, N, n, phi, &hphi, &ophi);
+            Hk__.apply_fv_h_o(false, false, N, n, phi, &hphi, &ophi);
         }
 
         orthogonalize(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, hphi, ophi, N, n, ovlp, res);
