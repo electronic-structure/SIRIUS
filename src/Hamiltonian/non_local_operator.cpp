@@ -274,6 +274,8 @@ void Non_local_operator::apply<double>(int chunk__, int ispn_block__, Wave_funct
 
 void D_operator::initialize()
 {
+    PROFILE("sirius::D_operator::initialize");
+
     auto& uc = this->ctx_.unit_cell();
 
     #pragma omp parallel for
@@ -440,6 +442,8 @@ void D_operator::initialize()
 
 void Q_operator::initialize()
 {
+    PROFILE("sirius::Q_operator::initialize");
+
     auto& uc = this->ctx_.unit_cell();
     /* check eigen-values of Q_{xi,xi'} matrix for each atom;
        not sure if it helps, so it's commented for now */

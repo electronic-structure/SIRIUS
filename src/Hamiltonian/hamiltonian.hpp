@@ -635,13 +635,7 @@ class Hamiltonian_k
 
     mdarray<double, 2> get_h_diag_lapw() const;
 
-    //template <typename T>
-    //inline mdarray<double, 2> get_h_diag_pw() const;
-
     mdarray<double, 2> get_o_diag_lapw() const;
-
-    //template <typename T>
-    //inline mdarray<double, 2> get_o_diag_pw() const;
 
     /// Copy constructor is forbidden.
     Hamiltonian_k(Hamiltonian_k const& src__) = delete;

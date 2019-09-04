@@ -59,7 +59,6 @@ class spin_range : public std::vector<int>
 {
   private:
     int idx_;
-    //std::vector<int> v_;
   public:
     explicit spin_range(int idx__)
         : idx_(idx__)

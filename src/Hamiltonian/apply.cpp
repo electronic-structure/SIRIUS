@@ -59,7 +59,7 @@ void Hamiltonian::apply_h_s(K_point* kp__, int ispn__, int N__, int n__, Wave_fu
 
     if (hphi__ != nullptr) {
         /* apply local part of Hamiltonian */
-        local_op_->apply_h(kp__->spfft_transform(), ispn__, phi__, *hphi__, N__, n__);
+        local_op_->apply_h(kp__->spfft_transform(), spin_range(ispn__), phi__, *hphi__, N__, n__);
     }
 
     t1 += omp_get_wtime();
@@ -955,7 +955,7 @@ void Hamiltonian_k::apply_h_s(int ispn__, int N__, int n__, Wave_functions& phi_
 
     if (hphi__ != nullptr) {
         /* apply local part of Hamiltonian */
-        H0().local_op().apply_h(kp().spfft_transform(), ispn__, phi__, *hphi__, N__, n__);
+        H0().local_op().apply_h(kp().spfft_transform(), spin_range(ispn__), phi__, *hphi__, N__, n__);
     }
 
     // t1 += omp_get_wtime();

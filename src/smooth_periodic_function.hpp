@@ -78,6 +78,8 @@ class Smooth_periodic_function
         : spfft_(&spfft__)
         , gvecp_(&gvecp__)
     {
+        PROFILE("sirius::Smooth_periodic_function");
+
         f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), sddk::memory_t::host, "Smooth_periodic_function.f_rg_");
         f_rg_.zero();
 
