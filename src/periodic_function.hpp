@@ -337,41 +337,42 @@ class Periodic_function : public Smooth_periodic_function<T>
         return f_mt_;
     }
 
-    /// Compute inner product <f|g>
-    T inner(Periodic_function<T> const& g__) const
+    inline Simulation_context const& ctx() const
     {
-        PROFILE("sirius::Periodic_function::inner");
-
-        assert(this->spfft_ == g__.spfft_);
-        assert(&unit_cell_ == &g__.unit_cell_);
-        assert(&comm_ == &g__.comm_);
-
-        T result_rg{0};
-
-        if (!ctx_.full_potential()) {
-            result_rg = sirius::inner(static_cast<Smooth_periodic_function<T> const&>(*this),
-                                      static_cast<Smooth_periodic_function<T> const&>(g__));
-        } else {
-            for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
-                result_rg += utils::conj(this->f_rg(irloc)) * g__.f_rg(irloc) *
-                             this->ctx_.theta(irloc);
-            }
-            result_rg *= (unit_cell_.omega() / spfft_grid_size(*(this->spfft_)));
-            sddk::Communicator(this->spfft_->communicator()).allreduce(&result_rg, 1);
-        }
-
-        T result_mt{0};
-        if (ctx_.full_potential()) {
-            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-                auto r = sirius::inner(f_mt(ialoc), g__.f_mt(ialoc));
-                result_mt += r;
-            }
-            comm_.allreduce(&result_mt, 1);
-        }
-
-        return result_mt + result_rg;
+        return ctx_;
     }
 };
+
+template <typename T>
+inline T
+inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
+{
+    utils::timer t1("sirius::Pperiodic_function|inner");
+
+    assert(&f__.ctx() == &g__.ctx());
+
+    T result_rg{0};
+
+    if (!f__.ctx().full_potential()) {
+        result_rg = sirius::inner(static_cast<Smooth_periodic_function<T> const&>(f__),
+                                  static_cast<Smooth_periodic_function<T> const&>(g__));
+    } else {
+        result_rg = sirius::inner(static_cast<Smooth_periodic_function<T> const&>(f__),
+                                  static_cast<Smooth_periodic_function<T> const&>(g__),
+                                  [&](int ir){return f__.ctx().theta(ir);});
+    }
+
+    T result_mt{0};
+    if (f__.ctx().full_potential()) {
+        for (int ialoc = 0; ialoc < f__.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
+            auto r = sirius::inner(f__.f_mt(ialoc), g__.f_mt(ialoc));
+            result_mt += r;
+        }
+        f__.ctx().comm().allreduce(&result_mt, 1);
+    }
+
+    return result_mt + result_rg;
+}
 
 } // namespace sirius
 

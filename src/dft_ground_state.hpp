@@ -248,19 +248,19 @@ class DFT_ground_state
     {
         double ebxc{0};
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            ebxc += density_.magnetization(j).inner(potential_.effective_magnetic_field(j));
+            ebxc += sirius::inner(density_.magnetization(j), potential_.effective_magnetic_field(j));
         }
         return ebxc;
     }
 
     double energy_veff() const
     {
-        return density_.rho().inner(potential_.effective_potential());
+        return sirius::inner(density_.rho(), potential_.effective_potential());
     }
 
     double energy_vloc() const
     {
-        return inner(potential_.local_potential(), density_.rho());
+        return sirius::inner(potential_.local_potential(), density_.rho());
     }
 
     /// Full eigen-value sum (core + valence)

@@ -379,8 +379,8 @@ inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<doubl
 }
 
 template <typename T>
-inline Smooth_periodic_function<T> dot(Smooth_periodic_vector_function<T>& vf__,
-                                       Smooth_periodic_vector_function<T>& vg__)
+inline Smooth_periodic_function<T>
+dot(Smooth_periodic_vector_function<T>& vf__, Smooth_periodic_vector_function<T>& vg__)
 
 {
     utils::timer t1("sirius::dot");
@@ -400,8 +400,9 @@ inline Smooth_periodic_function<T> dot(Smooth_periodic_vector_function<T>& vf__,
 }
 
 /// Compute inner product <f|g>
-template <typename T>
-T inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
+template <typename T, typename F>
+inline T
+inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
 {
     utils::timer t1("sirius::Smooth_periodic_function|inner");
 
@@ -411,7 +412,7 @@ T inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> cons
 
     #pragma omp parallel for schedule(static) reduction(+:result_rg)
     for (int irloc = 0; irloc < f__.spfft().local_slice_size(); irloc++) {
-        result_rg += utils::conj(f__.f_rg(irloc)) * g__.f_rg(irloc);
+        result_rg += utils::conj(f__.f_rg(irloc)) * g__.f_rg(irloc) * theta__(irloc);
     }
 
     result_rg *= (f__.gvec().omega() / spfft_grid_size(f__.spfft()));
@@ -419,6 +420,14 @@ T inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> cons
     sddk::Communicator(f__.spfft().communicator()).allreduce(&result_rg, 1);
 
     return result_rg;
+}
+
+/// Compute inner product <f|g>
+template <typename T>
+inline T
+inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
+{
+    return inner(f__, g__, [](int ir){return 1;});
 }
 
 } // namespace sirius
