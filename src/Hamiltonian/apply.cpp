@@ -1248,13 +1248,13 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
                     }
 
                     /* generate LAPW matching coefficients on the CPU */
-                    kp().alm_coeffs_loc().generate(ia, alm_tmp);
-                    /* conjugate alm */
-                    for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
-                        for (int igk = 0; igk < ngv; igk++) {
-                            alm_tmp(igk, xi) = std::conj(alm_tmp(igk, xi));
-                        }
-                    }
+                    kp().alm_coeffs_loc().generate<true>(atom, alm_tmp);
+                    ///* conjugate alm */
+                    //for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
+                    //    for (int igk = 0; igk < ngv; igk++) {
+                    //        alm_tmp(igk, xi) = std::conj(alm_tmp(igk, xi));
+                    //    }
+                    //}
                     if (ctx.processing_unit() == device_t::GPU) {
                         alm_tmp.copy_to(memory_t::device, stream_id(tid));
                     }
