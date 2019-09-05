@@ -46,7 +46,8 @@ Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamilt
     /* setup Hamiltonian and overlap */
     switch (ctx_.processing_unit()) {
         case device_t::CPU: {
-            hamiltonian__.set_fv_h_o<device_t::CPU, electronic_structure_method_t::full_potential_lapwlo>(&kp, h, o);
+            //hamiltonian__.set_fv_h_o<device_t::CPU, electronic_structure_method_t::full_potential_lapwlo>(&kp, h, o);
+            Hk__.set_fv_h_o(h, o);
             break;
         }
 #if defined(__GPU)
@@ -130,9 +131,7 @@ Band::diag_full_potential_first_variation_exact(K_point& kp, Hamiltonian& hamilt
             ofv.allocate(spin_range(0), memory_t::device);
         }
 
-        //hamiltonian__.local_op().prepare(kp.gkvec_partition());
         Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), kp.fv_eigen_vectors_slab(), nullptr, &ofv);
-        //hamiltonian__.local_op().dismiss();
 
         if (ctx_.processing_unit() == device_t::GPU) {
             kp.fv_eigen_vectors_slab().deallocate(spin_range(0), memory_t::device);
