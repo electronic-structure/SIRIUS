@@ -645,15 +645,15 @@ void Force::add_ibs_force(K_point* kp__, mdarray<double, 2>& ffac__, mdarray<dou
         auto& type = atom.type();
 
         /* generate matching coefficients for current atom */
-        kp__->alm_coeffs_row().generate(ia, alm_row);
-        kp__->alm_coeffs_col().generate(ia, alm_col);
+        kp__->alm_coeffs_row().generate<true>(atom, alm_row);
+        kp__->alm_coeffs_col().generate<false>(atom, alm_col);
 
-        /* conjugate row (<bra|) matching coefficients */
-        for (int i = 0; i < type.mt_aw_basis_size(); i++) {
-            for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
-                alm_row(igk, i) = std::conj(alm_row(igk, i));
-            }
-        }
+        ///* conjugate row (<bra|) matching coefficients */
+        //for (int i = 0; i < type.mt_aw_basis_size(); i++) {
+        //    for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
+        //        alm_row(igk, i) = std::conj(alm_row(igk, i));
+        //    }
+        //}
 
         /* setup apw-lo and lo-apw blocks */
         hamiltonian_.set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h, o);
