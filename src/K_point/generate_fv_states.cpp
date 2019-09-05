@@ -49,7 +49,7 @@ namespace sirius {
             int mt_aw_size = unit_cell_.atom(ia).mt_aw_basis_size();
             int mt_lo_size = unit_cell_.atom(ia).mt_lo_basis_size();
             /* generate matching coefficients for all G-vectors */
-            alm_coeffs_loc_->generate(ia, alm);
+            alm_coeffs_loc_->generate<false>(unit_cell_.atom(ia), alm);
 
             double_complex *tmp_ptr_gpu = (ctx_.processing_unit() == device_t::GPU) ? tmp.at(memory_t::device)
                                                                                     : nullptr;
