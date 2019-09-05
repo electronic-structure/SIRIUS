@@ -166,29 +166,8 @@ class Hamiltonian
     /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
     void set_fv_h_o_it(K_point* kp__, matrix<double_complex>& h__, matrix<double_complex>& o__) const;
 
-    void set_o_it(K_point* kp, mdarray<double_complex, 2>& o) const;
-
-    template <spin_block_t sblock>
-    void set_h_it(K_point* kp,
-                  Periodic_function<double>* effective_potential,
-                  Periodic_function<double>* effective_magnetic_field[3],
-                  matrix<double_complex>& h) const;
-
     /// Setup lo-lo block of Hamiltonian and overlap matrices
     void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const;
-
-    template <spin_block_t sblock>
-    void set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const;
-
-    void set_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& o) const;
-
-    void set_o(K_point* kp, mdarray<double_complex, 2>& o);
-
-    template <spin_block_t sblock>
-    void set_h(K_point* kp,
-                      Periodic_function<double>* effective_potential,
-                      Periodic_function<double>* effective_magnetic_field[3],
-                      mdarray<double_complex, 2>& h);
 
     /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
     /** The following matrix is computed:
@@ -225,6 +204,7 @@ class Hamiltonian
         linalg<device_t::CPU>::gemm(0, 1, num_gkvec__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm__, hmt, halm__);
     }
 
+    /// Apply correction to LAPW overlap arising in the infinite-order relativistic approximation (IORA).
     void apply_o1mt_to_apw(Atom const& atom__,
                            int num_gkvec__,
                            mdarray<double_complex, 2>& alm__,
@@ -255,22 +235,6 @@ class Hamiltonian
                            mdarray<double_complex, 2>& alm_col,
                            mdarray<double_complex, 2>& h,
                            mdarray<double_complex, 2>& o) const;
-
-    template <spin_block_t sblock>
-    void set_h_apw_lo(K_point* kp,
-                      Atom_type* type,
-                      Atom* atom,
-                      int ia,
-                      mdarray<double_complex, 2>& alm,
-                      mdarray<double_complex, 2>& h);
-
-    /// Set APW-lo and lo-APW blocks of the overlap matrix.
-    void set_o_apw_lo(K_point* kp,
-                      Atom_type* type,
-                      Atom* atom,
-                      int ia,
-                      mdarray<double_complex, 2>& alm,
-                      mdarray<double_complex, 2>& o);
 
     /// Setup the Hamiltonian and overlap matrices in APW+lo basis
     /** The Hamiltonian matrix has the following expression:
@@ -431,10 +395,10 @@ class Hamiltonian0
     /// Return a Hamiltonian for the given k-point.
     inline Hamiltonian_k operator()(K_point& kp__);
 
-    //Potential& potential() const
-    //{
-    //    return potential_;
-    //}
+    Potential& potential() const
+    {
+        return potential_;
+    }
 
     Simulation_context& ctx() const
     {
@@ -477,11 +441,40 @@ class Hamiltonian0
             for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
                 int lm1    = type.indexb(j1).lm;
                 int idxrf1 = type.indexb(j1).idxrf;
-                hmt(j1, j2) =
-                    atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
+                hmt(j1, j2) = atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2,
+                                                                     gaunt_coefs_->gaunt_vector(lm1, lm2));
             }
         }
-        linalg<sddk::device_t::CPU>::gemm(0, 1, ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm__, hmt, halm__);
+        linalg<sddk::device_t::CPU>::gemm(0, 1, ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm__,
+                                          hmt, halm__);
+    }
+
+    /// Add correction to LAPW overlap arising in the infinite-order relativistic approximation (IORA).
+    void add_o1mt_to_apw(Atom const& atom__, int num_gkvec__, mdarray<double_complex, 2>& alm__) const // TODO: documentation
+    {
+        // TODO: optimize for the loop layout using blocks of G-vectors
+
+        auto& type = atom__.type();
+        std::vector<double_complex> alm(type.mt_aw_basis_size());
+        std::vector<double_complex> oalm(type.mt_aw_basis_size());
+        for (int ig = 0; ig < num_gkvec__; ig++) {
+            for (int j = 0; j < type.mt_aw_basis_size(); j++) {
+                alm[j] = oalm[j] = alm__(ig, j);
+            }
+            for (int j = 0; j < type.mt_aw_basis_size(); j++) {
+                int l     = type.indexb(j).l;
+                int lm    = type.indexb(j).lm;
+                int idxrf = type.indexb(j).idxrf;
+                for (int order = 0; order < type.aw_order(l); order++) {
+                    int j1     = type.indexb().index_by_lm_order(lm, order);
+                    int idxrf1 = type.indexr().index_by_l_order(l, order);
+                    oalm[j] += atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1) * alm[j1];
+                }
+            }
+            for (int j = 0; j < type.mt_aw_basis_size(); j++) {
+                alm__(ig, j) = oalm[j];
+            }
+        }
     }
 
     inline Q_operator& Q() const
@@ -517,7 +510,9 @@ class Hamiltonian_k
         , kp_(kp__)
     {
         PROFILE("sirius::Hamiltonian_k");
-        H0_.local_op().prepare(kp_.gkvec_partition());
+        if (H0_.ctx().iterative_solver_input().type_ != "exact") {
+            H0_.local_op().prepare(kp_.gkvec_partition());
+        }
         if (!H0_.ctx().full_potential()) {
             kp_.beta_projectors().prepare();
         }
@@ -699,7 +694,7 @@ class Hamiltonian_k
                 auto& atom = uc.atom(ia);
                 int nmt = atom.mt_aw_basis_size();
 
-                kp_.alm_coeffs_loc().generate(ia, alm);
+                kp_.alm_coeffs_loc().generate<false>(atom, alm);
                 if (what & 1) {
                     H0_.apply_hmt_to_apw<spin_block_t::nm>(atom, kp_.num_gkvec_loc(), alm, halm);
                 }
@@ -888,6 +883,19 @@ class Hamiltonian_k
     void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__, Wave_functions& phi__,
                       Wave_functions* hphi__, Wave_functions* ophi__);
 
+    void set_fv_h_o(dmatrix<double_complex>& h__, dmatrix<double_complex>& o__) const;
+
+    /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
+    void set_fv_h_o_it(dmatrix<double_complex>& h__, dmatrix<double_complex>& o__) const;
+
+    /// Setup lo-lo block of Hamiltonian and overlap matrices
+    void set_fv_h_o_lo_lo(dmatrix<double_complex>& h__, dmatrix<double_complex>& o__) const;
+
+    /// Setup apw-lo and lo-apw blocs of LAPW Hamiltonian and overlap matrices
+    void set_fv_h_o_apw_lo(Atom const& atom, int ia, mdarray<double_complex, 2>& alm_row,
+                           mdarray<double_complex, 2>& alm_col, mdarray<double_complex, 2>& h,
+                           mdarray<double_complex, 2>& o) const;
+
     /// Apply pseudopotential H and S operators to the wavefunctions.
     template <typename T>
     void apply_h_s(int ispn__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
@@ -898,8 +906,6 @@ Hamiltonian_k Hamiltonian0::operator()(K_point& kp__)
 {
     return Hamiltonian_k(*this, kp__);
 }
-
-#include "set_lapw_h_o.hpp"
 
 }
 
