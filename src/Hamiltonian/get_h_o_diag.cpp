@@ -55,7 +55,7 @@ Hamiltonian::get_h_diag(K_point *kp__, double v0__, double theta0__) const
         auto& atom = unit_cell_.atom(ia);
         int nmt = atom.mt_aw_basis_size();
 
-        kp__->alm_coeffs_loc().generate(ia, alm);
+        kp__->alm_coeffs_loc().generate<false>(atom, alm);
         apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_loc(), alm, halm);
 
         for (int xi = 0; xi < nmt; xi++) {
@@ -115,7 +115,7 @@ Hamiltonian::get_o_diag(K_point *kp__, double theta0__) const
         auto &atom = unit_cell_.atom(ia);
         int nmt = atom.mt_aw_basis_size();
 
-        kp__->alm_coeffs_loc().generate(ia, alm);
+        kp__->alm_coeffs_loc().generate<false>(atom, alm);
 
         for (int xi = 0; xi < nmt; xi++) {
             for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
@@ -279,7 +279,7 @@ Hamiltonian_k::get_h_diag_lapw() const
         auto &atom = uc.atom(ia);
         int nmt = atom.mt_aw_basis_size();
 
-        kp_.alm_coeffs_loc().generate(ia, alm);
+        kp_.alm_coeffs_loc().generate<false>(atom, alm);
         H0_.apply_hmt_to_apw<spin_block_t::nm>(atom, kp_.num_gkvec_loc(), alm, halm);
 
         for (int xi = 0; xi < nmt; xi++) {
@@ -405,7 +405,7 @@ Hamiltonian_k::get_o_diag_lapw() const
         auto &atom = uc.atom(ia);
         int nmt = atom.mt_aw_basis_size();
 
-        kp_.alm_coeffs_loc().generate(ia, alm);
+        kp_.alm_coeffs_loc().generate<false>(atom, alm);
 
         for (int xi = 0; xi < nmt; xi++) {
             for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
