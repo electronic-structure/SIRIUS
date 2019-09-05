@@ -615,12 +615,12 @@ class K_point
         return *gkvec_partition_;
     }
 
-    inline Matching_coefficients const& alm_coeffs_row()
+    inline Matching_coefficients const& alm_coeffs_row() const
     {
         return *alm_coeffs_row_;
     }
 
-    inline Matching_coefficients const& alm_coeffs_col()
+    inline Matching_coefficients const& alm_coeffs_col() const
     {
         return *alm_coeffs_col_;
     }
