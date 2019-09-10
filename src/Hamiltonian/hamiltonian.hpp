@@ -43,283 +43,6 @@ namespace sirius {
         D_{\xi \xi'}^{\alpha} \langle \beta_{\xi'}^{\alpha}|
     \f]
 */
-class Hamiltonian
-{
-  private:
-    /// Simulation context.
-    Simulation_context& ctx_;
-
-    /// Alias for the potential.
-    Potential& potential_;
-
-    /// Alias for unit cell.
-    Unit_cell& unit_cell_;
-
-    /// Alias for the hubbard potential (note it is a pointer)
-    std::unique_ptr<Hubbard> U_;
-
-    /// Local part of the Hamiltonian operator.
-    std::unique_ptr<Local_operator> local_op_;
-
-    /// Non-zero Gaunt coefficients
-    std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
-
-    /// D operator (non-local part of Hamiltonian).
-    std::unique_ptr<D_operator> d_op_;
-
-    /// Q operator (non-local part of S-operator).
-    std::unique_ptr<Q_operator> q_op_;
-
-  public:
-    /// Constructor.
-    Hamiltonian(Simulation_context& ctx__, Potential& potential__)
-        : ctx_(ctx__)
-        , potential_(potential__)
-        , unit_cell_(ctx__.unit_cell())
-    {
-        if (ctx_.full_potential()) {
-            using gc_z = Gaunt_coefficients<double_complex>;
-            gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
-        }
-
-        local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition()));
-
-        if (ctx_.hubbard_correction()) {
-            U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
-        }
-    }
-
-    Hubbard& U() const
-    {
-        return *U_;
-    }
-
-    Potential& potential() const
-    {
-        return potential_;
-    }
-
-    Simulation_context& ctx() const
-    {
-        return ctx_;
-    }
-
-    Local_operator& local_op() const
-    {
-        return *local_op_;
-    }
-
-    /// Prepare k-point independent operators.
-    inline void prepare()
-    {
-        if (!ctx_.full_potential()) {
-            d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));
-            q_op_ = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
-        }
-        local_op().prepare(potential_);
-    }
-
-    inline void dismiss()
-    {
-        d_op_ = nullptr;
-        q_op_ = nullptr;
-        local_op().dismiss();
-    }
-
-    inline Q_operator& Q() const
-    {
-        return *q_op_;
-    }
-
-    inline D_operator& D() const
-    {
-        return *d_op_;
-    }
-
-    /// Apply pseudopotential H and S operators to the wavefunctions.
-    template <typename T>
-    void apply_h_s(K_point*        kp__,
-                          int             ispn__,
-                          int             N__,
-                          int             n__,
-                          Wave_functions& phi__,
-                          Wave_functions* hphi__,
-                          Wave_functions* sphi__) const;
-
-    /// Apply magnetic field to first-variational LAPW wave-functions.
-    void apply_magnetic_field(K_point*                     kp__,
-                                     Wave_functions&              fv_states__,
-                                     std::vector<Wave_functions>& hpsi__) const;
-
-    /// Apply SO correction to the first-variational LAPW wave-functions.
-    /** Raising and lowering operators:
-     *  \f[
-     *      L_{\pm} Y_{\ell m}= (L_x \pm i L_y) Y_{\ell m}  = \sqrt{\ell(\ell+1) - m(m \pm 1)} Y_{\ell m \pm 1}
-     *  \f]
-     */
-    void apply_so_correction(K_point* kp__, Wave_functions& fv_states__, std::vector<Wave_functions>& hpsi__) const;
-
-    /// Apply UJ correction to scalar wave functions
-    template <spin_block_t sblock>
-    void apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi);
-
-    /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
-    void set_fv_h_o_it(K_point* kp__, matrix<double_complex>& h__, matrix<double_complex>& o__) const;
-
-    /// Setup lo-lo block of Hamiltonian and overlap matrices
-    void set_fv_h_o_lo_lo(K_point* kp, mdarray<double_complex, 2>& h, mdarray<double_complex, 2>& o) const;
-
-    /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
-    /** The following matrix is computed:
-     *  \f[
-     *    b_{L_2 \nu_2}^{\alpha}({\bf G'}) = \sum_{L_1 \nu_1} \sum_{L_3}
-     *      a_{L_1\nu_1}^{\alpha}({\bf G'})
-     *      \langle u_{\ell_1\nu_1}^{\alpha} | h_{L3}^{\alpha} |  u_{\ell_2\nu_2}^{\alpha}
-     *      \rangle  \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle
-     *  \f]
-     */
-    template <spin_block_t sblock>
-    void apply_hmt_to_apw(Atom const& atom__,
-                          int num_gkvec__,
-                          mdarray<double_complex, 2>& alm__,
-                          mdarray<double_complex, 2>& halm__) const
-    {
-        auto& type = atom__.type();
-
-        // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is
-        // available
-        // TODO: for spin-collinear case hmt is Hermitian; compute upper triangular part and use zhemm
-        mdarray<double_complex, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
-        /* compute the muffin-tin Hamiltonian */
-        for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
-            int lm2    = type.indexb(j2).lm;
-            int idxrf2 = type.indexb(j2).idxrf;
-            for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
-                int lm1    = type.indexb(j1).lm;
-                int idxrf1 = type.indexb(j1).idxrf;
-                hmt(j1, j2) =
-                    atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
-            }
-        }
-        linalg<device_t::CPU>::gemm(0, 1, num_gkvec__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm__, hmt, halm__);
-    }
-
-    /// Apply correction to LAPW overlap arising in the infinite-order relativistic approximation (IORA).
-    void apply_o1mt_to_apw(Atom const& atom__,
-                           int num_gkvec__,
-                           mdarray<double_complex, 2>& alm__,
-                           mdarray<double_complex, 2>& oalm__) const
-    {
-        auto& type = atom__.type();
-
-        for (int j = 0; j < type.mt_aw_basis_size(); j++) {
-            int l     = type.indexb(j).l;
-            int lm    = type.indexb(j).lm;
-            int idxrf = type.indexb(j).idxrf;
-            for (int order = 0; order < type.aw_order(l); order++) {
-                int j1     = type.indexb().index_by_lm_order(lm, order);
-                int idxrf1 = type.indexr().index_by_l_order(l, order);
-                for (int ig = 0; ig < num_gkvec__; ig++) {
-                    oalm__(ig, j) += atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1) * alm__(ig, j1);
-                }
-            }
-        }
-    }
-
-    /// Setup apw-lo and lo-apw blocs of Hamiltonian and overlap matrices
-    void set_fv_h_o_apw_lo(K_point* kp,
-                           Atom_type const& type,
-                           Atom const& atom,
-                           int ia,
-                           mdarray<double_complex, 2>& alm_row,
-                           mdarray<double_complex, 2>& alm_col,
-                           mdarray<double_complex, 2>& h,
-                           mdarray<double_complex, 2>& o) const;
-
-    /// Setup the Hamiltonian and overlap matrices in APW+lo basis
-    /** The Hamiltonian matrix has the following expression:
-     *  \f[
-     *      H_{\mu' \mu}=\langle \varphi_{\mu' } | \hat H | \varphi_{\mu } \rangle  =
-     *      \left( \begin{array}{cc}
-     *         H_{\bf G'G} & H_{{\bf G'}j} \\
-     *         H_{j'{\bf G}} & H_{j'j}
-     *      \end{array} \right)
-     *  \f]
-     *  APW-APW block:
-     *  \f{eqnarray*}{
-     *      H_{{\bf G'} {\bf G}}^{\bf k} &=& \sum_{\alpha} \sum_{L'\nu', L\nu} a_{L'\nu'}^{\alpha *}({\bf G'+k})
-     *      \langle  u_{\ell' \nu'}^{\alpha}Y_{\ell' m'}|\hat h^{\alpha} | u_{\ell \nu}^{\alpha}Y_{\ell m}  \rangle
-     *       a_{L\nu}^{\alpha}({\bf G+k}) + \frac{1}{2}{\bf G'} {\bf G} \cdot \Theta({\bf G - G'}) + \tilde V_{eff}({\bf
-     * G - G'}) \\
-     *          &=& \sum_{\alpha} \sum_{\xi' } a_{\xi'}^{\alpha *}({\bf G'+k})
-     *              b_{\xi'}^{\alpha}({\bf G+k}) + \frac{1}{2}{\bf G'} {\bf G} \cdot \Theta({\bf G - G'}) + \tilde
-     * V_{eff}({\bf G - G'})
-     *  \f}
-     *  APW-lo block:
-     *  \f[
-     *      H_{{\bf G'} j}^{\bf k} = \sum_{L'\nu'} a_{L'\nu'}^{\alpha_j *}({\bf G'+k})
-     *      \langle  u_{\ell' \nu'}^{\alpha_j}Y_{\ell' m'}|\hat h^{\alpha_j} |  \phi_{\ell_j}^{\zeta_j \alpha_j}
-     * Y_{\ell_j m_j}  \rangle
-     *  \f]
-     *  lo-APW block:
-     *  \f[
-     *      H_{j' {\bf G}}^{\bf k} = \sum_{L\nu} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'} m_{j'}}
-     *          |\hat h^{\alpha_{j'}} | u_{\ell \nu}^{\alpha_{j'}}Y_{\ell m}  \rangle a_{L\nu}^{\alpha_{j'}}({\bf G+k})
-     *  \f]
-     *  lo-lo block:
-     *  \f[
-     *      H_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'} m_{j'}}
-     *          |\hat h^{\alpha_{j}} |  \phi_{\ell_j}^{\zeta_j \alpha_j} Y_{\ell_j m_j}  \rangle  \delta_{\alpha_j
-     * \alpha_{j'}}
-     *  \f]
-     *
-     *  The overlap matrix has the following expression:
-     *  \f[
-     *      O_{\mu' \mu} = \langle \varphi_{\mu'} | \varphi_{\mu} \rangle
-     *  \f]
-     *  APW-APW block:
-     *  \f[
-     *      O_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k})
-     *      a_{L\nu}^{\alpha}({\bf G+k}) + \Theta({\bf G-G'})
-     *  \f]
-     *
-     *  APW-lo block:
-     *  \f[
-     *      O_{{\bf G'} j}^{\bf k} = \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'+k})
-     *      \langle u_{\ell_j \nu'}^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} \rangle
-     *  \f]
-     *
-     *  lo-APW block:
-     *  \f[
-     *      O_{j' {\bf G}}^{\bf k} =
-     *      \sum_{\nu'} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | u_{\ell_{j'} \nu'}^{\alpha_{j'}} \rangle
-     *      a_{\ell_{j'} m_{j'} \nu'}^{\alpha_{j'}}({\bf G+k})
-     *  \f]
-     *
-     *  lo-lo block:
-     *  \f[
-     *      O_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} |
-     *      \phi_{\ell_{j}}^{\zeta_{j} \alpha_{j}} \rangle \delta_{\alpha_{j'} \alpha_j}
-     *      \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
-     *  \f]
-     */
-    template <device_t pu, electronic_structure_method_t basis>
-    void set_fv_h_o(K_point* kp, dmatrix<double_complex>& h, dmatrix<double_complex>& o) const;
-
-    /// Get diagonal elements of LAPW Hamiltonian.
-    mdarray<double, 2> get_h_diag(K_point* kp__, double v0__, double theta0__) const;
-
-    /// Get diagonal elements of pseudopotential Hamiltonian.
-    template <typename T>
-    mdarray<double, 2> get_h_diag(K_point* kp__) const;
-
-    /// Get diagonal elements of LAPW overlap.
-    mdarray<double, 1> get_o_diag(K_point* kp__, double theta0__) const;
-
-    /// Get diagonal elements of pseudopotential overlap matrix.
-    template <typename T>
-    mdarray<double, 1> get_o_diag(K_point* kp__) const;
-};
 
 /* forward declaration */
 class Hamiltonian_k;
@@ -337,9 +60,6 @@ class Hamiltonian0
     /// Alias for unit cell.
     Unit_cell& unit_cell_;
 
-    /// Alias for the hubbard potential (note it is a pointer)
-    std::unique_ptr<Hubbard> U_;
-
     /// Local part of the Hamiltonian operator.
     std::unique_ptr<Local_operator> local_op_;
 
@@ -352,6 +72,9 @@ class Hamiltonian0
     /// Q operator (non-local part of S-operator).
     std::unique_ptr<Q_operator> q_op_;
 
+    /// Hubbard potential correction.
+    //std::unique_ptr<Hubbard> U_;
+
     /* copy constructor is forbidden */
     Hamiltonian0(Hamiltonian0 const& src) = delete;
     /* copy assigment operator is forbidden */
@@ -359,10 +82,10 @@ class Hamiltonian0
 
   public:
     /// Constructor.
-    Hamiltonian0(Simulation_context& ctx__, Potential& potential__)
-        : ctx_(ctx__)
+    Hamiltonian0(Potential& potential__)
+        : ctx_(potential__.ctx())
         , potential_(potential__)
-        , unit_cell_(ctx__.unit_cell())
+        , unit_cell_(potential__.ctx().unit_cell())
     {
         PROFILE("sirius::Hamiltonian0");
 
@@ -372,16 +95,16 @@ class Hamiltonian0
         }
 
         local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition()));
+        local_op_->prepare(potential_);
 
-        if (ctx_.hubbard_correction()) {
-            U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
-        }
+        //if (ctx_.hubbard_correction()) {
+        //    U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
+        //}
 
         if (!ctx_.full_potential()) {
             d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));
             q_op_ = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
         }
-        local_op_->prepare(potential_);
     }
 
     ~Hamiltonian0()
@@ -477,6 +200,121 @@ class Hamiltonian0
         }
     }
 
+    /// Apply muffin-tin part of magnetic filed to the wave-functions.
+    void apply_bmt(Wave_functions& psi__, std::vector<Wave_functions>& bpsi__) const
+    {
+        mdarray<double_complex, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
+
+        for (int ialoc = 0; ialoc < psi__.spl_num_atoms().local_size(); ialoc++) {
+            int ia            = psi__.spl_num_atoms()[ialoc];
+            auto& atom        = unit_cell_.atom(ia);
+            int offset        = psi__.offset_mt_coeffs(ialoc);
+            int mt_basis_size = atom.type().mt_basis_size();
+
+            zm.zero();
+
+            /* only upper triangular part of zm is computed because it is a hermitian matrix */
+            #pragma omp parallel for default(shared)
+            for (int xi2 = 0; xi2 < mt_basis_size; xi2++) {
+                int lm2    = atom.type().indexb(xi2).lm;
+                int idxrf2 = atom.type().indexb(xi2).idxrf;
+
+                for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+                    for (int xi1 = 0; xi1 <= xi2; xi1++) {
+                        int lm1    = atom.type().indexb(xi1).lm;
+                        int idxrf1 = atom.type().indexb(xi1).idxrf;
+
+                        zm(xi1, xi2, i) = gaunt_coefs_->sum_L3_gaunt(lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i));
+                    }
+                }
+            }
+            /* compute bwf = B_z*|wf_j> */
+            linalg<device_t::CPU>::hemm(0, 0, mt_basis_size, ctx_.num_fv_states(),
+                linalg_const<double_complex>::one(),
+                zm.at(memory_t::host), zm.ld(),
+                psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0), psi__.mt_coeffs(0).prime().ld(),
+                linalg_const<double_complex>::zero(),
+                bpsi__[0].mt_coeffs(0).prime().at(memory_t::host, offset, 0), bpsi__[0].mt_coeffs(0).prime().ld());
+
+            /* compute bwf = (B_x - iB_y)|wf_j> */
+            if (bpsi__.size() == 3) {
+                /* reuse first (z) component of zm matrix to store (B_x - iB_y) */
+                for (int xi2 = 0; xi2 < mt_basis_size; xi2++) {
+                    for (int xi1 = 0; xi1 <= xi2; xi1++) {
+                        zm(xi1, xi2, 0) = zm(xi1, xi2, 1) - double_complex(0, 1) * zm(xi1, xi2, 2);
+                    }
+
+                    /* remember: zm for x,y,z, components of magnetic field is hermitian and we computed
+                     * only the upper triangular part */
+                    for (int xi1 = xi2 + 1; xi1 < mt_basis_size; xi1++) {
+                        zm(xi1, xi2, 0) = std::conj(zm(xi2, xi1, 1)) - double_complex(0, 1) * std::conj(zm(xi2, xi1, 2));
+                    }
+                }
+
+                linalg<device_t::CPU>::gemm(0, 0, mt_basis_size, ctx_.num_fv_states(), mt_basis_size,
+                    zm.at(memory_t::host), zm.ld(),
+                    psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0), psi__.mt_coeffs(0).prime().ld(),
+                    bpsi__[2].mt_coeffs(0).prime().at(memory_t::host, offset, 0), bpsi__[2].mt_coeffs(0).prime().ld());
+            }
+        }
+    }
+
+    /// Apply SO correction to the first-variational LAPW wave-functions.
+    /** Raising and lowering operators:
+     *  \f[
+     *      L_{\pm} Y_{\ell m}= (L_x \pm i L_y) Y_{\ell m}  = \sqrt{\ell(\ell+1) - m(m \pm 1)} Y_{\ell m \pm 1}
+     *  \f]
+     */
+    inline void apply_so_correction(Wave_functions& psi__, std::vector<Wave_functions>& hpsi__) const
+    {
+        PROFILE("sirius::Hamiltonian0::apply_so_correction");
+
+        for (int ialoc = 0; ialoc < psi__.spl_num_atoms().local_size(); ialoc++) {
+            int ia     = psi__.spl_num_atoms()[ialoc];
+            auto& atom = unit_cell_.atom(ia);
+            int offset = psi__.offset_mt_coeffs(ialoc);
+
+            for (int l = 0; l <= ctx_.lmax_apw(); l++) {
+                /* number of radial functions for this l */
+                int nrf = atom.type().indexr().num_rf(l);
+
+                for (int order1 = 0; order1 < nrf; order1++) {
+                    for (int order2 = 0; order2 < nrf; order2++) {
+                        double sori = atom.symmetry_class().so_radial_integral(l, order1, order2);
+
+                        for (int m = -l; m <= l; m++) {
+                            int idx1 = atom.type().indexb_by_l_m_order(l, m, order1);
+                            int idx2 = atom.type().indexb_by_l_m_order(l, m, order2);
+                            int idx3 = (m + l != 0) ? atom.type().indexb_by_l_m_order(l, m - 1, order2) : 0;
+                            // int idx4 = (m - l != 0) ? atom.type().indexb_by_l_m_order(l, m + 1, order2) : 0;
+
+                            for (int ist = 0; ist < ctx_.num_fv_states(); ist++) {
+                                double_complex z1 = psi__.mt_coeffs(0).prime(offset + idx2, ist) * double(m) * sori;
+                                /* u-u part */
+                                hpsi__[0].mt_coeffs(0).prime(offset + idx1, ist) += z1;
+                                /* d-d part */
+                                hpsi__[1].mt_coeffs(0).prime(offset + idx1, ist) -= z1;
+                                /* apply L_{-} operator; u-d part */
+                                if (m + l) {
+                                    hpsi__[2].mt_coeffs(0).prime(offset + idx1, ist) +=
+                                        psi__.mt_coeffs(0).prime(offset + idx3, ist) * sori *
+                                        std::sqrt(double(l * (l + 1) - m * (m - 1)));
+                                }
+                                /* for the d-u part */
+                                ///* apply L_{+} operator */
+                                // if (m - l) {
+                                //    hpsi[3].mt_coeffs(0).prime().at(memory_t::host, offset + idx1, ist) +=
+                                //        fv_states__.mt_coeffs(0).prime().at(memory_t::host, offset + idx4, ist) *
+                                //            sori * std::sqrt(double(l * (l + 1) - m * (m + 1)));
+                                //}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     inline Q_operator& Q() const
     {
         return *q_op_;
@@ -494,10 +332,6 @@ class Hamiltonian_k
     Hamiltonian0& H0_;
     K_point& kp_;
 
-    mdarray<double, 2> get_h_diag_lapw() const;
-
-    mdarray<double, 2> get_o_diag_lapw() const;
-
     /// Copy constructor is forbidden.
     Hamiltonian_k(Hamiltonian_k const& src__) = delete;
 
@@ -505,7 +339,7 @@ class Hamiltonian_k
     Hamiltonian_k& operator=(Hamiltonian_k const& src__) = delete;
 
   public:
-    Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__)
+    Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__) // TODO: move kinetic part from local_op to here
         : H0_(H0__)
         , kp_(kp__)
     {
@@ -514,14 +348,18 @@ class Hamiltonian_k
             H0_.local_op().prepare(kp_.gkvec_partition());
         }
         if (!H0_.ctx().full_potential()) {
-            kp_.beta_projectors().prepare();
+            if (H0_.ctx().iterative_solver_input().type_ != "exact") {
+                kp_.beta_projectors().prepare();
+            }
         }
     }
 
     ~Hamiltonian_k()
     {
         if (!H0_.ctx().full_potential()) {
-            kp_.beta_projectors().dismiss();
+            if (H0_.ctx().iterative_solver_input().type_ != "exact") {
+                kp_.beta_projectors().dismiss();
+            }
         }
     }
 
@@ -883,6 +721,73 @@ class Hamiltonian_k
     void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__, Wave_functions& phi__,
                       Wave_functions* hphi__, Wave_functions* ophi__);
 
+    /// Setup the Hamiltonian and overlap matrices in APW+lo basis
+    /** The Hamiltonian matrix has the following expression:
+     *  \f[
+     *      H_{\mu' \mu}=\langle \varphi_{\mu' } | \hat H | \varphi_{\mu } \rangle  =
+     *      \left( \begin{array}{cc}
+     *         H_{\bf G'G} & H_{{\bf G'}j} \\
+     *         H_{j'{\bf G}} & H_{j'j}
+     *      \end{array} \right)
+     *  \f]
+     *  APW-APW block:
+     *  \f{eqnarray*}{
+     *      H_{{\bf G'} {\bf G}}^{\bf k} &=& \sum_{\alpha} \sum_{L'\nu', L\nu} a_{L'\nu'}^{\alpha *}({\bf G'+k})
+     *      \langle  u_{\ell' \nu'}^{\alpha}Y_{\ell' m'}|\hat h^{\alpha} | u_{\ell \nu}^{\alpha}Y_{\ell m}  \rangle
+     *       a_{L\nu}^{\alpha}({\bf G+k}) + \frac{1}{2}{\bf G'} {\bf G} \cdot \Theta({\bf G - G'}) + \tilde V_{eff}({\bf
+     * G - G'}) \\
+     *          &=& \sum_{\alpha} \sum_{\xi' } a_{\xi'}^{\alpha *}({\bf G'+k})
+     *              b_{\xi'}^{\alpha}({\bf G+k}) + \frac{1}{2}{\bf G'} {\bf G} \cdot \Theta({\bf G - G'}) + \tilde
+     * V_{eff}({\bf G - G'})
+     *  \f}
+     *  APW-lo block:
+     *  \f[
+     *      H_{{\bf G'} j}^{\bf k} = \sum_{L'\nu'} a_{L'\nu'}^{\alpha_j *}({\bf G'+k})
+     *      \langle  u_{\ell' \nu'}^{\alpha_j}Y_{\ell' m'}|\hat h^{\alpha_j} |  \phi_{\ell_j}^{\zeta_j \alpha_j}
+     * Y_{\ell_j m_j}  \rangle
+     *  \f]
+     *  lo-APW block:
+     *  \f[
+     *      H_{j' {\bf G}}^{\bf k} = \sum_{L\nu} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'} m_{j'}}
+     *          |\hat h^{\alpha_{j'}} | u_{\ell \nu}^{\alpha_{j'}}Y_{\ell m}  \rangle a_{L\nu}^{\alpha_{j'}}({\bf G+k})
+     *  \f]
+     *  lo-lo block:
+     *  \f[
+     *      H_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'} m_{j'}}
+     *          |\hat h^{\alpha_{j}} |  \phi_{\ell_j}^{\zeta_j \alpha_j} Y_{\ell_j m_j}  \rangle  \delta_{\alpha_j
+     * \alpha_{j'}}
+     *  \f]
+     *
+     *  The overlap matrix has the following expression:
+     *  \f[
+     *      O_{\mu' \mu} = \langle \varphi_{\mu'} | \varphi_{\mu} \rangle
+     *  \f]
+     *  APW-APW block:
+     *  \f[
+     *      O_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k})
+     *      a_{L\nu}^{\alpha}({\bf G+k}) + \Theta({\bf G-G'})
+     *  \f]
+     *
+     *  APW-lo block:
+     *  \f[
+     *      O_{{\bf G'} j}^{\bf k} = \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'+k})
+     *      \langle u_{\ell_j \nu'}^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} \rangle
+     *  \f]
+     *
+     *  lo-APW block:
+     *  \f[
+     *      O_{j' {\bf G}}^{\bf k} =
+     *      \sum_{\nu'} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | u_{\ell_{j'} \nu'}^{\alpha_{j'}} \rangle
+     *      a_{\ell_{j'} m_{j'} \nu'}^{\alpha_{j'}}({\bf G+k})
+     *  \f]
+     *
+     *  lo-lo block:
+     *  \f[
+     *      O_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} |
+     *      \phi_{\ell_{j}}^{\zeta_{j} \alpha_{j}} \rangle \delta_{\alpha_{j'} \alpha_j}
+     *      \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j}
+     *  \f]
+     */
     void set_fv_h_o(dmatrix<double_complex>& h__, dmatrix<double_complex>& o__) const;
 
     /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
@@ -897,9 +802,22 @@ class Hamiltonian_k
                            mdarray<double_complex, 2>& o) const;
 
     /// Apply pseudopotential H and S operators to the wavefunctions.
+    /** \param [in]  ispn Index of spin.
+     *  \param [in]  N    Starting index of wave-functions.
+     *  \param [in]  n    Number of wave-functions to which H and S are applied.
+     *  \param [in]  phi  Input wave-functions [storage: CPU && GPU].
+     *  \param [out] hphi Result of Hamiltonian, applied to wave-functions [storage: CPU || GPU].
+     *  \param [out] sphi Result of S-operator, applied to wave-functions [storage: CPU || GPU].
+     *
+     *  In non-collinear case (ispn = 2) the Hamiltonian and S operator are applied to both components of spinor
+     *  wave-functions. Otherwise they are applied to a single component.
+     */
     template <typename T>
     void apply_h_s(int ispn__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
                    Wave_functions* sphi__);
+
+    /// Apply magnetic field to first-variational LAPW wave-functions.
+    void apply_b(Wave_functions& psi__, std::vector<Wave_functions>& bpsi__);
 };
 
 Hamiltonian_k Hamiltonian0::operator()(K_point& kp__)

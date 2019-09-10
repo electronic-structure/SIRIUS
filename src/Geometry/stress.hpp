@@ -101,9 +101,6 @@ class Stress
 
     Potential& potential_;
 
-    // For the Hubbard correction.
-    Hamiltonian& hamiltonian_;
-
     K_point_set& kset_;
 
     matrix3d<double> stress_kin_;
@@ -199,11 +196,10 @@ class Stress
     void symmetrize(matrix3d<double>& mtrx__) const;
 
   public:
-    Stress(Simulation_context& ctx__, Density& density__, Potential& potential__, Hamiltonian& h__, K_point_set& kset__)
+    Stress(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__)
         : ctx_(ctx__)
         , density_(density__)
         , potential_(potential__)
-        , hamiltonian_(h__)
         , kset_(kset__)
     {
     }

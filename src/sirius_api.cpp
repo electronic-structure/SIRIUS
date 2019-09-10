@@ -1167,7 +1167,8 @@ void sirius_initialize_subspace(void* const* gs_handler__,
 {
     GET_GS(gs_handler__)
     GET_KS(ks_handler__)
-    sirius::Band(ks.ctx()).initialize_subspace(ks, gs.hamiltonian());
+    sirius::Hamiltonian0 H0(gs.potential());
+    sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
 }
 
 /* @fortran begin function void sirius_find_eigen_states     Find eigen-states of the Hamiltonian/
@@ -1186,7 +1187,8 @@ void sirius_find_eigen_states(void* const* gs_handler__,
     if (iter_solver_tol__ != nullptr) {
         ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
     }
-    sirius::Band(ks.ctx()).solve(ks, gs.hamiltonian(), *precompute__);
+    sirius::Hamiltonian0 H0(gs.potential());
+    sirius::Band(ks.ctx()).solve(ks, H0, *precompute__);
 }
 
 /* @fortran begin function void sirius_generate_d_operator_matrix     Generate D-operator matrix.
@@ -1943,7 +1945,7 @@ double sirius_get_radial_integral(void*  const* handler__,
 void sirius_calculate_hubbard_occupancies(void* const* handler__)
 {
     GET_GS(handler__)
-    gs.hamiltonian().U().hubbard_compute_occupation_numbers(gs.k_point_set());
+    gs.potential().U().hubbard_compute_occupation_numbers(gs.k_point_set());
 }
 
 
@@ -1957,7 +1959,7 @@ void sirius_set_hubbard_occupancies(void* const* handler__,
                                     int   const *ld__)
 {
     GET_GS(handler__)
-    gs.hamiltonian().U().access_hubbard_occupancies("set", occ__, ld__);
+    gs.potential().U().access_hubbard_occupancies("set", occ__, ld__);
 }
 
 /* @fortran begin function void sirius_get_hubbard_occupancies          Get occupation matrix for LDA+U.
@@ -1970,7 +1972,7 @@ void sirius_get_hubbard_occupancies(void* const* handler__,
                                     int   const *ld__)
 {
     GET_GS(handler__)
-    gs.hamiltonian().U().access_hubbard_occupancies("get", occ__, ld__);
+    gs.potential().U().access_hubbard_occupancies("get", occ__, ld__);
 }
 
 /* @fortran begin function void sirius_set_hubbard_potential              Set LDA+U potential matrix.
@@ -1983,7 +1985,7 @@ void sirius_set_hubbard_potential(void* const* handler__,
                                   int   const *ld__)
 {
     GET_GS(handler__)
-    gs.hamiltonian().U().access_hubbard_potential("set", pot__, ld__);
+    gs.potential().U().access_hubbard_potential("set", pot__, ld__);
 }
 
 
@@ -1997,7 +1999,7 @@ void sirius_get_hubbard_potential(void* const* handler__,
                                   int   const *ld__)
 {
     GET_GS(handler__)
-    gs.hamiltonian().U().access_hubbard_potential("get", pot__, ld__);
+    gs.potential().U().access_hubbard_potential("get", pot__, ld__);
 }
 
 /* @fortran begin function void sirius_add_atom_type_aw_descriptor    Add descriptor of the augmented wave radial function.

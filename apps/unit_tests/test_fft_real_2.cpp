@@ -46,6 +46,7 @@ int run_test(cmd_args& args, device_t pu__)
     //} else {
     //    return 0;
     //}
+    return 0;
 }
 
 int main(int argn, char** argv)

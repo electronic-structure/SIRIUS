@@ -124,9 +124,8 @@ matrix3d<double> Stress::calc_stress_hubbard()
 {
     stress_hubbard_.zero();
 
-    mdarray<double_complex, 5> dn(2 * hamiltonian_.U().lmax() + 1, 2 * hamiltonian_.U().lmax() + 1, 2,
+    mdarray<double_complex, 5> dn(2 * potential_.U().lmax() + 1, 2 * potential_.U().lmax() + 1, 2,
                                   ctx_.unit_cell().num_atoms(), 9);
-    // hamiltonian_.prepare<double_complex>();
     Q_operator q_op(ctx_);
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
@@ -137,7 +136,7 @@ matrix3d<double> Stress::calc_stress_hubbard()
             TERMINATE("Hubbard stress correction is only implemented for the simple hubbard correction.");
 
         /* compute the derivative of the occupancies numbers */
-        hamiltonian_.U().compute_occupancies_stress_derivatives(*kp__, q_op, dn);
+        potential_.U().compute_occupancies_stress_derivatives(*kp__, q_op, dn);
         for (int dir1 = 0; dir1 < 3; dir1++) {
             for (int dir2 = 0; dir2 < 3; dir2++) {
                 for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
@@ -147,10 +146,9 @@ matrix3d<double> Stress::calc_stress_hubbard()
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    stress_hubbard_(dir1, dir2) -=
-                                        (hamiltonian_.U().U(m2, m1, ispn, ia1) * dn(m1, m2, ispn, ia1, dir1 + 3 * dir2))
-                                            .real() /
-                                        ctx_.unit_cell().omega();
+                                    stress_hubbard_(dir1, dir2) -= (potential_.U().U(m2, m1, ispn, ia1) *
+                                                                    dn(m1, m2, ispn, ia1, dir1 + 3 * dir2)).real() /
+                                                                    ctx_.unit_cell().omega();
                                 }
                             }
                         }
@@ -159,8 +157,6 @@ matrix3d<double> Stress::calc_stress_hubbard()
             }
         }
     }
-
-    // hamiltonian_.dismiss();
 
     /* global reduction */
     kset_.comm().allreduce<double, mpi_op_t::sum>(&stress_hubbard_(0, 0), 9);

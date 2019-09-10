@@ -390,7 +390,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
-        .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian&) const) & Band::initialize_subspace)
+        .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian0&) const) & Band::initialize_subspace)
         .def("solve", &Band::solve);
 
     py::class_<DFT_ground_state>(m, "DFT_ground_state")
@@ -414,7 +414,6 @@ PYBIND11_MODULE(py_sirius, m)
                  return pj_convert(js);
              })
         .def("k_point_set", &DFT_ground_state::k_point_set, py::return_value_policy::reference_internal)
-        .def("hamiltonian", &DFT_ground_state::hamiltonian, py::return_value_policy::reference_internal)
         .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference_internal)
         .def("forces", &DFT_ground_state::forces, py::return_value_policy::reference_internal)
         .def("stress", &DFT_ground_state::stress, py::return_value_policy::reference_internal)
@@ -490,179 +489,191 @@ PYBIND11_MODULE(py_sirius, m)
              [](K_point_set& ks, std::vector<double> v, double weight) { ks.add_kpoint(v.data(), weight); })
         .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
 
-    py::class_<Hamiltonian>(m, "Hamiltonian")
-        .def(py::init<Simulation_context&, Potential&>(), py::keep_alive<1, 2>())
-        .def("potential", &Hamiltonian::potential, py::return_value_policy::reference_internal)
-        .def("ctx", &Hamiltonian::ctx, py::return_value_policy::reference_internal)
-        .def("on_gpu",
-             [](Hamiltonian& hamiltonian) -> bool {
-                 const auto& ctx = hamiltonian.ctx();
-                 auto pu         = ctx.processing_unit();
-                 if (pu == device_t::GPU) {
-                     return true;
-                 } else {
-                     return false;
-                 }
-             })
-        .def("apply_ref",
-             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions>& swf) {
-                 int num_wf = wf.num_wf();
-                 int num_sc = wf.num_sc();
-                 if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
-                     throw std::runtime_error(
-                         "Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
-                 }
-                 #ifdef __GPU
-                 auto& ctx = hamiltonian.ctx();
-                 if (is_device_memory(ctx.preferred_memory_t())) {
-                     auto& mpd = ctx.mem_pool(memory_t::device);
-                     for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         wf_out.pw_coeffs(ispn).allocate(mpd);
-                         wf.pw_coeffs(ispn).allocate(mpd);
-                         wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
-                     }
-                 }
-                 #endif
-                 /* apply H to all wave functions */
-                 int N = 0;
-                 int n = num_wf;
-                 hamiltonian.prepare();
-                 hamiltonian.local_op().prepare(kp.gkvec_partition());
-                 kp.beta_projectors().prepare();
-                 if (!hamiltonian.ctx().gamma_point()) {
-                     for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
-                     }
-                 } else {
-                     std::cerr << "python module:: H applied at gamma-point\n";
-                     for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
-                     }
-                 }
-                 kp.beta_projectors().dismiss();
-                 hamiltonian.local_op().dismiss();
-                 if (!hamiltonian.ctx().full_potential()) {
-                     hamiltonian.dismiss();
-                 }
-                 #ifdef __GPU
-                 if (is_device_memory(ctx.preferred_memory_t())) {
-                     for (int ispn = 0; ispn < num_sc; ++ispn)
-                         wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
-                 }
-                 #endif // __GPU
-             },
-             "kpoint"_a, "wf_out"_a, "wf_in"_a, py::arg("swf_out")=nullptr)
-        .def("_apply_ref_inner_prepare",
-             // must be called BEFORE _apply_ref_inner
-             [](Hamiltonian& hamiltonian) { hamiltonian.prepare(); })
-        .def("_apply_ref_inner_dismiss",
-             // must be called AFTER _apply_ref_inner
-             [](Hamiltonian& hamiltonian) {
-                 hamiltonian.local_op().dismiss();
-                 if (!hamiltonian.ctx().full_potential()) {
-                     hamiltonian.dismiss();
-                 }
-             })
-        .def("_apply_ref_inner",
-             // this is the same as apply_ref, but skipping hamiltonian.prepare() which will deadlock unless called by
-             // all ranks
-             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions> swf) {
-                 int num_wf = wf.num_wf();
-                 int num_sc = wf.num_sc();
-                 if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
-                     throw std::runtime_error(
-                         "Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
-                 }
-                 #ifdef __GPU
-                 auto& ctx = hamiltonian.ctx();
-                 if (is_device_memory(ctx.preferred_memory_t())) {
-                     auto& mpd = ctx.mem_pool(memory_t::device);
-                     for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         wf_out.pw_coeffs(ispn).allocate(mpd);
-                         wf.pw_coeffs(ispn).allocate(mpd);
-                         wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
-                         if (swf) {
-                             swf->pw_coeffs(ispn).allocate(mpd);
-                             swf->pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
-                         }
-
-                     }
-                 }
-                 #endif
-                 /* apply H to all wave functions */
-                 int N = 0;
-                 int n = num_wf;
-                 hamiltonian.local_op().prepare(kp.gkvec_partition());
-                 kp.beta_projectors().prepare();
-                 if (!hamiltonian.ctx().gamma_point()) {
-                     for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
-                     }
-                 } else {
-                     std::cerr << "python module:: H applied at gamma-point\n";
-                     for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
-                     }
-                 }
-                 kp.beta_projectors().dismiss();
-                 //hamiltonian.local_op().dismiss();
-                 #ifdef __GPU
-                 if (is_device_memory(ctx.preferred_memory_t())) {
-                     for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
-                         if(swf) {
-                             swf->pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
-                         }
-                     }
-                 }
-                 #endif // __GPU
-             }, "kpoint"_a, "wf_out"_a, "wf_in"_a, py::arg("swf_out")=nullptr)
-        .def("_apply_overlap_inner",
-             // this is the same as apply_ref, but skipping hamiltonian.prepare() which will deadlock unless called by
-             // all ranks
-             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf) {
-                 int num_wf = wf.num_wf();
-                 int num_sc = wf.num_sc();
-                 if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
-                     throw std::runtime_error(
-                         "Hamiltonian::apply_s (python bindings): num_sc or num_wf do not match");
-                 }
-                 #ifdef __GPU
-                 auto& ctx = hamiltonian.ctx();
-                 if (is_device_memory(ctx.preferred_memory_t())) {
-                     auto& mpd = ctx.mem_pool(memory_t::device);
-                     for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         wf_out.pw_coeffs(ispn).allocate(mpd);
-                         wf.pw_coeffs(ispn).allocate(mpd);
-                         wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
-                     }
-                 }
-                 #endif
-                 // hamiltonian.local_op().prepare(kp.gkvec_partition());
-                 // hamiltonian.ctx().fft_coarse().prepare(kp.gkvec_partition());
-                 kp.beta_projectors().prepare();
-                 if (!hamiltonian.ctx().gamma_point()) {
-                     for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         //hamiltonian.apply_s<complex_double>(&kp, ispn, wf, wf_out);
-                         hamiltonian.apply_h_s<complex_double>(&kp, ispn, 0, num_wf, wf, nullptr, &wf_out);
-                     }
-                 } else {
-                     std::cerr << "python module:: H applied at gamma-point\n";
-                     for (int ispn = 0; ispn < num_sc; ++ispn) {
-                         hamiltonian.apply_h_s<double>(&kp, ispn, 0, num_wf, wf, nullptr, &wf_out);
-                         //hamiltonian.apply_s<double>(&kp, ispn, wf, wf_out);
-                     }
-                 }
-                 kp.beta_projectors().dismiss();
-                 //hamiltonian.local_op().dismiss();
-                 // hamiltonian.ctx().fft_coarse().dismiss();
-                 #ifdef __GPU
-                 if (is_device_memory(ctx.preferred_memory_t())) {
-                     for (int ispn = 0; ispn < num_sc; ++ispn)
-                         wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_wf);
-                 }
-                 #endif // __GPU
-             }, "kpoint"_a, "wf_out"_a, "wf_in"_a);
+//==    py::class_<Hamiltonian>(m, "Hamiltonian")
+//==        .def(py::init<Simulation_context&, Potential&>(), py::keep_alive<1, 2>())
+//==        .def("potential", &Hamiltonian::potential, py::return_value_policy::reference_internal)
+//==        //.def("ctx", &Hamiltonian::ctx, py::return_value_policy::reference_internal)
+//==        //.def("on_gpu",
+//==        //     [](Hamiltonian& hamiltonian) -> bool {
+//==        //         const auto& ctx = hamiltonian.ctx();
+//==        //         auto pu         = ctx.processing_unit();
+//==        //         if (pu == device_t::GPU) {
+//==        //             return true;
+//==        //         } else {
+//==        //             return false;
+//==        //         }
+//==        //     })
+//==        .def("apply_ref",
+//==             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions>& swf) {
+//==                 int num_wf = wf.num_wf();
+//==                 int num_sc = wf.num_sc();
+//==                 if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
+//==                     throw std::runtime_error(
+//==                         "Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
+//==                 }
+//==                        STOP(); 
+//==                        // TODO: fix the python api
+//==                 #ifdef __GPU
+//==                 auto& ctx = hamiltonian.ctx();
+//==                 if (is_device_memory(ctx.preferred_memory_t())) {
+//==                     auto& mpd = ctx.mem_pool(memory_t::device);
+//==                     for (int ispn = 0; ispn < num_sc; ++ispn) {
+//==                         wf_out.pw_coeffs(ispn).allocate(mpd);
+//==                         wf.pw_coeffs(ispn).allocate(mpd);
+//==                         wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
+//==                     }
+//==                 }
+//==                 #endif
+//==                 /* apply H to all wave functions */
+//==                 int N = 0;
+//==                 int n = num_wf;
+//==                 //hamiltonian.prepare();
+//==                 //hamiltonian.local_op().prepare(kp.gkvec_partition());
+//==                 //kp.beta_projectors().prepare();
+//==                 //if (!hamiltonian.ctx().gamma_point()) {
+//==                 //    for (int ispn = 0; ispn < num_sc; ++ispn) {
+//==                 //       STOP(); 
+//==                 //       // TODO: fix the python api
+//==                 //       //hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
+//==                 //    }
+//==                 //} else {
+//==                 //    std::cerr << "python module:: H applied at gamma-point\n";
+//==                 //    for (int ispn = 0; ispn < num_sc; ++ispn) {
+//==                 //       STOP();
+//==                 //       // TODO: fix the python api
+//==                 //       //hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
+//==                 //       //hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
+//==                 //    }
+//==                 //}
+//==                 //kp.beta_projectors().dismiss();
+//==                 //hamiltonian.local_op().dismiss();
+//==                 //if (!hamiltonian.ctx().full_potential()) {
+//==                 //    hamiltonian.dismiss();
+//==                 //}
+//==                 #ifdef __GPU
+//==                 if (is_device_memory(ctx.preferred_memory_t())) {
+//==                     for (int ispn = 0; ispn < num_sc; ++ispn)
+//==                         wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
+//==                 }
+//==                 #endif // __GPU
+//==             },
+//==             "kpoint"_a, "wf_out"_a, "wf_in"_a, py::arg("swf_out")=nullptr)
+//==        //.def("_apply_ref_inner_prepare",
+//==        //     // must be called BEFORE _apply_ref_inner
+//==        //     [](Hamiltonian& hamiltonian) { hamiltonian.prepare(); })
+//==        //.def("_apply_ref_inner_dismiss",
+//==        //     // must be called AFTER _apply_ref_inner
+//==        //     [](Hamiltonian& hamiltonian) {
+//==        //         hamiltonian.local_op().dismiss();
+//==        //         if (!hamiltonian.ctx().full_potential()) {
+//==        //             hamiltonian.dismiss();
+//==        //         }
+//==        //     })
+//==        .def("_apply_ref_inner",
+//==             // this is the same as apply_ref, but skipping hamiltonian.prepare() which will deadlock unless called by
+//==             // all ranks
+//==             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions> swf) {
+//==                        STOP();
+//==                        // TODO: fix to the new H0 and Hk
+//==                 int num_wf = wf.num_wf();
+//==                 int num_sc = wf.num_sc();
+//==                 if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
+//==                     throw std::runtime_error(
+//==                         "Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
+//==                 }
+//==                 #ifdef __GPU
+//==                 auto& ctx = hamiltonian.ctx();
+//==                 if (is_device_memory(ctx.preferred_memory_t())) {
+//==                     auto& mpd = ctx.mem_pool(memory_t::device);
+//==                     for (int ispn = 0; ispn < num_sc; ++ispn) {
+//==                         wf_out.pw_coeffs(ispn).allocate(mpd);
+//==                         wf.pw_coeffs(ispn).allocate(mpd);
+//==                         wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
+//==                         if (swf) {
+//==                             swf->pw_coeffs(ispn).allocate(mpd);
+//==                             swf->pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
+//==                         }
+//==
+//==                     }
+//==                 }
+//==                 #endif
+//==                 /* apply H to all wave functions */
+//==                 int N = 0;
+//==                 int n = num_wf;
+//==                 //hamiltonian.local_op().prepare(kp.gkvec_partition());
+//==                 //kp.beta_projectors().prepare();
+//==                 //if (!hamiltonian.ctx().gamma_point()) {
+//==                 //    for (int ispn = 0; ispn < num_sc; ++ispn) {
+//==                 //       STOP();
+//==                 //       // TODO: fix to the new H0 and Hk
+//==                 //       //hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
+//==                 //    }
+//==                 //} else {
+//==                 //    std::cerr << "python module:: H applied at gamma-point\n";
+//==                 //    for (int ispn = 0; ispn < num_sc; ++ispn) {
+//==                 //       STOP();
+//==                 //       // TODO: fix to the new H0 and Hk
+//==                 //        //hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
+//==                 //    }
+//==                 //}
+//==                 //kp.beta_projectors().dismiss();
+//==                 //hamiltonian.local_op().dismiss();
+//==                 #ifdef __GPU
+//==                 if (is_device_memory(ctx.preferred_memory_t())) {
+//==                     for (int ispn = 0; ispn < num_sc; ++ispn) {
+//==                         wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
+//==                         if(swf) {
+//==                             swf->pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
+//==                         }
+//==                     }
+//==                 }
+//==                 #endif // __GPU
+//==             }, "kpoint"_a, "wf_out"_a, "wf_in"_a, py::arg("swf_out")=nullptr)
+//==        .def("_apply_overlap_inner",
+//==             // this is the same as apply_ref, but skipping hamiltonian.prepare() which will deadlock unless called by
+//==             // all ranks
+//==             [](Hamiltonian& hamiltonian, K_point& kp, Wave_functions& wf_out, Wave_functions& wf) {
+//==                         STOP(); // fix to the new api
+//==                 //int num_wf = wf.num_wf();
+//==                 //int num_sc = wf.num_sc();
+//==                 //if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
+//==                 //    throw std::runtime_error(
+//==                 //        "Hamiltonian::apply_s (python bindings): num_sc or num_wf do not match");
+//==                 //}
+//==                 //#ifdef __GPU
+//==                 //auto& ctx = hamiltonian.ctx();
+//==                 //if (is_device_memory(ctx.preferred_memory_t())) {
+//==                 //    auto& mpd = ctx.mem_pool(memory_t::device);
+//==                 //    for (int ispn = 0; ispn < num_sc; ++ispn) {
+//==                 //        wf_out.pw_coeffs(ispn).allocate(mpd);
+//==                 //        wf.pw_coeffs(ispn).allocate(mpd);
+//==                 //        wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
+//==                 //    }
+//==                 //}
+//==                 //#endif
+//==                 //// hamiltonian.local_op().prepare(kp.gkvec_partition());
+//==                 //// hamiltonian.ctx().fft_coarse().prepare(kp.gkvec_partition());
+//==                 //kp.beta_projectors().prepare();
+//==                 //if (!hamiltonian.ctx().gamma_point()) {
+//==                 //    for (int ispn = 0; ispn < num_sc; ++ispn) {
+//==                 //        //hamiltonian.apply_h_s<complex_double>(&kp, ispn, 0, num_wf, wf, nullptr, &wf_out);
+//==                 //        STOP(); // fix to the new api
+//==                 //    }
+//==                 //} else {
+//==                 //    std::cerr << "python module:: H applied at gamma-point\n";
+//==                 //    for (int ispn = 0; ispn < num_sc; ++ispn) {
+//==                 //        //hamiltonian.apply_h_s<double>(&kp, ispn, 0, num_wf, wf, nullptr, &wf_out);
+//==                 //        STOP(); // fix to the new api
+//==                 //    }
+//==                 //}
+//==                 //kp.beta_projectors().dismiss();
+//==                 //#ifdef __GPU
+//==                 //if (is_device_memory(ctx.preferred_memory_t())) {
+//==                 //    for (int ispn = 0; ispn < num_sc; ++ispn)
+//==                 //        wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, num_wf);
+//==                 //}
+//==                 //#endif // __GPU
+//==             }, "kpoint"_a, "wf_out"_a, "wf_in"_a);
 
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
@@ -874,5 +885,6 @@ void initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
 {
     auto& kset = dft_gs.k_point_set();
     auto& hamiltonian = dft_gs.hamiltonian();
-    Band(ctx).initialize_subspace(kset, hamiltonian);
+    Hamiltonian0 H0(dft_gs.potential());
+    Band(ctx).initialize_subspace(kset, hamiltonian, H0);
 }

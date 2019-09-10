@@ -374,7 +374,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, spin_range spins__, Wav
         spfftk__.backward(reinterpret_cast<double const*>(phi1[ispn].at(spfft_memory_t.at(spfft_mem))), spfft_mem);
     };
 
-    auto mul_by_veff = [&](double* buf, int ispn_block) {
+    auto mul_by_veff = [&](double* buf, int ispn_block) { // TODO: make a class method, use here and in apply_b
         switch (spfft_mem) {
             case SPFFT_PU_HOST: {
                 if (ispn_block < 2) { /* up-up or dn-dn block */

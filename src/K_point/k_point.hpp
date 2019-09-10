@@ -263,6 +263,9 @@ class K_point
     void compute_gradient_wave_functions(Wave_functions& phi, const int starting_position_i, const int num_wf,
                                          Wave_functions& dphi, const int starting_position_j, const int direction);
 
+    void generate_hubbard_orbitals();
+    void orthogonalize_hubbard_orbitals(Wave_functions& phi__);
+
     /// Save data to HDF5 file.
     void save(std::string const& name__, int id__) const;
 
@@ -402,20 +405,20 @@ class K_point
         return *hubbard_wave_functions_;
     }
 
-    inline void allocate_hubbard_wave_functions(int size)
-    {
-        if (hubbard_wave_functions_ != nullptr) {
-            return;
-        }
-        const int num_sc        = ctx_.num_mag_dims() == 3 ? 2 : 1;
-        hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(
-            new Wave_functions(gkvec_partition(), size, ctx_.preferred_memory_t(), num_sc));
-    }
+    //inline void allocate_hubbard_wave_functions(int size)
+    //{
+    //    if (hubbard_wave_functions_ != nullptr) {
+    //        return;
+    //    }
+    //    const int num_sc        = ctx_.num_mag_dims() == 3 ? 2 : 1;
+    //    hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(
+    //        new Wave_functions(gkvec_partition(), size, ctx_.preferred_memory_t(), num_sc));
+    //}
 
-    inline bool hubbard_wave_functions_calculated()
-    {
-        return (hubbard_wave_functions_ != nullptr);
-    }
+    //inline bool hubbard_wave_functions_calculated()
+    //{
+    //    return (hubbard_wave_functions_ != nullptr);
+    //}
 
     inline Wave_functions& singular_components()
     {

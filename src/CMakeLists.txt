@@ -18,7 +18,7 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "Band/diag_pseudo_potential.cpp;Band/diag_full_potential.cpp;Band/residuals.cpp"
   "Beta_projectors/beta_projectors_base.cpp"
   "Hubbard/apply_hubbard_potential.cpp"
-  "Hubbard/Hubbard.cpp"
+  "Hubbard/hubbard.cpp"
   "Hubbard/hubbard_generate_atomic_orbitals.cpp"
   "Hubbard/hubbard_occupancies_derivatives.cpp"
   "Hubbard/hubbard_occupancy.cpp"

@@ -83,7 +83,8 @@ void DFT_ground_state::initial_state()
     density_.initial_density();
     potential_.generate(density_);
     if (!ctx_.full_potential()) {
-        Band(ctx_).initialize_subspace(kset_, hamiltonian_);
+        Hamiltonian0 H0(potential_);
+        Band(ctx_).initialize_subspace(kset_, H0);
     }
 }
 
@@ -203,7 +204,7 @@ double DFT_ground_state::total_energy() const
     }
 
     if (ctx_.hubbard_correction()) {
-        tot_en += hamiltonian_.U().hubbard_energy();
+        tot_en += potential_.U().hubbard_energy();
     }
 
     return tot_en;
@@ -266,13 +267,13 @@ json DFT_ground_state::check_scf_density()
     /* generate potential from existing density */
     pot.generate(density_);
     /* create new Hamiltonian */
-    Hamiltonian H(ctx_, pot);
+    Hamiltonian0 H0(pot);
     /* set the high tolerance */
     ctx_.iterative_solver_tolerance(ctx_.settings().itsol_tol_min_);
     /* initialize the subspace */
-    Band(ctx_).initialize_subspace(kset_, H);
+    Band(ctx_).initialize_subspace(kset_, H0);
     /* find new wave-functions */
-    Band(ctx_).solve(kset_, H, true);
+    Band(ctx_).solve(kset_, H0, true);
     /* find band occupancies */
     kset_.find_band_occupancies();
     /* generate new density from the occupied wave-functions */
@@ -329,8 +330,8 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
     std::vector<double> rms_hist;
 
     if (ctx_.hubbard_correction()) {
-        hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
-        hamiltonian_.U().calculate_hubbard_potential_and_energy();
+        potential_.U().hubbard_compute_occupation_numbers(kset_);
+        potential_.U().calculate_hubbard_potential_and_energy();
     }
 
     ctx_.iterative_solver_tolerance(initial_tolerance);
@@ -344,9 +345,9 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
             printf("| SCF iteration %3i out of %3i |\n", iter, num_dft_iter);
             printf("+------------------------------+\n");
         }
-
+        Hamiltonian0 H0(potential_);
         /* find new wave-functions */
-        Band(ctx_).solve(kset_, hamiltonian_, true);
+        Band(ctx_).solve(kset_, H0, true);
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
@@ -444,9 +445,8 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
         /* Compute the hubbard correction */
         if (ctx_.hubbard_correction()) {
-            hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
-            // hamiltonian_.U().mix();
-            hamiltonian_.U().calculate_hubbard_potential_and_energy();
+            potential_.U().hubbard_compute_occupation_numbers(kset_);
+            potential_.U().calculate_hubbard_potential_and_energy();
         }
 
         eold = etot;
@@ -610,8 +610,8 @@ void DFT_ground_state::print_info()
             printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
         }
         if (ctx_.hubbard_correction()) {
-            printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", hamiltonian_.U().hubbard_energy(),
-                   hamiltonian_.U().hubbard_energy() * 2.0);
+            printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", potential_.U().hubbard_energy(),
+                   potential_.U().hubbard_energy() * 2.0);
         }
 
         printf("Total energy              : %18.8f (Ha), %18.8f (Ry)\n", etot, etot * 2);

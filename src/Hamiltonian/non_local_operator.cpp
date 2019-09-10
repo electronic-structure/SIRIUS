@@ -354,13 +354,12 @@ void D_operator::initialize()
                 }
             }
 
-            // the pseudo potential contains information about
-            // spin orbit coupling so we use a different formula
-            // Eq.19 doi:10.1103/PhysRevB.71.115106 for calculating the D matrix
+            /* the pseudo potential contains information about
+               spin orbit coupling so we use a different formula
+               Eq.19 doi:10.1103/PhysRevB.71.115106 for calculating the D matrix
 
-            // Note that the D matrices are stored and
-            // calculated in the up-down basis already not the
-            // (Veff,Bx,By,Bz) one.
+               Note that the D matrices are stored and
+               calculated in the up-down basis already not the (Veff,Bx,By,Bz) one */
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 for (int xi1 = 0; xi1 < nbf; xi1++) {
                     int idx = xi2 * nbf + xi1;
@@ -371,10 +370,9 @@ void D_operator::initialize()
                 }
             }
         } else {
-            // No spin orbit coupling for this atom \f[D = D(V_{eff})
-            // I + D(B_x) \sigma_x + D(B_y) sigma_y + D(B_z)
-            // sigma_z\f] since the D matrices are calculated that
-            // way.
+            /* No spin orbit coupling for this atom \f[D = D(V_{eff})
+               I + D(B_x) \sigma_x + D(B_y) sigma_y + D(B_z)
+               sigma_z\f] since the D matrices are calculated that way */
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 int lm2    = atom.type().indexb(xi2).lm;
                 int idxrf2 = atom.type().indexb(xi2).idxrf;
@@ -498,9 +496,9 @@ void Q_operator::initialize()
                                         if (uc.atom(ia).type().compare_index_beta_functions(xi1, xi1p)) {
                                             result += this->ctx_.augmentation_op(iat).q_mtrx(xi1p, xi2p) *
                                                       (uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 0) *
-                                                           uc.atom(ia).type().f_coefficients(xi2p, xi2, 0, si) +
+                                                       uc.atom(ia).type().f_coefficients(xi2p, xi2, 0, si) +
                                                        uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 1) *
-                                                           uc.atom(ia).type().f_coefficients(xi2p, xi2, 1, si));
+                                                       uc.atom(ia).type().f_coefficients(xi2p, xi2, 1, si));
                                         }
                                     }
                                 }
@@ -548,8 +546,9 @@ void Q_operator::initialize()
 }
 
 template <typename T>
-void apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& beta__, Wave_functions& phi__,
-                         D_operator* d_op__, Wave_functions* hphi__, Q_operator* q_op__, Wave_functions* sphi__)
+void
+apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& beta__, Wave_functions& phi__,
+                    D_operator* d_op__, Wave_functions* hphi__, Q_operator* q_op__, Wave_functions* sphi__)
 {
 
     for (int i = 0; i < beta__.num_chunks(); i++) {
@@ -562,7 +561,7 @@ void apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& 
             if (hphi__ && d_op__) {
                 /* apply diagonal spin blocks */
                 d_op__->apply(i, ispn, *hphi__, N__, n__, beta__, beta_phi);
-                if (!d_op__->is_diag()) {
+                if (!d_op__->is_diag() && hphi__->num_sc() == 2) {
                     /* apply non-diagonal spin blocks */
                     /* xor 3 operator will map 0 to 3 and 1 to 2 */
                     d_op__->apply(i, ispn ^ 3, *hphi__, N__, n__, beta__, beta_phi);
@@ -572,7 +571,7 @@ void apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& 
             if (sphi__ && q_op__) {
                 /* apply Q operator (diagonal in spin) */
                 q_op__->apply(i, ispn, *sphi__, N__, n__, beta__, beta_phi);
-                if (!q_op__->is_diag()) {
+                if (!q_op__->is_diag() && sphi__->num_sc() == 2) {
                     q_op__->apply(i, ispn ^ 3, *sphi__, N__, n__, beta__, beta_phi);
                 }
             }
@@ -580,11 +579,43 @@ void apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& 
     }
 }
 
-template void apply_non_local_d_q<double>(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                                          Wave_functions& phi__, D_operator* d_op__, Wave_functions* hphi__,
-                                          Q_operator* q_op__, Wave_functions* sphi__);
-template void apply_non_local_d_q<double_complex>(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                                                  Wave_functions& phi__, D_operator* d_op__, Wave_functions* hphi__,
-                                                  Q_operator* q_op__, Wave_functions* sphi__);
+/// Compute |sphi> = (1 + Q)|phi>
+template <typename T>
+void
+apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+                 Wave_functions& phi__, Q_operator* q_op__, Wave_functions& sphi__)
+{
+    for (auto s: spins__) {
+        sphi__.copy_from(pu__, n__, phi__, s, N__, s, N__);
+    }
+
+    if (q_op__) {
+        beta__.prepare();
+        apply_non_local_d_q<double_complex>(spins__, N__, n__, beta__, phi__, nullptr, nullptr, q_op__, &sphi__);
+        beta__.dismiss();
+    }
+}
+
+template
+void
+apply_non_local_d_q<double>(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+                            Wave_functions& phi__, D_operator* d_op__, Wave_functions* hphi__,
+                            Q_operator* q_op__, Wave_functions* sphi__);
+
+template
+void
+apply_non_local_d_q<double_complex>(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+                                    Wave_functions& phi__, D_operator* d_op__, Wave_functions* hphi__,
+                                    Q_operator* q_op__, Wave_functions* sphi__);
+
+template
+void
+apply_S_operator<double>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+                         Wave_functions& phi__, Q_operator* q_op__, Wave_functions& sphi__);
+
+template
+void
+apply_S_operator<double_complex>(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+                                 Wave_functions& phi__, Q_operator* q_op__, Wave_functions& sphi__);
 
 } // namespace sirius

@@ -18,8 +18,99 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "K_point/k_point.hpp"
+#include "Hamiltonian/non_local_operator.hpp"
+#include "SDDK/wf_inner.hpp"
+#include "SDDK/wf_trans.hpp"
 
 namespace sirius {
+
+void
+K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
+{
+    // do we orthogonalize the all thing
+
+    const int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
+
+    int nwfu = unit_cell_.num_wf_with_U().first;
+
+    if (ctx_.Hubbard().orthogonalize_hubbard_orbitals_ || ctx_.Hubbard().normalize_hubbard_orbitals_) {
+
+        dmatrix<double_complex> S(nwfu, nwfu);
+        S.zero();
+
+        if (ctx_.processing_unit() == device_t::GPU) {
+            S.allocate(memory_t::device);
+        }
+
+        memory_t mem{memory_t::host};
+        linalg_t la{linalg_t::blas};
+        if (ctx_.processing_unit() == device_t::GPU) {
+            mem = memory_t::device;
+            la = linalg_t::gpublas;
+        }
+
+        /* we do not need to treat both up and down spins for the
+           colinear case because the up and down components are identical */
+        inner<double_complex>(mem, la, (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, 0, nwfu, this->hubbard_wave_functions(), 0, nwfu, S, 0, 0);
+
+        if (ctx_.processing_unit() == device_t::GPU) {
+            S.copy_to(memory_t::host);
+        }
+
+        /* diagonalize the all stuff */
+
+        if (ctx_.Hubbard().orthogonalize_hubbard_orbitals_ ) {
+            dmatrix<double_complex> Z(nwfu, nwfu);
+
+            auto ev_solver = Eigensolver_factory(ev_solver_t::lapack);
+
+            std::vector<double> eigenvalues(nwfu, 0.0);
+
+            ev_solver->solve(nwfu, S, &eigenvalues[0], Z);
+
+            // build the O^{-1/2} operator
+            for (int i = 0; i < static_cast<int>(eigenvalues.size()); i++) {
+                eigenvalues[i] = 1.0 / std::sqrt(eigenvalues[i]);
+            }
+
+            // // First compute S_{nm} = E_m Z_{nm}
+            S.zero();
+            for (int l = 0; l < nwfu; l++) {
+                for (int m = 0; m < nwfu; m++) {
+                    for (int n = 0; n < nwfu; n++) {
+                        S(n, m) += eigenvalues[l] * Z(n, l) * std::conj(Z(m, l));
+                    }
+                }
+            }
+        } else {
+            for (int l = 0; l < nwfu; l++) {
+                for (int m = 0; m < nwfu; m++) {
+                    if (l == m) {
+                        S(l, m) = 1.0 / std::sqrt(S(l, l).real());
+                    } else {
+                        S(l, m) = 0.0;
+                    }
+                }
+            }
+        }
+
+        if (ctx_.processing_unit() == device_t::GPU) {
+            S.copy_to(memory_t::device);
+        }
+
+        // only need to do that when in the ultra soft case
+        if (unit_cell_.augment()) {
+            for (int s = 0; s < num_sc; s++) {
+                phi__.copy_from(ctx_.processing_unit(), nwfu, hubbard_wave_functions(), s, 0, s, 0);
+            }
+        }
+
+        // now apply the overlap matrix
+        // Apply the transform on the wave functions
+        transform<double_complex>(mem, la, (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, 0, nwfu,
+                                  S, 0, 0, hubbard_wave_functions(), 0, nwfu);
+    }
+}
 
 void K_point::generate_gkvec(double gk_cutoff__) 
 {
@@ -62,7 +153,7 @@ void K_point::generate_gkvec(double gk_cutoff__)
         gv.at(memory_t::host))));
 }
 
-void K_point::update() 
+void K_point::update()
 {
     PROFILE("sirius::K_point::update");
 
@@ -87,6 +178,10 @@ void K_point::update()
             beta_projectors_row_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_row_));
             beta_projectors_col_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_col_));
 
+        }
+
+        if (ctx_.hubbard_correction()) {
+            generate_hubbard_orbitals();
         }
 
         //if (false) {
@@ -647,5 +742,69 @@ void K_point::load(HDF5_tree h5in, int id)
 //==         fin["K_points"][id]["spinor_wave_functions"].read_mdarray(j, wfj);
 //==     }
 //== }
+
+void K_point::generate_hubbard_orbitals()
+{
+// TODO: don't forget to copy WFs to GPU in other parts of the code
+
+    auto r = unit_cell_.num_wf_with_U();
+    const int num_sc = ctx_.num_mag_dims() == 3 ? 2 : 1;
+
+    Wave_functions phi(gkvec_partition(), r.first, ctx_.preferred_memory_t(), num_sc);
+
+    for (int ispn = 0; ispn < num_sc; ispn++) {
+        phi.pw_coeffs(ispn).prime().zero();
+    }
+
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom_type = unit_cell_.atom(ia).type();
+        if (atom_type.hubbard_correction()) {
+            generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(), ia, r.second[ia], true, phi);
+        }
+    }
+
+    /* check if we have a norm conserving pseudo potential only */
+    std::unique_ptr<Q_operator> q_op;
+    if (unit_cell_.augment()) {
+        q_op = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
+    }
+
+    if (ctx_.processing_unit() == device_t::GPU) {
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            /* allocate GPU memory */
+            phi.pw_coeffs(ispn).prime().allocate(memory_t::device);
+            // can do async copy
+            phi.pw_coeffs(ispn).copy_to(memory_t::device, 0, r.first);
+            hubbard_wave_functions_->pw_coeffs(ispn).prime().allocate(memory_t::device);
+        }
+    }
+    sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), spin_range(num_sc), 0, r.first, beta_projectors(),
+                                             phi, q_op.get(), *hubbard_wave_functions_);
+
+    //for (int s = 0; s < num_sc; s++) {
+    //    /* need to consider the case where all atoms are norm
+    //       conserving; in that case the S operator is diagonal in orbital space */
+    //    hubbard_wave_functions_->copy_from(ctx_.processing_unit(), r.first, sphi, s, 0, s, 0);
+    //}
+
+    //if (augment) {
+    //    Q_operator q_op(ctx_);
+    //    beta_projectors().prepare();
+    //    apply_non_local_d_q<double_complex>(spin_range(num_sc), 0, r.first, beta_projectors(), sphi, nullptr, nullptr,
+    //                                        &q_op, hubbard_wave_functions_.get());
+    //    beta_projectors.dismiss();
+    //}
+
+    orthogonalize_hubbard_orbitals(phi);
+
+    // All calculations on GPU then we need to copy the final result back to the cpus
+    if (ctx_.processing_unit() == device_t::GPU) {
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            /* copy the hubbard wave functions on the host and then deallocate on GPU */
+            hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, r.first);
+            hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+        }
+    }
+}
 
 }

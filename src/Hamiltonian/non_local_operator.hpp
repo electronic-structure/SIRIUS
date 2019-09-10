@@ -85,12 +85,12 @@ class Non_local_operator
     /// Apply chunk of beta-projectors to all wave functions.
     template <typename T>
     void apply(int chunk__, int ispn_block__, Wave_functions& op_phi__, int idx0__, int n__,
-                      Beta_projectors_base& beta__, matrix<T>& beta_phi__);
+               Beta_projectors_base& beta__, matrix<T>& beta_phi__);
 
     /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
     template <typename T>
     void apply(int chunk__, int ia__, int ispn_block__, Wave_functions& op_phi__, int idx0__, int n__,
-                      Beta_projectors_base& beta__, matrix<T>& beta_phi__);
+               Beta_projectors_base& beta__, matrix<T>& beta_phi__);
 
     template <typename T>
     inline T value(int xi1__, int xi2__, int ia__)
@@ -106,7 +106,6 @@ class Non_local_operator
         return is_diag_;
     }
 };
-
 
 class D_operator : public Non_local_operator
 {
@@ -199,6 +198,10 @@ apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& beta_
                     Wave_functions& phi__, D_operator* d_op__, Wave_functions* hphi__, Q_operator* q_op__,
                     Wave_functions* sphi__);
 
+template <typename T>
+void
+apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+                 Wave_functions& phi__, Q_operator* q_op__, Wave_functions& sphi__);
 
 } // namespace sirius
 

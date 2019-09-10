@@ -44,17 +44,17 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     /// BLACS grid for distributed linear algebra operations.
     BLACS_grid const& blacs_grid_;
 
-    void solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__, Hamiltonian_k& Hk__) const;
+    void solve_full_potential(Hamiltonian_k& Hk__) const;
 
     /// Solve the first-variational (non-magnetic) problem with exact diagonalization.
     /** This is only used by the LAPW method. */
-    void diag_full_potential_first_variation_exact(K_point& kp__, Hamiltonian& hamiltonian__, Hamiltonian_k& Hk__) const;
+    void diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const;
 
     /// Solve the first-variational (non-magnetic) problem with iterative Davidson diagonalization.
-    void diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltonian& hamiltonian__, Hamiltonian_k& Hk__) const;
+    void diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) const;
 
     /// Solve second-variational problem.
-    void diag_full_potential_second_variation(K_point& kp, Hamiltonian& hamiltonian__) const;
+    void diag_full_potential_second_variation(Hamiltonian_k& Hk__) const;
 
     /// Get singular components of the LAPW overlap matrix.
     /** Singular components are the eigen-vectors with a very small eigen-value. */
@@ -62,18 +62,19 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Diagonalize a pseudo-potential Hamiltonian.
     template <typename T>
-    int diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const;
+    int diag_pseudo_potential(Hamiltonian_k& Hk__) const;
 
     /// Exact (not iterative) diagonalization of the Hamiltonian.
     template <typename T>
-    void diag_pseudo_potential_exact(K_point* kp__, int ispn__, Hamiltonian& H__) const;
+    void diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const;
 
     /// Iterative Davidson diagonalization.
     template <typename T>
-    int diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const;
+    int diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const;
 
+    /// Diagonalize S operator to check for the negative eigen-values.
     template <typename T>
-    mdarray<double, 1> diag_S_davidson(K_point& kp__, Hamiltonian& H__) const;
+    mdarray<double, 1> diag_S_davidson(Hamiltonian_k& Hk__) const;
 
     ///// RMM-DIIS diagonalization.
     //template <typename T>
@@ -81,11 +82,10 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Check wave-functions for orthonormalization.
     template <typename T>
-    void check_wave_functions(K_point& kp__, Hamiltonian& H__) const
+    void check_wave_functions(Hamiltonian_k& Hk__) const // TODO: move check_wave_functions and check_residuals to one place
     {
-        if (kp__.comm().rank() == 0) {
-            printf("checking wave-functions\n");
-        }
+        auto& kp = Hk__.kp();
+        kp.message(1, __func__, "checking wave-functions\n");
 
         if (!ctx_.full_potential()) {
 
@@ -94,8 +94,8 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
             const bool nc_mag = (ctx_.num_mag_dims() == 3);
             const int num_sc = nc_mag ? 2 : 1;
 
-            auto& psi = kp__.spinor_wave_functions();
-            Wave_functions spsi(kp__.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+            auto& psi = kp.spinor_wave_functions();
+            Wave_functions spsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
 
             if (is_device_memory(ctx_.preferred_memory_t())) {
                 auto& mpd = ctx_.mem_pool(memory_t::device);
@@ -108,22 +108,19 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                 }
                 ovlp.allocate(memory_t::device);
             }
-            kp__.beta_projectors().prepare();
             /* compute residuals */
             for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
                 /* apply Hamiltonian and S operators to the wave-functions */
-                H__.apply_h_s<T>(&kp__, nc_mag ? 2 : ispin_step, 0, ctx_.num_bands(), psi, nullptr, &spsi);
+                Hk__.apply_h_s<T>(nc_mag ? 2 : ispin_step, 0, ctx_.num_bands(), psi, nullptr, &spsi);
                 inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, psi, 0, ctx_.num_bands(),
                       spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
 
                 double diff = check_identity(ovlp, ctx_.num_bands());
 
-                if (kp__.comm().rank() == 0) {
-                    if (diff > 1e-12) {
-                        printf("overlap matrix is not identity, maximum error : %20.12f\n", diff);
-                    } else {
-                        printf("OK! Wave functions are orthonormal.\n");
-                    }
+                if (diff > 1e-12) {
+                    kp.message(1, __func__, "overlap matrix is not identity, maximum error : %20.12f\n", diff);
+                } else {
+                    kp.message(1, __func__, "OK! Wave functions are orthonormal.\n");
                 }
             }
             if (is_device_memory(ctx_.preferred_memory_t())) {
@@ -131,7 +128,6 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                     psi.pw_coeffs(ispn).deallocate(memory_t::device);
                 }
             }
-            kp__.beta_projectors().dismiss();
         }
     }
 
@@ -159,20 +155,20 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                            dmatrix<T>* mtrx_old__ = nullptr) const;
 
     template <typename T>
-    int solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const;
+    int solve_pseudo_potential(Hamiltonian_k& Hk__) const;
 
     template <typename T>
-    void check_residuals(K_point& kp__, Hamiltonian& H__) const;
+    void check_residuals(Hamiltonian_k& Hk__) const;
 
     /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
-    void solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) const;
+    void solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const;
 
     /// Initialize the subspace for the entire k-point set.
-    void initialize_subspace(K_point_set& kset__, Hamiltonian& hamiltonian__) const;
+    void initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const;
 
     /// Initialize the wave-functions subspace.
     template <typename T>
-    void initialize_subspace(K_point* kp__, Hamiltonian& hamiltonian__, int num_ao__) const;
+    void initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const;
 
     static double& evp_work_count() // TODO: move counters to sim.ctx
     {

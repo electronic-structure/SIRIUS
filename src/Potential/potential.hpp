@@ -26,6 +26,7 @@
 #define __POTENTIAL_HPP__
 
 #include "Density/density.hpp"
+#include "Hubbard/hubbard.hpp"
 #include "xc_functional.hpp"
 
 namespace sirius {
@@ -136,6 +137,9 @@ class Potential : public Field4D
     int max_paw_basis_size_{0};
 
     mdarray<double, 2> aux_bf_;
+
+    /// Hubbard potential correction.
+    std::unique_ptr<Hubbard> U_;
 
     /// A debug variable to scale the density when computing the XC potential.
     /** This is used to verify the variational derivative of Exc */
@@ -398,6 +402,10 @@ class Potential : public Field4D
 
         /* in case of PAW */
         init_PAW();
+
+        if (ctx_.hubbard_correction()) {
+            U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
+        }
 
         update();
     }
@@ -1195,6 +1203,11 @@ class Potential : public Field4D
     inline void scale_rho_xc(double d__)
     {
         scale_rho_xc_ = d__;
+    }
+
+    Hubbard& U() const
+    {
+        return *U_;
     }
 };
 

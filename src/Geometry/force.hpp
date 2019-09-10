@@ -47,8 +47,6 @@ class Force
 
     K_point_set& kset_;
 
-    Hamiltonian& hamiltonian_;
-
     mdarray<double, 2> forces_vloc_;
 
     mdarray<double, 2> forces_us_;
@@ -99,15 +97,14 @@ class Force
      */
     void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_);
 
-    void add_ibs_force(K_point* kp__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const;
+    void add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const;
 
   public:
-    Force(Simulation_context& ctx__, Density& density__, Potential& potential__, Hamiltonian& h__, K_point_set& kset__)
+    Force(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__)
         : ctx_(ctx__)
         , density_(density__)
         , potential_(potential__)
         , kset_(kset__)
-        , hamiltonian_(h__)
     {
     }
 

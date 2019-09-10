@@ -248,8 +248,6 @@ void run_tasks(cmd_args const& args)
 
         Potential potential(*ctx);
 
-        Hamiltonian H(*ctx, potential);
-
         Density density(*ctx);
 
         K_point_set ks(*ctx);
@@ -296,15 +294,16 @@ void run_tasks(cmd_args const& args)
         density.load();
         potential.generate(density);
         Band band(*ctx);
+        Hamiltonian0 H0(potential);
         if (!ctx->full_potential()) {
-            band.initialize_subspace(ks, H);
+            band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
                 TERMINATE("fix me");
-                H.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
-                H.U().calculate_hubbard_potential_and_energy();
+                potential.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
+                potential.U().calculate_hubbard_potential_and_energy();
             }
         }
-        band.solve(ks, H, true);
+        band.solve(ks, H0, true);
 
         ks.sync_band_energies();
         if (Communicator::world().rank() == 0) {

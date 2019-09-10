@@ -46,7 +46,7 @@ namespace sirius {
 /// Apply Hubbard correction in the colinear case
 class Hubbard
 {
-private:
+  private:
     Simulation_context& ctx_;
 
     Unit_cell& unit_cell_;
@@ -115,19 +115,21 @@ private:
                                                const int                 mu,
                                                const int                 nu);
 
-    /// apply the S operator in the us pp case. Otherwise it makes a simple copy
-    void apply_S_operator(K_point&        kp,
-                          Q_operator&     q_op,
-                          Wave_functions& phi,
-                          Wave_functions& ophi,
-                          const int       idx0,
-                          const int       num_phi);
+    ///// apply the S operator in the us pp case. Otherwise it makes a simple copy
+    //void apply_S_operator(K_point&        kp,
+    //                      Q_operator&     q_op,
+    //                      Wave_functions& phi,
+    //                      Wave_functions& ophi,
+    //                      const int       idx0,
+    //                      const int       num_phi);
 
     /// orthogonize (normalize) the hubbard wave functions
-    void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi);
+    //void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi);
 
   public:
-    std::vector<int> offset;
+    Hubbard(Simulation_context& ctx__);
+
+    std::vector<int> offset_;
 
     void set_hubbard_U_plus_V()
     {
@@ -183,7 +185,7 @@ private:
                                  Wave_functions& ophi);
 
     /// Generate the atomic orbitals.
-    void generate_atomic_orbitals(K_point& kp, Q_operator& q_op);
+    //void generate_atomic_orbitals(K_point& kp, Q_operator& q_op);
 
     void hubbard_compute_occupation_numbers(K_point_set& kset_);
 
@@ -230,8 +232,6 @@ private:
         return number_of_hubbard_orbitals_;
     }
 
-    Hubbard(Simulation_context& ctx__);
-
     mdarray<double_complex, 4>& occupation_matrix()
     {
         return occupancy_number_;
@@ -250,8 +250,8 @@ private:
                                     double_complex* occ,
                                     int const*      ld);
 
-//#include "Density/Symmetrize.hpp"
 };
+
 } // namespace sirius
 
 #endif // __HUBBARD_HPP__

@@ -156,9 +156,9 @@ void test_davidson(cmd_args const& args__)
         }
         init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
 
-        Hamiltonian H(ctx, pot);
-        H.prepare();
-        Band(ctx).solve_pseudo_potential<double_complex>(kp, H);
+        Hamiltonian0 H0(pot);
+        auto hk = H0(kp);
+        Band(ctx).solve_pseudo_potential<double_complex>(hk);
         //for (int i = 0; i < ctx.num_bands(); i++) {
         //    std::cout << "energy[" << i << "]=" << kp.band_energy(i, 0) << "\n";
         //}

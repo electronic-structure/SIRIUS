@@ -316,7 +316,7 @@ class Simulation_context : public Simulation_parameters
     template <typename... Args>
     inline void message(int level__, char const* label__, Args... args) const
     {
-        if (comm_.rank() == 0 && this->control().verbosity_ >= level__) {
+        if (this->comm().rank() == 0 && this->control().verbosity_ >= level__) {
             if (label__) {
                 printf("[%s] ", label__);
             }

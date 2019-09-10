@@ -60,7 +60,7 @@ class DFT_ground_state
     Density density_;
 
     /// Kohn-Sham Hamiltoninan.
-    Hamiltonian hamiltonian_;
+    //Hamiltonian hamiltonian_;
 
     /// Lattice stress.
     Stress stress_;
@@ -160,9 +160,8 @@ class DFT_ground_state
         , unit_cell_(ctx_.unit_cell())
         , potential_(ctx_)
         , density_(ctx_)
-        , hamiltonian_(ctx_, potential_)
-        , stress_(ctx_, density_, potential_, hamiltonian_, kset__)
-        , forces_(ctx_, density_, potential_, hamiltonian_, kset__)
+        , stress_(ctx_, density_, potential_, kset__)
+        , forces_(ctx_, density_, potential_, kset__)
 
     {
         if (!ctx_.full_potential()) {
@@ -189,11 +188,6 @@ class DFT_ground_state
     inline K_point_set& k_point_set()
     {
         return kset_;
-    }
-
-    inline Hamiltonian& hamiltonian()
-    {
-        return hamiltonian_;
     }
 
     inline Force& forces()
