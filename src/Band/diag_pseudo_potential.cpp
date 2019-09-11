@@ -456,7 +456,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
          * this is done before the main itertive loop */
 
         /* apply Hamiltonian and S operators to the basis functions */
-        Hk__.apply_h_s<T>(nc_mag ? 2 : ispin_step, 0, num_bands, phi, &hphi, &sphi);
+        Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands, phi, &hphi, &sphi);
 
         orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, 0, num_bands, ovlp, res);
 
@@ -578,7 +578,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             }
 
             /* apply Hamiltonian and S operators to the new basis functions */
-            Hk__.apply_h_s<T>(nc_mag ? 2 : ispin_step, N, n, phi, &hphi, &sphi);
+            Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), N, n, phi, &hphi, &sphi);
 
             if (itso.orthogonalize_) {
                 orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, N, n, ovlp, res);
@@ -814,7 +814,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
     for (int k = 0; k < itso.num_steps_; k++) {
 
         /* apply Hamiltonian and S operators to the basis functions */
-        Hk__.apply_h_s<T>(nc_mag ? 2 : 0, N, n, phi, nullptr, &sphi);
+        Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : 0), N, n, phi, nullptr, &sphi);
 
         orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, sphi, N, n, ovlp, res);
 

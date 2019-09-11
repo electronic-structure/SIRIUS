@@ -46,12 +46,6 @@ const int sddk_trans_default_block_size = 2048;
 
 namespace sddk {
 
-/// Helper function: get a list of spin-indices.
-inline std::vector<int> get_spins(int ispn__)
-{
-    return (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
-}
-
 /// Helper class to wrap spin index range.
 /** Depending on the collinear or non-collinear case, the spin index range of the wave-functions is either
  *  [0, 0] or [1, 1] (trivial cases of single spin channel) or [0, 1] (spinor wave-functions). */

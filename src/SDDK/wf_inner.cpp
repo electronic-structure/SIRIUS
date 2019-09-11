@@ -32,7 +32,7 @@ void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functio
 {
     utils::timer t1("sddk::inner|local");
     auto& comm = bra__.comm();
-    auto spins = get_spins(ispn__);
+    auto spins = spin_range(ispn__);
     *beta__    = 0;
     for (auto s : spins) {
         if (bra__.has_mt()) {
@@ -64,7 +64,7 @@ void inner_local<double_complex>(memory_t mem__, linalg_t la__, int ispn__, Wave
                                  double_complex* buf__, int ld__, stream_id sid__)
 {
     utils::timer t1("sddk::inner|local");
-    auto spins = get_spins(ispn__);
+    auto spins = spin_range(ispn__);
     *beta__    = 0;
     for (auto s : spins) {
         linalg2(la__).gemm('C', 'N', m__, n__, bra__.pw_coeffs(s).num_rows_loc(), &linalg_const<double_complex>::one(),

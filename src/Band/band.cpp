@@ -306,7 +306,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 
     for (int ispn_step = 0; ispn_step < ctx_.num_spin_dims(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        Hk__.apply_h_s<T>((ctx_.num_mag_dims() == 3) ? 2 : ispn_step, 0, num_phi_tot, phi, &hphi, &ophi);
+        Hk__.apply_h_s<T>(spin_range((ctx_.num_mag_dims() == 3) ? 2 : ispn_step), 0, num_phi_tot, phi, &hphi, &ophi);
 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
@@ -443,13 +443,8 @@ void Band::check_residuals(Hamiltonian_k& Hk__) const
     }
     /* compute residuals */
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
-        if (nc_mag) {
-            /* apply Hamiltonian and S operators to the wave-functions */
-            Hk__.apply_h_s<T>(2, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
-        } else {
-            /* apply Hamiltonian and S operators to the wave-functions */
-            Hk__.apply_h_s<T>(ispin_step, 0, ctx_.num_bands(), psi, &hpsi, &spsi);
-        }
+        /* apply Hamiltonian and S operators to the wave-functions */
+        Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, &hpsi, &spsi);
 
         for (int ispn = 0; ispn < num_sc; ispn++) {
             if (is_device_memory(ctx_.preferred_memory_t())) {

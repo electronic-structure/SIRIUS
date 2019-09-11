@@ -111,7 +111,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
             /* compute residuals */
             for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
                 /* apply Hamiltonian and S operators to the wave-functions */
-                Hk__.apply_h_s<T>(nc_mag ? 2 : ispin_step, 0, ctx_.num_bands(), psi, nullptr, &spsi);
+                Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, nullptr, &spsi);
                 inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, psi, 0, ctx_.num_bands(),
                       spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
 

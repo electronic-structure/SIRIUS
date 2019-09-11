@@ -795,18 +795,18 @@ class Hamiltonian_k
                            mdarray<double_complex, 2>& o) const;
 
     /// Apply pseudopotential H and S operators to the wavefunctions.
-    /** \param [in]  ispn Index of spin.
-     *  \param [in]  N    Starting index of wave-functions.
-     *  \param [in]  n    Number of wave-functions to which H and S are applied.
-     *  \param [in]  phi  Input wave-functions [storage: CPU && GPU].
-     *  \param [out] hphi Result of Hamiltonian, applied to wave-functions [storage: CPU || GPU].
-     *  \param [out] sphi Result of S-operator, applied to wave-functions [storage: CPU || GPU].
+    /** \param [in]  spins Spin index range
+     *  \param [in]  N     Starting index of wave-functions.
+     *  \param [in]  n     Number of wave-functions to which H and S are applied.
+     *  \param [in]  phi   Input wave-functions [storage: CPU && GPU].
+     *  \param [out] hphi  Result of Hamiltonian, applied to wave-functions [storage: CPU || GPU].
+     *  \param [out] sphi  Result of S-operator, applied to wave-functions [storage: CPU || GPU].
      *
      *  In non-collinear case (ispn = 2) the Hamiltonian and S operator are applied to both components of spinor
      *  wave-functions. Otherwise they are applied to a single component.
      */
     template <typename T>
-    void apply_h_s(int ispn__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
+    void apply_h_s(spin_range spins__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
                    Wave_functions* sphi__);
 
     /// Apply magnetic field to first-variational LAPW wave-functions.

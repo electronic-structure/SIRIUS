@@ -38,7 +38,7 @@ void transform_local<double>(linalg_t la__, int ispn__, double* alpha__, Wave_fu
 {
     utils::timer t1("sddk::transform|local");
 
-    auto spins = get_spins(ispn__);
+    auto spins = spin_range(ispn__);
 
     for (int s : spins) {
         /* input wave-functions may be scalar (this is the case of transformation of first-variational states
@@ -65,7 +65,7 @@ void transform_local<double_complex>(linalg_t la__, int ispn__, double_complex* 
 {
     utils::timer t1("sddk::transform|local");
 
-    auto spins = get_spins(ispn__);
+    auto spins = spin_range(ispn__);
 
     for (int s : spins) {
         /* input wave-functions may be scalar (this is the case of transformation of first-variational states
