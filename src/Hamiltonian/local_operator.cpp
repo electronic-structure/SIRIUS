@@ -823,9 +823,9 @@ void Local_operator::apply_b(spfft::Transform& spfftk__, int N__, int n__, Wave_
 {
     PROFILE("sirius::Local_operator::apply_b");
 
-    if (!gkvec_p_) {
-        TERMINATE("Local operator is not prepared");
-    }
+    //if (!gkvec_p_) {
+    //    TERMINATE("Local operator is not prepared");
+    //}
 
     /* components of H|psi> to which H is applied */
     std::vector<int> iv(1, 0);

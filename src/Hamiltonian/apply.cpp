@@ -206,25 +206,25 @@ void Hamiltonian_k::apply_h_s(int ispn__, int N__, int n__, Wave_functions& phi_
         }
     }
 
-    ///* apply the hubbard potential if relevant */
-    // if (H0().ctx().hubbard_correction() && !H0().ctx().gamma_point() && hphi__) {
+    /* apply the hubbard potential if relevant */
+     if (H0().ctx().hubbard_correction() && !H0().ctx().gamma_point() && hphi__) {
 
-    //   // copy the hubbard wave functions on GPU (if needed) and
-    //   // return afterwards, or if they are not already calculated
-    //   // compute the wave functions and copy them on GPU (if needed)
+       // copy the hubbard wave functions on GPU (if needed) and
+       // return afterwards, or if they are not already calculated
+       // compute the wave functions and copy them on GPU (if needed)
 
-    //    this->U().generate_atomic_orbitals(*kp__, Q());
+        //this->U().generate_atomic_orbitals(*kp__, Q());
 
-    //    // Apply the hubbard potential and deallocate the hubbard wave
-    //    // functions on GPU (if needed)
-    //    this->U().apply_hubbard_potential(*kp__, ispn__, N__, n__, phi__, *hphi__);
+        // Apply the hubbard potential and deallocate the hubbard wave
+        // functions on GPU (if needed)
+        this->H0().potential().U().apply_hubbard_potential(kp().hubbard_wave_functions(), ispn__, N__, n__, phi__, *hphi__);
 
-    //    if (ctx_.processing_unit() == device_t::GPU) {
-    //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-    //            kp__->hubbard_wave_functions().deallocate(spin_idx(ispn), memory_t::device);
-    //        }
-    //    }
-    //}
+        //if (ctx_.processing_unit() == device_t::GPU) {
+        //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+        //        kp__->hubbard_wave_functions().deallocate(spin_idx(ispn), memory_t::device);
+        //    }
+        //}
+    }
 
     // if ((ctx_.control().print_checksum_) && (hphi__ != nullptr) && (sphi__ != nullptr)) {
     //    for (int ispn = 0; ispn < nsc; ispn++) {

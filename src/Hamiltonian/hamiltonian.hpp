@@ -72,9 +72,6 @@ class Hamiltonian0
     /// Q operator (non-local part of S-operator).
     std::unique_ptr<Q_operator> q_op_;
 
-    /// Hubbard potential correction.
-    //std::unique_ptr<Hubbard> U_;
-
     /* copy constructor is forbidden */
     Hamiltonian0(Hamiltonian0 const& src) = delete;
     /* copy assigment operator is forbidden */
@@ -96,10 +93,6 @@ class Hamiltonian0
 
         local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition()));
         local_op_->prepare(potential_);
-
-        //if (ctx_.hubbard_correction()) {
-        //    U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
-        //}
 
         if (!ctx_.full_potential()) {
             d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));

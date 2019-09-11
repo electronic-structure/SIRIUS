@@ -1041,7 +1041,6 @@ bool Density::check_num_electrons() const
     }
 }
 
-
 void Density::generate(K_point_set const& ks__, bool add_core__, bool transform_to_rg__)
 {
     PROFILE("sirius::Density::generate");

@@ -29,10 +29,10 @@
 
 #include "hubbard.hpp"
 namespace sirius {
-void Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int idx__, const int n__,
+void Hubbard::apply_hubbard_potential(Wave_functions& hub_wf, const int ispn__, const int idx__, const int n__,
                                       Wave_functions& phi, Wave_functions& hphi)
 {
-    auto& hub_wf = kp__.hubbard_wave_functions();
+    //auto& hub_wf = kp__.hubbard_wave_functions();
 
     dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(), n__);
     dm.zero();

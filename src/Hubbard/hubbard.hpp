@@ -177,7 +177,7 @@ class Hubbard
     }
 
     /// Apply the hubbard potential on wave functions
-    void apply_hubbard_potential(K_point&        kp,
+    void apply_hubbard_potential(Wave_functions& hub_wf,
                                  const int       ispn,
                                  const int       idx,
                                  const int       n,
