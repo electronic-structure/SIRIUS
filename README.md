@@ -12,7 +12,7 @@
 3. [Examples](#examples)
 
 ## Introduction
-SIRIUS is a domain specific library for electronic structure calculations. It is designed to work with codes such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++11 with MPI, OpenMP and CUDA programming models.
+SIRIUS is a domain specific library for electronic structure calculations. It implements plane wave pseudopotential (PW-PP) and full potential linearized augmented plane wave (FP-LAPW) methods and designed to work with popular community codes such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++11 with MPI, OpenMP and CUDA programming models.
 
 ## Installation
 SIRIUS depends on the following libraries: MPI, BLAS, LAPACK, GSL, LibXC, HDF5, spglib, FFTW and optionally on ScaLAPACK, ELPA, MAGMA and CUDA.
