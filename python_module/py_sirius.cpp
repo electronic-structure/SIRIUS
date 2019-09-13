@@ -511,7 +511,7 @@ PYBIND11_MODULE(py_sirius, m)
 //==                     throw std::runtime_error(
 //==                         "Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
 //==                 }
-//==                        STOP(); 
+//==                        STOP();
 //==                        // TODO: fix the python api
 //==                 #ifdef __GPU
 //==                 auto& ctx = hamiltonian.ctx();
@@ -532,7 +532,7 @@ PYBIND11_MODULE(py_sirius, m)
 //==                 //kp.beta_projectors().prepare();
 //==                 //if (!hamiltonian.ctx().gamma_point()) {
 //==                 //    for (int ispn = 0; ispn < num_sc; ++ispn) {
-//==                 //       STOP(); 
+//==                 //       STOP();
 //==                 //       // TODO: fix the python api
 //==                 //       //hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, swf.get());
 //==                 //    }
@@ -676,7 +676,7 @@ PYBIND11_MODULE(py_sirius, m)
 //==             }, "kpoint"_a, "wf_out"_a, "wf_in"_a);
 
     py::class_<Stress>(m, "Stress")
-        .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
+        .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())
         .def("calc_stress_total", &Stress::calc_stress_total, py::return_value_policy::reference_internal)
         .def("calc_stress_har", &Stress::calc_stress_har, py::return_value_policy::reference_internal)
         .def("calc_stress_ewald", &Stress::calc_stress_ewald, py::return_value_policy::reference_internal)
@@ -715,7 +715,7 @@ PYBIND11_MODULE(py_sirius, m)
              [](Free_atom& atom, int idx) { return atom.free_atom_wave_function_residual(idx); });
 
     py::class_<Force>(m, "Force")
-        .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
+        .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())
         .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal)
         .def_property_readonly("ewald", &Force::forces_ewald)
         .def_property_readonly("hubbard", &Force::forces_hubbard)
@@ -884,7 +884,6 @@ PYBIND11_MODULE(py_sirius, m)
 void initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
 {
     auto& kset = dft_gs.k_point_set();
-    auto& hamiltonian = dft_gs.hamiltonian();
     Hamiltonian0 H0(dft_gs.potential());
-    Band(ctx).initialize_subspace(kset, hamiltonian, H0);
+    Band(ctx).initialize_subspace(kset, H0);
 }
