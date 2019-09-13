@@ -11,10 +11,12 @@ module load git/2.13.1
 module load EasyBuild-custom/cscs
 module load intel
 module load cray-hdf5
-module load CMake/3.12.0
-module load libxc/4.2.3-CrayGNU-18.08
+module load CMake/3.12.4
+module load libxc/4.3.4-CrayGNU-18.08
 module load GSL/2.5-CrayGNU-18.08
-module load spglib/1.10.3-CrayGNU-18.08
+module load spglib/1.14.1-CrayGNU-18.08
 module load magma/2.4.0-CrayGNU-18.08-cuda-9.1
 module load gcc
 module load cray-python/3.6.5.1
+module load SpFFT/0.9.3-CrayGNU-18.08-cuda-9.1
+export CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:${EBROOTSPFFT}/lib/cmake
