@@ -72,7 +72,7 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ispn_block__, Wa
         }
     }
 
-    auto work = mdarray<double_complex, 1>(ctx_.mem_pool(mem), nbeta * n__);
+    auto work = mdarray<double_complex, 1>(nbeta * n__, ctx_.mem_pool(mem));
 
     /* compute O * <beta|phi> for atoms in a chunk */
     #pragma omp parallel
@@ -164,7 +164,7 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ia__, int ispn_b
         }
     }
 
-    auto work = mdarray<double_complex, 1>(ctx_.mem_pool(mem), nbf * n__);
+    auto work = mdarray<double_complex, 1>(nbf * n__, ctx_.mem_pool(mem));
 
     linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
                      reinterpret_cast<double_complex*>(op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
@@ -221,7 +221,7 @@ void Non_local_operator::apply<double>(int chunk__, int ispn_block__, Wave_funct
         }
     }
 
-    auto work = mdarray<double, 1>(ctx_.mem_pool(mem), nbeta * n__);
+    auto work = mdarray<double, 1>(nbeta * n__, ctx_.mem_pool(mem));
 
     /* compute O * <beta|phi> for atoms in a chunk */
     #pragma omp parallel for
@@ -591,7 +591,7 @@ apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_proje
 
     if (q_op__) {
         beta__.prepare();
-        apply_non_local_d_q<double_complex>(spins__, N__, n__, beta__, phi__, nullptr, nullptr, q_op__, &sphi__);
+        apply_non_local_d_q<T>(spins__, N__, n__, beta__, phi__, nullptr, nullptr, q_op__, &sphi__);
         beta__.dismiss();
     }
 }

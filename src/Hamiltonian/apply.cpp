@@ -17,15 +17,16 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "Hamiltonian/hamiltonian.hpp"
-
-namespace sirius {
-
 /** \file apply.hpp
  *
- *  \brief Contains implementation of various sirius::Hamiltonian apply() functions.
+ *  \brief Contains implementation of various sirius::Hamiltonian_k apply() functions.
  */
 
+#include "Hamiltonian/hamiltonian.hpp"
+#include "Hamiltonian/local_operator.cpp"
+#include "SDDK/wave_functions.hpp"
+
+namespace sirius {
 
 //== template <spin_block_t sblock>
 //== void Band::apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi)
@@ -258,18 +259,18 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
     switch (ctx.processing_unit()) {
         case device_t::CPU: {
-            alm_block = matrix<double_complex>(ctx.mem_pool(memory_t::host), ngv, max_mt_aw);
+            alm_block = matrix<double_complex>(ngv, max_mt_aw, ctx.mem_pool(memory_t::host));
             if (hphi__ != nullptr) {
-                halm_block = matrix<double_complex>(ctx.mem_pool(memory_t::host), ngv, std::max(max_mt_aw, max_mt_lo));
+                halm_block = matrix<double_complex>(ngv, std::max(max_mt_aw, max_mt_lo), ctx.mem_pool(memory_t::host));
             }
             break;
         }
         case device_t::GPU: {
-            alm_block = matrix<double_complex>(ctx.mem_pool(memory_t::host_pinned), ngv, max_mt_aw);
+            alm_block = matrix<double_complex>(ngv, max_mt_aw, ctx.mem_pool(memory_t::host_pinned));
             alm_block.allocate(ctx.mem_pool(memory_t::device));
             if (hphi__ != nullptr) {
                 halm_block =
-                    matrix<double_complex>(ctx.mem_pool(memory_t::host_pinned), ngv, std::max(max_mt_aw, max_mt_lo));
+                    matrix<double_complex>(ngv, std::max(max_mt_aw, max_mt_lo), ctx.mem_pool(memory_t::host_pinned));
                 halm_block.allocate(ctx.mem_pool(memory_t::device));
             }
             break;
@@ -281,11 +282,11 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     if (ophi__ != nullptr) {
         switch (ctx.processing_unit()) {
             case device_t::CPU: {
-                alm_phi_buf = mdarray<double_complex, 1>(ctx.mem_pool(memory_t::host), sz);
+                alm_phi_buf = mdarray<double_complex, 1>(sz, ctx.mem_pool(memory_t::host));
                 break;
             }
             case device_t::GPU: {
-                alm_phi_buf = mdarray<double_complex, 1>(ctx.mem_pool(memory_t::host_pinned), sz);
+                alm_phi_buf = mdarray<double_complex, 1>(sz, ctx.mem_pool(memory_t::host_pinned));
                 alm_phi_buf.allocate(ctx.mem_pool(memory_t::device));
                 break;
             }
@@ -295,12 +296,12 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     if (hphi__ != nullptr) {
         switch (ctx.processing_unit()) {
             case device_t::CPU: {
-                halm_phi_buf = mdarray<double_complex, 1>(ctx.mem_pool(memory_t::host), sz);
+                halm_phi_buf = mdarray<double_complex, 1>(sz, ctx.mem_pool(memory_t::host));
                 break;
             }
             case device_t::GPU: {
                 size_t sz    = max_mt_aw * n__;
-                halm_phi_buf = mdarray<double_complex, 1>(ctx.mem_pool(memory_t::host_pinned), sz);
+                halm_phi_buf = mdarray<double_complex, 1>(sz, ctx.mem_pool(memory_t::host_pinned));
                 halm_phi_buf.allocate(ctx.mem_pool(memory_t::device));
                 break;
             }

@@ -22,6 +22,7 @@
  *   \brief Contains interfaces to the sirius::Band solvers.
  */
 #include "band.hpp"
+#include "Potential/potential.hpp"
 
 namespace sirius {
 

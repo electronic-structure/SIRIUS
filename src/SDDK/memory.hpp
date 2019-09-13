@@ -39,12 +39,14 @@
 
 namespace sddk {
 
+/// Check is the type is a complex number; by default it is not.
 template <typename T>
 struct is_complex
 {
     constexpr static bool value{false};
 };
 
+/// Check is the type is a complex number: for std::complex<T> it is true.
 template<typename T>
 struct is_complex<std::complex<T>>
 {
@@ -131,6 +133,7 @@ inline device_t get_device_t(memory_t mem__)
     return device_t::CPU; // make compiler happy
 }
 
+/// Get device type from the string.
 inline device_t get_device_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
@@ -943,6 +946,7 @@ class mdarray
         this->allocate(memory__);
     }
 
+    /// 4D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
             mdarray_index_descriptor const& d1,
             mdarray_index_descriptor const& d2,
@@ -957,6 +961,7 @@ class mdarray
         this->allocate(memory__);
     }
 
+    /// 5D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
             mdarray_index_descriptor const& d1,
             mdarray_index_descriptor const& d2,
@@ -972,6 +977,7 @@ class mdarray
         this->allocate(memory__);
     }
 
+    /// 6D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
             mdarray_index_descriptor const& d1,
             mdarray_index_descriptor const& d2,
@@ -1014,9 +1020,8 @@ class mdarray
 #endif
     }
 
-    mdarray(memory_pool& mp__,
-            mdarray_index_descriptor const& d0,
-            std::string label__ = "")
+    /// 1D array with memory pool allocation.
+    mdarray(mdarray_index_descriptor const& d0, memory_pool& mp__, std::string label__ = "")
     {
         static_assert(N == 1, "wrong number of dimensions");
 
@@ -1054,9 +1059,8 @@ class mdarray
 #endif
     }
 
-    mdarray(memory_pool& mp__,
-            mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
+    /// 2D array with memory pool allocation.
+    mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, memory_pool& mp__,
             std::string label__ = "")
     {
         static_assert(N == 2, "wrong number of dimensions");
@@ -1065,7 +1069,6 @@ class mdarray
         this->init_dimensions({d0, d1});
         this->allocate(mp__);
     }
-
 
     mdarray(T* ptr__,
             mdarray_index_descriptor const& d0,

@@ -24,6 +24,7 @@
 
 #include "band.hpp"
 #include "residuals.hpp"
+#include "Potential/potential.hpp"
 
 #if defined(__GPU) && defined(__CUDA)
 #include "../SDDK/GPU/acc.hpp"

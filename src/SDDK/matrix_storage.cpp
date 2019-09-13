@@ -57,8 +57,8 @@ void matrix_storage<T, matrix_storage_t::slab>::set_num_extra(int n__, int idx0_
         if (extra_buf_.size() < sz) {
             utils::timer t1("sddk::matrix_storage::set_num_extra|alloc");
             if (mp__) {
-                send_recv_buf_ = mdarray<T, 1>(*mp__, sz, "matrix_storage.send_recv_buf_");
-                extra_buf_     = mdarray<T, 1>(*mp__, sz, "matrix_storage.extra_buf_");
+                send_recv_buf_ = mdarray<T, 1>(sz, *mp__, "matrix_storage.send_recv_buf_");
+                extra_buf_     = mdarray<T, 1>(sz, *mp__, "matrix_storage.extra_buf_");
             } else {
                 send_recv_buf_ = mdarray<T, 1>(sz, memory_t::host, "matrix_storage.send_recv_buf_");
                 extra_buf_     = mdarray<T, 1>(sz, memory_t::host, "matrix_storage.extra_buf_");

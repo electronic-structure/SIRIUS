@@ -107,9 +107,9 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
     switch (processing_unit()) {
         case device_t::CPU: {
             auto& mp      = mem_pool(memory_t::host);
-            phase_factors = matrix<double_complex>(mp, ngv_loc, na_max);
-            zm            = matrix<double_complex>(mp, lmmax, ngv_loc);
-            tmp           = matrix<double_complex>(mp, lmmax, na_max);
+            phase_factors = matrix<double_complex>(ngv_loc, na_max, mp);
+            zm            = matrix<double_complex>(lmmax, ngv_loc, mp);
+            tmp           = matrix<double_complex>(lmmax, na_max, mp);
             break;
         }
         case device_t::GPU: {
@@ -117,9 +117,9 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
             auto& mpd     = mem_pool(memory_t::device);
             phase_factors = matrix<double_complex>(nullptr, ngv_loc, na_max);
             phase_factors.allocate(mpd);
-            zm = matrix<double_complex>(mp, lmmax, ngv_loc);
+            zm = matrix<double_complex>(lmmax, ngv_loc, mp);
             zm.allocate(mpd);
-            tmp = matrix<double_complex>(mp, lmmax, na_max);
+            tmp = matrix<double_complex>(lmmax, na_max, mp);
             tmp.allocate(mpd);
             break;
         }

@@ -19,6 +19,7 @@
 
 #include "local_operator.hpp"
 #include "Potential/potential.hpp"
+#include "smooth_periodic_function.hpp"
 
 using namespace sddk;
 
@@ -33,22 +34,39 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
 {
     PROFILE("sirius::Local_operator");
 
+    veff_vec_.reserve(4);
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        veff_vec_[j] = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
+        veff_vec_[j] = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__, &ctx_.mem_pool(memory_t::host));
         #pragma omp parallel for schedule(static)
         for (int ir = 0; ir < fft_coarse__.local_slice_size(); ir++) {
             veff_vec_[j].f_rg(ir) = 2.71828;
         }
     }
     if (ctx_.full_potential()) {
-        theta_ = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
+        auto& gvec_dense_p = ctx_.gvec_partition();
+        /* we need theta(r) for the iterative solver only */
+        if (ctx_.iterative_solver_input().type_ != "exact") {
+            theta_ = std::unique_ptr<Smooth_periodic_function<double>>(
+                new Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__, &ctx_.mem_pool(memory_t::host)));
+            /* map unit-step function */
+            #pragma omp parallel for schedule(static)
+            for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
+                /* map from fine to coarse set of G-vectors */
+                theta_->f_pw_local(igloc) =
+                    ctx_.theta_pw(gvec_dense_p.gvec().gvec_base_mapping(igloc) + gvec_dense_p.gvec().offset());
+            }
+            theta_->fft_transform(1);
+            if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
+                theta_->f_rg().allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
+            }
+        }
     }
 
     if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
+            veff_vec_[j].f_rg().allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
         }
-        buf_rg_.allocate(memory_t::device);
+        buf_rg_.allocate(ctx_.mem_pool(memory_t::device));
     }
 }
 
@@ -65,11 +83,22 @@ void Local_operator::prepare(Potential& potential__)
         auto& fft_dense    = ctx_.spfft();
         auto& gvec_dense_p = ctx_.gvec_partition();
 
-        Smooth_periodic_function<double> ftmp(const_cast<Simulation_context&>(ctx_).spfft(), gvec_dense_p);
-        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+        Smooth_periodic_function<double> ftmp(const_cast<Simulation_context&>(ctx_).spfft(), gvec_dense_p,
+                                              &ctx_.mem_pool(memory_t::host));
+
+        int j0{0};
+        /* in LAPW case with exact diagonalization we don't need v(r)*theta(r) on the coarse mesh;
+           only the B(r)theta(r) is required to apply the magentic field to the first-variational
+           eigen-vectors */
+        if (ctx_.iterative_solver_input().type_ == "exact") {
+            j0 = 1;
+        }
+        for (int j = j0; j < ctx_.num_mag_dims() + 1; j++) {
+            /* multiply potential by step function theta(r) */
             for (int ir = 0; ir < fft_dense.local_slice_size(); ir++) {
                 ftmp.f_rg(ir) = potential__.component(j).f_rg(ir) * ctx_.theta(ir);
             }
+            /* transform to plane-wave domain */
             ftmp.fft_transform(-1);
             if (j == 0) {
                 v0_[0] = ftmp.f_0().real();
@@ -84,26 +113,16 @@ void Local_operator::prepare(Potential& potential__)
             veff_vec_[j].fft_transform(1);
         }
 
-        /* map unit-step function */
-        #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
-            /* map from fine to coarse set of G-vectors */
-            theta_.f_pw_local(igloc) =
-                ctx_.theta_pw(gvec_dense_p.gvec().gvec_base_mapping(igloc) + gvec_dense_p.gvec().offset());
-        }
-        theta_.fft_transform(1);
-
         if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
             }
-            theta_.f_rg().allocate(memory_t::device).copy_to(memory_t::device);
             buf_rg_.allocate(memory_t::device);
         }
 
         if (ctx_.control().print_checksum_) {
-            auto cs1 = theta_.checksum_pw();
-            auto cs2 = theta_.checksum_rg();
+            auto cs1 = theta_->checksum_pw();
+            auto cs2 = theta_->checksum_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_checksum("theta_pw", cs1);
                 utils::print_checksum("theta_rg", cs2);
@@ -211,7 +230,7 @@ void Local_operator::dismiss()
         }
         pw_ekin_.deallocate(memory_t::device);
         vphi_.deallocate(memory_t::device);
-        theta_.f_rg().deallocate(memory_t::device);
+        theta_->f_rg().deallocate(memory_t::device);
         buf_rg_.deallocate(memory_t::device);
     }
     gkvec_p_ = nullptr;
@@ -314,21 +333,21 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, spin_range spins__, Wav
                     if (is_host_memory(mem_phi)) { /* wave-functions are also on host memory */
                         phi1[ispn] = mdarray<double_complex, 1>(phi[ispn].at(memory_t::host, 0, i), ngv_fft);
                     } else { /* wave-functions are on the device memory */
-                        phi1[ispn] = mdarray<double_complex, 1>(mp, ngv_fft);
+                        phi1[ispn] = mdarray<double_complex, 1>(ngv_fft, mp);
                         /* copy wave-functions to host memory */
                         acc::copyout(phi1[ispn].at(memory_t::host), phi[ispn].at(memory_t::device, 0, i), ngv_fft);
                     }
                     if (is_host_memory(mem_hphi)) {
                         hphi1[ispn] = mdarray<double_complex, 1>(hphi[ispn].at(memory_t::host, 0, i), ngv_fft);
                     } else {
-                        hphi1[ispn] = mdarray<double_complex, 1>(mp, ngv_fft);
+                        hphi1[ispn] = mdarray<double_complex, 1>(ngv_fft, mp);
                     }
                     hphi1[ispn].zero(memory_t::host);
                     break;
                 }
                 case SPFFT_PU_GPU: { /* FFT is done on GPU */
                     if (is_host_memory(mem_phi)) {
-                        phi1[ispn] = mdarray<double_complex, 1>(*mpd, ngv_fft);
+                        phi1[ispn] = mdarray<double_complex, 1>(ngv_fft, *mpd);
                         /* copy wave-functions to device */
                         acc::copyin(phi1[ispn].at(memory_t::device), phi[ispn].at(memory_t::host, 0, i), ngv_fft);
                     } else {
@@ -336,7 +355,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, spin_range spins__, Wav
                     }
                     if (is_host_memory(mem_hphi)) {
                         /* small buffers in the device memory */
-                        hphi1[ispn] = mdarray<double_complex, 1>(*mpd, ngv_fft);
+                        hphi1[ispn] = mdarray<double_complex, 1>(ngv_fft, *mpd);
                     } else {
                         hphi1[ispn] =
                             mdarray<double_complex, 1>(nullptr, hphi[ispn].at(memory_t::device, 0, i), ngv_fft);
@@ -682,7 +701,7 @@ void Local_operator::apply_h_o(spfft::Transform& spfftk__,int N__, int n__, Wave
                     /* multiply phi(r) by step function */
                     spfft_multiply(spfftk__, [&](int ir)
                                              {
-                                                 return theta_.f_rg(ir);
+                                                 return theta_->f_rg(ir);
                                              });
                     /* phi(r) * Theta(r) -> ophi(G) */
                     spfftk__.forward(spfftk__.processing_unit(),
@@ -765,7 +784,7 @@ void Local_operator::apply_h_o(spfft::Transform& spfftk__,int N__, int n__, Wave
                         /* multiply be step function */
                         spfft_multiply(spfftk__, [&](int ir)
                                                  {
-                                                     return theta_.f_rg(ir);
+                                                     return theta_->f_rg(ir);
                                                  });
 
                         break;

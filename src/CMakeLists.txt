@@ -14,12 +14,11 @@ if(USE_CUDA)
   set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
 
-set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.cpp"
+set(_SOURSES "Hamiltonian/hamiltonian.cpp;Hamiltonian/hamiltonian_k.cpp;Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.cpp"
   "Band/diag_pseudo_potential.cpp;Band/diag_full_potential.cpp;Band/residuals.cpp"
   "Beta_projectors/beta_projectors_base.cpp"
   "Hubbard/apply_hubbard_potential.cpp"
   "Hubbard/hubbard.cpp"
-  "Hubbard/hubbard_generate_atomic_orbitals.cpp"
   "Hubbard/hubbard_occupancies_derivatives.cpp"
   "Hubbard/hubbard_occupancy.cpp"
   "Hubbard/hubbard_potential_energy.cpp"
@@ -35,10 +34,8 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "Geometry/stress.cpp"
   "Geometry/non_local_functor.cpp"
   "Hamiltonian/apply.cpp"
-  "Hamiltonian/set_lapw_h_o.cpp"
   "Hamiltonian/local_operator.cpp"
   "Hamiltonian/non_local_operator.cpp"
-  "Hamiltonian/get_h_o_diag.cpp"
   "K_point/generate_atomic_wave_functions.cpp"
   "K_point/generate_fv_states.cpp"
   "K_point/generate_spinor_wave_functions.cpp"

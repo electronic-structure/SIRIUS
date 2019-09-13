@@ -83,13 +83,12 @@ dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& 
 template <typename T>
 dmatrix<T>::dmatrix(memory_pool& mp__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__,
                     int bs_col__)
-    : matrix<T>(mp__,
-                splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(),
+    : matrix<T>(splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(),
                                                    bs_row__)
                     .local_size(),
                 splindex<splindex_t::block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(),
                                                    bs_col__)
-                    .local_size())
+                    .local_size(), mp__)
     , num_rows_(num_rows__)
     , num_cols_(num_cols__)
     , bs_row_(bs_row__)

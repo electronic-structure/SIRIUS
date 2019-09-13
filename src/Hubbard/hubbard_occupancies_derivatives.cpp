@@ -611,39 +611,4 @@ Hubbard::compute_occupancies(K_point&                    kp,
     }
 }
 
-// remove this when things are working and replace it with apply_h_s if
-// possible. Problem right now is that the class hamiltonian is not
-// included in hubbard but the other way around.
-
-//void
-//Hubbard::apply_S_operator(K_point&                    kp,
-//                          Q_operator& q_op,
-//                          Wave_functions&             phi,
-//                          Wave_functions&             ophi,
-//                          const int                   idx0,
-//                          const int                   num_phi)
-//{
-//    ophi.copy_from(ctx_.processing_unit(), num_phi, phi, 0, idx0, 0, idx0);
-//
-//    bool augment = false;
-//
-//    for (auto ia = 0; (ia < ctx_.unit_cell().num_atom_types()) && (!augment); ia++) {
-//        augment = ctx_.unit_cell().atom_type(ia).augment();
-//    }
-//
-//    if (!augment)
-//        return;
-//
-//    // computes the S|phi^I_ia>
-//    if (!ctx_.full_potential() && augment) {
-//        for (int i = 0; i < kp.beta_projectors().num_chunks(); i++) {
-//            /* generate beta-projectors for a block of atoms */
-//            kp.beta_projectors().generate(i);
-//            /* non-collinear case */
-//            auto beta_phi = kp.beta_projectors().inner<double_complex>(i, phi, 0, idx0, num_phi);
-//            /* apply Q operator (diagonal in spin) */
-//            q_op.apply(i, 0, ophi, idx0, num_phi, kp.beta_projectors(), beta_phi);
-//        }
-//    }
-//}
 }

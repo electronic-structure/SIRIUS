@@ -577,7 +577,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
     int nr = fft.local_slice_size();
 
     /* get preallocated memory */
-    mdarray<double, 2> density_rg(ctx_.mem_pool(memory_t::host), nr, ctx_.num_mag_dims() + 1, "density_rg");
+    mdarray<double, 2> density_rg(nr, ctx_.num_mag_dims() + 1, ctx_.mem_pool(memory_t::host), "density_rg");
     density_rg.zero();
 
     if (fft.processing_unit() == SPFFT_PU_GPU) {
@@ -643,7 +643,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
                kp__->spinor_wave_functions().pw_coeffs(1).spl_num_col().local_size());
 
         /* allocate on CPU or GPU */
-        mdarray<double_complex, 1> psi_r_up(ctx_.mem_pool(memory_t::host), nr);
+        mdarray<double_complex, 1> psi_r_up(nr, ctx_.mem_pool(memory_t::host));
         if (fft.processing_unit() == SPFFT_PU_GPU) {
             psi_r_up.allocate(ctx_.mem_pool(memory_t::device));
         }
@@ -1291,8 +1291,8 @@ Density::generate_rho_aug()
              }
         }
         /* treat auxiliary array as double with x2 size */
-        mdarray<double, 2> dm_pw(ctx_.mem_pool(memory_t::host), nbf * (nbf + 1) / 2, spl_ngv_loc.local_size() * 2);
-        mdarray<double, 2> phase_factors(ctx_.mem_pool(memory_t::host), atom_type.num_atoms(), spl_ngv_loc.local_size() * 2);
+        mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, spl_ngv_loc.local_size() * 2, ctx_.mem_pool(memory_t::host));
+        mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_ngv_loc.local_size() * 2, ctx_.mem_pool(memory_t::host));
 
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {

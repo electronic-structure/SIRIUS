@@ -23,6 +23,8 @@
  */
 
 #include "band.hpp"
+#include "SDDK/wf_trans.hpp"
+#include "SDDK/wf_inner.hpp"
 
 namespace sirius {
 

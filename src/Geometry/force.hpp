@@ -26,6 +26,7 @@
 #define __FORCE_HPP__
 
 #include "periodic_function.hpp"
+#include "Potential/potential.hpp"
 #include "Density/augmentation_operator.hpp"
 #include "Beta_projectors/beta_projectors.hpp"
 #include "Beta_projectors/beta_projectors_gradient.hpp"
@@ -225,4 +226,4 @@ class Force
 
 } // namespace sirius
 
-#endif // __FORCES_HAMILTONIAN__
+#endif // __FORCE_HPP__

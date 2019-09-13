@@ -107,24 +107,12 @@ class Hubbard
 
     /// Compute the strain gradient of the hubbard wave functions.
     /// Unfortunately it is dependent of the pp.
-
     void compute_gradient_strain_wavefunctions(K_point&                  kp,
                                                Wave_functions&           dphi,
                                                const mdarray<double, 2>& rlm_g,
                                                const mdarray<double, 3>& rlm_dg,
                                                const int                 mu,
                                                const int                 nu);
-
-    ///// apply the S operator in the us pp case. Otherwise it makes a simple copy
-    //void apply_S_operator(K_point&        kp,
-    //                      Q_operator&     q_op,
-    //                      Wave_functions& phi,
-    //                      Wave_functions& ophi,
-    //                      const int       idx0,
-    //                      const int       num_phi);
-
-    /// orthogonize (normalize) the hubbard wave functions
-    //void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi);
 
   public:
     Hubbard(Simulation_context& ctx__);

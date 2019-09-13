@@ -108,7 +108,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     {
         PROFILE("sddk::matrix_storage::matrix_storage");
         /* primary storage of PW wave functions: slabs */
-        prime_ = mdarray<T, 2>(mp__, num_rows_loc(), num_cols_, "matrix_storage.prime_");
+        prime_ = mdarray<T, 2>(num_rows_loc(), num_cols_, mp__, "matrix_storage.prime_");
     }
 
     /// Check if data needs to be remapped.

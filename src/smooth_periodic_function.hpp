@@ -74,21 +74,36 @@ class Smooth_periodic_function
     {
     }
 
-    Smooth_periodic_function(spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__)
+    Smooth_periodic_function(spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__, sddk::memory_pool* mp__ = nullptr)
         : spfft_(&spfft__)
         , gvecp_(&gvecp__)
     {
         PROFILE("sirius::Smooth_periodic_function");
 
-        f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), sddk::memory_t::host, "Smooth_periodic_function.f_rg_");
+        if (mp__) {
+            f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), *mp__, "Smooth_periodic_function.f_rg_");
+        } else {
+            f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), sddk::memory_t::host,
+                                        "Smooth_periodic_function.f_rg_");
+        }
         f_rg_.zero();
 
-        f_pw_local_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec().count(), sddk::memory_t::host,
+        if (mp__) {
+            f_pw_local_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec().count(), *mp__,
+                                                           "Smooth_periodic_function.f_pw_local_");
+        } else {
+            f_pw_local_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec().count(), sddk::memory_t::host,
                                                        "Smooth_periodic_function.f_pw_local_");
+        }
         f_pw_local_.zero();
         if (gvecp_->comm_ortho_fft().size() != 1) {
-            f_pw_fft_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec_count_fft(), sddk::memory_t::host,
-                                                     "Smooth_periodic_function.f_pw_fft_");
+            if (mp__) {
+                f_pw_fft_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec_count_fft(), *mp__,
+                                                             "Smooth_periodic_function.f_pw_fft_");
+            } else {
+                f_pw_fft_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec_count_fft(), sddk::memory_t::host,
+                                                             "Smooth_periodic_function.f_pw_fft_");
+            }
             f_pw_fft_.zero();
         } else {
             /* alias to f_pw_local array */
