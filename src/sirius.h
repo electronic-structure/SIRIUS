@@ -41,6 +41,7 @@ using json = nlohmann::json;
 #include "hdf5_tree.hpp"
 #include "Band/band.hpp"
 #include "dft_ground_state.hpp"
+#include "version.hpp"
 
 #if defined(__PLASMA)
 extern "C" void plasma_init(int num_cores);
@@ -134,7 +135,6 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 #endif
 
     if (acc::num_devices()) {
-        //acc::set_device();
 #if defined(__GPU)
         gpublas::destroy_stream_handles();
 #endif
@@ -142,7 +142,6 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
         cusolver::destroy_handle();
         cublas::xt::destroy_handle();
 #endif
-
         acc::destroy_streams();
         if (reset_device__) {
             acc::reset();

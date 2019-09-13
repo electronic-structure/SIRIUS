@@ -18,18 +18,17 @@ type -f ${exe} || exit 1
 for f in ./*; do
     if [ -d "$f" ]; then
         echo "running '${f}'"
-        (
-            cd ${f}
-            ${SRUN_CMD} ${exe} --test_against=output_ref.json --control.processing_unit=gpu
-            err=$?
+        cd ${f}
+        ${SRUN_CMD} ${exe} --test_against=output_ref.json --control.processing_unit=gpu
+        err=$?
 
-            if [ ${err} == 0 ]; then
-                echo "OK"
-            else
-                echo "'${f}' failed"
-                exit ${err}
-            fi
-        )
+        if [ ${err} == 0 ]; then
+            echo "OK"
+        else
+            echo "'${f}' failed"
+            exit ${err}
+        fi
+        cd ../
     fi
 done
 

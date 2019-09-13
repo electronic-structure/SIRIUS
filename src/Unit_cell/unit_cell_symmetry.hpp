@@ -31,6 +31,7 @@ extern "C" {
 
 //#include "constants.hpp"
 #include "Symmetry/rotation.hpp"
+#include "utils/profiler.hpp"
 
 using namespace geometry3d;
 

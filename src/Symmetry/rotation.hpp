@@ -27,6 +27,8 @@
 
 #include "memory.hpp"
 #include "geometry3d.hpp"
+#include "utils/utils.hpp"
+#include "constants.hpp"
 
 using namespace geometry3d;
 using namespace sddk;
@@ -34,17 +36,17 @@ using namespace sddk;
 namespace sirius {
 
 /// Generate SU(2) rotation matrix from the axes and angle.
-inline mdarray<double_complex, 2> rotation_matrix_su2(std::array<double, 3> u__, double theta__)
+inline mdarray<std::complex<double>, 2> rotation_matrix_su2(std::array<double, 3> u__, double theta__)
 {
-    mdarray<double_complex, 2> rotm(2, 2);
+    mdarray<std::complex<double>, 2> rotm(2, 2);
 
     auto cost = std::cos(theta__ / 2);
     auto sint = std::sin(theta__ / 2);
 
-    rotm(0, 0) = double_complex(cost, -u__[2] * sint);
-    rotm(1, 1) = double_complex(cost,  u__[2] * sint);
-    rotm(0, 1) = double_complex(-u__[1] * sint, -u__[0] * sint);
-    rotm(1, 0) = double_complex( u__[1] * sint, -u__[0] * sint);
+    rotm(0, 0) = std::complex<double>(cost, -u__[2] * sint);
+    rotm(1, 1) = std::complex<double>(cost,  u__[2] * sint);
+    rotm(0, 1) = std::complex<double>(-u__[1] * sint, -u__[0] * sint);
+    rotm(1, 0) = std::complex<double>( u__[1] * sint, -u__[0] * sint);
 
     return rotm;
 }
@@ -55,30 +57,30 @@ inline mdarray<double_complex, 2> rotation_matrix_su2(std::array<double, 3> u__,
  *
  *  See https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
  *  and https://en.wikipedia.org/wiki/Rotation_group_SO(3)#Quaternions_of_unit_norm */
-inline mdarray<double_complex, 2> rotation_matrix_su2(matrix3d<double> R__)
+inline mdarray<std::complex<double>, 2> rotation_matrix_su2(matrix3d<double> R__)
 {
     double det = R__.det() > 0 ? 1.0 : -1.0;
 
     matrix3d<double> mat = R__ * det;
 
-    mdarray<double_complex, 2> su2mat(2, 2);
+    mdarray<std::complex<double>, 2> su2mat(2, 2);
 
     su2mat.zero();
 
     /* make quaternion components*/
-    double w = sqrt(std::max(0.0, 1.0 + mat(0, 0) + mat(1, 1) + mat(2, 2))) / 2.0;
-    double x = sqrt(std::max(0.0, 1.0 + mat(0, 0) - mat(1, 1) - mat(2, 2))) / 2.0;
-    double y = sqrt(std::max(0.0, 1.0 - mat(0, 0) + mat(1, 1) - mat(2, 2))) / 2.0;
-    double z = sqrt(std::max(0.0, 1.0 - mat(0, 0) - mat(1, 1) + mat(2, 2))) / 2.0;
+    double w = std::sqrt(std::max(0.0, 1.0 + mat(0, 0) + mat(1, 1) + mat(2, 2))) / 2.0;
+    double x = std::sqrt(std::max(0.0, 1.0 + mat(0, 0) - mat(1, 1) - mat(2, 2))) / 2.0;
+    double y = std::sqrt(std::max(0.0, 1.0 - mat(0, 0) + mat(1, 1) - mat(2, 2))) / 2.0;
+    double z = std::sqrt(std::max(0.0, 1.0 - mat(0, 0) - mat(1, 1) + mat(2, 2))) / 2.0;
 
     x = std::copysign(x, mat(2, 1) - mat(1, 2));
     y = std::copysign(y, mat(0, 2) - mat(2, 0));
     z = std::copysign(z, mat(1, 0) - mat(0, 1));
 
-    su2mat(0, 0) = double_complex(w, -z);
-    su2mat(1, 1) = double_complex(w, z);
-    su2mat(0, 1) = double_complex(-y, -x);
-    su2mat(1, 0) = double_complex(y, -x);
+    su2mat(0, 0) = std::complex<double>(w, -z);
+    su2mat(1, 1) = std::complex<double>(w, z);
+    su2mat(0, 1) = std::complex<double>(-y, -x);
+    su2mat(1, 0) = std::complex<double>(y, -x);
 
     return su2mat;
 }

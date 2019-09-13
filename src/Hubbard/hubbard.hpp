@@ -31,6 +31,9 @@
 #include "K_point/k_point.hpp"
 #include "K_point/k_point_set.hpp"
 #include "wave_functions.hpp"
+#include "wf_inner.hpp"
+#include "wf_ortho.hpp"
+#include "wf_trans.hpp"
 #include "Hamiltonian/non_local_operator.hpp"
 #include "Beta_projectors/beta_projectors.hpp"
 #include "Beta_projectors/beta_projectors_gradient.hpp"
@@ -247,7 +250,7 @@ private:
                                     double_complex* occ,
                                     int const*      ld);
 
-#include "Density/Symmetrize.hpp"
+//#include "Density/Symmetrize.hpp"
 };
 } // namespace sirius
 

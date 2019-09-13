@@ -31,15 +31,15 @@
 #include <apex_api.hpp>
 #endif
 #include "timer.hpp"
-#if defined(__GPU) && defined(__GPU_NVTX)
+#if defined(__GPU) && defined(__CUDA_NVTX)
 #include "GPU/acc.hpp"
 #endif
 
-#define __PROFILE
-#define __PROFILE_TIME
+/* this are set by CMake */
+//#define __PROFILE
+//#define __PROFILE_TIME
 //#define __PROFILE_STACK
 //#define __PROFILE_FUNC
-//#define __GPU_NVTX // TODO: chanhge to __CUDA_NVTX
 
 namespace utils {
 
@@ -74,6 +74,7 @@ class profiler
 #endif
 
   public:
+    /// Constructor.
     profiler(char const* function_name__, char const* file__, int line__, char const* label__)
         : label_(std::string(label__))
         , function_name_(std::string(function_name__))
@@ -97,18 +98,16 @@ class profiler
         for (int i = 0; i < tab; i++) {
             printf(" ");
         }
-//#if defined(MPI_VERSION)
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         printf("[rank%04i] + %s\n", rank, label_.c_str());
-//#endif
 #endif
 
 #if defined(__PROFILE_TIME)
         timer_ = std::unique_ptr<utils::timer>(new utils::timer(label_));
 #endif
 
-#if defined(__GPU) && defined(__GPU_NVTX)
+#if defined(__GPU) && defined(__CUDA_NVTX)
         acc::begin_range_marker(label_.c_str());
 #endif
 #if defined(__APEX)
@@ -126,18 +125,16 @@ class profiler
         for (int i = 0; i < tab; i++) {
             printf(" ");
         }
-//#if defined(MPI_VERSION)
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         printf("[rank%04i] - %s\n", rank, label_.c_str());
-//#endif
 #endif
 
 #ifdef __PROFILE_STACK
         call_stack().pop_back();
 #endif
 
-#if defined(__GPU) && defined(__GPU_NVTX)
+#if defined(__GPU) && defined(__CUDA_NVTX)
         acc::end_range_marker();
 #endif
 #if defined(__APEX)

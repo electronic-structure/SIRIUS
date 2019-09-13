@@ -27,7 +27,7 @@
 
 #include "SHT/gaunt.hpp"
 #include "atom_symmetry_class.hpp"
-#include "sddk.hpp"
+//#include "sddk.hpp"
 #include "spheric_function.hpp"
 
 namespace sirius {
@@ -268,8 +268,6 @@ class Atom
             //}
             result.copy_to(memory_t::host);
             result.deallocate(memory_t::device);
-#else
-            TERMINATE_NO_GPU
 #endif
         }
         if (pu__ == device_t::CPU) {

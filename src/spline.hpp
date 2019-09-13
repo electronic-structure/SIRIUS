@@ -221,7 +221,7 @@ class Spline : public Radial_grid<U>
               << "  x           : " << x << "\n"
               << "  first point : " << this->first() << "\n"
               << "  last point  : " << this->last();
-            TERMINATE(s);
+            throw std::runtime_error(s.str());
         }
         U dx = x - (*this)[j];
         return (*this)(j, dx);
@@ -252,7 +252,7 @@ class Spline : public Radial_grid<U>
                 break;
             }
             default: {
-                TERMINATE("wrong order of derivative");
+                throw std::runtime_error("wrong order of derivative");
                 break;
             }
         }
@@ -332,7 +332,7 @@ class Spline : public Radial_grid<U>
         if (info) {
             std::stringstream s;
             s << "error in tridiagonal solver: " << info;
-            TERMINATE(s);
+            throw std::runtime_error(s.str());
         }
 
         for (int i = 0; i < ns - 1; i++) {
@@ -714,7 +714,7 @@ T inner(Spline<T> const& f__, Spline<T> const& g__, int m__, int num_points__)
             }*/
 
         default: {
-            TERMINATE("wrong r^m prefactor");
+            throw std::runtime_error("wrong r^m prefactor");
         }
     }
     return result;

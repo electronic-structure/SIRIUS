@@ -173,7 +173,7 @@ class Radial_solver
             } else if (k__ == l__ + 1) {
                 kappa = -k__;
             } else {
-                TERMINATE("wrong k");
+                throw std::runtime_error("wrong k");
             }
         }
 
@@ -990,7 +990,7 @@ class Bound_state : public Radial_solver
               << "l = " << l_ << std::endl
               << "enu = " << enu_ << std::endl
               << "wrong number of nodes : " << nn << " instead of " << (n_ - l_ - 1);
-            TERMINATE(s);
+            throw std::runtime_error(s.str());
         }
 
         for (int i = 0; i < np - 1; i++) {
@@ -1245,7 +1245,7 @@ class Enu_finder : public Radial_solver
               << "etop: " << etop_ << " ebot: " << ebot_ << std::endl
               << "initial surface derivative: " << sd;
 
-            TERMINATE(s);
+            throw std::runtime_error(s.str());
         }
 
         enu_ = (ebot_ + etop_) / 2.0;

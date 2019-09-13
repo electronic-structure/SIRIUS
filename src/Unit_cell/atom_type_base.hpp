@@ -49,11 +49,11 @@ class Atom_type_base
     /// List of atomic levels.
     std::vector<atomic_level_descriptor> atomic_levels_;
 
-    /// Number of core electrons.
-    double num_core_electrons_{0};
+    ///// Number of core electrons.
+    //double num_core_electrons_{0};
 
-    /// Number of valence electrons.
-    double num_valence_electrons_{0};
+    ///// Number of valence electrons.
+    //double num_valence_electrons_{0};
 
     /* forbid copy constructor */
     Atom_type_base(Atom_type_base const& src) = delete;
@@ -72,6 +72,7 @@ class Atom_type_base
     Radial_grid<double> free_atom_radial_grid_;
 
   private:
+    /// Initialize atomic levels of neutral atom and radial grid.
     void init()
     {
         /* add valence levels to the list of atom's levels */
@@ -104,6 +105,7 @@ class Atom_type_base
     }
 
   public:
+    /// Constructor.
     Atom_type_base(int zn__)
         : zn_(zn__)
         , symbol_(atomic_symb[zn_ - 1])
@@ -112,6 +114,7 @@ class Atom_type_base
         init();
     }
 
+    /// Constructor.
     Atom_type_base(std::string symbol__)
         : zn_(atomic_zn.at(symbol__))
         , symbol_(symbol__)
@@ -120,43 +123,51 @@ class Atom_type_base
         init();
     }
 
+    /// Get atomic charge.
     inline int zn() const
     {
         assert(zn_ > 0);
         return zn_;
     }
 
+    /// Set atomic charge.
     inline int zn(int zn__)
     {
         zn_ = zn__;
         return zn_;
     }
 
+    /// Get atomic symbol.
     inline std::string const& symbol() const
     {
         return symbol_;
     }
 
+    /// Get name of the element.
     inline std::string const& name() const
     {
         return name_;
     }
 
+    /// Get atomic mass.
     inline double mass() const
     {
         return mass_;
     }
 
+    /// Get the whole radial grid.
     inline Radial_grid<double> const& free_atom_radial_grid() const
     {
         return free_atom_radial_grid_;
     }
 
+    /// Get the radial point at a given index.
     inline double free_atom_radial_grid(int ir) const
     {
         return free_atom_radial_grid_[ir];
     }
 
+    /// Return number of the atomic levels.
     inline int num_atomic_levels() const
     {
         return static_cast<int>(atomic_levels_.size());
@@ -167,15 +178,15 @@ class Atom_type_base
         return atomic_levels_[idx];
     }
 
-    inline double num_core_electrons() const
-    {
-        return num_core_electrons_;
-    }
+    //inline double num_core_electrons() const
+    //{
+    //    return num_core_electrons_;
+    //}
 
-    inline double num_valence_electrons() const
-    {
-        return num_valence_electrons_;
-    }
+    //inline double num_valence_electrons() const
+    //{
+    //    return num_valence_electrons_;
+    //}
 };
 
 } // namespace
