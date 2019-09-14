@@ -459,7 +459,7 @@ void Band::check_residuals(K_point& kp__, Hamiltonian& H__) const
             spsi.pw_coeffs(i).allocate(mpd);
         }
     }
-    kp__.beta_projectors().prepare();
+
     /* compute residuals */
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
         if (nc_mag) {
@@ -493,7 +493,7 @@ void Band::check_residuals(K_point& kp__, Hamiltonian& H__) const
             }
         }
     }
-    kp__.beta_projectors().dismiss();
+
     if (is_device_memory(ctx_.preferred_memory_t())) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             psi.pw_coeffs(ispn).deallocate(memory_t::device);
@@ -512,4 +512,3 @@ Band::set_subspace_mtrx<double_complex>(int N__, int n__, Wave_functions& phi__,
                                         dmatrix<double_complex>& mtrx__, dmatrix<double_complex>* mtrx_old__) const;
 
 }
-
