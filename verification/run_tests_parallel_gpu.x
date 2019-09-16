@@ -6,9 +6,9 @@ then
 fi
 
 if [[ $HOST == nid* ]]; then
-    SRUN_CMD=srun
+    SRUN_CMD="srun -u"
 else
-    SRUN_CMD="mpi -np 4"
+    SRUN_CMD="mpirun -np 4"
 fi
 
 exe=${SIRIUS_BINARIES}/sirius.scf

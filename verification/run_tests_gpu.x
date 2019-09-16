@@ -6,7 +6,7 @@ then
 fi
 
 if [[ $HOST == nid* ]]; then
-    SRUN_CMD=srun
+    SRUN_CMD="srun -u"
 else
     SRUN_CMD=
 fi
