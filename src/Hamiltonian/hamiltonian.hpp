@@ -71,7 +71,7 @@ class Hamiltonian0
     Simulation_context& ctx_;
 
     /// Alias for the potential.
-    Potential& potential_;
+    Potential* potential_{nullptr};
 
     /// Alias for unit cell.
     Unit_cell& unit_cell_;
@@ -95,6 +95,9 @@ class Hamiltonian0
 
   public:
     /// Constructor.
+    Hamiltonian0(Simulation_context& ctx__);
+
+    /// Constructor.
     Hamiltonian0(Potential& potential__);
 
     ~Hamiltonian0();
@@ -105,14 +108,14 @@ class Hamiltonian0
     /// Return a Hamiltonian for the given k-point.
     inline Hamiltonian_k operator()(K_point& kp__);
 
-    Potential& potential() const
-    {
-        return potential_;
-    }
-
     Simulation_context& ctx() const
     {
         return ctx_;
+    }
+
+    Potential& potential() const
+    {
+        return *potential_;
     }
 
     Local_operator& local_op() const
@@ -123,6 +126,16 @@ class Hamiltonian0
     inline Gaunt_coefficients<double_complex> const& gaunt_coefs() const
     {
         return *gaunt_coefs_;
+    }
+
+    inline Q_operator& Q() const
+    {
+        return *q_op_;
+    }
+
+    inline D_operator& D() const
+    {
+        return *d_op_;
     }
 
     /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
@@ -151,16 +164,6 @@ class Hamiltonian0
      *  \f]
      */
     void apply_so_correction(sddk::Wave_functions& psi__, std::vector<sddk::Wave_functions>& hpsi__) const;
-
-    inline Q_operator& Q() const
-    {
-        return *q_op_;
-    }
-
-    inline D_operator& D() const
-    {
-        return *d_op_;
-    }
 };
 
 class Hamiltonian_k

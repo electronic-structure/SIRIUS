@@ -487,4 +487,3 @@ Band::set_subspace_mtrx<double_complex>(int N__, int n__, Wave_functions& phi__,
                                         dmatrix<double_complex>& mtrx__, dmatrix<double_complex>* mtrx_old__) const;
 
 }
-

@@ -28,9 +28,29 @@
 
 namespace sirius {
 
+// TODO: radial integrals for the potential should be computed here; the problem is that they also can be set
+//       externally by the host code
+
+Hamiltonian0::Hamiltonian0(Simulation_context& ctx__)
+    : ctx_(ctx__)
+    , unit_cell_(ctx_.unit_cell())
+{
+    PROFILE("sirius::Hamiltonian0");
+
+    if (ctx_.full_potential()) {
+        using gc_z = Gaunt_coefficients<double_complex>;
+        gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
+    }
+
+    if (!ctx_.full_potential()) {
+        d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));
+        q_op_ = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
+    }
+}
+
 Hamiltonian0::Hamiltonian0(Potential& potential__)
     : ctx_(potential__.ctx())
-    , potential_(potential__)
+    , potential_(&potential__)
     , unit_cell_(potential__.ctx().unit_cell())
 {
     PROFILE("sirius::Hamiltonian0");
@@ -41,7 +61,7 @@ Hamiltonian0::Hamiltonian0(Potential& potential__)
     }
 
     local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.spfft_coarse(), ctx_.gvec_coarse_partition()));
-    local_op_->prepare(potential_);
+    local_op_->prepare(potential__);
 
     if (!ctx_.full_potential()) {
         d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));
@@ -51,7 +71,9 @@ Hamiltonian0::Hamiltonian0(Potential& potential__)
 
 Hamiltonian0::~Hamiltonian0()
 {
-    local_op_->dismiss();
+    if (local_op_) {
+        local_op_->dismiss();
+    }
 }
 
 template <spin_block_t sblock>

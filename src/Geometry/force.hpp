@@ -31,6 +31,7 @@
 #include "Beta_projectors/beta_projectors.hpp"
 #include "Beta_projectors/beta_projectors_gradient.hpp"
 #include "non_local_functor.hpp"
+#include "Hamiltonian/hamiltonian.hpp"
 
 namespace sirius {
 

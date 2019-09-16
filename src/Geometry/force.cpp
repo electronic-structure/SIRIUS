@@ -152,7 +152,7 @@ mdarray<double, 2> const& Force::calc_forces_ibs()
         }
     }
 
-    Hamiltonian0 H0(potential_);
+    Hamiltonian0 H0(ctx_);
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset_.spl_num_kpoints(ikloc);
         auto hk = H0(*kset_[ik]);
@@ -649,13 +649,6 @@ void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>
         /* generate matching coefficients for current atom */
         kp__->alm_coeffs_row().generate<true>(atom, alm_row);
         kp__->alm_coeffs_col().generate<false>(atom, alm_col);
-
-        ///* conjugate row (<bra|) matching coefficients */
-        //for (int i = 0; i < type.mt_aw_basis_size(); i++) {
-        //    for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
-        //        alm_row(igk, i) = std::conj(alm_row(igk, i));
-        //    }
-        //}
 
         /* setup apw-lo and lo-apw blocks */
         Hk__.set_fv_h_o_apw_lo(atom, ia, alm_row, alm_col, h, o);

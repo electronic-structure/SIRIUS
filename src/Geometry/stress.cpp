@@ -24,7 +24,6 @@
 
 #include "SDDK/geometry3d.hpp"
 #include "K_point/k_point.hpp"
-#include "Hamiltonian/hamiltonian.hpp"
 #include "stress.hpp"
 
 namespace sirius {
