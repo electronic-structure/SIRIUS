@@ -34,12 +34,12 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
 {
     PROFILE("sirius::Local_operator");
 
-    veff_vec_.reserve(4);
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        veff_vec_[j] = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__, &ctx_.mem_pool(memory_t::host));
+        veff_vec_[j] = std::unique_ptr<Smooth_periodic_function<double>>(
+            new Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__, &ctx_.mem_pool(memory_t::host)));
         #pragma omp parallel for schedule(static)
         for (int ir = 0; ir < fft_coarse__.local_slice_size(); ir++) {
-            veff_vec_[j].f_rg(ir) = 2.71828;
+            veff_vec_[j]->f_rg(ir) = 2.71828;
         }
     }
     if (ctx_.full_potential()) {
@@ -64,7 +64,7 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
 
     if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            veff_vec_[j].f_rg().allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
+            veff_vec_[j]->f_rg().allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
         }
         buf_rg_.allocate(ctx_.mem_pool(memory_t::device));
     }
@@ -107,15 +107,15 @@ void Local_operator::prepare(Potential& potential__)
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
                 /* map from fine to coarse set of G-vectors */
-                veff_vec_[j].f_pw_local(igloc) = ftmp.f_pw_local(gvec_dense_p.gvec().gvec_base_mapping(igloc));
+                veff_vec_[j]->f_pw_local(igloc) = ftmp.f_pw_local(gvec_dense_p.gvec().gvec_base_mapping(igloc));
             }
             /* transform to real space */
-            veff_vec_[j].fft_transform(1);
+            veff_vec_[j]->fft_transform(1);
         }
 
         if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
+                veff_vec_[j]->f_rg().allocate(memory_t::device).copy_to(memory_t::device);
             }
             buf_rg_.allocate(memory_t::device);
         }
@@ -128,8 +128,8 @@ void Local_operator::prepare(Potential& potential__)
                 utils::print_checksum("theta_rg", cs2);
             }
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                cs1 = veff_vec_[j].checksum_pw();
-                cs2 = veff_vec_[j].checksum_rg();
+                cs1 = veff_vec_[j]->checksum_pw();
+                cs2 = veff_vec_[j]->checksum_rg();
                 if (ctx_.comm().rank() == 0) {
                     utils::print_checksum("veff_pw", cs1);
                     utils::print_checksum("veff_rg", cs2);
@@ -144,20 +144,20 @@ void Local_operator::prepare(Potential& potential__)
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
                 /* map from fine to coarse set of G-vectors */
-                veff_vec_[j].f_pw_local(igloc) =
+                veff_vec_[j]->f_pw_local(igloc) =
                     potential__.component(j).f_pw_local(potential__.component(j).gvec().gvec_base_mapping(igloc));
             }
             /* transform to real space */
-            veff_vec_[j].fft_transform(1);
+            veff_vec_[j]->fft_transform(1);
         }
 
         if (ctx_.num_mag_dims()) {
             #pragma omp parallel for schedule(static)
             for (int ir = 0; ir < fft_coarse_.local_slice_size(); ir++) {
-                double v0             = veff_vec_[0].f_rg(ir);
-                double v1             = veff_vec_[1].f_rg(ir);
-                veff_vec_[0].f_rg(ir) = v0 + v1; // v + Bz
-                veff_vec_[1].f_rg(ir) = v0 - v1; // v - Bz
+                double v0             = veff_vec_[0]->f_rg(ir);
+                double v1             = veff_vec_[1]->f_rg(ir);
+                veff_vec_[0]->f_rg(ir) = v0 + v1; // v + Bz
+                veff_vec_[1]->f_rg(ir) = v0 - v1; // v - Bz
             }
         }
 
@@ -171,7 +171,7 @@ void Local_operator::prepare(Potential& potential__)
         /* copy veff to device */
         if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
+                veff_vec_[j]->f_rg().allocate(memory_t::device).copy_to(memory_t::device);
             }
             if (ctx_.num_mag_dims() == 3) {
                 buf_rg_.allocate(memory_t::device);
@@ -180,8 +180,8 @@ void Local_operator::prepare(Potential& potential__)
 
         if (ctx_.control().print_checksum_) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                auto cs = veff_vec_[j].checksum_pw();
-                auto cs1 = veff_vec_[j].checksum_rg();
+                auto cs = veff_vec_[j]->checksum_pw();
+                auto cs1 = veff_vec_[j]->checksum_rg();
                 if (gvec_coarse_p_.gvec().comm().rank() == 0) {
                     utils::print_checksum("veff_vec_pw", cs);
                     utils::print_checksum("veff_vec_rg", cs1);
@@ -226,7 +226,7 @@ void Local_operator::dismiss()
 {
     if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            veff_vec_[j].f_rg().deallocate(memory_t::device);
+            veff_vec_[j]->f_rg().deallocate(memory_t::device);
         }
         pw_ekin_.deallocate(memory_t::device);
         vphi_.deallocate(memory_t::device);
@@ -408,7 +408,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, spin_range spins__, Wav
                             #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < nr; ir++) {
                                 /* multiply by V+Bz or V-Bz */
-                                buf[ir] *= veff_vec_[ispn_block].f_rg(ir);
+                                buf[ir] *= veff_vec_[ispn_block]->f_rg(ir);
                             }
                             break;
                         }
@@ -423,7 +423,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, spin_range spins__, Wav
                             #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < nr; ir++) {
                                 /* multiply by V+Bz or V-Bz */
-                                wf[ir] *= veff_vec_[ispn_block].f_rg(ir);
+                                wf[ir] *= veff_vec_[ispn_block]->f_rg(ir);
                             }
                             break;
                         }
@@ -434,7 +434,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, spin_range spins__, Wav
                     #pragma omp parallel for schedule(static)
                     for (int ir = 0; ir < nr; ir++) {
                         /* multiply by Bx +/- i*By */
-                        wf[ir] *= double_complex(veff_vec_[2].f_rg(ir), pref * veff_vec_[3].f_rg(ir));
+                        wf[ir] *= double_complex(veff_vec_[2]->f_rg(ir), pref * veff_vec_[3]->f_rg(ir));
                     }
                 }
                 break;
@@ -717,7 +717,7 @@ void Local_operator::apply_h_o(spfft::Transform& spfftk__,int N__, int n__, Wave
                            in the prepare() method */
                     spfft_multiply(spfftk__, [&](int ir)
                                              {
-                                                 return veff_vec_[0].f_rg(ir);
+                                                 return veff_vec_[0]->f_rg(ir);
                                              });
                     /* phi(r) * Theta(r) * V(r) -> hphi(G) */
                     spfftk__.forward(spfftk__.processing_unit(),
@@ -873,7 +873,7 @@ void Local_operator::apply_b(spfft::Transform& spfftk__, int N__, int n__, Wave_
                 /* multiply by Bz */
                 spfft_multiply(spfftk__, [&](int ir)
                                          {
-                                             return veff_vec_[1].f_rg(ir);
+                                             return veff_vec_[1]->f_rg(ir);
                                          });
 
                 /* phi(r) * Bz(r) -> bphi[0](G) */
@@ -886,7 +886,7 @@ void Local_operator::apply_b(spfft::Transform& spfftk__, int N__, int n__, Wave_
                     /* multiply by Bx-iBy */
                     spfft_input(spfftk__, [&](int ir)
                                           {
-                                              return buf_rg_[ir] * double_complex(veff_vec_[2].f_rg(ir), -veff_vec_[3].f_rg(ir));
+                                              return buf_rg_[ir] * double_complex(veff_vec_[2]->f_rg(ir), -veff_vec_[3]->f_rg(ir));
                                           });
                     /* phi(r) * (Bx(r)-iBy(r)) -> bphi[2](G) */
                     spfftk__.forward(spfftk__.processing_unit(),
