@@ -360,6 +360,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         }
     }
 
+    kp.copy_hubbard_orbitals_on_device();
+
     ctx_.print_memory_usage(__FILE__, __LINE__);
     t2.stop();
 
@@ -662,6 +664,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         }
     }
 
+    kp.release_hubbard_orbitals_on_device();
     //== std::cout << "checking psi" << std::endl;
     //== for (int i = 0; i < ctx_.num_bands(); i++) {
     //==     for (int j = 0; j < ctx_.num_bands(); j++) {
@@ -783,6 +786,9 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
         }
     }
 
+    /* allocate memory for the hubbard orbitals on device */
+    Hk__.kp().copy_hubbard_orbitals_on_device();
+
     auto o_diag = Hk__.get_h_o_diag_pw<T, 2>().second;
 
     mdarray<double, 2> o_diag1(kp.num_gkvec_loc(), num_sc);
@@ -884,6 +890,8 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
             phi.copy_from(ctx_.processing_unit(), n, res, ispn, 0, ispn, N);
         }
     }
+
+    Hk__.kp().release_hubbard_orbitals_on_device();
 
     return eval;
 }

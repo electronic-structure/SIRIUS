@@ -108,6 +108,9 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                 }
                 ovlp.allocate(memory_t::device);
             }
+
+            Hk__.kp().copy_hubbard_orbitals_on_device();
+
             /* compute residuals */
             for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
                 /* apply Hamiltonian and S operators to the wave-functions */
@@ -128,6 +131,8 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
                     psi.pw_coeffs(ispn).deallocate(memory_t::device);
                 }
             }
+
+            Hk__.kp().release_hubbard_orbitals_on_device();
         }
     }
 

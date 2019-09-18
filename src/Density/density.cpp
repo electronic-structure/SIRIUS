@@ -2,6 +2,7 @@
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+
 // the following conditions are met:
 //
 // 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
@@ -1113,7 +1114,7 @@ void Density::generate_valence(K_point_set const& ks__)
     double occ_val{0};
     for (int ik = 0; ik < ks__.num_kpoints(); ik++) {
         wt += ks__[ik]->weight();
-        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) { 
+        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 occ_val += ks__[ik]->weight() * ks__[ik]->band_occupancy(j, ispn);
             }
@@ -1123,7 +1124,7 @@ void Density::generate_valence(K_point_set const& ks__)
     if (std::abs(wt - 1.0) > 1e-12) {
         std::stringstream s;
         s << "K_point weights don't sum to one" << std::endl
-          << "  obtained sum: " << wt; 
+          << "  obtained sum: " << wt;
         TERMINATE(s);
     }
 
@@ -1228,7 +1229,7 @@ void Density::generate_valence(K_point_set const& ks__)
         if (std::abs(nel - unit_cell_.num_electrons()) > 1e-8 && ctx_.comm().rank() == 0) {
             std::stringstream s;
             s << "wrong unsymmetrized density" << std::endl
-              << "  obtained value : " << std::scientific << nel << std::endl 
+              << "  obtained value : " << std::scientific << nel << std::endl
               << "  target value : " << std::scientific << unit_cell_.num_electrons() << std::endl
               << "  difference : " << std::scientific << std::abs(nel - unit_cell_.num_electrons()) << std::endl;
             WARNING(s);

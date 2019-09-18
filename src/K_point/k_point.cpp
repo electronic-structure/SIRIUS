@@ -112,7 +112,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
     }
 }
 
-void K_point::generate_gkvec(double gk_cutoff__) 
+void K_point::generate_gkvec(double gk_cutoff__)
 {
     PROFILE("sirius::K_point::generate_gkvec");
 
@@ -230,7 +230,7 @@ void K_point::update()
 
 }
 
-void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2> &fv_evec__) const 
+void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2> &fv_evec__) const
 {
     assert((int) fv_evec__.size(0) >= gklo_basis_size());
     assert((int) fv_evec__.size(1) == ctx_.num_fv_states());

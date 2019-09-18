@@ -264,6 +264,29 @@ class K_point
                                          Wave_functions& dphi, const int starting_position_j, const int direction);
 
     void generate_hubbard_orbitals();
+
+    void copy_hubbard_orbitals_on_device()
+        {
+            if (ctx_.hubbard_correction() && is_device_memory(ctx_.preferred_memory_t()))
+            {
+                auto& mpd = ctx_.mem_pool(memory_t::device);
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    this->hubbard_wave_functions().pw_coeffs(ispn).allocate(mpd);
+                    this->hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, unit_cell_.num_wf_with_U().first);
+                }
+            }
+        }
+
+    void release_hubbard_orbitals_on_device()
+    {
+        if (ctx_.hubbard_correction() && is_device_memory(ctx_.preferred_memory_t()))
+        {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                this->hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+            }
+        }
+    }
+
     void orthogonalize_hubbard_orbitals(Wave_functions& phi__);
 
     /// Save data to HDF5 file.
