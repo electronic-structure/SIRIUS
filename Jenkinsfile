@@ -45,12 +45,9 @@ pipeline {
                            export SIRIUS_BINARIES=$(realpath apps/dft_loop)
                            type -f ${SIRIUS_BINARIES}/sirius.scf
                            export ENVFILE=$(realpath ../ci/env-gnu-gpu)
-                           rm -f sirius-mc-tests.out
-                           rm -rf sirius-mc-tests.err
                            sbatch --wait ../ci/run-mc-verification.sh
                            cat sirius-mc-tests.err
                            cat sirius-mc-tests.out
-                           cp *.{out,err} ../
                            '''
                         }
                     }
@@ -63,11 +60,9 @@ pipeline {
                            export SIRIUS_BINARIES=$(realpath apps/dft_loop)
                            type -f ${SIRIUS_BINARIES}/sirius.scf
                            export ENVFILE=$(realpath ../ci/env-gnu-gpu)
-                           rm -f sirius-gpu-tests{.out,.err}
                            sbatch --wait ../ci/run-gpu-verification.sh
                            cat sirius-gpu-tests.err
                            cat sirius-gpu-tests.out
-                           cp *.{out,err} ../
                            '''
                         }
                     }
@@ -80,12 +75,9 @@ pipeline {
                            export SIRIUS_BINARIES=$(realpath apps/dft_loop)
                            type -f ${SIRIUS_BINARIES}/sirius.scf
                            export ENVFILE=$(realpath ../ci/env-gnu-gpu)
-                           rm -f sirius-mcp-tests{.out,.err}
                            sbatch --wait ../ci/run-mcp-verification.sh
                            cat sirius-mcp-tests.err
                            cat sirius-mcp-tests.out
-                           cp *.{out,err} ../
-                           # delete some of the heavy directories
                            cd ../
                            '''
                         }
