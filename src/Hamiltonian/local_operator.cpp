@@ -445,13 +445,13 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, spin_range spins__, Wav
                     switch (spfftk__.type()) {
                         case SPFFT_TRANS_R2C: {
                             /* multiply by V+Bz or V-Bz */
-                            mul_by_veff_real_real_gpu(nr, buf, veff_vec_[ispn_block].f_rg().at(memory_t::device));
+                            mul_by_veff_real_real_gpu(nr, buf, veff_vec_[ispn_block]->f_rg().at(memory_t::device));
                             break;
                         }
                         case SPFFT_TRANS_C2C: {
                             auto wf = reinterpret_cast<double_complex*>(buf);
                             /* multiply by V+Bz or V-Bz */
-                            mul_by_veff_complex_real_gpu(nr, wf, veff_vec_[ispn_block].f_rg().at(memory_t::device));
+                            mul_by_veff_complex_real_gpu(nr, wf, veff_vec_[ispn_block]->f_rg().at(memory_t::device));
                             break;
                         }
                     }
@@ -459,8 +459,8 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, spin_range spins__, Wav
                     /* multiply by Bx +/- i*By */
                     double pref = (ispn_block == 2) ? -1 : 1;
                     auto wf     = reinterpret_cast<double_complex*>(buf);
-                    mul_by_veff_complex_complex_gpu(nr, wf, pref, veff_vec_[2].f_rg().at(memory_t::device),
-                        veff_vec_[3].f_rg().at(memory_t::device));
+                    mul_by_veff_complex_complex_gpu(nr, wf, pref, veff_vec_[2]->f_rg().at(memory_t::device),
+                        veff_vec_[3]->f_rg().at(memory_t::device));
                 }
                 break;
 #endif
