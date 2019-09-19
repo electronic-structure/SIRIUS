@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Mathieu Taillefumier, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Mathieu Taillefumier, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -230,7 +230,9 @@ void Local_operator::dismiss()
         }
         pw_ekin_.deallocate(memory_t::device);
         vphi_.deallocate(memory_t::device);
-        theta_->f_rg().deallocate(memory_t::device);
+        if (theta_) {
+            theta_->f_rg().deallocate(memory_t::device);
+        }
         buf_rg_.deallocate(memory_t::device);
     }
     gkvec_p_ = nullptr;
