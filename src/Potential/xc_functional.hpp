@@ -116,11 +116,11 @@ namespace sirius {
                 if (fft.comm().size() == 1) {
                     vdwxc_init_serial(handler_vdw_);
                 } else {
-#if VDWXC_FFTW_MPI == 1
-                    vdwxc_init_mpi(handler_vdw_, fft.comm().mpi_comm());
-#else
+//#if VDWXC_FFTW_MPI
+//                    vdwxc_init_mpi(handler_vdw_, fft.comm().mpi_comm());
+//#else
                     vdwxc_init_serial(handler_vdw_);
-#endif
+//#endif
                 }
                 vdw_functional_ = true;
                 return;
