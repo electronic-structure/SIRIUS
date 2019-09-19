@@ -33,7 +33,7 @@ for f in ./*; do
                 echo "'${f}' failed"
                 exit ${err}
             fi
-        )
+        ) || exit ${err}
     fi
 done
 
