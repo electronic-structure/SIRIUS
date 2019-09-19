@@ -31,7 +31,7 @@
 #include "SDDK/fft3d.hpp"
 #ifdef USE_VDWXC
 #include <vdwxc.h>
-#if VDWXC_FFTW_MPI == 1
+#if __HAVE_VDWXC_MPI
 #include <vdwxc_mpi.h>
 #endif
 #endif
@@ -116,7 +116,7 @@ namespace sirius {
                 if (fft.comm().size() == 1) {
                     vdwxc_init_serial(handler_vdw_);
                 } else {
-#if VDWXC_FFTW_MPI == 1
+#if __HAVE_VDWXC_MPI
                     vdwxc_init_mpi(handler_vdw_, fft.comm().mpi_comm());
 #else
                     vdwxc_init_serial(handler_vdw_);
