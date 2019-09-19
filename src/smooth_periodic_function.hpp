@@ -68,6 +68,9 @@ class Smooth_periodic_function
         gvecp_->gather_pw_fft(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host));
     }
 
+    Smooth_periodic_function(Smooth_periodic_function<T> const& src__) = delete;
+    Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T> const& src__) = delete;
+
   public:
     /// Default constructor.
     Smooth_periodic_function()
@@ -110,6 +113,8 @@ class Smooth_periodic_function
             f_pw_fft_ = sddk::mdarray<double_complex, 1>(&f_pw_local_[0], gvecp_->gvec().count());
         }
     }
+    Smooth_periodic_function(Smooth_periodic_function<T>&& src__) = default;
+    Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T>&& src__) = default;
 
     inline void zero()
     {
@@ -311,6 +316,9 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     /// Distribution of G-vectors.
     sddk::Gvec_partition const* gvecp_{nullptr};
 
+    Smooth_periodic_vector_function(Smooth_periodic_vector_function<T> const& src__) = delete;
+    Smooth_periodic_vector_function<T>& operator=(Smooth_periodic_vector_function<T> const& src__) = delete;
+
   public:
     /// Default constructor does nothing.
     Smooth_periodic_vector_function()
@@ -325,6 +333,8 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
             (*this)[x] = Smooth_periodic_function<T>(spfft__, gvecp__);
         }
     }
+    Smooth_periodic_vector_function(Smooth_periodic_vector_function<T>&& src__) = default;
+    Smooth_periodic_vector_function<T>& operator=(Smooth_periodic_vector_function<T>&& src__) = default;
 
     spfft::Transform& spfft() const
     {

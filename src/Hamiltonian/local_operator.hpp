@@ -89,7 +89,7 @@ class Local_operator
     sddk::mdarray<double, 1> pw_ekin_;
 
     /// Effective potential components on a coarse FFT grid.
-    std::vector<Smooth_periodic_function<double>> veff_vec_;
+    std::array<std::unique_ptr<Smooth_periodic_function<double>>, 4> veff_vec_;
 
     /// Temporary array to store [V*phi](G)
     sddk::mdarray<double_complex, 1> vphi_;
