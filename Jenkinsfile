@@ -1,26 +1,27 @@
 #!groovy
 
 pipeline {
-    agent any
+    agent {
+        node {
+            label 'ssl_daintvm1'
+        }
+    }
     environment {
         EB_CUSTOM_REPOSITORY = '/users/simonpi/jenkins/production/easybuild'
     }
     stages {
         stage('Checkout') {
             steps {
-                node('ssl_daintvm1') {
-                    dir('SIRIUS') {
-                        checkout scm
-                        echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
-                    }
+                dir('SIRIUS') {
+                    checkout scm
+                    echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
                 }
             }
         }
         stage('Compile') {
             steps {
-                node('ssl_daintvm1') {
-                    dir('SIRIUS') {
-                        sh '''
+                dir('SIRIUS') {
+                    sh '''
                            #!/bin/bash -l
                            export ENVFILE=$(realpath ci/env-gnu-gpu)
                            rm -f build-daint-gpu.out
@@ -31,15 +32,15 @@ pipeline {
                            echo "---------- build-daint-gpu.err ----------"
                            cat build-daint-gpu.err
                            '''
-                    }
                 }
             }
         }
         stage('Test') {
-            steps {
-                node('ssl_daintvm1') {
-                    dir('SIRIUS') {
-                        sh '''
+            parallel {
+                stage('Test MC') {
+                    steps {
+                        dir('SIRIUS') {
+                            sh '''
                            cd build
                            export SIRIUS_BINARIES=$(realpath apps/dft_loop)
                            type -f ${SIRIUS_BINARIES}/sirius.scf
@@ -51,15 +52,13 @@ pipeline {
                            cat sirius-mc-tests.out
                            cp *.{out,err} ../
                            '''
+                        }
                     }
                 }
-            }
-        }
-        stage('Test GPU') {
-            steps {
-                node('ssl_daintvm1') {
-                    dir('SIRIUS') {
-                        sh '''
+                stage('Test GPU') {
+                    steps {
+                        dir('SIRIUS') {
+                            sh '''
                            cd build
                            export SIRIUS_BINARIES=$(realpath apps/dft_loop)
                            type -f ${SIRIUS_BINARIES}/sirius.scf
@@ -70,15 +69,13 @@ pipeline {
                            cat sirius-gpu-tests.out
                            cp *.{out,err} ../
                            '''
+                        }
                     }
                 }
-            }
-        }
-        stage('Test GPU Parallel') {
-            steps {
-                node('ssl_daintvm1') {
-                    dir('SIRIUS') {
-                        sh '''
+                stage('Test GPU Parallel') {
+                    steps {
+                        dir('SIRIUS') {
+                            sh '''
                            cd build
                            export SIRIUS_BINARIES=$(realpath apps/dft_loop)
                            type -f ${SIRIUS_BINARIES}/sirius.scf
@@ -92,19 +89,17 @@ pipeline {
                            cd ../
                            rm -rf build verification examples
                            '''
+                        }
                     }
                 }
             }
         }
-
     }
 
     post {
         always {
-            node('ssl_daintvm1') {
                 archiveArtifacts artifacts: '**/*.out', fingerprint: true
                 archiveArtifacts artifacts: '**/*.err', fingerprint: true
-            }
         }
     }
 }
