@@ -72,26 +72,26 @@ pipeline {
                         }
                     }
                 }
-                stage('Test GPU Parallel') {
-                    steps {
-                        dir('SIRIUS') {
-                            sh '''
-                           cd build
-                           export SIRIUS_BINARIES=$(realpath apps/dft_loop)
-                           type -f ${SIRIUS_BINARIES}/sirius.scf
-                           export ENVFILE=$(realpath ../ci/env-gnu-gpu)
-                           rm -f sirius-gpup-tests{.out,.err}
-                           sbatch --wait ../ci/run-gpup-verification.sh
-                           cat sirius-gpup-tests.err
-                           cat sirius-gpup-tests.out
-                           cp *.{out,err} ../
-                           # delete some of the heavy directories
-                           cd ../
-                           rm -rf build verification examples
-                           '''
-                        }
-                    }
-                }
+                // stage('Test GPU Parallel') {
+                //     steps {
+                //         dir('SIRIUS') {
+                //             sh '''
+                //            cd build
+                //            export SIRIUS_BINARIES=$(realpath apps/dft_loop)
+                //            type -f ${SIRIUS_BINARIES}/sirius.scf
+                //            export ENVFILE=$(realpath ../ci/env-gnu-gpu)
+                //            rm -f sirius-gpup-tests{.out,.err}
+                //            sbatch --wait ../ci/run-gpup-verification.sh
+                //            cat sirius-gpup-tests.err
+                //            cat sirius-gpup-tests.out
+                //            cp *.{out,err} ../
+                //            # delete some of the heavy directories
+                //            cd ../
+                //            rm -rf build verification examples
+                //            '''
+                //         }
+                //     }
+                // }
             }
         }
     }
