@@ -759,18 +759,19 @@ void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex,
                     int ia            = kp__->spinor_wave_functions().spl_num_atoms()[ialoc];
                     int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
                     int offset_wf     = kp__->spinor_wave_functions().offset_mt_coeffs(ialoc);
-
-                    for (int i = 0; i < nbnd; i++) {
-                        for (int xi = 0; xi < mt_basis_size; xi++) {
-                            auto c = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
-                            wf1(xi, i) = std::conj(c);
-                            wf2(xi, i) = c * kp__->band_occupancy(i, ispn) * kp__->weight();
+                    if (mt_basis_size != 0) {
+                        for (int i = 0; i < nbnd; i++) {
+                            for (int xi = 0; xi < mt_basis_size; xi++) {
+                                auto c = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
+                                wf1(xi, i) = std::conj(c);
+                                wf2(xi, i) = c * kp__->band_occupancy(i, ispn) * kp__->weight();
+                            }
                         }
+                        /* add |psi_j> n_j <psi_j| to density matrix */
+                        linalg<device_t::CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, linalg_const<double_complex>::one(),
+                                                    &wf1(0, 0), wf1.ld(), &wf2(0, 0), wf2.ld(), linalg_const<double_complex>::one(),
+                                                    density_matrix__.at(memory_t::host, 0, 0, ispn, ia), density_matrix__.ld());
                     }
-                    /* add |psi_j> n_j <psi_j| to density matrix */
-                    linalg<device_t::CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, linalg_const<double_complex>::one(),
-                                                &wf1(0, 0), wf1.ld(), &wf2(0, 0), wf2.ld(), linalg_const<double_complex>::one(),
-                                                density_matrix__.at(memory_t::host, 0, 0, ispn, ia), density_matrix__.ld());
                 }
             }
         } else {
@@ -784,27 +785,29 @@ void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex,
                 int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
                 int offset_wf     = kp__->spinor_wave_functions().offset_mt_coeffs(ialoc);
 
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    for (int i = 0; i < nbnd; i++) {
+                if (mt_basis_size != 0) {
+                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                        for (int i = 0; i < nbnd; i++) {
 
-                        for (int xi = 0; xi < mt_basis_size; xi++) {
-                            auto c = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
-                            wf1(xi, i, ispn) = std::conj(c);
-                            wf2(xi, i, ispn) = c * kp__->band_occupancy(i, 0) * kp__->weight();
+                            for (int xi = 0; xi < mt_basis_size; xi++) {
+                                auto c = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
+                                wf1(xi, i, ispn) = std::conj(c);
+                                wf2(xi, i, ispn) = c * kp__->band_occupancy(i, 0) * kp__->weight();
+                            }
                         }
                     }
-                }
-                /* compute diagonal terms */
-                for (int ispn = 0; ispn < 2; ispn++) {
+                    /* compute diagonal terms */
+                    for (int ispn = 0; ispn < 2; ispn++) {
+                        linalg<device_t::CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, linalg_const<double_complex>::one(),
+                                                    &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(),
+                                                    linalg_const<double_complex>::one(), density_matrix__.at(memory_t::host, 0, 0, ispn, ia),
+                                                    density_matrix__.ld());
+                    }
+                    /* offdiagonal term */
                     linalg<device_t::CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, linalg_const<double_complex>::one(),
-                                                &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(),
-                                                linalg_const<double_complex>::one(), density_matrix__.at(memory_t::host, 0, 0, ispn, ia),
-                                                density_matrix__.ld());
+                                                &wf1(0, 0, 1), wf1.ld(), &wf2(0, 0, 0), wf2.ld(), linalg_const<double_complex>::one(),
+                                                density_matrix__.at(memory_t::host, 0, 0, 2, ia), density_matrix__.ld());
                 }
-                /* offdiagonal term */
-                linalg<device_t::CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, linalg_const<double_complex>::one(),
-                                            &wf1(0, 0, 1), wf1.ld(), &wf2(0, 0, 0), wf2.ld(), linalg_const<double_complex>::one(),
-                                            density_matrix__.at(memory_t::host, 0, 0, 2, ia), density_matrix__.ld());
             }
         }
     } else { /* pseudopotential */
@@ -1113,7 +1116,7 @@ void Density::generate_valence(K_point_set const& ks__)
     double occ_val{0};
     for (int ik = 0; ik < ks__.num_kpoints(); ik++) {
         wt += ks__[ik]->weight();
-        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) { 
+        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 occ_val += ks__[ik]->weight() * ks__[ik]->band_occupancy(j, ispn);
             }
@@ -1123,7 +1126,7 @@ void Density::generate_valence(K_point_set const& ks__)
     if (std::abs(wt - 1.0) > 1e-12) {
         std::stringstream s;
         s << "K_point weights don't sum to one" << std::endl
-          << "  obtained sum: " << wt; 
+          << "  obtained sum: " << wt;
         TERMINATE(s);
     }
 
@@ -1228,7 +1231,7 @@ void Density::generate_valence(K_point_set const& ks__)
         if (std::abs(nel - unit_cell_.num_electrons()) > 1e-8 && ctx_.comm().rank() == 0) {
             std::stringstream s;
             s << "wrong unsymmetrized density" << std::endl
-              << "  obtained value : " << std::scientific << nel << std::endl 
+              << "  obtained value : " << std::scientific << nel << std::endl
               << "  target value : " << std::scientific << unit_cell_.num_electrons() << std::endl
               << "  difference : " << std::scientific << std::abs(nel - unit_cell_.num_electrons()) << std::endl;
             WARNING(s);
