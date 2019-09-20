@@ -17,6 +17,7 @@ mkdir -p build
     cmake -DUSE_MKL=On \
           -DUSE_ELPA=Off \
           -DGPU_MODEL=P100 \
+          -DUSE_SCALAPACK=On \
           -DUSE_MAGMA=On \
           -DUSE_CUDA=On \
           -DCMAKE_BUILD_TYPE=RELWITHDEBINFO \

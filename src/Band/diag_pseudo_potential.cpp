@@ -849,6 +849,11 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
 
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
+            if (ctx_.processing_unit() == device_t::GPU) {
+                o_diag.allocate(memory_t::device).copy_to(memory_t::device);
+                o_diag1.allocate(memory_t::device).copy_to(memory_t::device);
+            }
+
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
             n = sirius::residuals<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0,
                                      N, nevec, eval, evec, sphi, phi, spsi, psi, res, o_diag, o_diag1,

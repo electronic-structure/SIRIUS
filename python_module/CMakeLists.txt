@@ -33,25 +33,33 @@ if(CREATE_PYTHON_MODULE)
   # install to cmake prefix
 
   if(NOT PYTHON2)
-    install(TARGETS ${libname}
-      LIBRARY
-      DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
     install(DIRECTORY sirius
       DESTINATION
       ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/
       FILES_MATCHING REGEX
       ".*py"
       )
-  else()
-    # minimal support for Python 2.7, full functionality is provided for Python >3.5 only
     install(TARGETS ${libname}
       LIBRARY
       DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
+    install(
+      PROGRAMS
+      ${CMAKE_SOURCE_DIR}/python_module/apps/neugebaur_cg.py
+      ${CMAKE_SOURCE_DIR}/python_module/apps/marzari_cg.py
+      ${CMAKE_SOURCE_DIR}/python_module/apps/nlcg.py
+      ${CMAKE_SOURCE_DIR}/python_module/apps/nlcg
+      DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+      )
+  else()
+    # minimal support for Python 2.7, full functionality is provided for Python >3.5 only
     install(DIRECTORY sirius_minimal/
       DESTINATION
       ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius
       FILES_MATCHING REGEX
       ".*py")
+    install(TARGETS ${libname}
+      LIBRARY
+      DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
   endif()
 
 endif(CREATE_PYTHON_MODULE)
