@@ -37,9 +37,7 @@ Hamiltonian_k::Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__) // TODO: move ki
     , kp_(kp__)
 {
     PROFILE("sirius::Hamiltonian_k");
-    if (H0_.ctx().iterative_solver_input().type_ != "exact") {
-        H0_.local_op().prepare(kp_.gkvec_partition());
-    }
+    H0_.local_op().prepare_k(kp_.gkvec_partition());
     if (!H0_.ctx().full_potential()) {
         if (H0_.ctx().iterative_solver_input().type_ != "exact") {
             kp_.beta_projectors().prepare();

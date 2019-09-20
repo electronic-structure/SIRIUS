@@ -93,16 +93,6 @@ namespace sirius {
 //==     }
 //== }
 
-/** \param [in]  ispn Index of spin.
- *  \param [in]  N    Starting index of wave-functions.
- *  \param [in]  n    Number of wave-functions to which H and S are applied.
- *  \param [in]  phi  Input wave-functions [storage: CPU && GPU].
- *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
- *  \param [out] sphi Overlap operator, applied to wave-functions [storage: CPU || GPU].
- *
- *  In non-collinear case (ispn = 2) the Hamiltonian and S operator are applied to both components of spinor
- *  wave-functions. Otherwise they are applied to a single component.
- */
 template <typename T>
 void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functions& phi__, Wave_functions* hphi__,
                               Wave_functions* sphi__)
@@ -113,7 +103,7 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
 
     if (hphi__ != nullptr) {
         /* apply local part of Hamiltonian */
-        H0().local_op().apply_h(kp().spfft_transform(), spins__, phi__, *hphi__, N__, n__);
+        H0().local_op().apply_h(kp().spfft_transform(), kp().gkvec_partition(), spins__, phi__, *hphi__, N__, n__);
     }
 
     t1 += omp_get_wtime();
@@ -210,7 +200,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
     if (!phi_is_lo__) {
         /* interstitial part */
-        H0_.local_op().apply_h_o(kp().spfft_transform(), N__, n__, phi__, hphi__, ophi__);
+        H0_.local_op().apply_h_o(kp().spfft_transform(), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
     } else {
         /* zero the APW part */
         switch (ctx.processing_unit()) {
@@ -260,19 +250,15 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     switch (ctx.processing_unit()) {
         case device_t::CPU: {
             alm_block = matrix<double_complex>(ngv, max_mt_aw, ctx.mem_pool(memory_t::host));
-            if (hphi__ != nullptr) {
-                halm_block = matrix<double_complex>(ngv, std::max(max_mt_aw, max_mt_lo), ctx.mem_pool(memory_t::host));
-            }
+            halm_block = matrix<double_complex>(ngv, std::max(max_mt_aw, max_mt_lo), ctx.mem_pool(memory_t::host));
             break;
         }
         case device_t::GPU: {
             alm_block = matrix<double_complex>(ngv, max_mt_aw, ctx.mem_pool(memory_t::host_pinned));
             alm_block.allocate(ctx.mem_pool(memory_t::device));
-            if (hphi__ != nullptr) {
-                halm_block =
-                    matrix<double_complex>(ngv, std::max(max_mt_aw, max_mt_lo), ctx.mem_pool(memory_t::host_pinned));
-                halm_block.allocate(ctx.mem_pool(memory_t::device));
-            }
+            halm_block = matrix<double_complex>(ngv, std::max(max_mt_aw, max_mt_lo),
+                                                ctx.mem_pool(memory_t::host_pinned));
+            halm_block.allocate(ctx.mem_pool(memory_t::device));
             break;
         }
     }
@@ -349,12 +335,6 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
                     /* generate LAPW matching coefficients on the CPU */
                     kp().alm_coeffs_loc().generate<true>(atom, alm_tmp);
-                    ///* conjugate alm */
-                    //for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
-                    //    for (int igk = 0; igk < ngv; igk++) {
-                    //        alm_tmp(igk, xi) = std::conj(alm_tmp(igk, xi));
-                    //    }
-                    //}
                     if (ctx.processing_unit() == device_t::GPU) {
                         alm_tmp.copy_to(memory_t::device, stream_id(tid));
                     }

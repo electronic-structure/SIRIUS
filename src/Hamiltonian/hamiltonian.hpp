@@ -330,6 +330,14 @@ class Hamiltonian_k
      *          o_{\zeta_{j'} \zeta_{j} \ell_j}^{\alpha_j}
      *            \delta_{\alpha_j \alpha_{j'}} \delta_{\ell_j \ell_{j'}} \delta_{m_j m_{j'}}
      *  \f]
+     *
+     *  \param [in]  apw_only   True if only APW-APW block of H and O are applied.
+     *  \param [in]  phi_is_lo  True if input wave-functions are pure local orbitals.
+     *  \param [in]  N          Starting index of wave-functions.
+     *  \param [in]  n          Number of wave-functions to which H and S are applied.
+     *  \param [in]  phi        Input wave-functions.
+     *  \param [out] hphi       Result of Hamiltonian, applied to wave-functions.
+     *  \param [out] ophi       Result of overlap operator, applied to wave-functions.
      */
     void apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int n__, sddk::Wave_functions& phi__,
                       sddk::Wave_functions* hphi__, sddk::Wave_functions* ophi__);
@@ -422,7 +430,7 @@ class Hamiltonian_k
      *  \param [out] hphi  Result of Hamiltonian, applied to wave-functions [storage: CPU || GPU].
      *  \param [out] sphi  Result of S-operator, applied to wave-functions [storage: CPU || GPU].
      *
-     *  In non-collinear case (ispn = 2) the Hamiltonian and S operator are applied to both components of spinor
+     *  In non-collinear case (spins in [0,1]) the Hamiltonian and S operator are applied to both components of spinor
      *  wave-functions. Otherwise they are applied to a single component.
      */
     template <typename T>
