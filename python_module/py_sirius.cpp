@@ -389,7 +389,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
-        .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian&) const) & Band::initialize_subspace)
+        .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian0&) const) & Band::initialize_subspace)
         .def("solve", &Band::solve, "kset"_a, "hamiltonian"_a, py::arg("precompute")=true);
 
     py::class_<DFT_ground_state>(m, "DFT_ground_state")
