@@ -15,7 +15,7 @@
 
     "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
 
-    "smearing_width" : 0.02,
+    "smearing_width" : 0.05,
 
     "use_symmetry" : true,
 
@@ -25,7 +25,7 @@
     "pw_cutoff" : 25.00,
 
     "energy_tol" : 1e-6,
-    "potential_tol" : 1e-8,
+    "potential_tol" : 1e-6,
 
     "num_dft_iter" : 100,
 
@@ -58,6 +58,6 @@
         ]
     },
     "mixer" : {
-        "beta" : 0.8
+        "beta" : 0.4
     }
 }
