@@ -23,8 +23,35 @@
  */
 
 #include "non_local_operator.hpp"
+#include "Beta_projectors/beta_projectors.hpp"
 
 namespace sirius {
+
+Non_local_operator::Non_local_operator(Simulation_context const& ctx__)
+    : ctx_(ctx__)
+{
+    PROFILE("sirius::Non_local_operator");
+
+    pu_                 = this->ctx_.processing_unit();
+    auto& uc            = this->ctx_.unit_cell();
+    packed_mtrx_offset_ = sddk::mdarray<int, 1>(uc.num_atoms());
+    packed_mtrx_size_   = 0;
+    for (int ia = 0; ia < uc.num_atoms(); ia++) {
+        int nbf                 = uc.atom(ia).mt_basis_size();
+        packed_mtrx_offset_(ia) = packed_mtrx_size_;
+        packed_mtrx_size_ += nbf * nbf;
+    }
+
+    switch (pu_) {
+        case device_t::GPU: {
+            packed_mtrx_offset_.allocate(memory_t::device).copy_to(memory_t::device);
+            break;
+        }
+        case device_t::CPU: {
+            break;
+        }
+    }
+}
 
 template <>
 double Non_local_operator::value<double>(int xi1__, int xi2__, int ispn__, int ia__)
@@ -272,6 +299,18 @@ void Non_local_operator::apply<double>(int chunk__, int ispn_block__, Wave_funct
     }
 }
 
+D_operator::D_operator(Simulation_context const& ctx_)
+    : Non_local_operator(ctx_)
+{
+    if (ctx_.gamma_point()) {
+        this->op_ = mdarray<double, 3>(1, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+    } else {
+        this->op_ = mdarray<double, 3>(2, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+    }
+    this->op_.zero();
+    initialize();
+}
+
 void D_operator::initialize()
 {
     PROFILE("sirius::D_operator::initialize");
@@ -436,6 +475,20 @@ void D_operator::initialize()
     if (ctx_.num_mag_dims() == 3) {
         this->is_diag_ = false;
     }
+}
+
+Q_operator::Q_operator(Simulation_context const& ctx__)
+    : Non_local_operator(ctx__)
+{
+    /* Q-operator is independent of spin if there is no spin-orbit; however, it simplifies the apply()
+     * method if the Q-operator has a spin index */
+    if (ctx_.gamma_point()) {
+        this->op_ = mdarray<double, 3>(1, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+    } else {
+        this->op_ = mdarray<double, 3>(2, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+    }
+    this->op_.zero();
+    initialize();
 }
 
 void Q_operator::initialize()

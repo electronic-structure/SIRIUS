@@ -25,9 +25,18 @@
 #ifndef __NON_LOCAL_OPERATOR_HPP__
 #define __NON_LOCAL_OPERATOR_HPP__
 
-#include "Beta_projectors/beta_projectors.hpp"
+#include "SDDK/memory.hpp"
+
+namespace sddk {
+class Wave_functions;
+class spin_range;
+};
 
 namespace sirius {
+/* forward declaration */
+class Beta_projectors;
+class Beta_projectors_base;
+class Simulation_context;
 
 /// Non-local part of the Hamiltonian and S-operator in the pseudopotential method.
 class Non_local_operator
@@ -35,14 +44,14 @@ class Non_local_operator
   protected:
     Simulation_context const& ctx_;
 
-    device_t pu_;
+    sddk::device_t pu_;
 
     int packed_mtrx_size_;
 
-    mdarray<int, 1> packed_mtrx_offset_;
+    sddk::mdarray<int, 1> packed_mtrx_offset_;
 
     /// Non-local operator matrix.
-    mdarray<double, 3> op_;
+    sddk::mdarray<double, 3> op_;
 
     bool is_null_{false};
 
@@ -56,41 +65,17 @@ class Non_local_operator
 
   public:
     /// Constructor.
-    Non_local_operator(Simulation_context const& ctx__)
-        : ctx_(ctx__)
-    {
-        PROFILE("sirius::Non_local_operator");
-
-        pu_                 = this->ctx_.processing_unit();
-        auto& uc            = this->ctx_.unit_cell();
-        packed_mtrx_offset_ = mdarray<int, 1>(uc.num_atoms());
-        packed_mtrx_size_   = 0;
-        for (int ia = 0; ia < uc.num_atoms(); ia++) {
-            int nbf                 = uc.atom(ia).mt_basis_size();
-            packed_mtrx_offset_(ia) = packed_mtrx_size_;
-            packed_mtrx_size_ += nbf * nbf;
-        }
-
-        switch (pu_) {
-            case device_t::GPU: {
-                packed_mtrx_offset_.allocate(memory_t::device).copy_to(memory_t::device);
-                break;
-            }
-            case device_t::CPU: {
-                break;
-            }
-        }
-    }
+    Non_local_operator(Simulation_context const& ctx__);
 
     /// Apply chunk of beta-projectors to all wave functions.
     template <typename T>
-    void apply(int chunk__, int ispn_block__, Wave_functions& op_phi__, int idx0__, int n__,
-               Beta_projectors_base& beta__, matrix<T>& beta_phi__);
+    void apply(int chunk__, int ispn_block__, sddk::Wave_functions& op_phi__, int idx0__, int n__,
+               Beta_projectors_base& beta__, sddk::matrix<T>& beta_phi__);
 
     /// Apply beta projectors from one atom in a chunk of beta projectors to all wave-functions.
     template <typename T>
-    void apply(int chunk__, int ia__, int ispn_block__, Wave_functions& op_phi__, int idx0__, int n__,
-               Beta_projectors_base& beta__, matrix<T>& beta_phi__);
+    void apply(int chunk__, int ia__, int ispn_block__, sddk::Wave_functions& op_phi__, int idx0__, int n__,
+               Beta_projectors_base& beta__, sddk::matrix<T>& beta_phi__);
 
     template <typename T>
     inline T value(int xi1__, int xi2__, int ia__)
@@ -113,17 +98,7 @@ class D_operator : public Non_local_operator
     void initialize();
 
   public:
-    D_operator(Simulation_context const& ctx_)
-        : Non_local_operator(ctx_)
-    {
-        if (ctx_.gamma_point()) {
-            this->op_ = mdarray<double, 3>(1, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
-        } else {
-            this->op_ = mdarray<double, 3>(2, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
-        }
-        this->op_.zero();
-        initialize();
-    }
+    D_operator(Simulation_context const& ctx_);
 };
 
 class Q_operator : public Non_local_operator
@@ -132,19 +107,7 @@ class Q_operator : public Non_local_operator
     void initialize();
 
   public:
-    Q_operator(Simulation_context const& ctx__)
-        : Non_local_operator(ctx__)
-    {
-        /* Q-operator is independent of spin if there is no spin-orbit; however, it simplifies the apply()
-         * method if the Q-operator has a spin index */
-        if (ctx_.gamma_point()) {
-            this->op_ = mdarray<double, 3>(1, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
-        } else {
-            this->op_ = mdarray<double, 3>(2, this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
-        }
-        this->op_.zero();
-        initialize();
-    }
+    Q_operator(Simulation_context const& ctx__);
 };
 
 //template <typename T>
@@ -194,14 +157,14 @@ class Q_operator : public Non_local_operator
  */
 template <typename T>
 void
-apply_non_local_d_q(spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                    Wave_functions& phi__, D_operator* d_op__, Wave_functions* hphi__, Q_operator* q_op__,
-                    Wave_functions* sphi__);
+apply_non_local_d_q(sddk::spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+                    sddk::Wave_functions& phi__, D_operator* d_op__, sddk::Wave_functions* hphi__, Q_operator* q_op__,
+                    sddk::Wave_functions* sphi__);
 
 template <typename T>
 void
-apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_projectors& beta__,
-                 Wave_functions& phi__, Q_operator* q_op__, Wave_functions& sphi__);
+apply_S_operator(sddk::device_t pu__, sddk::spin_range spins__, int N__, int n__, Beta_projectors& beta__,
+                 sddk::Wave_functions& phi__, Q_operator* q_op__, sddk::Wave_functions& sphi__);
 
 } // namespace sirius
 
