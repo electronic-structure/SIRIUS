@@ -5,10 +5,10 @@ then
     export SIRIUS_BINARIES=$(pwd)/../build/apps/dft_loop
 fi
 
-if [[ $HOST == nid* ]]; then
-    SRUN_CMD=srun
+if [[ $(type -f srun 2> /dev/null) ]]; then
+    SRUN_CMD="srun -u"
 else
-    SRUN_CMD="mpi -np 4"
+    SRUN_CMD="mpirun -np 4"
 fi
 
 exe=${SIRIUS_BINARIES}/sirius.scf
@@ -33,7 +33,7 @@ for f in ./*; do
                 echo "'${f}' failed"
                 exit ${err}
             fi
-        )
+        ) || exit ${err}
     fi
 done
 

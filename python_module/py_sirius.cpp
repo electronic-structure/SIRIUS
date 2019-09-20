@@ -170,7 +170,6 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<Communicator>(m, "Communicator");
 
     py::class_<Simulation_context>(m, "Simulation_context")
-        .def(py::init<>())
         .def(py::init<std::string const&>())
         .def(py::init<std::string const&, Communicator const&>(), py::keep_alive<1, 3>())
         .def("initialize", &Simulation_context::initialize)
@@ -371,6 +370,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("symmetrize_density_matrix", &Density::symmetrize_density_matrix)
         .def("generate", &Density::generate, "kpointset"_a, "add_core"_a = true, "transform_to_rg"_a = false)
         .def("generate_paw_loc_density", &Density::generate_paw_loc_density)
+        .def("compute_atomic_mag_mom", &Density::compute_atomic_mag_mom)
         .def("save", &Density::save)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("f_pw_local",
@@ -387,11 +387,10 @@ PYBIND11_MODULE(py_sirius, m)
              py::keep_alive<0, 1>())
         .def("load", &Density::load);
 
-
     py::class_<Band>(m, "Band")
         .def(py::init<Simulation_context&>())
-        .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian0&) const) & Band::initialize_subspace)
-        .def("solve", &Band::solve);
+        .def("initialize_subspace", (void (Band::*)(K_point_set&, Hamiltonian&) const) & Band::initialize_subspace)
+        .def("solve", &Band::solve, "kset"_a, "hamiltonian"_a, py::arg("precompute")=true);
 
     py::class_<DFT_ground_state>(m, "DFT_ground_state")
         .def(py::init<K_point_set&>(), py::keep_alive<1, 2>())

@@ -1,8 +1,19 @@
 import numpy as np
 from scipy.sparse import dia_matrix
 
-__all__ = ['CoefficientArray', 'inner', 'l2norm',
-           'PwCoeffs', 'diag', 'einsum', 'ones_like']
+def threaded(f):
+    """
+    decorator for threaded application over CoefficientArray
+    """
+    def _f(x, *args, **kwargs):
+        if isinstance(x, CoefficientArray):
+            out = type(x)(dtype=x.dtype, ctype=x.ctype)
+            for k in x._data.keys():
+                out[k] = f(x[k], *args, **kwargs)
+            return out
+        else:
+            return f(x, *args, **kwargs)
+    return _f
 
 
 def is_complex(x):
@@ -11,6 +22,9 @@ def is_complex(x):
     else:
         return np.iscomplexobj(x)
 
+@threaded
+def sort(x):
+    return np.sort(x)
 
 def diag(x):
     """
@@ -45,7 +59,6 @@ def spdiag(x):
 
 def ones_like(x, dtype=None):
     """
-    TODO: make a check not to flatten a 2d matrix
     """
     if isinstance(x, CoefficientArray):
         return CoefficientArray.ones_like(x, dtype=dtype)
@@ -53,6 +66,18 @@ def ones_like(x, dtype=None):
         if dtype is None:
             dtype = x.dtype
         return np.diag(x, dtype=dtype)
+
+
+def zeros_like(x, dtype=None):
+    """
+    """
+    if isinstance(x, CoefficientArray):
+        return CoefficientArray.zeros_like(x, dtype=dtype)
+    else:
+        if dtype is None:
+            dtype = x.dtype
+        return np.diag(x, dtype=dtype)
+
 
 
 def inner(a, b):
@@ -437,8 +462,19 @@ class CoefficientArray:
         out = type(x)(dtype=dtype, ctype=ctype)
         for k in x._data.keys():
             out[k] = np.ones_like(x[k], dtype=dtype)
-
         return out
+
+    @staticmethod
+    def zeros_like(x, dtype=None, ctype=None):
+        if ctype is None:
+            ctype = x.ctype
+        if dtype is None:
+            dtype = x.dtype
+        out = type(x)(dtype=dtype, ctype=ctype)
+        for k in x._data.keys():
+            out[k] = np.ones_like(x[k], dtype=dtype)
+        return out
+
 
     __lmul__ = __mul__
     __rmul__ = __mul__

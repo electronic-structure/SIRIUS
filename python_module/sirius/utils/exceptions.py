@@ -1,0 +1,2 @@
+class NotEnoughBands(Exception):
+    pass

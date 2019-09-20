@@ -5,8 +5,8 @@ then
     export SIRIUS_BINARIES=$(pwd)/../build/apps/dft_loop
 fi
 
-if [[ $HOST == nid* ]]; then
-    SRUN_CMD=srun
+if [[ $(type -f srun 2> /dev/null) ]]; then
+    SRUN_CMD="srun -u"
 else
     SRUN_CMD=
 fi
