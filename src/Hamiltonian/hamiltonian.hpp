@@ -411,13 +411,13 @@ class Hamiltonian_k
      */
     void set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<double_complex>& o__) const;
 
-    /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
+    /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap.
     void set_fv_h_o_it(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<double_complex>& o__) const;
 
-    /// Setup lo-lo block of Hamiltonian and overlap matrices
+    /// Setup lo-lo block of Hamiltonian and overlap matrices.
     void set_fv_h_o_lo_lo(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<double_complex>& o__) const;
 
-    /// Setup apw-lo and lo-apw blocs of LAPW Hamiltonian and overlap matrices
+    /// Setup apw-lo and lo-apw blocks of LAPW Hamiltonian and overlap matrices.
     void set_fv_h_o_apw_lo(Atom const& atom, int ia, sddk::mdarray<double_complex, 2>& alm_row,
                            sddk::mdarray<double_complex, 2>& alm_col, sddk::mdarray<double_complex, 2>& h,
                            sddk::mdarray<double_complex, 2>& o) const;
