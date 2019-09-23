@@ -20,7 +20,8 @@ void test1()
     A >> B;
 
     linalg<device_t::CPU>::heinv(N, A);
-    linalg<device_t::CPU>::hemm(0, 0, N, N, double_complex(1, 0), A, B, double_complex(0, 0), C);
+    linalg2(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<double_complex>::one(), &A(0, 0), A.ld(), &B(0, 0),
+                                 B.ld(), &linalg_const<double_complex>::zero(), &C(0, 0), C.ld());
 
     int err = 0;
     for (int i = 0; i < N; i++)
@@ -33,7 +34,8 @@ void test1()
         }
     }
 
-    linalg<device_t::CPU>::hemm(1, 0, N, N, double_complex(1, 0), A, B, double_complex(0, 0), C);
+    linalg2(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<double_complex>::one(), &A(0, 0), A.ld(), &B(0, 0), B.ld(),
+                                 &linalg_const<double_complex>::zero(), &C(0, 0), C.ld());
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++)
