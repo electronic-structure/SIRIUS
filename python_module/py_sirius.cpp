@@ -357,6 +357,16 @@ PYBIND11_MODULE(py_sirius, m)
         .def("PAW_one_elec_energy", &Potential::PAW_one_elec_energy);
 
     py::class_<Field4D>(m, "Field4D")
+        .def("f_pw_local",
+            [](py::object& obj, int i) -> py::array_t<complex_double> {
+                Density& density     = obj.cast<Density&>();
+                auto& matrix_storage = density.component_raise(i).f_pw_local();
+                int nrows            = matrix_storage.size(0);
+                /* return underlying data as numpy.ndarray view */
+                return py::array_t<complex_double>({nrows}, {1 * sizeof(complex_double)},
+                                                   matrix_storage.at(memory_t::host), obj);
+            },
+            py::keep_alive<0, 1>())
         .def("component", py::overload_cast<int>(&Field4D::component), py::return_value_policy::reference_internal);
 
     py::class_<Density, Field4D>(m, "Density")
@@ -373,18 +383,17 @@ PYBIND11_MODULE(py_sirius, m)
         .def("compute_atomic_mag_mom", &Density::compute_atomic_mag_mom)
         .def("save", &Density::save)
         .def("check_num_electrons", &Density::check_num_electrons)
-        .def("f_pw_local",
-             [](py::object& obj, int i) -> py::array_t<complex_double> {
-
-               Density& wf   = obj.cast<Density&>();
-               auto& matrix_storage = wf.component(i).f_pw_local();
-               int nrows            = matrix_storage.size(0);
-               /* return underlying data as numpy.ndarray view */
-               return py::array_t<complex_double>({nrows},
-                                                  {1 * sizeof(complex_double)},
-                                                  matrix_storage.at(memory_t::host), obj);
-             },
-             py::keep_alive<0, 1>())
+        .def("density_matrix",
+             [](py::object& obj) -> py::array_t<complex_double> {
+                 Density& density = obj.cast<Density&>();
+                 auto& dm         = density.density_matrix();
+                 int sz           = sizeof(complex_double);
+                 if (dm.at(memory_t::host) == nullptr) {
+                     throw std::runtime_error("trying to access null pointer");
+                 }
+                 return py::array_t<complex_double, py::array::f_style>(
+                     {dm.size(0), dm.size(1), dm.size(2), dm.size(3)}, dm.at(memory_t::host), obj);
+             })
         .def("load", &Density::load);
 
     py::class_<Band>(m, "Band")
