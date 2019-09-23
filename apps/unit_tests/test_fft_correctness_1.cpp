@@ -8,7 +8,7 @@ int test_fft(cmd_args& args, device_t pu__)
 {
     bool verbose{true};
 
-    double cutoff = args.value<double>("cutoff", 40);
+    double cutoff = args.value<double>("cutoff", 8);
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 

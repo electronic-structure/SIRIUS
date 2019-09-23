@@ -187,6 +187,15 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
     auto& ctx = H0_.ctx();
 
+    if (ctx.control().print_checksum_) {
+        auto cs1 = phi__.checksum_pw(ctx.processing_unit(), 0, N__, n__);
+        auto cs2 = phi__.checksum_mt(ctx.processing_unit(), 0, N__, n__);
+        if (kp().comm().rank() == 0) {
+            utils::print_checksum("phi_pw", cs1);
+            utils::print_checksum("phi_mt", cs2);
+        }
+    }
+
     if (!apw_only__) {
         if (hphi__ != nullptr) {
             /* zero the local-orbital part */
@@ -759,18 +768,22 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     if (ctx.control().print_checksum_) {
         if (hphi__) {
             auto cs1 = hphi__->checksum_pw(ctx.processing_unit(), 0, N__, n__);
-            auto cs2 = hphi__->checksum(ctx.processing_unit(), 0, N__, n__);
+            auto cs2 = hphi__->checksum_mt(ctx.processing_unit(), 0, N__, n__);
+            auto cs3 = hphi__->checksum(ctx.processing_unit(), 0, N__, n__);
             if (kp().comm().rank() == 0) {
                 utils::print_checksum("hphi_pw", cs1);
-                utils::print_checksum("hphi", cs2);
+                utils::print_checksum("hphi_mt", cs2);
+                utils::print_checksum("hphi", cs3);
             }
         }
         if (ophi__) {
             auto cs1 = ophi__->checksum_pw(ctx.processing_unit(), 0, N__, n__);
-            auto cs2 = ophi__->checksum(ctx.processing_unit(), 0, N__, n__);
+            auto cs2 = ophi__->checksum_mt(ctx.processing_unit(), 0, N__, n__);
+            auto cs3 = ophi__->checksum(ctx.processing_unit(), 0, N__, n__);
             if (kp().comm().rank() == 0) {
                 utils::print_checksum("ophi_pw", cs1);
-                utils::print_checksum("ophi", cs2);
+                utils::print_checksum("ophi_mt", cs2);
+                utils::print_checksum("ophi", cs3);
             }
         }
     }
