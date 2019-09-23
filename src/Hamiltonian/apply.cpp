@@ -210,6 +210,28 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     if (!phi_is_lo__) {
         /* interstitial part */
         H0_.local_op().apply_h_o(kp().spfft_transform(), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
+        if (ctx.control().print_checksum_) {
+            if (hphi__) {
+                auto cs1 = hphi__->checksum_pw(ctx.processing_unit(), 0, N__, n__);
+                auto cs2 = hphi__->checksum_mt(ctx.processing_unit(), 0, N__, n__);
+                auto cs3 = hphi__->checksum(ctx.processing_unit(), 0, N__, n__);
+                if (kp().comm().rank() == 0) {
+                    utils::print_checksum("hloc_phi_pw", cs1);
+                    utils::print_checksum("hloc_phi_mt", cs2);
+                    utils::print_checksum("hloc_phi", cs3);
+                }
+            }
+            if (ophi__) {
+                auto cs1 = ophi__->checksum_pw(ctx.processing_unit(), 0, N__, n__);
+                auto cs2 = ophi__->checksum_mt(ctx.processing_unit(), 0, N__, n__);
+                auto cs3 = ophi__->checksum(ctx.processing_unit(), 0, N__, n__);
+                if (kp().comm().rank() == 0) {
+                    utils::print_checksum("oloc_phi_pw", cs1);
+                    utils::print_checksum("oloc_phi_mt", cs2);
+                    utils::print_checksum("oloc_phi", cs3);
+                }
+            }
+        }
     } else {
         /* zero the APW part */
         switch (ctx.processing_unit()) {
@@ -243,10 +265,13 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
     /* split atoms in blocks */
     int num_atoms_in_block = 2 * omp_get_max_threads();
-    int nblk               = utils::num_blocks(ctx.unit_cell().num_atoms(), num_atoms_in_block);
+
+    /* number of blocks of atoms */
+    int nblk = utils::num_blocks(ctx.unit_cell().num_atoms(), num_atoms_in_block);
 
     /* maximum number of AW radial functions in a block of atoms */
     int max_mt_aw = num_atoms_in_block * ctx.unit_cell().max_mt_aw_basis_size();
+
     /* maximum number of LO radial functions in a block of atoms */
     int max_mt_lo = num_atoms_in_block * ctx.unit_cell().max_mt_lo_basis_size();
 
