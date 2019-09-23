@@ -843,7 +843,8 @@ void Simulation_context::update()
         check_gvec(*remap_gvec_, unit_cell().symmetry());
     }
 
-    if (control().verification_ >= 1) {
+    /* check if FFT grid is OK; this check is especially needed if the grid is set as external parameter */
+    if (control().verification_ >= 0) {
         #pragma omp parallel for
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             int ig = gvec().offset() + igloc;
@@ -855,13 +856,13 @@ void Simulation_context::update()
                 /* check boundaries */
                 if (gv[x] < limits.first || gv[x] > limits.second) {
                     std::stringstream s;
-                    s << "G-vector is outside of grid limits" << std::endl
-                      << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << std::endl
-                      << "limits: "
+                    s << "G-vector is outside of grid limits\n"
+                      << "  G: " << gv << ", length: " << gvec().gvec_cart<index_domain_t::global>(ig).length() << "\n"
+                      << "  FFT grid limits: "
                       << fft_grid().limits(0).first << " " << fft_grid().limits(0).second << " "
                       << fft_grid().limits(1).first << " " << fft_grid().limits(1).second << " "
-                      << fft_grid().limits(2).first << " " << fft_grid().limits(2).second;
-
+                      << fft_grid().limits(2).first << " " << fft_grid().limits(2).second << "\n"
+                      << "  FFT grid is not compatible with G-vector cutoff (" << this->pw_cutoff() << ")";
                     TERMINATE(s);
                 }
             }

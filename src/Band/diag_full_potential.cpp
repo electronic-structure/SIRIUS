@@ -122,7 +122,33 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
             kp.fv_eigen_vectors_slab().deallocate(spin_range(0), memory_t::device);
         }
 
+        if (true) {
+            Wave_functions phi(kp.gkvec_partition(), unit_cell_.num_atoms(),
+                               [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, 1,
+                               ctx_.preferred_memory_t(), 1);
+            Wave_functions ofv(kp.gkvec_partition(), unit_cell_.num_atoms(),
+                               [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, 1,
+                               ctx_.preferred_memory_t(), 1);
+            phi.allocate(spin_range(0), memory_t::device);
+            ofv.allocate(spin_range(0), memory_t::device);
+
+            for (int i = 0; i < kp.num_gkvec(); i++) {
+                phi.zero(device_t::CPU, 0, 0, 1);
+                phi.pw_coeffs(0).prime(i, 0) = 1.0;
+                phi.copy_to(spin_range(0), memory_t::device, 0, 1);
+                Hk__.apply_fv_h_o(false, false, 0, 1, phi, nullptr, &ofv);
+            }
+
+            for (int i = 0; i < unit_cell_.mt_lo_basis_size(); i++) {
+                phi.zero(device_t::CPU, 0, 0, 1);
+                phi.mt_coeffs(0).prime(i, 0) = 1.0;
+                phi.copy_to(spin_range(0), memory_t::device, 0, 1);
+                Hk__.apply_fv_h_o(false, false, 0, 1, phi, nullptr, &ofv);
+            }
+        }
+
         std::vector<double> norm(ctx_.num_fv_states(), 0);
+        #pragma omp parallel for schedule(static)
         for (int i = 0; i < ctx_.num_fv_states(); i++) {
             for (int j = 0; j < ofv.pw_coeffs(0).num_rows_loc(); j++) {
                 norm[i] += std::real(std::conj(kp.fv_eigen_vectors_slab().pw_coeffs(0).prime(j, i)) * ofv.pw_coeffs(0).prime(j, i));
@@ -132,6 +158,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
             }
         }
         kp.comm().allreduce(norm);
+        #pragma omp parallel for schedule(static)
         for (int i = 0; i < ctx_.num_fv_states(); i++) {
             norm[i] = 1 / std::sqrt(norm[i]);
             for (int j = 0; j < ofv.pw_coeffs(0).num_rows_loc(); j++) {

@@ -144,10 +144,6 @@ atomic_data_file.write("\n")
 
 atomic_data_file.write("#endif\n")
 
-
 atomic_data_file.close()
-
-
-
 
 

@@ -75,6 +75,8 @@ class spin_range : public std::vector<int>
     }
 };
 
+//TODO introduce band range to desctibe a set of bands in the interval [N1, N2]
+
 /// Wave-functions representation.
 /** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
  *  with the slab distribution. Wave-functions have one or two spin components. In case of collinear magnetism
@@ -310,9 +312,9 @@ class Wave_functions
      *  \param [in] i0   Starting index of wave-functions in src.
      *  \param [in] jspn Spin component on destination wave-functions.
      *  \param [in] j0   Starting index of wave-functions in destination. */
-    void copy_from(device_t pu__, int n__, Wave_functions const& src__, int ispn__, int i0__, int jspn__,
-                          int j0__);
+    void copy_from(device_t pu__, int n__, Wave_functions const& src__, int ispn__, int i0__, int jspn__, int j0__);
 
+    /// Copy from and to preferred memory.
     void copy_from(Wave_functions const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__);
 
     /// Compute the checksum of the spin-components.

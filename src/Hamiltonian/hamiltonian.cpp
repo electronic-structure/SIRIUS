@@ -155,12 +155,14 @@ Hamiltonian0::apply_bmt(sddk::Wave_functions& psi__, std::vector<sddk::Wave_func
             }
         }
         /* compute bwf = B_z*|wf_j> */
-        linalg<device_t::CPU>::hemm(0, 0, mt_basis_size, ctx_.num_fv_states(),
-            linalg_const<double_complex>::one(),
-            zm.at(memory_t::host), zm.ld(),
-            psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0), psi__.mt_coeffs(0).prime().ld(),
-            linalg_const<double_complex>::zero(),
-            bpsi__[0].mt_coeffs(0).prime().at(memory_t::host, offset, 0), bpsi__[0].mt_coeffs(0).prime().ld());
+        linalg2(linalg_t::blas).hemm('L', 'U', mt_basis_size, ctx_.num_fv_states(),
+                                     &linalg_const<double_complex>::one(),
+                                     zm.at(memory_t::host), zm.ld(),
+                                     psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0),
+                                     psi__.mt_coeffs(0).prime().ld(),
+                                     &linalg_const<double_complex>::zero(),
+                                     bpsi__[0].mt_coeffs(0).prime().at(memory_t::host, offset, 0),
+                                     bpsi__[0].mt_coeffs(0).prime().ld());
 
         /* compute bwf = (B_x - iB_y)|wf_j> */
         if (bpsi__.size() == 3) {

@@ -32,15 +32,6 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
         TERMINATE("this is not a Gamma-point calculation")
     }
 
-    auto mpi_grid_dims = args__.value("mpi_grid", ctx.mpi_grid_dims());
-    ctx.set_mpi_grid_dims(mpi_grid_dims);
-
-    auto std_evp_solver_name = args__.value("std_evp_solver_name", ctx.control().std_evp_solver_name_);
-    ctx.std_evp_solver_name(std_evp_solver_name);
-
-    auto gen_evp_solver_name = args__.value("gen_evp_solver_name", ctx.control().gen_evp_solver_name_);
-    ctx.gen_evp_solver_name(gen_evp_solver_name);
-
     ctx.import(args__);
 
     return ctx_ptr;
@@ -350,12 +341,8 @@ int main(int argn, char** argv)
     args.register_key("--input=", "{string} input file name");
     args.register_key("--output=", "{string} output file name");
     args.register_key("--task=", "{int} task id");
-    args.register_key("--mpi_grid=", "{vector int} MPI grid dimensions");
     args.register_key("--aiida_output", "write output for AiiDA");
     args.register_key("--test_against=", "{string} json file with reference values");
-    args.register_key("--std_evp_solver_name=", "{string} standard eigen-value solver");
-    args.register_key("--gen_evp_solver_name=", "{string} generalized eigen-value solver");
-    args.register_key("--processing_unit=", "{string} type of the processing unit");
     args.register_key("--repeat_update=", "{int} number of times to repeat update()");
     args.register_key("--control.processing_unit=", "");
     args.register_key("--control.verbosity=", "");
