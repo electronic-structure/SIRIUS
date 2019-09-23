@@ -124,26 +124,30 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
 
         if (true) {
             Wave_functions phi(kp.gkvec_partition(), unit_cell_.num_atoms(),
-                               [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, 1,
+                               [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
                                ctx_.preferred_memory_t(), 1);
             Wave_functions ofv(kp.gkvec_partition(), unit_cell_.num_atoms(),
-                               [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, 1,
+                               [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
                                ctx_.preferred_memory_t(), 1);
             phi.allocate(spin_range(0), memory_t::device);
             ofv.allocate(spin_range(0), memory_t::device);
 
             for (int i = 0; i < kp.num_gkvec(); i++) {
-                phi.zero(device_t::CPU, 0, 0, 1);
-                phi.pw_coeffs(0).prime(i, 0) = 1.0;
-                phi.copy_to(spin_range(0), memory_t::device, 0, 1);
-                Hk__.apply_fv_h_o(false, false, 0, 1, phi, nullptr, &ofv);
+                phi.zero(device_t::CPU, 0, 0, ctx_.num_fv_states());
+                for (int j = 0; j < ctx_.num_fv_states(); j++) {
+                    phi.pw_coeffs(0).prime(i, j) = 1.0;
+                }
+                phi.copy_to(spin_range(0), memory_t::device, 0, ctx_.num_fv_states());
+                Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), phi, nullptr, &ofv);
             }
 
             for (int i = 0; i < unit_cell_.mt_lo_basis_size(); i++) {
-                phi.zero(device_t::CPU, 0, 0, 1);
-                phi.mt_coeffs(0).prime(i, 0) = 1.0;
-                phi.copy_to(spin_range(0), memory_t::device, 0, 1);
-                Hk__.apply_fv_h_o(false, false, 0, 1, phi, nullptr, &ofv);
+                phi.zero(device_t::CPU, 0, 0, ctx_.num_fv_states());
+                for (int j = 0; j < ctx_.num_fv_states(); j++) {
+                    phi.mt_coeffs(0).prime(i, j) = 1.0;
+                }
+                phi.copy_to(spin_range(0), memory_t::device, 0, ctx_.num_fv_states());
+                Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), phi, nullptr, &ofv);
             }
         }
 
@@ -158,6 +162,11 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
             }
         }
         kp.comm().allreduce(norm);
+        if (ctx_.control().verbosity_ >= 2) {
+            for (int i = 0; i < ctx_.num_fv_states(); i++) {
+                kp.message(2, __func__, "norm(%i)=%18.12f\n", i, norm[i]);
+            }
+        }
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < ctx_.num_fv_states(); i++) {
             norm[i] = 1 / std::sqrt(norm[i]);

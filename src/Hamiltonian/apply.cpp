@@ -677,7 +677,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
             compute_apw_lo(atom_begin, atom_end, num_mt_lo, offsets_aw, offsets_lo, phi_lo_block);
 
-            utils::timer t3("sirius::Hamiltonian::apply_fv_h_o|lo-lo-apw");
+            utils::timer t3("sirius::Hamiltonian::apply_fv_h_o|lo-apw");
             /* lo-APW contribution */
             for (int ia = atom_begin; ia < atom_end; ia++) {
                 int ialoc  = ia - atom_begin;
