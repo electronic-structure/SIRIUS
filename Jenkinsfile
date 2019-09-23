@@ -32,7 +32,7 @@ pipeline {
                            echo "---------- build-daint-gpu.err ----------"
                            cat build-daint-gpu.err
                            # check that sirius.scf has been built
-                           type -f apps/dft_loop/sirius.scf
+                           type -f build/apps/dft_loop/sirius.scf
                            '''
                 }
             }
