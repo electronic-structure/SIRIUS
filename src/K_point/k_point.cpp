@@ -781,20 +781,6 @@ void K_point::generate_hubbard_orbitals()
     sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), spin_range(num_sc), 0, r.first, beta_projectors(),
                                              phi, q_op.get(), *hubbard_wave_functions_);
 
-    //for (int s = 0; s < num_sc; s++) {
-    //    /* need to consider the case where all atoms are norm
-    //       conserving; in that case the S operator is diagonal in orbital space */
-    //    hubbard_wave_functions_->copy_from(ctx_.processing_unit(), r.first, sphi, s, 0, s, 0);
-    //}
-
-    //if (augment) {
-    //    Q_operator q_op(ctx_);
-    //    beta_projectors().prepare();
-    //    apply_non_local_d_q<double_complex>(spin_range(num_sc), 0, r.first, beta_projectors(), sphi, nullptr, nullptr,
-    //                                        &q_op, hubbard_wave_functions_.get());
-    //    beta_projectors.dismiss();
-    //}
-
     orthogonalize_hubbard_orbitals(phi);
 
     // All calculations on GPU then we need to copy the final result back to the cpus
