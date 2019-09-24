@@ -271,6 +271,10 @@ MACRO(SIRIUS_SETUP_TARGET _target)
     target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
   endif()
 
+  if(HAVE_LIBVDW_WITH_MPI)
+    target_compile_definitions(${_target} PUBLIC -D__HAVE_VDWXC_MPI)
+  endif()
+
   # target_link_libraries(${_target} PRIVATE GSL::gsl)
 
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
