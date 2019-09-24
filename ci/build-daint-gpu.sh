@@ -23,5 +23,6 @@ mkdir -p build
           -DCMAKE_BUILD_TYPE=RELWITHDEBINFO \
           -DCREATE_PYTHON_MODULE=On \
           ../
+    make clean
     make -j VERBOSE=1
 ) && echo "build successful"

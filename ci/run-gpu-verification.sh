@@ -1,7 +1,6 @@
 #!/bin/bash -l
 #SBATCH --job-name=sirius-gpu-tests
 #SBATCH --nodes=1
-#SBATCH --cpus-per-socket=6
 #SBATCH --constraint=gpu
 #SBATCH --partition=cscsci
 #SBATCH --time=00:20:00
