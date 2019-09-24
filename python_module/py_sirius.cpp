@@ -387,7 +387,6 @@ PYBIND11_MODULE(py_sirius, m)
              [](py::object& obj) -> py::array_t<complex_double> {
                  Density& density = obj.cast<Density&>();
                  auto& dm         = density.density_matrix();
-                 int sz           = sizeof(complex_double);
                  if (dm.at(memory_t::host) == nullptr) {
                      throw std::runtime_error("trying to access null pointer");
                  }
