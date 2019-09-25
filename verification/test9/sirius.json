@@ -15,17 +15,17 @@
 
     "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
 
-    "smearing_width" : 0.05,
+    "smearing_width" : 0.02,
 
     "use_symmetry" : true,
 
-    "num_mag_dims" : 3,
+    "num_mag_dims" : 1,
 
-    "gk_cutoff" : 6.0,
-    "pw_cutoff" : 25.00,
+    "gk_cutoff" : 7.0,
+    "pw_cutoff" : 30.00,
 
-    "energy_tol" : 1e-6,
-    "potential_tol" : 1e-6,
+    "energy_tol" : 1e-7,
+    "potential_tol" : 1e-8,
 
     "num_dft_iter" : 100,
 
