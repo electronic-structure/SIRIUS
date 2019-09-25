@@ -69,22 +69,22 @@ pipeline {
                         }
                     }
                 }
-                // stage('Test MC Parallel') {
-                //     steps {
-                //         dir('SIRIUS') {
-                //             sh '''
-                //            cd build
-                //            export SIRIUS_BINARIES=$(realpath apps/dft_loop)
-                //            type -f ${SIRIUS_BINARIES}/sirius.scf
-                //            export ENVFILE=$(realpath ../ci/env-gnu-gpu)
-                //            sbatch --wait ../ci/run-mcp-verification.sh
-                //            cat sirius-mcp-tests.err
-                //            cat sirius-mcp-tests.out
-                //            cd ../
-                //            '''
-                //         }
-                //     }
-                // }
+                stage('Test MC Parallel') {
+                    steps {
+                        dir('SIRIUS') {
+                            sh '''
+                           cd build
+                           export SIRIUS_BINARIES=$(realpath apps/dft_loop)
+                           type -f ${SIRIUS_BINARIES}/sirius.scf
+                           export ENVFILE=$(realpath ../ci/env-gnu-gpu)
+                           sbatch --wait ../ci/run-mcp-verification.sh
+                           cat sirius-mcp-tests.err
+                           cat sirius-mcp-tests.out
+                           cd ../
+                           '''
+                        }
+                    }
+                }
             }
         }
     }
