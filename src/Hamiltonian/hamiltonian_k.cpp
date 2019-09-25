@@ -627,15 +627,23 @@ void Hamiltonian_k::set_fv_h_o_it(dmatrix<double_complex>& h__, dmatrix<double_c
             h__(igk_row, igk_col) += H0().potential().veff_pw(ig12);
             o__(igk_row, igk_col) += H0().ctx().theta_pw(ig12);
 
-            if (H0().ctx().valence_relativity() == relativity_t::none) {
-                h__(igk_row, igk_col) += t1 * H0().ctx().theta_pw(ig12);
-            }
-            if (H0().ctx().valence_relativity() == relativity_t::zora) {
-                h__(igk_row, igk_col) += t1 * H0().potential().rm_inv_pw(ig12);
-            }
-            if (H0().ctx().valence_relativity() == relativity_t::iora) {
-                h__(igk_row, igk_col) += t1 * H0().potential().rm_inv_pw(ig12);
-                o__(igk_row, igk_col) += t1 * sq_alpha_half * H0().potential().rm2_inv_pw(ig12);
+            switch (H0().ctx().valence_relativity()) {
+                case relativity_t::iora: {
+                    h__(igk_row, igk_col) += t1 * H0().potential().rm_inv_pw(ig12);
+                    o__(igk_row, igk_col) += t1 * sq_alpha_half * H0().potential().rm2_inv_pw(ig12);
+                    break;
+                }
+                case relativity_t::zora: {
+                    h__(igk_row, igk_col) += t1 * H0().potential().rm_inv_pw(ig12);
+                    break;
+                }
+                case relativity_t::none: {
+                    h__(igk_row, igk_col) += t1 * H0().ctx().theta_pw(ig12);
+                    break;
+                }
+                default: {
+                    break;
+                }
             }
         }
     }

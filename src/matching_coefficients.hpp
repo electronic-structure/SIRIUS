@@ -79,11 +79,12 @@ class Matching_coefficients // TODO: compute on GPU
     inline void generate(int ngk, std::vector<double_complex> const& phase_factors__, int iat, int l, int lm, int nu,
                          matrix3d<double>& A, double_complex* alm) const
     {
+        const double eps{0.1};
         /* invert matrix of radial derivatives */
         switch (N) {
             case 1: {
                 if (unit_cell_.parameters().control().verification_ >= 1) {
-                    if (std::abs(A(0, 0)) < 1.0 / std::sqrt(unit_cell_.omega())) {
+                    if (std::abs(A(0, 0)) < eps * (1.0 / std::sqrt(unit_cell_.omega()))) {
                         std::stringstream s;
                         s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
                           << std::endl
@@ -99,7 +100,7 @@ class Matching_coefficients // TODO: compute on GPU
                 double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
 
                 if (unit_cell_.parameters().control().verification_ >= 1) {
-                    if (std::abs(det) < 1.0 / std::sqrt(unit_cell_.omega())) {
+                    if (std::abs(det) < eps * (1.0 / std::sqrt(unit_cell_.omega()))) {
                         std::stringstream s;
                         s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
                           << std::endl

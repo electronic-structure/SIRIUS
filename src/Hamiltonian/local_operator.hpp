@@ -93,8 +93,9 @@ class Local_operator
          - B_x(r)
          - B_y(r)
          - Theta(r) (in FP-LAPW case)
+         - inverse of 1 + relative mass (needed for ZORA LAPW)
      */
-    std::array<std::unique_ptr<Smooth_periodic_function<double>>, 5> veff_vec_;
+    std::array<std::unique_ptr<Smooth_periodic_function<double>>, 6> veff_vec_;
 
     /// Temporary array to store [V*phi](G)
     sddk::mdarray<double_complex, 1> vphi_;
@@ -160,9 +161,11 @@ class Local_operator
      *  \param [in]  gkvec_p FFT-friendly G+k vector partitioning.
      *  \param [in]  N       Starting index of wave-functions.
      *  \param [in]  n       Number of wave-functions to which H and O are applied.
-     *  \param [in]  phi     Input wave-functions.
-     *  \param [out] hphi    LAPW Hamiltonian applied to wave-function.
-     *  \param [out] ophi    LAPW overlap matrix applied to wave-function.
+     *  \param [in]  phi     Input wave-functions [always on CPU].
+     *  \param [out] hphi    LAPW Hamiltonian applied to wave-function [CPU || GPU].
+     *  \param [out] ophi    LAPW overlap matrix applied to wave-function [CPU || GPU].
+     *
+     *  Only plane-wave part of output wave-functions is changed.
      */
     void apply_h_o(spfft::Transform& spfftik__, sddk::Gvec_partition const& gkvec_p__, int N__, int n__,
                    sddk::Wave_functions& phi__, sddk::Wave_functions* hphi__, sddk::Wave_functions* ophi__);

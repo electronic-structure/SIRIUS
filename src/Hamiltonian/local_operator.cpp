@@ -104,6 +104,19 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
                 /* transform to real space */
                 veff_vec_[j]->fft_transform(1);
             }
+            if (ctx_.valence_relativity() == relativity_t::zora) {
+                veff_vec_[5] = std::unique_ptr<Smooth_periodic_function<double>>(
+                    new Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__, &ctx_.mem_pool(memory_t::host)));
+                /* loop over local set of coarse G-vectors */
+                #pragma omp parallel for schedule(static)
+                for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
+                    /* map from fine to coarse set of G-vectors */
+                    veff_vec_[5]->f_pw_local(igloc) =
+                        potential__->rm_inv_pw(gvec_dense_p.gvec().offset() + gvec_dense_p.gvec().gvec_base_mapping(igloc));
+                }
+                /* transform to real space */
+                veff_vec_[5]->fft_transform(1);
+            }
 
         } else {
 
@@ -154,7 +167,7 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
                                          "Local_operator::buf_rg_");
     /* move functions to GPU */
     if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
-        for (int j = 0; j < 5; j++) {
+        for (int j = 0; j < 6; j++) {
             if (veff_vec_[j]) {
                 veff_vec_[j]->f_rg().allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
             }
@@ -193,14 +206,14 @@ void Local_operator::prepare_k(Gvec_partition const& gkvec_p__)
 }
 
 static inline void mul_by_veff(spfft::Transform& spfftk__, double* buff__,
-                               std::array<std::unique_ptr<Smooth_periodic_function<double>>, 5>& veff_vec__,
+                               std::array<std::unique_ptr<Smooth_periodic_function<double>>, 6>& veff_vec__,
                                int idx_veff__)
 {
     int nr = spfftk__.local_slice_size();
 
     switch (spfftk__.processing_unit()) {
         case SPFFT_PU_HOST: {
-            if (idx_veff__ < 2 || idx_veff__ == 4) { /* up-up or dn-dn block or Theta(r) */
+            if (idx_veff__ <= 1 || idx_veff__ >= 4) { /* up-up or dn-dn block or Theta(r) */
                 switch (spfftk__.type()) {
                     case SPFFT_TRANS_R2C: {
                         #pragma omp parallel for schedule(static)
@@ -233,7 +246,7 @@ static inline void mul_by_veff(spfft::Transform& spfftk__, double* buff__,
         }
         case SPFFT_PU_GPU: {
 #if defined(__GPU)
-            if (idx_veff__ < 2 || idx_veff__ == 4) { /* up-up or dn-dn block or Theta(r) */
+            if (idx_veff__ <= 1 || idx_veff__ >= 4) { /* up-up or dn-dn block or Theta(r) */
                 switch (spfftk__.type()) {
                     case SPFFT_TRANS_R2C: {
                         /* multiply by V+Bz or V-Bz (in PP-PW case) or by V(r), B_z(r) or Theta(r) (in LAPW case) */
@@ -704,8 +717,23 @@ void Local_operator::apply_h_o(spfft::Transform& spfftk__, Gvec_partition const&
                 }
                 /* transform Cartesian component of wave-function gradient to real space */
                 spfftk__.backward(reinterpret_cast<double const*>(&buf_pw[0]), spfft_mem);
-                /* multiply be step function */
-                mul_by_veff(spfftk__, spfft_buf, veff_vec_, 4);
+                /* multiply by real-space function */
+                switch (ctx_.valence_relativity()) {
+                    case relativity_t::iora:
+                    case relativity_t::zora: {
+                        /* multiply be inverse relative mass */
+                        mul_by_veff(spfftk__, spfft_buf, veff_vec_, 5);
+                        break;
+                    }
+                    case relativity_t::none: {
+                        /* multiply be step function */
+                        mul_by_veff(spfftk__, spfft_buf, veff_vec_, 4);
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
                 /* transform back to PW domain */
                 spfftk__.forward(spfft_mem, reinterpret_cast<double*>(&buf_pw[0]), SPFFT_FULL_SCALING);
                 #pragma omp parallel for schedule(static)

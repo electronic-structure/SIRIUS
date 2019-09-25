@@ -187,13 +187,14 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
     auto& ctx = H0_.ctx();
 
+    /* quick hack: apply O using CPU; GPU is buggy */
+    auto pu = (hphi__) ? ctx.processing_unit() : device_t::CPU;
+
+    auto la = (pu == device_t::CPU) ? linalg_t::blas : linalg_t::gpublas;
+    auto mem = (pu == device_t::CPU) ? memory_t::host : memory_t::device;
+
     if (ctx.control().print_checksum_) {
-        auto cs1 = phi__.checksum_pw(ctx.processing_unit(), 0, N__, n__);
-        auto cs2 = phi__.checksum_mt(ctx.processing_unit(), 0, N__, n__);
-        if (kp().comm().rank() == 0) {
-            utils::print_checksum("phi_pw", cs1);
-            utils::print_checksum("phi_mt", cs2);
-        }
+        phi__.print_checksum(pu, "phi", N__, n__);
     }
 
     if (!apw_only__) {
@@ -212,29 +213,15 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
         H0_.local_op().apply_h_o(kp().spfft_transform(), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
         if (ctx.control().print_checksum_) {
             if (hphi__) {
-                auto cs1 = hphi__->checksum_pw(ctx.processing_unit(), 0, N__, n__);
-                auto cs2 = hphi__->checksum_mt(ctx.processing_unit(), 0, N__, n__);
-                auto cs3 = hphi__->checksum(ctx.processing_unit(), 0, N__, n__);
-                if (kp().comm().rank() == 0) {
-                    utils::print_checksum("hloc_phi_pw", cs1);
-                    utils::print_checksum("hloc_phi_mt", cs2);
-                    utils::print_checksum("hloc_phi", cs3);
-                }
+                hphi__->print_checksum(pu, "hloc_phi", N__, n__);
             }
             if (ophi__) {
-                auto cs1 = ophi__->checksum_pw(ctx.processing_unit(), 0, N__, n__);
-                auto cs2 = ophi__->checksum_mt(ctx.processing_unit(), 0, N__, n__);
-                auto cs3 = ophi__->checksum(ctx.processing_unit(), 0, N__, n__);
-                if (kp().comm().rank() == 0) {
-                    utils::print_checksum("oloc_phi_pw", cs1);
-                    utils::print_checksum("oloc_phi_mt", cs2);
-                    utils::print_checksum("oloc_phi", cs3);
-                }
+                ophi__->print_checksum(pu, "oloc_phi", N__, n__);
             }
         }
     } else {
         /* zero the APW part */
-        switch (ctx.processing_unit()) {
+        switch (pu) {
             case device_t::CPU: {
                 if (hphi__ != nullptr) {
                     hphi__->pw_coeffs(0).zero(memory_t::host, N__, n__);
@@ -256,7 +243,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
         }
     }
 
-    if (ctx.processing_unit() == device_t::GPU && !apw_only__) {
+    if (pu == device_t::GPU && !apw_only__) {
         phi__.mt_coeffs(0).copy_to(memory_t::host, N__, n__);
     }
 
@@ -281,7 +268,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     matrix<double_complex> alm_block;
     matrix<double_complex> halm_block;
 
-    switch (ctx.processing_unit()) {
+    switch (pu) {
         case device_t::CPU: {
             alm_block = matrix<double_complex>(ngv, max_mt_aw, ctx.mem_pool(memory_t::host));
             halm_block = matrix<double_complex>(ngv, std::max(max_mt_aw, max_mt_lo), ctx.mem_pool(memory_t::host));
@@ -300,7 +287,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     /* buffers for alm_phi and halm_phi */
     mdarray<double_complex, 1> alm_phi_buf;
     if (ophi__ != nullptr) {
-        switch (ctx.processing_unit()) {
+        switch (pu) {
             case device_t::CPU: {
                 alm_phi_buf = mdarray<double_complex, 1>(sz, ctx.mem_pool(memory_t::host));
                 break;
@@ -314,7 +301,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     }
     mdarray<double_complex, 1> halm_phi_buf;
     if (hphi__ != nullptr) {
-        switch (ctx.processing_unit()) {
+        switch (pu) {
             case device_t::CPU: {
                 halm_phi_buf = mdarray<double_complex, 1>(sz, ctx.mem_pool(memory_t::host));
                 break;
@@ -329,6 +316,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     }
     t0.stop();
 
+    /* generate matching coefficients Alm(G+k) for a block of atoms */
     auto generate_alm = [&](int atom_begin, int atom_end, std::vector<int>& offsets_aw) {
         utils::timer t1("sirius::Hamiltonian_k::apply_fv_h_o|alm");
         #pragma omp parallel
@@ -343,7 +331,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
                     /* wrapper for matching coefficients for a given atom */
                     mdarray<double_complex, 2> alm_tmp;
                     mdarray<double_complex, 2> halm_tmp;
-                    switch (ctx.processing_unit()) {
+                    switch (pu) {
                         case device_t::CPU: {
                             alm_tmp = mdarray<double_complex, 2>(alm_block.at(memory_t::host, 0, offsets_aw[ialoc]),
                                                                  ngv, type.mt_aw_basis_size());
@@ -369,18 +357,18 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
                     /* generate LAPW matching coefficients on the CPU */
                     kp().alm_coeffs_loc().generate<true>(atom, alm_tmp);
-                    if (ctx.processing_unit() == device_t::GPU) {
+                    if (pu == device_t::GPU) {
                         alm_tmp.copy_to(memory_t::device, stream_id(tid));
                     }
                     if (hphi__ != nullptr) {
                         H0_.apply_hmt_to_apw<spin_block_t::nm>(atom, ngv, alm_tmp, halm_tmp);
-                        if (ctx.processing_unit() == device_t::GPU) {
+                        if (pu == device_t::GPU) {
                             halm_tmp.copy_to(memory_t::device, stream_id(tid));
                         }
                     }
                 }
             }
-            if (ctx.processing_unit() == device_t::GPU) {
+            if (pu == device_t::GPU) {
                 acc::sync_stream(stream_id(tid));
             }
         }
@@ -390,7 +378,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
         utils::timer t1("sirius::Hamiltonian_k::apply_fv_h_o|alm_phi");
 
         /* first zgemm: A(G, lm)^{T} * C(G, i) and  hA(G, lm)^{T} * C(G, i) */
-        switch (ctx.processing_unit()) {
+        switch (pu) {
             case device_t::CPU: {
                 if (ophi__ != nullptr) {
                     /* create resulting array with proper dimensions from the already allocated chunk of memory */
@@ -444,14 +432,14 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
         if (hphi__ != nullptr) {
             kp().comm().allreduce(halm_phi.at(memory_t::host), num_mt_aw * n__);
-            if (ctx.processing_unit() == device_t::GPU) {
+            if (pu == device_t::GPU) {
                 halm_phi.copy_to(memory_t::device);
             }
         }
 
         if (ophi__ != nullptr) {
             kp().comm().allreduce(alm_phi.at(memory_t::host), num_mt_aw * n__);
-            if (ctx.processing_unit() == device_t::GPU) {
+            if (pu == device_t::GPU) {
                 alm_phi.copy_to(memory_t::device);
             }
         }
@@ -460,7 +448,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     auto compute_apw_apw = [&](matrix<double_complex>& alm_phi, matrix<double_complex>& halm_phi, int num_mt_aw) {
         utils::timer t1("sirius::Hamiltonian_k::apply_fv_h_o|apw-apw");
         /* second zgemm: Alm^{*} (Alm * C) */
-        switch (ctx.processing_unit()) {
+        switch (pu) {
             case device_t::CPU: {
                 if (ophi__ != nullptr) {
                     /* APW-APW contribution to overlap */
@@ -534,7 +522,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
             }
         } // ia
 
-        if (ctx.processing_unit() == device_t::GPU) {
+        if (pu == device_t::GPU) {
             phi_lo_block.copy_to(memory_t::device);
         }
     };
@@ -565,47 +553,18 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
                         hmt(xi, ilo) = atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_aw, idxrf_lo, gc);
                     }
                 }
-                switch (ctx.processing_unit()) {
-                    case device_t::CPU: {
-                        linalg<device_t::CPU>::gemm(
-                            0, 0, ngv, nlo, naw, alm_block.at(memory_t::host, 0, offsets_aw[ialoc]), alm_block.ld(),
-                            hmt.at(memory_t::host), hmt.ld(), halm_block.at(memory_t::host, 0, offsets_lo[ialoc]),
-                            halm_block.ld());
-                        break;
-                    }
-                    case device_t::GPU: {
-#if defined(__GPU)
-                        hmt.allocate(memory_t::device);
-                        hmt.copy_to(memory_t::device);
-                        linalg<device_t::GPU>::gemm(
-                            0, 0, ngv, nlo, naw, alm_block.at(memory_t::device, 0, offsets_aw[ialoc]), alm_block.ld(),
-                            hmt.at(memory_t::device), hmt.ld(), halm_block.at(memory_t::device, 0, offsets_lo[ialoc]),
-                            halm_block.ld());
-#endif
-                        break;
-                    }
+                if (pu == device_t::GPU) {
+                    hmt.allocate(memory_t::device).copy_to(memory_t::device);
                 }
+                linalg2(la).gemm('N', 'N', ngv, nlo, naw, &linalg_const<double_complex>::one(),
+                                 alm_block.at(mem, 0, offsets_aw[ialoc]), alm_block.ld(),
+                                 hmt.at(mem), hmt.ld(), &linalg_const<double_complex>::zero(),
+                                 halm_block.at(mem, 0, offsets_lo[ialoc]), halm_block.ld());
             } // ia
-            switch (ctx.processing_unit()) {
-                case device_t::CPU: {
-                    linalg<device_t::CPU>::gemm(
-                        0, 0, ngv, n__, num_mt_lo, linalg_const<double_complex>::one(), halm_block.at(memory_t::host),
-                        halm_block.ld(), phi_lo_block.at(memory_t::host), phi_lo_block.ld(),
-                        linalg_const<double_complex>::one(), hphi__->pw_coeffs(0).prime().at(memory_t::host, 0, N__),
-                        hphi__->pw_coeffs(0).prime().ld());
-                    break;
-                }
-                case device_t::GPU: {
-#if defined(__GPU)
-                    linalg<device_t::GPU>::gemm(
-                        0, 0, ngv, n__, num_mt_lo, &linalg_const<double_complex>::one(),
-                        halm_block.at(memory_t::device), halm_block.ld(), phi_lo_block.at(memory_t::device),
-                        phi_lo_block.ld(), &linalg_const<double_complex>::one(),
-                        hphi__->pw_coeffs(0).prime().at(memory_t::device, 0, N__), hphi__->pw_coeffs(0).prime().ld());
-#endif
-                    break;
-                }
-            }
+            linalg2(la).gemm('N', 'N', ngv, n__, num_mt_lo, &linalg_const<double_complex>::one(), halm_block.at(mem),
+                             halm_block.ld(), phi_lo_block.at(mem), phi_lo_block.ld(),
+                             &linalg_const<double_complex>::one(), hphi__->pw_coeffs(0).prime().at(mem, 0, N__),
+                             hphi__->pw_coeffs(0).prime().ld());
         }
 
         /* apw-lo block for ophi */
@@ -635,27 +594,13 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
                     }
                 }
             } // ia
-            switch (ctx.processing_unit()) {
-                case device_t::CPU: {
-                    linalg<device_t::CPU>::gemm(
-                        0, 0, ngv, n__, num_mt_lo, linalg_const<double_complex>::one(), halm_block.at(memory_t::host),
-                        halm_block.ld(), phi_lo_block.at(memory_t::host), phi_lo_block.ld(),
-                        linalg_const<double_complex>::one(), ophi__->pw_coeffs(0).prime().at(memory_t::host, 0, N__),
-                        ophi__->pw_coeffs(0).prime().ld());
-                    break;
-                }
-                case device_t::GPU: {
-#if defined(__GPU)
-                    halm_block.copy_to(memory_t::device, 0, ngv * num_mt_lo);
-                    linalg<device_t::GPU>::gemm(
-                        0, 0, ngv, n__, num_mt_lo, &linalg_const<double_complex>::one(),
-                        halm_block.at(memory_t::device), halm_block.ld(), phi_lo_block.at(memory_t::device),
-                        phi_lo_block.ld(), &linalg_const<double_complex>::one(),
-                        ophi__->pw_coeffs(0).prime().at(memory_t::device, 0, N__), ophi__->pw_coeffs(0).prime().ld());
-#endif
-                    break;
-                }
+            if (pu == device_t::GPU) {
+                halm_block.copy_to(memory_t::device, 0, ngv * num_mt_lo);
             }
+            linalg2(la).gemm('N', 'N', ngv, n__, num_mt_lo, &linalg_const<double_complex>::one(),
+                             halm_block.at(mem), halm_block.ld(), phi_lo_block.at(mem), phi_lo_block.ld(),
+                             &linalg_const<double_complex>::one(), ophi__->pw_coeffs(0).prime().at(mem, 0, N__),
+                             ophi__->pw_coeffs(0).prime().ld());
         }
     };
 
@@ -695,7 +640,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
         if (!apw_only__ && num_mt_lo) {
             /* local orbital coefficients for a block of atoms and all states */
             matrix<double_complex> phi_lo_block(num_mt_lo, n__);
-            if (ctx.processing_unit() == device_t::GPU) {
+            if (pu == device_t::GPU) {
                 phi_lo_block.allocate(memory_t::device);
             }
             collect_lo(atom_begin, atom_end, offsets_lo, phi_lo_block);
@@ -782,7 +727,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
         }
     }
     t2.stop();
-    if (ctx.processing_unit() == device_t::GPU && !apw_only__) {
+    if (pu == device_t::GPU && !apw_only__) {
         if (hphi__ != nullptr) {
             hphi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
         }
@@ -792,24 +737,10 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     }
     if (ctx.control().print_checksum_) {
         if (hphi__) {
-            auto cs1 = hphi__->checksum_pw(ctx.processing_unit(), 0, N__, n__);
-            auto cs2 = hphi__->checksum_mt(ctx.processing_unit(), 0, N__, n__);
-            auto cs3 = hphi__->checksum(ctx.processing_unit(), 0, N__, n__);
-            if (kp().comm().rank() == 0) {
-                utils::print_checksum("hphi_pw", cs1);
-                utils::print_checksum("hphi_mt", cs2);
-                utils::print_checksum("hphi", cs3);
-            }
+            hphi__->print_checksum(pu, "hphi", N__, n__);
         }
         if (ophi__) {
-            auto cs1 = ophi__->checksum_pw(ctx.processing_unit(), 0, N__, n__);
-            auto cs2 = ophi__->checksum_mt(ctx.processing_unit(), 0, N__, n__);
-            auto cs3 = ophi__->checksum(ctx.processing_unit(), 0, N__, n__);
-            if (kp().comm().rank() == 0) {
-                utils::print_checksum("ophi_pw", cs1);
-                utils::print_checksum("ophi_mt", cs2);
-                utils::print_checksum("ophi", cs3);
-            }
+            ophi__->print_checksum(pu, "ophi", N__, n__);
         }
     }
 }

@@ -357,6 +357,23 @@ class Wave_functions
     {
         return preferred_memory_t_;
     }
+
+    inline void print_checksum(device_t pu__, std::string label__, int N__, int n__)
+    {
+        for (int ispn = 0; ispn < num_sc(); ispn++) {
+            auto cs1 = this->checksum_pw(pu__, ispn, N__, n__);
+            auto cs2 = this->checksum_mt(pu__, ispn, N__, n__);
+            if (this->comm().rank() == 0) {
+                std::stringstream s;
+                s << ispn;
+                utils::print_checksum(label__ + "_pw_" + s.str(), cs1);
+                if (this->has_mt()) {
+                    utils::print_checksum(label__ + "_mt_" + s.str(), cs2);
+                }
+                utils::print_checksum(label__ + "_" + s.str(), cs1 + cs2);
+            }
+        }
+    }
 };
 
 

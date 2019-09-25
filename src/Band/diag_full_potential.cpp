@@ -122,34 +122,34 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
             kp.fv_eigen_vectors_slab().deallocate(spin_range(0), memory_t::device);
         }
 
-        if (true) {
-            Wave_functions phi(kp.gkvec_partition(), unit_cell_.num_atoms(),
-                               [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
-                               ctx_.preferred_memory_t(), 1);
-            Wave_functions ofv(kp.gkvec_partition(), unit_cell_.num_atoms(),
-                               [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
-                               ctx_.preferred_memory_t(), 1);
-            phi.allocate(spin_range(0), memory_t::device);
-            ofv.allocate(spin_range(0), memory_t::device);
+        //if (true) {
+        //    Wave_functions phi(kp.gkvec_partition(), unit_cell_.num_atoms(),
+        //                       [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
+        //                       ctx_.preferred_memory_t(), 1);
+        //    Wave_functions ofv(kp.gkvec_partition(), unit_cell_.num_atoms(),
+        //                       [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
+        //                       ctx_.preferred_memory_t(), 1);
+        //    phi.allocate(spin_range(0), memory_t::device);
+        //    ofv.allocate(spin_range(0), memory_t::device);
 
-            for (int i = 0; i < kp.num_gkvec(); i++) {
-                phi.zero(device_t::CPU, 0, 0, ctx_.num_fv_states());
-                for (int j = 0; j < ctx_.num_fv_states(); j++) {
-                    phi.pw_coeffs(0).prime(i, j) = 1.0;
-                }
-                phi.copy_to(spin_range(0), memory_t::device, 0, ctx_.num_fv_states());
-                Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), phi, nullptr, &ofv);
-            }
+        //    for (int i = 0; i < kp.num_gkvec(); i++) {
+        //        phi.zero(device_t::CPU, 0, 0, ctx_.num_fv_states());
+        //        for (int j = 0; j < ctx_.num_fv_states(); j++) {
+        //            phi.pw_coeffs(0).prime(i, j) = 1.0;
+        //        }
+        //        phi.copy_to(spin_range(0), memory_t::device, 0, ctx_.num_fv_states());
+        //        Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), phi, nullptr, &ofv);
+        //    }
 
-            for (int i = 0; i < unit_cell_.mt_lo_basis_size(); i++) {
-                phi.zero(device_t::CPU, 0, 0, ctx_.num_fv_states());
-                for (int j = 0; j < ctx_.num_fv_states(); j++) {
-                    phi.mt_coeffs(0).prime(i, j) = 1.0;
-                }
-                phi.copy_to(spin_range(0), memory_t::device, 0, ctx_.num_fv_states());
-                Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), phi, nullptr, &ofv);
-            }
-        }
+        //    for (int i = 0; i < unit_cell_.mt_lo_basis_size(); i++) {
+        //        phi.zero(device_t::CPU, 0, 0, ctx_.num_fv_states());
+        //        for (int j = 0; j < ctx_.num_fv_states(); j++) {
+        //            phi.mt_coeffs(0).prime(i, j) = 1.0;
+        //        }
+        //        phi.copy_to(spin_range(0), memory_t::device, 0, ctx_.num_fv_states());
+        //        Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), phi, nullptr, &ofv);
+        //    }
+        //}
 
         std::vector<double> norm(ctx_.num_fv_states(), 0);
         #pragma omp parallel for schedule(static)
@@ -180,46 +180,69 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     }
 
     if (ctx_.control().verification_ >= 2) {
-        STOP();
-        ///* check application of H and O */
-        //wave_functions phi(ctx_.processing_unit(), kp->gkvec(), unit_cell_.num_atoms(),
-        //                   [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
-        //wave_functions hphi(ctx_.processing_unit(), kp->gkvec(), unit_cell_.num_atoms(),
-        //                   [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
-        //wave_functions ophi(ctx_.processing_unit(), kp->gkvec(), unit_cell_.num_atoms(),
-        //                   [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
-        //
-        //for (int i = 0; i < ctx_.num_fv_states(); i++) {
-        //    std::memcpy(phi.pw_coeffs().prime().at(memory_t::host, 0, i),
-        //                kp->fv_eigen_vectors().at(memory_t::host, 0, i),
-        //                kp->num_gkvec() * sizeof(double_complex));
-        //    if (unit_cell_.mt_lo_basis_size()) {
-        //        std::memcpy(phi.mt_coeffs().prime().at(memory_t::host, 0, i),
-        //                    kp->fv_eigen_vectors().at(memory_t::host, kp->num_gkvec(), i),
-        //                    unit_cell_.mt_lo_basis_size() * sizeof(double_complex));
-        //    }
-        //}
+        kp.message(1, __func__, "checking application of H and O\n");
+        /* check application of H and O */
+        Wave_functions hphi(kp.gkvec_partition(), unit_cell_.num_atoms(),
+                            [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
+                            ctx_.preferred_memory_t());
+        Wave_functions ophi(kp.gkvec_partition(), unit_cell_.num_atoms(),
+                            [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
+                            ctx_.preferred_memory_t());
 
-        //apply_fv_h_o(kp, 0, 0, ctx_.num_fv_states(), phi, hphi, ophi);
+        if (ctx_.processing_unit() == device_t::GPU) {
+            kp.fv_eigen_vectors_slab().allocate(spin_range(0), memory_t::device);
+            kp.fv_eigen_vectors_slab().copy_to(spin_range(0), memory_t::device, 0, ctx_.num_fv_states());
+            hphi.allocate(spin_range(0), memory_t::device);
+            ophi.allocate(spin_range(0), memory_t::device);
+        }
 
-        //dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
-        //dmatrix<double_complex> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+        Hk__.apply_fv_h_o(false, false, 0, ctx_.num_fv_states(), kp.fv_eigen_vectors_slab(), &hphi, &ophi);
 
-        //inner(phi, 0, ctx_.num_fv_states(), hphi, 0, ctx_.num_fv_states(), 0.0, hmlt, 0, 0);
-        //inner(phi, 0, ctx_.num_fv_states(), ophi, 0, ctx_.num_fv_states(), 0.0, ovlp, 0, 0);
+        dmatrix<double_complex> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
+                                     ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+        dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
+                                     ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
 
-        //for (int i = 0; i < ctx_.num_fv_states(); i++) {
-        //    for (int j = 0; j < ctx_.num_fv_states(); j++) {
-        //        double_complex z = (i == j) ? ovlp(i, j) - 1.0 : ovlp(i, j);
-        //        double_complex z1 = (i == j) ? hmlt(i, j) - eval[i] : hmlt(i, j);
-        //        if (std::abs(z) > 1e-10) {
-        //            printf("ovlp(%i, %i) = %f %f\n", i, j, z.real(), z.imag());
-        //        }
-        //        if (std::abs(z1) > 1e-10) {
-        //            printf("hmlt(%i, %i) = %f %f\n", i, j, z1.real(), z1.imag());
-        //        }
-        //    }
-        //}
+        inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
+              hphi, 0, ctx_.num_fv_states(), hmlt, 0, 0);
+        inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
+              ophi, 0, ctx_.num_fv_states(), ovlp, 0, 0);
+
+        double max_diff{0};
+        for (int i = 0; i < hmlt.num_cols_local(); i++) {
+            int icol = hmlt.icol(i);
+            for (int j = 0; j < hmlt.num_rows_local(); j++) {
+                int jrow = hmlt.irow(j);
+                if (icol == jrow) {
+                    max_diff = std::max(max_diff, std::abs(hmlt(j, i) - eval[icol]));
+                } else {
+                    max_diff = std::max(max_diff, std::abs(hmlt(j, i)));
+                }
+            }
+        }
+        if (max_diff > 1e-9) {
+            std::stringstream s;
+            s << "application of Hamiltonian failed, maximum error: " << max_diff;
+            WARNING(s);
+        }
+
+        max_diff = 0;
+        for (int i = 0; i < ovlp.num_cols_local(); i++) {
+            int icol = ovlp.icol(i);
+            for (int j = 0; j < ovlp.num_rows_local(); j++) {
+                int jrow = ovlp.irow(j);
+                if (icol == jrow) {
+                    max_diff = std::max(max_diff, std::abs(ovlp(j, i) - 1.0));
+                } else {
+                    max_diff = std::max(max_diff, std::abs(ovlp(j, i)));
+                }
+            }
+        }
+        if (max_diff > 1e-9) {
+            std::stringstream s;
+            s << "application of overlap failed, maximum error: " << max_diff;
+            WARNING(s);
+        }
     }
 }
 
