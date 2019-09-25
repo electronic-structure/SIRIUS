@@ -14,6 +14,7 @@ source ${ENVFILE}
 
 (
     export OMP_NUM_THREADS=2
+    export CRAY_CUDA_MPS=1
     module list
     echo "run-mc-parallel-verification: running on $(hostname)"
     cd ../verification
