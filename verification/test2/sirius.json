@@ -5,7 +5,8 @@
         "gen_evp_solver_type" : "lapack",
         "verbosity" : 1,
         "print_forces" : false,
-        "print_stress" : false
+        "print_stress" : false,
+        "print_checksum" : true
     },
 
     "parameters" : {

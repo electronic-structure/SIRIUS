@@ -15,7 +15,7 @@
 
     "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
 
-    "smearing_width" : 0.05,
+    "smearing_width" : 0.02,
 
     "use_symmetry" : true,
 
