@@ -2,6 +2,7 @@
 # if in non-standard location set environment variabled `VDWCXC_DIR` to the root directory
 
 include(FindPackageHandleStandardArgs)
+include(CheckSymbolExists)
 find_package(PkgConfig REQUIRED)
 
 pkg_search_module(_LIBVDWXC libvdwxc>=${LibVDWXC_FIND_VERSION})
@@ -26,5 +27,9 @@ find_library(LIBVDWXC_LIBRARIES
   ENV VDWXCROOT
   ${_LIBVDWXC_LIBRARY_DIRS}
   DOC "vdwxc libraries list")
+
+# try linking in C (C++ fails because vdwxc_mpi.h includes mpi.h inside extern "C"{...})
+set(CMAKE_REQUIRED_LIBRARIES "${LIBVDWXC_LIBRARIES}")
+check_symbol_exists(vdwxc_init_mpi "${LIBVDWXC_INCLUDE_DIR}/vdwxc_mpi.h" HAVE_LIBVDW_WITH_MPI)
 
 find_package_handle_standard_args(LibVDWXC DEFAULT_MSG LIBVDWXC_LIBRARIES LIBVDWXC_INCLUDE_DIR)
