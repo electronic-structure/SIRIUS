@@ -1,12 +1,12 @@
 from .helpers import *
 from .coefficient_array import *
 from .py_sirius import *
-from .py_sirius import K_point_set
+from .py_sirius import K_point_set, Density
 from .logger import Logger
 from .operators import S_operator
 import numpy as np
 from numpy import array, zeros
-__all__ = ["ot", "baarman", "bands", "edft", "marzari"]
+__all__ = ["ot", "baarman", "bands", "edft"]
 
 
 class OccupancyDescriptor(object):
@@ -85,7 +85,32 @@ class BandEnergiesDescriptor(object):
         instance.sync_band_energies()
 
 
+class DensityDescriptor(object):
+    def __init__(self, i):
+        self.i = i
+
+    def __get__(self, instance, owner):
+        return np.array(instance.f_pw_local(self.i))
+
+    def __set__(self, instance, value):
+        instance.f_pw_local(self.i)[:] = value
+
+
+class DensityMatrixDescriptor(object):
+    def __get__(self, instance, owner):
+        return np.array(instance.density_matrix())
+
+    def __set__(self, instance, value):
+        instance.density_matrix()[:] = value
+
+
 K_point_set.fn = OccupancyDescriptor()
 K_point_set.C = PWDescriptor()
 K_point_set.w = KPointWeightDescriptor()
 K_point_set.e = BandEnergiesDescriptor()
+
+Density.rho = DensityDescriptor(0)
+Density.mx = DensityDescriptor(1)
+Density.my = DensityDescriptor(2)
+Density.mz = DensityDescriptor(3)
+Density.dm = DensityMatrixDescriptor()

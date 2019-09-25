@@ -111,6 +111,7 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json', load=False):
     from . import (Simulation_context,
                    K_point_set,
                    Band,
+                   Hamiltonian,
                    DFT_ground_state,
                    initialize_subspace,
                    vector3d_double)
@@ -140,6 +141,7 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json', load=False):
         kPointSet = K_point_set(ctx, gridk, shiftk, use_symmetry)
 
     dft_gs = DFT_ground_state(kPointSet)
+    hamiltonian = Hamiltonian(dft_gs.potential())
     if load:
         density = dft_gs.density()
         potential = dft_gs.potential()
@@ -156,7 +158,7 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json', load=False):
         # dft_gs.potential().load()
         initialize_subspace(dft_gs, ctx)
         # find wfct
-        Band(ctx).solve(kPointSet, dft_gs.hamiltonian())
+        Band(ctx).solve(kPointSet, hamiltonian)
         # get band occupancies according to band energies
         kPointSet.find_band_occupancies()
         E0 = dft_gs.total_energy()
@@ -177,13 +179,12 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json', load=False):
         initial_tol = 1e-2 # TODO: magic number
         E0 = dft_gs.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_status)
         ks = dft_gs.k_point_set()
-        hamiltonian = dft_gs.hamiltonian()
 
     return {
         'E': E0,
         'dft_gs': dft_gs,
         'kpointset': kPointSet,
-        'hamiltonian': dft_gs.hamiltonian(),
+        'hamiltonian': hamiltonian,
         'density': dft_gs.density(),
         'potential': dft_gs.potential(),
         'ctx': ctx
@@ -207,7 +208,7 @@ def dphk_factory(config='sirius.json'):
     ctx.initialize()
     density = Density(ctx)
     potential = Potential(ctx)
-    hamiltonian = Hamiltonian(ctx, potential)
+    hamiltonian = Hamiltonian(potential)
 
     if 'vk' in siriusJson['parameters']:
         vk = siriusJson['parameters']['vk']
@@ -223,6 +224,7 @@ def dphk_factory(config='sirius.json'):
         kPointSet = K_point_set(ctx, gridk, shiftk, use_symmetry)
 
     Band(ctx).initialize_subspace(kPointSet, hamiltonian)
+
 
     return {
         'kpointset': kPointSet,

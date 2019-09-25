@@ -113,9 +113,10 @@ class ApplyHamiltonian:
         cn -- input coefficient array
         """
         from ..coefficient_array import PwCoeffs
-        ctx = self.hamiltonian.ctx()
+        from ..py_sirius import apply_hamiltonian
+
+        ctx = self.kpointset.ctx()
         num_sc = ctx.num_spins()
-        self.hamiltonian._apply_ref_inner_prepare()
         if isinstance(cn, PwCoeffs):
             assert (ki is None)
             assert (ispn is None)
@@ -132,7 +133,7 @@ class ApplyHamiltonian:
                                        num_sc)
                 for i, val in ispn_coeffs:
                     Psi_x.pw_coeffs(i)[:, :val.shape[1]] = val
-                self.hamiltonian._apply_ref_inner(self.kpointset[k], Psi_y, Psi_x)
+                apply_hamiltonian(self.hamiltonian, kpoint, Psi_y, Psi_x)
 
                 w = kpoint.weight()
                 # copy coefficients from Psi_y
@@ -145,28 +146,7 @@ class ApplyHamiltonian:
                     else:
                         out[(k, i)] = np.array(
                             Psi_y.pw_coeffs(i), copy=False)[:, :num_wf]
-                # end for
-            self.hamiltonian._apply_ref_inner_dismiss()
             return out
-        else:
-            assert (ki in self.kpointset)
-            kpoint = self.kpointset[ki]
-            w = kpoint.weight()
-            num_wf = cn.shape[1]
-            Psi_y = Wave_functions(kpoint.gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc)
-            Psi_x = Wave_functions(kpoint.gkvec_partition(), num_wf, ctx.preferred_memory_t(), num_sc)
-            bnd_occ = np.array(kpoint.band_occupancy(ispn))
-            Psi_x.pw_coeffs(ispn)[:] = cn
-            self.hamiltonian.apply_ref(kpoint, Psi_y, Psi_x)
-            self.hamiltonian._apply_ref_inner_dismiss()
-            if scale:
-                return np.matrix(
-                    np.array(Psi_y.pw_coeffs(ispn), copy=False) * bnd_occ * w,
-                    copy=True)
-            else:
-                return np.matrix(
-                    np.array(Psi_y.pw_coeffs(ispn), copy=False),
-                    copy=True)
 
     def __matmul__(self, cn):
         """
