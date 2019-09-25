@@ -78,7 +78,7 @@ INSTALL (TARGETS sirius ARCHIVE DESTINATION
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   )
-target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX spfft)
+target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX SpFFT::spfft)
 
 
 if(CREATE_FORTRAN_BINDINGS)
