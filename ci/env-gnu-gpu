@@ -18,5 +18,5 @@ module load spglib/1.14.1-CrayGNU-18.08
 module load magma/2.4.0-CrayGNU-18.08-cuda-9.1
 module load gcc
 module load cray-python/3.6.5.1
-module load SpFFT/0.9.3-CrayGNU-18.08-cuda-9.1
+module load SpFFT/0.9.6-CrayGNU-18.08-cuda-9.1
 export CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:${EBROOTSPFFT}/lib/cmake
