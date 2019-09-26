@@ -1673,6 +1673,40 @@ Density::compute_atomic_mag_mom() const
     return mmom;
 }
 
+std::tuple<std::array<double, 3>, std::array<double, 3>, std::vector<std::array<double, 3>>>
+Density::get_magnetisation() const
+{
+    PROFILE("sirius::Density::get_magnetisation");
+
+    std::array<double, 3> total_mag({0, 0, 0});
+    std::vector<std::array<double, 3>> mt_mag(ctx_.unit_cell().num_atoms(), {0, 0, 0});
+    std::array<double, 3> it_mag({0, 0, 0});
+
+    std::vector<int> idx = (ctx_.num_mag_dims() == 1) ? std::vector<int>({2}) : std::vector<int>({2, 0, 1});
+
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        auto result = this->magnetization(j).integrate();
+        total_mag[idx[j]] = std::get<0>(result);
+        it_mag[idx[j]]    = std::get<1>(result);
+        if (ctx_.full_potential()) {
+            auto v = std::get<2>(result);
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                mt_mag[ia][idx[j]] = v[ia];
+            }
+        }
+    }
+
+    if (!ctx_.full_potential()) {
+        auto mmom = this->compute_atomic_mag_mom();
+        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                mt_mag[ia][idx[j]] = mmom(j, ia);
+            }
+        }
+    }
+    return std::make_tuple(total_mag, it_mag, mt_mag);
+}
+
 mdarray<double, 3>
 Density::density_matrix_aux(int iat__)
 {

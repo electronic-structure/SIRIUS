@@ -406,7 +406,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def(py::init<K_point_set&>(), py::keep_alive<1, 2>())
         .def("print_info", &DFT_ground_state::print_info)
         .def("initial_state", &DFT_ground_state::initial_state)
-        .def("print_magnetic_moment", &DFT_ground_state::print_magnetic_moment)
+        //.def("print_magnetic_moment", &DFT_ground_state::print_magnetic_moment)
         .def("total_energy", &DFT_ground_state::total_energy)
         .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
         .def("find",

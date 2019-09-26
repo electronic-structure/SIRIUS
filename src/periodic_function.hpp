@@ -178,6 +178,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         }
     }
 
+    /// Return total integral, interstitial contribution and muffin-tin contributions.
     inline std::tuple<T, T, std::vector<T>>
     integrate() const
     {

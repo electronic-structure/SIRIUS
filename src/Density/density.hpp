@@ -708,7 +708,15 @@ class Density : public Field4D
     mdarray<double, 3> density_matrix_aux(int iat__);
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
-    mdarray<double, 2> compute_atomic_mag_mom() const;
+    mdarray<double, 2>
+    compute_atomic_mag_mom() const;
+
+    /// Get total magnetization and also contributions from interstitial and muffin-tin parts.
+    /** In case of PP-PW there are no real muffin-tins. Instead, a value of magnetization inside atomic
+     *  sphere with some chosen radius is returned.
+     */
+    std::tuple<std::array<double, 3>, std::array<double, 3>, std::vector<std::array<double, 3>>>
+    get_magnetisation() const;
 
     /// Symmetrize density matrix.
     /** Initially, density matrix is obtained with summation over irreducible BZ:
