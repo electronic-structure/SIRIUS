@@ -6,9 +6,7 @@
         "!std_evp_solver_type" : "lapack",
         "!gen_evp_solver_type" : "lapack",
         "verbosity" : 2,
-        "print_forces" : false,
-        "print_checksum" : true
-
+        "print_forces" : false
     },
 
     "parameters" : {
@@ -22,7 +20,7 @@
 
         "num_mag_dims" : 1,
 
-        "num_dft_iter" : 1,
+        "num_dft_iter" : 100,
 
         "ngridk" : [2,2,2],
     
