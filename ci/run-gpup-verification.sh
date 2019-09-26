@@ -11,12 +11,12 @@
 
 set -e
 
-export CRAY_CUDA_MPS=1
-
 source ${ENVFILE}
 
 (
+    export CRAY_CUDA_MPS=1
     export OMP_NUM_THREADS=3
+    export MPICH_MAX_THREAD_SAFETY=multiple
     module list
     echo "run-gpup-verification: running on $(hostname)"
     cd ../verification
