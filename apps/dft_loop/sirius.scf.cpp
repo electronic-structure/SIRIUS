@@ -90,7 +90,7 @@ double ground_state(Simulation_context& ctx,
         }
     }
 
-    dft.print_magnetic_moment();
+    //dft.print_magnetic_moment();
 
     if (ctx.control().print_stress_ && !ctx.full_potential()) {
         Stress& s       = dft.stress();
@@ -122,7 +122,7 @@ double ground_state(Simulation_context& ctx,
         double e1 = result["energy"]["total"];
         double e2 = dict_ref["ground_state"]["energy"]["total"];
 
-        if (std::abs(e1 - e2) > 1e-6) {
+        if (std::abs(e1 - e2) > 1e-5) {
             printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
             ctx.comm().abort(1);
         }
