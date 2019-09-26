@@ -22,8 +22,8 @@ for f in ./*; do
             cd ${f}
             ${SRUN_CMD} ${exe} \
                 --test_against=output_ref.json \
-                --control.std_evp_solver_name=lapack \
-                --control.gen_evp_solver_name=lapack \
+                --control.std_evp_solver_name=scalapack \
+                --control.gen_evp_solver_name=scalapack \
                 --control.mpi_grid_dims=2:2 \
                 --control.processing_unit=gpu
             err=$?
