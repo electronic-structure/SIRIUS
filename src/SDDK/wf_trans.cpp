@@ -167,17 +167,22 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
 
     int num_streams = std::min(4, omp_get_max_threads());
 
-    mdarray<T, 1> buf;
-    mdarray<T, 3> submatrix;
-
+    static T* ptr_h{nullptr};
+    static T* ptr_d{nullptr};
+    static mdarray<T, 1> buf(BS * BS, memory_t::host, "transform::buf");
     if (is_device_memory(mem__)) {
-        buf       = mdarray<T, 1>(BS * BS, memory_t::host_pinned, "transform::buf");
-        submatrix = mdarray<T, 3>(BS, BS, num_streams, memory_t::host_pinned, "transform::submatrix");
-        submatrix.allocate(memory_t::device);
+        if (!ptr_h) {
+            ptr_h = sddk::allocate<T>(BS * BS * num_streams, memory_t::host_pinned);
+        }
+        if (!ptr_d) {
+            ptr_d = sddk::allocate<T>(BS * BS * num_streams, memory_t::device);
+        }
     } else {
-        buf       = mdarray<T, 1>(BS * BS, memory_t::host, "transform::buf");
-        submatrix = mdarray<T, 3>(BS, BS, num_streams, memory_t::host, "transform::submatrix");
+        if (!ptr_h) {
+            ptr_h = sddk::allocate<T>(BS * BS * num_streams, memory_t::host);
+        }
     }
+    mdarray<T, 3> submatrix(ptr_h, ptr_d, BS, BS, num_streams, "transform::submatrix");
 
     /* cache cartesian ranks */
     mdarray<int, 2> cart_rank(mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().num_ranks_col());

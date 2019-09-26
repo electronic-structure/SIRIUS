@@ -191,7 +191,6 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
 
     static T* ptr_h{nullptr};
     static T* ptr_d{nullptr};
-    mdarray<T, 2> c_tmp;
     if (is_device_memory(mem__)) {
         if (!ptr_h) {
             ptr_h = sddk::allocate<T>(BS * BS * num_streams, memory_t::host_pinned);
@@ -204,7 +203,7 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
             ptr_h = sddk::allocate<T>(BS * BS * num_streams, memory_t::host);
         }
     }
-    c_tmp = mdarray<T, 2>(ptr_h, ptr_d, BS * BS, num_streams, "inner::c_tmp");
+    mdarray<T, 2> c_tmp(ptr_h, ptr_d, BS * BS, num_streams, "inner::c_tmp");
 
     /* compute the number of movements of the windows needed to cover the whole matrix size.
      * If m__  is not divided by BS, you need to cover the remaining border; the same for n__
