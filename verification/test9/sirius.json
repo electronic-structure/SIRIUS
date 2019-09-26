@@ -22,10 +22,10 @@
     "num_mag_dims" : 3,
 
     "gk_cutoff" : 7.0,
-    "pw_cutoff" : 30.00,
+    "pw_cutoff" : 35.00,
 
     "energy_tol" : 1e-7,
-    "potential_tol" : 1e-8,
+    "potential_tol" : 1e-9,
 
     "num_dft_iter" : 100,
 
@@ -33,12 +33,12 @@
   },
 
   "iterative_solver" : {
-      "energy_tolerance" : 1e-2,
-      "residual_tolerance" : 1e-6,
+      "!energy_tolerance" : 1e-2,
+      "!residual_tolerance" : 1e-6,
       "num_steps" : 20,
       "subspace_size" : 4,
       "type" : "davidson",
-      "converge_by_energy" : 1
+      "converge_by_energy" : 0
   },
 
     "unit_cell": {
@@ -58,6 +58,7 @@
         ]
     },
     "mixer" : {
-        "beta" : 0.4
+        "beta" : 0.5,
+        "type" : "broyden1"
     }
 }
