@@ -116,8 +116,8 @@ find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C HL)
 
-find_package(SpFFT REQUIRED)
-set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};spfft")
+find_package(SpFFT 0.9.6 CONFIG REQUIRED)
+set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};SpFFT::spfft")
 
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
