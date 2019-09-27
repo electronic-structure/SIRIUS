@@ -85,6 +85,22 @@ pipeline {
                         }
                     }
                 }
+                stage('Test GPU Parallel') {
+                    steps {
+                        dir('SIRIUS') {
+                            sh '''
+                           cd build
+                           export SIRIUS_BINARIES=$(realpath apps/dft_loop)
+                           type -f ${SIRIUS_BINARIES}/sirius.scf
+                           export ENVFILE=$(realpath ../ci/env-gnu-gpu)
+                           sbatch --wait ../ci/run-gpup-verification.sh
+                           cat sirius-gpup-tests.err
+                           cat sirius-gpup-tests.out
+                           cd ../
+                           '''
+                        }
+                    }
+                }
             }
         }
     }
