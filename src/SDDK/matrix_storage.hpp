@@ -29,7 +29,7 @@
 #include "dmatrix.hpp"
 
 #ifdef __GPU
-extern "C" void add_checksum_gpu(std::complex<double>* wf__,
+extern "C" void add_checksum_gpu(std::complex<double> const* wf__,
                                  int                   num_rows_loc__,
                                  int                   nwf__,
                                  std::complex<double>* result__);
