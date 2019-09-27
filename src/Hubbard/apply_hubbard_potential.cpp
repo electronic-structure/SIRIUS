@@ -29,10 +29,10 @@
 
 #include "hubbard.hpp"
 namespace sirius {
-void Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int idx__, const int n__,
+void Hubbard::apply_hubbard_potential(Wave_functions& hub_wf, const int ispn__, const int idx__, const int n__,
                                       Wave_functions& phi, Wave_functions& hphi)
 {
-    auto& hub_wf = kp__.hubbard_wave_functions();
+    //auto& hub_wf = kp__.hubbard_wave_functions();
 
     dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(), n__);
     dm.zero();
@@ -82,8 +82,8 @@ void Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int
                         for (int nbd = 0; nbd < n__; nbd++) {
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    Up(this->offset[ia] + s1 * lmax_at + m1, nbd) += this->hubbard_potential_(m2, m1, ind, ia) *
-                                        dm(this->offset[ia] + s2 * lmax_at + m2, nbd);
+                                    Up(this->offset_[ia] + s1 * lmax_at + m1, nbd) += this->hubbard_potential_(m2, m1, ind, ia) *
+                                        dm(this->offset_[ia] + s2 * lmax_at + m2, nbd);
                                 }
                             }
                         }
@@ -94,8 +94,8 @@ void Hubbard::apply_hubbard_potential(K_point& kp__, const int ispn__, const int
                 for (int nbd = 0; nbd < n__; nbd++) {
                     for (int m1 = 0; m1 < lmax_at; m1++) {
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            Up(this->offset[ia] + m1, nbd) += this->hubbard_potential_(m2, m1, ispn__, ia) *
-                                dm(this->offset[ia] + m2, nbd);
+                            Up(this->offset_[ia] + m1, nbd) += this->hubbard_potential_(m2, m1, ispn__, ia) *
+                                dm(this->offset_[ia] + m2, nbd);
                         }
                     }
                 }

@@ -26,61 +26,8 @@
 
 namespace sddk {
 
-mdarray<double, 1> sddk::Wave_functions::sumsqr(device_t pu__, spin_range spins__, int n__) const
-{
-    mdarray<double, 1> s(n__, memory_t::host, "sumsqr");
-    s.zero();
-    if (pu__ == device_t::GPU) {
-        s.allocate(memory_t::device).zero(memory_t::device);
-    }
-
-    for (int is : spins__) {
-        switch (pu__) {
-            case device_t::CPU: {
-#pragma omp parallel for
-                for (int i = 0; i < n__; i++) {
-                    for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
-                        s[i] += (std::pow(pw_coeffs(is).prime(ig, i).real(), 2) +
-                                 std::pow(pw_coeffs(is).prime(ig, i).imag(), 2));
-                    }
-                    if (gkvecp_.gvec().reduced()) {
-                        if (comm_.rank() == 0) {
-                            s[i] = 2 * s[i] - std::pow(pw_coeffs(is).prime(0, i).real(), 2);
-                        } else {
-                            s[i] *= 2;
-                        }
-                    }
-                    if (has_mt()) {
-                        for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
-                            s[i] += (std::pow(mt_coeffs(is).prime(j, i).real(), 2) +
-                                     std::pow(mt_coeffs(is).prime(j, i).imag(), 2));
-                        }
-                    }
-                }
-                break;
-            }
-            case device_t::GPU: {
-#ifdef __GPU
-                add_square_sum_gpu(pw_coeffs(is).prime().at(memory_t::device), pw_coeffs(is).num_rows_loc(), n__,
-                                   gkvecp_.gvec().reduced(), comm_.rank(), s.at(memory_t::device));
-                if (has_mt()) {
-                    add_square_sum_gpu(mt_coeffs(is).prime().at(memory_t::device), mt_coeffs(is).num_rows_loc(), n__, 0,
-                                       comm_.rank(), s.at(memory_t::device));
-                }
-#endif
-                break;
-            }
-        }
-    }
-    if (pu__ == device_t::GPU) {
-        s.copy_to(memory_t::host);
-    }
-    comm_.allreduce(s.at(memory_t::host), n__);
-    return s;
-}
-
-sddk::Wave_functions::Wave_functions(const Gvec_partition& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
-                                     int num_sc__)
+Wave_functions::Wave_functions(const Gvec_partition& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
+                               int num_sc__)
     : comm_(gkvecp__.gvec().comm())
     , gkvecp_(gkvecp__)
     , num_wf_(num_wf__)
@@ -97,8 +44,8 @@ sddk::Wave_functions::Wave_functions(const Gvec_partition& gkvecp__, int num_wf_
     }
 }
 
-sddk::Wave_functions::Wave_functions(memory_pool& mp__, const Gvec_partition& gkvecp__, int num_wf__,
-                                     memory_t preferred_memory_t__, int num_sc__)
+Wave_functions::Wave_functions(memory_pool& mp__, const Gvec_partition& gkvecp__, int num_wf__,
+                               memory_t preferred_memory_t__, int num_sc__)
     : comm_(gkvecp__.gvec().comm())
     , gkvecp_(gkvecp__)
     , num_wf_(num_wf__)
@@ -115,8 +62,8 @@ sddk::Wave_functions::Wave_functions(memory_pool& mp__, const Gvec_partition& gk
     }
 }
 
-sddk::Wave_functions::Wave_functions(const Gvec_partition& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__,
-                                     int num_wf__, memory_t preferred_memory_t__, int num_sc__)
+Wave_functions::Wave_functions(const Gvec_partition& gkvecp__, int num_atoms__, std::function<int(int)> mt_size__,
+                               int num_wf__, memory_t preferred_memory_t__, int num_sc__)
     : comm_(gkvecp__.gvec().comm())
     , gkvecp_(gkvecp__)
     , num_wf_(num_wf__)
@@ -153,8 +100,8 @@ sddk::Wave_functions::Wave_functions(const Gvec_partition& gkvecp__, int num_ato
     }
 }
 
-void sddk::Wave_functions::copy_from(device_t pu__, int n__, const Wave_functions& src__, int ispn__, int i0__,
-                                     int jspn__, int j0__)
+void Wave_functions::copy_from(device_t pu__, int n__, const Wave_functions& src__, int ispn__, int i0__,
+                               int jspn__, int j0__)
 {
     assert(ispn__ == 0 || ispn__ == 1);
     assert(jspn__ == 0 || jspn__ == 1);
@@ -192,7 +139,7 @@ void sddk::Wave_functions::copy_from(device_t pu__, int n__, const Wave_function
     }
 }
 
-void sddk::Wave_functions::copy_from(const Wave_functions& src__, int n__, int ispn__, int i0__, int jspn__, int j0__)
+void Wave_functions::copy_from(const Wave_functions& src__, int n__, int ispn__, int i0__, int jspn__, int j0__)
 {
     assert(ispn__ == 0 || ispn__ == 1);
     assert(jspn__ == 0 || jspn__ == 1);
@@ -208,7 +155,7 @@ void sddk::Wave_functions::copy_from(const Wave_functions& src__, int n__, int i
     }
 }
 
-double_complex sddk::Wave_functions::checksum_pw(device_t pu__, int ispn__, int i0__, int n__)
+double_complex Wave_functions::checksum_pw(device_t pu__, int ispn__, int i0__, int n__) const
 {
     assert(n__ != 0);
     double_complex cs(0, 0);
@@ -219,21 +166,40 @@ double_complex sddk::Wave_functions::checksum_pw(device_t pu__, int ispn__, int 
     return cs;
 }
 
-double_complex sddk::Wave_functions::checksum_mt(device_t pu__, int ispn__, int i0__, int n__)
+double_complex Wave_functions::checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const
 {
     assert(n__ != 0);
     double_complex cs(0, 0);
-    if (!has_mt()) {
+    if (!this->has_mt_) {
         return cs;
     }
     for (int s = s0(ispn__); s <= s1(ispn__); s++) {
-        cs += mt_coeffs(s).checksum(pu__, i0__, n__);
+        if (mt_coeffs_distr_.counts[comm_.rank()]) {
+            cs += mt_coeffs(s).checksum(pu__, i0__, n__);
+        }
     }
     comm_.allreduce(&cs, 1);
     return cs;
 }
 
-void sddk::Wave_functions::zero_pw(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
+void Wave_functions::print_checksum(device_t pu__, std::string label__, int N__, int n__) const
+{
+    for (int ispn = 0; ispn < num_sc(); ispn++) {
+        auto cs1 = this->checksum_pw(pu__, ispn, N__, n__);
+        auto cs2 = this->checksum_mt(pu__, ispn, N__, n__);
+        if (this->comm().rank() == 0) {
+            std::stringstream s;
+            s << ispn;
+            utils::print_checksum(label__ + "_pw_" + s.str(), cs1);
+            if (this->has_mt_) {
+                utils::print_checksum(label__ + "_mt_" + s.str(), cs2);
+            }
+            utils::print_checksum(label__ + "_" + s.str(), cs1 + cs2);
+        }
+    }
+}
+
+void Wave_functions::zero_pw(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
 {
     for (int s = s0(ispn__); s <= s1(ispn__); s++) {
         switch (pu__) {
@@ -249,7 +215,7 @@ void sddk::Wave_functions::zero_pw(device_t pu__, int ispn__, int i0__, int n__)
     }
 }
 
-void sddk::Wave_functions::zero_mt(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
+void Wave_functions::zero_mt(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
 {
     if (!has_mt()) {
         return;
@@ -268,7 +234,7 @@ void sddk::Wave_functions::zero_mt(device_t pu__, int ispn__, int i0__, int n__)
     }
 }
 
-void sddk::Wave_functions::scale(memory_t mem__, int ispn__, int i0__, int n__, double beta__)
+void Wave_functions::scale(memory_t mem__, int ispn__, int i0__, int n__, double beta__)
 {
     for (int s = s0(ispn__); s <= s1(ispn__); s++) {
         pw_coeffs(s).scale(mem__, i0__, n__, beta__);
@@ -278,7 +244,8 @@ void sddk::Wave_functions::scale(memory_t mem__, int ispn__, int i0__, int n__, 
     }
 }
 
-mdarray<double, 1> sddk::Wave_functions::l2norm(device_t pu__, spin_range spins__, int n__) const
+mdarray<double, 1>
+Wave_functions::l2norm(device_t pu__, spin_range spins__, int n__) const
 {
     assert(n__ != 0);
 
@@ -290,7 +257,7 @@ mdarray<double, 1> sddk::Wave_functions::l2norm(device_t pu__, spin_range spins_
     return norm;
 }
 
-void sddk::Wave_functions::normalize(device_t pu__, spin_range spins__, int n__)
+void Wave_functions::normalize(device_t pu__, spin_range spins__, int n__)
 {
     auto norm = this->l2norm(pu__, spins__, n__);
     for (int i = 0; i < n__; i++) {
@@ -332,7 +299,7 @@ void sddk::Wave_functions::normalize(device_t pu__, spin_range spins__, int n__)
     }
 }
 
-void sddk::Wave_functions::allocate(spin_range spins__, memory_t mem__)
+void Wave_functions::allocate(spin_range spins__, memory_t mem__)
 {
     for (int s : spins__) {
         pw_coeffs(s).allocate(mem__);
@@ -342,7 +309,7 @@ void sddk::Wave_functions::allocate(spin_range spins__, memory_t mem__)
     }
 }
 
-void sddk::Wave_functions::deallocate(spin_range spins__, memory_t mem__)
+void Wave_functions::deallocate(spin_range spins__, memory_t mem__)
 {
     for (int s : spins__) {
         pw_coeffs(s).deallocate(mem__);
@@ -352,7 +319,7 @@ void sddk::Wave_functions::deallocate(spin_range spins__, memory_t mem__)
     }
 }
 
-void sddk::Wave_functions::copy_to(spin_range spins__, memory_t mem__, int i0__, int n__)
+void Wave_functions::copy_to(spin_range spins__, memory_t mem__, int i0__, int n__)
 {
     for (int s : spins__) {
         pw_coeffs(s).copy_to(mem__, i0__, n__);
@@ -361,4 +328,59 @@ void sddk::Wave_functions::copy_to(spin_range spins__, memory_t mem__, int i0__,
         }
     }
 }
+
+mdarray<double, 1>
+Wave_functions::sumsqr(device_t pu__, spin_range spins__, int n__) const
+{
+    mdarray<double, 1> s(n__, memory_t::host, "sumsqr");
+    s.zero();
+    if (pu__ == device_t::GPU) {
+        s.allocate(memory_t::device).zero(memory_t::device);
+    }
+
+    for (int is : spins__) {
+        switch (pu__) {
+            case device_t::CPU: {
+                #pragma omp parallel for
+                for (int i = 0; i < n__; i++) {
+                    for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
+                        s[i] += (std::pow(pw_coeffs(is).prime(ig, i).real(), 2) +
+                                 std::pow(pw_coeffs(is).prime(ig, i).imag(), 2));
+                    }
+                    if (gkvecp_.gvec().reduced()) {
+                        if (comm_.rank() == 0) {
+                            s[i] = 2 * s[i] - std::pow(pw_coeffs(is).prime(0, i).real(), 2);
+                        } else {
+                            s[i] *= 2;
+                        }
+                    }
+                    if (has_mt()) {
+                        for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
+                            s[i] += (std::pow(mt_coeffs(is).prime(j, i).real(), 2) +
+                                     std::pow(mt_coeffs(is).prime(j, i).imag(), 2));
+                        }
+                    }
+                }
+                break;
+            }
+            case device_t::GPU: {
+#ifdef __GPU
+                add_square_sum_gpu(pw_coeffs(is).prime().at(memory_t::device), pw_coeffs(is).num_rows_loc(), n__,
+                                   gkvecp_.gvec().reduced(), comm_.rank(), s.at(memory_t::device));
+                if (has_mt()) {
+                    add_square_sum_gpu(mt_coeffs(is).prime().at(memory_t::device), mt_coeffs(is).num_rows_loc(), n__, 0,
+                                       comm_.rank(), s.at(memory_t::device));
+                }
+#endif
+                break;
+            }
+        }
+    }
+    if (pu__ == device_t::GPU) {
+        s.copy_to(memory_t::host);
+    }
+    comm_.allreduce(s.at(memory_t::host), n__);
+    return s;
+}
+
 } // namespace sddk

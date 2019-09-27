@@ -26,10 +26,12 @@
 #define __FORCE_HPP__
 
 #include "periodic_function.hpp"
+#include "Potential/potential.hpp"
 #include "Density/augmentation_operator.hpp"
 #include "Beta_projectors/beta_projectors.hpp"
 #include "Beta_projectors/beta_projectors_gradient.hpp"
 #include "non_local_functor.hpp"
+#include "Hamiltonian/hamiltonian.hpp"
 
 namespace sirius {
 
@@ -46,8 +48,6 @@ class Force
     Potential& potential_;
 
     K_point_set& kset_;
-
-    Hamiltonian& hamiltonian_;
 
     mdarray<double, 2> forces_vloc_;
 
@@ -99,15 +99,14 @@ class Force
      */
     void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_);
 
-    void add_ibs_force(K_point* kp__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const;
+    void add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const;
 
   public:
-    Force(Simulation_context& ctx__, Density& density__, Potential& potential__, Hamiltonian& h__, K_point_set& kset__)
+    Force(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__)
         : ctx_(ctx__)
         , density_(density__)
         , potential_(potential__)
         , kset_(kset__)
-        , hamiltonian_(h__)
     {
     }
 
@@ -228,4 +227,4 @@ class Force
 
 } // namespace sirius
 
-#endif // __FORCES_HAMILTONIAN__
+#endif // __FORCE_HPP__

@@ -428,7 +428,7 @@ void sirius_get_parameters(void* const* handler__,
     }
     if (fft_grid_size__ != nullptr) {
         for (int x: {0, 1, 2}) {
-            fft_grid_size__[x] = sim_ctx.fft().size(x);
+            fft_grid_size__[x] = sim_ctx.fft_grid()[x];
         }
     }
 }
@@ -1167,7 +1167,8 @@ void sirius_initialize_subspace(void* const* gs_handler__,
 {
     GET_GS(gs_handler__)
     GET_KS(ks_handler__)
-    sirius::Band(ks.ctx()).initialize_subspace(ks, gs.hamiltonian());
+    sirius::Hamiltonian0 H0(gs.potential());
+    sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
 }
 
 /* @fortran begin function void sirius_find_eigen_states     Find eigen-states of the Hamiltonian/
@@ -1186,7 +1187,8 @@ void sirius_find_eigen_states(void* const* gs_handler__,
     if (iter_solver_tol__ != nullptr) {
         ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
     }
-    sirius::Band(ks.ctx()).solve(ks, gs.hamiltonian(), *precompute__);
+    sirius::Hamiltonian0 H0(gs.potential());
+    sirius::Band(ks.ctx()).solve(ks, H0, *precompute__);
 }
 
 /* @fortran begin function void sirius_generate_d_operator_matrix     Generate D-operator matrix.
@@ -1271,6 +1273,24 @@ void sirius_get_band_energies(void*  const* ks_handler__,
     int ik = *ik__ - 1;
     for (int i = 0; i < ks.ctx().num_bands(); i++) {
         band_energies__[i] = ks[ik]->band_energy(i, *ispn__);
+    }
+}
+
+/* @fortran begin function void sirius_get_band_occupancies      Get band occupancies.
+   @fortran argument in  required void*   ks_handler             K-point set handler.
+   @fortran argument in  required int     ik                     Global index of k-point.
+   @fortran argument in  required int     ispn                   Spin component.
+   @fortran argument out required double  band_occupancies       Array of band occupancies.
+   @fortran end */
+void sirius_get_band_occupancies(void*  const* ks_handler__,
+                                 int    const* ik__,
+                                 int    const* ispn__,
+                                 double*       band_occupancies__)
+{
+    GET_KS(ks_handler__)
+    int ik = *ik__ - 1;
+    for (int i = 0; i < ks.ctx().num_bands(); i++) {
+        band_occupancies__[i] = ks[ik]->band_occupancy(i, *ispn__);
     }
 }
 
@@ -1925,7 +1945,7 @@ double sirius_get_radial_integral(void*  const* handler__,
 void sirius_calculate_hubbard_occupancies(void* const* handler__)
 {
     GET_GS(handler__)
-    gs.hamiltonian().U().hubbard_compute_occupation_numbers(gs.k_point_set());
+    gs.potential().U().hubbard_compute_occupation_numbers(gs.k_point_set());
 }
 
 
@@ -1939,7 +1959,7 @@ void sirius_set_hubbard_occupancies(void* const* handler__,
                                     int   const *ld__)
 {
     GET_GS(handler__)
-    gs.hamiltonian().U().access_hubbard_occupancies("set", occ__, ld__);
+    gs.potential().U().access_hubbard_occupancies("set", occ__, ld__);
 }
 
 /* @fortran begin function void sirius_get_hubbard_occupancies          Get occupation matrix for LDA+U.
@@ -1952,7 +1972,7 @@ void sirius_get_hubbard_occupancies(void* const* handler__,
                                     int   const *ld__)
 {
     GET_GS(handler__)
-    gs.hamiltonian().U().access_hubbard_occupancies("get", occ__, ld__);
+    gs.potential().U().access_hubbard_occupancies("get", occ__, ld__);
 }
 
 /* @fortran begin function void sirius_set_hubbard_potential              Set LDA+U potential matrix.
@@ -1965,7 +1985,7 @@ void sirius_set_hubbard_potential(void* const* handler__,
                                   int   const *ld__)
 {
     GET_GS(handler__)
-    gs.hamiltonian().U().access_hubbard_potential("set", pot__, ld__);
+    gs.potential().U().access_hubbard_potential("set", pot__, ld__);
 }
 
 
@@ -1979,7 +1999,7 @@ void sirius_get_hubbard_potential(void* const* handler__,
                                   int   const *ld__)
 {
     GET_GS(handler__)
-    gs.hamiltonian().U().access_hubbard_potential("get", pot__, ld__);
+    gs.potential().U().access_hubbard_potential("get", pot__, ld__);
 }
 
 /* @fortran begin function void sirius_add_atom_type_aw_descriptor    Add descriptor of the augmented wave radial function.
@@ -2138,7 +2158,7 @@ void sirius_get_fft_comm(void * const* handler__,
                          int*          fcomm__)
 {
     GET_SIM_CTX(handler__);
-    *fcomm__ = MPI_Comm_c2f(sim_ctx.fft().comm().mpi_comm());
+    *fcomm__ = MPI_Comm_c2f(sim_ctx.comm_fft().mpi_comm());
 }
 
 /* @fortran begin function int sirius_get_num_gvec  Get total number of G-vectors
@@ -2189,9 +2209,9 @@ void sirius_get_gvec_arrays(void* const* handler__,
         }
     }
     if (index_by_gvec__ != nullptr) {
-        auto d0 = sim_ctx.fft().limits(0);
-        auto d1 = sim_ctx.fft().limits(1);
-        auto d2 = sim_ctx.fft().limits(2);
+        auto d0 = sim_ctx.fft_grid().limits(0);
+        auto d1 = sim_ctx.fft_grid().limits(1);
+        auto d2 = sim_ctx.fft_grid().limits(2);
 
         mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
         std::fill(index_by_gvec.at(memory_t::host), index_by_gvec.at(memory_t::host) + index_by_gvec.size(), -1);
@@ -2209,7 +2229,7 @@ void sirius_get_gvec_arrays(void* const* handler__,
 int sirius_get_num_fft_grid_points(void* const* handler__)
 {
     GET_SIM_CTX(handler__);
-    return sim_ctx.fft().local_size();
+    return sim_ctx.spfft().local_slice_size();
 }
 
 /* @fortran begin function void sirius_get_fft_index   Get mapping between G-vector index and FFT index
@@ -2222,7 +2242,7 @@ void sirius_get_fft_index(void* const* handler__,
     GET_SIM_CTX(handler__);
     for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
         auto G = sim_ctx.gvec().gvec(ig);
-        fft_index__[ig] = sim_ctx.fft().index_by_freq(G[0], G[1], G[2]) + 1;
+        fft_index__[ig] = sim_ctx.fft_grid().index_by_freq(G[0], G[1], G[2]) + 1;
     }
 }
 
@@ -2303,7 +2323,7 @@ void sirius_get_step_function(void* const*          handler__,
                               double*               cfunrg__)
 {
     GET_SIM_CTX(handler__);
-    for (int i = 0; i < sim_ctx.fft().local_size(); i++) {
+    for (int i = 0; i < sim_ctx.spfft().local_slice_size(); i++) {
         cfunrg__[i] = sim_ctx.theta(i);
     }
     for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
@@ -2480,13 +2500,13 @@ void sirius_set_o1_radial_integral(void* const* handler__,
    @fortran argument in optional int    o                    Order of radial function for l.
    @fortran argument in optional int    ilo                  Local orbital index.
    @fortran end */
-void sirius_set_radial_function(void* const* handler__,
-                                int*         ia__,
-                                int*         deriv_order__,
-                                double*      f__,
-                                int*         l__,
-                                int*         o__,
-                                int*         ilo__)
+void sirius_set_radial_function(void*  const* handler__,
+                                int    const* ia__,
+                                int    const* deriv_order__,
+                                double const* f__,
+                                int    const* l__,
+                                int    const* o__,
+                                int    const* ilo__)
 {
     GET_SIM_CTX(handler__);
 
@@ -2522,6 +2542,56 @@ void sirius_set_radial_function(void* const* handler__,
     if (l__ != nullptr && o__ != nullptr) {
         int n = atom.num_mt_points();
         atom.symmetry_class().set_aw_surface_deriv(*l__, *o__ - 1, *deriv_order__, f__[n - 1]);
+    }
+}
+
+/* @fortran begin function void sirius_get_radial_function   Get LAPW radial functions
+   @fortran argument in required void*  handler              Simulation context handler.
+   @fortran argument in required int    ia                   Index of atom.
+   @fortran argument in required int    deriv_order          Radial derivative order.
+   @fortran argument out required double f                   Values of the radial function.
+   @fortran argument in optional int    l                    Orbital quantum number.
+   @fortran argument in optional int    o                    Order of radial function for l.
+   @fortran argument in optional int    ilo                  Local orbital index.
+   @fortran end */
+void sirius_get_radial_function(void* const* handler__,
+                                int   const* ia__,
+                                int   const* deriv_order__,
+                                double*      f__,
+                                int   const* l__,
+                                int   const* o__,
+                                int   const* ilo__)
+{
+    GET_SIM_CTX(handler__);
+
+    int ia = *ia__ - 1;
+
+    auto& atom = sim_ctx.unit_cell().atom(ia);
+
+    if (l__ != nullptr && o__ != nullptr && ilo__ != nullptr) {
+        TERMINATE("wrong combination of radial function indices");
+    }
+    if (!(*deriv_order__ == 0 || *deriv_order__ == 1)) {
+        TERMINATE("wrond radial derivative order");
+    }
+
+    int idxrf{-1};
+    if (l__ != nullptr && o__ != nullptr) {
+        idxrf = atom.type().indexr_by_l_order(*l__, *o__ - 1);
+    } else if (ilo__ != nullptr) {
+        idxrf = atom.type().indexr_by_idxlo(*ilo__ - 1);
+    } else {
+        TERMINATE("radial function index is not valid");
+    }
+
+    if (*deriv_order__ == 0) {
+        for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+            f__[ir] = atom.symmetry_class().radial_function(ir, idxrf);
+        }
+    } else {
+        for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+            f__[ir] = atom.symmetry_class().radial_function_derivative(ir, idxrf) / atom.type().radial_grid()[ir];
+        }
     }
 }
 
@@ -2966,9 +3036,9 @@ void sirius_option_add_string_to(void* const* handler__, char * section, char * 
     }
 }
 
-/* @fortran begin function void sirius_dump_runtime_setup                    dump the runtime setup in a file
+/* @fortran begin function void sirius_dump_runtime_setup                    Dump the runtime setup in a file.
    @fortran argument in  required void*  handler                             Simulation context handler.
-   @fortran argument in  required string filename                            string containing the name of the file
+   @fortran argument in  required string filename                            String containing the name of the file.
    @fortran end */
 void sirius_dump_runtime_setup(void* const* handler__, char *filename)
 {
@@ -2984,7 +3054,7 @@ void sirius_dump_runtime_setup(void* const* handler__, char *filename)
    @fortran argument in  required int   ik                          Global index of the k-point
    @fortran argument out required complex fv_evec                   Output first-variational eigenvector array
    @fortran argument in  required int    ld                         Leading dimension of fv_evec
-   @fortran argument in  required int    num_fv_states              Number of first-vaariational states
+   @fortran argument in  required int    num_fv_states              Number of first-variational states
    @fortran end */
 void sirius_get_fv_eigen_vectors(void*          const* handler__,
                                  int            const* ik__,
@@ -3002,7 +3072,7 @@ void sirius_get_fv_eigen_vectors(void*          const* handler__,
    @fortran argument in  required void*  handler                    K-point set handler
    @fortran argument in  required int    ik                         Global index of the k-point
    @fortran argument out required double fv_eval                    Output first-variational eigenvector array
-   @fortran argument in  required int    num_fv_states              Number of first-vaariational states
+   @fortran argument in  required int    num_fv_states              Number of first-variational states
    @fortran end */
 void sirius_get_fv_eigen_values(void*          const* handler__,
                                 int            const* ik__,
@@ -3017,6 +3087,23 @@ void sirius_get_fv_eigen_values(void*          const* handler__,
     for (int i = 0; i < *num_fv_states__; i++) {
         fv_eval__[i] = ks[ik]->fv_eigen_value(i);
     }
+}
+
+/* @fortran begin function void sirius_get_sv_eigen_vectors         Get the second-variational eigen vectors
+   @fortran argument in  required void*   handler                   K-point set handler
+   @fortran argument in  required int     ik                        Global index of the k-point
+   @fortran argument out required complex sv_evec                   Output second-variational eigenvector array
+   @fortran argument in  required int     num_bands                 Number of second-variational bands.
+   @fortran end */
+void sirius_get_sv_eigen_vectors(void*          const* handler__,
+                                 int            const* ik__,
+                                 std::complex<double>* sv_evec__,
+                                 int            const* num_bands__)
+{
+    GET_KS(handler__);
+    mdarray<std::complex<double>, 2> sv_evec(sv_evec__, *num_bands__, *num_bands__);
+    int ik = *ik__ - 1;
+    ks[ik]->get_sv_eigen_vectors(sv_evec);
 }
 
 /* @fortran begin function void sirius_set_rg_values          Set the values of the function on the regular grid.
@@ -3045,8 +3132,13 @@ void sirius_set_rg_values(void*  const* handler__,
     std::string label(label__);
 
     for (int x: {0, 1, 2}) {
-        if (grid_dims__[x] != gs.ctx().fft().size(x)) {
-            TERMINATE("wrong FFT grid size");
+        if (grid_dims__[x] != gs.ctx().fft_grid()[x]) {
+            std::stringstream s;
+            s << "wrong FFT grid size\n"
+                 "  SIRIUS internal: " << gs.ctx().fft_grid()[0] << " " <<  gs.ctx().fft_grid()[1] << " " 
+                                       << gs.ctx().fft_grid()[2] << "\n"
+                 "  host code:       " << grid_dims__[0] << " " << grid_dims__[1] << " " << grid_dims__[2];
+            TERMINATE(s.str());
         }
     }
 
@@ -3089,16 +3181,16 @@ void sirius_set_rg_values(void*  const* handler__,
                 /* global z coordinate inside FFT box */
                 int z = local_box_origin(2, rank) + iz - 1; /* Fortran counts from 1 */
                 /* each rank on SIRIUS side, for which this condition is fulfilled copies data from the local box */
-                if (z >= gs.ctx().fft().offset_z() && z < gs.ctx().fft().offset_z() + gs.ctx().fft().local_size_z()) {
+                if (z >= gs.ctx().spfft().local_z_offset() && z < gs.ctx().spfft().local_z_offset() + gs.ctx().spfft().local_z_length()) {
                     /* make z local for SIRIUS FFT partitioning */
-                    z -= gs.ctx().fft().offset_z();
+                    z -= gs.ctx().spfft().local_z_offset();
                     for (int iy = 0; iy < ny; iy++) {
                         /* global y coordinate inside FFT box */
                         int y = local_box_origin(1, rank) + iy - 1; /* Fortran counts from 1 */
                         for (int ix = 0; ix < nx; ix++) {
                             /* global x coordinate inside FFT box */
                             int x = local_box_origin(0, rank) + ix - 1; /* Fortran counts from 1 */
-                            f->f_rg(gs.ctx().fft().index_by_coord(x, y, z)) = buf(ix, iy, iz);
+                            f->f_rg(gs.ctx().fft_grid().index_by_coord(x, y, z)) = buf(ix, iy, iz);
                         }
                     }
                 }
@@ -3138,7 +3230,7 @@ void sirius_get_rg_values(void*  const* handler__,
     std::string label(label__);
 
     for (int x: {0, 1, 2}) {
-        if (grid_dims__[x] != gs.ctx().fft().size(x)) {
+        if (grid_dims__[x] != gs.ctx().fft_grid()[x]) {
             TERMINATE("wrong FFT grid size");
         }
     }
@@ -3164,18 +3256,19 @@ void sirius_get_rg_values(void*  const* handler__,
             f->fft_transform(1);
         }
 
-        auto& spl_z = f->fft().spl_z();
+        auto& fft_comm = gs.ctx().comm_fft();
+        auto spl_z = split_fft_z(gs.ctx().fft_grid()[2], fft_comm);
 
         mdarray<int, 2> local_box_size(const_cast<int*>(local_box_size__), 3, comm.size());
         mdarray<int, 2> local_box_origin(const_cast<int*>(local_box_origin__), 3, comm.size());
 
-        for (int rank = 0; rank < f->fft().comm().size(); rank++) {
+        for (int rank = 0; rank < fft_comm.size(); rank++) {
             /* slab of FFT grid for a given rank */
-            mdarray<double, 3> buf(f->fft().size(0), f->fft().size(1), spl_z.local_size(rank));
-            if (rank == f->fft().comm().rank()) {
-                std::copy(&f->f_rg(0), &f->f_rg(0) + f->fft().local_size(), &buf[0]);
+            mdarray<double, 3> buf(f->spfft().dim_x(), f->spfft().dim_y(), spl_z.local_size(rank));
+            if (rank == fft_comm.rank()) {
+                std::copy(&f->f_rg(0), &f->f_rg(0) + f->spfft().local_slice_size(), &buf[0]);
             }
-            f->fft().comm().bcast(&buf[0], static_cast<int>(buf.size()), rank);
+            fft_comm.bcast(&buf[0], static_cast<int>(buf.size()), rank);
 
             /* ranks on the F90 side */
             int r = comm.rank();

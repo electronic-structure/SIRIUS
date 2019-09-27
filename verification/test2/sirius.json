@@ -3,9 +3,10 @@
         "processing_unit" : "cpu",
         "std_evp_solver_type" : "lapack",
         "gen_evp_solver_type" : "lapack",
-        "verbosity" : 1,
+        "verbosity" : 5,
         "print_forces" : false,
-        "print_stress" : false
+        "print_stress" : false,
+        "print_checksum" : true
     },
 
     "parameters" : {

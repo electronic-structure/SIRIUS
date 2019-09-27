@@ -33,7 +33,7 @@ void test_xc2()
     XC_functional_base Ex("XC_GGA_X_PBE", 1);
     XC_functional_base Ec("XC_GGA_C_PBE", 1);
     XC_functional_base E1("XC_LDA_X", 1);
-    XC_functional_base E2("XC_LDA_C_PW", 1);
+    XC_functional_base E2("XC_LDA_C_PZ", 1);
     
     //XC_functional Ec("XC_LDA_C_PZ", 1);
     ///XC_functional Ex("XC_GGA_X_PW91", 1);
@@ -47,22 +47,24 @@ void test_xc2()
     std::vector<double> e1(101);
     std::vector<double> e2(101);
 
+    int Nsigma{1};
+
     auto fout = fopen("xc_libxc.dat", "w+");
     for (int i = 0; i <= 50; i++) {
-        std::vector<double> rho(101, i);
-        for (int j = 0; j <= 100; j++) {
+        std::vector<double> rho(Nsigma, i);
+        for (int j = 0; j < Nsigma; j++) {
             sigma[j] = j;
         }
-        std::vector<double> result(101, 0);
+        std::vector<double> result(Nsigma, 0);
 
-        Ex.get_gga(101, rho.data(), sigma.data(), vrho.data(), vsigma.data(), ex.data());
-        Ec.get_gga(101, rho.data(), sigma.data(), vrho.data(), vsigma.data(), ec.data());
-        E1.get_lda(101, rho.data(), vrho.data(), e1.data());
-        E2.get_lda(101, rho.data(), vrho.data(), e2.data());
+        //Ex.get_gga(Nsigma, rho.data(), sigma.data(), vrho.data(), vsigma.data(), ex.data());
+        //Ec.get_gga(Nsigma, rho.data(), sigma.data(), vrho.data(), vsigma.data(), ec.data());
+        E1.get_lda(Nsigma, rho.data(), vrho.data(), e1.data());
+        E2.get_lda(Nsigma, rho.data(), vrho.data(), e2.data());
 
-        for (int i = 0; i <= 100; i++) {
+        for (int i = 0; i < Nsigma; i++) {
             //result[i] = (ex[i] - e1[i]) * rho[i] + e1[i] + (ec[i] - e2[i]) * rho[i] + e2[i];
-            result[i] = (ex[i] + ec[i]) * rho[i];
+            result[i] = (e1[i] + e2[i]) * rho[i];
         }
 
         /////Ex.get_lda(101, rho.data(), vrho.data(), e.data());
@@ -85,7 +87,7 @@ void test_xc2()
         //    result[i] += e[i];
         //}
 
-        for (int i = 0; i <= 100; i++) {
+        for (int i = 0; i < Nsigma; i++) {
             fprintf(fout, "%18.10f", result[i]);
         }
         fprintf(fout, "\n");

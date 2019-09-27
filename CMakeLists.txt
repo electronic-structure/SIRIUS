@@ -29,6 +29,7 @@ set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
 set(USE_OPENMP ON CACHE BOOL "use OpenMP")
 set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
 set(USE_TIMER ON CACHE BOOL "measure execution of functions with timer")
+set(USE_MEMORY_POOL ON CACHE BOOL "use memory pool")
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
 
@@ -83,6 +84,10 @@ if (USE_TIMER)
   add_definitions("-D__PROFILE_TIME")
 endif()
 
+if (USE_MEMORY_POOL)
+  add_definitions("-D__USE_MEMORY_POOL")
+endif()
+
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
 set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${GSL_LIBRARY}")
@@ -114,6 +119,8 @@ find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C HL)
 
+find_package(SpFFT 0.9.6 CONFIG REQUIRED)
+set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};SpFFT::spfft")
 
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
@@ -191,7 +198,7 @@ if(USE_VDWXC)
   find_package(LibVDWXC 0.3.0 REQUIRED)
   include_directories(${LIBVDWXC_INCLUDE_DIR})
   set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${LIBVDWXC_LIBRARIES}")
-  add_definitions("-DUSE_VDWXC")
+  add_definitions("-D__USE_VDWXC")
 endif(USE_VDWXC)
 
 # project header locations

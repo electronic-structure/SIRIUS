@@ -106,6 +106,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
     if (is_device_memory(ctx.aux_preferred_memory_t())) {
         auto& mpd = ctx.mem_pool(memory_t::device);
+
         for (int i = 0; i < num_sc; i++) {
             phi.pw_coeffs(i).allocate(mpd);
         }
@@ -113,6 +114,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
     if (is_device_memory(ctx.preferred_memory_t())) {
         auto& mpd = ctx.mem_pool(memory_t::device);
+
         for (int ispn = 0; ispn < psi__.num_sc(); ispn++) {
             psi__.pw_coeffs(ispn).allocate(mpd);
             psi__.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_bands);
@@ -134,6 +136,8 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
             hmlt.allocate(mpd);
         }
     }
+
+    Hk__.kp().copy_hubbard_orbitals_on_device();
 
     //ctx_.print_memory_usage(__FILE__, __LINE__);
     //t2.stop();
@@ -379,6 +383,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
         psi__.deallocate(spin_range(psi__.num_sc()), memory_t::device);
     }
 
+    Hk__.kp().release_hubbard_orbitals_on_device();
     //return niter;
     return eval_out;
 }

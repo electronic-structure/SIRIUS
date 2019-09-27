@@ -142,13 +142,13 @@ void Simulation_parameters::set_processing_unit(device_t pu__)
     }
 }
 
-void Simulation_parameters::print_options()
+void Simulation_parameters::print_options() // TODO: better to use the communicator of the context
 {
     const json& dict = get_options_dictionary();
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (rank != 0)
-        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Barrier(MPI_COMM_WORLD); // TODO: why it doesn't hang?
 
     std::cout << "the sirius library or the mini apps can be initialized through the interface" << std::endl;
     std::cout << "using the api directly or through a json dictionary. The following contains " << std::endl;

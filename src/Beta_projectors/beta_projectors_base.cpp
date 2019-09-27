@@ -130,7 +130,7 @@ Beta_projectors_base::inner(int chunk__, Wave_functions& phi__, int ispn__, int 
 
     int nbeta = chunk(chunk__).num_beta_;
 
-    matrix<T> beta_phi(ctx_.mem_pool(ctx_.host_memory_t()), nbeta, n__);
+    matrix<T> beta_phi(nbeta, n__, ctx_.mem_pool(ctx_.host_memory_t()));
 
     /* location of the beta-projectors is always on the memory of the processing unit being used */
     T* pw_coeffs_a_ptr{nullptr};
@@ -235,14 +235,13 @@ void Beta_projectors_base::prepare()
 
     switch (ctx_.processing_unit()) {
         case device_t::CPU: {
-            pw_coeffs_a_ = matrix<double_complex>(ctx_.mem_pool(ctx_.host_memory_t()),
-                                                  num_gkvec_loc(), max_num_beta());
-            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(ctx_.mem_pool(memory_t::host), max_num_beta());
+            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(ctx_.host_memory_t()));
+            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host));
             break;
         }
         case device_t::GPU: {
-            pw_coeffs_a_ = matrix<double_complex>(ctx_.mem_pool(memory_t::device), num_gkvec_loc(), max_num_beta());
-            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(ctx_.mem_pool(memory_t::host), max_num_beta());
+            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(memory_t::device));
+            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host));
             pw_coeffs_a_g0_.allocate(ctx_.mem_pool(memory_t::device));
             break;
         }

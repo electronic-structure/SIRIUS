@@ -116,6 +116,11 @@ class Field4D
     double mix(double rss_min__);
 
     Mixer<double>& mixer();
+
+    Simulation_context& ctx()
+    {
+        return ctx_;
+    }
 };
 
 } // namespace sirius

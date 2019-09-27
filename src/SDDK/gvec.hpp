@@ -34,10 +34,7 @@
 #include "geometry3d.hpp"
 #include "serializer.hpp"
 #include "splindex.hpp"
-#include "utils/utils.hpp"
-#include "utils/profiler.hpp"
-//#include "Unit_cell/unit_cell_symmetry.hpp"
-#include "Symmetry/find_lat_sym.hpp"
+#include "../utils/profiler.hpp"
 
 using namespace geometry3d;
 
@@ -466,11 +463,11 @@ class Gvec
 
     std::pair<int, bool> index_g12_safe(vector3d<int> const& g1__, vector3d<int> const& g2__) const;
 
-    inline int index_g12_safe(int ig1__, int ig2__) const
-    {
-        STOP();
-        return 0;
-    }
+    //inline int index_g12_safe(int ig1__, int ig2__) const
+    //{
+    //    STOP();
+    //    return 0;
+    //}
 
     /// Return a global G-vector index in the range [0, num_gvec) by the G-vector.
     /** The information about a G-vector index is encoded by two numbers: a starting index for the
@@ -686,6 +683,8 @@ class Gvec_partition
     {
         return gvec_;
     }
+
+    mdarray<int, 2> get_gvec() const;
 
     void gather_pw_fft(std::complex<double>* f_pw_local__, std::complex<double>* f_pw_fft__) const;
 

@@ -608,6 +608,11 @@ struct Settings_input
     double mixer_rss_min_{1e-16};
     double itsol_tol_min_{1e-13};
     double auto_enu_tol_{0};
+
+    /// Initial dimenstions for the fine-grain FFT grid.
+    std::array<int, 3> fft_grid_size_{{0, 0, 0}};
+
+    /// Default radial grid for LAPW species.
     std::string radial_grid_{"exponential, 1.0"};
 
     void read(json const& parser)
@@ -622,6 +627,7 @@ struct Settings_input
             itsol_tol_min_    = parser["settings"].value("itsol_tol_min", itsol_tol_min_);
             auto_enu_tol_     = parser["settings"].value("auto_enu_tol", auto_enu_tol_);
             radial_grid_      = parser["settings"].value("radial_grid", radial_grid_);
+            fft_grid_size_    = parser["settings"].value("fft_grid_size", fft_grid_size_);
         }
     }
 };

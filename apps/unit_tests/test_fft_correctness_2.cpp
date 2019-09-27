@@ -10,13 +10,23 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    FFT3D fft(find_translations(cutoff, M), Communicator::world(), fft_pu__);
+    auto fft_grid = get_min_fft_grid(cutoff, M);
+
+    auto spl_z = split_fft_z(fft_grid[2], Communicator::world());
 
     Gvec gvec(M, cutoff, Communicator::world(), false);
 
-    Gvec_partition gvp(gvec, fft.comm(), Communicator::self());
+    Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
 
-    fft.prepare(gvp);
+    spfft::Grid spfft_grid(fft_grid[0], fft_grid[1], fft_grid[2], gvp.zcol_count_fft(), spl_z.local_size(),
+                           SPFFT_PU_HOST, -1, Communicator::world().mpi_comm(), SPFFT_EXCH_DEFAULT);
+
+    const auto fft_type = gvec.reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
+
+    auto gv = gvp.get_gvec();
+    spfft::Transform spfft(spfft_grid.create_transform(SPFFT_PU_HOST, fft_type, fft_grid[0], fft_grid[1], fft_grid[2],
+        spl_z.local_size(), gvp.gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        gv.at(memory_t::host)));
 
     mdarray<double_complex, 1> f(gvp.gvec_count_fft());
     for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
@@ -24,8 +34,8 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
     }
     mdarray<double_complex, 1> g(gvp.gvec_count_fft());
 
-    fft.transform<1>(f.at(memory_t::host));
-    fft.transform<-1>(g.at(memory_t::host));
+    spfft.backward(reinterpret_cast<double const*>(&f[0]), spfft.processing_unit());
+    spfft.forward(spfft.processing_unit(), reinterpret_cast<double*>(&g[0]), SPFFT_FULL_SCALING);
 
     double diff{0};
     for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
@@ -33,8 +43,6 @@ int test_fft_complex(cmd_args& args, device_t fft_pu__)
     }
     Communicator::world().allreduce(&diff, 1);
     diff = std::sqrt(diff / gvec.num_gvec());
-
-    fft.dismiss();
 
     if (diff > 1e-10) {
         return 1;

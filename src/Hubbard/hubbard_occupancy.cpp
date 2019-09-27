@@ -193,7 +193,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
                                 for (int mp = 0; mp < lmax_at; mp++) {
                                     for (int m = 0; m < lmax_at; m++) {
                                         this->occupancy_number_(m, mp, s, ia) +=
-                                            Op(this->offset[ia] + m + s1 * lmax_at, this->offset[ia] + mp + s2 * lmax_at);
+                                            Op(this->offset_[ia] + m + s1 * lmax_at, this->offset_[ia] + mp + s2 * lmax_at);
                                     }
                                 }
                             }
@@ -218,9 +218,9 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
                         const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                             for (int mp = 0; mp < lmax_at; mp++) {
-                                const int mmp = this->offset[ia] + mp + ispn * this->number_of_hubbard_orbitals();
+                                const int mmp = this->offset_[ia] + mp + ispn * this->number_of_hubbard_orbitals();
                                 for (int m = 0; m < lmax_at; m++) {
-                                    const int mm = this->offset[ia] + m + ispn * this->number_of_hubbard_orbitals();
+                                    const int mm = this->offset_[ia] + m + ispn * this->number_of_hubbard_orbitals();
                                     this->occupancy_number_(m, mp, ispn, ia) += Op(mm, mmp);
                                 }
                             }

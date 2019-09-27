@@ -1,5 +1,10 @@
-#include "acc.hpp"
+/** \file acc.cpp
+ *
+ *  \brief Definition of the functions for the acc:: namespace.
+ *
+ */
 
+#include "acc.hpp"
 
 namespace acc {
 

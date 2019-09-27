@@ -29,7 +29,6 @@ extern "C" {
 #include <spglib.h>
 }
 
-//#include "constants.hpp"
 #include "Symmetry/rotation.hpp"
 #include "utils/profiler.hpp"
 
@@ -130,7 +129,7 @@ class Unit_cell_symmetry
         , types_(types__)
         , tolerance_(tolerance__)
     {
-        PROFILE("sirius::Unit_cell_symmetry::Unit_cell_symmetry");
+        PROFILE("sirius::Unit_cell_symmetry");
 
         /* check lattice vectors */
         if (lattice_vectors__.det() < 0 && use_sym__) {
@@ -204,7 +203,7 @@ class Unit_cell_symmetry
                 /* add symmetry operation to a list */
                 space_group_symmetry_.push_back(sym_op);
             }
-        } else {
+        } else { /* add only identity element */
             space_group_symmetry_descriptor sym_op;
             sym_op.R = matrix3d<int>({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
             /* inverse of the rotation matrix */
@@ -223,7 +222,7 @@ class Unit_cell_symmetry
             space_group_symmetry_.push_back(sym_op);
         }
 
-        utils::timer t3("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym2");
+        utils::timer t3("sirius::Unit_cell_symmetry|equiv");
         sym_table_ = mdarray<int, 2>(num_atoms_, num_spg_sym());
         /* loop over spatial symmetries */
         #pragma omp parallel for schedule(static)
@@ -263,7 +262,7 @@ class Unit_cell_symmetry
         }
         t3.stop();
 
-        utils::timer t4("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym3");
+        utils::timer t4("sirius::Unit_cell_symmetry|mag");
         /* loop over spatial symmetries */
         for (int isym = 0; isym < num_spg_sym(); isym++) {
             int jsym0 = 0;

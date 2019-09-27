@@ -152,9 +152,11 @@ mdarray<double, 2> const& Force::calc_forces_ibs()
         }
     }
 
+    Hamiltonian0 H0(ctx_);
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset_.spl_num_kpoints(ikloc);
-        add_ibs_force(kset_[ik], ffac, forces_ibs_);
+        auto hk = H0(*kset_[ik]);
+        add_ibs_force(kset_[ik], hk, ffac, forces_ibs_);
     }
     ctx_.comm().allreduce(&forces_ibs_(0, 0), (int)forces_ibs_.size());
     symmetrize(forces_ibs_);
@@ -511,10 +513,10 @@ mdarray<double, 2> const& Force::calc_forces_core()
 
 void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_)
 {
-    mdarray<double_complex, 6> dn(2 * hamiltonian_.U().lmax() + 1, 2 * hamiltonian_.U().lmax() + 1, 2,
+    mdarray<double_complex, 6> dn(2 * potential_.U().lmax() + 1, 2 * potential_.U().lmax() + 1, 2,
                                   ctx_.unit_cell().num_atoms(), 3, ctx_.unit_cell().num_atoms());
 
-    hamiltonian_.U().compute_occupancies_derivatives(kp__, q_op__, dn);
+    potential_.U().compute_occupancies_derivatives(kp__, q_op__, dn);
 
     #pragma omp parallel for
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
@@ -528,7 +530,7 @@ void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator&
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                         for (int m1 = 0; m1 < lmax_at; m1++) {
                             for (int m2 = 0; m2 < lmax_at; m2++) {
-                                d += std::real(hamiltonian_.U().U(m2, m1, ispn, ia1) * dn(m1, m2, ispn, ia1, dir, ia));
+                                d += std::real(potential_.U().U(m2, m1, ispn, ia1) * dn(m1, m2, ispn, ia1, dir, ia));
                             }
                         }
                     }
@@ -603,7 +605,7 @@ mdarray<double, 2> const& Force::calc_forces_usnl()
     return forces_usnl_;
 }
 
-void Force::add_ibs_force(K_point* kp__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const
+void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const
 {
     PROFILE("sirius::Force::ibs_force");
 
@@ -645,21 +647,14 @@ void Force::add_ibs_force(K_point* kp__, mdarray<double, 2>& ffac__, mdarray<dou
         auto& type = atom.type();
 
         /* generate matching coefficients for current atom */
-        kp__->alm_coeffs_row().generate(ia, alm_row);
-        kp__->alm_coeffs_col().generate(ia, alm_col);
-
-        /* conjugate row (<bra|) matching coefficients */
-        for (int i = 0; i < type.mt_aw_basis_size(); i++) {
-            for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
-                alm_row(igk, i) = std::conj(alm_row(igk, i));
-            }
-        }
+        kp__->alm_coeffs_row().generate<true>(atom, alm_row);
+        kp__->alm_coeffs_col().generate<false>(atom, alm_col);
 
         /* setup apw-lo and lo-apw blocks */
-        hamiltonian_.set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h, o);
+        Hk__.set_fv_h_o_apw_lo(atom, ia, alm_row, alm_col, h, o);
 
         /* apply MT Hamiltonian to column coefficients */
-        hamiltonian_.apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
+        Hk__.H0().apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
 
         /* apw-apw block of the overlap matrix */
         linalg<device_t::CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),

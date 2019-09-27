@@ -78,13 +78,13 @@ void Potential::generate_D_operator_matrix()
             }
             continue;
         }
-        matrix<double> d_tmp(ctx_.mem_pool(memory_t::host), nbf * (nbf + 1) / 2, atom_type.num_atoms());
+        matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.mem_pool(memory_t::host));
         if (ctx_.processing_unit() == device_t::GPU) {
             d_tmp.allocate(ctx_.mem_pool(memory_t::device));
         }
 
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-            matrix<double> veff_a(ctx_.mem_pool(memory_t::host), 2 * spl_ngv_loc.local_size(), atom_type.num_atoms());
+            matrix<double> veff_a(2 * spl_ngv_loc.local_size(), atom_type.num_atoms(), ctx_.mem_pool(memory_t::host));
 
             auto la = linalg_t::blas;
             auto mem = memory_t::host;

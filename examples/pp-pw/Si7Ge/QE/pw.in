@@ -1,0 +1,46 @@
+&control
+calculation='scf',
+restart_mode='from_scratch',
+pseudo_dir = './',
+outdir='./',
+prefix = 'scf_',
+tstress = true,
+tprnfor = true,
+verbosity = 'high',
+wf_collect = false
+/
+&system
+ibrav=0, celldm(1)=1, ecutwfc=25, ecutrho = 400,
+occupations = 'smearing', smearing = 'gauss', degauss = 0.001,
+nat=8 ntyp=2
+/
+&electrons
+conv_thr =  1.0d-13,
+mixing_beta = 0.7,
+electron_maxstep = 100
+diago_full_acc = .true.
+/
+&IONS
+ion_dynamics='bfgs',
+/
+&CELL
+cell_dynamics='bfgs',
+/
+ATOMIC_SPECIES
+Ge 0.0 ge_lda_v1.4.uspp.F.UPF
+Si 0.0 si_lda_v1.uspp.F.UPF
+CELL_PARAMETERS
+       10.26253566        0.00000000        0.00000000
+        0.00000000       10.26253566        0.00000000
+        0.00000000        0.00000000       10.26253566
+ATOMIC_POSITIONS (crystal)
+Ge          0.00000000         0.00000000         0.00000000
+Si          0.00000000         0.50000000         0.50000000
+Si          0.50000000         0.00000000         0.50000000
+Si          0.50000000         0.50000000         0.00000000
+Si          0.75000000         0.75000000         0.25000000
+Si          0.75000000         0.25000000         0.75000000
+Si          0.25000000         0.75000000         0.75000000
+Si          0.25000000         0.25000000         0.25000000
+K_POINTS (automatic)
+2 2 2  0 0 0

@@ -22,26 +22,27 @@
  *   \brief Contains interfaces to the sirius::Band solvers.
  */
 #include "band.hpp"
+#include "Potential/potential.hpp"
 
 namespace sirius {
 
 void
-Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
+Band::solve_full_potential(Hamiltonian_k& Hk__) const
 {
     if (ctx_.control().use_second_variation_) {
         /* solve non-magnetic Hamiltonian (so-called first variation) */
         auto& itso = ctx_.iterative_solver_input();
         if (itso.type_ == "exact") {
-            diag_full_potential_first_variation_exact(kp__, hamiltonian__);
+            diag_full_potential_first_variation_exact(Hk__);
         } else if (itso.type_ == "davidson") {
-            diag_full_potential_first_variation_davidson(kp__, hamiltonian__);
+            diag_full_potential_first_variation_davidson(Hk__);
         }
         /* generate first-variational states */
-        kp__.generate_fv_states();
+        Hk__.kp().generate_fv_states();
         /* solve magnetic Hamiltonian */
-        diag_full_potential_second_variation(kp__, hamiltonian__);
+        diag_full_potential_second_variation(Hk__);
         /* generate spinor wave-functions */
-        kp__.generate_spinor_wave_functions();
+        Hk__.kp().generate_spinor_wave_functions();
     } else {
         throw std::runtime_error("not implemented");
         //diag_full_potential_single_variation();
@@ -50,11 +51,8 @@ Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
 
 template <typename T>
 int
-Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
+Band::solve_pseudo_potential(Hamiltonian_k& Hk__) const
 {
-    hamiltonian__.local_op().prepare(kp__.gkvec_partition());
-    ctx_.fft_coarse().prepare(kp__.gkvec_partition());
-
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     int niter{0};
@@ -63,13 +61,13 @@ Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
     if (itso.type_ == "exact") {
         if (ctx_.num_mag_dims() != 3) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                diag_pseudo_potential_exact<double_complex>(&kp__, ispn, hamiltonian__);
+                diag_pseudo_potential_exact<double_complex>(ispn, Hk__);
             }
         } else {
             STOP();
         }
     } else if (itso.type_ == "davidson") {
-        niter = diag_pseudo_potential_davidson<T>(&kp__, hamiltonian__);
+        niter = diag_pseudo_potential_davidson<T>(Hk__);
     //} else if (itso.type_ == "rmm-diis") {
     //    if (ctx_.num_mag_dims() != 3) {
     //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -93,11 +91,9 @@ Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
 
     /* check residuals */
     if (ctx_.control().verification_ >= 1) {
-        check_residuals<T>(kp__, hamiltonian__);
-        check_wave_functions<T>(kp__, hamiltonian__);
+        check_residuals<T>(Hk__);
+        check_wave_functions<T>(Hk__);
     }
-
-    ctx_.fft_coarse().dismiss();
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -105,19 +101,16 @@ Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
 }
 
 void
-Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) const
+Band::solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const
 {
     PROFILE("sirius::Band::solve");
 
     if (precompute__ && ctx_.full_potential()) {
-        hamiltonian__.potential().generate_pw_coefs();
-        hamiltonian__.potential().update_atomic_potential();
+        H0__.potential().generate_pw_coefs();
+        H0__.potential().update_atomic_potential();
         unit_cell_.generate_radial_functions();
         unit_cell_.generate_radial_integrals();
     }
-
-    /* prepare k-independent part */
-    hamiltonian__.prepare();
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -127,13 +120,14 @@ Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) 
         int ik  = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
 
+        auto Hk = H0__(*kp);
         if (ctx_.full_potential()) {
-            solve_full_potential(*kp, hamiltonian__);
+            solve_full_potential(Hk);
         } else {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                num_dav_iter += solve_pseudo_potential<double>(*kp, hamiltonian__);
+                num_dav_iter += solve_pseudo_potential<double>(Hk);
             } else {
-                num_dav_iter += solve_pseudo_potential<double_complex>(*kp, hamiltonian__);
+                num_dav_iter += solve_pseudo_potential<double_complex>(Hk);
             }
         }
     }
@@ -143,13 +137,11 @@ Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) 
                      static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 
-    hamiltonian__.dismiss();
-
     /* synchronize eigen-values */
     kset__.sync_band_energies();
 
+    ctx_.message(2, __func__, "Lowest band energies\n");
     if (ctx_.control().verbosity_ >= 2 && ctx_.comm().rank() == 0) {
-        printf("Lowest band energies\n");
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             printf("ik : %2i, ", ik);
             for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {

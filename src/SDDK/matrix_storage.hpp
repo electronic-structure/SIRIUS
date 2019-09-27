@@ -29,7 +29,7 @@
 #include "dmatrix.hpp"
 
 #ifdef __GPU
-extern "C" void add_checksum_gpu(std::complex<double>* wf__,
+extern "C" void add_checksum_gpu(std::complex<double> const* wf__,
                                  int                   num_rows_loc__,
                                  int                   nwf__,
                                  std::complex<double>* result__);
@@ -108,7 +108,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     {
         PROFILE("sddk::matrix_storage::matrix_storage");
         /* primary storage of PW wave functions: slabs */
-        prime_ = mdarray<T, 2>(mp__, num_rows_loc(), num_cols_, "matrix_storage.prime_");
+        prime_ = mdarray<T, 2>(num_rows_loc(), num_cols_, mp__, "matrix_storage.prime_");
     }
 
     /// Check if data needs to be remapped.
@@ -226,7 +226,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
     }
 
-    double_complex checksum(device_t pu__, int i0__, int n__);
+    double_complex checksum(device_t pu__, int i0__, int n__) const;
 };
 
 //== template <typename T>

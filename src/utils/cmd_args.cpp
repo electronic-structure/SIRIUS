@@ -19,7 +19,7 @@
 
 /** \file cmd_args.cpp
  *
- *  \brief Definitions.
+ *  \brief Contains definition on cmd_args class.
  *
  */
 

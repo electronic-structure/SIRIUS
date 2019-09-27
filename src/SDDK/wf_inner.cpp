@@ -32,7 +32,7 @@ void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functio
 {
     utils::timer t1("sddk::inner|local");
     auto& comm = bra__.comm();
-    auto spins = get_spins(ispn__);
+    auto spins = spin_range(ispn__);
     *beta__    = 0;
     for (auto s : spins) {
         if (bra__.has_mt()) {
@@ -64,7 +64,7 @@ void inner_local<double_complex>(memory_t mem__, linalg_t la__, int ispn__, Wave
                                  double_complex* buf__, int ld__, stream_id sid__)
 {
     utils::timer t1("sddk::inner|local");
-    auto spins = get_spins(ispn__);
+    auto spins = spin_range(ispn__);
     *beta__    = 0;
     for (auto s : spins) {
         linalg2(la__).gemm('C', 'N', m__, n__, bra__.pw_coeffs(s).num_rows_loc(), &linalg_const<double_complex>::one(),
@@ -189,13 +189,21 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
 
     const int num_streams{4};
 
-    mdarray<T, 2> c_tmp;
+    static T* ptr_h{nullptr};
+    static T* ptr_d{nullptr};
     if (is_device_memory(mem__)) {
-        c_tmp = mdarray<T, 2>(BS * BS, num_streams, memory_t::host_pinned, "inner::c_tmp");
-        c_tmp.allocate(memory_t::device);
+        if (!ptr_h) {
+            ptr_h = sddk::allocate<T>(BS * BS * num_streams, memory_t::host_pinned);
+        }
+        if (!ptr_d) {
+            ptr_d = sddk::allocate<T>(BS * BS * num_streams, memory_t::device);
+        }
     } else {
-        c_tmp = mdarray<T, 2>(BS * BS, num_streams, memory_t::host, "inner::c_tmp");
+        if (!ptr_h) {
+            ptr_h = sddk::allocate<T>(BS * BS * num_streams, memory_t::host);
+        }
     }
+    mdarray<T, 2> c_tmp(ptr_h, ptr_d, BS * BS, num_streams, "inner::c_tmp");
 
     /* compute the number of movements of the windows needed to cover the whole matrix size.
      * If m__  is not divided by BS, you need to cover the remaining border; the same for n__

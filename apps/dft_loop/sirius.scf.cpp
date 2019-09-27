@@ -15,7 +15,7 @@ enum class task_t : int
 
 void json_output_common(json& dict__)
 {
-    dict__["git_hash"] = git_hash;
+    dict__["git_hash"] = sirius::git_hash();
     //dict__["build_date"] = build_date;
     dict__["comm_world_size"] = Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
@@ -31,15 +31,6 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     if (inp.gamma_point_ && !(inp.ngridk_[0] * inp.ngridk_[1] * inp.ngridk_[2] == 1)) {
         TERMINATE("this is not a Gamma-point calculation")
     }
-
-    auto mpi_grid_dims = args__.value("mpi_grid", ctx.mpi_grid_dims());
-    ctx.set_mpi_grid_dims(mpi_grid_dims);
-
-    auto std_evp_solver_name = args__.value("std_evp_solver_name", ctx.control().std_evp_solver_name_);
-    ctx.std_evp_solver_name(std_evp_solver_name);
-
-    auto gen_evp_solver_name = args__.value("gen_evp_solver_name", ctx.control().gen_evp_solver_name_);
-    ctx.gen_evp_solver_name(gen_evp_solver_name);
 
     ctx.import(args__);
 
@@ -99,7 +90,7 @@ double ground_state(Simulation_context& ctx,
         }
     }
 
-    dft.print_magnetic_moment();
+    //dft.print_magnetic_moment();
 
     if (ctx.control().print_stress_ && !ctx.full_potential()) {
         Stress& s       = dft.stress();
@@ -131,7 +122,7 @@ double ground_state(Simulation_context& ctx,
         double e1 = result["energy"]["total"];
         double e2 = dict_ref["ground_state"]["energy"]["total"];
 
-        if (std::abs(e1 - e2) > 1e-6) {
+        if (std::abs(e1 - e2) > 1e-5) {
             printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
             ctx.comm().abort(1);
         }
@@ -248,8 +239,6 @@ void run_tasks(cmd_args const& args)
 
         Potential potential(*ctx);
 
-        Hamiltonian H(*ctx, potential);
-
         Density density(*ctx);
 
         K_point_set ks(*ctx);
@@ -296,15 +285,16 @@ void run_tasks(cmd_args const& args)
         density.load();
         potential.generate(density);
         Band band(*ctx);
+        Hamiltonian0 H0(potential);
         if (!ctx->full_potential()) {
-            band.initialize_subspace(ks, H);
+            band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
                 TERMINATE("fix me");
-                H.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
-                H.U().calculate_hubbard_potential_and_energy();
+                potential.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
+                potential.U().calculate_hubbard_potential_and_energy();
             }
         }
-        band.solve(ks, H, true);
+        band.solve(ks, H0, true);
 
         ks.sync_band_energies();
         if (Communicator::world().rank() == 0) {
@@ -351,12 +341,8 @@ int main(int argn, char** argv)
     args.register_key("--input=", "{string} input file name");
     args.register_key("--output=", "{string} output file name");
     args.register_key("--task=", "{int} task id");
-    args.register_key("--mpi_grid=", "{vector int} MPI grid dimensions");
     args.register_key("--aiida_output", "write output for AiiDA");
     args.register_key("--test_against=", "{string} json file with reference values");
-    args.register_key("--std_evp_solver_name=", "{string} standard eigen-value solver");
-    args.register_key("--gen_evp_solver_name=", "{string} generalized eigen-value solver");
-    args.register_key("--processing_unit=", "{string} type of the processing unit");
     args.register_key("--repeat_update=", "{int} number of times to repeat update()");
     args.register_key("--control.processing_unit=", "");
     args.register_key("--control.verbosity=", "");

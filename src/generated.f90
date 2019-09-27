@@ -1475,6 +1475,31 @@ end interface
 call sirius_get_band_energies_aux(ks_handler,ik,ispn,band_energies)
 end subroutine sirius_get_band_energies
 
+!> @brief Get band occupancies.
+!> @param [in] ks_handler K-point set handler.
+!> @param [in] ik Global index of k-point.
+!> @param [in] ispn Spin component.
+!> @param [out] band_occupancies Array of band occupancies.
+subroutine sirius_get_band_occupancies(ks_handler,ik,ispn,band_occupancies)
+implicit none
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: band_occupancies
+interface
+subroutine sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)&
+&bind(C, name="sirius_get_band_occupancies")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: band_occupancies
+end subroutine
+end interface
+
+call sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)
+end subroutine sirius_get_band_occupancies
+
 !> @brief Get D-operator matrix
 !> @param [in] handler Simulation context handler.
 !> @param [in] ia Global index of atom.
@@ -2617,6 +2642,52 @@ if (present(ilo)) ilo_ptr = C_LOC(ilo)
 call sirius_set_radial_function_aux(handler,ia,deriv_order,f,l_ptr,o_ptr,ilo_ptr)
 end subroutine sirius_set_radial_function
 
+!> @brief Get LAPW radial functions
+!> @param [in] handler Simulation context handler.
+!> @param [in] ia Index of atom.
+!> @param [in] deriv_order Radial derivative order.
+!> @param [out] f Values of the radial function.
+!> @param [in] l Orbital quantum number.
+!> @param [in] o Order of radial function for l.
+!> @param [in] ilo Local orbital index.
+subroutine sirius_get_radial_function(handler,ia,deriv_order,f,l,o,ilo)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: deriv_order
+real(C_DOUBLE), intent(out) :: f
+integer(C_INT), optional, target, intent(in) :: l
+integer(C_INT), optional, target, intent(in) :: o
+integer(C_INT), optional, target, intent(in) :: ilo
+type(C_PTR) :: l_ptr
+type(C_PTR) :: o_ptr
+type(C_PTR) :: ilo_ptr
+interface
+subroutine sirius_get_radial_function_aux(handler,ia,deriv_order,f,l,o,ilo)&
+&bind(C, name="sirius_get_radial_function")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: deriv_order
+real(C_DOUBLE), intent(out) :: f
+type(C_PTR), value :: l
+type(C_PTR), value :: o
+type(C_PTR), value :: ilo
+end subroutine
+end interface
+
+l_ptr = C_NULL_PTR
+if (present(l)) l_ptr = C_LOC(l)
+
+o_ptr = C_NULL_PTR
+if (present(o)) o_ptr = C_LOC(o)
+
+ilo_ptr = C_NULL_PTR
+if (present(ilo)) ilo_ptr = C_LOC(ilo)
+
+call sirius_get_radial_function_aux(handler,ia,deriv_order,f,l_ptr,o_ptr,ilo_ptr)
+end subroutine sirius_get_radial_function
+
 !> @brief Set equivalent atoms.
 !> @param [in] handler Simulation context handler.
 !> @param [in] equivalent_atoms Array with equivalent atom IDs.
@@ -3058,7 +3129,7 @@ end subroutine sirius_dump_runtime_setup
 !> @param [in] ik Global index of the k-point
 !> @param [out] fv_evec Output first-variational eigenvector array
 !> @param [in] ld Leading dimension of fv_evec
-!> @param [in] num_fv_states Number of first-vaariational states
+!> @param [in] num_fv_states Number of first-variational states
 subroutine sirius_get_fv_eigen_vectors(handler,ik,fv_evec,ld,num_fv_states)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -3085,7 +3156,7 @@ end subroutine sirius_get_fv_eigen_vectors
 !> @param [in] handler K-point set handler
 !> @param [in] ik Global index of the k-point
 !> @param [out] fv_eval Output first-variational eigenvector array
-!> @param [in] num_fv_states Number of first-vaariational states
+!> @param [in] num_fv_states Number of first-variational states
 subroutine sirius_get_fv_eigen_values(handler,ik,fv_eval,num_fv_states)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -3105,6 +3176,31 @@ end interface
 
 call sirius_get_fv_eigen_values_aux(handler,ik,fv_eval,num_fv_states)
 end subroutine sirius_get_fv_eigen_values
+
+!> @brief Get the second-variational eigen vectors
+!> @param [in] handler K-point set handler
+!> @param [in] ik Global index of the k-point
+!> @param [out] sv_evec Output second-variational eigenvector array
+!> @param [in] num_bands Number of second-variational bands.
+subroutine sirius_get_sv_eigen_vectors(handler,ik,sv_evec,num_bands)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ik
+complex(C_DOUBLE), intent(out) :: sv_evec
+integer(C_INT), intent(in) :: num_bands
+interface
+subroutine sirius_get_sv_eigen_vectors_aux(handler,ik,sv_evec,num_bands)&
+&bind(C, name="sirius_get_sv_eigen_vectors")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ik
+complex(C_DOUBLE), intent(out) :: sv_evec
+integer(C_INT), intent(in) :: num_bands
+end subroutine
+end interface
+
+call sirius_get_sv_eigen_vectors_aux(handler,ik,sv_evec,num_bands)
+end subroutine sirius_get_sv_eigen_vectors
 
 !> @brief Set the values of the function on the regular grid.
 !> @param [in] handler DFT ground state handler.
