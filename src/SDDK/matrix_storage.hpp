@@ -226,7 +226,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
     }
 
-    double_complex checksum(device_t pu__, int i0__, int n__);
+    double_complex checksum(device_t pu__, int i0__, int n__) const;
 };
 
 //== template <typename T>

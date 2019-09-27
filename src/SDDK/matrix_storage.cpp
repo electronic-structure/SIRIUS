@@ -284,7 +284,7 @@ void matrix_storage<T, matrix_storage_t::slab>::scale(memory_t mem__, int i0__, 
 }
 
 template <>
-double_complex matrix_storage<std::complex<double>, matrix_storage_t::slab>::checksum(device_t pu__, int i0__, int n__)
+double_complex matrix_storage<std::complex<double>, matrix_storage_t::slab>::checksum(device_t pu__, int i0__, int n__) const
 {
     double_complex cs(0, 0);
 
@@ -312,7 +312,7 @@ double_complex matrix_storage<std::complex<double>, matrix_storage_t::slab>::che
 }
 
 template <>
-double_complex matrix_storage<double, matrix_storage_t::slab>::checksum(device_t, int, int)
+double_complex matrix_storage<double, matrix_storage_t::slab>::checksum(device_t, int, int) const
 {
     TERMINATE("matrix_storage<double, ..>::checksum is not implemented for double\n");
     return 0;

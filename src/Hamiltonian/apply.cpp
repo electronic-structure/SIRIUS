@@ -193,9 +193,9 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     auto la = (pu == device_t::CPU) ? linalg_t::blas : linalg_t::gpublas;
     auto mem = (pu == device_t::CPU) ? memory_t::host : memory_t::device;
 
-    if (ctx.control().print_checksum_) {
-        phi__.print_checksum(pu, "phi", N__, n__);
-    }
+    //if (ctx.control().print_checksum_) {
+    //    phi__.print_checksum(pu, "phi", N__, n__);
+    //}
 
     if (!apw_only__) {
         if (hphi__ != nullptr) {
@@ -211,14 +211,14 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     if (!phi_is_lo__) {
         /* interstitial part */
         H0_.local_op().apply_h_o(kp().spfft_transform(), kp().gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
-        if (ctx.control().print_checksum_) {
-            if (hphi__) {
-                hphi__->print_checksum(pu, "hloc_phi", N__, n__);
-            }
-            if (ophi__) {
-                ophi__->print_checksum(pu, "oloc_phi", N__, n__);
-            }
-        }
+        //if (ctx.control().print_checksum_) {
+        //    if (hphi__) {
+        //        hphi__->print_checksum(pu, "hloc_phi", N__, n__);
+        //    }
+        //    if (ophi__) {
+        //        ophi__->print_checksum(pu, "oloc_phi", N__, n__);
+        //    }
+        //}
     } else {
         /* zero the APW part */
         switch (pu) {
@@ -735,14 +735,14 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
             ophi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);
         }
     }
-    if (ctx.control().print_checksum_) {
-        if (hphi__) {
-            hphi__->print_checksum(pu, "hphi", N__, n__);
-        }
-        if (ophi__) {
-            ophi__->print_checksum(pu, "ophi", N__, n__);
-        }
-    }
+    //if (ctx.control().print_checksum_) {
+    //    if (hphi__) {
+    //        hphi__->print_checksum(pu, "hphi", N__, n__);
+    //    }
+    //    if (ophi__) {
+    //        ophi__->print_checksum(pu, "ophi", N__, n__);
+    //    }
+    //}
 }
 
 void Hamiltonian_k::apply_b(Wave_functions& psi__, std::vector<Wave_functions>& bpsi__)

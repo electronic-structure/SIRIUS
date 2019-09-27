@@ -320,12 +320,12 @@ class Wave_functions
     /// Compute the checksum of the spin-components.
     /** Checksum of the n wave-function spin components is computed starting from i0.
      *  Only plane-wave coefficients are considered. */
-    double_complex checksum_pw(device_t pu__, int ispn__, int i0__, int n__);
+    double_complex checksum_pw(device_t pu__, int ispn__, int i0__, int n__) const;
 
     /// Checksum of muffin-tin coefficients.
-    double_complex checksum_mt(device_t pu__, int ispn__, int i0__, int n__);
+    double_complex checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const;
 
-    inline double_complex checksum(device_t pu__, int ispn__, int i0__, int n__)
+    inline double_complex checksum(device_t pu__, int ispn__, int i0__, int n__) const
     {
         return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
     }
@@ -358,22 +358,7 @@ class Wave_functions
         return preferred_memory_t_;
     }
 
-    inline void print_checksum(device_t pu__, std::string label__, int N__, int n__)
-    {
-        for (int ispn = 0; ispn < num_sc(); ispn++) {
-            auto cs1 = this->checksum_pw(pu__, ispn, N__, n__);
-            auto cs2 = this->checksum_mt(pu__, ispn, N__, n__);
-            if (this->comm().rank() == 0) {
-                std::stringstream s;
-                s << ispn;
-                utils::print_checksum(label__ + "_pw_" + s.str(), cs1);
-                if (this->has_mt()) {
-                    utils::print_checksum(label__ + "_mt_" + s.str(), cs2);
-                }
-                utils::print_checksum(label__ + "_" + s.str(), cs1 + cs2);
-            }
-        }
-    }
+    void print_checksum(device_t pu__, std::string label__, int N__, int n__) const;
 };
 
 
