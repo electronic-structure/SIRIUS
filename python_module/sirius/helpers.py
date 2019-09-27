@@ -90,16 +90,30 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
             psi.copy_to_gpu()
 
 
-def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
+def DFT_ground_state_find(num_dft_iter=1, config='sirius.json', load=False):
     """
     run DFT_ground_state
 
     Keyword Arguments:
     num_dft_iter -- (Default 1) number of SCF interations
     config       -- json configuration / or dictionary (from json)
-    """
 
-    from . import Simulation_context, K_point_set, DFT_ground_state
+    Returns:
+    A dictionary with keys
+    - E (total energy)
+    - dft_gs (DFT_ground_state instance)
+    - kpointset (K_point_set instance)
+    - hamiltonian (Hamiltonian instance)
+    - density (Density instance)
+    - potential (Potential instance)
+    - ctx (Simulation_context instance)
+    """
+    from . import (Simulation_context,
+                   K_point_set,
+                   Band,
+                   DFT_ground_state,
+                   initialize_subspace,
+                   vector3d_double)
     import json
     if isinstance(config, dict):
         ctx = Simulation_context(json.dumps(config))
@@ -108,46 +122,68 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
         siriusJson = json.load(open(config))
         ctx = Simulation_context(json.dumps(siriusJson))
     ctx.initialize()
-
-    if 'shiftk' in siriusJson['parameters']:
-        # make sure shiftk is not a list of floats
-        shiftk = [int(x) for x in siriusJson['parameters']['shiftk']]
+    if 'vk' in siriusJson['parameters']:
+        vk = siriusJson['parameters']['vk']
+        kPointSet = K_point_set(ctx, [vector3d_double(x) for x in vk])
     else:
-        shiftk = [0, 0, 0]
-    if 'ngridk' in siriusJson['parameters']:
-        gridk = siriusJson['parameters']['ngridk']
-    if 'use_symmetry' in siriusJson['parameters']:
-        use_symmetry = siriusJson['parameters']['use_symmetry']
-    else:
-        use_symmetry = True
-
-    kPointSet = K_point_set(ctx, gridk, shiftk, use_symmetry)
+        if 'shiftk' in siriusJson['parameters']:
+            # make sure shiftk is not a list of floats
+            shiftk = [int(x) for x in siriusJson['parameters']['shiftk']]
+        else:
+            shiftk = [0, 0, 0]
+        if 'ngridk' in siriusJson['parameters']:
+           gridk = siriusJson['parameters']['ngridk']
+        if 'use_symmetry' in siriusJson['parameters']:
+            use_symmetry = siriusJson['parameters']['use_symmetry']
+        else:
+            use_symmetry = True
+        kPointSet = K_point_set(ctx, gridk, shiftk, use_symmetry)
 
     dft_gs = DFT_ground_state(kPointSet)
+    if load:
+        density = dft_gs.density()
+        potential = dft_gs.potential()
+        density.load()
+        if ctx.use_symmetry():
+            density.symmetrize()
+        density.generate_paw_loc_density()
+        density.fft_transform(1)
+        potential.generate(density)
+        if ctx.use_symmetry():
+            potential.symmetrize()
+        potential.fft_transform(1)
 
-    dft_gs.initial_state()
-
-    if 'potential_tol' not in siriusJson['parameters']:
-        potential_tol = 1e-5
+        # dft_gs.potential().load()
+        initialize_subspace(dft_gs, ctx)
+        # find wfct
+        Band(ctx).solve(kPointSet, dft_gs.hamiltonian())
+        # get band occupancies according to band energies
+        kPointSet.find_band_occupancies()
+        E0 = dft_gs.total_energy()
     else:
-        potential_tol = siriusJson['parameters']['potential_tol']
+        dft_gs.initial_state()
 
-    if 'energy_tol' not in siriusJson['parameters']:
-        energy_tol = 1e-5
-    else:
-        energy_tol = siriusJson['parameters']['energy_tol']
-    write_status = False
+        if 'potential_tol' not in siriusJson['parameters']:
+            potential_tol = 1e-5
+        else:
+            potential_tol = siriusJson['parameters']['potential_tol']
 
-    initial_tol = energy_tol
-    E0 = dft_gs.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_status)
-    ks = dft_gs.k_point_set()
-    hamiltonian = dft_gs.hamiltonian()
+        if 'energy_tol' not in siriusJson['parameters']:
+            energy_tol = 1e-5
+        else:
+            energy_tol = siriusJson['parameters']['energy_tol']
+        write_status = False
+
+        initial_tol = 1e-2 # TODO: magic number
+        E0 = dft_gs.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_status)
+        ks = dft_gs.k_point_set()
+        hamiltonian = dft_gs.hamiltonian()
 
     return {
         'E': E0,
         'dft_gs': dft_gs,
-        'kpointset': ks,
-        'hamiltonian': hamiltonian,
+        'kpointset': kPointSet,
+        'hamiltonian': dft_gs.hamiltonian(),
         'density': dft_gs.density(),
         'potential': dft_gs.potential(),
         'ctx': ctx
@@ -163,7 +199,7 @@ def dphk_factory(config='sirius.json'):
     config -- (Default sirius.json) json configuration
     """
 
-    from . import Band, K_point_set, Potential, Density, Hamiltonian, Simulation_context
+    from . import Band, K_point_set, Potential, Density, Hamiltonian, Simulation_context, vector3d_double
     import json
 
     siriusJson = json.load(open(config))
@@ -173,15 +209,19 @@ def dphk_factory(config='sirius.json'):
     potential = Potential(ctx)
     hamiltonian = Hamiltonian(ctx, potential)
 
-    if 'shiftk' in siriusJson['parameters']:
-        shiftk = siriusJson['parameters']['shiftk']
+    if 'vk' in siriusJson['parameters']:
+        vk = siriusJson['parameters']['vk']
+        kPointSet = K_point_set(ctx, [vector3d_double(x) for x in vk])
     else:
-        shiftk = [0, 0, 0]
-    if 'ngridk' in siriusJson['parameters']:
-        gridk = siriusJson['parameters']['ngridk']
-    use_symmetry = siriusJson['parameters']['use_symmetry']
+        if 'shiftk' in siriusJson['parameters']:
+            shiftk = siriusJson['parameters']['shiftk']
+        else:
+            shiftk = [0, 0, 0]
+        if 'ngridk' in siriusJson['parameters']:
+            gridk = siriusJson['parameters']['ngridk']
+        use_symmetry = siriusJson['parameters']['use_symmetry']
+        kPointSet = K_point_set(ctx, gridk, shiftk, use_symmetry)
 
-    kPointSet = K_point_set(ctx, gridk, shiftk, use_symmetry)
     Band(ctx).initialize_subspace(kPointSet, hamiltonian)
 
     return {
@@ -223,6 +263,11 @@ def kpoint_index(kp, ctx):
     shiftk = np.array(pm.shiftk, dtype=np.int)
     ngridk = np.array(pm.ngridk, dtype=np.int)
     ik = np.array(kp.vk) * ngridk - shiftk/2
-    assert np.isclose(ik-ik.astype(np.int), 0).all()
-    ik = ik.astype(np.int)
+    if not np.isclose(ik-ik.astype(np.int), 0).all():
+        # single k-point given in vk
+        print('WARNING: could not identify k-point index')
+        ik = [0, 0, 0]
+    else:
+        ik = ik.astype(np.int)
+
     return tuple(ik)

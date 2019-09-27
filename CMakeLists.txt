@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9) # Intel C++11 support starts from 3.6 or even later version
+cmake_minimum_required(VERSION 3.12)
 project(SIRIUS)
 
 if(POLICY CMP0074)
@@ -42,6 +42,9 @@ if(PYTHON2)
   set(PYBIND11_PYTHON_VERSION 2.7)
   find_package(Python2 REQUIRED)
   set(PYTHON_EXECUTABLE ${Python2_EXECUTABLE})
+else()
+  find_package(Python3 REQUIRED)
+  set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
 endif()
 
 # Set release as the default build type.
@@ -201,11 +204,6 @@ add_custom_command(
   COMMAND true
   )
 
-if(NOT PYTHON2)
-  # attempt to find python3
-  find_package(PythonInterp REQUIRED)
-endif()
-
 # handle the generation of the version.hpp file
 add_custom_command(
   OUTPUT version.hpp-test
@@ -269,6 +267,10 @@ MACRO(SIRIUS_SETUP_TARGET _target)
 
   if(OpenMP_CXX_FOUND)
     target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
+  endif()
+
+  if(HAVE_LIBVDW_WITH_MPI)
+    target_compile_definitions(${_target} PUBLIC -D__HAVE_VDWXC_MPI)
   endif()
 
   # target_link_libraries(${_target} PRIVATE GSL::gsl)

@@ -1,20 +1,36 @@
+"""
+Freysoldt, C., Boeck, S., & Neugebauer, J., Direct minimization technique
+for metals in density functional theory.
+http://dx.doi.org/10.1103/PhysRevB.79.241103
+"""
+
 import numpy as np
 from scipy.constants import physical_constants
-from scipy.sparse import dia_matrix
+
 from ..coefficient_array import CoefficientArray as ca
-from ..coefficient_array import CoefficientArray, PwCoeffs
-from ..coefficient_array import diag, einsum, inner, l2norm
+from ..coefficient_array import diag, einsum, inner
+
 from ..helpers import save_state
 from ..logger import Logger
-from .ortho import gram_schmidt, loewdin
-from mpi4py import MPI
-from copy import deepcopy
+from ..py_sirius import magnetization
+from .ortho import loewdin
+from .preconditioner import IdentityPreconditioner
+# from .helpers import has_enough_bands
+# from ..utils.exceptions import NotEnoughBands
 
 logger = Logger()
 
 
 kb = (physical_constants['Boltzmann constant in eV/K'][0] /
       physical_constants['Hartree energy in eV'][0])
+
+
+class StepError(Exception):
+    pass
+
+
+class SlopeError(Exception):
+    pass
 
 
 def _solve(A, X):
@@ -25,111 +41,6 @@ def _solve(A, X):
     for k in X.keys():
         out[k] = np.linalg.solve(A[k], X[k])
     return out
-
-
-def _fermi_function(x, T, mu, num_spins):
-    """
-    Keyword Arguments:
-    x  --
-    T  --
-    mu --
-    """
-    exp_arg = (x - mu) / (kb*T)
-    out = np.zeros_like(x, dtype=np.float64)
-    oo = exp_arg < -50
-    out[oo] = num_spins
-    uo = exp_arg > 40
-    out[uo] = 0
-    re = np.logical_not(np.logical_or(oo, uo))
-    out[re] = num_spins / (1 + np.exp(exp_arg[re]))
-    return out
-
-
-def fermi_function(x, T, mu, num_spins):
-    """
-    """
-    assert T > 0
-
-    if isinstance(x, CoefficientArray):
-        out = type(x)(dtype=x.dtype, ctype=np.array)
-        for key, _ in x._data.items():
-            out[key] = _fermi_function(x[key], T, mu, num_spins)
-        return out
-    return _fermi_function(x, T, mu, num_spins)
-
-
-def _inv_fermi_function(f, T, num_spins):
-    """
-    """
-    f /= num_spins
-    kT = kb*T
-    en = np.zeros_like(f, dtype=np.double)
-    is_zero = np.isclose(f, 0)
-    is_one = np.isclose(f, 1)
-    en[is_zero] = 50 + np.arange(0, np.sum(is_zero))
-    # make sure we do not get degenerate band energies
-    en[is_one] = -50 - np.arange(0, np.sum(is_one))
-    ii = np.logical_not((np.logical_or(is_zero, is_one)))
-    en[ii] = kT*np.log(1/f[ii] - 1)
-    return en
-
-
-def inv_fermi_function(f, T, num_spins):
-    """
-    given f compute ϵ
-    """
-
-    if isinstance(f, CoefficientArray):
-        out = type(f)(dtype=f.dtype, ctype=np.array)
-        for key, val in f._data.items():
-            out[key] = _inv_fermi_function(f[key], T, num_spins)
-        return out
-    else:
-        return _inv_fermi_function(f, T, num_spins)
-
-
-def find_chemical_potential(fun, mu0, tol=1e-10):
-    """
-    fun        -- ne - fn(mu)
-    mu0        -- initial gues energies
-    """
-    mu = mu0
-    de = 0.1
-    sp = 1
-    s = 1
-    nmax = 1000
-    counter = 0
-
-    while(np.abs(fun(mu)) > tol and counter < nmax):
-        sp = s
-        s = 1 if fun(mu) > 0 else -1
-        if s == sp:
-            de *= 1.25
-        else:
-            # decrease step size if we change direction
-            de *= 0.25
-        mu += s*de
-        counter += 1
-    return mu
-
-
-def find_mu(kset, ek, T, tol=1e-10):
-    """
-    Wrapper for find_chemical_potential
-
-    Arguments:
-    kset -- kpointset
-    ek   -- Fermi parameters
-    T    -- temperature
-    """
-    ctx = kset.ctx()
-    ne = ctx.unit_cell().num_valence_electrons()
-    kw = kset.w
-    m = ctx.max_occupancy()
-    mu = find_chemical_potential(lambda mu: ne - np.sum(
-        kw*fermi_function(ek, T, mu, m)),
-        mu0=0, tol=tol)
-    return mu
 
 
 def grad_eta(Hij, ek, fn, T, kw):
@@ -152,7 +63,7 @@ def grad_eta(Hij, ek, fn, T, kw):
         1/kT * einsum('i,i', (diag(Hij) - kw*ek).asarray().flatten(), fn * (1-fn))))
     sumfn = np.sum(kw*fn*(1-fn))
     # g_eta_2 is zero if all f_i are either 0 or 1
-    if np.abs(sumfn) < 1e-9:
+    if np.abs(sumfn) < 1e-10:
         g_eta_2 = 0
     else:
         g_eta_2 = diag(kw * fn * (1-fn) / sumfn * dFdmu)
@@ -161,7 +72,7 @@ def grad_eta(Hij, ek, fn, T, kw):
     Eij = ek-ek.T + II
     Fij = fn-fn.T
     for k in Eij.keys():
-        EEc = np.abs(Eij[k]) < 1e-8
+        EEc = np.abs(Eij[k]) < 1e-10
         Eij[k] = np.where(EEc, 1, Eij[k])
         Fij[k] = np.where(EEc, 0, Fij[k])
 
@@ -169,33 +80,6 @@ def grad_eta(Hij, ek, fn, T, kw):
     g_eta = (g_eta_1 + g_eta_2 + g_eta_3)
     return g_eta
 
-
-def make_kinetic_precond(kpointset, eps=0.1):
-    """
-    Preconditioner
-    P = 1 / (||k|| + ε)
-
-    Keyword Arguments:
-    kpointset --
-    eps       -- ϵ
-    """
-
-    nk = len(kpointset)
-    nc = kpointset.ctx().num_spins()
-    P = PwCoeffs(dtype=np.float64, ctype=dia_matrix)
-    for k in range(nk):
-        kp = kpointset[k]
-        gkvec = kp.gkvec()
-        assert (gkvec.num_gvec() == gkvec.count())
-        N = gkvec.count()
-        d = np.array([
-            1 / (np.sum(
-                (np.array(gkvec.gkvec_cart(i)))**2) + eps)
-            for i in range(N)
-        ])
-        for ispn in range(nc):
-            P[k, ispn] = dia_matrix((d, 0), shape=(N, N))
-    return DiagonalPreconditioner(P)
 
 
 def btsearch(f, b, f0, maxiter=20, tau=0.5):
@@ -209,9 +93,11 @@ def btsearch(f, b, f0, maxiter=20, tau=0.5):
         fx = f(x)
         if fx[0] > f0:
             x *= tau
+            logger('btsearch::F %.10f, x=%.4e' % (fx[0], x))
         else:
             return x, fx
-    raise ValueError('backtracking search could not find a new minimum')
+    raise StepError('backtracking search could not find a new minimum')
+
 
 def gss(f, a, b, tol=1e-3):
     """
@@ -257,112 +143,11 @@ def gss(f, a, b, tol=1e-3):
             yd = f(d)
 
     if yc < yd:
-        # print('gss: a=%.2g, d=%.2g' % (a, d))
+        logger('gss: a=%.2g, d=%.2g' % (a, d))
         return (a, d)
     else:
-        # print('gss: c=%.2g, b=%.2g' % (c, b))
+        logger('gss: c=%.2g, b=%.2g' % (c, b))
         return (c, b)
-
-
-class IdentityPreconditioner():
-    """
-    Identity preconditioner
-    """
-    def __init__(self, _f=1):
-        self._f = _f
-
-    def __matmul__(self, other):
-        if self._f == -1:
-            return -other
-        elif self._f == 1:
-            return other
-        else:
-            raise ValueError
-
-    def __mul__(self, s):
-        if self._f == -1:
-            return -s
-        elif self._f == 1:
-            return s
-        else:
-            raise ValueError
-
-    def __neg__(self):
-        return IdentityPreconditioner(_f=-self._f)
-
-    def __getitem__(self, key):
-        return self._f
-
-    __lmul__ = __mul__
-    __rmul__ = __mul__
-
-
-class DiagonalPreconditioner():
-    """
-    Apply diagonal preconditioner and project resulting gradient to satisfy the
-    constraint.
-    """
-
-    def __init__(self, D):
-        super().__init__()
-        self.D = D
-
-    def __matmul__(self, other):
-        """
-        """
-        out = type(other)(dtype=other.dtype)
-        if isinstance(other, CoefficientArray):
-            for key, Dl in self.D.items():
-                out[key] = Dl @ other[key]
-        else:
-            raise ValueError('wrong type given')
-        return out
-
-    def __mul__(self, s):
-        """
-
-        """
-        if np.isscalar(s):
-            out = type(self)(self.D)
-            for key, Dl in self.D.items():
-                out.D[key] = s*Dl
-            return out
-        elif isinstance(s, CoefficientArray):
-            out = type(s)(dtype=s.dtype)
-            for key in s.keys():
-                out[key] = self.D[key] * s[key]
-            return out
-
-    __lmul__ = __mul__
-    __rmul__ = __mul__
-
-    def __neg__(self):
-        """
-        """
-        if isinstance(self.D, CoefficientArray):
-            out_data = type(self.D)(dtype=self.D.dtype, ctype=self.D.ctype)
-            out = DiagonalPreconditioner(out_data)
-            for k, v in self.D.items():
-                out.D[k] = -v
-            return out
-        else:
-            out = DiagonalPreconditioner(self.D)
-            out.D = -self.D
-            return out
-
-    def __getitem__(self, key):
-        return self.D[key]
-
-    def inv(self):
-        """
-        inverse
-        """
-        D = type(self.D)(dtype=self.D.dtype, ctype=self.D.ctype)
-        for k in self.D.keys():
-            shape = self.D[k].shape
-            D[k] = dia_matrix((1/self.D[k].data, 0), shape=shape)
-        out = type(self)(D)
-        return out
 
 
 class F():
@@ -398,29 +183,14 @@ class F():
         fn -- occupation numbers
         U  -- subspace rotation matrix
         """
-
-        T = self.M.T
-        kset = self.M.energy.kpointset
         X_new = self.X + t * self.G_X
         eta_new = self.eta + t * self.G_eta
         ek, Ul = eta_new.eigh()
         X = loewdin(X_new) @ Ul
-        kw = kset.w
-        ne = kset.ctx().unit_cell().num_valence_electrons()
-        m = kset.ctx().max_occupancy()
+        fn, mu = self.M.smearing.fn(ek)
 
-        # collect all band energies from every k-point rank
-        comm = self.M.energy.kpointset.ctx().comm_k()
-        vek = np.hstack(comm.allgather(ek.to_array()))
-        vkw = deepcopy(ek)
-        for k in vkw._data.keys():
-            vkw[k] = np.ones_like(vkw[k]) * kw[k]
-        vkw = np.hstack(comm.allgather(vkw.to_array()))
+        # check fn
 
-        # update occupation numbers
-        mu = find_chemical_potential(lambda mu: ne - np.sum(vkw*fermi_function(vek, T, mu, m)),
-                                     mu0=0)
-        fn = fermi_function(ek, T, mu, m)
         FE, Hx = self.M(X, fn)
         return FE, Hx, X, fn, ek, Ul
 
@@ -436,12 +206,16 @@ def polak_ribiere(**kwargs):
     gp_X = kwargs['gp_X']
     g_eta = kwargs['g_eta']
     gp_eta = kwargs['gp_eta']
-    gamma_eta = np.real(inner(g_eta, g_eta-gp_eta))
-    gamma_X = np.real(inner(g_X, g_X-gp_X))
+    delta_eta = kwargs['delta_eta']
+    deltaP_eta = kwargs['deltaP_eta']
+    delta_X = kwargs['delta_X']
+    deltaP_X = kwargs['deltaP_X']
+    gamma_eta = np.real(inner(delta_eta, g_eta-gp_eta))
+    gamma_X = np.real(inner(delta_X, g_X-gp_X))
     gamma = max(0,
-                (gamma_X + gamma_eta)
+                (2*gamma_X + gamma_eta)
                 /
-                (l2norm(gp_X)**2 + l2norm(gp_eta)**2))
+                (2*np.real(inner(deltaP_X, gp_X)) + np.real(inner(deltaP_eta, gp_eta))))
     return gamma
 
 
@@ -478,6 +252,7 @@ class CG:
 
     def step(self, X, f, eta, G_X, G_eta, xi_trial, F0, slope, kwargs):
         """
+
         Keyword Arguments:
         X         --
         f         -- occupation numbers (just for debugging, not needed)
@@ -498,7 +273,6 @@ class CG:
         """
 
         # TODO: refactor
-        kset = self.M.energy.kpointset
         fline = F(X, eta, self.M, G_X, G_eta)
         while True:
             # free energy at trial point
@@ -529,10 +303,11 @@ class CG:
         if not Fpred < F0:
             # reset Hamiltonian (side effects)
             fline(0)
-            raise ValueError('quadratic line-search failed to find a new minima')
+            raise StepError('quadratic line-search failed to find a new minima')
 
         # free energy at minimum
         FE, Hx, X_n, f_n, ek, U = fline(xi_min)
+        logger('qline prediction error, FE-Fpred: %.10e, step-length %.4e' % (FE-Fpred, xi_min))
         if not FE < F0:
             logger('==== failed step ====')
             logger('F0:', F0)
@@ -547,10 +322,9 @@ class CG:
 
             # reset Hamiltonian (side effects)
             fline(0)
-            raise ValueError('quadratic line-search failed to find a new minima')
-        logger('qline prediction error, FE-Fpred: %.10f' % (FE-Fpred))
+            raise StepError('quadratic line-search failed to find a new minima')
 
-        return X_n, f_n, ek, FE, Hx, U
+        return X_n, f_n, ek, FE, Hx, U, xi_min
 
     def step_golden_section_search(self, X, f, eta, Fline, F0):
         """
@@ -570,7 +344,7 @@ class CG:
         U    -- subspace rotation matrix
         """
 
-        t1, t2 = gss(Fline, a=0, b=5)
+        t1, t2 = gss(Fline, a=0, b=0.5)
         F, Hx, Xn, fn, ek, Ul = Fline((t1+t2)/2)
         if not F < F0:
             logger('WARNING: gss has failed')
@@ -582,19 +356,33 @@ class CG:
                             'eta': eta, 'G_X': Fline.G_X,
                             'G_eta': Fline.G_eta}, Fline.M.energy.kpointset)
 
-            raise ValueError('GSS didn\'t find a better value')
+            raise StepError('GSS didn\'t find a new minimum')
         return Xn, fn, ek, F, Hx, Ul
 
     def backtracking_search(self, X, f, eta, Fline, F0, tau=0.5):
         t1, res = btsearch(Fline, 5, F0, tau=tau)
         F1, Hx1, X1, f1, ek1, Ul1 = res
 
-        return X1, f1, ek1, F1, Hx1, Ul1
+        return X1, f1, ek1, F1, Hx1, Ul1, t1
 
-    def run(self, X, fn, maxiter=100, restart=20, tol=1e-10,
-            prec=False, kappa=0.3, eps=0.001, use_g_eta=False,
-            tau=0.5, cgtype='FR'):
+    def run(self, X, fn,
+            maxiter=100,
+            restart=20,
+            tol=1e-10,
+            kappa=0.3,
+            tau=0.5,
+            cgtype='FR',
+            K=IdentityPreconditioner(),
+            callback=lambda *args, **kwargs: None):
+        """
+        Returns:
+        X            -- pw coefficients
+        fn           -- occupation numbers
+        FE           -- free energy
+        is_converged -- bool
+        """
 
+        use_g_eta=False
         if cgtype == 'PR':
             cg_update = polak_ribiere
         elif cgtype == 'FR':
@@ -604,23 +392,18 @@ class CG:
         else:
             raise ValueError('wrong type')
 
-        prec_direction = True
-
         kset = self.M.energy.kpointset
-        if prec:
-            K = make_kinetic_precond(kset, eps=eps)
-        else:
-            K = IdentityPreconditioner()
         # occupation prec
         kappa0 = kappa
 
         M = self.M
-        H = self.M.H
         T = self.M.T
         kw = kset.w
         m = kset.ctx().max_occupancy()
-        # set ek from fn
-        ek = inv_fermi_function(fn, T, m)
+        # set occupation numbers from band energies
+        fn, _ = self.M.smearing.fn(kset.e)
+        ek = self.M.smearing.ek(fn)
+
         eta = diag(ek)
         w, U = eta.eigh()
         ek = w
@@ -628,17 +411,21 @@ class CG:
         # compute initial free energy
         FE, Hx = M(X, fn)
         logger('intial F: %.10g' % FE)
-        # save_state({'fn': fn, 'ek': ek}, kset, 'init_occu')
 
         HX = Hx * kw
         Hij = X.H @ HX
         g_eta = grad_eta(Hij, ek, fn, T, kw)
-        LL = Hij*fn
+        XhKHXF = X.H @ (K @ HX)
+        XhKX = X.H @ (K @ X)
+        LL = _solve(XhKX, XhKHXF)
+        g_X = (HX*fn - X@LL)
+        # check that constraints are fulfilled
+        delta_X = -K * (HX - X @ LL) / kw
+
         g_X = (HX*fn - X@LL)
 
-        G_X = -g_X
+        G_X = delta_X
         G_eta = -g_eta
-        delta_X = G_X
         delta_eta = G_eta
 
         cg_restart_inprogress = False
@@ -646,50 +433,51 @@ class CG:
             slope = np.real(2*inner(g_X, G_X) + inner(g_eta, G_eta))
 
             if np.abs(slope) < tol:
-                return X, fn
+                return X, fn, FE, True
 
             if slope > 0:
                 if cg_restart_inprogress:
-                    # save_state({'X': X, 'f': fn,
-                    #             'eta': eta, 'G_X': G_X,
-                    #             'gx': g_X,
-                    #             'g_eta': g_eta,
-                    #             'F0': FE,
-                    #             'slope': slope,
-                    #             'G_eta': G_eta, 'slope': slope}, self.M.energy.kpointset)
-                    raise ValueError('Error: _ascent_ direction, slope %.4e' % slope)
+                    raise SlopeError('Error: _ascent_ direction, slope %.4e' % slope)
                 else:
                     cg_restart_inprogress = True
             else:
                 try:
-                    X, fn, ek, FE, Hx, U = self.step(X, fn, eta, G_X, G_eta,
-                                                     xi_trial=0.2, F0=FE, slope=slope,
-                                                     kwargs={'gx': g_X, 'g_eta': g_eta})
+                    X, fn, ek, FE, Hx, U, tmin = self.step(X, fn, eta, G_X, G_eta,
+                                                           xi_trial=0.2, F0=FE, slope=slope,
+                                                           kwargs={'gx': g_X, 'g_eta': g_eta})
                     # reset kappa
                     kappa = kappa0
                     cg_restart_inprogress = False
-                except ValueError:
+                except StepError:
                     # side effects
                     try:
                         Fline = F(X, eta, M, G_X, G_eta)
-                        # X, fn, ek, FE, U = self.step_golden_section_search(X, fn, eta, Fline, FE)
-                        X, fn, ek, FE, Hx, U = self.backtracking_search(X, fn, eta, Fline, FE)
-                    except ValueError:
+                        logger('btsearch')
+                        X, fn, ek, FE, Hx, U, tmin = self.backtracking_search(X, fn, eta, Fline, FE, tau=tau)
+                    except StepError:
                         # not even golden section search works
                         # restart CG and reduce kappa
                         cg_restart_inprogress = True
                         kappa = kappa/3
                         logger('kappa: ', kappa)
-
+                        tmin = 0
+            callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, it=ii)
             logger('step %5d' % ii, 'F: %.11f res: X,eta %+10.5e, %+10.5e' %
                    (FE, np.real(inner(g_X, G_X)), np.real(inner(g_eta, G_eta))))
+            mag, mag_norm = magnetization(self.M.energy.density, self.M.energy.kpointset.ctx())
+
+            # if ii > 5 and not has_enough_bands(fn).to_array().all():
+            #     logger(fn, all_print=True)
+            #     raise NotEnoughBands("increase num_fv_states.")
+
+            for m, mn in zip(mag, mag_norm):
+                logger('magnetization: %.5f %.5f %.5f, %.5f' % (m[0], m[1], m[2], mn))
             eta = diag(ek)
             # keep previous search directions
             GP_X = G_X@U
             GP_eta = U.H@G_eta@U
             deltaP_X = delta_X@U
             deltaP_eta = U.H@delta_eta@U
-
             # compute new gradients
             HX = Hx*kw
             Hij = X.H @ HX
@@ -704,10 +492,15 @@ class CG:
             # check that constraints are fulfilled
             delta_X = -K * (HX - X @ LL) / kw
             # assert l2norm(X.H @ delta_X) < 1e-11
-            if not use_g_eta:
-                delta_eta = kappa * (Hij - kw*diag(ek)) / kw
-            else:
-                delta_eta = -kappa * g_eta
+            delta_eta = kappa * (Hij - kw*diag(ek)) / kw
+            # update kappa
+            dFdk = inner(g_eta, deltaP_eta) * tmin / kappa
+            dFdt = slope
+            # if |dFdk| >> |dFdt| => reduce kappa
+            # if |dFdk| << |dFdt| => increase kappa
+            logger('dFdk: %.4e + %.4e 1j' % (np.real(dFdk), np.imag(dFdk)))
+            logger('dFdt: %.4e + %4.e 1j' % (np.real(dFdt), np.imag(dFdk)))
+            logger('|dFdk|/|dFdt|: %.4e' % (np.abs(dFdk) / np.abs(dFdt)))
 
             # conjugated search directions
             if not ii % restart == 0 and not cg_restart_inprogress:
@@ -728,4 +521,4 @@ class CG:
             #             'slope': slope,
             #             'X': X, 'eta': eta}, M.energy.kpointset, prefix='iter%04d_' % ii)
 
-        return X, fn
+        return X, fn, FE, False

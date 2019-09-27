@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+rootdir=$(dirname $0)
+
+python -u -m mpi4py ${rootdir}/nlcg.py $@
