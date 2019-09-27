@@ -22,6 +22,7 @@
  *  \brief Compute residuals from the eigen-vectors and basis functions.
  */
 
+#include "typedefs.hpp"
 #include "memory.hpp"
 #include "linalg.hpp"
 
@@ -30,6 +31,7 @@ template <typename T>
 class dmatrix;
 class Wave_functions;
 };
+
 
 #if defined(__GPU)
 extern "C" void residuals_aux_gpu(int num_gvec_loc__,
