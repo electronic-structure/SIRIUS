@@ -220,6 +220,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("type_id", &Atom::type_id)
         .def("type", &Atom::type, py::return_value_policy::reference)
         .def_property_readonly("label", [](const Atom& obj) { return obj.type().label(); })
+        .def_property_readonly("mass", [](const Atom& obj) { return obj.type().mass(); })
         .def("set_position", [](Atom& obj, const std::vector<double>& pos) {
             if (pos.size() != 3)
                 throw std::runtime_error("wrong input");
@@ -228,6 +229,7 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Atom_type>(m, "Atom_type")
         .def_property_readonly("augment", [](const Atom_type& atype) { return atype.augment(); })
+        .def_property_readonly("mass", &Atom_type::mass)
         .def_property_readonly("num_atoms", [](const Atom_type& atype) { return atype.num_atoms(); });
 
     py::class_<Unit_cell>(m, "Unit_cell")
@@ -247,13 +249,14 @@ PYBIND11_MODULE(py_sirius, m)
             },
             "l1"_a, "l2"_a, "l3"_a)
         .def("get_symmetry", &Unit_cell::get_symmetry)
-        .def("num_electrons", &Unit_cell::num_electrons)
-        .def("num_valence_electrons", &Unit_cell::num_valence_electrons)
-        .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
+        .def_property_readonly("num_electrons", &Unit_cell::num_electrons)
+        .def_property_readonly("num_atoms", &Unit_cell::num_atoms)
+        .def_property_readonly("num_valence_electrons", &Unit_cell::num_valence_electrons)
+        .def_property_readonly("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
         .def("generate_radial_functions", &Unit_cell::generate_radial_functions)
-        .def("min_mt_radius", &Unit_cell::min_mt_radius)
-        .def("max_mt_radius", &Unit_cell::max_mt_radius)
-        .def("omega", &Unit_cell::omega)
+        .def_property_readonly("min_mt_radius", &Unit_cell::min_mt_radius)
+        .def_property_readonly("max_mt_radius", &Unit_cell::max_mt_radius)
+        .def_property_readonly("omega", &Unit_cell::omega)
         .def("print_info", &Unit_cell::print_info);
 
     py::class_<z_column_descriptor>(m, "z_column_descriptor")
