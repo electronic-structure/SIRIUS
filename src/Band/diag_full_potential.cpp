@@ -254,7 +254,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
 
     mdarray<double, 2> diag1(kp.num_gkvec_loc(), 1, memory_t::host, "diag1");
     for (int ig = 0; ig < kp.num_gkvec_loc(); ig++) {
-        diag1[ig]  = 1;
+        diag1[ig] = 1;
     }
 
     if (ctx_.processing_unit() == device_t::GPU) {
@@ -299,14 +299,11 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
     mdarray<double, 1> eval_old(ncomp);
     eval_old = [](){return 1e10;};
 
-    if (ctx_.control().print_checksum_) {
-        auto cs2 = phi.checksum(ctx_.processing_unit(), 0, 0, ncomp);
-        if (kp.comm().rank() == 0) {
-            utils::print_checksum("phi", cs2);
-        }
-    }
-
     phi.copy_from(ctx_.processing_unit(), ncomp, psi, 0, 0, 0, 0);
+
+    if (ctx_.control().print_checksum_) {
+        phi.print_checksum(ctx_.processing_unit(), "phi", 0, ncomp);
+    }
 
     /* current subspace size */
     int N{0};
@@ -326,6 +323,9 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         Hk__.apply_fv_h_o(true, false, N, n, phi, nullptr, &ophi);
+        if (ctx_.processing_unit() == device_t::GPU) {
+            ophi.copy_to(spin_range(0), memory_t::device, N, n);
+        }
 
         if (ctx_.control().verification_ >= 1) {
             set_subspace_mtrx(0, N + n, phi, ophi, ovlp);
