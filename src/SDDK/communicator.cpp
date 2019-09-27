@@ -22,6 +22,7 @@
  *  \brief Definitions.
  *
  */
+
 #include "communicator.hpp"
 
 namespace sddk {

@@ -484,6 +484,62 @@ void Band::check_residuals(Hamiltonian_k& Hk__) const
     kp.release_hubbard_orbitals_on_device();
 }
 
+/// Check wave-functions for orthonormalization.
+template <typename T>
+void Band::check_wave_functions(Hamiltonian_k& Hk__) const
+{
+    auto& kp = Hk__.kp();
+    kp.message(1, __func__, "checking wave-functions\n");
+
+    if (!ctx_.full_potential()) {
+
+        dmatrix<T> ovlp(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+
+        const bool nc_mag = (ctx_.num_mag_dims() == 3);
+        const int num_sc = nc_mag ? 2 : 1;
+
+        auto& psi = kp.spinor_wave_functions();
+        Wave_functions spsi(kp.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
+
+        if (is_device_memory(ctx_.preferred_memory_t())) {
+            auto& mpd = ctx_.mem_pool(memory_t::device);
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                psi.pw_coeffs(ispn).allocate(mpd);
+                psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
+            }
+            for (int i = 0; i < num_sc; i++) {
+                spsi.pw_coeffs(i).allocate(mpd);
+            }
+            ovlp.allocate(memory_t::device);
+        }
+
+        Hk__.kp().copy_hubbard_orbitals_on_device();
+
+        /* compute residuals */
+        for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
+            /* apply Hamiltonian and S operators to the wave-functions */
+            Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, nullptr, &spsi);
+            inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, psi, 0, ctx_.num_bands(),
+                  spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
+
+            double diff = check_identity(ovlp, ctx_.num_bands());
+
+            if (diff > 1e-12) {
+                kp.message(1, __func__, "overlap matrix is not identity, maximum error : %20.12f\n", diff);
+            } else {
+                kp.message(1, __func__, "OK! Wave functions are orthonormal.\n");
+            }
+        }
+        if (is_device_memory(ctx_.preferred_memory_t())) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                psi.pw_coeffs(ispn).deallocate(memory_t::device);
+            }
+        }
+
+        Hk__.kp().release_hubbard_orbitals_on_device();
+    }
+}
+
 template
 void
 Band::set_subspace_mtrx<double>(int N__, int n__, Wave_functions& phi__, Wave_functions& op_phi__,

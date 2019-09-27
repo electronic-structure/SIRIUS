@@ -33,7 +33,6 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp;Hamiltonian/hamiltonian_k.cpp;Band/ban
   "Geometry/force.cpp"
   "Geometry/stress.cpp"
   "Geometry/non_local_functor.cpp"
-  "Hamiltonian/apply.cpp"
   "Hamiltonian/local_operator.cpp"
   "Hamiltonian/non_local_operator.cpp"
   "K_point/generate_atomic_wave_functions.cpp"

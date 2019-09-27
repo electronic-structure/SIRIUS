@@ -19,11 +19,14 @@
 
 /** \file diag_full_potential.cpp
  *
- *   \brief Diagonalization of full-potential Hamiltonian.
+ *  \brief Diagonalization of full-potential Hamiltonian.
  */
 
 #include "band.hpp"
 #include "residuals.hpp"
+#include "wf_inner.hpp"
+#include "wf_ortho.hpp"
+#include "wf_trans.hpp"
 
 namespace sirius {
 
