@@ -57,7 +57,7 @@ class Radial_integrals_base
            Cartiesin coordinates exceed the initial cutoff length. Do not remove this extra delta! */
 
         /* add extra length in [a.u.^-1] */
-        qmax__ += 5;
+        qmax__ += std::max(5.0, qmax__ * 0.1);
 
         grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax__), 0, qmax__);
         spl_q_  = splindex<splindex_t::block>(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
