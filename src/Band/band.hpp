@@ -25,11 +25,17 @@
 #ifndef __BAND_HPP__
 #define __BAND_HPP__
 
-#include "periodic_function.hpp"
-#include "K_point/k_point_set.hpp"
+#include "SDDK/memory.hpp"
 #include "Hamiltonian/hamiltonian.hpp"
 
+namespace sddk {
+/* forward declaration */
+class BLACS_grid;
+}
+
 namespace sirius {
+/* forward declaration */
+class K_point_set;
 
 /// Setup and solve the eigen value problem.
 class Band // TODO: Band class is lightweight and in principle can be converted to a namespace
@@ -42,7 +48,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     Unit_cell& unit_cell_;
 
     /// BLACS grid for distributed linear algebra operations.
-    BLACS_grid const& blacs_grid_;
+    sddk::BLACS_grid const& blacs_grid_;
 
     /// Solve the first-variational (non-magnetic) problem with exact diagonalization.
     /** This is only used by the LAPW method. */
@@ -56,7 +62,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Get singular components of the LAPW overlap matrix.
     /** Singular components are the eigen-vectors with a very small eigen-value. */
-    void get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& odiag__) const;
+    void get_singular_components(Hamiltonian_k& Hk__, sddk::mdarray<double, 2>& odiag__) const;
 
     /// Diagonalize a pseudo-potential Hamiltonian.
     template <typename T>
@@ -72,7 +78,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
     /// Diagonalize S operator to check for the negative eigen-values.
     template <typename T>
-    mdarray<double, 1> diag_S_davidson(Hamiltonian_k& Hk__) const;
+    sddk::mdarray<double, 1> diag_S_davidson(Hamiltonian_k& Hk__) const;
 
     ///// RMM-DIIS diagonalization.
     //template <typename T>
@@ -80,26 +86,14 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
 
   public:
     /// Constructor
-    Band(Simulation_context& ctx__)
-        : ctx_(ctx__)
-        , unit_cell_(ctx__.unit_cell())
-        , blacs_grid_(ctx__.blacs_grid())
-    {
-        if (!ctx_.initialized()) {
-            TERMINATE("Simulation_context is not initialized");
-        }
-    }
+    Band(Simulation_context& ctx__);
 
     /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
      *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
      *  in the CPU pointer because most of the standard math libraries start from the CPU. */
     template <typename T>
-    void set_subspace_mtrx(int N__,
-                           int n__,
-                           Wave_functions& phi__,
-                           Wave_functions& op_phi__,
-                           dmatrix<T>& mtrx__,
-                           dmatrix<T>* mtrx_old__ = nullptr) const;
+    void set_subspace_mtrx(int N__, int n__, sddk::Wave_functions& phi__, sddk::Wave_functions& op_phi__,
+                           sddk::dmatrix<T>& mtrx__, sddk::dmatrix<T>* mtrx_old__ = nullptr) const;
 
     /// Solve the band eigen-problem for pseudopotential case.
     template <typename T>

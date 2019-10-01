@@ -22,13 +22,28 @@
  *  \brief Contains implementation of sirius::Force class.
  */
 
-#include "K_point/k_point.hpp"
-#include "Hamiltonian/hamiltonian.hpp"
 #include "force.hpp"
+#include "K_point/k_point.hpp"
+#include "K_point/k_point_set.hpp"
+#include "Density/density.hpp"
+#include "Density/augmentation_operator.hpp"
+#include "Potential/potential.hpp"
+#include "Beta_projectors/beta_projectors.hpp"
+#include "Beta_projectors/beta_projectors_gradient.hpp"
+#include "non_local_functor.hpp"
+#include "Hamiltonian/hamiltonian.hpp"
 
 namespace sirius {
 
-using namespace geometry3d;
+//using namespace geometry3d;
+
+Force::Force(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__)
+    : ctx_(ctx__)
+    , density_(density__)
+    , potential_(potential__)
+    , kset_(kset__)
+{
+}
 
 template <typename T>
 void Force::add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces__) const
@@ -817,6 +832,41 @@ mdarray<double, 2> const& Force::calc_forces_nonloc()
     symmetrize(forces_nonloc_);
 
     return forces_nonloc_;
+}
+
+void Force::print_info()
+{
+    if (ctx_.comm().rank() == 0) {
+        auto print_forces = [&](mdarray<double, 2> const& forces) {
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                printf("atom %4i    force = %15.7f  %15.7f  %15.7f \n", ctx_.unit_cell().atom(ia).type_id(),
+                       forces(0, ia), forces(1, ia), forces(2, ia));
+            }
+        };
+
+        printf("===== total Forces in Ha/bohr =====\n");
+        print_forces(forces_total());
+
+        printf("===== ultrasoft contribution from Qij =====\n");
+        print_forces(forces_us());
+
+        printf("===== non-local contribution from Beta-projectors =====\n");
+        print_forces(forces_nonloc());
+
+        printf("===== contribution from local potential =====\n");
+        print_forces(forces_vloc());
+
+        printf("===== contribution from core density =====\n");
+        print_forces(forces_core());
+
+        printf("===== Ewald forces from ions =====\n");
+        print_forces(forces_ewald());
+
+        if (ctx_.hubbard_correction()) {
+            printf("===== Ewald forces from hubbard correction =====\n");
+            print_forces(forces_hubbard());
+        }
+    }
 }
 
 } // namespace sirius

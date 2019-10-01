@@ -124,7 +124,6 @@ void Wave_functions::copy_from(device_t pu__, int n__, const Wave_functions& src
             break;
         }
         case device_t::GPU: {
-#ifdef __GPU
             /* copy PW part */
             acc::copy(pw_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
                       src__.pw_coeffs(ispn__).prime().at(memory_t::device, 0, i0__), ngv * n__);
@@ -133,7 +132,6 @@ void Wave_functions::copy_from(device_t pu__, int n__, const Wave_functions& src
                 acc::copy(mt_coeffs(jspn__).prime().at(memory_t::device, 0, j0__),
                           src__.mt_coeffs(ispn__).prime().at(memory_t::device, 0, i0__), nmt * n__);
             }
-#endif
             break;
         }
     }
@@ -269,7 +267,7 @@ void Wave_functions::normalize(device_t pu__, spin_range spins__, int n__)
     for (int ispn : spins__) {
         switch (pu__) {
             case device_t::CPU: {
-#pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static)
                 for (int i = 0; i < n__; i++) {
                     for (int ig = 0; ig < this->pw_coeffs(ispn).num_rows_loc(); ig++) {
                         this->pw_coeffs(ispn).prime(ig, i) *= norm[i];
@@ -364,7 +362,7 @@ Wave_functions::sumsqr(device_t pu__, spin_range spins__, int n__) const
                 break;
             }
             case device_t::GPU: {
-#ifdef __GPU
+#if defined(__GPU)
                 add_square_sum_gpu(pw_coeffs(is).prime().at(memory_t::device), pw_coeffs(is).num_rows_loc(), n__,
                                    gkvecp_.gvec().reduced(), comm_.rank(), s.at(memory_t::device));
                 if (has_mt()) {

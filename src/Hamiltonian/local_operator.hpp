@@ -25,8 +25,7 @@
 #ifndef __LOCAL_OPERATOR_HPP__
 #define __LOCAL_OPERATOR_HPP__
 
-#include "../SDDK/GPU/acc.hpp"
-#include "../SDDK/memory.hpp"
+#include "SDDK/memory.hpp"
 #include "spfft/spfft.hpp"
 #include "typedefs.hpp"
 

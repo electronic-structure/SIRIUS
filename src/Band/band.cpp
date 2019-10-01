@@ -23,10 +23,23 @@
  */
 
 #include "band.hpp"
+#include "simulation_context.hpp"
+#include "K_point/k_point_set.hpp"
 #include "SDDK/wf_trans.hpp"
 #include "SDDK/wf_inner.hpp"
 
 namespace sirius {
+
+/// Constructor
+Band::Band(Simulation_context& ctx__)
+    : ctx_(ctx__)
+    , unit_cell_(ctx__.unit_cell())
+    , blacs_grid_(ctx__.blacs_grid())
+{
+    if (!ctx_.initialized()) {
+        TERMINATE("Simulation_context is not initialized");
+    }
+}
 
 template <typename T>
 void
