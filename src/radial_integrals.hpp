@@ -52,6 +52,13 @@ class Radial_integrals_base
     Radial_integrals_base(Unit_cell const& unit_cell__, double qmax__, int np__)
         : unit_cell_(unit_cell__)
     {
+        /* Add extra length to the cutoffs in order to interpolate radial integrals for q > cutoff.
+           This is needed for the variable cell relaxation when lattice changes and the G-vectors in
+           Cartiesin coordinates exceed the initial cutoff length. Do not remove this extra delta! */
+
+        /* add extra length in [a.u.^-1] */
+        qmax__ += 5;
+
         grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax__), 0, qmax__);
         spl_q_  = splindex<splindex_t::block>(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
     }
@@ -65,8 +72,6 @@ class Radial_integrals_base
             s << "[sirius::Radial_integrals_base::iqdq] q-point is out of range" << std::endl
               << "  q : " << q__ << std::endl
               << "  last point of the q-grid : " << grid_q_.last();
-            std::cout << s.str() << "\n";
-            printf("%s\n", s.str().c_str());
             TERMINATE(s);
         }
         std::pair<int, double> result;
