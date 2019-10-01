@@ -25,6 +25,7 @@
 #include "SDDK/geometry3d.hpp"
 #include "K_point/k_point.hpp"
 #include "stress.hpp"
+#include "non_local_functor.hpp"
 
 namespace sirius {
 

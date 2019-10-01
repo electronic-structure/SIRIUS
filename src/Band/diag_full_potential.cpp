@@ -27,6 +27,8 @@
 #include "wf_inner.hpp"
 #include "wf_ortho.hpp"
 #include "wf_trans.hpp"
+#include "simulation_context.hpp"
+#include "K_point/k_point.hpp"
 
 namespace sirius {
 
