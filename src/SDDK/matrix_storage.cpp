@@ -185,7 +185,7 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_backward(int n__, int idx0
     int n_loc = spl_num_col_.local_size();
 
     /* reorder sending blocks */
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < n_loc; i++) {
         for (int j = 0; j < comm_col.size(); j++) {
             int offset = row_distr.offsets[j];
@@ -254,7 +254,7 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_forward(int n__, int idx0_
     t1.stop();
 
     /* reorder recieved blocks */
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < n_loc; i++) {
         for (int j = 0; j < comm_col.size(); j++) {
             int offset = row_distr.offsets[j];

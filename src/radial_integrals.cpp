@@ -191,7 +191,7 @@ void Radial_integrals_beta<jl_deriv>::generate()
             values_(idxrf, iat) = Spline<double>(grid_q_);
         }
 
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int iq_loc = 0; iq_loc < spl_q_.local_size(); iq_loc++) {
             int iq = spl_q_[iq_loc];
             Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_q_[iq]);
