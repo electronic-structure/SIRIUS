@@ -2,7 +2,10 @@ if(CREATE_PYTHON_MODULE)
   set(CMAKE_CXX_STANDARD 14)
   find_package(mpi4py REQUIRED)
 
-  #add_definitions("-DPYBIND11_CPP14")
+  # TODO: for some reason PYBIND11 is not happy here; explicit export of PYBIND11_CPP14 is needed for Intel compiler
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
+    add_definitions("-DPYBIND11_CPP14")
+  endif()
 
   set(pb11_src_dir "${PROJECT_SOURCE_DIR}/python_module/pybind11")
   check_git_submodule(pybind11 "${pb11_src_dir}")
@@ -19,9 +22,7 @@ if(CREATE_PYTHON_MODULE)
   set(libname py_sirius)
   pybind11_add_module(${libname} py_sirius.cpp)
 
-#  if(USE_CUDA)
-    add_dependencies(${libname} sirius)
-#  endif()
+  add_dependencies(${libname} sirius)
   target_include_directories(${libname} PRIVATE ${MPI4PY_INCLUDE_DIR})
   if(USE_MKL)
     # workaround for `Intel MKL FATAL ERROR: Cannot load libmkl_avx2.so or libmkl_def.so.`
