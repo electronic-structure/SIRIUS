@@ -40,7 +40,6 @@ using json = nlohmann::json;
 #include "radial_solver.hpp"
 #include "SHT/sht.hpp"
 #include "SHT/gaunt.hpp"
-#include "sddk.hpp"
 #include "hdf5_tree.hpp"
 #include "Band/band.hpp"
 #include "dft_ground_state.hpp"
