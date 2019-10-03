@@ -59,9 +59,6 @@ class DFT_ground_state
     /// Instance of the Density class.
     Density density_;
 
-    /// Kohn-Sham Hamiltoninan.
-    //Hamiltonian hamiltonian_;
-
     /// Lattice stress.
     Stress stress_;
 

@@ -109,11 +109,11 @@ void K_point::generate_atomic_wave_functions(const basis_functions_index& index,
                         const int lm = utils::lm(l, m);
                         phi.pw_coeffs(0).prime(igk_loc, n + offset) =
                             z * std::conj(phase_factor) * rlm[lm] *
-                            ri_values[atom_type.hubbard_orbital(index_radial_function + 1).rindex()];
+                            ri_values[atom_type.hubbard_orbital(index_radial_function).rindex()];
+                        /* copy from spin up */
                         if (ctx_.num_mag_dims() == 3) {
                             phi.pw_coeffs(1).prime(igk_loc, n + offset + 2 * l + 1) =
-                                z * std::conj(phase_factor) * rlm[lm] *
-                                ri_values[atom_type.hubbard_orbital(index_radial_function + 1).rindex()];
+                                 phi.pw_coeffs(0).prime(igk_loc, n + offset);
                         }
                         n++;
                     }

@@ -56,7 +56,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
     }
 
     Beta_projectors_gradient bp_grad_(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
-    kp.beta_projectors().prepare();
+    //kp.beta_projectors().prepare();
     bp_grad_.prepare();
 
     bool augment = false;
@@ -227,8 +227,8 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
         kp.spinor_wave_functions().deallocate(spin_range(ctx_.num_spins()), memory_t::device);
     }
 
-    kp.beta_projectors().dismiss();
-    bp_grad_.dismiss();
+    //kp.beta_projectors().dismiss();
+    //bp_grad_.dismiss();
 }
 
 void
@@ -271,7 +271,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__
     }
 
     /* initialize the beta projectors and derivatives */
-    kp__.beta_projectors().prepare();
+    //kp__.beta_projectors().prepare();
     bp_strain_deriv.prepare();
 
     /* compute the hubbard orbitals */
@@ -418,8 +418,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__
         }
     }
 
-    kp__.beta_projectors().dismiss();
-    bp_strain_deriv.dismiss();
+    //kp__.beta_projectors().dismiss();
+    //bp_strain_deriv.dismiss();
 }
 
 void

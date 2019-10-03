@@ -582,8 +582,7 @@ struct Parameters_input
             if (parser["parameters"].count("spin_orbit")) {
                 so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);
 
-                // check that the so correction is actually needed. the
-                // parameter spin_orbit can still be indicated to false
+                /* spin-orbit correction requires non-collinear magnetism */
                 if (so_correction_) {
                     num_mag_dims_ = 3;
                 }
