@@ -40,7 +40,7 @@
 namespace sirius {
 namespace mixer {
 
-// Describes a input function type to a mixer.
+// Describes a function type used for mixing.
 template <typename FUNC>
 struct FunctionProperties
 {
@@ -59,13 +59,13 @@ struct FunctionProperties
     {
     }
 
-    // The function contributes only locally to mixing (not distributed through MPI)
+    // The function is stored fully locally on each MPI rank.
     bool is_local;
 
-    // Size proportional to the local contribution of the inner product. Must not change during object lifetime.
+    // Size proportional to the local contribution of the inner product.
     std::function<std::size_t(const FUNC&)> local_size;
 
-    // Inner / inner product function
+    // Inner product function. Determines contribution to mixing.
     std::function<double(const FUNC&, const FUNC&)> inner;
 
     // scaling. x = alpha * x
@@ -239,8 +239,8 @@ class Mixer
 
     virtual ~Mixer() = default;
 
-    // Initialize function_prop by passing arguments to the function constructor. Only initialized
-    // function_prop are mixed. Must be called before first mixing.
+    // Initialize function at given index with given value. A new function object is created with "args" passed to the
+    // constructor. Only initialized functions are mixed.
     template <std::size_t FUNC_INDEX, typename... ARGS>
     void initialize_function(const typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& init_value,
                              ARGS&&... args)
@@ -282,9 +282,6 @@ class Mixer
     template <std::size_t FUNC_INDEX>
     void get_output(typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& output)
     {
-        // if (step_ < 1) {
-        //     throw std::runtime_error("Attempted access to output of mixer before mixing!");
-        // }
         const auto idx = idx_hist(step_);
         if (!std::get<FUNC_INDEX>(output_history_[idx])) {
             throw std::runtime_error("Mixer function not initialized!");
@@ -292,7 +289,7 @@ class Mixer
         std::get<FUNC_INDEX>(functions_).copy(*std::get<FUNC_INDEX>(output_history_[idx]), output);
     }
 
-    // mixing step. If the mse is below mse_min, not mixing is performed.
+    // mixing step. If the mse is below mse_min, no mixing is performed.
     double mix(double mse_min)
     {
         this->update_residual();
@@ -323,11 +320,6 @@ class Mixer
     // update rmse histroy for current step. Residuals must have been updated before.
     void update_rms()
     {
-        // if (step_ == 0) {
-        //     rmse_history_[0] = std::numeric_limits<double>::max();
-        //     return;
-        // }
-
         const auto idx    = idx_hist(step_);
         double rmse       = inner_product(false, residual_history_[idx], residual_history_[idx]);
         double rmse_local = inner_product(true, residual_history_[idx], residual_history_[idx]);
