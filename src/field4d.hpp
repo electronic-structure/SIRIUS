@@ -52,7 +52,7 @@ class Field4D
 
   protected:
     /// Default mixer.
-    std::unique_ptr<Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
+    std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
                           Periodic_function<double>, sddk::mdarray<double_complex, 4>>>
         mixer_{nullptr};
 

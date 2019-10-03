@@ -39,12 +39,13 @@
 #include "Mixer/mixer.hpp"
 
 namespace sirius {
+namespace mixer {
 template <typename... FUNCS>
 class Broyden2 : public Mixer<FUNCS...>
 {
   public:
     Broyden2(std::size_t max_history, double beta, double beta0, double beta_scaling_factor, double linear_mix_rmse_tol,
-             Communicator const& comm, const MixerFunctionProperties<FUNCS>&... function_prop)
+             Communicator const& comm, const FunctionProperties<FUNCS>&... function_prop)
         : Mixer<FUNCS...>(max_history, comm, function_prop...)
         , beta_(beta)
         , beta0_(beta0)
@@ -89,9 +90,8 @@ class Broyden2 : public Mixer<FUNCS...>
             }
             this->comm_.allreduce(S.at(memory_t::host), (int)S.size());
 
-
             // scale by global size and add local only contribution
-            auto global_size           = this->local_size(false, this->residual_history_[0]);
+            auto global_size = this->local_size(false, this->residual_history_[0]);
             this->comm_.allreduce(&global_size, 1);
             const auto local_size = this->local_size(true, this->residual_history_[0]);
             global_size += local_size;
@@ -164,6 +164,7 @@ class Broyden2 : public Mixer<FUNCS...>
     double beta_scaling_factor_;
     double linear_mix_rmse_tol_;
 };
+} // namespace mixer
 } // namespace sirius
 
 #endif // __MIXER_HPP__

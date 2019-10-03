@@ -38,17 +38,18 @@
 #include "SDDK/communicator.hpp"
 
 namespace sirius {
+namespace mixer {
 
 // Describes a input function type to a mixer.
 template <typename FUNC>
-struct MixerFunctionProperties
+struct FunctionProperties
 {
     using type = FUNC;
 
-    MixerFunctionProperties(bool is_local_, std::function<std::size_t(const FUNC&)> local_size_,
-                            std::function<double(const FUNC&, const FUNC&)> inner_,
-                            std::function<void(double, FUNC&)> scal_, std::function<void(const FUNC&, FUNC&)> copy_,
-                            std::function<void(double, const FUNC&, FUNC&)> axpy_)
+    FunctionProperties(bool is_local_, std::function<std::size_t(const FUNC&)> local_size_,
+                       std::function<double(const FUNC&, const FUNC&)> inner_, std::function<void(double, FUNC&)> scal_,
+                       std::function<void(const FUNC&, FUNC&)> copy_,
+                       std::function<void(double, const FUNC&, FUNC&)> axpy_)
         : is_local(is_local_)
         , local_size(local_size_)
         , inner(inner_)
@@ -82,7 +83,7 @@ namespace mixer_impl {
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
 struct LocalSize
 {
-    static double apply(bool local, const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop,
+    static double apply(bool local, const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
                         const std::tuple<std::unique_ptr<FUNCS>...>& x)
     {
         std::size_t size = 0;
@@ -96,7 +97,7 @@ struct LocalSize
 template <typename... FUNCS>
 struct LocalSize<0, FUNCS...>
 {
-    static double apply(bool local, const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop,
+    static double apply(bool local, const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
                         const std::tuple<std::unique_ptr<FUNCS>...>& x)
     {
         std::size_t size = 0;
@@ -110,7 +111,7 @@ struct LocalSize<0, FUNCS...>
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
 struct InnerProduct
 {
-    static double apply(bool local, const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop,
+    static double apply(bool local, const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
                         const std::tuple<std::unique_ptr<FUNCS>...>& x, const std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         double result = 0.0;
@@ -126,7 +127,7 @@ struct InnerProduct
 template <typename... FUNCS>
 struct InnerProduct<0, FUNCS...>
 {
-    static double apply(bool local, const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop,
+    static double apply(bool local, const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
                         const std::tuple<std::unique_ptr<FUNCS>...>& x, const std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         double result = 0.0;
@@ -140,7 +141,7 @@ struct InnerProduct<0, FUNCS...>
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
 struct Scaling
 {
-    static void apply(const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop, double alpha,
+    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
                       std::tuple<std::unique_ptr<FUNCS>...>& x)
     {
         if (std::get<FUNC_REVERSE_INDEX>(x)) {
@@ -153,7 +154,7 @@ struct Scaling
 template <typename... FUNCS>
 struct Scaling<0, FUNCS...>
 {
-    static void apply(const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop, double alpha,
+    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
                       std::tuple<std::unique_ptr<FUNCS>...>& x)
     {
         if (std::get<0>(x)) {
@@ -165,7 +166,7 @@ struct Scaling<0, FUNCS...>
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
 struct Copy
 {
-    static void apply(const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop,
+    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
                       const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         if (std::get<FUNC_REVERSE_INDEX>(x) && std::get<FUNC_REVERSE_INDEX>(y)) {
@@ -179,7 +180,7 @@ struct Copy
 template <typename... FUNCS>
 struct Copy<0, FUNCS...>
 {
-    static void apply(const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop,
+    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
                       const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         if (std::get<0>(x) && std::get<0>(y)) {
@@ -191,7 +192,7 @@ struct Copy<0, FUNCS...>
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
 struct Axpy
 {
-    static void apply(const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop, double alpha,
+    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
                       const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         if (std::get<FUNC_REVERSE_INDEX>(x) && std::get<FUNC_REVERSE_INDEX>(y)) {
@@ -205,7 +206,7 @@ struct Axpy
 template <typename... FUNCS>
 struct Axpy<0, FUNCS...>
 {
-    static void apply(const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop, double alpha,
+    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double alpha,
                       const std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         if (std::get<0>(x) && std::get<0>(y)) {
@@ -216,7 +217,7 @@ struct Axpy<0, FUNCS...>
 
 } // namespace mixer_impl
 
-/// Abstract mixer.
+/// Abstract mixer for variadic number of Function objects, which are described by FunctionProperties.
 template <typename... FUNCS>
 class Mixer
 {
@@ -225,7 +226,7 @@ class Mixer
 
     static constexpr std::size_t number_of_functions = sizeof...(FUNCS);
 
-    Mixer(std::size_t max_history, sddk::Communicator const& comm, const MixerFunctionProperties<FUNCS>&... function_prop)
+    Mixer(std::size_t max_history, sddk::Communicator const& comm, const FunctionProperties<FUNCS>&... function_prop)
         : step_(0)
         , max_history_(max_history)
         , comm_(comm)
@@ -291,6 +292,27 @@ class Mixer
         std::get<FUNC_INDEX>(functions_).copy(*std::get<FUNC_INDEX>(output_history_[idx]), output);
     }
 
+    // mixing step. If the mse is below mse_min, not mixing is performed.
+    double mix(double mse_min)
+    {
+        this->update_residual();
+        this->update_rms();
+        double rmse = rmse_history_[idx_hist(step_)];
+        if (rmse * rmse < mse_min) {
+            return rmse;
+        }
+
+        // call mixing implementation
+        this->mix_impl();
+
+        ++step_;
+        return rmse;
+    }
+
+  protected:
+    // Mixing implementation
+    virtual void mix_impl() = 0;
+
     // update residual histroy for current step
     void update_residual()
     {
@@ -322,28 +344,6 @@ class Mixer
 
         rmse_history_[idx_hist(step_)] = rmse;
     }
-
-    // mixing step. If the mse is below mse_min, not mixing is performed.
-    double mix(double mse_min)
-    {
-        this->update_residual();
-        this->update_rms();
-        double rmse = rmse_history_[idx_hist(step_)];
-        if (rmse * rmse < mse_min) {
-            return rmse;
-        }
-
-        // call mixing implementation
-        this->mix_impl();
-
-        ++step_;
-        return rmse;
-    }
-
-  protected:
-
-    // Mixing implementation
-    virtual void mix_impl() = 0;
 
     // Storage index of given step
     std::size_t idx_hist(std::size_t step) const
@@ -390,7 +390,7 @@ class Mixer
     std::vector<double> rmse_history_;
 
     // Properties, describing the each function type
-    std::tuple<MixerFunctionProperties<FUNCS>...> functions_;
+    std::tuple<FunctionProperties<FUNCS>...> functions_;
 
     // Input storage for next mixing step
     std::tuple<std::unique_ptr<FUNCS>...> input_;
@@ -405,6 +405,7 @@ class Mixer
     std::tuple<std::unique_ptr<FUNCS>...> tmp1_;
     std::tuple<std::unique_ptr<FUNCS>...> tmp2_;
 };
+} // namespace mixer
 } // namespace sirius
 
 #endif // __MIXER_HPP__

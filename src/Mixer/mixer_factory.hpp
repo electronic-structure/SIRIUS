@@ -32,14 +32,16 @@
 #include "input.hpp"
 
 namespace sirius {
+namespace mixer {
+
 template <typename... FUNCS>
 inline std::unique_ptr<Mixer<FUNCS...>> Mixer_factory(Mixer_input mix_cfg, Communicator const& comm,
-                                                      const MixerFunctionProperties<FUNCS>&... function_prop)
+                                                      const FunctionProperties<FUNCS>&... function_prop)
 {
     std::unique_ptr<Mixer<FUNCS...>> mixer;
 
     if (mix_cfg.type_ == "linear") {
-        mixer.reset(new Linear_mixer<FUNCS...>(mix_cfg.beta_, comm, function_prop...));
+        mixer.reset(new Linear<FUNCS...>(mix_cfg.beta_, comm, function_prop...));
     } else if (mix_cfg.type_ == "broyden1") {
         mixer.reset(new Broyden1<FUNCS...>(mix_cfg.max_history_, mix_cfg.beta_, mix_cfg.beta0_,
                                            mix_cfg.beta_scaling_factor_, comm, function_prop...));
@@ -53,6 +55,7 @@ inline std::unique_ptr<Mixer<FUNCS...>> Mixer_factory(Mixer_input mix_cfg, Commu
     return mixer;
 }
 
+} // namespace mixer
 } // namespace sirius
 
 #endif // __MIXER_HPP__

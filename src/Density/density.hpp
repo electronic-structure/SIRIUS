@@ -192,9 +192,6 @@ class Density : public Field4D
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 
-    /// Weights of G-vectors for the mixer
-    std::vector<double> gvec_mixer_weights_;
-
     /// Allocate PAW data.
     void init_paw();
 
@@ -655,8 +652,8 @@ class Density : public Field4D
             auto density_prop = mixer::density_function_property(true);
 
             this->mixer_ =
-                Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                              Periodic_function<double>, mdarray<double_complex, 4>>(
+                mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
+                                     Periodic_function<double>, mdarray<double_complex, 4>>(
                     mixer_cfg__, ctx_.comm(), func_prop, func_prop, func_prop, func_prop, density_prop);
             this->mixer_->initialize_function<0>(component(0), ctx_, lmmax_, true);
             if (ctx_.num_mag_dims() > 0)

@@ -39,12 +39,13 @@
 #include "Mixer/mixer.hpp"
 
 namespace sirius {
+namespace mixer {
 template <typename... FUNCS>
 class Broyden1 : public Mixer<FUNCS...>
 {
   public:
     Broyden1(std::size_t max_history, double beta, double beta0, double beta_scaling_factor, Communicator const& comm,
-             const MixerFunctionProperties<FUNCS>&... function_prop)
+             const FunctionProperties<FUNCS>&... function_prop)
         : Mixer<FUNCS...>(max_history, comm, function_prop...)
         , beta_(beta)
         , beta0_(beta0)
@@ -155,6 +156,7 @@ class Broyden1 : public Mixer<FUNCS...>
     double beta0_;
     double beta_scaling_factor_;
 };
+} // namespace mixer
 } // namespace sirius
 
 #endif // __MIXER_HPP__

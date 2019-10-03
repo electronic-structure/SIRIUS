@@ -39,11 +39,12 @@
 #include "Mixer/mixer.hpp"
 
 namespace sirius {
+namespace mixer {
 template <typename... FUNCS>
-class Linear_mixer : public Mixer<FUNCS...>
+class Linear : public Mixer<FUNCS...>
 {
   public:
-    Linear_mixer(double beta, Communicator const& comm, const MixerFunctionProperties<FUNCS>&... function_prop)
+    Linear(double beta, Communicator const& comm, const FunctionProperties<FUNCS>&... function_prop)
         : Mixer<FUNCS...>(2, comm, function_prop...)
         , beta_(beta)
     {
@@ -61,6 +62,7 @@ class Linear_mixer : public Mixer<FUNCS...>
   private:
     double beta_;
 };
+} // namespace mixer
 } // namespace sirius
 
 #endif // __MIXER_HPP__

@@ -184,7 +184,7 @@ void sirius::Field4D::mixer_init(Mixer_input mixer_cfg__)
     auto func_prop = mixer::full_potential_periodic_function_property(false);
     auto density_prop = mixer::density_function_property(true);
 
-    mixer_ = Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
+    mixer_ = mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
                            Periodic_function<double>, mdarray<double_complex, 4>>(
         mixer_cfg__, ctx_.comm(), func_prop, func_prop, func_prop, func_prop, density_prop);
     mixer_->initialize_function<0>(component(0), ctx_, lmmax_, true);

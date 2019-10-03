@@ -65,11 +65,6 @@ Density::Density(Simulation_context& ctx__)
     for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
         int  ig = ctx_.gvec().offset() + igloc;
         auto gv = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
-        if (ig) {
-            gvec_mixer_weights_.push_back(fourpi * unit_cell_.omega() / std::pow(gv.length(), 2));
-        } else {
-            gvec_mixer_weights_.push_back(0);
-        }
     }
 
     update();
