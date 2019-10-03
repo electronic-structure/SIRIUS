@@ -225,7 +225,7 @@ class Mixer
 
     static constexpr std::size_t number_of_functions = sizeof...(FUNCS);
 
-    Mixer(std::size_t max_history, Communicator const& comm, const MixerFunctionProperties<FUNCS>&... function_prop)
+    Mixer(std::size_t max_history, sddk::Communicator const& comm, const MixerFunctionProperties<FUNCS>&... function_prop)
         : step_(0)
         , max_history_(max_history)
         , comm_(comm)
@@ -384,7 +384,7 @@ class Mixer
     std::size_t max_history_;
 
     /// Base communicator.
-    Communicator const& comm_;
+    sddk::Communicator const& comm_;
 
     // Properties, describing the each function type
     std::vector<double> rmse_history_;

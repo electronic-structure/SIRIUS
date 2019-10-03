@@ -29,8 +29,9 @@
 #include <array>
 #include <cassert>
 #include <stdexcept>
-#include "SDDK/sddk.hpp"
 #include "Mixer/mixer.hpp"
+#include "SDDK/memory.hpp"
+#include "typedefs.hpp"
 
 namespace sirius {
 
@@ -52,7 +53,7 @@ class Field4D
   protected:
     /// Default mixer.
     std::unique_ptr<Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                          Periodic_function<double>, mdarray<double_complex, 4>>>
+                          Periodic_function<double>, sddk::mdarray<double_complex, 4>>>
         mixer_{nullptr};
 
     int lmmax_;
