@@ -24,7 +24,9 @@
 
 #include "field4d.hpp"
 #include "periodic_function.hpp"
-#include "mixer.hpp"
+#include "Mixer/mixer.hpp"
+#include "Mixer/mixer_functions.hpp"
+#include "Mixer/mixer_factory.hpp"
 #include "Symmetry/symmetrize.hpp"
 
 namespace sirius {
@@ -111,8 +113,9 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
     }
 }
 
-sirius::Field4D::Field4D(Simulation_context &ctx__, int lmmax__)
-        : ctx_(ctx__)
+sirius::Field4D::Field4D(Simulation_context& ctx__, int lmmax__)
+    : lmmax_(lmmax__)
+    , ctx_(ctx__)
 {
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         components_[i] = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, lmmax__));
@@ -147,44 +150,30 @@ void sirius::Field4D::fft_transform(int direction__)
 
 void sirius::Field4D::mixer_input()
 {
-    /* split real-space points between available ranks */
-    splindex<splindex_t::block> spl_np(ctx_.spfft().local_slice_size(), ctx_.comm_ortho_fft().size(),
-                                       ctx_.comm_ortho_fft().rank());
-
-    int k{0};
-
-    for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
-            for (int i = 0; i < static_cast<int>(component(j).f_mt(ialoc).size()); i++) {
-                mixer_->input_local(k++, component(j).f_mt(ialoc)[i]);
-            }
-        }
-        //for (int i = 0; i < ctx_.fft().local_size(); i++) {
-        for (int i = 0; i < spl_np.local_size(); i++) {
-            mixer_->input_local(k++, component(j).f_rg(spl_np[i]));
-        }
-    }
+    mixer_->set_input<0>(component(0));
+    if (ctx_.num_mag_dims() > 0)
+        mixer_->set_input<1>(component(1));
+    if (ctx_.num_mag_dims() > 1)
+        mixer_->set_input<2>(component(2));
+    if (ctx_.num_mag_dims() > 2)
+        mixer_->set_input<3>(component(3));
 }
 
 void sirius::Field4D::mixer_output()
 {
+    mixer_->get_output<0>(component(0));
+    if (ctx_.num_mag_dims() > 0)
+        mixer_->get_output<1>(component(1));
+    if (ctx_.num_mag_dims() > 1)
+        mixer_->get_output<2>(component(2));
+    if (ctx_.num_mag_dims() > 2)
+        mixer_->get_output<3>(component(3));
+
     /* split real-space points between available ranks */
     splindex<splindex_t::block> spl_np(ctx_.spfft().local_slice_size(), ctx_.comm_ortho_fft().size(),
                                        ctx_.comm_ortho_fft().rank());
 
-    int k{0};
-
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-        for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
-            auto& f_mt = const_cast<Spheric_function<function_domain_t::spectral, double>&>(component(j).f_mt(ialoc));
-            for (int i = 0; i < static_cast<int>(component(j).f_mt(ialoc).size()); i++) {
-                f_mt[i] = mixer_->output_local(k++);
-            }
-        }
-        //for (int i = 0; i < ctx_.fft().local_size(); i++) {
-        for (int i = 0; i < spl_np.local_size(); i++) {
-            component(j).f_rg(spl_np[i]) = mixer_->output_local(k++);
-        }
         ctx_.comm_ortho_fft().allgather(&component(j).f_rg(0), spl_np.global_offset(), spl_np.local_size());
         component(j).sync_mt();
     }
@@ -192,15 +181,19 @@ void sirius::Field4D::mixer_output()
 
 void sirius::Field4D::mixer_init(Mixer_input mixer_cfg__)
 {
-    int sz{0};
-    for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
-        sz += static_cast<int>(scalar().f_mt(ialoc).size());
-    }
-    sz += ctx_.spfft().local_slice_size();
+    auto func_prop = mixer::full_potential_periodic_function_property(false);
+    auto density_prop = mixer::density_function_property(true);
 
-    mixer_ = Mixer_factory<double>(0, (ctx_.num_mag_dims() + 1) * sz, mixer_cfg__, ctx_.comm());
-    mixer_input();
-    mixer_->initialize();
+    mixer_ = Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
+                           Periodic_function<double>, mdarray<double_complex, 4>>(
+        mixer_cfg__, ctx_.comm(), func_prop, func_prop, func_prop, func_prop, density_prop);
+    mixer_->initialize_function<0>(component(0), ctx_, lmmax_, true);
+    if (ctx_.num_mag_dims() > 0)
+        mixer_->initialize_function<1>(component(1), ctx_, lmmax_, true);
+    if (ctx_.num_mag_dims() > 1)
+        mixer_->initialize_function<2>(component(2), ctx_, lmmax_, true);
+    if (ctx_.num_mag_dims() > 2)
+        mixer_->initialize_function<3>(component(3), ctx_, lmmax_, true);
 }
 
 double sirius::Field4D::mix(double rss_min__)
@@ -209,11 +202,6 @@ double sirius::Field4D::mix(double rss_min__)
     double rms = mixer_->mix(rss_min__);
     mixer_output();
     return rms;
-}
-
-Mixer<double> &sirius::Field4D::mixer()
-{
-    return *mixer_;
 }
 
 } // namespace sirius

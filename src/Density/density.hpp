@@ -29,7 +29,9 @@
 #include "field4d.hpp"
 #include "periodic_function.hpp"
 #include "K_point/k_point_set.hpp"
-#include "mixer.hpp"
+#include "Mixer/mixer.hpp"
+#include "Mixer/mixer_functions.hpp"
+#include "Mixer/mixer_factory.hpp"
 
 #if defined(__GPU)
 extern "C" void update_density_rg_1_real_gpu(int size__,
@@ -189,9 +191,6 @@ class Density : public Field4D
 
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
-
-    /// Low-frequency mixer for the pseudopotential density mixing.
-    std::unique_ptr<Mixer<double_complex>> mixer_{nullptr};
 
     /// Weights of G-vectors for the mixer
     std::vector<double> gvec_mixer_weights_;
@@ -618,23 +617,15 @@ class Density : public Field4D
         if (ctx_.full_potential()) {
             Field4D::mixer_input();
         } else {
-            int ngv = ctx_.gvec().count();
-            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                if (j == 0) {
-                    for (int igloc = 0; igloc < ngv; igloc++) {
-                        //mixer_->input_local(igloc + j * ngv, component(j).f_pw_local(igloc), gvec_mixer_weights_[igloc]);
-                        mixer_->input_local(igloc + j * ngv, component(j).f_pw_local(igloc));
-                    }
-                } else {
-                    for (int igloc = 0; igloc < ngv; igloc++) {
-                        mixer_->input_local(igloc + j * ngv, component(j).f_pw_local(igloc));
-                    }
-                }
-            }
-            /* input commonly shared data */
-            for (int i = 0; i < static_cast<int>(density_matrix_.size()); i++) {
-                mixer_->input_shared(i, density_matrix_[i], 0);
-            }
+            mixer_->set_input<0>(component(0));
+            if (ctx_.num_mag_dims() > 0)
+                mixer_->set_input<1>(component(1));
+            if (ctx_.num_mag_dims() > 1)
+                mixer_->set_input<2>(component(2));
+            if (ctx_.num_mag_dims() > 2)
+                mixer_->set_input<3>(component(3));
+
+            mixer_->set_input<4>(density_matrix_);
         }
     }
 
@@ -643,17 +634,15 @@ class Density : public Field4D
         if (ctx_.full_potential()) {
             Field4D::mixer_output();
         } else {
-            int ngv = ctx_.gvec().count();
-            /* get low-frequency components */
-            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                for (int igloc = 0; igloc < ngv; igloc++) {
-                    component(j).f_pw_local(igloc) = mixer_->output_local(igloc + j * ngv);
-                }
-            }
+            mixer_->get_output<0>(component(0));
+            if (ctx_.num_mag_dims() > 0)
+                mixer_->get_output<1>(component(1));
+            if (ctx_.num_mag_dims() > 1)
+                mixer_->get_output<2>(component(2));
+            if (ctx_.num_mag_dims() > 2)
+                mixer_->get_output<3>(component(3));
 
-            for (int i = 0; i < static_cast<int>(density_matrix_.size()); i++) {
-                density_matrix_[i] = mixer_->output_shared(i);
-            }
+            mixer_->get_output<4>(density_matrix_);
         }
     }
 
@@ -662,11 +651,24 @@ class Density : public Field4D
         if (ctx_.full_potential()) {
             Field4D::mixer_init(mixer_cfg__);
         } else {
-            mixer_ = Mixer_factory<double_complex>(static_cast<int>(density_matrix_.size()),
-                                                   ctx_.gvec().count() * (1 + ctx_.num_mag_dims()),
-                                                   mixer_cfg__, ctx_.comm());
-            mixer_input();
-            mixer_->initialize();
+            auto func_prop    = mixer::pseudo_potential_periodic_function_property(false);
+            auto density_prop = mixer::density_function_property(true);
+
+            this->mixer_ =
+                Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
+                              Periodic_function<double>, mdarray<double_complex, 4>>(
+                    mixer_cfg__, ctx_.comm(), func_prop, func_prop, func_prop, func_prop, density_prop);
+            this->mixer_->initialize_function<0>(component(0), ctx_, lmmax_, true);
+            if (ctx_.num_mag_dims() > 0)
+                this->mixer_->initialize_function<1>(component(1), ctx_, lmmax_);
+            if (ctx_.num_mag_dims() > 1)
+                this->mixer_->initialize_function<2>(component(2), ctx_, lmmax_);
+            if (ctx_.num_mag_dims() > 2)
+                this->mixer_->initialize_function<3>(component(3), ctx_, lmmax_);
+
+            this->mixer_->initialize_function<4>(density_matrix_, unit_cell_.max_mt_basis_size(),
+                                                 unit_cell_.max_mt_basis_size(), ctx_.num_mag_comp(),
+                                                 unit_cell_.num_atoms());
         }
     }
 
