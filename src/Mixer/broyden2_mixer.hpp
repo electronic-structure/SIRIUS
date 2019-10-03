@@ -88,12 +88,20 @@ class Broyden2 : public Mixer<FUNCS...>
                 }
             }
             this->comm_.allreduce(S.at(memory_t::host), (int)S.size());
+
+
+            // scale by global size and add local only contribution
+            auto global_size           = this->local_size(false, this->residual_history_[0]);
+            this->comm_.allreduce(&global_size, 1);
+            const auto local_size = this->local_size(true, this->residual_history_[0]);
+            global_size += local_size;
+
             for (int j1 = 0; j1 < history_size; j1++) {
                 for (int j2 = 0; j2 < history_size; j2++) {
                     S(j1, j2) += S_local(j1, j2);
+                    S(j1, j2) /= global_size;
                 }
             }
-            // TODO: devide by total size
 
             mdarray<long double, 2> gamma_k(2 * history_size, history_size);
             gamma_k.zero();

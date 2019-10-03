@@ -45,10 +45,12 @@ struct MixerFunctionProperties
 {
     using type = FUNC;
 
-    MixerFunctionProperties(bool is_local_, std::function<double(const FUNC&, const FUNC&)> inner_,
+    MixerFunctionProperties(bool is_local_, std::function<std::size_t(const FUNC&)> local_size_,
+                            std::function<double(const FUNC&, const FUNC&)> inner_,
                             std::function<void(double, FUNC&)> scal_, std::function<void(const FUNC&, FUNC&)> copy_,
                             std::function<void(double, const FUNC&, FUNC&)> axpy_)
         : is_local(is_local_)
+        , local_size(local_size_)
         , inner(inner_)
         , scal(scal_)
         , copy(copy_)
@@ -59,7 +61,10 @@ struct MixerFunctionProperties
     // The function contributes only locally to mixing (not distributed through MPI)
     bool is_local;
 
-    // Inner / inner product funtion
+    // Size proportional to the local contribution of the inner product. Must not change during object lifetime.
+    std::function<std::size_t(const FUNC&)> local_size;
+
+    // Inner / inner product function
     std::function<double(const FUNC&, const FUNC&)> inner;
 
     // scaling. x = alpha * x
@@ -74,6 +79,34 @@ struct MixerFunctionProperties
 
 // Implemenation of templated recursive calls through tuples
 namespace mixer_impl {
+template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
+struct LocalSize
+{
+    static double apply(bool local, const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop,
+                        const std::tuple<std::unique_ptr<FUNCS>...>& x)
+    {
+        std::size_t size = 0;
+        if (std::get<FUNC_REVERSE_INDEX>(function_prop).is_local == local && std::get<FUNC_REVERSE_INDEX>(x)) {
+            size += std::get<FUNC_REVERSE_INDEX>(function_prop).local_size(*std::get<FUNC_REVERSE_INDEX>(x));
+        }
+        return size + LocalSize<FUNC_REVERSE_INDEX - 1, FUNCS...>::apply(local, function_prop, x);
+    }
+};
+
+template <typename... FUNCS>
+struct LocalSize<0, FUNCS...>
+{
+    static double apply(bool local, const std::tuple<MixerFunctionProperties<FUNCS>...>& function_prop,
+                        const std::tuple<std::unique_ptr<FUNCS>...>& x)
+    {
+        std::size_t size = 0;
+        if (std::get<0>(function_prop).is_local == local && std::get<0>(x)) {
+            size += std::get<0>(function_prop).local_size(*std::get<0>(x));
+        }
+        return size;
+    }
+};
+
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
 struct InnerProduct
 {
@@ -279,8 +312,13 @@ class Mixer
 
         comm_.allreduce(&rmse, 1);
         rmse += rmse_local;
-        // TODO: devide by what size?
-        rmse = std::sqrt(rmse);
+
+        auto size                  = this->local_size(false, residual_history_[idx]);
+        const auto size_local_only = this->local_size(true, residual_history_[idx]);
+        this->comm_.allreduce(&size, 1);
+        size += size_local_only;
+
+        rmse = std::sqrt(rmse / size);
 
         rmse_history_[idx_hist(step_)] = rmse;
     }
@@ -302,7 +340,7 @@ class Mixer
         return rmse;
     }
 
-    // protected:
+  protected:
 
     // Mixing implementation
     virtual void mix_impl() = 0;
@@ -311,6 +349,11 @@ class Mixer
     std::size_t idx_hist(std::size_t step) const
     {
         return step % max_history_;
+    }
+
+    double local_size(bool local, const std::tuple<std::unique_ptr<FUNCS>...>& x)
+    {
+        return mixer_impl::LocalSize<sizeof...(FUNCS) - 1, FUNCS...>::apply(local, functions_, x);
     }
 
     double inner_product(bool local, const std::tuple<std::unique_ptr<FUNCS>...>& x,
