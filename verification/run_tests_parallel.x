@@ -5,8 +5,8 @@ then
     export SIRIUS_BINARIES=$(pwd)/../build/apps/dft_loop
 fi
 
-if [[ $HOST == nid* ]]; then
-    SRUN_CMD=srun
+if [[ $(type -f srun 2> /dev/null) ]]; then
+    SRUN_CMD="srun -u -n4 -c2"
 else
     SRUN_CMD="mpi -np 4"
 fi
@@ -22,7 +22,12 @@ for f in ./*; do
         echo "running '${f}'"
         (
             cd ${f}
-            ${SRUN_CMD} ${exe} --test_against=output_ref.json --std_evp_solver_name=scalapack --gen_evp_solver_name=scalapack --mpi_grid="2 2"
+            ${SRUN_CMD} ${exe} \
+                --test_against=output_ref.json \
+                --control.std_evp_solver_name=scalapack \
+                --control.gen_evp_solver_name=scalapack \
+                --control.mpi_grid_dims=2:2 \
+                --control.processing_unit=cpu
             err=$?
 
             if [ ${err} == 0 ]; then
@@ -31,7 +36,7 @@ for f in ./*; do
                 echo "'${f}' failed"
                 exit ${err}
             fi
-        )
+        ) || exit ${err}
     fi
 done
 

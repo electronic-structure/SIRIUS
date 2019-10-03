@@ -27,7 +27,6 @@
 
 #include "SHT/gaunt.hpp"
 #include "atom_symmetry_class.hpp"
-//#include "sddk.hpp"
 #include "spheric_function.hpp"
 
 namespace sirius {

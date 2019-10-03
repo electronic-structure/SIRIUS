@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -252,7 +252,7 @@ class Unit_cell
     void write_cif();
 
     /// Write structure to JSON file.
-    json serialize();
+    json serialize(bool cart_pos__ = false) const;
 
     /// Set matrix of lattice vectors.
     /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
@@ -558,10 +558,44 @@ class Unit_cell
     }
 
     double min_bond_length() const;
+
+    /// Calculate total number of Hubbard wave-functions and offset for each atom in the global index.
+    inline std::pair<int, std::vector<int>> num_wf_with_U() const
+    {
+        std::vector<int> offs(this->num_atoms(), -1);
+        int counter{0};
+
+        /* we loop over atoms to check which atom has hubbard orbitals and then
+           compute the number of hubbard orbitals associated to it */
+        for (auto ia = 0; ia < this->num_atoms(); ia++) {
+            auto& atom = this->atom(ia);
+            if (atom.type().hubbard_correction()) {
+                offs[ia] = counter;
+                int fact{1};
+                /* there is a factor two when the pseudo-potential has no SO but
+                   we do full non colinear magnetism. Note that we can consider
+                   now multiple orbitals calculations. The API still does not
+                   support it */
+                if ((this->parameters().num_mag_dims() == 3) && (!atom.type().spin_orbit_coupling())) {
+                    fact = 2;
+                }
+                counter += fact * atom.type().hubbard_indexb_wfc().size();
+            }
+        }
+        return std::make_pair(counter, offs);
+    }
+
+    /// Return 'True' if at least one atom in the unit cell has an augmentation charge.
+    inline bool augment() const
+    {
+        bool a{false};
+        for (auto iat = 0; iat < num_atom_types(); iat++) {
+            a |= atom_type(iat).augment();
+        }
+        return a;
+    }
 };
-
-
 
 } // namespace sirius
 
-#endif // __UNIT_CELL_H__
+#endif // __UNIT_CELL_HPP__

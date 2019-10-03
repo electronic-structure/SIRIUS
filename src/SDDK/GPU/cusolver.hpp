@@ -1,3 +1,9 @@
+/** \file cusolver.hpp
+ *
+ *  \brief Interface to CUDA eigen-solver library.
+ *
+ */
+
 #ifndef __CUSOLVER_HPP__
 #define __CUSOLVER_HPP__
 

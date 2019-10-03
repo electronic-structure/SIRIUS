@@ -26,90 +26,87 @@
 
 namespace sirius {
 
-    void K_point::generate_fv_states() {
-        PROFILE("sirius::K_point::generate_fv_states");
+void K_point::generate_fv_states()
+{
+    PROFILE("sirius::K_point::generate_fv_states");
 
-        if (!ctx_.full_potential()) {
-            return;
+    if (!ctx_.full_potential()) {
+        return;
+    }
+
+    mdarray<double_complex, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), memory_t::host);
+    mdarray<double_complex, 2> tmp(unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
+
+    if (ctx_.processing_unit() == device_t::GPU) {
+        fv_eigen_vectors_slab().pw_coeffs(0).allocate(memory_t::device);
+        fv_eigen_vectors_slab().pw_coeffs(0).copy_to(memory_t::device, 0, ctx_.num_fv_states());
+        alm.allocate(memory_t::device);
+        tmp.allocate(memory_t::device);
+    }
+
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto location = fv_eigen_vectors_slab().spl_num_atoms().location(ia);
+        /* number of alm coefficients for atom */
+        int mt_aw_size = unit_cell_.atom(ia).mt_aw_basis_size();
+        int mt_lo_size = unit_cell_.atom(ia).mt_lo_basis_size();
+        /* generate matching coefficients for all G-vectors */
+        alm_coeffs_loc_->generate<false>(unit_cell_.atom(ia), alm);
+
+        double_complex* tmp_ptr_gpu = (ctx_.processing_unit() == device_t::GPU) ? tmp.at(memory_t::device) : nullptr;
+        mdarray<double_complex, 2> tmp1(tmp.at(memory_t::host), tmp_ptr_gpu, mt_aw_size, ctx_.num_fv_states());
+
+        /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
+        if (ctx_.processing_unit() == device_t::CPU) {
+            linalg<device_t::CPU>::gemm(1, 0, mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(), alm.at(memory_t::host),
+                                        alm.ld(), fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::host),
+                                        fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(), tmp1.at(memory_t::host),
+                                        tmp1.ld());
         }
-
-        mdarray<double_complex, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), memory_t::host);
-        mdarray<double_complex, 2> tmp(unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
-
-        if (ctx_.processing_unit() == device_t::GPU) {
-            fv_eigen_vectors_slab().pw_coeffs(0).allocate(memory_t::device);
-            fv_eigen_vectors_slab().pw_coeffs(0).copy_to(memory_t::device, 0, ctx_.num_fv_states());
-            alm.allocate(memory_t::device);
-            tmp.allocate(memory_t::device);
-        }
-
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto location = fv_eigen_vectors_slab().spl_num_atoms().location(ia);
-            /* number of alm coefficients for atom */
-            int mt_aw_size = unit_cell_.atom(ia).mt_aw_basis_size();
-            int mt_lo_size = unit_cell_.atom(ia).mt_lo_basis_size();
-            /* generate matching coefficients for all G-vectors */
-            alm_coeffs_loc_->generate(ia, alm);
-
-            double_complex *tmp_ptr_gpu = (ctx_.processing_unit() == device_t::GPU) ? tmp.at(memory_t::device)
-                                                                                    : nullptr;
-            mdarray<double_complex, 2> tmp1(tmp.at(memory_t::host), tmp_ptr_gpu, mt_aw_size, ctx_.num_fv_states());
-
-            /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
-            if (ctx_.processing_unit() == device_t::CPU) {
-                linalg<device_t::CPU>::gemm(1, 0, mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
-                                            alm.at(memory_t::host), alm.ld(),
-                                            fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::host),
-                                            fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),
-                                            tmp1.at(memory_t::host), tmp1.ld());
-            }
 #ifdef __GPU
-            if (ctx_.processing_unit() == device_t::GPU) {
-                alm.copy_to(memory_t::device, 0, mt_aw_size * num_gkvec_loc());
-                linalg<device_t::GPU>::gemm(1, 0, mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
-                                            alm.at(memory_t::device), alm.ld(),
-                                            fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::device),
-                                            fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),
-                                            tmp1.at(memory_t::device), tmp1.ld());
-                tmp1.copy_to(memory_t::host);
-            }
+        if (ctx_.processing_unit() == device_t::GPU) {
+            alm.copy_to(memory_t::device, 0, mt_aw_size * num_gkvec_loc());
+            linalg<device_t::GPU>::gemm(
+                1, 0, mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(), alm.at(memory_t::device), alm.ld(),
+                fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::device),
+                fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(), tmp1.at(memory_t::device), tmp1.ld());
+            tmp1.copy_to(memory_t::host);
+        }
 #endif
 
-            comm_.reduce(tmp1.at(memory_t::host), static_cast<int>(tmp1.size()), location.rank);
+        comm_.reduce(tmp1.at(memory_t::host), static_cast<int>(tmp1.size()), location.rank);
 
 #ifdef __PRINT_OBJECT_CHECKSUM
-            auto z1 = tmp1.checksum();
-            DUMP("checksum(tmp1): %18.10f %18.10f", std::real(z1), std::imag(z1));
+        auto z1 = tmp1.checksum();
+        DUMP("checksum(tmp1): %18.10f %18.10f", std::real(z1), std::imag(z1));
 #endif
 
-            if (location.rank == comm_.rank()) {
-                int offset1 = fv_states().offset_mt_coeffs(location.local_index);
-                int offset2 = fv_eigen_vectors_slab().offset_mt_coeffs(location.local_index);
-                for (int i = 0; i < ctx_.num_fv_states(); i++) {
-                    /* aw block */
-                    std::memcpy(fv_states().mt_coeffs(0).prime().at(memory_t::host, offset1, i),
-                                tmp1.at(memory_t::host, 0, i),
-                                mt_aw_size * sizeof(double_complex));
-                    /* lo block */
-                    if (mt_lo_size) {
-                        std::memcpy(fv_states().mt_coeffs(0).prime().at(memory_t::host, offset1 + mt_aw_size, i),
-                                    fv_eigen_vectors_slab().mt_coeffs(0).prime().at(memory_t::host, offset2, i),
-                                    mt_lo_size * sizeof(double_complex));
-                    }
+        if (location.rank == comm_.rank()) {
+            int offset1 = fv_states().offset_mt_coeffs(location.local_index);
+            int offset2 = fv_eigen_vectors_slab().offset_mt_coeffs(location.local_index);
+            for (int i = 0; i < ctx_.num_fv_states(); i++) {
+                /* aw block */
+                std::memcpy(fv_states().mt_coeffs(0).prime().at(memory_t::host, offset1, i),
+                            tmp1.at(memory_t::host, 0, i), mt_aw_size * sizeof(double_complex));
+                /* lo block */
+                if (mt_lo_size) {
+                    std::memcpy(fv_states().mt_coeffs(0).prime().at(memory_t::host, offset1 + mt_aw_size, i),
+                                fv_eigen_vectors_slab().mt_coeffs(0).prime().at(memory_t::host, offset2, i),
+                                mt_lo_size * sizeof(double_complex));
                 }
             }
         }
+    }
 
-#pragma omp parallel for
-        for (int i = 0; i < ctx_.num_fv_states(); i++) {
-            /* G+k block */
-            std::memcpy(fv_states().pw_coeffs(0).prime().at(memory_t::host, 0, i),
-                        fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::host, 0, i),
-                        num_gkvec_loc() * sizeof(double_complex));
-        }
+    #pragma omp parallel for
+    for (int i = 0; i < ctx_.num_fv_states(); i++) {
+        /* G+k block */
+        std::memcpy(fv_states().pw_coeffs(0).prime().at(memory_t::host, 0, i),
+                    fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::host, 0, i),
+                    num_gkvec_loc() * sizeof(double_complex));
+    }
 
-        if (ctx_.processing_unit() == device_t::GPU) {
-            fv_eigen_vectors_slab().pw_coeffs(0).deallocate(memory_t::device);
-        }
+    if (ctx_.processing_unit() == device_t::GPU) {
+        fv_eigen_vectors_slab().pw_coeffs(0).deallocate(memory_t::device);
     }
 }
+} // namespace sirius

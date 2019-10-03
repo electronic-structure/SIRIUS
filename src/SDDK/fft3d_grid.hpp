@@ -22,18 +22,18 @@
  *  \brief Contains declaration and implementation of sddk::FFT3D_grid class.
  */
 
+#include <array>
+#include <cassert>
+
 #ifndef __FFT3D_GRID_HPP__
 #define __FFT3D_GRID_HPP__
 
 namespace sddk {
 
 /// Handling of FFT grids.
-class FFT3D_grid // TODO: inherit from std::array<int, 3>
+class FFT3D_grid : public std::array<int, 3>
 {
   private:
-    /// Size of each dimension.
-    std::array<int, 3> grid_size_;
-
     /// Reciprocal space range.
     std::array<std::pair<int, int>, 3> grid_limits_;
 
@@ -59,23 +59,23 @@ class FFT3D_grid // TODO: inherit from std::array<int, 3>
     void find_grid_size(std::array<int, 3> initial_dims__)
     {
         for (int i = 0; i < 3; i++) {
-            grid_size_[i] = find_grid_size(initial_dims__[i]);
+            (*this)[i] = find_grid_size(initial_dims__[i]);
 
-            grid_limits_[i].second = grid_size_[i] / 2;
-            grid_limits_[i].first  = grid_limits_[i].second - grid_size_[i] + 1;
+            grid_limits_[i].second = (*this)[i] / 2;
+            grid_limits_[i].first  = grid_limits_[i].second - (*this)[i] + 1;
         }
 
-        for (int x = 0; x < size(0); x++) {
+        for (int x = 0; x < (*this)[0]; x++) {
             if (coord_by_freq<0>(freq_by_coord<0>(x)) != x) {
                 throw std::runtime_error("FFT3D_grid::find_grid_size(): wrong mapping of x-coordinates");
             }
         }
-        for (int x = 0; x < size(1); x++) {
+        for (int x = 0; x < (*this)[1]; x++) {
             if (coord_by_freq<1>(freq_by_coord<1>(x)) != x) {
                 throw std::runtime_error("FFT3D_grid::find_grid_size(): wrong mapping of y-coordinates");
             }
         }
-        for (int x = 0; x < size(2); x++) {
+        for (int x = 0; x < (*this)[2]; x++) {
             if (coord_by_freq<2>(freq_by_coord<2>(x)) != x) {
                 throw std::runtime_error("FFT3D_grid::find_grid_size(): wrong mapping of z-coordinates");
             }
@@ -84,15 +84,15 @@ class FFT3D_grid // TODO: inherit from std::array<int, 3>
 
   public:
 
+    /// Default constructor.
+    FFT3D_grid()
+    {
+    }
+
     /// Create FFT grid with initial dimensions.
     FFT3D_grid(std::array<int, 3> initial_dims__)
     {
         find_grid_size(initial_dims__);
-    }
-
-    std::array<int, 3> grid_size() const
-    {
-        return grid_size_;
     }
 
     /// Limits of a given dimension.
@@ -102,17 +102,10 @@ class FFT3D_grid // TODO: inherit from std::array<int, 3>
         return grid_limits_[idim__];
     }
 
-    /// Size of a given dimension.
-    inline int size(int idim__) const
-    {
-        assert(idim__ >= 0 && idim__ < 3);
-        return grid_size_[idim__];
-    }
-
     /// Total size of the FFT grid.
-    inline int size() const
+    inline int num_points() const
     {
-        return grid_size_[0] * grid_size_[1] * grid_size_[2];
+        return (*this)[0] * (*this)[1] * (*this)[2];
     }
 
     /// Get coordinate in range [0, N_d) by the frequency index.
@@ -120,7 +113,7 @@ class FFT3D_grid // TODO: inherit from std::array<int, 3>
     inline int coord_by_freq(int i__) const
     {
         if (i__ < 0) {
-            i__ += grid_size_[d];
+            i__ += (*this)[d];
         }
         return i__;
     }
@@ -136,7 +129,7 @@ class FFT3D_grid // TODO: inherit from std::array<int, 3>
     inline int freq_by_coord(int x__) const
     {
         if (x__ > grid_limits_[d].second) {
-            x__ -= grid_size_[d];
+            x__ -= (*this)[d];
         }
         return x__;
     }
@@ -150,7 +143,7 @@ class FFT3D_grid // TODO: inherit from std::array<int, 3>
     /// Linear index inside FFT buffer by grid coordinates.
     inline int index_by_coord(int x__, int y__, int z__) const
     {
-        return (x__ + y__ * grid_size_[0] + z__ * grid_size_[0] * grid_size_[1]);
+        return (x__ + (*this)[0] * (y__  + z__ * (*this)[1]));
     }
 
     /// Return linear index of a plane-wave harmonic with fractional coordinates (i0, i1, i2) inside FFT buffer.

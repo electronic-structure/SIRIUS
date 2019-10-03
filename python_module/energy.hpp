@@ -74,7 +74,7 @@ double energy_bxc(const Density& density, const Potential& potential, int num_ma
 {
     double ebxc{0};
     for (int j = 0; j < num_mag_dims; j++) {
-        ebxc += density.magnetization(j).inner(potential.effective_magnetic_field(j));
+        ebxc += sirius::inner(density.magnetization(j), potential.effective_magnetic_field(j));
     }
     return ebxc;
 }

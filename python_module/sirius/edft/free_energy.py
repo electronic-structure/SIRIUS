@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.constants import physical_constants
 from ..coefficient_array import CoefficientArray
+from .smearing import Smearing
 
 
 def _s(x):
@@ -28,7 +29,7 @@ def s(x):
         return _s(x)
 
 
-class FreeEnergy:
+class OldFreeEnergy:
     def __init__(self, H, energy, T):
         """
 
@@ -57,3 +58,39 @@ class FreeEnergy:
         entropy = s(np.sqrt(fn/ns))
         E, HX = self.energy.compute(X)
         return E + self.kb * self.T * np.real(np.sum(self.kw*entropy)), HX
+
+
+class FreeEnergy:
+    """
+    copied from Baarman implementation
+    """
+
+    def __init__(self, E, T, H, smearing):
+        """
+        Keyword Arguments:
+        energy      -- total energy object
+        temperature -- temperature in Kelvin
+        H           -- Hamiltonian
+        smearing    --
+        """
+        self.energy = E
+        self.T = T
+        self.H = H
+        assert isinstance(smearing, Smearing)
+        self.smearing = smearing
+        if self.H.hamiltonian.ctx().num_mag_dims() == 0:
+            self.scale = 0.5
+        else:
+            self.scale = 1
+
+    def __call__(self, cn, fn):
+        """
+        Keyword Arguments:
+        cn   -- PW coefficients
+        fn   -- occupations numbers
+        """
+
+        self.energy.kpointset.fn = fn
+        E, HX = self.energy.compute(cn)
+        entropy = self.smearing.entropy(fn)
+        return E + entropy, HX

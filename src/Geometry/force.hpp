@@ -25,15 +25,16 @@
 #ifndef __FORCE_HPP__
 #define __FORCE_HPP__
 
-#include "periodic_function.hpp"
-#include "Density/augmentation_operator.hpp"
-#include "Beta_projectors/beta_projectors.hpp"
-#include "Beta_projectors/beta_projectors_gradient.hpp"
-#include "non_local_functor.hpp"
+#include "Hamiltonian/hamiltonian.hpp"
 
 namespace sirius {
-
-using namespace geometry3d;
+/* forward declaration */
+class Simulation_context;
+class Density;
+class Potential;
+class K_point;
+class K_point_set;
+class Hamiltonian_k;
 
 /// Compute atomic forces.
 class Force
@@ -47,36 +48,34 @@ class Force
 
     K_point_set& kset_;
 
-    Hamiltonian& hamiltonian_;
+    sddk::mdarray<double, 2> forces_vloc_;
 
-    mdarray<double, 2> forces_vloc_;
+    sddk::mdarray<double, 2> forces_us_;
 
-    mdarray<double, 2> forces_us_;
+    sddk::mdarray<double, 2> forces_nonloc_;
 
-    mdarray<double, 2> forces_nonloc_;
+    sddk::mdarray<double, 2> forces_usnl_;
 
-    mdarray<double, 2> forces_usnl_;
+    sddk::mdarray<double, 2> forces_core_;
 
-    mdarray<double, 2> forces_core_;
+    sddk::mdarray<double, 2> forces_ewald_;
 
-    mdarray<double, 2> forces_ewald_;
+    sddk::mdarray<double, 2> forces_scf_corr_;
 
-    mdarray<double, 2> forces_scf_corr_;
+    sddk::mdarray<double, 2> forces_hubbard_;
 
-    mdarray<double, 2> forces_hubbard_;
+    sddk::mdarray<double, 2> forces_hf_;
 
-    mdarray<double, 2> forces_hf_;
+    sddk::mdarray<double, 2> forces_rho_;
 
-    mdarray<double, 2> forces_rho_;
+    sddk::mdarray<double, 2> forces_ibs_;
 
-    mdarray<double, 2> forces_ibs_;
-
-    mdarray<double, 2> forces_total_;
+    sddk::mdarray<double, 2> forces_total_;
 
     template <typename T>
-    void add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces__) const;
+    void add_k_point_contribution(K_point& kp__, sddk::mdarray<double, 2>& forces__) const;
 
-    void symmetrize(mdarray<double, 2>& forces__) const;
+    void symmetrize(sddk::mdarray<double, 2>& forces__) const;
 
     /** In the second-variational approach we need to compute the following expression for the k-dependent
      *  contribution to the forces:
@@ -90,142 +89,102 @@ class Force
      *      q_{ij} = \sum_{l\sigma}n_{l{\bf k}} c_{\sigma i}^{l{\bf k}*}c_{\sigma j}^{l{\bf k}}
      *  \f]
      */
-    void compute_dmat(K_point* kp__, dmatrix<double_complex>& dm__) const;
+    void compute_dmat(K_point* kp__, sddk::dmatrix<double_complex>& dm__) const;
 
     /** Compute the forces for the simplex LDA+U method not the fully rotationally invariant one.
      *  It can not be used for LDA+U+SO either.
      *
      *  It is based on this reference : PRB 84, 161102(R) (2011)
      */
-    void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_);
+    void hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, sddk::mdarray<double, 2>& forceh_);
 
-    void add_ibs_force(K_point* kp__, mdarray<double, 2>& ffac__, mdarray<double, 2>& forcek__) const;
+    void add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, sddk::mdarray<double, 2>& ffac__, sddk::mdarray<double, 2>& forcek__) const;
 
   public:
-    Force(Simulation_context& ctx__, Density& density__, Potential& potential__, Hamiltonian& h__, K_point_set& kset__)
-        : ctx_(ctx__)
-        , density_(density__)
-        , potential_(potential__)
-        , kset_(kset__)
-        , hamiltonian_(h__)
-    {
-    }
+    Force(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__);
 
-    mdarray<double, 2> const& calc_forces_vloc();
+    sddk::mdarray<double, 2> const& calc_forces_vloc();
 
-    inline mdarray<double, 2> const& forces_vloc() const
+    inline sddk::mdarray<double, 2> const& forces_vloc() const
     {
         return forces_vloc_;
     }
 
-    mdarray<double, 2> const& calc_forces_nonloc();
+    sddk::mdarray<double, 2> const& calc_forces_nonloc();
 
-    inline mdarray<double, 2> const& forces_nonloc() const
+    inline sddk::mdarray<double, 2> const& forces_nonloc() const
     {
         return forces_nonloc_;
     }
 
-    mdarray<double, 2> const& calc_forces_core();
+    sddk::mdarray<double, 2> const& calc_forces_core();
 
-    inline mdarray<double, 2> const& forces_core() const
+    inline sddk::mdarray<double, 2> const& forces_core() const
     {
         return forces_core_;
     }
 
-    mdarray<double, 2> const& calc_forces_scf_corr();
+    sddk::mdarray<double, 2> const& calc_forces_scf_corr();
 
-    inline mdarray<double, 2> const& forces_scf_corr() const
+    inline sddk::mdarray<double, 2> const& forces_scf_corr() const
     {
         return forces_scf_corr_;
     }
 
-    mdarray<double, 2> const& calc_forces_us();
+    sddk::mdarray<double, 2> const& calc_forces_us();
 
-    inline mdarray<double, 2> const& forces_us() const
+    inline sddk::mdarray<double, 2> const& forces_us() const
     {
         return forces_us_;
     }
 
-    mdarray<double, 2> const& calc_forces_ewald();
+    sddk::mdarray<double, 2> const& calc_forces_ewald();
 
-    mdarray<double, 2> const& forces_ewald() const
+    sddk::mdarray<double, 2> const& forces_ewald() const
     {
         return forces_ewald_;
     }
 
-    mdarray<double, 2> const& calc_forces_hubbard();
+    sddk::mdarray<double, 2> const& calc_forces_hubbard();
 
-    inline mdarray<double, 2> const& forces_hubbard() const
+    inline sddk::mdarray<double, 2> const& forces_hubbard() const
     {
         return forces_hubbard_;
     }
 
-    mdarray<double, 2> const& calc_forces_usnl();
+    sddk::mdarray<double, 2> const& calc_forces_usnl();
 
-    mdarray<double, 2> const& calc_forces_hf();
+    sddk::mdarray<double, 2> const& calc_forces_hf();
 
-    inline mdarray<double, 2> const& forces_hf() const
+    inline sddk::mdarray<double, 2> const& forces_hf() const
     {
         return forces_hf_;
     }
 
-    mdarray<double, 2> const& calc_forces_rho();
+    sddk::mdarray<double, 2> const& calc_forces_rho();
 
-    inline mdarray<double, 2> const& forces_rho() const
+    inline sddk::mdarray<double, 2> const& forces_rho() const
     {
         return forces_rho_;
     }
 
-    mdarray<double, 2> const& calc_forces_ibs();
+    sddk::mdarray<double, 2> const& calc_forces_ibs();
 
-    inline mdarray<double, 2> const& forces_ibs() const
+    inline sddk::mdarray<double, 2> const& forces_ibs() const
     {
         return forces_ibs_;
     }
 
-    mdarray<double, 2> const& calc_forces_total();
+    sddk::mdarray<double, 2> const& calc_forces_total();
 
-    inline mdarray<double, 2> const& forces_total() const
+    inline sddk::mdarray<double, 2> const& forces_total() const
     {
         return forces_total_;
     }
 
-    inline void print_info()
-    {
-        if (ctx_.comm().rank() == 0) {
-            auto print_forces = [&](mdarray<double, 2> const& forces) {
-                for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                    printf("atom %4i    force = %15.7f  %15.7f  %15.7f \n", ctx_.unit_cell().atom(ia).type_id(),
-                           forces(0, ia), forces(1, ia), forces(2, ia));
-                }
-            };
-
-            printf("===== total Forces in Ha/bohr =====\n");
-            print_forces(forces_total());
-
-            printf("===== ultrasoft contribution from Qij =====\n");
-            print_forces(forces_us());
-
-            printf("===== non-local contribution from Beta-projectors =====\n");
-            print_forces(forces_nonloc());
-
-            printf("===== contribution from local potential =====\n");
-            print_forces(forces_vloc());
-
-            printf("===== contribution from core density =====\n");
-            print_forces(forces_core());
-
-            printf("===== Ewald forces from ions =====\n");
-            print_forces(forces_ewald());
-
-            if (ctx_.hubbard_correction()) {
-                printf("===== Ewald forces from hubbard correction =====\n");
-                print_forces(forces_hubbard());
-            }
-        }
-    }
+    void print_info();
 };
 
 } // namespace sirius
 
-#endif // __FORCES_HAMILTONIAN__
+#endif // __FORCE_HPP__

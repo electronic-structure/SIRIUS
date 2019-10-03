@@ -26,6 +26,7 @@
 #define __POTENTIAL_HPP__
 
 #include "Density/density.hpp"
+#include "Hubbard/hubbard.hpp"
 #include "xc_functional.hpp"
 
 namespace sirius {
@@ -136,6 +137,13 @@ class Potential : public Field4D
     int max_paw_basis_size_{0};
 
     mdarray<double, 2> aux_bf_;
+
+    /// Hubbard potential correction.
+    std::unique_ptr<Hubbard> U_;
+
+    /// A debug variable to scale the density when computing the XC potential.
+    /** This is used to verify the variational derivative of Exc */
+    double scale_rho_xc_{1};
 
     void init_PAW();
 
@@ -338,7 +346,7 @@ class Potential : public Field4D
 
         /* create list of XC functionals */
         for (auto& xc_label : ctx_.xc_functionals()) {
-            xc_func_.push_back(std::move(XC_functional(ctx_.fft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins())));
+            xc_func_.push_back(std::move(XC_functional(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins())));
         }
 
         using pf = Periodic_function<double>;
@@ -354,12 +362,12 @@ class Potential : public Field4D
         xc_energy_density_->allocate_mt(false);
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            vsigma_[ispn] = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
+            vsigma_[ispn] = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
         }
 
         if (!ctx_.full_potential()) {
-            local_potential_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
-            dveff_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
+            local_potential_ = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
+            dveff_ = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
             dveff_->zero();
         }
 
@@ -394,6 +402,10 @@ class Potential : public Field4D
 
         /* in case of PAW */
         init_PAW();
+
+        if (ctx_.hubbard_correction()) {
+            U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
+        }
 
         update();
     }
@@ -1141,15 +1153,21 @@ class Potential : public Field4D
     /// Integral of \f$ \rho({\bf r}) V^{XC}({\bf r}) \f$.
     double energy_vxc(Density const& density__) const
     {
-        return density__.rho().inner(xc_potential());
+        return inner(density__.rho(), xc_potential());
+    }
+
+    /// Integral of \f$ \rho_{c}({\bf r}) V^{XC}({\bf r}) \f$.
+    double energy_vxc_core(Density const& density__) const
+    {
+        return inner(density__.rho_pseudo_core(), xc_potential());
     }
 
     /// Integral of \f$ \rho({\bf r}) \epsilon^{XC}({\bf r}) \f$.
     double energy_exc(Density const& density__) const
     {
-        double exc = density__.rho().inner(xc_energy_density());
+        double exc = scale_rho_xc_ * inner(density__.rho(), xc_energy_density());
         if (!ctx_.full_potential()) {
-            exc += inner(density__.rho_pseudo_core(), xc_energy_density());
+            exc += scale_rho_xc_ * inner(density__.rho_pseudo_core(), xc_energy_density());
         }
         return exc;
     }
@@ -1180,13 +1198,18 @@ class Potential : public Field4D
         Field4D::symmetrize(&effective_potential(), &effective_magnetic_field(0),
                             &effective_magnetic_field(1), &effective_magnetic_field(2));
     }
-};
 
-// #include "generate_d_operator_matrix.hpp"
-// #include "generate_pw_coefs.hpp"
-// #include "xc.hpp"
-// #include "poisson.hpp"
-// #include "paw_potential.hpp"
+    /// Set the scale_rho_xc variable.
+    inline void scale_rho_xc(double d__)
+    {
+        scale_rho_xc_ = d__;
+    }
+
+    Hubbard& U() const
+    {
+        return *U_;
+    }
+};
 
 }; // namespace sirius
 

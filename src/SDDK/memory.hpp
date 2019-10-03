@@ -39,12 +39,14 @@
 
 namespace sddk {
 
+/// Check is the type is a complex number; by default it is not.
 template <typename T>
 struct is_complex
 {
     constexpr static bool value{false};
 };
 
+/// Check is the type is a complex number: for std::complex<T> it is true.
 template<typename T>
 struct is_complex<std::complex<T>>
 {
@@ -131,6 +133,7 @@ inline device_t get_device_t(memory_t mem__)
     return device_t::CPU; // make compiler happy
 }
 
+/// Get device type from the string.
 inline device_t get_device_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
@@ -482,6 +485,7 @@ class memory_pool
     template <typename T>
     T* allocate(size_t num_elements__)
     {
+#if defined(__USE_MEMORY_POOL)
         /* memory block descriptor returns an unaligned memory; here we compute the the aligment value */
         size_t align_size = std::max(size_t(64), alignof(T));
         /* size of the memory block in bytes */
@@ -541,54 +545,36 @@ class memory_pool
         /* add to the hash table */
         map_ptr_[aligned_ptr] = msb;
         return reinterpret_cast<T*>(aligned_ptr);
+#else
+        return sddk::allocate<T>(num_elements__, M_);
+#endif
     }
 
     /// Delete a pointer and add its memory back to the pool.
     void free(void* ptr__)
     {
+#if defined(__USE_MEMORY_POOL)
         auto ptr = reinterpret_cast<uint8_t*>(ptr__);
         /* get a descriptor of this pointer */
         auto& msb = map_ptr_.at(ptr);
         /* free the sub-block */
         msb.it_->free_subblock(msb.unaligned_ptr_, msb.size_);
-
-        //auto merge_blocks = [&](std::list<memory_block_descriptor>::iterator it0,
-        //                        std::list<memory_block_descriptor>::iterator it)
-        //{
-        //    if (it0->is_empty()) {
-        //        size_t size = it->size_ + it0->size_;
-        //        it->buffer_ = nullptr;
-        //        it0->buffer_ = nullptr;
-        //        (*it) = memory_block_descriptor(size, M_);
-        //        memory_blocks_.erase(it0);
-        //    }
-        //};
-
-        ///* merge memory blocks; this is not strictly necessary but can lead to a better performance */
-        //auto it = msb.it_;
-        //if (it->is_empty()) {
-        //    /* try the previous block */
-        //    if (it != memory_blocks_.begin()) {
-        //        auto it0 = it;
-        //        it0--;
-        //        merge_blocks(it0, it);
-        //    }
-        //    /* try the next block */
-        //    auto it0 = it;
-        //    it0++;
-        //    if (it0 != memory_blocks_.end()) {
-        //        merge_blocks(it0, it);
-        //    }
-        //}
         /* remove this pointer from the hash table */
         map_ptr_.erase(ptr);
+#else
+        sddk::deallocate(ptr__, M_);
+#endif
     }
 
     /// Return a unique pointer to the allocated memory.
     template <typename T>
     std::unique_ptr<T, memory_t_deleter_base> get_unique_ptr(size_t n__)
     {
-        return std::unique_ptr<T, memory_t_deleter_base>(allocate<T>(n__), memory_pool_deleter(this));
+#if defined(__USE_MEMORY_POOL)
+        return std::unique_ptr<T, memory_t_deleter_base>(this->allocate<T>(n__), memory_pool_deleter(this));
+#else
+        return sddk::get_unique_ptr<T>(n__, M_);
+#endif
     }
 
     /// Free all the allocated blocks.
@@ -871,9 +857,9 @@ class mdarray
         return const_cast<T*>(static_cast<mdarray<T, N> const&>(*this).at_idx(mem__, idx__));
     }
 
+    // Call constructor on non-trivial data. Complex numbers are treated as trivial.
     inline void call_constructor()
     {
-        /* call constructor on non-trivial data */
         if (!(std::is_trivial<T>::value || is_complex<T>::value)) {
             for (size_t i = 0; i < size(); i++) {
                 new (raw_ptr_ + i) T();
@@ -881,6 +867,7 @@ class mdarray
         }
     }
 
+    // Call destructor on non-trivial data. Complex numbers are treated as trivial.
     inline void call_destructor()
     {
         if (!(std::is_trivial<T>::value || is_complex<T>::value)) {
@@ -898,10 +885,12 @@ class mdarray
 
   public:
 
+    /// Default constructor.
     mdarray()
     {
     }
 
+    /// Destructor.
     ~mdarray()
     {
         deallocate(memory_t::host);
@@ -943,6 +932,7 @@ class mdarray
         this->allocate(memory__);
     }
 
+    /// 3D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
             mdarray_index_descriptor const& d1,
             mdarray_index_descriptor const& d2,
@@ -956,6 +946,7 @@ class mdarray
         this->allocate(memory__);
     }
 
+    /// 4D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
             mdarray_index_descriptor const& d1,
             mdarray_index_descriptor const& d2,
@@ -970,6 +961,7 @@ class mdarray
         this->allocate(memory__);
     }
 
+    /// 5D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
             mdarray_index_descriptor const& d1,
             mdarray_index_descriptor const& d2,
@@ -985,6 +977,7 @@ class mdarray
         this->allocate(memory__);
     }
 
+    /// 6D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
             mdarray_index_descriptor const& d1,
             mdarray_index_descriptor const& d2,
@@ -1027,9 +1020,8 @@ class mdarray
 #endif
     }
 
-    mdarray(memory_pool& mp__,
-            mdarray_index_descriptor const& d0,
-            std::string label__ = "")
+    /// 1D array with memory pool allocation.
+    mdarray(mdarray_index_descriptor const& d0, memory_pool& mp__, std::string label__ = "")
     {
         static_assert(N == 1, "wrong number of dimensions");
 
@@ -1067,9 +1059,8 @@ class mdarray
 #endif
     }
 
-    mdarray(memory_pool& mp__,
-            mdarray_index_descriptor const& d0,
-            mdarray_index_descriptor const& d1,
+    /// 2D array with memory pool allocation.
+    mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, memory_pool& mp__,
             std::string label__ = "")
     {
         static_assert(N == 2, "wrong number of dimensions");
@@ -1078,7 +1069,6 @@ class mdarray
         this->init_dimensions({d0, d1});
         this->allocate(mp__);
     }
-
 
     mdarray(T* ptr__,
             mdarray_index_descriptor const& d0,

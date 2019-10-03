@@ -4,10 +4,13 @@
         "!processing_unit" : "gpu",
         "!std_evp_solver_type" : "scalapack",
         "!gen_evp_solver_type" : "scalapack",
-        "verbosity" : 2,
+        "verbosity" : 1,
         "verification" : 0,
         "print_memory_usage" : false,
         "print_checksum" : false
+    },
+    "settings" : {
+        "!mixer_rss_min" : 1e-30
     },
 
     "parameters" : {
@@ -17,22 +20,22 @@
 
         "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
-        "smearing_width" : 0.025,
+        "smearing_width" : 0.001,
 
         "use_symmetry" : true,
 
         "num_mag_dims" : 0,
         
-        "gk_cutoff" : 7.072,
+        "gk_cutoff" : 5.0,
         "pw_cutoff" : 20.00,
 
-        "energy_tol" : 1e-8,
-        "potential_tol" : 1e-8,
+        "energy_tol" : 1e-10,
+        "potential_tol" : 1e-10,
 
         "num_dft_iter" : 100,
 
-        "ngridk" : [1,1,1],
-        "gamma_point" : true
+        "ngridk" : [2,2,2],
+        "gamma_point" : false
     },
 
 
@@ -43,7 +46,7 @@
         "!subspace_size" : 4,
         "!type" : "davidson",
         "converge_by_energy" : 1,
-        "orthogonalize" : false,
+        "!orthogonalize" : false,
         "!init_subspace" : "lcao"
     },
     

@@ -19,17 +19,39 @@
 
 /** \file local_operator.hpp
  *
- *  \brief Contains declaration and implementation of sirius::Local_operator class.
+ *  \brief Declaration of sirius::Local_operator class.
  */
 
 #ifndef __LOCAL_OPERATOR_HPP__
 #define __LOCAL_OPERATOR_HPP__
 
-#include "Potential/potential.hpp"
-#include "../SDDK/GPU/acc.hpp"
+#include "SDDK/memory.hpp"
+#include "spfft/spfft.hpp"
+#include "typedefs.hpp"
+
+/* forward declarations */
+namespace sirius {
+class Potential;
+class Simulation_context;
+template <typename T>
+class Smooth_periodic_function;
+}
+namespace sddk {
+class FFT3D;
+class Gvec_partition;
+class Wave_functions;
+class spin_range;
+}
+namespace spfft {
+class Transform;
+}
 
 #ifdef __GPU
-extern "C" void mul_by_veff_gpu(int ispn__, int size__, double* const* veff__, double_complex* buf__);
+extern "C" void mul_by_veff_real_real_gpu(int nr__, double* buf__, double* veff__);
+
+extern "C" void mul_by_veff_complex_real_gpu(int nr__, double_complex* buf__, double* veff__);
+
+extern "C" void mul_by_veff_complex_complex_gpu(int nr__, double_complex* buf__, double pref__, double* vx__, double* vy__);
 
 extern "C" void add_pw_ekin_gpu(int                   num_gvec__,
                                 double                alpha__,
@@ -55,61 +77,52 @@ class Local_operator
     Simulation_context const& ctx_;
 
     /// Coarse-grid FFT driver for this operator.
-    FFT3D& fft_coarse_;
+    spfft::Transform& fft_coarse_;
 
     /// Distribution of the G-vectors for the FFT transformation.
-    Gvec_partition const& gvec_coarse_p_;
-
-    Gvec_partition const* gkvec_p_{nullptr};
+    sddk::Gvec_partition const& gvec_coarse_p_;
 
     /// Kinetic energy of G+k plane-waves.
-    mdarray<double, 1> pw_ekin_;
+    sddk::mdarray<double, 1> pw_ekin_;
 
-    /// Effective potential components on a coarse FFT grid.
-    std::array<Smooth_periodic_function<double>, 4> veff_vec_;
+    /// Effective potential components and unit step function on a coarse FFT grid.
+    /** The following elements are stored in the array:
+         - V(r) + B_z(r) (in PP-PW case) or V(r) (in FP-LAPW case)
+         - V(r) - B_z(r) (in PP-PW case) or B_z(r) (in FP-LAPW case)
+         - B_x(r)
+         - B_y(r)
+         - Theta(r) (in FP-LAPW case)
+         - inverse of 1 + relative mass (needed for ZORA LAPW)
+     */
+    std::array<std::unique_ptr<Smooth_periodic_function<double>>, 6> veff_vec_;
 
     /// Temporary array to store [V*phi](G)
-    mdarray<double_complex, 2> vphi_;
-
-    /// LAPW unit step function on a coarse FFT grid.
-    Smooth_periodic_function<double> theta_;
+    sddk::mdarray<double_complex, 1> vphi_;
 
     /// Temporary array to store psi_{up}(r).
     /** The size of the array is equal to the size of FFT buffer. */
-    mdarray<double_complex, 1> buf_rg_;
+    sddk::mdarray<double_complex, 1> buf_rg_;
 
     /// V(G=0) matrix elements.
     double v0_[2];
 
   public:
     /// Constructor.
-    Local_operator(Simulation_context const& ctx__,
-                   FFT3D&                    fft_coarse__,
-                   Gvec_partition     const& gvec_coarse_p__)
-        : ctx_(ctx__)
-        , fft_coarse_(fft_coarse__)
-        , gvec_coarse_p_(gvec_coarse_p__)
+    /** Prepares k-point independent part of the local potential. If potential is provided, it is mapped to the
+     *  coarse FFT grid, otherwise the constant potential is assumed for the debug and benchmarking purposes.
+     *  In the case of GPU-enabled FFT driver all effective fields on the coarse grid are copied to the device
+     *  and remain there until the local operator is destroyed.
 
-    {
-        PROFILE("sirius::Local_operator");
-
-        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            veff_vec_[j] = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
-            for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                veff_vec_[j].f_rg(ir) = 2.71828;
-            }
-        }
-        if (ctx_.full_potential()) {
-            theta_ = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
-        }
-
-        if (fft_coarse_.pu() == device_t::GPU) {
-            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-                veff_vec_[j].f_rg().allocate(memory_t::device).copy_to(memory_t::device);
-            }
-            buf_rg_.allocate(memory_t::device);
-        }
-    }
+     *  \param [in] ctx           Simulation context.
+     *  \param [in] fft_coarse    Explicit FFT driver for the coarse mesh.
+     *  \param [in] gvec_coarse_p FFT-friendly G-vector distribution for the coarse mesh.
+     *  \param [in] potential     Effective potential and magnetic fields \f$ V_{eff}({\bf r}) \f$ and
+     *                             \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine FFT grid.
+     */
+    Local_operator(Simulation_context   const& ctx__,
+                   spfft::Transform&           fft_coarse__,
+                   sddk::Gvec_partition const& gvec_coarse_p__,
+                   Potential*                  potential__ = nullptr);
 
     /// Keep track of the total number of wave-functions to which the local operator was applied.
     static int num_applied(int n = 0)
@@ -119,51 +132,56 @@ class Local_operator
         return num_applied_;
     }
 
-    /// Map effective potential and magnetic field to a coarse FFT mesh.
-    /** \param [in] potential      \f$ V_{eff}({\bf r}) \f$ and \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine grid FFT grid.
-     *
-     *  This function should be called prior to the band diagonalziation. In case of GPU execution all
-     *  effective fields on the coarse grid will be copied to the device and will remain there until the
-     *  dismiss() method is called after band diagonalization.
-     */
-    void prepare(Potential& potential__);
-
     /// Prepare the k-point dependent arrays.
-    void prepare(Gvec_partition const& gkvec_p__);
+    /** \param [in] gkvec_p  FFT-friendly G+k vector partitioning. */
+    void prepare_k(sddk::Gvec_partition const& gkvec_p__);
 
-    /// Cleanup the local operator.
-    void dismiss();
-
-    /// Apply local part of Hamiltonian to wave-functions.
-    /** \param [in]  ispn Index of spin.
-     *  \param [in]  phi  Input wave-functions.
-     *  \param [out] hphi Hamiltonian applied to wave-function.
-     *  \param [in]  idx0 Starting index of wave-functions.
-     *  \param [in]  n    Number of wave-functions to which H is applied.
+    /// Apply local part of Hamiltonian to pseudopotential wave-functions.
+    /** \param [in]  spfftk  SpFFT transform object for G+k vectors.
+     *  \param [in]  gkvec_p FFT-friendly G+k vector partitioning.
+     *  \param [in]  spins   Range of wave-function spins to which Hloc is applied.
+     *  \param [in]  phi     Input wave-functions.
+     *  \param [out] hphi    Local hamiltonian applied to wave-function.
+     *  \param [in]  idx0    Starting index of wave-functions.
+     *  \param [in]  n       Number of wave-functions to which H is applied.
      *
-     *  Index of spin can take the following values:
-     *    - 0: apply H_{uu} to the up- component of wave-functions
-     *    - 1: apply H_{dd} to the dn- component of wave-functions
-     *    - 2: apply full Hamiltonian to the spinor wave-functions
+     *  Spin range can take the following values:
+     *    - [0, 0]: apply H_{uu} to the up- component of wave-functions
+     *    - [1, 1]: apply H_{dd} to the dn- component of wave-functions
+     *    - [0, 1]: apply full Hamiltonian to the spinor wave-functions
      *
-     *  In the current implementation for the GPUs sequential FFT is assumed.
+     *  Local Hamiltonian includes kinetic term and local part of potential.
      */
-    void apply_h(int ispn__, Wave_functions& phi__, Wave_functions& hphi__, int idx0__, int n__);
+    void apply_h(spfft::Transform& spfftk__, sddk::Gvec_partition const& gkvec_p__, sddk::spin_range spins__,
+                 sddk::Wave_functions& phi__, sddk::Wave_functions& hphi__, int idx0__, int n__);
 
-    void apply_h_o(int             N__,
-                   int             n__,
-                   Wave_functions& phi__,
-                   Wave_functions* hphi__,
-                   Wave_functions* ophi__);
+    /// Apply local part of LAPW Hamiltonian and overlap operators.
+    /** \param [in]  spfftk  SpFFT transform object for G+k vectors.
+     *  \param [in]  gkvec_p FFT-friendly G+k vector partitioning.
+     *  \param [in]  N       Starting index of wave-functions.
+     *  \param [in]  n       Number of wave-functions to which H and O are applied.
+     *  \param [in]  phi     Input wave-functions [always on CPU].
+     *  \param [out] hphi    LAPW Hamiltonian applied to wave-function [CPU || GPU].
+     *  \param [out] ophi    LAPW overlap matrix applied to wave-function [CPU || GPU].
+     *
+     *  Only plane-wave part of output wave-functions is changed.
+     */
+    void apply_h_o(spfft::Transform& spfftik__, sddk::Gvec_partition const& gkvec_p__, int N__, int n__,
+                   sddk::Wave_functions& phi__, sddk::Wave_functions* hphi__, sddk::Wave_functions* ophi__);
 
-    /// Apply magnetic field to the wave-functions.
+    /// Apply magnetic field to the full-potential wave-functions.
     /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
      *  <tt>bphi</tt>. In case of non-collinear magnetims Bx-iBy is also applied and stored in the third
-     *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. */
-    void apply_b(int                          N__,
-                 int                          n__,
-                 Wave_functions&              phi__,
-                 std::vector<Wave_functions>& bphi__);
+     *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. 
+     *
+     *  \param [in]  spfftk   SpFFT transform object for G+k vectors.
+     *  \param [in]  N        Starting index of wave-functions.
+     *  \param [in]  n        Number of wave-functions to which H and O are applied.
+     *  \param [in]  phi      Input wave-functions.
+     *  \param [out] bphi     Output vector of magentic field components, aplied to the wave-functions.
+     */
+    void apply_b(spfft::Transform& spfftk__, int N__, int n__, sddk::Wave_functions& phi__,
+                 std::vector<sddk::Wave_functions>& bphi__); // TODO: align argument order with apply_h()
 
     inline double v0(int ispn__) const
     {

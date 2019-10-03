@@ -202,7 +202,7 @@ class FreeEnergy:
     def __call__(self, cn, fn):
         """
         Keyword Arguments:
-        cn   -- Planewave coefficients
+        cn   -- PW coefficients
         fn   -- occupations numbers
         """
 
@@ -224,7 +224,7 @@ class FreeEnergy:
         cn   -- planewave coefficients
         fn   -- occupation numbers
 
-        Note: It does not update density, potential
+        Note: density, potential are not update here
 
         Returns:
         dAdC -- gradient with respect to pw coeffs

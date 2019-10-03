@@ -254,7 +254,7 @@ void Unit_cell::write_cif()
     }
 }
 
-json Unit_cell::serialize()
+json Unit_cell::serialize(bool cart_pos__) const
 {
     json dict;
 
@@ -275,6 +275,10 @@ json Unit_cell::serialize()
         for (int i = 0; i < atom_type(iat).num_atoms(); i++) {
             int ia = atom_type(iat).atom_id(i);
             auto v = atom(ia).position();
+            /* convert to Cartesian coordinates */
+            if (cart_pos__) {
+                v = lattice_vectors_ * v;
+            }
             dict["atoms"][atom_type(iat).label()].push_back({v[0], v[1], v[2]});
         }
     }
@@ -290,7 +294,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
     nearest_neighbours_.clear();
     nearest_neighbours_.resize(num_atoms());
 
-#pragma omp parallel for default(shared)
+    #pragma omp parallel for default(shared)
     for (int ia = 0; ia < num_atoms(); ia++) {
         auto iapos = get_cartesian_coordinates(atom(ia).position());
 
@@ -653,207 +657,215 @@ void Unit_cell::get_symmetry()
     assert(num_atom_symmetry_classes() != 0);
 }
 
-    void Unit_cell::import(Unit_cell_input const &inp__) {
-        if (inp__.exist_) {
-            /* first, load all types */
-            for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
-                auto label = inp__.labels_[iat];
-                auto fname = inp__.atom_files_.at(label);
-                add_atom_type(label, fname);
+void Unit_cell::import(Unit_cell_input const &inp__)
+{
+    if (inp__.exist_) {
+        /* first, load all types */
+        for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
+            auto label = inp__.labels_[iat];
+            auto fname = inp__.atom_files_.at(label);
+            add_atom_type(label, fname);
+        }
+        /* then load atoms */
+        for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
+            auto label = inp__.labels_[iat];
+            auto fname = inp__.atom_files_.at(label);
+            for (size_t ia = 0; ia < inp__.coordinates_[iat].size(); ia++) {
+                auto v = inp__.coordinates_[iat][ia];
+                vector3d<double> p(v[0], v[1], v[2]);
+                vector3d<double> f(v[3], v[4], v[5]);
+                add_atom(label, p, f);
             }
-            /* then load atoms */
-            for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
-                auto label = inp__.labels_[iat];
-                auto fname = inp__.atom_files_.at(label);
-                for (size_t ia = 0; ia < inp__.coordinates_[iat].size(); ia++) {
-                    auto v = inp__.coordinates_[iat][ia];
-                    vector3d<double> p(v[0], v[1], v[2]);
-                    vector3d<double> f(v[3], v[4], v[5]);
-                    add_atom(label, p, f);
-                }
-            }
+        }
 
-            set_lattice_vectors(inp__.a0_, inp__.a1_, inp__.a2_);
+        set_lattice_vectors(inp__.a0_, inp__.a1_, inp__.a2_);
+    }
+}
+
+void Unit_cell::update()
+{
+    PROFILE("sirius::Unit_cell::update");
+
+    auto v0 = lattice_vector(0);
+    auto v1 = lattice_vector(1);
+    auto v2 = lattice_vector(2);
+
+    double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())),
+                        parameters_.parameters_input().nn_radius_);
+
+    find_nearest_neighbours(r);
+
+    if (parameters_.full_potential()) {
+        /* find new MT radii and initialize radial grid */
+        if (parameters_.auto_rmt()) {
+            auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
+            std::vector<double> Rmt = find_mt_radii();
+            for (int iat = 0; iat < num_atom_types(); iat++) {
+                double r0 = atom_type(iat).radial_grid().first();
+
+                atom_type(iat).set_radial_grid(rg.first, atom_type(iat).num_mt_points(), r0, Rmt[iat], rg.second);
+            }
+        }
+
+        int ia, ja;
+        if (check_mt_overlap(ia, ja)) {
+            std::stringstream s;
+            s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia).type().symbol() << ")"
+              << " and " << ja << "(" << atom(ja).type().symbol() << ")" << std::endl
+              << "  radius of atom " << ia << " : " << atom(ia).mt_radius() << std::endl
+              << "  radius of atom " << ja << " : " << atom(ja).mt_radius() << std::endl
+              << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
+            TERMINATE(s);
+        }
+
+        min_mt_radius_ = 1e100;
+        max_mt_radius_ = 0;
+        for (int i = 0; i < num_atom_types(); i++) {
+            min_mt_radius_ = std::min(min_mt_radius_, atom_type(i).mt_radius());
+            max_mt_radius_ = std::max(max_mt_radius_, atom_type(i).mt_radius());
         }
     }
 
-    void Unit_cell::update() {
-        PROFILE("sirius::Unit_cell::update");
+    get_symmetry();
 
-        auto v0 = lattice_vector(0);
-        auto v1 = lattice_vector(1);
-        auto v2 = lattice_vector(2);
+    spl_num_atom_symmetry_classes_ = splindex<splindex_t::block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
 
-        double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())),
-                            parameters_.parameters_input().nn_radius_);
-
-        find_nearest_neighbours(r);
-
-        if (parameters_.full_potential()) {
-            /* find new MT radii and initialize radial grid */
-            if (parameters_.auto_rmt()) {
-                auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
-                std::vector<double> Rmt = find_mt_radii();
-                for (int iat = 0; iat < num_atom_types(); iat++) {
-                    double r0 = atom_type(iat).radial_grid().first();
-
-                    atom_type(iat).set_radial_grid(rg.first, atom_type(iat).num_mt_points(), r0, Rmt[iat], rg.second);
-                }
-            }
-
-            int ia, ja;
-            if (check_mt_overlap(ia, ja)) {
-                std::stringstream s;
-                s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia).type().symbol() << ")"
-                  << " and " << ja << "(" << atom(ja).type().symbol() << ")" << std::endl
-                  << "  radius of atom " << ia << " : " << atom(ia).mt_radius() << std::endl
-                  << "  radius of atom " << ja << " : " << atom(ja).mt_radius() << std::endl
-                  << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
-                TERMINATE(s);
-            }
-
-            min_mt_radius_ = 1e100;
-            max_mt_radius_ = 0;
-            for (int i = 0; i < num_atom_types(); i++) {
-                min_mt_radius_ = std::min(min_mt_radius_, atom_type(i).mt_radius());
-                max_mt_radius_ = std::max(max_mt_radius_, atom_type(i).mt_radius());
-            }
-        }
-
-        get_symmetry();
-
-        spl_num_atom_symmetry_classes_ = splindex<splindex_t::block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
-
-        volume_mt_ = 0.0;
-        if (parameters_.full_potential()) {
-            for (int ia = 0; ia < num_atoms(); ia++) {
-                volume_mt_ += fourpi * std::pow(atom(ia).mt_radius(), 3) / 3.0;
-            }
-        }
-
-        volume_it_ = omega() - volume_mt_;
-
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            int nat = atom_type(iat).num_atoms();
-            if (nat > 0) {
-                for (int i = 0; i < nat; i++) {
-                    int ia = atom_type(iat).atom_id(i);
-                    for (int x: {0, 1, 2}) {
-                        atom_coord_[iat](i, x) = atom(ia).position()[x];
-                    }
-                }
-                if (parameters_.processing_unit() == device_t::GPU) {
-                    atom_coord_[iat].copy_to(memory_t::device);
-                }
-            }
+    volume_mt_ = 0.0;
+    if (parameters_.full_potential()) {
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            volume_mt_ += fourpi * std::pow(atom(ia).mt_radius(), 3) / 3.0;
         }
     }
 
-    void Unit_cell::print_symmetry_info(int verbosity__) const {
-        if (symmetry_ != nullptr) {
+    volume_it_ = omega() - volume_mt_;
+
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        int nat = atom_type(iat).num_atoms();
+        if (nat > 0) {
+            for (int i = 0; i < nat; i++) {
+                int ia = atom_type(iat).atom_id(i);
+                for (int x: {0, 1, 2}) {
+                    atom_coord_[iat](i, x) = atom(ia).position()[x];
+                }
+            }
+            if (parameters_.processing_unit() == device_t::GPU) {
+                atom_coord_[iat].copy_to(memory_t::device);
+            }
+        }
+    }
+}
+
+void Unit_cell::print_symmetry_info(int verbosity__) const
+{
+    if (symmetry_ != nullptr) {
+        printf("\n");
+        printf("space group number   : %i\n", symmetry_->spacegroup_number());
+        printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
+        printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
+        printf("number of operations : %i\n", symmetry_->num_mag_sym());
+        printf("transformation matrix : \n");
+        auto tm = symmetry_->transformation_matrix();
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                printf("%12.6f ", tm(i, j));
+            }
             printf("\n");
-            printf("space group number   : %i\n", symmetry_->spacegroup_number());
-            printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
-            printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
-            printf("number of operations : %i\n", symmetry_->num_mag_sym());
-            printf("transformation matrix : \n");
-            auto tm = symmetry_->transformation_matrix();
-            for (int i = 0; i < 3; i++) {
+        }
+        printf("origin shift : \n");
+        auto t = symmetry_->origin_shift();
+        printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+
+        if (verbosity__ >= 2) {
+            printf("symmetry operations  : \n");
+            for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
+                auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
+                auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
+                auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
+
+                printf("isym : %i\n", isym);
+                printf("R : ");
+                for (int i = 0; i < 3; i++) {
+                    if (i) {
+                        printf("    ");
+                    }
+                    for (int j = 0; j < 3; j++) {
+                        printf("%3i ", R(i, j));
+                    }
+                    printf("\n");
+                }
+                printf("T : ");
                 for (int j = 0; j < 3; j++) {
-                    printf("%12.6f ", tm(i, j));
+                    printf("%8.4f ", t[j]);
+                }
+                printf("\n");
+                printf("S : ");
+                for (int i = 0; i < 3; i++) {
+                    if (i) {
+                        printf("    ");
+                    }
+                    for (int j = 0; j < 3; j++) {
+                        printf("%8.4f ", S(i, j));
+                    }
+                    printf("\n");
                 }
                 printf("\n");
             }
-            printf("origin shift : \n");
-            auto t = symmetry_->origin_shift();
-            printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+        }
+    }
+}
 
-            if (verbosity__ >= 2) {
-                printf("symmetry operations  : \n");
-                for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
-                    auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
-                    auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
-                    auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
+void Unit_cell::set_lattice_vectors(matrix3d<double> lattice_vectors__)
+{
+    lattice_vectors_            = lattice_vectors__;
+    inverse_lattice_vectors_    = inverse(lattice_vectors_);
+    omega_                      = std::abs(lattice_vectors_.det());
+    reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
+}
 
-                    printf("isym : %i\n", isym);
-                    printf("R : ");
-                    for (int i = 0; i < 3; i++) {
-                        if (i) {
-                            printf("    ");
-                        }
-                        for (int j = 0; j < 3; j++) {
-                            printf("%3i ", R(i, j));
-                        }
-                        printf("\n");
-                    }
-                    printf("T : ");
-                    for (int j = 0; j < 3; j++) {
-                        printf("%8.4f ", t[j]);
-                    }
-                    printf("\n");
-                    printf("S : ");
-                    for (int i = 0; i < 3; i++) {
-                        if (i) {
-                            printf("    ");
-                        }
-                        for (int j = 0; j < 3; j++) {
-                            printf("%8.4f ", S(i, j));
-                        }
-                        printf("\n");
-                    }
-                    printf("\n");
-                }
-            }
+void Unit_cell::set_lattice_vectors(vector3d<double> a0__, vector3d<double> a1__, vector3d<double> a2__)
+{
+    matrix3d<double> lv;
+    for (int x : {0, 1, 2}) {
+        lv(x, 0) = a0__[x];
+        lv(x, 1) = a1__[x];
+        lv(x, 2) = a2__[x];
+    }
+    set_lattice_vectors(lv);
+}
+
+int Unit_cell::atom_id_by_position(vector3d<double> position__)
+{
+    for (int ia = 0; ia < num_atoms(); ia++) {
+        auto vd = atom(ia).position() - position__;
+        if (vd.length() < 1e-10) {
+            return ia;
+        }
+    }
+    return -1;
+}
+
+int Unit_cell::next_atom_type_id(std::string label__)
+{
+    /* check if the label was already added */
+    if (atom_type_id_map_.count(label__) != 0) {
+        std::stringstream s;
+        s << "atom type with label " << label__ << " is already in list";
+        TERMINATE(s);
+    }
+    /* take text id */
+    atom_type_id_map_[label__] = static_cast<int>(atom_types_.size());
+    return atom_type_id_map_[label__];
+}
+
+void Unit_cell::init_paw()
+{
+    for (int ia = 0; ia < num_atoms(); ia++) {
+        if (atom(ia).type().is_paw()) {
+            paw_atom_index_.push_back(ia);
         }
     }
 
-    void Unit_cell::set_lattice_vectors(matrix3d<double> lattice_vectors__) {
-        lattice_vectors_            = lattice_vectors__;
-        inverse_lattice_vectors_    = inverse(lattice_vectors_);
-        omega_                      = std::abs(lattice_vectors_.det());
-        reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
-    }
-
-    void Unit_cell::set_lattice_vectors(vector3d<double> a0__, vector3d<double> a1__, vector3d<double> a2__) {
-        matrix3d<double> lv;
-        for (int x : {0, 1, 2}) {
-            lv(x, 0) = a0__[x];
-            lv(x, 1) = a1__[x];
-            lv(x, 2) = a2__[x];
-        }
-        set_lattice_vectors(lv);
-    }
-
-    int Unit_cell::atom_id_by_position(vector3d<double> position__) {
-        for (int ia = 0; ia < num_atoms(); ia++) {
-            auto vd = atom(ia).position() - position__;
-            if (vd.length() < 1e-10) {
-                return ia;
-            }
-        }
-        return -1;
-    }
-
-    int Unit_cell::next_atom_type_id(std::string label__) {
-        /* check if the label was already added */
-        if (atom_type_id_map_.count(label__) != 0) {
-            std::stringstream s;
-            s << "atom type with label " << label__ << " is already in list";
-            TERMINATE(s);
-        }
-        /* take text id */
-        atom_type_id_map_[label__] = static_cast<int>(atom_types_.size());
-        return atom_type_id_map_[label__];
-    }
-
-    void Unit_cell::init_paw() {
-        for (int ia = 0; ia < num_atoms(); ia++) {
-            if (atom(ia).type().is_paw()) {
-                paw_atom_index_.push_back(ia);
-            }
-        }
-
-        spl_num_paw_atoms_ = splindex<splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
-    }
+    spl_num_paw_atoms_ = splindex<splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
+}
 
 } // namespace sirius

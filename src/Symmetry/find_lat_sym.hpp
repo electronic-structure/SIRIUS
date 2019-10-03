@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -76,8 +76,8 @@ inline std::vector<matrix3d<int>> find_lat_sym(matrix3d<double> lat_vec__, doubl
 
     if (lat_sym.size() == 0 || lat_sym.size() > 48) {
         std::stringstream s;
-        s << "wrong number of lattice symmetries: " << lat_sym.size() << "\n";
-        TERMINATE(s);
+        s << "find_lat_sym(): wrong number of lattice symmetries: " << lat_sym.size() << "\n";
+        throw std::runtime_error(s.str());
     }
 
     return lat_sym;

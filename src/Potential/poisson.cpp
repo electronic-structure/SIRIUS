@@ -53,9 +53,9 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
                 auto& mp = ctx_.mem_pool(memory_t::host);
-                pf = mdarray<double_complex, 2>(mp, ngv, na);
-                qa = mdarray<double_complex, 2>(mp, lmmax, na);
-                qapf = mdarray<double_complex, 2>(mp, lmmax, ngv);
+                pf = mdarray<double_complex, 2>(ngv, na, mp);
+                qa = mdarray<double_complex, 2>(lmmax, na, mp);
+                qapf = mdarray<double_complex, 2>(lmmax, ngv, mp);
                 break;
             }
             case device_t::GPU: {
@@ -65,10 +65,10 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
                 pf = mdarray<double_complex, 2>(nullptr, ngv, na);
                 pf.allocate(mpd);
                 /* allocate on CPU & GPU */
-                qa = mdarray<double_complex, 2>(mp, lmmax, na);
+                qa = mdarray<double_complex, 2>(lmmax, na, mp);
                 qa.allocate(mpd);
                 /* allocate on CPU & GPU */
-                qapf = mdarray<double_complex, 2>(mp, lmmax, ngv);
+                qapf = mdarray<double_complex, 2>(lmmax, ngv, mp);
                 qapf.allocate(mpd);
                 break;
             }
@@ -184,10 +184,10 @@ void Potential::poisson(Periodic_function<double> const& rho)
             double d = 0.0;
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-                    d += abs(qmt(lm, ia) - qit(lm, ia));
+                    d += std::abs(qmt(lm, ia) - qit(lm, ia));
                 }
             }
-            printf("pseudocharge error: %18.10f\n", d);
+            ctx_.message(1, __func__, "pseudocharge error: %18.10f\n", d);
         }
     }
 
@@ -272,13 +272,15 @@ void Potential::poisson(Periodic_function<double> const& rho)
 
     if (ctx_.control().print_checksum_) {
         auto cs = hartree_potential_->checksum_rg();
+        auto cs1 = hartree_potential_->checksum_pw();
         if (ctx_.comm().rank() == 0) {
             utils::print_checksum("vha_rg", cs);
+            utils::print_checksum("vha_pw", cs1);
         }
     }
 
     /* compute contribution from the smooth part of Hartree potential */
-    energy_vha_ = rho.inner(hartree_potential());
+    energy_vha_ = sirius::inner(rho, hartree_potential());
 
 #ifndef __VHA_AUX
     /* add nucleus potential and contribution to Hartree energy */

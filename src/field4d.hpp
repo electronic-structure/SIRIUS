@@ -28,6 +28,7 @@
 #include <memory>
 #include <array>
 #include <cassert>
+#include <stdexcept>
 
 namespace sirius {
 
@@ -87,6 +88,15 @@ class Field4D
         return *(components_[i]);
     }
 
+    /// Throws error in case of invalid access.
+    Periodic_function<double>& component_raise(int i)
+    {
+        if (components_[i] == nullptr) {
+            throw std::runtime_error("invalid access");
+        }
+        return *(components_[i]);
+    }
+
     Periodic_function<double> const& component(int i) const
     {
         assert(i >= 0 && i <= 3);
@@ -106,6 +116,11 @@ class Field4D
     double mix(double rss_min__);
 
     Mixer<double>& mixer();
+
+    Simulation_context& ctx()
+    {
+        return ctx_;
+    }
 };
 
 } // namespace sirius

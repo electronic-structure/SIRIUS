@@ -22,6 +22,7 @@
  *  \brief Interface to accelerators API.
  *
  */
+
 #ifndef __ACC_HPP__
 #define __ACC_HPP__
 

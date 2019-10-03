@@ -38,7 +38,7 @@
 extern "C" void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, int reduced__,
                                    int mpi_rank__, double* result__);
 
-extern "C" void add_checksum_gpu(double_complex* wf__, int num_rows_loc__, int nwf__, double_complex* result__);
+extern "C" void add_checksum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, double_complex* result__);
 #endif
 
 const int sddk_inner_default_block_size = 1024;
@@ -46,20 +46,13 @@ const int sddk_trans_default_block_size = 2048;
 
 namespace sddk {
 
-/// Helper function: get a list of spin-indices.
-inline std::vector<int> get_spins(int ispn__)
-{
-    return (ispn__ == 2) ? std::vector<int>({0, 1}) : std::vector<int>({ispn__});
-}
-
 /// Helper class to wrap spin index range.
 /** Depending on the collinear or non-collinear case, the spin index range of the wave-functions is either
  *  [0, 0] or [1, 1] (trivial cases of single spin channel) or [0, 1] (spinor wave-functions). */
-class spin_range
+class spin_range : public std::vector<int>
 {
   private:
     int idx_;
-    std::vector<int> v_;
   public:
     explicit spin_range(int idx__)
         : idx_(idx__)
@@ -68,26 +61,21 @@ class spin_range
             throw std::runtime_error("wrong spin index");
         }
         if (idx_ == 2) {
-            v_ = std::vector<int>({0, 1});
+            this->reserve(2);
+            this->push_back(0);
+            this->push_back(1);
         } else {
-            v_ = std::vector<int>({idx_});
+            this->reserve(1);
+            this->push_back(idx_);
         }
     }
     inline int operator()() const
     {
         return idx_;
     }
-
-    inline std::vector<int>::const_iterator begin() const
-    {
-        return v_.begin();
-    }
-
-    inline std::vector<int>::const_iterator end() const
-    {
-        return v_.end();
-    }
 };
+
+//TODO introduce band range to desctibe a set of bands in the interval [N1, N2]
 
 /// Wave-functions representation.
 /** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
@@ -239,9 +227,11 @@ class Wave_functions
 
   public:
     /// Constructor for PW wave-functions.
+    /** Memory to store plane-wave coefficients is allocated from the heap. */
     Wave_functions(Gvec_partition const& gkvecp__, int num_wf__, memory_t preferred_memory_t__, int num_sc__ = 1);
 
     /// Constructor for PW wave-functions.
+    /** Memory to store plane-wave coefficients is allocated from the memory pool. */
     Wave_functions(memory_pool& mp__, Gvec_partition const& gkvecp__, int num_wf__, memory_t preferred_memory_t__,
                    int num_sc__ = 1);
 
@@ -324,20 +314,20 @@ class Wave_functions
      *  \param [in] i0   Starting index of wave-functions in src.
      *  \param [in] jspn Spin component on destination wave-functions.
      *  \param [in] j0   Starting index of wave-functions in destination. */
-    void copy_from(device_t pu__, int n__, Wave_functions const& src__, int ispn__, int i0__, int jspn__,
-                          int j0__);
+    void copy_from(device_t pu__, int n__, Wave_functions const& src__, int ispn__, int i0__, int jspn__, int j0__);
 
+    /// Copy from and to preferred memory.
     void copy_from(Wave_functions const& src__, int n__, int ispn__, int i0__, int jspn__, int j0__);
 
     /// Compute the checksum of the spin-components.
     /** Checksum of the n wave-function spin components is computed starting from i0.
      *  Only plane-wave coefficients are considered. */
-    double_complex checksum_pw(device_t pu__, int ispn__, int i0__, int n__);
+    double_complex checksum_pw(device_t pu__, int ispn__, int i0__, int n__) const;
 
     /// Checksum of muffin-tin coefficients.
-    double_complex checksum_mt(device_t pu__, int ispn__, int i0__, int n__);
+    double_complex checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const;
 
-    inline double_complex checksum(device_t pu__, int ispn__, int i0__, int n__)
+    inline double_complex checksum(device_t pu__, int ispn__, int i0__, int n__) const
     {
         return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
     }
@@ -369,6 +359,8 @@ class Wave_functions
     {
         return preferred_memory_t_;
     }
+
+    void print_checksum(device_t pu__, std::string label__, int N__, int n__) const;
 };
 
 

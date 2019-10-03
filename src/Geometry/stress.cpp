@@ -24,8 +24,8 @@
 
 #include "SDDK/geometry3d.hpp"
 #include "K_point/k_point.hpp"
-#include "Hamiltonian/hamiltonian.hpp"
 #include "stress.hpp"
+#include "non_local_functor.hpp"
 
 namespace sirius {
 
@@ -124,9 +124,8 @@ matrix3d<double> Stress::calc_stress_hubbard()
 {
     stress_hubbard_.zero();
 
-    mdarray<double_complex, 5> dn(2 * hamiltonian_.U().lmax() + 1, 2 * hamiltonian_.U().lmax() + 1, 2,
+    mdarray<double_complex, 5> dn(2 * potential_.U().lmax() + 1, 2 * potential_.U().lmax() + 1, 2,
                                   ctx_.unit_cell().num_atoms(), 9);
-    // hamiltonian_.prepare<double_complex>();
     Q_operator q_op(ctx_);
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
@@ -137,7 +136,7 @@ matrix3d<double> Stress::calc_stress_hubbard()
             TERMINATE("Hubbard stress correction is only implemented for the simple hubbard correction.");
 
         /* compute the derivative of the occupancies numbers */
-        hamiltonian_.U().compute_occupancies_stress_derivatives(*kp__, q_op, dn);
+        potential_.U().compute_occupancies_stress_derivatives(*kp__, q_op, dn);
         for (int dir1 = 0; dir1 < 3; dir1++) {
             for (int dir2 = 0; dir2 < 3; dir2++) {
                 for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
@@ -147,10 +146,9 @@ matrix3d<double> Stress::calc_stress_hubbard()
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    stress_hubbard_(dir1, dir2) -=
-                                        (hamiltonian_.U().U(m2, m1, ispn, ia1) * dn(m1, m2, ispn, ia1, dir1 + 3 * dir2))
-                                            .real() /
-                                        ctx_.unit_cell().omega();
+                                    stress_hubbard_(dir1, dir2) -= (potential_.U().U(m2, m1, ispn, ia1) *
+                                                                    dn(m1, m2, ispn, ia1, dir1 + 3 * dir2)).real() /
+                                                                    ctx_.unit_cell().omega();
                                 }
                             }
                         }
@@ -159,8 +157,6 @@ matrix3d<double> Stress::calc_stress_hubbard()
             }
         }
     }
-
-    // hamiltonian_.dismiss();
 
     /* global reduction */
     kset_.comm().allreduce<double, mpi_op_t::sum>(&stress_hubbard_(0, 0), 9);
@@ -246,7 +242,7 @@ matrix3d<double> Stress::calc_stress_xc()
 
     if (potential_.is_gradient_correction()) {
 
-        Smooth_periodic_function<double> rhovc(ctx_.fft(), ctx_.gvec_partition());
+        Smooth_periodic_function<double> rhovc(ctx_.spfft(), ctx_.gvec_partition());
         rhovc.zero();
         rhovc.add(density_.rho());
         rhovc.add(density_.rho_pseudo_core());
@@ -263,15 +259,15 @@ matrix3d<double> Stress::calc_stress_xc()
         }
 
         matrix3d<double> t;
-        for (int irloc = 0; irloc < ctx_.fft().local_size(); irloc++) {
+        for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
             for (int mu = 0; mu < 3; mu++) {
                 for (int nu = 0; nu < 3; nu++) {
                     t(mu, nu) += grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) * potential_.vsigma(0).f_rg(irloc);
                 }
             }
         }
-        ctx_.fft().comm().allreduce(&t(0, 0), 9);
-        t *= (-2.0 / ctx_.fft().size()); // factor 2 comes from the derivative of sigma (which is grad(rho) * grad(rho))
+        Communicator(ctx_.spfft().communicator()).allreduce(&t(0, 0), 9);
+        t *= (-2.0 / ctx_.fft_grid().num_points()); // factor 2 comes from the derivative of sigma (which is grad(rho) * grad(rho))
         // with respect to grad(rho) components
         stress_xc_ += t;
     }
@@ -307,8 +303,8 @@ matrix3d<double> Stress::calc_stress_us()
         /* get auxiliary density matrix */
         auto dm = density_.density_matrix_aux(iat);
 
-        mdarray<double_complex, 2> phase_factors(ctx_.mem_pool(memory_t::host), atom_type.num_atoms(),
-                                                 ctx_.gvec().count());
+        mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
+                                                 ctx_.mem_pool(memory_t::host));
 
         utils::timer t0("sirius::Stress|us|phase_fac");
         #pragma omp parallel for schedule(static)

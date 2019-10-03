@@ -123,7 +123,8 @@ void find_primitive()
 
     printf("original number of atoms: %i\n", ctx.unit_cell().num_atoms());
 
-    int nat_new = spg_find_primitive(lattice, (double(*)[3])&positions(0, 0), &types[0], ctx.unit_cell().num_atoms(), ctx.control().spglib_tolerance_);
+    int nat_new = spg_standardize_cell(lattice, (double(*)[3])&positions(0, 0), &types[0], ctx.unit_cell().num_atoms(),
+                                       1, 0, ctx.control().spglib_tolerance_);
     printf("new number of atoms: %i\n", nat_new);
 
     Simulation_context ctx_new(Communicator::self());
@@ -218,14 +219,65 @@ void create_qe_input(cmd_args const& args__)
     fclose(fout);
 }
 
+void convert_to_mol(cmd_args& args__)
+{
+    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), Communicator::self());
+
+    json dict;
+    dict["unit_cell"] = ctx.unit_cell().serialize(true);
+    dict["unit_cell"]["atom_coordinate_units"] = "au";
+    if (Communicator::world().rank() == 0) {
+        std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
+        ofs << dict.dump(4);
+    }
+
+}
+
+void scale_lattice(cmd_args& args__)
+{
+    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), Communicator::self());
+    //ctx.unit_cell().get_symmetry();
+    //ctx.unit_cell().print_symmetry_info(5);
+
+    double scale = args__.value<double>("scale", 1.0);
+
+    json dict;
+    dict["unit_cell"] = ctx.unit_cell().serialize();
+    for (auto& x: dict["unit_cell"]["lattice_vectors"]) {
+        for (auto& y: x) {
+            double v = y;
+            v *= scale;
+            y = v;
+        }
+    }
+    for (auto& coord: dict["unit_cell"]["atoms"]) {
+        for (size_t i = 0; i < coord.size(); i++) {
+            for (int x: {0, 1, 2}) {
+                double v = coord[i][x];
+                if (v > 0.5) {
+                    v -= 1;
+                }
+                v /= scale;
+                coord[i][x] = v;
+            }
+        }
+    }
+    if (Communicator::world().rank() == 0) {
+        std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
+        ofs << dict.dump(4);
+    }
+}
+
 int main(int argn, char** argv)
 {
     cmd_args args;
+    args.register_key("--input=", "{string} input file name");
     args.register_key("--supercell=", "{string} transformation matrix (9 numbers)");
     args.register_key("--qe", "create input for QE");
     args.register_key("--find_primitive", "find a primitive cell");
     args.register_key("--cif", "create CIF file");
-    args.register_key("--input=", "{string} input file name");
+    args.register_key("--mol", "convert to molecule input file");
+    args.register_key("--scale=", "scale lattice");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -245,10 +297,16 @@ int main(int argn, char** argv)
         create_qe_input(args);
     }
     if (args.exist("cif")) {
-        Simulation_context ctx("sirius.json", Communicator::self());
+        Simulation_context ctx(args.value<std::string>("input", "sirius.json"), Communicator::self());
         ctx.unit_cell().write_cif();
         ctx.unit_cell().find_nearest_neighbours(20);
         printf("minimum bond length: %20.12f\n", ctx.unit_cell().min_bond_length());
+    }
+    if (args.exist("mol")) {
+        convert_to_mol(args);
+    }
+    if (args.exist("scale")) {
+        scale_lattice(args);
     }
 
     sirius::finalize(1);

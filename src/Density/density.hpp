@@ -32,10 +32,15 @@
 #include "mixer.hpp"
 
 #if defined(__GPU)
-extern "C" void update_density_rg_1_gpu(int                   size__,
-                                        double_complex const* psi_rg__,
-                                        double                wt__,
-                                        double*               density_rg__);
+extern "C" void update_density_rg_1_real_gpu(int size__,
+                                             double const* psi_rg__,
+                                             double wt__,
+                                             double* density_rg__);
+
+extern "C" void update_density_rg_1_complex_gpu(int size__,
+                                                double_complex const* psi_rg__,
+                                                double wt__,
+                                                double* density_rg__);
 
 extern "C" void update_density_rg_2_gpu(int                   size__,
                                         double_complex const* psi_rg_up__,
@@ -703,7 +708,15 @@ class Density : public Field4D
     mdarray<double, 3> density_matrix_aux(int iat__);
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
-    mdarray<double, 2> compute_atomic_mag_mom() const;
+    mdarray<double, 2>
+    compute_atomic_mag_mom() const;
+
+    /// Get total magnetization and also contributions from interstitial and muffin-tin parts.
+    /** In case of PP-PW there are no real muffin-tins. Instead, a value of magnetization inside atomic
+     *  sphere with some chosen radius is returned.
+     */
+    std::tuple<std::array<double, 3>, std::array<double, 3>, std::vector<std::array<double, 3>>>
+    get_magnetisation() const;
 
     /// Symmetrize density matrix.
     /** Initially, density matrix is obtained with summation over irreducible BZ:

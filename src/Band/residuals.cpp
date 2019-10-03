@@ -23,12 +23,16 @@
  */
 
 #include "residuals.hpp"
+#include "wave_functions.hpp"
+#include "wf_inner.hpp"
+#include "wf_ortho.hpp"
+#include "wf_trans.hpp"
 
 namespace sirius {
 
 static void
-compute_residuals(memory_t mem_type__, spin_range spins__, int num_bands__, mdarray<double, 1>& eval__,
-                  Wave_functions& hpsi__, Wave_functions& opsi__, Wave_functions& res__)
+compute_residuals(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__, sddk::mdarray<double, 1>& eval__,
+                  sddk::Wave_functions& hpsi__, sddk::Wave_functions& opsi__, sddk::Wave_functions& res__)
 {
     for (int ispn: spins__) {
         if (is_host_memory(mem_type__)) {

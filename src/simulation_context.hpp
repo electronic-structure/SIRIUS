@@ -36,6 +36,7 @@
 #include "SDDK/GPU/acc.hpp"
 #include "Symmetry/check_gvec.hpp"
 #include "Symmetry/rotation.hpp"
+#include "spfft/spfft.hpp"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
@@ -66,7 +67,7 @@ class Simulation_context : public Simulation_parameters
     /// Auxiliary communicator for the fine-grid FFT transformation.
     /** This communicator is orthogonal to the FFT communicator for density and potential within the full
      *  communicator of the simulation context. In other words, comm_ortho_fft_ \otimes comm_fft() = ctx_.comm() */
-    Communicator comm_ortho_fft_;
+    Communicator comm_ortho_fft_{MPI_COMM_SELF};
 
     /// Auxiliary communicator for the coarse-grid FFT transformation.
     Communicator comm_ortho_fft_coarse_;
@@ -82,16 +83,21 @@ class Simulation_context : public Simulation_parameters
     /// 2D BLACS grid for distributed linear algebra operations.
     std::unique_ptr<BLACS_grid> blacs_grid_;
 
-    /// Initial dimenstions for the fine-grain FFT grid.
-    std::array<int, 3> fft_grid_size_{{0, 0, 0}};
+    /// Grid descriptor for the fine-grained FFT transform.
+    sddk::FFT3D_grid fft_grid_;
 
     /// Fine-grained FFT for density and potential.
     /** This is the FFT driver to transform periodic functions such as density and potential on the fine-grained
      *  FFT grid. The transformation is parallel. */
-    std::unique_ptr<FFT3D> fft_;
+    std::unique_ptr<spfft::Transform> spfft_transform_;
+    std::unique_ptr<spfft::Grid> spfft_grid_;
+
+    /// Grid descriptor for the coarse-grained FFT transform.
+    sddk::FFT3D_grid fft_coarse_grid_;
 
     /// Coarse-grained FFT for application of local potential and density summation.
-    std::unique_ptr<FFT3D> fft_coarse_;
+    std::unique_ptr<spfft::Transform> spfft_transform_coarse_;
+    std::unique_ptr<spfft::Grid> spfft_grid_coarse_;
 
     /// G-vectors within the Gmax cutoff.
     std::unique_ptr<Gvec> gvec_;
@@ -192,8 +198,8 @@ class Simulation_context : public Simulation_parameters
     /// True if the context is already initialized.
     bool initialized_{false};
 
-    /// Initialize FFT drivers.
-    void init_fft();
+    /// Initialize FFT coarse and fine grids.
+    void init_fft_grid();
 
     /// Initialize communicators.
     void init_comm();
@@ -235,15 +241,15 @@ class Simulation_context : public Simulation_parameters
      */
     void init_step_function();
 
+    /// Find a list of real-space grid points around each atom.
+    void init_atoms_to_grid_idx(double R__);
+
     /// Get the stsrting time stamp.
     void start()
     {
         gettimeofday(&start_time_, NULL);
         start_time_tag_ = utils::timestamp("%Y%m%d_%H%M%S");
     }
-
-    /// Find a list of real-space grid points around each atom.
-    void init_atoms_to_grid_idx(double R__);
 
     /* copy constructor is forbidden */
     Simulation_context(Simulation_context const&) = delete;
@@ -310,7 +316,7 @@ class Simulation_context : public Simulation_parameters
     template <typename... Args>
     inline void message(int level__, char const* label__, Args... args) const
     {
-        if (comm_.rank() == 0 && this->control().verbosity_ >= level__) {
+        if (this->comm().rank() == 0 && this->control().verbosity_ >= level__) {
             if (label__) {
                 printf("[%s] ", label__);
             }
@@ -334,16 +340,6 @@ class Simulation_context : public Simulation_parameters
     Unit_cell const& unit_cell() const
     {
         return unit_cell_;
-    }
-
-    inline FFT3D& fft() const
-    {
-        return *fft_;
-    }
-
-    inline FFT3D& fft_coarse() const
-    {
-        return *fft_coarse_;
     }
 
     Gvec const& gvec() const
@@ -400,10 +396,12 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Communicator of the dense FFT grid.
+    /** This communicator is passed to the spfft::Transform constructor. */
     Communicator const& comm_fft() const
     {
         /* 3rd dimension of MPI grid is used */
-        return mpi_grid_->communicator(1 << 2);
+        //return mpi_grid_->communicator(1 << 2);
+        return comm();
     }
 
     Communicator const& comm_ortho_fft() const
@@ -412,6 +410,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Communicator of the coarse FFT grid.
+    /** This communicator is passed to the spfft::Transform constructor. */
     Communicator const& comm_fft_coarse() const
     {
         if (control().fft_mode_ == "serial") {
@@ -480,8 +479,8 @@ class Simulation_context : public Simulation_parameters
 
     /// Make periodic function out of form factors.
     /** Return vector of plane-wave coefficients */ // TODO: return mdarray
-    template <index_domain_t index_domain>
-    inline std::vector<double_complex> make_periodic_function(std::function<double(int, double)> form_factors__) const
+    template <index_domain_t index_domain, typename F>
+    inline std::vector<double_complex> make_periodic_function(F&& form_factors__) const
     {
         PROFILE("sirius::Simulation_context::make_periodic_function");
 
@@ -675,9 +674,45 @@ class Simulation_context : public Simulation_parameters
 
     splindex<splindex_t::block> split_gvec_local() const;
 
+    /// Set the size of the fine-grained FFT grid.
     void fft_grid_size(std::array<int, 3> fft_grid_size__)
     {
-        fft_grid_size_ = fft_grid_size__;
+        settings_input_.fft_grid_size_ = fft_grid_size__;
+    }
+
+    spfft::Grid& spfft_grid_coarse()
+    {
+        return *spfft_grid_coarse_;
+    }
+
+    spfft::Transform& spfft()
+    {
+        return *spfft_transform_;
+    }
+
+    spfft::Transform const& spfft() const
+    {
+        return *spfft_transform_;
+    }
+
+    spfft::Transform& spfft_coarse()
+    {
+        return *spfft_transform_coarse_;
+    }
+
+    spfft::Transform const& spfft_coarse() const
+    {
+        return *spfft_transform_coarse_;
+    }
+
+    sddk::FFT3D_grid const& fft_grid() const
+    {
+        return fft_grid_;
+    }
+
+    sddk::FFT3D_grid const& fft_coarse_grid() const
+    {
+        return fft_coarse_grid_;
     }
 };
 

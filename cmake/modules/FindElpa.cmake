@@ -3,7 +3,7 @@
 include(FindPackageHandleStandardArgs)
 find_package(PkgConfig)
 
-pkg_search_module(_ELPA elpa)
+pkg_search_module(_ELPA elpa elpa_openmp)
 
 find_library(ELPA_LIBRARIES
   NAMES elpa elpa_openmp

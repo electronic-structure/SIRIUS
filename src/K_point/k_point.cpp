@@ -18,138 +18,245 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "K_point/k_point.hpp"
+#include "Hamiltonian/non_local_operator.hpp"
+#include "SDDK/wf_inner.hpp"
+#include "SDDK/wf_trans.hpp"
 
 namespace sirius {
 
-    void K_point::generate_gkvec(double gk_cutoff__) {
-        PROFILE("sirius::K_point::generate_gkvec");
+void
+K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
+{
+    // do we orthogonalize the all thing
 
-        if (ctx_.full_potential() && (gk_cutoff__ * unit_cell_.max_mt_radius() > ctx_.lmax_apw()) &&
-            comm_.rank() == 0 && ctx_.control().verbosity_ >= 0) {
-            std::stringstream s;
-            s << "G+k cutoff (" << gk_cutoff__ << ") is too large for a given lmax ("
-              << ctx_.lmax_apw() << ") and a maximum MT radius (" << unit_cell_.max_mt_radius() << ")" << std::endl
-              << "suggested minimum value for lmax : " << int(gk_cutoff__ * unit_cell_.max_mt_radius()) + 1;
-            WARNING(s);
+    const int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
+
+    int nwfu = unit_cell_.num_wf_with_U().first;
+
+    if (ctx_.Hubbard().orthogonalize_hubbard_orbitals_ || ctx_.Hubbard().normalize_hubbard_orbitals_) {
+
+        dmatrix<double_complex> S(nwfu, nwfu);
+        S.zero();
+
+        if (ctx_.processing_unit() == device_t::GPU) {
+            S.allocate(memory_t::device);
         }
 
-        if (gk_cutoff__ * 2 > ctx_.pw_cutoff()) {
-            std::stringstream s;
-            s << "G+k cutoff is too large for a given plane-wave cutoff" << std::endl
-              << "  pw cutoff : " << ctx_.pw_cutoff() << std::endl
-              << "  doubled G+k cutoff : " << gk_cutoff__ * 2;
-            TERMINATE(s);
+        memory_t mem{memory_t::host};
+        linalg_t la{linalg_t::blas};
+        if (ctx_.processing_unit() == device_t::GPU) {
+            mem = memory_t::device;
+            la = linalg_t::gpublas;
         }
 
-        /* create G+k vectors; communicator of the coarse FFT grid is used because wave-functions will be transformed
-         * only on the coarse grid; G+k-vectors will be distributed between MPI ranks assigned to the k-point */
-        gkvec_ = std::unique_ptr<Gvec>(new Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff__, comm(),
-                                                ctx_.gamma_point()));
+        /* we do not need to treat both up and down spins for the
+           colinear case because the up and down components are identical */
+        inner<double_complex>(mem, la, (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, 0, nwfu, this->hubbard_wave_functions(), 0, nwfu, S, 0, 0);
 
-        gkvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gkvec_, ctx_.comm_fft_coarse(),
-                                                                              ctx_.comm_band_ortho_fft_coarse()));
+        if (ctx_.processing_unit() == device_t::GPU) {
+            S.copy_to(memory_t::host);
+        }
 
-        gkvec_offset_ = gkvec().gvec_offset(comm().rank());
+        /* diagonalize the all stuff */
+
+        if (ctx_.Hubbard().orthogonalize_hubbard_orbitals_ ) {
+            dmatrix<double_complex> Z(nwfu, nwfu);
+
+            auto ev_solver = Eigensolver_factory(ev_solver_t::lapack);
+
+            std::vector<double> eigenvalues(nwfu, 0.0);
+
+            ev_solver->solve(nwfu, S, &eigenvalues[0], Z);
+
+            // build the O^{-1/2} operator
+            for (int i = 0; i < static_cast<int>(eigenvalues.size()); i++) {
+                eigenvalues[i] = 1.0 / std::sqrt(eigenvalues[i]);
+            }
+
+            // // First compute S_{nm} = E_m Z_{nm}
+            S.zero();
+            for (int l = 0; l < nwfu; l++) {
+                for (int m = 0; m < nwfu; m++) {
+                    for (int n = 0; n < nwfu; n++) {
+                        S(n, m) += eigenvalues[l] * Z(n, l) * std::conj(Z(m, l));
+                    }
+                }
+            }
+        } else {
+            for (int l = 0; l < nwfu; l++) {
+                for (int m = 0; m < nwfu; m++) {
+                    if (l == m) {
+                        S(l, m) = 1.0 / std::sqrt(S(l, l).real());
+                    } else {
+                        S(l, m) = 0.0;
+                    }
+                }
+            }
+        }
+
+        if (ctx_.processing_unit() == device_t::GPU) {
+            S.copy_to(memory_t::device);
+        }
+
+        // only need to do that when in the ultra soft case
+        if (unit_cell_.augment()) {
+            for (int s = 0; s < num_sc; s++) {
+                phi__.copy_from(ctx_.processing_unit(), nwfu, hubbard_wave_functions(), s, 0, s, 0);
+            }
+        }
+
+        // now apply the overlap matrix
+        // Apply the transform on the wave functions
+        transform<double_complex>(mem, la, (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, 0, nwfu,
+                                  S, 0, 0, hubbard_wave_functions(), 0, nwfu);
+    }
+}
+
+void K_point::generate_gkvec(double gk_cutoff__)
+{
+    PROFILE("sirius::K_point::generate_gkvec");
+
+    if (ctx_.full_potential() && (gk_cutoff__ * unit_cell_.max_mt_radius() > ctx_.lmax_apw()) &&
+        comm_.rank() == 0 && ctx_.control().verbosity_ >= 0) {
+        std::stringstream s;
+        s << "G+k cutoff (" << gk_cutoff__ << ") is too large for a given lmax ("
+          << ctx_.lmax_apw() << ") and a maximum MT radius (" << unit_cell_.max_mt_radius() << ")" << std::endl
+          << "suggested minimum value for lmax : " << int(gk_cutoff__ * unit_cell_.max_mt_radius()) + 1;
+        WARNING(s);
     }
 
-    void K_point::update() {
-        PROFILE("sirius::K_point::update");
-
-        gkvec_->lattice_vectors(ctx_.unit_cell().reciprocal_lattice_vectors());
-
-        if (ctx_.full_potential()) {
-            if (ctx_.iterative_solver_input().type_ == "exact") {
-                alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
-                        new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec()));
-                alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
-                        new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(), igk_col_, gkvec()));
-            }
-            alm_coeffs_loc_ = std::unique_ptr<Matching_coefficients>(
-                    new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_loc(), igk_loc_, gkvec()));
-        }
-
-        if (!ctx_.full_potential()) {
-            /* compute |beta> projectors for atom types */
-            beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_loc_));
-
-            if (ctx_.iterative_solver_input().type_ == "exact") {
-                beta_projectors_row_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_row_));
-                beta_projectors_col_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_col_));
-
-            }
-
-            //if (false) {
-            //    p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
-            //    p_mtrx_.zero();
-
-            //    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            //        auto& atom_type = unit_cell_.atom_type(iat);
-
-            //        if (!atom_type.pp_desc().augment) {
-            //            continue;
-            //        }
-            //        int nbf = atom_type.mt_basis_size();
-            //        int ofs = atom_type.offset_lo();
-
-            //        matrix<double_complex> qinv(nbf, nbf);
-            //        for (int xi1 = 0; xi1 < nbf; xi1++) {
-            //            for (int xi2 = 0; xi2 < nbf; xi2++) {
-            //                qinv(xi2, xi1) = ctx_.augmentation_op(iat).q_mtrx(xi2, xi1);
-            //            }
-            //        }
-            //        linalg<device_t::CPU>::geinv(nbf, qinv);
-            //
-            //        /* compute P^{+}*P */
-            //        linalg<device_t::CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(),
-            //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
-            //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
-            //                          &p_mtrx_(0, 0, iat), p_mtrx_.ld());
-            //        comm().allreduce(&p_mtrx_(0, 0, iat), unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size());
-
-            //        for (int xi1 = 0; xi1 < nbf; xi1++) {
-            //            for (int xi2 = 0; xi2 < nbf; xi2++) {
-            //                qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
-            //            }
-            //        }
-            //        /* compute (Q^{-1} + P^{+}*P)^{-1} */
-            //        linalg<device_t::CPU>::geinv(nbf, qinv);
-            //        for (int xi1 = 0; xi1 < nbf; xi1++) {
-            //            for (int xi2 = 0; xi2 < nbf; xi2++) {
-            //                p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
-            //            }
-            //        }
-            //    }
-            //}
-        }
-
+    if (gk_cutoff__ * 2 > ctx_.pw_cutoff()) {
+        std::stringstream s;
+        s << "G+k cutoff is too large for a given plane-wave cutoff" << std::endl
+          << "  pw cutoff : " << ctx_.pw_cutoff() << std::endl
+          << "  doubled G+k cutoff : " << gk_cutoff__ * 2;
+        TERMINATE(s);
     }
 
-    void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2> &fv_evec__) const {
-        assert((int) fv_evec__.size(0) >= gklo_basis_size());
-        assert((int) fv_evec__.size(1) == ctx_.num_fv_states());
-        assert(gklo_basis_size_row() == fv_eigen_vectors_.num_rows_local());
+    /* create G+k vectors; communicator of the coarse FFT grid is used because wave-functions will be transformed
+     * only on the coarse grid; G+k-vectors will be distributed between MPI ranks assigned to the k-point */
+    gkvec_ = std::unique_ptr<Gvec>(new Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff__, comm(),
+                                            ctx_.gamma_point()));
 
-        mdarray<double_complex, 1> tmp(gklo_basis_size_row());
+    gkvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gkvec_, ctx_.comm_fft_coarse(),
+                                                                          ctx_.comm_band_ortho_fft_coarse()));
 
-        fv_evec__.zero();
+    gkvec_offset_ = gkvec().gvec_offset(comm().rank());
 
-        for (int ist = 0; ist < ctx_.num_fv_states(); ist++) {
-            auto loc = fv_eigen_vectors_.spl_col().location(ist);
-            if (loc.rank == fv_eigen_vectors_.rank_col()) {
-                std::copy(&fv_eigen_vectors_(0, loc.local_index),
-                          &fv_eigen_vectors_(0, loc.local_index) + gklo_basis_size_row(),
-                          &tmp(0));
-            }
-            fv_eigen_vectors_.blacs_grid().comm_col().bcast(&tmp(0), gklo_basis_size_row(), loc.rank);
-            for (int jloc = 0; jloc < gklo_basis_size_row(); jloc++) {
-                int j = fv_eigen_vectors_.irow(jloc);
-                fv_evec__(j, ist) = tmp(jloc);
-            }
-            fv_eigen_vectors_.blacs_grid().comm_row().allreduce(&fv_evec__(0, ist), gklo_basis_size());
+    const auto fft_type = gkvec_->reduced() ? SPFFT_TRANS_R2C : SPFFT_TRANS_C2C;
+    const auto spfft_pu = ctx_.processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
+    auto gv = gkvec_partition_->get_gvec();
+    /* create transformation */
+    spfft_transform_.reset(new spfft::Transform(ctx_.spfft_grid_coarse().create_transform(
+        spfft_pu, fft_type, ctx_.fft_coarse_grid()[0], ctx_.fft_coarse_grid()[1], ctx_.fft_coarse_grid()[2],
+        ctx_.spfft_coarse().local_z_length(), gkvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS,
+        gv.at(memory_t::host))));
+}
+
+void K_point::update()
+{
+    PROFILE("sirius::K_point::update");
+
+    gkvec_->lattice_vectors(ctx_.unit_cell().reciprocal_lattice_vectors());
+
+    if (ctx_.full_potential()) {
+        if (ctx_.iterative_solver_input().type_ == "exact") {
+            alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
+                    new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec()));
+            alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
+                    new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(), igk_col_, gkvec()));
         }
+        alm_coeffs_loc_ = std::unique_ptr<Matching_coefficients>(
+                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_loc(), igk_loc_, gkvec()));
     }
 
-    //== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
+    if (!ctx_.full_potential()) {
+        /* compute |beta> projectors for atom types */
+        beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_loc_));
+
+        if (ctx_.iterative_solver_input().type_ == "exact") {
+            beta_projectors_row_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_row_));
+            beta_projectors_col_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_col_));
+
+        }
+
+        if (ctx_.hubbard_correction()) {
+            generate_hubbard_orbitals();
+        }
+
+        //if (false) {
+        //    p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
+        //    p_mtrx_.zero();
+
+        //    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        //        auto& atom_type = unit_cell_.atom_type(iat);
+
+        //        if (!atom_type.pp_desc().augment) {
+        //            continue;
+        //        }
+        //        int nbf = atom_type.mt_basis_size();
+        //        int ofs = atom_type.offset_lo();
+
+        //        matrix<double_complex> qinv(nbf, nbf);
+        //        for (int xi1 = 0; xi1 < nbf; xi1++) {
+        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
+        //                qinv(xi2, xi1) = ctx_.augmentation_op(iat).q_mtrx(xi2, xi1);
+        //            }
+        //        }
+        //        linalg<device_t::CPU>::geinv(nbf, qinv);
+        //
+        //        /* compute P^{+}*P */
+        //        linalg<device_t::CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(),
+        //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
+        //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
+        //                          &p_mtrx_(0, 0, iat), p_mtrx_.ld());
+        //        comm().allreduce(&p_mtrx_(0, 0, iat), unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size());
+
+        //        for (int xi1 = 0; xi1 < nbf; xi1++) {
+        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
+        //                qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
+        //            }
+        //        }
+        //        /* compute (Q^{-1} + P^{+}*P)^{-1} */
+        //        linalg<device_t::CPU>::geinv(nbf, qinv);
+        //        for (int xi1 = 0; xi1 < nbf; xi1++) {
+        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
+        //                p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
+        //            }
+        //        }
+        //    }
+        //}
+    }
+
+}
+
+void K_point::get_fv_eigen_vectors(mdarray<double_complex, 2> &fv_evec__) const
+{
+    assert((int) fv_evec__.size(0) >= gklo_basis_size());
+    assert((int) fv_evec__.size(1) == ctx_.num_fv_states());
+    assert(gklo_basis_size_row() == fv_eigen_vectors_.num_rows_local());
+
+    mdarray<double_complex, 1> tmp(gklo_basis_size_row());
+
+    fv_evec__.zero();
+
+    for (int ist = 0; ist < ctx_.num_fv_states(); ist++) {
+        auto loc = fv_eigen_vectors_.spl_col().location(ist);
+        if (loc.rank == fv_eigen_vectors_.rank_col()) {
+            std::copy(&fv_eigen_vectors_(0, loc.local_index),
+                      &fv_eigen_vectors_(0, loc.local_index) + gklo_basis_size_row(),
+                      &tmp(0));
+        }
+        fv_eigen_vectors_.blacs_grid().comm_col().bcast(&tmp(0), gklo_basis_size_row(), loc.rank);
+        for (int jloc = 0; jloc < gklo_basis_size_row(); jloc++) {
+            int j = fv_eigen_vectors_.irow(jloc);
+            fv_evec__(j, ist) = tmp(jloc);
+        }
+        fv_eigen_vectors_.blacs_grid().comm_row().allreduce(&fv_evec__(0, ist), gklo_basis_size());
+    }
+}
+
+//== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
 //== {
 //==     static SHT* sht = NULL;
 //==     if (!sht) sht = new SHT(ctx_.lmax_apw());
@@ -363,8 +470,8 @@ namespace sirius {
 //==     }
 //== }
 
-    void K_point::test_spinor_wave_functions(int use_fft)
-    {
+void K_point::test_spinor_wave_functions(int use_fft)
+{
         STOP();
 
 //==     if (num_ranks() > 1) error_local(__FILE__, __LINE__, "test of spinor wave functions on multiple ranks is not implemented");
@@ -491,7 +598,7 @@ namespace sirius {
 //==         }
 //==     }
 //==     std :: cout << "maximum error = " << maxerr << std::endl;
-    }
+}
 
 /** The following HDF5 data structure is created:
   \verbatim
@@ -504,79 +611,79 @@ namespace sirius {
   /K_point_set/ik/bands/ibnd/spinor_wave_function/ispn/mt
   \endverbatim
 */
-    void K_point::save(std::string const& name__, int id__) const
-    {
-        /* rank 0 creates placeholders in the HDF5 file */
-        if (comm().rank() == 0) {
-            /* open file with write access */
-            HDF5_tree fout(name__, hdf5_access_t::read_write);
-            /* create /K_point_set/ik */
-            fout["K_point_set"].create_node(id__);
-            fout["K_point_set"][id__].write("vk", &vk_[0], 3);
-            fout["K_point_set"][id__].write("band_energies", band_energies_);
-            fout["K_point_set"][id__].write("band_occupancies", band_occupancies_);
+void K_point::save(std::string const& name__, int id__) const
+{
+    /* rank 0 creates placeholders in the HDF5 file */
+    if (comm().rank() == 0) {
+        /* open file with write access */
+        HDF5_tree fout(name__, hdf5_access_t::read_write);
+        /* create /K_point_set/ik */
+        fout["K_point_set"].create_node(id__);
+        fout["K_point_set"][id__].write("vk", &vk_[0], 3);
+        fout["K_point_set"][id__].write("band_energies", band_energies_);
+        fout["K_point_set"][id__].write("band_occupancies", band_occupancies_);
 
-            /* save the entire G+k object */
-            //TODO: only the list of z-columns is probably needed to recreate the G+k vectors
-            serializer s;
-            gkvec().pack(s);
-            fout["K_point_set"][id__].write("gkvec", s.stream());
+        /* save the entire G+k object */
+        //TODO: only the list of z-columns is probably needed to recreate the G+k vectors
+        serializer s;
+        gkvec().pack(s);
+        fout["K_point_set"][id__].write("gkvec", s.stream());
 
-            /* save the order of G-vectors */
-            mdarray<int, 2> gv(3, num_gkvec());
-            for (int i = 0; i < num_gkvec(); i++) {
-                auto v = gkvec().gvec(i);
-                for (int x: {0, 1, 2}) {
-                    gv(x, i) = v[x];
-                }
-            }
-            fout["K_point_set"][id__].write("gvec", gv);
-            fout["K_point_set"][id__].create_node("bands");
-            for (int i = 0; i < ctx_.num_bands(); i++) {
-                fout["K_point_set"][id__]["bands"].create_node(i);
-                fout["K_point_set"][id__]["bands"][i].create_node("spinor_wave_function");
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    fout["K_point_set"][id__]["bands"][i]["spinor_wave_function"].create_node(ispn);
-                }
+        /* save the order of G-vectors */
+        mdarray<int, 2> gv(3, num_gkvec());
+        for (int i = 0; i < num_gkvec(); i++) {
+            auto v = gkvec().gvec(i);
+            for (int x: {0, 1, 2}) {
+                gv(x, i) = v[x];
             }
         }
-        /* wait for rank 0 */
-        comm().barrier();
-        int gkvec_count = gkvec().count();
-        int gkvec_offset = gkvec().offset();
-        std::vector<double_complex> wf_tmp(num_gkvec());
-
-        std::unique_ptr<HDF5_tree> fout;
-        /* rank 0 opens a file */
-        if (comm().rank() == 0) {
-            fout = std::unique_ptr<HDF5_tree>(new HDF5_tree(name__, hdf5_access_t::read_write));
-        }
-
-        /* store wave-functions */
+        fout["K_point_set"][id__].write("gvec", gv);
+        fout["K_point_set"][id__].create_node("bands");
         for (int i = 0; i < ctx_.num_bands(); i++) {
+            fout["K_point_set"][id__]["bands"].create_node(i);
+            fout["K_point_set"][id__]["bands"][i].create_node("spinor_wave_function");
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                /* gather full column of PW coefficients on rank 0 */
-                comm().gather(&spinor_wave_functions_->pw_coeffs(ispn).prime(0, i), wf_tmp.data(), gkvec_offset, gkvec_count, 0);
-                if (comm().rank() == 0) {
-                    (*fout)["K_point_set"][id__]["bands"][i]["spinor_wave_function"][ispn].write("pw", wf_tmp);
-                }
+                fout["K_point_set"][id__]["bands"][i]["spinor_wave_function"].create_node(ispn);
             }
-            comm().barrier();
         }
     }
+    /* wait for rank 0 */
+    comm().barrier();
+    int gkvec_count = gkvec().count();
+    int gkvec_offset = gkvec().offset();
+    std::vector<double_complex> wf_tmp(num_gkvec());
 
-    void K_point::load(HDF5_tree h5in, int id)
-    {
-        STOP();
-        //== band_energies_.resize(ctx_.num_bands());
-        //== h5in[id].read("band_energies", band_energies_);
-
-        //== band_occupancies_.resize(ctx_.num_bands());
-        //== h5in[id].read("band_occupancies", band_occupancies_);
-        //==
-        //== h5in[id].read_mdarray("fv_eigen_vectors", fv_eigen_vectors_panel_);
-        //== h5in[id].read_mdarray("sv_eigen_vectors", sv_eigen_vectors_);
+    std::unique_ptr<HDF5_tree> fout;
+    /* rank 0 opens a file */
+    if (comm().rank() == 0) {
+        fout = std::unique_ptr<HDF5_tree>(new HDF5_tree(name__, hdf5_access_t::read_write));
     }
+
+    /* store wave-functions */
+    for (int i = 0; i < ctx_.num_bands(); i++) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            /* gather full column of PW coefficients on rank 0 */
+            comm().gather(&spinor_wave_functions_->pw_coeffs(ispn).prime(0, i), wf_tmp.data(), gkvec_offset, gkvec_count, 0);
+            if (comm().rank() == 0) {
+                (*fout)["K_point_set"][id__]["bands"][i]["spinor_wave_function"][ispn].write("pw", wf_tmp);
+            }
+        }
+        comm().barrier();
+    }
+}
+
+void K_point::load(HDF5_tree h5in, int id)
+{
+    STOP();
+    //== band_energies_.resize(ctx_.num_bands());
+    //== h5in[id].read("band_energies", band_energies_);
+
+    //== band_occupancies_.resize(ctx_.num_bands());
+    //== h5in[id].read("band_occupancies", band_occupancies_);
+    //==
+    //== h5in[id].read_mdarray("fv_eigen_vectors", fv_eigen_vectors_panel_);
+    //== h5in[id].read_mdarray("sv_eigen_vectors", sv_eigen_vectors_);
+}
 
 //== void K_point::save_wave_functions(int id)
 //== {
@@ -635,5 +742,55 @@ namespace sirius {
 //==         fin["K_points"][id]["spinor_wave_functions"].read_mdarray(j, wfj);
 //==     }
 //== }
+
+void K_point::generate_hubbard_orbitals()
+{
+// TODO: don't forget to copy WFs to GPU in other parts of the code
+
+    auto r = unit_cell_.num_wf_with_U();
+    const int num_sc = ctx_.num_mag_dims() == 3 ? 2 : 1;
+
+    Wave_functions phi(gkvec_partition(), r.first, ctx_.preferred_memory_t(), num_sc);
+
+    for (int ispn = 0; ispn < num_sc; ispn++) {
+        phi.pw_coeffs(ispn).prime().zero();
+    }
+
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        auto& atom_type = unit_cell_.atom(ia).type();
+        if (atom_type.hubbard_correction()) {
+            generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(), ia, r.second[ia], true, phi);
+        }
+    }
+
+    /* check if we have a norm conserving pseudo potential only */
+    std::unique_ptr<Q_operator> q_op;
+    if (unit_cell_.augment()) {
+        q_op = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
+    }
+
+    if (ctx_.processing_unit() == device_t::GPU) {
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            /* allocate GPU memory */
+            phi.pw_coeffs(ispn).prime().allocate(memory_t::device);
+            // can do async copy
+            phi.pw_coeffs(ispn).copy_to(memory_t::device, 0, r.first);
+            hubbard_wave_functions_->pw_coeffs(ispn).prime().allocate(memory_t::device);
+        }
+    }
+    sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), spin_range(num_sc), 0, r.first, beta_projectors(),
+                                             phi, q_op.get(), *hubbard_wave_functions_);
+
+    orthogonalize_hubbard_orbitals(phi);
+
+    // All calculations on GPU then we need to copy the final result back to the cpus
+    if (ctx_.processing_unit() == device_t::GPU) {
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            /* copy the hubbard wave functions on the host and then deallocate on GPU */
+            hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, r.first);
+            hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+        }
+    }
+}
 
 }

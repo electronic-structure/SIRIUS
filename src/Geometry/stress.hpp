@@ -25,11 +25,7 @@
 #ifndef __STRESS_HPP__
 #define __STRESS_HPP__
 
-#include "Beta_projectors/beta_projectors_strain_deriv.hpp"
-#include "non_local_functor.hpp"
-#include "Density/density.hpp"
 #include "Potential/potential.hpp"
-#include "Hamiltonian/hamiltonian.hpp"
 
 namespace sirius {
 
@@ -100,9 +96,6 @@ class Stress
     Density& density_;
 
     Potential& potential_;
-
-    // For the Hubbard correction.
-    Hamiltonian& hamiltonian_;
 
     K_point_set& kset_;
 
@@ -199,11 +192,10 @@ class Stress
     void symmetrize(matrix3d<double>& mtrx__) const;
 
   public:
-    Stress(Simulation_context& ctx__, Density& density__, Potential& potential__, Hamiltonian& h__, K_point_set& kset__)
+    Stress(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__)
         : ctx_(ctx__)
         , density_(density__)
         , potential_(potential__)
-        , hamiltonian_(h__)
         , kset_(kset__)
     {
     }
