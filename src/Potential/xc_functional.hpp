@@ -103,22 +103,22 @@ namespace sirius {
                     TERMINATE(s);
                 }
 
-                double v1[3] = { lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0) };
-                double v2[3] = { lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1) };
-                double v3[3] = { lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2) };
+                double v1[3] = { lattice_vectors__(0, 0), lattice_vectors__(1, 0), lattice_vectors__(2, 0) };
+                double v2[3] = { lattice_vectors__(0, 1), lattice_vectors__(1, 1), lattice_vectors__(2, 1) };
+                double v3[3] = { lattice_vectors__(0, 2), lattice_vectors__(1, 2), lattice_vectors__(2, 2) };
                 vdwxc_set_unit_cell(handler_vdw_,
-                                    fft.size(0),
-                                    fft.size(1),
-                                    fft.size(2),
+                                    fft__.dim_x(),
+                                    fft__.dim_y(),
+                                    fft__.dim_z(),
                                     v1[0], v1[1], v1[2],
                                     v2[0], v2[1], v2[2],
                                     v3[0], v3[1], v3[2]);
-
-                if (fft.comm().size() == 1) {
+                MPI_Comm fft_comm = fft__.communicator();
+                if (Communicator(fft__.communicator()).size() == 1) {
                     vdwxc_init_serial(handler_vdw_);
                 } else {
 #if __HAVE_VDWXC_MPI
-                    vdwxc_init_mpi(handler_vdw_, fft.comm().mpi_comm());
+                    vdwxc_init_mpi(handler_vdw_, fft__.communicator());
 #else
                     vdwxc_init_serial(handler_vdw_);
 #endif
