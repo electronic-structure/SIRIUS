@@ -44,8 +44,8 @@ template <typename... FUNCS>
 class Linear : public Mixer<FUNCS...>
 {
   public:
-    Linear(double beta, Communicator const& comm, const FunctionProperties<FUNCS>&... function_prop)
-        : Mixer<FUNCS...>(2, comm, function_prop...)
+    Linear(double beta, Communicator const& comm)
+        : Mixer<FUNCS...>(2, comm)
         , beta_(beta)
     {
     }

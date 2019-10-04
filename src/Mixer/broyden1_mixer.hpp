@@ -44,9 +44,8 @@ template <typename... FUNCS>
 class Broyden1 : public Mixer<FUNCS...>
 {
   public:
-    Broyden1(std::size_t max_history, double beta, double beta0, double beta_scaling_factor, Communicator const& comm,
-             const FunctionProperties<FUNCS>&... function_prop)
-        : Mixer<FUNCS...>(max_history, comm, function_prop...)
+    Broyden1(std::size_t max_history, double beta, double beta0, double beta_scaling_factor, Communicator const& comm)
+        : Mixer<FUNCS...>(max_history, comm)
         , beta_(beta)
         , beta0_(beta0)
         , beta_scaling_factor_(beta_scaling_factor)

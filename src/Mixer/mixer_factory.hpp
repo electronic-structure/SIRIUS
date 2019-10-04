@@ -35,20 +35,18 @@ namespace sirius {
 namespace mixer {
 
 template <typename... FUNCS>
-inline std::unique_ptr<Mixer<FUNCS...>> Mixer_factory(Mixer_input mix_cfg, Communicator const& comm,
-                                                      const FunctionProperties<FUNCS>&... function_prop)
+inline std::unique_ptr<Mixer<FUNCS...>> Mixer_factory(Mixer_input mix_cfg, Communicator const& comm)
 {
     std::unique_ptr<Mixer<FUNCS...>> mixer;
 
     if (mix_cfg.type_ == "linear") {
-        mixer.reset(new Linear<FUNCS...>(mix_cfg.beta_, comm, function_prop...));
+        mixer.reset(new Linear<FUNCS...>(mix_cfg.beta_, comm));
     } else if (mix_cfg.type_ == "broyden1") {
         mixer.reset(new Broyden1<FUNCS...>(mix_cfg.max_history_, mix_cfg.beta_, mix_cfg.beta0_,
-                                           mix_cfg.beta_scaling_factor_, comm, function_prop...));
+                                           mix_cfg.beta_scaling_factor_, comm));
     } else if (mix_cfg.type_ == "broyden2") {
         mixer.reset(new Broyden2<FUNCS...>(mix_cfg.max_history_, mix_cfg.beta_, mix_cfg.beta0_,
-                                           mix_cfg.beta_scaling_factor_, mix_cfg.linear_mix_rms_tol_, comm,
-                                           function_prop...));
+                                           mix_cfg.beta_scaling_factor_, mix_cfg.linear_mix_rms_tol_, comm));
     } else {
         TERMINATE("wrong type of mixer");
     }

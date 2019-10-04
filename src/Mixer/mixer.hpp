@@ -59,6 +59,16 @@ struct FunctionProperties
     {
     }
 
+    FunctionProperties()
+        : is_local(false)
+        , local_size([](const FUNC&) -> std::size_t { return 0; })
+        , inner([](const FUNC&, const FUNC&) -> double { return 0.0; })
+        , scal([](double, FUNC&) -> void {})
+        , copy([](const FUNC&, FUNC&) -> void {})
+        , axpy([](double, const FUNC&, FUNC&) -> void {})
+    {
+    }
+
     // The function is stored fully locally on each MPI rank.
     bool is_local;
 
@@ -226,12 +236,11 @@ class Mixer
 
     static constexpr std::size_t number_of_functions = sizeof...(FUNCS);
 
-    Mixer(std::size_t max_history, sddk::Communicator const& comm, const FunctionProperties<FUNCS>&... function_prop)
+    Mixer(std::size_t max_history, sddk::Communicator const& comm)
         : step_(0)
         , max_history_(max_history)
         , comm_(comm)
         , rmse_history_(max_history)
-        , functions_(function_prop...)
         , output_history_(max_history)
         , residual_history_(max_history)
     {
@@ -242,14 +251,20 @@ class Mixer
     // Initialize function at given index with given value. A new function object is created with "args" passed to the
     // constructor. Only initialized functions are mixed.
     template <std::size_t FUNC_INDEX, typename... ARGS>
-    void initialize_function(const typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& init_value,
-                             ARGS&&... args)
+    void initialize_function(
+        const FunctionProperties<typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type>& function_prop,
+        const typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& init_value, ARGS&&... args)
     {
         if (step_ > 0) {
             throw std::runtime_error("Initializing function_prop after mixing not allowed!");
         }
+
+        std::get<FUNC_INDEX>(functions_) = function_prop;
+
         // NOTE: don't use std::forward for args, because we need them multiple times (don't forward
         // r-value references)
+
+        // create function object placeholders with arguments provided
         std::get<FUNC_INDEX>(input_).reset(
             new typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
         std::get<FUNC_INDEX>(tmp1_).reset(new
@@ -263,6 +278,8 @@ class Mixer
             std::get<FUNC_INDEX>(residual_history_[i])
                 .reset(new typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
         }
+
+        // initialize output and input with given initial value
         std::get<FUNC_INDEX>(functions_).copy(init_value, *std::get<FUNC_INDEX>(output_history_[0]));
         std::get<FUNC_INDEX>(functions_).copy(init_value, *std::get<FUNC_INDEX>(input_));
     }
@@ -332,6 +349,8 @@ class Mixer
         const auto size_local_only = this->local_size(true, residual_history_[idx]);
         this->comm_.allreduce(&size, 1);
         size += size_local_only;
+        if (size == 0)
+            size = 1;
 
         rmse = std::sqrt(rmse / size);
 

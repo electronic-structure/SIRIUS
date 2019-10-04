@@ -45,8 +45,8 @@ class Broyden2 : public Mixer<FUNCS...>
 {
   public:
     Broyden2(std::size_t max_history, double beta, double beta0, double beta_scaling_factor, double linear_mix_rmse_tol,
-             Communicator const& comm, const FunctionProperties<FUNCS>&... function_prop)
-        : Mixer<FUNCS...>(max_history, comm, function_prop...)
+             Communicator const& comm)
+        : Mixer<FUNCS...>(max_history, comm)
         , beta_(beta)
         , beta0_(beta0)
         , beta_scaling_factor_(beta_scaling_factor)

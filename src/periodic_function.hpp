@@ -307,6 +307,11 @@ class Periodic_function : public Smooth_periodic_function<T>
         return f_mt_local_(ialoc__);
     }
 
+    inline Spheric_function<function_domain_t::spectral, T> & f_mt(int ialoc__)
+    {
+        return f_mt_local_(ialoc__);
+    }
+
     double value_rg(vector3d<double> const& vc)
     {
         double p{0};

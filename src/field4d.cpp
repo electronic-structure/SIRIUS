@@ -182,18 +182,19 @@ void sirius::Field4D::mixer_output()
 void sirius::Field4D::mixer_init(Mixer_input mixer_cfg__)
 {
     auto func_prop = mixer::full_potential_periodic_function_property(false);
-    auto density_prop = mixer::density_function_property(true);
 
+    // create mixer
     mixer_ = mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                           Periodic_function<double>, mdarray<double_complex, 4>>(
-        mixer_cfg__, ctx_.comm(), func_prop, func_prop, func_prop, func_prop, density_prop);
-    mixer_->initialize_function<0>(component(0), ctx_, lmmax_, true);
+                                  Periodic_function<double>, mdarray<double_complex, 4>>(mixer_cfg__, ctx_.comm());
+
+    // initialize functions
+    mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_, true);
     if (ctx_.num_mag_dims() > 0)
-        mixer_->initialize_function<1>(component(1), ctx_, lmmax_, true);
+        mixer_->initialize_function<1>(func_prop, component(1), ctx_, lmmax_, true);
     if (ctx_.num_mag_dims() > 1)
-        mixer_->initialize_function<2>(component(2), ctx_, lmmax_, true);
+        mixer_->initialize_function<2>(func_prop, component(2), ctx_, lmmax_, true);
     if (ctx_.num_mag_dims() > 2)
-        mixer_->initialize_function<3>(component(3), ctx_, lmmax_, true);
+        mixer_->initialize_function<3>(func_prop, component(3), ctx_, lmmax_, true);
 }
 
 double sirius::Field4D::mix(double rss_min__)

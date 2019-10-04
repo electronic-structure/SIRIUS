@@ -1773,19 +1773,21 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
         auto func_prop    = mixer::pseudo_potential_periodic_function_property(false);
         auto density_prop = mixer::density_function_property(true);
 
+        // create mixer
         this->mixer_ =
             mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, mdarray<double_complex, 4>>(
-                mixer_cfg__, ctx_.comm(), func_prop, func_prop, func_prop, func_prop, density_prop);
-        this->mixer_->initialize_function<0>(component(0), ctx_, lmmax_, true);
-        if (ctx_.num_mag_dims() > 0)
-            this->mixer_->initialize_function<1>(component(1), ctx_, lmmax_);
-        if (ctx_.num_mag_dims() > 1)
-            this->mixer_->initialize_function<2>(component(2), ctx_, lmmax_);
-        if (ctx_.num_mag_dims() > 2)
-            this->mixer_->initialize_function<3>(component(3), ctx_, lmmax_);
+                                 Periodic_function<double>, mdarray<double_complex, 4>>(mixer_cfg__, ctx_.comm());
 
-        this->mixer_->initialize_function<4>(density_matrix_, unit_cell_.max_mt_basis_size(),
+        // initialize functions
+        this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_);
+        if (ctx_.num_mag_dims() > 0)
+            this->mixer_->initialize_function<1>(func_prop, component(1), ctx_, lmmax_);
+        if (ctx_.num_mag_dims() > 1)
+            this->mixer_->initialize_function<2>(func_prop, component(2), ctx_, lmmax_);
+        if (ctx_.num_mag_dims() > 2)
+            this->mixer_->initialize_function<3>(func_prop, component(3), ctx_, lmmax_);
+
+        this->mixer_->initialize_function<4>(density_prop, density_matrix_, unit_cell_.max_mt_basis_size(),
                                              unit_cell_.max_mt_basis_size(), ctx_.num_mag_comp(),
                                              unit_cell_.num_atoms());
     }
