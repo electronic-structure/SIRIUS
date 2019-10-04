@@ -30,8 +30,6 @@
 #include "periodic_function.hpp"
 #include "K_point/k_point_set.hpp"
 #include "Mixer/mixer.hpp"
-#include "Mixer/mixer_functions.hpp"
-#include "Mixer/mixer_factory.hpp"
 
 #if defined(__GPU)
 extern "C" void update_density_rg_1_real_gpu(int size__,
@@ -609,84 +607,13 @@ class Density : public Field4D
         return paw_density_data_[spl_paw_ind].ps_density_;
     }
 
-    void mixer_input()
-    {
-        if (ctx_.full_potential()) {
-            Field4D::mixer_input();
-        } else {
-            mixer_->set_input<0>(component(0));
-            if (ctx_.num_mag_dims() > 0)
-                mixer_->set_input<1>(component(1));
-            if (ctx_.num_mag_dims() > 1)
-                mixer_->set_input<2>(component(2));
-            if (ctx_.num_mag_dims() > 2)
-                mixer_->set_input<3>(component(3));
+    void mixer_input();
 
-            mixer_->set_input<4>(density_matrix_);
-        }
-    }
+    void mixer_output();
 
-    void mixer_output()
-    {
-        if (ctx_.full_potential()) {
-            Field4D::mixer_output();
-        } else {
-            mixer_->get_output<0>(component(0));
-            if (ctx_.num_mag_dims() > 0)
-                mixer_->get_output<1>(component(1));
-            if (ctx_.num_mag_dims() > 1)
-                mixer_->get_output<2>(component(2));
-            if (ctx_.num_mag_dims() > 2)
-                mixer_->get_output<3>(component(3));
+    void mixer_init(Mixer_input mixer_cfg__);
 
-            mixer_->get_output<4>(density_matrix_);
-        }
-    }
-
-    void mixer_init(Mixer_input mixer_cfg__)
-    {
-        if (ctx_.full_potential()) {
-            Field4D::mixer_init(mixer_cfg__);
-        } else {
-            auto func_prop    = mixer::pseudo_potential_periodic_function_property(false);
-            auto density_prop = mixer::density_function_property(true);
-
-            this->mixer_ =
-                mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                     Periodic_function<double>, mdarray<double_complex, 4>>(
-                    mixer_cfg__, ctx_.comm(), func_prop, func_prop, func_prop, func_prop, density_prop);
-            this->mixer_->initialize_function<0>(component(0), ctx_, lmmax_, true);
-            if (ctx_.num_mag_dims() > 0)
-                this->mixer_->initialize_function<1>(component(1), ctx_, lmmax_);
-            if (ctx_.num_mag_dims() > 1)
-                this->mixer_->initialize_function<2>(component(2), ctx_, lmmax_);
-            if (ctx_.num_mag_dims() > 2)
-                this->mixer_->initialize_function<3>(component(3), ctx_, lmmax_);
-
-            this->mixer_->initialize_function<4>(density_matrix_, unit_cell_.max_mt_basis_size(),
-                                                 unit_cell_.max_mt_basis_size(), ctx_.num_mag_comp(),
-                                                 unit_cell_.num_atoms());
-        }
-    }
-
-    double mix()
-    {
-        double rms;
-
-        if (ctx_.full_potential()) {
-            /* mix in real-space in case of FP-LAPW */
-            rms = Field4D::mix(ctx_.settings().mixer_rss_min_);
-            /* get rho(G) after mixing */
-            rho().fft_transform(-1);
-        } else {
-            /* mix in G-space in case of PP */
-            mixer_input();
-            rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
-            mixer_output();
-        }
-
-        return rms;
-    }
+    double mix();
 
     //inline double dr2() const
     //{

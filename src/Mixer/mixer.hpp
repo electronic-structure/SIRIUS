@@ -289,7 +289,8 @@ class Mixer
         std::get<FUNC_INDEX>(functions_).copy(*std::get<FUNC_INDEX>(output_history_[idx]), output);
     }
 
-    // mixing step. If the mse is below mse_min, no mixing is performed.
+    // mixing step. If the mse is below mse_min, no mixing is performed. Returns the root mean square error computed by
+    // inner products of residuals.
     double mix(double mse_min)
     {
         this->update_residual();
