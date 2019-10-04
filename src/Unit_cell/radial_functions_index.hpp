@@ -29,7 +29,8 @@ namespace sirius {
 
 /// Descriptor for the atomic radial functions.
 /** The radial functions \f$ f_{\ell \nu}(r) \f$ are labeled by two indices: orbital quantum number \f$ \ell \f$ and
- *  an order \f$ \nu \f$ for a given \f$ \ell \f$.
+ *  an order \f$ \nu \f$ for a given \f$ \ell \f$. Radial functions can be any of augmented waves of local orbitals
+ *  (in case of FP-LAPW) or bete projectors, atomic or Hubbard wave functions in case of PP-PW.
  */
 struct radial_function_index_descriptor
 {
@@ -90,19 +91,25 @@ class radial_functions_index
     // Maximum number of radial functions across all angular momentums.
     int max_num_rf_;
 
+    /// Maximum orbital quantum number of augmented-wave radial functions.
     int lmax_aw_;
 
+    /// Maximum orbital quantum number of local orbital radial functions.
     int lmax_lo_;
 
+    /// Maximum orbital quantum number of radial functions.
     int lmax_;
 
   public:
+    /// Initialize a list of radial functions only from the list of local orbitals.
     void init(std::vector<local_orbital_descriptor> const& lo_descriptors__)
     {
+        /* create an empty descriptor */
         std::vector<radial_solution_descriptor_set> aw_descriptors;
-        init(aw_descriptors, lo_descriptors__);
+        this->init(aw_descriptors, lo_descriptors__);
     }
 
+    /// Initialize a list of radial functions from the list of APW radial functions and the list of local orbitals.
     void init(std::vector<radial_solution_descriptor_set> const& aw_descriptors,
               std::vector<local_orbital_descriptor> const& lo_descriptors)
     {

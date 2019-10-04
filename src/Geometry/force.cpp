@@ -528,7 +528,7 @@ mdarray<double, 2> const& Force::calc_forces_core()
 
 void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator& q_op__, mdarray<double, 2>& forceh_)
 {
-    mdarray<double_complex, 6> dn(2 * potential_.U().lmax() + 1, 2 * potential_.U().lmax() + 1, 2,
+    mdarray<double_complex, 6> dn(potential_.U().max_number_of_orbitals_per_atom(), potential_.U().max_number_of_orbitals_per_atom(), 2,
                                   ctx_.unit_cell().num_atoms(), 3, ctx_.unit_cell().num_atoms());
 
     potential_.U().compute_occupancies_derivatives(kp__, q_op__, dn);

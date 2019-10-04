@@ -32,6 +32,8 @@ Hubbard::Hubbard(Simulation_context& ctx__)
         }
     }
 
+    max_number_of_orbitals_per_atom_ = indexb_max;
+
     /* if spin orbit coupling or non colinear magnetisms are activated, then
      we consider the full spherical hubbard correction */
 

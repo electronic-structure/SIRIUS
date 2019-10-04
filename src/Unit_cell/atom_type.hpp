@@ -99,6 +99,18 @@ class Atom_type
     /** This index is used in LAPW to combine APW and local-orbital muffin-tin functions */
     basis_functions_index indexb_;
 
+    /// Index for the radial hubbard basis functions.
+    radial_functions_index indexr_wfc_;
+
+    /// Index of atomic wavefunctions (radial function * spherical harmonic).
+    basis_functions_index indexb_wfc_;
+
+    /// index for the radial hubbard basis functions
+    radial_functions_index hubbard_indexr_;
+
+    /// Index of atomic basis functions (radial function * spherical harmonic).
+    basis_functions_index hubbard_indexb_;
+
     /// Radial functions of beta-projectors.
     std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
 
@@ -106,12 +118,6 @@ class Atom_type
     /** The dimension of this array is fully determined by the number and lmax of beta-projectors.
         Beta-projectors must be loaded before loading the Q radial functions. */
     mdarray<Spline<double>, 2> q_radial_functions_l_;
-
-    /// Index for the radial hubbard basis functions.
-    radial_functions_index indexr_wfc_;
-
-    /// Index of atomic wavefunctions (radial function * spherical harmonic).
-    basis_functions_index indexb_wfc_;
 
     /// Atomic wave-functions used to setup the initial subspace and to apply U-correction.
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
@@ -173,12 +179,6 @@ class Atom_type
 
     /// Vector containing all orbitals informations that are relevant for the Hubbard correction.
     std::vector<hubbard_orbital_descriptor> hubbard_orbitals_;
-
-    /// index for the radial hubbard basis functions
-    radial_functions_index hubbard_indexr_;
-
-    /// Index of atomic basis functions (radial function * spherical harmonic).
-    basis_functions_index hubbard_indexb_;
 
     /// List of radial descriptor sets used to construct hubbard orbitals.
     std::vector<local_orbital_descriptor> hubbard_lo_descriptors_;
