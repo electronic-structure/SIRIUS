@@ -17,9 +17,9 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file mixer.h
+/** \file mixer_factory.hpp
  *
- *   \brief Contains definition and implementation of sirius::Mixer base class.
+ *   \brief Contains the mixer facttory for creating different types of mixers.
  */
 
 #ifndef __MIXER_FACTORY_HPP__

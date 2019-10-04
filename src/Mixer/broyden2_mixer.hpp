@@ -17,9 +17,9 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file mixer.h
+/** \file broyden2_mixer.hpp
  *
- *   \brief Contains definition and implementation of sirius::Broyden2 classes.
+ *   \brief Contains definition and implementation of sirius::Broyden2.
  */
 
 #ifndef __BROYDEN2_MIXER_HPP__
