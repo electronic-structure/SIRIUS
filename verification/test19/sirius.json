@@ -27,12 +27,13 @@
         "smearing_width" : 0.02,
 
         "use_symmetry" : true,
-        "hubard_correction" : true,
+        "hubbard_correction" : true,
         "num_mag_dims" : 1,
         "gk_cutoff" : 6,
         "pw_cutoff" : 20,
 
-        "energy_tol" : 1e-10,
+        "energy_tol" : 1e-7,
+        "potential_tol" : 1e-8,
 
         "num_dft_iter" : 100,
 
