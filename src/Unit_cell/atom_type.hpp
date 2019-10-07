@@ -1742,7 +1742,7 @@ inline void Atom_type::generate_f_coefficients(void)
                     for (auto sigma1 = 0; sigma1 < 2; sigma1++) {
                         double_complex coef = {0.0, 0.0};
 
-                        // yes durty but loop over double is worst.
+                        // yes dirty but loop over double is worst.
                         // since mj is only important for the rotation
                         // of the spherical harmonics the code takes
                         // into account this odd convention.
@@ -1764,13 +1764,13 @@ inline void Atom_type::generate_f_coefficients(void)
 
 inline void Atom_type::read_hubbard_input()
 {
-    if(!parameters_.Hubbard().hubbard_correction_) {
+    if(!parameters_.hubbard_input().hubbard_correction_) {
         return;
     }
 
     this->hubbard_correction_ = false;
 
-    for(auto &d: parameters_.Hubbard().species) {
+    for(auto &d: parameters_.hubbard_input().species) {
         if (d.first == symbol_) {
             int hubbard_l_ = d.second.l;
             int hubbard_n_ = d.second.n;

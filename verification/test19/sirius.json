@@ -32,15 +32,15 @@
         "gk_cutoff" : 6,
         "pw_cutoff" : 20,
 
-        "energy_tol" : 1e-7,
-        "potential_tol" : 1e-8,
+        "energy_tol" : 1e-8,
+        "potential_tol" : 1e-10,
 
         "num_dft_iter" : 100,
 
         "ngridk" : [2, 2, 2]
     },
     "mixer" :  {
-        "beta" : 0.5
+        "beta" : 0.35
     },
 
     "unit_cell" : {

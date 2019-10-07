@@ -659,8 +659,9 @@ struct Hubbard_input
 
     void read(json const& parser)
     {
-        if (!parser.count("hubbard"))
+        if (!parser.count("hubbard")) {
             return;
+        }
 
         if (parser["hubbard"].count("orthogonalize_hubbard_wave_functions")) {
             orthogonalize_hubbard_orbitals_ =

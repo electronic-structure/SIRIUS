@@ -9,15 +9,15 @@ Hubbard::Hubbard(Simulation_context& ctx__)
     if (!ctx_.hubbard_correction()) {
         return;
     }
-    orthogonalize_hubbard_orbitals_ = ctx_.Hubbard().orthogonalize_hubbard_orbitals_;
-    normalize_orbitals_only_        = ctx_.Hubbard().normalize_hubbard_orbitals_;
-    projection_method_              = ctx_.Hubbard().projection_method_;
+    orthogonalize_hubbard_orbitals_ = ctx_.hubbard_input().orthogonalize_hubbard_orbitals_;
+    normalize_orbitals_only_        = ctx_.hubbard_input().normalize_hubbard_orbitals_;
+    projection_method_              = ctx_.hubbard_input().projection_method_;
 
     // if the projectors are defined externaly then we need the file
     // that contains them. All the other methods do not depend on
     // that parameter
     if (this->projection_method_ == 1) {
-        this->wave_function_file_ = ctx_.Hubbard().wave_function_file_;
+        this->wave_function_file_ = ctx_.hubbard_input().wave_function_file_;
     }
 
     int indexb_max = -1;

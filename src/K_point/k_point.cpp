@@ -33,7 +33,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
 
     int nwfu = unit_cell_.num_wf_with_U().first;
 
-    if (ctx_.Hubbard().orthogonalize_hubbard_orbitals_ || ctx_.Hubbard().normalize_hubbard_orbitals_) {
+    if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ || ctx_.hubbard_input().normalize_hubbard_orbitals_) {
 
         dmatrix<double_complex> S(nwfu, nwfu);
         S.zero();
@@ -59,7 +59,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
 
         /* diagonalize the all stuff */
 
-        if (ctx_.Hubbard().orthogonalize_hubbard_orbitals_ ) {
+        if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ ) {
             dmatrix<double_complex> Z(nwfu, nwfu);
 
             auto ev_solver = Eigensolver_factory(ev_solver_t::lapack);
