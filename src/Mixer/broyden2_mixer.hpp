@@ -84,7 +84,7 @@ class Broyden2 : public Mixer<FUNCS...>
             S.zero();
             mdarray<double, 2> S_local(history_size, history_size);
             S_local.zero();
-            for (int j1 = 0; j1 < history_size; j1++) {
+            for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
                 int i1 = this->idx_hist(this->step_ - history_size + j1);
                 for (int j2 = 0; j2 <= j1; j2++) {
                     int i2    = this->idx_hist(this->step_ - history_size + j2);
@@ -102,8 +102,8 @@ class Broyden2 : public Mixer<FUNCS...>
             const auto local_size = this->local_size(true, this->residual_history_[0]);
             global_size += local_size;
 
-            for (int j1 = 0; j1 < history_size; j1++) {
-                for (int j2 = 0; j2 < history_size; j2++) {
+            for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
+                for (int j2 = 0; j2 < static_cast<int>(history_size); j2++) {
                     S(j1, j2) += S_local(j1, j2);
                     S(j1, j2) /= global_size;
                 }
@@ -112,7 +112,7 @@ class Broyden2 : public Mixer<FUNCS...>
             mdarray<long double, 2> gamma_k(2 * history_size, history_size);
             gamma_k.zero();
             /* initial gamma_0 */
-            for (int i = 0; i < history_size; i++) {
+            for (int i = 0; i < static_cast<int>(history_size); i++) {
                 gamma_k(i, i) = 0.25;
             }
 
@@ -120,12 +120,12 @@ class Broyden2 : public Mixer<FUNCS...>
             std::vector<long double> v2(2 * history_size);
 
             /* update gamma_k by recursion */
-            for (int k = 0; k < history_size - 1; k++) {
+            for (int k = 0; k < static_cast<int>(history_size) - 1; k++) {
                 /* denominator df_k^{T} S df_k */
                 long double d = S(k, k) + S(k + 1, k + 1) - S(k, k + 1) - S(k + 1, k);
                 /* nominator */
                 std::memset(&v1[0], 0, history_size * sizeof(long double));
-                for (int j = 0; j < history_size; j++) {
+                for (int j = 0; j < static_cast<int>(history_size); j++) {
                     v1[j] = S(k + 1, j) - S(k, j);
                 }
 
@@ -136,7 +136,7 @@ class Broyden2 : public Mixer<FUNCS...>
                 v2[history_size + k] -= 1;
                 v2[history_size + k + 1] += 1;
 
-                for (int j1 = 0; j1 < history_size; j1++) {
+                for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
                     for (int j2 = 0; j2 < 2 * history_size; j2++) {
                         gamma_k(j2, j1) += v2[j2] * v1[j1] / d;
                     }
@@ -153,7 +153,7 @@ class Broyden2 : public Mixer<FUNCS...>
             this->scale(0.0, this->input_);
 
             /* make linear combination of vectors and residuals; this is the update vector \tilda x */
-            for (int j = 0; j < history_size; j++) {
+            for (int j = 0; j < static_cast<int>(history_size); j++) {
                 int i1 = this->idx_hist(this->step_ - history_size + j);
                 this->axpy(v2[j], this->residual_history_[i1], this->input_);
                 this->axpy(v2[j + history_size], this->output_history_[i1], this->input_);
