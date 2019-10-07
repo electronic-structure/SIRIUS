@@ -65,6 +65,7 @@ class Atom_type
     double mass_{0};
 
     /// List of atomic levels.
+    /** Low-energy levels are core states. Information about core states is defined in the species file. */
     std::vector<atomic_level_descriptor> atomic_levels_;
 
     /// Number of core electrons.
@@ -206,8 +207,6 @@ class Atom_type
 
     void read_hubbard_input();
     void generate_f_coefficients(void);
-    // inline double ClebschGordan(const int l, const double j, const double m, const int spin);
-    // inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
 
     bool initialized_{false};
 
@@ -426,6 +425,7 @@ public:
         return lmax;
     }
 
+    /// Return the number of radial atomic functions.
     inline int num_ps_atomic_wf() const
     {
         return static_cast<int>(ps_atomic_wfs_.size());
@@ -477,6 +477,9 @@ public:
         return static_cast<int>(beta_radial_functions_.size());
     }
 
+    /// Add radial function of the augmentation charge.
+    /** Radial functions of beta projectors must be added already. Their total number will be used to
+     *  deterimine the storage size for the radial functions of the augmented charge. */
     inline void add_q_radial_function(int idxrf1__, int idxrf2__, int l__, std::vector<double> qrf__)
     {
         /* sanity check */
@@ -931,6 +934,7 @@ public:
         return static_cast<int>(atom_id_.size());
     }
 
+    /// Return atom ID (global index) by the index of atom withing a given type.
     inline int atom_id(int idx) const
     {
         return atom_id_[idx];
@@ -1050,25 +1054,26 @@ public:
 
     inline bool spin_orbit_coupling(bool so__)
     {
-        spin_orbit_coupling_ = so__;
-        return spin_orbit_coupling_;
+        this->spin_orbit_coupling_ = so__;
+        return this->spin_orbit_coupling_;
     }
 
-    bool const& hubbard_correction() const
+    /// Get the Hubbard correction switch.
+    inline bool hubbard_correction() const
     {
         return hubbard_correction_;
     }
 
-
-    inline void set_hubbard_correction()
+    /// Set the Hubbard correction switch.
+    inline bool hubbard_correction(bool ldapu__)
     {
-        this->hubbard_correction_ = true;
+        this->hubbard_correction_ = ldapu__;
+        return this->hubbard_correction_;
     }
 
-
-    /// compare the angular, total angular momentum and radial part of
-    /// the beta projectors, leaving the m index free. Only useful
-    /// when spin orbit coupling is included.
+    /// Compare indices of beta projectors.
+    /** Compare the angular, total angular momentum and radial part of the beta projectors,
+     *  leaving the m index free. Only useful when spin orbit coupling is included. */
     inline bool compare_index_beta_functions(const int xi, const int xj) const
     {
         return ((indexb(xi).l == indexb(xj).l) && (indexb(xi).idxrf == indexb(xj).idxrf) &&
@@ -1354,8 +1359,7 @@ inline void Atom_type::print_info() const
     printf("total number of basis functions  : %i\n", indexb().size());
     printf("number of aw basis functions     : %i\n", indexb().size_aw());
     printf("number of lo basis functions     : %i\n", indexb().size_lo());
-    if (!parameters_.full_potential())
-    {
+    if (!parameters_.full_potential()) {
         printf("number of ps wavefunctions       : %i\n", this->num_ps_atomic_wf());
     }
 }

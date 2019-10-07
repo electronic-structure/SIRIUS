@@ -200,7 +200,9 @@ void Unit_cell::print_info(int verbosity__) const
         }
     }
     printf("\nminimum bond length: %20.12f\n", min_bond_length());
-
+    if (!parameters_.full_potential()) {
+        printf("\nnumber of pseudo wave-functions: %i\n", this->num_ps_atomic_wf());
+    }
     print_symmetry_info(verbosity__);
 }
 
@@ -561,13 +563,10 @@ void Unit_cell::initialize()
 
     /* initialize atoms */
     for (int ia = 0; ia < num_atoms(); ia++) {
-        atom(ia).init(mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
+        atom(ia).init(mt_lo_basis_size_);
         mt_aw_basis_size_ += atom(ia).mt_aw_basis_size();
         mt_lo_basis_size_ += atom(ia).mt_lo_basis_size();
-        mt_basis_size_ += atom(ia).mt_basis_size();
     }
-
-    assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
 
     init_paw();
 
@@ -866,6 +865,46 @@ void Unit_cell::init_paw()
     }
 
     spl_num_paw_atoms_ = splindex<splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
+}
+
+std::pair<int, std::vector<int>> Unit_cell::num_wf_with_U() const
+{
+    std::vector<int> offs(this->num_atoms(), -1);
+    int counter{0};
+
+    /* we loop over atoms to check which atom has hubbard orbitals and then
+       compute the number of hubbard orbitals associated to it */
+    for (auto ia = 0; ia < this->num_atoms(); ia++) {
+        auto& atom = this->atom(ia);
+        if (atom.type().hubbard_correction()) {
+            offs[ia] = counter;
+            int fact{1};
+            /* there is a factor two when the pseudo-potential has no SO but
+               we do full non colinear magnetism. Note that we can consider
+               now multiple orbitals calculations. The API still does not
+               support it */
+            if ((this->parameters().num_mag_dims() == 3) && (!atom.type().spin_orbit_coupling())) {
+                fact = 2;
+            }
+            counter += fact * atom.type().hubbard_indexb_wfc().size();
+        }
+    }
+    return std::make_pair(counter, offs);
+}
+
+int Unit_cell::num_ps_atomic_wf() const
+{
+    int N{0};
+    /* get the total number of atomic-centered orbitals */
+    for (int iat = 0; iat < this->num_atom_types(); iat++) {
+        int n{0};
+        for (int i = 0; i < this->atom_type(iat).num_ps_atomic_wf(); i++) {
+            /* number of m-components is 2l + 1 */
+            n += (2 * std::abs(atom_type(iat).ps_atomic_wf(i).first) + 1);
+        }
+        N += atom_type(iat).num_atoms() * n;
+    }
+    return N;
 }
 
 } // namespace sirius

@@ -838,7 +838,7 @@ void sirius_set_atom_type_hubbard(void*  const* handler__,
 {
     GET_SIM_CTX(handler__);
     auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
-    type.set_hubbard_correction();
+    type.hubbard_correction(true);
     type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__);
 }
 

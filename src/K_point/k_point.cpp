@@ -747,6 +747,7 @@ void K_point::generate_hubbard_orbitals()
 {
 // TODO: don't forget to copy WFs to GPU in other parts of the code
 
+    /* total number of Hubbard orbitals */
     auto r = unit_cell_.num_wf_with_U();
     const int num_sc = ctx_.num_mag_dims() == 3 ? 2 : 1;
 
@@ -764,10 +765,7 @@ void K_point::generate_hubbard_orbitals()
     }
 
     /* check if we have a norm conserving pseudo potential only */
-    std::unique_ptr<Q_operator> q_op;
-    if (unit_cell_.augment()) {
-        q_op = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
-    }
+    auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator>(new Q_operator(ctx_)) : nullptr;
 
     if (ctx_.processing_unit() == device_t::GPU) {
         for (int ispn = 0; ispn < num_sc; ispn++) {

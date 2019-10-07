@@ -62,14 +62,8 @@ class Atom
     /// Maximum l for potential and magnetic field.
     int lmax_pot_{-1};
 
-    /// Offset in the array of matching coefficients.
-    int offset_aw_{-1};
-
     /// Offset in the block of local orbitals of the Hamiltonian and overlap matrices and in the eigen-vectors.
     int offset_lo_{-1}; // TODO: better name for this
-
-    /// Offset in the wave-function array.
-    int offset_mt_coeffs_{-1};
 
     /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
     mdarray<double_complex, 4> occupation_matrix_;
@@ -111,13 +105,9 @@ class Atom
     }
 
     /// Initialize atom.
-    inline void init(int offset_aw__, int offset_lo__, int offset_mt_coeffs__)
+    inline void init(int offset_lo__)
     {
-        assert(offset_aw__ >= 0);
-
-        offset_aw_        = offset_aw__;
-        offset_lo_        = offset_lo__;
-        offset_mt_coeffs_ = offset_mt_coeffs__;
+        offset_lo_ = offset_lo__;
 
         lmax_pot_ = type().parameters().lmax_pot();
 
@@ -412,22 +402,10 @@ class Atom
         comm__.bcast(occupation_matrix_.at(memory_t::host), (int)occupation_matrix_.size(), rank__);
     }
 
-    inline int offset_aw() const
-    {
-        assert(offset_aw_ >= 0);
-        return offset_aw_;
-    }
-
     inline int offset_lo() const
     {
         assert(offset_lo_ >= 0);
         return offset_lo_;
-    }
-
-    inline int offset_mt_coeffs() const
-    {
-        assert(offset_mt_coeffs_ >= 0);
-        return offset_mt_coeffs_;
     }
 
     inline double const* h_radial_integrals(int idxrf1, int idxrf2) const
