@@ -64,12 +64,6 @@ Density::Density(Simulation_context& ctx__)
                                                  ctx_.num_mag_comp(), unit_cell_.num_atoms());
     density_matrix_.zero();
 
-    /* split local G-vectors to low-frequency and high-frequency */
-    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-        int ig  = ctx_.gvec().offset() + igloc;
-        auto gv = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
-    }
-
     update();
 }
 
