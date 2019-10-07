@@ -34,6 +34,10 @@
 namespace sirius {
 namespace mixer {
 
+/// Select and create a new mixer.
+/** \param [in]  mix_cfg  Parameters for mixer selection and creation.
+ *  \param [in]  comm     Communicator passed to the mixer.
+ */
 template <typename... FUNCS>
 inline std::unique_ptr<Mixer<FUNCS...>> Mixer_factory(Mixer_input mix_cfg, Communicator const& comm)
 {

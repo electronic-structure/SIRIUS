@@ -40,12 +40,25 @@
 namespace sirius {
 namespace mixer {
 
-// Describes a function type used for mixing.
+/// Describes operations on a function type used for mixing.
+/** The properties contain functions, which determine the behaviour of a given type during mixing. The inner product
+ * function result is used for calculating mixing parameters. If a function should not contribute to generation of
+ * mixing parameters, the inner product function should always return 0.
+ */
 template <typename FUNC>
 struct FunctionProperties
 {
     using type = FUNC;
 
+    ///
+    /** \param [in]  is_local      Indicates, that the function is stored fully locally. The result of the inner product
+     *                             function will then not be send to other MPI ranks and only contributes locally.
+     *  \param [in]  local_size_   Function, which returns a measure of size of the locally stored part of the function.
+     *  \param [in]  inner_        Function, which computes the inner product. This determines the contribution to mixing parameters rmse.
+     *  \param [in]  scal_         Function, which scales the input (x = alpha * x).
+     *  \param [in]  copy_         Function, which copies from one object to the other (y = x).
+     *  \param [in]  axpy_         Function, which scales and adds one object to the other (y = alpha * x + y).
+     */
     FunctionProperties(bool is_local_, std::function<std::size_t(const FUNC&)> local_size_,
                        std::function<double(const FUNC&, const FUNC&)> inner_, std::function<void(double, FUNC&)> scal_,
                        std::function<void(const FUNC&, FUNC&)> copy_,
@@ -60,7 +73,7 @@ struct FunctionProperties
     }
 
     FunctionProperties()
-        : is_local(false)
+        : is_local(true)
         , local_size([](const FUNC&) -> std::size_t { return 0; })
         , inner([](const FUNC&, const FUNC&) -> double { return 0.0; })
         , scal([](double, FUNC&) -> void {})
@@ -228,6 +241,9 @@ struct Axpy<0, FUNCS...>
 } // namespace mixer_impl
 
 /// Abstract mixer for variadic number of Function objects, which are described by FunctionProperties.
+/** Can mix variadic number of functions objects, for which operations are defined in FunctionProperties. Only
+ *  functions, which are explicitly initialized, are mixed.
+ */
 template <typename... FUNCS>
 class Mixer
 {
@@ -236,6 +252,10 @@ class Mixer
 
     static constexpr std::size_t number_of_functions = sizeof...(FUNCS);
 
+    /// Construct a mixer. Functions have to initialized individually.
+    /** \param [in]  max_history   Maximum number of steps stored, which contribute to the mixing.
+     *  \param [in]  commm         Communicator used for exchaning mixing contributions.
+     */
     Mixer(std::size_t max_history, sddk::Communicator const& comm)
         : step_(0)
         , max_history_(max_history)
@@ -248,8 +268,12 @@ class Mixer
 
     virtual ~Mixer() = default;
 
-    // Initialize function at given index with given value. A new function object is created with "args" passed to the
-    // constructor. Only initialized functions are mixed.
+    /// Initialize function at given index with given value. A new function object is created with "args" passed to the
+    /// constructor. Only initialized functions are mixed.
+    /** \param [in]  function_prop   Function properties, which describe operations.
+     *  \param [in]  init_value      Initial function value for input / output.
+     *  \param [in]  args            Arguments, which are passed to the constructor of function placeholder objects.
+     */
     template <std::size_t FUNC_INDEX, typename... ARGS>
     void initialize_function(
         const FunctionProperties<typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type>& function_prop,
@@ -284,7 +308,9 @@ class Mixer
         std::get<FUNC_INDEX>(functions_).copy(init_value, *std::get<FUNC_INDEX>(input_));
     }
 
-    // Set input for next mixing step
+    /// Set input for next mixing step
+    /** \param [in]  input   Input functions, for which a copy operation is invoked.
+     */
     template <std::size_t FUNC_INDEX>
     void set_input(const typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& input)
     {
@@ -295,7 +321,9 @@ class Mixer
         }
     }
 
-    // Access last generated output. Mixing must have been performed at least once.
+    /// Access last generated output. Mixing must have been performed at least once.
+    /** \param [out]  output  Output function, into which the mixer output is copied.
+     */
     template <std::size_t FUNC_INDEX>
     void get_output(typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type& output)
     {
@@ -306,8 +334,10 @@ class Mixer
         std::get<FUNC_INDEX>(functions_).copy(*std::get<FUNC_INDEX>(output_history_[idx]), output);
     }
 
-    // mixing step. If the mse is below mse_min, no mixing is performed. Returns the root mean square error computed by
-    // inner products of residuals.
+    /// Mix input and stored history. Returns the root mean square error computed by inner products of residuals.
+    /** \param [in]  mse_min  Minimum mean square error. Mixing is only performed, if current mse is above this
+     * threshold.
+     */
     double mix(double mse_min)
     {
         this->update_residual();

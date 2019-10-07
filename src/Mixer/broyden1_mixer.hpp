@@ -40,6 +40,12 @@
 
 namespace sirius {
 namespace mixer {
+
+/// Broyden mixer.
+/** First version of the Broyden mixer, which requres inversion of the Jacobian matrix.
+ *  Reference paper: "Robust acceleration of self consistent field calculations for
+ *  density functional theory", Baarman K, Eirola T, Havu V., J Chem Phys. 134, 134109 (2011)
+ */
 template <typename... FUNCS>
 class Broyden1 : public Mixer<FUNCS...>
 {
