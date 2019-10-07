@@ -75,11 +75,13 @@ class Free_atom : public sirius::Atom_type
             vrho[i] = 0;
         }
 
-        auto mixer               = std::make_shared<sirius::mixer::Broyden1<std::vector<double>>>(12,  // max history
+        auto mixer = std::make_shared<sirius::mixer::Broyden1<std::vector<double>>>(12,  // max history
                                                                                     0.8, // beta
                                                                                     0.1, // beta0
                                                                                     1.0, // beta scaling factor
                                                                                     Communicator::self());
+
+        // use simple inner product for mixing
         auto mixer_function_prop = sirius::mixer::FunctionProperties<std::vector<double>>(
             false, [](const std::vector<double>& x) -> std::size_t { return x.size(); },
             [](const std::vector<double>& x, const std::vector<double>& y) -> double {
@@ -99,6 +101,8 @@ class Free_atom : public sirius::Atom_type
                 for (std::size_t i = 0; i < x.size(); ++i)
                     y[i] += alpha * x[i];
             });
+
+        // initialize with value of vrho
         mixer->initialize_function<0>(mixer_function_prop, vrho, vrho.size());
 
         sirius::Spline<double> rho(radial_grid());
@@ -194,7 +198,6 @@ class Free_atom : public sirius::Atom_type
 
             /* mix old and new effective potential */
             for (int i = 0; i < np; i++) {
-                // mixer->input_local(i, vh[i] + vxc[i]);
                 vrho[i] = vh[i] + vxc[i];
             }
             mixer->set_input<0>(vrho);
