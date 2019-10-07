@@ -17,7 +17,9 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <algorithm>
 #include <sirius.h>
+#include "Mixer/broyden1_mixer.hpp"
 
 double const rmin{1e-5};
 
@@ -73,17 +75,31 @@ class Free_atom : public sirius::Atom_type
             vrho[i] = 0;
         }
 
-        auto mixer = std::make_shared<sirius::Broyden1<double>>(0,   // shared vector size
-                                                                np,  // local vector size
-                                                                12,  // max history
-                                                                0.8, // beta
-                                                                0.1, // beta0
-                                                                1.0, // beta scaling factor
-                                                                Communicator::self());
-        for (int i = 0; i < np; i++) {
-            mixer->input_local(i, vrho[i]);
-        }
-        mixer->initialize();
+        auto mixer               = std::make_shared<sirius::mixer::Broyden1<std::vector<double>>>(12,  // max history
+                                                                                    0.8, // beta
+                                                                                    0.1, // beta0
+                                                                                    1.0, // beta scaling factor
+                                                                                    Communicator::self());
+        auto mixer_function_prop = sirius::mixer::FunctionProperties<std::vector<double>>(
+            false, [](const std::vector<double>& x) -> std::size_t { return x.size(); },
+            [](const std::vector<double>& x, const std::vector<double>& y) -> double {
+                double result = 0.0;
+                for (std::size_t i = 0; i < x.size(); ++i)
+                    result += x[i] * y[i];
+                return result;
+            },
+            [](double alpha, std::vector<double>& x) -> void {
+                for (auto& val : x)
+                    val *= alpha;
+            },
+            [](const std::vector<double>& x, std::vector<double>& y) -> void {
+                std::copy(x.begin(), x.end(), y.begin());
+            },
+            [](double alpha, const std::vector<double>& x, std::vector<double>& y) -> void {
+                for (std::size_t i = 0; i < x.size(); ++i)
+                    y[i] += alpha * x[i];
+            });
+        mixer->initialize_function<0>(mixer_function_prop, vrho, vrho.size());
 
         sirius::Spline<double> rho(radial_grid());
 
@@ -178,11 +194,13 @@ class Free_atom : public sirius::Atom_type
 
             /* mix old and new effective potential */
             for (int i = 0; i < np; i++) {
-                mixer->input_local(i, vh[i] + vxc[i]);
+                // mixer->input_local(i, vh[i] + vxc[i]);
+                vrho[i] = vh[i] + vxc[i];
             }
+            mixer->set_input<0>(vrho);
             mixer->mix(1e-16);
+            mixer->get_output<0>(vrho);
             for (int i = 0; i < np; i++) {
-                vrho[i] = mixer->output_local(i);
                 veff[i] = vrho[i] + vnuc[i];
             }
 
