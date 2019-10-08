@@ -135,7 +135,7 @@ double ground_state(Simulation_context& ctx,
                     diff += std::abs(s1[i][j] - s2[i][j]);
                 }
             }
-            if (diff > 1e-6) {
+            if (diff > 1e-5) {
                 printf("total stress is different!");
                 std::cout << "  reference: " << dict_ref["ground_state"]["stress"] << "\n";
                 std::cout << "  computed: " << result["stress"] << "\n";
