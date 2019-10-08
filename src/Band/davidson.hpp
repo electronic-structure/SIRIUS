@@ -27,6 +27,12 @@
 
 #include "residuals.hpp"
 
+/// Solve the eigen-problem using Davidson iterative method.
+/**
+\tparam T  type of the wave-functions in real space
+\param [in] Hk  Hamiltonian for a given k-point
+\return list of eigen-values
+*/
 template <typename T>
 inline mdarray<double, 1>
 davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int subspace_size__, int num_steps__,

@@ -838,7 +838,7 @@ void sirius_set_atom_type_hubbard(void*  const* handler__,
 {
     GET_SIM_CTX(handler__);
     auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
-    type.set_hubbard_correction();
+    type.hubbard_correction(true);
     type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__);
 }
 
@@ -2886,13 +2886,13 @@ void sirius_option_get_number_of_sections(int *length)
 void sirius_option_set_int(void* const* handler__, char*section, char *name, int *default_values, int *length)
 {
     GET_SIM_CTX(handler__);
-    // dictionary describing all the possible options
-    const json &parser = sirius::get_options_dictionary();
+    /* dictionary describing all the possible options */
+    json const& parser = sirius::get_options_dictionary();
 
-    // dictionary containing the values of the options for the simulations
-    json &conf_dict = sim_ctx.get_runtime_options_dictionary();
+    /* dictionary containing the values of the options for the simulations */
+    json& conf_dict = sim_ctx.get_runtime_options_dictionary();
 
-    // lower case for section and options
+    /* lower case for section and options */
     for ( char *p = section; *p; p++) *p = tolower(*p);
     for ( char *p = name; *p; p++) *p = tolower(*p);
 

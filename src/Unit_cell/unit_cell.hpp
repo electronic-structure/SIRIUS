@@ -122,9 +122,6 @@ class Unit_cell
     /// Maximum number of muffin-tin points among all atom types.
     int max_num_mt_points_{0};
 
-    /// Total number of MT basis functions.
-    int mt_basis_size_{0};
-
     /// Maximum number of MT basis functions among all atoms.
     int max_mt_basis_size_{0};
 
@@ -271,22 +268,40 @@ class Unit_cell
 
     void generate_radial_integrals();
 
+    /// Get a simple simple chemical formula bases on the total unit cell.
+    /** Atoms of each type are counted and packed in a string. For example, O2Ni2 or La2O4Cu */
     std::string chemical_formula();
 
     /// Update the parameters that depend on atomic positions or lattice vectors.
     void update();
 
+    /// Import unit cell description from the input data structure.
+    void import(Unit_cell_input const& inp__);
+
+    /// Get atom ID (global index) by it's position in fractional coordinates.
     int atom_id_by_position(vector3d<double> position__);
 
+    /// Find the minimum bond length.
+    /** This is useful to check the sanity of the crystal structure. */
+    double min_bond_length() const;
+
+    /// Calculate total number of Hubbard wave-functions and offset for each atom in the global index.
+    std::pair<int, std::vector<int>> num_wf_with_U() const;
+
+    /// Get the total number of pseudo atomic wave-functions.
+    int num_ps_atomic_wf() const;
+
+    /// Get Cartesian coordinates of the vector by its fractional coordinates.
     template <typename T>
     inline vector3d<double> get_cartesian_coordinates(vector3d<T> a__) const
     {
         return lattice_vectors_ * a__;
     }
 
-    inline vector3d<double> get_fractional_coordinates(vector3d<double> a) const
+    /// Get fractional coordinates of the vector by its Cartesian coordinates.
+    inline vector3d<double> get_fractional_coordinates(vector3d<double> a__) const
     {
-        return inverse_lattice_vectors_ * a;
+        return inverse_lattice_vectors_ * a__;
     }
 
     /// Unit cell volume.
@@ -419,15 +434,6 @@ class Unit_cell
         return mt_lo_basis_size_;
     }
 
-    /// Total number of the muffin-tin basis functions.
-    /** Total number of MT basis functions equals to the sum of the total number of augmented wave
-     *  basis functions and the total number of local orbital basis functions among all atoms. It controls
-     *  the size of the muffin-tin part of the first-variational states and second-variational wave functions. */
-    inline int mt_basis_size() const
-    {
-        return mt_basis_size_;
-    }
-
     /// Maximum number of basis functions among all atom types.
     inline int max_mt_basis_size() const
     {
@@ -540,8 +546,6 @@ class Unit_cell
         return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));
     }
 
-    void import(Unit_cell_input const& inp__);
-
     Simulation_parameters const& parameters() const
     {
         return parameters_;
@@ -555,34 +559,6 @@ class Unit_cell
     inline mdarray<double, 2> const& atom_coord(int iat__) const
     {
         return atom_coord_[iat__];
-    }
-
-    double min_bond_length() const;
-
-    /// Calculate total number of Hubbard wave-functions and offset for each atom in the global index.
-    inline std::pair<int, std::vector<int>> num_wf_with_U() const
-    {
-        std::vector<int> offs(this->num_atoms(), -1);
-        int counter{0};
-
-        /* we loop over atoms to check which atom has hubbard orbitals and then
-           compute the number of hubbard orbitals associated to it */
-        for (auto ia = 0; ia < this->num_atoms(); ia++) {
-            auto& atom = this->atom(ia);
-            if (atom.type().hubbard_correction()) {
-                offs[ia] = counter;
-                int fact{1};
-                /* there is a factor two when the pseudo-potential has no SO but
-                   we do full non colinear magnetism. Note that we can consider
-                   now multiple orbitals calculations. The API still does not
-                   support it */
-                if ((this->parameters().num_mag_dims() == 3) && (!atom.type().spin_orbit_coupling())) {
-                    fact = 2;
-                }
-                counter += fact * atom.type().hubbard_indexb_wfc().size();
-            }
-        }
-        return std::make_pair(counter, offs);
     }
 
     /// Return 'True' if at least one atom in the unit cell has an augmentation charge.
