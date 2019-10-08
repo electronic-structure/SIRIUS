@@ -98,6 +98,12 @@ class Periodic_function : public Smooth_periodic_function<T>
         }
     }
 
+    Periodic_function(Simulation_context& ctx__, int angular_domain_size__, bool allocate_global__)
+        : Periodic_function(ctx__, angular_domain_size__)
+    {
+      this->allocate_mt(allocate_global__);
+    }
+
     /// Allocate memory for muffin-tin part.
     void allocate_mt(bool allocate_global__)
     {
@@ -301,6 +307,11 @@ class Periodic_function : public Smooth_periodic_function<T>
         return f_mt_local_(ialoc__);
     }
 
+    inline Spheric_function<function_domain_t::spectral, T> & f_mt(int ialoc__)
+    {
+        return f_mt_local_(ialoc__);
+    }
+
     double value_rg(vector3d<double> const& vc)
     {
         double p{0};
@@ -334,6 +345,11 @@ class Periodic_function : public Smooth_periodic_function<T>
     }
 
     mdarray<T, 3>& f_mt()
+    {
+        return f_mt_;
+    }
+
+    const mdarray<T, 3>& f_mt() const
     {
         return f_mt_;
     }
