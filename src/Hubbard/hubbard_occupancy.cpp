@@ -39,6 +39,8 @@
 namespace sirius {
 void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 {
+    PROFILE("sirius::Hubbard::compute_occupancy");
+
     if (!ctx_.hubbard_correction()) {
         return;
     }
@@ -236,9 +238,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
                                                            static_cast<int>(this->occupancy_number_.size()));
 
     // Now symmetrization procedure. We need to review that
-    if (0) {
-        symmetrize_occupancy_matrix();
-    }
+    //symmetrize_occupancy_matrix();
 
     print_occupancies();
 }

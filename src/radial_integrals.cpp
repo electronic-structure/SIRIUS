@@ -30,15 +30,16 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate()
         for (int i = 0; i < nwf; i++) {
             values_(i, iat) = Spline<double>(grid_q_);
             auto& wf        = atom_type.ps_atomic_wf(i);
-            const int l     = std::abs(wf.first);
+            const int l     = std::abs(std::get<1>(wf));
+            auto& rwf       = std::get<3>(wf);
 
             #pragma omp parallel for
             for (int iq = 0; iq < nq(); iq++) {
                 if (jl_deriv) {
                     auto s              = jl(iq).deriv_q(l);
-                    values_(i, iat)(iq) = sirius::inner(s, wf.second, 1);
+                    values_(i, iat)(iq) = sirius::inner(s, rwf, 1);
                 } else {
-                    values_(i, iat)(iq) = sirius::inner(jl(iq)[l], wf.second, 1);
+                    values_(i, iat)(iq) = sirius::inner(jl(iq)[l], rwf, 1);
                 }
             }
 
@@ -89,10 +90,10 @@ void Radial_integrals_aug<jl_deriv>::generate()
                             if (jl_deriv) {
                                 auto s = jl.deriv_q(l3);
                                 values_(idx, l3, iat)(iq) =
-                            sirius::inner(s, atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
+                                    sirius::inner(s, atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
                             } else {
                                 values_(idx, l3, iat)(iq) =
-                            sirius::inner(jl[l3], atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
+                                    sirius::inner(jl[l3], atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
                             }
                         }
                     }

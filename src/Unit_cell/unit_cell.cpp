@@ -900,7 +900,7 @@ int Unit_cell::num_ps_atomic_wf() const
         int n{0};
         for (int i = 0; i < this->atom_type(iat).num_ps_atomic_wf(); i++) {
             /* number of m-components is 2l + 1 */
-            n += (2 * std::abs(atom_type(iat).ps_atomic_wf(i).first) + 1);
+            n += (2 * std::abs(std::get<1>(atom_type(iat).ps_atomic_wf(i))) + 1);
         }
         N += atom_type(iat).num_atoms() * n;
     }

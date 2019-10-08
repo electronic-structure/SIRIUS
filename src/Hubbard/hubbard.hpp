@@ -78,7 +78,6 @@ class Hubbard
     /// hubbard correction with next nearest neighbors
     bool hubbard_U_plus_V_{false};
 
-
     /// hubbard projection method. By default we use the wave functions
     /// provided by the pseudo potentials.
     int projection_method_{0};

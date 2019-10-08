@@ -84,7 +84,8 @@ class Atom_type
     std::vector<radial_solution_descriptor_set> aw_descriptors_;
 
     /// List of radial descriptor sets used to construct local orbitals.
-    /** This list defines all local orbitals for a given atom type */
+    /** In case of LAPW this list defines all local orbitals for a given atom type. In case of PP-PW this is
+        a list of all beta-projectors. */
     std::vector<local_orbital_descriptor> lo_descriptors_;
 
     /// Maximum number of AW radial functions across angular momentums.
@@ -100,7 +101,7 @@ class Atom_type
     /** This index is used in LAPW to combine APW and local-orbital muffin-tin functions */
     basis_functions_index indexb_;
 
-    /// Index for the radial hubbard basis functions.
+    /// Index for the radial atomic functions.
     radial_functions_index indexr_wfc_;
 
     /// Index of atomic wavefunctions (radial function * spherical harmonic).
@@ -109,10 +110,20 @@ class Atom_type
     /// index for the radial hubbard basis functions
     radial_functions_index hubbard_indexr_;
 
-    /// Index of atomic basis functions (radial function * spherical harmonic).
+    /// Index of hubbard basis functions (radial function * spherical harmonic).
     basis_functions_index hubbard_indexb_;
 
     /// Radial functions of beta-projectors.
+    /** This are the beta-function in the USPP file. Pairs of [l, beta_l(r)] are stored. In case of spin-orbit
+        coupling orbital quantum numbers in this list can be positive and negative. This is used to derive the
+        total angular momentum of the orbitals:
+        \f[
+            j = \left\{ \begin{array}{ll}
+              |\ell| - 0.5 & \ell < 0 \\
+              \ell + 0.5 & \ell > 0
+            \end{array} \right.
+        \f]
+     */
     std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
 
     /// Radial functions of the Q-operator.
@@ -121,17 +132,20 @@ class Atom_type
     mdarray<Spline<double>, 2> q_radial_functions_l_;
 
     /// Atomic wave-functions used to setup the initial subspace and to apply U-correction.
-    /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
-    std::vector<std::pair<int, Spline<double>>> ps_atomic_wfs_;
+    /** This are the chi wave-function in the USPP file. Tuples of [n, l, occ, chi_l(r)] are stored. In case of spin-orbit
+        coupling orbital quantum numbers in this list can be positive and negative. This is used to derive the
+        total angular momentum of the orbitals:
+        \f[
+            j = \left\{ \begin{array}{ll}
+              |\ell| - 0.5 & \ell < 0 \\
+              \ell + 0.5 & \ell > 0
+            \end{array} \right.
+        \f]
+     */
+    std::vector<std::tuple<int, int, double, Spline<double>>> ps_atomic_wfs_;
 
     /// List of radial descriptor sets used to construct localized orbitals.
     std::vector<local_orbital_descriptor> wfc_lo_descriptors_;
-
-    /// Total occupancy of the (hubbard) wave functions.
-    std::vector<double> ps_atomic_wf_occ_;
-
-    /// atomic level associated to the atomic wave functions
-    std::vector<int> ps_atomic_wf_level_;
 
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment_{false};
@@ -210,7 +224,7 @@ class Atom_type
 
     bool initialized_{false};
 
-    inline void read_hubbard_parameters(json const& parser);
+    //inline void read_hubbard_parameters(json const& parser);
 
     inline void read_input_core(json const& parser);
 
@@ -256,7 +270,7 @@ class Atom_type
     /* forbid assignment operator */
     Atom_type& operator=(Atom_type const& src) = delete;
 
-protected:
+  protected:
     /// Radial grid of the muffin-tin sphere.
     Radial_grid<double> radial_grid_;
 
@@ -270,7 +284,9 @@ protected:
     /// Radial grid of a free atom.
     Radial_grid<double> free_atom_radial_grid_;
 
-public:
+  public:
+    /// Constructor.
+    /** Basic parameters of atom type are passed as contructor arguments. */
     Atom_type(Simulation_parameters const&                parameters__,
               std::string                                 symbol__,
               std::string                                 name__,
@@ -286,6 +302,9 @@ public:
         {
         }
 
+    /// Constructor.
+    /** ID of atom type and label are passed as arguments. The rest of parameters are obtained from the
+        species input file. */
     Atom_type(Simulation_parameters const& parameters__, int id__, std::string label__, std::string file_name__)
         : parameters_(parameters__)
         , id_(id__)
@@ -294,8 +313,11 @@ public:
         {
         }
 
+    /// Move constructor.
     Atom_type(Atom_type&& src) = default;
 
+    /// Initialize the atom type.
+    /** Once the unit cell is populated with all atom types and atoms, each atom type can be initialized. */
     inline void init(int offset_lo__);
 
     inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__, double p__)
@@ -387,14 +409,12 @@ public:
         lo_descriptors_.push_back(lod__);
     }
 
-    inline void add_ps_atomic_wf(int n__, int l__, std::vector<double> f__, double occ_)
+    inline void add_ps_atomic_wf(int n__, int l__, std::vector<double> f__, double occ__ = 0.0)
     {
         local_orbital_descriptor lod;
 
         Spline<double> s(radial_grid_, f__);
-        ps_atomic_wfs_.push_back(std::move(std::make_pair(l__, std::move(s))));
-        ps_atomic_wf_occ_.push_back(occ_);
-        ps_atomic_wf_level_.push_back(n__);
+        ps_atomic_wfs_.push_back(std::move(std::make_tuple(n__, l__, occ__, std::move(s))));
         lod.l = std::abs(l__);
 
         if (l__ < 0) {
@@ -403,15 +423,10 @@ public:
             lod.total_angular_momentum = lod.l + 0.5;
         }
 
-        wfc_lo_descriptors_.push_back(lod);
+        wfc_lo_descriptors_.push_back(lod); // TODO: make descriptors in init()
     }
 
-    inline void add_ps_atomic_wf(int n__, int l__, std::vector<double> f__)
-    {
-        add_ps_atomic_wf(n__, l__, f__, 0.0);
-    }
-
-    std::pair<int, Spline<double>> const& ps_atomic_wf(int idx__) const
+    std::tuple<int, int, double, Spline<double>> const& ps_atomic_wf(int idx__) const
     {
         return ps_atomic_wfs_[idx__];
     }
@@ -420,7 +435,8 @@ public:
     {
         int lmax{-1};
         for (auto& e: ps_atomic_wfs_) {
-            lmax = std::max(lmax, std::abs(e.first));
+            auto l = std::get<1>(e);
+            lmax = std::max(lmax, std::abs(l));
         }
         return lmax;
     }
@@ -429,18 +445,6 @@ public:
     inline int num_ps_atomic_wf() const
     {
         return static_cast<int>(ps_atomic_wfs_.size());
-    }
-
-    inline std::vector<double> const& ps_atomic_wf_occ() const
-    {
-        return ps_atomic_wf_occ_;
-    }
-
-    inline std::vector<double>& ps_atomic_wf_occ(std::vector<double> inp__)
-    {
-        ps_atomic_wf_occ_.clear();
-        ps_atomic_wf_occ_ = inp__;
-        return ps_atomic_wf_occ_;
     }
 
     /// Add a radial function of beta-projector to a list of functions.
@@ -617,9 +621,12 @@ public:
     /// Initialize the free atom density (smooth or true).
     inline void init_free_atom_density(bool smooth);
 
-    void add_hubbard_orbital(int n,
-                             int l,
-                             double occ,
+    /// Add a hubbard orbital to a list.
+    /** All atomic functions must already be loaded prior to callinig this function as atomic wave-functions
+        are actually used as a definition of "localized orbitals" to which U-correction is applied. */
+    void add_hubbard_orbital(int n__,
+                             int l__,
+                             double occ__,
                              double U,
                              double J,
                              const double *hub_coef__,
@@ -627,16 +634,18 @@ public:
                              double beta__,
                              double J0__)
     {
-        for (int s = 0; s < static_cast<int>(ps_atomic_wf_level_.size()); s++) {
-            if (ps_atomic_wf_level_[s] >= 0) {
-                auto &e = ps_atomic_wf(s);
-                if ((ps_atomic_wf_level_[s] ==  n) && (std::abs(e.first) == l)) {
-                    hubbard_orbital_descriptor hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
+        for (int s = 0; s < (int)ps_atomic_wfs_.size(); s++) {
+            auto& e = ps_atomic_wfs_[s];
+            int n = std::get<0>(e);
+            int l = std::get<1>(e);
+            if (n >= 0) {
+                if (n == n__ && std::abs(l) == l__) {
+                    hubbard_orbital_descriptor hub(n__, l__, s, occ__, J, U, hub_coef__, alpha__, beta__, J0__);
                     hubbard_orbitals_.push_back(std::move(hub));
                     local_orbital_descriptor lod;
-                    lod.l = std::abs(e.first);
+                    lod.l = std::abs(l);
 
-                    if (e.first < 0) {
+                    if (l < 0) {
                         lod.total_angular_momentum = lod.l - 0.5;
                     } else {
                         lod.total_angular_momentum = lod.l + 0.5;
@@ -646,24 +655,25 @@ public:
                     // to search for its partner with same n, l, but
                     // different j. if not we can stop the for loop
                     hubbard_lo_descriptors_.push_back(lod);
-                    if (!this->spin_orbit_coupling_)
+                    if (!this->spin_orbit_coupling_) {
                         break;
+                    }
                 }
             } else {
-                auto &wfc = ps_atomic_wfs_[s];
                 // we do a search per angular momentum
                 // we pick the first atomic wave function we
                 // find with the right l. It is to deal with
                 // codes that do not store all info about wave
                 // functions.
-                if (std::abs(wfc.first) == l) {
-                    hubbard_orbital_descriptor hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
+                if (std::abs(l) == l__) {
+                    hubbard_orbital_descriptor hub(n__, l__, s, occ__, J, U, hub_coef__, alpha__, beta__, J0__);
                     hubbard_orbitals_.push_back(std::move(hub));
                     local_orbital_descriptor lod;
-                    lod.l = std::abs(ps_atomic_wf(s).first);
+                    lod.l = std::abs(l);
                     hubbard_lo_descriptors_.push_back(lod);
-                    if (!this->spin_orbit_coupling_)
+                    if (!this->spin_orbit_coupling_) {
                         break;
+                    }
                 }
             }
         }
@@ -1570,7 +1580,6 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     /* read starting wave functions ( UPF CHI ) */
     if (parser["pseudo_potential"].count("atomic_wave_functions")) {
         size_t nwf = parser["pseudo_potential"]["atomic_wave_functions"].size();
-        std::vector<double> occupancies;
         for (size_t k = 0; k < nwf; k++) {
             //std::pair<int, std::vector<double>> wf;
             auto v = parser["pseudo_potential"]["atomic_wave_functions"][k]["radial_function"].get<std::vector<double>>();
@@ -1586,8 +1595,9 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
 
             int l = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
             int n = -1;
+            double occ{0};
             if (parser["pseudo_potential"]["atomic_wave_functions"][k].count("occupation")) {
-                occupancies.push_back(parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"]);
+                occ = parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"];
             }
 
             if (parser["pseudo_potential"]["atomic_wave_functions"][k].count("label")) {
@@ -1603,9 +1613,8 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
                     l = -l;
                 }
             }
-            add_ps_atomic_wf(n, l, v);
+            add_ps_atomic_wf(n, l, v, occ);
         }
-        ps_atomic_wf_occ(occupancies);
     }
 }
 
@@ -1785,27 +1794,27 @@ inline void Atom_type::read_hubbard_input()
                 }
 
                 switch (d.second.level[1]) {
-                case 's': {
-                    hubbard_l_ = 0;
-                    break;
-                }
-                case 'p': {
-                    hubbard_l_ = 1;
-                    break;
-                }
-                case 'd': {
-                    hubbard_l_ = 2;
-                    break;
-                }
-                case 'f': {
-                    hubbard_l_ = 3;
-                    break;
-                }
-                default: {
-                    std::stringstream s;
-                    s << "wrong angular momentum label : " << std::string(1, d.second.level[1]);
-                    TERMINATE(s);
-                }
+                    case 's': {
+                        hubbard_l_ = 0;
+                        break;
+                    }
+                    case 'p': {
+                        hubbard_l_ = 1;
+                        break;
+                    }
+                    case 'd': {
+                        hubbard_l_ = 2;
+                        break;
+                    }
+                    case 'f': {
+                        hubbard_l_ = 3;
+                        break;
+                    }
+                    default: {
+                        std::stringstream s;
+                        s << "wrong angular momentum label : " << std::string(1, d.second.level[1]);
+                        TERMINATE(s);
+                    }
                 }
             }
 
