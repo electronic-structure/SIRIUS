@@ -60,6 +60,7 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp;Hamiltonian/hamiltonian_k.cpp;Band/ban
   "SDDK/GPU/acc.cpp"
   "SHT/sht.cpp"
   "sirius_version.cpp"
+  "Mixer/mixer_functions.cpp"
   )
 
 # create library with .cpp, .cu and .f90 sources

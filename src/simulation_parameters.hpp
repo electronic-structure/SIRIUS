@@ -419,6 +419,7 @@ class Simulation_parameters
         return parameters_input_.molecule_;
     }
 
+    /// Get a `using symmetry` flag.
     bool use_symmetry() const
     {
         return parameters_input_.use_symmetry_;
@@ -430,11 +431,13 @@ class Simulation_parameters
         return use_symmetry__;
     }
 
+    /// Get tolerance of the iterative solver.
     double iterative_solver_tolerance() const
     {
         return iterative_solver_input_.energy_tolerance_;
     }
 
+    /// Set the tolerance of the iterative solver.
     double iterative_solver_tolerance(double tolerance__)
     {
         iterative_solver_input_.energy_tolerance_ = tolerance__;
@@ -483,12 +486,12 @@ class Simulation_parameters
         return settings_input_;
     }
 
-    Hubbard_input const& Hubbard() const
+    Hubbard_input const& hubbard_input() const
     {
         return hubbard_input_;
     }
 
-    /// get the options set at runtime
+    /// Get the options set at runtime.
     json& get_runtime_options_dictionary()
     {
         return runtime_options_dictionary_;

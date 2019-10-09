@@ -233,8 +233,11 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
                 }
             }
         }
-        for (int i = 0; i < sid; i++) {
-            acc::sync_stream(stream_id(i));
+        if (la__ == linalg_t::gpublas || la__ == linalg_t::cublasxt || la__ == linalg_t::magma) {
+            // sync stream only if processing unit is gpu
+            for (int i = 0; i < sid; i++) {
+                acc::sync_stream(stream_id(i));
+            }
         }
         t2.stop();
     } else { /* parallel transformation */

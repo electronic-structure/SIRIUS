@@ -65,6 +65,7 @@ class Atom_type
     double mass_{0};
 
     /// List of atomic levels.
+    /** Low-energy levels are core states. Information about core states is defined in the species file. */
     std::vector<atomic_level_descriptor> atomic_levels_;
 
     /// Number of core electrons.
@@ -99,6 +100,18 @@ class Atom_type
     /** This index is used in LAPW to combine APW and local-orbital muffin-tin functions */
     basis_functions_index indexb_;
 
+    /// Index for the radial hubbard basis functions.
+    radial_functions_index indexr_wfc_;
+
+    /// Index of atomic wavefunctions (radial function * spherical harmonic).
+    basis_functions_index indexb_wfc_;
+
+    /// index for the radial hubbard basis functions
+    radial_functions_index hubbard_indexr_;
+
+    /// Index of atomic basis functions (radial function * spherical harmonic).
+    basis_functions_index hubbard_indexb_;
+
     /// Radial functions of beta-projectors.
     std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
 
@@ -106,12 +119,6 @@ class Atom_type
     /** The dimension of this array is fully determined by the number and lmax of beta-projectors.
         Beta-projectors must be loaded before loading the Q radial functions. */
     mdarray<Spline<double>, 2> q_radial_functions_l_;
-
-    /// Index for the radial hubbard basis functions.
-    radial_functions_index indexr_wfc_;
-
-    /// Index of atomic wavefunctions (radial function * spherical harmonic).
-    basis_functions_index indexb_wfc_;
 
     /// Atomic wave-functions used to setup the initial subspace and to apply U-correction.
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
@@ -174,12 +181,6 @@ class Atom_type
     /// Vector containing all orbitals informations that are relevant for the Hubbard correction.
     std::vector<hubbard_orbital_descriptor> hubbard_orbitals_;
 
-    /// index for the radial hubbard basis functions
-    radial_functions_index hubbard_indexr_;
-
-    /// Index of atomic basis functions (radial function * spherical harmonic).
-    basis_functions_index hubbard_indexb_;
-
     /// List of radial descriptor sets used to construct hubbard orbitals.
     std::vector<local_orbital_descriptor> hubbard_lo_descriptors_;
 
@@ -206,8 +207,6 @@ class Atom_type
 
     void read_hubbard_input();
     void generate_f_coefficients(void);
-    // inline double ClebschGordan(const int l, const double j, const double m, const int spin);
-    // inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
 
     bool initialized_{false};
 
@@ -426,6 +425,7 @@ public:
         return lmax;
     }
 
+    /// Return the number of radial atomic functions.
     inline int num_ps_atomic_wf() const
     {
         return static_cast<int>(ps_atomic_wfs_.size());
@@ -477,6 +477,9 @@ public:
         return static_cast<int>(beta_radial_functions_.size());
     }
 
+    /// Add radial function of the augmentation charge.
+    /** Radial functions of beta projectors must be added already. Their total number will be used to
+     *  deterimine the storage size for the radial functions of the augmented charge. */
     inline void add_q_radial_function(int idxrf1__, int idxrf2__, int l__, std::vector<double> qrf__)
     {
         /* sanity check */
@@ -931,6 +934,7 @@ public:
         return static_cast<int>(atom_id_.size());
     }
 
+    /// Return atom ID (global index) by the index of atom withing a given type.
     inline int atom_id(int idx) const
     {
         return atom_id_[idx];
@@ -1050,25 +1054,26 @@ public:
 
     inline bool spin_orbit_coupling(bool so__)
     {
-        spin_orbit_coupling_ = so__;
-        return spin_orbit_coupling_;
+        this->spin_orbit_coupling_ = so__;
+        return this->spin_orbit_coupling_;
     }
 
-    bool const& hubbard_correction() const
+    /// Get the Hubbard correction switch.
+    inline bool hubbard_correction() const
     {
         return hubbard_correction_;
     }
 
-
-    inline void set_hubbard_correction()
+    /// Set the Hubbard correction switch.
+    inline bool hubbard_correction(bool ldapu__)
     {
-        this->hubbard_correction_ = true;
+        this->hubbard_correction_ = ldapu__;
+        return this->hubbard_correction_;
     }
 
-
-    /// compare the angular, total angular momentum and radial part of
-    /// the beta projectors, leaving the m index free. Only useful
-    /// when spin orbit coupling is included.
+    /// Compare indices of beta projectors.
+    /** Compare the angular, total angular momentum and radial part of the beta projectors,
+     *  leaving the m index free. Only useful when spin orbit coupling is included. */
     inline bool compare_index_beta_functions(const int xi, const int xj) const
     {
         return ((indexb(xi).l == indexb(xj).l) && (indexb(xi).idxrf == indexb(xj).idxrf) &&
@@ -1354,8 +1359,7 @@ inline void Atom_type::print_info() const
     printf("total number of basis functions  : %i\n", indexb().size());
     printf("number of aw basis functions     : %i\n", indexb().size_aw());
     printf("number of lo basis functions     : %i\n", indexb().size_lo());
-    if (!parameters_.full_potential())
-    {
+    if (!parameters_.full_potential()) {
         printf("number of ps wavefunctions       : %i\n", this->num_ps_atomic_wf());
     }
 }
@@ -1738,7 +1742,7 @@ inline void Atom_type::generate_f_coefficients(void)
                     for (auto sigma1 = 0; sigma1 < 2; sigma1++) {
                         double_complex coef = {0.0, 0.0};
 
-                        // yes durty but loop over double is worst.
+                        // yes dirty but loop over double is worst.
                         // since mj is only important for the rotation
                         // of the spherical harmonics the code takes
                         // into account this odd convention.
@@ -1760,13 +1764,13 @@ inline void Atom_type::generate_f_coefficients(void)
 
 inline void Atom_type::read_hubbard_input()
 {
-    if(!parameters_.Hubbard().hubbard_correction_) {
+    if(!parameters_.hubbard_input().hubbard_correction_) {
         return;
     }
 
     this->hubbard_correction_ = false;
 
-    for(auto &d: parameters_.Hubbard().species) {
+    for(auto &d: parameters_.hubbard_input().species) {
         if (d.first == symbol_) {
             int hubbard_l_ = d.second.l;
             int hubbard_n_ = d.second.n;

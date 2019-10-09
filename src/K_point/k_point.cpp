@@ -33,7 +33,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
 
     int nwfu = unit_cell_.num_wf_with_U().first;
 
-    if (ctx_.Hubbard().orthogonalize_hubbard_orbitals_ || ctx_.Hubbard().normalize_hubbard_orbitals_) {
+    if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ || ctx_.hubbard_input().normalize_hubbard_orbitals_) {
 
         dmatrix<double_complex> S(nwfu, nwfu);
         S.zero();
@@ -59,7 +59,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
 
         /* diagonalize the all stuff */
 
-        if (ctx_.Hubbard().orthogonalize_hubbard_orbitals_ ) {
+        if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ ) {
             dmatrix<double_complex> Z(nwfu, nwfu);
 
             auto ev_solver = Eigensolver_factory(ev_solver_t::lapack);
@@ -747,6 +747,7 @@ void K_point::generate_hubbard_orbitals()
 {
 // TODO: don't forget to copy WFs to GPU in other parts of the code
 
+    /* total number of Hubbard orbitals */
     auto r = unit_cell_.num_wf_with_U();
     const int num_sc = ctx_.num_mag_dims() == 3 ? 2 : 1;
 
@@ -764,10 +765,7 @@ void K_point::generate_hubbard_orbitals()
     }
 
     /* check if we have a norm conserving pseudo potential only */
-    std::unique_ptr<Q_operator> q_op;
-    if (unit_cell_.augment()) {
-        q_op = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
-    }
+    auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator>(new Q_operator(ctx_)) : nullptr;
 
     if (ctx_.processing_unit() == device_t::GPU) {
         for (int ispn = 0; ispn < num_sc; ispn++) {

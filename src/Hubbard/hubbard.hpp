@@ -39,7 +39,6 @@
 #include "Beta_projectors/beta_projectors_gradient.hpp"
 #include "Beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "radial_integrals.hpp"
-#include "mixer.hpp"
 
 namespace sirius {
 
@@ -51,7 +50,7 @@ class Hubbard
 
     Unit_cell& unit_cell_;
 
-    int lmax_{-1};
+    int max_number_of_orbitals_per_atom_{-1};
 
     int number_of_hubbard_orbitals_{0};
 
@@ -129,9 +128,9 @@ class Hubbard
         approximation_ = true;
     }
 
-    inline int lmax() const
+    inline int max_number_of_orbitals_per_atom() const
     {
-        return lmax_;
+        return max_number_of_orbitals_per_atom_;
     }
 
     void set_orthogonalize_hubbard_orbitals(const bool test)

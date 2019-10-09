@@ -203,6 +203,7 @@ std::vector<acc_stream_t>& streams();
 /// Return a single device stream.
 inline acc_stream_t stream(stream_id sid__)
 {
+    assert(sid__() < int(streams().size()));
     return (sid__() == -1) ? NULL : streams()[sid__()];
 }
 

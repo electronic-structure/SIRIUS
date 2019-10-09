@@ -556,14 +556,14 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
 //}
 
 
-/*
-  symmetrize the occupation matrix according to a given list of beta or wfc
-  list. the symmetrization does depend explicitly on the beta or wfc the last
-  parameter is on when the atom has spin-orbit coupling and hubbard correction in
-  that case, we must skip half of the indices because of the averaging of the
-  radial integrals over the total angular momentum
-*/
-
+/// Symmetrize density or occupancy matrix according to a given list of basis functions.
+/** Density matrix arises in LAPW or PW methods. In PW it is computed in the basis of beta-projectors. Occupancy
+ *  matrix is computed for the Hubbard-U correction. In both cases the matrix has the same structure and is
+ *  symmetrized in the same way The symmetrization does depend explicitly on the beta or wfc. The last
+ *  parameter is on when the atom has spin-orbit coupling and hubbard correction in
+ *  that case, we must skip half of the indices because of the averaging of the
+ *  radial integrals over the total angular momentum
+ */
 inline void symmetrize(const mdarray<double_complex, 4> &ns_,
                        const basis_functions_index &indexb,
                        const int ia,
