@@ -29,6 +29,10 @@ namespace sirius {
     void Non_local_functor<T>::add_k_point_contribution(K_point &kpoint__, mdarray<double, 2> &collect_res__) {
         auto &unit_cell = ctx_.unit_cell();
 
+        if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+            return;
+        }
+
         auto &bp = kpoint__.beta_projectors();
 
         double main_two_factor{-2};

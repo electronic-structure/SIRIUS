@@ -48,6 +48,11 @@ Force::Force(Simulation_context& ctx__, Density& density__, Potential& potential
 template <typename T>
 void Force::add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces__) const
 {
+    /* if there are no beta projectors then get out there */
+    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+        return;
+    }
+
     Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.igk_loc(), kpoint.beta_projectors());
     if (is_device_memory(ctx_.preferred_memory_t())) {
         int nbnd = ctx_.num_bands();
