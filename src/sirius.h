@@ -28,7 +28,6 @@
 #if defined(__APEX)
 #include <apex_api.hpp>
 #endif
-#include <fftw3.h>
 
 #include "utils/cmd_args.hpp"
 #include "utils/json.hpp"
@@ -150,9 +149,6 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
         if (reset_device__) {
             acc::reset();
         }
-    }
-    if (fftw_cleanup__) {
-        fftw_cleanup();
     }
 
     utils::stop_global_timer();
