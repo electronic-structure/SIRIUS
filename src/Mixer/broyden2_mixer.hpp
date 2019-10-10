@@ -35,7 +35,7 @@
 #include <cmath>
 #include <numeric>
 
-#include "SDDK/communicator.hpp"
+#include "SDDK/memory.hpp"
 #include "Mixer/mixer.hpp"
 
 namespace sirius {
@@ -50,9 +50,8 @@ template <typename... FUNCS>
 class Broyden2 : public Mixer<FUNCS...>
 {
   public:
-    Broyden2(std::size_t max_history, double beta, double beta0, double beta_scaling_factor, double linear_mix_rmse_tol,
-             Communicator const& comm)
-        : Mixer<FUNCS...>(max_history, comm)
+    Broyden2(std::size_t max_history, double beta, double beta0, double beta_scaling_factor, double linear_mix_rmse_tol)
+        : Mixer<FUNCS...>(max_history)
         , beta_(beta)
         , beta0_(beta0)
         , beta_scaling_factor_(beta_scaling_factor)
@@ -80,36 +79,27 @@ class Broyden2 : public Mixer<FUNCS...>
 
         if ((history_size > 1 && rmse < this->linear_mix_rmse_tol_ && this->linear_mix_rmse_tol_ > 0) ||
             (this->linear_mix_rmse_tol_ <= 0 && this->step_ > this->max_history_)) {
-            mdarray<double, 2> S(history_size, history_size);
+            sddk::mdarray<double, 2> S(history_size, history_size);
             S.zero();
-            mdarray<double, 2> S_local(history_size, history_size);
-            S_local.zero();
             for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
                 int i1 = this->idx_hist(this->step_ - history_size + j1);
                 for (int j2 = 0; j2 <= j1; j2++) {
                     int i2    = this->idx_hist(this->step_ - history_size + j2);
                     S(j2, j1) = S(j1, j2) =
-                        this->inner_product(false, this->residual_history_[i1], this->residual_history_[i2]);
-                    S_local(j2, j1) = S_local(j1, j2) =
-                        this->inner_product(true, this->residual_history_[i1], this->residual_history_[i2]);
+                        this->inner_product(this->residual_history_[i1], this->residual_history_[i2]);
                 }
             }
-            this->comm_.allreduce(S.at(memory_t::host), (int)S.size());
 
             // scale by global size and add local only contribution
-            auto global_size = this->local_size(false, this->residual_history_[0]);
-            this->comm_.allreduce(&global_size, 1);
-            const auto local_size = this->local_size(true, this->residual_history_[0]);
-            global_size += local_size;
+            const auto size = this->size(this->residual_history_[0]);
 
             for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
                 for (int j2 = 0; j2 < static_cast<int>(history_size); j2++) {
-                    S(j1, j2) += S_local(j1, j2);
-                    S(j1, j2) /= global_size;
+                    S(j1, j2) /= size;
                 }
             }
 
-            mdarray<long double, 2> gamma_k(2 * history_size, history_size);
+            sddk::mdarray<long double, 2> gamma_k(2 * history_size, history_size);
             gamma_k.zero();
             /* initial gamma_0 */
             for (int i = 0; i < static_cast<int>(history_size); i++) {

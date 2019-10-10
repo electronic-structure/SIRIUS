@@ -51,11 +51,6 @@ class Field4D
     std::array<std::unique_ptr<Periodic_function<double>>, 4> components_;
 
   protected:
-    /// Default mixer.
-    std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                          Periodic_function<double>, sddk::mdarray<double_complex, 4>>>
-        mixer_{nullptr};
-
     int lmmax_;
 
     Simulation_context& ctx_;
@@ -112,14 +107,6 @@ class Field4D
     void zero();
 
     void fft_transform(int direction__);
-
-    void mixer_input();
-
-    void mixer_output();
-
-    void mixer_init(Mixer_input mixer_cfg__);
-
-    double mix(double rss_min__);
 
     Simulation_context& ctx()
     {

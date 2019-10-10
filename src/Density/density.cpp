@@ -1727,81 +1727,72 @@ mdarray<double, 3> Density::density_matrix_aux(int iat__)
 }
 void Density::mixer_input()
 {
-    if (ctx_.full_potential()) {
-        Field4D::mixer_input();
-    } else {
-        mixer_->set_input<0>(component(0));
-        if (ctx_.num_mag_dims() > 0)
-            mixer_->set_input<1>(component(1));
-        if (ctx_.num_mag_dims() > 1)
-            mixer_->set_input<2>(component(2));
-        if (ctx_.num_mag_dims() > 2)
-            mixer_->set_input<3>(component(3));
+    mixer_->set_input<0>(component(0));
+    if (ctx_.num_mag_dims() > 0)
+        mixer_->set_input<1>(component(1));
+    if (ctx_.num_mag_dims() > 1)
+        mixer_->set_input<2>(component(2));
+    if (ctx_.num_mag_dims() > 2)
+        mixer_->set_input<3>(component(3));
 
-        mixer_->set_input<4>(density_matrix_);
-    }
+    mixer_->set_input<4>(density_matrix_);
 }
 
 void Density::mixer_output()
 {
-    if (ctx_.full_potential()) {
-        Field4D::mixer_output();
-    } else {
-        mixer_->get_output<0>(component(0));
-        if (ctx_.num_mag_dims() > 0)
-            mixer_->get_output<1>(component(1));
-        if (ctx_.num_mag_dims() > 1)
-            mixer_->get_output<2>(component(2));
-        if (ctx_.num_mag_dims() > 2)
-            mixer_->get_output<3>(component(3));
+    mixer_->get_output<0>(component(0));
+    if (ctx_.num_mag_dims() > 0)
+        mixer_->get_output<1>(component(1));
+    if (ctx_.num_mag_dims() > 1)
+        mixer_->get_output<2>(component(2));
+    if (ctx_.num_mag_dims() > 2)
+        mixer_->get_output<3>(component(3));
 
-        mixer_->get_output<4>(density_matrix_);
+    mixer_->get_output<4>(density_matrix_);
+
+    if (ctx_.full_potential()) {
+        /* split real-space points between available ranks */
+        splindex<splindex_t::block> spl_np(ctx_.spfft().local_slice_size(), ctx_.comm_ortho_fft().size(),
+                                           ctx_.comm_ortho_fft().rank());
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+            ctx_.comm_ortho_fft().allgather(&component(j).f_rg(0), spl_np.global_offset(), spl_np.local_size());
+            component(j).sync_mt();
+        }
     }
 }
 
 void Density::mixer_init(Mixer_input mixer_cfg__)
 {
-    if (ctx_.full_potential()) {
-        Field4D::mixer_init(mixer_cfg__);
-    } else {
-        auto func_prop    = mixer::pseudo_potential_periodic_function_property(false);
-        auto density_prop = mixer::density_function_property(true);
+    auto func_prop    = mixer::periodic_function_property();
+    auto density_prop = mixer::density_function_property();
 
-        // create mixer
-        this->mixer_ =
-            mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, mdarray<double_complex, 4>>(mixer_cfg__, ctx_.comm());
+    // create mixer
+    this->mixer_ =
+        mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
+                             Periodic_function<double>, mdarray<double_complex, 4>>(mixer_cfg__);
 
-        // initialize functions
-        this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_);
-        if (ctx_.num_mag_dims() > 0)
-            this->mixer_->initialize_function<1>(func_prop, component(1), ctx_, lmmax_);
-        if (ctx_.num_mag_dims() > 1)
-            this->mixer_->initialize_function<2>(func_prop, component(2), ctx_, lmmax_);
-        if (ctx_.num_mag_dims() > 2)
-            this->mixer_->initialize_function<3>(func_prop, component(3), ctx_, lmmax_);
+    const bool init_mt = ctx_.full_potential();
 
-        this->mixer_->initialize_function<4>(density_prop, density_matrix_, unit_cell_.max_mt_basis_size(),
-                                             unit_cell_.max_mt_basis_size(), ctx_.num_mag_comp(),
-                                             unit_cell_.num_atoms());
-    }
+    // initialize functions
+    this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_, init_mt);
+    if (ctx_.num_mag_dims() > 0)
+        this->mixer_->initialize_function<1>(func_prop, component(1), ctx_, lmmax_, init_mt);
+    if (ctx_.num_mag_dims() > 1)
+        this->mixer_->initialize_function<2>(func_prop, component(2), ctx_, lmmax_, init_mt);
+    if (ctx_.num_mag_dims() > 2)
+        this->mixer_->initialize_function<3>(func_prop, component(3), ctx_, lmmax_, init_mt);
+
+    this->mixer_->initialize_function<4>(density_prop, density_matrix_, unit_cell_.max_mt_basis_size(),
+                                         unit_cell_.max_mt_basis_size(), ctx_.num_mag_comp(), unit_cell_.num_atoms());
 }
 
 double Density::mix()
 {
     double rms;
 
-    if (ctx_.full_potential()) {
-        /* mix in real-space in case of FP-LAPW */
-        rms = Field4D::mix(ctx_.settings().mixer_rss_min_);
-        /* get rho(G) after mixing */
-        rho().fft_transform(-1);
-    } else {
-        /* mix in G-space in case of PP */
-        mixer_input();
-        rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
-        mixer_output();
-    }
+    mixer_input();
+    rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
+    mixer_output();
 
     return rms;
 }

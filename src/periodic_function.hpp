@@ -361,22 +361,21 @@ class Periodic_function : public Smooth_periodic_function<T>
 };
 
 template <typename T>
-inline T
-inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
+inline T inner_local(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
 {
-    utils::timer t1("sirius::Pperiodic_function|inner");
+    utils::timer t1("sirius::Periodic_function|inner_local");
 
     assert(&f__.ctx() == &g__.ctx());
 
     T result_rg{0};
 
     if (!f__.ctx().full_potential()) {
-        result_rg = sirius::inner(static_cast<Smooth_periodic_function<T> const&>(f__),
-                                  static_cast<Smooth_periodic_function<T> const&>(g__));
+        result_rg = sirius::inner_local(static_cast<Smooth_periodic_function<T> const&>(f__),
+                                        static_cast<Smooth_periodic_function<T> const&>(g__));
     } else {
-        result_rg = sirius::inner(static_cast<Smooth_periodic_function<T> const&>(f__),
-                                  static_cast<Smooth_periodic_function<T> const&>(g__),
-                                  [&](int ir){return f__.ctx().theta(ir);});
+        result_rg = sirius::inner_local(static_cast<Smooth_periodic_function<T> const&>(f__),
+                                        static_cast<Smooth_periodic_function<T> const&>(g__),
+                                        [&](int ir) { return f__.ctx().theta(ir); });
     }
 
     T result_mt{0};
@@ -385,10 +384,20 @@ inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
             auto r = sirius::inner(f__.f_mt(ialoc), g__.f_mt(ialoc));
             result_mt += r;
         }
-        f__.ctx().comm().allreduce(&result_mt, 1);
     }
 
     return result_mt + result_rg;
+}
+
+template <typename T>
+inline T inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
+{
+    utils::timer t1("sirius::Periodic_function|inner");
+
+    T result = inner_local(f__, g__);
+    f__.ctx().comm().allreduce(&result, 1);
+
+    return result;
 }
 
 } // namespace sirius
