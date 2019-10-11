@@ -314,7 +314,6 @@ inline double random<double>()
     return static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
 }
 
-
 template <>
 inline std::complex<double> random<std::complex<double>>()
 {
@@ -342,6 +341,15 @@ inline long get_total_memory()
 //{
 //    return std::is_same<typedef std::result_of<F(Args...)>::type, T>::value;
 //}
+
+inline std::string boolstr(bool b__)
+{
+    if (b__) {
+        return "true";
+    } else {
+        return "false";
+    }
+}
 
 } // namespace
 
