@@ -6,16 +6,16 @@ namespace sirius {
 template <bool jl_deriv>
 void Radial_integrals_atomic_wf<jl_deriv>::generate()
 {
-    PROFILE("sirius::Radial_integrals|atomic_centered_wfc");
+    PROFILE("sirius::Radial_integrals|atomic_wfs");
 
     /* spherical Bessel functions jl(qx) */
-    mdarray<Spherical_Bessel_functions, 1> jl(nq());
+    sddk::mdarray<Spherical_Bessel_functions, 1> jl(nq());
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
 
         auto& atom_type = unit_cell_.atom_type(iat);
 
-        int nwf = atom_type.num_ps_atomic_wf();
+        int nwf = (hubbard_) ? atom_type.indexr_hub().size() : atom_type.indexr_wfs().size();
         if (!nwf) {
             continue;
         }
@@ -29,9 +29,9 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate()
         /* loop over all pseudo wave-functions */
         for (int i = 0; i < nwf; i++) {
             values_(i, iat) = Spline<double>(grid_q_);
-            auto& wf        = atom_type.ps_atomic_wf(i);
-            const int l     = std::abs(std::get<1>(wf));
-            auto& rwf       = std::get<3>(wf);
+
+            int l = (hubbard_) ? atom_type.indexr_hub(i).l : atom_type.indexr_wfs(i).l;
+            auto& rwf = (hubbard_) ? atom_type.hubbard_radial_function(i) : std::get<3>(atom_type.ps_atomic_wf(i));
 
             #pragma omp parallel for
             for (int iq = 0; iq < nq(); iq++) {

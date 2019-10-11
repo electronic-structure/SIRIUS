@@ -45,7 +45,7 @@ class Radial_integrals_base
     splindex<splindex_t::block> spl_q_;
 
     /// Array with integrals.
-    mdarray<Spline<double>, N> values_;
+    sddk::mdarray<Spline<double>, N> values_;
 
   public:
     /// Constructor.
@@ -101,18 +101,27 @@ template<bool jl_deriv>
 class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 {
   private:
+    /// Generate radial integrals.
     void generate();
+    /// Maximum number of radial functions.
+    int nrf_max_{0};
+    /// True if whis is a list of hubbard orbitals, otherwise it's atomic radial functions.
+    bool hubbard_{false};
 
   public:
-    Radial_integrals_atomic_wf(Unit_cell const& unit_cell__, double qmax__, int np__)
+    Radial_integrals_atomic_wf(Unit_cell const& unit_cell__, double qmax__, int np__, bool hubbard__)
         : Radial_integrals_base<2>(unit_cell__, qmax__, np__)
+        , hubbard_(hubbard__)
     {
-        int no_max{0};
         for (int iat = 0; iat < unit_cell__.num_atom_types(); iat++) {
-            no_max = std::max(no_max, unit_cell__.atom_type(iat).num_ps_atomic_wf());
+            if (hubbard_) {
+                nrf_max_ = std::max(nrf_max_, unit_cell__.atom_type(iat).indexr_hub().size());
+            } else {
+                nrf_max_ = std::max(nrf_max_, unit_cell__.atom_type(iat).indexr_wfs().size());
+            }
         }
 
-        values_ = mdarray<Spline<double>, 2>(no_max, unit_cell_.num_atom_types());
+        values_ = sddk::mdarray<Spline<double>, 2>(nrf_max_, unit_cell_.num_atom_types());
 
         generate();
     }
@@ -124,12 +133,14 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     }
 
     /// Get all values for a given atom type and q-point.
-    inline mdarray<double, 1> values(int iat__, double q__) const
+    inline sddk::mdarray<double, 1> values(int iat__, double q__) const
     {
         auto idx        = iqdq(q__);
         auto& atom_type = unit_cell_.atom_type(iat__);
-        mdarray<double, 1> val(atom_type.num_ps_atomic_wf());
-        for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
+        int nrf         = (hubbard_) ? atom_type.indexr_hub().size() : atom_type.indexr_wfs().size();
+
+        sddk::mdarray<double, 1> val(nrf);
+        for (int i = 0; i < nrf; i++) {
             val(i) = values_(i, iat__)(idx.first, idx.second);
         }
         return val;
