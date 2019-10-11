@@ -121,9 +121,6 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
     sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), spin_range(0), 0, this->number_of_hubbard_orbitals(),
                              kp.beta_projectors(), phi, &q_op, dphi);
 
-
-    //apply_S_operator(kp, q_op, phi, dphi, 0, this->number_of_hubbard_orbitals());
-
     memory_t mem{memory_t::host};
     linalg_t la{linalg_t::blas};
     if (ctx_.processing_unit() == device_t::GPU) {

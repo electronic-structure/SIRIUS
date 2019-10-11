@@ -112,15 +112,14 @@ else()
   endif()
 endif()
 
-find_package(FFTW REQUIRED)
 if (USE_OPENMP)
   find_package(OpenMP REQUIRED)
 endif()
 find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
-find_package(HDF5 REQUIRED C HL)
-
+find_package(HDF5 REQUIRED C)
 find_package(SpFFT 0.9.6 CONFIG REQUIRED)
+
 set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};SpFFT::spfft")
 
 if(USE_ELPA)
@@ -188,7 +187,7 @@ set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${LIBXC_LIBRARIES
 
 
 # include library headers
-include_directories(BEFORE SYSTEM ${FFTW_INCLUDE_DIR})
+
 include_directories(BEFORE SYSTEM ${LIBXC_INCLUDE_DIR})
 include_directories(BEFORE SYSTEM ${LIBSPG_INCLUDE_DIR})
 include_directories(BEFORE SYSTEM ${HDF5_INCLUDE_DIR})
@@ -256,7 +255,7 @@ MACRO(SIRIUS_SETUP_TARGET _target)
   add_dependencies(${_target} generate_version_hpp)
   add_dependencies(${_target} runtime_options_json_hpp)
 
-  target_link_libraries(${_target} PRIVATE "${sirius_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
+  target_link_libraries(${_target} PRIVATE "${sirius_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES}")
   if(USE_MKL)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
       target_link_libraries(${_target} PRIVATE "-Wl,--no-as-needed;${MKL_LIBRARIES}")
@@ -266,7 +265,7 @@ MACRO(SIRIUS_SETUP_TARGET _target)
       message(FATAL_ERROR "Unsupported compiler")
     endif()
   else()
-    target_link_libraries(${_target} PRIVATE "${LAPACK_LIBRARIES};${FFTW_LIBRARIES}")
+    target_link_libraries(${_target} PRIVATE "${LAPACK_LIBRARIES}")
   endif()
 
   if(USE_ROCM)

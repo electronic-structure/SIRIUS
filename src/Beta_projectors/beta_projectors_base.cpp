@@ -30,6 +30,15 @@ namespace sirius {
 void Beta_projectors_base::split_in_chunks()
 {
     auto& uc = ctx_.unit_cell();
+
+    if (uc.mt_lo_basis_size() == 0) {
+        /* no beta projectors at all */
+        beta_chunks_ = std::vector<beta_chunk_t>(0);
+        num_beta_t_ = 0;
+        max_num_beta_ = 0;
+        return;
+    }
+
     /* initial chunk size */
     int chunk_size = std::min(uc.num_atoms(), ctx_.control().beta_chunk_size_);
     /* maximum number of chunks */
@@ -232,6 +241,10 @@ void Beta_projectors_base::generate(int ichunk__, int j__)
 void Beta_projectors_base::prepare()
 {
     PROFILE("sirius::Beta_projectors_base::prepare");
+
+    if (max_num_beta() == 0) {
+        return;
+    }
 
     switch (ctx_.processing_unit()) {
         case device_t::CPU: {

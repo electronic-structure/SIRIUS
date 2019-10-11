@@ -41,6 +41,11 @@ void Stress::calc_stress_nonloc_aux()
 
     stress_nonloc_.zero();
 
+    /* if there are no beta projectors then get out there */
+    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+        return;
+    }
+
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
@@ -124,9 +129,17 @@ matrix3d<double> Stress::calc_stress_hubbard()
 {
     stress_hubbard_.zero();
 
+    /* if there are no beta projectors then get out there */
+    /* TODO : Need to fix the case where pp have no beta projectors */
+    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+        TERMINATE("Hubbard forces : Your pseudo potentials do not have beta projectors. This need a proper fix");
+        return stress_hubbard_;
+    }
+
     mdarray<double_complex, 5> dn(potential_.U().max_number_of_orbitals_per_atom(),
                                   potential_.U().max_number_of_orbitals_per_atom(),
                                   2, ctx_.unit_cell().num_atoms(), 9);
+
     Q_operator q_op(ctx_);
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
@@ -284,12 +297,18 @@ matrix3d<double> Stress::calc_stress_us()
 
     stress_us_.zero();
 
+    /* check if we have beta projectors. Only for pseudo potentials */
+    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+        return stress_us_;
+    }
+
     potential_.effective_potential().fft_transform(-1);
 
     auto& ri    = ctx_.aug_ri();
     auto& ri_dq = ctx_.aug_ri_djl();
 
     potential_.fft_transform(-1);
+
 
     Augmentation_operator_gvec_deriv q_deriv(ctx_.unit_cell().lmax(), ctx_.gvec(), ctx_.comm());
 
