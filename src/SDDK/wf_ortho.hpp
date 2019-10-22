@@ -30,15 +30,15 @@ namespace sddk {
 /// Orthogonalize n new wave-functions to the N old wave-functions
 template <typename T, int idx_bra__, int idx_ket__>
 void orthogonalize(memory_t                     mem__,
-                          linalg_t                     la__,
-                          int                          ispn__,
-                          std::vector<Wave_functions*> wfs__,
-                          int                          N__,
-                          int                          n__,
-                          dmatrix<T>&                  o__,
-                          Wave_functions&              tmp__);
+                   linalg_t                     la__,
+                   int                          ispn__,
+                   std::vector<Wave_functions*> wfs__,
+                   int                          N__,
+                   int                          n__,
+                   dmatrix<T>&                  o__,
+                   Wave_functions&              tmp__);
 
-    template <typename T>
+template <typename T>
 inline void orthogonalize(memory_t        mem__,
                           linalg_t        la__,
                           int             ispn__,
