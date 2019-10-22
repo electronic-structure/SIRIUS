@@ -120,22 +120,22 @@ class Broyden2 : public Mixer<FUNCS...>
                 }
 
                 std::memset(&v2[0], 0, 2 * history_size * sizeof(long double));
-                for (int j = 0; j < 2 * history_size; j++) {
+                for (int j = 0; j < static_cast<int>(2 * history_size); j++) {
                     v2[j] = -(gamma_k(j, k + 1) - gamma_k(j, k));
                 }
                 v2[history_size + k] -= 1;
                 v2[history_size + k + 1] += 1;
 
                 for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
-                    for (int j2 = 0; j2 < 2 * history_size; j2++) {
+                    for (int j2 = 0; j2 < static_cast<int>(2 * history_size); j2++) {
                         gamma_k(j2, j1) += v2[j2] * v1[j1] / d;
                     }
                 }
             }
 
             std::memset(&v2[0], 0, 2 * history_size * sizeof(long double));
-            for (int j = 0; j < 2 * history_size; j++) {
-                v2[j] = -gamma_k(j, static_cast<typename decltype(gamma_k)::index_type>(history_size - 1));
+            for (int j = 0; j < static_cast<int>(2 * history_size); j++) {
+                v2[j] = -gamma_k(j, static_cast<int>(history_size - 1));
             }
             v2[2 * history_size - 1] += 1;
 

@@ -101,8 +101,9 @@ class radial_functions_index
     int lmax_;
 
   public:
-    /// Initialize a list of radial functions only from the list of local orbitals.
-    void init(std::vector<local_orbital_descriptor> const& lo_descriptors__)
+    /// Initialize a list of radial functions from the list of local orbitals.
+    template <typename T>
+    void init(std::vector<T> const& lo_descriptors__)
     {
         /* create an empty descriptor */
         std::vector<radial_solution_descriptor_set> aw_descriptors;
@@ -110,8 +111,9 @@ class radial_functions_index
     }
 
     /// Initialize a list of radial functions from the list of APW radial functions and the list of local orbitals.
+    template <typename T>
     void init(std::vector<radial_solution_descriptor_set> const& aw_descriptors,
-              std::vector<local_orbital_descriptor> const& lo_descriptors)
+              std::vector<T> const& lo_descriptors)
     {
         lmax_aw_ = static_cast<int>(aw_descriptors.size()) - 1;
         lmax_lo_ = -1;
@@ -169,7 +171,7 @@ class radial_functions_index
 
     inline int size() const
     {
-        return (int)radial_function_index_descriptors_.size();
+        return static_cast<int>(radial_function_index_descriptors_.size());
     }
 
     inline radial_function_index_descriptor const& operator[](int i) const

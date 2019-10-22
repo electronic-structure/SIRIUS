@@ -77,7 +77,6 @@ class Hubbard
     /// hubbard correction with next nearest neighbors
     bool hubbard_U_plus_V_{false};
 
-
     /// hubbard projection method. By default we use the wave functions
     /// provided by the pseudo potentials.
     int projection_method_{0};
@@ -105,15 +104,11 @@ class Hubbard
     void calculate_wavefunction_with_U_offset();
 
     /// Compute the strain gradient of the hubbard wave functions.
-    /// Unfortunately it is dependent of the pp.
-    void compute_gradient_strain_wavefunctions(K_point&                  kp,
-                                               Wave_functions&           dphi,
-                                               const mdarray<double, 2>& rlm_g,
-                                               const mdarray<double, 3>& rlm_dg,
-                                               const int                 mu,
-                                               const int                 nu);
+    void wavefunctions_strain_deriv(K_point& kp, Wave_functions& dphi, mdarray<double, 2> const& rlm_g,
+                                    mdarray<double, 3> const& rlm_dg, const int mu, const int nu);
 
   public:
+    /// Constructor.
     Hubbard(Simulation_context& ctx__);
 
     std::vector<int> offset_;

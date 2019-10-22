@@ -24,7 +24,7 @@
     "gk_cutoff" : 7.0,
     "pw_cutoff" : 30.00,
 
-    "energy_tol" : 1e-7,
+    "energy_tol" : 1e-8,
     "potential_tol" : 1e-8,
 
     "num_dft_iter" : 100,
@@ -58,6 +58,6 @@
         ]
     },
     "mixer" : {
-        "beta" : 0.4
+        "beta" : 0.8
     }
 }

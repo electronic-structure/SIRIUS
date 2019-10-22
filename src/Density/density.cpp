@@ -173,7 +173,7 @@ void Density::initial_density_pseudo()
             // return 1.0 / (std::exp(10 * (x - R)) + 1) / norm;
         };
 
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map(ia);
             vector3d<double> v     = unit_cell_.atom(ia).vector_field();
@@ -295,13 +295,13 @@ void Density::initial_density_full_pot()
         double R = ctx_.unit_cell().atom_type(iat).mt_radius();
         int nmtp = ctx_.unit_cell().atom_type(iat).num_mt_points();
 
-#pragma omp parallel for default(shared)
+        #pragma omp parallel for default(shared)
         for (int l = 0; l <= lmax; l++) {
             for (int ir = 0; ir < nmtp; ir++) {
                 rRl(ir, l) = std::pow(ctx_.unit_cell().atom_type(iat).radial_grid(ir) / R, 2);
             }
         }
-#pragma omp parallel for default(shared)
+        #pragma omp parallel for default(shared)
         for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
             int ia = unit_cell_.atom_type(iat).atom_id(i);
             std::vector<double> glm(lmmax);
@@ -547,7 +547,7 @@ void Density::generate_paw_loc_density()
         return;
     }
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
         generate_paw_atom_density(paw_density_data_[i]);
     }
@@ -598,13 +598,13 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
                 switch (kp__->spfft_transform().processing_unit()) {
                     case SPFFT_PU_HOST: {
                         if (ctx_.gamma_point()) {
-#pragma omp parallel for schedule(static)
+                            #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < nr; ir++) {
                                 density_rg(ir, ispn) += w * std::pow(data_ptr[ir], 2);
                             }
                         } else {
                             auto data = reinterpret_cast<double_complex*>(data_ptr);
-#pragma omp parallel for schedule(static)
+                            #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < nr; ir++) {
                                 auto z = data[ir];
                                 density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
@@ -669,7 +669,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
 
             switch (fft.processing_unit()) {
                 case SPFFT_PU_HOST: {
-#pragma omp parallel for schedule(static)
+                    #pragma omp parallel for schedule(static)
                     for (int ir = 0; ir < nr; ir++) {
                         auto r0 = (std::pow(psi_r_up[ir].real(), 2) + std::pow(psi_r_up[ir].imag(), 2)) * w;
                         auto r1 = (std::pow(psi_r_dn[ir].real(), 2) + std::pow(psi_r_dn[ir].imag(), 2)) * w;
@@ -708,14 +708,14 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
     /* switch from real density matrix to density and magnetization */
     switch (ctx_.num_mag_dims()) {
         case 3: {
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int ir = 0; ir < fft.local_slice_size(); ir++) {
                 rho_mag_coarse_[2]->f_rg(ir) += density_rg(ir, 2); // Mx
                 rho_mag_coarse_[3]->f_rg(ir) += density_rg(ir, 3); // My
             }
         }
         case 1: {
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int ir = 0; ir < fft.local_slice_size(); ir++) {
                 rho_mag_coarse_[0]->f_rg(ir) += (density_rg(ir, 0) + density_rg(ir, 1)); // rho
                 rho_mag_coarse_[1]->f_rg(ir) += (density_rg(ir, 0) - density_rg(ir, 1)); // Mz
@@ -723,7 +723,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
             break;
         }
         case 0: {
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int ir = 0; ir < fft.local_slice_size(); ir++) {
                 rho_mag_coarse_[0]->f_rg(ir) += density_rg(ir, 0); // rho
             }
@@ -828,36 +828,36 @@ void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex,
 
                     int nbnd_loc = spl_nbnd.local_size();
                     if (nbnd_loc) { // TODO: this part can also be moved to GPU
-#pragma omp parallel
-                        {
-                            /* auxiliary arrays */
-                            mdarray<double_complex, 2> bp1(nbeta, nbnd_loc);
-                            mdarray<double_complex, 2> bp2(nbeta, nbnd_loc);
-#pragma omp for
-                            for (int ia = 0; ia < kp__->beta_projectors().chunk(chunk).num_atoms_; ia++) {
-                                int nbf = kp__->beta_projectors().chunk(chunk).desc_(
-                                    static_cast<int>(beta_desc_idx::nbf), ia);
-                                int offs = kp__->beta_projectors().chunk(chunk).desc_(
-                                    static_cast<int>(beta_desc_idx::offset), ia);
-                                int ja =
-                                    kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::ia), ia);
+                    #pragma omp parallel
+                    {
+                        /* auxiliary arrays */
+                        mdarray<double_complex, 2> bp1(nbeta, nbnd_loc);
+                        mdarray<double_complex, 2> bp2(nbeta, nbnd_loc);
+                        #pragma omp for
+                        for (int ia = 0; ia < kp__->beta_projectors().chunk(chunk).num_atoms_; ia++) {
+                            int nbf = kp__->beta_projectors().chunk(chunk).desc_(
+                                static_cast<int>(beta_desc_idx::nbf), ia);
+                            int offs = kp__->beta_projectors().chunk(chunk).desc_(
+                                static_cast<int>(beta_desc_idx::offset), ia);
+                            int ja =
+                                kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::ia), ia);
 
-                                for (int i = 0; i < nbnd_loc; i++) {
-                                    int j = spl_nbnd[i];
+                            for (int i = 0; i < nbnd_loc; i++) {
+                                int j = spl_nbnd[i];
 
-                                    for (int xi = 0; xi < nbf; xi++) {
-                                        bp1(xi, i) = beta_psi(offs + xi, j);
-                                        bp2(xi, i) =
-                                            std::conj(bp1(xi, i)) * kp__->weight() * kp__->band_occupancy(j, ispn);
-                                    }
+                                for (int xi = 0; xi < nbf; xi++) {
+                                    bp1(xi, i) = beta_psi(offs + xi, j);
+                                    bp2(xi, i) =
+                                        std::conj(bp1(xi, i)) * kp__->weight() * kp__->band_occupancy(j, ispn);
                                 }
-
-                                linalg<device_t::CPU>::gemm(0, 1, nbf, nbf, nbnd_loc,
-                                                            linalg_const<double_complex>::one(), &bp1(0, 0), bp1.ld(),
-                                                            &bp2(0, 0), bp2.ld(), linalg_const<double_complex>::one(),
-                                                            &density_matrix__(0, 0, ispn, ja), density_matrix__.ld());
                             }
+
+                            linalg<device_t::CPU>::gemm(0, 1, nbf, nbf, nbnd_loc,
+                                                        linalg_const<double_complex>::one(), &bp1(0, 0), bp1.ld(),
+                                                        &bp2(0, 0), bp2.ld(), linalg_const<double_complex>::one(),
+                                                        &density_matrix__(0, 0, ispn, ja), density_matrix__.ld());
                         }
+                    }
                     }
                 }
             }
@@ -882,7 +882,7 @@ void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex,
                     /* compute <beta|psi> */
                     auto beta_psi =
                         kp__->beta_projectors().inner<T>(chunk, kp__->spinor_wave_functions(), ispn, 0, nbnd);
-#pragma omp parallel for schedule(static)
+                    #pragma omp parallel for schedule(static)
                     for (int i = 0; i < nbnd_loc; i++) {
                         int j = spl_nbnd[i];
 
@@ -964,7 +964,7 @@ void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex,
                 }
 
                 if (nbnd_loc) {
-#pragma omp parallel for
+                    #pragma omp parallel for
                     for (int ia = 0; ia < kp__->beta_projectors().chunk(chunk).num_atoms_; ia++) {
                         int nbf = kp__->beta_projectors().chunk(chunk).desc_(static_cast<int>(beta_desc_idx::nbf), ia);
                         int offs =
@@ -1096,7 +1096,7 @@ void Density::augment()
     auto rho_aug = generate_rho_aug();
 
     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-#pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
             this->component(iv).f_pw_local(igloc) += rho_aug(igloc, iv);
         }
@@ -1312,7 +1312,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
 
             switch (ctx_.processing_unit()) {
                 case device_t::CPU: {
-#pragma omp parallel for schedule(static)
+                    #pragma omp parallel for schedule(static)
                     for (int igloc = g_begin; igloc < g_end; igloc++) {
                         int ig = ctx_.gvec().offset() + igloc;
                         for (int i = 0; i < atom_type.num_atoms(); i++) {
@@ -1331,7 +1331,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                                   dm_pw.at(memory_t::host, 0, 0), dm_pw.ld());
                         t3.stop();
                         utils::timer t4("sirius::Density::generate_rho_aug|sum");
-#pragma omp parallel for
+                        #pragma omp parallel for
                         for (int igloc = g_begin; igloc < g_end; igloc++) {
                             double_complex zsum(0, 0);
                             /* get contribution from non-diagonal terms */
@@ -1405,7 +1405,7 @@ void Density::reduce_density_matrix(Atom_type const& atom_type__, int ia__, mdar
 {
     mt_density_matrix__.zero();
 
-#pragma omp parallel for default(shared)
+    #pragma omp parallel for default(shared)
     for (int idxrf2 = 0; idxrf2 < atom_type__.mt_radial_basis_size(); idxrf2++) {
         int l2 = atom_type__.indexr(idxrf2).l;
         for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++) {
@@ -1635,7 +1635,7 @@ mdarray<double, 2> Density::compute_atomic_mag_mom() const
     mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
     mmom.zero();
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
 
         auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map(ia);
@@ -1696,7 +1696,7 @@ mdarray<double, 3> Density::density_matrix_aux(int iat__)
 
     /* convert to real matrix */
     mdarray<double, 3> dm(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.num_mag_dims() + 1);
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < atom_type.num_atoms(); i++) {
         int ia = atom_type.atom_id(i);
 

@@ -507,10 +507,16 @@ void Simulation_context::initialize()
             new Radial_integrals_aug<true>(unit_cell(), pw_cutoff(), settings().nprii_aug_));
 
         atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-            new Radial_integrals_atomic_wf<false>(unit_cell(), 2 * gk_cutoff(), 20));
+            new Radial_integrals_atomic_wf<false>(unit_cell(), 2 * gk_cutoff(), 20, false));
 
         atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-            new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20));
+            new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20, false));
+
+        hubbard_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
+            new Radial_integrals_atomic_wf<false>(unit_cell(), 2 * gk_cutoff(), 20, true));
+
+        hubbard_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
+            new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20, true));
 
         ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
             new Radial_integrals_rho_core_pseudo<false>(unit_cell(), pw_cutoff(), settings().nprii_rho_core_));
@@ -606,6 +612,9 @@ void Simulation_context::print_info() const
         unit_cell_.atom_type(i).print_info();
     }
 
+    printf("\n");
+    printf("Basic information\n");
+    for (int i = 0; i < 80; i++, printf("-"));
     printf("\n");
     printf("total nuclear charge               : %i\n", unit_cell().total_nuclear_charge());
     printf("number of core electrons           : %f\n", unit_cell().num_core_electrons());

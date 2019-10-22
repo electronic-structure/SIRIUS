@@ -147,6 +147,12 @@ class Simulation_context : public Simulation_parameters
     /// Radial integrals of atomic wave-functions with derivatives of spherical Bessel functions.
     std::unique_ptr<Radial_integrals_atomic_wf<true>> atomic_wf_ri_djl_;
 
+    /// Radial integrals of hubbard wave-functions.
+    std::unique_ptr<Radial_integrals_atomic_wf<false>> hubbard_wf_ri_;
+
+    /// Radial integrals of hubbard wave-functions with derivatives of spherical Bessel functions.
+    std::unique_ptr<Radial_integrals_atomic_wf<true>> hubbard_wf_ri_djl_;
+
     /// Radial integrals of pseudo-core charge density.
     std::unique_ptr<Radial_integrals_rho_core_pseudo<false>> ps_core_ri_;
 
@@ -553,6 +559,16 @@ class Simulation_context : public Simulation_parameters
     inline Radial_integrals_atomic_wf<true> const& atomic_wf_djl() const
     {
         return *atomic_wf_ri_djl_;
+    }
+
+    inline Radial_integrals_atomic_wf<false> const& hubbard_wf_ri() const
+    {
+        return *hubbard_wf_ri_;
+    }
+
+    inline Radial_integrals_atomic_wf<true> const& hubbard_wf_djl() const
+    {
+        return *hubbard_wf_ri_djl_;
     }
 
     inline Radial_integrals_rho_core_pseudo<false> const& ps_core_ri() const

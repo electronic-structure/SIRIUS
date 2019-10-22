@@ -214,8 +214,8 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         auto& atom_type = unit_cell_.atom(ia).type();
         lmax = std::max(lmax, atom_type.lmax_ps_atomic_wf());
         /* generate the atomic wave functions */
-        Hk__.kp().generate_atomic_wave_functions(atom_type.indexb_wfc(), ia, offset, false, phi);
-        offset += atom_type.indexb_wfc().size();
+        Hk__.kp().generate_atomic_wave_functions(atom_type.indexb_wfs(), ia, offset, false, phi);
+        offset += atom_type.indexb_wfs().size();
     }
 
     lmax = std::max(lmax, unit_cell_.lmax());

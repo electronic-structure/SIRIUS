@@ -151,7 +151,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
 
                 // compute the derivative of |phi> corresponding to the
                 // atom atom_id
-                const int lmax_at = 2 * ctx_.unit_cell().atom(atom_id).type().hubbard_orbital(0).l() + 1;
+                const int lmax_at = 2 * ctx_.unit_cell().atom(atom_id).type().hubbard_orbital(0).l + 1;
 
                 // compute the derivatives of the hubbard wave functions
                 // |phi_m^J> (J = atom_id) compared to a displacement of atom J.
@@ -340,7 +340,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__
             // compute the derivatives of all hubbard wave functions
             // |phi_m^J> compared to the strain
 
-            compute_gradient_strain_wavefunctions(kp__, phitmp, rlm_g, rlm_dg, nu, mu);
+            wavefunctions_strain_deriv(kp__, phitmp, rlm_g, rlm_dg, nu, mu);
             if (ctx_.processing_unit() == device_t::GPU) {
                 phitmp.copy_to(spin_range(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
             }
@@ -420,11 +420,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__
 }
 
 void
-Hubbard::compute_gradient_strain_wavefunctions(K_point&                  kp__,
-                                               Wave_functions&           dphi,
-                                               const mdarray<double, 2>& rlm_g,
-                                               const mdarray<double, 3>& rlm_dg,
-                                               const int nu, const int mu)
+Hubbard::wavefunctions_strain_deriv(K_point& kp__, Wave_functions& dphi, mdarray<double, 2> const& rlm_g,
+                                    mdarray<double, 3> const& rlm_dg, const int nu, const int mu)
 {
     #pragma omp parallel for schedule(static)
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
@@ -448,9 +445,9 @@ Hubbard::compute_gradient_strain_wavefunctions(K_point&                  kp__,
             auto& atom_type = ctx_.unit_cell().atom(ia).type();
             if (atom_type.hubbard_correction()) {
                 int offset__ = this->offset_[ia];
-                for (auto&& orb : atom_type.hubbard_orbital()) {
+                for (auto&& orb : atom_type.hubbard_orbitals()) {
                     const int i            = orb.rindex();
-                    const int l            = orb.l();
+                    const int l            = orb.l;
                     auto      phase        = twopi * dot(kp__.gkvec().gkvec(igk), unit_cell_.atom(ia).position());
                     auto      phase_factor = std::exp(double_complex(0.0, phase));
                     auto      z            = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
@@ -595,7 +592,7 @@ Hubbard::compute_occupancies(K_point&                    kp,
     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ++ia1) {
         const auto& atom = ctx_.unit_cell().atom(ia1);
         if (atom.type().hubbard_correction()) {
-            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
+            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 const int ispn_offset = ispn * this->number_of_hubbard_orbitals() + this->offset_[ia1];
                 for (int m2 = 0; m2 < lmax_at; m2++) {

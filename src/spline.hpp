@@ -198,7 +198,7 @@ class Spline : public Radial_grid<U>
     }
 
     /// Get value at the point x[i].
-    inline T operator()(const int i) const
+    inline T const& operator()(const int i) const
     {
         return coeffs_(i, 0);
     }
@@ -331,7 +331,7 @@ class Spline : public Radial_grid<U>
 
         if (info) {
             std::stringstream s;
-            s << "error in tridiagonal solver: " << info;
+            s << "[sirius::Spline::interpolate] error in tridiagonal solver: " << info;
             throw std::runtime_error(s.str());
         }
 

@@ -894,13 +894,14 @@ std::pair<int, std::vector<int>> Unit_cell::num_wf_with_U() const
 
 int Unit_cell::num_ps_atomic_wf() const
 {
+    /* TODO: in spinorbit case this function will work only when pairs of spinor components are present. */
     int N{0};
     /* get the total number of atomic-centered orbitals */
     for (int iat = 0; iat < this->num_atom_types(); iat++) {
         int n{0};
-        for (int i = 0; i < this->atom_type(iat).num_ps_atomic_wf(); i++) {
+        for (int i = 0; i < this->atom_type(iat).indexr_wfs().size(); i++) {
             /* number of m-components is 2l + 1 */
-            n += (2 * std::abs(atom_type(iat).ps_atomic_wf(i).first) + 1);
+            n += (2 * std::abs(std::get<1>(atom_type(iat).ps_atomic_wf(i))) + 1);
         }
         N += atom_type(iat).num_atoms() * n;
     }
