@@ -190,6 +190,11 @@ class Density : public Field4D
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 
+    // Mixer
+    std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
+                                 Periodic_function<double>, sddk::mdarray<double_complex, 4>>>
+        mixer_;
+
     /// Allocate PAW data.
     void init_paw();
 
@@ -614,11 +619,6 @@ class Density : public Field4D
     void mixer_init(Mixer_input mixer_cfg__);
 
     double mix();
-
-    //inline double dr2() const
-    //{
-    //    return mixer_->rss();
-    //}
 
     mdarray<double_complex, 4> const& density_matrix() const
     {

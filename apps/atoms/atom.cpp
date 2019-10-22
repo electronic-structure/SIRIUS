@@ -78,12 +78,12 @@ class Free_atom : public sirius::Atom_type
         auto mixer = std::make_shared<sirius::mixer::Broyden1<std::vector<double>>>(12,  // max history
                                                                                     0.8, // beta
                                                                                     0.1, // beta0
-                                                                                    1.0, // beta scaling factor
-                                                                                    Communicator::self());
+                                                                                    1.0  // beta scaling factor
+        );
 
         // use simple inner product for mixing
         auto mixer_function_prop = sirius::mixer::FunctionProperties<std::vector<double>>(
-            false, [](const std::vector<double>& x) -> std::size_t { return x.size(); },
+            [](const std::vector<double>& x) -> std::size_t { return x.size(); },
             [](const std::vector<double>& x, const std::vector<double>& y) -> double {
                 double result = 0.0;
                 for (std::size_t i = 0; i < x.size(); ++i)
