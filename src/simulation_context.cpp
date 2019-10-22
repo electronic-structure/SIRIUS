@@ -512,6 +512,12 @@ void Simulation_context::initialize()
         atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
             new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20, false));
 
+        hubbard_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
+            new Radial_integrals_atomic_wf<false>(unit_cell(), 2 * gk_cutoff(), 20, true));
+
+        hubbard_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
+            new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20, true));
+
         ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
             new Radial_integrals_rho_core_pseudo<false>(unit_cell(), pw_cutoff(), settings().nprii_rho_core_));
 

@@ -110,13 +110,13 @@ class Atom_type
     /// List of Hubbard orbital descriptors.
     /** List of sirius::hubbard_orbital_descriptor for each orbital. The corresponding radial functions are stored in
         Atom_type::hubbard_radial_functions_ */
-    std::vector<hubbard_orbital_descriptor> lo_descriptors_hub_;
+    std::vector<hubbard_orbital_descriptor> lo_descriptors_hub_; // TODO: to be removed
 
     /// Index for the radial hubbard basis functions
-    radial_functions_index hubbard_indexr_;
+    radial_functions_index hubbard_indexr_; // TODO: to be removed
 
     /// Index of hubbard basis functions (radial function * spherical harmonic).
-    basis_functions_index hubbard_indexb_;
+    basis_functions_index hubbard_indexb_; // TODO: to be removed
 
     /// Index of radial functions for hubbard orbitals.
     radial_functions_index indexr_hub_;
@@ -508,7 +508,7 @@ class Atom_type
 
     /// Add radial function of the augmentation charge.
     /** Radial functions of beta projectors must be added already. Their total number will be used to
-     *  deterimine the storage size for the radial functions of the augmented charge. */
+        deterimine the storage size for the radial functions of the augmented charge. */
     inline void add_q_radial_function(int idxrf1__, int idxrf2__, int l__, std::vector<double> qrf__)
     {
         /* sanity check */
@@ -674,12 +674,12 @@ class Atom_type
         }
         if (idx_rf.size() == 0) {
             std::stringstream s;
-            s << "[Atom_type::add_hubbard_orbital] atomic radial function is not found";
+            s << "[sirius::Atom_type::add_hubbard_orbital] atomic radial function is not found";
             TERMINATE(s);
         }
         if (idx_rf.size() > 2) {
             std::stringstream s;
-            s << "[Atom_type::add_hubbard_orbital] number of atomic functions > 2";
+            s << "[sirius::Atom_type::add_hubbard_orbital] number of atomic functions > 2";
             TERMINATE(s);
         }
 

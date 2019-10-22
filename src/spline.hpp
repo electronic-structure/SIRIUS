@@ -331,7 +331,7 @@ class Spline : public Radial_grid<U>
 
         if (info) {
             std::stringstream s;
-            s << "error in tridiagonal solver: " << info;
+            s << "[sirius::Spline::interpolate] error in tridiagonal solver: " << info;
             throw std::runtime_error(s.str());
         }
 
