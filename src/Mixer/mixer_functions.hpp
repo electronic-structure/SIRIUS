@@ -33,11 +33,9 @@ namespace sirius {
 
 namespace mixer {
 
-FunctionProperties<Periodic_function<double>> full_potential_periodic_function_property(bool local);
+FunctionProperties<Periodic_function<double>> periodic_function_property();
 
-FunctionProperties<Periodic_function<double>> pseudo_potential_periodic_function_property(bool local);
-
-FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property(bool local);
+FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property();
 
 } // namespace mixer
 

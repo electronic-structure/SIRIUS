@@ -35,8 +35,6 @@
 #include <cmath>
 #include <numeric>
 
-#include "SDDK/communicator.hpp"
-
 namespace sirius {
 namespace mixer {
 
@@ -51,20 +49,18 @@ struct FunctionProperties
     using type = FUNC;
 
     ///
-    /** \param [in]  is_local      Indicates, that the function is stored fully locally. The result of the inner product
-     *                             function will then not be send to other MPI ranks and only contributes locally.
-     *  \param [in]  local_size_   Function, which returns a measure of size of the locally stored part of the function.
-     *  \param [in]  inner_        Function, which computes the inner product. This determines the contribution to mixing parameters rmse.
+    /**
+     *  \param [in]  size_         Function, which returns a measure of size of the (global) function.
+     *  \param [in]  inner_        Function, which computes the (global) inner product. This determines the contribution to mixing parameters rmse.
      *  \param [in]  scal_         Function, which scales the input (x = alpha * x).
      *  \param [in]  copy_         Function, which copies from one object to the other (y = x).
      *  \param [in]  axpy_         Function, which scales and adds one object to the other (y = alpha * x + y).
      */
-    FunctionProperties(bool is_local_, std::function<std::size_t(const FUNC&)> local_size_,
+    FunctionProperties(std::function<std::size_t(const FUNC&)> size_,
                        std::function<double(const FUNC&, const FUNC&)> inner_, std::function<void(double, FUNC&)> scal_,
                        std::function<void(const FUNC&, FUNC&)> copy_,
                        std::function<void(double, const FUNC&, FUNC&)> axpy_)
-        : is_local(is_local_)
-        , local_size(local_size_)
+        : size(size_)
         , inner(inner_)
         , scal(scal_)
         , copy(copy_)
@@ -73,8 +69,7 @@ struct FunctionProperties
     }
 
     FunctionProperties()
-        : is_local(true)
-        , local_size([](const FUNC&) -> std::size_t { return 0; })
+        : size([](const FUNC&) -> std::size_t { return 0; })
         , inner([](const FUNC&, const FUNC&) -> double { return 0.0; })
         , scal([](double, FUNC&) -> void {})
         , copy([](const FUNC&, FUNC&) -> void {})
@@ -82,11 +77,8 @@ struct FunctionProperties
     {
     }
 
-    // The function is stored fully locally on each MPI rank.
-    bool is_local;
-
     // Size proportional to the local contribution of the inner product.
-    std::function<std::size_t(const FUNC&)> local_size;
+    std::function<std::size_t(const FUNC&)> size;
 
     // Inner product function. Determines contribution to mixing.
     std::function<double(const FUNC&, const FUNC&)> inner;
@@ -104,28 +96,28 @@ struct FunctionProperties
 // Implemenation of templated recursive calls through tuples
 namespace mixer_impl {
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
-struct LocalSize
+struct GlobalSize
 {
-    static double apply(bool local, const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
+    static double apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
                         const std::tuple<std::unique_ptr<FUNCS>...>& x)
     {
         std::size_t size = 0;
-        if (std::get<FUNC_REVERSE_INDEX>(function_prop).is_local == local && std::get<FUNC_REVERSE_INDEX>(x)) {
-            size += std::get<FUNC_REVERSE_INDEX>(function_prop).local_size(*std::get<FUNC_REVERSE_INDEX>(x));
+        if (std::get<FUNC_REVERSE_INDEX>(x)) {
+            size += std::get<FUNC_REVERSE_INDEX>(function_prop).size(*std::get<FUNC_REVERSE_INDEX>(x));
         }
-        return size + LocalSize<FUNC_REVERSE_INDEX - 1, FUNCS...>::apply(local, function_prop, x);
+        return size + GlobalSize<FUNC_REVERSE_INDEX - 1, FUNCS...>::apply(function_prop, x);
     }
 };
 
 template <typename... FUNCS>
-struct LocalSize<0, FUNCS...>
+struct GlobalSize<0, FUNCS...>
 {
-    static double apply(bool local, const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
+    static double apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
                         const std::tuple<std::unique_ptr<FUNCS>...>& x)
     {
         std::size_t size = 0;
-        if (std::get<0>(function_prop).is_local == local && std::get<0>(x)) {
-            size += std::get<0>(function_prop).local_size(*std::get<0>(x));
+        if (std::get<0>(x)) {
+            size += std::get<0>(function_prop).size(*std::get<0>(x));
         }
         return size;
     }
@@ -134,27 +126,26 @@ struct LocalSize<0, FUNCS...>
 template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
 struct InnerProduct
 {
-    static double apply(bool local, const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
+    static double apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
                         const std::tuple<std::unique_ptr<FUNCS>...>& x, const std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         double result = 0.0;
-        if (std::get<FUNC_REVERSE_INDEX>(function_prop).is_local == local && std::get<FUNC_REVERSE_INDEX>(x) &&
-            std::get<FUNC_REVERSE_INDEX>(y)) {
+        if (std::get<FUNC_REVERSE_INDEX>(x) && std::get<FUNC_REVERSE_INDEX>(y)) {
             result += std::get<FUNC_REVERSE_INDEX>(function_prop)
                           .inner(*std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
         }
-        return result + InnerProduct<FUNC_REVERSE_INDEX - 1, FUNCS...>::apply(local, function_prop, x, y);
+        return result + InnerProduct<FUNC_REVERSE_INDEX - 1, FUNCS...>::apply(function_prop, x, y);
     }
 };
 
 template <typename... FUNCS>
 struct InnerProduct<0, FUNCS...>
 {
-    static double apply(bool local, const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
+    static double apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
                         const std::tuple<std::unique_ptr<FUNCS>...>& x, const std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
         double result = 0.0;
-        if (std::get<0>(function_prop).is_local == local && std::get<0>(x) && std::get<0>(y)) {
+        if (std::get<0>(x) && std::get<0>(y)) {
             result += std::get<0>(function_prop).inner(*std::get<0>(x), *std::get<0>(y));
         }
         return result;
@@ -256,10 +247,9 @@ class Mixer
     /** \param [in]  max_history   Maximum number of steps stored, which contribute to the mixing.
      *  \param [in]  commm         Communicator used for exchaning mixing contributions.
      */
-    Mixer(std::size_t max_history, sddk::Communicator const& comm)
+    Mixer(std::size_t max_history)
         : step_(0)
         , max_history_(max_history)
-        , comm_(comm)
         , rmse_history_(max_history)
         , output_history_(max_history)
         , residual_history_(max_history)
@@ -369,16 +359,9 @@ class Mixer
     void update_rms()
     {
         const auto idx    = idx_hist(step_);
-        double rmse       = inner_product(false, residual_history_[idx], residual_history_[idx]);
-        double rmse_local = inner_product(true, residual_history_[idx], residual_history_[idx]);
+        double rmse       = inner_product(residual_history_[idx], residual_history_[idx]);
 
-        comm_.allreduce(&rmse, 1);
-        rmse += rmse_local;
-
-        auto size                  = this->local_size(false, residual_history_[idx]);
-        const auto size_local_only = this->local_size(true, residual_history_[idx]);
-        this->comm_.allreduce(&size, 1);
-        size += size_local_only;
+        auto size                  = this->size(residual_history_[idx]);
         if (size == 0)
             size = 1;
 
@@ -393,15 +376,15 @@ class Mixer
         return step % max_history_;
     }
 
-    double local_size(bool local, const std::tuple<std::unique_ptr<FUNCS>...>& x)
+    double size(const std::tuple<std::unique_ptr<FUNCS>...>& x)
     {
-        return mixer_impl::LocalSize<sizeof...(FUNCS) - 1, FUNCS...>::apply(local, functions_, x);
+        return mixer_impl::GlobalSize<sizeof...(FUNCS) - 1, FUNCS...>::apply(functions_, x);
     }
 
-    double inner_product(bool local, const std::tuple<std::unique_ptr<FUNCS>...>& x,
+    double inner_product(const std::tuple<std::unique_ptr<FUNCS>...>& x,
                          const std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
-        return mixer_impl::InnerProduct<sizeof...(FUNCS) - 1, FUNCS...>::apply(local, functions_, x, y);
+        return mixer_impl::InnerProduct<sizeof...(FUNCS) - 1, FUNCS...>::apply(functions_, x, y);
     }
 
     void scale(double alpha, std::tuple<std::unique_ptr<FUNCS>...>& x)
@@ -424,9 +407,6 @@ class Mixer
 
     // The maximum history size kept for each function
     std::size_t max_history_;
-
-    /// Base communicator.
-    sddk::Communicator const& comm_;
 
     // Properties, describing the each function type
     std::vector<double> rmse_history_;

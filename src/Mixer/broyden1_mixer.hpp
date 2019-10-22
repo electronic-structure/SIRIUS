@@ -35,8 +35,9 @@
 #include <cmath>
 #include <numeric>
 
-#include "SDDK/communicator.hpp"
+#include "SDDK/memory.hpp"
 #include "Mixer/mixer.hpp"
+#include "SDDK/linalg.hpp"
 
 namespace sirius {
 namespace mixer {
@@ -50,8 +51,8 @@ template <typename... FUNCS>
 class Broyden1 : public Mixer<FUNCS...>
 {
   public:
-    Broyden1(std::size_t max_history, double beta, double beta0, double beta_scaling_factor, Communicator const& comm)
-        : Mixer<FUNCS...>(max_history, comm)
+    Broyden1(std::size_t max_history, double beta, double beta0, double beta_scaling_factor)
+        : Mixer<FUNCS...>(max_history)
         , beta_(beta)
         , beta0_(beta0)
         , beta_scaling_factor_(beta_scaling_factor)
@@ -78,10 +79,8 @@ class Broyden1 : public Mixer<FUNCS...>
         this->scale(0.0, this->input_);
 
         if (history_size > 0) {
-            mdarray<double, 2> S(history_size, history_size);
+            sddk::mdarray<double, 2> S(history_size, history_size);
             S.zero();
-            mdarray<double, 2> S_local(history_size, history_size);
-            S_local.zero();
             for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
                 int i1 = this->idx_hist(this->step_ - j1);
                 int i2 = this->idx_hist(this->step_ - j1 - 1);
@@ -93,19 +92,12 @@ class Broyden1 : public Mixer<FUNCS...>
                     this->copy(this->residual_history_[i3], this->tmp2_);
                     this->axpy(-1.0, this->residual_history_[i4], this->tmp2_);
 
-                    S(j2, j1) = S(j1, j2) = this->inner_product(false, this->tmp1_, this->tmp2_);
-                    S_local(j2, j1) = S_local(j1, j2) = this->inner_product(true, this->tmp1_, this->tmp2_);
-                }
-            }
-            this->comm_.allreduce(S.at(memory_t::host), (int)S.size());
-            for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
-                for (int j2 = 0; j2 < static_cast<int>(history_size); j2++) {
-                    S(j1, j2) += S_local(j1, j2);
+                    S(j2, j1) = S(j1, j2) = this->inner_product(this->tmp1_, this->tmp2_);
                 }
             }
 
             /* invert matrix */
-            linalg<device_t::CPU>::syinv(history_size, S);
+            sddk::linalg<sddk::device_t::CPU>::syinv(history_size, S);
             /* restore lower triangular part */
             for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
                 for (int j2 = 0; j2 < j1; j2++) {
@@ -113,10 +105,8 @@ class Broyden1 : public Mixer<FUNCS...>
                 }
             }
 
-            mdarray<double, 1> c(history_size);
+            sddk::mdarray<double, 1> c(history_size);
             c.zero();
-            mdarray<double, 1> c_local(history_size);
-            c_local.zero();
             for (int j = 0; j < static_cast<int>(history_size); j++) {
                 int i1 = this->idx_hist(this->step_ - j);
                 int i2 = this->idx_hist(this->step_ - j - 1);
@@ -124,12 +114,7 @@ class Broyden1 : public Mixer<FUNCS...>
                 this->copy(this->residual_history_[i1], this->tmp1_);
                 this->axpy(-1.0, this->residual_history_[i2], this->tmp1_);
 
-                c(j)       = this->inner_product(false, this->tmp1_, this->residual_history_[idx_step]);
-                c_local(j) = this->inner_product(true, this->tmp1_, this->residual_history_[idx_step]);
-            }
-            this->comm_.allreduce(c.at(memory_t::host), (int)c.size());
-            for (int j = 0; j < static_cast<int>(history_size); j++) {
-                c(j) += c_local(j);
+                c(j)       = this->inner_product(this->tmp1_, this->residual_history_[idx_step]);
             }
 
             for (int j = 0; j < static_cast<int>(history_size); j++) {

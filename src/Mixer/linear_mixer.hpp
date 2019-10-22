@@ -35,7 +35,6 @@
 #include <cmath>
 #include <numeric>
 
-#include "SDDK/communicator.hpp"
 #include "Mixer/mixer.hpp"
 
 namespace sirius {
@@ -44,8 +43,8 @@ template <typename... FUNCS>
 class Linear : public Mixer<FUNCS...>
 {
   public:
-    Linear(double beta, Communicator const& comm)
-        : Mixer<FUNCS...>(2, comm)
+    explicit Linear(double beta)
+        : Mixer<FUNCS...>(2)
         , beta_(beta)
     {
     }

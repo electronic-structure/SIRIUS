@@ -432,9 +432,9 @@ dot(Smooth_periodic_vector_function<T>& vf__, Smooth_periodic_vector_function<T>
 /// Compute inner product <f|g>
 template <typename T, typename F>
 inline T
-inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
+inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
 {
-    utils::timer t1("sirius::Smooth_periodic_function|inner");
+    utils::timer t1("sirius::Smooth_periodic_function|inner_local");
 
     assert(&f__.spfft() == &g__.spfft());
 
@@ -447,6 +447,16 @@ inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const&
 
     result_rg *= (f__.gvec().omega() / spfft_grid_size(f__.spfft()));
 
+    return result_rg;
+}
+template <typename T, typename F>
+inline T
+inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
+{
+    utils::timer t1("sirius::Smooth_periodic_function|inner");
+
+
+    T result_rg = inner_local(f__, g__, std::forward<F>(theta__));
     sddk::Communicator(f__.spfft().communicator()).allreduce(&result_rg, 1);
 
     return result_rg;
@@ -458,6 +468,12 @@ inline T
 inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
 {
     return inner(f__, g__, [](int ir){return 1;});
+}
+template <typename T>
+inline T
+inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
+{
+    return inner_local(f__, g__, [](int ir){return 1;});
 }
 
 } // namespace sirius
