@@ -270,10 +270,10 @@ json DFT_ground_state::check_scf_density()
     dict["detot"] = total_energy() - etot;
 
     if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-        printf("[check_scf_density] RSS: %18.12E\n", dict["rss"].get<double>());
-        printf("[check_scf_density] RMS: %18.12E\n", dict["rms"].get<double>());
-        printf("[check_scf_density] dEtot: %18.12E\n", dict["detot"].get<double>());
-        printf("[check_scf_density] Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
+        printf("[sirius::DFT_ground_state::check_scf_density] RSS: %18.12E\n", dict["rss"].get<double>());
+        printf("[sirius::DFT_ground_state::check_scf_density] RMS: %18.12E\n", dict["rms"].get<double>());
+        printf("[sirius::DFT_ground_state::check_scf_density] dEtot: %18.12E\n", dict["detot"].get<double>());
+        printf("[sirius::DFT_ground_state::check_scf_density] Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
     }
 
     return dict;
@@ -284,8 +284,6 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
     PROFILE("sirius::DFT_ground_state::scf_loop");
 
     double eold{0}, rms{0};
-
-    bool mix_density_and_potential{false};
 
     density_.mixer_init(ctx_.mixer_input());
 

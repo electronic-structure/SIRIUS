@@ -553,7 +553,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
 
     mdarray<double, 1> eval(num_bands);
     mdarray<double, 1> eval_old(num_bands);
-    eval_old = [](){return 1e10;};
+    eval_old = [](){return -1.0;};
 
     for (int i = 0; i < num_bands; i++) {
         eval[i] = kp.fv_eigen_value(i);
@@ -563,7 +563,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     phi.copy_from(ctx_.processing_unit(), num_bands, psi, 0, 0, 0, nlo + ncomp);
 
     if (ctx_.control().print_checksum_) {
-        kp.message(1, __func__, "Checksum of initial wave-functions\n");
+        kp.message(1, __func__, "checksum of initial wave-functions\n");
         psi.print_checksum(ctx_.processing_unit(), "psi", 0, num_bands);
         phi.print_checksum(ctx_.processing_unit(), "phi", 0,  nlo + ncomp + num_bands);
     }
@@ -605,17 +605,12 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
         /* solve standard eigen-value problem with the size N */
         if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
             std::stringstream s;
-            s << "error in diagonalziation";
+            s << "[sirius::Band::diag_full_potential_first_variation_davidson] error in diagonalziation";
             TERMINATE(s);
         }
-
-        if (ctx_.control().verbosity_ >= 2 && kp.comm().rank() == 0) {
-            printf("step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
-            if (ctx_.control().verbosity_ >= 4) {
-                for (int i = 0; i < num_bands; i++) {
-                    printf("eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
-                }
-            }
+        kp.message(2, __func__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
+        for (int i = 0; i < num_bands; i++) {
+            kp.message(4, __func__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
         }
 
         /* don't compute residuals on last iteration */
@@ -638,10 +633,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                 break;
             } else { /* otherwise, set Psi as a new trial basis */
-                if (ctx_.control().verbosity_ >= 3 && kp.comm().rank() == 0) {
-                    printf("subspace size limit reached\n");
-                }
-
+                kp.message(3, __func__, "subspace size limit reached\n");
                 /* update basis functions */
                 /* first nlo + ncomp functions are fixed, don't update them */
                 phi.copy_from(ctx_.processing_unit(), num_bands, psi, 0, 0, 0, nlo + ncomp);
