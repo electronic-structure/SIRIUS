@@ -78,7 +78,7 @@ class FreeEnergy:
         self.H = H
         assert isinstance(smearing, Smearing)
         self.smearing = smearing
-        if self.H.hamiltonian.ctx().num_mag_dims() == 0:
+        if self.energy.kpointset.ctx().num_mag_dims() == 0:
             self.scale = 0.5
         else:
             self.scale = 1
