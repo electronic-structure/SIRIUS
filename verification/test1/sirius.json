@@ -20,12 +20,12 @@
         "use_symmetry" : true,
 
         "num_mag_dims" : 0,
-        
+
         "gk_cutoff" : 6.0,
         "pw_cutoff" : 20.00,
 
         "energy_tol" : 1e-8,
-        "potential_tol" : 1e-8,
+        "density_tol" : 1e-8,
 
         "num_dft_iter" : 100,
 
@@ -34,10 +34,8 @@
 
 
     "iterative_solver" : {
-        "type" : "davidson",
-        "min_occupancy" : 1e-5
+        "type" : "davidson"
     },
-
 
     "unit_cell" : {
 
