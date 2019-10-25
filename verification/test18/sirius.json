@@ -68,7 +68,7 @@
       "XC_LDA_X",
       "XC_LDA_C_PZ"
     ],
-    "potential_tol": 1e-08,
+    "density_tol": 1e-08,
     "num_dft_iter": 100,
     "pw_cutoff": 14.0,
     "auto_rmt": 0,

@@ -19,13 +19,13 @@
 
     "use_symmetry" : true,
 
-    "num_mag_dims" : 3,
+    "num_mag_dims" : 1,
 
     "gk_cutoff" : 7.0,
-    "pw_cutoff" : 35.00,
+    "pw_cutoff" : 30.00,
 
     "energy_tol" : 1e-7,
-    "potential_tol" : 1e-8,
+    "density_tol" : 1e-7,
 
     "num_dft_iter" : 100,
 
@@ -33,12 +33,12 @@
   },
 
   "iterative_solver" : {
-      "!energy_tolerance" : 1e-2,
-      "!residual_tolerance" : 1e-6,
+      "energy_tolerance" : 1e-2,
+      "residual_tolerance" : 1e-6,
       "num_steps" : 20,
       "subspace_size" : 4,
       "type" : "davidson",
-      "converge_by_energy" : 0
+      "converge_by_energy" : 1
   },
 
     "unit_cell": {
@@ -48,7 +48,7 @@
         "atom_types": ["Ni"],
         "atoms": {
             "Ni": [
-                [0.0,0.0,0.0,  1,1,1]
+                [0.0,0.0,0.0,  0,0,2]
             ]
         },
         "lattice_vectors": [
@@ -58,7 +58,6 @@
         ]
     },
     "mixer" : {
-        "beta" : 0.35,
-        "type" : "broyden1"
+        "beta" : 0.3
     }
 }

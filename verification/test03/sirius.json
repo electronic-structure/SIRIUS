@@ -1,6 +1,5 @@
 {
   "control" : {
-      "!cyclic_block_size" : 2,
       "processing_unit" : "cpu",
       "std_evp_solver_type" : "lapack",
       "gen_evp_solver_type" : "lapack",
@@ -19,8 +18,6 @@
       "smearing_width" : 0.025,
 
       "use_symmetry" : true,
-      
-      "gamma_point" : true,
 
       "num_mag_dims" : 0,
 
@@ -28,16 +25,16 @@
       "pw_cutoff" : 20.00,
 
       "energy_tol" : 1e-8,
-      "potential_tol" : 1e-8,
+      "density_tol" : 1e-8,
 
       "num_dft_iter" : 100,
 
-      "ngridk" : [1,1,1]
+      "ngridk" : [4,4,4]
   },
 
     "iterative_solver" : {
         "energy_tolerance" : 1e-2,
-        "residual_tolerance" : 1e-4,
+        "residual_tolerance" : 1e-6,
         "num_steps" : 20,
         "subspace_size" : 4,
         "type" : "davidson",
@@ -47,30 +44,30 @@
 
     "unit_cell" : {
 
-            "lattice_vectors" : [ [0, 3.80402, 3.80402],
-                                  [3.80402, 0, 3.80402],
-                                  [3.80402, 3.80402, 0]
-                                ],
+        "lattice_vectors" : [ [0, 3.80402, 3.80402],
+                              [3.80402, 0, 3.80402],
+                              [3.80402, 3.80402, 0]
+                            ],
 
-            "atom_types" : ["Li", "F"],
+        "atom_types" : ["Li", "F"],
 
-            "atom_files" : {
-                "Li" : "Li.pz-s-kjpaw_psl.0.2.1.UPF.json",
-                "F"  : "F.pz-n-kjpaw_psl.0.1.UPF.json"
-            },
-
-            "atoms" : {
-                "F" : [
-                    [0.5, 0.5, 0.5]
-                ],
-                "Li" : [
-                    [0, 0, 0]
-                ]
-            }
+        "atom_files" : {
+            "Li" : "Li.pz-s-kjpaw_psl.0.2.1.UPF.json",
+            "F"  : "F.pz-n-kjpaw_psl.0.1.UPF.json"
         },
 
+        "atoms" : {
+            "F" : [
+                [0.5, 0.5, 0.5]
+            ],
+            "Li" : [
+                [0, 0, 0]
+            ]
+        }
+    },
+
     "mixer" : {
-        "beta" : 0.7,
+        "beta" : 0.8,
         "type" : "broyden1",
         "max_history" : 8
     }

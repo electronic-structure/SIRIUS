@@ -114,6 +114,10 @@ Band::solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
+    if (!ctx_.full_potential()) {
+        ctx_.message(1, __func__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
+    }
+
     int num_dav_iter{0};
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {

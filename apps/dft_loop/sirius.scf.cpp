@@ -76,7 +76,7 @@ double ground_state(Simulation_context& ctx,
     double initial_tol = ctx.iterative_solver_tolerance();
 
     /* launch the calculation */
-    auto result = dft.find(inp.potential_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
+    auto result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
 
     if (ctx.control().verification_ >= 1) {
         dft.check_scf_density();
@@ -86,7 +86,7 @@ double ground_state(Simulation_context& ctx,
     if (repeat_update) {
         for (int i = 0; i < repeat_update; i++) {
             dft.update();
-            result = dft.find(inp.potential_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
+            result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
         }
     }
 

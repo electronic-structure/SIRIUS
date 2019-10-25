@@ -10,7 +10,6 @@
       "!verification" : 1
   },
   "settings" : {
-    "mixer_rss_min" : 1e-30,
     "itsol_tol_min" : 1e-16
   },
 
@@ -23,17 +22,13 @@
 
       "smearing_width" : 0.025,
 
-      "use_symmetry" : true,
-      
       "gamma_point" : true,
-
-      "num_mag_dims" : 0,
 
       "gk_cutoff" : 7.0,
       "pw_cutoff" : 30.00,
 
       "energy_tol" : 1e-8,
-      "potential_tol" : 1e-8,
+      "density_tol" : 1e-8,
 
       "num_dft_iter" : 100,
 

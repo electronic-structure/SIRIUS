@@ -27,8 +27,8 @@
         "gk_cutoff" : 6.0,
         "pw_cutoff" : 20.00,
 
-        "energy_tol" : 1e-7,
-        "potential_tol" : 1e-8,
+        "energy_tol" : 1e-8,
+        "density_tol" : 1e-8,
 
         "num_dft_iter" : 100,
 
@@ -42,7 +42,7 @@
       "type" : "broyden1",
       "max_history" : 8
     },
-        
+
         "unit_cell" : {
         "lattice_vectors" : [
             [0, 5.13, 5.13],

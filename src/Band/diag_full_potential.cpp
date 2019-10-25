@@ -302,7 +302,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
 
     mdarray<double, 1> eval(ncomp);
     mdarray<double, 1> eval_old(ncomp);
-    eval_old = [](){return 1e10;};
+    eval = [](){return -1;};
 
     phi.copy_from(ctx_.processing_unit(), ncomp, psi, 0, 0, 0, 0);
 
@@ -375,14 +375,14 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
         /* solve standard eigen-value problem with the size N */
         if (std_solver.solve(N, ncomp, ovlp, &eval[0], evec)) {
             std::stringstream s;
-            s << "error in diagonalziation";
+            s << "[sirius::Band::get_singular_components] error in diagonalziation";
             TERMINATE(s);
         }
 
         for (int i = 0; i < ncomp; i++) {
             if (eval[i] < 0) {
                 std::stringstream s;
-                s << "overlap matrix is not positively defined";
+                s << "[sirius::Band::get_singular_components] overlap matrix is not positively defined";
                 TERMINATE(s);
             }
         }

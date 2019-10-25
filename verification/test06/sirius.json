@@ -23,13 +23,12 @@
     "gk_cutoff" : 6.0,
     "pw_cutoff" : 25.00,
 
-    "energy_tol" : 1e-6,
+    "energy_tol" : 1e-7,
+    "density_tol" : 1e-7,
 
     "num_dft_iter" : 100,
 
-    "ngridk" : [2,2,2],
-
-    "reduce_gvec": 1
+    "ngridk" : [2,2,2]
   },
 
   "iterative_solver" : {
@@ -64,7 +63,7 @@
     },
 
     "mixer" : {
-        "beta" : 0.6,
+        "beta" : 0.95,
         "type" : "broyden1",
         "max_history" : 8
     }

@@ -21,7 +21,7 @@
         "auto_rmt" : 0,
         "use_symmetry": true,
         "ngridk" : [1,1,1],
-        "potential_tol" : 1e-7,
+        "density_tol" : 1e-7,
         "energy_tol" : 1e-7,
         "num_dft_iter" : 20,
         "lmax_apw"     : 8,

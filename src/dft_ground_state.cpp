@@ -321,21 +321,21 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
             }
         }
 
-        /* transform density to real space after*/
+        /* transform density to real space after */
         density_.fft_transform(1);
 
         /* mix density */
         rms = density_.mix();
+
+        /* transform mixed density to plane-wave domain */
         density_.fft_transform(-1);
         /* estimate new tolerance of iterative solver */
-        // double tol = std::max(1e-12, 0.1 * density_.dr2() / ctx_.unit_cell().num_valence_electrons());
-        double tol = std::max(ctx_.settings().itsol_tol_min_, 0.0001 * rms);
-        /* print dr2 of mixer and current iterative solver tolerance */
-        // if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-        //    printf("dr2: %18.12E, tol: %18.12E\n", density_.dr2(), tol);
-        //}
+        double tol = 0.0001 * rms;
+        tol = std::min(ctx_.iterative_solver_tolerance() / 2.0, tol);
+        tol = std::max(ctx_.settings().itsol_tol_min_, tol);
         /* set new tolerance of iterative solver */
-        ctx_.iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
+        ctx_.iterative_solver_tolerance(tol);
+
         // TODO: this is horrible when PAW density is generated from the mixed
         //       density matrix here; better solution: generate in Density and
         //       then mix

@@ -77,6 +77,8 @@ class Broyden2 : public Mixer<FUNCS...>
 
         const double rmse = this->rmse_history_[idx_step];
 
+        const bool normalize = false;
+
         if ((history_size > 1 && rmse < this->linear_mix_rmse_tol_ && this->linear_mix_rmse_tol_ > 0) ||
             (this->linear_mix_rmse_tol_ <= 0 && this->step_ > this->max_history_)) {
             sddk::mdarray<double, 2> S(history_size, history_size);
@@ -84,18 +86,10 @@ class Broyden2 : public Mixer<FUNCS...>
             for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
                 int i1 = this->idx_hist(this->step_ - history_size + j1);
                 for (int j2 = 0; j2 <= j1; j2++) {
-                    int i2    = this->idx_hist(this->step_ - history_size + j2);
+                    int i2 = this->idx_hist(this->step_ - history_size + j2);
+
                     S(j2, j1) = S(j1, j2) =
-                        this->inner_product(this->residual_history_[i1], this->residual_history_[i2]);
-                }
-            }
-
-            // scale by global size and add local only contribution
-            const auto size = this->size(this->residual_history_[0]);
-
-            for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
-                for (int j2 = 0; j2 < static_cast<int>(history_size); j2++) {
-                    S(j1, j2) /= size;
+                        this->template inner_product<normalize>(this->residual_history_[i1], this->residual_history_[i2]);
                 }
             }
 

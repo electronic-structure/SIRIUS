@@ -66,6 +66,8 @@ class Broyden1 : public Mixer<FUNCS...>
 
         const auto history_size = std::min(this->step_, this->max_history_);
 
+        const bool normalize = false;
+
         // beta scaling
         if (this->step_ > this->max_history_) {
             const double rmse_avg = std::accumulate(this->rmse_history_.begin(), this->rmse_history_.end(), 0.0) /
@@ -92,7 +94,7 @@ class Broyden1 : public Mixer<FUNCS...>
                     this->copy(this->residual_history_[i3], this->tmp2_);
                     this->axpy(-1.0, this->residual_history_[i4], this->tmp2_);
 
-                    S(j2, j1) = S(j1, j2) = this->inner_product(this->tmp1_, this->tmp2_);
+                    S(j2, j1) = S(j1, j2) = this->template inner_product<normalize>(this->tmp1_, this->tmp2_);
                 }
             }
 
@@ -114,7 +116,7 @@ class Broyden1 : public Mixer<FUNCS...>
                 this->copy(this->residual_history_[i1], this->tmp1_);
                 this->axpy(-1.0, this->residual_history_[i2], this->tmp1_);
 
-                c(j)       = this->inner_product(this->tmp1_, this->residual_history_[idx_step]);
+                c(j) = this->template inner_product<normalize>(this->tmp1_, this->residual_history_[idx_step]);
             }
 
             for (int j = 0; j < static_cast<int>(history_size); j++) {

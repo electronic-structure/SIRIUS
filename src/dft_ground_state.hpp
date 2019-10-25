@@ -204,7 +204,7 @@ class DFT_ground_state
     void update();
 
     /// Run the SCF ground state calculation and find a total energy minimum.
-    json find(double potential_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state);
+    json find(double density_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state);
 
     /// Print the basic information (total energy, charges, moments, etc.).
     void print_info();
