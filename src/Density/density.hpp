@@ -173,15 +173,17 @@ class Density : public Field4D
 
     /// Density and magnetization on the coarse FFT mesh.
     /** Coarse FFT grid is enough to generate density and magnetization from the wave-functions. The components
-     *  of the <tt>rho_mag_coarse</tt> vector have the following order:
-     *  \f$ \{\rho({\bf r}), m_z({\bf r}), m_x({\bf r}), m_y({\bf r}) \} \f$. */
+        of the <tt>rho_mag_coarse</tt> vector have the following order:
+        \f$ \{\rho({\bf r}), m_z({\bf r}), m_x({\bf r}), m_y({\bf r}) \} \f$.
+     */
     std::array<std::unique_ptr<Smooth_periodic_function<double>>, 4> rho_mag_coarse_;
 
     /// Pointer to pseudo core charge density
     /** In the case of pseudopotential we need to know the non-linear core correction to the
-     *  exchange-correlation energy which is introduced trough the pseudo core density:
-     *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that
-     *  this density integrated does not reproduce the total number of core elctrons. */
+        exchange-correlation energy which is introduced trough the pseudo core density:
+        \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that
+        this density integrated does not reproduce the total number of core elctrons.
+     */
     std::unique_ptr<Smooth_periodic_function<double>> rho_pseudo_core_{nullptr};
 
     /// Non-zero Gaunt coefficients.
@@ -190,10 +192,11 @@ class Density : public Field4D
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 
-    // Mixer
+    // TODO: add mixing of LDA+U occupancy matrix and PAW MT functions.
+    /// Density mixer.
+    /** Mix the following objects: density, x-,y-,z-components of magnetisation and density matrix. */
     std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, sddk::mdarray<double_complex, 4>>>
-        mixer_;
+                                 Periodic_function<double>, sddk::mdarray<double_complex, 4>>> mixer_;
 
     /// Allocate PAW data.
     void init_paw();
@@ -206,11 +209,11 @@ class Density : public Field4D
 
     /// Reduce complex density matrix over magnetic quantum numbers
     /** The following operation is performed:
-     *  \f[
-     *      n_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} =
-     *          \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha}
-     *          \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
-     *  \f]
+        \f[
+            n_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} =
+                \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha}
+                \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
+        \f]
      */
     template <int num_mag_dims>
     void reduce_density_matrix(Atom_type const&                          atom_type__,
@@ -221,28 +224,29 @@ class Density : public Field4D
 
     /// Add k-point contribution to the density matrix in the canonical form.
     /** In case of full-potential LAPW complex density matrix has the following expression:
-     *  \f[
-     *      d_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}}
-     *          S_{\xi}^{\sigma j {\bf k},\alpha*} S_{\xi'}^{\sigma' j {\bf k},\alpha}
-     *  \f]
-     *
-     *  where \f$ S_{\xi}^{\sigma j {\bf k},\alpha} \f$ are the expansion coefficients of
-     *  spinor wave functions inside muffin-tin spheres.
-     *
-     *  In case of LDA+U the occupation matrix is also computed. It has the following expression:
-     *  \f[
-     *      n_{\ell,mm'}^{\sigma \sigma'} = \sum_{i {\bf k}}^{occ} \int_{0}^{R_{MT}} r^2 dr
-     *                \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
-     *  \f]
-     *
-     * In case of ultrasoft pseudopotential the following density matrix has to be computed for each atom:
-     *  \f[
-     *      d_{\xi \xi'}^{\alpha} = \langle \beta_{\xi}^{\alpha} | \hat N | \beta_{\xi'}^{\alpha} \rangle =
-     *        \sum_{j {\bf k}} \langle \beta_{\xi}^{\alpha} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}}
-     *        \langle \Psi_{j{\bf k}} | \beta_{\xi'}^{\alpha} \rangle
-     *  \f]
-     *  Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is
-     *  the occupancy operator written in spectral representation. */
+        \f[
+            d_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}}
+                S_{\xi}^{\sigma j {\bf k},\alpha*} S_{\xi'}^{\sigma' j {\bf k},\alpha}
+        \f]
+
+        where \f$ S_{\xi}^{\sigma j {\bf k},\alpha} \f$ are the expansion coefficients of
+        spinor wave functions inside muffin-tin spheres.
+
+        In case of LDA+U the occupation matrix is also computed. It has the following expression:
+        \f[
+            n_{\ell,mm'}^{\sigma \sigma'} = \sum_{i {\bf k}}^{occ} \int_{0}^{R_{MT}} r^2 dr
+                      \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
+        \f]
+
+        In case of ultrasoft pseudopotential the following density matrix has to be computed for each atom:
+        \f[
+             d_{\xi \xi'}^{\alpha} = \langle \beta_{\xi}^{\alpha} | \hat N | \beta_{\xi'}^{\alpha} \rangle =
+               \sum_{j {\bf k}} \langle \beta_{\xi}^{\alpha} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}}
+               \langle \Psi_{j{\bf k}} | \beta_{\xi'}^{\alpha} \rangle
+        \f]
+        Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is
+        the occupancy operator written in spectral representation.
+     */
     template <typename T>
     void add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex, 4>& density_matrix__);
 
@@ -307,14 +311,16 @@ class Density : public Field4D
 
     /// Generate full charge density (valence + core) and magnetization from the wave functions.
     /** This function calls generate_valence() and then in case of full-potential LAPW method adds a core density
-     *  to get the full charge density of the system. Density is generated in spectral representation, i.e.
-     *  plane-wave coefficients in the interstitial and spherical harmonic components in the muffin-tins. */
+        to get the full charge density of the system. Density is generated in spectral representation, i.e.
+        plane-wave coefficients in the interstitial and spherical harmonic components in the muffin-tins.
+     */
     void generate(K_point_set const& ks__, bool add_core__, bool transform_to_rg__);
 
     /// Generate valence charge density and magnetization from the wave functions.
     /** The interstitial density is generated on the coarse FFT grid and then transformed to the PW domain.
-     *  After symmetrization and mixing and before the generation of the XC potential density is transformted to the
-     *  real-space domain and checked for the number of electrons. */
+        After symmetrization and mixing and before the generation of the XC potential density is transformted to the
+        real-space domain and checked for the number of electrons.
+     */
     void generate_valence(K_point_set const& ks__);
 
     /// Add augmentation charge Q(r).

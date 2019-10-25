@@ -272,8 +272,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
-    ctx_.message(2, __func__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
-
     /* true if this is a non-collinear case */
     const bool nc_mag = (ctx_.num_mag_dims() == 3);
 

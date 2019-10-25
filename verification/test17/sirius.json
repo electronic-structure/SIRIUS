@@ -33,7 +33,7 @@
         "lmax_pot" : 8,
         "lmax_rho" : 8,
 
-        "potential_tol" : 1e-7,
+        "density_tol" : 1e-7,
         "energy_tol" : 1e-8,
 
         "smearing_width" : 0.1

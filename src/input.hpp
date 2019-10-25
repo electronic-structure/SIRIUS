@@ -32,8 +32,6 @@
 #include "SDDK/geometry3d.hpp"
 #include "utils/json.hpp"
 
-//#include "sddk.hpp"
-
 using namespace geometry3d;
 using namespace nlohmann;
 
@@ -41,45 +39,45 @@ namespace sirius {
 
 /// Parse unit cell input section.
 /** The following part of the input file is parsed:
- *  \code{.json}
- *      "unit_cell" : {
- *          "lattice_vectors" : [
- *              [a1_x, a1_y, a1_z],
- *              [a2_x, a2_y, a2_z],
- *              [a3_x, a3_y, a3_z]
- *          ],
- *
- *          "lattice_vectors_scale" : scale,
- *
- *          "atom_types" : [label_A, label_B, ...],
- *
- *          "atom_files" : {
- *              label_A : file_A,
- *              label_B : file_B,
- *              ...
- *          },
- *
- *          "atom_coordinate_units" : units,
- *
- *          "atoms" : {
- *              label_A: [
- *                  coordinates_A_1,
- *                  coordinates_A_2,
- *                  ...
- *              ],
- *              label_B : [
- *                  coordinates_B_1,
- *                  coordinates_B_2,
- *                  ...
- *              ]
- *          }
- *      }
- *  \endcode
- *
- *  The "atom_coordinate_units" string is optional. By default it is assumed to be "lattice" which means that the
- *  atomic coordinates are provided in lattice (fractional) units. It can also be specified in "A" or "au" which
- *  means that the input atomic coordinates are Cartesian and provided in Angstroms or atomic units of length.
- *  This is useful in setting up the molecule calculation.
+    \code{.json}
+    "unit_cell" : {
+        "lattice_vectors" : [
+            [a1_x, a1_y, a1_z],
+            [a2_x, a2_y, a2_z],
+            [a3_x, a3_y, a3_z]
+        ],
+
+        "lattice_vectors_scale" : scale,
+
+        "atom_types" : [label_A, label_B, ...],
+
+        "atom_files" : {
+            label_A : file_A,
+            label_B : file_B,
+            ...
+        },
+
+        "atom_coordinate_units" : units,
+
+        "atoms" : {
+            label_A: [
+                coordinates_A_1,
+                coordinates_A_2,
+                ...
+            ],
+            label_B : [
+                coordinates_B_1,
+                coordinates_B_2,
+                ...
+            ]
+        }
+    }
+    \endcode
+
+    The "atom_coordinate_units" string is optional. By default it is assumed to be "lattice" which means that the
+    atomic coordinates are provided in lattice (fractional) units. It can also be specified in "A" or "au" which
+    means that the input atomic coordinates are Cartesian and provided in Angstroms or atomic units of length.
+    This is useful in setting up the molecule calculation.
  */
 struct Unit_cell_input
 {
@@ -254,8 +252,9 @@ struct Iterative_solver_input
 
     /// Defines the flavour of the iterative solver.
     /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
-     *  is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
-     *  unconverged residuals and then compute only the unconverged ones. */
+        is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
+        unconverged residuals and then compute only the unconverged ones.
+     */
     int converge_by_energy_{1}; // TODO: rename, this is meaningless
 
     /// Minimum number of residuals to continue iterative diagonalization process.
@@ -266,7 +265,8 @@ struct Iterative_solver_input
 
     /// Control the subspace expansion.
     /** If true, keep basis orthogonal and solve standard eigen-value problem. If false, add preconditioned residuals
-     *  as they are and solve generalized eigen-value problem. */
+        as they are and solve generalized eigen-value problem.
+     */
     bool orthogonalize_{true};
 
     /// Initialize eigen-values with previous (old) values.
@@ -274,7 +274,8 @@ struct Iterative_solver_input
 
     /// Tell how to initialize the subspace.
     /** It can be either "lcao", i.e. start from the linear combination of atomic orbitals or "random" –- start from
-     *  the randomized wave functions. */
+        the randomized wave functions.
+     */
     std::string init_subspace_{"lcao"};
 
     void read(json const& parser)
@@ -300,20 +301,20 @@ struct Iterative_solver_input
 
 /// Parse control input section.
 /** The following part of the input file is parsed:
- *  \code{.json}
- *    "control" : {
- *      "mpi_grid_dims" : (1- 2- or 3-dimensional vector<int>) MPI grid layout
- *      "cyclic_block_size" : (int) PBLAS / ScaLAPACK block size
- *      "reduce_gvec" : (bool) use reduced G-vector set (reduce_gvec = true) or full set (reduce_gvec = false)
- *      "std_evp_solver_type" : (string) type of eigen-solver for the standard eigen-problem
- *      "gen_evp_solver_type" : (string) type of eigen-solver for the generalized eigen-problem
- *      "processing_unit" : (string) primary processing unit
- *      "fft_mode" : (string) serial or parallel FFT
- *    }
- *  \endcode
- *  Parameters of the control input sections do not in general change the numerics, but instead control how the
- *  results are obtained. Changing paremeters in control section should not change the significant digits in final
- *  results.
+    \code{.json}
+    "control" : {
+      "mpi_grid_dims" : (1- 2- or 3-dimensional vector<int>) MPI grid layout
+      "cyclic_block_size" : (int) PBLAS / ScaLAPACK block size
+      "reduce_gvec" : (bool) use reduced G-vector set (reduce_gvec = true) or full set (reduce_gvec = false)
+      "std_evp_solver_type" : (string) type of eigen-solver for the standard eigen-problem
+      "gen_evp_solver_type" : (string) type of eigen-solver for the generalized eigen-problem
+      "processing_unit" : (string) primary processing unit
+      "fft_mode" : (string) serial or parallel FFT
+    }
+    \endcode
+    Parameters of the control input sections do not in general change the numerics, but instead control how the
+    results are obtained. Changing paremeters in control section should not change the significant digits in final
+    results.
  */
 struct Control_input
 {
@@ -458,17 +459,17 @@ struct Parameters_input
     /// Number of first-variational states.
     int num_fv_states_{-1};
 
-    /// Smearing function width.
-    double smearing_width_{0.01}; // in Ha
+    /// Width of Gaussian smearing function in the units of [Ha].
+    double smearing_width_{0.01};
 
-    /// Cutoff for plane-waves (for density and potential expansion).
-    double pw_cutoff_{0.0}; // in a.u.^-1
+    /// Cutoff for plane-waves (for density and potential expansion) in the units of [a.u.^-1].
+    double pw_cutoff_{0.0};
 
     /// Cutoff for augmented-wave functions.
     double aw_cutoff_{0.0}; // this is R_{MT} * |G+k|_{max}
 
-    /// Cutoff for |G+k| plane-waves.
-    double gk_cutoff_{0.0}; // in a.u.^-1
+    /// Cutoff for |G+k| plane-waves in the units of [a.u.^-1].
+    double gk_cutoff_{0.0};
 
     /// Maximum l for APW functions.
     int lmax_apw_{8};
@@ -494,11 +495,12 @@ struct Parameters_input
     /// Number of SCF iterations.
     int num_dft_iter_{100};
 
-    /// Tolerance in total energy change.
-    double energy_tol_{1e-5};
+    /// Tolerance in total energy change (in units of [Ha]).
+    double energy_tol_{1e-8};
 
-    /// Tolerance in potential RMS change.
-    double potential_tol_{1e-5};
+    /// Tolerance for the density root mean square (in units of [a.u.^-3]).
+    /** RMS is computed as Sqrt( (1/Omega) \int \delta rho(r) \delta rho(r) dr) */
+    double density_tol_{1e-8};
 
     /// True if this is a molecule calculation.
     bool molecule_{false};
@@ -515,7 +517,7 @@ struct Parameters_input
     /// True if symmetry is used.
     bool use_symmetry_{true};
 
-    /// Radius on atom nearest-neighbour cluster.
+    /// Radius of atom nearest-neighbour cluster.
     double nn_radius_{-1};
 
     /// Effective screening medium.
@@ -573,7 +575,9 @@ struct Parameters_input
             shiftk_         = parser["parameters"].value("shiftk", shiftk_);
             num_dft_iter_   = parser["parameters"].value("num_dft_iter", num_dft_iter_);
             energy_tol_     = parser["parameters"].value("energy_tol", energy_tol_);
-            potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
+            /* potential_tol is obsolete */
+            density_tol_    = parser["parameters"].value("potential_tol", density_tol_);
+            density_tol_    = parser["parameters"].value("density_tol", density_tol_);
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
             reduce_aux_bf_  = parser["parameters"].value("reduce_aux_bf", reduce_aux_bf_);
@@ -598,13 +602,16 @@ struct Parameters_input
 /// Settings control the internal parameters related to the numerical implementation.
 struct Settings_input
 {
-    /// Number of points (per a.u.^-1) for radial integral interpolation for local part of pseudopotential.
+    /// Number of points (per a.u.^-1) for interpolating radial integrals of local part of pseudopotential.
     int nprii_vloc_{200};
+    /// Number of points (per a.u.^-1) for interpolating radial integrals of beta projectors.
     int nprii_beta_{20};
     int nprii_aug_{20};
     int nprii_rho_core_{20};
     bool always_update_wf_{true};
-    double mixer_rss_min_{1e-16};
+    /// Minimum value of allowed RMS for the mixer.
+    /** Mixer will not mix functions if the RMS between previous and current functions is below this tolerance. */
+    double mixer_rms_min_{1e-16};
     double itsol_tol_min_{1e-13};
     double auto_enu_tol_{0};
 
@@ -622,7 +629,7 @@ struct Settings_input
             nprii_aug_        = parser["settings"].value("nprii_aug", nprii_aug_);
             nprii_rho_core_   = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
             always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
-            mixer_rss_min_    = parser["settings"].value("mixer_rss_min", mixer_rss_min_);
+            mixer_rms_min_    = parser["settings"].value("mixer_rms_min", mixer_rms_min_);
             itsol_tol_min_    = parser["settings"].value("itsol_tol_min", itsol_tol_min_);
             auto_enu_tol_     = parser["settings"].value("auto_enu_tol", auto_enu_tol_);
             radial_grid_      = parser["settings"].value("radial_grid", radial_grid_);

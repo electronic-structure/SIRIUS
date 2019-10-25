@@ -56,7 +56,7 @@ struct FunctionProperties
      *  \param [in]  copy_         Function, which copies from one object to the other (y = x).
      *  \param [in]  axpy_         Function, which scales and adds one object to the other (y = alpha * x + y).
      */
-    FunctionProperties(std::function<std::size_t(const FUNC&)> size_,
+    FunctionProperties(std::function<double(const FUNC&)> size_,
                        std::function<double(const FUNC&, const FUNC&)> inner_, std::function<void(double, FUNC&)> scal_,
                        std::function<void(const FUNC&, FUNC&)> copy_,
                        std::function<void(double, const FUNC&, FUNC&)> axpy_)
@@ -69,7 +69,7 @@ struct FunctionProperties
     }
 
     FunctionProperties()
-        : size([](const FUNC&) -> std::size_t { return 0; })
+        : size([](const FUNC&) -> double { return 0; })
         , inner([](const FUNC&, const FUNC&) -> double { return 0.0; })
         , scal([](double, FUNC&) -> void {})
         , copy([](const FUNC&, FUNC&) -> void {})
@@ -78,7 +78,7 @@ struct FunctionProperties
     }
 
     // Size proportional to the local contribution of the inner product.
-    std::function<std::size_t(const FUNC&)> size;
+    std::function<double(const FUNC&)> size; // TODO: this sounds more like a normalization factor.
 
     // Inner product function. Determines contribution to mixing.
     std::function<double(const FUNC&, const FUNC&)> inner;
@@ -95,35 +95,10 @@ struct FunctionProperties
 
 // Implemenation of templated recursive calls through tuples
 namespace mixer_impl {
-template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
-struct GlobalSize
-{
-    static double apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
-                        const std::tuple<std::unique_ptr<FUNCS>...>& x)
-    {
-        std::size_t size = 0;
-        if (std::get<FUNC_REVERSE_INDEX>(x)) {
-            size += std::get<FUNC_REVERSE_INDEX>(function_prop).size(*std::get<FUNC_REVERSE_INDEX>(x));
-        }
-        return size + GlobalSize<FUNC_REVERSE_INDEX - 1, FUNCS...>::apply(function_prop, x);
-    }
-};
 
-template <typename... FUNCS>
-struct GlobalSize<0, FUNCS...>
-{
-    static double apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
-                        const std::tuple<std::unique_ptr<FUNCS>...>& x)
-    {
-        std::size_t size = 0;
-        if (std::get<0>(x)) {
-            size += std::get<0>(function_prop).size(*std::get<0>(x));
-        }
-        return size;
-    }
-};
-
-template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
+/// Compute inner product <x|y> between pairs of functions in tuples and accumulate in the result.
+/** This function is used in Broyden mixers to compute inner products of residuals. */
+template <std::size_t FUNC_REVERSE_INDEX, bool normalize, typename... FUNCS>
 struct InnerProduct
 {
     static double apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
@@ -131,24 +106,45 @@ struct InnerProduct
     {
         double result = 0.0;
         if (std::get<FUNC_REVERSE_INDEX>(x) && std::get<FUNC_REVERSE_INDEX>(y)) {
-            result += std::get<FUNC_REVERSE_INDEX>(function_prop)
+            /* compute inner product */
+            auto v = std::get<FUNC_REVERSE_INDEX>(function_prop)
                           .inner(*std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
+            /* normalize if necessary */
+            if (normalize) {
+                auto sx = std::get<FUNC_REVERSE_INDEX>(function_prop).size(*std::get<FUNC_REVERSE_INDEX>(x));
+                auto sy = std::get<FUNC_REVERSE_INDEX>(function_prop).size(*std::get<FUNC_REVERSE_INDEX>(y));
+                if (sx != sy) {
+                    throw std::runtime_error("[sirius::mixer::InnerProduct] sizes of two functions don't match");
+                }
+                v /= sx;
+            }
+
+            result += v;
         }
-        return result + InnerProduct<FUNC_REVERSE_INDEX - 1, FUNCS...>::apply(function_prop, x, y);
+        return result + InnerProduct<FUNC_REVERSE_INDEX - 1, normalize, FUNCS...>::apply(function_prop, x, y);
     }
 };
 
-template <typename... FUNCS>
-struct InnerProduct<0, FUNCS...>
+template <bool normalize, typename... FUNCS>
+struct InnerProduct<0, normalize, FUNCS...>
 {
     static double apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop,
                         const std::tuple<std::unique_ptr<FUNCS>...>& x, const std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
-        double result = 0.0;
         if (std::get<0>(x) && std::get<0>(y)) {
-            result += std::get<0>(function_prop).inner(*std::get<0>(x), *std::get<0>(y));
+            auto v = std::get<0>(function_prop).inner(*std::get<0>(x), *std::get<0>(y));
+            if (normalize) {
+                auto sx = std::get<0>(function_prop).size(*std::get<0>(x));
+                auto sy = std::get<0>(function_prop).size(*std::get<0>(y));
+                if (sx != sy) {
+                    throw std::runtime_error("[sirius::mixer::InnerProduct] sizes of two functions don't match");
+                }
+                v /= sx;
+            }
+            return v;
+        } else {
+            return 0;
         }
-        return result;
     }
 };
 
@@ -325,19 +321,19 @@ class Mixer
     }
 
     /// Mix input and stored history. Returns the root mean square error computed by inner products of residuals.
-    /** \param [in]  mse_min  Minimum mean square error. Mixing is only performed, if current mse is above this
-     * threshold.
+    /** \param [in]  rms_min  Minimum root mean square error. Mixing is only performed, if current RMS is above this
+     *                        threshold.
      */
-    double mix(double mse_min)
+    double mix(double rms_min__)
     {
         this->update_residual();
         this->update_rms();
         double rmse = rmse_history_[idx_hist(step_)];
-        if (rmse * rmse < mse_min) {
+        if (rmse < rms_min__) {
             return rmse;
         }
 
-        // call mixing implementation
+        /* call mixing implementation */
         this->mix_impl();
 
         ++step_;
@@ -358,16 +354,12 @@ class Mixer
     // update rmse histroy for current step. Residuals must have been updated before.
     void update_rms()
     {
-        const auto idx    = idx_hist(step_);
-        double rmse       = inner_product(residual_history_[idx], residual_history_[idx]);
+        const auto idx = idx_hist(step_);
 
-        auto size                  = this->size(residual_history_[idx]);
-        if (size == 0)
-            size = 1;
+        /* compute sum of inner products; each inner product is normalized */
+        double rmse = inner_product<true>(residual_history_[idx], residual_history_[idx]);
 
-        rmse = std::sqrt(rmse / size);
-
-        rmse_history_[idx_hist(step_)] = rmse;
+        rmse_history_[idx_hist(step_)] = std::sqrt(rmse);
     }
 
     // Storage index of given step
@@ -376,15 +368,11 @@ class Mixer
         return step % max_history_;
     }
 
-    double size(const std::tuple<std::unique_ptr<FUNCS>...>& x)
-    {
-        return mixer_impl::GlobalSize<sizeof...(FUNCS) - 1, FUNCS...>::apply(functions_, x);
-    }
-
+    template <bool normalize>
     double inner_product(const std::tuple<std::unique_ptr<FUNCS>...>& x,
                          const std::tuple<std::unique_ptr<FUNCS>...>& y)
     {
-        return mixer_impl::InnerProduct<sizeof...(FUNCS) - 1, FUNCS...>::apply(functions_, x, y);
+        return mixer_impl::InnerProduct<sizeof...(FUNCS) - 1, normalize, FUNCS...>::apply(functions_, x, y);
     }
 
     void scale(double alpha, std::tuple<std::unique_ptr<FUNCS>...>& x)

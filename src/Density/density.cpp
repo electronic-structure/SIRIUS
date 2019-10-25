@@ -1791,7 +1791,7 @@ double Density::mix()
     double rms;
 
     mixer_input();
-    rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
+    rms = mixer_->mix(ctx_.settings().mixer_rms_min_);
     mixer_output();
 
     return rms;

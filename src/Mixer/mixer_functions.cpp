@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Simon Frasch, Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -19,7 +19,7 @@
 
 /** \file mixer_functions.cpp
  *
- *   \brief Contains implemenations of functions required for mixing.
+ *  \brief Contains implemenations of functions required for mixing.
  */
 
 #include <cassert>
@@ -29,12 +29,12 @@
 namespace sirius {
 
 namespace mixer {
+
 FunctionProperties<Periodic_function<double>> periodic_function_property()
 {
-    auto global_size_func = [](const Periodic_function<double>& x) -> std::size_t { 
-        auto size =  x.f_pw_local().size(); 
-        x.ctx().comm().allreduce(&size, 1);
-        return size;
+    auto global_size_func = [](const Periodic_function<double>& x) -> double
+    {
+        return x.ctx().unit_cell().omega();
     };
 
     auto inner_prod_func = [](const Periodic_function<double>& x, const Periodic_function<double>& y) -> double {
@@ -109,7 +109,7 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
 
 FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
 {
-    auto global_size_func = [](const mdarray<double_complex, 4>& x) -> std::size_t { return x.size(); };
+    auto global_size_func = [](const mdarray<double_complex, 4>& x) -> double { return x.size(); };
 
     auto inner_prod_func = [](const mdarray<double_complex, 4>& x, const mdarray<double_complex, 4>& y) -> double {
         // do not contribute to mixing

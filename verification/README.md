@@ -36,5 +36,71 @@
 - collinear magentic, FM configuration
 - GGA (PBE)
 
+## test08: Si
+- ultrasoft pseudopotential
+- non-magentic
+- LDA (PZ)
+- 1x1x1 k-mesh without Gamma-point treatment
 
+## test09: Ni
+- ultrasoft pseudopotential
+- non-collinear magentic
+- LDA (PZ)
+
+## test10: Au
+- norm-conserving pseudopotential
+- non-collinear magnetic
+- spin-orbit coupling
+- LDA (PZ)
+- no symmetry
+
+## test11: Au
+- ultrasoft pseudopotential
+- non-collinear magnetic
+- spin-orbit coupling
+- LDA (PZ)
+- no symmetry
+
+## test12: Au
+- norm-conserving pseudopotential
+- non-collinear magnetic
+- spin-orbit coupling
+- Hubbard correction
+- LDA (PZ)
+- no symmetry
+
+## test13: Au
+- ultrasoft pseudopotential
+- non-collinear magnetic
+- spin-orbit coupling
+- Hubbard correction
+- LDA (PZ)
+- no symmetry
+
+## test14: SrVO3
+- ultrasoft pseudopotential
+- non-magnetic
+- GGA (PBE)
+
+## test15: LiF
+- PAW pseudopotential
+- non-magnetic
+- LDA (PZ)
+- Gamma-point case
+
+## test16: NiO
+- full potential
+- collinear magnetic
+- LDA (PZ)
+
+## test17: NiO
+- full potential
+- non-magnetic
+- GGA (PBE)
+
+## test18: YN
+- full potential
+- non-magnetic
+- LDA (PZ)
+- IORA treatment of relativity
 
