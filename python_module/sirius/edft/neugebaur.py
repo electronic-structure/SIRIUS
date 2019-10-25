@@ -462,10 +462,8 @@ class CG:
             callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, it=ii)
             logger('step %5d' % ii, 'F: %.11f res: X,eta %+10.5e, %+10.5e' %
                    (FE, np.real(inner(g_X, G_X)), np.real(inner(g_eta, G_eta))))
-            mag, mag_norm = magnetization(self.M.energy.density, self.M.energy.kpointset.ctx())
-
-            for m, mn in zip(mag, mag_norm):
-                logger('magnetization: %.5f %.5f %.5f, %.5f' % (m[0], m[1], m[2], mn))
+            mag = magnetization(self.M.energy.density)
+            logger('magnetization: %.5f %.5f %.5f, total: %.5f' % (mag[0], mag[1], mag[2], np.linalg.norm(mag)))
             eta = diag(ek)
             # keep previous search directions
             GP_X = G_X@U

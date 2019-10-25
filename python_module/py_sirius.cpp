@@ -388,6 +388,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("compute_atomic_mag_mom", &Density::compute_atomic_mag_mom)
         .def("save", &Density::save)
         .def("check_num_electrons", &Density::check_num_electrons)
+        .def("get_magnetisation", &Density::get_magnetisation)
         .def("density_matrix",
              [](py::object& obj) -> py::array_t<complex_double> {
                  Density& density = obj.cast<Density&>();
@@ -755,7 +756,7 @@ void apply_hamiltonian(Potential& potential, K_point& kp, Wave_functions& wf_out
     // // TODO: Hubbard needs manual call to copy to device // //
     /////////////////////////////////////////////////////////////
 
-    Hamiltonian0 H0(H0.potential());
+    Hamiltonian0 H0(potential);
 
     int num_wf = wf.num_wf();
     int num_sc = wf.num_sc();
