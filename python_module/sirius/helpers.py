@@ -90,7 +90,7 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
             psi.copy_to_gpu()
 
 
-def DFT_ground_state_find(num_dft_iter=1, config='sirius.json', load=False):
+def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     """
     run DFT_ground_state
 
@@ -141,50 +141,27 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json', load=False):
         kPointSet = K_point_set(ctx, gridk, shiftk, use_symmetry)
 
     dft_gs = DFT_ground_state(kPointSet)
-    hamiltonian = Hamiltonian(dft_gs.potential())
-    if load:
-        density = dft_gs.density()
-        potential = dft_gs.potential()
-        density.load()
-        if ctx.use_symmetry():
-            density.symmetrize()
-        density.generate_paw_loc_density()
-        density.fft_transform(1)
-        potential.generate(density)
-        if ctx.use_symmetry():
-            potential.symmetrize()
-        potential.fft_transform(1)
+    dft_gs.initial_state()
 
-        # dft_gs.potential().load()
-        initialize_subspace(dft_gs, ctx)
-        # find wfct
-        Band(ctx).solve(kPointSet, hamiltonian)
-        # get band occupancies according to band energies
-        kPointSet.find_band_occupancies()
-        E0 = dft_gs.total_energy()
+    if 'potential_tol' not in siriusJson['parameters']:
+        potential_tol = 1e-5
     else:
-        dft_gs.initial_state()
+        potential_tol = siriusJson['parameters']['potential_tol']
 
-        if 'potential_tol' not in siriusJson['parameters']:
-            potential_tol = 1e-5
-        else:
-            potential_tol = siriusJson['parameters']['potential_tol']
+    if 'energy_tol' not in siriusJson['parameters']:
+        energy_tol = 1e-5
+    else:
+        energy_tol = siriusJson['parameters']['energy_tol']
+    write_status = False
 
-        if 'energy_tol' not in siriusJson['parameters']:
-            energy_tol = 1e-5
-        else:
-            energy_tol = siriusJson['parameters']['energy_tol']
-        write_status = False
-
-        initial_tol = 1e-2 # TODO: magic number
-        E0 = dft_gs.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_status)
-        ks = dft_gs.k_point_set()
+    initial_tol = 1e-2 # TODO: magic number
+    E0 = dft_gs.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_status)
+    ks = dft_gs.k_point_set()
 
     return {
         'E': E0,
         'dft_gs': dft_gs,
         'kpointset': kPointSet,
-        'hamiltonian': hamiltonian,
         'density': dft_gs.density(),
         'potential': dft_gs.potential(),
         'ctx': ctx
@@ -230,7 +207,6 @@ def dphk_factory(config='sirius.json'):
         'kpointset': kPointSet,
         'density': density,
         'potential': potential,
-        'hamiltonian': hamiltonian
     }
 
 

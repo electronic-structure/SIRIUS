@@ -65,7 +65,7 @@ class FreeEnergy:
     copied from Baarman implementation
     """
 
-    def __init__(self, E, T, H, smearing):
+    def __init__(self, E, T, smearing):
         """
         Keyword Arguments:
         energy      -- total energy object
@@ -75,7 +75,6 @@ class FreeEnergy:
         """
         self.energy = E
         self.T = T
-        self.H = H
         assert isinstance(smearing, Smearing)
         self.smearing = smearing
         if self.energy.kpointset.ctx().num_mag_dims() == 0:

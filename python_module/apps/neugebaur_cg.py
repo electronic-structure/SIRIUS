@@ -75,9 +75,7 @@ assert m == 1
 kset = res['kpointset']
 potential = res['potential']
 density = res['density']
-hamiltonian = res['hamiltonian']
-H = ApplyHamiltonian(hamiltonian, kset)
-E = Energy(kset, potential, density, H)
+E = Energy(kset, potential, density, ApplyHamiltonian(potential, kset))
 T = args.T
 kT = kb*T
 
@@ -86,7 +84,7 @@ X = kset.C
 
 # smearing = make_fermi_dirac_smearing(T, ctx, kset)
 smearing = make_gaussian_spline_smearing(T, ctx, kset)
-M = FreeEnergy(H=H, E=E, T=T, smearing=smearing)
+M = FreeEnergy(E=E, T=T, smearing=smearing)
 cg = CG(M)
 tstart = time.time()
 

@@ -101,7 +101,7 @@ std::string show_vec(const vector3d<T>& vec)
 
 // forward declaration
 void initialize_subspace(DFT_ground_state&, Simulation_context&);
-void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions>& swf);
+void apply_hamiltonian(Potential& potential, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions>& swf);
 
     /* typedefs */
     template <typename T>
@@ -743,14 +743,19 @@ PYBIND11_MODULE(py_sirius, m)
     m.def("make_sirius_comm", &make_sirius_comm);
     m.def("make_pycomm", &make_pycomm);
     m.def("magnetization", &magnetization);
-    m.def("apply_hamiltonian", &apply_hamiltonian, "hamiltonian"_a, "kpoint"_a, "wf_out"_a,
+    m.def("apply_hamiltonian", &apply_hamiltonian, "potential"_a, "kpoint"_a, "wf_out"_a,
           "wf_in"_a, py::arg("swf_out") = nullptr);
     m.def("initialize_subspace", & initialize_subspace);
 }
 
-void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wave_functions& wf,
+void apply_hamiltonian(Potential& potential, K_point& kp, Wave_functions& wf_out, Wave_functions& wf,
                        std::shared_ptr<Wave_functions>& swf)
 {
+    /////////////////////////////////////////////////////////////
+    // // TODO: Hubbard needs manual call to copy to device // //
+    /////////////////////////////////////////////////////////////
+
+    Hamiltonian0 H0(H0.potential());
 
     int num_wf = wf.num_wf();
     int num_sc = wf.num_sc();
@@ -773,6 +778,7 @@ void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wa
     int N = 0;
     int n = num_wf;
     for (int ispn_step = 0; ispn_step < ctx.num_spin_dims(); ispn_step++) {
+        // sping_range: 2 for non-colinear magnetism, otherwise ispn_step
         auto spin_range = sddk::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
         H.apply_h_s<complex_double>(spin_range, N, n, wf, &wf_out, swf.get());
     }

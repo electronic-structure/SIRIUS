@@ -103,7 +103,7 @@ class Energy:
 
 class ApplyHamiltonian:
     def __init__(self, hamiltonian, kpointset):
-        assert (not isinstance(hamiltonian, ApplyHamiltonian))
+        assert not isinstance(hamiltonian, ApplyHamiltonian)
         self.hamiltonian = hamiltonian
         self.kpointset = kpointset
 

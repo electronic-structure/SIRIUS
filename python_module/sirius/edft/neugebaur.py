@@ -81,7 +81,6 @@ def grad_eta(Hij, ek, fn, T, kw):
     return g_eta
 
 
-
 def btsearch(f, b, f0, maxiter=20, tau=0.5):
     """
     Backtracking search
