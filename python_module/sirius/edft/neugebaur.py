@@ -26,11 +26,11 @@ kb = (physical_constants['Boltzmann constant in eV/K'][0] /
 
 
 class StepError(Exception):
-    pass
+    """StepError."""
 
 
 class SlopeError(Exception):
-    pass
+    """Slope error. Non-descent direction."""
 
 
 def _solve(A, X):
@@ -81,7 +81,6 @@ def grad_eta(Hij, ek, fn, T, kw):
     return g_eta
 
 
-
 def btsearch(f, b, f0, maxiter=20, tau=0.5):
     """
     Backtracking search
@@ -126,7 +125,7 @@ def gss(f, a, b, tol=1e-3):
     yc = f(c)
     yd = f(d)
 
-    for k in range(n - 1):
+    for _ in range(n - 1):
         if yc < yd:
             b = d
             d = c
@@ -150,7 +149,7 @@ def gss(f, a, b, tol=1e-3):
         return (c, b)
 
 
-class F():
+class F:
     """
     Evaluate free energy along a fixed direction.
     """
@@ -438,8 +437,7 @@ class CG:
             if slope > 0:
                 if cg_restart_inprogress:
                     raise SlopeError('Error: _ascent_ direction, slope %.4e' % slope)
-                else:
-                    cg_restart_inprogress = True
+                cg_restart_inprogress = True
             else:
                 try:
                     X, fn, ek, FE, Hx, U, tmin = self.step(X, fn, eta, G_X, G_eta,
@@ -464,14 +462,8 @@ class CG:
             callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, it=ii)
             logger('step %5d' % ii, 'F: %.11f res: X,eta %+10.5e, %+10.5e' %
                    (FE, np.real(inner(g_X, G_X)), np.real(inner(g_eta, G_eta))))
-            mag, mag_norm = magnetization(self.M.energy.density, self.M.energy.kpointset.ctx())
-
-            # if ii > 5 and not has_enough_bands(fn).to_array().all():
-            #     logger(fn, all_print=True)
-            #     raise NotEnoughBands("increase num_fv_states.")
-
-            for m, mn in zip(mag, mag_norm):
-                logger('magnetization: %.5f %.5f %.5f, %.5f' % (m[0], m[1], m[2], mn))
+            mag = magnetization(self.M.energy.density)
+            logger('magnetization: %.5f %.5f %.5f, total: %.5f' % (mag[0], mag[1], mag[2], np.linalg.norm(mag)))
             eta = diag(ek)
             # keep previous search directions
             GP_X = G_X@U
