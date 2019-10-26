@@ -34,7 +34,7 @@
 ## test07: Ni
 - ultrasoft pseudopotential
 - collinear magentic, FM configuration
-- GGA (PBE)
+- GGA (PBE for solids)
 
 ## test08: Si
 - ultrasoft pseudopotential

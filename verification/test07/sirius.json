@@ -13,7 +13,7 @@
 
     "electronic_structure_method" : "pseudopotential",
 
-    "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
+    "xc_functionals" : ["XC_GGA_X_PBE_SOL", "XC_GGA_C_PBE_SOL"],
 
     "smearing_width" : 0.02,
 
@@ -21,7 +21,7 @@
 
     "num_mag_dims" : 1,
 
-    "gk_cutoff" : 7.0,
+    "gk_cutoff" : 8.0,
     "pw_cutoff" : 30.00,
 
     "energy_tol" : 1e-7,
@@ -48,7 +48,7 @@
         "atom_types": ["Ni"],
         "atoms": {
             "Ni": [
-                [0.0,0.0,0.0,  0,0,2]
+                [0.0,0.0,0.0,  0,0,1]
             ]
         },
         "lattice_vectors": [
@@ -58,6 +58,7 @@
         ]
     },
     "mixer" : {
-        "beta" : 0.3
+        "beta" : 0.9,
+        "max_history" : 10
     }
 }
