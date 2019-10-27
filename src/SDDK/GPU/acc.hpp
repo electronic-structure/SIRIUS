@@ -487,7 +487,7 @@ inline bool check_device_ptr(void const* ptr__)
     if (error != cudaSuccess) {
         return false;
     }
-    if (attr.memoryType == cudaMemoryTypeDevice) {
+    if (attr.devicePointer) {
         return true;
     }
     return false;
