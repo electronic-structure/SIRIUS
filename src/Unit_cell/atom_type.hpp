@@ -94,7 +94,10 @@ class Atom_type
     int offset_lo_{-1}; // TODO: better name // TODO: should be moved to Unit_cell.
 
     /// Index of radial basis functions.
-    /** This index is used in LAPW to combine APW and local-orbital radial functions */
+    /** Radial index is build from the list of local orbiatl descriptors Atom_type::lo_descriptors_.
+        In LAPW this index is used to iterate ovver combined set of APW and local-orbital radial functions.
+        In pseudo_potential case this index is used to iterate over radial part of beta-projectors.
+     */
     radial_functions_index indexr_;
 
     /// Index of atomic basis functions (radial function * spherical harmonic).
@@ -988,6 +991,12 @@ class Atom_type
         return indexb_wfs_;
     }
 
+    /// Return whole index of hubbard basis functions.
+    inline basis_functions_index const& indexb_hub() const
+    {
+        return indexb_hub_;
+    }
+
     inline basis_functions_index const& hubbard_indexb_wfc() const
     {
         return hubbard_indexb_;
@@ -1280,7 +1289,7 @@ inline void Atom_type::init(int offset_lo__)
         indexr_wfs_.init(lo_descriptors_wfs);
         indexb_wfs_.init(indexr_wfs_);
         if ((int)ps_atomic_wfs_.size() != indexr_wfs_.size()) {
-            TERMINATE("[Atom_type::init] wrong size of atomic orbital list");
+            TERMINATE("[sirius::Atom_type::init] wrong size of atomic orbital list");
         }
     }
 
