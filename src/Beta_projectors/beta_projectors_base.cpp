@@ -199,7 +199,7 @@ void Beta_projectors_base::generate(int ichunk__, int j__)
                 std::vector<double_complex> phase_gk(num_gkvec_loc());
                 for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
                     auto G = gkvec_.gvec(igk_[igk_loc]);
-                    /* total phase e^{i(G+k)r_{\alpha}} */
+                    /* total phase e^{-i(G+k)r_{\alpha}} */
                     phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
                 }
                 for (int xi = 0; xi < chunk(ichunk__).desc_(static_cast<int>(beta_desc_idx::nbf), i); xi++) {
