@@ -40,7 +40,6 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp;Hamiltonian/hamiltonian_k.cpp;Band/ban
   "K_point/generate_spinor_wave_functions.cpp"
   "K_point/k_point.cpp"
   "K_point/k_point_set.cpp"
-  "K_point/initialize.cpp"
   "K_point/generate_gklo_basis.cpp"
   "K_point/test_fv_states.cpp"
   "field4d.cpp"
