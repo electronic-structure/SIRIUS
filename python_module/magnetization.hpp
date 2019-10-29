@@ -6,18 +6,15 @@
 
 namespace sirius {
 
-std::tuple<std::list<std::vector<double>>, std::list<double>> magnetization(Density& density, Simulation_context& ctx)
+std::vector<double> magnetization(Density& density)
 {
-    std::list<std::vector<double>> lvec;
-    std::list<double> lm;
+    std::vector<double> lm(3, 0.0);
+    auto result = density.get_magnetisation();
 
-    for (int j=0; j < ctx.num_mag_dims(); ++j) {
-        auto result = density.magnetization(j).integrate();
-        lvec.push_back(std::get<2>(result));
-        lm.push_back(std::get<1>(result));
-    }
+    for (int i = 0; i < 3; ++i)
+        lm[i] = std::get<0>(result)[i];
 
-    return std::make_tuple(lvec, lm);
+    return lm;
 }
 
-}  // sirius
+} // namespace sirius

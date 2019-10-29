@@ -535,7 +535,7 @@ class FermiDiracSmearingReg(Smearing):
 
 
 def make_gaussian_spline_smearing(T, ctx, kset):
-    nel = ctx.unit_cell().num_valence_electrons()
+    nel = ctx.unit_cell().num_valence_electrons
     mo = ctx.max_occupancy()
     assert mo == 1
     smearing = GaussianSplineSmearing(T=T,
@@ -547,7 +547,7 @@ def make_gaussian_spline_smearing(T, ctx, kset):
 
 
 def make_fermi_dirac_smearing(T, ctx, kset):
-    nel = ctx.unit_cell().num_valence_electrons()
+    nel = ctx.unit_cell().num_valence_electrons
     mo = ctx.max_occupancy()
     assert mo == 1
     smearing = FermiDiracSmearing(T=T,
