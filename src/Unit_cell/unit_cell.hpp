@@ -288,6 +288,9 @@ class Unit_cell
     /// Calculate total number of Hubbard wave-functions and offset for each atom in the global index.
     std::pair<int, std::vector<int>> num_wf_with_U() const;
 
+    /// Return number of Hubbard wave-functions.
+    std::pair<int, std::vector<int>> num_hubbard_wf() const;
+
     /// Get the total number of pseudo atomic wave-functions.
     int num_ps_atomic_wf() const;
 

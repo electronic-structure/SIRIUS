@@ -17,12 +17,166 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file k_point.cpp
+ *
+ *  \brief Contains partial implementation of sirius::K_point class.
+ */
+
 #include "K_point/k_point.hpp"
 #include "Hamiltonian/non_local_operator.hpp"
 #include "SDDK/wf_inner.hpp"
 #include "SDDK/wf_trans.hpp"
 
 namespace sirius {
+
+void
+K_point::initialize()
+{
+    PROFILE("sirius::K_point::initialize");
+
+    zil_.resize(ctx_.lmax_apw() + 1);
+    for (int l = 0; l <= ctx_.lmax_apw(); l++) {
+        zil_[l] = std::pow(double_complex(0, 1), l);
+    }
+
+    l_by_lm_ = utils::l_by_lm(ctx_.lmax_apw());
+
+    int bs = ctx_.cyclic_block_size();
+
+    if (ctx_.control().use_second_variation_ && ctx_.full_potential()) {
+        assert(ctx_.num_fv_states() > 0);
+        fv_eigen_values_.resize(ctx_.num_fv_states());
+    }
+
+    /* In case of collinear magnetism we store only non-zero spinor components.
+     *
+     * non magnetic case:
+     * .---.
+     * |   |
+     * .---.
+     *
+     * collinear case:
+     * .---.          .---.
+     * |uu | 0        |uu |
+     * .---.---.  ->  .---.
+     *   0 |dd |      |dd |
+     *     .---.      .---.
+     *
+     * non collinear case:
+     * .-------.
+     * |       |
+     * .-------.
+     * |       |
+     * .-------.
+     */
+    int nst = ctx_.num_bands();
+
+    auto mem_type_evp  = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type_gevp = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+
+    /* build a full list of G+k vectors for all MPI ranks */
+    generate_gkvec(ctx_.gk_cutoff());
+    /* build a list of basis functions */
+    generate_gklo_basis();
+
+    if (ctx_.full_potential()) {
+        if (ctx_.control().use_second_variation_) {
+            if (ctx_.need_sv()) {
+                /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix
+                 */
+                for (int is = 0; is < ctx_.num_spin_dims(); is++) {
+                    sv_eigen_vectors_[is] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
+                }
+            }
+            /* allocate fv eien vectors */
+            fv_eigen_vectors_slab_ = std::unique_ptr<Wave_functions>(
+                new Wave_functions(gkvec_partition(), unit_cell_.num_atoms(),
+                                   [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); },
+                                   ctx_.num_fv_states(), ctx_.preferred_memory_t()));
+
+            fv_eigen_vectors_slab_->pw_coeffs(0).prime().zero();
+            fv_eigen_vectors_slab_->mt_coeffs(0).prime().zero();
+            /* starting guess for wave-functions */
+            for (int i = 0; i < ctx_.num_fv_states(); i++) {
+                for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
+                    int ig = igloc + gkvec().gvec_offset(comm().rank());
+                    if (ig == i) {
+                        fv_eigen_vectors_slab_->pw_coeffs(0).prime(igloc, i) = 1.0;
+                    }
+                    if (ig == i + 1) {
+                        fv_eigen_vectors_slab_->pw_coeffs(0).prime(igloc, i) = 0.5;
+                    }
+                    if (ig == i + 2) {
+                        fv_eigen_vectors_slab_->pw_coeffs(0).prime(igloc, i) = 0.125;
+                    }
+                }
+            }
+            if (ctx_.iterative_solver_input().type_ == "exact") {
+                /* ELPA needs a full matrix of eigen-vectors as it uses it as a work space */
+                fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), gklo_basis_size(), ctx_.blacs_grid(), bs,
+                                                            bs, mem_type_gevp);
+            } else {
+                int ncomp = ctx_.iterative_solver_input().num_singular_;
+                if (ncomp < 0) {
+                    ncomp = ctx_.num_fv_states() / 2;
+                }
+
+                singular_components_ = std::unique_ptr<Wave_functions>(
+                    new Wave_functions(gkvec_partition(), ncomp, ctx_.preferred_memory_t()));
+                singular_components_->pw_coeffs(0).prime().zero();
+                /* starting guess for wave-functions */
+                for (int i = 0; i < ncomp; i++) {
+                    for (int igloc = 0; igloc < gkvec().count(); igloc++) {
+                        int ig = igloc + gkvec().offset();
+                        if (ig == i) {
+                            singular_components_->pw_coeffs(0).prime(igloc, i) = 1.0;
+                        }
+                        if (ig == i + 1) {
+                            singular_components_->pw_coeffs(0).prime(igloc, i) = 0.5;
+                        }
+                        if (ig == i + 2) {
+                            singular_components_->pw_coeffs(0).prime(igloc, i) = 0.125;
+                        }
+                    }
+                }
+                if (ctx_.control().print_checksum_) {
+                    auto cs = singular_components_->checksum_pw(device_t::CPU, 0, 0, ncomp);
+                    if (comm().rank() == 0) {
+                        utils::print_checksum("singular_components", cs);
+                    }
+                }
+            }
+
+            fv_states_ = std::unique_ptr<Wave_functions>(
+                new Wave_functions(gkvec_partition(), unit_cell_.num_atoms(),
+                                   [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, ctx_.num_fv_states(),
+                                   ctx_.preferred_memory_t()));
+
+            spinor_wave_functions_ = std::unique_ptr<Wave_functions>(
+                new Wave_functions(gkvec_partition(), unit_cell_.num_atoms(),
+                                   [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, nst,
+                                   ctx_.preferred_memory_t(), ctx_.num_spins()));
+        } else {
+            throw std::runtime_error("not implemented");
+        }
+    } else {
+        spinor_wave_functions_ = std::unique_ptr<Wave_functions>(
+            new Wave_functions(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins()));
+        if (ctx_.hubbard_correction()) {
+            auto r = unit_cell_.num_wf_with_U();
+            const int num_sc = ctx_.num_mag_dims() == 3 ? 2 : 1;
+            hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(
+                   new Wave_functions(gkvec_partition(), r.first, ctx_.preferred_memory_t(), num_sc));
+            auto r1 = unit_cell_.num_hubbard_wf();
+            hubbard_wf_ = std::unique_ptr<Wave_functions>(
+                   new Wave_functions(gkvec_partition(), r1.first, ctx_.preferred_memory_t(), 1));
+
+            std::cout << "[K_point::initialize] number of Hubbard WFS (old and new): " << r.first << " " << r1.first <<"\n";
+        }
+    }
+
+    update();
+}
 
 void
 K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
@@ -745,8 +899,6 @@ void K_point::load(HDF5_tree h5in, int id)
 
 void K_point::generate_hubbard_orbitals()
 {
-// TODO: don't forget to copy WFs to GPU in other parts of the code
-
     /* total number of Hubbard orbitals */
     auto r = unit_cell_.num_wf_with_U();
     const int num_sc = ctx_.num_mag_dims() == 3 ? 2 : 1;
@@ -787,6 +939,103 @@ void K_point::generate_hubbard_orbitals()
             /* copy the hubbard wave functions on the host and then deallocate on GPU */
             hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, r.first);
             hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+        }
+    }
+}
+
+void
+K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
+                                        std::function<sirius::basis_functions_index const&(int)> indexb__,
+                                        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions& wf__)
+{
+    PROFILE("sirius::K_point::generate_atomic_wave_functions");
+
+    int lmax{3};
+    int lmmax = utils::lmmax(lmax);
+    //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+    //    auto& atom_type = unit_cell_.atom_type(iat);
+    //    lmax            = std::max(lmax, atom_type.lmax_ps_atomic_wf());
+    //}
+    //lmax = std::max(lmax, unit_cell_.lmax());
+
+    /* compute offset for each atom */
+    std::vector<int> offset;
+    int n{0};
+    for (int ia: atoms__) {
+        offset.push_back(n);
+        int iat = unit_cell_.atom(ia).type_id();
+        n += indexb__(iat).size();
+    }
+
+    /* allocate memory to store wave-functions for atom types */
+    std::vector<mdarray<double_complex, 2>> wf_t(unit_cell_.num_atom_types());
+    for (int ia: atoms__) {
+        int iat = unit_cell_.atom(ia).type_id();
+        if (wf_t[iat].size() == 0) {
+            wf_t[iat] =
+                mdarray<double_complex, 2>(this->num_gkvec_loc(), indexb__(iat).size(), ctx_.mem_pool(memory_t::host));
+        }
+    }
+
+    #pragma omp parallel for schedule(static)
+    for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
+        /* global index of G+k vector */
+        //int igk = this->idxgk(igk_loc);
+        /* vs = {r, theta, phi} */
+        auto vs = SHT::spherical_coordinates(this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc));
+
+        /* compute real spherical harmonics for G+k vector */
+        std::vector<double> rlm(lmmax);
+        SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
+
+        /* get all values of the radial integrals for a given G+k vector */
+        std::vector<mdarray<double, 1>> ri_values(unit_cell_.num_atom_types());
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            if (wf_t[iat].size() != 0) {
+                ri_values[iat] = ri__.values(iat, vs[0]);
+            }
+        }
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            if (wf_t[iat].size() == 0) {
+                continue;
+            }
+            auto const& indexb = indexb__(iat);
+            for (int xi = 0; xi < indexb.size(); xi++) {
+                /*  orbital quantum  number of this atomic orbital */
+                int l = indexb[xi].l;
+                /*  composite l,m index */
+                int lm = indexb[xi].lm;
+                /* index of the radial function */
+                int idxrf = indexb[xi].idxrf;
+
+                auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+
+                wf_t[iat](igk_loc, xi) = z * rlm[lm] * ri_values[iat](idxrf);
+            }
+        }
+    }
+
+    for (int ia: atoms__) {
+
+        double phase = twopi * dot(gkvec().vk(), unit_cell_.atom(ia).position());
+        double_complex phase_k = std::exp(double_complex(0.0, phase));
+
+        /* quickly compute phase factors without calling exp() function */
+        std::vector<double_complex> phase_gk(num_gkvec_loc());
+        #pragma omp parallel for schedule(static)
+        for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
+            /* global index of G+k-vector */
+            int igk = this->idxgk(igk_loc);
+            auto G = gkvec().gvec(igk);
+            /* total phase e^{-i(G+k)r_{\alpha}} */
+            phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
+        }
+        int iat = unit_cell_.atom(ia).type_id();
+        #pragma omp parallel for
+        for (int xi = 0; xi < indexb__(iat).size(); xi++) {
+            for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
+                wf__.pw_coeffs(0).prime(igk_loc, offset[ia] + xi) = wf_t[iat](igk_loc, xi) * phase_gk[igk_loc];
+            }
         }
     }
 }

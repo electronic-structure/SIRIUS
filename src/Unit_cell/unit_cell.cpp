@@ -867,7 +867,7 @@ void Unit_cell::init_paw()
     spl_num_paw_atoms_ = splindex<splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
 }
 
-std::pair<int, std::vector<int>> Unit_cell::num_wf_with_U() const
+std::pair<int, std::vector<int>> Unit_cell::num_wf_with_U() const // TODO: remove in future
 {
     std::vector<int> offs(this->num_atoms(), -1);
     int counter{0};
@@ -887,6 +887,23 @@ std::pair<int, std::vector<int>> Unit_cell::num_wf_with_U() const
                 fact = 2;
             }
             counter += fact * atom.type().hubbard_indexb_wfc().size();
+        }
+    }
+    return std::make_pair(counter, offs);
+}
+
+std::pair<int, std::vector<int>> Unit_cell::num_hubbard_wf() const
+{
+    std::vector<int> offs(this->num_atoms(), -1);
+    int counter{0};
+
+    /* we loop over atoms to check which atom has hubbard orbitals and then
+       compute the number of hubbard orbitals associated to it */
+    for (auto ia = 0; ia < this->num_atoms(); ia++) {
+        auto& atom = this->atom(ia);
+        if (atom.type().hubbard_correction()) {
+            offs[ia] = counter;
+            counter += atom.type().indexb_hub().size();
         }
     }
     return std::make_pair(counter, offs);

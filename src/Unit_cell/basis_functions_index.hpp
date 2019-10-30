@@ -172,6 +172,7 @@ class basis_functions_index
         return index_by_idxrf_(idxrf);
     }
 
+    /// Return descriptor of the given basis function.
     inline basis_function_index_descriptor const& operator[](int i) const
     {
         assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());

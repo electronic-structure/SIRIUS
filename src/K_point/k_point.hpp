@@ -19,7 +19,7 @@
 
 /** \file k_point.hpp
  *
- *  \brief Contains definition and partial implementation of sirius::K_point class.
+ *  \brief Contains definition of sirius::K_point class.
  */
 
 #ifndef __K_POINT_HPP__
@@ -85,7 +85,10 @@ class K_point
     std::unique_ptr<Wave_functions> spinor_wave_functions_{nullptr};
 
     /// Two-component (spinor) hubbard wave functions where the S matrix is applied (if ppus).
-    std::unique_ptr<Wave_functions> hubbard_wave_functions_{nullptr};
+    std::unique_ptr<Wave_functions> hubbard_wave_functions_{nullptr}; // TODO: remove in future
+
+    /// Scalar hubbard wave-functions.
+    std::unique_ptr<Wave_functions> hubbard_wf_{nullptr};
 
     /// Band occupation numbers.
     mdarray<double, 2> band_occupancies_;
@@ -226,39 +229,76 @@ class K_point
 
     /// Generate first-variational states from eigen-vectors.
     /** APW+lo basis \f$ \varphi_{\mu {\bf k}}({\bf r}) = \{ \varphi_{\bf G+k}({\bf r}),
-     *  \varphi_{j{\bf k}}({\bf r}) \} \f$ is used to expand first-variational wave-functions:
-     *
-     *  \f[
-     *      \psi_{i{\bf k}}({\bf r}) = \sum_{\mu} c_{\mu i}^{\bf k} \varphi_{\mu \bf k}({\bf r}) =
-     *      \sum_{{\bf G}}c_{{\bf G} i}^{\bf k} \varphi_{\bf G+k}({\bf r}) +
-     *      \sum_{j}c_{j i}^{\bf k}\varphi_{j{\bf k}}({\bf r})
-     *  \f]
-     *
-     *  Inside muffin-tins the expansion is converted into the following form:
-     *  \f[
-     *      \psi_{i {\bf k}}({\bf r})= \begin{array}{ll}
-     *      \displaystyle \sum_{L} \sum_{\lambda=1}^{N_{\ell}^{\alpha}}
-     *      F_{L \lambda}^{i {\bf k},\alpha}f_{\ell \lambda}^{\alpha}(r)
-     *      Y_{\ell m}(\hat {\bf r}) & {\bf r} \in MT_{\alpha} \end{array}
-     *  \f]
-     *
-     *  Thus, the total number of coefficients representing a wave-funstion is equal
-     *  to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r)
-     *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves.
-     *  First-variational states are obtained from the first-variational eigen-vectors and
-     *  LAPW matching coefficients.
-     *
-     *  APW part:
-     *  \f[
-     *      \psi_{\xi j}^{\bf k} = \sum_{{\bf G}} Z_{{\bf G} j}^{\bf k} * A_{\xi}({\bf G+k})
-     *  \f]
+        \varphi_{j{\bf k}}({\bf r}) \} \f$ is used to expand first-variational wave-functions:
+
+        \f[
+        \psi_{i{\bf k}}({\bf r}) = \sum_{\mu} c_{\mu i}^{\bf k} \varphi_{\mu \bf k}({\bf r}) =
+        \sum_{{\bf G}}c_{{\bf G} i}^{\bf k} \varphi_{\bf G+k}({\bf r}) +
+        \sum_{j}c_{j i}^{\bf k}\varphi_{j{\bf k}}({\bf r})
+        \f]
+
+        Inside muffin-tins the expansion is converted into the following form:
+        \f[
+        \psi_{i {\bf k}}({\bf r})= \begin{array}{ll}
+        \displaystyle \sum_{L} \sum_{\lambda=1}^{N_{\ell}^{\alpha}}
+        F_{L \lambda}^{i {\bf k},\alpha}f_{\ell \lambda}^{\alpha}(r)
+        Y_{\ell m}(\hat {\bf r}) & {\bf r} \in MT_{\alpha} \end{array}
+        \f]
+
+        Thus, the total number of coefficients representing a wave-funstion is equal
+        to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r)
+        Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves.
+        First-variational states are obtained from the first-variational eigen-vectors and
+        LAPW matching coefficients.
+
+        APW part:
+        \f[
+        \psi_{\xi j}^{\bf k} = \sum_{{\bf G}} Z_{{\bf G} j}^{\bf k} * A_{\xi}({\bf G+k})
+        \f]
      */
     void generate_fv_states();
 
-    /// Generate two-component spinor wave functions
+    /// Generate two-component spinor wave functions.
+    /** In case of second-variational diagonalization spinor wave-functions are generated from the first-variational
+        states and second-variational eigen-vectors. */
     void generate_spinor_wave_functions();
 
-    void generate_atomic_wave_functions(const sirius::basis_functions_index&, int, int, bool, sddk::Wave_functions&);
+    void generate_atomic_wave_functions(const basis_functions_index& index, const int atom, const int offset,
+                                        const bool hubbard, Wave_functions& phi);
+
+    /// Generate plane-wave coefficients of the atomic wave-functions.
+    /** Plane-wave coefficients of the atom-centered wave-functions
+        \f$ \varphi^{\alpha}_{\ell m}({\bf r}) = \varphi^{\alpha}_{\ell}(r)R_{\ell m}(\theta, \phi) \f$
+        are computed in the following way:
+        \f[
+        \varphi^{\alpha}_{\ell m}({\bf q}) = \frac{1}{\sqrt{\Omega}}
+          \int e^{-i{\bf q}{\bf r}} \varphi^{\alpha}_{\ell m}({\bf r} - {\bf r}_{\alpha}) d{\bf r} =
+          \frac{e^{-i{\bf q}{\bf r}_{\alpha}}}{\sqrt{\Omega}} \int e^{-i{\bf q}{\bf r}} 
+          \varphi^{\alpha}_{\ell}(r)R_{\ell m}(\theta, \phi) r^2 \sin\theta dr d\theta d\phi
+        \f]
+        where \f$ {\bf q} = {\bf G+k} \f$. Using the expansion of the plane wave in terms of spherical Bessel
+        functions and real spherical harmonics:
+        \f[
+        e^{-i{\bf q}{\bf r}}=4\pi \sum_{\ell m} (-i)^\ell j_{\ell}(q r)R_{\ell m}({\bf \hat q})R_{\ell m}({\bf \hat r})
+        \f]
+        we arrive to the following expression:
+        \f[
+        \varphi^{\alpha}_{\ell m}({\bf q}) = e^{-i{\bf q}{\bf r}_{\alpha}} \frac{4\pi}{\sqrt{\Omega}} (-i)^\ell
+          R_{\ell m}({\bf q}) \int \varphi^{\alpha}_{\ell}(r)  j_{\ell}(q r) r^2 dr
+        \f]
+
+        \note In the current implementation wave-functions are generated as scalars (without spin index). Spinor atomic
+        wave-functions might be necessary in future for the more advanced LDA+U implementation.
+
+        \param [in] atoms   List of atoms, for which the wave-functions are generated.
+        \param [in] indexb  Lambda function that returns index of the basis functions for each atom type.
+        \param [in] ri      Radial integrals of the product of sperical Bessel functions and atomic functions.
+        \param [out] wf     Resulting wave-functions for the list of atoms. Output wave-functions must have
+                            sufficient storage space.
+     */
+    void generate_atomic_wave_functions(std::vector<int> atoms__,
+                                        std::function<sirius::basis_functions_index const&(int)> indexb__,
+                                        Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions& wf__);
 
     void compute_gradient_wave_functions(Wave_functions& phi, const int starting_position_i, const int num_wf,
                                          Wave_functions& dphi, const int starting_position_j, const int direction);
@@ -427,21 +467,6 @@ class K_point
         assert(hubbard_wave_functions_ != nullptr);
         return *hubbard_wave_functions_;
     }
-
-    //inline void allocate_hubbard_wave_functions(int size)
-    //{
-    //    if (hubbard_wave_functions_ != nullptr) {
-    //        return;
-    //    }
-    //    const int num_sc        = ctx_.num_mag_dims() == 3 ? 2 : 1;
-    //    hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(
-    //        new Wave_functions(gkvec_partition(), size, ctx_.preferred_memory_t(), num_sc));
-    //}
-
-    //inline bool hubbard_wave_functions_calculated()
-    //{
-    //    return (hubbard_wave_functions_ != nullptr);
-    //}
 
     inline Wave_functions& singular_components()
     {
