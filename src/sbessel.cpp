@@ -1,8 +1,45 @@
 #include <gsl/gsl_sf_bessel.h>
+#include <cmath>
+#include <cassert>
 
 #include "sbessel.hpp"
 
 namespace sirius {
+
+// compute the spherical bessel functions.
+// This implementation is faster than the one provided by GSL, but not necessarily as accurate. For small input, GSL is
+// used as a fallback.
+static void custom_bessel(int lmax, double x, double* result) {
+    if (x == 0.0) {
+        result[0] = 1.0;
+        for (int l = 1; l <= lmax; ++l) {
+            result[l] = 0.0;
+        }
+    } else if (x < 0.1) {
+        // gsl is more accurate for small inputs
+        gsl_sf_bessel_jl_array(lmax, x, result);
+    } else {
+        const double x_inv = 1.0 / x;
+        const double sin_x = std::sin(x);
+        result[0] = sin_x * x_inv;
+
+        if (lmax > 0)
+            result[1] = sin_x * x_inv * x_inv - std::cos(x) * x_inv;
+
+        for (int l = 2; l <= lmax; ++l) {
+            result[l] = (2 * (l - 1) + 1) / x * result[l - 1] - result[l - 2];
+        }
+    }
+
+    // compare result with gsl in debug mode
+#ifndef NDEBUG
+    std::vector<double> ref_result(lmax + 1);
+    gsl_sf_bessel_jl_array(lmax, x, ref_result.data());
+    for(int l = 0; l <= lmax; ++l) {
+        assert(std::abs(result[l] - ref_result[l]) < 1e-6);
+    }
+#endif
+}
 
 Spherical_Bessel_functions::Spherical_Bessel_functions(int lmax__,
                                                        Radial_grid<double> const& rgrid__,
@@ -21,7 +58,7 @@ Spherical_Bessel_functions::Spherical_Bessel_functions(int lmax__,
     std::vector<double> jl(lmax__ + 2);
     for (int ir = 0; ir < rgrid__.num_points(); ir++) {
         double t = rgrid__[ir] * q__;
-        gsl_sf_bessel_jl_array(lmax__ + 1, t, &jl[0]);
+        custom_bessel(lmax__ + 1, t, &jl[0]);
         for (int l = 0; l <= lmax__ + 1; l++) {
             sbessel_[l](ir) = jl[l];
         }
