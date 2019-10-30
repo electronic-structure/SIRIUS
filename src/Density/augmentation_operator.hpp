@@ -249,13 +249,11 @@ class Augmentation_operator_gvec_deriv
     std::unique_ptr<Gaunt_coefficients<double>> gaunt_coefs_;
 
   public:
-    Augmentation_operator_gvec_deriv(int                 lmax__,
-                                     Gvec         const& gvec__,
-                                     Communicator const& comm__)
+    Augmentation_operator_gvec_deriv(int lmax__, Gvec const& gvec__, Communicator const& comm__)
         : gvec_(gvec__)
         , comm_(comm__)
     {
-        PROFILE("sirius::Augmentation_operator_gvec_deriv|constructor");
+        PROFILE("sirius::Augmentation_operator_gvec_deriv");
 
         int lmax  = lmax__;
         int lmmax = utils::lmmax(2 * lmax);

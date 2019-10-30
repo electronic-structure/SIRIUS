@@ -323,13 +323,13 @@ class Atom
         //}
     }
 
-    /// Return pointer to corresponding atom type class.
+    /// Return const reference to corresponding atom type obeject.
     inline Atom_type const& type() const
     {
         return type_;
     }
 
-    /// Return corresponding atom symmetry class.
+    /// Return reference to corresponding atom symmetry class.
     inline Atom_symmetry_class& symmetry_class()
     {
         return (*symmetry_class_);

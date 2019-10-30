@@ -176,7 +176,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         auto eval = diag_S_davidson<T>(Hk__);
         if (eval[0] <= 0) {
             std::stringstream s;
-            s << "S-operator matrix is not positive definite\n"
+            s << "[sirius::Band::initialize_subspace] S-operator matrix is not positive definite\n"
               << "  lowest eigen-value: " << eval[0];
             TERMINATE(s);
         }
@@ -204,21 +204,12 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
     }
 
     utils::timer t1("sirius::Band::initialize_subspace|kp|wf");
-    /* get proper lmax */
-    int lmax{0};
 
     /* generate the initial atomic wavefunctions */
-
-    int offset = 0;
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        auto& atom_type = unit_cell_.atom(ia).type();
-        lmax = std::max(lmax, atom_type.lmax_ps_atomic_wf());
-        /* generate the atomic wave functions */
-        Hk__.kp().generate_atomic_wave_functions(atom_type.indexb_wfs(), ia, offset, false, phi);
-        offset += atom_type.indexb_wfs().size();
-    }
-
-    lmax = std::max(lmax, unit_cell_.lmax());
+    std::vector<int> atoms(ctx_.unit_cell().num_atoms());
+    std::iota(atoms.begin(), atoms.end(), 0);
+    Hk__.kp().generate_atomic_wave_functions(atoms, [&](int iat){return &ctx_.unit_cell().atom_type(iat).indexb_wfs();},
+                                             ctx_.atomic_wf_ri(), phi);
 
     /* fill remaining wave-functions with pseudo-random guess */
     assert(Hk__.kp().num_gkvec() > num_phi + 10);
@@ -356,7 +347,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (gen_solver.solve(num_phi_tot, num_bands, hmlt, ovlp, eval.data(), evec)) {
             std::stringstream s;
-            s << "error in diagonalziation";
+            s << "[sirius::Band::initialize_subspace] error in diagonalziation";
             TERMINATE(s);
         }
 

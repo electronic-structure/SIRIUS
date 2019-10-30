@@ -312,17 +312,7 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
-        density_.generate(kset_, true, false);
-        /* symmetrize density and magnetization */
-        if (ctx_.use_symmetry()) {
-            density_.symmetrize();
-            if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
-                density_.symmetrize_density_matrix();
-            }
-        }
-
-        /* transform density to real space after */
-        density_.fft_transform(1);
+        density_.generate(kset_, ctx_.use_symmetry(), true, true);
 
         /* mix density */
         rms = density_.mix();
