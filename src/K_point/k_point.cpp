@@ -945,7 +945,7 @@ void K_point::generate_hubbard_orbitals()
 
 void
 K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
-                                        std::function<sirius::basis_functions_index const&(int)> indexb__,
+                                        std::function<sirius::basis_functions_index const*(int)> indexb__,
                                         Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions& wf__)
 {
     PROFILE("sirius::K_point::generate_atomic_wave_functions");
@@ -964,7 +964,7 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
     for (int ia: atoms__) {
         offset.push_back(n);
         int iat = unit_cell_.atom(ia).type_id();
-        n += indexb__(iat).size();
+        n += indexb__(iat)->size();
     }
 
     /* allocate memory to store wave-functions for atom types */
@@ -973,7 +973,7 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
         int iat = unit_cell_.atom(ia).type_id();
         if (wf_t[iat].size() == 0) {
             wf_t[iat] =
-                mdarray<double_complex, 2>(this->num_gkvec_loc(), indexb__(iat).size(), ctx_.mem_pool(memory_t::host));
+                mdarray<double_complex, 2>(this->num_gkvec_loc(), indexb__(iat)->size(), ctx_.mem_pool(memory_t::host));
         }
     }
 
@@ -999,7 +999,7 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
             if (wf_t[iat].size() == 0) {
                 continue;
             }
-            auto const& indexb = indexb__(iat);
+            auto const& indexb = *indexb__(iat);
             for (int xi = 0; xi < indexb.size(); xi++) {
                 /*  orbital quantum  number of this atomic orbital */
                 int l = indexb[xi].l;
@@ -1032,7 +1032,7 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
         }
         int iat = unit_cell_.atom(ia).type_id();
         #pragma omp parallel for
-        for (int xi = 0; xi < indexb__(iat).size(); xi++) {
+        for (int xi = 0; xi < indexb__(iat)->size(); xi++) {
             for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
                 wf__.pw_coeffs(0).prime(igk_loc, offset[ia] + xi) = wf_t[iat](igk_loc, xi) * phase_gk[igk_loc];
             }

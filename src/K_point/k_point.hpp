@@ -297,7 +297,7 @@ class K_point
                             sufficient storage space.
      */
     void generate_atomic_wave_functions(std::vector<int> atoms__,
-                                        std::function<sirius::basis_functions_index const&(int)> indexb__,
+                                        std::function<sirius::basis_functions_index const*(int)> indexb__,
                                         Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions& wf__);
 
     void compute_gradient_wave_functions(Wave_functions& phi, const int starting_position_i, const int num_wf,

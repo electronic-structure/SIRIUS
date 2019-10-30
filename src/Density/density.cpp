@@ -189,11 +189,7 @@ void Density::initial_density_pseudo()
             }
         }
     }
-
-    rho().fft_transform(-1);
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        magnetization(j).fft_transform(-1);
-    }
+    this->fft_transform(-1);
 
     if (ctx_.control().print_checksum_) {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
@@ -1065,9 +1061,45 @@ void Density::generate(K_point_set const& ks__, bool add_core__, bool transform_
         }
     }
     if (transform_to_rg__) {
-        for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-            this->component(iv).fft_transform(1);
+        this->fft_transform(1);
+    }
+}
+
+void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, bool transform_to_rg__)
+{
+    PROFILE("sirius::Density::generate");
+
+    generate_valence(ks__);
+
+    if (ctx_.full_potential()) {
+        if (add_core__) {
+            /* find the core states */
+            generate_core_charge_density();
+            /* add core contribution */
+            for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                int ia = unit_cell_.spl_num_atoms(ialoc);
+                for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
+                    rho().f_mt<index_domain_t::local>(0, ir, ialoc) +=
+                        unit_cell_.atom(ia).symmetry_class().ae_core_charge_density(ir) / y00;
+                }
+            }
         }
+        /* synchronize muffin-tin part */
+        for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+            this->component(iv).sync_mt();
+        }
+    }
+    if (symmetrize__) {
+        this->symmetrize();
+        if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
+            this->symmetrize_density_matrix();
+        }
+    }
+
+    // TODO: generate PAW density here
+
+    if (transform_to_rg__) {
+        this->fft_transform(1);
     }
 }
 

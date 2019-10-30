@@ -57,10 +57,10 @@ class Periodic_function : public Smooth_periodic_function<T>
     Communicator const& comm_;
 
     /// Local part of muffin-tin functions.
-    mdarray<Spheric_function<function_domain_t::spectral, T>, 1> f_mt_local_;
+    sddk::mdarray<Spheric_function<function_domain_t::spectral, T>, 1> f_mt_local_;
 
     /// Global muffin-tin array
-    mdarray<T, 3> f_mt_;
+    sddk::mdarray<T, 3> f_mt_;
 
     Gvec const& gvec_;
 
