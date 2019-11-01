@@ -38,6 +38,10 @@ namespace sirius {
 class Potential : public Field4D
 {
   private:
+
+    /* Alias for spherical functions */
+    using sf = Spheric_function<function_domain_t::spectral, double>;
+
     Unit_cell& unit_cell_;
 
     Communicator const& comm_;
@@ -111,8 +115,8 @@ class Potential : public Field4D
 
         int ia_paw{-1};
 
-        std::vector<Spheric_function<function_domain_t::spectral, double>> ae_potential_;
-        std::vector<Spheric_function<function_domain_t::spectral, double>> ps_potential_;
+        std::vector<sf> ae_potential_;
+        std::vector<sf> ps_potential_;
 
         double hartree_energy_{0.0};
         double xc_energy_{0.0};
@@ -146,8 +150,6 @@ class Potential : public Field4D
     double scale_rho_xc_{1};
 
     void init_PAW();
-
-    using sf = Spheric_function<function_domain_t::spectral, double>;
 
     double xc_mt_PAW_nonmagnetic(sf& full_potential, sf const& full_density, std::vector<double> const& rho_core);
 

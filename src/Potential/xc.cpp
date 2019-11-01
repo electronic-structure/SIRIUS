@@ -397,7 +397,7 @@ void Potential::xc_mt(Density const& density__)
                     /* compute magnitude of the magnetization vector */
                     double mag = 0.0;
                     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                        mag += pow(vecmagtp[j](itp, ir), 2);
+                        mag += std::pow(vecmagtp[j](itp, ir), 2);
                     }
                     mag = std::sqrt(mag);
 
