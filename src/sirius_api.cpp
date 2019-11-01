@@ -26,6 +26,7 @@
 #include <iostream>
 #include "sirius.h"
 #include "utils/any_ptr.hpp"
+#include "utils/profiler.hpp"
 
 #define GET_SIM_CTX(h) assert(h != nullptr); \
                        auto& sim_ctx = static_cast<utils::any_ptr*>(*h)->get<sirius::Simulation_context>();
@@ -104,14 +105,7 @@ void sirius_finalize(bool const* call_mpi_fin__, bool const *call_device_reset__
    @fortran end */
 void sirius_start_timer(char const* name__)
 {
-    std::string name(name__);
-    if (!utils::timer::ftimers().count(name)) {
-        utils::timer::ftimers().insert(std::make_pair(name, utils::timer(name)));
-    } else {
-        std::stringstream s;
-        s << "timer " << name__ << " is already active";
-        TERMINATE(s);
-    }
+    ::utils::global_rtgraph_timer.start(name__);
 }
 
 /* @fortran begin function void sirius_stop_timer       Stop the running timer.
@@ -119,17 +113,14 @@ void sirius_start_timer(char const* name__)
    @fortran end */
 void sirius_stop_timer(char const* name__)
 {
-    std::string name(name__);
-    if (utils::timer::ftimers().count(name)) {
-        utils::timer::ftimers().erase(name);
-    }
+    ::utils::global_rtgraph_timer.stop(name__);
 }
 
 /* @fortran begin function void sirius_print_timers      Print all timers.
    @fortran end */
 void sirius_print_timers(void)
 {
-    utils::timer::print();
+    std::cout << ::utils::global_rtgraph_timer.process().print();
 }
 
 /* @fortran begin function void sirius_serialize_timers    Save all timers to JSON file.
@@ -137,11 +128,8 @@ void sirius_print_timers(void)
    @fortran end */
 void sirius_serialize_timers(char const* fname__)
 {
-    json dict;
-    dict["flat"] = utils::timer::serialize();
-    dict["tree"] = utils::timer::serialize_tree();
     std::ofstream ofs(fname__, std::ofstream::out | std::ofstream::trunc);
-    ofs << dict.dump(4);
+    ofs << ::utils::global_rtgraph_timer.process().json();
 }
 
 /* @fortran begin function void sirius_integrate        Spline integration of f(x)*x^m.

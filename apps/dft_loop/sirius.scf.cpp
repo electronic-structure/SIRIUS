@@ -1,3 +1,4 @@
+#include "utils/profiler.hpp"
 #include <sirius.h>
 #include <utils/json.hpp>
 
@@ -208,6 +209,7 @@ double ground_state(Simulation_context& ctx,
 /// Run a task based on a command line input.
 void run_tasks(cmd_args const& args)
 {
+    PROFILE("sirius::run");
     /* get the task id */
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
     /* get the input file name */
@@ -373,12 +375,10 @@ int main(int argn, char** argv)
     sirius::finalize(1);
 
     if (my_rank == 0)  {
-        utils::timer::print();
-        json dict;
-        dict["flat"] = utils::timer::serialize();
-        dict["tree"] = utils::timer::serialize_tree();
+        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        std::cout<< timing_result.print();
         std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
-        ofs << dict.dump(4);
+        ofs << timing_result.json();
     }
 
     return 0;

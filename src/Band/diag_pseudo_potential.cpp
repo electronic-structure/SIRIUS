@@ -25,6 +25,7 @@
 #include "band.hpp"
 #include "residuals.hpp"
 #include "Potential/potential.hpp"
+#include "utils/profiler.hpp"
 
 #if defined(__GPU) && defined(__CUDA)
 #include "../SDDK/GPU/acc.hpp"
@@ -299,7 +300,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     auto& mp = ctx_.mem_pool(ctx_.host_memory_t());
 
     /* allocate wave-functions */
-    utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
+    PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|alloc");
 
     /* auxiliary wave-functions */
     Wave_functions phi(mp, kp.gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
@@ -361,7 +362,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     kp.copy_hubbard_orbitals_on_device();
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
-    t2.stop();
+    PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|alloc");
 
     auto h_o_diag = Hk__.get_h_o_diag_pw<T, 3>();
 
@@ -406,7 +407,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
     int niter{0};
 
-    utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
+    PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
 
         mdarray<double, 1> eval(num_bands);
@@ -491,15 +492,14 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* current subspace size */
         int N = num_bands;
 
-        auto p1 = std::unique_ptr<utils::profiler>(new utils::profiler(__function_name__, __FILE__, __LINE__,
-            "sirius::Band::diag_pseudo_potential_davidson|evp"));
+        PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|evp");
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
         }
-        p1 = nullptr;
+        PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|evp");
 
         evp_work_count() += 1;
 
@@ -524,7 +524,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
             if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
-                utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
+                PROFILE("sirius::Band::diag_pseudo_potential_davidson|update_phi");
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
                 if (ctx_.settings().always_update_wf_ || k + n > 0) {
@@ -618,8 +618,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             eval >> eval_old;
 
-            auto p1 = std::unique_ptr<utils::profiler>(new utils::profiler(__function_name__, __FILE__, __LINE__,
-                "sirius::Band::diag_pseudo_potential_davidson|evp"));
+            PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|evp");
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N */
                 if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
@@ -635,7 +634,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     TERMINATE(s);
                 }
             }
-            p1 = nullptr;
+            PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|evp");
 
             evp_work_count() += std::pow(static_cast<double>(N) / num_bands, 3);
 
@@ -647,7 +646,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             niter++;
         }
     } /* loop over ispin_step */
-    t3.stop();
+    PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|iter");
 
     //if (ctx_.control().print_checksum_) {
     //    auto cs = psi.checksum(0, ctx_.num_fv_states());

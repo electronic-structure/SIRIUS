@@ -31,6 +31,7 @@
 
 #include "utils/cmd_args.hpp"
 #include "utils/json.hpp"
+#include "utils/profiler.hpp"
 using json = nlohmann::json;
 
 #include "input.hpp"
@@ -68,6 +69,7 @@ inline static bool& is_initialized()
 /// Initialize the library.
 inline void initialize(bool call_mpi_init__ = true)
 {
+    PROFILE("sirius::initialize");
     if (is_initialized()) {
         TERMINATE("SIRIUS library is already initialized");
     }
@@ -127,6 +129,7 @@ inline void initialize(bool call_mpi_init__ = true)
 /// Shut down the library.
 inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_cleanup__ = true)
 {
+    PROFILE("sirius::finalize");
     if (!is_initialized()) {
         TERMINATE("SIRIUS library was not initialized");
     }

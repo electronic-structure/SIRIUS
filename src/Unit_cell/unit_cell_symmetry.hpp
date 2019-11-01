@@ -154,7 +154,7 @@ class Unit_cell_symmetry
         magnetization_ = mdarray<double, 2>(3, num_atoms_);
         spins__ >> magnetization_;
 
-        utils::timer t1("sirius::Unit_cell_symmetry|spg");
+        PROFILE_START("sirius::Unit_cell_symmetry|spg");
         if (use_sym__) {
             spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, tolerance_);
             if (spg_dataset_ == NULL) {
@@ -172,7 +172,7 @@ class Unit_cell_symmetry
                 TERMINATE(s);
             }
         }
-        t1.stop();
+        PROFILE_STOP("sirius::Unit_cell_symmetry|spg");
 
         if (spg_dataset_) {
             /* make a list of crystal symmetries */
@@ -222,7 +222,7 @@ class Unit_cell_symmetry
             space_group_symmetry_.push_back(sym_op);
         }
 
-        utils::timer t3("sirius::Unit_cell_symmetry|equiv");
+        PROFILE_START("sirius::Unit_cell_symmetry|equiv");
         sym_table_ = mdarray<int, 2>(num_atoms_, num_spg_sym());
         /* loop over spatial symmetries */
         #pragma omp parallel for schedule(static)
@@ -260,9 +260,9 @@ class Unit_cell_symmetry
                 sym_table_(ia, isym) = ja;
             }
         }
-        t3.stop();
+        PROFILE_STOP("sirius::Unit_cell_symmetry|equiv");
 
-        utils::timer t4("sirius::Unit_cell_symmetry|mag");
+        PROFILE_START("sirius::Unit_cell_symmetry|mag");
         /* loop over spatial symmetries */
         for (int isym = 0; isym < num_spg_sym(); isym++) {
             int jsym0 = 0;
@@ -301,7 +301,7 @@ class Unit_cell_symmetry
                 }
             }
         }
-        t4.stop();
+        PROFILE_STOP("sirius::Unit_cell_symmetry|mag");
     }
 
     ~Unit_cell_symmetry()

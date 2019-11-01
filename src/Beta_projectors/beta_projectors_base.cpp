@@ -24,6 +24,7 @@
 
 #include "utils/env.hpp"
 #include "beta_projectors_base.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -164,7 +165,7 @@ Beta_projectors_base::inner(int chunk__, Wave_functions& phi__, int ispn__, int 
 
     /* in parallel case do a reduction */
     if (gkvec_.comm().size() > 1) {
-        utils::timer t1("sirius::Beta_projectors_base::inner|comm");
+        PROFILE("sirius::Beta_projectors_base::inner|comm");
         /* MPI reduction on the host */
         gkvec_.comm().allreduce(beta_phi.at(memory_t::host), static_cast<int>(beta_phi.size()));
     }
@@ -281,7 +282,12 @@ void Beta_projectors_base::local_inner_aux<double_complex>(double_complex* beta_
                                                            Wave_functions& phi__, int ispn__, int idx0__, int n__,
                                                            matrix<double_complex>& beta_phi__) const
 {
-    utils::timer t1("sirius::Beta_projectors_base::local_inner_aux");
+    auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
+    if (pp && gkvec_.comm().rank() == 0) {
+        PROFILE_START("sirius::Beta_projectors_base::local_inner_aux");
+    }
+
+    const auto t1 = std::chrono::high_resolution_clock::now();
     linalg2(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta__, n__, num_gkvec_loc(),
                                        &linalg_const<double_complex>::one(),
                                        beta_pw_coeffs_a_ptr__,
@@ -291,16 +297,16 @@ void Beta_projectors_base::local_inner_aux<double_complex>(double_complex* beta_
                                        &linalg_const<double_complex>::zero(),
                                        beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
 
-    auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
     if (pp && gkvec_.comm().rank() == 0) {
 #ifdef __GPU
         if (ctx_.blas_linalg_t() == linalg_t::gpublas) {
             acc::sync_stream(stream_id(-1));
         }
 #endif
-        double t = t1.stop();
+        std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - t1;
+        PROFILE_STOP("sirius::Beta_projectors_base::local_inner_aux");
         printf("Beta_projectors_base::local_inner performance: %12.6f GFlops [m,n,k=%i %i %i, time=%f (sec)]\n",
-               8e-9 * nbeta__ * n__ * num_gkvec_loc() / t, nbeta__, n__, num_gkvec_loc(), t);
+               8e-9 * nbeta__ * n__ * num_gkvec_loc() / t.count(), nbeta__, n__, num_gkvec_loc(), t.count());
     }
 }
 

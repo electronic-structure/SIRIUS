@@ -28,6 +28,7 @@
 #include "simulation_context.hpp"
 #include "spheric_function.hpp"
 #include "smooth_periodic_function.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -363,7 +364,7 @@ class Periodic_function : public Smooth_periodic_function<T>
 template <typename T>
 inline T inner_local(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
 {
-    utils::timer t1("sirius::Periodic_function|inner_local");
+    PROFILE("sirius::Periodic_function|inner_local");
 
     assert(&f__.ctx() == &g__.ctx());
 
@@ -392,7 +393,7 @@ inline T inner_local(Periodic_function<T> const& f__, Periodic_function<T> const
 template <typename T>
 inline T inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
 {
-    utils::timer t1("sirius::Periodic_function|inner");
+    PROFILE("sirius::Periodic_function|inner");
 
     T result = inner_local(f__, g__);
     f__.ctx().comm().allreduce(&result, 1);

@@ -23,6 +23,7 @@
  *
  */
 #include "matrix_storage.hpp"
+#include "utils/profiler.hpp"
 
 namespace sddk {
 
@@ -55,7 +56,7 @@ void matrix_storage<T, matrix_storage_t::slab>::set_num_extra(int n__, int idx0_
         size_t sz = gvp_->gvec_count_fft() * ncol;
         /* reallocate buffers if necessary */
         if (extra_buf_.size() < sz) {
-            utils::timer t1("sddk::matrix_storage::set_num_extra|alloc");
+            PROFILE("sddk::matrix_storage::set_num_extra|alloc");
             if (mp__) {
                 send_recv_buf_ = mdarray<T, 1>(sz, *mp__, "matrix_storage.send_recv_buf_");
                 extra_buf_     = mdarray<T, 1>(sz, *mp__, "matrix_storage.extra_buf_");
@@ -207,10 +208,11 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_backward(int n__, int idx0
 
     T* recv_buf = (num_rows_loc_ == 0) ? nullptr : prime_.at(memory_t::host, 0, idx0__);
 
-    utils::timer t1("sddk::matrix_storage::remap_backward|mpi");
-    comm_col.alltoall(send_recv_buf_.at(memory_t::host), sd.counts.data(), sd.offsets.data(), recv_buf,
-                      rd.counts.data(), rd.offsets.data());
-    t1.stop();
+    {
+        PROFILE("sddk::matrix_storage::remap_backward|mpi");
+        comm_col.alltoall(send_recv_buf_.at(memory_t::host), sd.counts.data(), sd.offsets.data(), recv_buf,
+                          rd.counts.data(), rd.offsets.data());
+    }
 
     /* move data back to device */
     if (prime_.on_device()) {
@@ -248,10 +250,11 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_forward(int n__, int idx0_
 
     T* send_buf = (num_rows_loc_ == 0) ? nullptr : prime_.at(memory_t::host, 0, idx0__);
 
-    utils::timer t1("sddk::matrix_storage::remap_forward|mpi");
-    comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf_.at(memory_t::host),
-                      rd.counts.data(), rd.offsets.data());
-    t1.stop();
+    {
+        PROFILE("sddk::matrix_storage::remap_forward|mpi");
+        comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf_.at(memory_t::host),
+                          rd.counts.data(), rd.offsets.data());
+    }
 
     /* reorder recieved blocks */
     #pragma omp parallel for

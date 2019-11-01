@@ -2,6 +2,7 @@
 #include "sirius_version.hpp"
 #include "simulation_context.hpp"
 #include "Symmetry/find_lat_sym.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -133,7 +134,7 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         int na = unit_cell_.atom_type(iat).num_atoms();
         generate_phase_factors(iat, phase_factors);
-        utils::timer t1("sirius::Simulation_context::sum_fg_fl_yg|zm");
+        PROFILE_START("sirius::Simulation_context::sum_fg_fl_yg|zm");
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ngv_loc; igloc++) {
             for (int l = 0, lm = 0; l <= lmax__; l++) {
@@ -143,8 +144,8 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
                 }
             }
         }
-        t1.stop();
-        utils::timer t2("sirius::Simulation_context::sum_fg_fl_yg|mul");
+        PROFILE_STOP("sirius::Simulation_context::sum_fg_fl_yg|zm");
+        PROFILE_START("sirius::Simulation_context::sum_fg_fl_yg|mul");
         switch (processing_unit()) {
             case device_t::CPU: {
                 linalg<device_t::CPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::host), zm.ld(),
@@ -163,7 +164,7 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
                 break;
             }
         }
-        t2.stop();
+        PROFILE_STOP("sirius::Simulation_context::sum_fg_fl_yg|mul");
 
         for (int i = 0; i < na; i++) {
             int ia = unit_cell_.atom_type(iat).atom_id(i);

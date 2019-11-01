@@ -27,6 +27,7 @@
 #include "../Symmetry/symmetrize.hpp"
 #include "Mixer/mixer_functions.hpp"
 #include "Mixer/mixer_factory.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -1355,14 +1356,14 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                         }
                     }
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                        utils::timer t3("sirius::Density::generate_rho_aug|gemm");
+                        PROFILE_START("sirius::Density::generate_rho_aug|gemm");
                         linalg2(linalg_t::blas)
                             .gemm('N', 'N', nbf * (nbf + 1) / 2, 2 * spl_ngv_loc.local_size(ib), atom_type.num_atoms(),
                                   &linalg_const<double>::one(), dm.at(memory_t::host, 0, 0, iv), dm.ld(),
                                   phase_factors.at(memory_t::host), phase_factors.ld(), &linalg_const<double>::zero(),
                                   dm_pw.at(memory_t::host, 0, 0), dm_pw.ld());
-                        t3.stop();
-                        utils::timer t4("sirius::Density::generate_rho_aug|sum");
+                        PROFILE_STOP("sirius::Density::generate_rho_aug|gemm");
+                        PROFILE_START("sirius::Density::generate_rho_aug|sum");
                         #pragma omp parallel for
                         for (int igloc = g_begin; igloc < g_end; igloc++) {
                             double_complex zsum(0, 0);
@@ -1376,7 +1377,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                             }
                             rho_aug(igloc, iv) += zsum;
                         }
-                        t4.stop();
+                        PROFILE_STOP("sirius::Density::generate_rho_aug|sum");
                     }
                     break;
                 }
@@ -1547,7 +1548,7 @@ void Density::generate_valence_mt()
         int nmtp         = atom_type.num_mt_points();
         int num_rf_pairs = atom_type.mt_radial_basis_size() * (atom_type.mt_radial_basis_size() + 1) / 2;
 
-        utils::timer t1("sirius::Density::generate|sum_zdens");
+        PROFILE_START("sirius::Density::generate|sum_zdens");
         switch (ctx_.num_mag_dims()) {
             case 3: {
                 reduce_density_matrix<3>(atom_type, ia, density_matrix_, *gaunt_coefs_, mt_density_matrix);
@@ -1562,9 +1563,9 @@ void Density::generate_valence_mt()
                 break;
             }
         }
-        t1.stop();
+        PROFILE_STOP("sirius::Density::generate|sum_zdens");
 
-        utils::timer t2("sirius::Density::generate|expand_lm");
+        PROFILE("sirius::Density::generate|expand_lm");
         /* collect radial functions */
         for (int idxrf2 = 0; idxrf2 < atom_type.mt_radial_basis_size(); idxrf2++) {
             int offs = idxrf2 * (idxrf2 + 1) / 2;

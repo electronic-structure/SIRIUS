@@ -31,6 +31,7 @@
 #include <apex_api.hpp>
 #endif
 #include "timer.hpp"
+#include "rt_graph.hpp"
 #if defined(__GPU) && defined(__CUDA_NVTX)
 #include "GPU/acc.hpp"
 #endif
@@ -163,12 +164,29 @@ class profiler
     #define __function_name__ __func__
 #endif
 
+// --------------------
+// Profile with RTGraph
+// --------------------
+
+extern ::rt_graph::Timer global_rtgraph_timer;
+
 #ifdef __PROFILE
-    #define PROFILE(name) utils::profiler profiler__(__function_name__, __FILE__, __LINE__, name);
+#define PROFILER_CONCAT_IMPL(x, y) x##y
+#define PROFILER_CONCAT(x, y) PROFILER_CONCAT_IMPL(x, y)
+
+#define PROFILE(identifier)                                                                                            \
+    ::rt_graph::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier,                            \
+                                                                                ::utils::global_rtgraph_timer);
+
+#define PROFILE_START(identifier) ::utils::global_rtgraph_timer.start(identifier);
+#define PROFILE_STOP(identifier) ::utils::global_rtgraph_timer.stop(identifier);
+
 #else
-    #define PROFILE(...)
+#define PROFILE(...)
+#define PROFILE_START(...)
+#define PROFILE_STOP(...)
 #endif
 
-}
+} // namespace utils
 
 #endif

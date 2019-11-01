@@ -26,6 +26,7 @@
 #include "SDDK/fft.hpp"
 #include "SDDK/gvec.hpp"
 #include "utils/utils.hpp"
+#include "utils/profiler.hpp"
 
 #ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
 #define __SMOOTH_PERIODIC_FUNCTION_HPP__
@@ -359,7 +360,7 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
 /** Input functions is expected in the plane wave domain, output function is also in the plane-wave domain */
 inline Smooth_periodic_vector_function<double> gradient(Smooth_periodic_function<double>& f__)
 {
-    utils::timer t1("sirius::gradient");
+    PROFILE("sirius::gradient");
 
     Smooth_periodic_vector_function<double> g(f__.spfft(), f__.gvec_partition());
 
@@ -377,7 +378,7 @@ inline Smooth_periodic_vector_function<double> gradient(Smooth_periodic_function
 /** Input and output functions are in plane-wave domain */
 inline Smooth_periodic_function<double> divergence(Smooth_periodic_vector_function<double>& g__)
 {
-    utils::timer t1("sirius::divergence");
+    PROFILE("sirius::divergence");
 
     /* resulting scalar function */
     Smooth_periodic_function<double> f(g__.spfft(), g__.gvec_partition());
@@ -395,7 +396,7 @@ inline Smooth_periodic_function<double> divergence(Smooth_periodic_vector_functi
 /// Laplacian of the function in the plane-wave domain.
 inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<double>& f__)
 {
-    utils::timer t1("sirius::laplacian");
+    PROFILE("sirius::laplacian");
 
     Smooth_periodic_function<double> g(f__.spfft(), f__.gvec_partition());
 
@@ -413,7 +414,7 @@ inline Smooth_periodic_function<T>
 dot(Smooth_periodic_vector_function<T>& vf__, Smooth_periodic_vector_function<T>& vg__)
 
 {
-    utils::timer t1("sirius::dot");
+    PROFILE("sirius::dot");
 
     Smooth_periodic_function<T> result(vf__.spfft(), vf__.gvec_partition());
 
@@ -434,7 +435,7 @@ template <typename T, typename F>
 inline T
 inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
 {
-    utils::timer t1("sirius::Smooth_periodic_function|inner_local");
+    PROFILE("sirius::Smooth_periodic_function|inner_local");
 
     assert(&f__.spfft() == &g__.spfft());
 
@@ -453,7 +454,7 @@ template <typename T, typename F>
 inline T
 inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
 {
-    utils::timer t1("sirius::Smooth_periodic_function|inner");
+    PROFILE("sirius::Smooth_periodic_function|inner");
 
 
     T result_rg = inner_local(f__, g__, std::forward<F>(theta__));

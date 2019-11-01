@@ -24,6 +24,7 @@
  */
 
 #include "wf_trans.hpp"
+#include "utils/profiler.hpp"
 
 namespace sddk {
 
@@ -36,7 +37,7 @@ template <>
 void transform_local<double>(linalg_t la__, int ispn__, double* alpha__, Wave_functions* wf_in__, int i0__, int m__,
                              double* mtrx__, int ld__, Wave_functions* wf_out__, int j0__, int n__, stream_id sid__)
 {
-    utils::timer t1("sddk::transform|local");
+    PROFILE("sddk::transform|local");
 
     auto spins = spin_range(ispn__);
 
@@ -63,7 +64,7 @@ void transform_local<double_complex>(linalg_t la__, int ispn__, double_complex* 
                                      int i0__, int m__, double_complex* mtrx__, int ld__, Wave_functions* wf_out__,
                                      int j0__, int n__, stream_id sid__)
 {
-    utils::timer t1("sddk::transform|local");
+    PROFILE("sddk::transform|local");
 
     auto spins = spin_range(ispn__);
 
@@ -120,7 +121,7 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
 
     T alpha = alpha__;
 
-    utils::timer t1("sddk::transform|init");
+    PROFILE_START("sddk::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (beta__ == 0) {
@@ -129,7 +130,7 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
             wf_out__[iv]->scale(wf_out__[iv]->preferred_memory_t(), ispn__, j0__, n__, beta__);
         }
     }
-    t1.stop();
+    PROFILE_STOP("sddk::transform|init");
 
     if (sddk_pp) {
         comm.barrier();
@@ -250,10 +251,12 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
                                 local_size_row * sizeof(T));
                 }
             }
-            utils::timer t0("sddk::transform|mpi");
+            time_mpi -= MPI::Wtime();
+            PROFILE_START("sddk::transform|mpi");
             /* collect submatrix */
             comm.allgather(&buf[0], sd.counts.data(), sd.offsets.data());
-            time_mpi += t0.stop();
+            PROFILE_STOP("sddk::transform|mpi");
+            time_mpi += MPI::Wtime();
 
             if (is_device_memory(mem__)) {
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
