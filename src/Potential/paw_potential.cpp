@@ -35,13 +35,13 @@ void Potential::init_PAW()
 
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
         int ia_paw = unit_cell_.spl_num_paw_atoms(i);
-        int ia = unit_cell_.paw_atom_index(ia_paw);
+        int ia     = unit_cell_.paw_atom_index(ia_paw);
 
         auto& atom = unit_cell_.atom(ia);
 
         auto& atom_type = atom.type();
 
-        int l_max = 2 * atom_type.indexr().lmax_lo();
+        int l_max      = 2 * atom_type.indexr().lmax_lo();
         int lm_max_rho = utils::lmmax(l_max);
 
         paw_potential_data_t ppd;
@@ -64,14 +64,14 @@ void Potential::init_PAW()
     }
 
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
-        int ia = unit_cell_.paw_atom_index(i);
-        int bs = unit_cell_.atom(ia).mt_basis_size();
+        int ia              = unit_cell_.paw_atom_index(i);
+        int bs              = unit_cell_.atom(ia).mt_basis_size();
         max_paw_basis_size_ = std::max(max_paw_basis_size_, bs);
     }
 
     /* initialize dij matrix */
-    paw_dij_ = mdarray<double, 4>(max_paw_basis_size_, max_paw_basis_size_, ctx_.num_mag_dims() + 1, unit_cell_.num_paw_atoms(),
-                                  memory_t::host, "paw_dij_");
+    paw_dij_ = mdarray<double, 4>(max_paw_basis_size_, max_paw_basis_size_, ctx_.num_mag_dims() + 1,
+                                  unit_cell_.num_paw_atoms(), memory_t::host, "paw_dij_");
 
     /* allocate PAW energy array */
     paw_hartree_energies_.resize(unit_cell_.num_paw_atoms());
@@ -97,14 +97,13 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     paw_dij_.zero();
 
     /* calculate xc and hartree for atoms */
-    for(int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
+    for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
         calc_PAW_local_potential(paw_potential_data_[i], density.paw_ae_density(i), density.paw_ps_density(i));
     }
 
-
     /* calculate PAW Dij matrix */
     #pragma omp parallel for
-    for(int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
+    for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
         calc_PAW_local_Dij(paw_potential_data_[i], paw_dij_);
 
         calc_PAW_one_elec_energy(paw_potential_data_[i], density.density_matrix(), paw_dij_);
@@ -124,19 +123,19 @@ void Potential::generate_PAW_effective_potential(Density const& density)
     // calc total energy
     double energies[] = {0.0, 0.0, 0.0, 0.0};
 
-    for(int ia = 0; ia < unit_cell_.spl_num_paw_atoms().local_size(); ia++) {
+    for (int ia = 0; ia < unit_cell_.spl_num_paw_atoms().local_size(); ia++) {
         energies[0] += paw_potential_data_[ia].hartree_energy_;
         energies[1] += paw_potential_data_[ia].xc_energy_;
         energies[2] += paw_potential_data_[ia].one_elec_energy_;
-        energies[3] += paw_potential_data_[ia].core_energy_;  // it is light operation
+        energies[3] += paw_potential_data_[ia].core_energy_; // it is light operation
     }
 
     comm_.allreduce(&energies[0], 4);
 
     paw_hartree_total_energy_ = energies[0];
-    paw_xc_total_energy_ = energies[1];
-    paw_one_elec_energy_ = energies[2];
-    paw_total_core_energy_ = energies[3];
+    paw_xc_total_energy_      = energies[1];
+    paw_one_elec_energy_      = energies[2];
+    paw_total_core_energy_    = energies[3];
 }
 
 double Potential::xc_mt_PAW_nonmagnetic(sf& full_potential, sf const& full_density, std::vector<double> const& rho_core)
@@ -151,11 +150,11 @@ double Potential::xc_mt_PAW_nonmagnetic(sf& full_potential, sf const& full_densi
     full_rho_lm_sf_new.zero();
     full_rho_lm_sf_new += full_density;
 
-    double invY00 = 1.0 / y00 ;
+    double invY00 = 1.0 / y00;
 
     /* adding core part */
     for (int ir = 0; ir < rgrid.num_points(); ir++) {
-        full_rho_lm_sf_new(0,ir) += invY00 * rho_core[ir];
+        full_rho_lm_sf_new(0, ir) += invY00 * rho_core[ir];
     }
 
     auto full_rho_tp_sf = transform(*sht_, full_rho_lm_sf_new);
@@ -171,7 +170,7 @@ double Potential::xc_mt_PAW_nonmagnetic(sf& full_potential, sf const& full_densi
     full_potential += transform(*sht_, vxc_tp_sf);
 
     /* calculate energy */
-    auto exc_lm_sf = transform(*sht_, exc_tp_sf );
+    auto exc_lm_sf = transform(*sht_, exc_tp_sf);
 
     return inner(exc_lm_sf, full_rho_lm_sf_new);
 }
@@ -192,8 +191,8 @@ double Potential::xc_mt_PAW_collinear(std::vector<sf>& potential, std::vector<sf
     double invY00 = 1 / y00;
 
     /* adding core part */
-    for (int ir = 0; ir < rgrid.num_points(); ir++ ) {
-        full_rho_lm_sf_new(0,ir) += invY00 * rho_core[ir];
+    for (int ir = 0; ir < rgrid.num_points(); ir++) {
+        full_rho_lm_sf_new(0, ir) += invY00 * rho_core[ir];
     }
 
     /* calculate spin up spin down density components in lm components */
@@ -223,17 +222,16 @@ double Potential::xc_mt_PAW_collinear(std::vector<sf>& potential, std::vector<sf
     //------------------------
     //--- calculate energy ---
     //------------------------
-    Spheric_function<function_domain_t::spectral, double> exc_lm_sf = transform(*sht_, exc_tp_sf );
+    Spheric_function<function_domain_t::spectral, double> exc_lm_sf = transform(*sht_, exc_tp_sf);
 
     return inner(exc_lm_sf, full_rho_lm_sf_new);
 }
 
-
 double Potential::xc_mt_PAW_noncollinear(std::vector<sf>& potential, std::vector<sf const*> density,
                                          std::vector<double> const& rho_core)
 {
-    if (density.size() != 4 || potential.size() != 4){
-       TERMINATE("xc_mt_PAW_noncollinear FATAL ERROR!")
+    if (density.size() != 4 || potential.size() != 4) {
+        TERMINATE("xc_mt_PAW_noncollinear FATAL ERROR!")
     }
 
     Radial_grid<double> const& rgrid = density[0]->radial_grid();
@@ -241,7 +239,7 @@ double Potential::xc_mt_PAW_noncollinear(std::vector<sf>& potential, std::vector
     /* transform density to theta phi components */
     std::vector<Spheric_function<function_domain_t::spatial, double>> rho_tp(density.size());
 
-    for (size_t i = 0; i < density.size(); i++){
+    for (size_t i = 0; i < density.size(); i++) {
         rho_tp[i] = transform(*sht_, *density[i]);
     }
 
@@ -249,8 +247,8 @@ double Potential::xc_mt_PAW_noncollinear(std::vector<sf>& potential, std::vector
     Spheric_function<function_domain_t::spatial, double> rho_u_tp(sht_->num_points(), rgrid);
     Spheric_function<function_domain_t::spatial, double> rho_d_tp(sht_->num_points(), rgrid);
 
-    for (int ir = 0; ir < rgrid.num_points(); ir++ ) {
-        for (int itp = 0; itp < sht_->num_points(); itp++ ) {
+    for (int ir = 0; ir < rgrid.num_points(); ir++) {
+        for (int itp = 0; itp < sht_->num_points(); itp++) {
             vector3d<double> magn({rho_tp[2](itp, ir), rho_tp[3](itp, ir), rho_tp[1](itp, ir)});
             double norm = magn.length();
 
@@ -277,13 +275,13 @@ double Potential::xc_mt_PAW_noncollinear(std::vector<sf>& potential, std::vector
     std::vector<Spheric_function<function_domain_t::spatial, double>> vxc_tp;
 
     /* allocate the rest */
-    for (size_t i = 0; i < potential.size(); i++){
+    for (size_t i = 0; i < potential.size(); i++) {
         vxc_tp.push_back(Spheric_function<function_domain_t::spatial, double>(sht_->num_points(), rgrid));
     }
 
     /* transform back potential from up/down to 4D form*/
-    for (int ir = 0; ir < rgrid.num_points(); ir++ ) {
-        for (int itp = 0; itp < sht_->num_points(); itp++ ) {
+    for (int ir = 0; ir < rgrid.num_points(); ir++) {
+        for (int itp = 0; itp < sht_->num_points(); itp++) {
             /* get total potential and field abs value*/
             double pot   = 0.5 * (vxc_u_tp(itp, ir) + vxc_d_tp(itp, ir));
             double field = 0.5 * (vxc_u_tp(itp, ir) - vxc_d_tp(itp, ir));
@@ -291,18 +289,18 @@ double Potential::xc_mt_PAW_noncollinear(std::vector<sf>& potential, std::vector
             /* get unit magnetization vector*/
             vector3d<double> magn({rho_tp[2](itp, ir), rho_tp[3](itp, ir), rho_tp[1](itp, ir)});
             double norm = magn.length();
-            magn = magn * (norm > 0.0 ? field / norm : 0.0);
+            magn        = magn * (norm > 0.0 ? field / norm : 0.0);
 
             /* add total potential and effective field values at current point */
             vxc_tp[0](itp, ir) = pot;
-            for (int i: {0, 1, 2}) {
+            for (int i : {0, 1, 2}) {
                 vxc_tp[i + 1](itp, ir) = magn[i];
             }
         }
     }
 
     /* transform back to lm- domain */
-    for(size_t i = 0; i < density.size(); i++){
+    for (size_t i = 0; i < density.size(); i++) {
         potential[i] += transform(*sht_, vxc_tp[i]);
     }
 
@@ -332,27 +330,27 @@ double Potential::calc_PAW_hartree_potential(Atom& atom, sf const& full_density,
     auto l_by_lm = utils::l_by_lm(utils::lmax(lmsize_rho));
 
     /* create array for integration */
-    std::vector<double> intdata(grid.num_points(),0);
+    std::vector<double> intdata(grid.num_points(), 0);
 
     double hartree_energy{0};
 
-    for (int lm=0; lm < lmsize_rho; lm++){
+    for (int lm = 0; lm < lmsize_rho; lm++) {
         /* fill data to integrate */
-        for (int irad = 0; irad < grid.num_points(); irad++){
-            intdata[irad] = full_density(lm,irad) * full_potential(lm, irad) * grid[irad] * grid[irad];
+        for (int irad = 0; irad < grid.num_points(); irad++) {
+            intdata[irad] = full_density(lm, irad) * full_potential(lm, irad) * grid[irad] * grid[irad];
         }
 
         /* create spline from the data */
-        Spline<double> h_spl(grid,intdata);
+        Spline<double> h_spl(grid, intdata);
         hartree_energy += 0.5 * h_spl.integrate(0);
     }
 
     return hartree_energy;
 }
 
-void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
-                                         std::vector<Spheric_function<function_domain_t::spectral, double> const*> ae_density,
-                                         std::vector<Spheric_function<function_domain_t::spectral, double> const*> ps_density)
+void Potential::calc_PAW_local_potential(
+    paw_potential_data_t& ppd, std::vector<Spheric_function<function_domain_t::spectral, double> const*> ae_density,
+    std::vector<Spheric_function<function_domain_t::spectral, double> const*> ps_density)
 {
     /* calculation of Hartree potential */
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
@@ -360,13 +358,9 @@ void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
         ppd.ps_potential_[i].zero();
     }
 
-    double ae_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_,
-                                                          *ae_density[0],
-                                                          ppd.ae_potential_[0]);
+    double ae_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_, *ae_density[0], ppd.ae_potential_[0]);
 
-    double ps_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_,
-                                                          *ps_density[0],
-                                                          ppd.ps_potential_[0]);
+    double ps_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_, *ps_density[0], ppd.ps_potential_[0]);
 
     ppd.hartree_energy_ = ae_hartree_energy - ps_hartree_energy;
 
@@ -390,13 +384,13 @@ void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
             break;
         }
 
-        case 3:{
+        case 3: {
             ae_xc_energy = xc_mt_PAW_noncollinear(ppd.ae_potential_, ae_density, ae_core);
             ps_xc_energy = xc_mt_PAW_noncollinear(ppd.ps_potential_, ps_density, ps_core);
             break;
         }
 
-        default:{
+        default: {
             TERMINATE("PAW local potential error! Wrong number of spins!")
         }
     }
@@ -415,7 +409,7 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>
     auto& paw_ps_wfs = atom_type.ps_paw_wfs_array();
 
     /* get lm size for density */
-    int lmax = atom_type.indexr().lmax_lo();
+    int lmax       = atom_type.indexr().lmax_lo();
     int lmsize_rho = utils::lmmax(2 * lmax);
 
     auto l_by_lm = utils::l_by_lm(2 * lmax);
@@ -423,17 +417,18 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rlm);
 
     /* store integrals here */
-    mdarray<double, 3> integrals(lmsize_rho, atom_type.num_beta_radial_functions() * (atom_type.num_beta_radial_functions() + 1) / 2,
-                                 ctx_.num_mag_dims() + 1);
+    mdarray<double, 3> integrals(
+        lmsize_rho, atom_type.num_beta_radial_functions() * (atom_type.num_beta_radial_functions() + 1) / 2,
+        ctx_.num_mag_dims() + 1);
 
     auto& rgrid = atom_type.radial_grid();
 
-    for(int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++ ){
-        auto &ae_atom_pot = pdd.ae_potential_[imagn];
-        auto &ps_atom_pot = pdd.ps_potential_[imagn];
+    for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
+        auto& ae_atom_pot = pdd.ae_potential_[imagn];
+        auto& ps_atom_pot = pdd.ps_potential_[imagn];
 
-        for (int irb2 = 0; irb2 < atom_type.num_beta_radial_functions(); irb2++){
-            for (int irb1 = 0; irb1 <= irb2; irb1++){
+        for (int irb2 = 0; irb2 < atom_type.num_beta_radial_functions(); irb2++) {
+            for (int irb1 = 0; irb1 <= irb2; irb1++) {
                 int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
 
                 /* create array for integration */
@@ -475,9 +470,9 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>
             int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
 
             /* get num of non-zero GC */
-            int num_non_zero_gk = GC.num_gaunt(lm1,lm2);
+            int num_non_zero_gk = GC.num_gaunt(lm1, lm2);
 
-            for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++ ){
+            for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
                 /* add nonzero coefficients */
                 for (int inz = 0; inz < num_non_zero_gk; inz++) {
                     auto& lm3coef = GC.gaunt(lm1, lm2, inz);
@@ -494,21 +489,20 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>
     }
 }
 
-double Potential::calc_PAW_one_elec_energy(paw_potential_data_t& pdd,
-                                                  const mdarray<double_complex, 4>& density_matrix,
-                                                  const mdarray<double, 4>& paw_dij)
+double Potential::calc_PAW_one_elec_energy(paw_potential_data_t& pdd, const mdarray<double_complex, 4>& density_matrix,
+                                           const mdarray<double, 4>& paw_dij)
 {
-    int ia = pdd.ia;
+    int ia      = pdd.ia;
     int paw_ind = pdd.ia_paw;
 
     double_complex energy = 0.0;
 
-    for (int ib2 = 0; ib2 < pdd.atom_->mt_lo_basis_size(); ib2++ ) {
-        for (int ib1 = 0; ib1 < pdd.atom_->mt_lo_basis_size(); ib1++ ) {
-            double dm[4]={0,0,0,0};
+    for (int ib2 = 0; ib2 < pdd.atom_->mt_lo_basis_size(); ib2++) {
+        for (int ib1 = 0; ib1 < pdd.atom_->mt_lo_basis_size(); ib1++) {
+            double dm[4] = {0, 0, 0, 0};
             switch (ctx_.num_mag_dims()) {
                 case 3: {
-                    dm[2] =  2 * std::real(density_matrix(ib1, ib2, 2, ia));
+                    dm[2] = 2 * std::real(density_matrix(ib1, ib2, 2, ia));
                     dm[3] = -2 * std::imag(density_matrix(ib1, ib2, 2, ia));
                 }
                 case 1: {
@@ -520,12 +514,12 @@ double Potential::calc_PAW_one_elec_energy(paw_potential_data_t& pdd,
                     dm[0] = density_matrix(ib1, ib2, 0, ia).real();
                     break;
                 }
-                default:{
+                default: {
                     TERMINATE("calc_PAW_one_elec_energy FATAL ERROR!");
                     break;
                 }
             }
-            for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++ ){
+            for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
                 energy += dm[imagn] * paw_dij(ib1, ib2, imagn, paw_ind);
             }
         }
@@ -533,7 +527,7 @@ double Potential::calc_PAW_one_elec_energy(paw_potential_data_t& pdd,
 
     if (std::abs(energy.imag()) > 1e-10) {
         std::stringstream s;
-        s << "PAW energy is not real: "<< energy;
+        s << "PAW energy is not real: " << energy;
         TERMINATE(s.str());
     }
 
@@ -546,13 +540,13 @@ void Potential::add_paw_Dij_to_atom_Dmtrx()
 {
     #pragma omp parallel for
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
-        int ia = unit_cell_.paw_atom_index(i);
+        int ia     = unit_cell_.paw_atom_index(i);
         auto& atom = unit_cell_.atom(ia);
 
-        for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++ ){
+        for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
             for (int ib2 = 0; ib2 < atom.mt_lo_basis_size(); ib2++) {
                 for (int ib1 = 0; ib1 < atom.mt_lo_basis_size(); ib1++) {
-                     atom.d_mtrx(ib1, ib2, imagn) += paw_dij_(ib1, ib2, imagn, i);
+                    atom.d_mtrx(ib1, ib2, imagn) += paw_dij_(ib1, ib2, imagn, i);
                 }
             }
         }

@@ -1759,6 +1759,8 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
 
 void Density::mixer_input()
 {
+    PROFILE("sirius::Density::mixer_input");
+
     mixer_->set_input<0>(component(0));
     if (ctx_.num_mag_dims() > 0) {
         mixer_->set_input<1>(component(1));
@@ -1777,6 +1779,8 @@ void Density::mixer_input()
 
 void Density::mixer_output()
 {
+    PROFILE("sirius::Density::mixer_output");
+
     mixer_->get_output<0>(component(0));
     if (ctx_.num_mag_dims() > 0) {
         mixer_->get_output<1>(component(1));
@@ -1809,6 +1813,8 @@ void Density::mixer_output()
 
 double Density::mix()
 {
+    PROFILE("sirius::Density::mix");
+
     mixer_input();
     double rms = mixer_->mix(ctx_.settings().mixer_rms_min_);
     mixer_output();
