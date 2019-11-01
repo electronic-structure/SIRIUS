@@ -320,9 +320,6 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* mix density */
         rms = density_.mix();
 
-        /* transform mixed density to plane-wave domain */
-        density_.fft_transform(-1);
-
         double old_tol = ctx_.iterative_solver_tolerance();
         /* estimate new tolerance of iterative solver */
         double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);

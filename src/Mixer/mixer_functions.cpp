@@ -38,8 +38,7 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
     };
 
     auto inner_prod_func = [](const Periodic_function<double>& x, const Periodic_function<double>& y) -> double {
-        return sirius::inner(static_cast<Smooth_periodic_function<double> const&>(x),
-                             static_cast<Smooth_periodic_function<double> const&>(y));
+        return sirius::inner(x, y);
     };
 
     auto scal_function = [](double alpha, Periodic_function<double>& x) -> void {

@@ -1792,6 +1792,10 @@ void Density::mixer_output()
         mixer_->get_output<5>(paw_density_);
     }
 
+    /* transform mixed density to plane-wave domain */
+    this->fft_transform(-1);
+
+
     //if (ctx_.full_potential()) { // TODO: this seems to be useless; why it is here? remove after tests
     //    /* split real-space points between available ranks */
     //    splindex<splindex_t::block> spl_np(ctx_.spfft().local_slice_size(), ctx_.comm_ortho_fft().size(),
