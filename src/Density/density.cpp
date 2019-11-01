@@ -104,7 +104,9 @@ void Density::initial_density()
     } else {
         initial_density_pseudo();
 
-        init_paw();
+        if (unit_cell_.num_paw_atoms()) {
+            paw_density_ = paw_density(ctx_);
+        }
 
         init_density_matrix_for_paw();
 
@@ -375,41 +377,6 @@ void Density::initial_density_full_pot()
     }
 }
 
-void Density::init_paw()
-{
-    paw_density_data_.clear();
-
-    if (!unit_cell_.num_paw_atoms()) {
-        return;
-    }
-
-    for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-        int ia_paw      = unit_cell_.spl_num_paw_atoms(i);
-        int ia          = unit_cell_.paw_atom_index(ia_paw);
-        auto& atom      = unit_cell_.atom(ia);
-        auto& atom_type = atom.type();
-
-        int l_max      = 2 * atom_type.indexr().lmax_lo();
-        int lm_max_rho = utils::lmmax(l_max);
-
-        paw_density_data_t pdd;
-
-        pdd.atom_ = &atom;
-
-        pdd.ia = ia;
-
-        // allocate density arrays
-        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-            pdd.ae_density_.push_back(
-                Spheric_function<function_domain_t::spectral, double>(lm_max_rho, pdd.atom_->radial_grid()));
-            pdd.ps_density_.push_back(
-                Spheric_function<function_domain_t::spectral, double>(lm_max_rho, pdd.atom_->radial_grid()));
-        }
-
-        paw_density_data_.push_back(std::move(pdd));
-    }
-}
-
 void Density::init_density_matrix_for_paw()
 {
     density_matrix_.zero();
@@ -454,11 +421,12 @@ void Density::init_density_matrix_for_paw()
     }
 }
 
-void Density::generate_paw_atom_density(paw_density_data_t& pdd)
+void Density::generate_paw_atom_density(int idx__)
 {
-    int ia = pdd.ia;
+    int ia_paw      = ctx_.unit_cell().spl_num_paw_atoms(idx__);
+    int ia          = ctx_.unit_cell().paw_atom_index(ia_paw);
 
-    auto& atom_type = pdd.atom_->type();
+    auto& atom_type = ctx_.unit_cell().atom(ia).type();
 
     auto l_by_lm = utils::l_by_lm(2 * atom_type.indexr().lmax_lo());
 
@@ -467,8 +435,8 @@ void Density::generate_paw_atom_density(paw_density_data_t& pdd)
                                   atom_type.indexr().lmax_lo(), SHT::gaunt_rlm);
 
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-        pdd.ae_density_[i].zero();
-        pdd.ps_density_[i].zero();
+        paw_density_.ae_density(i, idx__).zero();
+        paw_density_.ps_density(i, idx__).zero();
     }
 
     /* get radial grid to divide density over r^2 */
@@ -487,7 +455,7 @@ void Density::generate_paw_atom_density(paw_density_data_t& pdd)
             int irb1 = atom_type.indexb(xi1).idxrf;
 
             /* get num of non-zero GC */
-            int num_non_zero_gk = GC.num_gaunt(lm1, lm2);
+            int num_non_zero_gc = GC.num_gaunt(lm1, lm2);
 
             double diag_coef = (xi1 == xi2) ? 1.0 : 2.0;
 
@@ -509,11 +477,11 @@ void Density::generate_paw_atom_density(paw_density_data_t& pdd)
             }
 
             for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
-                auto& ae_dens = pdd.ae_density_[imagn];
-                auto& ps_dens = pdd.ps_density_[imagn];
+                auto& ae_dens = paw_density_.ae_density(imagn, idx__);
+                auto& ps_dens = paw_density_.ps_density(imagn, idx__);
 
                 /* add nonzero coefficients */
-                for (int inz = 0; inz < num_non_zero_gk; inz++) {
+                for (int inz = 0; inz < num_non_zero_gc; inz++) {
                     auto& lm3coef = GC.gaunt(lm1, lm2, inz);
 
                     /* iterate over radial points */
@@ -545,7 +513,7 @@ void Density::generate_paw_loc_density()
 
     #pragma omp parallel for
     for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
-        generate_paw_atom_density(paw_density_data_[i]);
+        generate_paw_atom_density(i);
     }
 }
 
@@ -1096,7 +1064,7 @@ void Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core
         }
     }
 
-    // TODO: generate PAW density here
+    generate_paw_loc_density();
 
     if (transform_to_rg__) {
         this->fft_transform(1);
@@ -1757,73 +1725,88 @@ mdarray<double, 3> Density::density_matrix_aux(int iat__)
     }
     return dm;
 }
-void Density::mixer_input()
-{
-    mixer_->set_input<0>(component(0));
-    if (ctx_.num_mag_dims() > 0)
-        mixer_->set_input<1>(component(1));
-    if (ctx_.num_mag_dims() > 1)
-        mixer_->set_input<2>(component(2));
-    if (ctx_.num_mag_dims() > 2)
-        mixer_->set_input<3>(component(3));
-
-    mixer_->set_input<4>(density_matrix_);
-}
-
-void Density::mixer_output()
-{
-    mixer_->get_output<0>(component(0));
-    if (ctx_.num_mag_dims() > 0)
-        mixer_->get_output<1>(component(1));
-    if (ctx_.num_mag_dims() > 1)
-        mixer_->get_output<2>(component(2));
-    if (ctx_.num_mag_dims() > 2)
-        mixer_->get_output<3>(component(3));
-
-    mixer_->get_output<4>(density_matrix_);
-
-    if (ctx_.full_potential()) {
-        /* split real-space points between available ranks */
-        splindex<splindex_t::block> spl_np(ctx_.spfft().local_slice_size(), ctx_.comm_ortho_fft().size(),
-                                           ctx_.comm_ortho_fft().rank());
-        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            ctx_.comm_ortho_fft().allgather(&component(j).f_rg(0), spl_np.global_offset(), spl_np.local_size());
-            component(j).sync_mt();
-        }
-    }
-}
 
 void Density::mixer_init(Mixer_input mixer_cfg__)
 {
     auto func_prop    = mixer::periodic_function_property();
     auto density_prop = mixer::density_function_property();
+    auto paw_prop     = mixer::paw_density_function_property();
 
-    // create mixer
-    this->mixer_ =
-        mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                             Periodic_function<double>, mdarray<double_complex, 4>>(mixer_cfg__);
+    /* create mixer */
+    this->mixer_ = mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>,
+                                        Periodic_function<double>, Periodic_function<double>,
+                                        mdarray<double_complex, 4>, paw_density>(mixer_cfg__);
 
     const bool init_mt = ctx_.full_potential();
 
     // initialize functions
     this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_, init_mt);
-    if (ctx_.num_mag_dims() > 0)
+    if (ctx_.num_mag_dims() > 0) {
         this->mixer_->initialize_function<1>(func_prop, component(1), ctx_, lmmax_, init_mt);
-    if (ctx_.num_mag_dims() > 1)
+    }
+    if (ctx_.num_mag_dims() > 1) {
         this->mixer_->initialize_function<2>(func_prop, component(2), ctx_, lmmax_, init_mt);
-    if (ctx_.num_mag_dims() > 2)
         this->mixer_->initialize_function<3>(func_prop, component(3), ctx_, lmmax_, init_mt);
+    }
 
     this->mixer_->initialize_function<4>(density_prop, density_matrix_, unit_cell_.max_mt_basis_size(),
                                          unit_cell_.max_mt_basis_size(), ctx_.num_mag_comp(), unit_cell_.num_atoms());
+
+    if (ctx_.unit_cell().num_paw_atoms()) {
+        this->mixer_->initialize_function<5>(paw_prop, paw_density_, ctx_);
+    }
+}
+
+void Density::mixer_input()
+{
+    mixer_->set_input<0>(component(0));
+    if (ctx_.num_mag_dims() > 0) {
+        mixer_->set_input<1>(component(1));
+    }
+    if (ctx_.num_mag_dims() > 1) {
+        mixer_->set_input<2>(component(2));
+        mixer_->set_input<3>(component(3));
+    }
+
+    mixer_->set_input<4>(density_matrix_);
+
+    if (ctx_.unit_cell().num_paw_atoms()) {
+        mixer_->set_input<5>(paw_density_);
+    }
+}
+
+void Density::mixer_output()
+{
+    mixer_->get_output<0>(component(0));
+    if (ctx_.num_mag_dims() > 0) {
+        mixer_->get_output<1>(component(1));
+    }
+    if (ctx_.num_mag_dims() > 1) {
+        mixer_->get_output<2>(component(2));
+        mixer_->get_output<3>(component(3));
+    }
+
+    mixer_->get_output<4>(density_matrix_);
+
+    if (ctx_.unit_cell().num_paw_atoms()) {
+        mixer_->get_output<5>(paw_density_);
+    }
+
+    //if (ctx_.full_potential()) { // TODO: this seems to be useless; why it is here? remove after tests
+    //    /* split real-space points between available ranks */
+    //    splindex<splindex_t::block> spl_np(ctx_.spfft().local_slice_size(), ctx_.comm_ortho_fft().size(),
+    //                                       ctx_.comm_ortho_fft().rank());
+    //    for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+    //        ctx_.comm_ortho_fft().allgather(&component(j).f_rg(0), spl_np.global_offset(), spl_np.local_size());
+    //        component(j).sync_mt();
+    //    }
+    //}
 }
 
 double Density::mix()
 {
-    double rms;
-
     mixer_input();
-    rms = mixer_->mix(ctx_.settings().mixer_rms_min_);
+    double rms = mixer_->mix(ctx_.settings().mixer_rms_min_);
     mixer_output();
 
     return rms;

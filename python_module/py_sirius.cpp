@@ -233,7 +233,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def_property_readonly("num_atoms", [](const Atom_type& atype) { return atype.num_atoms(); });
 
     py::class_<Unit_cell>(m, "Unit_cell")
-        .def("add_atom_type", &Unit_cell::add_atom_type)
+        .def("add_atom_type", &Unit_cell::add_atom_type, py::return_value_policy::reference)
         .def("add_atom", py::overload_cast<const std::string, std::vector<double>>(&Unit_cell::add_atom))
         .def("atom", py::overload_cast<int>(&Unit_cell::atom), py::return_value_policy::reference)
         .def("atom_type", py::overload_cast<int>(&Unit_cell::atom_type), py::return_value_policy::reference)

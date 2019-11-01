@@ -147,31 +147,25 @@ class Potential : public Field4D
 
     void init_PAW();
 
-    double xc_mt_PAW_nonmagnetic(Spheric_function<function_domain_t::spectral, double>&       full_potential,
-                                 Spheric_function<function_domain_t::spectral, double> const& full_density,
-                                 std::vector<double> const&                rho_core);
+    using sf = Spheric_function<function_domain_t::spectral, double>;
 
-    double xc_mt_PAW_collinear(std::vector<Spheric_function<function_domain_t::spectral, double>>&       potential,
-                               std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
-                               std::vector<double> const&                             rho_core);
+    double xc_mt_PAW_nonmagnetic(sf& full_potential, sf const& full_density, std::vector<double> const& rho_core);
 
-    double xc_mt_PAW_noncollinear(std::vector<Spheric_function<function_domain_t::spectral, double>>&       potential,
-                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
-                                  std::vector<double> const&                             rho_core);
+    double xc_mt_PAW_collinear(std::vector<sf>& potential, std::vector<sf const*> density,
+                               std::vector<double> const& rho_core);
 
-    void calc_PAW_local_potential(paw_potential_data_t&                                  pdd,
-                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& ae_density,
-                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& ps_density);
+    double xc_mt_PAW_noncollinear(std::vector<sf>& potential, std::vector<sf const*> density,
+                                  std::vector<double> const& rho_core);
+
+    void calc_PAW_local_potential(paw_potential_data_t& pdd, std::vector<sf const*> ae_density,
+                                  std::vector<sf const*> ps_density);
 
     void calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>& paw_dij);
 
-    double calc_PAW_hartree_potential(Atom&                                     atom,
-                                      Spheric_function<function_domain_t::spectral, double> const& full_density,
-                                      Spheric_function<function_domain_t::spectral, double>&       full_potential);
+    double calc_PAW_hartree_potential(Atom& atom, sf const& full_density, sf& full_potential);
 
-    double calc_PAW_one_elec_energy(paw_potential_data_t&             pdd,
-                                    const mdarray<double_complex, 4>& density_matrix,
-                                    const mdarray<double, 4>&         paw_dij);
+    double calc_PAW_one_elec_energy(paw_potential_data_t& pdd, mdarray<double_complex, 4> const& density_matrix,
+                                    mdarray<double, 4> const& paw_dij);
 
     void add_paw_Dij_to_atom_Dmtrx();
 

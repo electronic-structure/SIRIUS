@@ -428,13 +428,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             }
         };
 
-        //std::vector<double> eval(num_bands);
-        //std::vector<double> eval_old(num_bands, 1e100);
-
         if (itso.init_eval_old_) {
-            //for (int j = 0; j < num_bands; j++) {
-            //    eval_old[j] = kp__->band_energy(j, ispin_step);
-            //}
             eval_old = [&](int64_t j) {return kp.band_energy(j, ispin_step);};
         }
 
@@ -465,8 +459,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
          * N is the number of previous basis functions
          * n is the number of new basis functions */
         set_subspace_mtrx(0, num_bands, phi, hphi, hmlt, &hmlt_old);
-        /* setup overlap matrix */
-       // set_subspace_mtrx(0, num_bands, phi, sphi, ovlp, &ovlp_old);
 
         if (ctx_.control().verification_ >= 1) {
             double max_diff = check_hermitian(hmlt, num_bands);
@@ -475,13 +467,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 s << "H matrix is not hermitian, max_err = " << max_diff;
                 WARNING(s);
             }
-            //max_diff = check_hermitian(ovlp, num_bands);
-            //if (max_diff > 1e-12) {
-            //    std::stringstream s;
-            //    s << "S matrix is not hermitian, max_err = " << max_diff;
-            //    WARNING(s);
-            //}
-
         }
         //if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
         //    hmlt.serialize("H matrix", num_bands);

@@ -174,7 +174,6 @@ class timer
         static std::map<std::string, timer> ftimers__;
         return ftimers__;
     }
-
 };
 
 /// Triggers the creation of the global timer.

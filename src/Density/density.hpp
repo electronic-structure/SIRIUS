@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -30,6 +30,7 @@
 #include "periodic_function.hpp"
 #include "K_point/k_point_set.hpp"
 #include "Mixer/mixer.hpp"
+#include "paw_density.hpp"
 
 #if defined(__GPU)
 extern "C" void update_density_rg_1_real_gpu(int size__,
@@ -74,81 +75,84 @@ namespace sirius {
 
 /// Generate charge density and magnetization from occupied spinor wave-functions.
 /** Let's start from the definition of the complex density matrix:
- *  \f[
- *      \rho_{\sigma' \sigma}({\bf r}) =
- *       \sum_{j{\bf k}} n_{j{\bf k}} \Psi_{j{\bf k}}^{\sigma*}({\bf r}) \Psi_{j{\bf k}}^{\sigma'}({\bf r}) =
- *       \frac{1}{2} \left( \begin{array}{cc} \rho({\bf r})+m_z({\bf r}) &
- *              m_x({\bf r})-im_y({\bf r}) \\ m_x({\bf r})+im_y({\bf r}) & \rho({\bf r})-m_z({\bf r}) \end{array} \right)
- *  \f]
- *  We notice that the diagonal components of the density matrix are actually real and the off-diagonal components are
- *  expressed trough two independent functions \f$ m_x({\bf r}) \f$ and \f$ m_y({\bf r}) \f$. Having this in mind we
- *  will work with a slightly different object, namely a real density matrix, defined as a 1-, 2- or 4-dimensional
- *  (depending on the number of magnetic components) vector with the following elements:
- *      - \f$ [ \rho({\bf r}) ] \f$ in case of non-magnetic configuration
- *      - \f$ [ \rho_{\uparrow \uparrow}({\bf r}), \rho_{\downarrow \downarrow}({\bf r}) ]  =
- *            [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2} ] \f$ in case of collinear
- *         magnetic configuration
- *      - \f$ [ \rho_{\uparrow \uparrow}({\bf r}), \rho_{\downarrow \downarrow}({\bf r}),
- *              2 \Re \rho_{\uparrow \downarrow}({\bf r}), -2 \Im \rho_{\uparrow \downarrow}({\bf r}) ] =
- *            [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2},
- *              m_x({\bf r}),  m_y({\bf r}) ] \f$ in the general case of non-collinear magnetic configuration
- *
- *  At this point it is straightforward to compute the density and magnetization in the interstitial (see add_k_point_contribution_rg()).
- *  The muffin-tin part of the density and magnetization is obtained in a slighlty more complicated way. Recall the
- *  expansion of spinor wave-functions inside the muffin-tin \f$ \alpha \f$
- *  \f[
- *      \Psi_{j{\bf k}}^{\sigma}({\bf r}) = \sum_{\xi}^{N_{\xi}^{\alpha}} {S_{\xi}^{\sigma j {\bf k},\alpha}}
- *      f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}(\hat {\bf r})
- *  \f]
- *  which we insert into expression for the complex density matrix:
- *  \f[
- *      \rho_{\sigma' \sigma}({\bf r}) = \sum_{j{\bf k}} n_{j{\bf k}} \sum_{\xi}^{N_{\xi}^{\alpha}}
- *          S_{\xi}^{\sigma j {\bf k},\alpha*} f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)
- *          Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r}) \sum_{\xi'}^{N_{\xi'}^{\alpha}} S_{\xi'}^{\sigma' j{\bf k},\alpha}
- *          f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r})
- *  \f]
- *  First, we eliminate a sum over bands and k-points by forming an auxiliary density tensor:
- *  \f[
- *      D_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}} S_{\xi}^{\sigma j {\bf k},\alpha*}
- *          S_{\xi'}^{\sigma' j {\bf k},\alpha}
- *  \f]
- *  The expression for complex density matrix simplifies to:
- *  \f[
- *      \rho_{\sigma' \sigma}({\bf r}) =  \sum_{\xi \xi'} D_{\xi \sigma, \xi' \sigma'}^{\alpha}
- *          f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r})
- *          f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r})
- *  \f]
- *  Now we can switch to the real density matrix and write its' expansion in real spherical harmonics. Let's take
- *  non-magnetic case as an example:
- *  \f[
- *      \rho({\bf r}) = \sum_{\xi \xi'} D_{\xi \xi'}^{\alpha}
- *          f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r})
- *          f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r}) =
- *          \sum_{\ell_3 m_3} \rho_{\ell_3 m_3}^{\alpha}(r) R_{\ell_3 m_3}(\hat {\bf r})
- *  \f]
- *  where
- *  \f[
- *      \rho_{\ell_3 m_3}^{\alpha}(r) = \sum_{\xi \xi'} D_{\xi \xi'}^{\alpha} f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)
- *          f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r) \langle Y_{\ell_{\xi}m_{\xi}} | R_{\ell_3 m_3} | Y_{\ell_{\xi'}m_{\xi'}} \rangle
- *  \f]
- *  We are almost done. Now it is time to switch to the full index notation  \f$ \xi \rightarrow \{ \ell \lambda m \} \f$
- *  and sum over \a m and \a m' indices:
- *  \f[
- *       \rho_{\ell_3 m_3}^{\alpha}(r) = \sum_{\ell \lambda, \ell' \lambda'} f_{\ell \lambda}^{\alpha}(r)
- *          f_{\ell' \lambda'}^{\alpha}(r) d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha}
- *  \f]
- *  where
- *  \f[
- *      d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} =
- *          \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha}
- *          \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
- *  \f]
- *  This is our final answer: radial components of density and magnetization are expressed as a linear combination of
- *  quadratic forms in radial functions.
- *
- *  \note density and potential are allocated as global function because it's easier to load and save them.
- *  \note In case of full-potential calculation valence + core electron charge density is computed.
- *  \note In tcase of pseudopotential valence charge density is computed. */
+    \f[
+    \rho_{\sigma' \sigma}({\bf r}) =
+     \sum_{j{\bf k}} n_{j{\bf k}} \Psi_{j{\bf k}}^{\sigma*}({\bf r}) \Psi_{j{\bf k}}^{\sigma'}({\bf r}) =
+     \frac{1}{2} \left( \begin{array}{cc} \rho({\bf r})+m_z({\bf r}) &
+            m_x({\bf r})-im_y({\bf r}) \\ m_x({\bf r})+im_y({\bf r}) & \rho({\bf r})-m_z({\bf r}) \end{array} \right)
+    \f]
+    We notice that the diagonal components of the density matrix are actually real and the off-diagonal components are
+    expressed trough two independent functions \f$ m_x({\bf r}) \f$ and \f$ m_y({\bf r}) \f$. Having this in mind we
+    will work with a slightly different object, namely a real density matrix, defined as a 1-, 2- or 4-dimensional
+    (depending on the number of magnetic components) vector with the following elements:
+        - \f$ [ \rho({\bf r}) ] \f$ in case of non-magnetic configuration
+        - \f$ [ \rho_{\uparrow \uparrow}({\bf r}), \rho_{\downarrow \downarrow}({\bf r}) ]  =
+              [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2} ] \f$ in case of collinear
+           magnetic configuration
+        - \f$ [ \rho_{\uparrow \uparrow}({\bf r}), \rho_{\downarrow \downarrow}({\bf r}),
+                2 \Re \rho_{\uparrow \downarrow}({\bf r}), -2 \Im \rho_{\uparrow \downarrow}({\bf r}) ] =
+              [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2},
+                m_x({\bf r}),  m_y({\bf r}) ] \f$ in the general case of non-collinear magnetic configuration
+
+    At this point it is straightforward to compute the density and magnetization in the interstitial
+    (see Density::add_k_point_contribution_rg()). The muffin-tin part of the density and magnetization is obtained
+    in a slighlty more complicated way. Recall the expansion of spinor wave-functions inside the muffin-tin
+    \f$ \alpha \f$:
+    \f[
+    \Psi_{j{\bf k}}^{\sigma}({\bf r}) = \sum_{\xi}^{N_{\xi}^{\alpha}} {S_{\xi}^{\sigma j {\bf k},\alpha}}
+    f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}(\hat {\bf r})
+    \f]
+    which we insert into expression for the complex density matrix:
+    \f[
+    \rho_{\sigma' \sigma}({\bf r}) = \sum_{j{\bf k}} n_{j{\bf k}} \sum_{\xi}^{N_{\xi}^{\alpha}}
+        S_{\xi}^{\sigma j {\bf k},\alpha*} f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)
+        Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r}) \sum_{\xi'}^{N_{\xi'}^{\alpha}} S_{\xi'}^{\sigma' j{\bf k},\alpha}
+        f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r})
+    \f]
+    First, we eliminate a sum over bands and k-points by forming an auxiliary density tensor:
+    \f[
+    D_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}} S_{\xi}^{\sigma j {\bf k},\alpha*}
+      S_{\xi'}^{\sigma' j {\bf k},\alpha}
+    \f]
+    The expression for complex density matrix simplifies to:
+    \f[
+    \rho_{\sigma' \sigma}({\bf r}) =  \sum_{\xi \xi'} D_{\xi \sigma, \xi' \sigma'}^{\alpha}
+        f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r})
+        f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r})
+    \f]
+    Now we can switch to the real density matrix and write its' expansion in real spherical harmonics. Let's take
+    non-magnetic case as an example:
+    \f[
+    \rho({\bf r}) = \sum_{\xi \xi'} D_{\xi \xi'}^{\alpha}
+        f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r})
+        f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r}) =
+        \sum_{\ell_3 m_3} \rho_{\ell_3 m_3}^{\alpha}(r) R_{\ell_3 m_3}(\hat {\bf r})
+    \f]
+    where
+    \f[
+    \rho_{\ell_3 m_3}^{\alpha}(r) = \sum_{\xi \xi'} D_{\xi \xi'}^{\alpha} f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)
+        f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r) \langle Y_{\ell_{\xi}m_{\xi}} | R_{\ell_3 m_3} |
+          Y_{\ell_{\xi'}m_{\xi'}} \rangle
+    \f]
+    We are almost done. Now it is time to switch to the full index notation
+    \f$ \xi \rightarrow \{ \ell \lambda m \} \f$ and sum over \a m and \a m' indices:
+    \f[
+    \rho_{\ell_3 m_3}^{\alpha}(r) = \sum_{\ell \lambda, \ell' \lambda'} f_{\ell \lambda}^{\alpha}(r)
+       f_{\ell' \lambda'}^{\alpha}(r) d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha}
+    \f]
+    where
+    \f[
+    d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} =
+        \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha}
+        \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
+    \f]
+    This is our final answer: radial components of density and magnetization are expressed as a linear combination of
+    quadratic forms in radial functions.
+
+    \note density and potential are allocated as global function because it's easier to load and save them.
+    \note In case of full-potential calculation valence + core electron charge density is computed.
+    \note In tcase of pseudopotential valence charge density is computed.
+ */
 class Density : public Field4D
 {
   private:
@@ -156,20 +160,11 @@ class Density : public Field4D
     Unit_cell& unit_cell_;
 
     /// Density matrix for all atoms.
-    mdarray<double_complex, 4> density_matrix_; // TODO: make it local for LAPW
+    /** This is a global matrix, meaning that each MPI rank holds the full copy. This simplifies the symmetrization. */
+    sddk::mdarray<double_complex, 4> density_matrix_;
 
-    struct paw_density_data_t
-    {
-        Atom* atom_{nullptr};
-
-        int ia{-1};
-
-        /* AE and PS local unified densities + magnetization */
-        std::vector<Spheric_function<function_domain_t::spectral, double>> ae_density_;
-        std::vector<Spheric_function<function_domain_t::spectral, double>> ps_density_;
-    };
-
-    std::vector<paw_density_data_t> paw_density_data_;
+    /// Local fraction of atoms with PAW correction.
+    paw_density paw_density_;
 
     /// Density and magnetization on the coarse FFT mesh.
     /** Coarse FFT grid is enough to generate density and magnetization from the wave-functions. The components
@@ -196,13 +191,11 @@ class Density : public Field4D
     /// Density mixer.
     /** Mix the following objects: density, x-,y-,z-components of magnetisation and density matrix. */
     std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, sddk::mdarray<double_complex, 4>>> mixer_;
-
-    /// Allocate PAW data.
-    void init_paw();
+                                 Periodic_function<double>, sddk::mdarray<double_complex, 4>, paw_density>> mixer_;
 
     /// Generate atomic densities in the case of PAW.
-    void generate_paw_atom_density(paw_density_data_t& pdd);
+    //void generate_paw_atom_density(paw_density_data_t& pdd);
+    void generate_paw_atom_density(int iapaw__);
 
     /// Initialize PAW density matrix.
     void init_density_matrix_for_paw();
@@ -292,6 +285,7 @@ class Density : public Field4D
     /// Constructor
     Density(Simulation_context& ctx__);
 
+    /// Update internal parameters after a change of lattice vectors or atomic coordinates.
     void update();
 
     /// Find the total leakage of the core states out of the muffin-tins
@@ -611,22 +605,34 @@ class Density : public Field4D
     /// Generate \f$ n_1 \f$  and \f$ \tilde{n}_1 \f$ in lm components.
     void generate_paw_loc_density();
 
-    std::vector<Spheric_function<function_domain_t::spectral, double>> const& ae_paw_atom_density(int spl_paw_ind) const
+    /// Return list of pointers to all-electron PAW density function for a given local index of atom with PAW potential.
+    std::vector<Spheric_function<function_domain_t::spectral, double> const*> paw_ae_density(int idx__) const
     {
-        return paw_density_data_[spl_paw_ind].ae_density_;
+        std::vector<Spheric_function<function_domain_t::spectral, double> const*> result(ctx_.num_mag_dims() + 1);
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+            result[j] = &paw_density_.ae_density(j, idx__);
+        }
+        return result;
     }
 
-    std::vector<Spheric_function<function_domain_t::spectral, double>> const& ps_paw_atom_density(int spl_paw_ind) const
+    /// Return list of pointers to pseudo PAW density function for a given local index of atom with PAW potential.
+    std::vector<Spheric_function<function_domain_t::spectral, double> const*> paw_ps_density(int idx__) const
     {
-        return paw_density_data_[spl_paw_ind].ps_density_;
+        std::vector<Spheric_function<function_domain_t::spectral, double> const*> result(ctx_.num_mag_dims() + 1);
+        for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+            result[j] = &paw_density_.ps_density(j, idx__);
+        }
+        return result;
     }
 
     void mixer_input();
 
     void mixer_output();
 
+    /// Initialize density mixer.
     void mixer_init(Mixer_input mixer_cfg__);
 
+    /// Mix new density.
     double mix();
 
     mdarray<double_complex, 4> const& density_matrix() const

@@ -1393,7 +1393,14 @@ class mdarray
     //==     }
     //== }
 
-    /// Copy the content of the array to dest
+    /// Copy the content of the array to another array of identical size.
+    /** For example:
+        \code{.cpp}
+        mdarray<double, 2> src(10, 20);
+        mdarray<double, 2> dest(10, 20);
+        src >> dest;
+        \endcode
+     */
     void operator>>(mdarray<T, N>& dest__) const
     {
         for (int i = 0; i < N; i++) {

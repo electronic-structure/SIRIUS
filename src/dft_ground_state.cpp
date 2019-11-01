@@ -283,14 +283,17 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 {
     PROFILE("sirius::DFT_ground_state::scf_loop");
 
+    auto tstart = std::chrono::high_resolution_clock::now();
+
     double eold{0}, rms{0};
 
     density_.mixer_init(ctx_.mixer_input());
 
     int num_iter{-1};
     std::vector<double> rms_hist;
+    std::vector<double> etot_hist;
 
-    if (ctx_.hubbard_correction()) {
+    if (ctx_.hubbard_correction()) { // TODO: move to inititialization functions
         potential_.U().hubbard_compute_occupation_numbers(kset_);
         potential_.U().calculate_hubbard_potential_and_energy();
     }
@@ -317,20 +320,12 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* mix density */
         rms = density_.mix();
 
-        /* transform mixed density to plane-wave domain */
-        density_.fft_transform(-1);
+        double old_tol = ctx_.iterative_solver_tolerance();
         /* estimate new tolerance of iterative solver */
-        double tol = 0.0001 * rms;
-        tol = std::min(ctx_.iterative_solver_tolerance() / 2.0, tol);
+        double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
         tol = std::max(ctx_.settings().itsol_tol_min_, tol);
         /* set new tolerance of iterative solver */
         ctx_.iterative_solver_tolerance(tol);
-
-        // TODO: this is horrible when PAW density is generated from the mixed
-        //       density matrix here; better solution: generate in Density and
-        //       then mix
-        /* generate PAW density from density matrix */
-        density_.generate_paw_loc_density();
 
         /* check number of elctrons */
         density_.check_num_electrons();
@@ -367,6 +362,8 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
         /* compute new total energy for a new density */
         double etot = total_energy();
+
+        etot_hist.push_back(etot);
 
         rms_hist.push_back(rms);
 
@@ -407,7 +404,11 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         //kset_.save(storage_file_name);
     }
 
+    auto tstop = std::chrono::high_resolution_clock::now();
+
     json dict = serialize();
+    dict["scf_time"] = std::chrono::duration_cast<std::chrono::duration<double>>(tstop - tstart).count();
+    dict["etot_history"] = etot_hist;
     if (num_iter >= 0) {
         dict["converged"]          = true;
         dict["num_scf_iterations"] = num_iter;

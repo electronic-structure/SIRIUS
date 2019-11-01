@@ -28,6 +28,7 @@
 #include "periodic_function.hpp"
 #include "SDDK/memory.hpp"
 #include "Mixer/mixer.hpp"
+#include "Density/paw_density.hpp"
 
 namespace sirius {
 
@@ -36,6 +37,8 @@ namespace mixer {
 FunctionProperties<Periodic_function<double>> periodic_function_property();
 
 FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property();
+
+FunctionProperties<paw_density> paw_density_function_property();
 
 } // namespace mixer
 
