@@ -71,6 +71,7 @@ set(_SOURSES
   "sht/sht.cpp"
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
+  "nlcglib/adaptor.cpp"
   )
 
 
@@ -100,6 +101,8 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
                                     $<TARGET_NAME_IF_EXISTS:sirius_rocm>
                                     $<TARGET_NAME_IF_EXISTS:sirius_rocm_interface>
+                                    $<TARGET_NAME_IF_EXISTS:nlcglib::nlcglib>
+                                    $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     $<$<BOOL:${USE_ROCM}>:ROCBLAS::rocblas>
                                     $<$<BOOL:${USE_ROCM}>:HIPLIBS::hiplibs>
@@ -114,6 +117,7 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_MEMORY_POOL}>:__USE_MEMORY_POOL>
   $<$<BOOL:${DEBUG_MEMORY_POOL}>:__DEBUG_MEMORY_POOL>
   $<$<BOOL:${USE_ELPA}>:__ELPA>
+  $<$<BOOL:${USE_NLCGLIB}>:__NLCGLIB>
   $<$<BOOL:${USE_CUDA}>:__GPU __CUDA>
   $<$<BOOL:${USE_ROCM}>:__HIP_PLATFORM_HCC__>
   $<$<BOOL:${USE_NVTX}>:__CUDA_NVTX>

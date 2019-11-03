@@ -346,7 +346,7 @@ class Potential : public Field4D
 
         /* create list of XC functionals */
         for (auto& xc_label : ctx_.xc_functionals()) {
-            xc_func_.push_back(std::move(XC_functional(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins())));
+            xc_func_.emplace_back(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins());
         }
 
         using pf = Periodic_function<double>;
@@ -957,6 +957,14 @@ class Potential : public Field4D
 
     /// Generate plane-wave coefficients of the potential in the interstitial region.
     void generate_pw_coefs();
+
+    void insert_xc_functionals(const std::vector<std::string>& labels__)
+    {
+        /* create list of XC functionals */
+        for (auto& xc_label : labels__) {
+            xc_func_.emplace_back(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins());
+        }
+    }
 
     /// Calculate D operator from potential and augmentation charge.
     /** The following real symmetric matrix is computed:

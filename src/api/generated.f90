@@ -592,6 +592,25 @@ end interface
 call sirius_add_xc_functional_aux(handler,name)
 end subroutine sirius_add_xc_functional
 
+!> @brief Add one of the XC functionals.
+!> @param [in] gs_handler Handler of the ground state
+!> @param [in] name LibXC label of the functional.
+subroutine sirius_insert_xc_functional(gs_handler,name)
+implicit none
+type(C_PTR), intent(in) :: gs_handler
+character(C_CHAR), dimension(*), intent(in) :: name
+interface
+subroutine sirius_insert_xc_functional_aux(gs_handler,name)&
+&bind(C, name="sirius_insert_xc_functional")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: gs_handler
+character(C_CHAR), dimension(*), intent(in) :: name
+end subroutine
+end interface
+
+call sirius_insert_xc_functional_aux(gs_handler,name)
+end subroutine sirius_insert_xc_functional
+
 !> @brief Set dimensions of the MPI grid.
 !> @param [in] handler Simulation context handler
 !> @param [in] ndims Number of dimensions.
@@ -1513,6 +1532,31 @@ end interface
 call sirius_set_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)
 end subroutine sirius_set_band_occupancies
 
+!> @brief Set band occupancies.
+!> @param [in] ks_handler K-point set handler.
+!> @param [in] ik Global index of k-point.
+!> @param [in] ispn Spin component.
+!> @param [out] band_occupancies Array of band occupancies.
+subroutine sirius_get_band_occupancies(ks_handler,ik,ispn,band_occupancies)
+implicit none
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: band_occupancies
+interface
+subroutine sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)&
+&bind(C, name="sirius_get_band_occupancies")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: band_occupancies
+end subroutine
+end interface
+
+call sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)
+end subroutine sirius_get_band_occupancies
+
 !> @brief Get band energies.
 !> @param [in] ks_handler K-point set handler.
 !> @param [in] ik Global index of k-point.
@@ -1537,31 +1581,6 @@ end interface
 
 call sirius_get_band_energies_aux(ks_handler,ik,ispn,band_energies)
 end subroutine sirius_get_band_energies
-
-!> @brief Get band occupancies.
-!> @param [in] ks_handler K-point set handler.
-!> @param [in] ik Global index of k-point.
-!> @param [in] ispn Spin component.
-!> @param [out] band_occupancies Array of band occupancies.
-subroutine sirius_get_band_occupancies(ks_handler,ik,ispn,band_occupancies)
-implicit none
-type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(out) :: band_occupancies
-interface
-subroutine sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)&
-&bind(C, name="sirius_get_band_occupancies")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(out) :: band_occupancies
-end subroutine
-end interface
-
-call sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)
-end subroutine sirius_get_band_occupancies
 
 !> @brief Get D-operator matrix
 !> @param [in] handler Simulation context handler.
@@ -3573,4 +3592,23 @@ if (present(error_code)) error_code_ptr = C_LOC(error_code)
 
 call sirius_set_callback_function_aux(handler,label,fptr,error_code_ptr)
 end subroutine sirius_set_callback_function
+
+!> @brief Robust wave function optimizer
+!> @param [in] handler Ground state handler
+!> @param [in] ks_handler point set handler
+subroutine sirius_nlcg(handler,ks_handler)
+implicit none
+type(C_PTR), intent(in) :: handler
+type(C_PTR), intent(in) :: ks_handler
+interface
+subroutine sirius_nlcg_aux(handler,ks_handler)&
+&bind(C, name="sirius_nlcg")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+type(C_PTR), intent(in) :: ks_handler
+end subroutine
+end interface
+
+call sirius_nlcg_aux(handler,ks_handler)
+end subroutine sirius_nlcg
 

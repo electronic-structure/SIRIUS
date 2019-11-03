@@ -39,7 +39,7 @@
 namespace sirius {
 
 /// Interface class to Libxc.
-    class XC_functional : public XC_functional_base
+class XC_functional : public XC_functional_base
 {
     private:
         // I can not use a generic void pointer because xc_func_type is a structure
@@ -55,12 +55,12 @@ namespace sirius {
         XC_functional& operator=(const XC_functional& src) = delete;
 
     public:
-    /* we need the context because libvdwxc asks for lattice vectors and fft parameters */
 
-    XC_functional(spfft::Transform const& fft__, const matrix3d<double>& lattice_vectors__,
-                  const std::string libxc_name__, int num_spins__)
-        :  XC_functional_base(libxc_name__, num_spins__)
-        {
+      /* we need the context because libvdwxc asks for lattice vectors and fft parameters */
+      XC_functional(spfft::Transform const& fft__, const matrix3d<double>& lattice_vectors__,
+                    const std::string libxc_name__, int num_spins__)
+          : XC_functional_base(libxc_name__, num_spins__)
+    {
 
 #if defined(__USE_VDWXC)
             /* return immediately if the functional_base class is initialized */
@@ -200,6 +200,7 @@ namespace sirius {
             return false;
 #endif
         }
+
         int kind() const
         {
 

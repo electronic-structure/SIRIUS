@@ -49,6 +49,8 @@ void Simulation_parameters::import(std::string const& str__)
     settings_input_.read(dict);
     /* read hubbard parameters */
     hubbard_input_.read(dict);
+    /* read nlcg parameters */
+    nlcg_input_.read(dict);
 }
 
 void Simulation_parameters::import(json const& dict)
@@ -70,6 +72,8 @@ void Simulation_parameters::import(json const& dict)
     settings_input_.read(dict);
     /* read hubbard parameters */
     hubbard_input_.read(dict);
+    /* read nlcg parameters */
+    nlcg_input_.read(dict);
 }
 
 void Simulation_parameters::import(cmd_args const& args__)
