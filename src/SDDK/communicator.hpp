@@ -277,7 +277,7 @@ class Communicator
     }
 
     /// Constructor for existing communicator.
-    Communicator(MPI_Comm mpi_comm__)
+    explicit Communicator(MPI_Comm mpi_comm__)
         : mpi_comm_raw_(mpi_comm__)
     {
     }
