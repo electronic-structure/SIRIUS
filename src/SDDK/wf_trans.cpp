@@ -251,12 +251,13 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
                                 local_size_row * sizeof(T));
                 }
             }
-            time_mpi -= MPI::Wtime();
+            auto t = std::chrono::high_resolution_clock::now();
             PROFILE_START("sddk::transform|mpi");
             /* collect submatrix */
             comm.allgather(&buf[0], sd.counts.data(), sd.offsets.data());
             PROFILE_STOP("sddk::transform|mpi");
-            time_mpi += MPI::Wtime();
+            auto dt = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - t).count();
+            time_mpi += dt;
 
             if (is_device_memory(mem__)) {
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */

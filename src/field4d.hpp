@@ -29,7 +29,6 @@
 #include <array>
 #include <cassert>
 #include <stdexcept>
-#include "Mixer/mixer.hpp"
 #include "SDDK/memory.hpp"
 #include "typedefs.hpp"
 
@@ -42,7 +41,7 @@ namespace sirius {
 // forward declarations
 class Simulation_context;
 template<class> class Periodic_function;
-class Mixer_input;
+//class Mixer_input;
 
 class Field4D
 {

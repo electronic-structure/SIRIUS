@@ -24,9 +24,6 @@
 
 #include "field4d.hpp"
 #include "periodic_function.hpp"
-#include "Mixer/mixer.hpp"
-#include "Mixer/mixer_functions.hpp"
-#include "Mixer/mixer_factory.hpp"
 #include "Symmetry/symmetrize.hpp"
 
 namespace sirius {
