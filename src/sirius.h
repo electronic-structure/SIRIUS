@@ -69,6 +69,7 @@ inline static bool& is_initialized()
 /// Initialize the library.
 inline void initialize(bool call_mpi_init__ = true)
 {
+    PROFILE_START("sirius");
     PROFILE("sirius::initialize");
     if (is_initialized()) {
         TERMINATE("SIRIUS library is already initialized");
@@ -129,7 +130,7 @@ inline void initialize(bool call_mpi_init__ = true)
 /// Shut down the library.
 inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, bool fftw_cleanup__ = true)
 {
-    PROFILE("sirius::finalize");
+    PROFILE_START("sirius::finalize");
     if (!is_initialized()) {
         TERMINATE("SIRIUS library was not initialized");
     }
@@ -167,6 +168,9 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 #endif
 
     is_initialized() = false;
+
+    PROFILE_STOP("sirius::finalize");
+    PROFILE_STOP("sirius");
 }
 
 }

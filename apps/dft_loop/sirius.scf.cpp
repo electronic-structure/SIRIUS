@@ -209,7 +209,6 @@ double ground_state(Simulation_context& ctx,
 /// Run a task based on a command line input.
 void run_tasks(cmd_args const& args)
 {
-    PROFILE("sirius::run");
     /* get the task id */
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
     /* get the input file name */
