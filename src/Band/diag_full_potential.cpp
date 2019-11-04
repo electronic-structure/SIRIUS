@@ -29,6 +29,7 @@
 #include "wf_trans.hpp"
 #include "simulation_context.hpp"
 #include "K_point/k_point.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -85,13 +86,13 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
 
     std::vector<double> eval(ctx_.num_fv_states());
 
-    utils::timer t("sirius::Band::diag_fv_exact|genevp");
+    PROFILE_START("sirius::Band::diag_fv_exact|genevp");
     auto& solver = ctx_.gen_evp_solver();
 
     if (solver.solve(kp.gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp.fv_eigen_vectors())) {
         TERMINATE("error in generalized eigen-value problem");
     }
-    t.stop();
+    PROFILE_STOP("sirius::Band::diag_fv_exact|genevp");
     kp.set_fv_eigen_values(&eval[0]);
 
     for (int i = 0; i < ctx_.num_fv_states(); i++) {
@@ -403,7 +404,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
-            utils::timer t1("sirius::Band::get_singular_components|update_phi");
+            PROFILE("sirius::Band::get_singular_components|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
@@ -624,7 +625,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
-            utils::timer t1("sirius::Band::diag_fv_davidson|update_phi");
+            PROFILE("sirius::Band::diag_fv_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, 0, N, evec, 0, 0, psi, 0, num_bands);
@@ -758,7 +759,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
             //auto z1 = h.checksum();
             //DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
             //#endif
-            utils::timer t1("sirius::Band::diag_sv|stdevp");
+            PROFILE("sirius::Band::diag_sv|stdevp");
             std_solver.solve(nfv, nfv, h, &band_energies(0, ispn), kp.sv_eigen_vectors(ispn));
         }
     } else {
@@ -792,7 +793,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
         //auto z1 = h.checksum();
         //DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
         //#endif
-        utils::timer t1("sirius::Band::diag_sv|stdevp");
+        PROFILE("sirius::Band::diag_sv|stdevp");
         std_solver.solve(nb, nb, h, &band_energies(0, 0), kp.sv_eigen_vectors(0));
     }
 

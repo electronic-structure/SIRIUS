@@ -23,6 +23,7 @@
  */
 
 #include "dft_ground_state.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -298,7 +299,7 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
     ctx_.iterative_solver_tolerance(initial_tolerance);
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
-        utils::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
+        PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
 
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
             printf("\n");

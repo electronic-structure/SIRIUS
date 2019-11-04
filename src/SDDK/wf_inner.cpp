@@ -23,6 +23,8 @@
  *
  */
 #include "wf_inner.hpp"
+#include "utils/profiler.hpp"
+#include <chrono>
 
 namespace sddk {
 template <>
@@ -30,7 +32,7 @@ void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functio
                          Wave_functions& ket__, int j0__, int n__, double* beta__, double* buf__, int ld__,
                          stream_id sid__)
 {
-    utils::timer t1("sddk::inner|local");
+    PROFILE("sddk::inner|local");
     auto& comm = bra__.comm();
     auto spins = spin_range(ispn__);
     *beta__    = 0;
@@ -63,7 +65,7 @@ void inner_local<double_complex>(memory_t mem__, linalg_t la__, int ispn__, Wave
                                  Wave_functions& ket__, int j0__, int n__, double_complex* beta__,
                                  double_complex* buf__, int ld__, stream_id sid__)
 {
-    utils::timer t1("sddk::inner|local");
+    PROFILE("sddk::inner|local");
     auto spins = spin_range(ispn__);
     *beta__    = 0;
     for (auto s : spins) {
@@ -131,17 +133,18 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
         inner_local<T>(mem__, la__, ispn__, bra__, i0__, m__, ket__, j0__, n__, &beta,
                        result__.at(mem__, irow0__, jcol0__), result__.ld(), stream_id(-1));
         if (is_device_memory(mem__)) {
-            utils::timer t1("sddk::inner|device_copy");
+            PROFILE("sddk::inner|device_copy");
+            const auto t1 = std::chrono::high_resolution_clock::now();
             acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
                          result__.at(memory_t::device, irow0__, jcol0__), result__.ld(), m__, n__);
             if (sddk_pp) {
-                double t = t1.stop();
+                std::chrono::duration<double> t = std::chrono::high_resolution_clock::now()- t1;
                 if (comm.rank() == 0) {
-                    printf("inner() copyout speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
+                    printf("inner() copyout speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t.count());
                 }
             }
         }
-        utils::timer t3("sddk::inner|store");
+        PROFILE_START("sddk::inner|store");
         mdarray<T, 2> tmp(m__, n__);
 #pragma omp parallel for schedule(static)
         for (int j = 0; j < n__; j++) {
@@ -149,26 +152,27 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
                 tmp(i, j) = result__(irow0__ + i, jcol0__ + j);
             }
         }
-        t3.stop();
-        utils::timer t1("sddk::inner|mpi");
+        PROFILE_STOP("sddk::inner|store");
+        PROFILE_START("sddk::inner|mpi");
         comm.allreduce(tmp.at(memory_t::host), m__ * n__);
-        t1.stop();
-        utils::timer t2("sddk::inner|store");
+        PROFILE_STOP("sddk::inner|mpi");
+        PROFILE_START("sddk::inner|store");
 #pragma omp parallel for schedule(static)
         for (int j = 0; j < n__; j++) {
             for (int i = 0; i < m__; i++) {
                 result__(irow0__ + i, jcol0__ + j) = tmp(i, j);
             }
         }
-        t2.stop();
+        PROFILE_STOP("sddk::inner|store");
         if (is_device_memory(mem__)) {
-            utils::timer t1("sddk::inner|device_copy");
+            PROFILE("sddk::inner|device_copy");
+            const auto t1 = std::chrono::high_resolution_clock::now();
             acc::copyin(result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
                         result__.at(memory_t::host, irow0__, jcol0__), result__.ld(), m__, n__);
             if (sddk_pp) {
-                double t = t1.stop();
+                std::chrono::duration<double> t = std::chrono::high_resolution_clock::now()- t1;
                 if (comm.rank() == 0) {
-                    printf("inner() copyin speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
+                    printf("inner() copyin speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t.count());
                 }
             }
         }
@@ -328,10 +332,10 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
 
     if (is_host_memory(mem__)) {
         auto store_panel = [&req, &result__, &dims, &c_tmp, irow0__, jcol0__](int s) {
-            utils::timer t1("sddk::inner|store");
-            utils::timer t2("sddk::inner|store|mpi");
+            PROFILE("sddk::inner|store");
+            PROFILE_START("sddk::inner|store|mpi");
             MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
-            t2.stop();
+            PROFILE_STOP("sddk::inner|store|mpi");
 
             //#pragma omp parallel for schedule(static)
             // for (int jcol = 0; jcol < dims[s % 2][3]; jcol++) {

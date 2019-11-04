@@ -23,6 +23,7 @@
  */
 
 #include "potential.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -226,7 +227,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
         auto vmtlm = ctx_.sum_fg_fl_yg(ctx_.lmax_pot(), &hartree_potential_->f_pw_local(0), sbessel_mt_, gvec_ylm_);
 
         /* add boundary condition and convert to Rlm */
-        utils::timer t1("sirius::Potential::poisson|bc");
+        PROFILE("sirius::Potential::poisson|bc");
         mdarray<double, 3> rRl(unit_cell_.max_num_mt_points(), ctx_.lmax_pot() + 1, unit_cell_.num_atom_types());
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             int nmtp = unit_cell_.atom_type(iat).num_mt_points();

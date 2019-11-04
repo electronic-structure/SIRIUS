@@ -28,6 +28,7 @@
 #include "SHT/gaunt.hpp"
 #include "atom_symmetry_class.hpp"
 #include "spheric_function.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -211,7 +212,7 @@ class Atom
             auto& rf_coef  = type().rf_coef();
             auto& vrf_coef = type().vrf_coef();
 
-            utils::timer t1("sirius::Atom::generate_radial_integrals|interp");
+            PROFILE_START("sirius::Atom::generate_radial_integrals|interp");
             #pragma omp parallel
             {
                 // int tid = Platform::thread_id();
@@ -243,10 +244,9 @@ class Atom
                 }
             }
             vrf_coef.copy_to(memory_t::device);
-            t1.stop();
+            PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
 
             result.allocate(memory_t::device);
-            //utils::timer t2("sirius::Atom::generate_radial_integrals|inner");
             spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp, rgrid.x().at(memory_t::device),
                                         rgrid.dx().at(memory_t::device), rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device), result.at(memory_t::device));
             acc::sync();
@@ -260,7 +260,7 @@ class Atom
 #endif
         }
         if (pu__ == device_t::CPU) {
-            utils::timer t1("sirius::Atom::generate_radial_integrals|interp");
+            PROFILE_START("sirius::Atom::generate_radial_integrals|interp");
             #pragma omp parallel
             {
                 #pragma omp for
@@ -281,9 +281,9 @@ class Atom
                     }
                 }
             }
-            t1.stop();
+            PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
 
-            utils::timer t2("sirius::Atom::generate_radial_integrals|inner");
+            PROFILE("sirius::Atom::generate_radial_integrals|inner");
             #pragma omp parallel for
             for (int j = 0; j < (int)idx_ri.size(1); j++) {
                 result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
