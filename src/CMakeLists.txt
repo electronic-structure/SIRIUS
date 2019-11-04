@@ -48,6 +48,8 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp;Hamiltonian/hamiltonian_k.cpp;Band/ban
   "utils/cmd_args.cpp"
   "utils/timer.cpp"
   "utils/utils.cpp"
+  "utils/rt_graph.cpp"
+  "utils/profiler.cpp"
   "SDDK/wf_inner.cpp"
   "SDDK/wf_ortho.cpp"
   "SDDK/wf_trans.cpp"

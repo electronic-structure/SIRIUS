@@ -323,7 +323,7 @@ class Augmentation_operator_gvec_deriv
 
         /* array of plane-wave coefficients */
         q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp__, "q_pw_dg_");
-        utils::timer t2("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|qpw");
+        PROFILE_START("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|qpw");
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             int    ig  = gvec_offset + igloc;
@@ -360,7 +360,7 @@ class Augmentation_operator_gvec_deriv
                 }
             }
         }
-        t2.stop();
+        PROFILE_STOP("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|qpw");
 
         memory_t mem{memory_t::host};
         if (atom_type__.parameters().processing_unit() == device_t::GPU) {

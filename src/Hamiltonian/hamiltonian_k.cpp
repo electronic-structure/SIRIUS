@@ -30,6 +30,7 @@
 #include "SDDK/wave_functions.hpp"
 #include "K_point/k_point.hpp"
 #include "utils/profiler.hpp"
+#include <chrono>
 
 namespace sirius {
 
@@ -316,7 +317,8 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
     /* offsets for matching coefficients of individual atoms in the AW block */
     std::vector<int> offsets(uc.num_atoms());
 
-    utils::timer t1("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
+    PROFILE_START("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
+    const auto t1 = std::chrono::high_resolution_clock::now();
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
         /* number of matching AW coefficients in the block */
@@ -458,10 +460,11 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
         h__.deallocate(memory_t::device);
         o__.deallocate(memory_t::device);
     }
-    double tval = t1.stop();
+    PROFILE_STOP("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
+    std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;
     if (kp.comm().rank() == 0 && H0_.ctx().control().print_performance_) {
         kp.message(1, __func__, "effective zgemm performance: %12.6f GFlops",
-               2 * 8e-9 * kp.num_gkvec() * kp.num_gkvec() * uc.mt_aw_basis_size() / tval);
+               2 * 8e-9 * kp.num_gkvec() * kp.num_gkvec() * uc.mt_aw_basis_size() / tval.count());
     }
 
     /* add interstitial contributon */
@@ -884,7 +887,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     /* maximum number of LO radial functions in a block of atoms */
     int max_mt_lo = num_atoms_in_block * ctx.unit_cell().max_mt_lo_basis_size();
 
-    utils::timer t0("sirius::Hamiltonian_k::apply_fv_h_o|alloc");
+    PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|alloc");
 
     /* matching coefficients for a block of atoms */
     matrix<double_complex> alm_block;
@@ -936,11 +939,11 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
             }
         }
     }
-    t0.stop();
+    PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|alloc");
 
     /* generate matching coefficients Alm(G+k) for a block of atoms */
     auto generate_alm = [&](int atom_begin, int atom_end, std::vector<int>& offsets_aw) {
-        utils::timer t1("sirius::Hamiltonian_k::apply_fv_h_o|alm");
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|alm");
         #pragma omp parallel
         {
             int tid = omp_get_thread_num();
@@ -997,7 +1000,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     };
 
     auto compute_alm_phi = [&](matrix<double_complex>& alm_phi, matrix<double_complex>& halm_phi, int num_mt_aw) {
-        utils::timer t1("sirius::Hamiltonian_k::apply_fv_h_o|alm_phi");
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|alm_phi");
 
         /* first zgemm: A(G, lm)^{T} * C(G, i) and  hA(G, lm)^{T} * C(G, i) */
         switch (pu) {
@@ -1068,7 +1071,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
     };
 
     auto compute_apw_apw = [&](matrix<double_complex>& alm_phi, matrix<double_complex>& halm_phi, int num_mt_aw) {
-        utils::timer t1("sirius::Hamiltonian_k::apply_fv_h_o|apw-apw");
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-apw");
         /* second zgemm: Alm^{*} (Alm * C) */
         switch (pu) {
             case device_t::CPU: {
@@ -1114,7 +1117,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
     auto collect_lo = [&](int atom_begin, int atom_end, std::vector<int>& offsets_lo,
                           matrix<double_complex>& phi_lo_block) {
-        utils::timer t1("sirius::Hamiltonian_k::apply_fv_h_o|phi_lo");
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|phi_lo");
         /* broadcast local orbital coefficients */
         for (int ia = atom_begin; ia < atom_end; ia++) {
             int ialoc        = ia - atom_begin;
@@ -1151,7 +1154,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
     auto compute_apw_lo = [&](int atom_begin, int atom_end, int num_mt_lo, std::vector<int>& offsets_aw,
                               std::vector<int> offsets_lo, matrix<double_complex>& phi_lo_block) {
-        utils::timer t1("sirius::Hamiltonian_k::apply_fv_h_o|apw-lo");
+        PROFILE("sirius::Hamiltonian_k::apply_fv_h_o|apw-lo");
         /* apw-lo block for hphi */
         if (hphi__ != nullptr) {
             for (int ia = atom_begin; ia < atom_end; ia++) {
@@ -1226,7 +1229,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
         }
     };
 
-    utils::timer t2("sirius::Hamiltonian_k::apply_fv_h_o|mt");
+    PROFILE_START("sirius::Hamiltonian_k::apply_fv_h_o|mt");
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
         int atom_begin = iblk * num_atoms_in_block;
@@ -1269,7 +1272,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
 
             compute_apw_lo(atom_begin, atom_end, num_mt_lo, offsets_aw, offsets_lo, phi_lo_block);
 
-            utils::timer t3("sirius::Hamiltonian::apply_fv_h_o|lo-apw");
+            PROFILE_START("sirius::Hamiltonian::apply_fv_h_o|lo-apw");
             /* lo-APW contribution */
             for (int ia = atom_begin; ia < atom_end; ia++) {
                 int ialoc  = ia - atom_begin;
@@ -1345,10 +1348,11 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
                     }
                 }
             }
-            t3.stop();
+            PROFILE_STOP("sirius::Hamiltonian::apply_fv_h_o|lo-apw");
         }
     }
-    t2.stop();
+
+    PROFILE_STOP("sirius::Hamiltonian_k::apply_fv_h_o|mt");
     if (pu == device_t::GPU && !apw_only__) {
         if (hphi__ != nullptr) {
             hphi__->mt_coeffs(0).copy_to(memory_t::device, N__, n__);

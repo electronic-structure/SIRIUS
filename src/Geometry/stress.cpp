@@ -26,6 +26,7 @@
 #include "K_point/k_point.hpp"
 #include "stress.hpp"
 #include "non_local_functor.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -326,7 +327,7 @@ matrix3d<double> Stress::calc_stress_us()
         mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
                                                  ctx_.mem_pool(memory_t::host));
 
-        utils::timer t0("sirius::Stress|us|phase_fac");
+        PROFILE_START("sirius::Stress|us|phase_fac");
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
@@ -335,7 +336,7 @@ matrix3d<double> Stress::calc_stress_us()
                 phase_factors(i, igloc) = ctx_.gvec_phase_factor(ig, ia);
             }
         }
-        t0.stop();
+        PROFILE_STOP("sirius::Stress|us|phase_fac");
 
         memory_pool* mp{nullptr};
         switch (ctx_.processing_unit()) {
@@ -357,7 +358,7 @@ matrix3d<double> Stress::calc_stress_us()
                 q_deriv.generate_pw_coeffs(atom_type, ri, ri_dq, nu, *mp);
 
                 for (int mu = 0; mu < 3; mu++) {
-                    utils::timer t2("sirius::Stress|us|prepare");
+                    PROFILE_START("sirius::Stress|us|prepare");
                     int igloc0{0};
                     if (ctx_.comm().rank() == 0) {
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
@@ -377,12 +378,12 @@ matrix3d<double> Stress::calc_stress_us()
                             v_tmp(ia, 2 * igloc + 1) = z.imag();
                         }
                     }
-                    t2.stop();
+                    PROFILE_STOP("sirius::Stress|us|prepare");
 
-                    utils::timer t1("sirius::Stress|us|gemm");
+                    PROFILE_START("sirius::Stress|us|gemm");
                     linalg<device_t::CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(),
                                                 2 * ctx_.gvec().count(), q_deriv.q_pw(), v_tmp, tmp);
-                    t1.stop();
+                    PROFILE_STOP("sirius::Stress|us|gemm");
                     for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                         for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
                             stress_us_(mu, nu) += tmp(i, ia) * dm(i, ia, ispin) * q_deriv.sym_weight(i);

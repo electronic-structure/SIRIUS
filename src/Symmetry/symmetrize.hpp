@@ -30,6 +30,7 @@
 #include "SDDK/gvec.hpp"
 #include "typedefs.hpp"
 #include "SHT/sht.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -92,7 +93,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
                sym_phase_factors__(2, G[2], isym);
     };
 
-    utils::timer t1("sirius::symmetrize_function|fpw|local");
+    PROFILE_START("sirius::symmetrize_function|fpw|local");
 
     #pragma omp parallel
     {
@@ -147,7 +148,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
             }
         } /* loop over igloc */
     }
-    t1.stop();
+    PROFILE_STOP("sirius::symmetrize_function|fpw|local");
 
 
     gvec_shells__.remap_backward(sym_f_pw, f_pw__);

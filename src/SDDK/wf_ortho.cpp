@@ -26,6 +26,7 @@
 #include "wf_ortho.hpp"
 #include "wf_inner.hpp"
 #include "wf_trans.hpp"
+#include "utils/profiler.hpp"
 
 namespace sddk {
 
@@ -159,7 +160,7 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
         //        }
         //#endif
 
-        utils::timer t1("sddk::orthogonalize|tmtrx");
+        PROFILE_START("sddk::orthogonalize|tmtrx");
         if (use_magma) {
             /* Cholesky factorization */
             if (int info = linalg2(linalg_t::magma).potrf(n__, o__.at(memory_t::device), o__.ld())) {
@@ -191,9 +192,9 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
                 acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), n__, n__);
             }
         }
-        t1.stop();
+        PROFILE_STOP("sddk::orthogonalize|tmtrx");
 
-        utils::timer t2("sddk::orthogonalize|transform");
+        PROFILE_START("sddk::orthogonalize|transform");
 
         int sid{0};
         for (int s : spins) {
@@ -239,9 +240,9 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
                 acc::sync_stream(stream_id(i));
             }
         }
-        t2.stop();
+        PROFILE_STOP("sddk::orthogonalize|transform");
     } else { /* parallel transformation */
-        utils::timer t1("sddk::orthogonalize|potrf");
+        PROFILE_START("sddk::orthogonalize|potrf");
         mdarray<T, 1> diag;
         o__.make_real_diag(n__);
         if (sddk_debug >= 1) {
@@ -255,13 +256,13 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
             }
             TERMINATE(s);
         }
-        t1.stop();
+        PROFILE_STOP("sddk::orthogonalize|potrf");
 
-        utils::timer t2("sddk::orthogonalize|trtri");
+        PROFILE_START("sddk::orthogonalize|trtri");
         if (linalg2(linalg_t::scalapack).trtri(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
             TERMINATE("error in inversion");
         }
-        t2.stop();
+        PROFILE_STOP("sddk::orthogonalize|trtri");
 
         /* o is upper triangular matrix */
         for (int i = 0; i < n__; i++) {

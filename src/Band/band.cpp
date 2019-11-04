@@ -27,6 +27,7 @@
 #include "K_point/k_point_set.hpp"
 #include "SDDK/wf_trans.hpp"
 #include "SDDK/wf_inner.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -203,7 +204,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         phi.pw_coeffs(ispn).prime().zero();
     }
 
-    utils::timer t1("sirius::Band::initialize_subspace|kp|wf");
+    PROFILE_START("sirius::Band::initialize_subspace|kp|wf");
 
     /* generate the initial atomic wavefunctions */
     std::vector<int> atoms(ctx_.unit_cell().num_atoms());
@@ -247,7 +248,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         /* make pure spinor up- and dn- wave functions */
         phi.copy_from(device_t::CPU, num_phi, phi, 0, 0, 1, num_phi);
     }
-    t1.stop();
+    PROFILE_STOP("sirius::Band::initialize_subspace|kp|wf");
 
     /* allocate wave-functions */
     Wave_functions hphi(mp, Hk__.kp().gkvec_partition(), num_phi_tot, ctx_.preferred_memory_t(), num_sc);

@@ -26,7 +26,7 @@
 #define __EIGENPROBLEM_HPP__
 
 #include <omp.h>
-#include "utils/timer.hpp"
+#include "utils/profiler.hpp"
 #include "linalg.hpp"
 
 #if defined(__ELPA)
@@ -190,7 +190,7 @@ class Eigensolver_lapack : public Eigensolver
     /// Solve a standard eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        utils::timer t0("Eigensolver_lapack|dsyevd");
+        PROFILE("Eigensolver_lapack|dsyevd");
 
         ftn_int info;
         ftn_int lda = A__.ld();
@@ -215,7 +215,7 @@ class Eigensolver_lapack : public Eigensolver
     /// Solve a standard eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_lapack|zheevd");
+        PROFILE("Eigensolver_lapack|zheevd");
 
         ftn_int info;
         ftn_int lda = A__.ld();
@@ -242,7 +242,7 @@ class Eigensolver_lapack : public Eigensolver
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        utils::timer t0("Eigensolver_lapack|dsyevr");
+        PROFILE("Eigensolver_lapack|dsyevr");
 
         double vl, vu;
         ftn_int il{1};
@@ -289,7 +289,7 @@ class Eigensolver_lapack : public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_lapack|zheevx");
+        PROFILE("Eigensolver_lapack|zheevx");
 
         double vl, vu;
         ftn_int il{1};
@@ -343,7 +343,7 @@ class Eigensolver_lapack : public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
               dmatrix<double>& Z__)
     {
-        utils::timer t0("Eigensolver_lapack|dsygvx");
+        PROFILE("Eigensolver_lapack|dsygvx");
 
         ftn_int info;
 
@@ -392,7 +392,7 @@ class Eigensolver_lapack : public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
               double* eval__, dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_lapack|zhegvx");
+        PROFILE("Eigensolver_lapack|zhegvx");
 
         ftn_int info;
 
@@ -485,25 +485,26 @@ class Eigensolver_elpa : public Eigensolver
             TERMINATE("wrong block size");
         }
 
-        utils::timer t1("Eigensolver_elpa|to_std");
-        /* Cholesky factorization B = U^{H}*U */
-        linalg2(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
-        /* inversion of the triangular matrix */
-        linalg2(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
-        /* U^{-1} is upper triangular matrix */
-        for (int i = 0; i < matrix_size__; i++) {
-            for (int j = i + 1; j < matrix_size__; j++) {
-                B__.set(j, i, 0);
+        {
+            PROFILE("Eigensolver_elpa|to_std");
+            /* Cholesky factorization B = U^{H}*U */
+            linalg2(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
+            /* inversion of the triangular matrix */
+            linalg2(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
+            /* U^{-1} is upper triangular matrix */
+            for (int i = 0; i < matrix_size__; i++) {
+                for (int j = i + 1; j < matrix_size__; j++) {
+                    B__.set(j, i, 0);
+                }
             }
+            /* transform to standard eigen-problem */
+            /* A * U{-1} -> Z */
+            linalg<device_t::CPU>::gemm(0, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double>::one(),
+                                        A__, B__, linalg_const<double>::zero(), Z__);
+            /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
+            linalg<device_t::CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double>::one(),
+                                        B__, Z__, linalg_const<double>::zero(), A__);
         }
-        /* transform to standard eigen-problem */
-        /* A * U{-1} -> Z */
-        linalg<device_t::CPU>::gemm(0, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double>::one(), A__, B__,
-                          linalg_const<double>::zero(), Z__);
-        /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
-        linalg<device_t::CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double>::one(), B__, Z__,
-                          linalg_const<double>::zero(), A__);
-        t1.stop();
 
         /* solve a standard problem */
         int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
@@ -511,12 +512,13 @@ class Eigensolver_elpa : public Eigensolver
             return result;
         }
 
-        utils::timer t3("Eigensolver_elpa|bt");
-        /* back-transform of eigen-vectors */
-        linalg<device_t::CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<double>::one(), B__, Z__,
-                          linalg_const<double>::zero(), A__);
-        A__ >> Z__;
-        t3.stop();
+        {
+            PROFILE("Eigensolver_elpa|bt");
+            /* back-transform of eigen-vectors */
+            linalg<device_t::CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<double>::one(), B__,
+                                        Z__, linalg_const<double>::zero(), A__);
+            A__ >> Z__;
+        }
 
         return 0;
     }
@@ -546,25 +548,28 @@ class Eigensolver_elpa : public Eigensolver
             TERMINATE("wrong block size");
         }
 
-        utils::timer t1("Eigensolver_elpa|to_std");
-        /* Cholesky factorization B = U^{H}*U */
-        linalg2(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
-        /* inversion of the triangular matrix */
-        linalg2(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
-        /* U^{-1} is upper triangular matrix */
-        for (int i = 0; i < matrix_size__; i++) {
-            for (int j = i + 1; j < matrix_size__; j++) {
-                B__.set(j, i, 0);
+        {
+            PROFILE("Eigensolver_elpa|to_std");
+            /* Cholesky factorization B = U^{H}*U */
+            linalg2(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
+            /* inversion of the triangular matrix */
+            linalg2(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
+            /* U^{-1} is upper triangular matrix */
+            for (int i = 0; i < matrix_size__; i++) {
+                for (int j = i + 1; j < matrix_size__; j++) {
+                    B__.set(j, i, 0);
+                }
             }
+            /* transform to standard eigen-problem */
+            /* A * U{-1} -> Z */
+            linalg<device_t::CPU>::gemm(0, 0, matrix_size__, matrix_size__, matrix_size__,
+                                        linalg_const<double_complex>::one(), A__, B__,
+                                        linalg_const<double_complex>::zero(), Z__);
+            /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
+            linalg<device_t::CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__,
+                                        linalg_const<double_complex>::one(), B__, Z__,
+                                        linalg_const<double_complex>::zero(), A__);
         }
-        /* transform to standard eigen-problem */
-        /* A * U{-1} -> Z */
-        linalg<device_t::CPU>::gemm(0, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double_complex>::one(), A__,
-                          B__, linalg_const<double_complex>::zero(), Z__);
-        /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
-        linalg<device_t::CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double_complex>::one(), B__,
-                          Z__, linalg_const<double_complex>::zero(), A__);
-        t1.stop();
 
         /* solve a standard problem */
         int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
@@ -572,12 +577,13 @@ class Eigensolver_elpa : public Eigensolver
             return result;
         }
 
-        utils::timer t3("Eigensolver_elpa|bt");
-        /* back-transform of eigen-vectors */
-        linalg<device_t::CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<double_complex>::one(), B__, Z__,
-                          linalg_const<double_complex>::zero(), A__);
-        A__ >> Z__;
-        t3.stop();
+        {
+            PROFILE("Eigensolver_elpa|bt");
+            /* back-transform of eigen-vectors */
+            linalg<device_t::CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<double_complex>::one(),
+                                        B__, Z__, linalg_const<double_complex>::zero(), A__);
+            A__ >> Z__;
+        }
 
         return 0;
     }
@@ -598,13 +604,13 @@ class Eigensolver_elpa : public Eigensolver
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        utils::timer t0("Eigensolver_elpa|solve_std");
+        PROFILE("Eigensolver_elpa|solve_std");
 
         if (A__.num_cols_local() != Z__.num_cols_local()) {
             TERMINATE("number of columns in A and Z don't match");
         }
 
-        utils::timer t1("Eigensolver_elpa|solve_std|setup");
+        PROFILE_START("Eigensolver_elpa|solve_std|setup");
 
         int num_cols_loc = A__.num_cols_local();
         int bs           = A__.bs_row();
@@ -632,7 +638,7 @@ class Eigensolver_elpa : public Eigensolver
         } else {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
         }
-        t1.stop();
+        PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
         auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
 
@@ -667,13 +673,13 @@ class Eigensolver_elpa : public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_elpa|solve_std");
+        PROFILE("Eigensolver_elpa|solve_std");
 
         if (A__.num_cols_local() != Z__.num_cols_local()) {
             TERMINATE("number of columns in A and Z don't match");
         }
 
-        utils::timer t1("Eigensolver_elpa|solve_std|setup");
+        PROFILE_START("Eigensolver_elpa|solve_std|setup");
         int num_cols_loc = A__.num_cols_local();
         int bs           = A__.bs_row();
         int lda          = A__.ld();
@@ -700,7 +706,7 @@ class Eigensolver_elpa : public Eigensolver
         } else {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
         }
-        t1.stop();
+        PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
 
 
@@ -805,7 +811,7 @@ class Eigensolver_scalapack : public Eigensolver
     /// Solve a standard eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_scalapack|pzheevd");
+        PROFILE("Eigensolver_scalapack|pzheevd");
         ftn_int desca[9];
         linalg_base::descinit(desca, matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0,
                               A__.blacs_grid().context(), A__.ld());
@@ -845,7 +851,7 @@ class Eigensolver_scalapack : public Eigensolver
 
     int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        utils::timer t0("Eigensolver_scalapack|pdsyevd");
+        PROFILE("Eigensolver_scalapack|pdsyevd");
 
         ftn_int info;
         ftn_int ione{1};
@@ -875,7 +881,7 @@ class Eigensolver_scalapack : public Eigensolver
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        utils::timer t0("Eigensolver_scalapack|pdsyevx");
+        PROFILE("Eigensolver_scalapack|pdsyevx");
 
         ftn_int desca[9];
         linalg_base::descinit(desca, matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0,
@@ -959,7 +965,7 @@ class Eigensolver_scalapack : public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_scalapack|pzheevx");
+        PROFILE("Eigensolver_scalapack|pzheevx");
 
         ftn_int desca[9];
         linalg_base::descinit(desca, matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0,
@@ -1047,7 +1053,7 @@ class Eigensolver_scalapack : public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
               dmatrix<double>& Z__)
     {
-        utils::timer t0("Eigensolver_scalapack|pdsygvx");
+        PROFILE("Eigensolver_scalapack|pdsygvx");
 
         ftn_int desca[9];
         linalg_base::descinit(desca, matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0,
@@ -1134,7 +1140,7 @@ class Eigensolver_scalapack : public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
               double* eval__, dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_scalapack|pzhegvx");
+        PROFILE("Eigensolver_scalapack|pzhegvx");
 
         ftn_int desca[9];
         linalg_base::descinit(desca, matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0,
@@ -1342,7 +1348,7 @@ class Eigensolver_magma: public Eigensolver
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        utils::timer t0("Eigensolver_magma|dsygvdx");
+        PROFILE("Eigensolver_magma|dsygvdx");
 
         int nt = omp_get_max_threads();
         int lda = A__.ld();
@@ -1385,7 +1391,7 @@ class Eigensolver_magma: public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_magma|zheevdx");
+        PROFILE("Eigensolver_magma|zheevdx");
 
         int nt = omp_get_max_threads();
         int lda = A__.ld();
@@ -1535,7 +1541,7 @@ class Eigensolver_magma_gpu: public Eigensolver
     ///// Solve a standard eigen-value problem for N lowest eigen-pairs.
     //int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     //{
-    //    utils::timer t0("Eigensolver_magma|dsygvdx");
+    //    PROFILE("Eigensolver_magma|dsygvdx");
 
     //    int nt = omp_get_max_threads();
     //    int lda = A__.ld();
@@ -1578,7 +1584,7 @@ class Eigensolver_magma_gpu: public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_magma_gpu|zheevdx");
+        PROFILE("Eigensolver_magma_gpu|zheevdx");
 
         int nt = omp_get_max_threads();
         int lda = A__.ld();
@@ -1658,7 +1664,7 @@ class Eigensolver_cuda: public Eigensolver
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_cuda|zheevd");
+        PROFILE("Eigensolver_cuda|zheevd");
 
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
@@ -1694,7 +1700,7 @@ class Eigensolver_cuda: public Eigensolver
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__,
               dmatrix<double>& Z__)
     {
-        utils::timer t0("Eigensolver_cuda|dsyevd");
+        PROFILE("Eigensolver_cuda|dsyevd");
 
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
@@ -1730,7 +1736,7 @@ class Eigensolver_cuda: public Eigensolver
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        utils::timer t0("Eigensolver_cuda|zhegvd");
+        PROFILE("Eigensolver_cuda|zhegvd");
 
         cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
@@ -1773,7 +1779,7 @@ class Eigensolver_cuda: public Eigensolver
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
               dmatrix<double>& Z__)
     {
-        utils::timer t0("Eigensolver_cuda|dsygvd");
+        PROFILE("Eigensolver_cuda|dsygvd");
 
         cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
@@ -2674,7 +2680,7 @@ inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_ty
 //==             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 //==
 //==             std::vector<double> w(matrix_size);
-//==             utils::timer t("Eigenproblem_elpa1|diag");
+//==             PROFILE("Eigenproblem_elpa1|diag");
 //==             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at(memory_t::host),
 //&num_rows_loc,
 //==                                             &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_,
@@ -2704,7 +2710,7 @@ inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_ty
 //==             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 //==
 //==             std::vector<double> w(matrix_size);
-//==             utils::timer t("Eigenproblem_elpa1|diag");
+//==             PROFILE("Eigenproblem_elpa1|diag");
 //==             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at(memory_t::host),
 //&num_rows_loc,
 //==                                          &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_,
@@ -2727,7 +2733,7 @@ inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_ty
 //==             assert(nevec <= matrix_size);
 //==
 //==             std::vector<double> w(matrix_size);
-//==             utils::timer t("Eigenproblem_elpa1|diag");
+//==             PROFILE("Eigenproblem_elpa1|diag");
 //==             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz,
 //==                                          &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_,
 //&mpi_comm_all_);
@@ -2746,7 +2752,7 @@ inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_ty
 //==             assert(nevec <= matrix_size);
 //==
 //==             std::vector<double> w(matrix_size);
-//==             utils::timer t("Eigenproblem_elpa1|diag");
+//==             PROFILE("Eigenproblem_elpa1|diag");
 //==             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz,
 //==                                             &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_,
 //&mpi_comm_all_);
@@ -2793,7 +2799,7 @@ inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_ty
 //==             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 //==
 //==             std::vector<double> w(matrix_size);
-//==             utils::timer t("Eigenproblem_elpa2|diag");
+//==             PROFILE("Eigenproblem_elpa2|diag");
 //==             FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at(memory_t::host),
 //&num_rows_loc,
 //==                                                    &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_,
@@ -2821,7 +2827,7 @@ inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_ty
 //==             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 //==
 //==             std::vector<double> w(matrix_size);
-//==             utils::timer t("Eigenproblem_elpa2|diag");
+//==             PROFILE("Eigenproblem_elpa2|diag");
 //==             FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at(memory_t::host),
 //&num_rows_loc,
 //==                                                 &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_,
@@ -2843,7 +2849,7 @@ inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_ty
 //==             assert(nevec <= matrix_size);
 //==
 //==             std::vector<double> w(matrix_size);
-//==             utils::timer t("Eigenproblem_elpa2|diag");
+//==             PROFILE("Eigenproblem_elpa2|diag");
 //==             FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz,
 //==                                                 &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_,
 //&mpi_comm_all_);

@@ -26,6 +26,7 @@
 
 #include "potential.hpp"
 #include "../typedefs.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -761,7 +762,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
     Smooth_periodic_function<double> rho_up(ctx_.spfft(), ctx_.gvec_partition());
     Smooth_periodic_function<double> rho_dn(ctx_.spfft(), ctx_.gvec_partition());
 
-    utils::timer t1("sirius::Potential::xc_rg_magnetic|up_dn");
+    PROFILE_START("sirius::Potential::xc_rg_magnetic|up_dn");
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin{0};
     for (int ir = 0; ir < num_points; ir++) {
@@ -790,7 +791,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
         rho_up.f_rg(ir) = 0.5 * (rho + mag);
         rho_dn.f_rg(ir) = 0.5 * (rho - mag);
     }
-    t1.stop();
+    PROFILE_STOP("sirius::Potential::xc_rg_magnetic|up_dn");
 
     Communicator(ctx_.spfft().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
     if (rhomin < 0.0 && ctx_.comm().rank() == 0) {
@@ -816,7 +817,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
     Smooth_periodic_function<double> grad_rho_dn_grad_rho_dn;
 
     if (is_gga) {
-        utils::timer t2("sirius::Potential::xc_rg_magnetic|grad1");
+        PROFILE("sirius::Potential::xc_rg_magnetic|grad1");
         /* get plane-wave coefficients of densities */
         rho_up.fft_transform(-1);
         rho_dn.fft_transform(-1);
@@ -873,7 +874,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
         vsigma_dd_tmp.zero();
     }
 
-    utils::timer t3("sirius::Potential::xc_rg_magnetic|libxc");
+    PROFILE_START("sirius::Potential::xc_rg_magnetic|libxc");
     /* loop over XC functionals */
     for (auto& ixc: xc_func_) {
         /* treat vdw correction outside the parallel region because it uses fft
@@ -982,11 +983,11 @@ void Potential::xc_rg_magnetic(Density const& density__)
                 }
             }
         }
-        t3.stop();
     }
+    PROFILE_STOP("sirius::Potential::xc_rg_magnetic|libxc");
 
     if (is_gga) {
-        utils::timer t4("sirius::Potential::xc_rg_magnetic|grad2");
+        PROFILE("sirius::Potential::xc_rg_magnetic|grad2");
         /* gather vsigma */
         // vsigma_uu: dϵ/dσ↑↑
         Smooth_periodic_function<double> vsigma_uu(ctx_.spfft(), ctx_.gvec_partition());
