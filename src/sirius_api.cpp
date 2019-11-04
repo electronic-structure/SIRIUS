@@ -31,8 +31,11 @@
 #define GET_SIM_CTX(h) assert(h != nullptr); \
                        auto& sim_ctx = static_cast<utils::any_ptr*>(*h)->get<sirius::Simulation_context>();
 
-#define GET_GS(h) assert(h != nullptr); \
-                  auto& gs = static_cast<utils::any_ptr*>(*h)->get<sirius::DFT_ground_state>();
+sirius::DFT_ground_state& get_gs(void* const* h)
+{
+    assert(h != nullptr);
+    return static_cast<utils::any_ptr*>(*h)->get<sirius::DFT_ground_state>();
+}
 
 #define GET_KS(h) assert(h != nullptr); \
                   auto& ks = static_cast<utils::any_ptr*>(*h)->get<sirius::K_point_set>();
@@ -512,7 +515,7 @@ void sirius_set_periodic_function_ptr(void*  const* handler__,
                                       double*       f_mt__,
                                       double*       f_rg__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     std::string label(label__);
 
     std::map<std::string, sirius::Periodic_function<double>*> func_map = {
@@ -622,7 +625,7 @@ void sirius_find_ground_state(void*  const* gs_handler__,
                               int    const* niter__,
                               bool   const* save_state__)
 {
-    GET_GS(gs_handler__)
+    auto& gs = get_gs(gs_handler__);
     auto& ctx = gs.ctx();
     auto& inp = ctx.parameters_input();
     gs.initial_state();
@@ -655,7 +658,7 @@ void sirius_find_ground_state(void*  const* gs_handler__,
    @fortran end */
 void sirius_update_ground_state(void** handler__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     gs.update();
 }
 
@@ -927,7 +930,7 @@ void sirius_set_pw_coeffs(void*                const* handler__,
 {
     PROFILE("sirius_api::sirius_set_pw_coeffs");
 
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
 
     std::string label(label__);
 
@@ -1020,7 +1023,7 @@ void sirius_get_pw_coeffs(void*                const* handler__,
 {
     PROFILE("sirius_api::sirius_get_pw_coeffs");
 
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
 
     std::string label(label__);
     if (gs.ctx().full_potential()) {
@@ -1153,7 +1156,7 @@ void sirius_get_pw_coeffs_real(void* const* handler__,
 void sirius_initialize_subspace(void* const* gs_handler__,
                                 void* const* ks_handler__)
 {
-    GET_GS(gs_handler__)
+    auto& gs = get_gs(gs_handler__);
     GET_KS(ks_handler__)
     sirius::Hamiltonian0 H0(gs.potential());
     sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
@@ -1170,7 +1173,7 @@ void sirius_find_eigen_states(void* const* gs_handler__,
                               bool  const* precompute__,
                               double const* iter_solver_tol__)
 {
-    GET_GS(gs_handler__)
+    auto& gs = get_gs(gs_handler__);
     GET_KS(ks_handler__)
     if (iter_solver_tol__ != nullptr) {
         ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
@@ -1184,7 +1187,7 @@ void sirius_find_eigen_states(void* const* gs_handler__,
    @fortran end */
 void sirius_generate_d_operator_matrix(void* const* handler__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     gs.potential().generate_D_operator_matrix();
 }
 
@@ -1193,7 +1196,7 @@ void sirius_generate_d_operator_matrix(void* const* handler__)
    @fortran end */
 void sirius_generate_initial_density(void* const* handler__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     gs.density().initial_density();
 }
 
@@ -1202,7 +1205,7 @@ void sirius_generate_initial_density(void* const* handler__)
    @fortran end */
 void sirius_generate_effective_potential(void* const* handler__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     gs.potential().generate(gs.density());
 }
 
@@ -1215,7 +1218,7 @@ void sirius_generate_density(void* const* gs_handler__,
                              bool const*  add_core__,
                              bool const*  transform_to_rg__)
 {
-    GET_GS(gs_handler__)
+    auto& gs = get_gs(gs_handler__);
     bool add_core{false};
     if (add_core__ != nullptr) {
         add_core = *add_core__;
@@ -1411,7 +1414,7 @@ void sirius_get_density_matrix(void*          const* handler__,
                                std::complex<double>* dm__,
                                int            const* ld__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
 
     mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
 
@@ -1442,7 +1445,7 @@ void sirius_set_density_matrix(void*          const* handler__,
                                std::complex<double>* dm__,
                                int            const* ld__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
 
     mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
 
@@ -1471,25 +1474,28 @@ void sirius_get_energy(void* const* handler__,
                        char  const* label__,
                        double*      energy__) // TODO: change to funtion returning a value
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
 
-    std::map<std::string, double (sirius::DFT_ground_state::*)(void) const> func = {
-        {"total",    &sirius::DFT_ground_state::total_energy},
-        {"evalsum",  &sirius::DFT_ground_state::eval_sum},
-        {"exc",      &sirius::DFT_ground_state::energy_exc},
-        {"vxc",      &sirius::DFT_ground_state::energy_vxc},
-        {"bxc",      &sirius::DFT_ground_state::energy_bxc},
-        {"veff",     &sirius::DFT_ground_state::energy_veff},
-        {"vloc",     &sirius::DFT_ground_state::energy_vloc},
-        {"vha",      &sirius::DFT_ground_state::energy_vha},
-        {"enuc",     &sirius::DFT_ground_state::energy_enuc},
-        {"kin",      &sirius::DFT_ground_state::energy_kin}
-    };
+    auto& kset = gs.k_point_set();
+    auto& ctx = kset.ctx();
+    auto& unit_cell = kset.unit_cell();
+    auto& potential = gs.potential();
+    auto& density = gs.density();
 
-    std::string label(label__);
+    std::map<std::string, std::function<double()>> func = {
+        {"total",   [&](){ return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
+        {"evalsum", [&](){ return sirius::eval_sum(unit_cell, kset); }},
+        {"exc",     [&](){ return sirius::energy_exc(density, potential); }},
+        {"vxc",     [&](){ return sirius::energy_vxc(density, potential); }},
+        {"bxc",     [&](){ return sirius::energy_bxc(density, potential, ctx.num_mag_dims()); }},
+        {"veff",    [&](){ return sirius::energy_veff(density, potential); }},
+        {"vloc",    [&](){ return sirius::energy_vloc(density, potential); }},
+        {"vha",     [&](){ return sirius::energy_vha(potential); }},
+        {"enuc",    [&](){ return sirius::energy_enuc(ctx, potential); }},
+        {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }}};
 
     try {
-        *energy__ = (gs.*func.at(label))();
+        *energy__ = func.at("label")();
     } catch(...) {
         TERMINATE("wrong label");
     }
@@ -1506,7 +1512,7 @@ void sirius_get_forces(void* const* handler__,
 {
     std::string label(label__);
 
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
 
     auto get_forces = [&](mdarray<double, 2> const& sirius_forces__)
     {
@@ -1552,7 +1558,7 @@ void sirius_get_stress_tensor(void* const* handler__,
 {
     std::string label(label__);
 
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
 
     auto& stress_tensor = gs.stress();
 
@@ -1932,7 +1938,7 @@ double sirius_get_radial_integral(void*  const* handler__,
    @fortran end */
 void sirius_calculate_hubbard_occupancies(void* const* handler__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     gs.potential().U().hubbard_compute_occupation_numbers(gs.k_point_set());
 }
 
@@ -1946,7 +1952,7 @@ void sirius_set_hubbard_occupancies(void* const* handler__,
                                     std::complex<double>*      occ__,
                                     int   const *ld__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     gs.potential().U().access_hubbard_occupancies("set", occ__, ld__);
 }
 
@@ -1959,7 +1965,7 @@ void sirius_get_hubbard_occupancies(void* const* handler__,
                                     std::complex<double>*      occ__,
                                     int   const *ld__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     gs.potential().U().access_hubbard_occupancies("get", occ__, ld__);
 }
 
@@ -1972,7 +1978,7 @@ void sirius_set_hubbard_potential(void* const* handler__,
                                   std::complex<double>*      pot__,
                                   int   const *ld__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     gs.potential().U().access_hubbard_potential("set", pot__, ld__);
 }
 
@@ -1986,7 +1992,7 @@ void sirius_get_hubbard_potential(void* const* handler__,
                                   std::complex<double>*      pot__,
                                   int   const *ld__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     gs.potential().U().access_hubbard_potential("get", pot__, ld__);
 }
 
@@ -2067,7 +2073,7 @@ void sirius_generate_coulomb_potential(void* const* handler__,
                                        double*      vclmt__,
                                        double*      vclrg__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
 
     gs.density().rho().fft_transform(-1);
     gs.potential().poisson(gs.density().rho());
@@ -2097,7 +2103,7 @@ void sirius_generate_xc_potential(void* const* handler__,
                                   double*      bxcrg_y__,
                                   double*      bxcrg_z__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     gs.potential().xc(gs.density());
 
     gs.potential().xc_potential().copy_to(vxcmt__, vxcrg__, *is_local_rg__);
@@ -2326,7 +2332,7 @@ void sirius_get_step_function(void* const*          handler__,
 void sirius_get_vha_el(void* const* handler__,
                        double*      vha_el__)
 {
-    GET_GS(handler__)
+    auto& gs = get_gs(handler__);
     for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
         vha_el__[ia] = gs.potential().vha_el(ia);
     }
@@ -2599,7 +2605,7 @@ void sirius_set_equivalent_atoms(void* const* handler__,
    @fortran end */
 void sirius_update_atomic_potential(void* const* handler__)
 {
-    GET_GS(handler__);
+    auto& gs = get_gs(handler__);
     gs.potential().update_atomic_potential();
 }
 
@@ -3115,7 +3121,7 @@ void sirius_set_rg_values(void*  const* handler__,
 {
     PROFILE("sirius_api::sirius_set_rg_values");
 
-    GET_GS(handler__);
+    auto& gs = get_gs(handler__);
 
     std::string label(label__);
 
@@ -3123,7 +3129,7 @@ void sirius_set_rg_values(void*  const* handler__,
         if (grid_dims__[x] != gs.ctx().fft_grid()[x]) {
             std::stringstream s;
             s << "wrong FFT grid size\n"
-                 "  SIRIUS internal: " << gs.ctx().fft_grid()[0] << " " <<  gs.ctx().fft_grid()[1] << " " 
+                 "  SIRIUS internal: " << gs.ctx().fft_grid()[0] << " " <<  gs.ctx().fft_grid()[1] << " "
                                        << gs.ctx().fft_grid()[2] << "\n"
                  "  host code:       " << grid_dims__[0] << " " << grid_dims__[1] << " " << grid_dims__[2];
             TERMINATE(s.str());
@@ -3213,7 +3219,7 @@ void sirius_get_rg_values(void*  const* handler__,
 {
     PROFILE("sirius_api::sirius_get_rg_values");
 
-    GET_GS(handler__);
+    auto& gs = get_gs(handler__);
 
     std::string label(label__);
 
@@ -3298,7 +3304,7 @@ void sirius_get_rg_values(void*  const* handler__,
 void sirius_get_total_magnetization(void* const* handler__,
                                     double*      mag__)
 {
-    GET_GS(handler__);
+    auto& gs = get_gs(handler__);
 
     mdarray<double, 1> total_mag(mag__, 3);
     total_mag.zero();
