@@ -57,7 +57,8 @@ struct FunctionProperties
      *  \param [in]  axpy_         Function, which scales and adds one object to the other (y = alpha * x + y).
      */
     FunctionProperties(std::function<double(const FUNC&)> size_,
-                       std::function<double(const FUNC&, const FUNC&)> inner_, std::function<void(double, FUNC&)> scal_,
+                       std::function<double(const FUNC&, const FUNC&)> inner_,
+                       std::function<void(double, FUNC&)> scal_,
                        std::function<void(const FUNC&, FUNC&)> copy_,
                        std::function<void(double, const FUNC&, FUNC&)> axpy_)
         : size(size_)

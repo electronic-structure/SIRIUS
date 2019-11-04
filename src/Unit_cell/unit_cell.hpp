@@ -210,7 +210,7 @@ class Unit_cell
     /// Add PAW atoms.
     void init_paw();
 
-    /// Return number of PAW atoms.
+    /// Return number of atoms with PAW pseudopotential.
     int num_paw_atoms() const
     {
         return static_cast<int>(paw_atom_index_.size());
@@ -227,6 +227,7 @@ class Unit_cell
         return spl_num_paw_atoms_[idx__];
     }
 
+    /// Return global index of atom by the index in the list of PAW atoms.
     inline int paw_atom_index(int ipaw__) const
     {
         return paw_atom_index_[ipaw__];

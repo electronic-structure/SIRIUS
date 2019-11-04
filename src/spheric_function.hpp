@@ -35,7 +35,8 @@ namespace sirius {
 
 /// Function in spherical harmonics or spherical coordinates representation.
 /** This class works in conjugation with SHT class which provides the transformation between spherical
- *  harmonics and spherical coordinates and also a conversion between real and complex spherical harmonics. */
+    harmonics and spherical coordinates and also a conversion between real and complex spherical harmonics.
+ */
 template <function_domain_t domain_t, typename T = double_complex>
 class Spheric_function: public mdarray<T, 2>
 {
@@ -109,6 +110,18 @@ class Spheric_function: public mdarray<T, 2>
         for (int i1 = 0; i1 < (int)this->size(1); i1++) {
             for (int i0 = 0; i0 < (int)this->size(0); i0++) {
                 (*this)(i0, i1) += rhs__(i0, i1);
+            }
+        }
+
+        return *this;
+    }
+
+    /// Multiply by a constant.
+    inline Spheric_function<domain_t, T>& operator*=(double alpha__)
+    {
+        for (int i1 = 0; i1 < (int)this->size(1); i1++) {
+            for (int i0 = 0; i0 < (int)this->size(0); i0++) {
+                (*this)(i0, i1) *= alpha__;
             }
         }
 
@@ -336,9 +349,10 @@ T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> c
 
 /// Compute Laplacian of the spheric function.
 /** Laplacian in spherical coordinates has the following expression:
- *  \f[
- *      \Delta = \frac{1}{r^2}\frac{\partial}{\partial r}\Big( r^2 \frac{\partial}{\partial r} \Big) + \frac{1}{r^2}\Delta_{\theta, \phi}
- *  \f]
+    \f[
+    \Delta = \frac{1}{r^2}\frac{\partial}{\partial r}\Big( r^2 \frac{\partial}{\partial r} \Big) +
+      \frac{1}{r^2}\Delta_{\theta, \phi}
+    \f]
  */
 template <typename T>
 Spheric_function<function_domain_t::spectral, T> laplacian(Spheric_function<function_domain_t::spectral, T> const& f__)

@@ -38,8 +38,7 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
     };
 
     auto inner_prod_func = [](const Periodic_function<double>& x, const Periodic_function<double>& y) -> double {
-        return sirius::inner(static_cast<Smooth_periodic_function<double> const&>(x),
-                             static_cast<Smooth_periodic_function<double> const&>(y));
+        return sirius::inner(x, y);
     };
 
     auto scal_function = [](double alpha, Periodic_function<double>& x) -> void {
@@ -141,6 +140,46 @@ FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
 
     return FunctionProperties<sddk::mdarray<double_complex, 4>>(global_size_func, inner_prod_func, scal_function,
                                                                 copy_function, axpy_function);
+}
+
+FunctionProperties<paw_density> paw_density_function_property()
+{
+    auto global_size_func = [](paw_density const& x) -> double { return x.ctx().unit_cell().num_paw_atoms(); };
+
+    auto inner_prod_func = []( paw_density const& x,  paw_density const& y) -> double {
+        // do not contribute to mixing
+        return 0.0;
+    };
+
+    auto scal_function = [](double alpha, paw_density& x) -> void {
+        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
+                x.ae_density(j, i) *= alpha;
+                x.ps_density(j, i) *= alpha;
+            }
+        }
+    };
+
+    auto copy_function = [](paw_density const& x, paw_density& y) -> void {
+        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
+                x.ae_density(j, i) >> y.ae_density(j, i);
+                x.ps_density(j, i) >> y.ps_density(j, i);
+            }
+        }
+    };
+
+    auto axpy_function = [](double alpha, paw_density const& x, paw_density& y) -> void {
+        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
+                y.ae_density(j, i) = x.ae_density(j, i) * alpha + y.ae_density(j, i);
+                y.ps_density(j, i) = x.ps_density(j, i) * alpha + y.ps_density(j, i);
+            }
+        }
+    };
+
+    return FunctionProperties<paw_density>(global_size_func, inner_prod_func, scal_function, copy_function,
+                                           axpy_function);
 }
 
 } // namespace mixer

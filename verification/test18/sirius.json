@@ -52,8 +52,8 @@
     }
   },
   "mixer": {
-    "max_history": 10,
-    "beta": 0.9,
+    "max_history": 4,
+    "beta": 0.5,
     "type": "broyden1",
     "!linear_mix_rms_tol": 20.0,
     "!beta0": 0.15

@@ -600,6 +600,7 @@ struct Parameters_input
 };
 
 /// Settings control the internal parameters related to the numerical implementation.
+/** Changing of setting parameters will have an impact on the final result. */
 struct Settings_input
 {
     /// Number of points (per a.u.^-1) for interpolating radial integrals of local part of pseudopotential.
@@ -609,10 +610,29 @@ struct Settings_input
     int nprii_aug_{20};
     int nprii_rho_core_{20};
     bool always_update_wf_{true};
+
     /// Minimum value of allowed RMS for the mixer.
     /** Mixer will not mix functions if the RMS between previous and current functions is below this tolerance. */
     double mixer_rms_min_{1e-16};
+
+    /// Minimum tolerance of the iterative solver.
     double itsol_tol_min_{1e-13};
+
+    /// Scaling parameters of the iterative  solver tolerance.
+    /** First number is the scaling of density RMS, that gives the estimate of the new tolerance. Second number is
+        the scaling of the old tolerance. New tolerance is then the minimum between the two. This is how it is
+        done in the code:
+        \code{.cpp}
+        double old_tol = ctx_.iterative_solver_tolerance();
+        // estimate new tolerance of iterative solver
+        double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
+        tol = std::max(ctx_.settings().itsol_tol_min_, tol);
+        // set new tolerance of iterative solver
+        ctx_.iterative_solver_tolerance(tol);
+        \endcode
+     */
+    std::array<double, 2> itsol_tol_scale_{{0.001, 0.5}};
+
     double auto_enu_tol_{0};
 
     /// Initial dimenstions for the fine-grain FFT grid.
@@ -634,6 +654,7 @@ struct Settings_input
             auto_enu_tol_     = parser["settings"].value("auto_enu_tol", auto_enu_tol_);
             radial_grid_      = parser["settings"].value("radial_grid", radial_grid_);
             fft_grid_size_    = parser["settings"].value("fft_grid_size", fft_grid_size_);
+            itsol_tol_scale_  = parser["settings"].value("itsol_tol_scale", itsol_tol_scale_);
         }
     }
 };

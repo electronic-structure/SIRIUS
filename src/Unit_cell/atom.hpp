@@ -215,7 +215,6 @@ class Atom
             PROFILE_START("sirius::Atom::generate_radial_integrals|interp");
             #pragma omp parallel
             {
-                // int tid = Platform::thread_id();
                 #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
