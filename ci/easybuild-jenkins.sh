@@ -16,11 +16,11 @@ module load daint-gpu
 module unload cray-libsci
 module load EasyBuild-custom/cscs
 
-eb libxc-4.3.4-CrayGNU-18.08.eb -r
-eb GSL-2.6-CrayGNU-18.08.eb -r
-eb spglib-1.14.1-CrayGNU-18.08.eb -r
-eb magma-2.4.0-CrayGNU-18.08-cuda-9.1.eb -r
-eb SpFFT-0.9.7-CrayGNU-18.08-cuda-9.1.eb -r
+eb libxc-4.3.4-CrayGNU-19.10.eb -r
+eb GSL-2.6-CrayGNU-19.10.eb -r
+eb spglib-1.14.1-CrayGNU-19.10.eb -r
+eb magma-2.5.1-CrayGNU-19.10-cuda-10.1.eb -r
+eb SpFFT-0.9.8-CrayGNU-19.10-cuda-10.1.eb -r
 
 # make newly installed modules world readable
 find ${HOME}/jenkins -type d -exec chmod ao+rx {} \;
