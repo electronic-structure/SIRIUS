@@ -486,7 +486,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         }
         PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|evp");
 
-        evp_work_count() += 1;
+        evp_work_count(1);
 
         for (int i = 0; i < num_bands; i++) {
             kp.message(4, __func__, "eval[%i]=%20.16f\n", i, eval[i]);
@@ -621,7 +621,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             }
             PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|evp");
 
-            evp_work_count() += std::pow(static_cast<double>(N) / num_bands, 3);
+            evp_work_count(std::pow(static_cast<double>(N) / num_bands, 3));
 
             kp.message(2, __func__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
             for (int i = 0; i < num_bands; i++) {

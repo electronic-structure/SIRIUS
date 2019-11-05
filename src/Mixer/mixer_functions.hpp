@@ -36,6 +36,8 @@ namespace mixer {
 
 FunctionProperties<Periodic_function<double>> periodic_function_property();
 
+FunctionProperties<Periodic_function<double>> periodic_function_property_modified_inner();
+
 FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property();
 
 FunctionProperties<paw_density> paw_density_function_property();

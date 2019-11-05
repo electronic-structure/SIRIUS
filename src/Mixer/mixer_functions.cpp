@@ -106,6 +106,109 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
                                                          axpy_function);
 }
 
+FunctionProperties<Periodic_function<double>> periodic_function_property_modified_inner()
+{
+    auto global_size_func = [](Periodic_function<double> const& x) -> double
+    {
+        return x.ctx().unit_cell().omega();
+    };
+
+    auto inner_prod_func = [](Periodic_function<double> const& x, Periodic_function<double> const& y) -> double {
+        double result{0};
+        int ig0 = (x.ctx().comm().rank() == 0) ? 1 : 0;
+        for (int igloc = ig0; igloc < x.ctx().gvec_coarse().count(); igloc++) {
+            /* local index in fine G-vector list */
+            int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
+            /* global index */
+            int ig = x.ctx().gvec().offset() + ig1;
+
+            result += std::real(std::conj(x.f_pw_local(ig1)) * y.f_pw_local(ig1)) / std::pow(x.ctx().gvec().gvec_len(ig), 2);
+        }
+        if (x.ctx().gvec().reduced()) {
+            result *= 2;
+        }
+        result *= fourpi;
+        x.ctx().comm().allreduce(&result, 1);
+        return result;
+    };
+
+    auto scal_function = [](double alpha, Periodic_function<double>& x) -> void {
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(static) nowait
+            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
+                x.f_rg(i) *= alpha;
+            }
+            #pragma omp for schedule(static) nowait
+            for (int ig = 0; ig < x.ctx().gvec().count(); ig++) {
+                x.f_pw_local(ig) *= alpha;
+            }
+            if (x.ctx().full_potential()) {
+                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                    auto& x_f_mt = x.f_mt(ialoc);
+                    #pragma omp for schedule(static) nowait
+                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
+                        x_f_mt[i] *= alpha;
+                    }
+                }
+            }
+        }
+    };
+
+    auto copy_function = [](const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(static) nowait
+            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
+                y.f_rg(i) = x.f_rg(i);
+            }
+            #pragma omp for schedule(static) nowait
+            for (int ig = 0; ig < x.ctx().gvec().count(); ig++) {
+                y.f_pw_local(ig) = x.f_pw_local(ig);
+            }
+            if (x.ctx().full_potential()) {
+                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                    assert(x.f_mt(ialoc).size() == y.f_mt(ialoc).size());
+                    const auto& x_f_mt = x.f_mt(ialoc);
+                    auto& y_f_mt       = y.f_mt(ialoc);
+                    #pragma omp for schedule(static) nowait
+                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
+                        y_f_mt[i] = x_f_mt[i];
+                    }
+                }
+            }
+        }
+    };
+
+    auto axpy_function = [](double alpha, const Periodic_function<double>& x, Periodic_function<double>& y) -> void {
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(static) nowait
+            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
+                y.f_rg(i) += alpha * x.f_rg(i);
+            }
+            #pragma omp for schedule(static) nowait
+            for (int ig = 0; ig < x.ctx().gvec().count(); ig++) {
+                y.f_pw_local(ig) += alpha * x.f_pw_local(ig);
+            }
+            if (x.ctx().full_potential()) {
+                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                    assert(x.f_mt(ialoc).size() == y.f_mt(ialoc).size());
+                    const auto& x_f_mt = x.f_mt(ialoc);
+                    auto& y_f_mt       = y.f_mt(ialoc);
+                    #pragma omp for schedule(static) nowait
+                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
+                        y_f_mt[i] += alpha * x_f_mt[i];
+                    }
+                }
+            }
+        }
+    };
+
+    return FunctionProperties<Periodic_function<double>>(global_size_func, inner_prod_func, scal_function, copy_function,
+                                                         axpy_function);
+}
+
 FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
 {
     auto global_size_func = [](const mdarray<double_complex, 4>& x) -> double { return x.size(); };

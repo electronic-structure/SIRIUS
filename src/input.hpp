@@ -208,6 +208,9 @@ struct Mixer_input
     /// Scaling factor for mixing parameter.
     double beta_scaling_factor_{1};
 
+    /// Use Hartree potential in the inner() product for residuals.
+    bool use_hartree_{false};
+
     /// True if this section exists in the input file.
     bool exist_{false};
 
@@ -223,6 +226,7 @@ struct Mixer_input
             max_history_         = section.value("max_history", max_history_);
             type_                = section.value("type", type_);
             beta_scaling_factor_ = section.value("beta_scaling_factor", beta_scaling_factor_);
+            use_hartree_         = section.value("use_hartree", use_hartree_);
         }
     }
 };
