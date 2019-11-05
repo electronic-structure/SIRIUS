@@ -364,21 +364,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     ctx_.print_memory_usage(__FILE__, __LINE__);
     PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|alloc");
 
+    /* get diagonal elements for preconditioning */
     auto h_o_diag = Hk__.get_h_o_diag_pw<T, 3>();
-
-    ///* get diagonal elements for preconditioning */
-    //auto h_diag = H__.get_h_diag<T>(kp__);
-    //auto o_diag1 = H__.get_o_diag<T>(kp__);
-    //mdarray<double, 2> o_diag(kp__->num_gkvec_loc(), ctx_.num_spins());
-    //for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-    //    for (int j = 0; j < kp__->num_gkvec_loc(); j++) {
-    //        o_diag(j, ispn) = o_diag1[j];
-    //    }
-    //}
-
-    //if (ctx_.processing_unit() == device_t::GPU) {
-    //    o_diag.allocate(memory_t::device).copy_to(memory_t::device);
-    //}
 
     if (ctx_.control().print_checksum_) {
         auto cs1 = h_o_diag.first.checksum();

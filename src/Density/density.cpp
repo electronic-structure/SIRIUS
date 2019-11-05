@@ -24,7 +24,7 @@
  */
 
 #include "density.hpp"
-#include "../Symmetry/symmetrize.hpp"
+#include "Symmetry/symmetrize.hpp"
 #include "Mixer/mixer_functions.hpp"
 #include "Mixer/mixer_factory.hpp"
 #include "utils/profiler.hpp"

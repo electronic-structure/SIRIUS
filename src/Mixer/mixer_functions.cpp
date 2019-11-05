@@ -124,6 +124,12 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
 
             result += std::real(std::conj(x.f_pw_local(ig1)) * y.f_pw_local(ig1)) / std::pow(x.ctx().gvec().gvec_len(ig), 2);
         }
+        //for (int igloc = ig0; igloc < x.ctx().gvec().count(); igloc++) {
+        //    /* global index */
+        //    int ig = x.ctx().gvec().offset() + igloc;
+
+        //    result += std::real(std::conj(x.f_pw_local(igloc)) * y.f_pw_local(igloc)) / std::pow(x.ctx().gvec().gvec_len(ig), 2);
+        //}
         if (x.ctx().gvec().reduced()) {
             result *= 2;
         }

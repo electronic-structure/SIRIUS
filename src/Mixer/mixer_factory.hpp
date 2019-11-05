@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Simon Frasch, Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -19,7 +19,7 @@
 
 /** \file mixer_factory.hpp
  *
- *   \brief Contains the mixer facttory for creating different types of mixers.
+ *  \brief Contains the mixer facttory for creating different types of mixers.
  */
 
 #ifndef __MIXER_FACTORY_HPP__
