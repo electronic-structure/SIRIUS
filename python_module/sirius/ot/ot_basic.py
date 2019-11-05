@@ -1,4 +1,4 @@
-from ..py_sirius import ewald_energy, energy_bxc, Wave_functions, MemoryEnum
+from ..py_sirius import ewald_energy, energy_bxc, Wave_functions, MemoryEnum, Hamiltonian0
 from ..coefficient_array import PwCoeffs
 import numpy as np
 
@@ -53,7 +53,6 @@ class Energy:
         Etot -- total energy
         HX   -- Hamiltonian@X
         """
-
         assert isinstance(X, PwCoeffs)
 
         for key, val in X.items():
@@ -79,6 +78,7 @@ class Energy:
         self.potential.fft_transform(1)
 
         yn = self.H(X, scale=False)
+
         for key, val in yn.items():
             k, ispn = key
             benergies = np.zeros(self.ctx.num_bands(), dtype=np.complex)
@@ -102,9 +102,9 @@ class Energy:
 
 
 class ApplyHamiltonian:
-    def __init__(self, hamiltonian, kpointset):
-        assert not isinstance(hamiltonian, ApplyHamiltonian)
-        self.hamiltonian = hamiltonian
+    def __init__(self, potential, kpointset):
+        assert not isinstance(potential, ApplyHamiltonian)
+        self.potential = potential
         self.kpointset = kpointset
 
     def apply(self, cn, scale=True, ki=None, ispn=None):
@@ -117,6 +117,7 @@ class ApplyHamiltonian:
 
         ctx = self.kpointset.ctx()
         num_sc = ctx.num_spins()
+        H0 = Hamiltonian0(self.potential)
         if isinstance(cn, PwCoeffs):
             assert (ki is None)
             assert (ispn is None)
@@ -133,7 +134,7 @@ class ApplyHamiltonian:
                                        num_sc)
                 for i, val in ispn_coeffs:
                     Psi_x.pw_coeffs(i)[:, :val.shape[1]] = val
-                apply_hamiltonian(self.hamiltonian, kpoint, Psi_y, Psi_x)
+                apply_hamiltonian(H0, kpoint, Psi_y, Psi_x)
 
                 w = kpoint.weight()
                 # copy coefficients from Psi_y
