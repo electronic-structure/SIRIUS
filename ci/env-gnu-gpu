@@ -1,17 +1,17 @@
 export MPICH_MAX_THREAD_SAFETY=multiple
 
 module purge
-export EASYBUILD_PREFIX=/users/simonpi/jenkins/daint-haswell
+export EASYBUILD_PREFIX=/apps/daint/SSL/sirius-jenkins/daint-haswell
 module load modules
 module load craype
 module load PrgEnv-gnu
-module load cudatoolkit/10.1.105
+module load cudatoolkit
 module load daint-gpu
 module load git/2.13.1
 module load EasyBuild-custom/cscs
 module load intel
 module load cray-hdf5
-module load CMake/3.12.4
+module load CMake/3.14.5
 module load libxc/4.3.4-CrayGNU-19.10
 module load GSL/2.5-CrayGNU-19.10
 module load spglib/1.14.1-CrayGNU-19.10

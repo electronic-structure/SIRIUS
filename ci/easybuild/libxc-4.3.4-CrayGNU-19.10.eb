@@ -1,0 +1,32 @@
+# contributed by Simon Pintarelli (CSCS)
+
+easyblock = 'CMakeMake'
+
+name = 'libxc'
+version = "4.3.4"
+
+homepage = 'http://www.tddft.org/programs/octopus/wiki/index.php/Libxc'
+description = """Libxc is a library of exchange-correlation functionals for density-functional theory.
+ The aim is to provide a portable, well tested and reliable set of exchange and correlation functionals."""
+
+toolchain = {'name': 'CrayGNU', 'version': '19.10'}
+toolchainopts = {'opt': True}
+
+sources = [SOURCE_TAR_GZ]
+source_urls = ['https://gitlab.com/libxc/libxc/-/archive/%s/libxc-%s.tar.gz' % (version, version)]
+
+separate_build_dir = True
+preconfigopts = 'export FC="$F77" && export FCFLAGS="$FFLAGS" &&'
+configopts = '-DBUILD_SHARED_LIBS=On'
+builddependencies = [
+    ('CMake', '3.14.5', '', True),
+]
+
+sanity_check_paths = {
+    'files': ['lib64/libxc.so'],
+    'dirs': ['include'],
+}
+
+parallel = 10
+
+moduleclass = 'chem'
