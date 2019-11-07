@@ -24,6 +24,7 @@ pipeline {
                     sh '''
                            #!/bin/bash -l
                            export ENVFILE=$(realpath ci/env-gnu-gpu)
+                           rm -f sirius*{err,out}
                            rm -f build-daint-gpu.out
                            rm -f build-daint-gpu.err
                            sbatch --wait ci/build-daint-gpu.sh
@@ -113,8 +114,11 @@ pipeline {
             //        rm -rf  build verification examples
             //        '''
             // }
-            archiveArtifacts artifacts: '**/*.out', fingerprint: true
-            archiveArtifacts artifacts: '**/*.err', fingerprint: true
+            archiveArtifacts artifacts: '**/sirius*.out', fingerprint: true
+            archiveArtifacts artifacts: '**/sirius*.err', fingerprint: true
+            archiveArtifacts artifacts: '**/build*.out', fingerprint: true
+            archiveArtifacts artifacts: '**/build*.err', fingerprint: true
+
         }
     }
 }
