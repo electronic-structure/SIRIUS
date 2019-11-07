@@ -16,7 +16,7 @@ branches:
     - develop
 
 script:
-  - sh check_format.x
+  - ./check_format.x
 
 after_success:
 after_failure:
