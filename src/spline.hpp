@@ -212,6 +212,7 @@ class Spline : public Radial_grid<U>
         return coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
     }
 
+    /// Compute value at any point.
     inline T at_point(U x) const
     {
         int j = this->index_of(x);
