@@ -547,9 +547,7 @@ void Simulation_context::initialize()
     /* create G-vectors on the first call to update() */
     update();
 
-    if (comm_.rank() == 0 && control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    this->print_memory_usage(__FILE__, __LINE__);
 
     if (control().verbosity_ >= 1 && comm().rank() == 0) {
         print_info();
@@ -1037,20 +1035,21 @@ void Simulation_context::print_memory_usage(const char *file__, int line__)
     if (comm().rank() == 0 && control().print_memory_usage_) {
         sirius::print_memory_usage(file__, line__);
 
-        printf("memory_t::host pool:        %li %li %li %li\n", mem_pool(memory_t::host).total_size() >> 20,
-               mem_pool(memory_t::host).free_size() >> 20,
-               mem_pool(memory_t::host).num_blocks(),
-               mem_pool(memory_t::host).num_stored_ptr());
-
-        printf("memory_t::host_pinned pool: %li %li %li %li\n", mem_pool(memory_t::host_pinned).total_size() >> 20,
-               mem_pool(memory_t::host_pinned).free_size() >> 20,
-               mem_pool(memory_t::host_pinned).num_blocks(),
-               mem_pool(memory_t::host_pinned).num_stored_ptr());
-
-        printf("memory_t::device pool:      %li %li %li %li\n", mem_pool(memory_t::device).total_size() >> 20,
-               mem_pool(memory_t::device).free_size() >> 20,
-               mem_pool(memory_t::device).num_blocks(),
-               mem_pool(memory_t::device).num_stored_ptr());
+        std::vector<std::string> labels = {"host"};
+        std::vector<memory_pool*> mp = {&this->mem_pool(memory_t::host)};
+        int np{1};
+        if (processing_unit() == device_t::GPU) {
+            labels.push_back("host pinned");
+            labels.push_back("device");
+            mp.push_back(&this->mem_pool(memory_t::host_pinned));
+            mp.push_back(&this->mem_pool(memory_t::device));
+            np = 3;
+        }
+        for (int i = 0; i < np; i++) {
+            printf("%s memory pool: total capacity: %li Mb, free: %li Mb, num.blocks: %li, num.pointers: %li\n",
+                labels[i].c_str(), mp[i]->total_size() >> 20, mp[i]->free_size() >> 20, mp[i]->num_blocks(),
+                mp[i]->num_stored_ptr());
+        }
     }
 }
 

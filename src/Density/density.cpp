@@ -1295,6 +1295,8 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_ngv_loc.local_size() * 2,
                                          ctx_.mem_pool(memory_t::host));
 
+        ctx_.print_memory_usage(__FILE__, __LINE__);
+
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
                 break;
@@ -1306,6 +1308,8 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                 break;
             }
         }
+
+        ctx_.print_memory_usage(__FILE__, __LINE__);
 
         for (int ib = 0; ib < spl_ngv_loc.num_ranks(); ib++) {
             int g_begin = spl_ngv_loc.global_index(0, ib);

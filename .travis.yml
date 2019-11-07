@@ -14,7 +14,11 @@ branches:
     - develop
 
 script:
-  - clang-format --help
+  - ls
+  - pwd
+  - env
+  - git diff-tree
+  - git show --name-only
   - git diff-tree --no-commit-id --name-only -r HEAD
   - ./check_format.x
 

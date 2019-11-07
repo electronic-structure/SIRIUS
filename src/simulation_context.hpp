@@ -48,7 +48,7 @@ namespace sirius {
 /// Utility function to print a CPU and GPU memory utilization.
 void print_memory_usage(const char* file__, int line__);
 
-#define MEMORY_USAGE_INFO() print_memory_usage(__FILE__, __LINE__);
+///#define MEMORY_USAGE_INFO() print_memory_usage(__FILE__, __LINE__);
 
 /// Utility function to generate LAPW unit step function.
 double unit_step_function_form_factors(double R__, double g__);
