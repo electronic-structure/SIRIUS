@@ -1,13 +1,9 @@
 export MPICH_MAX_THREAD_SAFETY=multiple
 
-module purge
 export EASYBUILD_PREFIX=/apps/daint/SSL/sirius-jenkins/daint-haswell
-module load modules
-module load craype
-module load PrgEnv-gnu
+module swap PrgEnv-cray PrgEnv-gnu
 module load cudatoolkit
 module load daint-gpu
-module load cray-mpich
 module load EasyBuild-custom/cscs
 module load intel
 module load cray-hdf5
