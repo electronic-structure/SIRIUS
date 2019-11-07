@@ -1,0 +1,14 @@
+sudo: false
+
+language: c++
+
+branches:
+  only:
+    - develop
+
+script:
+  - sh check_format.x
+
+after_success:
+after_failure:
+
