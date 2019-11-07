@@ -8,7 +8,6 @@ module load PrgEnv-gnu
 module load cudatoolkit
 module load daint-gpu
 module load cray-mpich
-module load git/2.13.1
 module load EasyBuild-custom/cscs
 module load intel
 module load cray-hdf5
