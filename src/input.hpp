@@ -426,7 +426,8 @@ struct Control_input
             memory_usage_        = section.value("memory_usage", memory_usage_);
             beta_chunk_size_     = section.value("beta_chunk_size", beta_chunk_size_);
 
-            auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_, &memory_usage_};
+            auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_,
+                            &memory_usage_};
             for (auto s : strings) {
                 std::transform(s->begin(), s->end(), s->begin(), ::tolower);
             }
@@ -580,12 +581,12 @@ struct Parameters_input
             num_dft_iter_   = parser["parameters"].value("num_dft_iter", num_dft_iter_);
             energy_tol_     = parser["parameters"].value("energy_tol", energy_tol_);
             /* potential_tol is obsolete */
-            density_tol_    = parser["parameters"].value("potential_tol", density_tol_);
-            density_tol_    = parser["parameters"].value("density_tol", density_tol_);
-            molecule_       = parser["parameters"].value("molecule", molecule_);
-            nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
-            reduce_aux_bf_  = parser["parameters"].value("reduce_aux_bf", reduce_aux_bf_);
-            extra_charge_   = parser["parameters"].value("extra_charge", extra_charge_);
+            density_tol_   = parser["parameters"].value("potential_tol", density_tol_);
+            density_tol_   = parser["parameters"].value("density_tol", density_tol_);
+            molecule_      = parser["parameters"].value("molecule", molecule_);
+            nn_radius_     = parser["parameters"].value("nn_radius", nn_radius_);
+            reduce_aux_bf_ = parser["parameters"].value("reduce_aux_bf", reduce_aux_bf_);
+            extra_charge_  = parser["parameters"].value("extra_charge", extra_charge_);
 
             if (parser["parameters"].count("spin_orbit")) {
                 so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);
