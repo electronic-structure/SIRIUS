@@ -60,6 +60,7 @@ class Radial_grid
     /// Name of the grid type.
     std::string name_;
 
+    /// Initialize the grid.
     void init()
     {
         x_inv_ = mdarray<T, 1>(num_points(), memory_t::host, "Radial_grid::x_inv");
@@ -82,10 +83,12 @@ class Radial_grid
     Radial_grid& operator=(Radial_grid<T> const& src__) = delete;
 
   public:
+    /// Constructor of the empty object.
     Radial_grid()
     {
     }
 
+    /// Constructor.
     Radial_grid(int num_points__)
     {
         x_ = mdarray<T, 1>(num_points__, memory_t::host, "Radial_grid::x");
