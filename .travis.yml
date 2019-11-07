@@ -17,7 +17,7 @@ script:
   - ls
   - pwd
   - env
-  - git diff-tree
+  - git diff-tree HEAD
   - git show --name-only
   - git diff-tree --no-commit-id --name-only -r HEAD
   - ./check_format.x

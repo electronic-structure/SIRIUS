@@ -44,9 +44,7 @@ double ground_state(Simulation_context& ctx,
                     cmd_args const&     args,
                     int                 write_output)
 {
-    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx.print_memory_usage(__FILE__, __LINE__);
 
     auto& inp = ctx.parameters_input();
 
@@ -57,9 +55,7 @@ double ground_state(Simulation_context& ctx,
     K_point_set kset(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
     DFT_ground_state dft(kset);
 
-    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx.print_memory_usage(__FILE__, __LINE__);
 
     auto& potential = dft.potential();
     auto& density = dft.density();
