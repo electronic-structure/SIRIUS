@@ -62,15 +62,25 @@ class Spheric_function: public mdarray<T, 2>
     {
     }
 
-    Spheric_function(int angular_domain_size__, Radial_grid<double> const& radial_grid__) 
+    /// Constructor.
+    Spheric_function(int angular_domain_size__, Radial_grid<double> const& radial_grid__)
         : mdarray<T, 2>(angular_domain_size__, radial_grid__.num_points())
         , radial_grid_(&radial_grid__)
         , angular_domain_size_(angular_domain_size__)
     {
     }
 
-    Spheric_function(T* ptr__, int angular_domain_size__, Radial_grid<double> const& radial_grid__) 
+    /// Constructor.
+    Spheric_function(T* ptr__, int angular_domain_size__, Radial_grid<double> const& radial_grid__)
         : mdarray<T, 2>(ptr__, angular_domain_size__, radial_grid__.num_points())
+        , radial_grid_(&radial_grid__)
+        , angular_domain_size_(angular_domain_size__)
+    {
+    }
+
+    /// Constructor.
+    Spheric_function(memory_pool& mp__, int angular_domain_size__, Radial_grid<double> const& radial_grid__)
+        : mdarray<T, 2>(angular_domain_size__, radial_grid__.num_points(), mp__)
         , radial_grid_(&radial_grid__)
         , angular_domain_size_(angular_domain_size__)
     {
@@ -223,6 +233,7 @@ inline Spheric_function<function_domain_t::spatial, T> operator*(Spheric_functio
 
     Spheric_function<function_domain_t::spatial, T> res(a__.angular_domain_size(), a__.radial_grid());
 
+    #pragma omp parallel for schedule(static)
     for (int ir = 0; ir < res.radial_grid().num_points(); ir++) {
         for (int tp = 0; tp < res.angular_domain_size(); tp++) {
             res(tp, ir) = a__(tp, ir) * b__(tp, ir);
@@ -251,6 +262,7 @@ inline Spheric_function<function_domain_t::spatial, double> operator*(Spheric_ve
     result.zero();
 
     for (int x: {0, 1, 2}) {
+        #pragma omp parallel for schedule(static)
         for (int ir = 0; ir < f.radial_grid().num_points(); ir++) {
             for (int tp = 0; tp < f.angular_domain_size(); tp++) {
                 result(tp, ir) += f[x](tp, ir) * g[x](tp, ir);
@@ -274,6 +286,7 @@ Spheric_function<domain_t, T> operator+(Spheric_function<domain_t, T> const& a__
 
     Spheric_function<domain_t, T> result(a__.angular_domain_size(), a__.radial_grid());
 
+    #pragma omp parallel for schedule(static)
     for (int ir = 0; ir < a__.radial_grid().num_points(); ir++) {
         for (int i = 0; i < a__.angular_domain_size(); i++) {
             result(i, ir) = a__(i, ir) + b__(i, ir);
@@ -296,6 +309,7 @@ Spheric_function<domain_t, T> operator-(Spheric_function<domain_t, T> const& a__
 
     Spheric_function<domain_t, T> res(a__.angular_domain_size(), a__.radial_grid());
 
+    #pragma omp parallel for schedule(static)
     for (int ir = 0; ir < a__.radial_grid().num_points(); ir++) {
         for (int i = 0; i < a__.angular_domain_size(); i++) {
             res(i, ir) = a__(i, ir) - b__(i, ir);
@@ -314,6 +328,7 @@ Spheric_function<domain_t, T> operator*(T a__, Spheric_function<domain_t, T> con
     T const* ptr_rhs = &b__(0, 0);
     T* ptr_res = &res(0, 0);
 
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < b__.size(); i++) {
         ptr_res[i] = a__ * ptr_rhs[i];
     }
