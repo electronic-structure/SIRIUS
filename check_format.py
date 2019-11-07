@@ -17,7 +17,7 @@ for name in files:
     with open(name, 'r') as f:
         original = f.read()
     p1 = subprocess.Popen(["sed", r"s/#pragma omp/\/\/#pragma omp/g", name], shell=enable_shell, stdout=subprocess.PIPE)
-    p2 = subprocess.Popen(["clang-format-mp-7.0", "-style=file"],            shell=enable_shell, stdin=p1.stdout, stdout=subprocess.PIPE)
+    p2 = subprocess.Popen(["clang-format", "-style=file"],            shell=enable_shell, stdin=p1.stdout, stdout=subprocess.PIPE)
     p3 = subprocess.Popen(["sed", r"s/\/\/ *#pragma omp/#pragma omp/g"],     shell=enable_shell, stdin=p2.stdout, stdout=subprocess.PIPE)
     formatted = p3.communicate()[0].decode('utf-8')
     p3.wait()
