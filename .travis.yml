@@ -5,7 +5,7 @@ dist: bionic
 language: c++
 
 git:
-  depth: 1
+  depth: 3
 
 before_install:
 
@@ -14,12 +14,6 @@ branches:
     - develop
 
 script:
-  - ls
-  - pwd
-  - env
-  - git diff-tree HEAD
-  - git show --name-only
-  - git diff-tree --no-commit-id --name-only -r HEAD
   - ./check_format.x
 
 after_success:
