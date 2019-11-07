@@ -15,6 +15,7 @@ branches:
 
 script:
   - clang-format --help
+  - git diff-tree --no-commit-id --name-only -r HEAD
   - ./check_format.x
 
 after_success:

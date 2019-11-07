@@ -7,6 +7,8 @@ env_copy = os.environ.copy()
 
 files = [name.strip() for name in sys.stdin.readlines()]
 
+print("files to check", files)
+
 #files = ['src/input.hpp']
 
 enable_shell = False
