@@ -8,7 +8,7 @@ endif()
 
 # set language and standard
 enable_language(CXX Fortran)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 # user variables

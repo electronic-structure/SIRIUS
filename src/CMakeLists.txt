@@ -42,6 +42,7 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp;Hamiltonian/hamiltonian_k.cpp;Band/ban
   "K_point/k_point_set.cpp"
   "K_point/generate_gklo_basis.cpp"
   "K_point/test_fv_states.cpp"
+  "energy.cpp"
   "field4d.cpp"
   "radial_integrals.cpp"
   "sbessel.cpp"

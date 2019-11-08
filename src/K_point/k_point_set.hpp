@@ -138,7 +138,7 @@ class K_point_set
     void find_band_occupancies();
 
     /// Return sum of valence eigen-values
-    double valence_eval_sum()
+    double valence_eval_sum() const
     {
         double eval_sum{0};
 

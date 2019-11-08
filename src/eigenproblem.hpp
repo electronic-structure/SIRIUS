@@ -612,13 +612,7 @@ class Eigensolver_elpa : public Eigensolver
 
         PROFILE_START("Eigensolver_elpa|solve_std|setup");
 
-        int num_cols_loc = A__.num_cols_local();
         int bs           = A__.bs_row();
-        int lda          = A__.ld();
-        int ldz          = Z__.ld();
-        int mpi_comm_row = MPI_Comm_c2f(A__.blacs_grid().comm_row().mpi_comm());
-        int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
-        int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
 
         int error;
         elpa_t handle;
@@ -679,14 +673,8 @@ class Eigensolver_elpa : public Eigensolver
             TERMINATE("number of columns in A and Z don't match");
         }
 
-        PROFILE_START("Eigensolver_elpa|solve_std|setup");
-        int num_cols_loc = A__.num_cols_local();
+        utils::timer t1("Eigensolver_elpa|solve_std|setup");
         int bs           = A__.bs_row();
-        int lda          = A__.ld();
-        int ldz          = Z__.ld();
-        int mpi_comm_row = MPI_Comm_c2f(A__.blacs_grid().comm_row().mpi_comm());
-        int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
-        int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
 
         int error;
         elpa_t handle;
@@ -1366,7 +1354,7 @@ class Eigensolver_magma: public Eigensolver
 
         magma_dsyevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(memory_t::host), lda, 0.0, 0.0, 1,
                       nev__, &m, w.get(), h_work.get(), lwork, iwork.get(), liwork, &info);
-        
+
         if (nt != omp_get_max_threads()) {
             TERMINATE("magma has changed the number of threads");
         }
@@ -1559,7 +1547,7 @@ class Eigensolver_magma_gpu: public Eigensolver
 
     //    magma_dsyevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size__, A__.at(memory_t::host), lda, 0.0, 0.0, 1,
     //                  nev__, &m, w.get(), h_work.get(), lwork, iwork.get(), liwork, &info);
-    //    
+    //
     //    if (nt != omp_get_max_threads()) {
     //        TERMINATE("magma has changed the number of threads");
     //    }

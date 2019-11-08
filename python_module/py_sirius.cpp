@@ -106,7 +106,7 @@ void apply_hamiltonian(Potential& potential, K_point& kp, Wave_functions& wf_out
     /* typedefs */
     template <typename T>
     using matrix_storage_slab = sddk::matrix_storage<T, sddk::matrix_storage_t::slab>;
-using complex_double      = std::complex<double>;
+    using complex_double      = std::complex<double>;
 
 PYBIND11_MODULE(py_sirius, m)
 {
