@@ -1,0 +1,34 @@
+# created by Anton Kozhevnikov (CSCS)
+# updated Simon Pintarelli (CSCS)
+
+easyblock = 'CMakeMake'
+
+name = 'spglib'
+version = '1.14.1'
+
+homepage = 'https://atztogo.github.io/spglib/'
+description = """Spglib is a library for finding and handling crystal symmetries written in C."""
+
+toolchain = {'name': 'CrayGNU', 'version': '19.10'}
+toolchainopts = {'usempi': False, 'openmp': True}
+
+source_urls = ['https://github.com/atztogo/spglib/archive/']
+sources = ['v%(version)s.tar.gz']
+
+builddependencies = [
+    ('CMake', '3.14.5', '', True),
+]
+
+separate_build_dir = True
+
+# common_prebuildopts = 'module unload cray-libsci && module load gcc && module list &&'
+postinstallcmds = ['mkdir %(installdir)s/include/spglib',
+                   'cp %(installdir)s/include/spglib.h %(installdir)s/include/spglib/']
+
+sanity_check_paths = {
+    'files': ['lib/libsymspg.a', 'lib/libsymspg.so'],
+    'dirs': ['include', 'lib', 'include/spglib']
+}
+
+
+moduleclass = 'chem'

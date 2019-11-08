@@ -275,16 +275,8 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Create an empty simulation context with an explicit communicator.
-    Simulation_context(Communicator const& comm__)
+    Simulation_context(Communicator const& comm__ = Communicator::world())
         : comm_(comm__)
-        , unit_cell_(*this, comm_)
-    {
-        start();
-    }
-
-    /// Create an empty simulation context with world communicator.
-    Simulation_context()
-        : comm_(Communicator::world())
         , unit_cell_(*this, comm_)
     {
         start();

@@ -14,7 +14,8 @@ source ${ENVFILE}
 mkdir -p build
 (
     cd build
-    cmake -DUSE_MKL=On \
+    CXX=CC CC=cc cmake -DUSE_MKL=On \
+          -DCMAKE_CXX_FLAGS="-Werror" \
           -DUSE_ELPA=Off \
           -DGPU_MODEL=P100 \
           -DUSE_SCALAPACK=On \

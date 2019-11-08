@@ -8,7 +8,7 @@ fi
 if [[ $(type -f srun 2> /dev/null) ]]; then
     SRUN_CMD="srun -u -n4 -c2"
 else
-    SRUN_CMD="mpi -np 4"
+    SRUN_CMD="mpirun -np 4"
 fi
 
 
