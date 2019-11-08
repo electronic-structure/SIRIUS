@@ -544,6 +544,9 @@ void Simulation_context::initialize()
                     comm_band().rank(), comm_k().rank(), utils::hostname().c_str());
     }
 
+    /* placeholder for augmentation operator for each atom type */
+    augmentation_op_.resize(unit_cell().num_atom_types());
+
     /* create G-vectors on the first call to update() */
     update();
 
@@ -943,7 +946,6 @@ void Simulation_context::update()
     }
 
     if (!full_potential()) {
-        augmentation_op_.clear();
         memory_pool* mp{nullptr};
         switch (processing_unit()) {
             case device_t::CPU: {
@@ -955,11 +957,15 @@ void Simulation_context::update()
                 break;
             }
         }
-        /* create augmentation operator Q_{xi,xi'}(G) here */
         for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-            augmentation_op_.push_back(
-                    std::move(Augmentation_operator(unit_cell().atom_type(iat), gvec(), comm())));
-            augmentation_op_.back().generate_pw_coeffs(aug_ri(), *mp);
+            if (unit_cell().atom_type(iat).augment() && unit_cell().atom_type(iat).num_atoms() > 0) {
+                augmentation_op_[iat] = std::unique_ptr<Augmentation_operator>(
+                    new Augmentation_operator(unit_cell().atom_type(iat), gvec()));
+                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), *mp);
+
+            } else {
+                augmentation_op_[iat] = nullptr;
+            }
         }
     }
 }
@@ -1030,9 +1036,9 @@ void Simulation_context::generate_phase_factors(int iat__, mdarray<double_comple
     }
 }
 
-void Simulation_context::print_memory_usage(const char *file__, int line__) 
+void Simulation_context::print_memory_usage(const char *file__, int line__)
 {
-    if (comm().rank() == 0 && control().print_memory_usage_) {
+    if (comm().rank() == 0 && control().print_memory_usage_ && control().verbosity_ >= 1) {
         sirius::print_memory_usage(file__, line__);
 
         std::vector<std::string> labels = {"host"};
@@ -1045,8 +1051,10 @@ void Simulation_context::print_memory_usage(const char *file__, int line__)
             mp.push_back(&this->mem_pool(memory_t::device));
             np = 3;
         }
+        printf("memory pools\n");
+        printf("------------\n");
         for (int i = 0; i < np; i++) {
-            printf("%s memory pool: total capacity: %li Mb, free: %li Mb, num.blocks: %li, num.pointers: %li\n",
+            printf("%s: total capacity: %li Mb, free: %li Mb, num.blocks: %li, num.pointers: %li\n",
                 labels[i].c_str(), mp[i]->total_size() >> 20, mp[i]->free_size() >> 20, mp[i]->num_blocks(),
                 mp[i]->num_stored_ptr());
         }
@@ -1195,10 +1203,10 @@ void Simulation_context::init_comm()
     /* setup MPI grid */
     mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
 
-    //comm_ortho_fft_ = comm().split(comm_fft().rank());
-
+    /* create communicator, orthogonal to comm_fft_coarse */
     comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
 
+    /* create communicator, orthogonal to comm_fft_coarse within a band communicator */
     comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
 }
 

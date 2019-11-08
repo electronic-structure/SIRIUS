@@ -292,7 +292,7 @@ matrix3d<double> Stress::calc_stress_xc()
     return stress_xc_;
 }
 
-matrix3d<double> Stress::calc_stress_us()
+matrix3d<double> Stress::calc_stress_us() // TODO: add GPU code for stress tensor
 {
     PROFILE("sirius::Stress|us");
 

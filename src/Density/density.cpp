@@ -1260,8 +1260,8 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         }
     }
 
-    if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
-        ctx_.augmentation_op(0).prepare(stream_id(0));
+    if (ctx_.augmentation_op(0)) {
+        ctx_.augmentation_op(0)->prepare(stream_id(0), &ctx_.mem_pool(memory_t::device));
     }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -1269,9 +1269,8 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
 
         if (ctx_.processing_unit() == device_t::GPU) {
             acc::sync_stream(stream_id(0));
-            if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment() &&
-                ctx_.unit_cell().atom_type(iat + 1).num_atoms() > 0) {
-                ctx_.augmentation_op(iat + 1).prepare(stream_id(0));
+            if (iat + 1 != unit_cell_.num_atom_types() && ctx_.augmentation_op(iat + 1)) {
+                ctx_.augmentation_op(iat + 1)->prepare(stream_id(0), &ctx_.mem_pool(memory_t::device));
             }
         }
 
@@ -1341,11 +1340,11 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                             double_complex zsum(0, 0);
                             /* get contribution from non-diagonal terms */
                             for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                                double_complex z1 = double_complex(ctx_.augmentation_op(iat).q_pw(i, 2 * igloc),
-                                                                   ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
+                                double_complex z1 = double_complex(ctx_.augmentation_op(iat)->q_pw(i, 2 * igloc),
+                                                                   ctx_.augmentation_op(iat)->q_pw(i, 2 * igloc + 1));
                                 double_complex z2(dm_pw(i, 2 * (igloc - g_begin)), dm_pw(i, 2 * (igloc - g_begin) + 1));
 
-                                zsum += z1 * z2 * ctx_.augmentation_op(iat).sym_weight(i);
+                                zsum += z1 * z2 * ctx_.augmentation_op(iat)->sym_weight(i);
                             }
                             rho_aug(igloc, iv) += zsum;
                         }
@@ -1377,7 +1376,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
 
         if (ctx_.processing_unit() == device_t::GPU) {
             acc::sync_stream(stream_id(1));
-            ctx_.augmentation_op(iat).dismiss();
+            ctx_.augmentation_op(iat)->dismiss();
         }
     }
 

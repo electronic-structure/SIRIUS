@@ -23,9 +23,8 @@
  */
 
 #include "potential.hpp"
+
 namespace sirius {
-
-
 
 #ifdef __GPU
 extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
@@ -46,8 +45,8 @@ void Potential::generate_D_operator_matrix()
 
     auto spl_ngv_loc = ctx_.split_gvec_local();
 
-    if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
-        ctx_.augmentation_op(0).prepare(stream_id(0));
+    if (ctx_.augmentation_op(0)) {
+        ctx_.augmentation_op(0)->prepare(stream_id(0), &ctx_.mem_pool(memory_t::device));
     }
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
@@ -56,9 +55,8 @@ void Potential::generate_D_operator_matrix()
         /* start copy of Q(G) for the next atom type */
         if (ctx_.processing_unit() == device_t::GPU) {
             acc::sync_stream(stream_id(0));
-            if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment() &&
-                ctx_.unit_cell().atom_type(iat + 1).num_atoms() > 0) {
-                ctx_.augmentation_op(iat + 1).prepare(stream_id(0));
+            if (iat + 1 != unit_cell_.num_atom_types() && ctx_.augmentation_op(iat + 1)) {
+                ctx_.augmentation_op(iat + 1)->prepare(stream_id(0), &ctx_.mem_pool(memory_t::device));
             }
         }
 
@@ -149,8 +147,8 @@ void Potential::generate_D_operator_matrix()
                 }
                 linalg2(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
                                   &linalg_const<double>::one(),
-                                  ctx_.augmentation_op(iat).q_pw().at(mem, 0, 2 * g_begin),
-                                  ctx_.augmentation_op(iat).q_pw().ld(),
+                                  ctx_.augmentation_op(iat)->q_pw().at(mem, 0, 2 * g_begin),
+                                  ctx_.augmentation_op(iat)->q_pw().ld(),
                                   veff_a.at(mem), veff_a.ld(),
                                   &linalg_const<double>::one(),
                                   d_tmp.at(mem), d_tmp.ld(),
@@ -165,8 +163,8 @@ void Potential::generate_D_operator_matrix()
                 if (comm_.rank() == 0) {
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         for (int j = 0; j < nbf * (nbf + 1) / 2; j++) {
-                            d_tmp(j, i) = 2 * d_tmp(j, i) -
-                                          component(iv).f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
+                            d_tmp(j, i) = 2 * d_tmp(j, i) - component(iv).f_pw_local(0).real() *
+                                ctx_.augmentation_op(iat)->q_pw(j, 0);
                         }
                     }
                 } else {
@@ -204,7 +202,8 @@ void Potential::generate_D_operator_matrix()
                 }
             }
         }
-        ctx_.augmentation_op(iat).dismiss();
+        ctx_.augmentation_op(iat)->dismiss();
+
     }
 }
 

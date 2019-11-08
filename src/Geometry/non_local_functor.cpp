@@ -17,6 +17,11 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/** \file non_local_functor.cpp
+ *
+ *  \brief Common operation for forces and stress tensor.
+ */
+
 #include "K_point/k_point.hpp"
 #include "Density/augmentation_operator.hpp"
 #include "Beta_projectors/beta_projectors.hpp"
@@ -26,15 +31,17 @@
 namespace sirius {
 
 template<typename T>
-void Non_local_functor<T>::add_k_point_contribution(K_point &kpoint__, mdarray<double, 2> &collect_res__)
+void Non_local_functor<T>::add_k_point_contribution(K_point& kpoint__, sddk::mdarray<double, 2>& collect_res__)
 {
+    PROFILE("sirius::Non_local_functor::add_k_point");
+
     auto& unit_cell = ctx_.unit_cell();
 
     if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
         return;
     }
 
-    auto &bp = kpoint__.beta_projectors();
+    auto& bp = kpoint__.beta_projectors();
 
     double main_two_factor{-2};
 
@@ -85,7 +92,7 @@ void Non_local_functor<T>::add_k_point_contribution(K_point &kpoint__, mdarray<d
                     /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
                     auto for_bnd = [&](int ibf, int jbf, double_complex dij, double_complex qij,
                                        matrix<T> &beta_phi_chunk) {
-                        /* gather everything = - 2  Re[ occ(k,n) weight(k) beta_phi*(i,n) [ Dij - E(n)Qij] beta_base_phi(j,n) ]*/
+                        /* gather everything = - 2  Re[ occ(k,n) weight(k) beta_phi*(i,n) [Dij - E(n)Qij] beta_base_phi(j,n) ]*/
                         for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
                             int ibnd = spl_nbnd[ibnd_loc];
 
@@ -108,10 +115,11 @@ void Non_local_functor<T>::add_k_point_contribution(K_point &kpoint__, mdarray<d
                             int idxrf1 = unit_cell.atom(ia).type().indexb(jbf).idxrf;
 
                             /* Qij exists only in the case of ultrasoft/PAW */
-                            double qij = unit_cell.atom(ia).type().augment() ? ctx_.augmentation_op(iat).q_mtrx(ibf,
-                                                                                                                jbf)
-                                                                             : 0.0;
-                            double_complex dij = 0.0;
+                            double qij{0};
+                            if (unit_cell.atom(ia).type().augment()) {
+                                qij = ctx_.augmentation_op(iat)->q_mtrx(ibf, jbf);
+                            }
+                            double_complex dij{0};
 
                             /* get non-magnetic or collinear spin parts of dij*/
                             switch (ctx_.num_spins()) {
@@ -148,8 +156,7 @@ void Non_local_functor<T>::add_k_point_contribution(K_point &kpoint__, mdarray<d
                                 dij = double_complex(unit_cell.atom(ia).d_mtrx(ibf, jbf, 2),
                                                      spin_factor * unit_cell.atom(ia).d_mtrx(ibf, jbf, 3));
                                 /* add non-diagonal spin components*/
-                                for_bnd(ibf, jbf, dij, double_complex(0.0, 0.0),
-                                        beta_phi_chunks[ispn + spin_factor]);
+                                for_bnd(ibf, jbf, dij, double_complex(0.0, 0.0), beta_phi_chunks[ispn + spin_factor]);
                             }
                         } // jbf
                     } // ibf
@@ -162,9 +169,9 @@ void Non_local_functor<T>::add_k_point_contribution(K_point &kpoint__, mdarray<d
 }
 
 template void
-Non_local_functor<double>::add_k_point_contribution(K_point &kpoint__, mdarray<double, 2> &collect_res__);
+Non_local_functor<double>::add_k_point_contribution(K_point &kpoint__, sddk::mdarray<double, 2> &collect_res__);
 
 template void
-Non_local_functor<double_complex>::add_k_point_contribution(K_point &kpoint__, mdarray<double, 2> &collect_res__);
+Non_local_functor<double_complex>::add_k_point_contribution(K_point &kpoint__, sddk::mdarray<double, 2> &collect_res__);
 
 }

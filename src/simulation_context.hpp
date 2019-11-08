@@ -48,30 +48,35 @@ namespace sirius {
 /// Utility function to print a CPU and GPU memory utilization.
 void print_memory_usage(const char* file__, int line__);
 
-///#define MEMORY_USAGE_INFO() print_memory_usage(__FILE__, __LINE__);
-
 /// Utility function to generate LAPW unit step function.
 double unit_step_function_form_factors(double R__, double g__);
 
 /// Simulation context is a set of parameters and objects describing a single simulation.
 /** The order of initialization of the simulation context is the following: first, the default parameter
- *  values are set in the constructor, then (optionally) import() method is called and the parameters are
- *  overwritten with the those from the input file, and finally, the user sets the values with setter metods.
- *  Then the unit cell can be populated and the context can be initialized. */
+    values are set in the constructor, then (optionally) import() method is called and the parameters are
+    overwritten with the those from the input file, and finally, the user sets the values with setter metods.
+    Then the unit cell can be populated and the context can be initialized.
+ */
 class Simulation_context : public Simulation_parameters
 {
   private:
+    /// Storage for various memory pools.
+    mutable std::map<memory_t, memory_pool> memory_pool_;
+
     /// Communicator for this simulation.
     Communicator const& comm_;
 
     /// Auxiliary communicator for the fine-grid FFT transformation.
     /** This communicator is orthogonal to the FFT communicator for density and potential within the full
      *  communicator of the simulation context. In other words, comm_ortho_fft_ \otimes comm_fft() = ctx_.comm() */
-    Communicator comm_ortho_fft_{MPI_COMM_SELF};
+    //Communicator comm_ortho_fft_{MPI_COMM_SELF};
 
     /// Auxiliary communicator for the coarse-grid FFT transformation.
     Communicator comm_ortho_fft_coarse_;
 
+    /// Communicator, which is orthogonal to comm_fft_coarse within a band communicator.
+    /** This communicator is used in reshuffling the wave-functions for the FFT-friendly distribution. It will be
+        used to parallelize application of local Hamiltonian over bands. */
     Communicator comm_band_ortho_fft_coarse_;
 
     /// Unit cell of the simulation.
@@ -171,9 +176,6 @@ class Simulation_context : public Simulation_parameters
     /// List of real-space point indices for each of the atoms.
     std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
-    /// Storage for various memory pools.
-    mutable std::map<memory_t, memory_pool> memory_pool_;
-
     /// Plane wave expansion coefficients of the step function.
     mdarray<double_complex, 1> theta_pw_;
 
@@ -181,7 +183,8 @@ class Simulation_context : public Simulation_parameters
     mdarray<double, 1> theta_;
 
     /// Augmentation operator for each atom type.
-    std::vector<Augmentation_operator> augmentation_op_;
+    /** The augmentation operator is used by Density, Potential, Q_operator, and Non_local_functor classes. */
+    std::vector<std::unique_ptr<Augmentation_operator>> augmentation_op_;
 
     /// Standard eigen-value problem solver.
     std::unique_ptr<Eigensolver> std_evp_solver_;
@@ -297,16 +300,11 @@ class Simulation_context : public Simulation_parameters
         unit_cell_.import(unit_cell_input_);
     }
 
+    /// Destructor.
     ~Simulation_context()
     {
-        std::vector<std::string> names({"host", "host_pinned", "device"});
-
-        if ((!comm().is_finalized() && comm().rank() == 0) && control().verbosity_ >= 2) {
-            for (auto name: names) {
-                auto& mp = mem_pool(get_memory_t(name));
-                printf("memory_pool(%s): total size: %li MB, free size: %li MB\n", name.c_str(), mp.total_size() >> 20,
-                       mp.free_size() >> 20);
-            }
+        if (!comm().is_finalized()) {
+            this->print_memory_usage(__FILE__, __LINE__);
         }
     }
 
@@ -405,14 +403,13 @@ class Simulation_context : public Simulation_parameters
     /** This communicator is passed to the spfft::Transform constructor. */
     Communicator const& comm_fft() const
     {
-        /* 3rd dimension of MPI grid is used */
-        //return mpi_grid_->communicator(1 << 2);
+        /* use entire communicator of the simulation */
         return comm();
     }
 
     Communicator const& comm_ortho_fft() const
     {
-        return comm_ortho_fft_;
+        return Communicator::self();
     }
 
     /// Communicator of the coarse FFT grid.
@@ -422,7 +419,7 @@ class Simulation_context : public Simulation_parameters
         if (control().fft_mode_ == "serial") {
             return Communicator::self();
         } else {
-            return comm_fft();
+            return comm_band();
         }
     }
 
@@ -652,16 +649,15 @@ class Simulation_context : public Simulation_parameters
         return theta_[ir__];
     }
 
-    /// Returns a constant reference to the augmentation operator of a given atom type.
-    inline Augmentation_operator const& augmentation_op(int iat__) const
+    /// Returns a constant pointer to the augmentation operator of a given atom type.
+    inline Augmentation_operator const* const augmentation_op(int iat__) const
     {
-        return augmentation_op_[iat__];
+        return augmentation_op_[iat__].get();
     }
 
-    /// Returns a reference to the augmentation operator of a given atom type.
-    inline Augmentation_operator& augmentation_op(int iat__)
+    inline Augmentation_operator* const augmentation_op(int iat__)
     {
-        return augmentation_op_[iat__];
+        return augmentation_op_[iat__].get();
     }
 
     /// Type of the host memory for arrays used in linear algebra operations.

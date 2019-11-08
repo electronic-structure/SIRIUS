@@ -547,7 +547,7 @@ void Q_operator::initialize()
                                         /* The F coefficients are already "block diagonal" so we do a full
                                            summation. We actually rotate the q_matrices only */
                                         if (uc.atom(ia).type().compare_index_beta_functions(xi1, xi1p)) {
-                                            result += this->ctx_.augmentation_op(iat).q_mtrx(xi1p, xi2p) *
+                                            result += this->ctx_.augmentation_op(iat)->q_mtrx(xi1p, xi2p) *
                                                       (uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 0) *
                                                        uc.atom(ia).type().f_coefficients(xi2p, xi2, 0, si) +
                                                        uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 1) *
@@ -571,7 +571,7 @@ void Q_operator::initialize()
                 } else {
                     for (int ispn = 0; ispn < this->ctx_.num_spins(); ispn++) {
                         this->op_(0, this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, ispn) =
-                            this->ctx_.augmentation_op(iat).q_mtrx(xi1, xi2);
+                            this->ctx_.augmentation_op(iat)->q_mtrx(xi1, xi2);
                     }
                 }
             }

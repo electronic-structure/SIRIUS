@@ -46,8 +46,8 @@ class Non_local_functor
     {
     }
 
-    /// collect summation result in an array
-    void add_k_point_contribution(K_point& kpoint__, mdarray<double, 2>& collect_res__);
+    /// Collect summation result in an array
+    void add_k_point_contribution(K_point& kpoint__, sddk::mdarray<double, 2>& collect_res__);
 };
 }
 
