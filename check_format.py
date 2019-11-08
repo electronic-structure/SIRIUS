@@ -24,9 +24,9 @@ for name in files:
     formatted = p3.communicate()[0].decode('utf-8')
     p3.wait()
     if (original == formatted):
-        print("OK\n")
+        print("OK")
     else:
-        print("needs formatting\n")
+        print("needs formatting")
         status += 1
 
 sys.exit(status)
