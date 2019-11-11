@@ -255,11 +255,6 @@ void Simulation_context::initialize()
     /* initialize MPI communicators */
     init_comm();
 
-    /* if we have multiple ranks per node and band parallelization, switch to parallel FFT for coarse mesh */
-    if (num_ranks_per_node() > 1 && comm_band().size() > 1) {
-        control_input_.fft_mode_ = "parallel";
-    }
-
     switch (processing_unit()) {
         case device_t::CPU: {
             host_memory_t_ = memory_t::host;
@@ -1301,6 +1296,13 @@ void Simulation_context::init_comm()
 
     /* setup MPI grid */
     mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
+
+    /* here we know the number of ranks for band parallelization */
+
+    /* if we have multiple ranks per node and band parallelization, switch to parallel FFT for coarse mesh */
+    if (num_ranks_per_node() > 1 && comm_band().size() > 1) {
+        control_input_.fft_mode_ = "parallel";
+    }
 
     /* create communicator, orthogonal to comm_fft_coarse */
     comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());

@@ -574,7 +574,7 @@ Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm_
 {
     if (fft_comm_.size() * comm_ortho_fft_.size() != gvec_.comm().size()) {
         std::stringstream s;
-        s << "wrong size of communicators" << std::endl
+        s << "[sddk::Gvec] wrong size of communicators" << std::endl
           << "  fft_comm_.size()       = " << fft_comm_.size() << std::endl
           << "  comm_ortho_fft_.size() = " << comm_ortho_fft_.size() << std::endl
           << "  gvec_.comm().size()    = " << gvec_.comm().size();
