@@ -1490,6 +1490,8 @@ void sirius_get_energy(void* const* handler__,
     auto& potential = gs.potential();
     auto& density = gs.density();
 
+    std::string label(label__);
+
     std::map<std::string, std::function<double()>> func = {
         {"total",   [&](){ return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
         {"evalsum", [&](){ return sirius::eval_sum(unit_cell, kset); }},
@@ -1503,9 +1505,11 @@ void sirius_get_energy(void* const* handler__,
         {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }}};
 
     try {
-        *energy__ = func.at("label")();
+        *energy__ = func.at(label)();
     } catch(...) {
-        TERMINATE("wrong label");
+        std::stringstream s;
+        s << "[sirius_get_energy] wrong label: " << label;
+        TERMINATE(s);
     }
 }
 

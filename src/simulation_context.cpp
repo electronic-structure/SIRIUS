@@ -550,7 +550,7 @@ void Simulation_context::initialize()
     /* create G-vectors on the first call to update() */
     update();
 
-    if (control().verbosity_ >= 1 && !full_potential()) {
+    if (control().verbosity_ >= 1 && !full_potential() && comm().rank() == 0) {
         printf("memory consumption\n");
         printf("------------------\n");
         /* volume of the Brillouin zone */
@@ -620,14 +620,14 @@ void Simulation_context::initialize()
 
             /* and two more arrays will be allocated in generate_rho_aug() with 1Gb maximum size each */
             size_t size1 = nb * ngloc * 16;
-            size1 = std::min(size1, (static_cast<size_t>(1) << 30));
+            size1 = std::min(size1, static_cast<size_t>(1 << 30));
 
             int max_atoms{0};
             for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
                 max_atoms = std::max(max_atoms, unit_cell().atom_type(iat).num_atoms());
             }
             size_t size2 = max_atoms * ngloc * 16;
-            size2 = std::min(size2, (static_cast<size_t>(1) << 30));
+            size2 = std::min(size2, static_cast<size_t>(1 << 30));
 
             size_aug += (size1 + size2);
             printf("approximate memory consumption of charge density augmentation: %i Mb/rank\n",
@@ -642,7 +642,6 @@ void Simulation_context::initialize()
         printf("approximate memory consumption of FFT transforms: %i Mb/rank\n",
             static_cast<int>(size_fft >> 20));
     }
-
 
     this->print_memory_usage(__FILE__, __LINE__);
 
