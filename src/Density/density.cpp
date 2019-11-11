@@ -1354,9 +1354,9 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                                            phase_factors.at(memory_t::device), dm.at(memory_t::device, 0, 0, iv),
                                            dm_pw.at(memory_t::device), 1);
                         sum_q_pw_dm_pw_gpu(spl_ngv_loc.local_size(ib), nbf,
-                                           ctx_.augmentation_op(iat).q_pw().at(memory_t::device, 0, 2 * g_begin),
+                                           ctx_.augmentation_op(iat)->q_pw().at(memory_t::device, 0, 2 * g_begin),
                                            dm_pw.at(memory_t::device),
-                                           ctx_.augmentation_op(iat).sym_weight().at(memory_t::device),
+                                           ctx_.augmentation_op(iat)->sym_weight().at(memory_t::device),
                                            rho_aug.at(memory_t::device, g_begin, iv), 1);
                     }
 #endif

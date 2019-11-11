@@ -642,12 +642,12 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Returns a constant pointer to the augmentation operator of a given atom type.
-    inline Augmentation_operator const* const augmentation_op(int iat__) const
+    inline Augmentation_operator const* augmentation_op(int iat__) const
     {
         return augmentation_op_[iat__].get();
     }
 
-    inline Augmentation_operator* const augmentation_op(int iat__)
+    inline Augmentation_operator* augmentation_op(int iat__)
     {
         return augmentation_op_[iat__].get();
     }
