@@ -1085,15 +1085,6 @@ void Density::augment()
         return;
     }
 
-    // if (ctx_.control().print_checksum_) {
-    //    for (auto e: rho_vec_) {
-    //        auto cs = e->checksum_pw();
-    //        DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
-    //    }
-    //}
-
-    // mdarray<double_complex, 2> rho_aug(ctx_.gvec().count(), ctx_.num_mag_dims() + 1);
-
     auto rho_aug = generate_rho_aug();
 
     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
