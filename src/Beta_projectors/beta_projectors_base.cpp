@@ -262,7 +262,7 @@ void Beta_projectors_base::prepare()
     }
 
     if (ctx_.processing_unit() == device_t::GPU && reallocate_pw_coeffs_t_on_gpu_) {
-        pw_coeffs_t_.allocate(memory_t::device).copy_to(memory_t::device);
+        pw_coeffs_t_.allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
     }
 }
 
