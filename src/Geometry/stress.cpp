@@ -47,6 +47,8 @@ void Stress::calc_stress_nonloc_aux()
         return;
     }
 
+    ctx_.print_memory_usage(__FILE__, __LINE__);
+
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];

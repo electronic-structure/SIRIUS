@@ -205,14 +205,15 @@ splindex<splindex_t::block> Simulation_context::split_gvec_local() const
     /* local number of G-vectors for this MPI rank */
     int ngv_loc = gvec().count();
     /* estimate number of G-vectors in a block */
-    int ngv_b{-1};
+    int ld{-1};
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         int nat = unit_cell_.atom_type(iat).num_atoms();
         int nbf = unit_cell_.atom_type(iat).mt_basis_size();
-        ngv_b   = std::max(ngv_b, std::max(nbf * (nbf + 1) / 2, nat));
+
+        ld = std::max(ld, std::max(nbf * (nbf + 1) / 2, nat));
     }
     /* limit the size of relevant array to ~1Gb */
-    ngv_b = (1 << 30) / sizeof(double_complex) / ngv_b;
+    int ngv_b = (1 << 30) / sizeof(double_complex) / ld;
     ngv_b = std::max(1, std::min(ngv_loc, ngv_b));
     /* number of blocks of G-vectors */
     int nb = ngv_loc / ngv_b;
@@ -613,7 +614,10 @@ void Simulation_context::initialize()
                will be stored on GPU and computation will be overlapped with transfer of the  next augmentation
                operator */
             // TODO: optimize generated_rho_aug() for less memory consumption
-            size_t size_aug = nb * ngloc * sizeof(double_complex) * 2;
+            size_t size_aug = nb * ngloc * sizeof(double_complex);
+            if (unit_cell().num_atom_types() > 1) {
+                size_aug *= 2;
+            }
 
             /* and two more arrays will be allocated in generate_rho_aug() with 1Gb maximum size each */
             size_t size1 = nb * ngloc * sizeof(double_complex);
@@ -698,6 +702,7 @@ void Simulation_context::print_info() const
         printf("  number of G-shells                    : %i\n", gvecs[i]->num_shells());
         printf("\n");
     }
+    printf("number of local G-vector blocks: %i\n", split_gvec_local().num_ranks());
 
     unit_cell_.print_info(control().verbosity_);
     for (int i = 0; i < unit_cell_.num_atom_types(); i++) {
