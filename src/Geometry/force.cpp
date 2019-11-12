@@ -58,7 +58,7 @@ void Force::add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces
         int nbnd = ctx_.num_bands();
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* allocate GPU memory */
-            kpoint.spinor_wave_functions().pw_coeffs(ispn).allocate(memory_t::device);
+            kpoint.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(memory_t::device));
             kpoint.spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
         }
     }

@@ -54,7 +54,7 @@ void Stress::calc_stress_nonloc_aux()
             int nbnd = ctx_.num_bands();
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* allocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).allocate(memory_t::device);
+                kp->spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(memory_t::device));
                 kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
             }
         }

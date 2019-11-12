@@ -1077,11 +1077,7 @@ void Density::augment()
     PROFILE("sirius::Density::augment");
 
     /*check if we need to augment charge density and magnetization */
-    bool need_to_augment{false};
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        need_to_augment |= unit_cell_.atom_type(iat).augment();
-    }
-    if (!need_to_augment) {
+    if (!unit_cell_.augment()) {
         return;
     }
 
@@ -1146,8 +1142,8 @@ void Density::generate_valence(K_point_set const& ks__)
             if (is_device_memory(ctx_.preferred_memory_t())) {
                 /* allocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
-                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0,
-                                                                    nbnd); // TODO: copy this asynchronously
+                // TODO: copy for next k-point
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
             }
             /* swap wave functions for the FFT transformation */
             kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(nbnd, 0, &ctx_.mem_pool(memory_t::host));
@@ -1250,6 +1246,9 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
             break;
         }
     }
+
+    // TODO: the GPU memory consumption here is huge, rewrite this; split gloc in blocks and 
+    //       overlap transfer of Q(G) for two consequtive blokcs within one atom type
 
     if (ctx_.augmentation_op(0)) {
         ctx_.augmentation_op(0)->prepare(stream_id(0), &ctx_.mem_pool(memory_t::device));

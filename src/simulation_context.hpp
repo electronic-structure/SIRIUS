@@ -676,6 +676,7 @@ class Simulation_context : public Simulation_parameters
         return blas_linalg_t_;
     }
 
+    /// Split local set of G-vectors into chunks.
     splindex<splindex_t::block> split_gvec_local() const;
 
     /// Set the size of the fine-grained FFT grid.

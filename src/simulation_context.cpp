@@ -562,23 +562,23 @@ void Simulation_context::initialize()
         /* volume of the cutoff sphere for coarse FFT grid */
         double v3 = fourpi * std::pow(2 * gk_cutoff(), 3) / 3;
         /* approximate number of G+k vectors */
-        int ngk = static_cast<int>(v1 / v0);
+        auto ngk = static_cast<size_t>(v1 / v0);
         if (gamma_point()) {
             ngk /= 2;
         }
         /* approximate number of G vectors */
-        int ng = static_cast<int>(v2 / v0);
+        auto ng = static_cast<size_t>(v2 / v0);
         if (control().reduce_gvec_) {
             ng /= 2;
         }
         /* approximate number of coarse G vectors */
-        int ngc = static_cast<int>(v3 / v0);
+        auto ngc = static_cast<size_t>(v3 / v0);
         if (control().reduce_gvec_) {
             ngc /= 2;
         }
-        printf("approximate number of G+k vectors        : %i\n", ngk);
-        printf("approximate number of G vectors          : %i\n", ng);
-        printf("approximate number of coarse G vectors   : %i\n", ngc);
+        printf("approximate number of G+k vectors        : %li\n", ngk);
+        printf("approximate number of G vectors          : %li\n", ng);
+        printf("approximate number of coarse G vectors   : %li\n", ngc);
         size_t wf_size = ngk * num_bands() * num_spins() * 16;
         printf("approximate size of wave-functions for each k-point: %i Mb, %i Mb/rank\n",
             static_cast<int>(wf_size >> 20), static_cast<int>((wf_size / comm_band().size()) >> 20));
@@ -592,41 +592,38 @@ void Simulation_context::initialize()
            - Hpsi and Spsi (num_bands * num_sc)
            - auxiliary basis phi (num_bands x num_sc) and also Hphi and Sphi of the same size
            - residuals (num_bands * num_sc)
-           - beta-peojectors (estimated as num_bands)
+           - beta-projectors (estimated as num_bands)
 
            Each wave-function is of size ngk
 
            TODO: add estimation of subspace matrix size (H_{ij} and S_{ij})
         */
         size_t tot_size = (num_bands() * num_spins() + 2 * num_bands() * num_sc + 3 * num_phi * num_sc +
-            num_bands() * num_sc + num_bands()) * ngk * 16;
+            num_bands() * num_sc + num_bands()) * ngk * sizeof(double_complex);
         printf("approximate memory consumption of Davidson solver: %i Mb/rank\n",
             static_cast<int>((tot_size / comm_band().size()) >> 20));
 
-        bool need_to_augment{false};
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            need_to_augment |= unit_cell_.atom_type(iat).augment();
-        }
-        if (need_to_augment) {
+        if (unit_cell().augment()) {
             /* approximate size of local fraction of G vectors */
-            int ngloc = std::max(1, ng / comm().size());
+            size_t ngloc = std::max(static_cast<size_t>(1), ng / comm().size());
             /* upper limit of packed {xi,xi'} bete-projectors index */
             int nb = unit_cell().max_mt_basis_size() * (unit_cell().max_mt_basis_size() + 1) / 2;
             /* size of augmentation operator;
                factor 2 is needed for the estimation of GPU memory, as augmentation operator for two atom types
                will be stored on GPU and computation will be overlapped with transfer of the  next augmentation
                operator */
-            size_t size_aug = nb * ngloc * 16 * 2;
+            // TODO: optimize generated_rho_aug() for less memory consumption
+            size_t size_aug = nb * ngloc * sizeof(double_complex) * 2;
 
             /* and two more arrays will be allocated in generate_rho_aug() with 1Gb maximum size each */
-            size_t size1 = nb * ngloc * 16;
+            size_t size1 = nb * ngloc * sizeof(double_complex);
             size1 = std::min(size1, static_cast<size_t>(1 << 30));
 
             int max_atoms{0};
             for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
                 max_atoms = std::max(max_atoms, unit_cell().atom_type(iat).num_atoms());
             }
-            size_t size2 = max_atoms * ngloc * 16;
+            size_t size2 = max_atoms * ngloc * sizeof(double_complex);
             size2 = std::min(size2, static_cast<size_t>(1 << 30));
 
             size_aug += (size1 + size2);
@@ -635,7 +632,7 @@ void Simulation_context::initialize()
         }
         /* FFT buffers of fine and coarse meshes */
         size_t size_fft = spfft().local_slice_size() + spfft_coarse().local_slice_size();
-        size_fft *= 8;
+        size_fft *= sizeof(double);
         if (!gamma_point()) {
             size_fft *= 2;
         }
