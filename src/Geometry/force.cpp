@@ -364,6 +364,22 @@ mdarray<double, 2> const& Force::calc_forces_us()
 
     double reduce_g_fact = ctx_.gvec().reduced() ? 2.0 : 1.0;
 
+    linalg_t la{linalg_t::none};
+
+    memory_pool* mp{nullptr};
+    switch (ctx_.processing_unit()) {
+        case device_t::CPU: {
+            mp = &ctx_.mem_pool(memory_t::host);
+            la = linalg_t::blas;
+            break;
+        }
+        case device_t::GPU: {
+            mp = &ctx_.mem_pool(memory_t::host_pinned);
+            la = linalg_t::cublasxt;
+            break;
+        }
+    }
+
     /* over atom types */
     for (int iat = 0; iat < unit_cell.num_atom_types(); iat++) {
         auto& atom_type = unit_cell.atom_type(iat);
@@ -379,8 +395,8 @@ mdarray<double, 2> const& Force::calc_forces_us()
         /* get auxiliary density matrix */
         auto dm = density_.density_matrix_aux(iat);
 
-        mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
-        mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
+        mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
+        mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);
 
         /* over spin components, can be from 1 to 4*/
         for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++) {
@@ -403,9 +419,16 @@ mdarray<double, 2> const& Force::calc_forces_us()
                     }
                 }
 
-                /* multiply tmp matrices, or sum over G*/
-                linalg<device_t::CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                            aug_op->q_pw(), v_tmp, tmp);
+                /* multiply tmp matrices, or sum over G */
+                linalg2(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                    &linalg_const<double>::one(),
+                    aug_op->q_pw().at(memory_t::host), aug_op->q_pw().ld(),
+                    v_tmp.at(memory_t::host), v_tmp.ld(),
+                    &linalg_const<double>::zero(),
+                    tmp.at(memory_t::host), tmp.ld());
+
+                ///linalg<device_t::CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                //                            aug_op->q_pw(), v_tmp, tmp);
 
                 #pragma omp parallel for
                 for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
