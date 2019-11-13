@@ -256,6 +256,16 @@ void Simulation_context::initialize()
     /* initialize MPI communicators */
     init_comm();
 
+    if (control().verbosity_ >= 3) {
+        pstdout pout(comm());
+        if (comm().rank() == 0) {
+            pout.printf("MPI rank placement\n");
+            pout.printf("------------------\n");
+        }
+        pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s\n", comm().rank(),
+                    comm_band().rank(), comm_k().rank(), utils::hostname().c_str());
+    }
+
     switch (processing_unit()) {
         case device_t::CPU: {
             host_memory_t_ = memory_t::host;
@@ -338,6 +348,8 @@ void Simulation_context::initialize()
 
     /* initialize variables related to the unit cell */
     unit_cell_.initialize();
+    /* save the volume of the initial unit cell */
+    omega0_ = unit_cell_.omega();
 
     /* check the lattice symmetries */
     if (use_symmetry()) {
@@ -495,154 +507,11 @@ void Simulation_context::initialize()
         }
     }
 
-    if (!full_potential()) {
-        beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(
-            new Radial_integrals_beta<false>(unit_cell(), 2 * gk_cutoff(), settings().nprii_beta_));
-
-        beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
-            new Radial_integrals_beta<true>(unit_cell(), 2 * gk_cutoff(), settings().nprii_beta_));
-
-        aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
-            new Radial_integrals_aug<false>(unit_cell(), pw_cutoff(), settings().nprii_aug_));
-
-        aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
-            new Radial_integrals_aug<true>(unit_cell(), pw_cutoff(), settings().nprii_aug_));
-
-        atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-            new Radial_integrals_atomic_wf<false>(unit_cell(), 2 * gk_cutoff(), 20, false));
-
-        atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-            new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20, false));
-
-        hubbard_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-            new Radial_integrals_atomic_wf<false>(unit_cell(), 2 * gk_cutoff(), 20, true));
-
-        hubbard_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-            new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20, true));
-
-        ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
-            new Radial_integrals_rho_core_pseudo<false>(unit_cell(), pw_cutoff(), settings().nprii_rho_core_));
-
-        ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
-            new Radial_integrals_rho_core_pseudo<true>(unit_cell(), pw_cutoff(), settings().nprii_rho_core_));
-
-        ps_rho_ri_ = std::unique_ptr<Radial_integrals_rho_pseudo>(
-            new Radial_integrals_rho_pseudo(unit_cell(), pw_cutoff(), 20));
-
-        vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(
-            new Radial_integrals_vloc<false>(unit_cell(), pw_cutoff(), settings().nprii_vloc_));
-
-        vloc_ri_djl_ = std::unique_ptr<Radial_integrals_vloc<true>>(
-            new Radial_integrals_vloc<true>(unit_cell(), pw_cutoff(), settings().nprii_vloc_));
-    }
-
-    if (control().verbosity_ >= 3) {
-        pstdout pout(comm());
-        if (comm().rank() == 0) {
-            pout.printf("--- MPI rank placement ---\n");
-        }
-        pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s\n", comm().rank(),
-                    comm_band().rank(), comm_k().rank(), utils::hostname().c_str());
-    }
-
     /* placeholder for augmentation operator for each atom type */
     augmentation_op_.resize(unit_cell().num_atom_types());
 
     /* create G-vectors on the first call to update() */
     update();
-
-    if (control().verbosity_ >= 1 && !full_potential() && comm().rank() == 0) {
-        printf("memory consumption\n");
-        printf("------------------\n");
-        /* volume of the Brillouin zone */
-        double v0 = std::pow(twopi, 3) / unit_cell().omega();
-        /* volume of the cutoff sphere for wave-functions */
-        double v1 = fourpi * std::pow(gk_cutoff(), 3) / 3;
-        /* volume of the cutoff sphere for density and potential */
-        double v2 = fourpi * std::pow(pw_cutoff(), 3) / 3;
-        /* volume of the cutoff sphere for coarse FFT grid */
-        double v3 = fourpi * std::pow(2 * gk_cutoff(), 3) / 3;
-        /* approximate number of G+k vectors */
-        auto ngk = static_cast<size_t>(v1 / v0);
-        if (gamma_point()) {
-            ngk /= 2;
-        }
-        /* approximate number of G vectors */
-        auto ng = static_cast<size_t>(v2 / v0);
-        if (control().reduce_gvec_) {
-            ng /= 2;
-        }
-        /* approximate number of coarse G vectors */
-        auto ngc = static_cast<size_t>(v3 / v0);
-        if (control().reduce_gvec_) {
-            ngc /= 2;
-        }
-        printf("approximate number of G+k vectors        : %li\n", ngk);
-        printf("approximate number of G vectors          : %li\n", ng);
-        printf("approximate number of coarse G vectors   : %li\n", ngc);
-        size_t wf_size = ngk * num_bands() * num_spins() * 16;
-        printf("approximate size of wave-functions for each k-point: %i Mb, %i Mb/rank\n",
-            static_cast<int>(wf_size >> 20), static_cast<int>((wf_size / comm_band().size()) >> 20));
-
-        /* number of simultaneously treated spin components */
-        int num_sc = (num_mag_dims() == 3) ? 2 : 1;
-        /* number of auxiliary basis functions */
-        int num_phi = iterative_solver_input().subspace_size_ * num_bands();
-        /* memory consumption for Davidson:
-           - wave-functions psi (num_bands x num_spin)
-           - Hpsi and Spsi (num_bands * num_sc)
-           - auxiliary basis phi (num_bands x num_sc) and also Hphi and Sphi of the same size
-           - residuals (num_bands * num_sc)
-           - beta-projectors (estimated as num_bands)
-
-           Each wave-function is of size ngk
-
-           TODO: add estimation of subspace matrix size (H_{ij} and S_{ij})
-        */
-        size_t tot_size = (num_bands() * num_spins() + 2 * num_bands() * num_sc + 3 * num_phi * num_sc +
-            num_bands() * num_sc + num_bands()) * ngk * sizeof(double_complex);
-        printf("approximate memory consumption of Davidson solver: %i Mb/rank\n",
-            static_cast<int>((tot_size / comm_band().size()) >> 20));
-
-        if (unit_cell().augment()) {
-            /* approximate size of local fraction of G vectors */
-            size_t ngloc = std::max(static_cast<size_t>(1), ng / comm().size());
-            /* upper limit of packed {xi,xi'} bete-projectors index */
-            int nb = unit_cell().max_mt_basis_size() * (unit_cell().max_mt_basis_size() + 1) / 2;
-            /* size of augmentation operator;
-               factor 2 is needed for the estimation of GPU memory, as augmentation operator for two atom types
-               will be stored on GPU and computation will be overlapped with transfer of the  next augmentation
-               operator */
-            // TODO: optimize generated_rho_aug() for less memory consumption
-            size_t size_aug = nb * ngloc * sizeof(double_complex);
-            if (unit_cell().num_atom_types() > 1) {
-                size_aug *= 2;
-            }
-
-            /* and two more arrays will be allocated in generate_rho_aug() with 1Gb maximum size each */
-            size_t size1 = nb * ngloc * sizeof(double_complex);
-            size1 = std::min(size1, static_cast<size_t>(1 << 30));
-
-            int max_atoms{0};
-            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-                max_atoms = std::max(max_atoms, unit_cell().atom_type(iat).num_atoms());
-            }
-            size_t size2 = max_atoms * ngloc * sizeof(double_complex);
-            size2 = std::min(size2, static_cast<size_t>(1 << 30));
-
-            size_aug += (size1 + size2);
-            printf("approximate memory consumption of charge density augmentation: %i Mb/rank\n",
-                static_cast<int>(size_aug >> 20));
-        }
-        /* FFT buffers of fine and coarse meshes */
-        size_t size_fft = spfft().local_slice_size() + spfft_coarse().local_slice_size();
-        size_fft *= sizeof(double);
-        if (!gamma_point()) {
-            size_fft *= 2;
-        }
-        printf("approximate memory consumption of FFT transforms: %i Mb/rank\n",
-            static_cast<int>(size_fft >> 20));
-    }
 
     this->print_memory_usage(__FILE__, __LINE__);
 
@@ -862,6 +731,100 @@ void Simulation_context::print_info() const
         printf("%s\n", xc.refs().c_str());
         i++;
     }
+
+    if (!full_potential()) {
+        printf("\n");
+        printf("memory consumption\n");
+        printf("==================\n");
+        /* volume of the Brillouin zone */
+        double v0 = std::pow(twopi, 3) / unit_cell().omega();
+        /* volume of the cutoff sphere for wave-functions */
+        double v1 = fourpi * std::pow(gk_cutoff(), 3) / 3;
+        /* volume of the cutoff sphere for density and potential */
+        double v2 = fourpi * std::pow(pw_cutoff(), 3) / 3;
+        /* volume of the cutoff sphere for coarse FFT grid */
+        double v3 = fourpi * std::pow(2 * gk_cutoff(), 3) / 3;
+        /* approximate number of G+k vectors */
+        auto ngk = static_cast<size_t>(v1 / v0);
+        if (gamma_point()) {
+            ngk /= 2;
+        }
+        /* approximate number of G vectors */
+        auto ng = static_cast<size_t>(v2 / v0);
+        if (control().reduce_gvec_) {
+            ng /= 2;
+        }
+        /* approximate number of coarse G vectors */
+        auto ngc = static_cast<size_t>(v3 / v0);
+        if (control().reduce_gvec_) {
+            ngc /= 2;
+        }
+        printf("approximate number of G+k vectors        : %li\n", ngk);
+        printf("approximate number of G vectors          : %li\n", ng);
+        printf("approximate number of coarse G vectors   : %li\n", ngc);
+        size_t wf_size = ngk * num_bands() * num_spins() * 16;
+        printf("approximate size of wave-functions for each k-point: %i Mb, %i Mb/rank\n",
+            static_cast<int>(wf_size >> 20), static_cast<int>((wf_size / comm_band().size()) >> 20));
+
+        /* number of simultaneously treated spin components */
+        int num_sc = (num_mag_dims() == 3) ? 2 : 1;
+        /* number of auxiliary basis functions */
+        int num_phi = iterative_solver_input().subspace_size_ * num_bands();
+        /* memory consumption for Davidson:
+           - wave-functions psi (num_bands x num_spin)
+           - Hpsi and Spsi (num_bands * num_sc)
+           - auxiliary basis phi (num_bands x num_sc) and also Hphi and Sphi of the same size
+           - residuals (num_bands * num_sc)
+           - beta-projectors (estimated as num_bands)
+
+           Each wave-function is of size ngk
+
+           TODO: add estimation of subspace matrix size (H_{ij} and S_{ij})
+        */
+        size_t tot_size = (num_bands() * num_spins() + 2 * num_bands() * num_sc + 3 * num_phi * num_sc +
+            num_bands() * num_sc + num_bands()) * ngk * sizeof(double_complex);
+        printf("approximate memory consumption of Davidson solver: %i Mb/rank\n",
+            static_cast<int>((tot_size / comm_band().size()) >> 20));
+
+        if (unit_cell().augment()) {
+            /* approximate size of local fraction of G vectors */
+            size_t ngloc = std::max(static_cast<size_t>(1), ng / comm().size());
+            /* upper limit of packed {xi,xi'} bete-projectors index */
+            int nb = unit_cell().max_mt_basis_size() * (unit_cell().max_mt_basis_size() + 1) / 2;
+            /* size of augmentation operator;
+               factor 2 is needed for the estimation of GPU memory, as augmentation operator for two atom types
+               will be stored on GPU and computation will be overlapped with transfer of the  next augmentation
+               operator */
+            // TODO: optimize generated_rho_aug() for less memory consumption
+            size_t size_aug = nb * ngloc * sizeof(double_complex);
+            if (unit_cell().num_atom_types() > 1) {
+                size_aug *= 2;
+            }
+
+            /* and two more arrays will be allocated in generate_rho_aug() with 1Gb maximum size each */
+            size_t size1 = nb * ngloc * sizeof(double_complex);
+            size1 = std::min(size1, static_cast<size_t>(1 << 30));
+
+            int max_atoms{0};
+            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+                max_atoms = std::max(max_atoms, unit_cell().atom_type(iat).num_atoms());
+            }
+            size_t size2 = max_atoms * ngloc * sizeof(double_complex);
+            size2 = std::min(size2, static_cast<size_t>(1 << 30));
+
+            size_aug += (size1 + size2);
+            printf("approximate memory consumption of charge density augmentation: %i Mb/rank\n",
+                static_cast<int>(size_aug >> 20));
+        }
+        /* FFT buffers of fine and coarse meshes */
+        size_t size_fft = spfft().local_slice_size() + spfft_coarse().local_slice_size();
+        size_fft *= sizeof(double);
+        if (!gamma_point()) {
+            size_fft *= 2;
+        }
+        printf("approximate memory consumption of FFT transforms: %i Mb/rank\n",
+            static_cast<int>(size_fft >> 20));
+    }
 }
 
 /** The update of the lattice vectors or atomic positions has an impact on many quantities which have to be 
@@ -875,6 +838,77 @@ void Simulation_context::update()
 
     /* update unit cell (reciprocal lattice, etc.) */
     unit_cell().update();
+
+    /* create or update radial integrals */
+    if (!full_potential()) {
+        /* ratio of the unit cell volumes; if new volume is smaller than the initial, this ratio is > 1 
+           and we need to adjust the cutoff */
+        double d = omega0_ / unit_cell().omega();
+        if (!beta_ri_ || beta_ri_->qmax() > d * gk_cutoff()) {
+            beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(
+                new Radial_integrals_beta<false>(unit_cell(), d * gk_cutoff(), settings().nprii_beta_));
+        }
+
+        if (!beta_ri_djl_ || beta_ri_djl_->qmax() > d * gk_cutoff()) {
+            beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
+                new Radial_integrals_beta<true>(unit_cell(), d * gk_cutoff(), settings().nprii_beta_));
+        }
+
+        if (!aug_ri_ || aug_ri_->qmax() > d * pw_cutoff()) {
+            aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
+                new Radial_integrals_aug<false>(unit_cell(), d * pw_cutoff(), settings().nprii_aug_));
+        }
+
+        if (!aug_ri_djl_ || aug_ri_djl_->qmax() > d * pw_cutoff()) {
+            aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
+                new Radial_integrals_aug<true>(unit_cell(), d * pw_cutoff(), settings().nprii_aug_));
+        }
+
+        if (!atomic_wf_ri_ || atomic_wf_ri_->qmax() > d * gk_cutoff()) {
+            atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
+                new Radial_integrals_atomic_wf<false>(unit_cell(), d * gk_cutoff(), 20, false));
+        }
+
+        if (!atomic_wf_ri_djl_ || atomic_wf_ri_djl_->qmax() > d * gk_cutoff()) {
+            atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
+                new Radial_integrals_atomic_wf<true>(unit_cell(), d * gk_cutoff(), 20, false));
+        }
+
+        if (!hubbard_wf_ri_ || hubbard_wf_ri_->qmax() > d * gk_cutoff()) {
+            hubbard_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
+                new Radial_integrals_atomic_wf<false>(unit_cell(), d * gk_cutoff(), 20, true));
+        }
+
+        if (!hubbard_wf_ri_djl_ || hubbard_wf_ri_djl_->qmax() > d * gk_cutoff()) {
+            hubbard_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
+                new Radial_integrals_atomic_wf<true>(unit_cell(), d * gk_cutoff(), 20, true));
+        }
+
+        if (!ps_core_ri_ || ps_core_ri_->qmax() > d * pw_cutoff()) {
+            ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
+                new Radial_integrals_rho_core_pseudo<false>(unit_cell(), d * pw_cutoff(), settings().nprii_rho_core_));
+        }
+
+        if (!ps_core_ri_djl_ || ps_core_ri_djl_->qmax() > d * pw_cutoff()) {
+            ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
+                new Radial_integrals_rho_core_pseudo<true>(unit_cell(), d * pw_cutoff(), settings().nprii_rho_core_));
+        }
+
+        if (!ps_rho_ri_ || ps_rho_ri_->qmax() > d * pw_cutoff()) {
+            ps_rho_ri_ = std::unique_ptr<Radial_integrals_rho_pseudo>(
+                new Radial_integrals_rho_pseudo(unit_cell(), d * pw_cutoff(), 20));
+        }
+
+        if (!vloc_ri_ || vloc_ri_->qmax() > d * pw_cutoff()) {
+            vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(
+                new Radial_integrals_vloc<false>(unit_cell(), d * pw_cutoff(), settings().nprii_vloc_));
+        }
+
+        if (!vloc_ri_djl_ || vloc_ri_djl_->qmax() > d * pw_cutoff()) {
+            vloc_ri_djl_ = std::unique_ptr<Radial_integrals_vloc<true>>(
+                new Radial_integrals_vloc<true>(unit_cell(), d * pw_cutoff(), settings().nprii_vloc_));
+        }
+    }
 
     /* get new reciprocal vector */
     auto rlv = unit_cell_.reciprocal_lattice_vectors();

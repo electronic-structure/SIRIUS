@@ -134,6 +134,10 @@ class Simulation_context : public Simulation_parameters
     /// Lattice coordinats of G-vectors in a GPU-friendly ordering.
     mdarray<int, 2> gvec_coord_;
 
+    /// Volume of the initial unit cell.
+    /** This is needed to estimate the new cutoff for radial integrals. */
+    double omega0_;
+
     /// Radial integrals of beta-projectors.
     std::unique_ptr<Radial_integrals_beta<false>> beta_ri_;
 
