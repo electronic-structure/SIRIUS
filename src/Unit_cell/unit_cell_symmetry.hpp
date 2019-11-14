@@ -244,18 +244,36 @@ class Unit_cell_symmetry
                     return diff.length();
                 };
 
+                double d0{1e10};
+                double j0{-1};
+                vector3d<double> p0;
+
                 int ja{-1};
                 /* check for equivalent atom */
                 for (int k = 0; k < num_atoms_; k++) {
                     vector3d<double> pos1(positions__(0, k), positions__(1, k), positions__(2, k));
-                    if (distance(v.first, pos1) < tolerance_) {
+                    double dist = distance(v.first, pos1);
+                    if (dist < tolerance_) {
                         ja = k;
                         break;
+                    }
+                    if (d0 < dist) {
+                        d0 = dist;
+                        j0 = k;
+                        p0 = pos1;
                     }
                 }
 
                 if (ja == -1) {
-                    TERMINATE("equivalent atom was not found");
+                    std::stringstream s;
+                    s << "[sirius::Unit_cell_symmetry] equivalent atom was not found\n"
+                      << "  initial atom: " << ia << " (type: " << types_[ia] << ", position : " << pos
+                      << ", reduced: " << v.first << ")\n"
+                      << "  nearest atom: " << j0 << " (type: " << types_[j0] << ", position : " << p0
+                      << ", reduced: " << reduce_coordinates(p0).first << ")\n"
+                      << "  distance between atoms: " << d0 << "\n"
+                      << "  tolerance: " << tolerance_;
+                    TERMINATE(s);
                 }
                 sym_table_(ia, isym) = ja;
             }
