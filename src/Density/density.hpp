@@ -187,14 +187,14 @@ class Density : public Field4D
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 
-    // TODO: add mixing of LDA+U occupancy matrix and PAW MT functions.
+    // TODO: add mixing of LDA+U occupancy matrix.
     /// Density mixer.
-    /** Mix the following objects: density, x-,y-,z-components of magnetisation and density matrix. */
+    /** Mix the following objects: density, x-,y-,z-components of magnetisation, density matrix and
+        PAW density of atoms. */
     std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
                                  Periodic_function<double>, sddk::mdarray<double_complex, 4>, paw_density>> mixer_;
 
     /// Generate atomic densities in the case of PAW.
-    //void generate_paw_atom_density(paw_density_data_t& pdd);
     void generate_paw_atom_density(int iapaw__);
 
     /// Initialize PAW density matrix.

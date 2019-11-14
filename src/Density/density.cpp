@@ -24,7 +24,7 @@
  */
 
 #include "density.hpp"
-#include "../Symmetry/symmetrize.hpp"
+#include "Symmetry/symmetrize.hpp"
 #include "Mixer/mixer_functions.hpp"
 #include "Mixer/mixer_factory.hpp"
 #include "utils/profiler.hpp"
@@ -1077,22 +1077,9 @@ void Density::augment()
     PROFILE("sirius::Density::augment");
 
     /*check if we need to augment charge density and magnetization */
-    bool need_to_augment{false};
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        need_to_augment |= unit_cell_.atom_type(iat).augment();
-    }
-    if (!need_to_augment) {
+    if (!unit_cell_.augment()) {
         return;
     }
-
-    // if (ctx_.control().print_checksum_) {
-    //    for (auto e: rho_vec_) {
-    //        auto cs = e->checksum_pw();
-    //        DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
-    //    }
-    //}
-
-    // mdarray<double_complex, 2> rho_aug(ctx_.gvec().count(), ctx_.num_mag_dims() + 1);
 
     auto rho_aug = generate_rho_aug();
 
@@ -1155,8 +1142,8 @@ void Density::generate_valence(K_point_set const& ks__)
             if (is_device_memory(ctx_.preferred_memory_t())) {
                 /* allocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
-                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0,
-                                                                    nbnd); // TODO: copy this asynchronously
+                // TODO: copy for next k-point
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
             }
             /* swap wave functions for the FFT transformation */
             kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(nbnd, 0, &ctx_.mem_pool(memory_t::host));
@@ -1260,8 +1247,11 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         }
     }
 
-    if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
-        ctx_.augmentation_op(0).prepare(stream_id(0));
+    // TODO: the GPU memory consumption here is huge, rewrite this; split gloc in blocks and 
+    //       overlap transfer of Q(G) for two consequtive blokcs within one atom type
+
+    if (ctx_.augmentation_op(0)) {
+        ctx_.augmentation_op(0)->prepare(stream_id(0), &ctx_.mem_pool(memory_t::device));
     }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -1269,9 +1259,8 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
 
         if (ctx_.processing_unit() == device_t::GPU) {
             acc::sync_stream(stream_id(0));
-            if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment() &&
-                ctx_.unit_cell().atom_type(iat + 1).num_atoms() > 0) {
-                ctx_.augmentation_op(iat + 1).prepare(stream_id(0));
+            if (iat + 1 != unit_cell_.num_atom_types() && ctx_.augmentation_op(iat + 1)) {
+                ctx_.augmentation_op(iat + 1)->prepare(stream_id(0), &ctx_.mem_pool(memory_t::device));
             }
         }
 
@@ -1295,6 +1284,8 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         mdarray<double, 2> phase_factors(atom_type.num_atoms(), spl_ngv_loc.local_size() * 2,
                                          ctx_.mem_pool(memory_t::host));
 
+        ctx_.print_memory_usage(__FILE__, __LINE__);
+
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
                 break;
@@ -1306,6 +1297,8 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                 break;
             }
         }
+
+        ctx_.print_memory_usage(__FILE__, __LINE__);
 
         for (int ib = 0; ib < spl_ngv_loc.num_ranks(); ib++) {
             int g_begin = spl_ngv_loc.global_index(0, ib);
@@ -1337,11 +1330,11 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                             double_complex zsum(0, 0);
                             /* get contribution from non-diagonal terms */
                             for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                                double_complex z1 = double_complex(ctx_.augmentation_op(iat).q_pw(i, 2 * igloc),
-                                                                   ctx_.augmentation_op(iat).q_pw(i, 2 * igloc + 1));
+                                double_complex z1 = double_complex(ctx_.augmentation_op(iat)->q_pw(i, 2 * igloc),
+                                                                   ctx_.augmentation_op(iat)->q_pw(i, 2 * igloc + 1));
                                 double_complex z2(dm_pw(i, 2 * (igloc - g_begin)), dm_pw(i, 2 * (igloc - g_begin) + 1));
 
-                                zsum += z1 * z2 * ctx_.augmentation_op(iat).sym_weight(i);
+                                zsum += z1 * z2 * ctx_.augmentation_op(iat)->sym_weight(i);
                             }
                             rho_aug(igloc, iv) += zsum;
                         }
@@ -1360,9 +1353,9 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                                            phase_factors.at(memory_t::device), dm.at(memory_t::device, 0, 0, iv),
                                            dm_pw.at(memory_t::device), 1);
                         sum_q_pw_dm_pw_gpu(spl_ngv_loc.local_size(ib), nbf,
-                                           ctx_.augmentation_op(iat).q_pw().at(memory_t::device, 0, 2 * g_begin),
+                                           ctx_.augmentation_op(iat)->q_pw().at(memory_t::device, 0, 2 * g_begin),
                                            dm_pw.at(memory_t::device),
-                                           ctx_.augmentation_op(iat).sym_weight().at(memory_t::device),
+                                           ctx_.augmentation_op(iat)->sym_weight().at(memory_t::device),
                                            rho_aug.at(memory_t::device, g_begin, iv), 1);
                     }
 #endif
@@ -1373,7 +1366,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
 
         if (ctx_.processing_unit() == device_t::GPU) {
             acc::sync_stream(stream_id(1));
-            ctx_.augmentation_op(iat).dismiss();
+            ctx_.augmentation_op(iat)->dismiss();
         }
     }
 
@@ -1730,6 +1723,7 @@ mdarray<double, 3> Density::density_matrix_aux(int iat__)
 void Density::mixer_init(Mixer_input mixer_cfg__)
 {
     auto func_prop    = mixer::periodic_function_property();
+    auto func_prop1   = mixer::periodic_function_property_modified_inner();
     auto density_prop = mixer::density_function_property();
     auto paw_prop     = mixer::paw_density_function_property();
 
@@ -1740,8 +1734,12 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
 
     const bool init_mt = ctx_.full_potential();
 
-    // initialize functions
-    this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_, init_mt);
+    /* initialize functions */
+    if (mixer_cfg__.use_hartree_) {
+        this->mixer_->initialize_function<0>(func_prop1, component(0), ctx_, lmmax_, init_mt);
+    } else {
+        this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_, init_mt);
+    }
     if (ctx_.num_mag_dims() > 0) {
         this->mixer_->initialize_function<1>(func_prop, component(1), ctx_, lmmax_, init_mt);
     }

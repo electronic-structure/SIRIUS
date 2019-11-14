@@ -1368,6 +1368,7 @@ void sirius_set_q_operator_matrix(void* const* handler__,
 
     auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
     mdarray<double, 2> q_mtrx(q_mtrx__, *ld__, *ld__);
+    mdarray<double, 2> qm(*ld__, *ld__);
 
     auto idx_map = atomic_orbital_index_map_QE(type);
     int nbf = type.mt_basis_size();
@@ -1376,9 +1377,10 @@ void sirius_set_q_operator_matrix(void* const* handler__,
         int p1 = phase_Rlm_QE(type, xi1);
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             int p2 = phase_Rlm_QE(type, xi2);
-            sim_ctx.augmentation_op(type.id()).q_mtrx(xi1, xi2) = q_mtrx(idx_map[xi1], idx_map[xi2]) * p1 * p2;
+            qm(xi1, xi2) = q_mtrx(idx_map[xi1], idx_map[xi2]) * p1 * p2;
         }
     }
+    sim_ctx.augmentation_op(type.id())->q_mtrx(qm);
 }
 
 /* @fortran begin function void sirius_get_q_operator_matrix    Get Q-operator matrix
@@ -1404,7 +1406,7 @@ void sirius_get_q_operator_matrix(void* const* handler__,
         int p1 = phase_Rlm_QE(type, xi1);
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             int p2 = phase_Rlm_QE(type, xi2);
-            q_mtrx(idx_map[xi1], idx_map[xi2]) = sim_ctx.augmentation_op(type.id()).q_mtrx(xi1, xi2) * p1 * p2;
+            q_mtrx(idx_map[xi1], idx_map[xi2]) = sim_ctx.augmentation_op(type.id())->q_mtrx(xi1, xi2) * p1 * p2;
         }
     }
 }
@@ -1488,6 +1490,8 @@ void sirius_get_energy(void* const* handler__,
     auto& potential = gs.potential();
     auto& density = gs.density();
 
+    std::string label(label__);
+
     std::map<std::string, std::function<double()>> func = {
         {"total",   [&](){ return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
         {"evalsum", [&](){ return sirius::eval_sum(unit_cell, kset); }},
@@ -1501,9 +1505,11 @@ void sirius_get_energy(void* const* handler__,
         {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }}};
 
     try {
-        *energy__ = func.at("label")();
+        *energy__ = func.at(label)();
     } catch(...) {
-        TERMINATE("wrong label");
+        std::stringstream s;
+        s << "[sirius_get_energy] wrong label: " << label;
+        TERMINATE(s);
     }
 }
 
@@ -1658,8 +1664,8 @@ void sirius_get_q_operator(void*          const* handler__,
 
     std::vector<double_complex> q_pw(sim_ctx.gvec().num_gvec());
     for (int ig = 0; ig < sim_ctx.gvec().count(); ig++) {
-        double x = sim_ctx.augmentation_op(type.id()).q_pw(idx, 2 * ig);
-        double y = sim_ctx.augmentation_op(type.id()).q_pw(idx, 2 * ig + 1);
+        double x = sim_ctx.augmentation_op(type.id())->q_pw(idx, 2 * ig);
+        double y = sim_ctx.augmentation_op(type.id())->q_pw(idx, 2 * ig + 1);
         q_pw[sim_ctx.gvec().offset() + ig] = double_complex(x, y) * static_cast<double>(p1 * p2);
     }
     sim_ctx.comm().allgather(q_pw.data(), sim_ctx.gvec().offset(), sim_ctx.gvec().count());

@@ -47,9 +47,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
 
-    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     /* setup Hamiltonian and overlap */
     Hk__.set_fv_h_o(h, o);
@@ -319,9 +317,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
 
     ctx_.message(3, __func__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
 
-    if (kp.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     auto& std_solver = ctx_.std_evp_solver();
 
@@ -575,9 +571,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     /* number of newly added basis functions */
     int n = nlo + ncomp + num_bands;
 
-    if (ctx_.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     auto& std_solver = ctx_.std_evp_solver();
 
@@ -690,9 +684,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
         hpsi[0].mt_coeffs(0).prime().zero();
     }
 
-    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     //== if (ctx_.uj_correction())
     //== {

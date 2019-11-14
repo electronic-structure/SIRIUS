@@ -110,10 +110,7 @@ void K_point_set::initialize(std::vector<int> const& counts)
     if (ctx_.control().verbosity_ > 0) {
         print_info();
     }
-
-    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 }
 
 void K_point_set::sync_band_occupancies()

@@ -58,7 +58,7 @@ void Force::add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces
         int nbnd = ctx_.num_bands();
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* allocate GPU memory */
-            kpoint.spinor_wave_functions().pw_coeffs(ispn).allocate(memory_t::device);
+            kpoint.spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(memory_t::device));
             kpoint.spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
         }
     }
@@ -368,11 +368,11 @@ mdarray<double, 2> const& Force::calc_forces_us()
     for (int iat = 0; iat < unit_cell.num_atom_types(); iat++) {
         auto& atom_type = unit_cell.atom_type(iat);
 
-        if (!atom_type.augment() || atom_type.num_atoms() == 0) {
+        auto aug_op = ctx_.augmentation_op(iat);
+
+        if (!aug_op) {
             continue;
         }
-
-        const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
 
         int nbf = atom_type.mt_basis_size();
 
@@ -405,13 +405,13 @@ mdarray<double, 2> const& Force::calc_forces_us()
 
                 /* multiply tmp matrices, or sum over G*/
                 linalg<device_t::CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                            aug_op.q_pw(), v_tmp, tmp);
+                                            aug_op->q_pw(), v_tmp, tmp);
 
                 #pragma omp parallel for
                 for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                     for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
                         forces_us_(ivec, atom_type.atom_id(ia)) += ctx_.unit_cell().omega() * reduce_g_fact *
-                                                                   dm(i, ia, ispin) * aug_op.sym_weight(i) * tmp(i, ia);
+                                                                   dm(i, ia, ispin) * aug_op->sym_weight(i) * tmp(i, ia);
                     }
                 }
             }

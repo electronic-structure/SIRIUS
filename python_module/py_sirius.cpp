@@ -726,12 +726,12 @@ PYBIND11_MODULE(py_sirius, m)
              py::return_value_policy::reference_internal);
 
     py::class_<Smooth_periodic_function<complex_double>>(m, "CSmooth_periodic_function")
-        .def("pw", &Smooth_periodic_function<complex_double>::pw_array, py::return_value_policy::reference_internal)
-        .def("rg", &Smooth_periodic_function<complex_double>::rg_array, py::return_value_policy::reference_internal);
+        .def("pw", py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_pw_local), py::return_value_policy::reference_internal)
+        .def("rg", py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_rg), py::return_value_policy::reference_internal);
 
     py::class_<Smooth_periodic_function<double>>(m, "RSmooth_periodic_function")
-        .def("pw", &Smooth_periodic_function<double>::pw_array, py::return_value_policy::reference_internal)
-        .def("rg", &Smooth_periodic_function<double>::rg_array, py::return_value_policy::reference_internal);
+        .def("pw", py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local), py::return_value_policy::reference_internal)
+        .def("rg", py::overload_cast<>(&Smooth_periodic_function<double>::f_rg), py::return_value_policy::reference_internal);
 
     py::class_<Periodic_function<double>, Smooth_periodic_function<double>>(m, "RPeriodic_function");
 

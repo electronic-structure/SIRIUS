@@ -78,6 +78,7 @@ class Smooth_periodic_function
     {
     }
 
+    /// Constructor.
     Smooth_periodic_function(spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__, sddk::memory_pool* mp__ = nullptr)
         : spfft_(&spfft__)
         , gvecp_(&gvecp__)
@@ -117,19 +118,10 @@ class Smooth_periodic_function
     Smooth_periodic_function(Smooth_periodic_function<T>&& src__) = default;
     Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T>&& src__) = default;
 
+    /// Zero the values on the regular real-space grid.
     inline void zero()
     {
         f_rg_.zero();
-    }
-
-    inline sddk::mdarray<double_complex, 1>& pw_array()
-    {
-        return f_pw_local_;
-    }
-
-    inline sddk::mdarray<T, 1>& rg_array()
-    {
-        return f_rg_;
     }
 
     inline T& f_rg(int ir__)

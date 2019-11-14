@@ -205,14 +205,15 @@ splindex<splindex_t::block> Simulation_context::split_gvec_local() const
     /* local number of G-vectors for this MPI rank */
     int ngv_loc = gvec().count();
     /* estimate number of G-vectors in a block */
-    int ngv_b{-1};
+    int ld{-1};
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         int nat = unit_cell_.atom_type(iat).num_atoms();
         int nbf = unit_cell_.atom_type(iat).mt_basis_size();
-        ngv_b   = std::max(ngv_b, std::max(nbf * (nbf + 1) / 2, nat));
+
+        ld = std::max(ld, std::max(nbf * (nbf + 1) / 2, nat));
     }
     /* limit the size of relevant array to ~1Gb */
-    ngv_b = (1 << 30) / sizeof(double_complex) / ngv_b;
+    int ngv_b = (1 << 30) / sizeof(double_complex) / ld;
     ngv_b = std::max(1, std::min(ngv_loc, ngv_b));
     /* number of blocks of G-vectors */
     int nb = ngv_loc / ngv_b;
@@ -255,13 +256,22 @@ void Simulation_context::initialize()
     /* initialize MPI communicators */
     init_comm();
 
+    if (control().verbosity_ >= 3) {
+        pstdout pout(comm());
+        if (comm().rank() == 0) {
+            pout.printf("MPI rank placement\n");
+            pout.printf("------------------\n");
+        }
+        pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s\n", comm().rank(),
+                    comm_band().rank(), comm_k().rank(), utils::hostname().c_str());
+    }
+
     switch (processing_unit()) {
         case device_t::CPU: {
             host_memory_t_ = memory_t::host;
             break;
         }
         case device_t::GPU: {
-            // return memory_t::host;
             host_memory_t_ = memory_t::host_pinned;
             break;
         }
@@ -338,6 +348,8 @@ void Simulation_context::initialize()
 
     /* initialize variables related to the unit cell */
     unit_cell_.initialize();
+    /* save the volume of the initial unit cell */
+    omega0_ = unit_cell_.omega();
 
     /* check the lattice symmetries */
     if (use_symmetry()) {
@@ -345,6 +357,7 @@ void Simulation_context::initialize()
 
         auto lat_sym = find_lat_sym(lv, 1e-6);
 
+        #pragma omp parallel for
         for (int i = 0; i < unit_cell_.symmetry().num_mag_sym(); i++) {
             auto& spgR = unit_cell_.symmetry().magnetic_group_symmetry(i).spg_op.R;
             bool found{false};
@@ -494,62 +507,13 @@ void Simulation_context::initialize()
         }
     }
 
-    if (!full_potential()) {
-        beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(
-            new Radial_integrals_beta<false>(unit_cell(), 2 * gk_cutoff(), settings().nprii_beta_));
-
-        beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
-            new Radial_integrals_beta<true>(unit_cell(), 2 * gk_cutoff(), settings().nprii_beta_));
-
-        aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
-            new Radial_integrals_aug<false>(unit_cell(), pw_cutoff(), settings().nprii_aug_));
-
-        aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
-            new Radial_integrals_aug<true>(unit_cell(), pw_cutoff(), settings().nprii_aug_));
-
-        atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-            new Radial_integrals_atomic_wf<false>(unit_cell(), 2 * gk_cutoff(), 20, false));
-
-        atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-            new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20, false));
-
-        hubbard_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-            new Radial_integrals_atomic_wf<false>(unit_cell(), 2 * gk_cutoff(), 20, true));
-
-        hubbard_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-            new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20, true));
-
-        ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
-            new Radial_integrals_rho_core_pseudo<false>(unit_cell(), pw_cutoff(), settings().nprii_rho_core_));
-
-        ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
-            new Radial_integrals_rho_core_pseudo<true>(unit_cell(), pw_cutoff(), settings().nprii_rho_core_));
-
-        ps_rho_ri_ = std::unique_ptr<Radial_integrals_rho_pseudo>(
-            new Radial_integrals_rho_pseudo(unit_cell(), pw_cutoff(), 20));
-
-        vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(
-            new Radial_integrals_vloc<false>(unit_cell(), pw_cutoff(), settings().nprii_vloc_));
-
-        vloc_ri_djl_ = std::unique_ptr<Radial_integrals_vloc<true>>(
-            new Radial_integrals_vloc<true>(unit_cell(), pw_cutoff(), settings().nprii_vloc_));
-    }
-
-    if (control().verbosity_ >= 3) {
-        pstdout pout(comm());
-        if (comm().rank() == 0) {
-            pout.printf("--- MPI rank placement ---\n");
-        }
-        pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s\n", comm().rank(),
-                    comm_band().rank(), comm_k().rank(), utils::hostname().c_str());
-    }
+    /* placeholder for augmentation operator for each atom type */
+    augmentation_op_.resize(unit_cell().num_atom_types());
 
     /* create G-vectors on the first call to update() */
     update();
 
-    if (comm_.rank() == 0 && control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    this->print_memory_usage(__FILE__, __LINE__);
 
     if (control().verbosity_ >= 1 && comm().rank() == 0) {
         print_info();
@@ -607,6 +571,7 @@ void Simulation_context::print_info() const
         printf("  number of G-shells                    : %i\n", gvecs[i]->num_shells());
         printf("\n");
     }
+    printf("number of local G-vector blocks: %i\n", split_gvec_local().num_ranks());
 
     unit_cell_.print_info(control().verbosity_);
     for (int i = 0; i < unit_cell_.num_atom_types(); i++) {
@@ -766,6 +731,100 @@ void Simulation_context::print_info() const
         printf("%s\n", xc.refs().c_str());
         i++;
     }
+
+    if (!full_potential()) {
+        printf("\n");
+        printf("memory consumption\n");
+        printf("==================\n");
+        /* volume of the Brillouin zone */
+        double v0 = std::pow(twopi, 3) / unit_cell().omega();
+        /* volume of the cutoff sphere for wave-functions */
+        double v1 = fourpi * std::pow(gk_cutoff(), 3) / 3;
+        /* volume of the cutoff sphere for density and potential */
+        double v2 = fourpi * std::pow(pw_cutoff(), 3) / 3;
+        /* volume of the cutoff sphere for coarse FFT grid */
+        double v3 = fourpi * std::pow(2 * gk_cutoff(), 3) / 3;
+        /* approximate number of G+k vectors */
+        auto ngk = static_cast<size_t>(v1 / v0);
+        if (gamma_point()) {
+            ngk /= 2;
+        }
+        /* approximate number of G vectors */
+        auto ng = static_cast<size_t>(v2 / v0);
+        if (control().reduce_gvec_) {
+            ng /= 2;
+        }
+        /* approximate number of coarse G vectors */
+        auto ngc = static_cast<size_t>(v3 / v0);
+        if (control().reduce_gvec_) {
+            ngc /= 2;
+        }
+        printf("approximate number of G+k vectors        : %li\n", ngk);
+        printf("approximate number of G vectors          : %li\n", ng);
+        printf("approximate number of coarse G vectors   : %li\n", ngc);
+        size_t wf_size = ngk * num_bands() * num_spins() * 16;
+        printf("approximate size of wave-functions for each k-point: %i Mb, %i Mb/rank\n",
+            static_cast<int>(wf_size >> 20), static_cast<int>((wf_size / comm_band().size()) >> 20));
+
+        /* number of simultaneously treated spin components */
+        int num_sc = (num_mag_dims() == 3) ? 2 : 1;
+        /* number of auxiliary basis functions */
+        int num_phi = iterative_solver_input().subspace_size_ * num_bands();
+        /* memory consumption for Davidson:
+           - wave-functions psi (num_bands x num_spin)
+           - Hpsi and Spsi (num_bands * num_sc)
+           - auxiliary basis phi (num_bands x num_sc) and also Hphi and Sphi of the same size
+           - residuals (num_bands * num_sc)
+           - beta-projectors (estimated as num_bands)
+
+           Each wave-function is of size ngk
+
+           TODO: add estimation of subspace matrix size (H_{ij} and S_{ij})
+        */
+        size_t tot_size = (num_bands() * num_spins() + 2 * num_bands() * num_sc + 3 * num_phi * num_sc +
+            num_bands() * num_sc + num_bands()) * ngk * sizeof(double_complex);
+        printf("approximate memory consumption of Davidson solver: %i Mb/rank\n",
+            static_cast<int>((tot_size / comm_band().size()) >> 20));
+
+        if (unit_cell().augment()) {
+            /* approximate size of local fraction of G vectors */
+            size_t ngloc = std::max(static_cast<size_t>(1), ng / comm().size());
+            /* upper limit of packed {xi,xi'} bete-projectors index */
+            int nb = unit_cell().max_mt_basis_size() * (unit_cell().max_mt_basis_size() + 1) / 2;
+            /* size of augmentation operator;
+               factor 2 is needed for the estimation of GPU memory, as augmentation operator for two atom types
+               will be stored on GPU and computation will be overlapped with transfer of the  next augmentation
+               operator */
+            // TODO: optimize generated_rho_aug() for less memory consumption
+            size_t size_aug = nb * ngloc * sizeof(double_complex);
+            if (unit_cell().num_atom_types() > 1) {
+                size_aug *= 2;
+            }
+
+            /* and two more arrays will be allocated in generate_rho_aug() with 1Gb maximum size each */
+            size_t size1 = nb * ngloc * sizeof(double_complex);
+            size1 = std::min(size1, static_cast<size_t>(1 << 30));
+
+            int max_atoms{0};
+            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+                max_atoms = std::max(max_atoms, unit_cell().atom_type(iat).num_atoms());
+            }
+            size_t size2 = max_atoms * ngloc * sizeof(double_complex);
+            size2 = std::min(size2, static_cast<size_t>(1 << 30));
+
+            size_aug += (size1 + size2);
+            printf("approximate memory consumption of charge density augmentation: %i Mb/rank\n",
+                static_cast<int>(size_aug >> 20));
+        }
+        /* FFT buffers of fine and coarse meshes */
+        size_t size_fft = spfft().local_slice_size() + spfft_coarse().local_slice_size();
+        size_fft *= sizeof(double);
+        if (!gamma_point()) {
+            size_fft *= 2;
+        }
+        printf("approximate memory consumption of FFT transforms: %i Mb/rank\n",
+            static_cast<int>(size_fft >> 20));
+    }
 }
 
 /** The update of the lattice vectors or atomic positions has an impact on many quantities which have to be 
@@ -779,6 +838,77 @@ void Simulation_context::update()
 
     /* update unit cell (reciprocal lattice, etc.) */
     unit_cell().update();
+
+    /* create or update radial integrals */
+    if (!full_potential()) {
+        /* ratio of the unit cell volumes; if new volume is smaller than the initial, this ratio is > 1 
+           and we need to adjust the cutoff */
+        double d = omega0_ / unit_cell().omega();
+        if (!beta_ri_ || beta_ri_->qmax() > d * gk_cutoff()) {
+            beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(
+                new Radial_integrals_beta<false>(unit_cell(), d * gk_cutoff(), settings().nprii_beta_));
+        }
+
+        if (!beta_ri_djl_ || beta_ri_djl_->qmax() > d * gk_cutoff()) {
+            beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
+                new Radial_integrals_beta<true>(unit_cell(), d * gk_cutoff(), settings().nprii_beta_));
+        }
+
+        if (!aug_ri_ || aug_ri_->qmax() > d * pw_cutoff()) {
+            aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
+                new Radial_integrals_aug<false>(unit_cell(), d * pw_cutoff(), settings().nprii_aug_));
+        }
+
+        if (!aug_ri_djl_ || aug_ri_djl_->qmax() > d * pw_cutoff()) {
+            aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
+                new Radial_integrals_aug<true>(unit_cell(), d * pw_cutoff(), settings().nprii_aug_));
+        }
+
+        if (!atomic_wf_ri_ || atomic_wf_ri_->qmax() > d * gk_cutoff()) {
+            atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
+                new Radial_integrals_atomic_wf<false>(unit_cell(), d * gk_cutoff(), 20, false));
+        }
+
+        if (!atomic_wf_ri_djl_ || atomic_wf_ri_djl_->qmax() > d * gk_cutoff()) {
+            atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
+                new Radial_integrals_atomic_wf<true>(unit_cell(), d * gk_cutoff(), 20, false));
+        }
+
+        if (!hubbard_wf_ri_ || hubbard_wf_ri_->qmax() > d * gk_cutoff()) {
+            hubbard_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
+                new Radial_integrals_atomic_wf<false>(unit_cell(), d * gk_cutoff(), 20, true));
+        }
+
+        if (!hubbard_wf_ri_djl_ || hubbard_wf_ri_djl_->qmax() > d * gk_cutoff()) {
+            hubbard_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
+                new Radial_integrals_atomic_wf<true>(unit_cell(), d * gk_cutoff(), 20, true));
+        }
+
+        if (!ps_core_ri_ || ps_core_ri_->qmax() > d * pw_cutoff()) {
+            ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
+                new Radial_integrals_rho_core_pseudo<false>(unit_cell(), d * pw_cutoff(), settings().nprii_rho_core_));
+        }
+
+        if (!ps_core_ri_djl_ || ps_core_ri_djl_->qmax() > d * pw_cutoff()) {
+            ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
+                new Radial_integrals_rho_core_pseudo<true>(unit_cell(), d * pw_cutoff(), settings().nprii_rho_core_));
+        }
+
+        if (!ps_rho_ri_ || ps_rho_ri_->qmax() > d * pw_cutoff()) {
+            ps_rho_ri_ = std::unique_ptr<Radial_integrals_rho_pseudo>(
+                new Radial_integrals_rho_pseudo(unit_cell(), d * pw_cutoff(), 20));
+        }
+
+        if (!vloc_ri_ || vloc_ri_->qmax() > d * pw_cutoff()) {
+            vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(
+                new Radial_integrals_vloc<false>(unit_cell(), d * pw_cutoff(), settings().nprii_vloc_));
+        }
+
+        if (!vloc_ri_djl_ || vloc_ri_djl_->qmax() > d * pw_cutoff()) {
+            vloc_ri_djl_ = std::unique_ptr<Radial_integrals_vloc<true>>(
+                new Radial_integrals_vloc<true>(unit_cell(), d * pw_cutoff(), settings().nprii_vloc_));
+        }
+    }
 
     /* get new reciprocal vector */
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
@@ -945,7 +1075,6 @@ void Simulation_context::update()
     }
 
     if (!full_potential()) {
-        augmentation_op_.clear();
         memory_pool* mp{nullptr};
         switch (processing_unit()) {
             case device_t::CPU: {
@@ -957,11 +1086,15 @@ void Simulation_context::update()
                 break;
             }
         }
-        /* create augmentation operator Q_{xi,xi'}(G) here */
         for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-            augmentation_op_.push_back(
-                    std::move(Augmentation_operator(unit_cell().atom_type(iat), gvec(), comm())));
-            augmentation_op_.back().generate_pw_coeffs(aug_ri(), *mp);
+            if (unit_cell().atom_type(iat).augment() && unit_cell().atom_type(iat).num_atoms() > 0) {
+                augmentation_op_[iat] = std::unique_ptr<Augmentation_operator>(
+                    new Augmentation_operator(unit_cell().atom_type(iat), gvec()));
+                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), *mp);
+
+            } else {
+                augmentation_op_[iat] = nullptr;
+            }
         }
     }
 }
@@ -1032,25 +1165,28 @@ void Simulation_context::generate_phase_factors(int iat__, mdarray<double_comple
     }
 }
 
-void Simulation_context::print_memory_usage(const char *file__, int line__) 
+void Simulation_context::print_memory_usage(const char *file__, int line__)
 {
-    if (comm().rank() == 0 && control().print_memory_usage_) {
+    if (comm().rank() == 0 && control().print_memory_usage_ && control().verbosity_ >= 1) {
         sirius::print_memory_usage(file__, line__);
 
-        printf("memory_t::host pool:        %li %li %li %li\n", mem_pool(memory_t::host).total_size() >> 20,
-               mem_pool(memory_t::host).free_size() >> 20,
-               mem_pool(memory_t::host).num_blocks(),
-               mem_pool(memory_t::host).num_stored_ptr());
-
-        printf("memory_t::host_pinned pool: %li %li %li %li\n", mem_pool(memory_t::host_pinned).total_size() >> 20,
-               mem_pool(memory_t::host_pinned).free_size() >> 20,
-               mem_pool(memory_t::host_pinned).num_blocks(),
-               mem_pool(memory_t::host_pinned).num_stored_ptr());
-
-        printf("memory_t::device pool:      %li %li %li %li\n", mem_pool(memory_t::device).total_size() >> 20,
-               mem_pool(memory_t::device).free_size() >> 20,
-               mem_pool(memory_t::device).num_blocks(),
-               mem_pool(memory_t::device).num_stored_ptr());
+        std::vector<std::string> labels = {"host"};
+        std::vector<memory_pool*> mp = {&this->mem_pool(memory_t::host)};
+        int np{1};
+        if (processing_unit() == device_t::GPU) {
+            labels.push_back("host pinned");
+            labels.push_back("device");
+            mp.push_back(&this->mem_pool(memory_t::host_pinned));
+            mp.push_back(&this->mem_pool(memory_t::device));
+            np = 3;
+        }
+        printf("memory pools\n");
+        printf("------------\n");
+        for (int i = 0; i < np; i++) {
+            printf("%s: total capacity: %li Mb, free: %li Mb, num.blocks: %li, num.pointers: %li\n",
+                labels[i].c_str(), mp[i]->total_size() >> 20, mp[i]->free_size() >> 20, mp[i]->num_blocks(),
+                mp[i]->num_stored_ptr());
+        }
     }
 }
 
@@ -1196,10 +1332,17 @@ void Simulation_context::init_comm()
     /* setup MPI grid */
     mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
 
-    //comm_ortho_fft_ = comm().split(comm_fft().rank());
+    /* here we know the number of ranks for band parallelization */
 
+    /* if we have multiple ranks per node and band parallelization, switch to parallel FFT for coarse mesh */
+    if (num_ranks_per_node() > 1 && comm_band().size() > 1) {
+        control_input_.fft_mode_ = "parallel";
+    }
+
+    /* create communicator, orthogonal to comm_fft_coarse */
     comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
 
+    /* create communicator, orthogonal to comm_fft_coarse within a band communicator */
     comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
 }
 

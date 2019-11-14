@@ -40,21 +40,16 @@ class Augmentation_operator
 
     Gvec const& gvec_;
 
-    Communicator const& comm_;
-
     mdarray<double, 2> q_mtrx_;
 
-    mdarray<double, 2> q_pw_;
+    mutable mdarray<double, 2> q_pw_;
 
-    mdarray<double, 1> sym_weight_;
+    mutable mdarray<double, 1> sym_weight_;
 
   public:
-    Augmentation_operator(Atom_type    const& atom_type__,
-                          Gvec         const& gvec__,
-                          Communicator const& comm__)
+    Augmentation_operator(Atom_type const& atom_type__, Gvec const& gvec__)
         : atom_type_(atom_type__)
         , gvec_(gvec__)
-        , comm_(comm__)
     {
     }
 
@@ -150,7 +145,7 @@ class Augmentation_operator
         q_mtrx_ = mdarray<double, 2>(nbf, nbf);
         q_mtrx_.zero();
 
-        if (comm_.rank() == 0) {
+        if (gvec_.comm().rank() == 0) {
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 for (int xi1 = 0; xi1 <= xi2; xi1++) {
                     /* packed orbital index */
@@ -160,31 +155,35 @@ class Augmentation_operator
             }
         }
         /* broadcast from rank#0 */
-        comm_.bcast(&q_mtrx_(0, 0), nbf * nbf, 0);
+        gvec_.comm().bcast(&q_mtrx_(0, 0), nbf * nbf, 0);
 
         if (atom_type_.parameters().control().print_checksum_) {
             auto cs = q_pw_.checksum();
             auto cs1 = q_mtrx_.checksum();
-            comm_.allreduce(&cs, 1);
-            if (comm_.rank() == 0) {
+            gvec_.comm().allreduce(&cs, 1);
+            if (gvec_.comm().rank() == 0) {
                 utils::print_checksum("q_pw", cs);
                 utils::print_checksum("q_mtrx", cs1);
             }
         }
     }
 
-    void prepare(stream_id sid)
+    void prepare(stream_id sid, sddk::memory_pool* mp__) const
     {
         if (atom_type_.parameters().processing_unit() == device_t::GPU && atom_type_.augment()) {
-            sym_weight_.allocate(memory_t::device);
+            if (mp__) {
+                sym_weight_.allocate(*mp__);
+                q_pw_.allocate(*mp__);
+            } else {
+                sym_weight_.allocate(memory_t::device);
+                q_pw_.allocate(memory_t::device);
+            }
             sym_weight_.copy_to(memory_t::device, sid);
-
-            q_pw_.allocate(memory_t::device);
             q_pw_.copy_to(memory_t::device, sid);
         }
     }
 
-    void dismiss()
+    void dismiss() const
     {
         if (atom_type_.parameters().processing_unit() == device_t::GPU && atom_type_.augment()) {
             q_pw_.deallocate(memory_t::device);
@@ -202,12 +201,19 @@ class Augmentation_operator
         return q_pw_(i__, ig__);
     }
 
-    double const& q_mtrx(int xi1__, int xi2__) const
+    /// Set Q-matrix.
+    void q_mtrx(sddk::mdarray<double, 2> const& q_mtrx__)
     {
-        return q_mtrx_(xi1__, xi2__);
+        int nbf = atom_type_.mt_basis_size();
+        for (int i = 0; i < nbf; i++) {
+            for (int j = 0; j < nbf; j++) {
+                q_mtrx_(j, i) = q_mtrx__(j, i);
+            }
+        }
     }
 
-    double& q_mtrx(int xi1__, int xi2__)
+    /// Get values of the Q-matrix.
+    inline double q_mtrx(int xi1__, int xi2__) const
     {
         return q_mtrx_(xi1__, xi2__);
     }

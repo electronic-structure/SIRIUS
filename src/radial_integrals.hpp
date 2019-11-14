@@ -47,9 +47,11 @@ class Radial_integrals_base
     /// Array with integrals.
     sddk::mdarray<Spline<double>, N> values_;
 
+    double qmax_{0};
+
   public:
     /// Constructor.
-    Radial_integrals_base(Unit_cell const& unit_cell__, double qmax__, int np__)
+    Radial_integrals_base(Unit_cell const& unit_cell__, double const qmax__, int const np__)
         : unit_cell_(unit_cell__)
     {
         /* Add extra length to the cutoffs in order to interpolate radial integrals for q > cutoff.
@@ -57,9 +59,9 @@ class Radial_integrals_base
            Cartiesin coordinates exceed the initial cutoff length. Do not remove this extra delta! */
 
         /* add extra length in [a.u.^-1] */
-        qmax__ += std::max(5.0, qmax__ * 0.1);
+        qmax_ = qmax__ + std::max(10.0, qmax__ * 0.1);
 
-        grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax__), 0, qmax__);
+        grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax_), 0, qmax_);
         spl_q_  = splindex<splindex_t::block>(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
     }
 
@@ -92,6 +94,11 @@ class Radial_integrals_base
     inline int nq() const
     {
         return grid_q_.num_points();
+    }
+
+    inline double qmax() const
+    {
+        return qmax_;
     }
 };
 

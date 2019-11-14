@@ -47,6 +47,8 @@ void Stress::calc_stress_nonloc_aux()
         return;
     }
 
+    ctx_.print_memory_usage(__FILE__, __LINE__);
+
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
@@ -54,7 +56,7 @@ void Stress::calc_stress_nonloc_aux()
             int nbnd = ctx_.num_bands();
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* allocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).allocate(memory_t::device);
+                kp->spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(memory_t::device));
                 kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
             }
         }
@@ -292,7 +294,7 @@ matrix3d<double> Stress::calc_stress_xc()
     return stress_xc_;
 }
 
-matrix3d<double> Stress::calc_stress_us()
+matrix3d<double> Stress::calc_stress_us() // TODO: add GPU code for stress tensor
 {
     PROFILE("sirius::Stress|us");
 

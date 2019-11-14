@@ -208,6 +208,9 @@ struct Mixer_input
     /// Scaling factor for mixing parameter.
     double beta_scaling_factor_{1};
 
+    /// Use Hartree potential in the inner() product for residuals.
+    bool use_hartree_{false};
+
     /// True if this section exists in the input file.
     bool exist_{false};
 
@@ -223,6 +226,7 @@ struct Mixer_input
             max_history_         = section.value("max_history", max_history_);
             type_                = section.value("type", type_);
             beta_scaling_factor_ = section.value("beta_scaling_factor", beta_scaling_factor_);
+            use_hartree_         = section.value("use_hartree", use_hartree_);
         }
     }
 };
@@ -422,7 +426,8 @@ struct Control_input
             memory_usage_        = section.value("memory_usage", memory_usage_);
             beta_chunk_size_     = section.value("beta_chunk_size", beta_chunk_size_);
 
-            auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_, &memory_usage_};
+            auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_,
+                            &memory_usage_};
             for (auto s : strings) {
                 std::transform(s->begin(), s->end(), s->begin(), ::tolower);
             }
@@ -576,12 +581,12 @@ struct Parameters_input
             num_dft_iter_   = parser["parameters"].value("num_dft_iter", num_dft_iter_);
             energy_tol_     = parser["parameters"].value("energy_tol", energy_tol_);
             /* potential_tol is obsolete */
-            density_tol_    = parser["parameters"].value("potential_tol", density_tol_);
-            density_tol_    = parser["parameters"].value("density_tol", density_tol_);
-            molecule_       = parser["parameters"].value("molecule", molecule_);
-            nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
-            reduce_aux_bf_  = parser["parameters"].value("reduce_aux_bf", reduce_aux_bf_);
-            extra_charge_   = parser["parameters"].value("extra_charge", extra_charge_);
+            density_tol_   = parser["parameters"].value("potential_tol", density_tol_);
+            density_tol_   = parser["parameters"].value("density_tol", density_tol_);
+            molecule_      = parser["parameters"].value("molecule", molecule_);
+            nn_radius_     = parser["parameters"].value("nn_radius", nn_radius_);
+            reduce_aux_bf_ = parser["parameters"].value("reduce_aux_bf", reduce_aux_bf_);
+            extra_charge_  = parser["parameters"].value("extra_charge", extra_charge_);
 
             if (parser["parameters"].count("spin_orbit")) {
                 so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);
