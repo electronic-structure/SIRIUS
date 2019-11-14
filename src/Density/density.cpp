@@ -1262,6 +1262,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         }
     }
     sddk::mdarray<double_complex, 2> rho_aug(ctx_.gvec().count(), ctx_.num_mag_dims() + 1, *mp);
+    rho_aug.zero();
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
