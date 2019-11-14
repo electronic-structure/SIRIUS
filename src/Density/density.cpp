@@ -1235,14 +1235,14 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
 
     auto spl_ngv_loc = ctx_.split_gvec_local();
 
-    mdarray<double_complex, 2> rho_aug(ctx_.gvec().count(), ctx_.num_mag_dims() + 1);
+    sddk::mdarray<double_complex, 2> rho_aug(ctx_.gvec().count(), ctx_.num_mag_dims() + 1, ctx_.mem_pool(memory_t::host));
     switch (ctx_.processing_unit()) {
         case device_t::CPU: {
             rho_aug.zero(memory_t::host);
             break;
         }
         case device_t::GPU: {
-            rho_aug.allocate(memory_t::device).zero(memory_t::device);
+            rho_aug.allocate(ctx_.mem_pool(memory_t::device)).zero(memory_t::device);
             break;
         }
     }
@@ -1318,11 +1318,10 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                     }
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         PROFILE_START("sirius::Density::generate_rho_aug|gemm");
-                        linalg2(linalg_t::blas)
-                            .gemm('N', 'N', nbf * (nbf + 1) / 2, 2 * spl_ngv_loc.local_size(ib), atom_type.num_atoms(),
-                                  &linalg_const<double>::one(), dm.at(memory_t::host, 0, 0, iv), dm.ld(),
-                                  phase_factors.at(memory_t::host), phase_factors.ld(), &linalg_const<double>::zero(),
-                                  dm_pw.at(memory_t::host, 0, 0), dm_pw.ld());
+                        linalg2(linalg_t::blas).gemm('N', 'N', nbf * (nbf + 1) / 2, 2 * spl_ngv_loc.local_size(ib),
+                            atom_type.num_atoms(), &linalg_const<double>::one(), dm.at(memory_t::host, 0, 0, iv),
+                            dm.ld(), phase_factors.at(memory_t::host), phase_factors.ld(),
+                            &linalg_const<double>::zero(), dm_pw.at(memory_t::host, 0, 0), dm_pw.ld());
                         PROFILE_STOP("sirius::Density::generate_rho_aug|gemm");
                         PROFILE_START("sirius::Density::generate_rho_aug|sum");
                         #pragma omp parallel for
@@ -1723,7 +1722,7 @@ mdarray<double, 3> Density::density_matrix_aux(int iat__)
 void Density::mixer_init(Mixer_input mixer_cfg__)
 {
     auto func_prop    = mixer::periodic_function_property();
-    auto func_prop1   = mixer::periodic_function_property_modified_inner();
+    auto func_prop1   = mixer::periodic_function_property_modified(true);
     auto density_prop = mixer::density_function_property();
     auto paw_prop     = mixer::paw_density_function_property();
 

@@ -217,9 +217,8 @@ matrix3d<double> Stress::calc_stress_core()
 
         for (int mu : {0, 1, 2}) {
             for (int nu : {0, 1, 2}) {
-                stress_core_(mu, nu) -=
-                    std::real(std::conj(potential_.xc_potential().f_pw_local(igloc)) * drhoc[igloc]) * G[mu] * G[nu] /
-                    g;
+                stress_core_(mu, nu) -= std::real(std::conj(potential_.xc_potential().f_pw_local(igloc)) *
+                    drhoc[igloc]) * G[mu] * G[nu] / g;
             }
         }
 
@@ -232,8 +231,8 @@ matrix3d<double> Stress::calc_stress_core()
         sdiag *= 2;
     }
     if (ctx_.comm().rank() == 0) {
-        sdiag +=
-            std::real(std::conj(potential_.xc_potential().f_pw_local(0)) * density_.rho_pseudo_core().f_pw_local(0));
+        sdiag += std::real(std::conj(potential_.xc_potential().f_pw_local(0)) *
+            density_.rho_pseudo_core().f_pw_local(0));
     }
 
     for (int mu : {0, 1, 2}) {
@@ -294,7 +293,7 @@ matrix3d<double> Stress::calc_stress_xc()
     return stress_xc_;
 }
 
-matrix3d<double> Stress::calc_stress_us() // TODO: add GPU code for stress tensor
+matrix3d<double> Stress::calc_stress_us()
 {
     PROFILE("sirius::Stress|us");
 
@@ -305,15 +304,28 @@ matrix3d<double> Stress::calc_stress_us() // TODO: add GPU code for stress tenso
         return stress_us_;
     }
 
-    potential_.effective_potential().fft_transform(-1);
-
     auto& ri    = ctx_.aug_ri();
     auto& ri_dq = ctx_.aug_ri_djl();
 
     potential_.fft_transform(-1);
 
-
     Augmentation_operator_gvec_deriv q_deriv(ctx_.unit_cell().lmax(), ctx_.gvec(), ctx_.comm());
+
+    linalg_t la{linalg_t::none};
+
+    memory_pool* mp{nullptr};
+    switch (ctx_.processing_unit()) {
+        case device_t::CPU: {
+            mp = &ctx_.mem_pool(memory_t::host);
+            la = linalg_t::blas;
+            break;
+        }
+        case device_t::GPU: {
+            mp = &ctx_.mem_pool(memory_t::host_pinned);
+            la = linalg_t::cublasxt;
+            break;
+        }
+    }
 
     for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
         auto& atom_type = ctx_.unit_cell().atom_type(iat);
@@ -334,26 +346,13 @@ matrix3d<double> Stress::calc_stress_us() // TODO: add GPU code for stress tenso
         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
             for (int i = 0; i < atom_type.num_atoms(); i++) {
-                int ia                  = atom_type.atom_id(i);
-                phase_factors(i, igloc) = ctx_.gvec_phase_factor(ig, ia);
+                phase_factors(i, igloc) = ctx_.gvec_phase_factor(ig, atom_type.atom_id(i));
             }
         }
         PROFILE_STOP("sirius::Stress|us|phase_fac");
 
-        memory_pool* mp{nullptr};
-        switch (ctx_.processing_unit()) {
-            case device_t::CPU: {
-                mp = &ctx_.mem_pool(memory_t::host);
-                break;
-            }
-            case device_t::GPU: {
-                mp = &ctx_.mem_pool(memory_t::host_pinned);
-                break;
-            }
-        }
-
-        mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
-        mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
+        mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
+        mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);
         /* over spin components, can be from 1 to 4 */
         for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++) {
             for (int nu = 0; nu < 3; nu++) {
@@ -383,9 +382,14 @@ matrix3d<double> Stress::calc_stress_us() // TODO: add GPU code for stress tenso
                     PROFILE_STOP("sirius::Stress|us|prepare");
 
                     PROFILE_START("sirius::Stress|us|gemm");
-                    linalg<device_t::CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(),
-                                                2 * ctx_.gvec().count(), q_deriv.q_pw(), v_tmp, tmp);
+                    linalg2(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                        &linalg_const<double>::one(),
+                        q_deriv.q_pw().at(memory_t::host), q_deriv.q_pw().ld(),
+                        v_tmp.at(memory_t::host), v_tmp.ld(),
+                        &linalg_const<double>::zero(),
+                        tmp.at(memory_t::host), tmp.ld());
                     PROFILE_STOP("sirius::Stress|us|gemm");
+
                     for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                         for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
                             stress_us_(mu, nu) += tmp(i, ia) * dm(i, ia, ispin) * q_deriv.sym_weight(i);

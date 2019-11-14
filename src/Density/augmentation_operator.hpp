@@ -350,9 +350,9 @@ class Augmentation_operator_gvec_deriv
                     int idxrf1 = atom_type__.indexb(xi1).idxrf;
 
                     /* packed orbital index */
-                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                    int idx12 = utils::packed_index(xi1, xi2);
                     /* packed radial-function index */
-                    int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+                    int idxrf12 = utils::packed_index(idxrf1, idxrf2);
 
                     for (int lm3 = 0; lm3 < lmmax; lm3++) {
                         v[lm3] = std::conj(zilm[lm3]) * (rlm_dg_(lm3, nu__, igloc) * ri(idxrf12, l_by_lm[lm3]) +

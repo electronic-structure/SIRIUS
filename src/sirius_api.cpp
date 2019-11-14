@@ -234,7 +234,6 @@ void sirius_set_parameters(void*  const* handler__,
                            int    const* num_mag_dims__,
                            double const* pw_cutoff__,
                            double const* gk_cutoff__,
-                           //double const* aw_cutoff__,
                            int    const* fft_grid_size__,
                            int    const* auto_rmt__,
                            bool   const* gamma_point__,
@@ -276,9 +275,6 @@ void sirius_set_parameters(void*  const* handler__,
     if (gk_cutoff__ != nullptr) {
         sim_ctx.gk_cutoff(*gk_cutoff__);
     }
-    //if (aw_cutoff__ != nullptr) {
-    //    sim_ctx.set_aw_cutoff(*aw_cutoff__);
-    //}
     if (auto_rmt__ != nullptr) {
         sim_ctx.set_auto_rmt(*auto_rmt__);
     }
