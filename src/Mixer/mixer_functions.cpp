@@ -106,30 +106,33 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
                                                          axpy_function);
 }
 
-FunctionProperties<Periodic_function<double>> periodic_function_property_modified_inner()
+FunctionProperties<Periodic_function<double>> periodic_function_property_modified(bool use_coarse_gvec__)
 {
     auto global_size_func = [](Periodic_function<double> const& x) -> double
     {
         return x.ctx().unit_cell().omega();
     };
 
-    auto inner_prod_func = [](Periodic_function<double> const& x, Periodic_function<double> const& y) -> double {
+    auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x, Periodic_function<double> const& y) -> double {
         double result{0};
         int ig0 = (x.ctx().comm().rank() == 0) ? 1 : 0;
-        for (int igloc = ig0; igloc < x.ctx().gvec_coarse().count(); igloc++) {
-            /* local index in fine G-vector list */
-            int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
-            /* global index */
-            int ig = x.ctx().gvec().offset() + ig1;
+        if (use_coarse_gvec__) {
+            for (int igloc = ig0; igloc < x.ctx().gvec_coarse().count(); igloc++) {
+                /* local index in fine G-vector list */
+                int ig1 = x.ctx().gvec().gvec_base_mapping(igloc);
+                /* global index */
+                int ig = x.ctx().gvec().offset() + ig1;
 
-            result += std::real(std::conj(x.f_pw_local(ig1)) * y.f_pw_local(ig1)) / std::pow(x.ctx().gvec().gvec_len(ig), 2);
+                result += std::real(std::conj(x.f_pw_local(ig1)) * y.f_pw_local(ig1)) / std::pow(x.ctx().gvec().gvec_len(ig), 2);
+            }
+        } else {
+            for (int igloc = ig0; igloc < x.ctx().gvec().count(); igloc++) {
+                /* global index */
+                int ig = x.ctx().gvec().offset() + igloc;
+
+                result += std::real(std::conj(x.f_pw_local(igloc)) * y.f_pw_local(igloc)) / std::pow(x.ctx().gvec().gvec_len(ig), 2);
+            }
         }
-        //for (int igloc = ig0; igloc < x.ctx().gvec().count(); igloc++) {
-        //    /* global index */
-        //    int ig = x.ctx().gvec().offset() + igloc;
-
-        //    result += std::real(std::conj(x.f_pw_local(igloc)) * y.f_pw_local(igloc)) / std::pow(x.ctx().gvec().gvec_len(ig), 2);
-        //}
         if (x.ctx().gvec().reduced()) {
             result *= 2;
         }

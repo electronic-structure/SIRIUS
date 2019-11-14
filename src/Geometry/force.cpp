@@ -427,9 +427,6 @@ mdarray<double, 2> const& Force::calc_forces_us()
                     &linalg_const<double>::zero(),
                     tmp.at(memory_t::host), tmp.ld());
 
-                ///linalg<device_t::CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                //                            aug_op->q_pw(), v_tmp, tmp);
-
                 #pragma omp parallel for
                 for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                     for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
