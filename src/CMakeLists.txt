@@ -28,6 +28,7 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp;Hamiltonian/hamiltonian_k.cpp;Band/ban
   "Potential/poisson.cpp"
   "Potential/xc.cpp"
   "Unit_cell/unit_cell.cpp"
+  "Unit_cell/unit_cell_symmetry.cpp"
   "simulation_context.cpp"
   "simulation_parameters.cpp"
   "Geometry/force.cpp"
