@@ -257,7 +257,7 @@ class Unit_cell_symmetry
                         ja = k;
                         break;
                     }
-                    if (d0 < dist) {
+                    if (dist < d0) {
                         d0 = dist;
                         j0 = k;
                         p0 = pos1;
