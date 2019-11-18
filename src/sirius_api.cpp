@@ -1118,7 +1118,7 @@ void sirius_get_pw_coeffs_real(void* const* handler__,
         double fourpi_omega = fourpi / sim_ctx.unit_cell().omega();
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < *ngv__; i++) {
-            auto gc = sim_ctx.unit_cell().reciprocal_lattice_vectors() *  vector3d<int>(gvec(0, i), gvec(1, i), gvec(2, i));
+            auto gc = sim_ctx.unit_cell().reciprocal_lattice_vectors() * vector3d<int>(gvec(0, i), gvec(1, i), gvec(2, i));
             pw_coeffs__[i] = fourpi_omega * f(gc.length());
         }
     };
@@ -1145,7 +1145,7 @@ void sirius_get_pw_coeffs_real(void* const* handler__,
                        });
     } else {
         std::stringstream s;
-        s << "wrong label in sirius_get_pw_coeffs_real()" << std::endl
+        s << "[sirius_get_pw_coeffs_real] wrong label" << std::endl
           << "  label : " << label;
         TERMINATE(s);
     }
