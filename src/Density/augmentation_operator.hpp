@@ -236,6 +236,10 @@ class Augmentation_operator
     }
 };
 
+// TODO:
+// can't cache it in the simulation context becuase each time the lattice is updated, PW coefficients must be
+// recomputed; so, the only way to accelerate it is to move to GPUs..
+
 /// Derivative of augmentation operator PW coefficients with respect to the Cartesian component of G-vector.
 class Augmentation_operator_gvec_deriv
 {
@@ -329,7 +333,6 @@ class Augmentation_operator_gvec_deriv
 
         /* array of plane-wave coefficients */
         q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp__, "q_pw_dg_");
-        PROFILE_START("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|qpw");
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             int    ig  = gvec_offset + igloc;
@@ -366,7 +369,6 @@ class Augmentation_operator_gvec_deriv
                 }
             }
         }
-        PROFILE_STOP("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|qpw");
 
         memory_t mem{memory_t::host};
         if (atom_type__.parameters().processing_unit() == device_t::GPU) {

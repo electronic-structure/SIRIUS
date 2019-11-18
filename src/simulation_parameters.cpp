@@ -190,20 +190,6 @@ int Simulation_parameters::num_bands() const
     }
 }
 
-int Simulation_parameters::num_mag_dims() const
-{
-    assert(parameters_input_.num_mag_dims_ == 0 || parameters_input_.num_mag_dims_ == 1 ||
-           parameters_input_.num_mag_dims_ == 3);
-
-    return parameters_input_.num_mag_dims_;
-}
-
-double Simulation_parameters::gk_cutoff(double gk_cutoff__)
-{
-    parameters_input_.gk_cutoff_ = gk_cutoff__;
-    return parameters_input_.gk_cutoff_;
-}
-
 void Simulation_parameters::electronic_structure_method(std::string name__)
 {
     parameters_input_.electronic_structure_method_ = name__;

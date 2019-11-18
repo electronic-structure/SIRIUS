@@ -379,7 +379,7 @@ class K_point
     inline int num_occupied_bands(int ispn__ = -1) const
     {
         for (int j = ctx_.num_bands() - 1; j >= 0; j--) {
-            if (std::abs(band_occupancy(j, ispn__) * weight()) > 1e-14) {
+            if (std::abs(band_occupancy(j, ispn__)) > ctx_.min_occupancy() * ctx_.max_occupancy()) {
                 return j + 1;
             }
         }
