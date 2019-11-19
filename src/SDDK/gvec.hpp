@@ -294,6 +294,7 @@ class Gvec
     /// Move assigment operator.
     Gvec& operator=(Gvec&& src__);
 
+    /// Move constructor.
     Gvec(Gvec&& src__)
         : comm_(src__.comm_)
     {
