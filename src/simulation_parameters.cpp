@@ -177,19 +177,6 @@ void Simulation_parameters::print_options() // TODO: better to use the communica
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
-int Simulation_parameters::num_bands() const
-{
-    if (num_fv_states() != -1) {
-        if (num_mag_dims() != 3) {
-            return num_fv_states();
-        } else {
-            return num_spins() * num_fv_states();
-        }
-    } else {
-        return parameters_input_.num_bands_;
-    }
-}
-
 void Simulation_parameters::electronic_structure_method(std::string name__)
 {
     parameters_input_.electronic_structure_method_ = name__;

@@ -218,7 +218,7 @@ void Gvec::find_gvec_shells()
     }
     for (int ig = 0; ig < num_gvec_; ig++) {
         if (gvec_shell_[ig] == -1) {
-            throw std::runtime_error("wrong G-vector shell");
+            throw std::runtime_error("[sddk::Gvec] wrong G-vector shell");
         }
     }
 
@@ -235,8 +235,7 @@ void Gvec::find_gvec_shells()
                so tolerance on length should be square root of that */
             if (std::abs(gvec_shell_len_[igsh] - g) > 1e-3) {
                 std::stringstream s;
-                s << "wrong G-vector length"
-                  << "\n"
+                s << "[sddk::Gvec] wrong G-vector length\n"
                   << "  length of G-shell : " << gvec_shell_len_[igsh] << "\n"
                   << "  length of current G-vector: " << g << "\n"
                   << "  index of G-vector: " << ig << "\n"
@@ -246,6 +245,8 @@ void Gvec::find_gvec_shells()
             }
         }
     }
+
+    // TODO: maybe, make an average G-shell length.
 
     /* list of pairs (length, index of G-vector) */
     std::vector<std::pair<uint64_t, int>> tmp(num_gvec_);

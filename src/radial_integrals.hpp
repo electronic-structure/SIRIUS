@@ -168,12 +168,12 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
         int nmax = unit_cell_.max_mt_radial_basis_size();
         int lmax = unit_cell_.lmax();
 
-        values_ = mdarray<Spline<double>, 3>(nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types());
+        values_ = sddk::mdarray<Spline<double>, 3>(nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types());
 
         generate();
     }
 
-    inline mdarray<double, 2> values(int iat__, double q__) const
+    inline sddk::mdarray<double, 2> values(int iat__, double q__) const
     {
         auto idx = iqdq(q__);
 
@@ -181,7 +181,7 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
         int lmax        = atom_type.indexr().lmax();
         int nbrf        = atom_type.mt_radial_basis_size();
 
-        mdarray<double, 2> val(nbrf * (nbrf + 1) / 2, 2 * lmax + 1);
+        sddk::mdarray<double, 2> val(nbrf * (nbrf + 1) / 2, 2 * lmax + 1);
         for (int l = 0; l <= 2 * lmax; l++) {
             for (int i = 0; i < nbrf * (nbrf + 1) / 2; i++) {
                 val(i, l) = values_(i, l, iat__)(idx.first, idx.second);

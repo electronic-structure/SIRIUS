@@ -300,7 +300,18 @@ class Simulation_parameters
     }
 
     /// Total number of bands.
-    int num_bands() const;
+    int num_bands() const
+    {
+        if (num_fv_states() != -1) {
+            if (num_mag_dims() != 3) {
+                return num_fv_states();
+            } else {
+                return num_spins() * num_fv_states();
+            }
+        } else {
+            return parameters_input_.num_bands_;
+        }
+    }
 
     /// Maximum band occupancy.
     inline int max_occupancy() const
