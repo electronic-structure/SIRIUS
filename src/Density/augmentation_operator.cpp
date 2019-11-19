@@ -53,7 +53,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
 
     /* split G-vectors between ranks */
     int gvec_count  = gvec_.count();
-    int gvec_offset = gvec_.offset();
+    //int gvec_offset = gvec_.offset();
 
     /* array of real spherical harmonics for each G-vector */
     mdarray<double, 2> gvec_rlm(utils::lmmax(2 * lmax_beta), gvec_count);
@@ -63,32 +63,32 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
         SHT::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &gvec_rlm(0, igloc));
     }
 
-    /* map from global index of G-shell to a list of local G-vectors */
-    std::map<int, std::vector<int>> gshmap;
-    for (int igloc = 0; igloc < gvec_count; igloc++) {
-        int igsh = gvec_.shell(gvec_offset + igloc);
-        if (gshmap.count(igsh) == 0) {
-            gshmap[igsh] = std::vector<int>();
-        }
-        gshmap[igsh].push_back(igloc);
-    }
-    int ngshloc{0};
-    std::vector<int> gshidx(gvec_count);
-    std::vector<double> gshlen;
-    for (auto it = gshmap.begin(); it != gshmap.end(); ++it) {
-        int igsh = it->first;
-        gshlen.push_back(gvec_.shell_len(igsh));
-        for (auto igloc: it->second) {
-            gshidx[igloc] = ngshloc;
-        }
-        ngshloc++;
-    }
+    ///* map from global index of G-shell to a list of local G-vectors */
+    //std::map<int, std::vector<int>> gshmap;
+    //for (int igloc = 0; igloc < gvec_count; igloc++) {
+    //    int igsh = gvec_.shell(gvec_offset + igloc);
+    //    if (gshmap.count(igsh) == 0) {
+    //        gshmap[igsh] = std::vector<int>();
+    //    }
+    //    gshmap[igsh].push_back(igloc);
+    //}
+    //int ngshloc{0};
+    //std::vector<int> gshidx(gvec_count);
+    //std::vector<double> gshlen;
+    //for (auto it = gshmap.begin(); it != gshmap.end(); ++it) {
+    //    int igsh = it->first;
+    //    gshlen.push_back(gvec_.shell_len(igsh));
+    //    for (auto igloc: it->second) {
+    //        gshidx[igloc] = ngshloc;
+    //    }
+    //    ngshloc++;
+    //}
 
     PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|1");
-    std::vector<sddk::mdarray<double, 2>> ri_values(ngshloc);
+    std::vector<sddk::mdarray<double, 2>> ri_values(gvec_.num_gvec_shells_local());
     #pragma omp parallel for
-    for (int j = 0; j < ngshloc; j++) {
-        ri_values[j] = radial_integrals__.values(atom_type_.id(), gshlen[j]);
+    for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
+        ri_values[j] = radial_integrals__.values(atom_type_.id(), gvec_.gvec_shell_len_local(j));
     }
     PROFILE_STOP("sirius::Augmentation_operator::generate_pw_coeffs|1");
 
@@ -102,7 +102,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     for (int igloc = 0; igloc < gvec_count; igloc++) {
         std::vector<double_complex> v(lmmax);
 
-        auto& ri = ri_values[gshidx[igloc]];
+        auto& ri = ri_values[gvec_.gvec_shell_idx_local(igloc)];
 
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             int lm2    = atom_type_.indexb(xi2).lm;

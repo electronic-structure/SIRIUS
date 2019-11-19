@@ -279,6 +279,29 @@ void Gvec::find_gvec_shells()
     }
     gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
     std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at(memory_t::host));
+
+
+    /* map from global index of G-shell to a list of local G-vectors */
+    std::map<int, std::vector<int>> gshmap;
+    for (int igloc = 0; igloc < this->count(); igloc++) {
+        int igsh = this->shell(this->offset() + igloc);
+        if (gshmap.count(igsh) == 0) {
+            gshmap[igsh] = std::vector<int>();
+        }
+        gshmap[igsh].push_back(igloc);
+    }
+
+    num_gvec_shells_local_ = 0;
+    gvec_shell_idx_local_.resize(this->count());
+    gvec_shell_len_local_.clear();
+    for (auto it = gshmap.begin(); it != gshmap.end(); ++it) {
+        int igsh = it->first;
+        gvec_shell_len_local_.push_back(this->shell_len(igsh));
+        for (auto igloc: it->second) {
+            gvec_shell_idx_local_[igloc] = num_gvec_shells_local_;
+        }
+        num_gvec_shells_local_++;
+    }
 }
 
 void Gvec::init_gvec_cart()

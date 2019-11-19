@@ -148,7 +148,20 @@ class Gvec
     /// Number of G-vector shells (groups of G-vectors with the same length).
     int num_gvec_shells_;
 
+    /// Radii (or lengths) of G-vector shells in a.u.^-1.
     mdarray<double, 1> gvec_shell_len_;
+
+    /// Local number of G-vector shells for the local number of G-vectors.
+    /** G-vectors are distributed by sticks, not by G-shells. This means that each rank stores local fraction of
+        G-vectors with a non-consecutive G-shell index and not all G-shells are present at a given rank. This
+        variable stores the number of G-shells which this rank holds. */
+    int num_gvec_shells_local_;
+
+    /// Radii of G-vector shells in the local index counting [0, num_gvec_shells_local)
+    std::vector<double> gvec_shell_len_local_;
+
+    /// Mapping between local index of G-vector and local  G-shell index.
+    std::vector<int> gvec_shell_idx_local_;
 
     mdarray<int, 3> gvec_index_by_xy_;
 
@@ -503,6 +516,21 @@ class Gvec
     {
         assert(gvec_base_ != nullptr);
         return gvec_base_mapping_(igloc_base__);
+    }
+
+    inline int num_gvec_shells_local() const
+    {
+        return num_gvec_shells_local_;
+    }
+
+    inline double gvec_shell_len_local(int idx__) const
+    {
+        return gvec_shell_len_local_[idx__];
+    }
+
+    inline int gvec_shell_idx_local(int igloc__) const
+    {
+        return gvec_shell_idx_local_[igloc__];
     }
 
     friend void serialize(serializer& s__, Gvec& gv__);
