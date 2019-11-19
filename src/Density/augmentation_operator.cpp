@@ -63,15 +63,32 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
         SHT::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &gvec_rlm(0, igloc));
     }
 
-    PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|1");
-    std::vector<sddk::mdarray<double, 2>> ri_values(gvec_.num_shells());
-    #pragma omp parallel for schedule(static)
+    /* map from global index of G-shell to a list of local G-vectors */
+    std::map<int, std::vector<int>> gshmap;
     for (int igloc = 0; igloc < gvec_count; igloc++) {
-        int ig   = gvec_offset + igloc;
-        int igsh = gvec_.shell(ig);
-        if (ri_values[igsh].size() == 0) {
-            ri_values[igsh] = radial_integrals__.values(atom_type_.id(), gvec_.shell_len(igsh));
+        int igsh = gvec_.shell(gvec_offset + igloc);
+        if (gshmap.count(igsh) == 0) {
+            gshmap[igsh] = std::vector<int>();
         }
+        gshmap[igsh].push_back(igloc);
+    }
+    int ngshloc{0};
+    std::vector<int> gshidx(gvec_count);
+    std::vector<double> gshlen;
+    for (auto it = gshmap.begin(); it != gshmap.end(); ++it) {
+        int igsh = it->first;
+        gshlen.push_back(gvec_.shell_len(igsh));
+        for (auto igloc: it->second) {
+            gshidx[igloc] = ngshloc;
+        }
+        ngshloc++;
+    }
+
+    PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|1");
+    std::vector<sddk::mdarray<double, 2>> ri_values(ngshloc);
+    #pragma omp parallel for
+    for (int j = 0; j < ngshloc; j++) {
+        ri_values[j] = radial_integrals__.values(atom_type_.id(), gshlen[j]);
     }
     PROFILE_STOP("sirius::Augmentation_operator::generate_pw_coeffs|1");
 
@@ -83,14 +100,9 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp__, "q_pw_");
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec_count; igloc++) {
-        int    ig = gvec_offset + igloc;
-        int  igsh = gvec_.shell(ig);
-        //double g  = gvec_.gvec_len(ig);
-
         std::vector<double_complex> v(lmmax);
 
-        //auto ri = radial_integrals__.values(atom_type_.id(), g);
-        auto& ri = ri_values[igsh];
+        auto& ri = ri_values[gshidx[igloc]];
 
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             int lm2    = atom_type_.indexb(xi2).lm;
