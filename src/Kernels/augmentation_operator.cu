@@ -39,9 +39,9 @@ __global__ void aug_op_pw_coeffs_gpu_kernel(int const* gvec_shell__, int const* 
     int idxsh = gvec_shell__[igloc];
 
     if (idx12 < idxmax__) {
-        int lm1     = idx__[array2D_offset(0, idx12), 3];
-        int lm2     = idx__[array2D_offset(1, idx12), 3];
-        int idxrf12 = idx__[array2D_offset(2, idx12), 3];
+        int lm1     = idx__[array2D_offset(0, idx12, 3)];
+        int lm2     = idx__[array2D_offset(1, idx12, 3)];
+        int idxrf12 = idx__[array2D_offset(2, idx12, 3)];
 
         acc_complex_double_t z = make_accDoubleComplex(0, 0);
         for (int lm = 0; lm < lmmax__; lm++) {
