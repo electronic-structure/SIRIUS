@@ -205,6 +205,21 @@ class Gaunt_coefficients
     {
         return gaunt_packed_L3_(lm1, lm2);
     }
+
+    inline sddk::mdarray<T, 3> get_full_set_L3() const
+    {
+        sddk::mdarray<T, 3> gc(lmmax3_, lmmax1_, lmmax2_);
+        gc.zero();
+        for (int lm2 = 0; lm2 < lmmax2_; lm2++) {
+            for (int lm1 = 0; lm1 < lmmax1_; lm1++) {
+                for (int k = 0; k < (int)gaunt_packed_L3_(lm1, lm2).size(); k++) {
+                    int lm3 = gaunt_packed_L3_(lm1, lm2)[k].lm3;
+                    gc(lm3, lm1, lm2) = gaunt_packed_L3_(lm1, lm2)[k].coef;
+                }
+            }
+        }
+        return gc;
+    }
 };
 
 }; // namespace sirius

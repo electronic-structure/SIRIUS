@@ -31,12 +31,14 @@
 #include <cassert>
 #include <cmath>
 #include <string>
+#include <iostream>
 #include <vector>
 #include <fstream>
 #include <sstream>
 #include <sys/time.h>
 #include <unistd.h>
 #include <complex>
+#include <chrono>
 #include "json.hpp"
 
 /// Namespace for simple utility functions.
@@ -47,7 +49,7 @@ inline void terminate(const char* file_name__, int line_number__, const std::str
 {
     std::stringstream s;
     s << "\n=== Fatal error at line " << line_number__ << " of file " << file_name__ << " ===\n";
-    s << message__ << "\n\n";
+    s << message__ << "\n";
     throw std::runtime_error(s.str());
 }
 
@@ -139,8 +141,7 @@ inline bool file_exists(std::string file_name)
 }
 
 /// Return the timestamp string in a specified format.
-/** Typical format strings: "%Y%m%d_%H%M%S", "%Y-%m-%d %H:%M:%S", "%H:%M:%S" 
- */
+/** Typical format strings: "%Y%m%d_%H%M%S", "%Y-%m-%d %H:%M:%S", "%H:%M:%S" */
 std::string timestamp(std::string fmt);
 
 /// Wall-clock time in seconds.
@@ -151,11 +152,32 @@ inline double wtime()
     return double(t.tv_sec) + double(t.tv_usec) / 1e6;
 }
 
+inline std::chrono::high_resolution_clock::time_point time_now()
+{
+    return std::chrono::high_resolution_clock::now();
+}
+
+inline double time_interval(std::chrono::high_resolution_clock::time_point t0)
+{
+    return std::chrono::duration_cast<std::chrono::duration<double>>(time_now() - t0).count();
+}
+
 /// Sign of the variable.
 template <typename T>
 inline int sign(T val)
 {
     return (T(0) < val) - (val < T(0));
+}
+
+/// Checks if number is integer with a given tolerance.
+template <typename T>
+inline bool is_int(T val__, T eps__)
+{
+    if (std::abs(std::round(val__) - val__) > eps__) {
+        return false;
+    } else {
+        return true;
+    }
 }
 
 /// Pack two indices into one for symmetric matrices.

@@ -14,8 +14,16 @@ if(USE_CUDA)
   set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
 
-set(_SOURSES "Hamiltonian/hamiltonian.cpp;Hamiltonian/hamiltonian_k.cpp;Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.cpp"
-  "Band/diag_pseudo_potential.cpp;Band/diag_full_potential.cpp;Band/residuals.cpp"
+set(_SOURSES "Hamiltonian/hamiltonian.cpp"
+  "Hamiltonian/hamiltonian_k.cpp"
+  "Band/band.cpp"
+  "Band/solve.cpp"
+  "Density/density.cpp"
+  "Density/augmentation_operator.cpp"
+  "dft_ground_state.cpp"
+  "Band/diag_pseudo_potential.cpp"
+  "Band/diag_full_potential.cpp"
+  "Band/residuals.cpp"
   "Beta_projectors/beta_projectors_base.cpp"
   "Hubbard/apply_hubbard_potential.cpp"
   "Hubbard/hubbard.cpp"

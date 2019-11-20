@@ -404,11 +404,11 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* check if band energy is converged */
         auto is_converged = [&](int j__, int ispn__) -> bool
         {
-            double o1 = std::abs(kp.band_occupancy(j__, ispn__));
-            double o2 = std::abs(1 - o1);
-
-            double tol = o1 * ctx_.iterative_solver_tolerance() +
-                         o2 * (ctx_.iterative_solver_tolerance() + itso.empty_states_tolerance_);
+            double tol = ctx_.iterative_solver_tolerance();
+            /* if band is empty, decrease the tolerance */
+            if (std::abs(kp.band_occupancy(j__, ispn__)) < ctx_.min_occupancy() * ctx_.max_occupancy()) {
+                tol += itso.empty_states_tolerance_;
+            }
             if (std::abs(eval[j__] - eval_old[j__]) > tol) {
                 return false;
             } else {
