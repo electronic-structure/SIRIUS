@@ -28,7 +28,7 @@
 
 __global__ void aug_op_pw_coeffs_gpu_kernel(int const* gvec_shell__, int const* idx__, int idxmax__,
                                             acc_complex_double_t const* zilm__, int const* l_by_lm__, int lmmax__,
-                                            acc_complex_double_t const* gc__, int ld0__, int ld1__,
+                                            double const* gc__, int ld0__, int ld1__,
                                             double const* gvec_rlm__, int ld2__,
                                             double const* ri_values__, int ld3__, int ld4__,
                                             double* q_pw__, int ld5__, double fourpi_omega__)
@@ -46,10 +46,10 @@ __global__ void aug_op_pw_coeffs_gpu_kernel(int const* gvec_shell__, int const* 
         acc_complex_double_t z = make_accDoubleComplex(0, 0);
         for (int lm = 0; lm < lmmax__; lm++) {
             double d = gvec_rlm__[array2D_offset(lm, igloc, ld2__)] *
-                ri_values__[array3D_offset(idxrf12, l_by_lm__[lm], idxsh, ld3__, ld4__)];
-            acc_complex_double_t z1 = accCmul(accConj(zilm__[lm]), gc__[array3D_offset(lm, lm2, lm1, ld0__, ld1__)]);
-            z.x += d * z1.x;
-            z.y += d * z1.y;
+                ri_values__[array3D_offset(idxrf12, l_by_lm__[lm], idxsh, ld3__, ld4__)] *
+                gc__[array3D_offset(lm, lm2, lm1, ld0__, ld1__)];
+            z.x += d * zilm__[lm].x;
+            z.y -= d * zilm__[lm].y;
         }
         q_pw__[array2D_offset(idx12, 2 * igloc,     ld5__)] = z.x * fourpi_omega__;
         q_pw__[array2D_offset(idx12, 2 * igloc + 1, ld5__)] = z.y * fourpi_omega__;
@@ -59,7 +59,7 @@ __global__ void aug_op_pw_coeffs_gpu_kernel(int const* gvec_shell__, int const* 
 
 extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
                                      acc_complex_double_t const* zilm__, int const* l_by_lm__, int lmmax__,
-                                     acc_complex_double_t const* gc__, int ld0__, int ld1__,
+                                     double const* gc__, int ld0__, int ld1__,
                                      double const* gvec_rlm__, int ld2__,
                                      double const* ri_values__, int ld3__, int ld4__,
                                      double* q_pw__, int ld5__, double fourpi_omega__)
