@@ -155,6 +155,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
 
             q_pw_.allocate(memory_t::device);
 
+            PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|gpu");
             aug_op_pw_coeffs_gpu(gvec_count, gvec_shell.at(memory_t::device), idx.at(memory_t::device),
                 static_cast<int>(idx.size(1)), zilm_d.at(memory_t::device), l_by_lm_d.at(memory_t::device),
                 lmmax, gc.at(memory_t::device), static_cast<int>(gc.size(0)), static_cast<int>(gc.size(1)),
@@ -162,6 +163,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
                 static_cast<int>(ri_values.size(0)), static_cast<int>(ri_values.size(1)), q_pw_.at(memory_t::device),
                 static_cast<int>(q_pw_.size(0)), fourpi_omega);
             q_pw_.copy_to(memory_t::host);
+            PROFILE_STOP("sirius::Augmentation_operator::generate_pw_coeffs|gpu");
 
             q_pw_.deallocate(memory_t::device);
 
