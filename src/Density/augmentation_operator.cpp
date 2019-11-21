@@ -109,11 +109,12 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
         }
     }
 
+    /* array of plane-wave coefficients */
+    q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp__, "q_pw_");
+
     PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|2");
     switch (atom_type_.parameters().processing_unit()) {
         case device_t::CPU: {
-            /* array of plane-wave coefficients */
-            q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp__, "q_pw_");
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 std::vector<double_complex> v(lmmax);
