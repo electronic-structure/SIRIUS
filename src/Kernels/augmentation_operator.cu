@@ -1,4 +1,3 @@
-
 // Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //

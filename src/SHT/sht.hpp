@@ -350,13 +350,14 @@ class SHT // TODO: better name
     {
         double x = std::cos(theta);
 
-        std::vector<double> result_array(lmax + 1);
+        std::vector<double> result_array(gsl_sf_legendre_array_n(lmax));
+        gsl_sf_legendre_array(GSL_SF_LEGENDRE_SPHARM, lmax, x, &result_array[0]);
 
-        for (int l = 0; l <= lmax; l++) {
-            for (int m = 0; m <= l; m++) {
-                double_complex z     = std::exp(double_complex(0.0, m * phi));
-                ylm[utils::lm(l, m)] = gsl_sf_legendre_sphPlm(l, m, x) * z;
-                if (m % 2) {
+        for (int m = 0; m <= lmax; m++) {
+            double_complex z = std::exp(double_complex(0.0, m * phi)) * std::pow(-1, m);
+            for (int l = m; l <= lmax; l++) {
+                ylm[utils::lm(l, m)] = result_array[gsl_sf_legendre_array_index(l, m)] *  z;
+                if (m && m % 2) {
                     ylm[utils::lm(l, -m)] = -std::conj(ylm[utils::lm(l, m)]);
                 } else {
                     ylm[utils::lm(l, -m)] = std::conj(ylm[utils::lm(l, m)]);
