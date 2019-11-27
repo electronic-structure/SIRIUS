@@ -205,6 +205,13 @@ void Potential::poisson(Periodic_function<double> const& rho)
             hartree_potential_->f_pw_local(igloc) = (fourpi * rho.f_pw_local(igloc) / std::pow(ctx_.gvec().gvec_len(ig), 2));
         }
     } else {
+        /* reference paper:
+
+           Supercell technique for total-energy calculations of finite charged and polar systems
+           M. R. Jarvis, I. D. White, R. W. Godby, and M. C. Payne
+           Phys. Rev. B 56, 14972 – Published 15 December 1997
+           DOI:https://doi.org/10.1103/PhysRevB.56.14972
+        */
         double R_cut = 0.5 * std::pow(unit_cell_.omega(), 1.0 / 3);
         #pragma omp parallel for schedule(static)
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {

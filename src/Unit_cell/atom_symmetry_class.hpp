@@ -478,7 +478,7 @@ inline void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__
             double b[]    = {0, 0, 0};
             b[num_rs - 1] = 1.0;
 
-            int info = linalg<device_t::CPU>::gesv(num_rs, 1, &a[0][0], 3, b, 3);
+            int info = linalg2(linalg_t::lapack).gesv(num_rs, 1, &a[0][0], 3, b, 3);
 
             if (info) {
                 std::stringstream s;

@@ -33,6 +33,8 @@ extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int c
                                      double const* ri_values__, int ld3__, int ld4__,
                                      double* q_pw__, int ld5__, double fourpi_omega__);
 
+extern "C" void spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* tp__, double* rlm__, int ld__);
+
 void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__, memory_pool& mp__)
 {
     if (!atom_type_.augment()) {
@@ -63,10 +65,30 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
 
     /* array of real spherical harmonics for each G-vector */
     sddk::mdarray<double, 2> gvec_rlm(utils::lmmax(2 * lmax_beta), gvec_count);
-    #pragma omp parallel for schedule(static)
-    for (int igloc = 0; igloc < gvec_count; igloc++) {
-        auto rtp = SHT::spherical_coordinates(gvec_.gvec_cart<index_domain_t::local>(igloc));
-        sht::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &gvec_rlm(0, igloc));
+    switch (atom_type_.parameters().processing_unit()) {
+        case device_t::CPU: {
+            #pragma omp parallel for schedule(static)
+            for (int igloc = 0; igloc < gvec_count; igloc++) {
+                auto rtp = SHT::spherical_coordinates(gvec_.gvec_cart<index_domain_t::local>(igloc));
+                sht::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &gvec_rlm(0, igloc));
+            }
+            break;
+        }
+        case device_t::GPU: {
+            gvec_rlm.allocate(memory_t::device);
+            sddk::mdarray<double, 2> tp(2, gvec_count);
+            #pragma omp parallel for schedule(static)
+            for (int igloc = 0; igloc < gvec_count; igloc++) {
+                auto rtp = SHT::spherical_coordinates(gvec_.gvec_cart<index_domain_t::local>(igloc));
+                tp(0, igloc) = rtp[1];
+                tp(1, igloc) = rtp[2];
+            }
+            tp.allocate(memory_t::device).copy_to(memory_t::device);
+            spherical_harmonics_rlm_gpu(2 * lmax_beta, gvec_count, tp.at(memory_t::device),
+                gvec_rlm.at(memory_t::device), gvec_rlm.ld());
+            /* wait for the kernel, otherwise tp array will be destroyed before the kernel finishes */
+            acc::sync_stream(stream_id(-1));
+        }
     }
 
     /* number of beta- radial functions */
@@ -149,7 +171,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
             auto gc = gaunt_coefs.get_full_set_L3();
             gc.allocate(memory_t::device).copy_to(memory_t::device);
 
-            gvec_rlm.allocate(memory_t::device).copy_to(memory_t::device);
+            //gvec_rlm.allocate(memory_t::device).copy_to(memory_t::device);
 
             ri_values.allocate(memory_t::device).copy_to(memory_t::device);
 

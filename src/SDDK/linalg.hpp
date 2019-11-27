@@ -47,6 +47,8 @@ inline bool is_set_device_id()
 }
 }
 
+const std::string wrong_la_type = "wrong type of linear algebra library";
+
 class linalg2
 {
   private:
@@ -96,9 +98,21 @@ class linalg2
     template <typename T>
     inline int trtri(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr) const;
 
-    ///// LU factorization of general matrix.
-    //template <typename T>
-    //inline int getrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv);
+    /// LU factorization of general matrix.
+    template <typename T>
+    inline int getrf(ftn_int m, ftn_int n, T* A, ftn_int lda, ftn_int* ipiv) const;
+
+    /// LU factorization of general matrix.
+    template <typename T>
+    inline int getrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv) const;
+
+    /// Compute the solution to system of linear equations A * X = B for general tri-diagonal matrix.
+    template <typename T>
+    inline int gtsv(ftn_int n, ftn_int nrhs, T* dl, T* d, T* du, T* b, ftn_int ldb) const;
+
+    /// Compute the solution to system of linear equations A * X = B for general matrix.
+    template <typename T>
+    inline int gesv(ftn_int n, ftn_int nrhs, T* A, ftn_int lda, T* B, ftn_int ldb) const;
 };
 
 template <>
@@ -538,6 +552,140 @@ inline int linalg2::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, 
     return -1;
 }
 
+template<>
+inline int linalg2::gtsv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* dl, ftn_double* d, ftn_double* du,
+                                     ftn_double* b, ftn_int ldb) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(dgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline int linalg2::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* dl, ftn_double_complex* d,
+                                             ftn_double_complex* du, ftn_double_complex* b, ftn_int ldb) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(zgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline int linalg2::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            std::vector<ftn_int> ipiv(n);
+            FORTRAN(dgesv)(&n, &nrhs, A, &lda, &ipiv[0], B, &ldb, &info);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline int linalg2::gesv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* A, ftn_int lda,
+                                             ftn_double_complex* B, ftn_int ldb) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            std::vector<ftn_int> ipiv(n);
+            FORTRAN(zgesv)(&n, &nrhs, A, &lda, &ipiv[0], B, &ldb, &info);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+    return -1;
+}
+
+// LU factorization, double
+template<>
+inline int linalg2::getrf<ftn_double>(ftn_int m, ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(dgetrf)(&m, &n, A, &lda, ipiv, &info);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error("wrong type of linear algebra library");
+            break;
+        }
+    }
+    return -1;
+}
+
+// LU factorization, double_complex
+template<>
+inline int linalg2::getrf<ftn_double_complex>(ftn_int m, ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(zgetrf)(&m, &n, A, &lda, ipiv, &info);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error(wrong_la_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline int linalg2::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,
+                                              ftn_int ia, ftn_int ja, ftn_int* ipiv) const
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+            ftn_int info;
+            ia++;
+            ja++;
+            FORTRAN(pzgetrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), ipiv, &info);
+            return info;
+        }
+        default: {
+            throw std::runtime_error(wrong_la_type);
+            break;
+        }
+    }
+}
+
 /// Conjugate transponse of the sub-matrix.
 /** \param [in] m Number of rows of the target sub-matrix.
  *  \param [in] n Number of columns of the target sub-matrix.
@@ -623,18 +771,6 @@ class linalg<device_t::CPU>: public linalg_base
             gemm(transa, transb, m, n, k, one, A, lda, B, ldb, zero, C, ldc);
         }
 
-        /// Compute the solution to system of linear equations A * X = B for GT matrices.
-        template <typename T>
-        static ftn_int gtsv(ftn_int n, ftn_int nrhs, T* dl, T* d, T* du, T* b, ftn_int ldb);
-
-        /// Compute the solution to system of linear equations A * X = B for GE matrices.
-        template <typename T>
-        static ftn_int gesv(ftn_int n, ftn_int nrhs, T* A, ftn_int lda, T* B, ftn_int ldb);
-
-        /// LU factorization
-        template <typename T>
-        static ftn_int getrf(ftn_int m, ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
-
         /// U*D*U^H factorization of hermitian matrix
         template <typename T>
         static ftn_int hetrf(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
@@ -665,9 +801,6 @@ class linalg<device_t::CPU>: public linalg_base
         /// Invert a hermitian matrix.
         template <typename T>
         static void heinv(ftn_int n, matrix<T>& A);
-
-        template <typename T>
-        static ftn_int getrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv);
 
         template <typename T>
         static ftn_int getri(ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv);
@@ -764,24 +897,6 @@ inline void linalg<device_t::CPU>::gemm<ftn_double_complex>(int transa, int tran
 }
 
 
-// LU factorization, double
-template<>
-inline ftn_int linalg<device_t::CPU>::getrf<ftn_double>(ftn_int m, ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
-{
-    ftn_int info;
-    FORTRAN(dgetrf)(&m, &n, A, &lda, ipiv, &info);
-    return info;
-}
-
-// LU factorization, double_complex
-template<>
-inline ftn_int linalg<device_t::CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
-{
-    ftn_int info;
-    FORTRAN(zgetrf)(&m, &n, A, &lda, ipiv, &info);
-    return info;
-}
-
 // Inversion of LU factorized matrix, double
 template<>
 inline ftn_int linalg<device_t::CPU>::getri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
@@ -813,7 +928,7 @@ template <>
 inline void linalg<device_t::CPU>::geinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
 {
     std::vector<int> ipiv(n);
-    int info = getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
+    int info = linalg2(linalg_t::lapack).getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
         printf("getrf returned %i\n", info);
@@ -833,7 +948,7 @@ template <>
 inline void linalg<device_t::CPU>::geinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex>& A)
 {
     std::vector<int> ipiv(n);
-    int info = getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
+    int info = linalg2(linalg_t::lapack).getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
         printf("getrf returned %i\n", info);
@@ -927,54 +1042,7 @@ inline void linalg<device_t::CPU>::syinv<ftn_double>(ftn_int n, matrix<ftn_doubl
     }
 }
 
-template<>
-inline ftn_int linalg<device_t::CPU>::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_double* B, ftn_int ldb)
-{
-    ftn_int info;
-    std::vector<ftn_int> ipiv(n);
-    FORTRAN(dgesv)(&n, &nrhs, A, &lda, &ipiv[0], B, &ldb, &info);
-    return info;
-}
-
-template<>
-inline ftn_int linalg<device_t::CPU>::gesv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* A, ftn_int lda,
-                                                     ftn_double_complex* B, ftn_int ldb)
-{
-    ftn_int info;
-    std::vector<ftn_int> ipiv(n);
-    FORTRAN(zgesv)(&n, &nrhs, A, &lda, &ipiv[0], B, &ldb, &info);
-    return info;
-}
-
-template<>
-inline ftn_int linalg<device_t::CPU>::gtsv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* dl, ftn_double* d, ftn_double* du,
-                                             ftn_double* b, ftn_int ldb)
-{
-    ftn_int info;
-    FORTRAN(dgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
-    return info;
-}
-
-template<>
-inline ftn_int linalg<device_t::CPU>::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double_complex* dl, ftn_double_complex* d,
-                                                     ftn_double_complex* du, ftn_double_complex* b, ftn_int ldb)
-{
-    ftn_int info;
-    FORTRAN(zgtsv)(&n, &nrhs, dl, d, du, b, &ldb, &info);
-    return info;
-}
-
 #ifdef __SCALAPACK
-template<>
-inline ftn_int linalg<device_t::CPU>::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A,
-                                                      ftn_int ia, ftn_int ja, ftn_int* ipiv)
-{
-    ftn_int info;
-    ia++;
-    ja++;
-    FORTRAN(pzgetrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), ipiv, &info);
-    return info;
-}
 
 template<>
 inline ftn_int linalg<device_t::CPU>::getri<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
@@ -1004,7 +1072,7 @@ template<>
 inline void linalg<device_t::CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
 {
     std::vector<ftn_int> ipiv(A.num_rows_local() + A.bs_row());
-    ftn_int info = getrf(n, n, A, 0, 0, &ipiv[0]);
+    ftn_int info = linalg2(linalg_t::lapack).getrf(n, n, A, 0, 0, &ipiv[0]);
     if (info) {
         printf("getrf returned %i\n", info);
         exit(-1);
