@@ -84,10 +84,13 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
                 tp(1, igloc) = rtp[2];
             }
             tp.allocate(memory_t::device).copy_to(memory_t::device);
+#if defined(__GPU)
             spherical_harmonics_rlm_gpu(2 * lmax_beta, gvec_count, tp.at(memory_t::device),
                 gvec_rlm.at(memory_t::device), gvec_rlm.ld());
+#endif
             /* wait for the kernel, otherwise tp array will be destroyed before the kernel finishes */
             acc::sync_stream(stream_id(-1));
+            break;
         }
     }
 
@@ -178,12 +181,14 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
             q_pw_.allocate(memory_t::device);
 
             PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|gpu");
+#if defined(__GPU)
             aug_op_pw_coeffs_gpu(gvec_count, gvec_shell.at(memory_t::device), idx.at(memory_t::device),
                 static_cast<int>(idx.size(1)), zilm_d.at(memory_t::device), l_by_lm_d.at(memory_t::device),
                 lmmax, gc.at(memory_t::device), static_cast<int>(gc.size(0)), static_cast<int>(gc.size(1)),
                 gvec_rlm.at(memory_t::device), static_cast<int>(gvec_rlm.size(0)), ri_values.at(memory_t::device),
                 static_cast<int>(ri_values.size(0)), static_cast<int>(ri_values.size(1)), q_pw_.at(memory_t::device),
                 static_cast<int>(q_pw_.size(0)), fourpi_omega);
+#endif
             q_pw_.copy_to(memory_t::host);
             PROFILE_STOP("sirius::Augmentation_operator::generate_pw_coeffs|gpu");
 
