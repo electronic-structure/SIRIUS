@@ -66,7 +66,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec_count; igloc++) {
         auto rtp = SHT::spherical_coordinates(gvec_.gvec_cart<index_domain_t::local>(igloc));
-        SHT::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &gvec_rlm(0, igloc));
+        sht::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &gvec_rlm(0, igloc));
     }
 
     /* number of beta- radial functions */

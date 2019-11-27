@@ -98,9 +98,9 @@ void Force::compute_dmat(K_point* kp__, dmatrix<double_complex>& dm__) const
                     }
                 }
 
-                linalg<device_t::CPU>::gemm(0, 1, ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_fv_states(),
-                                            linalg_const<double_complex>::one(), ev1, ev,
-                                            linalg_const<double_complex>::one(), dm__);
+                linalg2(linalg_t::scalapack).gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
+                                                  &linalg_const<double_complex>::one(), ev1, 0, 0, ev, 0, 0,
+                                                  &linalg_const<double_complex>::one(), dm__, 0, 0);
             }
         } else {
             dmatrix<double_complex> ev1(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(), ctx_.cyclic_block_size(),
@@ -117,9 +117,9 @@ void Force::compute_dmat(K_point* kp__, dmatrix<double_complex>& dm__) const
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 int offs = ispn * ctx_.num_fv_states();
 
-                linalg<device_t::CPU>::gemm(0, 1, ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
-                                            linalg_const<double_complex>::one(), ev1, offs, 0, ev, offs, 0,
-                                            linalg_const<double_complex>::one(), dm__, 0, 0);
+                linalg2(linalg_t::scalapack).gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
+                                                  &linalg_const<double_complex>::one(), ev1, offs, 0, ev, offs, 0,
+                                                  &linalg_const<double_complex>::one(), dm__, 0, 0);
             }
         }
     }
@@ -663,7 +663,7 @@ void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>
     dmatrix<double_complex> dm(nfv, nfv, bg, bs, bs);
     compute_dmat(kp__, dm);
 
-    /* first-variational eigen-vectors in scalapck distribution */
+    /* first-variational eigen-vectors in scalapack distribution */
     auto& fv_evec = kp__->fv_eigen_vectors();
 
     dmatrix<double_complex> h(ngklo, ngklo, bg, bs, bs);
@@ -769,8 +769,8 @@ void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>
             }
 
             /* zm1 = dO * V */
-            linalg<device_t::CPU>::gemm(0, 0, ngklo, nfv, ngklo, linalg_const<double_complex>::one(), o1, fv_evec,
-                                        linalg_const<double_complex>::zero(), zm1);
+            linalg2(linalg_t::scalapack).gemm('N', 'N', ngklo, nfv, ngklo, &linalg_const<double_complex>::one(),
+                o1, 0, 0, fv_evec, 0, 0, &linalg_const<double_complex>::zero(), zm1, 0, 0);
             /* multiply by energy: zm1 = E * (dO * V)  */
             for (int i = 0; i < zm1.num_cols_local(); i++) {
                 int ist = zm1.icol(i);
@@ -779,12 +779,12 @@ void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>
                 }
             }
             /* compute zm1 = dH * V - E * (dO * V) */
-            linalg<device_t::CPU>::gemm(0, 0, ngklo, nfv, ngklo, linalg_const<double_complex>::one(), h1, fv_evec,
-                                        linalg_const<double_complex>::m_one(), zm1);
+            linalg2(linalg_t::scalapack).gemm('N', 'N', ngklo, nfv, ngklo, &linalg_const<double_complex>::one(),
+                h1, 0, 0, fv_evec, 0, 0, &linalg_const<double_complex>::m_one(), zm1, 0, 0);
 
             /* compute zf = V^{+} * zm1 = V^{+} * (dH * V - E * (dO * V)) */
-            linalg<device_t::CPU>::gemm(2, 0, nfv, nfv, ngklo, linalg_const<double_complex>::one(), fv_evec, zm1,
-                                        linalg_const<double_complex>::zero(), zf);
+            linalg2(linalg_t::scalapack).gemm('C', 'N', nfv, nfv, ngklo, &linalg_const<double_complex>::one(),
+                fv_evec, 0, 0, zm1, 0, 0, &linalg_const<double_complex>::zero(), zf, 0, 0);
 
             for (int i = 0; i < dm.num_cols_local(); i++) {
                 for (int j = 0; j < dm.num_rows_local(); j++) {

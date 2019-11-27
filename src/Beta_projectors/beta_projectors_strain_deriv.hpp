@@ -59,7 +59,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base
             double theta = rtp[1];
             double phi   = rtp[2];
 
-            SHT::spherical_harmonics(lmax, theta, phi, &rlm_g(0, igkloc));
+            sht::spherical_harmonics(lmax, theta, phi, &rlm_g(0, igkloc));
             mdarray<double, 2> rlm_dg_tmp(&rlm_dg(0, 0, igkloc), lmmax, 3);
             SHT::dRlm_dr(lmax, gvc, rlm_dg_tmp);
         }

@@ -1248,7 +1248,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
     }
 
     // TODO: the GPU memory consumption here is huge, rewrite this; split gloc in blocks and 
-    //       overlap transfer of Q(G) for two consequtive blokcs within one atom type
+    //       overlap transfer of Q(G) for two consequtive blocks within one atom type
 
     if (ctx_.augmentation_op(0)) {
         ctx_.augmentation_op(0)->prepare(stream_id(0), &ctx_.mem_pool(memory_t::device));

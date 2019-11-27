@@ -166,9 +166,10 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 
         // now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk}
         const double scal = (ctx_.num_mag_dims() == 0) ? 0.5 : 1.0;
-        linalg<device_t::CPU>::gemm(2, 0, this->number_of_hubbard_orbitals() * Ncf, this->number_of_hubbard_orbitals() * Ncf, HowManyBands,
-                          double_complex(kp->weight() * scal, 0.0), dynamic_cast<matrix<double_complex>&>(dm), dm1,
-                          linalg_const<double_complex>::zero(), Op);
+        auto alpha = double_complex(kp->weight() * scal, 0.0);
+        linalg2(linalg_t::blas).gemm('C', 'N', this->number_of_hubbard_orbitals() * Ncf,
+            this->number_of_hubbard_orbitals() * Ncf, HowManyBands, &alpha, dm.at(memory_t::host), dm.ld(),
+            dm1.at(memory_t::host), dm1.ld(), &linalg_const<double_complex>::zero(), Op.at(memory_t::host), Op.ld());
 
         if (ctx_.num_mag_dims() == 3) {
             // there must be a way to do that with matrix multiplication

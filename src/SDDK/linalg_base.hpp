@@ -124,14 +124,14 @@ void Cblacs_barrier(int ConTxt, const char* scope);
 
 void Cblacs_gridexit(int ConTxt);
 
-void FORTRAN(pdgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double* aplha,
-                     ftn_double* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double* B, ftn_int* ib,
-                     ftn_int* jb, ftn_int const* descb, ftn_double* beta, ftn_double* C, ftn_int* ic, ftn_int* jc,
+void FORTRAN(pdgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double const* aplha,
+                     ftn_double const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double const* B, ftn_int* ib,
+                     ftn_int* jb, ftn_int const* descb, ftn_double const* beta, ftn_double* C, ftn_int* ic, ftn_int* jc,
                      ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
-void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double_complex* aplha,
-                     ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double_complex* B,
-                     ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_double_complex* beta, ftn_double_complex* C,
+void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double_complex const* aplha,
+                     ftn_double_complex const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double_complex const* B,
+                     ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_double_complex const* beta, ftn_double_complex* C,
                      ftn_int* ic, ftn_int* jc, ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
 void FORTRAN(descinit)(ftn_int const* desc, ftn_int* m, ftn_int* n, ftn_int* mb, ftn_int* nb, ftn_int* irsrc,

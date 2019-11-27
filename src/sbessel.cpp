@@ -16,22 +16,23 @@ static void custom_bessel(int lmax, double x, double* result) {
             result[l] = 0.0;
         }
     } else if (x < 0.1) {
-        // gsl is more accurate for small inputs
+        /* gsl is more accurate for small inputs */
         gsl_sf_bessel_jl_array(lmax, x, result);
     } else {
         const double x_inv = 1.0 / x;
         const double sin_x = std::sin(x);
         result[0] = sin_x * x_inv;
 
-        if (lmax > 0)
+        if (lmax > 0) {
             result[1] = sin_x * x_inv * x_inv - std::cos(x) * x_inv;
+        }
 
         for (int l = 2; l <= lmax; ++l) {
             result[l] = (2 * (l - 1) + 1) / x * result[l - 1] - result[l - 2];
         }
     }
 
-    // compare result with gsl in debug mode
+    /* compare result with gsl in debug mode */
 #ifndef NDEBUG
     std::vector<double> ref_result(lmax + 1);
     gsl_sf_bessel_jl_array(lmax, x, ref_result.data());
@@ -79,6 +80,7 @@ void
 Spherical_Bessel_functions::sbessel_deriv_q(int lmax__, double q__, double x__, double* jl_dq__)
 {
     std::vector<double> jl(lmax__ + 2);
+    /* compute Bessel functions */
     sbessel(lmax__ + 1, x__ * q__, &jl[0]);
 
     for (int l = 0; l <= lmax__; l++) {
@@ -101,11 +103,6 @@ Spherical_Bessel_functions::operator[](int l__) const
     return sbessel_[l__];
 }
 
-/// Derivative of Bessel function with respect to q.
-/** \f[
- *    \frac{\partial j_{\ell}(q x)}{\partial q} = \frac{\ell}{q} j_{\ell}(q x) - x j_{\ell+1}(q x)
- *  \f]
- */
 Spline<double>
 Spherical_Bessel_functions::deriv_q(int l__)
 {

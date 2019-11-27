@@ -72,7 +72,8 @@ void test2()
     A >> B;
 
     linalg<device_t::CPU>::geinv(N, A);
-    linalg<device_t::CPU>::gemm(0, 0, N, N, N, A, B, C);
+    linalg2(linalg_t::blas).gemm('N', 'N', N, N, N, &linalg_const<T>::one(), A.at(memory_t::host), A.ld(),
+        B.at(memory_t::host), B.ld(), &linalg_const<T>::zero(), C.at(memory_t::host), C.ld());
 
     int err = 0;
     for (int i = 0; i < N; i++) {
@@ -84,15 +85,6 @@ void test2()
             if (std::abs(c) > 1e-10) {
                 err++;
             }
-        }
-    }
-
-    linalg<device_t::CPU>::gemm(0, 0, N, N, N, A, B, C);
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            T c = C(i, j);
-            if (i == j) c -= 1.0;
-            if (std::abs(c) > 1e-10) err++;
         }
     }
 
@@ -133,22 +125,10 @@ void test3()
     T beta = 0.0;
 
     linalg<device_t::CPU>::geinv(N, A);
-    
-    linalg<device_t::CPU>::gemm(0, 0, N, N, N, alpha, A, B, beta, C);
+
+    linalg2(linalg_t::scalapack).gemm('N', 'N', N, N, N, &alpha, A, 0, 0, B, 0, 0, &beta, C, 0, 0);
 
     int err = 0;
-    for (int i = 0; i < C.num_cols_local(); i++)
-    {
-        for (int j = 0; j < C.num_rows_local(); j++)
-        {
-            T c = C(j, i);
-            if (C.icol(i) == C.irow(j)) c -= 1.0;
-            if (std::abs(c) > 1e-10) err++;
-        }
-    }
-    
-    linalg<device_t::CPU>::gemm(0, 0, N, N, N, alpha, B, A, beta, C);
-
     for (int i = 0; i < C.num_cols_local(); i++)
     {
         for (int j = 0; j < C.num_rows_local(); j++)

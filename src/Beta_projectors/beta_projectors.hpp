@@ -60,7 +60,7 @@ class Beta_projectors : public Beta_projectors_base
             auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart<index_domain_t::global>(igk));
             /* compute real spherical harmonics for G+k vector */
             std::vector<double> gkvec_rlm(utils::lmmax(ctx_.unit_cell().lmax()));
-            SHT::spherical_harmonics(ctx_.unit_cell().lmax(), vs[1], vs[2], &gkvec_rlm[0]);
+            sht::spherical_harmonics(ctx_.unit_cell().lmax(), vs[1], vs[2], &gkvec_rlm[0]);
             for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
                 auto& atom_type = ctx_.unit_cell().atom_type(iat);
                 /* get all values of radial integrals */

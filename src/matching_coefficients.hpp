@@ -58,12 +58,15 @@ class Matching_coefficients // TODO: compute on GPU
 
     Gvec const& gkvec_;
 
-    mdarray<double_complex, 2> gkvec_ylm_;
+    sddk::mdarray<double_complex, 2> gkvec_ylm_;
 
     std::vector<double> gkvec_len_;
 
     /// Precomputed values for the linear equations for matching coefficients.
-    mdarray<double_complex, 4> alm_b_;
+    sddk::mdarray<double_complex, 4> alm_b_;
+
+    /// Maximum l for APW functions.
+    int lmax_apw_{-1};
 
     /// Generate matching coefficients for a specific \f$ \ell \f$ and order.
     /** \param [in] ngk           Number of G+k vectors.
@@ -72,56 +75,13 @@ class Matching_coefficients // TODO: compute on GPU
      *  \param [in] l             Orbital quantum nuber.
      *  \param [in] lm            Composite l,m index.
      *  \param [in] nu            Order of radial function \f$ u_{\ell \nu}(r) \f$ for which coefficients are generated.
-     *  \param [in] A             Matrix of radial derivatives.
+     *  \param [in] A             Inverse matrix of radial derivatives.
      *  \param [out] alm          Pointer to alm coefficients.
      */
     template <int N, bool conjugate>
     inline void generate(int ngk, std::vector<double_complex> const& phase_factors__, int iat, int l, int lm, int nu,
-                         matrix3d<double>& A, double_complex* alm) const
+                         matrix3d<double> const& A, double_complex* alm) const
     {
-        const double eps{0.1};
-        /* invert matrix of radial derivatives */
-        switch (N) {
-            case 1: {
-                if (unit_cell_.parameters().control().verification_ >= 1) {
-                    if (std::abs(A(0, 0)) < eps * (1.0 / std::sqrt(unit_cell_.omega()))) {
-                        std::stringstream s;
-                        s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
-                          << std::endl
-                          << "  radial function value at the MT boundary : " << A(0, 0);
-                        WARNING(s.str());
-                    }
-                }
-
-                A(0, 0) = 1.0 / A(0, 0);
-                break;
-            }
-            case 2: {
-                double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
-
-                if (unit_cell_.parameters().control().verification_ >= 1) {
-                    if (std::abs(det) < eps * (1.0 / std::sqrt(unit_cell_.omega()))) {
-                        std::stringstream s;
-                        s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
-                          << std::endl
-                          << "  radial function value at the MT boundary : " << A(0, 0);
-                        WARNING(s.str());
-                    }
-                }
-
-                std::swap(A(0, 0), A(1, 1));
-                A(0, 0) /= det;
-                A(1, 1) /= det;
-                A(0, 1) = -A(0, 1) / det;
-                A(1, 0) = -A(1, 0) / det;
-                break;
-            }
-            case 3: {
-                A = inverse(A);
-                break;
-            }
-        }
-
         double_complex zt;
 
         for (int igk = 0; igk < ngk; igk++) {
@@ -156,6 +116,7 @@ class Matching_coefficients // TODO: compute on GPU
         , num_gkvec_(num_gkvec__)
         , igk_(igk__)
         , gkvec_(gkvec__)
+        , lmax_apw_(lmax_apw__)
     {
         int lmmax_apw = utils::lmmax(lmax_apw__);
 
@@ -175,7 +136,7 @@ class Matching_coefficients // TODO: compute on GPU
                 auto vs = SHT::spherical_coordinates(gkvec_cart);
 
                 /* get spherical harmonics */
-                SHT::spherical_harmonics(lmax_apw__, vs[1], vs[2], &ylm[0]);
+                sht::spherical_harmonics(lmax_apw__, vs[1], vs[2], &ylm[0]);
                 gkvec_len_[i] = vs[0];
 
                 for (int lm = 0; lm < lmmax_apw; lm++) {
@@ -231,10 +192,10 @@ class Matching_coefficients // TODO: compute on GPU
 
     /// Generate plane-wave matching coefficents for the radial solutions of a given atom.
     /** \param [in]  atom      Atom, for which matching coefficents are generated.
-     *  \param [out] alm       Array of matching coefficients with dimension indices \f$ ({\bf G+k}, \xi) \f$.
+        \param [out] alm       Array of matching coefficients with dimension indices \f$ ({\bf G+k}, \xi) \f$.
      */
     template <bool conjugate>
-    void generate(Atom const& atom__, mdarray<double_complex, 2>& alm) const
+    void generate(Atom const& atom__, sddk::mdarray<double_complex, 2>& alm__) const
     {
         auto& type = atom__.type();
 
@@ -248,7 +209,64 @@ class Matching_coefficients // TODO: compute on GPU
             phase_factors[i] = std::exp(double_complex(0, phase));
         }
 
-        matrix3d<double> A;
+        const double eps{0.1};
+        std::vector<matrix3d<double>> Al(lmax_apw_ + 1);
+        /* create inverse matrix of radial derivatives for all values of \ell */
+        for (int l = 0; l <= lmax_apw_; l++) {
+            /* order of augmentation for a given orbital quantum number */
+            int num_aw = static_cast<int>(type.aw_descriptor(l).size());
+            matrix3d<double> A;
+            /* create matrix of radial derivatives */
+            for (int order = 0; order < num_aw; order++) {
+                for (int dm = 0; dm < num_aw; dm++) {
+                    A(dm, order) = atom__.symmetry_class().aw_surface_dm(l, order, dm);
+                }
+            }
+
+            /* invert matrix of radial derivatives */
+            switch (num_aw) {
+                case 1: {
+                    if (unit_cell_.parameters().control().verification_ >= 1) {
+                        if (std::abs(A(0, 0)) < eps * (1.0 / std::sqrt(unit_cell_.omega()))) {
+                            std::stringstream s;
+                            s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
+                              << std::endl
+                              << "  radial function value at the MT boundary : " << A(0, 0);
+                            WARNING(s.str());
+                        }
+                    }
+
+                    A(0, 0) = 1.0 / A(0, 0);
+                    break;
+                }
+                case 2: {
+                    double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
+
+                    if (unit_cell_.parameters().control().verification_ >= 1) {
+                        if (std::abs(det) < eps * (1.0 / std::sqrt(unit_cell_.omega()))) {
+                            std::stringstream s;
+                            s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l
+                              << std::endl
+                              << "  radial function value at the MT boundary : " << A(0, 0);
+                            WARNING(s.str());
+                        }
+                    }
+
+                    std::swap(A(0, 0), A(1, 1));
+                    A(0, 0) /= det;
+                    A(1, 1) /= det;
+                    A(0, 1) = -A(0, 1) / det;
+                    A(1, 0) = -A(1, 0) / det;
+                    break;
+                }
+                case 3: {
+                    A = inverse(A);
+                    break;
+                }
+            }
+            Al[l] = A;
+        }
+
         for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
             int l  = type.indexb(xi).l;
             int lm = type.indexb(xi).lm;
@@ -257,27 +275,20 @@ class Matching_coefficients // TODO: compute on GPU
             /* order of augmentation for a given orbital quantum number */
             int num_aw = static_cast<int>(type.aw_descriptor(l).size());
 
-            /* create matrix of radial derivatives */
-            for (int order = 0; order < num_aw; order++) { // TODO: pull out of the \xi loop under the loop over l.
-                for (int dm = 0; dm < num_aw; dm++) {
-                    A(dm, order) = atom__.symmetry_class().aw_surface_dm(l, order, dm);
-                }
-            }
-
             switch (num_aw) {
                 /* APW */
                 case 1: {
-                    generate<1, conjugate>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
+                    generate<1, conjugate>(num_gkvec_, phase_factors, iat, l, lm, nu, Al[l], &alm__(0, xi));
                     break;
                 }
                 /* LAPW */
                 case 2: {
-                    generate<2, conjugate>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
+                    generate<2, conjugate>(num_gkvec_, phase_factors, iat, l, lm, nu, Al[l], &alm__(0, xi));
                     break;
                 }
                 /* Super LAPW */
                 case 3: {
-                    generate<3, conjugate>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
+                    generate<3, conjugate>(num_gkvec_, phase_factors, iat, l, lm, nu, Al[l], &alm__(0, xi));
                     break;
                 }
                 default: {

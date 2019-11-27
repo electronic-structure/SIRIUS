@@ -175,10 +175,10 @@ class Augmentation_operator_gvec_deriv
             vector3d<double> dtheta_dq({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
             vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
 
-            SHT::spherical_harmonics(2 * lmax, theta, phi, &rlm_g_(0, igloc));
+            sht::spherical_harmonics(2 * lmax, theta, phi, &rlm_g_(0, igloc));
 
-            mdarray<double, 1> dRlm_dtheta(lmmax);
-            mdarray<double, 1> dRlm_dphi_sin_theta(lmmax);
+            sddk::mdarray<double, 1> dRlm_dtheta(lmmax);
+            sddk::mdarray<double, 1> dRlm_dphi_sin_theta(lmmax);
 
             SHT::dRlm_dtheta(2 * lmax, theta, phi, dRlm_dtheta);
             SHT::dRlm_dphi_sin_theta(2 * lmax, theta, phi, dRlm_dphi_sin_theta);

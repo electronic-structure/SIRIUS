@@ -86,19 +86,19 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
 
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
-                linalg<device_t::CPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
-                                            qa, pf, qapf);
+                linalg2(linalg_t::blas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
+                    unit_cell_.atom_type(iat).num_atoms(), &linalg_const<double_complex>::one(),
+                    qa.at(memory_t::host), qa.ld(), pf.at(memory_t::host), pf.ld(),
+                    &linalg_const<double_complex>::zero(), qapf.at(memory_t::host), qapf.ld());
                 break;
             }
             case device_t::GPU: {
-#if defined(__GPU)
                 qa.copy_to(memory_t::device);
-                linalg<device_t::GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
-                                            qa.at(memory_t::device), qa.ld(),
-                                            pf.at(memory_t::device), pf.ld(),
-                                            qapf.at(memory_t::device), qapf.ld());
+                linalg2(linalg_t::gpublas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
+                    unit_cell_.atom_type(iat).num_atoms(), &linalg_const<double_complex>::one(),
+                    qa.at(memory_t::device), qa.ld(), pf.at(memory_t::device), pf.ld(),
+                    &linalg_const<double_complex>::zero(), qapf.at(memory_t::device), qapf.ld());
                 qapf.copy_to(memory_t::host);
-#endif
                 break;
             }
         }
