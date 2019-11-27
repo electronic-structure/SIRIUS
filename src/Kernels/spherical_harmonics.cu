@@ -113,7 +113,7 @@ __global__ void spherical_harmonics_rlm_gpu_kernel(int lmax__, int ntp__, double
             for (int l = m + 2; l <= lmax__; l++) {
                 double alm = std::sqrt(static_cast<double>((2 * l - 1) * (2 * l + 1)) / (l * l - m * m));
                 double blm = std::sqrt(static_cast<double>((l - 1 - m) * (l - 1 + m)) / ((2 * l - 3) * (2 * l - 1)));
-                rlm[lmidx(l, m)] = alm * (cost * rlm[lmidx(l - 1, m)].x - blm * rlm[lmidx(l - 2, m)]);
+                rlm[lmidx(l, m)] = alm * (cost * rlm[lmidx(l - 1, m)] - blm * rlm[lmidx(l - 2, m)]);
             }
         }
 
@@ -125,14 +125,14 @@ __global__ void spherical_harmonics_rlm_gpu_kernel(int lmax__, int ntp__, double
 
         double const t = std::sqrt(2.0);
 
-        for (int m = 1; m <= lmax; m++) {
+        for (int m = 1; m <= lmax__; m++) {
             double c = c2 * c1 - c0;
             c0 = c1;
             c1 = c;
             double s = c2 * s1 - s0;
             s0 = s1;
             s1 = s;
-            for (int l = m; l <= lmax; l++) {
+            for (int l = m; l <= lmax__; l++) {
                 double p = rlm[lmidx(l, m)];
                 rlm[lmidx(l, m)] = t * p * c;
                 if (m % 2) {
@@ -150,5 +150,5 @@ extern "C" void spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const*
     dim3 grid_t(32);
     dim3 grid_b(num_blocks(ntp__, grid_t.x));
     accLaunchKernel((spherical_harmonics_rlm_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0,
-        lmax__, ntp__, tp__, ylm__, ld__);
+        lmax__, ntp__, tp__, rlm__, ld__);
 }
