@@ -17,6 +17,7 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <limits>
 #include "K_point/k_point.hpp"
 #include "K_point/k_point_set.hpp"
 
@@ -174,6 +175,23 @@ void K_point_set::find_band_occupancies()
 
     /* target number of electrons */
     double ne_target = unit_cell_.num_valence_electrons() - ctx_.parameters_input().extra_charge_;
+
+    if (std::abs(ctx_.num_fv_states() * double(ctx_.max_occupancy()) - ne_target) < 1e-10) {
+        // this is an insulator, skip search for band occupancies
+        this->band_gap_ = -1;
+
+        // determine fermi energy as max occupied band energy.
+        double efermi = std::numeric_limits<double>::min();
+        for (int ik = 0; ik < num_kpoints(); ik++) {
+            for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+                for (int j = 0; j < ctx_.num_bands(); j++) {
+                    efermi = std::max(efermi, kpoints_[ik]->band_energy(j, ispn));
+                }
+            }
+        }
+        energy_fermi_ = efermi;
+        return;
+    }
 
     int step{0};
     /* calculate occupations */
