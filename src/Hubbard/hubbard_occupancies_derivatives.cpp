@@ -489,9 +489,6 @@ Hubbard::compute_occupancies(K_point&                    kp,
                              matrix<double_complex>&     dm__,
                              const int                   index)
 {
-    #if defined(__GPU)
-    const double_complex weight = double_complex(kp.weight(), 0.0);
-    #endif
     // it is actually <psi | d(S|phi>)
     dphi_s_psi.zero(memory_t::host);
     dphi_s_psi.zero(memory_t::device);
