@@ -40,7 +40,7 @@ dmatrix<T> random_symmetric(int N__, int bs__, BLACS_grid const& blacs_grid__)
     }
 
 #ifdef __SCALAPACK
-    tranc(N__, N__, A, 0, 0, B, 0, 0);
+    linalg2(linalg_t::scalapack).tranc(N__, N__, A, 0, 0, B, 0, 0);
 #else
     for (int i = 0; i < N__; i++) {
         for (int j = 0; j < N__; j++) {
@@ -75,7 +75,7 @@ dmatrix<T> random_positive_definite(int N__, int bs__, BLACS_grid const& blacs_g
     }
 
 #ifdef __SCALAPACK
-    tranc(N__, N__, A, 0, 0, B, 0, 0);
+    linalg2(linalg_t::scalapack).tranc(N__, N__, A, 0, 0, B, 0, 0);
 #else
     for (int i = 0; i < N__; i++) {
         for (int j = 0; j < N__; j++) {

@@ -47,7 +47,8 @@ inline bool is_set_device_id()
 }
 }
 
-const std::string wrong_la_type = "wrong type of linear algebra library";
+const std::string linalg_msg_wrong_type = "wrong type of linear algebra library";
+const std::string linalg_msg_no_scalapack = "not compiled with ScaLAPACK";
 
 class linalg2
 {
@@ -58,6 +59,10 @@ class linalg2
         : la_(la__)
     {
     }
+
+    /*
+        matrix - matrix multiplication
+    */
 
     /// General matrix-matrix multiplication.
     /** Compute C = alpha * op(A) * op(B) + beta * op(C) with raw pointers. */
@@ -82,21 +87,25 @@ class linalg2
     inline void hemm(char side, char uplo, ftn_int m, ftn_int n, T const* alpha, T const* A, ftn_len lda,
                      T const* B, ftn_len ldb, T const* beta, T* C, ftn_len ldc);
 
-    template<typename T>
-    inline void ger(ftn_int m, ftn_int n, T const* alpha, T const* x, ftn_int incx, T const* y, ftn_int incy, T* A, ftn_int lda,
-                    stream_id sid = stream_id(-1)) const;
-
     template <typename T>
     inline void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T const* aplha, T const* A, ftn_int lda,
                      T* B, ftn_int ldb, stream_id sid = stream_id(-1)) const;
 
+    /*
+        rank2 update
+    */
+
+    template<typename T>
+    inline void ger(ftn_int m, ftn_int n, T const* alpha, T const* x, ftn_int incx, T const* y, ftn_int incy, T* A, ftn_int lda,
+                    stream_id sid = stream_id(-1)) const;
+
+    /*
+        matrix factorization
+    */
+
     /// Cholesky factorization
     template <typename T>
     inline int potrf(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr) const;
-
-    /// Inversion of a triangular matrix.
-    template <typename T>
-    inline int trtri(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr) const;
 
     /// LU factorization of general matrix.
     template <typename T>
@@ -106,6 +115,18 @@ class linalg2
     template <typename T>
     inline int getrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv) const;
 
+    /*
+        matrix inversion
+    */
+
+    /// Inversion of a triangular matrix.
+    template <typename T>
+    inline int trtri(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr) const;
+
+    /*
+        solution of a linear system
+    */
+
     /// Compute the solution to system of linear equations A * X = B for general tri-diagonal matrix.
     template <typename T>
     inline int gtsv(ftn_int n, ftn_int nrhs, T* dl, T* d, T* du, T* b, ftn_int ldb) const;
@@ -113,6 +134,29 @@ class linalg2
     /// Compute the solution to system of linear equations A * X = B for general matrix.
     template <typename T>
     inline int gesv(ftn_int n, ftn_int nrhs, T* A, ftn_int lda, T* B, ftn_int ldb) const;
+
+    /*
+        matrix transposition
+    */
+
+    /// Conjugate transpose matrix
+    /** \param [in]  m   Number of rows of the target sub-matrix.
+        \param [in]  n   Number of columns of the target sub-matrix.
+        \param [in]  A   Input matrix
+        \param [in]  ia  Starting row index of sub-matrix inside A
+        \param [in]  ja  Starting column index of sub-matrix inside A
+        \param [out] C   Output matrix
+        \param [in]  ic  Starting row index of sub-matrix inside C
+        \param [in]  jc  Starting column index of sub-matrix inside C
+     */
+    template <typename T>
+    inline void tranc(ftn_int m, ftn_int n, sddk::dmatrix<T>& A, ftn_int ia, ftn_int ja, sddk::dmatrix<T>& C,
+        ftn_int ic, ftn_int jc) const;
+
+    /// Transpose matrix without conjugation.
+    template <typename T>
+    inline void tranu(ftn_int m, ftn_int n, sddk::dmatrix<T>& A, ftn_int ia, ftn_int ja, sddk::dmatrix<T>& C,
+        ftn_int ic, ftn_int jc) const;
 };
 
 template <>
@@ -150,7 +194,7 @@ inline void linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_i
 
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -201,7 +245,7 @@ inline void linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int 
 
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -227,12 +271,12 @@ linalg2::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_in
                             B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
                             (ftn_len)1, (ftn_len)1);
 #else
-            throw std::runtime_error("not compiled with scalapack");
+            throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -260,12 +304,12 @@ linalg2::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n
                             B.at(memory_t::host), &ib, &jb, B.descriptor(), beta, C.at(memory_t::host), &ic, &jc, C.descriptor(),
                             (ftn_len)1, (ftn_len)1);
 #else
-            throw std::runtime_error("not compiled with scalapack");
+            throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -319,7 +363,7 @@ inline void linalg2::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alp
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -352,7 +396,7 @@ inline void linalg2::trmm<ftn_double>(char side, char uplo, char transa, ftn_int
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -390,7 +434,7 @@ inline void linalg2::trmm<ftn_double_complex>(char side, char uplo, char transa,
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -423,12 +467,12 @@ inline int linalg2::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn
             FORTRAN(pdpotrf)("U", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error("not compiled with scalapack");
+            throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -454,7 +498,7 @@ inline int linalg2::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, 
             FORTRAN(pzpotrf)("U", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error("not compiled with scalapack");
+            throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
             break;
         }
@@ -467,7 +511,7 @@ inline int linalg2::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, 
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -493,7 +537,7 @@ inline int linalg2::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn
             FORTRAN(pdtrtri)("U", "N", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error("not compiled with scalapack");
+            throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
             break;
         }
@@ -506,7 +550,7 @@ inline int linalg2::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -532,7 +576,7 @@ inline int linalg2::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, 
             FORTRAN(pztrtri)("U", "N", &n, A, &ia, &ja, const_cast<ftn_int*>(desca), &info, (ftn_len)1, (ftn_len)1);
             return info;
 #else
-            throw std::runtime_error("not compiled with scalapack");
+            throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
             break;
         }
@@ -545,7 +589,7 @@ inline int linalg2::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, 
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -564,7 +608,7 @@ inline int linalg2::gtsv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* dl, ft
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -583,7 +627,7 @@ inline int linalg2::gtsv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -602,7 +646,7 @@ inline int linalg2::gesv<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -622,7 +666,7 @@ inline int linalg2::gesv<ftn_double_complex>(ftn_int n, ftn_int nrhs, ftn_double
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -641,7 +685,7 @@ inline int linalg2::getrf<ftn_double>(ftn_int m, ftn_int n, ftn_double* A, ftn_i
             break;
         }
         default: {
-            throw std::runtime_error("wrong type of linear algebra library");
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -660,7 +704,7 @@ inline int linalg2::getrf<ftn_double_complex>(ftn_int m, ftn_int n, ftn_double_c
             break;
         }
         default: {
-            throw std::runtime_error(wrong_la_type);
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
@@ -673,77 +717,125 @@ inline int linalg2::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_
 {
     switch (la_) {
         case linalg_t::scalapack: {
+#if defined (__SCALAPACK)
             ftn_int info;
             ia++;
             ja++;
             FORTRAN(pzgetrf)(&m, &n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), ipiv, &info);
             return info;
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
         }
         default: {
-            throw std::runtime_error(wrong_la_type);
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline void linalg2::tranu<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_double_complex>& A,
+    ftn_int ia, ftn_int ja, sddk::dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc) const
+{
+    switch (la_) {
+        case linalg_t::scalapack: {
+#if defined(__SCALAPACK)
+            ia++; ja++;
+            ic++; jc++;
+
+            FORTRAN(pztranu)(&m, &n, const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::one()),
+                             A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                             const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::zero()),
+                             C.at(memory_t::host), &ic, &jc, C.descriptor());
+#else
+            throw std::runtime_error(linalg_msg_no_scalapack);
+#endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
             break;
         }
     }
 }
 
-/// Conjugate transponse of the sub-matrix.
-/** \param [in] m Number of rows of the target sub-matrix.
- *  \param [in] n Number of columns of the target sub-matrix.
- */
-template <typename T>
-inline void tranc(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, dmatrix<T>& C, ftn_int ic, ftn_int jc);
-
-template <>
-inline void tranc<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
-                                      dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
+template<>
+inline void linalg2::tranc<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_double_complex>& A,
+    ftn_int ia, ftn_int ja, sddk::dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc) const
 {
+    switch (la_) {
+        case linalg_t::scalapack: {
 #if defined(__SCALAPACK)
-    ia++; ja++;
-    ic++; jc++;
+            ia++; ja++;
+            ic++; jc++;
 
-    FORTRAN(pztranc)(&m, &n, const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::one()),
-                     A.at(memory_t::host), &ia, &ja, A.descriptor(),
-                     const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::zero()),
-                     C.at(memory_t::host), &ic, &jc, C.descriptor());
+            FORTRAN(pztranc)(&m, &n, const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::one()),
+                             A.at(memory_t::host), &ia, &ja, A.descriptor(),
+                             const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::zero()),
+                             C.at(memory_t::host), &ic, &jc, C.descriptor());
 #else
-    throw std::runtime_error("not compiled with scalapack");
+            throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
 }
 
 template <>
-inline void tranc<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
-                              dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
+inline void linalg2::tranu<ftn_double>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
+    sddk::dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc) const
 {
+    switch (la_) {
+        case linalg_t::scalapack: {
 #if defined(__SCALAPACK)
-    ia++; ja++;
-    ic++; jc++;
+            ia++; ja++;
+            ic++; jc++;
 
-    FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&linalg_const<ftn_double>::one()), A.at(memory_t::host),
-                    &ia, &ja, A.descriptor(), const_cast<ftn_double*>(&linalg_const<ftn_double>::zero()),
-                    C.at(memory_t::host), &ic, &jc, C.descriptor());
+            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&linalg_const<ftn_double>::one()), A.at(memory_t::host),
+                            &ia, &ja, A.descriptor(), const_cast<ftn_double*>(&linalg_const<ftn_double>::zero()),
+                            C.at(memory_t::host), &ic, &jc, C.descriptor());
 #else
-    throw std::runtime_error("not compiled with scalapack");
+            throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
 }
 
-template <typename T>
-inline void tranu(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, dmatrix<T>& C, ftn_int ic, ftn_int jc);
-
 template <>
-inline void tranu<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
-                                      dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
+inline void linalg2::tranc<ftn_double>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
+    sddk::dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc) const
 {
+    switch (la_) {
+        case linalg_t::scalapack: {
 #if defined(__SCALAPACK)
-    ia++; ja++;
-    ic++; jc++;
+            ia++; ja++;
+            ic++; jc++;
 
-    FORTRAN(pztranu)(&m, &n, const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::one()),
-                     A.at(memory_t::host), &ia, &ja, A.descriptor(),
-                     const_cast<ftn_double_complex*>(&linalg_const<ftn_double_complex>::zero()),
-                     C.at(memory_t::host), &ic, &jc, C.descriptor());
+            FORTRAN(pdtran)(&m, &n, const_cast<ftn_double*>(&linalg_const<ftn_double>::one()), A.at(memory_t::host),
+                            &ia, &ja, A.descriptor(), const_cast<ftn_double*>(&linalg_const<ftn_double>::zero()),
+                            C.at(memory_t::host), &ic, &jc, C.descriptor());
 #else
-    throw std::runtime_error("not compiled with scalapack");
+            throw std::runtime_error(linalg_msg_no_scalapack);
 #endif
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
 }
 
 /// Linear algebra interface class.
@@ -1283,7 +1375,7 @@ inline double check_hermitian(dmatrix<T>& mtrx__, int n__)
     double max_diff{0};
 #ifdef __SCALAPACK
     dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
-    tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
+    linalg2(linalg_t::scalapack).tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
     for (int i = 0; i < tmp.num_cols_local(); i++) {
         for (int j = 0; j < tmp.num_rows_local(); j++) {
             max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));

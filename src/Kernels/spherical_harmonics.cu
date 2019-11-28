@@ -94,8 +94,8 @@ __global__ void spherical_harmonics_rlm_gpu_kernel(int lmax__, int ntp__, double
     int itp = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (itp < ntp__) {
-        double theta = tp__[2 * itp];
-        double phi   = tp__[2 * itp + 1];
+        double theta = tp__[itp];
+        double phi   = tp__[ntp__ + itp];
         double sint = sin(theta);
         double cost = cos(theta);
 

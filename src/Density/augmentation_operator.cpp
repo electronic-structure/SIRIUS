@@ -65,31 +65,21 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
 
     /* array of real spherical harmonics for each G-vector */
     sddk::mdarray<double, 2> gvec_rlm(utils::lmmax(2 * lmax_beta), gvec_count);
+    auto& tp = ctx_.gvec_tp();
     switch (atom_type_.parameters().processing_unit()) {
         case device_t::CPU: {
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
-                auto rtp = SHT::spherical_coordinates(gvec_.gvec_cart<index_domain_t::local>(igloc));
-                sht::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &gvec_rlm(0, igloc));
+                sht::spherical_harmonics(2 * lmax_beta, tp(igloc, 0), tp(igloc, 1), &gvec_rlm(0, igloc));
             }
             break;
         }
         case device_t::GPU: {
             gvec_rlm.allocate(memory_t::device);
-            sddk::mdarray<double, 2> tp(2, gvec_count);
-            #pragma omp parallel for schedule(static)
-            for (int igloc = 0; igloc < gvec_count; igloc++) {
-                auto rtp = SHT::spherical_coordinates(gvec_.gvec_cart<index_domain_t::local>(igloc));
-                tp(0, igloc) = rtp[1];
-                tp(1, igloc) = rtp[2];
-            }
-            tp.allocate(memory_t::device).copy_to(memory_t::device);
 #if defined(__GPU)
             spherical_harmonics_rlm_gpu(2 * lmax_beta, gvec_count, tp.at(memory_t::device),
                 gvec_rlm.at(memory_t::device), gvec_rlm.ld());
 #endif
-            /* wait for the kernel, otherwise tp array will be destroyed before the kernel finishes */
-            acc::sync_stream(stream_id(-1));
             break;
         }
     }
@@ -173,8 +163,6 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
 
             auto gc = gaunt_coefs.get_full_set_L3();
             gc.allocate(memory_t::device).copy_to(memory_t::device);
-
-            //gvec_rlm.allocate(memory_t::device).copy_to(memory_t::device);
 
             ri_values.allocate(memory_t::device).copy_to(memory_t::device);
 

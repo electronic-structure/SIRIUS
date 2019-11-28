@@ -132,7 +132,10 @@ class Simulation_context : public Simulation_parameters
     mdarray<double_complex, 2> phase_factors_t_;
 
     /// Lattice coordinats of G-vectors in a GPU-friendly ordering.
-    mdarray<int, 2> gvec_coord_;
+    sddk::mdarray<int, 2> gvec_coord_;
+
+    /// Theta and phi angles of G-vectors in GPU-friendly ordering.
+    sddk::mdarray<double, 2> gvec_tp_;
 
     /// Volume of the initial unit cell.
     /** This is needed to estimate the new cutoff for radial integrals. */
@@ -468,9 +471,14 @@ class Simulation_context : public Simulation_parameters
         return gvec_phase_factor(gvec().gvec(ig__), ia__);
     }
 
-    inline mdarray<int, 2> const& gvec_coord() const
+    inline sddk::mdarray<int, 2> const& gvec_coord() const
     {
         return gvec_coord_;
+    }
+
+    inline sddk::mdarray<double, 2> const& gvec_tp() const
+    {
+        return gvec_tp_;
     }
 
     /// Generate phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$ for all atoms of a given type.
@@ -508,7 +516,7 @@ class Simulation_context : public Simulation_parameters
     }
 
     /// Compute values of spherical Bessel functions at MT boundary.
-    mdarray<double, 3> generate_sbessel_mt(int lmax__) const;
+    sddk::mdarray<double, 3> generate_sbessel_mt(int lmax__) const;
 
     /// Generate complex spherical harmoics for the local set of G-vectors.
     matrix<double_complex> generate_gvec_ylm(int lmax__);
