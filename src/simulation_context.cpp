@@ -1089,8 +1089,8 @@ void Simulation_context::update()
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
         auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
-        gvec_tp(igloc, 0) = rtp[1];
-        gvec_tp(igloc, 1) = rtp[2];
+        gvec_tp_(igloc, 0) = rtp[1];
+        gvec_tp_(igloc, 1) = rtp[2];
     }
 
     switch (this->processing_unit()) {
@@ -1123,7 +1123,7 @@ void Simulation_context::update()
             if (unit_cell().atom_type(iat).augment() && unit_cell().atom_type(iat).num_atoms() > 0) {
                 augmentation_op_[iat] = std::unique_ptr<Augmentation_operator>(
                     new Augmentation_operator(unit_cell().atom_type(iat), gvec()));
-                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), *mp);
+                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), gvec_tp_, *mp);
 
             } else {
                 augmentation_op_[iat] = nullptr;

@@ -35,7 +35,8 @@ extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int c
 
 extern "C" void spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* tp__, double* rlm__, int ld__);
 
-void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__, memory_pool& mp__)
+void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__,
+    sddk::mdarray<double, 2> const& tp__, memory_pool& mp__)
 {
     if (!atom_type_.augment()) {
         return;
@@ -65,19 +66,18 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
 
     /* array of real spherical harmonics for each G-vector */
     sddk::mdarray<double, 2> gvec_rlm(utils::lmmax(2 * lmax_beta), gvec_count);
-    auto& tp = ctx_.gvec_tp();
     switch (atom_type_.parameters().processing_unit()) {
         case device_t::CPU: {
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
-                sht::spherical_harmonics(2 * lmax_beta, tp(igloc, 0), tp(igloc, 1), &gvec_rlm(0, igloc));
+                sht::spherical_harmonics(2 * lmax_beta, tp__(igloc, 0), tp__(igloc, 1), &gvec_rlm(0, igloc));
             }
             break;
         }
         case device_t::GPU: {
             gvec_rlm.allocate(memory_t::device);
 #if defined(__GPU)
-            spherical_harmonics_rlm_gpu(2 * lmax_beta, gvec_count, tp.at(memory_t::device),
+            spherical_harmonics_rlm_gpu(2 * lmax_beta, gvec_count, tp__.at(memory_t::device),
                 gvec_rlm.at(memory_t::device), gvec_rlm.ld());
 #endif
             break;

@@ -53,7 +53,8 @@ class Augmentation_operator
     {
     }
 
-    void generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__, memory_pool& mp__);
+    void generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__, sddk::mdarray<double, 2> const& tp__,
+        memory_pool& mp__);
 
     void prepare(stream_id sid, sddk::memory_pool* mp__) const
     {
