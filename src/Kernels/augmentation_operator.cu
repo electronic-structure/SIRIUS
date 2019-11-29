@@ -25,7 +25,7 @@
 #include "../SDDK/GPU/cuda_common.hpp"
 #include "../SDDK/GPU/acc_runtime.hpp"
 
-__global__ void aug_op_pw_coeffs_gpu_kernel(int const* gvec_shell__, int const* idx__, int idxmax__,
+__global__ void aug_op_pw_coeffs_gpu_kernel(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
                                             acc_complex_double_t const* zilm__, int const* l_by_lm__, int lmmax__,
                                             double const* gc__, int ld0__, int ld1__,
                                             double const* gvec_rlm__, int ld2__,
@@ -33,25 +33,26 @@ __global__ void aug_op_pw_coeffs_gpu_kernel(int const* gvec_shell__, int const* 
                                             double* q_pw__, int ld5__, double fourpi_omega__)
 
 {
-    int idx12 = blockDim.x * blockIdx.x + threadIdx.x;
-    int igloc = blockIdx.y;
+    int igloc = blockDim.x * blockIdx.x + threadIdx.x;
     int idxsh = gvec_shell__[igloc];
 
-    if (idx12 < idxmax__) {
-        int lm1     = idx__[array2D_offset(0, idx12, 3)];
-        int lm2     = idx__[array2D_offset(1, idx12, 3)];
-        int idxrf12 = idx__[array2D_offset(2, idx12, 3)];
+    if (igloc < ngvec__) {
+        for (int idx12 = 0; idx12 < idxmax__; idx12++) {
+            int lm1     = idx__[array2D_offset(0, idx12, 3)];
+            int lm2     = idx__[array2D_offset(1, idx12, 3)];
+            int idxrf12 = idx__[array2D_offset(2, idx12, 3)];
 
-        acc_complex_double_t z = make_accDoubleComplex(0, 0);
-        for (int lm = 0; lm < lmmax__; lm++) {
-            double d = gvec_rlm__[array2D_offset(lm, igloc, ld2__)] *
-                ri_values__[array3D_offset(idxrf12, l_by_lm__[lm], idxsh, ld3__, ld4__)] *
-                gc__[array3D_offset(lm, lm2, lm1, ld0__, ld1__)];
-            z.x += d * zilm__[lm].x;
-            z.y -= d * zilm__[lm].y;
+            acc_complex_double_t z = make_accDoubleComplex(0, 0);
+            for (int lm = 0; lm < lmmax__; lm++) {
+                double d = gvec_rlm__[array2D_offset(lm, igloc, ld2__)] *
+                    ri_values__[array3D_offset(idxrf12, l_by_lm__[lm], idxsh, ld3__, ld4__)] *
+                    gc__[array3D_offset(lm, lm2, lm1, ld0__, ld1__)];
+                z.x += d * zilm__[lm].x;
+                z.y -= d * zilm__[lm].y;
+            }
+            q_pw__[array2D_offset(idx12, 2 * igloc,     ld5__)] = z.x * fourpi_omega__;
+            q_pw__[array2D_offset(idx12, 2 * igloc + 1, ld5__)] = z.y * fourpi_omega__;
         }
-        q_pw__[array2D_offset(idx12, 2 * igloc,     ld5__)] = z.x * fourpi_omega__;
-        q_pw__[array2D_offset(idx12, 2 * igloc + 1, ld5__)] = z.y * fourpi_omega__;
     }
 
 }
@@ -63,10 +64,11 @@ extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int c
                                      double const* ri_values__, int ld3__, int ld4__,
                                      double* q_pw__, int ld5__, double fourpi_omega__)
 {
-    dim3 grid_t(32);
-    dim3 grid_b(num_blocks(idxmax__, grid_t.x), ngvec__);
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(ngvec__, grid_t.x));
+
     accLaunchKernel((aug_op_pw_coeffs_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0,
-        gvec_shell__, idx__, idxmax__, zilm__, l_by_lm__, lmmax__, gc__, ld0__, ld1__, gvec_rlm__, ld2__,
+        ngvec__, gvec_shell__, idx__, idxmax__, zilm__, l_by_lm__, lmmax__, gc__, ld0__, ld1__, gvec_rlm__, ld2__,
         ri_values__, ld3__, ld4__, q_pw__, ld5__, fourpi_omega__);
 }
 

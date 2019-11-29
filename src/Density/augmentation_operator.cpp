@@ -26,6 +26,7 @@
 
 namespace sirius {
 
+#if defined(__GPU)
 extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
                                      double_complex const* zilm__, int const* l_by_lm__, int lmmax__,
                                      double const* gc__, int ld0__, int ld1__,
@@ -34,6 +35,7 @@ extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int c
                                      double* q_pw__, int ld5__, double fourpi_omega__);
 
 extern "C" void spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const* tp__, double* rlm__, int ld__);
+#endif
 
 void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__,
     sddk::mdarray<double, 2> const& tp__, memory_pool& mp__)
@@ -171,11 +173,11 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
             PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|gpu");
 #if defined(__GPU)
             aug_op_pw_coeffs_gpu(gvec_count, gvec_shell.at(memory_t::device), idx.at(memory_t::device),
-                static_cast<int>(idx.size(1)), zilm_d.at(memory_t::device), l_by_lm_d.at(memory_t::device),
-                lmmax, gc.at(memory_t::device), static_cast<int>(gc.size(0)), static_cast<int>(gc.size(1)),
-                gvec_rlm.at(memory_t::device), static_cast<int>(gvec_rlm.size(0)), ri_values.at(memory_t::device),
-                static_cast<int>(ri_values.size(0)), static_cast<int>(ri_values.size(1)), q_pw_.at(memory_t::device),
-                static_cast<int>(q_pw_.size(0)), fourpi_omega);
+                static_cast<int>(idx.size(1)), zilm_d.at(memory_t::device), l_by_lm_d.at(memory_t::device), lmmax,
+                gc.at(memory_t::device), static_cast<int>(gc.size(0)), static_cast<int>(gc.size(1)),
+                gvec_rlm.at(memory_t::device), static_cast<int>(gvec_rlm.size(0)),
+                ri_values.at(memory_t::device), static_cast<int>(ri_values.size(0)), static_cast<int>(ri_values.size(1)),
+                q_pw_.at(memory_t::device), static_cast<int>(q_pw_.size(0)), fourpi_omega);
 #endif
             q_pw_.copy_to(memory_t::host);
             PROFILE_STOP("sirius::Augmentation_operator::generate_pw_coeffs|gpu");
