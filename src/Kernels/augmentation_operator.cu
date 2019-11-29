@@ -34,27 +34,25 @@ __global__ void aug_op_pw_coeffs_gpu_kernel(int ngvec__, int const* gvec_shell__
 
 {
     int igloc = blockDim.x * blockIdx.x + threadIdx.x;
+    int idx12 = blockIdx.y;
     int idxsh = gvec_shell__[igloc];
 
     if (igloc < ngvec__) {
-        for (int idx12 = 0; idx12 < idxmax__; idx12++) {
-            int lm1     = idx__[array2D_offset(0, idx12, 3)];
-            int lm2     = idx__[array2D_offset(1, idx12, 3)];
-            int idxrf12 = idx__[array2D_offset(2, idx12, 3)];
+        int lm1     = idx__[array2D_offset(0, idx12, 3)];
+        int lm2     = idx__[array2D_offset(1, idx12, 3)];
+        int idxrf12 = idx__[array2D_offset(2, idx12, 3)];
 
-            acc_complex_double_t z = make_accDoubleComplex(0, 0);
-            for (int lm = 0; lm < lmmax__; lm++) {
-                double d = gvec_rlm__[array2D_offset(lm, igloc, ld2__)] *
-                    ri_values__[array3D_offset(idxrf12, l_by_lm__[lm], idxsh, ld3__, ld4__)] *
-                    gc__[array3D_offset(lm, lm2, lm1, ld0__, ld1__)];
-                z.x += d * zilm__[lm].x;
-                z.y -= d * zilm__[lm].y;
-            }
-            q_pw__[array2D_offset(idx12, 2 * igloc,     ld5__)] = z.x * fourpi_omega__;
-            q_pw__[array2D_offset(idx12, 2 * igloc + 1, ld5__)] = z.y * fourpi_omega__;
+        acc_complex_double_t z = make_accDoubleComplex(0, 0);
+        for (int lm = 0; lm < lmmax__; lm++) {
+            double d = gvec_rlm__[array2D_offset(lm, igloc, ld2__)] *
+                ri_values__[array3D_offset(idxrf12, l_by_lm__[lm], idxsh, ld3__, ld4__)] *
+                gc__[array3D_offset(lm, lm2, lm1, ld0__, ld1__)];
+            z.x += d * zilm__[lm].x;
+            z.y -= d * zilm__[lm].y;
         }
+        q_pw__[array2D_offset(idx12, 2 * igloc,     ld5__)] = z.x * fourpi_omega__;
+        q_pw__[array2D_offset(idx12, 2 * igloc + 1, ld5__)] = z.y * fourpi_omega__;
     }
-
 }
 
 extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
@@ -64,8 +62,8 @@ extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int c
                                      double const* ri_values__, int ld3__, int ld4__,
                                      double* q_pw__, int ld5__, double fourpi_omega__)
 {
-    dim3 grid_t(64);
-    dim3 grid_b(num_blocks(ngvec__, grid_t.x));
+    dim3 grid_t(32);
+    dim3 grid_b(num_blocks(ngvec__, grid_t.x), idxmax__);
 
     accLaunchKernel((aug_op_pw_coeffs_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0,
         ngvec__, gvec_shell__, idx__, idxmax__, zilm__, l_by_lm__, lmmax__, gc__, ld0__, ld1__, gvec_rlm__, ld2__,
