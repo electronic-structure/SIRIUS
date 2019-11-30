@@ -1109,13 +1109,15 @@ void Simulation_context::update()
 
     if (!full_potential()) {
         memory_pool* mp{nullptr};
+        memory_pool* mpd{nullptr};
         switch (this->processing_unit()) {
             case device_t::CPU: {
                 mp = &mem_pool(memory_t::host);
                 break;
             }
             case device_t::GPU: {
-                mp = &mem_pool(memory_t::host_pinned);
+                mp  = &mem_pool(memory_t::host_pinned);
+                mpd = &mem_pool(memory_t::device);
                 break;
             }
         }
@@ -1123,7 +1125,7 @@ void Simulation_context::update()
             if (unit_cell().atom_type(iat).augment() && unit_cell().atom_type(iat).num_atoms() > 0) {
                 augmentation_op_[iat] = std::unique_ptr<Augmentation_operator>(
                     new Augmentation_operator(unit_cell().atom_type(iat), gvec()));
-                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), gvec_tp_, *mp);
+                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), gvec_tp_, *mp, mpd);
 
             } else {
                 augmentation_op_[iat] = nullptr;

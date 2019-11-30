@@ -1100,6 +1100,17 @@ class mdarray
 #endif
     }
 
+    /// 3D array with memory pool allocation.
+    mdarray(mdarray_index_descriptor const& d0, mdarray_index_descriptor const& d1, mdarray_index_descriptor const& d2,
+        memory_pool& mp__, std::string label__ = "")
+    {
+        static_assert(N == 3, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0, d1, d2});
+        this->allocate(mp__);
+    }
+
     mdarray(T* ptr__,
             mdarray_index_descriptor const& d0,
             mdarray_index_descriptor const& d1,

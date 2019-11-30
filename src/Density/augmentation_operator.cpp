@@ -38,7 +38,7 @@ extern "C" void spherical_harmonics_rlm_gpu(int lmax__, int ntp__, double const*
 #endif
 
 void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const& radial_integrals__,
-    sddk::mdarray<double, 2> const& tp__, memory_pool& mp__)
+    sddk::mdarray<double, 2> const& tp__, memory_pool& mp__, memory_pool* mpd__ = nullptr)
 {
     if (!atom_type_.augment()) {
         return;
@@ -67,9 +67,10 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     int gvec_count  = gvec_.count();
 
     /* array of real spherical harmonics for each G-vector */
-    sddk::mdarray<double, 2> gvec_rlm(utils::lmmax(2 * lmax_beta), gvec_count);
+    sddk::mdarray<double, 2> gvec_rlm;
     switch (atom_type_.parameters().processing_unit()) {
         case device_t::CPU: {
+            gvec_rlm = sddk::mdarray<double, 2>(lmmax, gvec_count, mp__);
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 sht::spherical_harmonics(2 * lmax_beta, tp__(igloc, 0), tp__(igloc, 1), &gvec_rlm(0, igloc));
@@ -77,7 +78,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
             break;
         }
         case device_t::GPU: {
-            gvec_rlm.allocate(memory_t::device);
+            gvec_rlm = sddk::mdarray<double, 2>(lmmax, gvec_count, *mpd__);
 #if defined(__GPU)
             spherical_harmonics_rlm_gpu(2 * lmax_beta, gvec_count, tp__.at(memory_t::device),
                 gvec_rlm.at(memory_t::device), gvec_rlm.ld());
@@ -90,7 +91,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     int nbrf = atom_type_.mt_radial_basis_size();
 
     PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|1");
-    sddk::mdarray<double, 3> ri_values(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1, gvec_.num_gvec_shells_local());
+    sddk::mdarray<double, 3> ri_values(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1, gvec_.num_gvec_shells_local(), mp__);
     #pragma omp parallel for
     for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
         auto ri = radial_integrals__.values(atom_type_.id(), gvec_.gvec_shell_len_local(j));
@@ -105,8 +106,10 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     /* number of beta-projectors */
     int nbf = atom_type_.mt_basis_size();
 
+    int idxmax = nbf * (nbf + 1) / 2;
+
     /* flatten the indices */
-    sddk::mdarray<int, 2> idx(3, nbf * (nbf + 1) / 2);
+    sddk::mdarray<int, 2> idx(3, idxmax, mp__);
     for (int xi2 = 0; xi2 < nbf; xi2++) {
         int lm2    = atom_type_.indexb(xi2).lm;
         int idxrf2 = atom_type_.indexb(xi2).idxrf;
@@ -140,7 +143,8 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
                     int lm2     = idx(1, idx12);
                     int idxrf12 = idx(2, idx12);
                     for (int lm3 = 0; lm3 < lmmax; lm3++) {
-                        v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * ri_values(idxrf12, l_by_lm[lm3], gvec_.gvec_shell_idx_local(igloc));
+                        v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) *
+                            ri_values(idxrf12, l_by_lm[lm3], gvec_.gvec_shell_idx_local(igloc));
                     }
                     double_complex z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
                     q_pw_(idx12, 2 * igloc)     = z.real();
@@ -150,32 +154,33 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
             break;
         }
         case device_t::GPU: {
-            sddk::mdarray<int, 1> gvec_shell(gvec_count);
+            sddk::mdarray<int, 1> gvec_shell(gvec_count, mp__);
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 gvec_shell(igloc) = gvec_.gvec_shell_idx_local(igloc);
             }
-            gvec_shell.allocate(memory_t::device).copy_to(memory_t::device);
-            idx.allocate(memory_t::device).copy_to(memory_t::device);
+            gvec_shell.allocate(*mpd__).copy_to(memory_t::device);
+            idx.allocate(*mpd__).copy_to(memory_t::device);
 
             sddk::mdarray<double_complex, 1> zilm_d(&zilm[0], lmmax);
-            zilm_d.allocate(memory_t::device).copy_to(memory_t::device);
+            zilm_d.allocate(*mpd__).copy_to(memory_t::device);
 
             sddk::mdarray<int, 1> l_by_lm_d(&l_by_lm[0], lmmax);
-            l_by_lm_d.allocate(memory_t::device).copy_to(memory_t::device);
+            l_by_lm_d.allocate(*mpd__).copy_to(memory_t::device);
 
             auto gc = gaunt_coefs.get_full_set_L3();
-            gc.allocate(memory_t::device).copy_to(memory_t::device);
+            gc.allocate(*mpd__).copy_to(memory_t::device);
 
-            ri_values.allocate(memory_t::device).copy_to(memory_t::device);
+            ri_values.allocate(*mpd__).copy_to(memory_t::device);
 
-            q_pw_.allocate(memory_t::device);
+            q_pw_.allocate(*mpd__);
 
             PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|gpu");
 #if defined(__GPU)
+            int ld0 = static_cast<int>(gc.size(0));
+            int ld1 = static_cast<int>(gc.size(1));
             aug_op_pw_coeffs_gpu(gvec_count, gvec_shell.at(memory_t::device), idx.at(memory_t::device),
-                static_cast<int>(idx.size(1)), zilm_d.at(memory_t::device), l_by_lm_d.at(memory_t::device), lmmax,
-                gc.at(memory_t::device), static_cast<int>(gc.size(0)), static_cast<int>(gc.size(1)),
-                gvec_rlm.at(memory_t::device), static_cast<int>(gvec_rlm.size(0)),
+                idxmax, zilm_d.at(memory_t::device), l_by_lm_d.at(memory_t::device), lmmax,
+                gc.at(memory_t::device), ld0, ld1, gvec_rlm.at(memory_t::device), lmmax,
                 ri_values.at(memory_t::device), static_cast<int>(ri_values.size(0)), static_cast<int>(ri_values.size(1)),
                 q_pw_.at(memory_t::device), static_cast<int>(q_pw_.size(0)), fourpi_omega);
 #endif
