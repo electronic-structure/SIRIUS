@@ -126,82 +126,82 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 
 void Unit_cell::print_info(int verbosity__) const
 {
-    printf("\n");
-    printf("Unit cell\n");
+    std::printf("\n");
+    std::printf("Unit cell\n");
     for (int i = 0; i < 80; i++) {
-        printf("-");
+        std::printf("-");
     }
-    printf("\n");
+    std::printf("\n");
 
-    printf("lattice vectors\n");
+    std::printf("lattice vectors\n");
     for (int i = 0; i < 3; i++) {
-        printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_(0, i), lattice_vectors_(1, i),
+        std::printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_(0, i), lattice_vectors_(1, i),
                lattice_vectors_(2, i));
     }
-    printf("reciprocal lattice vectors\n");
+    std::printf("reciprocal lattice vectors\n");
     for (int i = 0; i < 3; i++) {
-        printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_(0, i),
+        std::printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_(0, i),
                reciprocal_lattice_vectors_(1, i), reciprocal_lattice_vectors_(2, i));
     }
-    printf("\n");
-    printf("unit cell volume : %18.8f [a.u.^3]\n", omega());
-    printf("1/sqrt(omega)    : %18.8f\n", 1.0 / sqrt(omega()));
-    printf("MT volume        : %f (%5.2f%%)\n", volume_mt(), volume_mt() * 100 / omega());
-    printf("IT volume        : %f (%5.2f%%)\n", volume_it(), volume_it() * 100 / omega());
+    std::printf("\n");
+    std::printf("unit cell volume : %18.8f [a.u.^3]\n", omega());
+    std::printf("1/sqrt(omega)    : %18.8f\n", 1.0 / sqrt(omega()));
+    std::printf("MT volume        : %f (%5.2f%%)\n", volume_mt(), volume_mt() * 100 / omega());
+    std::printf("IT volume        : %f (%5.2f%%)\n", volume_it(), volume_it() * 100 / omega());
 
-    printf("\n");
-    printf("number of atom types : %i\n", num_atom_types());
+    std::printf("\n");
+    std::printf("number of atom types : %i\n", num_atom_types());
     for (int i = 0; i < num_atom_types(); i++) {
         int id = atom_type(i).id();
-        printf("type id : %i   symbol : %2s   mt_radius : %10.6f, num_atoms: %i\n", id, atom_type(i).symbol().c_str(),
+        std::printf("type id : %i   symbol : %2s   mt_radius : %10.6f, num_atoms: %i\n", id, atom_type(i).symbol().c_str(),
                atom_type(i).mt_radius(), atom_type(i).num_atoms());
     }
 
-    printf("total number of atoms : %i\n", num_atoms());
-    printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
+    std::printf("total number of atoms : %i\n", num_atoms());
+    std::printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
     if (!parameters_.full_potential()) {
-        printf("number of PAW atoms : %i\n", num_paw_atoms());
+        std::printf("number of PAW atoms : %i\n", num_paw_atoms());
     }
     if (verbosity__ >= 2) {
-        printf("\n");
-        printf("atom id              position                    vector_field        type id    class id\n");
-        printf("----------------------------------------------------------------------------------------\n");
+        std::printf("\n");
+        std::printf("atom id              position                    vector_field        type id    class id\n");
+        std::printf("----------------------------------------------------------------------------------------\n");
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vf  = atom(i).vector_field();
-            printf("%6i      %f %f %f   %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], vf[0], vf[1], vf[2],
+            std::printf("%6i      %f %f %f   %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], vf[0], vf[1], vf[2],
                    atom(i).type_id(), atom(i).symmetry_class_id());
         }
 
-        printf("\n");
+        std::printf("\n");
         for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-            printf("class id : %i   atom id : ", ic);
+            std::printf("class id : %i   atom id : ", ic);
             for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++) {
-                printf("%i ", atom_symmetry_class(ic).atom_id(i));
+                std::printf("%i ", atom_symmetry_class(ic).atom_id(i));
             }
-            printf("\n");
+            std::printf("\n");
         }
-        printf("\n");
-        printf("atom id              position (Cartesian, a.u.)\n");
-        printf("----------------------------------------------------------------------------------------\n");
+        std::printf("\n");
+        std::printf("atom id              position (Cartesian, a.u.)\n");
+        std::printf("----------------------------------------------------------------------------------------\n");
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vc  = get_cartesian_coordinates(pos);
-            printf("%6i      %18.12f %18.12f %18.12f\n", i, vc[0], vc[1], vc[2]);
+            std::printf("%6i      %18.12f %18.12f %18.12f\n", i, vc[0], vc[1], vc[2]);
         }
 
-        printf("\n");
+        std::printf("\n");
         for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-            printf("class id : %i   atom id : ", ic);
+            std::printf("class id : %i   atom id : ", ic);
             for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++) {
-                printf("%i ", atom_symmetry_class(ic).atom_id(i));
+                std::printf("%i ", atom_symmetry_class(ic).atom_id(i));
             }
-            printf("\n");
+            std::printf("\n");
         }
     }
-    printf("\nminimum bond length: %20.12f\n", min_bond_length());
+    std::printf("\nminimum bond length: %20.12f\n", min_bond_length());
     if (!parameters_.full_potential()) {
-        printf("\nnumber of pseudo wave-functions: %i\n", this->num_ps_atomic_wf());
+        std::printf("\nnumber of pseudo wave-functions: %i\n", this->num_ps_atomic_wf());
     }
     print_symmetry_info(verbosity__);
 }
@@ -341,26 +341,26 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
     }
 
     if (parameters_.control().print_neighbors_ && comm_.rank() == 0) {
-        printf("Nearest neighbors\n");
-        printf("=================\n");
+        std::printf("Nearest neighbors\n");
+        std::printf("=================\n");
         for (int ia = 0; ia < num_atoms(); ia++) {
-            printf("Central atom: %s (%i)\n", atom(ia).type().symbol().c_str(), ia);
+            std::printf("Central atom: %s (%i)\n", atom(ia).type().symbol().c_str(), ia);
             for (int i = 0; i < 80; i++) {
-                printf("-");
+                std::printf("-");
             }
-            printf("\n");
-            printf("atom (  id)       D [a.u.]    translation\n");
+            std::printf("\n");
+            std::printf("atom (  id)       D [a.u.]    translation\n");
             for (int i = 0; i < 80; i++) {
-                printf("-");
+                std::printf("-");
             }
-            printf("\n");
+            std::printf("\n");
             for (int i = 0; i < (int)nearest_neighbours_[ia].size(); i++) {
                 int ja = nearest_neighbours_[ia][i].atom_id;
-                printf("%4s (%4i)   %12.6f  %4i %4i %4i\n", atom(ja).type().symbol().c_str(), ja,
+                std::printf("%4s (%4i)   %12.6f  %4i %4i %4i\n", atom(ja).type().symbol().c_str(), ja,
                        nearest_neighbours_[ia][i].distance, nearest_neighbours_[ia][i].translation[0],
                        nearest_neighbours_[ia][i].translation[1], nearest_neighbours_[ia][i].translation[2]);
             }
-            printf("\n");
+            std::printf("\n");
         }
     }
 }
@@ -436,8 +436,8 @@ void Unit_cell::generate_radial_functions()
         }
 
         if (comm_.rank() == 0) {
-            printf("\n");
-            printf("Linearization energies\n");
+            std::printf("\n");
+            std::printf("Linearization energies\n");
         }
     }
     if (parameters_.control().verbosity_ >= 4 && comm_.rank() == 0) {
@@ -757,57 +757,57 @@ void Unit_cell::update()
 void Unit_cell::print_symmetry_info(int verbosity__) const
 {
     if (symmetry_ != nullptr) {
-        printf("\n");
-        printf("space group number   : %i\n", symmetry_->spacegroup_number());
-        printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
-        printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
-        printf("number of operations : %i\n", symmetry_->num_mag_sym());
-        printf("transformation matrix : \n");
+        std::printf("\n");
+        std::printf("space group number   : %i\n", symmetry_->spacegroup_number());
+        std::printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
+        std::printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
+        std::printf("number of operations : %i\n", symmetry_->num_mag_sym());
+        std::printf("transformation matrix : \n");
         auto tm = symmetry_->transformation_matrix();
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                printf("%12.6f ", tm(i, j));
+                std::printf("%12.6f ", tm(i, j));
             }
-            printf("\n");
+            std::printf("\n");
         }
-        printf("origin shift : \n");
+        std::printf("origin shift : \n");
         auto t = symmetry_->origin_shift();
-        printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+        std::printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
 
         if (verbosity__ >= 2) {
-            printf("symmetry operations  : \n");
+            std::printf("symmetry operations  : \n");
             for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
                 auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
                 auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
                 auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
 
-                printf("isym : %i\n", isym);
-                printf("R : ");
+                std::printf("isym : %i\n", isym);
+                std::printf("R : ");
                 for (int i = 0; i < 3; i++) {
                     if (i) {
-                        printf("    ");
+                        std::printf("    ");
                     }
                     for (int j = 0; j < 3; j++) {
-                        printf("%3i ", R(i, j));
+                        std::printf("%3i ", R(i, j));
                     }
-                    printf("\n");
+                    std::printf("\n");
                 }
-                printf("T : ");
+                std::printf("T : ");
                 for (int j = 0; j < 3; j++) {
-                    printf("%8.4f ", t[j]);
+                    std::printf("%8.4f ", t[j]);
                 }
-                printf("\n");
-                printf("S : ");
+                std::printf("\n");
+                std::printf("S : ");
                 for (int i = 0; i < 3; i++) {
                     if (i) {
-                        printf("    ");
+                        std::printf("    ");
                     }
                     for (int j = 0; j < 3; j++) {
-                        printf("%8.4f ", S(i, j));
+                        std::printf("%8.4f ", S(i, j));
                     }
-                    printf("\n");
+                    std::printf("\n");
                 }
-                printf("\n");
+                std::printf("\n");
             }
         }
     }

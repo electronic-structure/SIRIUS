@@ -644,7 +644,7 @@ namespace sirius {
         double CG = 0.0; // Clebsch Gordan coeeficient cf PRB 71, 115106 page 3 first column
 
         if ((spin != 0) && (spin != 1)) {
-            printf("Error : unkown spin direction\n");
+            std::printf("Error : unkown spin direction\n");
         }
 
         const double denom = sqrt(1.0 / (2.0 * l + 1.0));
@@ -671,7 +671,7 @@ namespace sirius {
                     }
                 }
             } else {
-                printf("Clebsch gordan coefficients do not exist for this combination of j=%.5lf and l=%d\n", j, l);
+                std::printf("Clebsch gordan coefficients do not exist for this combination of j=%.5lf and l=%d\n", j, l);
                 exit(0);
             }
         }
@@ -690,7 +690,7 @@ namespace sirius {
     SHT::calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma) {
 
         if ((sigma != 0) && (sigma != 1)) {
-            printf("SphericalIndex function : unkown spin direction\n");
+            std::printf("SphericalIndex function : unkown spin direction\n");
             return 0;
         }
 
@@ -721,7 +721,7 @@ namespace sirius {
                     return SHT::rlm_dot_ylm(l, m1, mp);
                 }
             } else {
-                printf("Spherical Index function : l and j are not compatible\n");
+                std::printf("Spherical Index function : l and j are not compatible\n");
                 exit(0);
             }
         }

@@ -147,17 +147,17 @@ Band::solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const
     ctx_.message(2, __func__, "Lowest band energies\n");
     if (ctx_.control().verbosity_ >= 2 && ctx_.comm().rank() == 0) {
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
-            printf("ik : %2i, ", ik);
+            std::printf("ik : %2i, ", ik);
             for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
-                printf("%12.6f", kset__[ik]->band_energy(j, 0));
+                std::printf("%12.6f", kset__[ik]->band_energy(j, 0));
             }
             if (ctx_.num_mag_dims() == 1) {
-                printf("\n         ");
+                std::printf("\n         ");
                 for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
-                    printf("%12.6f", kset__[ik]->band_energy(j, 1));
+                    std::printf("%12.6f", kset__[ik]->band_energy(j, 1));
                 }
             }
-            printf("\n");
+            std::printf("\n");
         }
     }
 }

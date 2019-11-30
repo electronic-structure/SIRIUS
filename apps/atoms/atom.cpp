@@ -246,13 +246,13 @@ class Free_atom : public sirius::Atom_type
 
             if (energy_diff < energy_tol && charge_rms < charge_tol) {
                 converged = true;
-                printf("Converged in %i iterations.\n", iter);
+                std::printf("Converged in %i iterations.\n", iter);
                 break;
             }
         }
 
         if (!converged) {
-            printf("energy_diff : %18.10f   charge_rms : %18.10f\n", energy_diff, charge_rms);
+            std::printf("energy_diff : %18.10f   charge_rms : %18.10f\n", energy_diff, charge_rms);
             std::stringstream s;
             s << "atom " << symbol() << " is not converged" << std::endl
               << "  energy difference : " << energy_diff << std::endl
@@ -266,22 +266,22 @@ class Free_atom : public sirius::Atom_type
 
         double Eref = (rel) ? NIST_ScRLDA_Etot : NIST_LDA_Etot;
 
-        printf("\n");
-        printf("Radial gird\n");
-        printf("-----------\n");
-        printf("type             : %s\n", radial_grid().name().c_str());
-        printf("number of points : %i\n", np);
-        printf("origin           : %20.12f\n", radial_grid(0));
-        printf("infinity         : %20.12f\n", radial_grid(np - 1));
-        printf("\n");
-        printf("Energy\n");
-        printf("------\n");
-        printf("Ekin  : %20.12f\n", energy_kin);
-        printf("Ecoul : %20.12f\n", energy_coul);
-        printf("Eenuc : %20.12f\n", energy_enuc);
-        printf("Eexc  : %20.12f\n", energy_xc);
-        printf("Total : %20.12f\n", energy_tot);
-        printf("NIST  : %20.12f\n", Eref);
+        std::printf("\n");
+        std::printf("Radial gird\n");
+        std::printf("-----------\n");
+        std::printf("type             : %s\n", radial_grid().name().c_str());
+        std::printf("number of points : %i\n", np);
+        std::printf("origin           : %20.12f\n", radial_grid(0));
+        std::printf("infinity         : %20.12f\n", radial_grid(np - 1));
+        std::printf("\n");
+        std::printf("Energy\n");
+        std::printf("------\n");
+        std::printf("Ekin  : %20.12f\n", energy_kin);
+        std::printf("Ecoul : %20.12f\n", energy_coul);
+        std::printf("Eenuc : %20.12f\n", energy_enuc);
+        std::printf("Eexc  : %20.12f\n", energy_xc);
+        std::printf("Total : %20.12f\n", energy_tot);
+        std::printf("NIST  : %20.12f\n", Eref);
 
         /* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
         double dE = (utils::round(energy_tot, 6) - Eref);
@@ -350,9 +350,9 @@ void generate_atom_file(Free_atom&         a,
 {
     std::vector<double> enu;
 
-    printf("\n");
-    printf("atom : %s, Z = %i\n", a.symbol().c_str(), a.zn());
-    printf("----------------------------------\n");
+    std::printf("\n");
+    std::printf("atom : %s, Z = %i\n", a.symbol().c_str(), a.zn());
+    std::printf("----------------------------------\n");
 
     /* solve a free atom */
     a.ground_state(1e-10, 1e-8, 1e-8, enu, rel);
@@ -379,13 +379,13 @@ void generate_atom_file(Free_atom&         a,
     std::memset(&e_nl_c[0][0], 0, 32 * sizeof(double));
     std::memset(&e_nl_v[0][0], 0, 32 * sizeof(double));
 
-    printf("\n");
-    printf("Core / valence partitioning\n");
-    printf("---------------------------\n");
+    std::printf("\n");
+    std::printf("Core / valence partitioning\n");
+    std::printf("---------------------------\n");
     if (core_cutoff <= 0) {
-        printf("core cutoff energy       : %f\n", core_cutoff);
+        std::printf("core cutoff energy       : %f\n", core_cutoff);
     } else {
-        printf("core cutoff radius       : %f\n", core_cutoff);
+        std::printf("core cutoff radius       : %f\n", core_cutoff);
     }
     sirius::Spline<double> rho_c(a.radial_grid());
     sirius::Spline<double> rho(a.radial_grid());
@@ -395,7 +395,7 @@ void generate_atom_file(Free_atom&         a,
         int n = a.atomic_level(ist).n;
         int l = a.atomic_level(ist).l;
 
-        printf("%i%s  occ : %8.4f  energy : %12.6f", a.atomic_level(ist).n, level_symb[a.atomic_level(ist).l].c_str(),
+        std::printf("%i%s  occ : %8.4f  energy : %12.6f", a.atomic_level(ist).n, level_symb[a.atomic_level(ist).l].c_str(),
                a.atomic_level(ist).occupancy, enu[ist]);
 
         /* total density */
@@ -419,7 +419,7 @@ void generate_atom_file(Free_atom&         a,
         if ((core_cutoff <= 0 && enu[ist] < core_cutoff) ||
             (core_cutoff > 0 && rc < core_cutoff)) {
             core.push_back(a.atomic_level(ist));
-            printf("  => core (rc = %f)\n", rc);
+            std::printf("  => core (rc = %f)\n", rc);
 
             for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
                 rho_c(ir) += a.atomic_level(ist).occupancy * a.free_atom_orbital_density(ir, ist) / fourpi;
@@ -430,13 +430,13 @@ void generate_atom_file(Free_atom&         a,
             ncore += static_cast<int>(a.atomic_level(ist).occupancy + 1e-12);
         } else { /* assign this state to valence */
             valence.push_back(a.atomic_level(ist));
-            printf("  => valence (rc = %f)\n", rc);
+            std::printf("  => valence (rc = %f)\n", rc);
 
             nl_v[n][l]++;
             e_nl_v[n][l] += enu[ist];
         }
     }
-    printf("number of core electrons : %i\n", ncore);
+    std::printf("number of core electrons : %i\n", ncore);
 
     /* average energies for {n,l} level */
     for (int n = 1; n <= 7; n++) {
@@ -453,7 +453,7 @@ void generate_atom_file(Free_atom&         a,
     for (size_t i = 0; i < valence.size(); i++) {
         lmax = std::max(lmax, valence[i].l);
     }
-    printf("lmax: %i\n", lmax);
+    std::printf("lmax: %i\n", lmax);
 
     /* valence principal quantum numbers for each l */
     std::array<std::vector<int>, 4> n_v;
@@ -465,13 +465,13 @@ void generate_atom_file(Free_atom&         a,
         }
     }
 
-    printf("valence n for each l:\n");
+    std::printf("valence n for each l:\n");
     for (int l = 0; l < 4; l++) {
-        printf("l: %i, n: ", l);
+        std::printf("l: %i, n: ", l);
         for (int n : n_v[l]) {
-            printf("%i ", n);
+            std::printf("%i ", n);
         }
-        printf("\n");
+        std::printf("\n");
     }
 
     //FILE* fout = fopen("rho.dat", "w");
@@ -521,7 +521,7 @@ void generate_atom_file(Free_atom&         a,
             break;
         }
     }
-    printf("Effective infinity : %f\n", rinf);
+    std::printf("Effective infinity : %f\n", rinf);
 
     /* estimate core radius */
     double core_radius = (core_cutoff > 0) ? core_cutoff : 0.65;
@@ -540,7 +540,7 @@ void generate_atom_file(Free_atom&         a,
     /* good number of MT points */
     int nrmt{1000};
 
-    printf("minimum MT radius : %f\n", core_radius);
+    std::printf("minimum MT radius : %f\n", core_radius);
     //printf("approximate number of MT points : %i\n", a.radial_grid().index_of(2.0));
     dict["rmt"]  = core_radius;
     dict["nrmt"] = nrmt;
@@ -663,7 +663,7 @@ void generate_atom_file(Free_atom&         a,
     }
     a.set_radial_grid(1500, &x[0]);
 
-    printf("=== initializing atom ===\n");
+    std::printf("=== initializing atom ===\n");
     a.init(0);
     sirius::Atom_symmetry_class atom_class(0, a);
     atom_class.set_spherical_potential(veff);
@@ -721,11 +721,11 @@ void generate_atom_file(Free_atom&         a,
     //==         s[ir] = std::pow(f[ir], 2);
     //==     }
     //==     double norm = std::sqrt(s.interpolate().integrate(2));
-    //==     printf("orbital: %i, norm: %f\n", i, norm);
+    //==     std::printf("orbital: %i, norm: %f\n", i, norm);
     //==     if (norm < 0.05) {
     //==         auto s = lo_to_str(a.lo_descriptor(i));
-    //==         printf("local orbital %i is linearly dependent\n", i);
-    //==         printf("  l: %i, basis: %s\n", l, s.str().c_str());
+    //==         std::printf("local orbital %i is linearly dependent\n", i);
+    //==         std::printf("  l: %i, basis: %s\n", l, s.str().c_str());
     //==         inc[i] = 0;
     //==     } else {
     //==         norm = 1 / norm;
@@ -742,12 +742,12 @@ void generate_atom_file(Free_atom&         a,
     for (int j = 0; j < atom_class.num_lo_descriptors(); j++) {
         auto s = lo_to_str(atom_class.lo_descriptor(j));
         if (!inc[j]) {
-            printf("X ");
+            std::printf("X ");
         } else {
-            printf("  ");
+            std::printf("  ");
             dict["lo"].push_back({{"l", atom_class.lo_descriptor(j).l}, {"basis", json::parse(s)}});
         }
-        printf("l: %i, basis: %s\n", atom_class.lo_descriptor(j).l, s.c_str());
+        std::printf("l: %i, basis: %s\n", atom_class.lo_descriptor(j).l, s.c_str());
     }
 
     dict["free_atom"]                = json::object();
@@ -911,29 +911,29 @@ int main(int argn, char** argv)
     args.parse_args(argn, argv);
 
     if (argn == 1 || args.exist("help")) {
-        printf("\n");
-        printf("Atom (L)APW+lo basis generation.\n");
-        printf("\n");
-        printf("Usage: %s [options]\n", argv[0]);
+        std::printf("\n");
+        std::printf("Atom (L)APW+lo basis generation.\n");
+        std::printf("\n");
+        std::printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
-        printf("\n");
-        printf("Definition of the local orbital types:\n");
-        printf("  lo  : 2nd order local orbitals composed of u(E) and udot(E),\n");
-        printf("        where E is the energy of the bound-state level {n,l}\n");
-        printf("  LO  : 3rd order local orbitals composed of u(E), udot(E) and u(E1),\n");
-        printf("        where E and E1 are the energies of the bound-state levels {n,l} and {n+1,l}\n");
-        printf("\n");
-        printf("Examples:\n");
-        printf("\n");
-        printf("  generate default basis for lithium:\n");
-        printf("    ./atom --symbol=Li\n");
-        printf("\n");
-        printf("  generate high precision basis for titanium:\n");
-        printf("    ./atom --type=lo+LO --symbol=Ti\n");
-        printf("\n");
-        printf("  make all states of iron to be valence:\n");
-        printf("    ./atom --core=-1000 --symbol=Fe\n");
-        printf("\n");
+        std::printf("\n");
+        std::printf("Definition of the local orbital types:\n");
+        std::printf("  lo  : 2nd order local orbitals composed of u(E) and udot(E),\n");
+        std::printf("        where E is the energy of the bound-state level {n,l}\n");
+        std::printf("  LO  : 3rd order local orbitals composed of u(E), udot(E) and u(E1),\n");
+        std::printf("        where E and E1 are the energies of the bound-state levels {n,l} and {n+1,l}\n");
+        std::printf("\n");
+        std::printf("Examples:\n");
+        std::printf("\n");
+        std::printf("  generate default basis for lithium:\n");
+        std::printf("    ./atom --symbol=Li\n");
+        std::printf("\n");
+        std::printf("  generate high precision basis for titanium:\n");
+        std::printf("    ./atom --type=lo+LO --symbol=Ti\n");
+        std::printf("\n");
+        std::printf("  make all states of iron to be valence:\n");
+        std::printf("    ./atom --core=-1000 --symbol=Fe\n");
+        std::printf("\n");
         return 0;
     }
 

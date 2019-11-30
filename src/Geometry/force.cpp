@@ -182,9 +182,9 @@ mdarray<double, 2> const& Force::calc_forces_ibs()
     symmetrize(forces_ibs_);
 
     if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
-        printf("ibs force\n");
+        std::printf("ibs force\n");
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            printf("ia : %i, IBS : %12.6f %12.6f %12.6f\n", ia, forces_ibs_(0, ia), forces_ibs_(1, ia),
+            std::printf("ia : %i, IBS : %12.6f %12.6f %12.6f\n", ia, forces_ibs_(0, ia), forces_ibs_(1, ia),
                    forces_ibs_(2, ia));
         }
     }
@@ -208,9 +208,9 @@ mdarray<double, 2> const& Force::calc_forces_rho()
     symmetrize(forces_rho_);
 
     if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
-        printf("rho force\n");
+        std::printf("rho force\n");
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            printf("ia : %i, density contribution : %12.6f %12.6f %12.6f\n", ia, forces_rho_(0, ia), forces_rho_(1, ia),
+            std::printf("ia : %i, density contribution : %12.6f %12.6f %12.6f\n", ia, forces_rho_(0, ia), forces_rho_(1, ia),
                    forces_rho_(2, ia));
         }
     }
@@ -233,9 +233,9 @@ mdarray<double, 2> const& Force::calc_forces_hf()
     symmetrize(forces_hf_);
 
     if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
-        printf("H-F force\n");
+        std::printf("H-F force\n");
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            printf("ia : %i, Hellmann–Feynman : %12.6f %12.6f %12.6f\n", ia, forces_hf_(0, ia), forces_hf_(1, ia),
+            std::printf("ia : %i, Hellmann–Feynman : %12.6f %12.6f %12.6f\n", ia, forces_hf_(0, ia), forces_hf_(1, ia),
                    forces_hf_(2, ia));
         }
     }
@@ -864,31 +864,31 @@ void Force::print_info()
     if (ctx_.comm().rank() == 0) {
         auto print_forces = [&](mdarray<double, 2> const& forces) {
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                printf("atom %4i    force = %15.7f  %15.7f  %15.7f \n", ctx_.unit_cell().atom(ia).type_id(),
+                std::printf("atom %4i    force = %15.7f  %15.7f  %15.7f \n", ctx_.unit_cell().atom(ia).type_id(),
                        forces(0, ia), forces(1, ia), forces(2, ia));
             }
         };
 
-        printf("===== total Forces in Ha/bohr =====\n");
+        std::printf("===== total Forces in Ha/bohr =====\n");
         print_forces(forces_total());
 
-        printf("===== ultrasoft contribution from Qij =====\n");
+        std::printf("===== ultrasoft contribution from Qij =====\n");
         print_forces(forces_us());
 
-        printf("===== non-local contribution from Beta-projectors =====\n");
+        std::printf("===== non-local contribution from Beta-projectors =====\n");
         print_forces(forces_nonloc());
 
-        printf("===== contribution from local potential =====\n");
+        std::printf("===== contribution from local potential =====\n");
         print_forces(forces_vloc());
 
-        printf("===== contribution from core density =====\n");
+        std::printf("===== contribution from core density =====\n");
         print_forces(forces_core());
 
-        printf("===== Ewald forces from ions =====\n");
+        std::printf("===== Ewald forces from ions =====\n");
         print_forces(forces_ewald());
 
         if (ctx_.hubbard_correction()) {
-            printf("===== Ewald forces from hubbard correction =====\n");
+            std::printf("===== Ewald forces from hubbard correction =====\n");
             print_forces(forces_hubbard());
         }
     }

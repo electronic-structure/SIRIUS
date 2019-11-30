@@ -120,9 +120,9 @@ inline void stack_backtrace()
     char **strings;
     int size = backtrace(array, 10);
     strings = backtrace_symbols(array, size);
-    printf ("Stack backtrace:\n");
+    std::printf ("Stack backtrace:\n");
     for (int i = 0; i < size; i++) {
-        printf ("%s\n", strings[i]);
+        std::printf ("%s\n", strings[i]);
     }
     raise(SIGQUIT);
 }
@@ -135,8 +135,8 @@ inline void stack_backtrace()
     if (error != cudaSuccess) {                                                                                    \
         char nm[1024];                                                                                             \
         gethostname(nm, 1024);                                                                                     \
-        printf("hostname: %s\n", nm);                                                                              \
-        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+        std::printf("hostname: %s\n", nm);                                                                              \
+        std::printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
         stack_backtrace();                                                                                         \
     }                                                                                                              \
 }
@@ -150,8 +150,8 @@ inline void stack_backtrace()
     if (error != cudaSuccess) {                                                                                    \
         char nm[1024];                                                                                             \
         gethostname(nm, 1024);                                                                                     \
-        printf("hostname: %s\n", nm);                                                                              \
-        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
+        std::printf("hostname: %s\n", nm);                                                                              \
+        std::printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
         stack_backtrace();                                                                                         \
     }                                                                                                              \
 }
@@ -166,8 +166,8 @@ inline void stack_backtrace()
     if (error != GPU_PREFIX(Success)) {                                                                                     \
         char nm[1024];                                                                                             \
         gethostname(nm, 1024);                                                                                     \
-        printf("hostname: %s\n", nm);                                                                              \
-        printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, GPU_PREFIX(GetErrorString)(error));  \
+        std::printf("hostname: %s\n", nm);                                                                              \
+        std::printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, GPU_PREFIX(GetErrorString)(error));  \
         stack_backtrace();                                                                                         \
     }                                                                                                              \
 }
@@ -273,39 +273,39 @@ inline void print_device_info(int device_id__)
     CALL_DEVICE_API(GetDeviceProperties, (&devprop, device_id__));
 
 #if defined(__CUDA) || defined(__ROCM)
-    printf("  name                             : %s\n",       devprop.name);
-    printf("  major                            : %i\n",       devprop.major);
-    printf("  minor                            : %i\n",       devprop.minor);
-    printf("  clockRate                        : %i kHz\n",   devprop.clockRate);
-    printf("  memoryClockRate                  : %i kHz\n",   devprop.memoryClockRate);
-    printf("  memoryBusWidth                   : %i bits\n",  devprop.memoryBusWidth);
-    printf("  sharedMemPerBlock                : %li kB\n",   devprop.sharedMemPerBlock >> 10);
-    printf("  totalConstMem                    : %li kB\n",   devprop.totalConstMem >> 10);
-    printf("  totalGlobalMem                   : %li kB\n",   devprop.totalGlobalMem >> 10);
-    printf("  available memory                 : %li kB\n",   get_free_mem() >> 10);
-    printf("  l2CacheSize                      : %i kB\n",    devprop.l2CacheSize >> 10);
-    printf("  warpSize                         : %i\n",       devprop.warpSize);
-    printf("  regsPerBlock                     : %i\n",       devprop.regsPerBlock);
-    printf("  canMapHostMemory                 : %i\n",       devprop.canMapHostMemory);
-    printf("  concurrentKernels                : %i\n",       devprop.concurrentKernels);
-    printf("  maxGridSize                      : %i %i %i\n", devprop.maxGridSize[0], devprop.maxGridSize[1], devprop.maxGridSize[2]);
-    printf("  maxThreadsDim                    : %i %i %i\n", devprop.maxThreadsDim[0], devprop.maxThreadsDim[1], devprop.maxThreadsDim[2]);
-    printf("  maxThreadsPerBlock               : %i\n",       devprop.maxThreadsPerBlock);
-    printf("  maxThreadsPerMultiProcessor      : %i\n",       devprop.maxThreadsPerMultiProcessor);
-    printf("  multiProcessorCount              : %i\n",       devprop.multiProcessorCount);
-    printf("  pciBusID                         : %i\n",       devprop.pciBusID);
-    printf("  pciDeviceID                      : %i\n",       devprop.pciDeviceID);
-    printf("  pciDomainID                      : %i\n",       devprop.pciDomainID);
+    std::printf("  name                             : %s\n",       devprop.name);
+    std::printf("  major                            : %i\n",       devprop.major);
+    std::printf("  minor                            : %i\n",       devprop.minor);
+    std::printf("  clockRate                        : %i kHz\n",   devprop.clockRate);
+    std::printf("  memoryClockRate                  : %i kHz\n",   devprop.memoryClockRate);
+    std::printf("  memoryBusWidth                   : %i bits\n",  devprop.memoryBusWidth);
+    std::printf("  sharedMemPerBlock                : %li kB\n",   devprop.sharedMemPerBlock >> 10);
+    std::printf("  totalConstMem                    : %li kB\n",   devprop.totalConstMem >> 10);
+    std::printf("  totalGlobalMem                   : %li kB\n",   devprop.totalGlobalMem >> 10);
+    std::printf("  available memory                 : %li kB\n",   get_free_mem() >> 10);
+    std::printf("  l2CacheSize                      : %i kB\n",    devprop.l2CacheSize >> 10);
+    std::printf("  warpSize                         : %i\n",       devprop.warpSize);
+    std::printf("  regsPerBlock                     : %i\n",       devprop.regsPerBlock);
+    std::printf("  canMapHostMemory                 : %i\n",       devprop.canMapHostMemory);
+    std::printf("  concurrentKernels                : %i\n",       devprop.concurrentKernels);
+    std::printf("  maxGridSize                      : %i %i %i\n", devprop.maxGridSize[0], devprop.maxGridSize[1], devprop.maxGridSize[2]);
+    std::printf("  maxThreadsDim                    : %i %i %i\n", devprop.maxThreadsDim[0], devprop.maxThreadsDim[1], devprop.maxThreadsDim[2]);
+    std::printf("  maxThreadsPerBlock               : %i\n",       devprop.maxThreadsPerBlock);
+    std::printf("  maxThreadsPerMultiProcessor      : %i\n",       devprop.maxThreadsPerMultiProcessor);
+    std::printf("  multiProcessorCount              : %i\n",       devprop.multiProcessorCount);
+    std::printf("  pciBusID                         : %i\n",       devprop.pciBusID);
+    std::printf("  pciDeviceID                      : %i\n",       devprop.pciDeviceID);
+    std::printf("  pciDomainID                      : %i\n",       devprop.pciDomainID);
 #if defined(__CUDA)
-    printf("  regsPerMultiprocessor            : %i\n",       devprop.regsPerMultiprocessor);
-    printf("  asyncEngineCount                 : %i\n" ,      devprop.asyncEngineCount);
-    printf("  ECCEnabled                       : %i\n",       devprop.ECCEnabled);
-    printf("  memPitch                         : %li\n",      devprop.memPitch);
+    std::printf("  regsPerMultiprocessor            : %i\n",       devprop.regsPerMultiprocessor);
+    std::printf("  asyncEngineCount                 : %i\n" ,      devprop.asyncEngineCount);
+    std::printf("  ECCEnabled                       : %i\n",       devprop.ECCEnabled);
+    std::printf("  memPitch                         : %li\n",      devprop.memPitch);
 #endif
     //this is cuda10
     //printf("  uuid                             : ");
     //for (int s = 0; s < 16; s++) {
-    //    printf("%#2x ", (unsigned char)devprop.uuid.bytes[s]);
+    //    std::printf("%#2x ", (unsigned char)devprop.uuid.bytes[s]);
     //}
     //printf("\n");
 #endif
@@ -475,7 +475,7 @@ inline void check_last_error()
     cudaDeviceSynchronize();
     cudaError_t error = cudaGetLastError();
     if (error != cudaSuccess) {
-        printf("CUDA error != cudaSuccess\n");
+        std::printf("CUDA error != cudaSuccess\n");
     }
 }
 

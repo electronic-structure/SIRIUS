@@ -193,7 +193,7 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
     }
 
     if ((ctx_.control().verbosity_ >= 1) && (ctx_.comm().rank() == 0)) {
-        printf("\n hub Energy (total) %.5lf  (dc) %.5lf\n", this->hubbard_energy_, this->hubbard_energy_dc_contribution_);
+        std::printf("\n hub Energy (total) %.5lf  (dc) %.5lf\n", this->hubbard_energy_, this->hubbard_energy_dc_contribution_);
     }
 }
 
@@ -342,7 +342,7 @@ Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
     this->hubbard_energy_ = this->hubbard_energy_noflip_ + this->hubbard_energy_flip_ - this->hubbard_energy_dc_contribution_;
 
     if ((ctx_.control().verbosity_ >= 1) && (ctx_.comm().rank() == 0)) {
-        printf("\n hub Energy (total) %.5lf (no-flip) %.5lf (flip) %.5lf (dc) %.5lf\n", this->hubbard_energy_, this->hubbard_energy_noflip_,
+        std::printf("\n hub Energy (total) %.5lf (no-flip) %.5lf (flip) %.5lf (dc) %.5lf\n", this->hubbard_energy_, this->hubbard_energy_noflip_,
                this->hubbard_energy_flip_, this->hubbard_energy_dc_contribution_);
     }
 }

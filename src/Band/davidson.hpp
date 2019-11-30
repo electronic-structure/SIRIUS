@@ -236,7 +236,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
         ////if (ctx_.control().verbosity_ >= 4 && kp__->comm().rank() == 0) {
         //    for (int i = 0; i < num_bands; i++) {
-        //        printf("eval[%i]=%20.16f\n", i, eval[i]);
+        //        std::printf("eval[%i]=%20.16f\n", i, eval[i]);
         //    }
         ////}
 
@@ -367,10 +367,10 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
             PROFILE_STOP("sirius::davidson|evp");
 
             //if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
-                printf("step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
+                std::printf("step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
                 //if (ctx_.control().verbosity_ >= 4) {
                     for (int i = 0; i < num_bands; i++) {
-                        printf("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]),
+                        std::printf("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]),
                              occupancy__(i, ispin_step));
                     }
                 //}

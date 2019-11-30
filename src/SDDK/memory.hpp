@@ -660,11 +660,11 @@ void memory_pool_deleter::memory_pool_deleter_impl::free(void* ptr__)
 #define mdarray_assert(condition__)                             \
 {                                                               \
     if (!(condition__)) {                                       \
-        printf("Assertion (%s) failed ", #condition__);         \
-        printf("at line %i of file %s\n", __LINE__, __FILE__);  \
-        printf("array label: %s\n", label_.c_str());            \
+        std::printf("Assertion (%s) failed ", #condition__);         \
+        std::printf("at line %i of file %s\n", __LINE__, __FILE__);  \
+        std::printf("array label: %s\n", label_.c_str());            \
         for (int i = 0; i < N; i++) {                           \
-            printf("dim[%i].size = %li\n", i, dims_[i].size()); \
+            std::printf("dim[%i].size = %li\n", i, dims_[i].size()); \
         }                                                       \
         raise(SIGTERM);                                         \
         exit(-13);                                              \
@@ -840,7 +840,7 @@ class mdarray
                 mdarray_assert(raw_ptr_device_ != nullptr);
                 return &raw_ptr_device_[idx__];
 #else
-                printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
+                std::printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
                 throw std::runtime_error("");
 #endif
             }
@@ -1339,7 +1339,7 @@ class mdarray
     }
 
     /// Compute hash of the array
-    /** Example: printf("hash(h) : %16llX\n", h.hash()); */
+    /** Example: std::printf("hash(h) : %16llX\n", h.hash()); */
     inline uint64_t hash(uint64_t h__ = 5381) const
     {
         for (size_t i = 0; i < size() * sizeof(T); i++) {
@@ -1405,7 +1405,7 @@ class mdarray
     {
         for (int i = 0; i < N; i++) {
             if (dest__.dims_[i].begin() != dims_[i].begin() || dest__.dims_[i].end() != dims_[i].end()) {
-                printf("error at line %i of file %s: array dimensions don't match\n", __LINE__, __FILE__);
+                std::printf("error at line %i of file %s: array dimensions don't match\n", __LINE__, __FILE__);
                 raise(SIGTERM);
                 exit(-1);
             }

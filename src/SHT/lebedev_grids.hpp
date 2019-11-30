@@ -123,7 +123,7 @@ static int Lebedev_Laikov_npoint(int lvalue)
         }
     }
   else {
-      printf(" Lebedev_Laikov_npoint: lvalue > 131.  No grids of this type available.\n");
+      std::printf(" Lebedev_Laikov_npoint: lvalue > 131.  No grids of this type available.\n");
       abort();
     }
   return 0;
