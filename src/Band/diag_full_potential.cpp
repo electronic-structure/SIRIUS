@@ -184,7 +184,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     }
 
     if (ctx_.control().verification_ >= 2) {
-        kp.message(1, __func__, "checking application of H and O\n");
+        kp.message(1, __func__, "%s", "checking application of H and O\n");
         /* check application of H and O */
         Wave_functions hphi(kp.gkvec_partition(), unit_cell_.num_atoms(),
                             [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
@@ -409,7 +409,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                 break;
             } else { /* otherwise, set Psi as a new trial basis */
-                kp.message(3, __func__, "subspace size limit reached\n");
+                kp.message(3, __func__, "%s", "subspace size limit reached\n");
 
                 if (itso.converge_by_energy_) {
                     transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
@@ -560,7 +560,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     phi.copy_from(ctx_.processing_unit(), num_bands, psi, 0, 0, 0, nlo + ncomp);
 
     if (ctx_.control().print_checksum_) {
-        kp.message(1, __func__, "checksum of initial wave-functions\n");
+        kp.message(1, __func__, "%s", "checksum of initial wave-functions\n");
         psi.print_checksum(ctx_.processing_unit(), "psi", 0, num_bands);
         phi.print_checksum(ctx_.processing_unit(), "phi", 0,  nlo + ncomp + num_bands);
     }
@@ -628,7 +628,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                 break;
             } else { /* otherwise, set Psi as a new trial basis */
-                kp.message(3, __func__, "subspace size limit reached\n");
+                kp.message(3, __func__, "%s", "subspace size limit reached\n");
                 /* update basis functions */
                 /* first nlo + ncomp functions are fixed, don't update them */
                 phi.copy_from(ctx_.processing_unit(), num_bands, psi, 0, 0, 0, nlo + ncomp);

@@ -144,7 +144,7 @@ Band::solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const
     /* synchronize eigen-values */
     kset__.sync_band_energies();
 
-    ctx_.message(2, __func__, "Lowest band energies\n");
+    ctx_.message(2, __func__, "%s", "Lowest band energies\n");
     if (ctx_.control().verbosity_ >= 2 && ctx_.comm().rank() == 0) {
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             std::printf("ik : %2i, ", ik);

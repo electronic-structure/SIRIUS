@@ -239,7 +239,7 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         potential_.generate(density_);
 
         if (!ctx_.full_potential() && ctx_.control().verification_ >= 2) {
-            ctx_.message(1, __func__, "checking functional derivative of Exc\n");
+            ctx_.message(1, __func__, "%s", "checking functional derivative of Exc\n");
             double eps{0.1};
             for (int i = 0; i < 10; i++) {
                 Potential p1(ctx_);
