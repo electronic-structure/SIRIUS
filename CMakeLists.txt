@@ -104,6 +104,7 @@ elseif(USE_CRAY_LIBSCI)
   find_package(CRAY_LIBSCI REQUIRED)
   set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${CRAY_LIBSCI_LIBRARIES}")
 else()
+  set(BLA_VENDOR Generic)
   find_package(LAPACK REQUIRED)
   if(USE_SCALAPACK)
     find_package(SCALAPACK REQUIRED) # just sets scalapack_DIR
