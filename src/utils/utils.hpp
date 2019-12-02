@@ -62,8 +62,8 @@ inline void terminate(const char* file_name__, int line_number__, const std::str
 /// Issue a warning message.
 inline void warning(const char* file_name__, int line_number__, const std::string& message__)
 {
-    printf("\n=== Warning at line %i of file %s ===\n", line_number__, file_name__);
-    printf("%s\n\n", message__.c_str());
+    std::printf("\n=== Warning at line %i of file %s ===\n", line_number__, file_name__);
+    std::printf("%s\n\n", message__.c_str());
 }
 
 /// Issue a warning message.
@@ -80,17 +80,17 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 
 inline void print_checksum(std::string label__, double cs__)
 {
-    printf("checksum(%s): %18.12f\n", label__.c_str(), cs__);
+    std::printf("checksum(%s): %18.12f\n", label__.c_str(), cs__);
 }
 
 inline void print_checksum(std::string label__, std::complex<double> cs__)
 {
-    printf("checksum(%s): %18.12f %18.12f\n", label__.c_str(), cs__.real(), cs__.imag());
+    std::printf("checksum(%s): %18.12f %18.12f\n", label__.c_str(), cs__.real(), cs__.imag());
 }
 
 inline void print_hash(std::string label__, unsigned long long int hash__)
 {
-    printf("hash(%s): %llx\n", label__.c_str(), hash__);
+    std::printf("hash(%s): %llx\n", label__.c_str(), hash__);
 }
 
 /// Maximum number of \f$ \ell, m \f$ combinations for a given \f$ \ell_{max} \f$
@@ -245,7 +245,7 @@ inline std::complex<double> round(std::complex<double> a__, int n__)
 }
 
 /// Simple hash function.
-/** Example: printf("hash: %16llX\n", hash()); */
+/** Example: std::printf("hash: %16llX\n", hash()); */
 inline uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
 {
     unsigned char const* p = static_cast<unsigned char const*>(buff);

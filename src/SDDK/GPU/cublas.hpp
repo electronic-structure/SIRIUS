@@ -36,23 +36,23 @@ inline void error_message(cublasStatus_t status)
 {
     switch (status) {
         case CUBLAS_STATUS_NOT_INITIALIZED: {
-            printf("the library was not initialized\n");
+            std::printf("the library was not initialized\n");
             break;
         }
         case CUBLAS_STATUS_INVALID_VALUE: {
-            printf("the parameters m,n,k<0\n");
+            std::printf("the parameters m,n,k<0\n");
             break;
         }
         case CUBLAS_STATUS_ARCH_MISMATCH: {
-            printf("the device does not support double-precision\n");
+            std::printf("the device does not support double-precision\n");
             break;
         }
         case CUBLAS_STATUS_EXECUTION_FAILED: {
-            printf("the function failed to launch on the GPU\n");
+            std::printf("the function failed to launch on the GPU\n");
             break;
         }
         default: {
-            printf("cublas status unknown");
+            std::printf("cublas status unknown");
         }
     }
 }
@@ -141,8 +141,8 @@ inline cublasDiagType_t get_cublasDiagType_t(char c)
         error_message(status);                                                      \
         char nm[1024];                                                              \
         gethostname(nm, 1024);                                                      \
-        printf("hostname: %s\n", nm);                                               \
-        printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
+        std::printf("hostname: %s\n", nm);                                               \
+        std::printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
         stack_backtrace();                                                          \
     }                                                                               \
 }
@@ -157,8 +157,8 @@ inline cublasDiagType_t get_cublasDiagType_t(char c)
         error_message(status);                                                      \
         char nm[1024];                                                              \
         gethostname(nm, 1024);                                                      \
-        printf("hostname: %s\n", nm);                                               \
-        printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
+        std::printf("hostname: %s\n", nm);                                               \
+        std::printf("Error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
         stack_backtrace();                                                          \
     }                                                                               \
 }

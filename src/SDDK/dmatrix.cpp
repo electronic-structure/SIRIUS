@@ -265,23 +265,23 @@ void dmatrix<double_complex>::serialize(std::string name__, int n__) const
         // std::cout << "mtrx: " << name__ << std::endl;
         // std::cout << dict.dump(4);
 
-        printf("matrix label: %s\n", name__.c_str());
-        printf("{\n");
+        std::printf("matrix label: %s\n", name__.c_str());
+        std::printf("{\n");
         for (int i = 0; i < n__; i++) {
-            printf("{");
+            std::printf("{");
             for (int j = 0; j < n__; j++) {
-                printf("%18.13f + I * %18.13f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
+                std::printf("%18.13f + I * %18.13f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
                 if (j != n__ - 1) {
-                    printf(",");
+                    std::printf(",");
                 }
             }
             if (i != n__ - 1) {
-                printf("},\n");
+                std::printf("},\n");
             } else {
-                printf("}\n");
+                std::printf("}\n");
             }
         }
-        printf("}\n");
+        std::printf("}\n");
     }
 
     // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
@@ -319,23 +319,23 @@ void dmatrix<double>::serialize(std::string name__, int n__) const
     // ofs << dict.dump(4);
 
     if (blacs_grid_->comm().rank() == 0) {
-        printf("matrix label: %s\n", name__.c_str());
-        printf("{\n");
+        std::printf("matrix label: %s\n", name__.c_str());
+        std::printf("{\n");
         for (int i = 0; i < n__; i++) {
-            printf("{");
+            std::printf("{");
             for (int j = 0; j < n__; j++) {
-                printf("%18.13f", full_mtrx(i, j));
+                std::printf("%18.13f", full_mtrx(i, j));
                 if (j != n__ - 1) {
-                    printf(",");
+                    std::printf(",");
                 }
             }
             if (i != n__ - 1) {
-                printf("},\n");
+                std::printf("},\n");
             } else {
-                printf("}\n");
+                std::printf("}\n");
             }
         }
-        printf("}\n");
+        std::printf("}\n");
     }
 }
 

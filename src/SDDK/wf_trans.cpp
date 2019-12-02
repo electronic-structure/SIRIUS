@@ -158,7 +158,7 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
         if (sddk_pp) {
             time += omp_get_wtime();
             int k = wf_in__[0]->gkvec().num_gvec() + wf_in__[0]->num_mt_coeffs();
-            printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
+            std::printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
                    ngop * m__ * n__ * k * nwf / time, k, n__, m__, nwf, time);
         }
         return;
@@ -307,7 +307,7 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
         time += omp_get_wtime();
         int k = wf_in__[0]->gkvec().num_gvec() + wf_in__[0]->num_mt_coeffs();
         if (comm.rank() == 0) {
-            printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec), time_mpi=%f "
+            std::printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec), time_mpi=%f "
                    "(sec)]\n",
                    ngop * m__ * n__ * k * nwf / time / comm.size(), k, n__, m__, nwf, time, time_mpi);
         }

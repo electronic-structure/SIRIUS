@@ -125,7 +125,7 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
         if (sddk_pp) {
             time += omp_get_wtime();
             int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();
-            printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
+            std::printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
                    ngop * m__ * n__ * k / time, m__, n__, k, time);
         }
         return;
@@ -140,7 +140,7 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
             if (sddk_pp) {
                 std::chrono::duration<double> t = std::chrono::high_resolution_clock::now()- t1;
                 if (comm.rank() == 0) {
-                    printf("inner() copyout speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t.count());
+                    std::printf("inner() copyout speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t.count());
                 }
             }
         }
@@ -172,7 +172,7 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
             if (sddk_pp) {
                 std::chrono::duration<double> t = std::chrono::high_resolution_clock::now()- t1;
                 if (comm.rank() == 0) {
-                    printf("inner() copyin speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t.count());
+                    std::printf("inner() copyin speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t.count());
                 }
             }
         }
@@ -180,7 +180,7 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
             time += omp_get_wtime();
             int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();
             if (comm.rank() == 0) {
-                printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
+                std::printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
                        ngop * m__ * n__ * k / time / comm.size(), m__, n__, k, time);
             }
         }
@@ -388,7 +388,7 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
         time += omp_get_wtime();
         int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();
         if (comm.rank() == 0) {
-            printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
+            std::printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
                    ngop * m__ * n__ * k / time / comm.size(), m__, n__, k, time);
         }
     }

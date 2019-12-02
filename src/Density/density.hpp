@@ -380,7 +380,7 @@ class Density : public Field4D
 //            diff += fabs(val_it - val_mt);
 //        }
 //    }
-//    printf("Total and average charge difference at MT boundary : %.12f %.12f\n", diff, diff / ctx_.num_atoms() / sht.num_points());
+//    std::printf("Total and average charge difference at MT boundary : %.12f %.12f\n", diff, diff / ctx_.num_atoms() / sht.num_points());
 
     }
 

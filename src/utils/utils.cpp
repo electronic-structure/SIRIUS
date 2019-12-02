@@ -139,7 +139,7 @@ void get_proc_status(size_t* VmHWM__, size_t* VmRSS__)
                 s >> units;
 
                 if (units != "kB") {
-                    printf("runtime::get_proc_status(): wrong units");
+                    std::printf("runtime::get_proc_status(): wrong units");
                 } else {
                     *VmHWM__ = tmp * 1024;
                 }
@@ -152,7 +152,7 @@ void get_proc_status(size_t* VmHWM__, size_t* VmRSS__)
                 s >> units;
 
                 if (units != "kB") {
-                    printf("runtime::get_proc_status(): wrong units");
+                    std::printf("runtime::get_proc_status(): wrong units");
                 } else {
                     *VmRSS__ = tmp * 1024;
                 }
