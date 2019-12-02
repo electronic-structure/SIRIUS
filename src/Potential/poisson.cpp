@@ -86,19 +86,19 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
 
         switch (ctx_.processing_unit()) {
             case device_t::CPU: {
-                linalg<device_t::CPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
-                                            qa, pf, qapf);
+                linalg2(linalg_t::blas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
+                    unit_cell_.atom_type(iat).num_atoms(), &linalg_const<double_complex>::one(),
+                    qa.at(memory_t::host), qa.ld(), pf.at(memory_t::host), pf.ld(),
+                    &linalg_const<double_complex>::zero(), qapf.at(memory_t::host), qapf.ld());
                 break;
             }
             case device_t::GPU: {
-#if defined(__GPU)
                 qa.copy_to(memory_t::device);
-                linalg<device_t::GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
-                                            qa.at(memory_t::device), qa.ld(),
-                                            pf.at(memory_t::device), pf.ld(),
-                                            qapf.at(memory_t::device), qapf.ld());
+                linalg2(linalg_t::gpublas).gemm('N', 'C', ctx_.lmmax_rho(), ctx_.gvec().count(),
+                    unit_cell_.atom_type(iat).num_atoms(), &linalg_const<double_complex>::one(),
+                    qa.at(memory_t::device), qa.ld(), pf.at(memory_t::device), pf.ld(),
+                    &linalg_const<double_complex>::zero(), qapf.at(memory_t::device), qapf.ld());
                 qapf.copy_to(memory_t::host);
-#endif
                 break;
             }
         }
@@ -205,6 +205,13 @@ void Potential::poisson(Periodic_function<double> const& rho)
             hartree_potential_->f_pw_local(igloc) = (fourpi * rho.f_pw_local(igloc) / std::pow(ctx_.gvec().gvec_len(ig), 2));
         }
     } else {
+        /* reference paper:
+
+           Supercell technique for total-energy calculations of finite charged and polar systems
+           M. R. Jarvis, I. D. White, R. W. Godby, and M. C. Payne
+           Phys. Rev. B 56, 14972 – Published 15 December 1997
+           DOI:https://doi.org/10.1103/PhysRevB.56.14972
+        */
         double R_cut = 0.5 * std::pow(unit_cell_.omega(), 1.0 / 3);
         #pragma omp parallel for schedule(static)
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {

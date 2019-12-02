@@ -50,7 +50,7 @@ void K_point::generate_atomic_wave_functions(const basis_functions_index& index,
 
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(utils::lmmax(lmax));
-        SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
+        sht::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
 
         /* need to find the index of the atom type get values of radial
            integrals for a given G+k vector length */

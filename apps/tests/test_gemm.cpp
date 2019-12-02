@@ -97,7 +97,8 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     utils::timer t1("gemm_only");
     gemm_type one = 1;
     gemm_type zero = 0;
-    linalg<device_t::CPU>::gemm(transa, 0, M, N - n, K, one, a, 0, 0, b, 0, n, zero, c, 0, 0);
+    const char TA [] = {'N', 'T', 'C'};
+    linalg2(linalg_t::scalapack).gemm(TA[transa], 'N', M, N - n, K, &one, a, 0, 0, b, 0, n, &zero, c, 0, 0);
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif

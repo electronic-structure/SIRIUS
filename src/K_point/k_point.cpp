@@ -986,7 +986,7 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
 
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(lmmax);
-        SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
+        sht::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
 
         /* get all values of the radial integrals for a given G+k vector */
         std::vector<mdarray<double, 1>> ri_values(unit_cell_.num_atom_types());

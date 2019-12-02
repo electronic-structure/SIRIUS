@@ -95,8 +95,10 @@ Hamiltonian0::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<doub
                                                                  gaunt_coefs_->gaunt_vector(lm1, lm2));
         }
     }
-    linalg<sddk::device_t::CPU>::gemm(0, 1, ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm__,
-                                      hmt, halm__);
+    linalg2(linalg_t::blas).gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
+                                 &linalg_const<double_complex>::one(), alm__.at(memory_t::host), alm__.ld(),
+                                 hmt.at(memory_t::host), hmt.ld(), &linalg_const<double_complex>::zero(),
+                                 halm__.at(memory_t::host), halm__.ld());
 }
 
 void

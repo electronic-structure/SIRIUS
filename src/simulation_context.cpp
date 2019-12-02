@@ -79,7 +79,7 @@ matrix<double_complex> Simulation_context::generate_gvec_ylm(int lmax__)
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
         auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
-        SHT::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
+        sht::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
     return gvec_ylm;
 }
@@ -971,6 +971,27 @@ void Simulation_context::update()
         spfft_transform_.reset(new spfft::Transform(spfft_grid_->create_transform(
             spfft_pu, fft_type, fft_grid_[0], fft_grid_[1], fft_grid_[2],
             spl_z.local_size(), gvec_partition_->gvec_count_fft(), SPFFT_INDEX_TRIPLETS, gv.at(memory_t::host))));
+
+        /* copy G-vectors to GPU; this is done once because Miller indices of G-vectors
+           do not change during the execution */
+        switch (this->processing_unit()) {
+            case device_t::CPU: {
+                break;
+            }
+            case device_t::GPU: {
+                gvec_coord_ = sddk::mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
+                #pragma omp parallel for schedule(static)
+                for (int igloc = 0; igloc < gvec().count(); igloc++) {
+                    int ig = gvec().offset() + igloc;
+                    auto G = gvec().gvec(ig);
+                    for (int x : {0, 1, 2}) {
+                        gvec_coord_(igloc, x) = G[x];
+                    }
+                }
+                gvec_coord_.allocate(memory_t::device).copy_to(memory_t::device);
+                break;
+            }
+        }
     } else {
         gvec_->lattice_vectors(rlv);
     }
@@ -1063,16 +1084,23 @@ void Simulation_context::update()
         }
     }
 
-    if (processing_unit() == device_t::GPU) {
-        gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host, "gvec_coord_");
-        for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            int ig = gvec().offset() + igloc;
-            auto G = gvec().gvec(ig);
-            for (int x : {0, 1, 2}) {
-                gvec_coord_(igloc, x) = G[x];
-            }
+    /* precompute some G-vector related arrays */
+    gvec_tp_ = sddk::mdarray<double, 2>(gvec().count(), 2, memory_t::host, "gvec_tp_");
+    #pragma omp parallel for schedule(static)
+    for (int igloc = 0; igloc < gvec().count(); igloc++) {
+        auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
+        gvec_tp_(igloc, 0) = rtp[1];
+        gvec_tp_(igloc, 1) = rtp[2];
+    }
+
+    switch (this->processing_unit()) {
+        case device_t::CPU: {
+            break;
         }
-        gvec_coord_.allocate(memory_t::device).copy_to(memory_t::device);
+        case device_t::GPU: {
+            gvec_tp_.allocate(memory_t::device).copy_to(memory_t::device);
+            break;
+        }
     }
 
     if (full_potential()) {
@@ -1081,13 +1109,15 @@ void Simulation_context::update()
 
     if (!full_potential()) {
         memory_pool* mp{nullptr};
-        switch (processing_unit()) {
+        memory_pool* mpd{nullptr};
+        switch (this->processing_unit()) {
             case device_t::CPU: {
                 mp = &mem_pool(memory_t::host);
                 break;
             }
             case device_t::GPU: {
-                mp = &mem_pool(memory_t::host_pinned);
+                mp  = &mem_pool(memory_t::host_pinned);
+                mpd = &mem_pool(memory_t::device);
                 break;
             }
         }
@@ -1095,7 +1125,7 @@ void Simulation_context::update()
             if (unit_cell().atom_type(iat).augment() && unit_cell().atom_type(iat).num_atoms() > 0) {
                 augmentation_op_[iat] = std::unique_ptr<Augmentation_operator>(
                     new Augmentation_operator(unit_cell().atom_type(iat), gvec()));
-                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), *mp);
+                augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), gvec_tp_, *mp, mpd);
 
             } else {
                 augmentation_op_[iat] = nullptr;

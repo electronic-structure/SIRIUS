@@ -280,7 +280,6 @@ void Gvec::find_gvec_shells()
     gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
     std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at(memory_t::host));
 
-
     /* map from global index of G-shell to a list of local G-vectors */
     std::map<int, std::vector<int>> gshmap;
     for (int igloc = 0; igloc < this->count(); igloc++) {

@@ -774,7 +774,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
                 }
             }
         } else {
-            tranc(nfv, nfv, h, 0, nfv, h, nfv, 0);
+            linalg2(linalg_t::scalapack).tranc(nfv, nfv, h, 0, nfv, h, nfv, 0);
         }
 
         for (int i = 0; i < nfv; i++) {
