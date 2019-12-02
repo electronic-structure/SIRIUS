@@ -22,7 +22,7 @@ void print_memory_usage(const char* file__, int line__)
         size_t gpu_mem = acc::get_free_mem();
         n += snprintf(&str[n], 2048, ", GPU free memory: %i Mb", static_cast<int>(gpu_mem >> 20));
     }
-    printf("%s\n", &str[0]);
+    std::printf("%s\n", &str[0]);
 }
 
 double unit_step_function_form_factors(double R__, double g__)
@@ -528,26 +528,26 @@ void Simulation_context::print_info() const
     char buf[100];
     strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
 
-    printf("\n");
-    printf("SIRIUS version : %i.%i.%i\n", sirius::major_version(), sirius::minor_version(), sirius::revision());
-    printf("git hash       : %s\n", sirius::git_hash().c_str());
-    printf("git branch     : %s\n", sirius::git_branchname().c_str());
-    printf("build time     : %s\n", sirius::build_date().c_str());
-    printf("start time     : %s\n", buf);
-    printf("\n");
-    printf("number of MPI ranks           : %i\n", comm_.size());
+    std::printf("\n");
+    std::printf("SIRIUS version : %i.%i.%i\n", sirius::major_version(), sirius::minor_version(), sirius::revision());
+    std::printf("git hash       : %s\n", sirius::git_hash().c_str());
+    std::printf("git branch     : %s\n", sirius::git_branchname().c_str());
+    std::printf("build time     : %s\n", sirius::build_date().c_str());
+    std::printf("start time     : %s\n", buf);
+    std::printf("\n");
+    std::printf("number of MPI ranks           : %i\n", comm_.size());
     if (mpi_grid_) {
-        printf("MPI grid                      :");
+        std::printf("MPI grid                      :");
         for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
-            printf(" %i", mpi_grid_->communicator(1 << i).size());
+            std::printf(" %i", mpi_grid_->communicator(1 << i).size());
         }
-        printf("\n");
+        std::printf("\n");
     }
-    printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
-    printf("number of MPI ranks per node  : %i\n", num_ranks_per_node());
-    printf("page size (Kb)                : %li\n", utils::get_page_size() >> 10);
-    printf("number of pages               : %li\n", utils::get_num_pages());
-    printf("available memory (GB)         : %li\n", utils::get_total_memory() >> 30);
+    std::printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
+    std::printf("number of MPI ranks per node  : %i\n", num_ranks_per_node());
+    std::printf("page size (Kb)                : %li\n", utils::get_page_size() >> 10);
+    std::printf("number of pages               : %li\n", utils::get_num_pages());
+    std::printf("available memory (GB)         : %li\n", utils::get_total_memory() >> 30);
 
     std::string headers[]         = {"FFT context for density and potential", "FFT context for coarse grid"};
     double cutoffs[]              = {pw_cutoff(), 2 * gk_cutoff()};
@@ -555,76 +555,76 @@ void Simulation_context::print_info() const
     FFT3D_grid fft_grids[]        = {this->fft_grid_, this->fft_coarse_grid_};
     Gvec const* gvecs[]           = {&gvec(), &gvec_coarse()};
 
-    printf("\n");
+    std::printf("\n");
     for (int i = 0; i < 2; i++) {
-        printf("%s\n", headers[i].c_str());
-        printf("=====================================\n");
-        printf("  comm size                             : %i\n", comms[i]->size());
-        printf("  plane wave cutoff                     : %f\n", cutoffs[i]);
-        printf("  grid size                             : %i %i %i   total : %i\n", fft_grids[i][0],
+        std::printf("%s\n", headers[i].c_str());
+        std::printf("=====================================\n");
+        std::printf("  comm size                             : %i\n", comms[i]->size());
+        std::printf("  plane wave cutoff                     : %f\n", cutoffs[i]);
+        std::printf("  grid size                             : %i %i %i   total : %i\n", fft_grids[i][0],
                fft_grids[i][1], fft_grids[i][2], fft_grids[i].num_points());
-        printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grids[i].limits(0).first,
+        std::printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grids[i].limits(0).first,
                fft_grids[i].limits(0).second, fft_grids[i].limits(1).first, fft_grids[i].limits(1).second,
                fft_grids[i].limits(2).first, fft_grids[i].limits(2).second);
-        printf("  number of G-vectors within the cutoff : %i\n", gvecs[i]->num_gvec());
-        printf("  local number of G-vectors             : %i\n", gvecs[i]->count());
-        printf("  number of G-shells                    : %i\n", gvecs[i]->num_shells());
-        printf("\n");
+        std::printf("  number of G-vectors within the cutoff : %i\n", gvecs[i]->num_gvec());
+        std::printf("  local number of G-vectors             : %i\n", gvecs[i]->count());
+        std::printf("  number of G-shells                    : %i\n", gvecs[i]->num_shells());
+        std::printf("\n");
     }
-    printf("number of local G-vector blocks: %i\n", split_gvec_local().num_ranks());
+    std::printf("number of local G-vector blocks: %i\n", split_gvec_local().num_ranks());
 
     unit_cell_.print_info(control().verbosity_);
     for (int i = 0; i < unit_cell_.num_atom_types(); i++) {
         unit_cell_.atom_type(i).print_info();
     }
 
-    printf("\n");
-    printf("Basic information\n");
-    for (int i = 0; i < 80; i++, printf("-"));
-    printf("\n");
-    printf("total nuclear charge               : %i\n", unit_cell().total_nuclear_charge());
-    printf("number of core electrons           : %f\n", unit_cell().num_core_electrons());
-    printf("number of valence electrons        : %f\n", unit_cell().num_valence_electrons());
-    printf("total number of electrons          : %f\n", unit_cell().num_electrons());
-    printf("extra charge                       : %f\n", parameters_input().extra_charge_);
-    printf("total number of aw basis functions : %i\n", unit_cell().mt_aw_basis_size());
-    printf("total number of lo basis functions : %i\n", unit_cell().mt_lo_basis_size());
-    printf("number of first-variational states : %i\n", num_fv_states());
-    printf("number of bands                    : %i\n", num_bands());
-    printf("number of spins                    : %i\n", num_spins());
-    printf("number of magnetic dimensions      : %i\n", num_mag_dims());
-    printf("lmax_apw                           : %i\n", lmax_apw());
-    printf("lmax_rho                           : %i\n", lmax_rho());
-    printf("lmax_pot                           : %i\n", lmax_pot());
-    printf("lmax_rf                            : %i\n", unit_cell_.lmax());
-    printf("smearing width                     : %f\n", smearing_width());
-    printf("cyclic block size                  : %i\n", cyclic_block_size());
-    printf("|G+k| cutoff                       : %f\n", gk_cutoff());
+    std::printf("\n");
+    std::printf("Basic information\n");
+    for (int i = 0; i < 80; i++, std::printf("-"));
+    std::printf("\n");
+    std::printf("total nuclear charge               : %i\n", unit_cell().total_nuclear_charge());
+    std::printf("number of core electrons           : %f\n", unit_cell().num_core_electrons());
+    std::printf("number of valence electrons        : %f\n", unit_cell().num_valence_electrons());
+    std::printf("total number of electrons          : %f\n", unit_cell().num_electrons());
+    std::printf("extra charge                       : %f\n", parameters_input().extra_charge_);
+    std::printf("total number of aw basis functions : %i\n", unit_cell().mt_aw_basis_size());
+    std::printf("total number of lo basis functions : %i\n", unit_cell().mt_lo_basis_size());
+    std::printf("number of first-variational states : %i\n", num_fv_states());
+    std::printf("number of bands                    : %i\n", num_bands());
+    std::printf("number of spins                    : %i\n", num_spins());
+    std::printf("number of magnetic dimensions      : %i\n", num_mag_dims());
+    std::printf("lmax_apw                           : %i\n", lmax_apw());
+    std::printf("lmax_rho                           : %i\n", lmax_rho());
+    std::printf("lmax_pot                           : %i\n", lmax_pot());
+    std::printf("lmax_rf                            : %i\n", unit_cell_.lmax());
+    std::printf("smearing width                     : %f\n", smearing_width());
+    std::printf("cyclic block size                  : %i\n", cyclic_block_size());
+    std::printf("|G+k| cutoff                       : %f\n", gk_cutoff());
 
     std::string reln[] = {"valence relativity                 : ", "core relativity                    : "};
 
     relativity_t relt[] = {valence_relativity_, core_relativity_};
     for (int i = 0; i < 2; i++) {
-        printf("%s", reln[i].c_str());
+        std::printf("%s", reln[i].c_str());
         switch (relt[i]) {
             case relativity_t::none: {
-                printf("none\n");
+                std::printf("none\n");
                 break;
             }
             case relativity_t::koelling_harmon: {
-                printf("Koelling-Harmon\n");
+                std::printf("Koelling-Harmon\n");
                 break;
             }
             case relativity_t::zora: {
-                printf("zora\n");
+                std::printf("zora\n");
                 break;
             }
             case relativity_t::iora: {
-                printf("iora\n");
+                std::printf("iora\n");
                 break;
             }
             case relativity_t::dirac: {
-                printf("Dirac\n");
+                std::printf("Dirac\n");
                 break;
             }
         }
@@ -634,45 +634,45 @@ void Simulation_context::print_info() const
 
     ev_solver_t evst[] = {std_evp_solver_type(), gen_evp_solver_type()};
     for (int i = 0; i < 2; i++) {
-        printf("%s", evsn[i].c_str());
+        std::printf("%s", evsn[i].c_str());
         switch (evst[i]) {
             case ev_solver_t::lapack: {
-                printf("LAPACK\n");
+                std::printf("LAPACK\n");
                 break;
             }
 #if defined(__SCALAPACK)
             case ev_solver_t::scalapack: {
-                printf("ScaLAPACK\n");
+                std::printf("ScaLAPACK\n");
                 break;
             }
 #endif
 #if defined(__ELPA)
             case ev_solver_t::elpa1: {
-                printf("ELPA1\n");
+                std::printf("ELPA1\n");
                 break;
             }
             case ev_solver_t::elpa2: {
-                printf("ELPA2\n");
+                std::printf("ELPA2\n");
                 break;
             }
 #endif
 #if defined(__MAGMA)
             case ev_solver_t::magma: {
-                printf("MAGMA\n");
+                std::printf("MAGMA\n");
                 break;
             }
             case ev_solver_t::magma_gpu: {
-                printf("MAGMA with GPU pointers\n");
+                std::printf("MAGMA with GPU pointers\n");
                 break;
             }
 #endif
             case ev_solver_t::plasma: {
-                printf("PLASMA\n");
+                std::printf("PLASMA\n");
                 break;
             }
 #if defined(__CUDA)
             case ev_solver_t::cusolver: {
-                printf("cuSOLVER\n");
+                std::printf("cuSOLVER\n");
                 break;
             }
 #endif
@@ -684,58 +684,58 @@ void Simulation_context::print_info() const
         }
     }
 
-    printf("processing unit                    : ");
+    std::printf("processing unit                    : ");
     switch (processing_unit()) {
         case device_t::CPU: {
-            printf("CPU\n");
+            std::printf("CPU\n");
             break;
         }
         case device_t::GPU: {
-            printf("GPU\n");
+            std::printf("GPU\n");
             acc::print_device_info(0);
             break;
         }
     }
-    printf("\n");
-    printf("iterative solver                   : %s\n", iterative_solver_input_.type_.c_str());
-    printf("number of steps                    : %i\n", iterative_solver_input_.num_steps_);
-    printf("subspace size                      : %i\n", iterative_solver_input_.subspace_size_);
+    std::printf("\n");
+    std::printf("iterative solver                   : %s\n", iterative_solver_input_.type_.c_str());
+    std::printf("number of steps                    : %i\n", iterative_solver_input_.num_steps_);
+    std::printf("subspace size                      : %i\n", iterative_solver_input_.subspace_size_);
 
-    printf("\n");
-    printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(), spg_get_micro_version());
+    std::printf("\n");
+    std::printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(), spg_get_micro_version());
     {
         unsigned int vmajor, vminor, vmicro;
         H5get_libversion(&vmajor, &vminor, &vmicro);
-        printf("HDF5 version: %d.%d.%d\n", vmajor, vminor, vmicro);
+        std::printf("HDF5 version: %d.%d.%d\n", vmajor, vminor, vmicro);
     }
     {
         int vmajor, vminor, vmicro;
         xc_version(&vmajor, &vminor, &vmicro);
-        printf("Libxc version: %d.%d.%d\n", vmajor, vminor, vmicro);
+        std::printf("Libxc version: %d.%d.%d\n", vmajor, vminor, vmicro);
     }
 
     int i{1};
-    printf("\n");
-    printf("XC functionals\n");
-    printf("==============\n");
+    std::printf("\n");
+    std::printf("XC functionals\n");
+    std::printf("==============\n");
     for (auto& xc_label : xc_functionals()) {
         XC_functional xc(spfft(), unit_cell().lattice_vectors(), xc_label, num_spins());
 #if defined(__USE_VDWXC)
         if (xc.is_vdw()) {
-            printf("Van der Walls functional\n");
-            printf("%s\n", xc.refs().c_str());
+            std::printf("Van der Walls functional\n");
+            std::printf("%s\n", xc.refs().c_str());
             continue;
         }
 #endif
-        printf("%i) %s: %s\n", i, xc_label.c_str(), xc.name().c_str());
-        printf("%s\n", xc.refs().c_str());
+        std::printf("%i) %s: %s\n", i, xc_label.c_str(), xc.name().c_str());
+        std::printf("%s\n", xc.refs().c_str());
         i++;
     }
 
     if (!full_potential()) {
-        printf("\n");
-        printf("memory consumption\n");
-        printf("==================\n");
+        std::printf("\n");
+        std::printf("memory consumption\n");
+        std::printf("==================\n");
         /* volume of the Brillouin zone */
         double v0 = std::pow(twopi, 3) / unit_cell().omega();
         /* volume of the cutoff sphere for wave-functions */
@@ -759,11 +759,11 @@ void Simulation_context::print_info() const
         if (control().reduce_gvec_) {
             ngc /= 2;
         }
-        printf("approximate number of G+k vectors        : %li\n", ngk);
-        printf("approximate number of G vectors          : %li\n", ng);
-        printf("approximate number of coarse G vectors   : %li\n", ngc);
+        std::printf("approximate number of G+k vectors        : %li\n", ngk);
+        std::printf("approximate number of G vectors          : %li\n", ng);
+        std::printf("approximate number of coarse G vectors   : %li\n", ngc);
         size_t wf_size = ngk * num_bands() * num_spins() * 16;
-        printf("approximate size of wave-functions for each k-point: %i Mb, %i Mb/rank\n",
+        std::printf("approximate size of wave-functions for each k-point: %i Mb, %i Mb/rank\n",
             static_cast<int>(wf_size >> 20), static_cast<int>((wf_size / comm_band().size()) >> 20));
 
         /* number of simultaneously treated spin components */
@@ -783,7 +783,7 @@ void Simulation_context::print_info() const
         */
         size_t tot_size = (num_bands() * num_spins() + 2 * num_bands() * num_sc + 3 * num_phi * num_sc +
             num_bands() * num_sc + num_bands()) * ngk * sizeof(double_complex);
-        printf("approximate memory consumption of Davidson solver: %i Mb/rank\n",
+        std::printf("approximate memory consumption of Davidson solver: %i Mb/rank\n",
             static_cast<int>((tot_size / comm_band().size()) >> 20));
 
         if (unit_cell().augment()) {
@@ -813,7 +813,7 @@ void Simulation_context::print_info() const
             size2 = std::min(size2, static_cast<size_t>(1 << 30));
 
             size_aug += (size1 + size2);
-            printf("approximate memory consumption of charge density augmentation: %i Mb/rank\n",
+            std::printf("approximate memory consumption of charge density augmentation: %i Mb/rank\n",
                 static_cast<int>(size_aug >> 20));
         }
         /* FFT buffers of fine and coarse meshes */
@@ -822,12 +822,12 @@ void Simulation_context::print_info() const
         if (!gamma_point()) {
             size_fft *= 2;
         }
-        printf("approximate memory consumption of FFT transforms: %i Mb/rank\n",
+        std::printf("approximate memory consumption of FFT transforms: %i Mb/rank\n",
             static_cast<int>(size_fft >> 20));
     }
 }
 
-/** The update of the lattice vectors or atomic positions has an impact on many quantities which have to be 
+/** The update of the lattice vectors or atomic positions has an impact on many quantities which have to be
     recomputed in the correct order. First, the unit cell is updated and the new reciprocal lattice vectors
     are obtained. Then the G-vectors are computed (if this is the first call to update()) or recomputed with a
     new reciprocal lattice, but without rebuilding a new list. On the first call the spfft objects are created
@@ -1215,10 +1215,10 @@ void Simulation_context::print_memory_usage(const char *file__, int line__)
             mp.push_back(&this->mem_pool(memory_t::device));
             np = 3;
         }
-        printf("memory pools\n");
-        printf("------------\n");
+        std::printf("memory pools\n");
+        std::printf("------------\n");
         for (int i = 0; i < np; i++) {
-            printf("%s: total capacity: %li Mb, free: %li Mb, num.blocks: %li, num.pointers: %li\n",
+            std::printf("%s: total capacity: %li Mb, free: %li Mb, num.blocks: %li, num.pointers: %li\n",
                 labels[i].c_str(), mp[i]->total_size() >> 20, mp[i]->free_size() >> 20, mp[i]->num_blocks(),
                 mp[i]->num_stored_ptr());
         }

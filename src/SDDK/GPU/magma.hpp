@@ -47,52 +47,52 @@ inline void finalize()
     magma_finalize();
 }
 
-//== inline int zhegvdx_2stage(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
+//== inline int zhegvdx_2stage(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b,
 //==                           int32_t ldb, double* eval)
 //== {
 //==     int m;
 //==     int info;
-//==     
+//==
 //==     int lwork;
 //==     int lrwork;
 //==     int liwork;
 //==     magma_zheevdx_getworksize(matrix_size, magma_get_parallel_numthreads(), 1, &lwork, &lrwork, &liwork);
-//== 
+//==
 //==     magmaDoubleComplex* h_work;
 //==     if (cudaMallocHost((void**)&h_work, lwork * sizeof(magmaDoubleComplex)) != cudaSuccess) {
-//==         printf("cudaMallocHost failed at line %i of file %s\n", __LINE__, __FILE__);
+//==         std::printf("cudaMallocHost failed at line %i of file %s\n", __LINE__, __FILE__);
 //==         exit(-1);
 //==     }
 //==     double* rwork;
 //==     if (cudaMallocHost((void**)&rwork, lrwork * sizeof(double)) != cudaSuccess) {
-//==         printf("cudaMallocHost failed at line %i of file %s\n", __LINE__, __FILE__);
+//==         std::printf("cudaMallocHost failed at line %i of file %s\n", __LINE__, __FILE__);
 //==         exit(-1);
 //==     }
-//==     
+//==
 //==     magma_int_t *iwork;
 //==     if ((iwork = (magma_int_t*)malloc(liwork * sizeof(magma_int_t))) == NULL) {
-//==         printf("malloc failed at line %i of file %s\n", __LINE__, __FILE__);
+//==         std::printf("malloc failed at line %i of file %s\n", __LINE__, __FILE__);
 //==         exit(-1);
 //==     }
-//==     
+//==
 //==     double* w;
 //==     if ((w = (double*)malloc(matrix_size * sizeof(double))) == NULL) {
-//==         printf("malloc failed at line %i of file %s\n", __LINE__, __FILE__);
+//==         std::printf("malloc failed at line %i of file %s\n", __LINE__, __FILE__);
 //==         exit(-1);
 //==     }
-//== 
+//==
 //==     bool is_ok = true;
-//==     magma_zhegvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size, (magmaDoubleComplex*)a, lda, (magmaDoubleComplex*)b, ldb, 0.0, 0.0, 
+//==     magma_zhegvdx_2stage(1, MagmaVec, MagmaRangeI, MagmaLower, matrix_size, (magmaDoubleComplex*)a, lda, (magmaDoubleComplex*)b, ldb, 0.0, 0.0,
 //==                          1, nv, &m, w, h_work, lwork, rwork, lrwork, iwork, liwork, &info);
-//== 
+//==
 //==     if (info) {
 //==         //printf("magma_zhegvdx_2stage returned : %i\n", info);
 //==         //if (info == MAGMA_ERR_DEVICE_ALLOC) {
-//==         //    printf("this is MAGMA_ERR_DEVICE_ALLOC\n");
+//==         //    std::printf("this is MAGMA_ERR_DEVICE_ALLOC\n");
 //==         //}
 //==         is_ok = false;
-//==     }    
-//== 
+//==     }
+//==
 //==     if (m < nv) {
 //==         //printf("Not all eigen-vectors are found.\n");
 //==         //printf("requested number of eigen-vectors: %i\n", nv);

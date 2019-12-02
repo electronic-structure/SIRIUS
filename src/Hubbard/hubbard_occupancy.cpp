@@ -336,45 +336,45 @@ Hubbard::calculate_initial_occupation_numbers()
 void Hubbard::print_occupancies()
 {
     if (ctx_.control().verbosity_ > 1 && ctx_.comm().rank() == 0) {
-        printf("\n");
+        std::printf("\n");
         for (int ci = 0; ci < 10; ci++) {
-            printf("--------");
+            std::printf("--------");
         }
-        printf("\n");
-        printf("hubbard occupancies\n");
+        std::printf("\n");
+        std::printf("hubbard occupancies\n");
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            printf("Atom : %d\n", ia);
-            printf("Mag Dim : %d\n", ctx_.num_mag_dims());
+            std::printf("Atom : %d\n", ia);
+            std::printf("Mag Dim : %d\n", ctx_.num_mag_dims());
             const auto& atom = unit_cell_.atom(ia);
 
             if (atom.type().hubbard_correction()) {
                 const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
                 for (int m1 = 0; m1 < lmax_at; m1++) {
                     for (int m2 = 0; m2 < lmax_at; m2++) {
-                        printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 0, ia)));
+                        std::printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 0, ia)));
                     }
 
                     if (ctx_.num_mag_dims() == 3) {
-                        printf(" ");
+                        std::printf(" ");
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 2, ia)));
+                            std::printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 2, ia)));
                         }
                     }
-                    printf("\n");
+                    std::printf("\n");
                 }
 
                 if (ctx_.num_spins() == 2) {
                     for (int m1 = 0; m1 < lmax_at; m1++) {
                         if (ctx_.num_mag_dims() == 3) {
                             for (int m2 = 0; m2 < lmax_at; m2++) {
-                                printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 3, ia)));
+                                std::printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 3, ia)));
                             }
-                            printf(" ");
+                            std::printf(" ");
                         }
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 1, ia)));
+                            std::printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 1, ia)));
                         }
-                        printf("\n");
+                        std::printf("\n");
                     }
                 }
 
@@ -390,19 +390,19 @@ void Hubbard::print_occupancies()
                         n_down += this->occupancy_number_(m1, m1, 1, ia).real();
                     }
                 }
-                printf("\n");
+                std::printf("\n");
                 n_total = n_up + n_down;
                 if (ctx_.num_spins() == 2) {
-                    printf("Atom charge (total) %.5lf (n_up) %.5lf (n_down) %.5lf (mz) %.5lf\n", n_total, n_up, n_down, n_up - n_down);
+                    std::printf("Atom charge (total) %.5lf (n_up) %.5lf (n_down) %.5lf (mz) %.5lf\n", n_total, n_up, n_down, n_up - n_down);
                 } else {
-                    printf("Atom charge (total) %.5lf\n", 2.0 * n_total);
+                    std::printf("Atom charge (total) %.5lf\n", 2.0 * n_total);
                 }
 
-                printf("\n");
+                std::printf("\n");
                 for (int ci = 0; ci < 10; ci++) {
-                    printf("--------");
+                    std::printf("--------");
                 }
-                printf("\n");
+                std::printf("\n");
             }
         }
     }

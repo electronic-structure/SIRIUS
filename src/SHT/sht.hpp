@@ -44,9 +44,37 @@ namespace sirius {
 namespace sht {
 
 /// Generate associated Legendre polynomials.
+/** Normalised associated Legendre polynomials obey the following recursive relations:
+    \f[
+    P_{m}^{m}(x) = -\sqrt{1 + \frac{1}{2m}} y P_{m-1}^{m-1}(x)
+    \f]
+    \f[
+    P_{m+1}^{m}(x) = \sqrt{2 m + 3} x P_{m}^{m}(x)
+    \f]
+    \f[
+    P_{\ell}^{m} = a_{\ell}^{m}\big(xP_{\ell-1}^{m}(x) + b_{\ell}^{m}P_{\ell - 2}^{m}\big)
+    \f]
+    where
+    \f{eqnarray*}{
+    a_{\ell}^{m} &=& \sqrt{\frac{4 \ell^2 - 1}{\ell^2 - m^2}} \\
+    b_{\ell}^{m} &=& -\sqrt{\frac{(\ell-1)^2-m^2}{4(\ell-1)^2-1}} \\
+    x &=& \cos \theta \\
+    y &=& \sin \theta
+    \f}
+    and
+    \f[
+    P_{0}^{0} = \sqrt{\frac{1}{4\pi}}
+    \f]
+ */
 template <typename T>
 inline void legendre_plm(int lmax__, double x__, T* plm__)
 {
+    /* reference paper:
+       Associated Legendre Polynomials and Spherical Harmonics Computation for Chemistry Applications
+       Taweetham Limpanuparb, Josh Milthorpe
+       https://arxiv.org/abs/1410.1748
+    */
+
     double u = std::sqrt(1 - x__ * x__);
 
     plm__[0] = 1.0 / std::sqrt(fourpi);

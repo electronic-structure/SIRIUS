@@ -97,11 +97,11 @@ class profiler
         tab = static_cast<int>(call_stack().size()) - 1;
 #endif
         for (int i = 0; i < tab; i++) {
-            printf(" ");
+            std::printf(" ");
         }
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        printf("[rank%04i] + %s\n", rank, label_.c_str());
+        std::printf("[rank%04i] + %s\n", rank, label_.c_str());
 #endif
 
 #if defined(__PROFILE_TIME)
@@ -124,11 +124,11 @@ class profiler
         tab = static_cast<int>(call_stack().size()) - 1;
 #endif
         for (int i = 0; i < tab; i++) {
-            printf(" ");
+            std::printf(" ");
         }
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        printf("[rank%04i] - %s\n", rank, label_.c_str());
+        std::printf("[rank%04i] - %s\n", rank, label_.c_str());
 #endif
 
 #ifdef __PROFILE_STACK
@@ -149,9 +149,9 @@ class profiler
         int t{0};
         for (auto it = call_stack().rbegin(); it != call_stack().rend(); it++) {
             for (int i = 0; i < t; i++) {
-                printf(" ");
+                std::printf(" ");
             }
-            printf("[%s]\n", it->c_str());
+            std::printf("[%s]\n", it->c_str());
             t++;
         }
 #endif

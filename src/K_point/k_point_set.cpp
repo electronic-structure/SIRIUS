@@ -254,21 +254,21 @@ void K_point_set::find_band_occupancies()
 void K_point_set::print_info()
 {
     if (ctx_.comm().rank() == 0) {
-        printf("\n");
-        printf("total number of k-points : %i\n", num_kpoints());
+        std::printf("\n");
+        std::printf("total number of k-points : %i\n", num_kpoints());
         for (int i = 0; i < 80; i++) {
-            printf("-");
+            std::printf("-");
         }
-        printf("\n");
-        printf("  ik                vk                    weight  num_gkvec");
+        std::printf("\n");
+        std::printf("  ik                vk                    weight  num_gkvec");
         if (ctx_.full_potential()) {
-            printf("   gklo_basis_size");
+            std::printf("   gklo_basis_size");
         }
-        printf("\n");
+        std::printf("\n");
         for (int i = 0; i < 80; i++) {
-            printf("-");
+            std::printf("-");
         }
-        printf("\n");
+        std::printf("\n");
     }
 
     if (ctx_.comm_band().rank() == 0) {

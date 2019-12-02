@@ -1023,14 +1023,14 @@ inline void linalg<device_t::CPU>::geinv<ftn_double>(ftn_int n, matrix<ftn_doubl
     int info = linalg2(linalg_t::lapack).getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
-        printf("getrf returned %i\n", info);
+        std::printf("getrf returned %i\n", info);
         exit(-1);
     }
 
     info = getri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
-        printf("getri returned %i\n", info);
+        std::printf("getri returned %i\n", info);
         exit(-1);
     }
 }
@@ -1043,14 +1043,14 @@ inline void linalg<device_t::CPU>::geinv<ftn_double_complex>(ftn_int n, matrix<f
     int info = linalg2(linalg_t::lapack).getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
-        printf("getrf returned %i\n", info);
+        std::printf("getrf returned %i\n", info);
         exit(-1);
     }
 
     info = getri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
-        printf("getri returned %i\n", info);
+        std::printf("getri returned %i\n", info);
         exit(-1);
     }
 }
@@ -1083,13 +1083,13 @@ inline void linalg<device_t::CPU>::heinv<ftn_double_complex>(ftn_int n, matrix<f
     std::vector<int> ipiv(n);
     int info = hetrf(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info) {
-        printf("hetrf returned %i\n", info);
+        std::printf("hetrf returned %i\n", info);
         exit(-1);
     }
 
     info = hetri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info) {
-        printf("hetri returned %i\n", info);
+        std::printf("hetri returned %i\n", info);
         exit(-1);
     }
 }
@@ -1122,14 +1122,14 @@ inline void linalg<device_t::CPU>::syinv<ftn_double>(ftn_int n, matrix<ftn_doubl
     int info = sytrf(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
-        printf("sytrf returned %i\n", info);
+        std::printf("sytrf returned %i\n", info);
         exit(-1);
     }
 
     info = sytri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
     if (info)
     {
-        printf("sytri returned %i\n", info);
+        std::printf("sytri returned %i\n", info);
         exit(-1);
     }
 }
@@ -1166,13 +1166,13 @@ inline void linalg<device_t::CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<
     std::vector<ftn_int> ipiv(A.num_rows_local() + A.bs_row());
     ftn_int info = linalg2(linalg_t::lapack).getrf(n, n, A, 0, 0, &ipiv[0]);
     if (info) {
-        printf("getrf returned %i\n", info);
+        std::printf("getrf returned %i\n", info);
         exit(-1);
     }
 
     info = getri(n, A, 0, 0, &ipiv[0]);
     if (info) {
-        printf("getri returned %i\n", info);
+        std::printf("getri returned %i\n", info);
         exit(-1);
     }
 }

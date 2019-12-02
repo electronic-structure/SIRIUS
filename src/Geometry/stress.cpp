@@ -496,7 +496,7 @@ void Stress::print_info() const
 
         auto print_stress = [&](matrix3d<double> const& s) {
             for (int mu : {0, 1, 2}) {
-                printf("%12.6f %12.6f %12.6f\n", s(mu, 0), s(mu, 1), s(mu, 2));
+                std::printf("%12.6f %12.6f %12.6f\n", s(mu, 0), s(mu, 1), s(mu, 2));
             }
         };
 
@@ -509,37 +509,37 @@ void Stress::print_info() const
         auto stress_us       = stress_us_ * au2kbar;
         auto stress_hubbard  = stress_hubbard_ * au2kbar;
 
-        printf("== stress tensor components [kbar] ===\n");
+        std::printf("== stress tensor components [kbar] ===\n");
 
-        printf("== stress_kin ==\n");
+        std::printf("== stress_kin ==\n");
         print_stress(stress_kin);
 
-        printf("== stress_har ==\n");
+        std::printf("== stress_har ==\n");
         print_stress(stress_har);
 
-        printf("== stress_ewald ==\n");
+        std::printf("== stress_ewald ==\n");
         print_stress(stress_ewald);
 
-        printf("== stress_vloc ==\n");
+        std::printf("== stress_vloc ==\n");
         print_stress(stress_vloc);
 
-        printf("== stress_nonloc ==\n");
+        std::printf("== stress_nonloc ==\n");
         print_stress(stress_nonloc);
 
-        printf("== stress_us ==\n");
+        std::printf("== stress_us ==\n");
         print_stress(stress_us);
 
         stress_us = stress_us + stress_nonloc;
-        printf("== stress_us_nl ==\n");
+        std::printf("== stress_us_nl ==\n");
         print_stress(stress_us);
 
         if (ctx_.hubbard_correction()) {
-            printf("== stress_hubbard ==\n");
+            std::printf("== stress_hubbard ==\n");
             print_stress(stress_hubbard);
         }
 
         auto stress_total = stress_total_ * au2kbar;
-        printf("== stress_total ==\n");
+        std::printf("== stress_total ==\n");
         print_stress(stress_total);
     }
 }

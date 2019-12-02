@@ -83,7 +83,7 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
 
     if (sddk_debug >= 2) {
         if (o__.comm().rank() == 0) {
-            printf("check QR decomposition, matrix size : %i\n", n__);
+            std::printf("check QR decomposition, matrix size : %i\n", n__);
         }
         inner(mem__, la__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -98,7 +98,7 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
         }
 
         if (o__.comm().rank() == 0) {
-            printf("check eigen-values, matrix size : %i\n", n__);
+            std::printf("check eigen-values, matrix size : %i\n", n__);
         }
         inner(mem__, la__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -126,7 +126,7 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
 
     if (sddk_debug >= 1) {
         if (o__.comm().rank() == 0) {
-            printf("check diagonal\n");
+            std::printf("check diagonal\n");
         }
         auto diag = o__.get_diag(n__);
         for (int i = 0; i < n__; i++) {
@@ -135,7 +135,7 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
             }
         }
         if (o__.comm().rank() == 0) {
-            printf("check hermitian\n");
+            std::printf("check hermitian\n");
         }
         double d = check_hermitian(o__, n__);
         if (d > 1e-12 && o__.comm().rank() == 0) {

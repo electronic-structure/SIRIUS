@@ -321,9 +321,9 @@ class Simulation_context : public Simulation_parameters
     {
         if (this->comm().rank() == 0 && this->control().verbosity_ >= level__) {
             if (label__) {
-                printf("[%s] ", label__);
+                std::printf("[%s] ", label__);
             }
-            printf(args...);
+            std::printf(args...);
         }
     }
 

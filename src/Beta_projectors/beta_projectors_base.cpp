@@ -305,7 +305,7 @@ void Beta_projectors_base::local_inner_aux<double_complex>(double_complex* beta_
 #endif
         std::chrono::duration<double> t = std::chrono::high_resolution_clock::now() - t1;
         PROFILE_STOP("sirius::Beta_projectors_base::local_inner_aux");
-        printf("Beta_projectors_base::local_inner performance: %12.6f GFlops [m,n,k=%i %i %i, time=%f (sec)]\n",
+        std::printf("Beta_projectors_base::local_inner performance: %12.6f GFlops [m,n,k=%i %i %i, time=%f (sec)]\n",
                8e-9 * nbeta__ * n__ * num_gkvec_loc() / t.count(), nbeta__, n__, num_gkvec_loc(), t.count());
     }
 }

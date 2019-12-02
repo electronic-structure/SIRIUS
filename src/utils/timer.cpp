@@ -96,15 +96,15 @@ void utils::timer::print()
 {
 #if defined(__USE_TIMER)
     for (int i = 0; i < 140; i++) {
-        printf("-");
+        std::printf("-");
     }
-    printf("\n");
-    printf("name                                                                 count      total        min        "
+    std::printf("\n");
+    std::printf("name                                                                 count      total        min        "
            "max    average    self (%%)\n");
     for (int i = 0; i < 140; i++) {
-        printf("-");
+        std::printf("-");
     }
-    printf("\n");
+    std::printf("\n");
     for (auto& it : timer_values()) {
 
         double te{0};
@@ -114,10 +114,10 @@ void utils::timer::print()
             }
         }
         if (te > it.second.tot_val) {
-            printf("wrong timer values: %f %f\n", te, it.second.tot_val);
+            std::printf("wrong timer values: %f %f\n", te, it.second.tot_val);
             throw std::runtime_error("terminating...");
         }
-        printf("%-65s : %6i %10.4f %10.4f %10.4f %10.4f     %6.2f\n", it.first.c_str(), it.second.count,
+        std::printf("%-65s : %6i %10.4f %10.4f %10.4f %10.4f     %6.2f\n", it.first.c_str(), it.second.count,
                it.second.tot_val, it.second.min_val, it.second.max_val, it.second.tot_val / it.second.count,
                (it.second.tot_val - te) / it.second.tot_val * 100);
     }
@@ -131,9 +131,9 @@ void utils::timer::print_tree()
         return;
     }
     for (int i = 0; i < 140; i++) {
-        printf("-");
+        std::printf("-");
     }
-    printf("\n");
+    std::printf("\n");
 
     double ttot = timer_values()[main_timer_label].tot_val;
 
@@ -146,7 +146,7 @@ void utils::timer::print_tree()
             }
             double f = it.second.tot_val / ttot;
             if (f > 0.01) {
-                printf("%s (%10.4fs, %.2f %% of self, %.2f %% of total)\n", it.first.c_str(), it.second.tot_val,
+                std::printf("%s (%10.4fs, %.2f %% of self, %.2f %% of total)\n", it.first.c_str(), it.second.tot_val,
                        (it.second.tot_val - te) / it.second.tot_val * 100, f * 100);
 
                 std::vector<std::pair<double, std::string>> tmp;
@@ -156,7 +156,7 @@ void utils::timer::print_tree()
                 }
                 std::sort(tmp.rbegin(), tmp.rend());
                 for (auto& e : tmp) {
-                    printf("|--%s (%10.4fs, %.2f %%) \n", e.second.c_str(), timer_values_ex()[it.first][e.second],
+                    std::printf("|--%s (%10.4fs, %.2f %%) \n", e.second.c_str(), timer_values_ex()[it.first][e.second],
                            e.first * 100);
                 }
             }

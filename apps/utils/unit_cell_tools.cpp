@@ -89,8 +89,8 @@ void create_supercell(cmd_args const& args__)
             }
         }
     }
-    printf("number of atoms in the supercell: %i\n", ctx_sc.unit_cell().num_atoms());
-    
+    std::printf("number of atoms in the supercell: %i\n", ctx_sc.unit_cell().num_atoms());
+
     //ctx_sc.unit_cell().get_symmetry();
     //ctx_sc.unit_cell().print_info(4);
     ctx_sc.unit_cell().write_cif();
@@ -121,11 +121,11 @@ void find_primitive()
         }
     }
 
-    printf("original number of atoms: %i\n", ctx.unit_cell().num_atoms());
+    std::printf("original number of atoms: %i\n", ctx.unit_cell().num_atoms());
 
     int nat_new = spg_standardize_cell(lattice, (double(*)[3])&positions(0, 0), &types[0], ctx.unit_cell().num_atoms(),
                                        1, 0, ctx.control().spglib_tolerance_);
-    printf("new number of atoms: %i\n", nat_new);
+    std::printf("new number of atoms: %i\n", nat_new);
 
     Simulation_context ctx_new(Communicator::self());
 
@@ -281,7 +281,7 @@ int main(int argn, char** argv)
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
+        std::printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         return 0;
     }
@@ -300,7 +300,7 @@ int main(int argn, char** argv)
         Simulation_context ctx(args.value<std::string>("input", "sirius.json"), Communicator::self());
         ctx.unit_cell().write_cif();
         ctx.unit_cell().find_nearest_neighbours(20);
-        printf("minimum bond length: %20.12f\n", ctx.unit_cell().min_bond_length());
+        std::printf("minimum bond length: %20.12f\n", ctx.unit_cell().min_bond_length());
     }
     if (args.exist("mol")) {
         convert_to_mol(args);

@@ -422,7 +422,7 @@ template <typename T>
 void Band::check_residuals(Hamiltonian_k& Hk__) const
 {
     auto& kp = Hk__.kp();
-    kp.message(1, __func__, "checking residuals\n");
+    kp.message(1, __func__, "%s", "checking residuals\n");
 
     const bool nc_mag = (ctx_.num_mag_dims() == 3);
     const int num_sc = nc_mag ? 2 : 1;
@@ -486,7 +486,7 @@ template <typename T>
 void Band::check_wave_functions(Hamiltonian_k& Hk__) const
 {
     auto& kp = Hk__.kp();
-    kp.message(1, __func__, "checking wave-functions\n");
+    kp.message(1, __func__, "%s", "checking wave-functions\n");
 
     if (!ctx_.full_potential()) {
 
@@ -524,7 +524,7 @@ void Band::check_wave_functions(Hamiltonian_k& Hk__) const
             if (diff > 1e-12) {
                 kp.message(1, __func__, "overlap matrix is not identity, maximum error : %20.12f\n", diff);
             } else {
-                kp.message(1, __func__, "OK! Wave functions are orthonormal.\n");
+                kp.message(1, __func__, "%s", "OK! Wave functions are orthonormal.\n");
             }
         }
         if (is_device_memory(ctx_.preferred_memory_t())) {

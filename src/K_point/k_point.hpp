@@ -273,7 +273,7 @@ class K_point
         \f[
         \varphi^{\alpha}_{\ell m}({\bf q}) = \frac{1}{\sqrt{\Omega}}
           \int e^{-i{\bf q}{\bf r}} \varphi^{\alpha}_{\ell m}({\bf r} - {\bf r}_{\alpha}) d{\bf r} =
-          \frac{e^{-i{\bf q}{\bf r}_{\alpha}}}{\sqrt{\Omega}} \int e^{-i{\bf q}{\bf r}} 
+          \frac{e^{-i{\bf q}{\bf r}_{\alpha}}}{\sqrt{\Omega}} \int e^{-i{\bf q}{\bf r}}
           \varphi^{\alpha}_{\ell}(r)R_{\ell m}(\theta, \phi) r^2 \sin\theta dr d\theta d\phi
         \f]
         where \f$ {\bf q} = {\bf G+k} \f$. Using the expansion of the plane wave in terms of spherical Bessel
@@ -741,9 +741,9 @@ class K_point
     {
         if (this->comm().rank() == 0 && this->ctx().control().verbosity_ >= level__) {
             if (label__) {
-                printf("[%s] ", label__);
+                std::printf("[%s] ", label__);
             }
-            printf(args...);
+            std::printf(args...);
         }
     }
 

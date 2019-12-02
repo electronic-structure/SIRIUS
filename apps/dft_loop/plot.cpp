@@ -137,7 +137,7 @@ int main(int argn, char** argv)
     args.parse_args(argn, argv);
     
     if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
+        std::printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         return 0;
     }

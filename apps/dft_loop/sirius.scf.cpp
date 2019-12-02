@@ -120,7 +120,7 @@ double ground_state(Simulation_context& ctx,
         double e2 = dict_ref["ground_state"]["energy"]["total"];
 
         if (std::abs(e1 - e2) > 1e-5) {
-            printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
+            std::printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
             ctx.comm().abort(1);
         }
         if (result.count("stress") && dict_ref["ground_state"].count("stress")) {
@@ -133,7 +133,7 @@ double ground_state(Simulation_context& ctx,
                 }
             }
             if (diff > 1e-5) {
-                printf("total stress is different!");
+                std::printf("total stress is different!");
                 std::cout << "  reference: " << dict_ref["ground_state"]["stress"] << "\n";
                 std::cout << "  computed: " << result["stress"] << "\n";
                 ctx.comm().abort(2);
@@ -149,7 +149,7 @@ double ground_state(Simulation_context& ctx,
                 }
             }
             if (diff > 1e-6) {
-                printf("total force is different!");
+                std::printf("total force is different!");
                 std::cout << "  reference: " << dict_ref["ground_state"]["forces"] << "\n";
                 std::cout << "  computed: " << result["forces"] << "\n";
                 ctx.comm().abort(3);
@@ -211,7 +211,7 @@ void run_tasks(cmd_args const& args)
     std::string fname = args.value<std::string>("input", "sirius.json");
     if (!utils::file_exists(fname)) {
         if (Communicator::world().rank() == 0) {
-            printf("input file does not exist\n");
+            std::printf("input file does not exist\n");
         }
         return;
     }
@@ -356,7 +356,7 @@ int main(int argn, char** argv)
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
+        std::printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         return 0;
     }
