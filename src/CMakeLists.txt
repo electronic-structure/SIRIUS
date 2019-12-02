@@ -94,9 +94,7 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX SpFFT::spfft)
 
 if(CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
-  INSTALL ( CODE
-    "EXECUTE_PROCESS (COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${PROJECT_BINARY_DIR}/src/mod_files\" \"${CMAKE_INSTALL_PREFIX}/include/sirius/\")"
-    )
+  install(FILES ${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
 endif()
 
 if(USE_ROCM)
