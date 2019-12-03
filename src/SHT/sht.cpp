@@ -692,8 +692,8 @@ template<>
 void SHT::backward_transform<double>(int ld, double const *flm, int nr, int lmmax, double *ftp) const {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg<sddk::device_t::CPU>::gemm(1, 0, num_points_, nr, lmmax, &rlm_backward_(0, 0), lmmax_, flm, ld, ftp,
-                                num_points_);
+    sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', num_points_, nr, lmmax, &sddk::linalg_const<double>::one(),
+        &rlm_backward_(0, 0), lmmax_, flm, ld, &sddk::linalg_const<double>::zero(), ftp, num_points_);
 }
 
 template<>
@@ -701,16 +701,17 @@ void SHT::backward_transform<double_complex>(int ld, double_complex const *flm, 
                                              double_complex *ftp) const {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg<sddk::device_t::CPU>::gemm(1, 0, num_points_, nr, lmmax, &ylm_backward_(0, 0), lmmax_, flm, ld, ftp,
-                                num_points_);
+    sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', num_points_, nr, lmmax,
+        &sddk::linalg_const<double_complex>::one(), &ylm_backward_(0, 0), lmmax_, flm, ld,
+        &sddk::linalg_const<double_complex>::zero(), ftp, num_points_);
 }
 
 template<>
 void SHT::forward_transform<double>(double const *ftp, int nr, int lmmax, int ld, double *flm) const {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg<sddk::device_t::CPU>::gemm(1, 0, lmmax, nr, num_points_, &rlm_forward_(0, 0), num_points_, ftp, num_points_,
-                                flm, ld);
+    sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<double>::one(),
+        &rlm_forward_(0, 0), num_points_, ftp, num_points_, &sddk::linalg_const<double>::zero(), flm, ld);
 }
 
 template<>
@@ -718,8 +719,8 @@ void SHT::forward_transform<double_complex>(double_complex const *ftp, int nr, i
                                             double_complex *flm) const {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg<sddk::device_t::CPU>::gemm(1, 0, lmmax, nr, num_points_, &ylm_forward_(0, 0), num_points_, ftp, num_points_,
-                                flm, ld);
+    sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<double_complex>::one(),
+        &ylm_forward_(0, 0), num_points_, ftp, num_points_, &sddk::linalg_const<double_complex>::zero(), flm, ld);
 }
 
 }
