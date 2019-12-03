@@ -1539,9 +1539,9 @@ void Density::generate_valence_mt()
             }
         }
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
-            linalg<device_t::CPU>::gemm(0, 1, ctx_.lmmax_rho(), nmtp, num_rf_pairs, &mt_density_matrix(0, 0, j),
-                                        mt_density_matrix.ld(), &rf_pairs(0, 0), rf_pairs.ld(), &dlm(0, 0, j),
-                                        dlm.ld());
+            linalg2(linalg_t::blas).gemm('N', 'T', ctx_.lmmax_rho(), nmtp, num_rf_pairs,
+                &linalg_const<double>::one(), &mt_density_matrix(0, 0, j), mt_density_matrix.ld(),
+                &rf_pairs(0, 0), rf_pairs.ld(), &linalg_const<double>::zero(), &dlm(0, 0, j), dlm.ld());
         }
 
         int sz = static_cast<int>(ctx_.lmmax_rho() * nmtp * sizeof(double));
