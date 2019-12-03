@@ -57,10 +57,11 @@ void K_point::generate_fv_states()
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
         if (ctx_.processing_unit() == device_t::CPU) {
-            linalg<device_t::CPU>::gemm(1, 0, mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(), alm.at(memory_t::host),
-                                        alm.ld(), fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::host),
-                                        fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(), tmp1.at(memory_t::host),
-                                        tmp1.ld());
+            linalg2(linalg_t::blas).gemm('T', 'N', mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
+                &linalg_const<double_complex>::one(), alm.at(memory_t::host), alm.ld(),
+                fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::host),
+                fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),
+                &linalg_const<double_complex>::zero(), tmp1.at(memory_t::host), tmp1.ld());
         }
 #ifdef __GPU
         if (ctx_.processing_unit() == device_t::GPU) {
