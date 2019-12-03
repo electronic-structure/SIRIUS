@@ -1009,19 +1009,19 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
                     /* create resulting array with proper dimensions from the already allocated chunk of memory */
                     alm_phi = matrix<double_complex>(alm_phi_buf.at(memory_t::host), num_mt_aw, n__);
                     /* alm_phi(lm, i) = A(G, lm)^{T} * C(G, i), remember that Alm was conjugated */
-                    linalg<device_t::CPU>::gemm(2, 0, num_mt_aw, n__, ngv, alm_block.at(memory_t::host), alm_block.ld(),
-                                                phi__.pw_coeffs(0).prime().at(memory_t::host, 0, N__),
-                                                phi__.pw_coeffs(0).prime().ld(), alm_phi.at(memory_t::host),
-                                                alm_phi.ld());
+                    linalg2(linalg_t::blas).gemm('C', 'N', num_mt_aw, n__, ngv, 
+                        &linalg_const<double_complex>::one(),  alm_block.at(memory_t::host), alm_block.ld(),
+                        phi__.pw_coeffs(0).prime().at(memory_t::host, 0, N__), phi__.pw_coeffs(0).prime().ld(),
+                        &linalg_const<double_complex>::zero(), alm_phi.at(memory_t::host), alm_phi.ld());
                 }
                 if (hphi__ != nullptr) {
                     /* create resulting array with proper dimensions from the already allocated chunk of memory */
                     halm_phi = matrix<double_complex>(halm_phi_buf.at(memory_t::host), num_mt_aw, n__);
                     /* halm_phi(lm, i) = H_{mt}A(G, lm)^{T} * C(G, i) */
-                    linalg<device_t::CPU>::gemm(2, 0, num_mt_aw, n__, ngv, halm_block.at(memory_t::host),
-                                                halm_block.ld(), phi__.pw_coeffs(0).prime().at(memory_t::host, 0, N__),
-                                                phi__.pw_coeffs(0).prime().ld(), halm_phi.at(memory_t::host),
-                                                halm_phi.ld());
+                    linalg2(linalg_t::blas).gemm('C', 'N', num_mt_aw, n__, ngv, &linalg_const<double_complex>::one(),
+                        halm_block.at(memory_t::host), halm_block.ld(),
+                        phi__.pw_coeffs(0).prime().at(memory_t::host, 0, N__), phi__.pw_coeffs(0).prime().ld(),
+                        &linalg_const<double_complex>::zero(), halm_phi.at(memory_t::host), halm_phi.ld());
                 }
                 break;
             }
