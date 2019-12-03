@@ -99,7 +99,7 @@ class Broyden1 : public Mixer<FUNCS...>
             }
 
             /* invert matrix */
-            sddk::linalg<sddk::device_t::CPU>::syinv(history_size, S);
+            sddk::linalg2(sddk::linalg_t::lapack).syinv(history_size, S);
             /* restore lower triangular part */
             for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
                 for (int j2 = 0; j2 < j1; j2++) {
