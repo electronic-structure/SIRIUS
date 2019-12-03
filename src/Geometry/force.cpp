@@ -697,14 +697,15 @@ void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>
         Hk__.H0().apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
 
         /* apw-apw block of the overlap matrix */
-        linalg<device_t::CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                                    alm_row.at(memory_t::host), alm_row.ld(), alm_col.at(memory_t::host), alm_col.ld(),
-                                    o.at(memory_t::host), o.ld());
+        linalg2(linalg_t::blas).gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+            &linalg_const<double_complex>::one(), alm_row.at(memory_t::host), alm_row.ld(),
+            alm_col.at(memory_t::host), alm_col.ld(), &linalg_const<double_complex>::zero(),
+            o.at(memory_t::host), o.ld());
 
         /* apw-apw block of the Hamiltonian matrix */
-        linalg<device_t::CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                                    alm_row.at(memory_t::host), alm_row.ld(), halm_col.at(memory_t::host),
-                                    halm_col.ld(), h.at(memory_t::host), h.ld());
+        linalg2(linalg_t::blas).gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+            &linalg_const<double_complex>::one(), alm_row.at(memory_t::host), alm_row.ld(), halm_col.at(memory_t::host),
+            halm_col.ld(), &linalg_const<double_complex>::zero(), h.at(memory_t::host), h.ld());
 
         int iat = type.id();
 
