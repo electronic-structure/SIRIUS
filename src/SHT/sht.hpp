@@ -372,8 +372,8 @@ class SHT // TODO: better name
         }
 
         if (mesh_type_ == 1) {
-            sddk::linalg<sddk::device_t::CPU>::geinv(lmmax_, ylm_forward_);
-            sddk::linalg<sddk::device_t::CPU>::geinv(lmmax_, rlm_forward_);
+            sddk::linalg2(sddk::linalg_t::lapack).geinv(lmmax_, ylm_forward_);
+            sddk::linalg2(sddk::linalg_t::lapack).geinv(lmmax_, rlm_forward_);
         }
 
 #if (__VERIFICATION > 0)
