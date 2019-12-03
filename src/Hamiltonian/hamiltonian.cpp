@@ -181,9 +181,11 @@ Hamiltonian0::apply_bmt(sddk::Wave_functions& psi__, std::vector<sddk::Wave_func
                 }
             }
 
-            linalg<device_t::CPU>::gemm(0, 0, mt_basis_size, ctx_.num_fv_states(), mt_basis_size,
+            linalg2(linalg_t::blas).gemm('N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size,
+                &linalg_const<double_complex>::one(),
                 zm.at(memory_t::host), zm.ld(),
                 psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0), psi__.mt_coeffs(0).prime().ld(),
+                &linalg_const<double_complex>::zero(),
                 bpsi__[2].mt_coeffs(0).prime().at(memory_t::host, offset, 0), bpsi__[2].mt_coeffs(0).prime().ld());
         }
     }
