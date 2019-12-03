@@ -115,6 +115,10 @@ class linalg2
     template <typename T>
     inline int getrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv) const;
 
+    /// U*D*U^H factorization of hermitian or symmetric matrix.
+    template <typename T>
+    inline int sytrf(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv) const;
+
     /*
         matrix inversion
     */
@@ -122,6 +126,48 @@ class linalg2
     /// Inversion of a triangular matrix.
     template <typename T>
     inline int trtri(ftn_int n, T* A, ftn_int lda, ftn_int const* desca = nullptr) const;
+
+    template <typename T>
+    inline int getri(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv) const;
+
+    /// Inversion of factorized symmetric triangular matrix.
+    template <typename T>
+    inline int sytri(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv) const;
+
+    /// Invert a general matrix.
+    template <typename T>
+    inline void geinv(ftn_int n, matrix<T>& A) const
+    {
+        std::vector<int> ipiv(n);
+        int info = this->getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
+        if (info) {
+            std::printf("getrf returned %i\n", info);
+            exit(-1);
+        }
+
+        info = this->getri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
+        if (info) {
+            std::printf("getri returned %i\n", info);
+            exit(-1);
+        }
+    }
+
+    template <typename T>
+    inline void syinv(ftn_int n, matrix<T>& A) const
+    {
+        std::vector<int> ipiv(n);
+        int info = this->sytrf(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
+        if (info) {
+            std::printf("sytrf returned %i\n", info);
+            exit(-1);
+        }
+
+        info = this->sytri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
+        if (info) {
+            std::printf("sytri returned %i\n", info);
+            exit(-1);
+        }
+    }
 
     /*
         solution of a linear system
@@ -838,6 +884,133 @@ inline void linalg2::tranc<ftn_double>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_d
     }
 }
 
+// Inversion of LU factorized matrix, double
+template<>
+inline int linalg2::getri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int nb = linalg_base::ilaenv(1, "dgetri", "U", n, -1, -1, -1);
+            ftn_int lwork = n * nb;
+            std::vector<ftn_double> work(lwork);
+
+            int32_t info;
+            FORTRAN(dgetri)(&n, A, &lda, ipiv, &work[0], &lwork, &info);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+// Inversion of LU factorized matrix, double_complex
+template<>
+inline int linalg2::getri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int nb = linalg_base::ilaenv(1, "zgetri", "U", n, -1, -1, -1);
+            ftn_int lwork = n * nb;
+            std::vector<ftn_double_complex> work(lwork);
+
+            int32_t info;
+            FORTRAN(zgetri)(&n, A, &lda, ipiv, &work[0], &lwork, &info);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline int linalg2::sytrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int nb = linalg_base::ilaenv(1, "zhetrf", "U", n, -1, -1, -1);
+            ftn_int lwork = n * nb;
+            std::vector<ftn_double_complex> work(lwork);
+
+            ftn_int info;
+            FORTRAN(zhetrf)("U", &n, A, &lda, ipiv, &work[0], &lwork, &info, (ftn_len)1);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline int linalg2::sytrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int nb = linalg_base::ilaenv(1, "dsytrf", "U", n, -1, -1, -1);
+            ftn_int lwork = n * nb;
+            std::vector<ftn_double> work(lwork);
+
+            ftn_int info;
+            FORTRAN(dsytrf)("U", &n, A, &lda, ipiv, &work[0], &lwork, &info, (ftn_len)1);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline int linalg2::sytri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            std::vector<ftn_double> work(n);
+            ftn_int info;
+            FORTRAN(dsytri)("U", &n, A, &lda, ipiv, &work[0], &info, (ftn_len)1);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
+inline int linalg2::sytri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            std::vector<ftn_double_complex> work(n);
+            ftn_int info;
+            FORTRAN(zhetri)("U", &n, A, &lda, ipiv, &work[0], &info, (ftn_len)1);
+            return info;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
 /// Linear algebra interface class.
 template <device_t pu>
 class linalg;
@@ -852,50 +1025,6 @@ class linalg<device_t::CPU>: public linalg_base
         template <typename T>
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T alpha, T const* A, ftn_int lda,
                          T const* B, ftn_int ldb, T beta, T* C, ftn_int ldc);
-
-        /// Compute C = op(A) * op(B) operation with raw pointers.
-        template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* A, ftn_int lda, T const* B, ftn_int ldb,
-                         T* C, ftn_int ldc)
-        {
-            auto one = linalg_const<T>::one();
-            auto zero = linalg_const<T>::zero();
-            gemm(transa, transb, m, n, k, one, A, lda, B, ldb, zero, C, ldc);
-        }
-
-        /// U*D*U^H factorization of hermitian matrix
-        template <typename T>
-        static ftn_int hetrf(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
-
-        template <typename T>
-        static ftn_int getri(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
-
-        template <typename T>
-        static ftn_int hetri(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
-
-        /// Invert a general matrix.
-        template <typename T>
-        static void geinv(ftn_int n, matrix<T>& A);
-
-        /// Invert a general distributed matrix.
-        template <typename T>
-        static void geinv(ftn_int n, dmatrix<T>& A);
-
-        template <typename T>
-        static ftn_int sytrf(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
-
-        template <typename T>
-        static ftn_int sytri(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv);
-
-        template <typename T>
-        static void syinv(ftn_int n, matrix<T>& A);
-
-        /// Invert a hermitian matrix.
-        template <typename T>
-        static void heinv(ftn_int n, matrix<T>& A);
-
-        template <typename T>
-        static ftn_int getri(ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja, ftn_int* ipiv);
 
         template <typename T>
         static void gemr2d(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja,
@@ -988,194 +1117,7 @@ inline void linalg<device_t::CPU>::gemm<ftn_double_complex>(int transa, int tran
                    (ftn_len)1, (ftn_len)1);
 }
 
-
-// Inversion of LU factorized matrix, double
-template<>
-inline ftn_int linalg<device_t::CPU>::getri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
-{
-    ftn_int nb = ilaenv(1, "dgetri", "U", n, -1, -1, -1);
-    ftn_int lwork = n * nb;
-    std::vector<ftn_double> work(lwork);
-
-    int32_t info;
-    FORTRAN(dgetri)(&n, A, &lda, ipiv, &work[0], &lwork, &info);
-    return info;
-}
-
-// Inversion of LU factorized matrix, double_complex
-template<>
-inline ftn_int linalg<device_t::CPU>::getri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
-{
-    ftn_int nb = ilaenv(1, "zgetri", "U", n, -1, -1, -1);
-    ftn_int lwork = n * nb;
-    std::vector<ftn_double_complex> work(lwork);
-
-    int32_t info;
-    FORTRAN(zgetri)(&n, A, &lda, ipiv, &work[0], &lwork, &info);
-    return info;
-}
-
-// Inversion of general matrix, double
-template <>
-inline void linalg<device_t::CPU>::geinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
-{
-    std::vector<int> ipiv(n);
-    int info = linalg2(linalg_t::lapack).getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
-    if (info)
-    {
-        std::printf("getrf returned %i\n", info);
-        exit(-1);
-    }
-
-    info = getri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
-    if (info)
-    {
-        std::printf("getri returned %i\n", info);
-        exit(-1);
-    }
-}
-
-// Inversion of general matrix, double_complex
-template <>
-inline void linalg<device_t::CPU>::geinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex>& A)
-{
-    std::vector<int> ipiv(n);
-    int info = linalg2(linalg_t::lapack).getrf(n, n, A.at(memory_t::host), A.ld(), &ipiv[0]);
-    if (info)
-    {
-        std::printf("getrf returned %i\n", info);
-        exit(-1);
-    }
-
-    info = getri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
-    if (info)
-    {
-        std::printf("getri returned %i\n", info);
-        exit(-1);
-    }
-}
-
-template<>
-inline ftn_int linalg<device_t::CPU>::hetrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
-{
-    ftn_int nb = ilaenv(1, "zhetrf", "U", n, -1, -1, -1);
-    ftn_int lwork = n * nb;
-    std::vector<ftn_double_complex> work(lwork);
-
-    ftn_int info;
-    FORTRAN(zhetrf)("U", &n, A, &lda, ipiv, &work[0], &lwork, &info, (ftn_len)1);
-    return info;
-}
-
-template<>
-inline ftn_int linalg<device_t::CPU>::hetri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv)
-{
-    std::vector<ftn_double_complex> work(n);
-    ftn_int info;
-    FORTRAN(zhetri)("U", &n, A, &lda, ipiv, &work[0], &info, (ftn_len)1);
-    return info;
-}
-
-// Inversion of hermitian matrix, double_complex
-template <>
-inline void linalg<device_t::CPU>::heinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_complex>& A)
-{
-    std::vector<int> ipiv(n);
-    int info = hetrf(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
-    if (info) {
-        std::printf("hetrf returned %i\n", info);
-        exit(-1);
-    }
-
-    info = hetri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
-    if (info) {
-        std::printf("hetri returned %i\n", info);
-        exit(-1);
-    }
-}
-
-template<>
-inline ftn_int linalg<device_t::CPU>::sytrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
-{
-    ftn_int nb = ilaenv(1, "dsytrf", "U", n, -1, -1, -1);
-    ftn_int lwork = n * nb;
-    std::vector<ftn_double> work(lwork);
-
-    ftn_int info;
-    FORTRAN(dsytrf)("U", &n, A, &lda, ipiv, &work[0], &lwork, &info, (ftn_len)1);
-    return info;
-}
-
-template<>
-inline ftn_int linalg<device_t::CPU>::sytri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_int* ipiv)
-{
-    std::vector<ftn_double> work(n);
-    ftn_int info;
-    FORTRAN(dsytri)("U", &n, A, &lda, ipiv, &work[0], &info, (ftn_len)1);
-    return info;
-}
-
-template <>
-inline void linalg<device_t::CPU>::syinv<ftn_double>(ftn_int n, matrix<ftn_double>& A)
-{
-    std::vector<int> ipiv(n);
-    int info = sytrf(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
-    if (info)
-    {
-        std::printf("sytrf returned %i\n", info);
-        exit(-1);
-    }
-
-    info = sytri(n, A.at(memory_t::host), A.ld(), &ipiv[0]);
-    if (info)
-    {
-        std::printf("sytri returned %i\n", info);
-        exit(-1);
-    }
-}
-
 #ifdef __SCALAPACK
-
-template<>
-inline ftn_int linalg<device_t::CPU>::getri<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
-                                                      ftn_int* ipiv)
-{
-    ftn_int info;
-    ia++;
-    ja++;
-
-
-    ftn_int lwork, liwork, i;
-    ftn_double_complex z;
-    i = -1;
-    /* query work sizes */
-    FORTRAN(pzgetri)(&n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &ipiv[0], &z, &i, &liwork, &i, &info);
-
-    lwork = (int)real(z) + 1;
-    std::vector<ftn_double_complex> work(lwork);
-    std::vector<ftn_int> iwork(liwork);
-
-    FORTRAN(pzgetri)(&n, A.at(memory_t::host), &ia, &ja, const_cast<int*>(A.descriptor()), &ipiv[0], &work[0], &lwork, &iwork[0], &liwork, &info);
-
-    return info;
-}
-
-template<>
-inline void linalg<device_t::CPU>::geinv<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
-{
-    std::vector<ftn_int> ipiv(A.num_rows_local() + A.bs_row());
-    ftn_int info = linalg2(linalg_t::lapack).getrf(n, n, A, 0, 0, &ipiv[0]);
-    if (info) {
-        std::printf("getrf returned %i\n", info);
-        exit(-1);
-    }
-
-    info = getri(n, A, 0, 0, &ipiv[0]);
-    if (info) {
-        std::printf("getri returned %i\n", info);
-        exit(-1);
-    }
-}
 
 template <>
 inline void linalg<device_t::CPU>::gemr2d(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
