@@ -281,12 +281,14 @@ int run_test(cmd_args& args)
 
     int lmax{10};
     std::vector<double_complex> ylm((lmax + 1) * (lmax + 1));
+    std::vector<double_complex> ylm_ref((lmax + 1) * (lmax + 1));
 
     for (int k = 0; k < num_points; k++) {
         double theta = tp(0, k);
         double phi = tp(1, k);
         /* generate spherical harmonics */
         sht::spherical_harmonics(lmax, theta, phi, &ylm[0]);
+        sht::spherical_harmonics_ref(lmax, theta, phi, &ylm_ref[0]);
 
         double_complex val;
         double diff{0};
@@ -295,6 +297,7 @@ int run_test(cmd_args& args)
                 /* compute spherical harmonics using their definition */
                 SphericalHarmonicY_(&l, &m, &theta, &phi, &val);
                 diff += std::abs(val - ylm[utils::lm(l, m)]);
+                diff += std::abs(val - ylm_ref[utils::lm(l, m)]);
             }
         }
         if (diff > 1e-10) {
