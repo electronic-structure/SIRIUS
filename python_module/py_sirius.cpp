@@ -412,17 +412,21 @@ PYBIND11_MODULE(py_sirius, m)
         .def("initial_state", &DFT_ground_state::initial_state)
         //.def("print_magnetic_moment", &DFT_ground_state::print_magnetic_moment)
         .def("total_energy", &DFT_ground_state::total_energy)
+        .def("serialize", [](DFT_ground_state& dft) {
+            auto json = dft.serialize();
+            return pj_convert(json);
+        })
         .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
-        .def("find",
-             [](DFT_ground_state& dft, double potential_tol, double energy_tol, double initial_tol, int num_dft_iter, bool write_state)
-             {
-                 json js = dft.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_state);
-                 return pj_convert(js);
-             },
-             "potential_tol"_a, "energy_tol"_a, "initial_tol"_a, "num_dft_iter"_a, "write_state"_a)
+        .def(
+            "find",
+            [](DFT_ground_state& dft, double potential_tol, double energy_tol, double initial_tol, int num_dft_iter,
+               bool write_state) {
+                json js = dft.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_state);
+                return pj_convert(js);
+            },
+            "potential_tol"_a, "energy_tol"_a, "initial_tol"_a, "num_dft_iter"_a, "write_state"_a)
         .def("check_scf_density",
-             [](DFT_ground_state& dft)
-             {
+             [](DFT_ground_state& dft) {
                  json js = dft.check_scf_density();
                  return pj_convert(js);
              })
