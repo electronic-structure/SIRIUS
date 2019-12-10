@@ -1076,7 +1076,7 @@ void Density::augment()
 {
     PROFILE("sirius::Density::augment");
 
-    /*check if we need to augment charge density and magnetization */
+    /* check if we need to augment charge density and magnetization */
     if (!unit_cell_.augment()) {
         return;
     }

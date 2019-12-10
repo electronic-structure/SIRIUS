@@ -580,15 +580,69 @@ void SHT::dRlm_dr(int lmax__, geometry3d::vector3d<double> &r__, sddk::mdarray<d
     double theta = vrs[1];
     double phi = vrs[2];
 
-    geometry3d::vector3d<double> dtheta_dr(
-            {std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
-    geometry3d::vector3d<double> dphi_dr({-std::sin(phi), std::cos(phi), 0.0});
+    double sint = std::sin(theta);
+    double sinp = std::sin(phi);
+    double cost = std::cos(theta);
+    double cosp = std::cos(phi);
 
-    sddk::mdarray<double, 1> dRlm_dt(lmmax);
-    sddk::mdarray<double, 1> dRlm_dp_sin_t(lmmax);
+    /* nominators of angle derivatives */
+    geometry3d::vector3d<double> dtheta_dr({cost * cosp, cost * sinp, -sint});
+    geometry3d::vector3d<double> dphi_dr({-sinp, cosp, 0});
 
-    dRlm_dtheta(lmax__, theta, phi, dRlm_dt);
-    dRlm_dphi_sin_theta(lmax__, theta, phi, dRlm_dp_sin_t);
+
+    std::vector<double> dRlm_dt(lmmax);
+    std::vector<double> dRlm_dp_sin_t(lmmax);
+
+    std::vector<double> plm((lmax__ + 1) * (lmax__ + 2) / 2);
+    std::vector<double> dplm((lmax__ + 1) * (lmax__ + 2) / 2);
+    std::vector<double> plm_y((lmax__ + 1) * (lmax__ + 2) / 2);
+
+    auto ilm = [](int l, int m){return l * (l + 1) / 2 + m;};
+
+    dRlm_dt[0] = 0;
+    dRlm_dp_sin_t[0] = 0;
+
+
+    /* compute Legendre polynomials */
+    sf::legendre_plm(lmax__, cost, ilm, plm.data());
+    /* compute sin(theta) * (dPlm/dx)  and Plm / sin(theta) */
+    sf::legendre_plm_aux(lmax__, cost, ilm, plm.data(), dplm.data(), plm_y.data());
+
+    double c0 = cosp;
+    double c1 = 1;
+    double s0 = -sinp;
+    double s1 = 0;
+    double c2 = 2 * c0;
+
+    double const t = std::sqrt(2.0);
+
+    for (int l = 0; l <= lmax__; l++) {
+       dRlm_dt[utils::lm(l, 0)] = -dplm[ilm(l, 0)];
+       dRlm_dp_sin_t[utils::lm(l, 0)] = 0;
+    }
+
+    int phase{-1};
+    for (int m = 1; m <= lmax__; m++) {
+        double c = c2 * c1 - c0;
+        c0 = c1;
+        c1 = c;
+        double s = c2 * s1 - s0;
+        s0 = s1;
+        s1 = s;
+        for (int l = m; l <= lmax__; l++) {
+            double p = -dplm[ilm(l, m)];
+            dRlm_dt[utils::lm(l, m)] = t * p * c;
+            dRlm_dt[utils::lm(l, -m)] = -t * p * s * phase;
+            p = plm_y[ilm(l, m)];
+            dRlm_dp_sin_t[utils::lm(l, m)] = -t * p * s * m;
+            dRlm_dp_sin_t[utils::lm(l, -m)] = -t * p * c * m * phase;
+        }
+
+        phase = -phase;
+    }
+
+    //dRlm_dtheta(lmax__, theta, phi, dRlm_dt);
+    //dRlm_dphi_sin_theta(lmax__, theta, phi, dRlm_dp_sin_t);
 
     for (int mu = 0; mu < 3; mu++) {
         for (int lm = 0; lm < lmmax; lm++) {

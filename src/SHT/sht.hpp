@@ -38,65 +38,41 @@
 #include "typedefs.hpp"
 #include "linalg.hpp"
 #include "lebedev_grids.hpp"
+#include "specfunc/specfunc.hpp"
 
 namespace sirius {
 
 namespace sht {
 
-/// Generate associated Legendre polynomials.
-/** Normalised associated Legendre polynomials obey the following recursive relations:
-    \f[
-    P_{m}^{m}(x) = -\sqrt{1 + \frac{1}{2m}} y P_{m-1}^{m-1}(x)
-    \f]
-    \f[
-    P_{m+1}^{m}(x) = \sqrt{2 m + 3} x P_{m}^{m}(x)
-    \f]
-    \f[
-    P_{\ell}^{m} = a_{\ell}^{m}\big(xP_{\ell-1}^{m}(x) + b_{\ell}^{m}P_{\ell - 2}^{m}\big)
-    \f]
-    where
-    \f{eqnarray*}{
-    a_{\ell}^{m} &=& \sqrt{\frac{4 \ell^2 - 1}{\ell^2 - m^2}} \\
-    b_{\ell}^{m} &=& -\sqrt{\frac{(\ell-1)^2-m^2}{4(\ell-1)^2-1}} \\
-    x &=& \cos \theta \\
-    y &=& \sin \theta
-    \f}
-    and
-    \f[
-    P_{0}^{0} = \sqrt{\frac{1}{4\pi}}
-    \f]
- */
-template <typename T>
-inline void legendre_plm(int lmax__, double x__, T* plm__)
-{
-    /* reference paper:
-       Associated Legendre Polynomials and Spherical Harmonics Computation for Chemistry Applications
-       Taweetham Limpanuparb, Josh Milthorpe
-       https://arxiv.org/abs/1410.1748
-    */
-
-    double u = std::sqrt(1 - x__ * x__);
-
-    plm__[0] = 1.0 / std::sqrt(fourpi);
-
-    /* compute P_{l,l} (diagonal) */
-    for (int l = 1; l <= lmax__; l++) {
-        plm__[utils::lm(l, l)] = -std::sqrt(1 + 0.5 / l) * u * plm__[utils::lm(l - 1, l - 1)];
-    }
-    /* compute P_{l+1,l} (upper diagonal) */
-    for (int l = 0; l < lmax__; l++) {
-        plm__[utils::lm(l + 1, l)] = std::sqrt(2.0 * l + 3) * x__ * plm__[utils::lm(l, l)];
-    }
-    for (int m = 0; m <= lmax__ - 2; m++) {
-        for (int l = m + 2; l <= lmax__; l++) {
-            double alm = std::sqrt(static_cast<double>((2 * l - 1) * (2 * l + 1)) / (l * l - m * m));
-            double blm = std::sqrt(static_cast<double>((l - 1 - m) * (l - 1 + m)) / ((2 * l - 3) * (2 * l - 1)));
-            plm__[utils::lm(l, m)] = alm * (x__ * plm__[utils::lm(l - 1, m)] - blm * plm__[utils::lm(l - 2, m)]);
-        }
-    }
-}
-
 /// Reference implementation of complex spherical harmonics.
+/** Complex spherical harmonics are defined as:
+    \f[
+    Y_{\ell m}(\theta,\phi) = P_{\ell}^{m}(\cos \theta) e^{im\phi}
+    \f]
+    where \f$P_{\ell}^m(x) \f$ are associated Legendre polynomials.
+
+    Mathematica code:
+    \verbatim
+    norm[l_, m_] := 4*Pi*Integrate[LegendreP[l, m, x]*LegendreP[l, m, x], {x, 0, 1}]
+    Ylm[l_, m_, t_, p_] := LegendreP[l, m, Cos[t]]*E^(I*m*p)/Sqrt[norm[l, m]]
+    Do[Print[ComplexExpand[
+     FullSimplify[SphericalHarmonicY[l, m, t, p] - Ylm[l, m, t, p], 
+      Assumptions -> {0 <= t <= Pi}]]], {l, 0, 5}, {m, -l, l}]
+    \endverbatim
+
+    Complex spherical harmonics obey the following symmetry:
+    \f[
+    Y_{\ell -m}(\theta,\phi) = (-1)^m Y_{\ell m}^{*}(\theta,\phi)
+    \f]
+    Mathematica code:
+    \verbatim
+    Do[Print[ComplexExpand[
+     FullSimplify[
+      SphericalHarmonicY[l, -m, t, p] - (-1)^m*
+       Conjugate[SphericalHarmonicY[l, m, t, p]], 
+        Assumptions -> {0 <= t <= Pi}]]], {l, 0, 4}, {m, 0, l}]
+    \endverbatim
+ */
 inline void spherical_harmonics_ref(int lmax, double theta, double phi, double_complex* ylm)
 {
     double x = std::cos(theta);
@@ -111,7 +87,7 @@ inline void spherical_harmonics_ref(int lmax, double theta, double phi, double_c
     for (int m = 1; m <= lmax; m++) {
         double_complex z = std::exp(double_complex(0.0, m * phi)) * std::pow(-1, m);
         for (int l = m; l <= lmax; l++) {
-            ylm[utils::lm(l, m)] = result_array[gsl_sf_legendre_array_index(l, m)] *  z;
+            ylm[utils::lm(l, m)] = result_array[gsl_sf_legendre_array_index(l, m)] * z;
             if (m % 2) {
                 ylm[utils::lm(l, -m)] = -std::conj(ylm[utils::lm(l, m)]);
             } else {
@@ -126,13 +102,15 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double_compl
 {
     double x = std::cos(theta);
 
-    sht::legendre_plm(lmax, x, ylm);
+    sf::legendre_plm(lmax, x, utils::lm, ylm);
 
     double c0 = std::cos(phi);
     double c1 = 1;
     double s0 = -std::sin(phi);
     double s1 = 0;
     double c2 = 2 * c0;
+
+    int phase{-1};
 
     for (int m = 1; m <= lmax; m++) {
         double c = c2 * c1 - c0;
@@ -143,24 +121,58 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double_compl
         s1 = s;
         for (int l = m; l <= lmax; l++) {
             double p = std::real(ylm[utils::lm(l, m)]);
+            double p1 = p * phase;
             ylm[utils::lm(l, m)] = double_complex(p * c, p * s);
-            if (m % 2) {
-                ylm[utils::lm(l, -m)] = -std::conj(ylm[utils::lm(l, m)]);
-            } else {
-                ylm[utils::lm(l, -m)] = std::conj(ylm[utils::lm(l, m)]);
-            }
+            ylm[utils::lm(l, -m)] = double_complex(p1 * c, -p1 * s);
         }
+        phase = -phase;
     }
 }
 
 /// Reference implementation of real spherical harmonics Rlm
-/** Mathematica code:
- *  \verbatim
- *  R[l_, m_, th_, ph_] :=
- *   If[m > 0, std::sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]],
- *   If[m < 0, std::sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]],
- *   If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]]]
- *  \endverbatim
+/** Real spherical harminics are defined as:
+    \f[
+    R_{\ell m}(\theta,\phi) = \left\{
+    \begin{array}{lll}
+    \sqrt{2} \Re Y_{\ell m}(\theta,\phi) = \sqrt{2} P_{\ell}^{m}(\cos \theta) \cos m\phi & m > 0 \\
+    P_{\ell}^{0}(\cos \theta) & m = 0 \\
+    \sqrt{2} \Im Y_{\ell m}(\theta,\phi) = \sqrt{2} (-1)^{|m|} P_{\ell}^{|m|}(\cos \theta) (-\sin |m|\phi) & m < 0
+    \end{array}
+    \right.
+    \f]
+
+    Mathematica code:
+    \verbatim
+    (* definition of real spherical harmonics, use Plm(l,m) for m\
+    \[GreaterEqual]0 only *)
+
+    norm[l_, m_] := 
+     4*Pi*Integrate[
+       LegendreP[l, Abs[m], x]*LegendreP[l, Abs[m], x], {x, 0, 1}]
+    legendre[l_, m_, x_] := LegendreP[l, Abs[m], x]/Sqrt[norm[l, m]]
+
+    (* reference definition *)
+
+    RRlm[l_, m_, th_, ph_] := 
+     If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]
+        ], If[m < 0, 
+       Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]], 
+       If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]]]
+
+    (* definition without ComplexExpand *)
+
+    Rlm[l_, m_, th_, ph_] := 
+     If[m > 0, legendre[l, m, Cos[th]]*Sqrt[2]*Cos[m*ph],
+      If[m < 0, (-1)^m*legendre[l, m, Cos[th]]*Sqrt[2]*(-Sin[Abs[m]*ph]),
+       If[m == 0, legendre[l, 0, Cos[th]]]]]
+
+    (* check that both definitions are identical *)
+    Do[
+     Print[FullSimplify[Rlm[l, m, a, b] - RRlm[l, m, a, b], 
+       Assumptions -> {0 <= a <= Pi, 0 <= b <= 2*Pi}]], {l, 0, 5}, {m, -l,
+       l}]
+
+    \endverbatim
  */
 inline void spherical_harmonics_ref(int lmax, double theta, double phi, double* rlm)
 {
@@ -175,14 +187,10 @@ inline void spherical_harmonics_ref(int lmax, double theta, double phi, double* 
     rlm[0] = y00;
 
     for (int l = 1; l <= lmax; l++) {
-        for (int m = -l; m < 0; m++) {
-            rlm[utils::lm(l, m)] = t * ylm[utils::lm(l, m)].imag();
-        }
-
         rlm[utils::lm(l, 0)] = ylm[utils::lm(l, 0)].real();
-
         for (int m = 1; m <= l; m++) {
-            rlm[utils::lm(l, m)] = t * ylm[utils::lm(l, m)].real();
+            rlm[utils::lm(l, m)]  = t * ylm[utils::lm(l, m)].real();
+            rlm[utils::lm(l, -m)] = t * ylm[utils::lm(l, -m)].imag();
         }
     }
 }
@@ -192,7 +200,7 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double* rlm)
 {
     double x = std::cos(theta);
 
-    sht::legendre_plm(lmax, x, rlm);
+    sf::legendre_plm(lmax, x, utils::lm, rlm);
 
     double c0 = std::cos(phi);
     double c1 = 1;
@@ -201,6 +209,8 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double* rlm)
     double c2 = 2 * c0;
 
     double const t = std::sqrt(2.0);
+
+    int phase{-1};
 
     for (int m = 1; m <= lmax; m++) {
         double c = c2 * c1 - c0;
@@ -212,12 +222,9 @@ inline void spherical_harmonics(int lmax, double theta, double phi, double* rlm)
         for (int l = m; l <= lmax; l++) {
             double p = rlm[utils::lm(l, m)];
             rlm[utils::lm(l, m)] = t * p * c;
-            if (m % 2) {
-                rlm[utils::lm(l, -m)] = t * p * s;
-            } else {
-                rlm[utils::lm(l, -m)] = -t * p * s;
-            }
+            rlm[utils::lm(l, -m)] = -t * p * s * phase;
         }
+        phase = -phase;
     }
 }
 
@@ -860,6 +867,17 @@ class SHT // TODO: better name
           \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \\
           \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{1}{\sin(\theta)}
         \f]
+
+        Spherical harmonics have a separable form:
+        \f[
+        R_{\ell m}(\theta, \phi) = P_{\ell}^{m}(\cos \theta) f(\phi)
+        \f]
+        The derivative over \f$ \theta \f$ is then:
+        \f[
+        \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} = \frac{\partial P_{\ell}^{m}(x)}{\partial x}
+          \frac{\partial x}{\partial \theta} f(\phi) = -\sin \theta \frac{\partial P_{\ell}^{m}(x)}{\partial x} f(\phi) 
+        \f]
+        where \f$ x = \cos \theta \f$
 
         Mathematica script for spherical harmonic derivatives:
         \verbatim
