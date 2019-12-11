@@ -73,7 +73,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
             gvec_rlm = sddk::mdarray<double, 2>(lmmax, gvec_count, mp__);
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
-                sht::spherical_harmonics(2 * lmax_beta, tp__(igloc, 0), tp__(igloc, 1), &gvec_rlm(0, igloc));
+                sf::spherical_harmonics(2 * lmax_beta, tp__(igloc, 0), tp__(igloc, 1), &gvec_rlm(0, igloc));
             }
             break;
         }

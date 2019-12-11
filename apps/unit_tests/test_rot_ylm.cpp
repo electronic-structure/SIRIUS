@@ -42,8 +42,8 @@ int run_test(cmd_args& args)
             int lmax = 10;
             mdarray<double_complex, 1> ylm(utils::lmmax(lmax));
             mdarray<double, 1> rlm(utils::lmmax(lmax));
-            sht::spherical_harmonics(lmax, scoord[1], scoord[2], &ylm(0));
-            sht::spherical_harmonics(lmax, scoord[1], scoord[2], &rlm(0));
+            sf::spherical_harmonics(lmax, scoord[1], scoord[2], &ylm(0));
+            sf::spherical_harmonics(lmax, scoord[1], scoord[2], &rlm(0));
 
             /* rotate coordinates with inverse operation */
             matrix3d<double> rotm = inverse(symmetry.magnetic_group_symmetry(isym).spg_op.rotation * double(proper_rotation));
@@ -60,8 +60,8 @@ int run_test(cmd_args& args)
 
             mdarray<double_complex, 1> ylm2(utils::lmmax(lmax));
             mdarray<double, 1> rlm2(utils::lmmax(lmax));
-            sht::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
-            sht::spherical_harmonics(lmax, scoord2[1], scoord2[2], &rlm2(0));
+            sf::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
+            sf::spherical_harmonics(lmax, scoord2[1], scoord2[2], &rlm2(0));
 
             mdarray<double_complex, 2> ylm_rot_mtrx(utils::lmmax(lmax), utils::lmmax(lmax));
             mdarray<double, 2> rlm_rot_mtrx(utils::lmmax(lmax), utils::lmmax(lmax));

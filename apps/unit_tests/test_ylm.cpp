@@ -298,8 +298,8 @@ int run_test(cmd_args& args)
         double theta = tp(0, k);
         double phi = tp(1, k);
         /* generate spherical harmonics */
-        sht::spherical_harmonics(lmax, theta, phi, &ylm[0]);
-        sht::spherical_harmonics_ref(lmax, theta, phi, &ylm_ref[0]);
+        sf::spherical_harmonics(lmax, theta, phi, &ylm[0]);
+        sf::spherical_harmonics_ref(lmax, theta, phi, &ylm_ref[0]);
 
         double_complex val;
         double diff{0};

@@ -136,7 +136,7 @@ class Matching_coefficients // TODO: compute on GPU
                 auto vs = SHT::spherical_coordinates(gkvec_cart);
 
                 /* get spherical harmonics */
-                sht::spherical_harmonics(lmax_apw__, vs[1], vs[2], &ylm[0]);
+                sf::spherical_harmonics(lmax_apw__, vs[1], vs[2], &ylm[0]);
                 gkvec_len_[i] = vs[0];
 
                 for (int lm = 0; lm < lmmax_apw; lm++) {

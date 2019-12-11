@@ -982,11 +982,11 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
         /* global index of G+k vector */
         //int igk = this->idxgk(igk_loc);
         /* vs = {r, theta, phi} */
-        auto vs = SHT::spherical_coordinates(this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc));
+        auto vs = geometry3d::spherical_coordinates(this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc));
 
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(lmmax);
-        sht::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
+        sf::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
 
         /* get all values of the radial integrals for a given G+k vector */
         std::vector<mdarray<double, 1>> ri_values(unit_cell_.num_atom_types());

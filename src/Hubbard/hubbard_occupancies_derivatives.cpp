@@ -329,9 +329,9 @@ Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__
         auto gvc = kp__.gkvec().gkvec_cart<index_domain_t::local>(igkloc);
         auto rtp = SHT::spherical_coordinates(gvc);
 
-        sht::spherical_harmonics(lmax, rtp[1], rtp[2], &rlm_g(0, igkloc));
-        mdarray<double, 2> rlm_dg_tmp(&rlm_dg(0, 0, igkloc), lmmax, 3);
-        SHT::dRlm_dr(lmax, gvc, rlm_dg_tmp);
+        sf::spherical_harmonics(lmax, rtp[1], rtp[2], &rlm_g(0, igkloc));
+        sddk::mdarray<double, 2> rlm_dg_tmp(&rlm_dg(0, 0, igkloc), lmmax, 3);
+        sf::dRlm_dr(lmax, gvc, rlm_dg_tmp);
     }
 
     for (int nu = 0; nu < 3; nu++) {

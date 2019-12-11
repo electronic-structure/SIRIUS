@@ -168,26 +168,16 @@ class Augmentation_operator_gvec_deriv
         /* array of real spherical harmonics and derivatives for each G-vector */
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_count; igloc++) {
+            auto gv = gvec__.gvec_cart<index_domain_t::local>(igloc);
             auto rtp = SHT::spherical_coordinates(gvec__.gvec_cart<index_domain_t::local>(igloc));
 
             double theta = rtp[1];
             double phi   = rtp[2];
 
-            vector3d<double> dtheta_dq({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
-            vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
+            sf::spherical_harmonics(2 * lmax, theta, phi, &rlm_g_(0, igloc));
 
-            sht::spherical_harmonics(2 * lmax, theta, phi, &rlm_g_(0, igloc));
-
-            sddk::mdarray<double, 1> dRlm_dtheta(lmmax);
-            sddk::mdarray<double, 1> dRlm_dphi_sin_theta(lmmax);
-
-            SHT::dRlm_dtheta(2 * lmax, theta, phi, dRlm_dtheta);
-            SHT::dRlm_dphi_sin_theta(2 * lmax, theta, phi, dRlm_dphi_sin_theta);
-            for (int nu = 0; nu < 3; nu++) {
-                for (int lm = 0; lm < lmmax; lm++) {
-                    rlm_dg_(lm, nu, igloc) = dRlm_dtheta[lm] * dtheta_dq[nu] + dRlm_dphi_sin_theta[lm] * dphi_dq[nu];
-                }
-            }
+            sddk::mdarray<double, 2> tmp(&rlm_dg_(0, 0, igloc), lmmax, 3);
+            sf::dRlm_dr(2 * lmax, gv, tmp, false);
         }
     }
 

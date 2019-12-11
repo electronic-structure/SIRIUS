@@ -307,7 +307,7 @@ int test1()
 
     double diff = 0;
     for (int iv = 0; iv < 6; iv++) {
-        SHT::dRlm_dr(lmax, v[iv], data);
+        sf::dRlm_dr(lmax, v[iv], data);
         for (int x = 0; x < 3; x++) {
             for (int lm = 0; lm < lmmax; lm++) {
                 diff += std::abs(data(lm, x) - ref[lm][iv][x]);
@@ -453,7 +453,7 @@ int test2()
 
     double diff = 0;
     for (int iv = 0; iv < 6; iv++) {
-        SHT::dRlm_dr(lmax, v[iv], data);
+        sf::dRlm_dr(lmax, v[iv], data);
         for (int x = 0; x < 3; x++) {
             for (int lm = 0; lm < lmmax; lm++) {
                 diff += std::abs(data(lm, x) - ref[lm][iv][x]);
@@ -485,7 +485,7 @@ int test3()
 
         double dr = 1e-5 * rtp[0];
 
-        SHT::dRlm_dr(lmax, v, data);
+        sf::dRlm_dr(lmax, v, data);
 
         mdarray<double, 2> drlm(lmmax, 3);
         for (int x = 0; x < 3; x++) {
@@ -499,8 +499,8 @@ int test3()
             std::vector<double> rlm1(lmmax);
             std::vector<double> rlm2(lmmax);
 
-            sht::spherical_harmonics(lmax, vs1[1], vs1[2], &rlm1[0]);
-            sht::spherical_harmonics(lmax, vs2[1], vs2[2], &rlm2[0]);
+            sf::spherical_harmonics(lmax, vs1[1], vs1[2], &rlm1[0]);
+            sf::spherical_harmonics(lmax, vs2[1], vs2[2], &rlm2[0]);
 
             for (int lm = 0; lm < lmmax; lm++) {
                 drlm(lm, x) = (rlm1[lm] - rlm2[lm]) / 2 / dr;
@@ -533,16 +533,13 @@ int main(int argn, char** argv)
     }
 
     sirius::initialize(1);
-    if (test1()) {
-        return 1;
-    }
-    if (test2()) {
-        return 2;
-    }
-    if (test3()) {
-        return 3;
-    }
+    int result = test1() + test2() + test3();
 
+    if (result) {
+        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+    } else {
+        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+    }
     sirius::finalize();
     return 0;
 }

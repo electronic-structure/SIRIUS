@@ -22,6 +22,9 @@
  *  \brief Special functions.
  */
 
+#include <gsl/gsl_sf_coupling.h>
+#include <gsl/gsl_sf_legendre.h>
+
 /// Special functions.
 namespace sf {
 
@@ -166,6 +169,361 @@ inline void legendre_plm_aux(int lmax__, double x__, F&& ilm__, T const* plm__, 
             p1lm__[ilm__(l, m)] = alm * (x__ * p1lm__[ilm__(l - 1, m)] + y * plm__[ilm__(l - 1, m)] -
                 blm * p1lm__[ilm__(l - 2, m)]);
             p2lm__[ilm__(l, m)] = alm * (x__ * p2lm__[ilm__(l - 1, m)] - blm * p2lm__[ilm__(l - 2, m)]);
+        }
+    }
+}
+
+/// Reference implementation of complex spherical harmonics.
+/** Complex spherical harmonics are defined as:
+    \f[
+    Y_{\ell m}(\theta,\phi) = P_{\ell}^{m}(\cos \theta) e^{im\phi}
+    \f]
+    where \f$P_{\ell}^m(x) \f$ are associated Legendre polynomials.
+
+    Mathematica code:
+    \verbatim
+    norm[l_, m_] := 4*Pi*Integrate[LegendreP[l, m, x]*LegendreP[l, m, x], {x, 0, 1}]
+    Ylm[l_, m_, t_, p_] := LegendreP[l, m, Cos[t]]*E^(I*m*p)/Sqrt[norm[l, m]]
+    Do[Print[ComplexExpand[
+     FullSimplify[SphericalHarmonicY[l, m, t, p] - Ylm[l, m, t, p], 
+      Assumptions -> {0 <= t <= Pi}]]], {l, 0, 5}, {m, -l, l}]
+    \endverbatim
+
+    Complex spherical harmonics obey the following symmetry:
+    \f[
+    Y_{\ell -m}(\theta,\phi) = (-1)^m Y_{\ell m}^{*}(\theta,\phi)
+    \f]
+    Mathematica code:
+    \verbatim
+    Do[Print[ComplexExpand[
+     FullSimplify[
+      SphericalHarmonicY[l, -m, t, p] - (-1)^m*
+       Conjugate[SphericalHarmonicY[l, m, t, p]], 
+        Assumptions -> {0 <= t <= Pi}]]], {l, 0, 4}, {m, 0, l}]
+    \endverbatim
+ */
+inline void spherical_harmonics_ref(int lmax, double theta, double phi, double_complex* ylm)
+{
+    double x = std::cos(theta);
+
+    std::vector<double> result_array(gsl_sf_legendre_array_n(lmax));
+    gsl_sf_legendre_array(GSL_SF_LEGENDRE_SPHARM, lmax, x, &result_array[0]);
+
+    for (int l = 0; l <= lmax; l++) {
+        ylm[utils::lm(l, 0)] = result_array[gsl_sf_legendre_array_index(l, 0)];
+    }
+
+    for (int m = 1; m <= lmax; m++) {
+        double_complex z = std::exp(double_complex(0.0, m * phi)) * std::pow(-1, m);
+        for (int l = m; l <= lmax; l++) {
+            ylm[utils::lm(l, m)] = result_array[gsl_sf_legendre_array_index(l, m)] * z;
+            if (m % 2) {
+                ylm[utils::lm(l, -m)] = -std::conj(ylm[utils::lm(l, m)]);
+            } else {
+                ylm[utils::lm(l, -m)] = std::conj(ylm[utils::lm(l, m)]);
+            }
+        }
+    }
+}
+
+/// Optimized implementation of complex spherical harmonics.
+inline void spherical_harmonics(int lmax, double theta, double phi, double_complex* ylm)
+{
+    double x = std::cos(theta);
+
+    sf::legendre_plm(lmax, x, utils::lm, ylm);
+
+    double c0 = std::cos(phi);
+    double c1 = 1;
+    double s0 = -std::sin(phi);
+    double s1 = 0;
+    double c2 = 2 * c0;
+
+    int phase{-1};
+
+    for (int m = 1; m <= lmax; m++) {
+        double c = c2 * c1 - c0;
+        c0 = c1;
+        c1 = c;
+        double s = c2 * s1 - s0;
+        s0 = s1;
+        s1 = s;
+        for (int l = m; l <= lmax; l++) {
+            double p = std::real(ylm[utils::lm(l, m)]);
+            double p1 = p * phase;
+            ylm[utils::lm(l, m)] = double_complex(p * c, p * s);
+            ylm[utils::lm(l, -m)] = double_complex(p1 * c, -p1 * s);
+        }
+        phase = -phase;
+    }
+}
+
+/// Reference implementation of real spherical harmonics Rlm
+/** Real spherical harminics are defined as:
+    \f[
+    R_{\ell m}(\theta,\phi) = \left\{
+    \begin{array}{lll}
+    \sqrt{2} \Re Y_{\ell m}(\theta,\phi) = \sqrt{2} P_{\ell}^{m}(\cos \theta) \cos m\phi & m > 0 \\
+    P_{\ell}^{0}(\cos \theta) & m = 0 \\
+    \sqrt{2} \Im Y_{\ell m}(\theta,\phi) = \sqrt{2} (-1)^{|m|} P_{\ell}^{|m|}(\cos \theta) (-\sin |m|\phi) & m < 0
+    \end{array}
+    \right.
+    \f]
+
+    Mathematica code:
+    \verbatim
+    (* definition of real spherical harmonics, use Plm(l,m) for m\
+    \[GreaterEqual]0 only *)
+
+    norm[l_, m_] := 
+     4*Pi*Integrate[
+       LegendreP[l, Abs[m], x]*LegendreP[l, Abs[m], x], {x, 0, 1}]
+    legendre[l_, m_, x_] := LegendreP[l, Abs[m], x]/Sqrt[norm[l, m]]
+
+    (* reference definition *)
+
+    RRlm[l_, m_, th_, ph_] := 
+     If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]
+        ], If[m < 0, 
+       Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]], 
+       If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]]]
+
+    (* definition without ComplexExpand *)
+
+    Rlm[l_, m_, th_, ph_] := 
+     If[m > 0, legendre[l, m, Cos[th]]*Sqrt[2]*Cos[m*ph],
+      If[m < 0, (-1)^m*legendre[l, m, Cos[th]]*Sqrt[2]*(-Sin[Abs[m]*ph]),
+       If[m == 0, legendre[l, 0, Cos[th]]]]]
+
+    (* check that both definitions are identical *)
+    Do[
+     Print[FullSimplify[Rlm[l, m, a, b] - RRlm[l, m, a, b], 
+       Assumptions -> {0 <= a <= Pi, 0 <= b <= 2*Pi}]], {l, 0, 5}, {m, -l,
+       l}]
+
+    \endverbatim
+ */
+inline void spherical_harmonics_ref(int lmax, double theta, double phi, double* rlm)
+{
+    /* reference code */
+    int lmmax = (lmax + 1) * (lmax + 1);
+
+    std::vector<double_complex> ylm(lmmax);
+    sf::spherical_harmonics_ref(lmax, theta, phi, &ylm[0]);
+
+    double const t = std::sqrt(2.0);
+
+    rlm[0] = y00;
+
+    for (int l = 1; l <= lmax; l++) {
+        rlm[utils::lm(l, 0)] = ylm[utils::lm(l, 0)].real();
+        for (int m = 1; m <= l; m++) {
+            rlm[utils::lm(l, m)]  = t * ylm[utils::lm(l, m)].real();
+            rlm[utils::lm(l, -m)] = t * ylm[utils::lm(l, -m)].imag();
+        }
+    }
+}
+
+/// Optimized implementation of real spherical harmonics.
+inline void spherical_harmonics(int lmax, double theta, double phi, double* rlm)
+{
+    double x = std::cos(theta);
+
+    sf::legendre_plm(lmax, x, utils::lm, rlm);
+
+    double c0 = std::cos(phi);
+    double c1 = 1;
+    double s0 = -std::sin(phi);
+    double s1 = 0;
+    double c2 = 2 * c0;
+
+    double const t = std::sqrt(2.0);
+
+    int phase{-1};
+
+    for (int m = 1; m <= lmax; m++) {
+        double c = c2 * c1 - c0;
+        c0 = c1;
+        c1 = c;
+        double s = c2 * s1 - s0;
+        s0 = s1;
+        s1 = s;
+        for (int l = m; l <= lmax; l++) {
+            double p = rlm[utils::lm(l, m)];
+            rlm[utils::lm(l, m)] = t * p * c;
+            rlm[utils::lm(l, -m)] = -t * p * s * phase;
+        }
+        phase = -phase;
+    }
+}
+
+/// Generate \f$ \cos(m x) \f$ for m in [1, n] using recursion.
+inline sddk::mdarray<double, 1> cosxn(int n__, double x__)
+{
+    assert(n__ > 0);
+    sddk::mdarray<double, 1> data(n__);
+
+    double c0 = std::cos(x__);
+    double c1 = 1;
+    double c2 = 2 * c0;
+    for (int m = 0; m < n__; m++) {
+        data[m] = c2 * c1 - c0;
+        c0 = c1;
+        c1 = data[m];
+    }
+    return data;
+}
+
+/// Generate \f$ \sin(m x) \f$ for m in [1, n] using recursion.
+inline sddk::mdarray<double, 1> sinxn(int n__, double x__)
+{
+    assert(n__ > 0);
+    sddk::mdarray<double, 1> data(n__);
+
+    double s0 = -std::sin(x__);
+    double s1 = 0;
+    double c2 = 2 * std::cos(x__);
+
+    for (int m = 0; m < n__; m++) {
+        data[m] = c2 * s1 - s0;
+        s0 = s1;
+        s1 = data[m];
+    }
+    return data;
+}
+
+/// Compute the derivatives of real spherical harmonics over the components of cartesian vector.
+/** The following derivative is computed:
+    \f[
+      \frac{\partial R_{\ell m}(\theta_r, \phi_r)}{\partial r_{\mu}} =
+        \frac{\partial R_{\ell m}(\theta_r, \phi_r)}{\partial \theta_r} \frac{\partial \theta_r}{\partial r_{\mu}} +
+        \frac{\partial R_{\ell m}(\theta_r, \phi_r)}{\partial \phi_r} \frac{\partial \phi_r}{\partial r_{\mu}}
+    \f]
+    The derivatives of angles are:
+    \f[
+       \frac{\partial \theta_r}{\partial r_{x}} = \frac{\cos(\phi_r) \cos(\theta_r)}{r} \\
+       \frac{\partial \theta_r}{\partial r_{y}} = \frac{\cos(\theta_r) \sin(\phi_r)}{r} \\
+       \frac{\partial \theta_r}{\partial r_{z}} = -\frac{\sin(\theta_r)}{r}
+    \f]
+    and
+    \f[
+       \frac{\partial \phi_r}{\partial r_{x}} = -\frac{\sin(\phi_r)}{\sin(\theta_r) r} \\
+       \frac{\partial \phi_r}{\partial r_{y}} = \frac{\cos(\phi_r)}{\sin(\theta_r) r} \\
+       \frac{\partial \phi_r}{\partial r_{z}} = 0
+    \f]
+    The derivative of \f$ \phi \f$ has discontinuities at \f$ \theta = 0, \theta=\pi \f$. This, however, is not a problem, because
+    multiplication by the the derivative of \f$ R_{\ell m} \f$ removes it. The following functions have to be hardcoded:
+    \f[
+      \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \\
+      \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{1}{\sin(\theta)}
+    \f]
+
+    Spherical harmonics have a separable form:
+    \f[
+    R_{\ell m}(\theta, \phi) = P_{\ell}^{m}(\cos \theta) f(\phi)
+    \f]
+    The derivative over \f$ \theta \f$ is then:
+    \f[
+    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} = \frac{\partial P_{\ell}^{m}(x)}{\partial x}
+      \frac{\partial x}{\partial \theta} f(\phi) = -\sin \theta \frac{\partial P_{\ell}^{m}(x)}{\partial x} f(\phi) 
+    \f]
+    where \f$ x = \cos \theta \f$
+
+    Mathematica script for spherical harmonic derivatives:
+    \verbatim
+    Rlm[l_, m_, th_, ph_] :=
+     If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]],
+       If[m < 0, Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]],
+         If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]
+       ]
+     ]
+    Do[Print[FullSimplify[D[Rlm[l, m, theta, phi], theta]]], {l, 0, 4}, {m, -l, l}]
+    Do[Print[FullSimplify[TrigExpand[D[Rlm[l, m, theta, phi], phi]/Sin[theta]]]], {l, 0, 4}, {m, -l, l}]
+    \endverbatim
+ */
+inline void dRlm_dr(int lmax__, geometry3d::vector3d<double>& r__, sddk::mdarray<double, 2>& data__,
+                    bool divide_by_r__ = true)
+{
+    /* get spherical coordinates of the Cartesian vector */
+    auto vrs = geometry3d::spherical_coordinates(r__);
+
+    if (vrs[0] < 1e-12) {
+        data__.zero();
+        return;
+    }
+
+    int lmmax = (lmax__ + 1) * (lmax__ + 1);
+
+    double theta = vrs[1];
+    double phi = vrs[2];
+
+    double sint = std::sin(theta);
+    double sinp = std::sin(phi);
+    double cost = std::cos(theta);
+    double cosp = std::cos(phi);
+
+    /* nominators of angle derivatives */
+    geometry3d::vector3d<double> dtheta_dr({cost * cosp, cost * sinp, -sint});
+    geometry3d::vector3d<double> dphi_dr({-sinp, cosp, 0});
+
+
+    std::vector<double> dRlm_dt(lmmax);
+    std::vector<double> dRlm_dp_sin_t(lmmax);
+
+    std::vector<double> plm((lmax__ + 1) * (lmax__ + 2) / 2);
+    std::vector<double> dplm((lmax__ + 1) * (lmax__ + 2) / 2);
+    std::vector<double> plm_y((lmax__ + 1) * (lmax__ + 2) / 2);
+
+    auto ilm = [](int l, int m){return l * (l + 1) / 2 + m;};
+
+    dRlm_dt[0] = 0;
+    dRlm_dp_sin_t[0] = 0;
+
+    /* compute Legendre polynomials */
+    sf::legendre_plm(lmax__, cost, ilm, plm.data());
+    /* compute sin(theta) * (dPlm/dx)  and Plm / sin(theta) */
+    sf::legendre_plm_aux(lmax__, cost, ilm, plm.data(), dplm.data(), plm_y.data());
+
+    double c0 = cosp;
+    double c1 = 1;
+    double s0 = -sinp;
+    double s1 = 0;
+    double c2 = 2 * c0;
+
+    double const t = std::sqrt(2.0);
+
+    for (int l = 0; l <= lmax__; l++) {
+       dRlm_dt[utils::lm(l, 0)] = -dplm[ilm(l, 0)];
+       dRlm_dp_sin_t[utils::lm(l, 0)] = 0;
+    }
+
+    int phase{-1};
+    for (int m = 1; m <= lmax__; m++) {
+        double c = c2 * c1 - c0;
+        c0 = c1;
+        c1 = c;
+        double s = c2 * s1 - s0;
+        s0 = s1;
+        s1 = s;
+        for (int l = m; l <= lmax__; l++) {
+            double p = -dplm[ilm(l, m)];
+            dRlm_dt[utils::lm(l, m)] = t * p * c;
+            dRlm_dt[utils::lm(l, -m)] = -t * p * s * phase;
+            p = plm_y[ilm(l, m)];
+            dRlm_dp_sin_t[utils::lm(l, m)] = -t * p * s * m;
+            dRlm_dp_sin_t[utils::lm(l, -m)] = -t * p * c * m * phase;
+        }
+
+        phase = -phase;
+    }
+
+    if (!divide_by_r__) {
+        vrs[0] = 1;
+    }
+
+    for (int mu = 0; mu < 3; mu++) {
+        for (int lm = 0; lm < lmmax; lm++) {
+            data__(lm, mu) = (dRlm_dt[lm] * dtheta_dr[mu] + dRlm_dp_sin_t[lm] * dphi_dr[mu]) / vrs[0];
         }
     }
 }
