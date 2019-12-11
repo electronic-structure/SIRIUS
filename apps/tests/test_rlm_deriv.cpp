@@ -305,7 +305,6 @@ int test1()
      -0.08668819173772069}, {-0.626993556015982, -1.2539871120319641, 0}, {0, 0.000012270071415546983, 2.454014283109397e-6}, 
     {-0.0505628139354794, -0.05056281393547872, 0.20225125574191624}, {-0.23885468800608828, 0, -0.47770937601217656}}};
 
-    
     double diff = 0;
     for (int iv = 0; iv < 6; iv++) {
         SHT::dRlm_dr(lmax, v[iv], data);
@@ -322,7 +321,6 @@ int test1()
         return 0;
     }
 }
-
 
 int test2()
 {
@@ -470,117 +468,57 @@ int test2()
     }
 }
 
-
-void test()
+int test3()
 {
-    vector3d<double> v(1, 2, 3);
-
-    int lmax = 4;
+    int lmax = 8;
     int lmmax = utils::lmmax(lmax);
 
     mdarray<double, 2> data(lmmax, 3);
+    double max_diff{0};
 
-    SHT::dRlm_dr(lmax, v, data);
+    for (int i = 0; i < 300; i++) {
+        vector3d<double> v(1 + 10 * utils::random<double>(),
+                           1 + 10 * utils::random<double>(),
+                           1 + 10 * utils::random<double>());
 
-    double ref[25][3] = {{0, 0, 0}, {0.018654930590386358, -0.09327465295193178, 
-  0.05596479177115907}, {-0.027982395885579534, -0.05596479177115907, 
-  0.04663732647596589}, {-0.12125704883751132, 0.018654930590386358, 
-  0.027982395885579534}, {-0.1337814404806628, -0.03344536012016567, 
-  0.06689072024033137}, {0.0668907202403314, -0.1003360803604971, 
-  0.044593813493554235}, {-0.08689359450834735, -0.1737871890166947, 
-  0.1448226575139123}, {-0.2006721607209941, 0.06689072024033138, 
-  0.022296906746777128}, {0.09476185367380276, -0.12263298710727419, 
-  0.05016804018024854}, {-0.1399952355967818, 
-  0.09172101642547784, -0.014482265751391271}, {-0.2601438503421481, 
--0.023649440940195287, 0.1024809107408462}, {0.1508186325006462, 
-  0.03116087448360464, -0.07104679382261853}, {-0.14197053090816286, 
--0.2839410618163257, 0.23661755151360483}, {-0.19506707426736475, 
-  0.15081863250064623, -0.03552339691130926}, {0.2187573286968063, 
--0.22466968893185513, 0.07686068305563466}, {0.07482503971552143, 
-  0.08206617259121686, -0.07965246163265173}, {0.0036491879618028513, 
-  0.09670348098777354, -0.06568538331244998}, {-0.3406082530771876, 
-  0.21288015817324252, -0.02838402108976575}, {-0.31860984653060703, 
-  0.07241132875695616, 0.057929063005564885}, {0.2457721996741063, 
-  0.2764937246333695, -0.26625321631361526}, {-0.1457249880974753, 
--0.2914499761949506, 0.24287498016245884}, {-0.09216457487778984, 
-  0.24577219967410632, -0.13312660815680763}, {0.35240179995051973, 
--0.24137109585652042, 0.043446797254173664}, {0.15869248154732635, 
-  0.15482193321690346, -0.15611211599371105}, {-0.134107657596252, 
-  0.03831647359892921, 0.01915823679946454}};
+        auto rtp = SHT::spherical_coordinates(v);
 
-    for (int x = 0; x < 3; x++) {
-        for (int lm = 0; lm < lmmax; lm++) {
-            printf("diff: %18.12f\n", std::abs(data(lm, x) - ref[lm][x]));
+        double dr = 1e-5 * rtp[0];
+
+        SHT::dRlm_dr(lmax, v, data);
+
+        mdarray<double, 2> drlm(lmmax, 3);
+        for (int x = 0; x < 3; x++) {
+            vector3d<double> v1 = v;
+            v1[x] += dr;
+            vector3d<double> v2 = v;
+            v2[x] -= dr;
+
+            auto vs1 = SHT::spherical_coordinates(v1);
+            auto vs2 = SHT::spherical_coordinates(v2);
+            std::vector<double> rlm1(lmmax);
+            std::vector<double> rlm2(lmmax);
+
+            sht::spherical_harmonics(lmax, vs1[1], vs1[2], &rlm1[0]);
+            sht::spherical_harmonics(lmax, vs2[1], vs2[2], &rlm2[0]);
+
+            for (int lm = 0; lm < lmmax; lm++) {
+                drlm(lm, x) = (rlm1[lm] - rlm2[lm]) / 2 / dr;
+            }
+        }
+
+        for (int x = 0; x < 3; x++) {
+            for (int lm = 0; lm < lmmax; lm++) {
+                max_diff = std::max(std::abs(drlm(lm, x) - data(lm, x)), max_diff);
+            }
         }
     }
-
-
-    //vector3d<double> v(0, 0, 1);
-    //vector3d<double> rtp = SHT::spherical_coordinates(v);
-
-    //std::vector<double> drlmdx = {0,0,0,-0.4886025119029199,0,0,0,-1.092548430592079,0,0,0,0,0,-1.828183197857863,0,0,0,0,0,0,0,-2.676186174229157,0,0,0,0,0,0,0,0,0,-3.623573209565575,0,0,0,0,0,0,0,0,0,0,0,-4.660970900149851,0,0,0,0,0,0,0,0,0,0,0,0,0,-5.781222885281108,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-6.978639737521917,0,0,0,0,0,0,0};
-    //std::vector<double> drlmdy = {0,-0.4886025119029199,0,0,0,-1.092548430592079,0,0,0,0,0,-1.828183197857863,0,0,0,0,0,0,0,-2.676186174229157,0,0,0,0,0,0,0,0,0,-3.623573209565575,0,0,0,0,0,0,0,0,0,0,0,-4.660970900149851,0,0,0,0,0,0,0,0,0,0,0,0,0,-5.781222885281108,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-6.978639737521917,0,0,0,0,0,0,0,0,0}; 
-
-    //int lmax{8};
-    //int lmmax = Utils::lmmax(lmax);
-
-    //mdarray<double, 2> rlm_dg(lmmax, 3);
-
-    //double theta = rtp[1];
-    //double phi   = rtp[2];
-    //std::vector<double> dRlm_dtheta(lmmax);
-    //std::vector<double> dRlm_dphi_sin_theta(lmmax);
-    //
-    //vector3d<double> dtheta_dq({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
-    //vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
-    //SHT::dRlm_dtheta(lmax, theta, phi, &dRlm_dtheta[0]);
-    //SHT::dRlm_dphi_sin_theta(lmax, theta, phi, &dRlm_dphi_sin_theta[0]);
-
-    //for (int nu = 0; nu < 3; nu++) {
-    //    for (int lm = 0; lm < lmmax; lm++) {
-    //        rlm_dg(lm, nu) = (dRlm_dtheta[lm] * dtheta_dq[nu] + dRlm_dphi_sin_theta[lm] * dphi_dq[nu]) / rtp[0];
-    //    }
-    //}
-
-    //double dg = 1e-4 * rtp[0];
-    //mdarray<double, 2> rlm_dg_v2(lmmax, 3);
-    //for (int x = 0; x < 3; x++) {
-    //    vector3d<double> g1 = v;
-    //    g1[x] += dg;
-    //    vector3d<double> g2 = v;
-    //    g2[x] -= dg;
-    //    
-    //    auto gs1 = SHT::spherical_coordinates(g1);
-    //    auto gs2 = SHT::spherical_coordinates(g2);
-    //    std::vector<double> rlm1(lmmax);
-    //    std::vector<double> rlm2(lmmax);
-    //    
-    //    SHT::spherical_harmonics(lmax, gs1[1], gs1[2], &rlm1[0]);
-    //    SHT::spherical_harmonics(lmax, gs2[1], gs2[2], &rlm2[0]);
-    //    
-    //    for (int lm = 0; lm < lmmax; lm++) {
-    //        rlm_dg_v2(lm, x) = (rlm1[lm] - rlm2[lm]) / 2 / dg;
-    //    }
-    //}
-
-    //for (int x = 0; x < 3; x++) {
-    //    for (int lm = 0; lm < lmmax; lm++) {
-    //        printf("x: %i, lm: %2i, diff: %18.12f, (numerical: %18.12f, analytical: %18.12f)\n", x, lm,
-    //               std::abs(rlm_dg_v2(lm, x) - rlm_dg(lm, x)),
-    //               rlm_dg_v2(lm, x),
-    //               rlm_dg(lm, x));
-    //    }
-    //}
-    //
-    //printf("============\n");
-    //for (int lm = 0; lm < lmmax; lm++) {
-    //    printf("x: %i, lm: %2i, diff with numerical: %18.12f, diff with analytical: %18.12f\n", 0, lm,
-    //           std::abs(rlm_dg_v2(lm, 0) - drlmdx[lm]), std::abs(rlm_dg(lm, 0) - drlmdx[lm]));
-    //}
-    //for (int lm = 0; lm < lmmax; lm++) {
-    //    printf("x: %i, lm: %2i, diff with numerical: %18.12f, diff with analytical: %18.12f\n", 1, lm,
-    //           std::abs(rlm_dg_v2(lm, 1) - drlmdy[lm]), std::abs(rlm_dg(lm, 1) - drlmdy[lm]));
-    //}
+    printf("maximum numerical derivative error: %18.12f\n", max_diff);
+    if (max_diff > 1e-8) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 int main(int argn, char** argv)
@@ -600,6 +538,9 @@ int main(int argn, char** argv)
     }
     if (test2()) {
         return 2;
+    }
+    if (test3()) {
+        return 3;
     }
 
     sirius::finalize();
