@@ -508,6 +508,36 @@ inline vector3d<int> find_translations(double radius__, matrix3d<double> const& 
     return {limits[0], limits[1], limits[2]};
 }
 
+/// Transform Cartesian coordinates [x,y,z] to spherical coordinates [r,theta,phi]
+inline vector3d<double> spherical_coordinates(vector3d<double> vc)
+{
+    geometry3d::vector3d<double> vs;
+
+    const double eps{1e-12};
+
+    const double twopi = 6.2831853071795864769;
+
+    vs[0] = vc.length();
+
+    if (vs[0] <= eps) {
+        vs[1] = 0.0;
+        vs[2] = 0.0;
+    } else {
+        vs[1] = std::acos(vc[2] / vs[0]); // theta = cos^{-1}(z/r)
+
+        if (std::abs(vc[0]) > eps || std::abs(vc[1]) > eps) {
+            vs[2] = std::atan2(vc[1], vc[0]); // phi = tan^{-1}(y/x)
+            if (vs[2] < 0.0) {
+                vs[2] += twopi;
+            }
+        } else {
+            vs[2] = 0.0;
+        }
+    }
+
+    return vs;
+}
+
 } // namespace geometry3d
 
 #endif // __GEOMETRY3D_HPP__

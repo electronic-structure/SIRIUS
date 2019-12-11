@@ -4,259 +4,270 @@
 
 /* test generation of complex spherical harmonics */
 
-#define Sin(x) std::sin(x)
-#define Cos(x) std::cos(x)
-#define Complex(x,y) double_complex(x,y)
-#define Power(x,y) std::pow(x,y)
 
-void SphericalHarmonicY_(int* l, int* m, double* t, double* p, double_complex* val)
+/* Generated with the following Mathematica code
+
+rules = {"Power" -> "std::pow", "Pi" -> "pi", "Sqrt" -> "std::sqrt", 
+   "Cos" -> "std::cos", "Sin" -> "std::sin", 
+   "Complex" -> "std::complex<double>"};
+Do[
+ Print["if (l==", l, " && m == ", m, ") return ",
+  StringReplace[
+   ToString[
+    CForm[
+     ComplexExpand[SphericalHarmonicY[l, m, t, p]
+      ]
+     ]
+    ], rules], ";"
+  ], {l, 0, 10}, {m, -l, l}]
+
+*/
+
+double_complex SphericalHarmonicY(int l, int m, double t, double p)
 {
-    double th=*t;
-    double ph=*p;
-    
-    if (*l==0 && *m==0) *val=0.28209479177387814347;
-    
-    if (*l==1 && *m==-1) *val=(0.34549414947133547927*Sin(th))/Power(2.7182818284590452354,Complex(0.e-21,1.)*ph);
-    
-    if (*l==1 && *m==0) *val=0.48860251190291992159*Cos(th);
-    
-    if (*l==1 && *m==1) *val=-0.34549414947133547927*Power(2.7182818284590452354,Complex(0.e-21,1.)*ph)*Sin(th);
-    
-    if (*l==2 && *m==-2) *val=(-0.19313710101159479017*(-1. + Cos(2.*th)))/Power(2.7182818284590452354,Complex(0.e-21,2.)*ph);
-    
-    if (*l==2 && *m==-1) *val=(0.38627420202318958034*Sin(2.*th))/Power(2.7182818284590452354,Complex(0.e-21,1.)*ph);
-    
-    if (*l==2 && *m==0) *val=0.125*(1.2615662610100800241 + 3.7846987830302400724*Cos(2.*th));
-    
-    if (*l==2 && *m==1) *val=-0.38627420202318958034*Power(2.7182818284590452354,Complex(0.e-21,1.)*ph)*Sin(2.*th);
-    
-    if (*l==2 && *m==2) *val=-0.19313710101159479017*Power(2.7182818284590452354,Complex(0.e-21,2.)*ph)*(-1. + Cos(2.*th));
-    
-    if (*l==3 && *m==-3) *val=(0.10430595590819602243*(3.*Sin(th) - 1.*Sin(3.*th)))/Power(2.7182818284590452354,Complex(0.e-21,3.)*ph);
-    
-    if (*l==3 && *m==-2) *val=(0.25549636910832059085*(Cos(th) - 1.*Cos(3.*th)))/Power(2.7182818284590452354,Complex(0.e-21,2.)*ph);
-    
-    if (*l==3 && *m==-1) *val=(0.080795046028537663252*(Sin(th) + 5.*Sin(3.*th)))/Power(2.7182818284590452354,Complex(0.e-21,1.)*ph);
-    
-    if (*l==3 && *m==0) *val=0.0625*(4.478115991081384697*Cos(th) + 7.4635266518023078283*Cos(3.*th));
-    
-    if (*l==3 && *m==1) *val=-0.080795046028537663252*Power(2.7182818284590452354,Complex(0.e-21,1.)*ph)*(Sin(th) + 5.*Sin(3.*th));
-    
-    if (*l==3 && *m==2) *val=0.25549636910832059085*Power(2.7182818284590452354,Complex(0.e-21,2.)*ph)*(Cos(th) - 1.*Cos(3.*th));
-    
-    if (*l==3 && *m==3) *val=-0.10430595590819602243*Power(2.7182818284590452354,Complex(0.e-21,3.)*ph)*(3.*Sin(th) - 1.*Sin(3.*th));
-    
-    if (*l==4 && *m==-4) *val=(-0.055316586555622829095*(-3. + 4.*Cos(2.*th) - 1.*Cos(4.*th)))/Power(2.7182818284590452354,Complex(0.e-21,4.)*ph);
-    
-    if (*l==4 && *m==-3) *val=(0.15645893386229403365*(2.*Sin(2.*th) - 1.*Sin(4.*th)))/Power(2.7182818284590452354,Complex(0.e-21,3.)*ph);
-    
-    if (*l==4 && *m==-2) *val=(0.041815408972330572997*(3. + 4.*Cos(2.*th) - 7.*Cos(4.*th)))/Power(2.7182818284590452354,Complex(0.e-21,2.)*ph);
-    
-    if (*l==4 && *m==-1) *val=(0.059135918484847501131*(2.*Sin(2.*th) + 7.*Sin(4.*th)))/Power(2.7182818284590452354,Complex(0.e-21,1.)*ph);
-    
-    if (*l==4 && *m==0) *val=0.013223193364400537975*(9. + 20.*Cos(2.*th) + 35.*Cos(4.*th));
-    
-    if (*l==4 && *m==1) *val=-0.059135918484847501131*Power(2.7182818284590452354,Complex(0.e-21,1.)*ph)*(2.*Sin(2.*th) + 7.*Sin(4.*th));
-    
-    if (*l==4 && *m==2) *val=0.041815408972330572997*Power(2.7182818284590452354,Complex(0.e-21,2.)*ph)*(3. + 4.*Cos(2.*th) - 7.*Cos(4.*th));
-    
-    if (*l==4 && *m==3) *val=-0.15645893386229403365*Power(2.7182818284590452354,Complex(0.e-21,3.)*ph)*(2.*Sin(2.*th) - 1.*Sin(4.*th));
-    
-    if (*l==4 && *m==4) *val=-0.055316586555622829095*Power(2.7182818284590452354,Complex(0.e-21,4.)*ph)*(-3. + 4.*Cos(2.*th) - 1.*Cos(4.*th));
-    
-    if (*l==5 && *m==-5) *val=(0.029008262715053635041*(10.*Sin(th) - 5.*Sin(3.*th) + Sin(5.*th)))/Power(2.7182818284590452354,Complex(0.e-21,5.)*ph);
-    
-    if (*l==5 && *m==-4) *val=(0.091732181144109447691*(2.*Cos(th) - 3.*Cos(3.*th) + Cos(5.*th)))/Power(2.7182818284590452354,Complex(0.e-21,4.)*ph);
-    
-    if (*l==5 && *m==-3) *val=(0.021621482446677513323*(6.*Sin(th) + 13.*Sin(3.*th) - 9.*Sin(5.*th)))/Power(2.7182818284590452354,Complex(0.e-21,3.)*ph);
-    
-    if (*l==5 && *m==-2) *val=(0.10592319895380620474*(2.*Cos(th) + Cos(3.*th) - 3.*Cos(5.*th)))/Power(2.7182818284590452354,Complex(0.e-21,2.)*ph);
-    
-    if (*l==5 && *m==-1) *val=(0.020017603036013445471*(2.*Sin(th) + 7.*Sin(3.*th) + 21.*Sin(5.*th)))/Power(2.7182818284590452354,Complex(0.e-21,1.)*ph);
-    
-    if (*l==5 && *m==0) *val=0.00390625*(56.136154777643326291*Cos(th) + 65.492180573917214006*Cos(3.*th) + 117.88592503305098521*Cos(5.*th));
-    
-    if (*l==5 && *m==1) *val=-0.020017603036013445471*Power(2.7182818284590452354,Complex(0.e-21,1.)*ph)*(2.*Sin(th) + 7.*Sin(3.*th) + 21.*Sin(5.*th));
-    
-    if (*l==5 && *m==2) *val=0.10592319895380620474*Power(2.7182818284590452354,Complex(0.e-21,2.)*ph)*(2.*Cos(th) + Cos(3.*th) - 3.*Cos(5.*th));
-    
-    if (*l==5 && *m==3) *val=-0.021621482446677513323*Power(2.7182818284590452354,Complex(0.e-21,3.)*ph)*(6.*Sin(th) + 13.*Sin(3.*th) - 9.*Sin(5.*th));
-    
-    if (*l==5 && *m==4) *val=0.091732181144109447691*Power(2.7182818284590452354,Complex(0.e-21,4.)*ph)*(2.*Cos(th) - 3.*Cos(3.*th) + Cos(5.*th));
-    
-    if (*l==5 && *m==5) *val=-0.029008262715053635041*Power(2.7182818284590452354,Complex(0.e-21,5.)*ph)*(10.*Sin(th) - 5.*Sin(3.*th) + Sin(5.*th));
-    
-    if (*l==6 && *m==-6) *val=(-0.015096378549377069593*(-10. + 15.*Cos(2.*th) - 6.*Cos(4.*th) + Cos(6.*th)))/Power(2.7182818284590452354,Complex(0.e-21,6.)*ph);
-    
-    if (*l==6 && *m==-5) *val=(0.052295389315628059414*(5.*Sin(2.*th) - 4.*Sin(4.*th) + Sin(6.*th)))/Power(2.7182818284590452354,Complex(0.e-21,5.)*ph);
-    
-    if (*l==6 && *m==-4) *val=(0.011149414464187438363*(10. + 5.*Cos(2.*th) - 26.*Cos(4.*th) + 11.*Cos(6.*th)))/Power(2.7182818284590452354,Complex(0.e-21,4.)*ph);
-    
-    if (*l==6 && *m==-3) *val=(0.020355952683366116799*(9.*Sin(2.*th) + 12.*Sin(4.*th) - 11.*Sin(6.*th)))/Power(2.7182818284590452354,Complex(0.e-21,3.)*ph);
-    
-    if (*l==6 && *m==-2) *val=(0.010177976341683058399*(10. + 17.*Cos(2.*th) + 6.*Cos(4.*th) - 33.*Cos(6.*th)))/Power(2.7182818284590452354,Complex(0.e-21,2.)*ph);
-    
-    if (*l==6 && *m==-1) *val=(0.012874234884410649294*(5.*Sin(2.*th) + 12.*Sin(4.*th) + 33.*Sin(6.*th)))/Power(2.7182818284590452354,Complex(0.e-21,1.)*ph);
-    
-    if (*l==6 && *m==0) *val=0.0009765625*(101.71072362820548149 + 213.59251961923151113*Cos(2.*th) + 256.31102354307781336*Cos(4.*th) + 469.9035431623093245*Cos(6.*th));
-    
-    if (*l==6 && *m==1) *val=-0.012874234884410649294*Power(2.7182818284590452354,Complex(0.e-21,1.)*ph)*(5.*Sin(2.*th) + 12.*Sin(4.*th) + 33.*Sin(6.*th));
-    
-    if (*l==6 && *m==2) *val=0.010177976341683058399*Power(2.7182818284590452354,Complex(0.e-21,2.)*ph)*(10. + 17.*Cos(2.*th) + 6.*Cos(4.*th) - 33.*Cos(6.*th));
-    
-    if (*l==6 && *m==3) *val=-0.020355952683366116799*Power(2.7182818284590452354,Complex(0.e-21,3.)*ph)*(9.*Sin(2.*th) + 12.*Sin(4.*th) - 11.*Sin(6.*th));
-    
-    if (*l==6 && *m==4) *val=0.011149414464187438363*Power(2.7182818284590452354,Complex(0.e-21,4.)*ph)*(10. + 5.*Cos(2.*th) - 26.*Cos(4.*th) + 11.*Cos(6.*th));
-    
-    if (*l==6 && *m==5) *val=-0.052295389315628059414*Power(2.7182818284590452354,Complex(0.e-21,5.)*ph)*(5.*Sin(2.*th) - 4.*Sin(4.*th) + Sin(6.*th));
-    
-    if (*l==6 && *m==6) *val=-0.015096378549377069593*Power(2.7182818284590452354,Complex(0.e-21,6.)*ph)*(-10. + 15.*Cos(2.*th) - 6.*Cos(4.*th) + Cos(6.*th));
-    
-    if (*l==7 && *m==-7) *val=(0.0078131181807898541252*(35.*Sin(th) - 21.*Sin(3.*th) + 7.*Sin(5.*th) - 1.*Sin(7.*th)))/Power(2.7182818284590452354,Complex(0.e-21,7.)*ph);
-    
-    if (*l==7 && *m==-6) *val=(0.029234011354890136512*(5.*Cos(th) - 9.*Cos(3.*th) + 5.*Cos(5.*th) - 1.*Cos(7.*th)))/Power(2.7182818284590452354,Complex(0.e-21,6.)*ph);
-    
-    if (*l==7 && *m==-5) *val=(0.0057332613215068404807*(25.*Sin(th) + 33.*Sin(3.*th) - 43.*Sin(5.*th) + 13.*Sin(7.*th)))/Power(2.7182818284590452354,Complex(0.e-21,5.)*ph);
-    
-    if (*l==7 && *m==-4) *val=(0.011466522643013680961*(15.*Cos(th) - 3.*Cos(3.*th) - 25.*Cos(5.*th) + 13.*Cos(7.*th)))/Power(2.7182818284590452354,Complex(0.e-21,4.)*ph);
-    
-    if (*l==7 && *m==-3) *val=(0.0017286433298632134092*(45.*Sin(th) + 117.*Sin(3.*th) + 121.*Sin(5.*th) - 143.*Sin(7.*th)))/Power(2.7182818284590452354,Complex(0.e-21,3.)*ph);
-    
-    if (*l==7 && *m==-2) *val=(0.0024446708415983442757*(75.*Cos(th) + 57.*Cos(3.*th) + 11.*Cos(5.*th) - 143.*Cos(7.*th)))/Power(2.7182818284590452354,Complex(0.e-21,2.)*ph);
-    
-    if (*l==7 && *m==-1) *val=(0.000998032691829377308*(25.*Sin(th) + 81.*Sin(3.*th) + 165.*Sin(5.*th) + 429.*Sin(7.*th)))/Power(2.7182818284590452354,Complex(0.e-21,1.)*ph);
-    
-    if (*l==7 && *m==0) *val=0.00048828125*(382.39195070722767469*Cos(th) + 412.98330676380588867*Cos(3.*th) + 504.75737493354053059*Cos(5.*th) + 937.40655344800384253*Cos(7.*th));
-    
-    if (*l==7 && *m==1) *val=-0.000998032691829377308*Power(2.7182818284590452354,Complex(0.e-21,1.)*ph)*(25.*Sin(th) + 81.*Sin(3.*th) + 165.*Sin(5.*th) + 429.*Sin(7.*th));
-    
-    if (*l==7 && *m==2) *val=0.0024446708415983442757*Power(2.7182818284590452354,Complex(0.e-21,2.)*ph)*(75.*Cos(th) + 57.*Cos(3.*th) + 11.*Cos(5.*th) - 143.*Cos(7.*th));
-    
-    if (*l==7 && *m==3) *val=-0.0017286433298632134092*Power(2.7182818284590452354,Complex(0.e-21,3.)*ph)*(45.*Sin(th) + 117.*Sin(3.*th) + 121.*Sin(5.*th) - 143.*Sin(7.*th));
-    
-    if (*l==7 && *m==4) *val=0.011466522643013680961*Power(2.7182818284590452354,Complex(0.e-21,4.)*ph)*(15.*Cos(th) - 3.*Cos(3.*th) - 25.*Cos(5.*th) + 13.*Cos(7.*th));
-    
-    if (*l==7 && *m==5) *val=-0.0057332613215068404807*Power(2.7182818284590452354,Complex(0.e-21,5.)*ph)*(25.*Sin(th) + 33.*Sin(3.*th) - 43.*Sin(5.*th) + 13.*Sin(7.*th));
-    
-    if (*l==7 && *m==6) *val=0.029234011354890136512*Power(2.7182818284590452354,Complex(0.e-21,6.)*ph)*(5.*Cos(th) - 9.*Cos(3.*th) + 5.*Cos(5.*th) - 1.*Cos(7.*th));
-    
-    if (*l==7 && *m==7) *val=-0.0078131181807898541252*Power(2.7182818284590452354,Complex(0.e-21,7.)*ph)*(35.*Sin(th) - 21.*Sin(3.*th) + 7.*Sin(5.*th) - 1.*Sin(7.*th));
-    
-    if (*l==8 && *m==-8) *val=(-0.0040267889406037836697*(-35. + 56.*Cos(2.*th) - 28.*Cos(4.*th) + 8.*Cos(6.*th) - 1.*Cos(8.*th)))/Power(2.7182818284590452354,Complex(0.e-21,8.)*ph);
-    
-    if (*l==8 && *m==-7) *val=(0.016107155762415134679*(14.*Sin(2.*th) - 14.*Sin(4.*th) + 6.*Sin(6.*th) - 1.*Sin(8.*th)))/Power(2.7182818284590452354,Complex(0.e-21,7.)*ph);
-    
-    if (*l==8 && *m==-6) *val=(-0.0029407508494413637791*(-35. + 84.*Cos(4.*th) - 64.*Cos(6.*th) + 15.*Cos(8.*th)))/Power(2.7182818284590452354,Complex(0.e-21,6.)*ph);
-    
-    if (*l==8 && *m==-5) *val=(0.019058243713852132128*(10.*Sin(2.*th) + 6.*Sin(4.*th) - 14.*Sin(6.*th) + 5.*Sin(8.*th)))/Power(2.7182818284590452354,Complex(0.e-21,5.)*ph);
-    
-    if (*l==8 && *m==-4) *val=(0.0026429028819455042764*(35. + 40.*Cos(2.*th) - 36.*Cos(4.*th) - 104.*Cos(6.*th) + 65.*Cos(8.*th)))/Power(2.7182818284590452354,Complex(0.e-21,4.)*ph);
-    
-    if (*l==8 && *m==-3) *val=(0.0068239458982790165503*(18.*Sin(2.*th) + 30.*Sin(4.*th) + 26.*Sin(6.*th) - 39.*Sin(8.*th)))/Power(2.7182818284590452354,Complex(0.e-21,3.)*ph);
-    
-    if (*l==8 && *m==-2) *val=(0.0025199090249443985025*(35. + 64.*Cos(2.*th) + 44.*Cos(4.*th) - 143.*Cos(8.*th)))/Power(2.7182818284590452354,Complex(0.e-21,2.)*ph);
-    
-    if (*l==8 && *m==-1) *val=(0.00060237347190669625515*(70.*Sin(2.*th) + 154.*Sin(4.*th) + 286.*Sin(6.*th) + 715.*Sin(8.*th)))/Power(2.7182818284590452354,Complex(0.e-21,1.)*ph);
-    
-    if (*l==8 && *m==0) *val=0.000030517578125*(2849.6112261547828377 + 5862.0573795184104091*Cos(2.*th) + 6448.26311747025145*Cos(4.*th) + 7983.5638597250732238*Cos(6.*th) + 14969.182236984512295*Cos(8.*th));
-    
-    if (*l==8 && *m==1) *val=-0.00060237347190669625515*Power(2.7182818284590452354,Complex(0.e-21,1.)*ph)*(70.*Sin(2.*th) + 154.*Sin(4.*th) + 286.*Sin(6.*th) + 715.*Sin(8.*th));
-    
-    if (*l==8 && *m==2) *val=0.0025199090249443985025*Power(2.7182818284590452354,Complex(0.e-21,2.)*ph)*(35. + 64.*Cos(2.*th) + 44.*Cos(4.*th) - 143.*Cos(8.*th));
-    
-    if (*l==8 && *m==3) *val=-0.0068239458982790165503*Power(2.7182818284590452354,Complex(0.e-21,3.)*ph)*(18.*Sin(2.*th) + 30.*Sin(4.*th) + 26.*Sin(6.*th) - 39.*Sin(8.*th));
-    
-    if (*l==8 && *m==4) *val=0.0026429028819455042764*Power(2.7182818284590452354,Complex(0.e-21,4.)*ph)*(35. + 40.*Cos(2.*th) - 36.*Cos(4.*th) - 104.*Cos(6.*th) + 65.*Cos(8.*th));
-    
-    if (*l==8 && *m==5) *val=-0.019058243713852132128*Power(2.7182818284590452354,Complex(0.e-21,5.)*ph)*(10.*Sin(2.*th) + 6.*Sin(4.*th) - 14.*Sin(6.*th) + 5.*Sin(8.*th));
-    
-    if (*l==8 && *m==6) *val=-0.0029407508494413637791*Power(2.7182818284590452354,Complex(0.e-21,6.)*ph)*(-35. + 84.*Cos(4.*th) - 64.*Cos(6.*th) + 15.*Cos(8.*th));
-    
-    if (*l==8 && *m==7) *val=-0.016107155762415134679*Power(2.7182818284590452354,Complex(0.e-21,7.)*ph)*(14.*Sin(2.*th) - 14.*Sin(4.*th) + 6.*Sin(6.*th) - 1.*Sin(8.*th));
-    
-    if (*l==8 && *m==8) *val=-0.0040267889406037836697*Power(2.7182818284590452354,Complex(0.e-21,8.)*ph)*(-35. + 56.*Cos(2.*th) - 28.*Cos(4.*th) + 8.*Cos(6.*th) - 1.*Cos(8.*th));
-    
-    if (*l==9 && *m==-9) *val=(0.0020685661777048811701*(126.*Sin(th) - 84.*Sin(3.*th) + 36.*Sin(5.*th) - 9.*Sin(7.*th) + Sin(9.*th)))/Power(2.7182818284590452354,Complex(0.e-21,9.)*ph);
-    
-    if (*l==9 && *m==-8) *val=(0.0087761830295295503502*(14.*Cos(th) - 28.*Cos(3.*th) + 20.*Cos(5.*th) - 7.*Cos(7.*th) + Cos(9.*th)))/Power(2.7182818284590452354,Complex(0.e-21,8.)*ph);
-    
-    if (*l==9 && *m==-7) *val=(0.0015051029725160147409*(98.*Sin(th) + 84.*Sin(3.*th) - 164.*Sin(5.*th) + 89.*Sin(7.*th) - 17.*Sin(9.*th)))/Power(2.7182818284590452354,Complex(0.e-21,7.)*ph);
-    
-    if (*l==9 && *m==-6) *val=(0.0034758864253609080772*(42.*Cos(th) - 28.*Cos(3.*th) - 60.*Cos(5.*th) + 63.*Cos(7.*th) - 17.*Cos(9.*th)))/Power(2.7182818284590452354,Complex(0.e-21,6.)*ph);
-    
-    if (*l==9 && *m==-5) *val=(0.0013462050238731226558*(70.*Sin(th) + 140.*Sin(3.*th) + 36.*Sin(5.*th) - 205.*Sin(7.*th) + 85.*Sin(9.*th)))/Power(2.7182818284590452354,Complex(0.e-21,5.)*ph);
-    
-    if (*l==9 && *m==-4) *val=(0.011263159309939926077*(14.*Cos(th) + 4.*Cos(3.*th) - 12.*Cos(5.*th) - 23.*Cos(7.*th) + 17.*Cos(9.*th)))/Power(2.7182818284590452354,Complex(0.e-21,4.)*ph);
-    
-    if (*l==9 && *m==-3) *val=(0.0012753016618556871192*(42.*Sin(th) + 116.*Sin(3.*th) + 156.*Sin(5.*th) + 117.*Sin(7.*th) - 221.*Sin(9.*th)))/Power(2.7182818284590452354,Complex(0.e-21,3.)*ph);
-    
-    if (*l==9 && *m==-2) *val=(0.0016697618283876180219*(98.*Cos(th) + 84.*Cos(3.*th) + 52.*Cos(5.*th) - 13.*Cos(7.*th) - 221.*Cos(9.*th)))/Power(2.7182818284590452354,Complex(0.e-21,2.)*ph);
-    
-    if (*l==9 && *m==-1) *val=(0.00017799720897774700839*(98.*Sin(th) + 308.*Sin(3.*th) + 572.*Sin(5.*th) + 1001.*Sin(7.*th) + 2431.*Sin(9.*th)))/Power(2.7182818284590452354,Complex(0.e-21,1.)*ph);
-    
-    if (*l==9 && *m==0) *val=0.0000152587890625*(10845.272124401886479*Cos(th) + 11361.713654135309644*Cos(3.*th) + 12660.195214607916461*Cos(5.*th) + 15825.244018259895576*Cos(7.*th) + 29892.127590046469421*Cos(9.*th));
-    
-    if (*l==9 && *m==1) *val=-0.00017799720897774700839*Power(2.7182818284590452354,Complex(0.e-21,1.)*ph)*(98.*Sin(th) + 308.*Sin(3.*th) + 572.*Sin(5.*th) + 1001.*Sin(7.*th) + 2431.*Sin(9.*th));
-    
-    if (*l==9 && *m==2) *val=0.0016697618283876180219*Power(2.7182818284590452354,Complex(0.e-21,2.)*ph)*(98.*Cos(th) + 84.*Cos(3.*th) + 52.*Cos(5.*th) - 13.*Cos(7.*th) - 221.*Cos(9.*th));
-    
-    if (*l==9 && *m==3) *val=-0.0012753016618556871192*Power(2.7182818284590452354,Complex(0.e-21,3.)*ph)*(42.*Sin(th) + 116.*Sin(3.*th) + 156.*Sin(5.*th) + 117.*Sin(7.*th) - 221.*Sin(9.*th));
-    
-    if (*l==9 && *m==4) *val=0.011263159309939926077*Power(2.7182818284590452354,Complex(0.e-21,4.)*ph)*(14.*Cos(th) + 4.*Cos(3.*th) - 12.*Cos(5.*th) - 23.*Cos(7.*th) + 17.*Cos(9.*th));
-    
-    if (*l==9 && *m==5) *val=-0.0013462050238731226558*Power(2.7182818284590452354,Complex(0.e-21,5.)*ph)*(70.*Sin(th) + 140.*Sin(3.*th) + 36.*Sin(5.*th) - 205.*Sin(7.*th) + 85.*Sin(9.*th));
-    
-    if (*l==9 && *m==6) *val=0.0034758864253609080772*Power(2.7182818284590452354,Complex(0.e-21,6.)*ph)*(42.*Cos(th) - 28.*Cos(3.*th) - 60.*Cos(5.*th) + 63.*Cos(7.*th) - 17.*Cos(9.*th));
-    
-    if (*l==9 && *m==7) *val=-0.0015051029725160147409*Power(2.7182818284590452354,Complex(0.e-21,7.)*ph)*(98.*Sin(th) + 84.*Sin(3.*th) - 164.*Sin(5.*th) + 89.*Sin(7.*th) - 17.*Sin(9.*th));
-    
-    if (*l==9 && *m==8) *val=0.0087761830295295503502*Power(2.7182818284590452354,Complex(0.e-21,8.)*ph)*(14.*Cos(th) - 28.*Cos(3.*th) + 20.*Cos(5.*th) - 7.*Cos(7.*th) + Cos(9.*th));
-    
-    if (*l==9 && *m==9) *val=-0.0020685661777048811701*Power(2.7182818284590452354,Complex(0.e-21,9.)*ph)*(126.*Sin(th) - 84.*Sin(3.*th) + 36.*Sin(5.*th) - 9.*Sin(7.*th) + Sin(9.*th));
-    
-    if (*l==10 && *m==-10) *val=(-0.0010598247889535575405*(-126. + 210.*Cos(2.*th) - 120.*Cos(4.*th) + 45.*Cos(6.*th) - 10.*Cos(8.*th) + Cos(10.*th)))/Power(2.7182818284590452354,Complex(0.e-21,10.)*ph);
-    
-    if (*l==10 && *m==-9) *val=(0.0047396805446790457321*(42.*Sin(2.*th) - 48.*Sin(4.*th) + 27.*Sin(6.*th) - 8.*Sin(8.*th) + Sin(10.*th)))/Power(2.7182818284590452354,Complex(0.e-21,9.)*ph);
-    
-    if (*l==10 && *m==-8) *val=(-0.0007688777136636614457*(-126. + 42.*Cos(2.*th) + 264.*Cos(4.*th) - 279.*Cos(6.*th) + 118.*Cos(8.*th) - 19.*Cos(10.*th)))/Power(2.7182818284590452354,Complex(0.e-21,8.)*ph);
-    
-    if (*l==10 && *m==-7) *val=(0.0018833580730737201349*(98.*Sin(2.*th) + 16.*Sin(4.*th) - 129.*Sin(6.*th) + 88.*Sin(8.*th) - 19.*Sin(10.*th)))/Power(2.7182818284590452354,Complex(0.e-21,7.)*ph);
-    
-    if (*l==10 && *m==-6) *val=(0.0002283907137100791915*(378. + 266.*Cos(2.*th) - 664.*Cos(4.*th) - 711.*Cos(6.*th) + 1054.*Cos(8.*th) - 323.*Cos(10.*th)))/Power(2.7182818284590452354,Complex(0.e-21,6.)*ph);
-    
-    if (*l==10 && *m==-5) *val=(0.00040855772902834421417*(350.*Sin(2.*th) + 400.*Sin(4.*th) - 15.*Sin(6.*th) - 680.*Sin(8.*th) + 323.*Sin(10.*th)))/Power(2.7182818284590452354,Complex(0.e-21,5.)*ph);
-    
-    if (*l==10 && *m==-4) *val=(0.00064598648969772954638*(126. + 182.*Cos(2.*th) - 8.*Cos(4.*th) - 249.*Cos(6.*th) - 374.*Cos(8.*th) + 323.*Cos(10.*th)))/Power(2.7182818284590452354,Complex(0.e-21,4.)*ph);
-    
-    if (*l==10 && *m==-3) *val=(0.000913562854840316766*(98.*Sin(2.*th) + 176.*Sin(4.*th) + 207.*Sin(6.*th) + 136.*Sin(8.*th) - 323.*Sin(10.*th)))/Power(2.7182818284590452354,Complex(0.e-21,3.)*ph);
-    
-    if (*l==10 && *m==-2) *val=(0.00008958220814854438251*(882. + 1666.*Cos(2.*th) + 1352.*Cos(4.*th) + 741.*Cos(6.*th) - 442.*Cos(8.*th) - 4199.*Cos(10.*th)))/Power(2.7182818284590452354,Complex(0.e-21,2.)*ph);
-    
-    if (*l==10 && *m==-1) *val=(0.00010344062397832637181*(294.*Sin(2.*th) + 624.*Sin(4.*th) + 1053.*Sin(6.*th) + 1768.*Sin(8.*th) + 4199.*Sin(10.*th)))/Power(2.7182818284590452354,Complex(0.e-21,1.)*ph);
-    
-    if (*l==10 && *m==0) *val=3.814697265625e-6*(20523.234411985023069 + 41806.588617006528473*Cos(2.*th) + 44366.175675190601645*Cos(4.*th) + 49911.94763458942685*Cos(6.*th) + 62852.082206520018997*Cos(8.*th) + 119418.95619238803609*Cos(10.*th));
-    
-    if (*l==10 && *m==1) *val=-0.00010344062397832637181*Power(2.7182818284590452354,Complex(0.e-21,1.)*ph)*(294.*Sin(2.*th) + 624.*Sin(4.*th) + 1053.*Sin(6.*th) + 1768.*Sin(8.*th) + 4199.*Sin(10.*th));
-    
-    if (*l==10 && *m==2) *val=0.00008958220814854438251*Power(2.7182818284590452354,Complex(0.e-21,2.)*ph)*(882. + 1666.*Cos(2.*th) + 1352.*Cos(4.*th) + 741.*Cos(6.*th) - 442.*Cos(8.*th) - 4199.*Cos(10.*th));
-    
-    if (*l==10 && *m==3) *val=-0.000913562854840316766*Power(2.7182818284590452354,Complex(0.e-21,3.)*ph)*(98.*Sin(2.*th) + 176.*Sin(4.*th) + 207.*Sin(6.*th) + 136.*Sin(8.*th) - 323.*Sin(10.*th));
-    
-    if (*l==10 && *m==4) *val=0.00064598648969772954638*Power(2.7182818284590452354,Complex(0.e-21,4.)*ph)*(126. + 182.*Cos(2.*th) - 8.*Cos(4.*th) - 249.*Cos(6.*th) - 374.*Cos(8.*th) + 323.*Cos(10.*th));
-    
-    if (*l==10 && *m==5) *val=-0.00040855772902834421417*Power(2.7182818284590452354,Complex(0.e-21,5.)*ph)*(350.*Sin(2.*th) + 400.*Sin(4.*th) - 15.*Sin(6.*th) - 680.*Sin(8.*th) + 323.*Sin(10.*th));
-    
-    if (*l==10 && *m==6) *val=0.0002283907137100791915*Power(2.7182818284590452354,Complex(0.e-21,6.)*ph)*(378. + 266.*Cos(2.*th) - 664.*Cos(4.*th) - 711.*Cos(6.*th) + 1054.*Cos(8.*th) - 323.*Cos(10.*th));
-    
-    if (*l==10 && *m==7) *val=-0.0018833580730737201349*Power(2.7182818284590452354,Complex(0.e-21,7.)*ph)*(98.*Sin(2.*th) + 16.*Sin(4.*th) - 129.*Sin(6.*th) + 88.*Sin(8.*th) - 19.*Sin(10.*th));
-    
-    if (*l==10 && *m==8) *val=-0.0007688777136636614457*Power(2.7182818284590452354,Complex(0.e-21,8.)*ph)*(-126. + 42.*Cos(2.*th) + 264.*Cos(4.*th) - 279.*Cos(6.*th) + 118.*Cos(8.*th) - 19.*Cos(10.*th));
-    
-    if (*l==10 && *m==9) *val=-0.0047396805446790457321*Power(2.7182818284590452354,Complex(0.e-21,9.)*ph)*(42.*Sin(2.*th) - 48.*Sin(4.*th) + 27.*Sin(6.*th) - 8.*Sin(8.*th) + Sin(10.*th));
-    
-    if (*l==10 && *m==10) *val=-0.0010598247889535575405*Power(2.7182818284590452354,Complex(0.e-21,10.)*ph)*(-126. + 210.*Cos(2.*th) - 120.*Cos(4.*th) + 45.*Cos(6.*th) - 10.*Cos(8.*th) + Cos(10.*th));
-    
-    return;
+if (l==0 && m == 0) return 1/(2.*std::sqrt(pi));
+
+if (l==1 && m == -1) return (std::sqrt(3/(2.*pi))*std::cos(p)*std::sin(t))/2. - std::complex<double>(0,0.5)*std::sqrt(3/(2.*pi))*std::sin(p)*std::sin(t);
+
+if (l==1 && m == 0) return (std::sqrt(3/pi)*std::cos(t))/2.;
+
+if (l==1 && m == 1) return -(std::sqrt(3/(2.*pi))*std::cos(p)*std::sin(t))/2. - std::complex<double>(0,0.5)*std::sqrt(3/(2.*pi))*std::sin(p)*std::sin(t);
+
+if (l==2 && m == -2) return (std::sqrt(15/(2.*pi))*std::cos(2*p)*std::pow(std::sin(t),2))/4. - std::complex<double>(0,0.25)*std::sqrt(15/(2.*pi))*std::sin(2*p)*std::pow(std::sin(t),2);
+
+if (l==2 && m == -1) return (std::sqrt(15/(2.*pi))*std::cos(p)*std::cos(t)*std::sin(t))/2. - std::complex<double>(0,0.5)*std::sqrt(15/(2.*pi))*std::cos(t)*std::sin(p)*std::sin(t);
+
+if (l==2 && m == 0) return -std::sqrt(5/pi)/4. + (3*std::sqrt(5/pi)*std::pow(std::cos(t),2))/4.;
+
+if (l==2 && m == 1) return -(std::sqrt(15/(2.*pi))*std::cos(p)*std::cos(t)*std::sin(t))/2. - std::complex<double>(0,0.5)*std::sqrt(15/(2.*pi))*std::cos(t)*std::sin(p)*std::sin(t);
+
+if (l==2 && m == 2) return (std::sqrt(15/(2.*pi))*std::cos(2*p)*std::pow(std::sin(t),2))/4. + std::complex<double>(0,0.25)*std::sqrt(15/(2.*pi))*std::sin(2*p)*std::pow(std::sin(t),2);
+
+if (l==3 && m == -3) return (std::sqrt(35/pi)*std::cos(3*p)*std::pow(std::sin(t),3))/8. - std::complex<double>(0,0.125)*std::sqrt(35/pi)*std::sin(3*p)*std::pow(std::sin(t),3);
+
+if (l==3 && m == -2) return (std::sqrt(105/(2.*pi))*std::cos(2*p)*std::cos(t)*std::pow(std::sin(t),2))/4. - std::complex<double>(0,0.25)*std::sqrt(105/(2.*pi))*std::cos(t)*std::sin(2*p)*std::pow(std::sin(t),2);
+
+if (l==3 && m == -1) return -(std::sqrt(21/pi)*std::cos(p)*std::sin(t))/8. + (5*std::sqrt(21/pi)*std::cos(p)*std::pow(std::cos(t),2)*std::sin(t))/8. + std::complex<double>(0,1)*((std::sqrt(21/pi)*std::sin(p)*std::sin(t))/8. - (5*std::sqrt(21/pi)*std::pow(std::cos(t),2)*std::sin(p)*std::sin(t))/8.);
+
+if (l==3 && m == 0) return (-3*std::sqrt(7/pi)*std::cos(t))/4. + (5*std::sqrt(7/pi)*std::pow(std::cos(t),3))/4.;
+
+if (l==3 && m == 1) return (std::sqrt(21/pi)*std::cos(p)*std::sin(t))/8. - (5*std::sqrt(21/pi)*std::cos(p)*std::pow(std::cos(t),2)*std::sin(t))/8. + std::complex<double>(0,1)*((std::sqrt(21/pi)*std::sin(p)*std::sin(t))/8. - (5*std::sqrt(21/pi)*std::pow(std::cos(t),2)*std::sin(p)*std::sin(t))/8.);
+
+if (l==3 && m == 2) return (std::sqrt(105/(2.*pi))*std::cos(2*p)*std::cos(t)*std::pow(std::sin(t),2))/4. + std::complex<double>(0,0.25)*std::sqrt(105/(2.*pi))*std::cos(t)*std::sin(2*p)*std::pow(std::sin(t),2);
+
+if (l==3 && m == 3) return -(std::sqrt(35/pi)*std::cos(3*p)*std::pow(std::sin(t),3))/8. - std::complex<double>(0,0.125)*std::sqrt(35/pi)*std::sin(3*p)*std::pow(std::sin(t),3);
+
+if (l==4 && m == -4) return (3*std::sqrt(35/(2.*pi))*std::cos(4*p)*std::pow(std::sin(t),4))/16. - std::complex<double>(0,0.1875)*std::sqrt(35/(2.*pi))*std::sin(4*p)*std::pow(std::sin(t),4);
+
+if (l==4 && m == -3) return (3*std::sqrt(35/pi)*std::cos(3*p)*std::cos(t)*std::pow(std::sin(t),3))/8. - std::complex<double>(0,0.375)*std::sqrt(35/pi)*std::cos(t)*std::sin(3*p)*std::pow(std::sin(t),3);
+
+if (l==4 && m == -2) return (-3*std::sqrt(5/(2.*pi))*std::cos(2*p)*std::pow(std::sin(t),2))/8. + (21*std::sqrt(5/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),2))/8. + std::complex<double>(0,1)*((3*std::sqrt(5/(2.*pi))*std::sin(2*p)*std::pow(std::sin(t),2))/8. - (21*std::sqrt(5/(2.*pi))*std::pow(std::cos(t),2)*std::sin(2*p)*std::pow(std::sin(t),2))/8.);
+
+if (l==4 && m == -1) return (-9*std::sqrt(5/pi)*std::cos(p)*std::cos(t)*std::sin(t))/8. + (21*std::sqrt(5/pi)*std::cos(p)*std::pow(std::cos(t),3)*std::sin(t))/8. + std::complex<double>(0,1)*((9*std::sqrt(5/pi)*std::cos(t)*std::sin(p)*std::sin(t))/8. - (21*std::sqrt(5/pi)*std::pow(std::cos(t),3)*std::sin(p)*std::sin(t))/8.);
+
+if (l==4 && m == 0) return 9/(16.*std::sqrt(pi)) - (45*std::pow(std::cos(t),2))/(8.*std::sqrt(pi)) + (105*std::pow(std::cos(t),4))/(16.*std::sqrt(pi));
+
+if (l==4 && m == 1) return (9*std::sqrt(5/pi)*std::cos(p)*std::cos(t)*std::sin(t))/8. - (21*std::sqrt(5/pi)*std::cos(p)*std::pow(std::cos(t),3)*std::sin(t))/8. + std::complex<double>(0,1)*((9*std::sqrt(5/pi)*std::cos(t)*std::sin(p)*std::sin(t))/8. - (21*std::sqrt(5/pi)*std::pow(std::cos(t),3)*std::sin(p)*std::sin(t))/8.);
+
+if (l==4 && m == 2) return (-3*std::sqrt(5/(2.*pi))*std::cos(2*p)*std::pow(std::sin(t),2))/8. + (21*std::sqrt(5/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),2))/8. + std::complex<double>(0,1)*((-3*std::sqrt(5/(2.*pi))*std::sin(2*p)*std::pow(std::sin(t),2))/8. + (21*std::sqrt(5/(2.*pi))*std::pow(std::cos(t),2)*std::sin(2*p)*std::pow(std::sin(t),2))/8.);
+
+if (l==4 && m == 3) return (-3*std::sqrt(35/pi)*std::cos(3*p)*std::cos(t)*std::pow(std::sin(t),3))/8. - std::complex<double>(0,0.375)*std::sqrt(35/pi)*std::cos(t)*std::sin(3*p)*std::pow(std::sin(t),3);
+
+if (l==4 && m == 4) return (3*std::sqrt(35/(2.*pi))*std::cos(4*p)*std::pow(std::sin(t),4))/16. + std::complex<double>(0,0.1875)*std::sqrt(35/(2.*pi))*std::sin(4*p)*std::pow(std::sin(t),4);
+
+if (l==5 && m == -5) return (3*std::sqrt(77/pi)*std::cos(5*p)*std::pow(std::sin(t),5))/32. - std::complex<double>(0,0.09375)*std::sqrt(77/pi)*std::sin(5*p)*std::pow(std::sin(t),5);
+
+if (l==5 && m == -4) return (3*std::sqrt(385/(2.*pi))*std::cos(4*p)*std::cos(t)*std::pow(std::sin(t),4))/16. - std::complex<double>(0,0.1875)*std::sqrt(385/(2.*pi))*std::cos(t)*std::sin(4*p)*std::pow(std::sin(t),4);
+
+if (l==5 && m == -3) return -(std::sqrt(385/pi)*std::cos(3*p)*std::pow(std::sin(t),3))/32. + (9*std::sqrt(385/pi)*std::cos(3*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),3))/32. + std::complex<double>(0,1)*((std::sqrt(385/pi)*std::sin(3*p)*std::pow(std::sin(t),3))/32. - (9*std::sqrt(385/pi)*std::pow(std::cos(t),2)*std::sin(3*p)*std::pow(std::sin(t),3))/32.);
+
+if (l==5 && m == -2) return -(std::sqrt(1155/(2.*pi))*std::cos(2*p)*std::cos(t)*std::pow(std::sin(t),2))/8. + (3*std::sqrt(1155/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),2))/8. + std::complex<double>(0,1)*((std::sqrt(1155/(2.*pi))*std::cos(t)*std::sin(2*p)*std::pow(std::sin(t),2))/8. - (3*std::sqrt(1155/(2.*pi))*std::pow(std::cos(t),3)*std::sin(2*p)*std::pow(std::sin(t),2))/8.);
+
+if (l==5 && m == -1) return (std::sqrt(165/(2.*pi))*std::cos(p)*std::sin(t))/16. - (7*std::sqrt(165/(2.*pi))*std::cos(p)*std::pow(std::cos(t),2)*std::sin(t))/8. + (21*std::sqrt(165/(2.*pi))*std::cos(p)*std::pow(std::cos(t),4)*std::sin(t))/16. + std::complex<double>(0,1)*(-(std::sqrt(165/(2.*pi))*std::sin(p)*std::sin(t))/16. + (7*std::sqrt(165/(2.*pi))*std::pow(std::cos(t),2)*std::sin(p)*std::sin(t))/8. - (21*std::sqrt(165/(2.*pi))*std::pow(std::cos(t),4)*std::sin(p)*std::sin(t))/16.);
+
+if (l==5 && m == 0) return (15*std::sqrt(11/pi)*std::cos(t))/16. - (35*std::sqrt(11/pi)*std::pow(std::cos(t),3))/8. + (63*std::sqrt(11/pi)*std::pow(std::cos(t),5))/16.;
+
+if (l==5 && m == 1) return -(std::sqrt(165/(2.*pi))*std::cos(p)*std::sin(t))/16. + (7*std::sqrt(165/(2.*pi))*std::cos(p)*std::pow(std::cos(t),2)*std::sin(t))/8. - (21*std::sqrt(165/(2.*pi))*std::cos(p)*std::pow(std::cos(t),4)*std::sin(t))/16. + std::complex<double>(0,1)*(-(std::sqrt(165/(2.*pi))*std::sin(p)*std::sin(t))/16. + (7*std::sqrt(165/(2.*pi))*std::pow(std::cos(t),2)*std::sin(p)*std::sin(t))/8. - (21*std::sqrt(165/(2.*pi))*std::pow(std::cos(t),4)*std::sin(p)*std::sin(t))/16.);
+
+if (l==5 && m == 2) return -(std::sqrt(1155/(2.*pi))*std::cos(2*p)*std::cos(t)*std::pow(std::sin(t),2))/8. + (3*std::sqrt(1155/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),2))/8. + std::complex<double>(0,1)*(-(std::sqrt(1155/(2.*pi))*std::cos(t)*std::sin(2*p)*std::pow(std::sin(t),2))/8. + (3*std::sqrt(1155/(2.*pi))*std::pow(std::cos(t),3)*std::sin(2*p)*std::pow(std::sin(t),2))/8.);
+
+if (l==5 && m == 3) return (std::sqrt(385/pi)*std::cos(3*p)*std::pow(std::sin(t),3))/32. - (9*std::sqrt(385/pi)*std::cos(3*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),3))/32. + std::complex<double>(0,1)*((std::sqrt(385/pi)*std::sin(3*p)*std::pow(std::sin(t),3))/32. - (9*std::sqrt(385/pi)*std::pow(std::cos(t),2)*std::sin(3*p)*std::pow(std::sin(t),3))/32.);
+
+if (l==5 && m == 4) return (3*std::sqrt(385/(2.*pi))*std::cos(4*p)*std::cos(t)*std::pow(std::sin(t),4))/16. + std::complex<double>(0,0.1875)*std::sqrt(385/(2.*pi))*std::cos(t)*std::sin(4*p)*std::pow(std::sin(t),4);
+
+if (l==5 && m == 5) return (-3*std::sqrt(77/pi)*std::cos(5*p)*std::pow(std::sin(t),5))/32. - std::complex<double>(0,0.09375)*std::sqrt(77/pi)*std::sin(5*p)*std::pow(std::sin(t),5);
+
+if (l==6 && m == -6) return (std::sqrt(3003/pi)*std::cos(6*p)*std::pow(std::sin(t),6))/64. - std::complex<double>(0,0.015625)*std::sqrt(3003/pi)*std::sin(6*p)*std::pow(std::sin(t),6);
+
+if (l==6 && m == -5) return (3*std::sqrt(1001/pi)*std::cos(5*p)*std::cos(t)*std::pow(std::sin(t),5))/32. - std::complex<double>(0,0.09375)*std::sqrt(1001/pi)*std::cos(t)*std::sin(5*p)*std::pow(std::sin(t),5);
+
+if (l==6 && m == -4) return (-3*std::sqrt(91/(2.*pi))*std::cos(4*p)*std::pow(std::sin(t),4))/32. + (33*std::sqrt(91/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),4))/32. + std::complex<double>(0,1)*((3*std::sqrt(91/(2.*pi))*std::sin(4*p)*std::pow(std::sin(t),4))/32. - (33*std::sqrt(91/(2.*pi))*std::pow(std::cos(t),2)*std::sin(4*p)*std::pow(std::sin(t),4))/32.);
+
+if (l==6 && m == -3) return (-3*std::sqrt(1365/pi)*std::cos(3*p)*std::cos(t)*std::pow(std::sin(t),3))/32. + (11*std::sqrt(1365/pi)*std::cos(3*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),3))/32. + std::complex<double>(0,1)*((3*std::sqrt(1365/pi)*std::cos(t)*std::sin(3*p)*std::pow(std::sin(t),3))/32. - (11*std::sqrt(1365/pi)*std::pow(std::cos(t),3)*std::sin(3*p)*std::pow(std::sin(t),3))/32.);
+
+if (l==6 && m == -2) return (std::sqrt(1365/pi)*std::cos(2*p)*std::pow(std::sin(t),2))/64. - (9*std::sqrt(1365/pi)*std::cos(2*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),2))/32. + (33*std::sqrt(1365/pi)*std::cos(2*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),2))/64. + std::complex<double>(0,1)*(-(std::sqrt(1365/pi)*std::sin(2*p)*std::pow(std::sin(t),2))/64. + (9*std::sqrt(1365/pi)*std::pow(std::cos(t),2)*std::sin(2*p)*std::pow(std::sin(t),2))/32. - (33*std::sqrt(1365/pi)*std::pow(std::cos(t),4)*std::sin(2*p)*std::pow(std::sin(t),2))/64.);
+
+if (l==6 && m == -1) return (5*std::sqrt(273/(2.*pi))*std::cos(p)*std::cos(t)*std::sin(t))/16. - (15*std::sqrt(273/(2.*pi))*std::cos(p)*std::pow(std::cos(t),3)*std::sin(t))/8. + (33*std::sqrt(273/(2.*pi))*std::cos(p)*std::pow(std::cos(t),5)*std::sin(t))/16. + std::complex<double>(0,1)*((-5*std::sqrt(273/(2.*pi))*std::cos(t)*std::sin(p)*std::sin(t))/16. + (15*std::sqrt(273/(2.*pi))*std::pow(std::cos(t),3)*std::sin(p)*std::sin(t))/8. - (33*std::sqrt(273/(2.*pi))*std::pow(std::cos(t),5)*std::sin(p)*std::sin(t))/16.);
+
+if (l==6 && m == 0) return (-5*std::sqrt(13/pi))/32. + (105*std::sqrt(13/pi)*std::pow(std::cos(t),2))/32. - (315*std::sqrt(13/pi)*std::pow(std::cos(t),4))/32. + (231*std::sqrt(13/pi)*std::pow(std::cos(t),6))/32.;
+
+if (l==6 && m == 1) return (-5*std::sqrt(273/(2.*pi))*std::cos(p)*std::cos(t)*std::sin(t))/16. + (15*std::sqrt(273/(2.*pi))*std::cos(p)*std::pow(std::cos(t),3)*std::sin(t))/8. - (33*std::sqrt(273/(2.*pi))*std::cos(p)*std::pow(std::cos(t),5)*std::sin(t))/16. + std::complex<double>(0,1)*((-5*std::sqrt(273/(2.*pi))*std::cos(t)*std::sin(p)*std::sin(t))/16. + (15*std::sqrt(273/(2.*pi))*std::pow(std::cos(t),3)*std::sin(p)*std::sin(t))/8. - (33*std::sqrt(273/(2.*pi))*std::pow(std::cos(t),5)*std::sin(p)*std::sin(t))/16.);
+
+if (l==6 && m == 2) return (std::sqrt(1365/pi)*std::cos(2*p)*std::pow(std::sin(t),2))/64. - (9*std::sqrt(1365/pi)*std::cos(2*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),2))/32. + (33*std::sqrt(1365/pi)*std::cos(2*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),2))/64. + std::complex<double>(0,1)*((std::sqrt(1365/pi)*std::sin(2*p)*std::pow(std::sin(t),2))/64. - (9*std::sqrt(1365/pi)*std::pow(std::cos(t),2)*std::sin(2*p)*std::pow(std::sin(t),2))/32. + (33*std::sqrt(1365/pi)*std::pow(std::cos(t),4)*std::sin(2*p)*std::pow(std::sin(t),2))/64.);
+
+if (l==6 && m == 3) return (3*std::sqrt(1365/pi)*std::cos(3*p)*std::cos(t)*std::pow(std::sin(t),3))/32. - (11*std::sqrt(1365/pi)*std::cos(3*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),3))/32. + std::complex<double>(0,1)*((3*std::sqrt(1365/pi)*std::cos(t)*std::sin(3*p)*std::pow(std::sin(t),3))/32. - (11*std::sqrt(1365/pi)*std::pow(std::cos(t),3)*std::sin(3*p)*std::pow(std::sin(t),3))/32.);
+
+if (l==6 && m == 4) return (-3*std::sqrt(91/(2.*pi))*std::cos(4*p)*std::pow(std::sin(t),4))/32. + (33*std::sqrt(91/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),4))/32. + std::complex<double>(0,1)*((-3*std::sqrt(91/(2.*pi))*std::sin(4*p)*std::pow(std::sin(t),4))/32. + (33*std::sqrt(91/(2.*pi))*std::pow(std::cos(t),2)*std::sin(4*p)*std::pow(std::sin(t),4))/32.);
+
+if (l==6 && m == 5) return (-3*std::sqrt(1001/pi)*std::cos(5*p)*std::cos(t)*std::pow(std::sin(t),5))/32. - std::complex<double>(0,0.09375)*std::sqrt(1001/pi)*std::cos(t)*std::sin(5*p)*std::pow(std::sin(t),5);
+
+if (l==6 && m == 6) return (std::sqrt(3003/pi)*std::cos(6*p)*std::pow(std::sin(t),6))/64. + std::complex<double>(0,0.015625)*std::sqrt(3003/pi)*std::sin(6*p)*std::pow(std::sin(t),6);
+
+if (l==7 && m == -7) return (3*std::sqrt(715/(2.*pi))*std::cos(7*p)*std::pow(std::sin(t),7))/64. - std::complex<double>(0,0.046875)*std::sqrt(715/(2.*pi))*std::sin(7*p)*std::pow(std::sin(t),7);
+
+if (l==7 && m == -6) return (3*std::sqrt(5005/pi)*std::cos(6*p)*std::cos(t)*std::pow(std::sin(t),6))/64. - std::complex<double>(0,0.046875)*std::sqrt(5005/pi)*std::cos(t)*std::sin(6*p)*std::pow(std::sin(t),6);
+
+if (l==7 && m == -5) return (-3*std::sqrt(385/(2.*pi))*std::cos(5*p)*std::pow(std::sin(t),5))/64. + (39*std::sqrt(385/(2.*pi))*std::cos(5*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),5))/64. + std::complex<double>(0,1)*((3*std::sqrt(385/(2.*pi))*std::sin(5*p)*std::pow(std::sin(t),5))/64. - (39*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),2)*std::sin(5*p)*std::pow(std::sin(t),5))/64.);
+
+if (l==7 && m == -4) return (-9*std::sqrt(385/(2.*pi))*std::cos(4*p)*std::cos(t)*std::pow(std::sin(t),4))/32. + (39*std::sqrt(385/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),4))/32. + std::complex<double>(0,1)*((9*std::sqrt(385/(2.*pi))*std::cos(t)*std::sin(4*p)*std::pow(std::sin(t),4))/32. - (39*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),3)*std::sin(4*p)*std::pow(std::sin(t),4))/32.);
+
+if (l==7 && m == -3) return (9*std::sqrt(35/(2.*pi))*std::cos(3*p)*std::pow(std::sin(t),3))/64. - (99*std::sqrt(35/(2.*pi))*std::cos(3*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),3))/32. + (429*std::sqrt(35/(2.*pi))*std::cos(3*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),3))/64. + std::complex<double>(0,1)*((-9*std::sqrt(35/(2.*pi))*std::sin(3*p)*std::pow(std::sin(t),3))/64. + (99*std::sqrt(35/(2.*pi))*std::pow(std::cos(t),2)*std::sin(3*p)*std::pow(std::sin(t),3))/32. - (429*std::sqrt(35/(2.*pi))*std::pow(std::cos(t),4)*std::sin(3*p)*std::pow(std::sin(t),3))/64.);
+
+if (l==7 && m == -2) return (45*std::sqrt(35/pi)*std::cos(2*p)*std::cos(t)*std::pow(std::sin(t),2))/64. - (165*std::sqrt(35/pi)*std::cos(2*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),2))/32. + (429*std::sqrt(35/pi)*std::cos(2*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),2))/64. + std::complex<double>(0,1)*((-45*std::sqrt(35/pi)*std::cos(t)*std::sin(2*p)*std::pow(std::sin(t),2))/64. + (165*std::sqrt(35/pi)*std::pow(std::cos(t),3)*std::sin(2*p)*std::pow(std::sin(t),2))/32. - (429*std::sqrt(35/pi)*std::pow(std::cos(t),5)*std::sin(2*p)*std::pow(std::sin(t),2))/64.);
+
+if (l==7 && m == -1) return (-5*std::sqrt(105/(2.*pi))*std::cos(p)*std::sin(t))/64. + (135*std::sqrt(105/(2.*pi))*std::cos(p)*std::pow(std::cos(t),2)*std::sin(t))/64. - (495*std::sqrt(105/(2.*pi))*std::cos(p)*std::pow(std::cos(t),4)*std::sin(t))/64. + (429*std::sqrt(105/(2.*pi))*std::cos(p)*std::pow(std::cos(t),6)*std::sin(t))/64. + std::complex<double>(0,1)*((5*std::sqrt(105/(2.*pi))*std::sin(p)*std::sin(t))/64. - (135*std::sqrt(105/(2.*pi))*std::pow(std::cos(t),2)*std::sin(p)*std::sin(t))/64. + (495*std::sqrt(105/(2.*pi))*std::pow(std::cos(t),4)*std::sin(p)*std::sin(t))/64. - (429*std::sqrt(105/(2.*pi))*std::pow(std::cos(t),6)*std::sin(p)*std::sin(t))/64.);
+
+if (l==7 && m == 0) return (-35*std::sqrt(15/pi)*std::cos(t))/32. + (315*std::sqrt(15/pi)*std::pow(std::cos(t),3))/32. - (693*std::sqrt(15/pi)*std::pow(std::cos(t),5))/32. + (429*std::sqrt(15/pi)*std::pow(std::cos(t),7))/32.;
+
+if (l==7 && m == 1) return (5*std::sqrt(105/(2.*pi))*std::cos(p)*std::sin(t))/64. - (135*std::sqrt(105/(2.*pi))*std::cos(p)*std::pow(std::cos(t),2)*std::sin(t))/64. + (495*std::sqrt(105/(2.*pi))*std::cos(p)*std::pow(std::cos(t),4)*std::sin(t))/64. - (429*std::sqrt(105/(2.*pi))*std::cos(p)*std::pow(std::cos(t),6)*std::sin(t))/64. + std::complex<double>(0,1)*((5*std::sqrt(105/(2.*pi))*std::sin(p)*std::sin(t))/64. - (135*std::sqrt(105/(2.*pi))*std::pow(std::cos(t),2)*std::sin(p)*std::sin(t))/64. + (495*std::sqrt(105/(2.*pi))*std::pow(std::cos(t),4)*std::sin(p)*std::sin(t))/64. - (429*std::sqrt(105/(2.*pi))*std::pow(std::cos(t),6)*std::sin(p)*std::sin(t))/64.);
+
+if (l==7 && m == 2) return (45*std::sqrt(35/pi)*std::cos(2*p)*std::cos(t)*std::pow(std::sin(t),2))/64. - (165*std::sqrt(35/pi)*std::cos(2*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),2))/32. + (429*std::sqrt(35/pi)*std::cos(2*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),2))/64. + std::complex<double>(0,1)*((45*std::sqrt(35/pi)*std::cos(t)*std::sin(2*p)*std::pow(std::sin(t),2))/64. - (165*std::sqrt(35/pi)*std::pow(std::cos(t),3)*std::sin(2*p)*std::pow(std::sin(t),2))/32. + (429*std::sqrt(35/pi)*std::pow(std::cos(t),5)*std::sin(2*p)*std::pow(std::sin(t),2))/64.);
+
+if (l==7 && m == 3) return (-9*std::sqrt(35/(2.*pi))*std::cos(3*p)*std::pow(std::sin(t),3))/64. + (99*std::sqrt(35/(2.*pi))*std::cos(3*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),3))/32. - (429*std::sqrt(35/(2.*pi))*std::cos(3*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),3))/64. + std::complex<double>(0,1)*((-9*std::sqrt(35/(2.*pi))*std::sin(3*p)*std::pow(std::sin(t),3))/64. + (99*std::sqrt(35/(2.*pi))*std::pow(std::cos(t),2)*std::sin(3*p)*std::pow(std::sin(t),3))/32. - (429*std::sqrt(35/(2.*pi))*std::pow(std::cos(t),4)*std::sin(3*p)*std::pow(std::sin(t),3))/64.);
+
+if (l==7 && m == 4) return (-9*std::sqrt(385/(2.*pi))*std::cos(4*p)*std::cos(t)*std::pow(std::sin(t),4))/32. + (39*std::sqrt(385/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),4))/32. + std::complex<double>(0,1)*((-9*std::sqrt(385/(2.*pi))*std::cos(t)*std::sin(4*p)*std::pow(std::sin(t),4))/32. + (39*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),3)*std::sin(4*p)*std::pow(std::sin(t),4))/32.);
+
+if (l==7 && m == 5) return (3*std::sqrt(385/(2.*pi))*std::cos(5*p)*std::pow(std::sin(t),5))/64. - (39*std::sqrt(385/(2.*pi))*std::cos(5*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),5))/64. + std::complex<double>(0,1)*((3*std::sqrt(385/(2.*pi))*std::sin(5*p)*std::pow(std::sin(t),5))/64. - (39*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),2)*std::sin(5*p)*std::pow(std::sin(t),5))/64.);
+
+if (l==7 && m == 6) return (3*std::sqrt(5005/pi)*std::cos(6*p)*std::cos(t)*std::pow(std::sin(t),6))/64. + std::complex<double>(0,0.046875)*std::sqrt(5005/pi)*std::cos(t)*std::sin(6*p)*std::pow(std::sin(t),6);
+
+if (l==7 && m == 7) return (-3*std::sqrt(715/(2.*pi))*std::cos(7*p)*std::pow(std::sin(t),7))/64. - std::complex<double>(0,0.046875)*std::sqrt(715/(2.*pi))*std::sin(7*p)*std::pow(std::sin(t),7);
+
+if (l==8 && m == -8) return (3*std::sqrt(12155/(2.*pi))*std::cos(8*p)*std::pow(std::sin(t),8))/256. - std::complex<double>(0,0.01171875)*std::sqrt(12155/(2.*pi))*std::sin(8*p)*std::pow(std::sin(t),8);
+
+if (l==8 && m == -7) return (3*std::sqrt(12155/(2.*pi))*std::cos(7*p)*std::cos(t)*std::pow(std::sin(t),7))/64. - std::complex<double>(0,0.046875)*std::sqrt(12155/(2.*pi))*std::cos(t)*std::sin(7*p)*std::pow(std::sin(t),7);
+
+if (l==8 && m == -6) return -(std::sqrt(7293/pi)*std::cos(6*p)*std::pow(std::sin(t),6))/128. + (15*std::sqrt(7293/pi)*std::cos(6*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),6))/128. + std::complex<double>(0,1)*((std::sqrt(7293/pi)*std::sin(6*p)*std::pow(std::sin(t),6))/128. - (15*std::sqrt(7293/pi)*std::pow(std::cos(t),2)*std::sin(6*p)*std::pow(std::sin(t),6))/128.);
+
+if (l==8 && m == -5) return (-3*std::sqrt(17017/(2.*pi))*std::cos(5*p)*std::cos(t)*std::pow(std::sin(t),5))/64. + (15*std::sqrt(17017/(2.*pi))*std::cos(5*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),5))/64. + std::complex<double>(0,1)*((3*std::sqrt(17017/(2.*pi))*std::cos(t)*std::sin(5*p)*std::pow(std::sin(t),5))/64. - (15*std::sqrt(17017/(2.*pi))*std::pow(std::cos(t),3)*std::sin(5*p)*std::pow(std::sin(t),5))/64.);
+
+if (l==8 && m == -4) return (3*std::sqrt(1309/(2.*pi))*std::cos(4*p)*std::pow(std::sin(t),4))/128. - (39*std::sqrt(1309/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),4))/64. + (195*std::sqrt(1309/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),4))/128. + std::complex<double>(0,1)*((-3*std::sqrt(1309/(2.*pi))*std::sin(4*p)*std::pow(std::sin(t),4))/128. + (39*std::sqrt(1309/(2.*pi))*std::pow(std::cos(t),2)*std::sin(4*p)*std::pow(std::sin(t),4))/64. - (195*std::sqrt(1309/(2.*pi))*std::pow(std::cos(t),4)*std::sin(4*p)*std::pow(std::sin(t),4))/128.);
+
+if (l==8 && m == -3) return (3*std::sqrt(19635/(2.*pi))*std::cos(3*p)*std::cos(t)*std::pow(std::sin(t),3))/64. - (13*std::sqrt(19635/(2.*pi))*std::cos(3*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),3))/32. + (39*std::sqrt(19635/(2.*pi))*std::cos(3*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),3))/64. + std::complex<double>(0,1)*((-3*std::sqrt(19635/(2.*pi))*std::cos(t)*std::sin(3*p)*std::pow(std::sin(t),3))/64. + (13*std::sqrt(19635/(2.*pi))*std::pow(std::cos(t),3)*std::sin(3*p)*std::pow(std::sin(t),3))/32. - (39*std::sqrt(19635/(2.*pi))*std::pow(std::cos(t),5)*std::sin(3*p)*std::pow(std::sin(t),3))/64.);
+
+if (l==8 && m == -2) return (-3*std::sqrt(595/pi)*std::cos(2*p)*std::pow(std::sin(t),2))/128. + (99*std::sqrt(595/pi)*std::cos(2*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),2))/128. - (429*std::sqrt(595/pi)*std::cos(2*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),2))/128. + (429*std::sqrt(595/pi)*std::cos(2*p)*std::pow(std::cos(t),6)*std::pow(std::sin(t),2))/128. + std::complex<double>(0,1)*((3*std::sqrt(595/pi)*std::sin(2*p)*std::pow(std::sin(t),2))/128. - (99*std::sqrt(595/pi)*std::pow(std::cos(t),2)*std::sin(2*p)*std::pow(std::sin(t),2))/128. + (429*std::sqrt(595/pi)*std::pow(std::cos(t),4)*std::sin(2*p)*std::pow(std::sin(t),2))/128. - (429*std::sqrt(595/pi)*std::pow(std::cos(t),6)*std::sin(2*p)*std::pow(std::sin(t),2))/128.);
+
+if (l==8 && m == -1) return (-105*std::sqrt(17/(2.*pi))*std::cos(p)*std::cos(t)*std::sin(t))/64. + (1155*std::sqrt(17/(2.*pi))*std::cos(p)*std::pow(std::cos(t),3)*std::sin(t))/64. - (3003*std::sqrt(17/(2.*pi))*std::cos(p)*std::pow(std::cos(t),5)*std::sin(t))/64. + (2145*std::sqrt(17/(2.*pi))*std::cos(p)*std::pow(std::cos(t),7)*std::sin(t))/64. + std::complex<double>(0,1)*((105*std::sqrt(17/(2.*pi))*std::cos(t)*std::sin(p)*std::sin(t))/64. - (1155*std::sqrt(17/(2.*pi))*std::pow(std::cos(t),3)*std::sin(p)*std::sin(t))/64. + (3003*std::sqrt(17/(2.*pi))*std::pow(std::cos(t),5)*std::sin(p)*std::sin(t))/64. - (2145*std::sqrt(17/(2.*pi))*std::pow(std::cos(t),7)*std::sin(p)*std::sin(t))/64.);
+
+if (l==8 && m == 0) return (35*std::sqrt(17/pi))/256. - (315*std::sqrt(17/pi)*std::pow(std::cos(t),2))/64. + (3465*std::sqrt(17/pi)*std::pow(std::cos(t),4))/128. - (3003*std::sqrt(17/pi)*std::pow(std::cos(t),6))/64. + (6435*std::sqrt(17/pi)*std::pow(std::cos(t),8))/256.;
+
+if (l==8 && m == 1) return (105*std::sqrt(17/(2.*pi))*std::cos(p)*std::cos(t)*std::sin(t))/64. - (1155*std::sqrt(17/(2.*pi))*std::cos(p)*std::pow(std::cos(t),3)*std::sin(t))/64. + (3003*std::sqrt(17/(2.*pi))*std::cos(p)*std::pow(std::cos(t),5)*std::sin(t))/64. - (2145*std::sqrt(17/(2.*pi))*std::cos(p)*std::pow(std::cos(t),7)*std::sin(t))/64. + std::complex<double>(0,1)*((105*std::sqrt(17/(2.*pi))*std::cos(t)*std::sin(p)*std::sin(t))/64. - (1155*std::sqrt(17/(2.*pi))*std::pow(std::cos(t),3)*std::sin(p)*std::sin(t))/64. + (3003*std::sqrt(17/(2.*pi))*std::pow(std::cos(t),5)*std::sin(p)*std::sin(t))/64. - (2145*std::sqrt(17/(2.*pi))*std::pow(std::cos(t),7)*std::sin(p)*std::sin(t))/64.);
+
+if (l==8 && m == 2) return (-3*std::sqrt(595/pi)*std::cos(2*p)*std::pow(std::sin(t),2))/128. + (99*std::sqrt(595/pi)*std::cos(2*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),2))/128. - (429*std::sqrt(595/pi)*std::cos(2*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),2))/128. + (429*std::sqrt(595/pi)*std::cos(2*p)*std::pow(std::cos(t),6)*std::pow(std::sin(t),2))/128. + std::complex<double>(0,1)*((-3*std::sqrt(595/pi)*std::sin(2*p)*std::pow(std::sin(t),2))/128. + (99*std::sqrt(595/pi)*std::pow(std::cos(t),2)*std::sin(2*p)*std::pow(std::sin(t),2))/128. - (429*std::sqrt(595/pi)*std::pow(std::cos(t),4)*std::sin(2*p)*std::pow(std::sin(t),2))/128. + (429*std::sqrt(595/pi)*std::pow(std::cos(t),6)*std::sin(2*p)*std::pow(std::sin(t),2))/128.);
+
+if (l==8 && m == 3) return (-3*std::sqrt(19635/(2.*pi))*std::cos(3*p)*std::cos(t)*std::pow(std::sin(t),3))/64. + (13*std::sqrt(19635/(2.*pi))*std::cos(3*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),3))/32. - (39*std::sqrt(19635/(2.*pi))*std::cos(3*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),3))/64. + std::complex<double>(0,1)*((-3*std::sqrt(19635/(2.*pi))*std::cos(t)*std::sin(3*p)*std::pow(std::sin(t),3))/64. + (13*std::sqrt(19635/(2.*pi))*std::pow(std::cos(t),3)*std::sin(3*p)*std::pow(std::sin(t),3))/32. - (39*std::sqrt(19635/(2.*pi))*std::pow(std::cos(t),5)*std::sin(3*p)*std::pow(std::sin(t),3))/64.);
+
+if (l==8 && m == 4) return (3*std::sqrt(1309/(2.*pi))*std::cos(4*p)*std::pow(std::sin(t),4))/128. - (39*std::sqrt(1309/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),4))/64. + (195*std::sqrt(1309/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),4))/128. + std::complex<double>(0,1)*((3*std::sqrt(1309/(2.*pi))*std::sin(4*p)*std::pow(std::sin(t),4))/128. - (39*std::sqrt(1309/(2.*pi))*std::pow(std::cos(t),2)*std::sin(4*p)*std::pow(std::sin(t),4))/64. + (195*std::sqrt(1309/(2.*pi))*std::pow(std::cos(t),4)*std::sin(4*p)*std::pow(std::sin(t),4))/128.);
+
+if (l==8 && m == 5) return (3*std::sqrt(17017/(2.*pi))*std::cos(5*p)*std::cos(t)*std::pow(std::sin(t),5))/64. - (15*std::sqrt(17017/(2.*pi))*std::cos(5*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),5))/64. + std::complex<double>(0,1)*((3*std::sqrt(17017/(2.*pi))*std::cos(t)*std::sin(5*p)*std::pow(std::sin(t),5))/64. - (15*std::sqrt(17017/(2.*pi))*std::pow(std::cos(t),3)*std::sin(5*p)*std::pow(std::sin(t),5))/64.);
+
+if (l==8 && m == 6) return -(std::sqrt(7293/pi)*std::cos(6*p)*std::pow(std::sin(t),6))/128. + (15*std::sqrt(7293/pi)*std::cos(6*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),6))/128. + std::complex<double>(0,1)*(-(std::sqrt(7293/pi)*std::sin(6*p)*std::pow(std::sin(t),6))/128. + (15*std::sqrt(7293/pi)*std::pow(std::cos(t),2)*std::sin(6*p)*std::pow(std::sin(t),6))/128.);
+
+if (l==8 && m == 7) return (-3*std::sqrt(12155/(2.*pi))*std::cos(7*p)*std::cos(t)*std::pow(std::sin(t),7))/64. - std::complex<double>(0,0.046875)*std::sqrt(12155/(2.*pi))*std::cos(t)*std::sin(7*p)*std::pow(std::sin(t),7);
+
+if (l==8 && m == 8) return (3*std::sqrt(12155/(2.*pi))*std::cos(8*p)*std::pow(std::sin(t),8))/256. + std::complex<double>(0,0.01171875)*std::sqrt(12155/(2.*pi))*std::sin(8*p)*std::pow(std::sin(t),8);
+
+if (l==9 && m == -9) return (std::sqrt(230945/pi)*std::cos(9*p)*std::pow(std::sin(t),9))/512. - std::complex<double>(0,0.001953125)*std::sqrt(230945/pi)*std::sin(9*p)*std::pow(std::sin(t),9);
+
+if (l==9 && m == -8) return (3*std::sqrt(230945/(2.*pi))*std::cos(8*p)*std::cos(t)*std::pow(std::sin(t),8))/256. - std::complex<double>(0,0.01171875)*std::sqrt(230945/(2.*pi))*std::cos(t)*std::sin(8*p)*std::pow(std::sin(t),8);
+
+if (l==9 && m == -7) return (-3*std::sqrt(13585/pi)*std::cos(7*p)*std::pow(std::sin(t),7))/512. + (51*std::sqrt(13585/pi)*std::cos(7*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),7))/512. + std::complex<double>(0,1)*((3*std::sqrt(13585/pi)*std::sin(7*p)*std::pow(std::sin(t),7))/512. - (51*std::sqrt(13585/pi)*std::pow(std::cos(t),2)*std::sin(7*p)*std::pow(std::sin(t),7))/512.);
+
+if (l==9 && m == -6) return (-3*std::sqrt(40755/pi)*std::cos(6*p)*std::cos(t)*std::pow(std::sin(t),6))/128. + (17*std::sqrt(40755/pi)*std::cos(6*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),6))/128. + std::complex<double>(0,1)*((3*std::sqrt(40755/pi)*std::cos(t)*std::sin(6*p)*std::pow(std::sin(t),6))/128. - (17*std::sqrt(40755/pi)*std::pow(std::cos(t),3)*std::sin(6*p)*std::pow(std::sin(t),6))/128.);
+
+if (l==9 && m == -5) return (3*std::sqrt(2717/pi)*std::cos(5*p)*std::pow(std::sin(t),5))/256. - (45*std::sqrt(2717/pi)*std::cos(5*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),5))/128. + (255*std::sqrt(2717/pi)*std::cos(5*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),5))/256. + std::complex<double>(0,1)*((-3*std::sqrt(2717/pi)*std::sin(5*p)*std::pow(std::sin(t),5))/256. + (45*std::sqrt(2717/pi)*std::pow(std::cos(t),2)*std::sin(5*p)*std::pow(std::sin(t),5))/128. - (255*std::sqrt(2717/pi)*std::pow(std::cos(t),4)*std::sin(5*p)*std::pow(std::sin(t),5))/256.);
+
+if (l==9 && m == -4) return (3*std::sqrt(95095/(2.*pi))*std::cos(4*p)*std::cos(t)*std::pow(std::sin(t),4))/128. - (15*std::sqrt(95095/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),4))/64. + (51*std::sqrt(95095/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),4))/128. + std::complex<double>(0,1)*((-3*std::sqrt(95095/(2.*pi))*std::cos(t)*std::sin(4*p)*std::pow(std::sin(t),4))/128. + (15*std::sqrt(95095/(2.*pi))*std::pow(std::cos(t),3)*std::sin(4*p)*std::pow(std::sin(t),4))/64. - (51*std::sqrt(95095/(2.*pi))*std::pow(std::cos(t),5)*std::sin(4*p)*std::pow(std::sin(t),4))/128.);
+
+if (l==9 && m == -3) return -(std::sqrt(21945/pi)*std::cos(3*p)*std::pow(std::sin(t),3))/256. + (39*std::sqrt(21945/pi)*std::cos(3*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),3))/256. - (195*std::sqrt(21945/pi)*std::cos(3*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),3))/256. + (221*std::sqrt(21945/pi)*std::cos(3*p)*std::pow(std::cos(t),6)*std::pow(std::sin(t),3))/256. + std::complex<double>(0,1)*((std::sqrt(21945/pi)*std::sin(3*p)*std::pow(std::sin(t),3))/256. - (39*std::sqrt(21945/pi)*std::pow(std::cos(t),2)*std::sin(3*p)*std::pow(std::sin(t),3))/256. + (195*std::sqrt(21945/pi)*std::pow(std::cos(t),4)*std::sin(3*p)*std::pow(std::sin(t),3))/256. - (221*std::sqrt(21945/pi)*std::pow(std::cos(t),6)*std::sin(3*p)*std::pow(std::sin(t),3))/256.);
+
+if (l==9 && m == -2) return (-21*std::sqrt(1045/pi)*std::cos(2*p)*std::cos(t)*std::pow(std::sin(t),2))/128. + (273*std::sqrt(1045/pi)*std::cos(2*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),2))/128. - (819*std::sqrt(1045/pi)*std::cos(2*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),2))/128. + (663*std::sqrt(1045/pi)*std::cos(2*p)*std::pow(std::cos(t),7)*std::pow(std::sin(t),2))/128. + std::complex<double>(0,1)*((21*std::sqrt(1045/pi)*std::cos(t)*std::sin(2*p)*std::pow(std::sin(t),2))/128. - (273*std::sqrt(1045/pi)*std::pow(std::cos(t),3)*std::sin(2*p)*std::pow(std::sin(t),2))/128. + (819*std::sqrt(1045/pi)*std::pow(std::cos(t),5)*std::sin(2*p)*std::pow(std::sin(t),2))/128. - (663*std::sqrt(1045/pi)*std::pow(std::cos(t),7)*std::sin(2*p)*std::pow(std::sin(t),2))/128.);
+
+if (l==9 && m == -1) return (21*std::sqrt(95/(2.*pi))*std::cos(p)*std::sin(t))/256. - (231*std::sqrt(95/(2.*pi))*std::cos(p)*std::pow(std::cos(t),2)*std::sin(t))/64. + (3003*std::sqrt(95/(2.*pi))*std::cos(p)*std::pow(std::cos(t),4)*std::sin(t))/128. - (3003*std::sqrt(95/(2.*pi))*std::cos(p)*std::pow(std::cos(t),6)*std::sin(t))/64. + (7293*std::sqrt(95/(2.*pi))*std::cos(p)*std::pow(std::cos(t),8)*std::sin(t))/256. + std::complex<double>(0,1)*((-21*std::sqrt(95/(2.*pi))*std::sin(p)*std::sin(t))/256. + (231*std::sqrt(95/(2.*pi))*std::pow(std::cos(t),2)*std::sin(p)*std::sin(t))/64. - (3003*std::sqrt(95/(2.*pi))*std::pow(std::cos(t),4)*std::sin(p)*std::sin(t))/128. + (3003*std::sqrt(95/(2.*pi))*std::pow(std::cos(t),6)*std::sin(p)*std::sin(t))/64. - (7293*std::sqrt(95/(2.*pi))*std::pow(std::cos(t),8)*std::sin(p)*std::sin(t))/256.);
+
+if (l==9 && m == 0) return (315*std::sqrt(19/pi)*std::cos(t))/256. - (1155*std::sqrt(19/pi)*std::pow(std::cos(t),3))/64. + (9009*std::sqrt(19/pi)*std::pow(std::cos(t),5))/128. - (6435*std::sqrt(19/pi)*std::pow(std::cos(t),7))/64. + (12155*std::sqrt(19/pi)*std::pow(std::cos(t),9))/256.;
+
+if (l==9 && m == 1) return (-21*std::sqrt(95/(2.*pi))*std::cos(p)*std::sin(t))/256. + (231*std::sqrt(95/(2.*pi))*std::cos(p)*std::pow(std::cos(t),2)*std::sin(t))/64. - (3003*std::sqrt(95/(2.*pi))*std::cos(p)*std::pow(std::cos(t),4)*std::sin(t))/128. + (3003*std::sqrt(95/(2.*pi))*std::cos(p)*std::pow(std::cos(t),6)*std::sin(t))/64. - (7293*std::sqrt(95/(2.*pi))*std::cos(p)*std::pow(std::cos(t),8)*std::sin(t))/256. + std::complex<double>(0,1)*((-21*std::sqrt(95/(2.*pi))*std::sin(p)*std::sin(t))/256. + (231*std::sqrt(95/(2.*pi))*std::pow(std::cos(t),2)*std::sin(p)*std::sin(t))/64. - (3003*std::sqrt(95/(2.*pi))*std::pow(std::cos(t),4)*std::sin(p)*std::sin(t))/128. + (3003*std::sqrt(95/(2.*pi))*std::pow(std::cos(t),6)*std::sin(p)*std::sin(t))/64. - (7293*std::sqrt(95/(2.*pi))*std::pow(std::cos(t),8)*std::sin(p)*std::sin(t))/256.);
+
+if (l==9 && m == 2) return (-21*std::sqrt(1045/pi)*std::cos(2*p)*std::cos(t)*std::pow(std::sin(t),2))/128. + (273*std::sqrt(1045/pi)*std::cos(2*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),2))/128. - (819*std::sqrt(1045/pi)*std::cos(2*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),2))/128. + (663*std::sqrt(1045/pi)*std::cos(2*p)*std::pow(std::cos(t),7)*std::pow(std::sin(t),2))/128. + std::complex<double>(0,1)*((-21*std::sqrt(1045/pi)*std::cos(t)*std::sin(2*p)*std::pow(std::sin(t),2))/128. + (273*std::sqrt(1045/pi)*std::pow(std::cos(t),3)*std::sin(2*p)*std::pow(std::sin(t),2))/128. - (819*std::sqrt(1045/pi)*std::pow(std::cos(t),5)*std::sin(2*p)*std::pow(std::sin(t),2))/128. + (663*std::sqrt(1045/pi)*std::pow(std::cos(t),7)*std::sin(2*p)*std::pow(std::sin(t),2))/128.);
+
+if (l==9 && m == 3) return (std::sqrt(21945/pi)*std::cos(3*p)*std::pow(std::sin(t),3))/256. - (39*std::sqrt(21945/pi)*std::cos(3*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),3))/256. + (195*std::sqrt(21945/pi)*std::cos(3*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),3))/256. - (221*std::sqrt(21945/pi)*std::cos(3*p)*std::pow(std::cos(t),6)*std::pow(std::sin(t),3))/256. + std::complex<double>(0,1)*((std::sqrt(21945/pi)*std::sin(3*p)*std::pow(std::sin(t),3))/256. - (39*std::sqrt(21945/pi)*std::pow(std::cos(t),2)*std::sin(3*p)*std::pow(std::sin(t),3))/256. + (195*std::sqrt(21945/pi)*std::pow(std::cos(t),4)*std::sin(3*p)*std::pow(std::sin(t),3))/256. - (221*std::sqrt(21945/pi)*std::pow(std::cos(t),6)*std::sin(3*p)*std::pow(std::sin(t),3))/256.);
+
+if (l==9 && m == 4) return (3*std::sqrt(95095/(2.*pi))*std::cos(4*p)*std::cos(t)*std::pow(std::sin(t),4))/128. - (15*std::sqrt(95095/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),4))/64. + (51*std::sqrt(95095/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),4))/128. + std::complex<double>(0,1)*((3*std::sqrt(95095/(2.*pi))*std::cos(t)*std::sin(4*p)*std::pow(std::sin(t),4))/128. - (15*std::sqrt(95095/(2.*pi))*std::pow(std::cos(t),3)*std::sin(4*p)*std::pow(std::sin(t),4))/64. + (51*std::sqrt(95095/(2.*pi))*std::pow(std::cos(t),5)*std::sin(4*p)*std::pow(std::sin(t),4))/128.);
+
+if (l==9 && m == 5) return (-3*std::sqrt(2717/pi)*std::cos(5*p)*std::pow(std::sin(t),5))/256. + (45*std::sqrt(2717/pi)*std::cos(5*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),5))/128. - (255*std::sqrt(2717/pi)*std::cos(5*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),5))/256. + std::complex<double>(0,1)*((-3*std::sqrt(2717/pi)*std::sin(5*p)*std::pow(std::sin(t),5))/256. + (45*std::sqrt(2717/pi)*std::pow(std::cos(t),2)*std::sin(5*p)*std::pow(std::sin(t),5))/128. - (255*std::sqrt(2717/pi)*std::pow(std::cos(t),4)*std::sin(5*p)*std::pow(std::sin(t),5))/256.);
+
+if (l==9 && m == 6) return (-3*std::sqrt(40755/pi)*std::cos(6*p)*std::cos(t)*std::pow(std::sin(t),6))/128. + (17*std::sqrt(40755/pi)*std::cos(6*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),6))/128. + std::complex<double>(0,1)*((-3*std::sqrt(40755/pi)*std::cos(t)*std::sin(6*p)*std::pow(std::sin(t),6))/128. + (17*std::sqrt(40755/pi)*std::pow(std::cos(t),3)*std::sin(6*p)*std::pow(std::sin(t),6))/128.);
+
+if (l==9 && m == 7) return (3*std::sqrt(13585/pi)*std::cos(7*p)*std::pow(std::sin(t),7))/512. - (51*std::sqrt(13585/pi)*std::cos(7*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),7))/512. + std::complex<double>(0,1)*((3*std::sqrt(13585/pi)*std::sin(7*p)*std::pow(std::sin(t),7))/512. - (51*std::sqrt(13585/pi)*std::pow(std::cos(t),2)*std::sin(7*p)*std::pow(std::sin(t),7))/512.);
+
+if (l==9 && m == 8) return (3*std::sqrt(230945/(2.*pi))*std::cos(8*p)*std::cos(t)*std::pow(std::sin(t),8))/256. + std::complex<double>(0,0.01171875)*std::sqrt(230945/(2.*pi))*std::cos(t)*std::sin(8*p)*std::pow(std::sin(t),8);
+
+if (l==9 && m == 9) return -(std::sqrt(230945/pi)*std::cos(9*p)*std::pow(std::sin(t),9))/512. - std::complex<double>(0,0.001953125)*std::sqrt(230945/pi)*std::sin(9*p)*std::pow(std::sin(t),9);
+
+if (l==10 && m == -10) return (std::sqrt(969969/pi)*std::cos(10*p)*std::pow(std::sin(t),10))/1024. - std::complex<double>(0,0.0009765625)*std::sqrt(969969/pi)*std::sin(10*p)*std::pow(std::sin(t),10);
+
+if (l==10 && m == -9) return (std::sqrt(4849845/pi)*std::cos(9*p)*std::cos(t)*std::pow(std::sin(t),9))/512. - std::complex<double>(0,0.001953125)*std::sqrt(4849845/pi)*std::cos(t)*std::sin(9*p)*std::pow(std::sin(t),9);
+
+if (l==10 && m == -8) return -(std::sqrt(255255/(2.*pi))*std::cos(8*p)*std::pow(std::sin(t),8))/512. + (19*std::sqrt(255255/(2.*pi))*std::cos(8*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),8))/512. + std::complex<double>(0,1)*((std::sqrt(255255/(2.*pi))*std::sin(8*p)*std::pow(std::sin(t),8))/512. - (19*std::sqrt(255255/(2.*pi))*std::pow(std::cos(t),2)*std::sin(8*p)*std::pow(std::sin(t),8))/512.);
+
+if (l==10 && m == -7) return (-9*std::sqrt(85085/pi)*std::cos(7*p)*std::cos(t)*std::pow(std::sin(t),7))/512. + (57*std::sqrt(85085/pi)*std::cos(7*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),7))/512. + std::complex<double>(0,1)*((9*std::sqrt(85085/pi)*std::cos(t)*std::sin(7*p)*std::pow(std::sin(t),7))/512. - (57*std::sqrt(85085/pi)*std::pow(std::cos(t),3)*std::sin(7*p)*std::pow(std::sin(t),7))/512.);
+
+if (l==10 && m == -6) return (9*std::sqrt(5005/pi)*std::cos(6*p)*std::pow(std::sin(t),6))/1024. - (153*std::sqrt(5005/pi)*std::cos(6*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),6))/512. + (969*std::sqrt(5005/pi)*std::cos(6*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),6))/1024. + std::complex<double>(0,1)*((-9*std::sqrt(5005/pi)*std::sin(6*p)*std::pow(std::sin(t),6))/1024. + (153*std::sqrt(5005/pi)*std::pow(std::cos(t),2)*std::sin(6*p)*std::pow(std::sin(t),6))/512. - (969*std::sqrt(5005/pi)*std::pow(std::cos(t),4)*std::sin(6*p)*std::pow(std::sin(t),6))/1024.);
+
+if (l==10 && m == -5) return (45*std::sqrt(1001/pi)*std::cos(5*p)*std::cos(t)*std::pow(std::sin(t),5))/256. - (255*std::sqrt(1001/pi)*std::cos(5*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),5))/128. + (969*std::sqrt(1001/pi)*std::cos(5*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),5))/256. + std::complex<double>(0,1)*((-45*std::sqrt(1001/pi)*std::cos(t)*std::sin(5*p)*std::pow(std::sin(t),5))/256. + (255*std::sqrt(1001/pi)*std::pow(std::cos(t),3)*std::sin(5*p)*std::pow(std::sin(t),5))/128. - (969*std::sqrt(1001/pi)*std::pow(std::cos(t),5)*std::sin(5*p)*std::pow(std::sin(t),5))/256.);
+
+if (l==10 && m == -4) return (-3*std::sqrt(5005/(2.*pi))*std::cos(4*p)*std::pow(std::sin(t),4))/256. + (135*std::sqrt(5005/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),4))/256. - (765*std::sqrt(5005/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),4))/256. + (969*std::sqrt(5005/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),6)*std::pow(std::sin(t),4))/256. + std::complex<double>(0,1)*((3*std::sqrt(5005/(2.*pi))*std::sin(4*p)*std::pow(std::sin(t),4))/256. - (135*std::sqrt(5005/(2.*pi))*std::pow(std::cos(t),2)*std::sin(4*p)*std::pow(std::sin(t),4))/256. + (765*std::sqrt(5005/(2.*pi))*std::pow(std::cos(t),4)*std::sin(4*p)*std::pow(std::sin(t),4))/256. - (969*std::sqrt(5005/(2.*pi))*std::pow(std::cos(t),6)*std::sin(4*p)*std::pow(std::sin(t),4))/256.);
+
+if (l==10 && m == -3) return (-21*std::sqrt(5005/pi)*std::cos(3*p)*std::cos(t)*std::pow(std::sin(t),3))/256. + (315*std::sqrt(5005/pi)*std::cos(3*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),3))/256. - (1071*std::sqrt(5005/pi)*std::cos(3*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),3))/256. + (969*std::sqrt(5005/pi)*std::cos(3*p)*std::pow(std::cos(t),7)*std::pow(std::sin(t),3))/256. + std::complex<double>(0,1)*((21*std::sqrt(5005/pi)*std::cos(t)*std::sin(3*p)*std::pow(std::sin(t),3))/256. - (315*std::sqrt(5005/pi)*std::pow(std::cos(t),3)*std::sin(3*p)*std::pow(std::sin(t),3))/256. + (1071*std::sqrt(5005/pi)*std::pow(std::cos(t),5)*std::sin(3*p)*std::pow(std::sin(t),3))/256. - (969*std::sqrt(5005/pi)*std::pow(std::cos(t),7)*std::sin(3*p)*std::pow(std::sin(t),3))/256.);
+
+if (l==10 && m == -2) return (21*std::sqrt(385/(2.*pi))*std::cos(2*p)*std::pow(std::sin(t),2))/512. - (273*std::sqrt(385/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),2))/128. + (4095*std::sqrt(385/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),2))/256. - (4641*std::sqrt(385/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),6)*std::pow(std::sin(t),2))/128. + (12597*std::sqrt(385/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),8)*std::pow(std::sin(t),2))/512. + std::complex<double>(0,1)*((-21*std::sqrt(385/(2.*pi))*std::sin(2*p)*std::pow(std::sin(t),2))/512. + (273*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),2)*std::sin(2*p)*std::pow(std::sin(t),2))/128. - (4095*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),4)*std::sin(2*p)*std::pow(std::sin(t),2))/256. + (4641*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),6)*std::sin(2*p)*std::pow(std::sin(t),2))/128. - (12597*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),8)*std::sin(2*p)*std::pow(std::sin(t),2))/512.);
+
+if (l==10 && m == -1) return (63*std::sqrt(1155/(2.*pi))*std::cos(p)*std::cos(t)*std::sin(t))/256. - (273*std::sqrt(1155/(2.*pi))*std::cos(p)*std::pow(std::cos(t),3)*std::sin(t))/64. + (2457*std::sqrt(1155/(2.*pi))*std::cos(p)*std::pow(std::cos(t),5)*std::sin(t))/128. - (1989*std::sqrt(1155/(2.*pi))*std::cos(p)*std::pow(std::cos(t),7)*std::sin(t))/64. + (4199*std::sqrt(1155/(2.*pi))*std::cos(p)*std::pow(std::cos(t),9)*std::sin(t))/256. + std::complex<double>(0,1)*((-63*std::sqrt(1155/(2.*pi))*std::cos(t)*std::sin(p)*std::sin(t))/256. + (273*std::sqrt(1155/(2.*pi))*std::pow(std::cos(t),3)*std::sin(p)*std::sin(t))/64. - (2457*std::sqrt(1155/(2.*pi))*std::pow(std::cos(t),5)*std::sin(p)*std::sin(t))/128. + (1989*std::sqrt(1155/(2.*pi))*std::pow(std::cos(t),7)*std::sin(p)*std::sin(t))/64. - (4199*std::sqrt(1155/(2.*pi))*std::pow(std::cos(t),9)*std::sin(p)*std::sin(t))/256.);
+
+if (l==10 && m == 0) return (-63*std::sqrt(21/pi))/512. + (3465*std::sqrt(21/pi)*std::pow(std::cos(t),2))/512. - (15015*std::sqrt(21/pi)*std::pow(std::cos(t),4))/256. + (45045*std::sqrt(21/pi)*std::pow(std::cos(t),6))/256. - (109395*std::sqrt(21/pi)*std::pow(std::cos(t),8))/512. + (46189*std::sqrt(21/pi)*std::pow(std::cos(t),10))/512.;
+
+if (l==10 && m == 1) return (-63*std::sqrt(1155/(2.*pi))*std::cos(p)*std::cos(t)*std::sin(t))/256. + (273*std::sqrt(1155/(2.*pi))*std::cos(p)*std::pow(std::cos(t),3)*std::sin(t))/64. - (2457*std::sqrt(1155/(2.*pi))*std::cos(p)*std::pow(std::cos(t),5)*std::sin(t))/128. + (1989*std::sqrt(1155/(2.*pi))*std::cos(p)*std::pow(std::cos(t),7)*std::sin(t))/64. - (4199*std::sqrt(1155/(2.*pi))*std::cos(p)*std::pow(std::cos(t),9)*std::sin(t))/256. + std::complex<double>(0,1)*((-63*std::sqrt(1155/(2.*pi))*std::cos(t)*std::sin(p)*std::sin(t))/256. + (273*std::sqrt(1155/(2.*pi))*std::pow(std::cos(t),3)*std::sin(p)*std::sin(t))/64. - (2457*std::sqrt(1155/(2.*pi))*std::pow(std::cos(t),5)*std::sin(p)*std::sin(t))/128. + (1989*std::sqrt(1155/(2.*pi))*std::pow(std::cos(t),7)*std::sin(p)*std::sin(t))/64. - (4199*std::sqrt(1155/(2.*pi))*std::pow(std::cos(t),9)*std::sin(p)*std::sin(t))/256.);
+
+if (l==10 && m == 2) return (21*std::sqrt(385/(2.*pi))*std::cos(2*p)*std::pow(std::sin(t),2))/512. - (273*std::sqrt(385/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),2))/128. + (4095*std::sqrt(385/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),2))/256. - (4641*std::sqrt(385/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),6)*std::pow(std::sin(t),2))/128. + (12597*std::sqrt(385/(2.*pi))*std::cos(2*p)*std::pow(std::cos(t),8)*std::pow(std::sin(t),2))/512. + std::complex<double>(0,1)*((21*std::sqrt(385/(2.*pi))*std::sin(2*p)*std::pow(std::sin(t),2))/512. - (273*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),2)*std::sin(2*p)*std::pow(std::sin(t),2))/128. + (4095*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),4)*std::sin(2*p)*std::pow(std::sin(t),2))/256. - (4641*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),6)*std::sin(2*p)*std::pow(std::sin(t),2))/128. + (12597*std::sqrt(385/(2.*pi))*std::pow(std::cos(t),8)*std::sin(2*p)*std::pow(std::sin(t),2))/512.);
+
+if (l==10 && m == 3) return (21*std::sqrt(5005/pi)*std::cos(3*p)*std::cos(t)*std::pow(std::sin(t),3))/256. - (315*std::sqrt(5005/pi)*std::cos(3*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),3))/256. + (1071*std::sqrt(5005/pi)*std::cos(3*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),3))/256. - (969*std::sqrt(5005/pi)*std::cos(3*p)*std::pow(std::cos(t),7)*std::pow(std::sin(t),3))/256. + std::complex<double>(0,1)*((21*std::sqrt(5005/pi)*std::cos(t)*std::sin(3*p)*std::pow(std::sin(t),3))/256. - (315*std::sqrt(5005/pi)*std::pow(std::cos(t),3)*std::sin(3*p)*std::pow(std::sin(t),3))/256. + (1071*std::sqrt(5005/pi)*std::pow(std::cos(t),5)*std::sin(3*p)*std::pow(std::sin(t),3))/256. - (969*std::sqrt(5005/pi)*std::pow(std::cos(t),7)*std::sin(3*p)*std::pow(std::sin(t),3))/256.);
+
+if (l==10 && m == 4) return (-3*std::sqrt(5005/(2.*pi))*std::cos(4*p)*std::pow(std::sin(t),4))/256. + (135*std::sqrt(5005/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),4))/256. - (765*std::sqrt(5005/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),4))/256. + (969*std::sqrt(5005/(2.*pi))*std::cos(4*p)*std::pow(std::cos(t),6)*std::pow(std::sin(t),4))/256. + std::complex<double>(0,1)*((-3*std::sqrt(5005/(2.*pi))*std::sin(4*p)*std::pow(std::sin(t),4))/256. + (135*std::sqrt(5005/(2.*pi))*std::pow(std::cos(t),2)*std::sin(4*p)*std::pow(std::sin(t),4))/256. - (765*std::sqrt(5005/(2.*pi))*std::pow(std::cos(t),4)*std::sin(4*p)*std::pow(std::sin(t),4))/256. + (969*std::sqrt(5005/(2.*pi))*std::pow(std::cos(t),6)*std::sin(4*p)*std::pow(std::sin(t),4))/256.);
+
+if (l==10 && m == 5) return (-45*std::sqrt(1001/pi)*std::cos(5*p)*std::cos(t)*std::pow(std::sin(t),5))/256. + (255*std::sqrt(1001/pi)*std::cos(5*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),5))/128. - (969*std::sqrt(1001/pi)*std::cos(5*p)*std::pow(std::cos(t),5)*std::pow(std::sin(t),5))/256. + std::complex<double>(0,1)*((-45*std::sqrt(1001/pi)*std::cos(t)*std::sin(5*p)*std::pow(std::sin(t),5))/256. + (255*std::sqrt(1001/pi)*std::pow(std::cos(t),3)*std::sin(5*p)*std::pow(std::sin(t),5))/128. - (969*std::sqrt(1001/pi)*std::pow(std::cos(t),5)*std::sin(5*p)*std::pow(std::sin(t),5))/256.);
+
+if (l==10 && m == 6) return (9*std::sqrt(5005/pi)*std::cos(6*p)*std::pow(std::sin(t),6))/1024. - (153*std::sqrt(5005/pi)*std::cos(6*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),6))/512. + (969*std::sqrt(5005/pi)*std::cos(6*p)*std::pow(std::cos(t),4)*std::pow(std::sin(t),6))/1024. + std::complex<double>(0,1)*((9*std::sqrt(5005/pi)*std::sin(6*p)*std::pow(std::sin(t),6))/1024. - (153*std::sqrt(5005/pi)*std::pow(std::cos(t),2)*std::sin(6*p)*std::pow(std::sin(t),6))/512. + (969*std::sqrt(5005/pi)*std::pow(std::cos(t),4)*std::sin(6*p)*std::pow(std::sin(t),6))/1024.);
+
+if (l==10 && m == 7) return (9*std::sqrt(85085/pi)*std::cos(7*p)*std::cos(t)*std::pow(std::sin(t),7))/512. - (57*std::sqrt(85085/pi)*std::cos(7*p)*std::pow(std::cos(t),3)*std::pow(std::sin(t),7))/512. + std::complex<double>(0,1)*((9*std::sqrt(85085/pi)*std::cos(t)*std::sin(7*p)*std::pow(std::sin(t),7))/512. - (57*std::sqrt(85085/pi)*std::pow(std::cos(t),3)*std::sin(7*p)*std::pow(std::sin(t),7))/512.);
+
+if (l==10 && m == 8) return -(std::sqrt(255255/(2.*pi))*std::cos(8*p)*std::pow(std::sin(t),8))/512. + (19*std::sqrt(255255/(2.*pi))*std::cos(8*p)*std::pow(std::cos(t),2)*std::pow(std::sin(t),8))/512. + std::complex<double>(0,1)*(-(std::sqrt(255255/(2.*pi))*std::sin(8*p)*std::pow(std::sin(t),8))/512. + (19*std::sqrt(255255/(2.*pi))*std::pow(std::cos(t),2)*std::sin(8*p)*std::pow(std::sin(t),8))/512.);
+
+if (l==10 && m == 9) return -(std::sqrt(4849845/pi)*std::cos(9*p)*std::cos(t)*std::pow(std::sin(t),9))/512. - std::complex<double>(0,0.001953125)*std::sqrt(4849845/pi)*std::cos(t)*std::sin(9*p)*std::pow(std::sin(t),9);
+
+if (l==10 && m == 10) return (std::sqrt(969969/pi)*std::cos(10*p)*std::pow(std::sin(t),10))/1024. + std::complex<double>(0,0.0009765625)*std::sqrt(969969/pi)*std::sin(10*p)*std::pow(std::sin(t),10);
+
+return double_complex(0, 0);
 }
 
 using namespace sirius;
@@ -281,20 +292,23 @@ int run_test(cmd_args& args)
 
     int lmax{10};
     std::vector<double_complex> ylm((lmax + 1) * (lmax + 1));
+    std::vector<double_complex> ylm_ref((lmax + 1) * (lmax + 1));
 
     for (int k = 0; k < num_points; k++) {
         double theta = tp(0, k);
         double phi = tp(1, k);
         /* generate spherical harmonics */
-        sht::spherical_harmonics(lmax, theta, phi, &ylm[0]);
+        sf::spherical_harmonics(lmax, theta, phi, &ylm[0]);
+        sf::spherical_harmonics_ref(lmax, theta, phi, &ylm_ref[0]);
 
         double_complex val;
         double diff{0};
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
                 /* compute spherical harmonics using their definition */
-                SphericalHarmonicY_(&l, &m, &theta, &phi, &val);
+                auto val = SphericalHarmonicY(l, m, theta, phi);
                 diff += std::abs(val - ylm[utils::lm(l, m)]);
+                diff += std::abs(val - ylm_ref[utils::lm(l, m)]);
             }
         }
         if (diff > 1e-10) {

@@ -169,7 +169,7 @@ class Spheric_function: public mdarray<T, 2>
 
         int lmax = utils::lmax(angular_domain_size_);
         std::vector<T> ylm(angular_domain_size_);
-        sht::spherical_harmonics(lmax, theta__, phi__, &ylm[0]);
+        sf::spherical_harmonics(lmax, theta__, phi__, &ylm[0]);
         T p = 0.0;
         for (int lm = 0; lm < angular_domain_size_; lm++) {
             double deriv = ((*this)(lm, jr__ + 1) - (*this)(lm, jr__)) / radial_grid_->dx(jr__);

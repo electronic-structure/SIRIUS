@@ -10,8 +10,8 @@ int run_test(cmd_args& args)
 
     for (int i = 0; i < 20; i++) {
         double phi = utils::random<double>() * fourpi;
-        auto cosxn = SHT::cosxn(n, phi);
-        auto sinxn = SHT::sinxn(n, phi);
+        auto cosxn = sf::cosxn(n, phi);
+        auto sinxn = sf::sinxn(n, phi);
         for (int l = 0; l < n; l++) {
             if (std::abs(cosxn[l] - std::cos((l + 1) * phi)) > 1e-12) {
                 return 1;

@@ -79,7 +79,7 @@ matrix<double_complex> Simulation_context::generate_gvec_ylm(int lmax__)
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < gvec().count(); igloc++) {
         auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
-        sht::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
+        sf::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
     return gvec_ylm;
 }
@@ -148,9 +148,10 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
         PROFILE_START("sirius::Simulation_context::sum_fg_fl_yg|mul");
         switch (processing_unit()) {
             case device_t::CPU: {
-                linalg<device_t::CPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::host), zm.ld(),
-                                            phase_factors.at(memory_t::host), phase_factors.ld(),
-                                            tmp.at(memory_t::host), tmp.ld());
+                linalg2(linalg_t::blas).gemm('N', 'N', lmmax, na, ngv_loc, 
+                    &linalg_const<double_complex>::one(), zm.at(memory_t::host), zm.ld(),
+                    phase_factors.at(memory_t::host), phase_factors.ld(),
+                    &linalg_const<double_complex>::zero(), tmp.at(memory_t::host), tmp.ld());
                 break;
             }
             case device_t::GPU: {
