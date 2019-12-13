@@ -323,7 +323,10 @@ class Potential : public Field4D
         lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
 
         if (lmax_ >= 0) {
-            sht_  = std::unique_ptr<SHT>(new SHT(lmax_));
+            sht_  = std::unique_ptr<SHT>(new SHT(lmax_, 1));
+            if (ctx_.control().verification_ >= 1)  {
+                sht_->check();
+            }
             l_by_lm_ = utils::l_by_lm(lmax_);
 
             /* precompute i^l */
@@ -491,7 +494,7 @@ class Potential : public Field4D
                 Spheric_function<function_domain_t::spectral, T> const& rho_mt__,
                 Spheric_function<function_domain_t::spectral, T>&       vha_mt__) const
     {
-        const bool use_r_prefact{true};
+        const bool use_r_prefact{false};
 
         int lmmax_rho = rho_mt__.angular_domain_size();
         int lmmax_pot = vha_mt__.angular_domain_size();
