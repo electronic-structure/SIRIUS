@@ -172,8 +172,7 @@ class Potential : public Field4D
     void add_paw_Dij_to_atom_Dmtrx();
 
     /// Compute MT part of the potential and MT multipole moments
-    void poisson_vmt(Periodic_function<double> const& rho__,
-                            mdarray<double_complex, 2>&      qmt__)
+    void poisson_vmt(Periodic_function<double> const& rho__, mdarray<double_complex, 2>& qmt__) const
     {
         PROFILE("sirius::Potential::poisson_vmt");
 
@@ -564,7 +563,7 @@ class Potential : public Field4D
             }
         }
         if (!free_atom) {
-            /* constant part of nuclear potential -z*(1/r - 1/R) */
+            /* contribution from nuclear potential -z*(1/r - 1/R) */
             for (int ir = 0; ir < nmtp; ir++) {
 #ifdef __VHA_AUX
                 double r = atom__.radial_grid(ir);

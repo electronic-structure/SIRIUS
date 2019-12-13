@@ -301,14 +301,34 @@ void Potential::poisson(Periodic_function<double> const& rho)
             for (int ir = 0; ir < atom.num_mt_points(); ir++) {
                 double r = atom.radial_grid(ir);
                 hartree_potential_->f_mt<index_domain_t::local>(0, ir, ialoc) -= atom.zn() / r / y00;
-                srho(ir) = rho.f_mt<index_domain_t::local>(0, ir, ialoc);
+                srho(ir) = rho.f_mt<index_domain_t::local>(0, ir, ialoc) * r;
             }
-            evha_nuc -= atom.zn() * srho.interpolate().integrate(1) / y00;
+            evha_nuc -= atom.zn() * srho.interpolate().integrate(0) / y00;
         }
         ctx_.comm().allreduce(&evha_nuc, 1);
         energy_vha_ += evha_nuc;
     }
 #endif
+
+    /* check values at MT boundary */
+    //if (true) {
+    //    /* compute V_lm at the MT boundary */
+    //    auto vmtlm = ctx_.sum_fg_fl_yg(ctx_.lmax_pot(), &hartree_potential_->f_pw_local(0), sbessel_mt_, gvec_ylm_);
+
+    //    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+    //        int ia = unit_cell_.spl_num_atoms(ialoc);
+    //        int nmtp = unit_cell_.atom(ia).num_mt_points();
+
+    //        std::vector<double> vlm(ctx_.lmmax_pot());
+    //        SHT::convert(ctx_.lmax_pot(), &vmtlm(0, ia), &vlm[0]);
+
+    //        for (int lm = 0; lm < ctx_.lmmax_pot(); lm++) {
+    //            printf("ia=%i lm=%i vlmdiff=%20.16f\n", ia, lm,
+    //              std::abs(hartree_potential_->f_mt<index_domain_t::local>(lm, nmtp - 1, ialoc) - vlm[lm]));
+    //        }
+    //    }
+
+    //}
 }
 
 } // namespace sirius

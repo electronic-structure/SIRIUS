@@ -28,6 +28,7 @@
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
 
+// TODO: try..catch in all calls to SIRIUS, return error codes to fortran as last optional argument
 
 sirius::Simulation_context& get_sim_ctx(void* const* h)
 {
@@ -1476,7 +1477,7 @@ void sirius_set_density_matrix(void*          const* handler__,
    @fortran end */
 void sirius_get_energy(void* const* handler__,
                        char  const* label__,
-                       double*      energy__) // TODO: change to funtion returning a value
+                       double*      energy__)
 {
     auto& gs = get_gs(handler__);
 
