@@ -544,6 +544,13 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         }
     }
 
+    if (ctx_.control().print_checksum_) {
+        auto cs = density__.rho().checksum_rg();
+        if (ctx_.comm().rank() == 0) {
+            utils::print_checksum("rho_rg", cs);
+        }
+    }
+
     Smooth_periodic_vector_function<double> grad_rho;
     Smooth_periodic_function<double> lapl_rho;
     Smooth_periodic_function<double> grad_rho_grad_rho;
@@ -748,6 +755,13 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
 
     /* forward transform vsigma to plane-wave domain */
     vsigma_[0]->fft_transform(-1);
+
+    if (ctx_.control().print_checksum_) {
+        auto cs = xc_potential_->checksum_rg();
+        if (ctx_.comm().rank() == 0) {
+            utils::print_checksum("exc", cs);
+        }
+    }
 }
 
 template <bool add_pseudo_core__>
