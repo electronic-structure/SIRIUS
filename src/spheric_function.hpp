@@ -355,11 +355,12 @@ T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> c
             for (int lm = 0; lm < lmmax; lm++) {
                 s(ir) += utils::conj(f1(lm, ir)) * f2(lm, ir);
             }
+            s(ir) *= std::pow(f1.radial_grid().x(ir), 2);
         }
     } else {
         throw std::runtime_error("not implemented");
     }
-    return s.interpolate().integrate(2);
+    return s.interpolate().integrate(0);
 }
 
 /// Compute Laplacian of the spheric function.
