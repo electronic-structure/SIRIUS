@@ -299,13 +299,10 @@ void test6a()
 
 
     double val = s.interpolate().integrate(0);
-    if (std::abs(val - 3) > 1e-13)
-    {
+    if (std::abs(val - 3) > 1e-13) {
         printf("wrong result: %18.12f\n", val);
         exit(1);
-    }
-    else
-    {
+    } else {
         printf("OK\n");
     }
 
@@ -468,6 +465,34 @@ void test7()
 //    check_spline_1<T>(s, f, r0, r1);
 //}
 
+void test11()
+{
+    int N = 2000;
+    const double exact_val = 0.9794054710686494;
+    Radial_grid_exp<double> r(N, 1e-8, 2);
+    Spline<double> s1(r, [](double x){return std::log(0.01 + x);});
+    double v1 = s1.integrate(2);
+    Spline<double> s2(r, [](double x){return x * x * std::log(0.01 + x);});
+    double v2 = s2.integrate(0);
+    printf("test11: v1 - v2   : %18.16f\n", std::abs(v1 - v2));
+    printf("        v1 - exact: %18.16f\n", std::abs(v1 - exact_val));
+    printf("        v2 - exact: %18.16f\n", std::abs(v2 - exact_val));
+}
+
+void test12()
+{
+    int N = 2000;
+    const double exact_val = 0.001999999088970099;
+    Radial_grid_exp<double> r(N, 1e-8, 2);
+    Spline<double> s1(r, [](double x){return std::exp(-10 * x);});
+    double v1 = s1.integrate(2);
+    Spline<double> s2(r, [](double x){return x * x * std::exp(-10 * x);});
+    double v2 = s2.integrate(0);
+    printf("test11: v1 - v2   : %18.16f\n", std::abs(v1 - v2));
+    printf("        v1 - exact: %18.16f\n", std::abs(v1 - exact_val));
+    printf("        v2 - exact: %18.16f\n", std::abs(v2 - exact_val));
+}
+
 int main(int argn, char** argv)
 {
     sirius::initialize(1);
@@ -507,6 +532,9 @@ int main(int argn, char** argv)
     test5();
 
     test7();
+
+    test11();
+    test12();
 
     //for (int i = 0; i < 5; i++) {
     //    printf("grid type: %i\n", i);
