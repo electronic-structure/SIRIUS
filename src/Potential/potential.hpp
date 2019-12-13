@@ -172,22 +172,24 @@ class Potential : public Field4D
     void add_paw_Dij_to_atom_Dmtrx();
 
     /// Compute MT part of the potential and MT multipole moments
-    void poisson_vmt(Periodic_function<double> const& rho__, mdarray<double_complex, 2>& qmt__) const
+    sddk::mdarray<double_complex,2> poisson_vmt(Periodic_function<double> const& rho__) const
     {
         PROFILE("sirius::Potential::poisson_vmt");
 
-        qmt__.zero();
+        sddk::mdarray<double_complex, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
+        qmt.zero();
 
         for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
             int ia = unit_cell_.spl_num_atoms(ialoc);
 
-            auto qmt = poisson_vmt<false>(unit_cell_.atom(ia), rho__.f_mt(ialoc),
-                                          const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->f_mt(ialoc)));
+            auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rho__.f_mt(ialoc),
+                const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->f_mt(ialoc)));
 
-            SHT::convert(ctx_.lmax_rho(), &qmt[0], &qmt__(0, ia));
+            SHT::convert(ctx_.lmax_rho(), &qmt_re[0], &qmt(0, ia));
         }
 
-        ctx_.comm().allreduce(&qmt__(0, 0), (int)qmt__.size());
+        ctx_.comm().allreduce(&qmt(0, 0), (int)qmt.size());
+        return qmt;
     }
 
     /// Add contribution from the pseudocharge to the plane-wave expansion

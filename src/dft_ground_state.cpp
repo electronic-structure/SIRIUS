@@ -27,8 +27,6 @@
 
 namespace sirius {
 
-
-
 void DFT_ground_state::initial_state()
 {
     density_.initial_density();

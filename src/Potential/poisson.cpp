@@ -142,15 +142,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
     if (ctx_.full_potential()) {
 
         /* true multipole moments */
-        mdarray<double_complex, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
-        poisson_vmt(rho, qmt);
-
-        //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //==     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-        //==         printf("qmt(%2i, %2i) = %18.12f %18.12f\n", lm, ia, qmt(lm, ia).real(), qmt(lm, ia).imag());
-        //==     }
-        //==     printf("\n");
-        //== }
+        auto qmt = poisson_vmt(rho);
 
         if (ctx_.control().print_checksum_) {
             if (ctx_.comm().rank() == 0) {
@@ -159,16 +151,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
         }
 
         /* compute multipoles of interstitial density in MT region */
-        //mdarray<double_complex, 2> qit(ctx_.lmmax_rho(), unit_cell_.num_atoms());
-        //poisson_sum_G(ctx_.lmmax_rho(), &rho.f_pw_local(0), sbessel_mom_, qit);
         auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.f_pw_local(0), sbessel_mom_, gvec_ylm_);
-
-        //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //==     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-        //==         printf("qi(%2i, %2i) = %18.12f %18.12f\n", lm, ia, qit(lm, ia).real(), qit(lm, ia).imag());
-        //==     }
-        //==     printf("\n");
-        //== }
 
         if (ctx_.control().print_checksum_) {
             if (ctx_.comm().rank() == 0) {
