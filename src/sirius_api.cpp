@@ -225,6 +225,7 @@ void sirius_import_parameters(void* const* handler__,
    @fortran argument in optional bool   hubbard_correction       True if LDA+U correction is enabled.
    @fortran argument in optional int    hubbard_correction_kind  Type of LDA+U implementation (simplified or full).
    @fortran argument in optional string hubbard_orbitals         Type of localized orbitals.
+   @fortran argument in optional int    sht_coverage             Type of spherical coverage (0: Lebedev-Laikov, 1: uniform).
    @fortran end */
 void sirius_set_parameters(void*  const* handler__,
                            int    const* lmax_apw__,
@@ -249,7 +250,8 @@ void sirius_set_parameters(void*  const* handler__,
                            int    const* verbosity__,
                            bool   const* hubbard_correction__,
                            int    const* hubbard_correction_kind__,
-                           char   const* hubbard_orbitals__)
+                           char   const* hubbard_orbitals__,
+                           int    const* sht_coverage__)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     if (lmax_apw__ != nullptr) {
@@ -308,7 +310,7 @@ void sirius_set_parameters(void*  const* handler__,
         sim_ctx.set_iterative_solver_type(std::string(iter_solver_type__));
     }
     if (verbosity__ != nullptr) {
-        sim_ctx.set_verbosity(*verbosity__);
+        sim_ctx.verbosity(*verbosity__);
     }
     if (hubbard_correction__ != nullptr) {
         sim_ctx.set_hubbard_correction(*hubbard_correction__);
@@ -329,6 +331,9 @@ void sirius_set_parameters(void*  const* handler__,
     }
     if (fft_grid_size__ != nullptr) {
         sim_ctx.fft_grid_size({fft_grid_size__[0], fft_grid_size__[1], fft_grid_size__[2]});
+    }
+    if (sht_coverage__ != nullptr) {
+        sim_ctx.sht_coverage(*sht_coverage__);
     }
 }
 
@@ -2074,11 +2079,13 @@ void sirius_set_atom_type_configuration(void*  const* handler__,
 }
 
 /* @fortran begin function void sirius_generate_coulomb_potential    Generate Coulomb potential by solving Poisson equation
-   @fortran argument in required void*   handler   Ground state handler
-   @fortran argument out required double vclmt     Muffin-tin part of potential
-   @fortran argument out required double vclrg     Regular-grid part of potential
+   @fortran argument in required void*   handler      Ground state handler
+   @fortran argument in required bool    is_local_rg  true if regular grid pointer is local
+   @fortran argument out required double vclmt        Muffin-tin part of potential
+   @fortran argument out required double vclrg        Regular-grid part of potential
    @fortran end */
 void sirius_generate_coulomb_potential(void* const* handler__,
+                                       bool  const* is_local_rg__,
                                        double*      vclmt__,
                                        double*      vclrg__)
 {
@@ -2086,7 +2093,7 @@ void sirius_generate_coulomb_potential(void* const* handler__,
 
     gs.density().rho().fft_transform(-1);
     gs.potential().poisson(gs.density().rho());
-    gs.potential().hartree_potential().copy_to(vclmt__, vclrg__, true);
+    gs.potential().hartree_potential().copy_to(vclmt__, vclrg__, *is_local_rg__);
 }
 
 /* @fortran begin function void sirius_generate_xc_potential    Generate XC potential using LibXC

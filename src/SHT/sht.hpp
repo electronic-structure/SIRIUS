@@ -90,11 +90,18 @@ class SHT // TODO: better name
     {
         lmmax_ = (lmax_ + 1) * (lmax_ + 1);
 
-        if (mesh_type_ == 0) {
-            num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
-        }
-        if (mesh_type_ == 1) {
-            num_points_ = lmmax_;
+        switch (mesh_type_) {
+            case 0: {
+                num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
+                break;
+            }
+            case 1: {
+                num_points_ = lmmax_;
+                break;
+            }
+            default: {
+                throw std::runtime_error("Wrong spherical coverage parameter");
+            }
         }
 
         std::vector<double> x(num_points_);
@@ -107,11 +114,15 @@ class SHT // TODO: better name
 
         w_.resize(num_points_);
 
-        if (mesh_type_ == 0) {
-            Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
-        }
-        if (mesh_type_ == 1) {
-            uniform_coverage();
+        switch (mesh_type_) {
+            case 0: {
+                Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
+                break;
+            }
+            case 1: {
+                uniform_coverage();
+                break;
+            }
         }
 
         ylm_backward_ = sddk::mdarray<double_complex, 2>(lmmax_, num_points_);

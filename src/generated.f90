@@ -229,10 +229,12 @@ end subroutine sirius_import_parameters
 !> @param [in] hubbard_correction True if LDA+U correction is enabled.
 !> @param [in] hubbard_correction_kind Type of LDA+U implementation (simplified or full).
 !> @param [in] hubbard_orbitals Type of localized orbitals.
+!> @param [in] sht_coverage Type of spherical coverage (0: Lebedev-Laikov, 1: uniform).
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,&
-&iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals)
+&iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,&
+&sht_coverage)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), optional, target, intent(in) :: lmax_apw
@@ -258,6 +260,7 @@ integer(C_INT), optional, target, intent(in) :: verbosity
 logical(C_BOOL), optional, target, intent(in) :: hubbard_correction
 integer(C_INT), optional, target, intent(in) :: hubbard_correction_kind
 character(C_CHAR), optional, target, dimension(*), intent(in) :: hubbard_orbitals
+integer(C_INT), optional, target, intent(in) :: sht_coverage
 type(C_PTR) :: lmax_apw_ptr
 type(C_PTR) :: lmax_rho_ptr
 type(C_PTR) :: lmax_pot_ptr
@@ -281,11 +284,13 @@ type(C_PTR) :: verbosity_ptr
 type(C_PTR) :: hubbard_correction_ptr
 type(C_PTR) :: hubbard_correction_kind_ptr
 type(C_PTR) :: hubbard_orbitals_ptr
+type(C_PTR) :: sht_coverage_ptr
 interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,&
-&iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals)&
+&iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,&
+&sht_coverage)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
@@ -312,6 +317,7 @@ type(C_PTR), value :: verbosity
 type(C_PTR), value :: hubbard_correction
 type(C_PTR), value :: hubbard_correction_kind
 type(C_PTR), value :: hubbard_orbitals
+type(C_PTR), value :: sht_coverage
 end subroutine
 end interface
 
@@ -384,11 +390,14 @@ if (present(hubbard_correction_kind)) hubbard_correction_kind_ptr = C_LOC(hubbar
 hubbard_orbitals_ptr = C_NULL_PTR
 if (present(hubbard_orbitals)) hubbard_orbitals_ptr = C_LOC(hubbard_orbitals)
 
+sht_coverage_ptr = C_NULL_PTR
+if (present(sht_coverage)) sht_coverage_ptr = C_LOC(sht_coverage)
+
 call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,num_fv_states_ptr,&
 &num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,auto_rmt_ptr,&
 &gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,core_rel_ptr,&
 &esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,verbosity_ptr,&
-&hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr)
+&hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,sht_coverage_ptr)
 end subroutine sirius_set_parameters
 
 !> @brief Get parameters of the simulation.
@@ -771,38 +780,38 @@ end interface
 res = sirius_create_ground_state_aux(ks_handler)
 end function sirius_create_ground_state
 
-!> @brief Find the ground state
-!> @param [in] gs_handler Handler of the ground state
-!> @param [in] potential_tol Tolerance on RMS in potntial.
-!> @param [in] energy_tol Tolerance in total energy difference
+!> @brief Find the ground state.
+!> @param [in] gs_handler Handler of the ground state.
+!> @param [in] density_tol Tolerance on RMS in density.
+!> @param [in] energy_tol Tolerance in total energy difference.
 !> @param [in] niter Maximum number of SCF iterations.
-!> @param [in] save_state boolean variable indicating if we want to save the ground state
-subroutine sirius_find_ground_state(gs_handler,potential_tol,energy_tol,niter,save_state)
+!> @param [in] save_state boolean variable indicating if we want to save the ground state.
+subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,niter,save_state)
 implicit none
 type(C_PTR), intent(in) :: gs_handler
-real(C_DOUBLE), optional, target, intent(in) :: potential_tol
+real(C_DOUBLE), optional, target, intent(in) :: density_tol
 real(C_DOUBLE), optional, target, intent(in) :: energy_tol
 integer(C_INT), optional, target, intent(in) :: niter
 logical(C_BOOL), optional, target, intent(in) :: save_state
-type(C_PTR) :: potential_tol_ptr
+type(C_PTR) :: density_tol_ptr
 type(C_PTR) :: energy_tol_ptr
 type(C_PTR) :: niter_ptr
 type(C_PTR) :: save_state_ptr
 interface
-subroutine sirius_find_ground_state_aux(gs_handler,potential_tol,energy_tol,niter,&
+subroutine sirius_find_ground_state_aux(gs_handler,density_tol,energy_tol,niter,&
 &save_state)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: gs_handler
-type(C_PTR), value :: potential_tol
+type(C_PTR), value :: density_tol
 type(C_PTR), value :: energy_tol
 type(C_PTR), value :: niter
 type(C_PTR), value :: save_state
 end subroutine
 end interface
 
-potential_tol_ptr = C_NULL_PTR
-if (present(potential_tol)) potential_tol_ptr = C_LOC(potential_tol)
+density_tol_ptr = C_NULL_PTR
+if (present(density_tol)) density_tol_ptr = C_LOC(density_tol)
 
 energy_tol_ptr = C_NULL_PTR
 if (present(energy_tol)) energy_tol_ptr = C_LOC(energy_tol)
@@ -813,7 +822,7 @@ if (present(niter)) niter_ptr = C_LOC(niter)
 save_state_ptr = C_NULL_PTR
 if (present(save_state)) save_state_ptr = C_LOC(save_state)
 
-call sirius_find_ground_state_aux(gs_handler,potential_tol_ptr,energy_tol_ptr,niter_ptr,&
+call sirius_find_ground_state_aux(gs_handler,density_tol_ptr,energy_tol_ptr,niter_ptr,&
 &save_state_ptr)
 end subroutine sirius_find_ground_state
 
@@ -2064,24 +2073,27 @@ end subroutine sirius_set_atom_type_configuration
 
 !> @brief Generate Coulomb potential by solving Poisson equation
 !> @param [in] handler Ground state handler
+!> @param [in] is_local_rg true if regular grid pointer is local
 !> @param [out] vclmt Muffin-tin part of potential
 !> @param [out] vclrg Regular-grid part of potential
-subroutine sirius_generate_coulomb_potential(handler,vclmt,vclrg)
+subroutine sirius_generate_coulomb_potential(handler,is_local_rg,vclmt,vclrg)
 implicit none
 type(C_PTR), intent(in) :: handler
+logical(C_BOOL), intent(in) :: is_local_rg
 real(C_DOUBLE), intent(out) :: vclmt
 real(C_DOUBLE), intent(out) :: vclrg
 interface
-subroutine sirius_generate_coulomb_potential_aux(handler,vclmt,vclrg)&
+subroutine sirius_generate_coulomb_potential_aux(handler,is_local_rg,vclmt,vclrg)&
 &bind(C, name="sirius_generate_coulomb_potential")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
+logical(C_BOOL), intent(in) :: is_local_rg
 real(C_DOUBLE), intent(out) :: vclmt
 real(C_DOUBLE), intent(out) :: vclrg
 end subroutine
 end interface
 
-call sirius_generate_coulomb_potential_aux(handler,vclmt,vclrg)
+call sirius_generate_coulomb_potential_aux(handler,is_local_rg,vclmt,vclrg)
 end subroutine sirius_generate_coulomb_potential
 
 !> @brief Generate XC potential using LibXC
@@ -3105,9 +3117,9 @@ end interface
 call sirius_option_add_string_to_aux(handler,section,name,default_values)
 end subroutine sirius_option_add_string_to
 
-!> @brief dump the runtime setup in a file
+!> @brief Dump the runtime setup in a file.
 !> @param [in] handler Simulation context handler.
-!> @param [in] filename string containing the name of the file
+!> @param [in] filename String containing the name of the file.
 subroutine sirius_dump_runtime_setup(handler,filename)
 implicit none
 type(C_PTR), intent(in) :: handler

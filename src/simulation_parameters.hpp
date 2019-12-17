@@ -19,7 +19,7 @@
 
 /** \file simulation_parameters.hpp
  *
- *  \brief Contains definition and implementation of sirius::Simulation_parameters_base class.
+ *  \brief Contains definition and implementation of sirius::Simulation_parameters class.
  */
 
 #ifndef __SIMULATION_PARAMETERS_HPP__
@@ -33,6 +33,9 @@
 #include "memory.hpp"
 
 using namespace sddk;
+
+// TODO: put initialized_ flag here; do not allow to set parameters when initialised_ flag is set to true.
+// TODO: more logic: parameters should be set here; const reference to data-structures returned here.
 
 namespace sirius {
 
@@ -176,9 +179,11 @@ class Simulation_parameters
         parameters_input_.molecule_ = molecule__;
     }
 
-    void set_verbosity(int level__)
+    /// Set verbosity level.
+    int verbosity(int level__)
     {
         control_input_.verbosity_ = level__;
+        return control_input_.verbosity_;
     }
 
     inline int lmax_apw() const
@@ -525,7 +530,14 @@ class Simulation_parameters
         return runtime_options_dictionary_;
     }
 
-    /// print all options in the terminal
+    /// Set the variable which controls the type of sperical coverage.
+    inline int sht_coverage(int sht_coverage__)
+    {
+        settings_input_.sht_coverage_ = sht_coverage__;
+        return settings_input_.sht_coverage_;
+    }
+
+    /// Print all options in the terminal.
     void print_options();
 };
 

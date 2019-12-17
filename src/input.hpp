@@ -317,7 +317,7 @@ struct Iterative_solver_input
     }
     \endcode
     Parameters of the control input sections do not in general change the numerics, but instead control how the
-    results are obtained. Changing paremeters in control section should not change the significant digits in final
+    results are obtained. Changing parameters in control section should not change the significant digits in final
     results.
  */
 struct Control_input
@@ -540,56 +540,56 @@ struct Parameters_input
     void read(json const& parser)
     {
         if (parser.count("parameters")) {
-            electronic_structure_method_ =
-                parser["parameters"].value("electronic_structure_method", electronic_structure_method_);
+            auto section = parser["parameters"];
+            electronic_structure_method_ = section.value("electronic_structure_method", electronic_structure_method_);
             std::transform(electronic_structure_method_.begin(), electronic_structure_method_.end(),
                            electronic_structure_method_.begin(), ::tolower);
             xc_functionals_.clear();
             /* read list of XC functionals */
-            if (parser["parameters"].count("xc_functionals")) {
+            if (section.count("xc_functionals")) {
                 xc_functionals_.clear();
-                for (auto& label : parser["parameters"]["xc_functionals"]) {
+                for (auto& label : section["xc_functionals"]) {
                     xc_functionals_.push_back(label);
                 }
             }
 
-            if (parser["parameters"].count("vdw_functionals")) {
-                xc_functionals_.push_back(parser["parameters"]["vdw_functionals"].get<std::string>());
+            if (section.count("vdw_functionals")) {
+                xc_functionals_.push_back(section["vdw_functionals"].get<std::string>());
             }
 
-            core_relativity_ = parser["parameters"].value("core_relativity", core_relativity_);
+            core_relativity_ = section.value("core_relativity", core_relativity_);
             std::transform(core_relativity_.begin(), core_relativity_.end(), core_relativity_.begin(), ::tolower);
 
-            valence_relativity_ = parser["parameters"].value("valence_relativity", valence_relativity_);
+            valence_relativity_ = section.value("valence_relativity", valence_relativity_);
             std::transform(valence_relativity_.begin(), valence_relativity_.end(), valence_relativity_.begin(),
                            ::tolower);
 
-            num_fv_states_  = parser["parameters"].value("num_fv_states", num_fv_states_);
-            smearing_width_ = parser["parameters"].value("smearing_width", smearing_width_);
-            pw_cutoff_      = parser["parameters"].value("pw_cutoff", pw_cutoff_);
-            aw_cutoff_      = parser["parameters"].value("aw_cutoff", aw_cutoff_);
-            gk_cutoff_      = parser["parameters"].value("gk_cutoff", gk_cutoff_);
-            lmax_apw_       = parser["parameters"].value("lmax_apw", lmax_apw_);
-            lmax_rho_       = parser["parameters"].value("lmax_rho", lmax_rho_);
-            lmax_pot_       = parser["parameters"].value("lmax_pot", lmax_pot_);
-            num_mag_dims_   = parser["parameters"].value("num_mag_dims", num_mag_dims_);
-            auto_rmt_       = parser["parameters"].value("auto_rmt", auto_rmt_);
-            use_symmetry_   = parser["parameters"].value("use_symmetry", use_symmetry_);
-            gamma_point_    = parser["parameters"].value("gamma_point", gamma_point_);
-            ngridk_         = parser["parameters"].value("ngridk", ngridk_);
-            shiftk_         = parser["parameters"].value("shiftk", shiftk_);
-            num_dft_iter_   = parser["parameters"].value("num_dft_iter", num_dft_iter_);
-            energy_tol_     = parser["parameters"].value("energy_tol", energy_tol_);
+            num_fv_states_  = section.value("num_fv_states", num_fv_states_);
+            smearing_width_ = section.value("smearing_width", smearing_width_);
+            pw_cutoff_      = section.value("pw_cutoff", pw_cutoff_);
+            aw_cutoff_      = section.value("aw_cutoff", aw_cutoff_);
+            gk_cutoff_      = section.value("gk_cutoff", gk_cutoff_);
+            lmax_apw_       = section.value("lmax_apw", lmax_apw_);
+            lmax_rho_       = section.value("lmax_rho", lmax_rho_);
+            lmax_pot_       = section.value("lmax_pot", lmax_pot_);
+            num_mag_dims_   = section.value("num_mag_dims", num_mag_dims_);
+            auto_rmt_       = section.value("auto_rmt", auto_rmt_);
+            use_symmetry_   = section.value("use_symmetry", use_symmetry_);
+            gamma_point_    = section.value("gamma_point", gamma_point_);
+            ngridk_         = section.value("ngridk", ngridk_);
+            shiftk_         = section.value("shiftk", shiftk_);
+            num_dft_iter_   = section.value("num_dft_iter", num_dft_iter_);
+            energy_tol_     = section.value("energy_tol", energy_tol_);
             /* potential_tol is obsolete */
-            density_tol_   = parser["parameters"].value("potential_tol", density_tol_);
-            density_tol_   = parser["parameters"].value("density_tol", density_tol_);
-            molecule_      = parser["parameters"].value("molecule", molecule_);
-            nn_radius_     = parser["parameters"].value("nn_radius", nn_radius_);
-            reduce_aux_bf_ = parser["parameters"].value("reduce_aux_bf", reduce_aux_bf_);
-            extra_charge_  = parser["parameters"].value("extra_charge", extra_charge_);
+            density_tol_    = section.value("potential_tol", density_tol_);
+            density_tol_    = section.value("density_tol", density_tol_);
+            molecule_       = section.value("molecule", molecule_);
+            nn_radius_      = section.value("nn_radius", nn_radius_);
+            reduce_aux_bf_  = section.value("reduce_aux_bf", reduce_aux_bf_);
+            extra_charge_   = section.value("extra_charge", extra_charge_);
 
-            if (parser["parameters"].count("spin_orbit")) {
-                so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);
+            if (section.count("spin_orbit")) {
+                so_correction_ = section.value("spin_orbit", so_correction_);
 
                 /* spin-orbit correction requires non-collinear magnetism */
                 if (so_correction_) {
@@ -597,8 +597,8 @@ struct Parameters_input
                 }
             }
 
-            if (parser["parameters"].count("hubbard_correction")) {
-                hubbard_correction_ = parser["parameters"].value("hubbard_correction", hubbard_correction_);
+            if (section.count("hubbard_correction")) {
+                hubbard_correction_ = section.value("hubbard_correction", hubbard_correction_);
             }
         }
     }
@@ -608,9 +608,9 @@ struct Parameters_input
 /** Changing of setting parameters will have an impact on the final result. */
 struct Settings_input
 {
-    /// Number of points (per a.u.^-1) for interpolating radial integrals of local part of pseudopotential.
+    /// Point density (in a.u.^-1) for interpolating radial integrals of local part of pseudopotential.
     int nprii_vloc_{200};
-    /// Number of points (per a.u.^-1) for interpolating radial integrals of beta projectors.
+    /// Point density (in a.u.^-1) for interpolating radial integrals of beta projectors.
     int nprii_beta_{20};
     int nprii_aug_{20};
     int nprii_rho_core_{20};
@@ -646,20 +646,26 @@ struct Settings_input
     /// Default radial grid for LAPW species.
     std::string radial_grid_{"exponential, 1.0"};
 
+    /// Coverage of sphere in case of spherical harmonics transformation.
+    /** 0 is Lebedev-Laikov coverage, 1 is unifrom coverage */
+    int sht_coverage_{0};
+
     void read(json const& parser)
     {
         if (parser.count("settings")) {
-            nprii_vloc_       = parser["settings"].value("nprii_vloc", nprii_vloc_);
-            nprii_beta_       = parser["settings"].value("nprii_beta", nprii_beta_);
-            nprii_aug_        = parser["settings"].value("nprii_aug", nprii_aug_);
-            nprii_rho_core_   = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
-            always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
-            mixer_rms_min_    = parser["settings"].value("mixer_rms_min", mixer_rms_min_);
-            itsol_tol_min_    = parser["settings"].value("itsol_tol_min", itsol_tol_min_);
-            auto_enu_tol_     = parser["settings"].value("auto_enu_tol", auto_enu_tol_);
-            radial_grid_      = parser["settings"].value("radial_grid", radial_grid_);
-            fft_grid_size_    = parser["settings"].value("fft_grid_size", fft_grid_size_);
-            itsol_tol_scale_  = parser["settings"].value("itsol_tol_scale", itsol_tol_scale_);
+            auto section      = parser["settings"];
+            nprii_vloc_       = section.value("nprii_vloc", nprii_vloc_);
+            nprii_beta_       = section.value("nprii_beta", nprii_beta_);
+            nprii_aug_        = section.value("nprii_aug", nprii_aug_);
+            nprii_rho_core_   = section.value("nprii_rho_core", nprii_rho_core_);
+            always_update_wf_ = section.value("always_update_wf", always_update_wf_);
+            mixer_rms_min_    = section.value("mixer_rms_min", mixer_rms_min_);
+            itsol_tol_min_    = section.value("itsol_tol_min", itsol_tol_min_);
+            auto_enu_tol_     = section.value("auto_enu_tol", auto_enu_tol_);
+            radial_grid_      = section.value("radial_grid", radial_grid_);
+            fft_grid_size_    = section.value("fft_grid_size", fft_grid_size_);
+            itsol_tol_scale_  = section.value("itsol_tol_scale", itsol_tol_scale_);
+            sht_coverage_     = section.value("sht_coverage", sht_coverage_);
         }
     }
 };
