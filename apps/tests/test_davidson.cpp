@@ -122,7 +122,7 @@ void test_davidson(cmd_args const& args__)
     }
 
     /* initialize the context */
-    ctx.set_verbosity(1);
+    ctx.verbosity(1);
     ctx.pw_cutoff(pw_cutoff);
     ctx.gk_cutoff(gk_cutoff);
     ctx.set_processing_unit(pu);
@@ -132,7 +132,7 @@ void test_davidson(cmd_args const& args__)
 
     t1.stop();
 
-    ctx.set_verbosity(1);
+    ctx.verbosity(1);
     ctx.iterative_solver_tolerance(1e-12);
     //ctx.set_iterative_solver_type("exact");
     ctx.initialize();
