@@ -371,7 +371,8 @@ T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> c
     \f]
  */
 template <typename T>
-Spheric_function<function_domain_t::spectral, T> laplacian(Spheric_function<function_domain_t::spectral, T> const& f__)
+Spheric_function<function_domain_t::spectral, T>
+laplacian(Spheric_function<function_domain_t::spectral, T> const& f__)
 {
     Spheric_function<function_domain_t::spectral, T> g;
     auto& rgrid = f__.radial_grid();
@@ -393,7 +394,8 @@ Spheric_function<function_domain_t::spectral, T> laplacian(Spheric_function<func
             s1.interpolate();
 
             for (int ir = 0; ir < s.num_points(); ir++) {
-                g(lm, ir) = 2.0 * s1(ir) * rgrid.x_inv(ir) + s1.deriv(1, ir) - s(ir) * static_cast<double>(ll) / std::pow(rgrid[ir], 2);
+                g(lm, ir) = 2.0 * s1(ir) * rgrid.x_inv(ir) + s1.deriv(1, ir) -
+                    s(ir) * static_cast<double>(ll) / std::pow(rgrid[ir], 2);
             }
         }
     }

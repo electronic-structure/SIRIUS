@@ -146,10 +146,8 @@ void test_spline_5()
     mdarray<double, 2> prod(n, n);
     utils::timer t("spline|inner");
     #pragma omp parallel for
-    for (int i = 0; i < n; i++)
-    {
-        for (int j = 0; j < n; j++)
-        {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
             prod(i, j) = inner(s1[i], s2[j], 2);
         }
     }
@@ -349,12 +347,12 @@ void test6()
     //== fclose(fout);
 }
 
-void test7()
+void test7(std::function<double(double)> f__, std::function<double(double)> d2f__)
 {
 
     int N = 2000;
-    Radial_grid_exp<double> r(N, 1e-7, 2.0);
-    Spline<double> s(r, [](double x){return std::sin(8 * x) / (x + 0.1);});
+    Radial_grid_exp<double> r(N, 1e-7, 4.0);
+    Spline<double> s(r, f__);
 
     Spline<double> s1(r);
     for (int ir = 0; ir < r.num_points(); ir++) {
@@ -365,13 +363,18 @@ void test7()
     double err1{0}, err2{0};
     for (int ir = 0; ir < r.num_points(); ir++) {
         double x = r[ir];
-        double d2s = (-16*std::cos(8*x))/std::pow(0.1 + x,2) + (2*std::sin(8*x))/std::pow(0.1 + x,3) -
-                     (64*std::sin(8*x))/(0.1 + x);
+        double d2s = d2f__(x);
         err1 += std::abs(d2s - s.deriv(2, ir));
         err2 += std::abs(d2s - s1.deriv(1, ir));
     }
     printf("error of 2nd derivative: %18.10f\n", err1);
     printf("error of two 1st derivatives: %18.10f\n", err2);
+    if (err1 > err2) {
+        printf("two 1st derivatives are better\n");
+    } else {
+        printf("2nd derivatives is better\n");
+    }
+
 
 }
 
@@ -516,7 +519,7 @@ int main(int argn, char** argv)
     test_spline_1b();
     test_spline_2();
     test_spline_4();
-    test_spline_5();
+    //test_spline_5();
     test_spline_6();
 
     //double x0 = 0.00001;
@@ -531,7 +534,15 @@ int main(int argn, char** argv)
 
     test5();
 
-    test7();
+    test7([](double x){return std::pow(x,2)/std::exp(x);},
+          [](double x){return 2/std::exp(x) - (4*x)/std::exp(x) + std::pow(x,2)/std::exp(x);});
+    test7([](double x){return (100*(2*std::pow(x,3) - 4*std::pow(x,5) + std::pow(x,7)))/std::exp(4*x);},
+          [](double x){return (100*(12*x - 80*std::pow(x,3) + 42*std::pow(x,5)))/std::exp(4*x) - 
+                              (800*(6*std::pow(x,2) - 20*std::pow(x,4) + 7*std::pow(x,6)))/std::exp(4*x) +
+                              (1600*(2*std::pow(x,3) - 4*std::pow(x,5) + std::pow(x,7)))/std::exp(4*x);});
+    test7([](double x){return std::log(0.001 + x);}, [](double x){return -std::pow(0.001 + x,-2);});
+    test7([](double x){return std::sin(x)/x;},
+          [](double x){return (-2*std::cos(x))/std::pow(x,2) + (2*std::sin(x))/std::pow(x,3) - std::sin(x)/x;});
 
     test11();
     test12();

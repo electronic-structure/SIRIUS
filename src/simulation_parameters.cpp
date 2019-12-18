@@ -1,4 +1,29 @@
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file simulation_parameters.cpp
+ *
+ *  \brief Contains implementation of sirius::Simulation_parameters class.
+ */
+
 #include "simulation_parameters.hpp"
+#include "SDDK/communicator.hpp"
 
 namespace sirius {
 
@@ -142,39 +167,37 @@ void Simulation_parameters::set_processing_unit(device_t pu__)
     }
 }
 
-void Simulation_parameters::print_options() // TODO: better to use the communicator of the context
+void Simulation_parameters::print_options() const
 {
-    const json& dict = get_options_dictionary();
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank != 0)
-        MPI_Barrier(MPI_COMM_WORLD); // TODO: why it doesn't hang?
+    json const& dict = get_options_dictionary();
 
-    std::cout << "the sirius library or the mini apps can be initialized through the interface" << std::endl;
-    std::cout << "using the api directly or through a json dictionary. The following contains " << std::endl;
-    std::cout << "a description of all the runtime options, that can be used directly to      " << std::endl;
-    std::cout << "initialize sirius.                                                          " << std::endl;
+    if (Communicator::world().rank() == 0) {
+        std::cout << "the sirius library or the mini apps can be initialized through the interface" << std::endl;
+        std::cout << "using the api directly or through a json dictionary. The following contains " << std::endl;
+        std::cout << "a description of all the runtime options, that can be used directly to      " << std::endl;
+        std::cout << "initialize sirius.                                                          " << std::endl;
 
-    for (auto& el : dict.items()) {
-        std::cout << "============================================================================\n";
-        std::cout << "                                                                              ";
-        std::cout << "                      section : " << el.key() << "                             \n";
-        std::cout << "                                                                            \n";
-        std::cout << "============================================================================\n";
+        for (auto& el : dict.items()) {
+            std::cout << "============================================================================\n";
+            std::cout << "                                                                              ";
+            std::cout << "                      section : " << el.key() << "                             \n";
+            std::cout << "                                                                            \n";
+            std::cout << "============================================================================\n";
 
-        for (size_t s = 0; s < dict[el.key()].size(); s++) {
-            std::cout << "name of the option : " << dict[el.key()][s]["name"].get<std::string>() << std::endl;
-            std::cout << "description : " << dict[el.key()][s]["description"].get<std::string>() << std::endl;
-            if (dict[el.key()][s].count("possible_values")) {
-                const auto& v = dict[el.key()][s]["description"].get<std::vector<std::string>>();
-                std::cout << "possible values : " << v[0];
-                for (size_t st = 1; st < v.size(); st++)
-                    std::cout << " " << v[st];
+            for (size_t s = 0; s < dict[el.key()].size(); s++) {
+                std::cout << "name of the option : " << dict[el.key()][s]["name"].get<std::string>() << std::endl;
+                std::cout << "description : " << dict[el.key()][s]["description"].get<std::string>() << std::endl;
+                if (dict[el.key()][s].count("possible_values")) {
+                    const auto& v = dict[el.key()][s]["description"].get<std::vector<std::string>>();
+                    std::cout << "possible values : " << v[0];
+                    for (size_t st = 1; st < v.size(); st++)
+                        std::cout << " " << v[st];
+                }
+                std::cout << "default value : " << dict[el.key()]["default_values"].get<std::string>() << std::endl;
             }
-            std::cout << "default value : " << dict[el.key()]["default_values"].get<std::string>() << std::endl;
         }
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    Communicator::world().barrier();
 }
 
 void Simulation_parameters::electronic_structure_method(std::string name__)

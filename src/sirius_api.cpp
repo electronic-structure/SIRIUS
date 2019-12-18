@@ -282,7 +282,7 @@ void sirius_set_parameters(void*  const* handler__,
         sim_ctx.set_auto_rmt(*auto_rmt__);
     }
     if (gamma_point__ != nullptr) {
-        sim_ctx.set_gamma_point(*gamma_point__);
+        sim_ctx.gamma_point(*gamma_point__);
     }
     if (use_symmetry__ != nullptr) {
         sim_ctx.use_symmetry(*use_symmetry__);
@@ -297,8 +297,7 @@ void sirius_set_parameters(void*  const* handler__,
         sim_ctx.set_core_relativity(core_rel__);
     }
     if (esm_bc__ != nullptr) {
-        sim_ctx.parameters_input().esm_bc_ = std::string(esm_bc__);
-        sim_ctx.parameters_input().enable_esm_ = true;
+        sim_ctx.esm_bc(std::string(esm_bc__));
     }
     if (iter_solver_tol__ != nullptr) {
         sim_ctx.iterative_solver_tolerance(*iter_solver_tol__);
@@ -307,7 +306,7 @@ void sirius_set_parameters(void*  const* handler__,
         sim_ctx.empty_states_tolerance(*iter_solver_tol_empty__);
     }
     if (iter_solver_type__ != nullptr) {
-        sim_ctx.set_iterative_solver_type(std::string(iter_solver_type__));
+        sim_ctx.iterative_solver_type(std::string(iter_solver_type__));
     }
     if (verbosity__ != nullptr) {
         sim_ctx.verbosity(*verbosity__);
@@ -456,7 +455,7 @@ void sirius_set_mpi_grid_dims(void* const* handler__,
     assert(*ndims__ > 0);
     auto& sim_ctx = get_sim_ctx(handler__);
     std::vector<int> dims(dims__, dims__ + *ndims__);
-    sim_ctx.set_mpi_grid_dims(dims);
+    sim_ctx.mpi_grid_dims(dims);
 }
 
 /* @fortran begin function void sirius_set_lattice_vectors   Set vectors of the unit cell.
