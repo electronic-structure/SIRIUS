@@ -228,7 +228,7 @@ void run_tasks(cmd_args const& args)
     if (task == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->iterative_solver_tolerance(1e-12);
-        ctx->set_gamma_point(false);
+        ctx->gamma_point(false);
         ctx->initialize();
         //if (ctx->full_potential()) {
         //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());

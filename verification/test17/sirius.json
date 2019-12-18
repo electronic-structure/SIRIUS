@@ -42,7 +42,7 @@
     "mixer" : {
         "beta" : 0.25,
         "type" : "broyden1",
-        "max_history" : 8
+        "max_history" : 4
     },
     
     "unit_cell" : {

@@ -6,7 +6,7 @@ using namespace sirius;
 template <typename T>
 double test()
 {
-    int lmax{9};
+    int lmax{10};
     SHT sht(lmax);
     int lmmax = utils::lmmax(lmax);
 
@@ -15,10 +15,11 @@ double test()
     Spheric_function<function_domain_t::spectral, T> f(lmmax, r);
 
     for (int ir = 0; ir < r.num_points(); ir++) {
+        double x = r[ir];
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
                 int lm = utils::lm(l, m);
-                f(lm, ir) = std::exp(-0.1 * (lm + 1) * r[ir]) * std::pow(r[ir], l % 3);
+                f(lm, ir) = std::exp(-0.1 * (lm + 1) * x) * std::pow(x, l);
             }
         }
     }
@@ -27,24 +28,32 @@ double test()
     auto grad_f = gradient(f);
     auto div_grad_f = divergence(grad_f);
 
+    /* chek up to lmax-1 because \grad couples l-1 and l+1 and so \div\grad is incomplete at lmax */
     Spline<double> s(r);
+    Spline<double> s1(r);
     for (int ir = 0; ir < r.num_points(); ir++) {
-        for (int lm = 0; lm < utils::lmmax(lmax); lm++) {
+        for (int lm = 0; lm < utils::lmmax(lmax - 1); lm++) {
             s(ir) += std::abs(lapl_f(lm, ir) - div_grad_f(lm, ir));
+            s1(ir) += std::abs(lapl_f(lm, ir)) + std::abs(div_grad_f(lm, ir));
         }
     }
-    return s.interpolate().integrate(0);
+
+    return s.interpolate().integrate(0) / s1.interpolate().integrate(0);
 }
 
 int main(int argn, char** argv)
 {
     sirius::initialize(true);
 
-    if (test<double_complex>() > 1e-9) {
+    double diff;
+
+    if ((diff = test<double_complex>()) > 1e-12) {
+        printf("error in Ylm expansion: %18.12f\n", diff);
         return 1;
     }
 
-    if (test<double>() > 1e-9) {
+    if ((diff = test<double>()) > 1e-12) {
+        printf("error in Rlm expansion: %18.12f\n", diff);
         return 2;
     }
 

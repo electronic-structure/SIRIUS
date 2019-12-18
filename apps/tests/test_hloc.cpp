@@ -18,7 +18,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     Simulation_context params;
     params.set_processing_unit(pu);
     params.unit_cell().set_lattice_vectors(M);
-    params.set_mpi_grid_dims(mpi_grid_dims__);
+    params.mpi_grid_dims(mpi_grid_dims__);
     params.pw_cutoff(cutoff__ + 1);
     params.gk_cutoff(cutoff__ / 2);
     params.electronic_structure_method("pseudopotential");

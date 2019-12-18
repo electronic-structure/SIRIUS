@@ -182,7 +182,8 @@ SHT::calculate_U_sigma_m(const int l, const double j, const int mj, const int mp
 }
 
 template<>
-void SHT::backward_transform<double>(int ld, double const *flm, int nr, int lmmax, double *ftp) const {
+void SHT::backward_transform<double>(int ld, double const *flm, int nr, int lmmax, double *ftp) const
+{
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
     sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', num_points_, nr, lmmax, &sddk::linalg_const<double>::one(),
@@ -191,7 +192,8 @@ void SHT::backward_transform<double>(int ld, double const *flm, int nr, int lmma
 
 template<>
 void SHT::backward_transform<double_complex>(int ld, double_complex const *flm, int nr, int lmmax,
-                                             double_complex *ftp) const {
+                                             double_complex *ftp) const
+{
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
     sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', num_points_, nr, lmmax,
@@ -200,7 +202,8 @@ void SHT::backward_transform<double_complex>(int ld, double_complex const *flm, 
 }
 
 template<>
-void SHT::forward_transform<double>(double const *ftp, int nr, int lmmax, int ld, double *flm) const {
+void SHT::forward_transform<double>(double const *ftp, int nr, int lmmax, int ld, double *flm) const
+{
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
     sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<double>::one(),
@@ -209,11 +212,70 @@ void SHT::forward_transform<double>(double const *ftp, int nr, int lmmax, int ld
 
 template<>
 void SHT::forward_transform<double_complex>(double_complex const *ftp, int nr, int lmmax, int ld,
-                                            double_complex *flm) const {
+                                            double_complex *flm) const
+{
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
     sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<double_complex>::one(),
         &ylm_forward_(0, 0), num_points_, ftp, num_points_, &sddk::linalg_const<double_complex>::zero(), flm, ld);
+}
+
+void SHT::check() const
+{
+    double dr = 0;
+    double dy = 0;
+
+    for (int lm = 0; lm < lmmax_; lm++) {
+        for (int lm1 = 0; lm1 < lmmax_; lm1++) {
+            double         t = 0;
+            double_complex zt(0, 0);
+            for (int itp = 0; itp < num_points_; itp++) {
+                zt += ylm_forward_(itp, lm) * ylm_backward_(lm1, itp);
+                t += rlm_forward_(itp, lm) * rlm_backward_(lm1, itp);
+            }
+
+            if (lm == lm1) {
+                zt -= 1.0;
+                t -= 1.0;
+            }
+            dr += std::abs(t);
+            dy += std::abs(zt);
+        }
+    }
+    dr = dr / lmmax_ / lmmax_;
+    dy = dy / lmmax_ / lmmax_;
+
+    if (dr > 1e-15 || dy > 1e-15) {
+        std::stringstream s;
+        s << "spherical mesh error is too big" << std::endl
+          << "  real spherical integration error " << dr << std::endl
+          << "  complex spherical integration error " << dy;
+        WARNING(s.str())
+    }
+
+    std::vector<double> flm(lmmax_);
+    std::vector<double> ftp(num_points_);
+    for (int lm = 0; lm < lmmax_; lm++) {
+        std::memset(&flm[0], 0, lmmax_ * sizeof(double));
+        flm[lm] = 1.0;
+        backward_transform(lmmax_, &flm[0], 1, lmmax_, &ftp[0]);
+        forward_transform(&ftp[0], 1, lmmax_, lmmax_, &flm[0]);
+        flm[lm] -= 1.0;
+
+        double t = 0.0;
+        for (int lm1 = 0; lm1 < lmmax_; lm1++) {
+            t += std::abs(flm[lm1]);
+        }
+
+        t /= lmmax_;
+
+        if (t > 1e-15) {
+            std::stringstream s;
+            s << "test of backward / forward real SHT failed" << std::endl
+              << "  total error " << t;
+            WARNING(s.str());
+        }
+    }
 }
 
 }

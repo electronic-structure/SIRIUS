@@ -95,7 +95,7 @@ class Hamiltonian0
 
   public:
     /// Constructor.
-    Hamiltonian0(Simulation_context& ctx__);
+    //Hamiltonian0(Simulation_context& ctx__);
 
     /// Constructor.
     Hamiltonian0(Potential& potential__);

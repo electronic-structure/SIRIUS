@@ -172,7 +172,7 @@ mdarray<double, 2> const& Force::calc_forces_ibs()
         }
     }
 
-    Hamiltonian0 H0(ctx_);
+    Hamiltonian0 H0(potential_);
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset_.spl_num_kpoints(ikloc);
         auto hk = H0(*kset_[ik]);

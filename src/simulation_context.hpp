@@ -123,13 +123,13 @@ class Simulation_context : public Simulation_parameters
     std::string start_time_tag_;
 
     /// 1D phase factors for each atom coordinate and G-vector index.
-    mdarray<double_complex, 3> phase_factors_;
+    sddk::mdarray<double_complex, 3> phase_factors_;
 
     /// 1D phase factors of the symmetry operations.
-    mdarray<double_complex, 3> sym_phase_factors_;
+    sddk::mdarray<double_complex, 3> sym_phase_factors_;
 
     /// Phase factors for atom types.
-    mdarray<double_complex, 2> phase_factors_t_;
+    sddk::mdarray<double_complex, 2> phase_factors_t_;
 
     /// Lattice coordinats of G-vectors in a GPU-friendly ordering.
     sddk::mdarray<int, 2> gvec_coord_;
@@ -184,10 +184,10 @@ class Simulation_context : public Simulation_parameters
     std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
     /// Plane wave expansion coefficients of the step function.
-    mdarray<double_complex, 1> theta_pw_;
+    sddk::mdarray<double_complex, 1> theta_pw_;
 
     /// Step function on the real-space grid.
-    mdarray<double, 1> theta_;
+    sddk::mdarray<double, 1> theta_;
 
     /// Augmentation operator for each atom type.
     /** The augmentation operator is used by Density, Potential, Q_operator, and Non_local_functor classes. */

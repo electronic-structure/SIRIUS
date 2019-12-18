@@ -84,16 +84,24 @@ class SHT // TODO: better name
 
   public:
     /// Default constructor.
-    SHT(int lmax__)
+    SHT(int lmax__, int  mesh_type__ = 0)
         : lmax_(lmax__)
+        , mesh_type_(mesh_type__)
     {
         lmmax_ = (lmax_ + 1) * (lmax_ + 1);
 
-        if (mesh_type_ == 0) {
-            num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
-        }
-        if (mesh_type_ == 1) {
-            num_points_ = lmmax_;
+        switch (mesh_type_) {
+            case 0: {
+                num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
+                break;
+            }
+            case 1: {
+                num_points_ = lmmax_;
+                break;
+            }
+            default: {
+                throw std::runtime_error("Wrong spherical coverage parameter");
+            }
         }
 
         std::vector<double> x(num_points_);
@@ -106,11 +114,15 @@ class SHT // TODO: better name
 
         w_.resize(num_points_);
 
-        if (mesh_type_ == 0) {
-            Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
-        }
-        if (mesh_type_ == 1) {
-            uniform_coverage();
+        switch (mesh_type_) {
+            case 0: {
+                Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
+                break;
+            }
+            case 1: {
+                uniform_coverage();
+                break;
+            }
         }
 
         ylm_backward_ = sddk::mdarray<double_complex, 2>(lmmax_, num_points_);
@@ -141,9 +153,9 @@ class SHT // TODO: better name
                 double t = tp_(0, itp);
                 double p = tp_(1, itp);
 
-                coord_(0, itp) = sin(t) * cos(p);
-                coord_(1, itp) = sin(t) * sin(p);
-                coord_(2, itp) = cos(t);
+                coord_(0, itp) = std::sin(t) * std::cos(p);
+                coord_(1, itp) = std::sin(t) * std::sin(p);
+                coord_(2, itp) = std::cos(t);
 
                 sf::spherical_harmonics(lmax_, t, p, &ylm_backward_(0, itp));
                 sf::spherical_harmonics(lmax_, t, p, &rlm_backward_(0, itp));
@@ -160,65 +172,10 @@ class SHT // TODO: better name
             sddk::linalg2(sddk::linalg_t::lapack).geinv(lmmax_, rlm_forward_);
         }
 
-#if (__VERIFICATION > 0)
-        {
-            double dr = 0;
-            double dy = 0;
-
-            for (int lm = 0; lm < lmmax_; lm++) {
-                for (int lm1 = 0; lm1 < lmmax_; lm1++) {
-                    double         t = 0;
-                    double_complex zt(0, 0);
-                    for (int itp = 0; itp < num_points_; itp++) {
-                        zt += ylm_forward_(itp, lm) * ylm_backward_(lm1, itp);
-                        t += rlm_forward_(itp, lm) * rlm_backward_(lm1, itp);
-                    }
-
-                    if (lm == lm1) {
-                        zt -= 1.0;
-                        t -= 1.0;
-                    }
-                    dr += std::abs(t);
-                    dy += std::abs(zt);
-                }
-            }
-            dr = dr / lmmax_ / lmmax_;
-            dy = dy / lmmax_ / lmmax_;
-
-            if (dr > 1e-15 || dy > 1e-15) {
-                std::stringstream s;
-                s << "spherical mesh error is too big" << std::endl
-                  << "  real spherical integration error " << dr << std::endl
-                  << "  complex spherical integration error " << dy;
-                WARNING(s.str())
-            }
-
-            std::vector<double> flm(lmmax_);
-            std::vector<double> ftp(num_points_);
-            for (int lm = 0; lm < lmmax_; lm++) {
-                std::memset(&flm[0], 0, lmmax_ * sizeof(double));
-                flm[lm] = 1.0;
-                backward_transform(lmmax_, &flm[0], 1, lmmax_, &ftp[0]);
-                forward_transform(&ftp[0], 1, lmmax_, lmmax_, &flm[0]);
-                flm[lm] -= 1.0;
-
-                double t = 0.0;
-                for (int lm1 = 0; lm1 < lmmax_; lm1++) {
-                    t += std::abs(flm[lm1]);
-                }
-
-                t /= lmmax_;
-
-                if (t > 1e-15) {
-                    std::stringstream s;
-                    s << "test of backward / forward real SHT failed" << std::endl
-                      << "  total error " << t;
-                    WARNING(s.str());
-                }
-            }
-        }
-#endif
     }
+
+    /// Check the transformations.
+    void check() const;
 
     /// Perform a backward transformation from spherical harmonics to spherical coordinates.
     /** \f[

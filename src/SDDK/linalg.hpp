@@ -1185,47 +1185,6 @@ inline void linalg<device_t::CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatr
     FORTRAN(dgeqrf)(&m, &n, A.at(memory_t::host, ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
 }
 
-//template<>
-//inline void linalg<device_t::CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-//                                                  ftn_double_complex alpha,
-//                                                  dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
-//                                                  dmatrix<ftn_double_complex>& B, ftn_int ib, ftn_int jb,
-//                                                  ftn_double_complex beta,
-//                                                  dmatrix<ftn_double_complex>& C, ftn_int ic, ftn_int jc)
-//{
-//    gemm(transa, transb, m, n, k, alpha, A.at(memory_t::host, ia, ja), A.ld(), B.at(memory_t::host, ib, jb), B.ld(),
-//         beta, C.at(memory_t::host, ic, jc), C.ld());
-//}
-//
-//template<>
-//inline void linalg<device_t::CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-//                                                  ftn_double_complex alpha,
-//                                                  dmatrix<ftn_double_complex>& A, dmatrix<ftn_double_complex>& B,
-//                                                  ftn_double_complex beta, dmatrix<ftn_double_complex>& C)
-//{
-//    gemm(transa, transb, m, n, k, alpha, A.at(memory_t::host), A.ld(), B.at(memory_t::host), B.ld(), beta, C.at(memory_t::host), C.ld());
-//}
-//
-//template<>
-//inline void linalg<device_t::CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-//                                          ftn_double alpha,
-//                                          dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
-//                                          dmatrix<ftn_double>& B, ftn_int ib, ftn_int jb,
-//                                          ftn_double beta,
-//                                          dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
-//{
-//    gemm(transa, transb, m, n, k, alpha, A.at(memory_t::host, ia, ja), A.ld(), B.at(memory_t::host, ib, jb), B.ld(),
-//         beta, C.at(memory_t::host, ic, jc), C.ld());
-//}
-//
-//template<>
-//inline void linalg<device_t::CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-//                                          ftn_double alpha,
-//                                          dmatrix<ftn_double>& A, dmatrix<ftn_double>& B,
-//                                          ftn_double beta, dmatrix<ftn_double>& C)
-//{
-//    gemm(transa, transb, m, n, k, alpha, A.at(memory_t::host), A.ld(), B.at(memory_t::host), B.ld(), beta, C.at(memory_t::host), C.ld());
-//}
 #endif
 
 #ifdef __GPU

@@ -19,7 +19,7 @@
 
 /** \file simulation_parameters.hpp
  *
- *  \brief Contains definition and implementation of sirius::Simulation_parameters_base class.
+ *  \brief Contains definition and implementation of sirius::Simulation_parameters class.
  */
 
 #ifndef __SIMULATION_PARAMETERS_HPP__
@@ -33,6 +33,8 @@
 #include "memory.hpp"
 
 using namespace sddk;
+
+// TODO: put initialized_ flag here; do not allow to set parameters when initialised_ flag is set to true.
 
 namespace sirius {
 
@@ -141,14 +143,18 @@ class Simulation_parameters
         hubbard_input_.normalize_hubbard_orbitals_ = true;
     }
 
-    void set_gamma_point(bool gamma_point__)
+    /// Set flag for Gamma-point calculation.
+    bool gamma_point(bool gamma_point__)
     {
         parameters_input_.gamma_point_ = gamma_point__;
+        return parameters_input_.gamma_point_;
     }
 
-    void set_mpi_grid_dims(std::vector<int> mpi_grid_dims__)
+    /// Set dimensions of MPI grid for band diagonalization problem.
+    std::vector<int> const& mpi_grid_dims(std::vector<int> mpi_grid_dims__)
     {
         control_input_.mpi_grid_dims_ = mpi_grid_dims__;
+        return control_input_.mpi_grid_dims_;
     }
 
     void add_xc_functional(std::string name__)
@@ -176,9 +182,11 @@ class Simulation_parameters
         parameters_input_.molecule_ = molecule__;
     }
 
-    void set_verbosity(int level__)
+    /// Set verbosity level.
+    int verbosity(int level__)
     {
         control_input_.verbosity_ = level__;
+        return control_input_.verbosity_;
     }
 
     inline int lmax_apw() const
@@ -472,9 +480,10 @@ class Simulation_parameters
         return iterative_solver_input_.energy_tolerance_;
     }
 
-    void set_iterative_solver_type(std::string type__)
+    std::string const& iterative_solver_type(std::string type__)
     {
         iterative_solver_input_.type_ = type__;
+        return iterative_solver_input_.type_;
     }
 
     /// Set the tolerance for empty states.
@@ -504,11 +513,6 @@ class Simulation_parameters
         return parameters_input_;
     }
 
-    Parameters_input& parameters_input()
-    {
-        return parameters_input_;
-    }
-
     Settings_input const& settings() const
     {
         return settings_input_;
@@ -525,8 +529,22 @@ class Simulation_parameters
         return runtime_options_dictionary_;
     }
 
-    /// print all options in the terminal
-    void print_options();
+    /// Set the variable which controls the type of sperical coverage.
+    inline int sht_coverage(int sht_coverage__)
+    {
+        settings_input_.sht_coverage_ = sht_coverage__;
+        return settings_input_.sht_coverage_;
+    }
+
+    inline std::string esm_bc(std::string const& esm_bc__)
+    {
+        parameters_input_.esm_bc_ = esm_bc__;
+        parameters_input_.enable_esm_ = true;
+        return parameters_input_.esm_bc_;
+    }
+
+    /// Print all options in the terminal.
+    void print_options() const;
 };
 
 }; // namespace sirius

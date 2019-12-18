@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Mathieu Taillefumier, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Mathieu Taillefumier, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -31,22 +31,22 @@ namespace sirius {
 // TODO: radial integrals for the potential should be computed here; the problem is that they also can be set
 //       externally by the host code
 
-Hamiltonian0::Hamiltonian0(Simulation_context& ctx__)
-    : ctx_(ctx__)
-    , unit_cell_(ctx_.unit_cell())
-{
-    PROFILE("sirius::Hamiltonian0");
-
-    if (ctx_.full_potential()) {
-        using gc_z = Gaunt_coefficients<double_complex>;
-        gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
-    }
-
-    if (!ctx_.full_potential()) {
-        d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));
-        q_op_ = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
-    }
-}
+//Hamiltonian0::Hamiltonian0(Simulation_context& ctx__)
+//    : ctx_(ctx__)
+//    , unit_cell_(ctx_.unit_cell())
+//{
+//    PROFILE("sirius::Hamiltonian0");
+//
+//    if (ctx_.full_potential()) {
+//        using gc_z = Gaunt_coefficients<double_complex>;
+//        gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
+//    }
+//
+//    if (!ctx_.full_potential()) {
+//        d_op_ = std::unique_ptr<D_operator>(new D_operator(ctx_));
+//        q_op_ = std::unique_ptr<Q_operator>(new Q_operator(ctx_));
+//    }
+//}
 
 Hamiltonian0::Hamiltonian0(Potential& potential__)
     : ctx_(potential__.ctx())

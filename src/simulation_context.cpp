@@ -236,12 +236,12 @@ void Simulation_context::initialize()
 
     /* can't run fp-lapw with Gamma point trick */
     if (full_potential()) {
-        set_gamma_point(false);
+        gamma_point(false);
     }
 
     /* Gamma-point calculation and non-collinear magnetism are not compatible */
     if (num_mag_dims() == 3) {
-        set_gamma_point(false);
+        gamma_point(false);
     }
 
     /* set processing unit type */
@@ -1349,7 +1349,7 @@ void Simulation_context::init_comm()
 
     /* check MPI grid dimensions and set a default grid if needed */
     if (!control().mpi_grid_dims_.size()) {
-        set_mpi_grid_dims({1, 1});
+        mpi_grid_dims({1, 1});
     }
     if (control().mpi_grid_dims_.size() != 2) {
         TERMINATE("wrong MPI grid");
