@@ -228,7 +228,7 @@ int main(int argn, char **argv)
             printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);
         }
         #else
-        TERMINATE_NO_SCALAPACK;
+        throw std::runtime_error("not compiled with ScaLAPACK");
         #endif
     }
 
