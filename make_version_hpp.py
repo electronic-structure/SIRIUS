@@ -44,7 +44,7 @@ def get_sha(vstr, dirname):
                              stderr=subprocess.PIPE,
                              cwd=dirname)
         sha_str = p.communicate()[0].strip()
-        if p.returncode is not 0:
+        if p.returncode != 0:
             raise RuntimeError
         return to_string(sha_str)
     except (RuntimeError, FileNotFoundError, OSError):

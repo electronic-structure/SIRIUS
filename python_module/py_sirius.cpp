@@ -101,7 +101,7 @@ std::string show_vec(const vector3d<T>& vec)
 
 // forward declaration
 void initialize_subspace(DFT_ground_state&, Simulation_context&);
-void apply_hamiltonian(Potential& potential, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions>& swf);
+void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions>& swf);
 
     /* typedefs */
     template <typename T>
@@ -412,17 +412,21 @@ PYBIND11_MODULE(py_sirius, m)
         .def("initial_state", &DFT_ground_state::initial_state)
         //.def("print_magnetic_moment", &DFT_ground_state::print_magnetic_moment)
         .def("total_energy", &DFT_ground_state::total_energy)
+        .def("serialize", [](DFT_ground_state& dft) {
+            auto json = dft.serialize();
+            return pj_convert(json);
+        })
         .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
-        .def("find",
-             [](DFT_ground_state& dft, double potential_tol, double energy_tol, double initial_tol, int num_dft_iter, bool write_state)
-             {
-                 json js = dft.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_state);
-                 return pj_convert(js);
-             },
-             "potential_tol"_a, "energy_tol"_a, "initial_tol"_a, "num_dft_iter"_a, "write_state"_a)
+        .def(
+            "find",
+            [](DFT_ground_state& dft, double potential_tol, double energy_tol, double initial_tol, int num_dft_iter,
+               bool write_state) {
+                json js = dft.find(potential_tol, energy_tol, initial_tol, num_dft_iter, write_state);
+                return pj_convert(js);
+            },
+            "potential_tol"_a, "energy_tol"_a, "initial_tol"_a, "num_dft_iter"_a, "write_state"_a)
         .def("check_scf_density",
-             [](DFT_ground_state& dft)
-             {
+             [](DFT_ground_state& dft) {
                  json js = dft.check_scf_density();
                  return pj_convert(js);
              })
@@ -502,45 +506,12 @@ PYBIND11_MODULE(py_sirius, m)
              [](K_point_set& ks, std::vector<double> v, double weight) { ks.add_kpoint(v.data(), weight); })
         .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) { ks.add_kpoint(&v[0], weight); });
 
-    py::class_<Hamiltonian0>(m, "Hamiltonian")
+    py::class_<Hamiltonian0>(m, "Hamiltonian0")
         .def(py::init<Potential&>(), py::keep_alive<1, 2>())
         .def("potential", &Hamiltonian0::potential, py::return_value_policy::reference_internal);
 
-//     py::class_<Hamiltonian_k>(m, "Hamiltonian_k")
-//         .def(
-//             "apply",
-//             [](Hamiltonian_k& H, Wave_functions& wf_out, Wave_functions& wf, std::shared_ptr<Wave_functions>& swf) {
-//                 int num_wf = wf.num_wf();
-//                 int num_sc = wf.num_sc();
-//                 if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
-//                     throw std::runtime_error("Hamiltonian::apply_ref (python bindings): num_sc or num_wf do not match");
-//                 }
-// #ifdef __GPU
-//                 auto& ctx = H.H0().ctx();
-//                 if (is_device_memory(ctx.preferred_memory_t())) {
-//                     auto& mpd = ctx.mem_pool(memory_t::device);
-//                     for (int ispn = 0; ispn < num_sc; ++ispn) {
-//                         wf_out.pw_coeffs(ispn).allocate(mpd);
-//                         wf.pw_coeffs(ispn).allocate(mpd);
-//                         wf.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_wf);
-//                     }
-//                 }
-// #endif
-//                 /* apply H to all wave functions */
-//                 int N = 0;
-//                 int n = num_wf;
-//                 H.apply_h_s<complex_double>(sddk::spin_range(2), N, n, wf, &wf_out, swf.get());
-// #ifdef __GPU
-//                  if (is_device_memory(ctx.preferred_memory_t())) {
-//                      for (int ispn = 0; ispn < num_sc; ++ispn) {
-//                          wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
-//                          if (swf) {
-//                              swf->pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
-//                          }
-//                      }
-//                 }
-// #endif // __GPU
-//             }, "wf_out"_a, "wf_in"_a, py::arg("swf_out") = nullptr);
+    py::class_<Hamiltonian_k>(m, "Hamiltonian_k")
+        .def(py::init<Hamiltonian0&, K_point&>(), py::keep_alive<1, 2>(), py::keep_alive<1,3>());
 
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, K_point_set&>())
@@ -744,20 +715,17 @@ PYBIND11_MODULE(py_sirius, m)
     m.def("make_sirius_comm", &make_sirius_comm);
     m.def("make_pycomm", &make_pycomm);
     m.def("magnetization", &magnetization);
-    m.def("apply_hamiltonian", &apply_hamiltonian, "potential"_a, "kpoint"_a, "wf_out"_a,
+    m.def("apply_hamiltonian", &apply_hamiltonian, "Hamiltonian0"_a, "kpoint"_a, "wf_out"_a,
           "wf_in"_a, py::arg("swf_out") = nullptr);
-    m.def("initialize_subspace", & initialize_subspace);
+    m.def("initialize_subspace", &initialize_subspace);
 }
 
-void apply_hamiltonian(Potential& potential, K_point& kp, Wave_functions& wf_out, Wave_functions& wf,
+void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wave_functions& wf,
                        std::shared_ptr<Wave_functions>& swf)
 {
     /////////////////////////////////////////////////////////////
     // // TODO: Hubbard needs manual call to copy to device // //
     /////////////////////////////////////////////////////////////
-
-    Hamiltonian0 H0(potential);
-
     int num_wf = wf.num_wf();
     int num_sc = wf.num_sc();
     if (num_wf != wf_out.num_wf() || wf_out.num_sc() != num_sc) {
@@ -794,6 +762,7 @@ void apply_hamiltonian(Potential& potential, K_point& kp, Wave_functions& wf_out
     }
 #endif // __GPU
 }
+
 
 void initialize_subspace(DFT_ground_state& dft_gs, Simulation_context& ctx)
 {

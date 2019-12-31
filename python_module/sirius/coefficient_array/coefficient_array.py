@@ -1,4 +1,5 @@
 import numpy as np
+from mpi4py import MPI
 from scipy.sparse import dia_matrix
 
 def threaded(f):
@@ -22,9 +23,21 @@ def is_complex(x):
     else:
         return np.iscomplexobj(x)
 
+
 @threaded
 def sort(x):
     return np.sort(x)
+
+
+@threaded
+def shape(x):
+    return np.shape(x)
+
+
+@threaded
+def trace(x):
+    return np.trace(x)
+
 
 def diag(x):
     """
@@ -52,50 +65,35 @@ def spdiag(x):
             n = np.size(val)
             out[key] = dia_matrix((val, 0), shape=(n, n))
         return out
-    else:
-        n = np.size(x)
-        return dia_matrix((x, 0), shape=(n, n))
+    n = np.size(x)
+    return dia_matrix((x, 0), shape=(n, n))
 
 
 def ones_like(x, dtype=None):
-    """
-    """
+    """Numpy ones_like."""
     if isinstance(x, CoefficientArray):
         return CoefficientArray.ones_like(x, dtype=dtype)
-    else:
-        if dtype is None:
-            dtype = x.dtype
-        return np.diag(x, dtype=dtype)
+    if dtype is None:
+        dtype = x.dtype
+    return np.ones_like(x, dtype=dtype)
 
 
 def zeros_like(x, dtype=None):
-    """
-    """
+    """Numpy zeros_like."""
     if isinstance(x, CoefficientArray):
         return CoefficientArray.zeros_like(x, dtype=dtype)
-    else:
-        if dtype is None:
-            dtype = x.dtype
-        return np.diag(x, dtype=dtype)
-
+    if dtype is None:
+        dtype = x.dtype
+    return np.zeros_like(x, dtype=dtype)
 
 
 def inner(a, b):
-    """
-    complex inner product
-    """
-    try:
-        return np.sum(
-            np.array(a, copy=False) * np.array(np.conj(b), copy=False))
-    except ValueError:
-        # is of type CoefficientArray (cannot convert to array)
-        return np.sum(a * np.conj(b), copy=False)
+    """Complex inner product."""
+    return (a * b.conjugate()).sum()
 
 
 def l2norm(a):
-    """
-
-    """
+    """L2-norm. """
     return np.sqrt(np.real(inner(a, a)))
 
 
@@ -104,11 +102,11 @@ def einsum(expr, *operands):
     map einsum over elements of CoefficientArray
     """
 
-    assert len(operands) > 0
+    assert operands
 
     try:
         return np.einsum(expr, *operands)
-    except ValueError or TypeError:
+    except (ValueError, TypeError):
         out = type(operands[0])(dtype=operands[0].dtype, ctype=np.array)
         for key in operands[0]._data.keys():
             out[key] = np.einsum(expr,
@@ -117,6 +115,7 @@ def einsum(expr, *operands):
 
 
 class CoefficientArray:
+    """CoefficientArray class."""
     def __init__(self, dtype=np.complex, ctype=np.matrix):
         """
         dtype -- number type
@@ -141,7 +140,6 @@ class CoefficientArray:
         """
         """
         if isinstance(key, slice):
-
             for k in self._data:
                 self._data[key] = item
         else:
@@ -338,7 +336,7 @@ class CoefficientArray:
     def conjugate(self):
         out = type(self)(dtype=self.dtype, ctype=self.ctype)
         for key, val in self._data.items():
-            out[key] = np.conj(val)
+            out[key] = np.array(np.conj(val), copy=True)
         return out
 
     def conj(self):
@@ -472,7 +470,7 @@ class CoefficientArray:
             dtype = x.dtype
         out = type(x)(dtype=dtype, ctype=ctype)
         for k in x._data.keys():
-            out[k] = np.ones_like(x[k], dtype=dtype)
+            out[k] = np.zeros_like(x[k], dtype=dtype)
         return out
 
 

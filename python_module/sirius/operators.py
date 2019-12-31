@@ -1,4 +1,4 @@
-from .py_sirius import Hamiltonian, Wave_functions
+from .py_sirius import Hamiltonian0, Wave_functions
 from .coefficient_array import PwCoeffs
 import numpy as np
 

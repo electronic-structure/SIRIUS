@@ -47,7 +47,7 @@ def initial_state(sirius_input, nscf):
     ctx = res['ctx']
     m = ctx.max_occupancy()
     # not yet implemented for single spin channel system
-    assert m == 1
+    # assert m == 1
     kset = res['kpointset']
     potential = res['potential']
     density = res['density']
@@ -103,8 +103,8 @@ def run_marzari(config, sirius_config, callback=None, final_callback=None):
     T = config['System']['T']
     smearing = make_smearing(config['System']['smearing'], T, ctx, kset)
     M = FreeEnergy(E=E, T=T, smearing=smearing)
-    neugebaur_config = config['CG']['method']
-    cg = CG(M, fd_slope_check=neugebaur_config['fd_slope_check'])
+    method_config = config['CG']['method']
+    cg = CG(M, fd_slope_check=method_config['fd_slope_check'])
     K = make_precond(cg_config, kset)
 
     tstart = time.time()
@@ -135,7 +135,6 @@ def run_neugebaur(config, sirius_config, callback=None, final_callback=None):
     T = config['System']['T']
     smearing = make_smearing(config['System']['smearing'], T, ctx, kset)
     M = FreeEnergy(E=E, T=T, smearing=smearing)
-    marzari_config = config['CG']['method']
     cg = CG(M)
     K = make_precond(cg_config, kset)
 

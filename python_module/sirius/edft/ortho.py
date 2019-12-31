@@ -1,8 +1,9 @@
 import numpy as np
-from ..coefficient_array import CoefficientArray, spdiag
+from ..coefficient_array import CoefficientArray, spdiag, threaded
 
 
-def _gram_schmidt(X):
+@threaded
+def gram_schmidt(X):
     """
     Arguments:
     X -- column vectors
@@ -19,14 +20,17 @@ def _gram_schmidt(X):
     return Q
 
 
-def gram_schmidt(X):
-    if isinstance(X, CoefficientArray):
-        out = type(X)(dtype=X.dtype, ctype=X.ctype)
-        for key, val in X._data.items():
-            out[key] = _gram_schmidt(val)
-        return out
-    else:
-        return _gram_schmidt(X)
+@threaded
+def modified_gram_schmidt(X):
+    X = np.matrix(X, copy=False)
+    m = X.shape[1]
+    Q = np.zeros_like(X)
+    for k in range(m):
+        Q[:, k] = X[:, k]
+        for i in range(k):
+            Q[:, k] = Q[:, k] - np.tensordot(Q[:, k], np.conj(Q[:, i]), axes=2) * Q[:, i]
+        Q[:, k] = Q[:, k] / np.linalg.norm(Q[:, k])
+    return Q
 
 
 def loewdin(X):
