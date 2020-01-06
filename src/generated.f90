@@ -2754,54 +2754,54 @@ end interface
 call sirius_option_get_length_aux(section,length)
 end subroutine sirius_option_get_length
 
-!> @brief return the name and a type of an option from its index
-!> @param [in] section name of the section
-!> @param [out] elem_ index of the option
-!> @param [out] key_name name of the option
-!> @param [out] type type of the option (real, integer, boolean, string)
-subroutine sirius_option_get_name_and_type(section,elem_,key_name,type)
+!> @brief Return the name and a type of an option from its index.
+!> @param [in] section Name of the section.
+!> @param [in] elem Index of the option.
+!> @param [out] key_name Name of the option.
+!> @param [out] type Type of the option (real, integer, boolean, string).
+subroutine sirius_option_get_name_and_type(section,elem,key_name,type)
 implicit none
 character(C_CHAR), dimension(*), intent(in) :: section
-integer(C_INT), intent(out) :: elem_
+integer(C_INT), intent(in) :: elem
 character(C_CHAR), dimension(*), intent(out) :: key_name
 integer(C_INT), intent(out) :: type
 interface
-subroutine sirius_option_get_name_and_type_aux(section,elem_,key_name,type)&
+subroutine sirius_option_get_name_and_type_aux(section,elem,key_name,type)&
 &bind(C, name="sirius_option_get_name_and_type")
 use, intrinsic :: ISO_C_BINDING
 character(C_CHAR), dimension(*), intent(in) :: section
-integer(C_INT), intent(out) :: elem_
+integer(C_INT), intent(in) :: elem
 character(C_CHAR), dimension(*), intent(out) :: key_name
 integer(C_INT), intent(out) :: type
 end subroutine
 end interface
 
-call sirius_option_get_name_and_type_aux(section,elem_,key_name,type)
+call sirius_option_get_name_and_type_aux(section,elem,key_name,type)
 end subroutine sirius_option_get_name_and_type
 
 !> @brief return the description and usage of a given option
 !> @param [in] section name of the section
 !> @param [in] name name of the option
-!> @param [out] desc_ description of the option
-!> @param [out] usage_ how to use the option
-subroutine sirius_option_get_description_usage(section,name,desc_,usage_)
+!> @param [out] desc description of the option
+!> @param [out] usage how to use the option
+subroutine sirius_option_get_description_usage(section,name,desc,usage)
 implicit none
 character(C_CHAR), dimension(*), intent(in) :: section
 character(C_CHAR), dimension(*), intent(in) :: name
-character(C_CHAR), dimension(*), intent(out) :: desc_
-character(C_CHAR), dimension(*), intent(out) :: usage_
+character(C_CHAR), dimension(*), intent(out) :: desc
+character(C_CHAR), dimension(*), intent(out) :: usage
 interface
-subroutine sirius_option_get_description_usage_aux(section,name,desc_,usage_)&
+subroutine sirius_option_get_description_usage_aux(section,name,desc,usage)&
 &bind(C, name="sirius_option_get_description_usage")
 use, intrinsic :: ISO_C_BINDING
 character(C_CHAR), dimension(*), intent(in) :: section
 character(C_CHAR), dimension(*), intent(in) :: name
-character(C_CHAR), dimension(*), intent(out) :: desc_
-character(C_CHAR), dimension(*), intent(out) :: usage_
+character(C_CHAR), dimension(*), intent(out) :: desc
+character(C_CHAR), dimension(*), intent(out) :: usage
 end subroutine
 end interface
 
-call sirius_option_get_description_usage_aux(section,name,desc_,usage_)
+call sirius_option_get_description_usage_aux(section,name,desc,usage)
 end subroutine sirius_option_get_description_usage
 
 !> @brief return the default value of the option
