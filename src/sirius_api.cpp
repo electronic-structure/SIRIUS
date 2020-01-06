@@ -3342,4 +3342,96 @@ void sirius_get_total_magnetization(void* const* handler__,
     }
 }
 
+/* @fortran begin function void sirius_get_num_kpoints         Get the total number of kpoints
+   @fortran argument in   required void* handler               Kpoint set handler
+   @fortran argument out  required int   num_kpoints           number of kpoints in the set
+   @fortran argument out  optional int   error_code            error_code parameter
+   @fortran end */
+
+void sirius_get_num_kpoints(void* const* ks_handler__,
+                            int *num_kpoints,
+                            int *error_code)
+{
+    try {
+        auto& ks = get_ks(ks_handler__);
+        *num_kpoints = ks.num_kpoints();
+    } catch (...) {
+        if (error_code) {
+            *error_code = 1;
+        }
+    }
+}
+
+/* @fortran begin function void sirius_get_num_bands         Get the number of computed bands
+   @fortran argument in   required void* handler             ground state handler
+   @fortran argument out  required int   num_kpoints         number of kpoints in the set
+   @fortran argument out  optional int   error_code          error_code parameter
+   @fortran end */
+
+void sirius_get_num_bands(void* const* ctx_handler__,
+                          int *num_bands,
+                          int *error_code)
+{
+    try {
+        auto& sim_ctx = get_sim_ctx(ctx_handler__);
+        *num_bands = sim_ctx.num_bands();
+    } catch (...) {
+        if (error_code) {
+            *error_code = 1;
+        }
+    }
+}
+
+/* @fortran begin function void sirius_get_num_spin_components        Get the number of spin components
+   @fortran argument in   required void* handler                      ground state handler
+   @fortran argument out  required int   num_kpoints                  number of kpoints in the spin_components
+   @fortran argument out  optional int   error_code                   error_code parameter
+   @fortran end */
+
+void sirius_get_num_spin_components(void* const* ctx_handler__,
+                                    int *num_spin_components,
+                                    int *error_code)
+{
+    try {
+        auto& sim_ctx = get_sim_ctx(ctx_handler__);
+        if (sim_ctx.num_mag_dims() == 0) {
+            *num_spin_components = 1;
+        } else {
+            *num_spin_components = 2;
+        }
+    } catch(...) {
+        if (error_code)
+            *error_code = 1;
+    };
+}
+
+/* @fortran begin function void sirius_get_kpoint_properties      Get the kpoint properties
+   @fortran argument in  required void*    handler                Kpoint set handler
+   @fortran argument in  required int      ik                     index of the kpoint
+   @fortran argument out required double   weight                 weight of the kpoint
+   @fortran argument out optional double   coordinates            coordinates of the kpoint
+   @fortran end */
+
+void sirius_get_kpoint_properties(void* const* ks_handler__,
+                                  int const*ik,
+                                  double *weight,
+                                  double *coordinates,
+                                  int *error_code)
+{
+    try {
+        auto& ks = get_ks(ks_handler__);
+        *weight = ks[*ik]->weight();
+
+        if (coordinates) {
+            coordinates[0] = ks[*ik]->vk()[0];
+            coordinates[1] = ks[*ik]->vk()[1];
+            coordinates[2] = ks[*ik]->vk()[2];
+        }
+    } catch(...) {
+        if(error_code) {
+            *error_code = 1;
+        }
+    }
+}
+
 } // extern "C"

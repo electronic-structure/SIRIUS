@@ -22,6 +22,7 @@ module load EasyBuild-custom/cscs
     eb magma-2.5.1-CrayGNU-19.10-cuda-10.1.eb -r
     eb SpFFT-0.9.8-CrayGNU-19.10-cuda-10.1.eb -r
     eb mpi4py-3.0.2-CrayGNU-19.10-python3-cuda10.1.eb -r
+    eb ELPA-2019.05.001-CrayGNU-19.10.eb -r
 )
 
 chmod ao+rx ${EASYBUILD_PREFIX}

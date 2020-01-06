@@ -499,11 +499,15 @@ class Eigensolver_elpa : public Eigensolver
             }
             /* transform to standard eigen-problem */
             /* A * U{-1} -> Z */
-            linalg<device_t::CPU>::gemm(0, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double>::one(),
-                                        A__, B__, linalg_const<double>::zero(), Z__);
+            linalg2(linalg_t::scalapack)
+                .gemm('N', 'N', matrix_size__, matrix_size__, matrix_size__, &linalg_const<double>::one(),
+                      A__.at(memory_t::host), A__.ld(), B__.at(memory_t::host), B__.ld(), &linalg_const<double>::zero(),
+                      Z__.at(memory_t::host), Z__.ld());
             /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
-            linalg<device_t::CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<double>::one(),
-                                        B__, Z__, linalg_const<double>::zero(), A__);
+            linalg2(linalg_t::scalapack)
+                .gemm('C', 'N', matrix_size__, matrix_size__, matrix_size__, &linalg_const<double>::one(),
+                      B__.at(memory_t::host), B__.ld(), Z__.at(memory_t::host), Z__.ld(), &linalg_const<double>::zero(),
+                      A__.at(memory_t::host), A__.ld());
         }
 
         /* solve a standard problem */
@@ -515,8 +519,10 @@ class Eigensolver_elpa : public Eigensolver
         {
             PROFILE("Eigensolver_elpa|bt");
             /* back-transform of eigen-vectors */
-            linalg<device_t::CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<double>::one(), B__,
-                                        Z__, linalg_const<double>::zero(), A__);
+            linalg2(linalg_t::scalapack)
+                .gemm('N', 'N', matrix_size__, nev__, matrix_size__, &linalg_const<double>::one(),
+                      B__.at(memory_t::host), B__.ld(), Z__.at(memory_t::host), Z__.ld(), &linalg_const<double>::zero(),
+                      A__.at(memory_t::host), A__.ld());
             A__ >> Z__;
         }
 
@@ -562,13 +568,15 @@ class Eigensolver_elpa : public Eigensolver
             }
             /* transform to standard eigen-problem */
             /* A * U{-1} -> Z */
-            linalg<device_t::CPU>::gemm(0, 0, matrix_size__, matrix_size__, matrix_size__,
-                                        linalg_const<double_complex>::one(), A__, B__,
-                                        linalg_const<double_complex>::zero(), Z__);
+            linalg2(linalg_t::scalapack)
+                .gemm('N', 'N', matrix_size__, matrix_size__, matrix_size__, &linalg_const<double_complex>::one(),
+                      A__.at(memory_t::host), A__.ld(), B__.at(memory_t::host), B__.ld(),
+                      &linalg_const<double_complex>::zero(), Z__.at(memory_t::host), Z__.ld());
             /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
-            linalg<device_t::CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__,
-                                        linalg_const<double_complex>::one(), B__, Z__,
-                                        linalg_const<double_complex>::zero(), A__);
+            linalg2(linalg_t::scalapack)
+                .gemm('C', 'N', matrix_size__, matrix_size__, matrix_size__, &linalg_const<double_complex>::one(),
+                      B__.at(memory_t::host), B__.ld(), Z__.at(memory_t::host), Z__.ld(),
+                      &linalg_const<double_complex>::zero(), A__.at(memory_t::host), A__.ld());
         }
 
         /* solve a standard problem */
@@ -580,8 +588,10 @@ class Eigensolver_elpa : public Eigensolver
         {
             PROFILE("Eigensolver_elpa|bt");
             /* back-transform of eigen-vectors */
-            linalg<device_t::CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<double_complex>::one(),
-                                        B__, Z__, linalg_const<double_complex>::zero(), A__);
+            linalg2(linalg_t::scalapack)
+                .gemm('N', 'N', matrix_size__, nev__, matrix_size__, &linalg_const<double_complex>::one(),
+                      B__.at(memory_t::host), B__.ld(), Z__.at(memory_t::host), Z__.ld(),
+                      &linalg_const<double_complex>::zero(), A__.at(memory_t::host), A__.ld());
             A__ >> Z__;
         }
 
