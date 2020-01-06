@@ -12,6 +12,7 @@ module load libxc/4.3.4-CrayGNU-19.10
 module load GSL/2.5-CrayGNU-19.10
 module load spglib/1.14.1-CrayGNU-19.10
 module load magma/2.5.1-CrayGNU-19.10-cuda-10.1
+module load ELPA/2019.05.001-CrayGNU-19.10
 module load gcc
 module load cray-python/3.6.5.7
 module load SpFFT/0.9.8-CrayGNU-19.10-cuda-10.1
