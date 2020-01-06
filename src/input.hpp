@@ -22,6 +22,7 @@
  *  \brief Contains input parameters structures.
  *
  *  \todo Some of the parameters belong to SCF ground state mini-app. Mini-app should parse this values itself.
+ *  \todo parse atomic coordinates and magnetic field separtely, not as 6D vector.
  */
 
 #ifndef __INPUT_HPP__
@@ -47,25 +48,25 @@ namespace sirius {
             [a3_x, a3_y, a3_z]
         ],
 
-        "lattice_vectors_scale" : scale,
+        "lattice_vectors_scale" : (float) scale,
 
-        "atom_types" : [label_A, label_B, ...],
+        "atom_types" : ["label_A", "label_B", ...],
 
         "atom_files" : {
-            label_A : file_A,
-            label_B : file_B,
+            "label_A" : "file_A",
+            "label_B" : "file_B",
             ...
         },
 
         "atom_coordinate_units" : units,
 
         "atoms" : {
-            label_A: [
+            "label_A": [
                 coordinates_A_1,
                 coordinates_A_2,
                 ...
             ],
-            label_B : [
+            "label_B" : [
                 coordinates_B_1,
                 coordinates_B_2,
                 ...
@@ -187,6 +188,15 @@ struct Unit_cell_input
 };
 
 /// Parse mixer input section.
+/** The following part of the input file is parsed:
+    \code{.json}
+    "mixer" : {
+      "beta" : (float) beta,
+      "beta0" : beta0,
+      "linear_mix_rms_tol" : 
+    }
+    \endcode
+ */
 struct Mixer_input
 {
     /// Mixing paramter.

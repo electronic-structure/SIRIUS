@@ -2625,118 +2625,127 @@ void sirius_update_atomic_potential(void* const* handler__)
 }
 
 
-/* @fortran begin function void sirius_option_get_length                     return the number of options in a given section
-   @fortran argument in  required string  section                            name of the seciton
-   @fortran argument out required int  length                                number of options contained in  the section
+/* @fortran begin function void sirius_option_get_length     return the number of options in a given section
+   @fortran argument in  required string  section            name of the seciton
+   @fortran argument out required int     length             number of options contained in  the section
    @fortran end */
 
-void sirius_option_get_length(char *section, int *length)
+void sirius_option_get_length(char const* section__, int *length__)
 {
-    const json &parser = sirius::get_options_dictionary();
-    // ugly as hell but fortran is a piece of ....
-    for ( char *p = section; *p; p++) *p = tolower(*p);
+    auto const& parser = sirius::get_options_dictionary();
 
-    *length = parser[section].size();
+    auto section = std::string(section__);
+    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+
+    *length__ = parser[section].size();
 }
 
-/* @fortran begin function void sirius_option_get_name_and_type              return the name and a type of an option from its index
-   @fortran argument in  required string  section                            name of the section
-   @fortran argument out required int    elem_                               index of the option
-   @fortran argument out required string  key_name                           name of the option
-   @fortran argument out required int    type                                type of the option (real, integer, boolean, string)
+/* @fortran begin function void sirius_option_get_name_and_type    Return the name and a type of an option from its index.
+   @fortran argument in  required string  section                  Name of the section.
+   @fortran argument in  required int     elem                     Index of the option.
+   @fortran argument out required string  key_name                 Name of the option.
+   @fortran argument out required int     type                     Type of the option (real, integer, boolean, string).
    @fortran end */
 
-void sirius_option_get_name_and_type(char *section, int *elem_, char *key_name, int *type)
+void sirius_option_get_name_and_type(char const* section__, int const* elem__, char* key_name__, int* type__)
 {
     const json &dict = sirius::get_options_dictionary();
 
-    // ugly as hell but fortran is a piece of ....
-    for ( char *p = section; *p; p++) *p = tolower(*p);
+    auto section = std::string(section__);
+    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
 
     int elem = 0;
-    *type = -1;
-    for (auto& el : dict[section].items())
-    {
-        if (elem == *elem_) {
+    *type__ = -1;
+    for (auto& el : dict[section].items()) {
+        if (elem == *elem__) {
             if (!dict[section][el.key()].count("default_value")) {
                 std::cout << "key : " << el.key() << "\n the default_value key is missing" << std::endl;
                 exit(0);
             }
             if (dict[section][el.key()]["default_value"].is_array()) {
-                *type = 10;
-                if (dict[section][el.key()]["default_value"][0].is_number_integer())
-                    *type += 1;
-                if (dict[section][el.key()]["default_value"][0].is_number_float())
-                    *type += 2;
-                if (dict[section][el.key()]["default_value"][0].is_boolean())
-                    *type += 3;
-                if (dict[section][el.key()]["default_value"][0].is_string())
-                    *type += 4;
+                *type__ = 10;
+                if (dict[section][el.key()]["default_value"][0].is_number_integer()) {
+                    *type__ += 1;
+                }
+                if (dict[section][el.key()]["default_value"][0].is_number_float()) {
+                    *type__ += 2;
+                }
+                if (dict[section][el.key()]["default_value"][0].is_boolean()) {
+                    *type__ += 3;
+                }
+                if (dict[section][el.key()]["default_value"][0].is_string()) {
+                    *type__ += 4;
+                }
             } else {
-                if (dict[section][el.key()]["default_value"].is_number_integer())
-                    *type = 1;
-                if (dict[section][el.key()]["default_value"].is_number_float())
-                    *type = 2;
-                if (dict[section][el.key()]["default_value"].is_boolean())
-                    *type = 3;
-                if (dict[section][el.key()]["default_value"].is_string())
-                    *type = 4;
+                if (dict[section][el.key()]["default_value"].is_number_integer()) {
+                    *type__ = 1;
+                }
+                if (dict[section][el.key()]["default_value"].is_number_float()) {
+                    *type__ = 2;
+                }
+                if (dict[section][el.key()]["default_value"].is_boolean()) {
+                    *type__ = 3;
+                }
+                if (dict[section][el.key()]["default_value"].is_string()) {
+                    *type__ = 4;
+                }
             }
-            std::memcpy(key_name, el.key().c_str(), el.key().size());
+            std::memcpy(key_name__, el.key().c_str(), el.key().size());
         }
         elem++;
     }
 }
 
-/* @fortran begin function void sirius_option_get_description_usage          return the description and usage of a given option
-   @fortran argument in  required string  section                            name of the section
-   @fortran argument in  required string  name                               name of the option
-   @fortran argument out required string  desc_                              description of the option
-   @fortran argument out required string  usage_                             how to use the option
+/* @fortran begin function void sirius_option_get_description_usage  return the description and usage of a given option
+   @fortran argument in  required string  section                    name of the section
+   @fortran argument in  required string  name                       name of the option
+   @fortran argument out required string  desc                       description of the option
+   @fortran argument out required string  usage                      how to use the option
    @fortran end */
-
-void sirius_option_get_description_usage(char * section, char * name, char *desc_, char *usage_)
+void sirius_option_get_description_usage(char const* section__, char const* name__, char* desc__, char* usage__)
 {
     const json &parser =  sirius::get_options_dictionary();
 
-    // ugly as hell but fortran is a piece of ....
-    for ( char *p = section; *p; p++) *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
-    // for ( char *p = name; *p; p++) *p = tolower(*p);
+    auto section = std::string(section__);
+    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+
+    auto name = std::string(name__);
 
     if (parser[section][name].count("description")) {
-        std::string description = parser[section][name].value("description", "");
-       std::copy(description.begin(), description.end(), desc_);
+        auto description = parser[section][name].value("description", "");
+        std::copy(description.begin(), description.end(), desc__);
     }
     if (parser[section][name].count("usage")) {
-        std::string usage = parser[section][name].value("usage","");
-        std::copy(usage.begin(), usage.end(), usage_);
+        auto usage = parser[section][name].value("usage", "");
+        std::copy(usage.begin(), usage.end(), usage__);
     }
 }
 
-/* @fortran begin function void sirius_option_get_int                        return the default value of the option
-   @fortran argument in  required string  section                            name of the section of interest
-   @fortran argument in  required string  name                               name of the element
-   @fortran argument out required int     default_value                      table containing the default values (if vector)
-   @fortran argument out required int     length                             length of the table containing the default values
+/* @fortran begin function void sirius_option_get_int                return the default value of the option
+   @fortran argument in  required string  section                    name of the section of interest
+   @fortran argument in  required string  name                       name of the element
+   @fortran argument out required int     default_value              table containing the default values (if vector)
+   @fortran argument out required int     length                     length of the table containing the default values
    @fortran end */
 
-void sirius_option_get_int(char * section, char * name, int *default_value, int *length)
+void sirius_option_get_int(char const* section__, char const* name__, int *default_value__, int *length__)
 {
-    const json &parser = sirius::get_options_dictionary();
+    auto const &parser = sirius::get_options_dictionary();
 
-    // ugly as hell but fortran is a piece of ....
-    for ( char *p = section; *p; p++) *p = tolower(*p);
-    // ugly as hell but fortran is a piece of ....
-    // for ( char *p = name; *p; p++) *p = tolower(*p);
-    if (!parser[section][name].count("default_value"))
-        std::cout << "default value is mossing" << std::endl;
+    auto section = std::string(section__);
+    std::transform(section.begin(), section.end(), section.begin(), ::tolower);
+
+    auto name = std::string(name__);
+
+    if (!parser[section][name].count("default_value")) {
+        std::cout << "default value is missing" << std::endl;
+    }
     if (parser[section][name]["default_value"].is_array()) {
         std::vector<int> v = parser[section][name]["default_value"].get<std::vector<int>>();
-        *length = v.size();
-        memcpy(default_value, &v[0], v.size() * sizeof(int));
+        *length__ = v.size();
+        std::memcpy(default_value__, &v[0], v.size() * sizeof(int));
     }  else {
-        *default_value = parser[section][name].value("default_value", -1);
+        *default_value__ = parser[section][name].value("default_value", -1);
     }
 }
 
