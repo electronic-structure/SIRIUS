@@ -2639,14 +2639,14 @@ void sirius_option_get_length(char *section, int *length)
     *length = parser[section].size();
 }
 
-/* @fortran begin function void sirius_option_get_name_and_type              return the name and a type of an option from its index
+/* @fortran begin function void sirius_option_get_name_and_type              Return the name and a type of an option from its index
    @fortran argument in  required string  section                            name of the section
-   @fortran argument out required int    elem_                               index of the option
+   @fortran argument out required int     elem_                              index of the option
    @fortran argument out required string  key_name                           name of the option
-   @fortran argument out required int    type                                type of the option (real, integer, boolean, string)
+   @fortran argument out required int     type                               type of the option (real, integer, boolean, string)
    @fortran end */
 
-void sirius_option_get_name_and_type(char *section, int *elem_, char *key_name, int *type)
+void sirius_option_get_name_and_type(char const* section__, int const* elem__, char const* key_name__, int const * type__)
 {
     const json &dict = sirius::get_options_dictionary();
 
@@ -2655,8 +2655,7 @@ void sirius_option_get_name_and_type(char *section, int *elem_, char *key_name, 
 
     int elem = 0;
     *type = -1;
-    for (auto& el : dict[section].items())
-    {
+    for (auto& el : dict[section].items()) {
         if (elem == *elem_) {
             if (!dict[section][el.key()].count("default_value")) {
                 std::cout << "key : " << el.key() << "\n the default_value key is missing" << std::endl;
@@ -2664,23 +2663,31 @@ void sirius_option_get_name_and_type(char *section, int *elem_, char *key_name, 
             }
             if (dict[section][el.key()]["default_value"].is_array()) {
                 *type = 10;
-                if (dict[section][el.key()]["default_value"][0].is_number_integer())
+                if (dict[section][el.key()]["default_value"][0].is_number_integer()) {
                     *type += 1;
-                if (dict[section][el.key()]["default_value"][0].is_number_float())
+                }
+                if (dict[section][el.key()]["default_value"][0].is_number_float()) {
                     *type += 2;
-                if (dict[section][el.key()]["default_value"][0].is_boolean())
+                }
+                if (dict[section][el.key()]["default_value"][0].is_boolean()) {
                     *type += 3;
-                if (dict[section][el.key()]["default_value"][0].is_string())
+                }
+                if (dict[section][el.key()]["default_value"][0].is_string()) {
                     *type += 4;
+                }
             } else {
-                if (dict[section][el.key()]["default_value"].is_number_integer())
+                if (dict[section][el.key()]["default_value"].is_number_integer()) {
                     *type = 1;
-                if (dict[section][el.key()]["default_value"].is_number_float())
+                }
+                if (dict[section][el.key()]["default_value"].is_number_float()) {
                     *type = 2;
-                if (dict[section][el.key()]["default_value"].is_boolean())
+                }
+                if (dict[section][el.key()]["default_value"].is_boolean()) {
                     *type = 3;
-                if (dict[section][el.key()]["default_value"].is_string())
+                }
+                if (dict[section][el.key()]["default_value"].is_string()) {
                     *type = 4;
+                }
             }
             std::memcpy(key_name, el.key().c_str(), el.key().size());
         }
