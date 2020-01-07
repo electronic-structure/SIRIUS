@@ -1035,42 +1035,42 @@ inline int linalg2::sytri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, 
 //};
 
 #if defined(__GPU)
-template<>
-class linalg<device_t::GPU>: public linalg_base
-{
-    public:
-
-        //template<typename T>
-        //static void gemv(int trans, ftn_int m, ftn_int n, T* alpha, T* A, ftn_int lda, T* x, ftn_int incx,
-        //                 T* beta, T* y, ftn_int incy, int stream_id);
-
-        template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* alpha, T const* A, ftn_int lda,
-                         T const* B, ftn_int ldb, T const* beta, T* C, ftn_int ldc, int stream_id = -1);
-
-        template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* A, ftn_int lda,
-                         T const* B, ftn_int ldb, T* C, ftn_int ldc, int stream_id = -1)
-        {
-            T const& alpha = linalg_const<T>::one();
-            T const& beta = linalg_const<T>::zero();
-            gemm(transa, transb, m, n, k, const_cast<T*>(&alpha), A, lda, B, ldb, const_cast<T*>(&beta), C, ldc, stream_id);
-        }
-
-        template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<T> const& A, matrix<T> const& B,
-                         matrix<T>& C, int stream_id = -1)
-        {
-            gemm(transa, transb, m, n, k, A.at(memory_t::device), A.ld(), B.at(memory_t::device), B.ld(), C.at(memory_t::device), C.ld(), stream_id);
-        }
-
-        template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, const T *alpha, matrix<T> const& A, matrix<T> const& B, const T *beta,
-                         matrix<T>& C, int stream_id = -1)
-        {
-            gemm(transa, transb, m, n, k, alpha, A.at(memory_t::device), A.ld(), B.at(memory_t::device), B.ld(), beta, C.at(memory_t::device), C.ld(), stream_id);
-        }
-};
+///template<>
+///class linalg<device_t::GPU>: public linalg_base
+///{
+///    public:
+///
+///        //template<typename T>
+///        //static void gemv(int trans, ftn_int m, ftn_int n, T* alpha, T* A, ftn_int lda, T* x, ftn_int incx,
+///        //                 T* beta, T* y, ftn_int incy, int stream_id);
+///
+///        template <typename T>
+///        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* alpha, T const* A, ftn_int lda,
+///                         T const* B, ftn_int ldb, T const* beta, T* C, ftn_int ldc, int stream_id = -1);
+///
+///        template <typename T>
+///        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* A, ftn_int lda,
+///                         T const* B, ftn_int ldb, T* C, ftn_int ldc, int stream_id = -1)
+///        {
+///            T const& alpha = linalg_const<T>::one();
+///            T const& beta = linalg_const<T>::zero();
+///            gemm(transa, transb, m, n, k, const_cast<T*>(&alpha), A, lda, B, ldb, const_cast<T*>(&beta), C, ldc, stream_id);
+///        }
+///
+///        template <typename T>
+///        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, matrix<T> const& A, matrix<T> const& B,
+///                         matrix<T>& C, int stream_id = -1)
+///        {
+///            gemm(transa, transb, m, n, k, A.at(memory_t::device), A.ld(), B.at(memory_t::device), B.ld(), C.at(memory_t::device), C.ld(), stream_id);
+///        }
+///
+///        template <typename T>
+///        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, const T *alpha, matrix<T> const& A, matrix<T> const& B, const T *beta,
+///                         matrix<T>& C, int stream_id = -1)
+///        {
+///            gemm(transa, transb, m, n, k, alpha, A.at(memory_t::device), A.ld(), B.at(memory_t::device), B.ld(), beta, C.at(memory_t::device), C.ld(), stream_id);
+///        }
+///};
 #endif
 
 //// C = alpha * op(A) * op(B) + beta * op(C), double
@@ -1200,40 +1200,40 @@ class linalg<device_t::GPU>: public linalg_base
 //}
 
 // Generic interface to zgemm
-template<>
-inline void linalg<device_t::GPU>::gemm<ftn_double_complex>(int transa__, int transb__, ftn_int m, ftn_int n, ftn_int k,
-                                                            ftn_double_complex const* alpha, ftn_double_complex const* A, ftn_int lda,
-                                                            ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const* beta,
-                                                            ftn_double_complex* C, ftn_int ldc, int stream_id)
-{
-    assert(_local::is_set_device_id());
-    assert(lda > 0);
-    assert(ldb > 0);
-    assert(ldc > 0);
-    assert(m > 0);
-    assert(n > 0);
-    assert(k > 0);
-    const char trans[] = {'N', 'T', 'C'};
-    gpublas::zgemm(trans[transa__], trans[transb__], m, n, k, (acc_complex_double_t*)alpha, (acc_complex_double_t*)A, lda, (acc_complex_double_t*)B, ldb, (acc_complex_double_t*)beta, (acc_complex_double_t*)C, ldc, stream_id);
-}
-
-// Generic interface to dgemm
-template<>
-inline void linalg<device_t::GPU>::gemm<ftn_double>(int transa__, int transb__, ftn_int m, ftn_int n, ftn_int k,
-                                                    ftn_double const* alpha, ftn_double const* A, ftn_int lda,
-                                                    ftn_double const* B, ftn_int ldb, ftn_double const* beta,
-                                                    ftn_double* C, ftn_int ldc, int stream_id)
-{
-    assert(_local::is_set_device_id());
-    assert(lda > 0);
-    assert(ldb > 0);
-    assert(ldc > 0);
-    assert(m > 0);
-    assert(n > 0);
-    assert(k > 0);
-    const char trans[] = {'N', 'T', 'C'};
-    gpublas::dgemm(trans[transa__], trans[transb__], m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
-}
+//template<>
+//inline void linalg<device_t::GPU>::gemm<ftn_double_complex>(int transa__, int transb__, ftn_int m, ftn_int n, ftn_int k,
+//                                                            ftn_double_complex const* alpha, ftn_double_complex const* A, ftn_int lda,
+//                                                            ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const* beta,
+//                                                            ftn_double_complex* C, ftn_int ldc, int stream_id)
+//{
+//    assert(_local::is_set_device_id());
+//    assert(lda > 0);
+//    assert(ldb > 0);
+//    assert(ldc > 0);
+//    assert(m > 0);
+//    assert(n > 0);
+//    assert(k > 0);
+//    const char trans[] = {'N', 'T', 'C'};
+//    gpublas::zgemm(trans[transa__], trans[transb__], m, n, k, (acc_complex_double_t*)alpha, (acc_complex_double_t*)A, lda, (acc_complex_double_t*)B, ldb, (acc_complex_double_t*)beta, (acc_complex_double_t*)C, ldc, stream_id);
+//}
+//
+//// Generic interface to dgemm
+//template<>
+//inline void linalg<device_t::GPU>::gemm<ftn_double>(int transa__, int transb__, ftn_int m, ftn_int n, ftn_int k,
+//                                                    ftn_double const* alpha, ftn_double const* A, ftn_int lda,
+//                                                    ftn_double const* B, ftn_int ldb, ftn_double const* beta,
+//                                                    ftn_double* C, ftn_int ldc, int stream_id)
+//{
+//    assert(_local::is_set_device_id());
+//    assert(lda > 0);
+//    assert(ldb > 0);
+//    assert(ldc > 0);
+//    assert(m > 0);
+//    assert(n > 0);
+//    assert(k > 0);
+//    const char trans[] = {'N', 'T', 'C'};
+//    gpublas::dgemm(trans[transa__], trans[transb__], m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+//}
 
 #endif // GPU
 
