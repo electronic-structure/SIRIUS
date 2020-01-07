@@ -82,20 +82,20 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
     }
 
     if (sddk_debug >= 2) {
-        if (o__.comm().rank() == 0) {
-            std::printf("check QR decomposition, matrix size : %i\n", n__);
-        }
-        inner(mem__, la__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+        //if (o__.comm().rank() == 0) {
+        //    std::printf("check QR decomposition, matrix size : %i\n", n__);
+        //}
+        //inner(mem__, la__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
-        linalg<device_t::CPU>::geqrf(n__, n__, o__, 0, 0);
-        auto diag = o__.get_diag(n__);
-        if (o__.comm().rank() == 0) {
-            for (int i = 0; i < n__; i++) {
-                if (std::abs(diag[i]) < 1e-6) {
-                    std::cout << "small norm: " << i << " " << diag[i] << std::endl;
-                }
-            }
-        }
+        //linalg<device_t::CPU>::geqrf(n__, n__, o__, 0, 0);
+        //auto diag = o__.get_diag(n__);
+        //if (o__.comm().rank() == 0) {
+        //    for (int i = 0; i < n__; i++) {
+        //        if (std::abs(diag[i]) < 1e-6) {
+        //            std::cout << "small norm: " << i << " " << diag[i] << std::endl;
+        //        }
+        //    }
+        //}
 
         if (o__.comm().rank() == 0) {
             std::printf("check eigen-values, matrix size : %i\n", n__);
