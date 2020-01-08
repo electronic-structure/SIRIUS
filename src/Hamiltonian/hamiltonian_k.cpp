@@ -445,7 +445,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
                          alm_row.at(mt, 0, 0, s), alm_row.ld(),
                          halm_col.at(mt, 0, 0, s), halm_col.ld(),
                          &linalg_const<double_complex>::one(),
-                         h__.at(memory_t::host), h__.ld());
+                         h__.at(mt), h__.ld());
     }
 
     if (pu == device_t::GPU) {
