@@ -19,8 +19,8 @@ void test1()
     }
     A >> B;
 
-    linalg2(linalg_t::lapack).syinv(N, A);
-    linalg2(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<double_complex>::one(), &A(0, 0), A.ld(), &B(0, 0),
+    linalg(linalg_t::lapack).syinv(N, A);
+    linalg(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<double_complex>::one(), &A(0, 0), A.ld(), &B(0, 0),
                                  B.ld(), &linalg_const<double_complex>::zero(), &C(0, 0), C.ld());
 
     int err = 0;
@@ -34,7 +34,7 @@ void test1()
         }
     }
 
-    linalg2(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<double_complex>::one(), &A(0, 0), A.ld(), &B(0, 0), B.ld(),
+    linalg(linalg_t::blas).hemm('L', 'U', N, N, &linalg_const<double_complex>::one(), &A(0, 0), A.ld(), &B(0, 0), B.ld(),
                                  &linalg_const<double_complex>::zero(), &C(0, 0), C.ld());
     for (int i = 0; i < N; i++)
     {
@@ -71,8 +71,8 @@ void test2()
     }
     A >> B;
 
-    linalg2(linalg_t::lapack).geinv(N, A);
-    linalg2(linalg_t::blas).gemm('N', 'N', N, N, N, &linalg_const<T>::one(), A.at(memory_t::host), A.ld(),
+    linalg(linalg_t::lapack).geinv(N, A);
+    linalg(linalg_t::blas).gemm('N', 'N', N, N, N, &linalg_const<T>::one(), A.at(memory_t::host), A.ld(),
         B.at(memory_t::host), B.ld(), &linalg_const<T>::zero(), C.at(memory_t::host), C.ld());
 
     int err = 0;
@@ -124,9 +124,9 @@ void test2()
 //    T alpha = 1.0;
 //    T beta = 0.0;
 //
-//    linalg2(linalg_t::scalapack).geinv(N, A);
+//    linalg(linalg_t::scalapack).geinv(N, A);
 //
-//    linalg2(linalg_t::scalapack).gemm('N', 'N', N, N, N, &alpha, A, 0, 0, B, 0, 0, &beta, C, 0, 0);
+//    linalg(linalg_t::scalapack).gemm('N', 'N', N, N, N, &alpha, A, 0, 0, B, 0, 0, &beta, C, 0, 0);
 //
 //    int err = 0;
 //    for (int i = 0; i < C.num_cols_local(); i++)

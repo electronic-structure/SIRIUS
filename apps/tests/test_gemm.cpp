@@ -46,7 +46,7 @@ double test_gemm(int M, int N, int K, int transa)
     printf("c.ld() = %i\n", c.ld());
     const char ta[] = {'N', 'T', 'C'};
     utils::timer t1("gemm_only");
-    linalg2(linalg_t::blas).gemm(ta[transa], 'N', M, N, K, &sddk::linalg_const<gemm_type>::one(),
+    linalg(linalg_t::blas).gemm(ta[transa], 'N', M, N, K, &sddk::linalg_const<gemm_type>::one(),
         a.at(memory_t::host), a.ld(), b.at(memory_t::host), b.ld(), &sddk::linalg_const<gemm_type>::zero(),
         c.at(memory_t::host), c.ld());
     double tval = t1.stop();
@@ -101,7 +101,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     gemm_type one = 1;
     gemm_type zero = 0;
     const char TA [] = {'N', 'T', 'C'};
-    linalg2(linalg_t::scalapack).gemm(TA[transa], 'N', M, N - n, K, &one, a, 0, 0, b, 0, n, &zero, c, 0, 0);
+    linalg(linalg_t::scalapack).gemm(TA[transa], 'N', M, N - n, K, &one, a, 0, 0, b, 0, n, &zero, c, 0, 0);
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif

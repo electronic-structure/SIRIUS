@@ -55,7 +55,7 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t memA__
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
     utils::timer t1("gemm_only");
-    linalg2(la__).gemm(TA[transa], 'N', M, N, K, &linalg_const<gemm_type>::one(),
+    linalg(la__).gemm(TA[transa], 'N', M, N, K, &linalg_const<gemm_type>::one(),
                        a.at(memA__), a.ld(), b.at(memB__), b.ld(),
                        &linalg_const<gemm_type>::zero(),
                        c.at(memC__), c.ld());
