@@ -433,14 +433,14 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             }
         }
 
-        linalg2(la).gemm('N', 'T',kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
+        linalg(la).gemm('N', 'T',kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
                          &linalg_const<double_complex>::one(),
                          alm_row.at(mt, 0, 0, s), alm_row.ld(),
                          alm_col.at(mt, 0, 0, s), alm_col.ld(),
                          &linalg_const<double_complex>::one(),
                          o__.at(mt), o__.ld());
 
-        linalg2(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
+        linalg(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
                          &linalg_const<double_complex>::one(),
                          alm_row.at(mt, 0, 0, s), alm_row.ld(),
                          halm_col.at(mt, 0, 0, s), halm_col.ld(),
@@ -1003,7 +1003,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
                     /* create resulting array with proper dimensions from the already allocated chunk of memory */
                     alm_phi = matrix<double_complex>(alm_phi_buf.at(memory_t::host), num_mt_aw, n__);
                     /* alm_phi(lm, i) = A(G, lm)^{T} * C(G, i), remember that Alm was conjugated */
-                    linalg2(linalg_t::blas).gemm('C', 'N', num_mt_aw, n__, ngv, 
+                    linalg(linalg_t::blas).gemm('C', 'N', num_mt_aw, n__, ngv, 
                         &linalg_const<double_complex>::one(),  alm_block.at(memory_t::host), alm_block.ld(),
                         phi__.pw_coeffs(0).prime().at(memory_t::host, 0, N__), phi__.pw_coeffs(0).prime().ld(),
                         &linalg_const<double_complex>::zero(), alm_phi.at(memory_t::host), alm_phi.ld());
@@ -1012,7 +1012,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
                     /* create resulting array with proper dimensions from the already allocated chunk of memory */
                     halm_phi = matrix<double_complex>(halm_phi_buf.at(memory_t::host), num_mt_aw, n__);
                     /* halm_phi(lm, i) = H_{mt}A(G, lm)^{T} * C(G, i) */
-                    linalg2(linalg_t::blas).gemm('C', 'N', num_mt_aw, n__, ngv, &linalg_const<double_complex>::one(),
+                    linalg(linalg_t::blas).gemm('C', 'N', num_mt_aw, n__, ngv, &linalg_const<double_complex>::one(),
                         halm_block.at(memory_t::host), halm_block.ld(),
                         phi__.pw_coeffs(0).prime().at(memory_t::host, 0, N__), phi__.pw_coeffs(0).prime().ld(),
                         &linalg_const<double_complex>::zero(), halm_phi.at(memory_t::host), halm_phi.ld());
@@ -1025,7 +1025,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
                     alm_phi = matrix<double_complex>(alm_phi_buf.at(memory_t::host), alm_phi_buf.at(memory_t::device),
                                                      num_mt_aw, n__);
                     /* alm_phi(lm, i) = A(G, lm)^{T} * C(G, i) */
-                    linalg2(linalg_t::gpublas).gemm('C', 'N', num_mt_aw, n__, ngv,
+                    linalg(linalg_t::gpublas).gemm('C', 'N', num_mt_aw, n__, ngv,
                         &linalg_const<double_complex>::one(), alm_block.at(memory_t::device), alm_block.ld(),
                         phi__.pw_coeffs(0).prime().at(memory_t::device, 0, N__), phi__.pw_coeffs(0).prime().ld(),
                         &linalg_const<double_complex>::zero(), alm_phi.at(memory_t::device), alm_phi.ld());
@@ -1036,7 +1036,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
                     halm_phi = matrix<double_complex>(halm_phi_buf.at(memory_t::host),
                                                       halm_phi_buf.at(memory_t::device), num_mt_aw, n__);
                     /* halm_phi(lm, i) = H_{mt}A(G, lm)^{T} * C(G, i) */
-                    linalg2(linalg_t::gpublas).gemm('C', 'N', num_mt_aw, n__, ngv, &linalg_const<double_complex>::one(),
+                    linalg(linalg_t::gpublas).gemm('C', 'N', num_mt_aw, n__, ngv, &linalg_const<double_complex>::one(),
                         halm_block.at(memory_t::device), halm_block.ld(),
                         phi__.pw_coeffs(0).prime().at(memory_t::device, 0, N__), phi__.pw_coeffs(0).prime().ld(),
                         &linalg_const<double_complex>::zero(), halm_phi.at(memory_t::device), halm_phi.ld());
@@ -1081,13 +1081,13 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
         /* second zgemm: Alm^{*} (Alm * C) */
         if (ophi__ != nullptr) {
             /* APW-APW contribution to overlap */
-            linalg2(la).gemm('N', 'N', ngv, n__, num_mt_aw, &linalg_const<double_complex>::one(), alm_block.at(mt),
+            linalg(la).gemm('N', 'N', ngv, n__, num_mt_aw, &linalg_const<double_complex>::one(), alm_block.at(mt),
                 alm_block.ld(), alm_phi.at(mt), alm_phi.ld(), &linalg_const<double_complex>::one(),
                 ophi__->pw_coeffs(0).prime().at(mt, 0, N__), ophi__->pw_coeffs(0).prime().ld());
         }
         if (hphi__ != nullptr) {
             /* APW-APW contribution to Hamiltonian */
-            linalg2(la).gemm('N', 'N', ngv, n__, num_mt_aw, &linalg_const<double_complex>::one(), alm_block.at(mt),
+            linalg(la).gemm('N', 'N', ngv, n__, num_mt_aw, &linalg_const<double_complex>::one(), alm_block.at(mt),
                 alm_block.ld(), halm_phi.at(mt), halm_phi.ld(), &linalg_const<double_complex>::one(),
                 hphi__->pw_coeffs(0).prime().at(mt, 0, N__), hphi__->pw_coeffs(0).prime().ld());
         }
@@ -1159,12 +1159,12 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
                 if (pu == device_t::GPU) {
                     hmt.allocate(memory_t::device).copy_to(memory_t::device);
                 }
-                linalg2(la).gemm('N', 'N', ngv, nlo, naw, &linalg_const<double_complex>::one(),
+                linalg(la).gemm('N', 'N', ngv, nlo, naw, &linalg_const<double_complex>::one(),
                                  alm_block.at(mem, 0, offsets_aw[ialoc]), alm_block.ld(),
                                  hmt.at(mem), hmt.ld(), &linalg_const<double_complex>::zero(),
                                  halm_block.at(mem, 0, offsets_lo[ialoc]), halm_block.ld());
             } // ia
-            linalg2(la).gemm('N', 'N', ngv, n__, num_mt_lo, &linalg_const<double_complex>::one(), halm_block.at(mem),
+            linalg(la).gemm('N', 'N', ngv, n__, num_mt_lo, &linalg_const<double_complex>::one(), halm_block.at(mem),
                              halm_block.ld(), phi_lo_block.at(mem), phi_lo_block.ld(),
                              &linalg_const<double_complex>::one(), hphi__->pw_coeffs(0).prime().at(mem, 0, N__),
                              hphi__->pw_coeffs(0).prime().ld());
@@ -1200,7 +1200,7 @@ void Hamiltonian_k::apply_fv_h_o(bool apw_only__, bool phi_is_lo__, int N__, int
             if (pu == device_t::GPU) {
                 halm_block.copy_to(memory_t::device, 0, ngv * num_mt_lo);
             }
-            linalg2(la).gemm('N', 'N', ngv, n__, num_mt_lo, &linalg_const<double_complex>::one(),
+            linalg(la).gemm('N', 'N', ngv, n__, num_mt_lo, &linalg_const<double_complex>::one(),
                              halm_block.at(mem), halm_block.ld(), phi_lo_block.at(mem), phi_lo_block.ld(),
                              &linalg_const<double_complex>::one(), ophi__->pw_coeffs(0).prime().at(mem, 0, N__),
                              ophi__->pw_coeffs(0).prime().ld());

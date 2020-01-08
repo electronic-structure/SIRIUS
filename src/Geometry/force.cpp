@@ -98,7 +98,7 @@ void Force::compute_dmat(K_point* kp__, dmatrix<double_complex>& dm__) const
                     }
                 }
 
-                linalg2(linalg_t::scalapack).gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
+                linalg(linalg_t::scalapack).gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
                                                   &linalg_const<double_complex>::one(), ev1, 0, 0, ev, 0, 0,
                                                   &linalg_const<double_complex>::one(), dm__, 0, 0);
             }
@@ -117,7 +117,7 @@ void Force::compute_dmat(K_point* kp__, dmatrix<double_complex>& dm__) const
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 int offs = ispn * ctx_.num_fv_states();
 
-                linalg2(linalg_t::scalapack).gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
+                linalg(linalg_t::scalapack).gemm('N', 'T', ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.num_bands(),
                                                   &linalg_const<double_complex>::one(), ev1, offs, 0, ev, offs, 0,
                                                   &linalg_const<double_complex>::one(), dm__, 0, 0);
             }
@@ -420,7 +420,7 @@ mdarray<double, 2> const& Force::calc_forces_us()
                 }
 
                 /* multiply tmp matrices, or sum over G */
-                linalg2(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                linalg(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                     &linalg_const<double>::one(),
                     aug_op->q_pw().at(memory_t::host), aug_op->q_pw().ld(),
                     v_tmp.at(memory_t::host), v_tmp.ld(),
@@ -697,13 +697,13 @@ void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>
         Hk__.H0().apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
 
         /* apw-apw block of the overlap matrix */
-        linalg2(linalg_t::blas).gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+        linalg(linalg_t::blas).gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
             &linalg_const<double_complex>::one(), alm_row.at(memory_t::host), alm_row.ld(),
             alm_col.at(memory_t::host), alm_col.ld(), &linalg_const<double_complex>::zero(),
             o.at(memory_t::host), o.ld());
 
         /* apw-apw block of the Hamiltonian matrix */
-        linalg2(linalg_t::blas).gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+        linalg(linalg_t::blas).gemm('N', 'T', kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
             &linalg_const<double_complex>::one(), alm_row.at(memory_t::host), alm_row.ld(), halm_col.at(memory_t::host),
             halm_col.ld(), &linalg_const<double_complex>::zero(), h.at(memory_t::host), h.ld());
 
@@ -770,7 +770,7 @@ void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>
             }
 
             /* zm1 = dO * V */
-            linalg2(linalg_t::scalapack).gemm('N', 'N', ngklo, nfv, ngklo, &linalg_const<double_complex>::one(),
+            linalg(linalg_t::scalapack).gemm('N', 'N', ngklo, nfv, ngklo, &linalg_const<double_complex>::one(),
                 o1, 0, 0, fv_evec, 0, 0, &linalg_const<double_complex>::zero(), zm1, 0, 0);
             /* multiply by energy: zm1 = E * (dO * V)  */
             for (int i = 0; i < zm1.num_cols_local(); i++) {
@@ -780,11 +780,11 @@ void Force::add_ibs_force(K_point* kp__, Hamiltonian_k& Hk__, mdarray<double, 2>
                 }
             }
             /* compute zm1 = dH * V - E * (dO * V) */
-            linalg2(linalg_t::scalapack).gemm('N', 'N', ngklo, nfv, ngklo, &linalg_const<double_complex>::one(),
+            linalg(linalg_t::scalapack).gemm('N', 'N', ngklo, nfv, ngklo, &linalg_const<double_complex>::one(),
                 h1, 0, 0, fv_evec, 0, 0, &linalg_const<double_complex>::m_one(), zm1, 0, 0);
 
             /* compute zf = V^{+} * zm1 = V^{+} * (dH * V - E * (dO * V)) */
-            linalg2(linalg_t::scalapack).gemm('C', 'N', nfv, nfv, ngklo, &linalg_const<double_complex>::one(),
+            linalg(linalg_t::scalapack).gemm('C', 'N', nfv, nfv, ngklo, &linalg_const<double_complex>::one(),
                 fv_evec, 0, 0, zm1, 0, 0, &linalg_const<double_complex>::zero(), zf, 0, 0);
 
             for (int i = 0; i < dm.num_cols_local(); i++) {

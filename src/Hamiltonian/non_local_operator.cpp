@@ -114,7 +114,7 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ispn_block__, Wa
             int ia   = beta__.chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i);
 
             if (nbf) {
-                linalg2(la).gemm(
+                linalg(la).gemm(
                     'N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
                     reinterpret_cast<double_complex*>(op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
                     beta_phi__.at(mem, offs, 0), beta_phi__.ld(), &linalg_const<double_complex>::zero(),
@@ -137,7 +137,7 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ispn_block__, Wa
     int jspn = ispn_block__ & 1;
 
     /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-    linalg2(ctx_.blas_linalg_t())
+    linalg(ctx_.blas_linalg_t())
         .gemm('N', 'N', num_gkvec_loc, n__, nbeta, &linalg_const<double_complex>::one(), beta_gk.at(mem), num_gkvec_loc,
               work.at(mem), nbeta, &linalg_const<double_complex>::one(),
               op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__),
@@ -193,14 +193,14 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ia__, int ispn_b
 
     auto work = mdarray<double_complex, 1>(nbf * n__, ctx_.mem_pool(mem));
 
-    linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
+    linalg(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double_complex>::one(),
                      reinterpret_cast<double_complex*>(op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__)), nbf,
                      beta_phi__.at(mem, offs, 0), beta_phi__.ld(), &linalg_const<double_complex>::zero(), work.at(mem),
                      nbf);
 
     int jspn = ispn_block__ & 1;
 
-    linalg2(ctx_.blas_linalg_t())
+    linalg(ctx_.blas_linalg_t())
         .gemm('N', 'N', num_gkvec_loc, n__, nbf, &linalg_const<double_complex>::one(), beta_gk.at(mem, 0, offs),
               num_gkvec_loc, work.at(mem), nbf, &linalg_const<double_complex>::one(),
               op_phi__.pw_coeffs(jspn).prime().at(op_phi__.preferred_memory_t(), 0, idx0__),
@@ -261,7 +261,7 @@ void Non_local_operator::apply<double>(int chunk__, int ispn_block__, Wave_funct
         if (nbf == 0) {
             continue;
         }
-        linalg2(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double>::one(),
+        linalg(la).gemm('N', 'N', nbf, n__, nbf, &linalg_const<double>::one(),
                          op_.at(mem, 0, packed_mtrx_offset_(ia), ispn_block__), nbf, beta_phi__.at(mem, offs, 0),
                          beta_phi__.ld(), &linalg_const<double>::zero(), work.at(mem, offs), nbeta,
                          stream_id(omp_get_thread_num()));
@@ -281,7 +281,7 @@ void Non_local_operator::apply<double>(int chunk__, int ispn_block__, Wave_funct
     int jspn = ispn_block__ & 1;
 
     /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
-    linalg2(ctx_.blas_linalg_t())
+    linalg(ctx_.blas_linalg_t())
         .gemm('N', 'N', 2 * num_gkvec_loc, n__, nbeta, &linalg_const<double>::one(),
               reinterpret_cast<double*>(beta_gk.at(mem)), 2 * num_gkvec_loc, work.at(mem), nbeta,
               &linalg_const<double>::one(),

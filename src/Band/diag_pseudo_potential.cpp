@@ -183,19 +183,19 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const
                 }
             }
             /* compute <G+k|beta> D */
-            linalg2(linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
+            linalg(linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
                 &linalg_const<T>::one(), &beta_row(0, offs), beta_row.ld(), &dop(0, 0), dop.ld(),
                 &linalg_const<T>::zero(), &btmp(0, 0), btmp.ld());
             /* compute (<G+k|beta> D ) <beta|G+k> */
-            linalg2(linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
+            linalg(linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
                 &linalg_const<double_complex>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
                 &linalg_const<double_complex>::one(), &hmlt(0, 0), hmlt.ld());
             /* update the overlap matrix */
             if (ctx_.unit_cell().atom(ia).type().augment()) {
-                linalg2(linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
+                linalg(linalg_t::blas).gemm('N', 'N', kp.num_gkvec_row(), nbf, nbf,
                     &linalg_const<T>::one(), &beta_row(0, offs), beta_row.ld(), &qop(0, 0), qop.ld(),
                     &linalg_const<T>::zero(), &btmp(0, 0), btmp.ld());
-                linalg2(linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
+                linalg(linalg_t::blas).gemm('N', 'C', kp.num_gkvec_row(), kp.num_gkvec_col(), nbf,
                     &linalg_const<double_complex>::one(), &btmp(0, 0), btmp.ld(), &beta_col(0, offs), beta_col.ld(),
                     &linalg_const<double_complex>::one(), &ovlp(0, 0), ovlp.ld());
             }

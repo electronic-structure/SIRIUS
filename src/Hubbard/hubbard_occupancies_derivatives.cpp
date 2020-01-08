@@ -537,7 +537,7 @@ Hubbard::compute_occupancies(K_point&                    kp,
     }
 
     auto alpha = double_complex(kp.weight(), 0.0);
-    linalg2(la).gemm('C', 'N',
+    linalg(la).gemm('C', 'N',
                      this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                      this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                      HowManyBands,
@@ -547,7 +547,7 @@ Hubbard::compute_occupancies(K_point&                    kp,
                      &linalg_const<double_complex>::zero(),
                      dm__.at(mt), dm__.ld());
 
-    linalg2(la).gemm('C', 'N',
+    linalg(la).gemm('C', 'N',
                      this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                      this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                      HowManyBands,

@@ -288,7 +288,7 @@ void Beta_projectors_base::local_inner_aux<double_complex>(double_complex* beta_
     }
 
     const auto t1 = std::chrono::high_resolution_clock::now();
-    linalg2(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta__, n__, num_gkvec_loc(),
+    linalg(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta__, n__, num_gkvec_loc(),
                                        &linalg_const<double_complex>::one(),
                                        beta_pw_coeffs_a_ptr__,
                                        num_gkvec_loc(),
@@ -315,7 +315,7 @@ void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs_a_ptr_
                                                    Wave_functions& phi__, int ispn__, int idx0__, int n__,
                                                    matrix<double>& beta_phi__) const
 {
-    linalg2(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta__, n__, 2 * num_gkvec_loc(),
+    linalg(ctx_.blas_linalg_t()).gemm('C', 'N', nbeta__, n__, 2 * num_gkvec_loc(),
                                        &linalg_const<double>::two(),
                                        beta_pw_coeffs_a_ptr__,
                                        2 * num_gkvec_loc(),
@@ -342,7 +342,7 @@ void Beta_projectors_base::local_inner_aux<double>(double* beta_pw_coeffs_a_ptr_
                 case device_t::CPU: break;
             }
         }
-        linalg2(la).ger(nbeta__, n__,
+        linalg(la).ger(nbeta__, n__,
                         &linalg_const<double>::m_one(),
                         beta_pw_coeffs_a_ptr__, incx,
                         reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at(phi__.preferred_memory_t(), 0, idx0__)),

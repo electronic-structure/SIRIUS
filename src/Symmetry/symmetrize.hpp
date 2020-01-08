@@ -378,7 +378,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator co
             int ja = sym__.sym_table(ia, isym);
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
-                linalg2(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
                                             frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), &linalg_const<double>::one(),
                                             fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
             }
@@ -426,7 +426,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
                 double a = alpha * S(2, 2);
-                linalg2(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(memory_t::host),
+                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(memory_t::host),
                 rotm.ld(), vz_rlm__.at(memory_t::host, 0, 0, ia), vz_rlm__.ld(), &linalg_const<double>::one(),
                 fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
             }
@@ -476,7 +476,7 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
                 for (int k: {0, 1, 2}) {
-                    linalg2(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                    linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
                                                 vrlm[k]->at(memory_t::host, 0, 0, ia), vrlm[k]->ld(),
                                                 &linalg_const<double>::zero(), vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
                 }
