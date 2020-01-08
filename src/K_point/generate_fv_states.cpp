@@ -74,7 +74,7 @@ void K_point::generate_fv_states()
         mdarray<double_complex, 2> tmp1(tmp.at(memory_t::host), tmp_ptr_gpu, mt_aw_size, ctx_.num_fv_states());
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
-        linalg2(la).gemm('T', 'N', mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
+        linalg(la).gemm('T', 'N', mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
             &linalg_const<double_complex>::one(), alm.at(mt), alm.ld(),
             fv_eigen_vectors_slab().pw_coeffs(0).prime().at(mt),
             fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),

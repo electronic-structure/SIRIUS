@@ -163,18 +163,18 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
         PROFILE_START("sddk::orthogonalize|tmtrx");
         if (use_magma) {
             /* Cholesky factorization */
-            if (int info = linalg2(linalg_t::magma).potrf(n__, o__.at(memory_t::device), o__.ld())) {
+            if (int info = linalg(linalg_t::magma).potrf(n__, o__.at(memory_t::device), o__.ld())) {
                 std::stringstream s;
                 s << "error in GPU factorization, info = " << info;
                 TERMINATE(s);
             }
             /* inversion of triangular matrix */
-            if (linalg2(linalg_t::magma).trtri(n__, o__.at(memory_t::device), o__.ld())) {
+            if (linalg(linalg_t::magma).trtri(n__, o__.at(memory_t::device), o__.ld())) {
                 TERMINATE("error in inversion");
             }
         } else { /* CPU version */
             /* Cholesky factorization */
-            if (int info = linalg2(linalg_t::lapack).potrf(n__, &o__(0, 0), o__.ld())) {
+            if (int info = linalg(linalg_t::lapack).potrf(n__, &o__(0, 0), o__.ld())) {
                 std::stringstream s;
                 s << "error in factorization, info = " << info << std::endl
                   << "number of existing states: " << N__ << std::endl
@@ -185,7 +185,7 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
                 TERMINATE(s);
             }
             /* inversion of triangular matrix */
-            if (linalg2(linalg_t::lapack).trtri(n__, &o__(0, 0), o__.ld())) {
+            if (linalg(linalg_t::lapack).trtri(n__, &o__(0, 0), o__.ld())) {
                 TERMINATE("error in inversion");
             }
             if (is_device_memory(mem__)) {
@@ -202,14 +202,14 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
             for (auto& e : wfs__) {
                 /* wave functions are complex, transformation matrix is complex */
                 if (std::is_same<T, double_complex>::value) {
-                    linalg2(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__,
+                    linalg(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__,
                                        &linalg_const<double_complex>::one(),
                                        reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
                                        e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
                                        e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
-                        linalg2(la__).trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__,
+                        linalg(la__).trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__,
                                            &linalg_const<double_complex>::one(),
                                            reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
                                            e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
@@ -218,14 +218,14 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
                 }
                 /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
                 if (std::is_same<T, double>::value) {
-                    linalg2(la__).trmm(
+                    linalg(la__).trmm(
                         'R', 'U', 'N', 2 * e->pw_coeffs(s).num_rows_loc(), n__, &linalg_const<double>::one(),
                         reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
                         reinterpret_cast<double*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
                         2 * e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
-                        linalg2(la__).trmm(
+                        linalg(la__).trmm(
                             'R', 'U', 'N', 2 * e->mt_coeffs(s).num_rows_loc(), n__, &linalg_const<double>::one(),
                             reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
                             reinterpret_cast<double*>(e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
@@ -248,7 +248,7 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
         if (sddk_debug >= 1) {
             diag = o__.get_diag(n__);
         }
-        if (int info = linalg2(linalg_t::scalapack).potrf(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
+        if (int info = linalg(linalg_t::scalapack).potrf(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
             std::stringstream s;
             s << "error in Cholesky factorization, info = " << info << ", matrix size = " << n__;
             if (sddk_debug >= 1) {
@@ -259,7 +259,7 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
         PROFILE_STOP("sddk::orthogonalize|potrf");
 
         PROFILE_START("sddk::orthogonalize|trtri");
-        if (linalg2(linalg_t::scalapack).trtri(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
+        if (linalg(linalg_t::scalapack).trtri(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
             TERMINATE("error in inversion");
         }
         PROFILE_STOP("sddk::orthogonalize|trtri");

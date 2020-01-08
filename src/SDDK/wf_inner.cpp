@@ -40,7 +40,7 @@ void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functio
         if (bra__.has_mt()) {
             TERMINATE("not implemented");
         }
-        linalg2(la__).gemm(
+        linalg(la__).gemm(
             'C', 'N', m__, n__, 2 * bra__.pw_coeffs(s).num_rows_loc(), &linalg_const<double>::two(),
             reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
             2 * bra__.pw_coeffs(s).prime().ld(),
@@ -49,7 +49,7 @@ void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functio
         /* subtract one extra G=0 contribution */
         if (comm.rank() == 0) {
             linalg_t la = is_host_memory(mem__) ? linalg_t::blas : linalg_t::gpublas;
-            linalg2(la).ger(
+            linalg(la).ger(
                 m__, n__, &linalg_const<double>::m_one(),
                 reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
                 2 * bra__.pw_coeffs(s).prime().ld(),
@@ -69,13 +69,13 @@ void inner_local<double_complex>(memory_t mem__, linalg_t la__, int ispn__, Wave
     auto spins = spin_range(ispn__);
     *beta__    = 0;
     for (auto s : spins) {
-        linalg2(la__).gemm('C', 'N', m__, n__, bra__.pw_coeffs(s).num_rows_loc(), &linalg_const<double_complex>::one(),
+        linalg(la__).gemm('C', 'N', m__, n__, bra__.pw_coeffs(s).num_rows_loc(), &linalg_const<double_complex>::one(),
                            bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__),
                            bra__.pw_coeffs(s).prime().ld(),
                            ket__.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__),
                            ket__.pw_coeffs(s).prime().ld(), beta__, buf__, ld__, sid__);
         if (bra__.has_mt()) {
-            linalg2(la__).gemm(
+            linalg(la__).gemm(
                 'C', 'N', m__, n__, bra__.mt_coeffs(s).num_rows_loc(), &linalg_const<double_complex>::one(),
                 bra__.mt_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__), bra__.mt_coeffs(s).prime().ld(),
                 ket__.mt_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__), ket__.mt_coeffs(s).prime().ld(),
