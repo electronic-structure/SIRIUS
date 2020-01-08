@@ -488,9 +488,9 @@ class Eigensolver_elpa : public Eigensolver
         {
             PROFILE("Eigensolver_elpa|to_std");
             /* Cholesky factorization B = U^{H}*U */
-            linalg2(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
+            linalg(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
             /* inversion of the triangular matrix */
-            linalg2(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
+            linalg(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
             /* U^{-1} is upper triangular matrix */
             for (int i = 0; i < matrix_size__; i++) {
                 for (int j = i + 1; j < matrix_size__; j++) {
@@ -499,12 +499,12 @@ class Eigensolver_elpa : public Eigensolver
             }
             /* transform to standard eigen-problem */
             /* A * U{-1} -> Z */
-            linalg2(linalg_t::scalapack)
+            linalg(linalg_t::scalapack)
                 .gemm('N', 'N', matrix_size__, matrix_size__, matrix_size__, &linalg_const<double>::one(),
                       A__.at(memory_t::host), A__.ld(), B__.at(memory_t::host), B__.ld(), &linalg_const<double>::zero(),
                       Z__.at(memory_t::host), Z__.ld());
             /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
-            linalg2(linalg_t::scalapack)
+            linalg(linalg_t::scalapack)
                 .gemm('C', 'N', matrix_size__, matrix_size__, matrix_size__, &linalg_const<double>::one(),
                       B__.at(memory_t::host), B__.ld(), Z__.at(memory_t::host), Z__.ld(), &linalg_const<double>::zero(),
                       A__.at(memory_t::host), A__.ld());
@@ -519,7 +519,7 @@ class Eigensolver_elpa : public Eigensolver
         {
             PROFILE("Eigensolver_elpa|bt");
             /* back-transform of eigen-vectors */
-            linalg2(linalg_t::scalapack)
+            linalg(linalg_t::scalapack)
                 .gemm('N', 'N', matrix_size__, nev__, matrix_size__, &linalg_const<double>::one(),
                       B__.at(memory_t::host), B__.ld(), Z__.at(memory_t::host), Z__.ld(), &linalg_const<double>::zero(),
                       A__.at(memory_t::host), A__.ld());
@@ -557,9 +557,9 @@ class Eigensolver_elpa : public Eigensolver
         {
             PROFILE("Eigensolver_elpa|to_std");
             /* Cholesky factorization B = U^{H}*U */
-            linalg2(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
+            linalg(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
             /* inversion of the triangular matrix */
-            linalg2(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
+            linalg(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
             /* U^{-1} is upper triangular matrix */
             for (int i = 0; i < matrix_size__; i++) {
                 for (int j = i + 1; j < matrix_size__; j++) {
@@ -568,12 +568,12 @@ class Eigensolver_elpa : public Eigensolver
             }
             /* transform to standard eigen-problem */
             /* A * U{-1} -> Z */
-            linalg2(linalg_t::scalapack)
+            linalg(linalg_t::scalapack)
                 .gemm('N', 'N', matrix_size__, matrix_size__, matrix_size__, &linalg_const<double_complex>::one(),
                       A__.at(memory_t::host), A__.ld(), B__.at(memory_t::host), B__.ld(),
                       &linalg_const<double_complex>::zero(), Z__.at(memory_t::host), Z__.ld());
             /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
-            linalg2(linalg_t::scalapack)
+            linalg(linalg_t::scalapack)
                 .gemm('C', 'N', matrix_size__, matrix_size__, matrix_size__, &linalg_const<double_complex>::one(),
                       B__.at(memory_t::host), B__.ld(), Z__.at(memory_t::host), Z__.ld(),
                       &linalg_const<double_complex>::zero(), A__.at(memory_t::host), A__.ld());
@@ -588,7 +588,7 @@ class Eigensolver_elpa : public Eigensolver
         {
             PROFILE("Eigensolver_elpa|bt");
             /* back-transform of eigen-vectors */
-            linalg2(linalg_t::scalapack)
+            linalg(linalg_t::scalapack)
                 .gemm('N', 'N', matrix_size__, nev__, matrix_size__, &linalg_const<double_complex>::one(),
                       B__.at(memory_t::host), B__.ld(), Z__.at(memory_t::host), Z__.ld(),
                       &linalg_const<double_complex>::zero(), A__.at(memory_t::host), A__.ld());
