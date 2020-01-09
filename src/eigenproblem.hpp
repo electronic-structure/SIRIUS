@@ -446,25 +446,11 @@ class Eigensolver_elpa : public Eigensolver
   private:
     int stage_;
 
-  public:
-    Eigensolver_elpa(int stage__)
-        : stage_(stage__)
-    {
-        if (!(stage_ == 1 || stage_ == 2)) {
-            TERMINATE("wrong type of ELPA solver");
-        }
-    }
-
-    inline bool is_parallel()
-    {
-        return true;
-    }
-
-    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     template <typename T>
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__,
-              dmatrix<T>& Z__)
+    void to_std(dmatrix<T>& A__, dmatrix<T>& B__, dmatrix<T>& Z__) const
     {
+        PROFILE("Eigensolver_elpa|to_std");
+
         if (A__.num_cols_local() != Z__.num_cols_local()) {
             std::stringstream s;
             s << "number of columns in A and Z doesn't match" << std::endl
@@ -486,7 +472,6 @@ class Eigensolver_elpa : public Eigensolver
             TERMINATE("wrong block size");
         }
 
-        PROFILE_START("Eigensolver_elpa|to_std");
         /* Cholesky factorization B = U^{H}*U */
         linalg(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
         /* inversion of the triangular matrix */
@@ -504,91 +489,63 @@ class Eigensolver_elpa : public Eigensolver
         /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
         linalg(linalg_t::scalapack).gemm('C', 'N', matrix_size__, matrix_size__, matrix_size__,
             &linalg_const<T>::one(), B__, 0, 0, Z__, 0, 0,  &linalg_const<T>::zero(), A__, 0, 0);
-        PROFILE_STOP("Eigensolver_elpa|to_std");
+    }
+
+    template <typename T>
+    void bt(dmatrix<T>& A__, dmatrix<T>& B__, dmatrix<T>& Z__) const
+    {
+        PROFILE("Eigensolver_elpa|bt");
+        /* back-transform of eigen-vectors */
+        linalg(linalg_t::scalapack).gemm('N', 'N', matrix_size__, nev__, matrix_size__, &linalg_const<T>::one(),
+                  B__, 0, 0, Z__, 0, 0, &linalg_const<T>::zero(), A__, 0, 0);
+        A__ >> Z__;
+
+    }
+  public:
+    Eigensolver_elpa(int stage__)
+        : stage_(stage__)
+    {
+        if (!(stage_ == 1 || stage_ == 2)) {
+            TERMINATE("wrong type of ELPA solver");
+        }
+    }
+
+    inline bool is_parallel()
+    {
+        return true;
+    }
+
+    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
+              dmatrix<double>& Z__)
+    {
+        to_std(A__, B__, Z__);
 
         /* solve a standard problem */
         int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
         if (result) {
             return result;
         }
-        PROFILE_START("Eigensolver_elpa|bt");
-        /* back-transform of eigen-vectors */
-        linalg(linalg_t::scalapack).gemm('N', 'N', matrix_size__, nev__, matrix_size__, &linalg_const<T>::one(),
-                  B__, 0, 0, Z__, 0, 0, &linalg_const<T>::zero(), A__, 0, 0);
-        A__ >> Z__;
-        PROFILE_STOP("Eigensolver_elpa|bt");
 
+        bt(A__, B__, Z__);
         return 0;
     }
 
-    ///// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    //int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
-    //          double* eval__, dmatrix<double_complex>& Z__)
-    //{
-    //    if (A__.num_cols_local() != Z__.num_cols_local()) {
-    //        std::stringstream s;
-    //        s << "number of columns in A and Z don't match" << std::endl
-    //          << "  number of cols in A (local and global): " << A__.num_cols_local() << " " << A__.num_cols()
-    //          << std::endl
-    //          << "  number of cols in B (local and global): " << B__.num_cols_local() << " " << B__.num_cols()
-    //          << std::endl
-    //          << "  number of cols in Z (local and global): " << Z__.num_cols_local() << " " << Z__.num_cols()
-    //          << std::endl
-    //          << "  number of rows in A (local and global): " << A__.num_rows_local() << " " << A__.num_rows()
-    //          << std::endl
-    //          << "  number of rows in B (local and global): " << B__.num_rows_local() << " " << B__.num_rows()
-    //          << std::endl
-    //          << "  number of rows in Z (local and global): " << Z__.num_rows_local() << " " << Z__.num_rows()
-    //          << std::endl;
-    //        TERMINATE(s);
-    //    }
-    //    if (A__.bs_row() != A__.bs_col()) {
-    //        TERMINATE("wrong block size");
-    //    }
+    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
+              double* eval__, dmatrix<double_complex>& Z__)
+    {
+        to_std(A__, B__, Z__);
 
-    //    {
-    //        PROFILE("Eigensolver_elpa|to_std");
-    //        /* Cholesky factorization B = U^{H}*U */
-    //        linalg(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
-    //        /* inversion of the triangular matrix */
-    //        linalg(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
-    //        /* U^{-1} is upper triangular matrix */
-    //        for (int i = 0; i < matrix_size__; i++) {
-    //            for (int j = i + 1; j < matrix_size__; j++) {
-    //                B__.set(j, i, 0);
-    //            }
-    //        }
-    //        /* transform to standard eigen-problem */
-    //        /* A * U{-1} -> Z */
-    //        linalg(linalg_t::scalapack)
-    //            .gemm('N', 'N', matrix_size__, matrix_size__, matrix_size__, &linalg_const<double_complex>::one(),
-    //                  A__.at(memory_t::host), A__.ld(), B__.at(memory_t::host), B__.ld(),
-    //                  &linalg_const<double_complex>::zero(), Z__.at(memory_t::host), Z__.ld());
-    //        /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
-    //        linalg(linalg_t::scalapack)
-    //            .gemm('C', 'N', matrix_size__, matrix_size__, matrix_size__, &linalg_const<double_complex>::one(),
-    //                  B__.at(memory_t::host), B__.ld(), Z__.at(memory_t::host), Z__.ld(),
-    //                  &linalg_const<double_complex>::zero(), A__.at(memory_t::host), A__.ld());
-    //    }
+        /* solve a standard problem */
+        int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
+        if (result) {
+            return result;
+        }
 
-    //    /* solve a standard problem */
-    //    int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
-    //    if (result) {
-    //        return result;
-    //    }
-
-    //    {
-    //        PROFILE("Eigensolver_elpa|bt");
-    //        /* back-transform of eigen-vectors */
-    //        linalg(linalg_t::scalapack)
-    //            .gemm('N', 'N', matrix_size__, nev__, matrix_size__, &linalg_const<double_complex>::one(),
-    //                  B__.at(memory_t::host), B__.ld(), Z__.at(memory_t::host), Z__.ld(),
-    //                  &linalg_const<double_complex>::zero(), A__.at(memory_t::host), A__.ld());
-    //        A__ >> Z__;
-    //    }
-
-    //    return 0;
-    //}
+        bt(A__, B__, Z__);
+        return 0;
+    }
 
     /// Solve a generalized eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__, dmatrix<double>& Z__)
