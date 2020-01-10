@@ -447,7 +447,7 @@ class Eigensolver_elpa : public Eigensolver
     int stage_;
 
     template <typename T>
-    void to_std(dmatrix<T>& A__, dmatrix<T>& B__, dmatrix<T>& Z__) const
+    void to_std(ftn_int matrix_size__, dmatrix<T>& A__, dmatrix<T>& B__, dmatrix<T>& Z__) const
     {
         PROFILE("Eigensolver_elpa|to_std");
 
@@ -492,7 +492,7 @@ class Eigensolver_elpa : public Eigensolver
     }
 
     template <typename T>
-    void bt(dmatrix<T>& A__, dmatrix<T>& B__, dmatrix<T>& Z__) const
+    void bt(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, dmatrix<T>& Z__) const
     {
         PROFILE("Eigensolver_elpa|bt");
         /* back-transform of eigen-vectors */
@@ -519,7 +519,7 @@ class Eigensolver_elpa : public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
               dmatrix<double>& Z__)
     {
-        to_std(A__, B__, Z__);
+        to_std(matrix_size__, A__, B__, Z__);
 
         /* solve a standard problem */
         int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
@@ -527,7 +527,7 @@ class Eigensolver_elpa : public Eigensolver
             return result;
         }
 
-        bt(A__, B__, Z__);
+        bt(matrix_size__, nev__, A__, B__, Z__);
         return 0;
     }
 
@@ -535,7 +535,7 @@ class Eigensolver_elpa : public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
               double* eval__, dmatrix<double_complex>& Z__)
     {
-        to_std(A__, B__, Z__);
+        to_std(matrix_size__, A__, B__, Z__);
 
         /* solve a standard problem */
         int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
@@ -543,7 +543,7 @@ class Eigensolver_elpa : public Eigensolver
             return result;
         }
 
-        bt(A__, B__, Z__);
+        bt(matrix_size__, nev__, A__, B__, Z__);
         return 0;
     }
 
