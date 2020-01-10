@@ -96,7 +96,7 @@ Band::set_subspace_mtrx(int N__, int n__, Wave_functions& phi__, Wave_functions&
                 }
             }
         } else {
-            linalg2(linalg_t::scalapack).tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
+            linalg(linalg_t::scalapack).tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
         }
     }
 

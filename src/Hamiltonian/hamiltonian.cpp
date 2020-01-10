@@ -95,7 +95,7 @@ Hamiltonian0::apply_hmt_to_apw(Atom const& atom__, int ngv__, sddk::mdarray<doub
                                                                  gaunt_coefs_->gaunt_vector(lm1, lm2));
         }
     }
-    linalg2(linalg_t::blas).gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
+    linalg(linalg_t::blas).gemm('N', 'T', ngv__, type.mt_aw_basis_size(), type.mt_aw_basis_size(),
                                  &linalg_const<double_complex>::one(), alm__.at(memory_t::host), alm__.ld(),
                                  hmt.at(memory_t::host), hmt.ld(), &linalg_const<double_complex>::zero(),
                                  halm__.at(memory_t::host), halm__.ld());
@@ -157,7 +157,7 @@ Hamiltonian0::apply_bmt(sddk::Wave_functions& psi__, std::vector<sddk::Wave_func
             }
         }
         /* compute bwf = B_z*|wf_j> */
-        linalg2(linalg_t::blas).hemm('L', 'U', mt_basis_size, ctx_.num_fv_states(),
+        linalg(linalg_t::blas).hemm('L', 'U', mt_basis_size, ctx_.num_fv_states(),
                                      &linalg_const<double_complex>::one(),
                                      zm.at(memory_t::host), zm.ld(),
                                      psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0),
@@ -181,7 +181,7 @@ Hamiltonian0::apply_bmt(sddk::Wave_functions& psi__, std::vector<sddk::Wave_func
                 }
             }
 
-            linalg2(linalg_t::blas).gemm('N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size,
+            linalg(linalg_t::blas).gemm('N', 'N', mt_basis_size, ctx_.num_fv_states(), mt_basis_size,
                 &linalg_const<double_complex>::one(),
                 zm.at(memory_t::host), zm.ld(),
                 psi__.mt_coeffs(0).prime().at(memory_t::host, offset, 0), psi__.mt_coeffs(0).prime().ld(),

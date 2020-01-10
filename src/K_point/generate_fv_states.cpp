@@ -52,27 +52,43 @@ void K_point::generate_fv_states()
         /* generate matching coefficients for all G-vectors */
         alm_coeffs_loc_->generate<false>(unit_cell_.atom(ia), alm);
 
-        double_complex* tmp_ptr_gpu = (ctx_.processing_unit() == device_t::GPU) ? tmp.at(memory_t::device) : nullptr;
+        double_complex* tmp_ptr_gpu{nullptr};
+
+        auto la = linalg_t::none;
+        auto mt = memory_t::none;
+        switch (ctx_.processing_unit()) {
+            case device_t::CPU: {
+                la = linalg_t::blas;
+                mt = memory_t::host;
+                break;
+            }
+            case device_t::GPU: {
+                alm.copy_to(memory_t::device, 0, mt_aw_size * num_gkvec_loc());
+                la = linalg_t::gpublas;
+                mt = memory_t::device;
+                tmp_ptr_gpu = tmp.at(memory_t::device);
+                break;
+            }
+        }
+
         mdarray<double_complex, 2> tmp1(tmp.at(memory_t::host), tmp_ptr_gpu, mt_aw_size, ctx_.num_fv_states());
 
         /* compute F(lm, i) = A(lm, G)^{T} * evec(G, i) for a single atom */
-        if (ctx_.processing_unit() == device_t::CPU) {
-            linalg2(linalg_t::blas).gemm('T', 'N', mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
-                &linalg_const<double_complex>::one(), alm.at(memory_t::host), alm.ld(),
-                fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::host),
-                fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),
-                &linalg_const<double_complex>::zero(), tmp1.at(memory_t::host), tmp1.ld());
+        linalg(la).gemm('T', 'N', mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
+            &linalg_const<double_complex>::one(), alm.at(mt), alm.ld(),
+            fv_eigen_vectors_slab().pw_coeffs(0).prime().at(mt),
+            fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),
+            &linalg_const<double_complex>::zero(), tmp1.at(mt), tmp1.ld());
+
+        switch (ctx_.processing_unit()) {
+            case device_t::CPU: {
+                break;
+            }
+            case device_t::GPU: {
+                tmp1.copy_to(memory_t::host);
+                break;
+            }
         }
-#ifdef __GPU
-        if (ctx_.processing_unit() == device_t::GPU) {
-            alm.copy_to(memory_t::device, 0, mt_aw_size * num_gkvec_loc());
-            linalg<device_t::GPU>::gemm(
-                1, 0, mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(), alm.at(memory_t::device), alm.ld(),
-                fv_eigen_vectors_slab().pw_coeffs(0).prime().at(memory_t::device),
-                fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(), tmp1.at(memory_t::device), tmp1.ld());
-            tmp1.copy_to(memory_t::host);
-        }
-#endif
 
         comm_.reduce(tmp1.at(memory_t::host), static_cast<int>(tmp1.size()), location.rank);
 

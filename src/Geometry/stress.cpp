@@ -382,7 +382,7 @@ matrix3d<double> Stress::calc_stress_us()
                     PROFILE_STOP("sirius::Stress|us|prepare");
 
                     PROFILE_START("sirius::Stress|us|gemm");
-                    linalg2(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                    linalg(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                         &linalg_const<double>::one(),
                         q_deriv.q_pw().at(memory_t::host), q_deriv.q_pw().ld(),
                         v_tmp.at(memory_t::host), v_tmp.ld(),

@@ -100,6 +100,41 @@ inline linalg_t get_linalg_t(std::string name__)
     return map_to_type.at(name__);
 }
 
+inline std::string to_string(linalg_t la__)
+{
+    switch (la__) {
+        case linalg_t::none: {
+            return "none";
+            break;
+        }
+        case linalg_t::blas: {
+            return "blas";
+            break;
+        }
+        case linalg_t::lapack: {
+            return "lapack";
+            break;
+        }
+        case linalg_t::scalapack: {
+            return "scalapack";
+            break;
+        }
+        case linalg_t::gpublas: {
+            return "gpublas";
+            break;
+        }
+        case linalg_t::cublasxt: {
+            return "cublasxt";
+            break;
+        }
+        case linalg_t::magma: {
+            return "magma";
+            break;
+        }
+    }
+    return ""; // make compiler happy
+}
+
 extern "C" {
 
 ftn_int FORTRAN(ilaenv)(ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n1, ftn_int* n2, ftn_int* n3,

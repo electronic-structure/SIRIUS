@@ -186,7 +186,7 @@ void SHT::backward_transform<double>(int ld, double const *flm, int nr, int lmma
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', num_points_, nr, lmmax, &sddk::linalg_const<double>::one(),
+    sddk::linalg(sddk::linalg_t::blas).gemm('T', 'N', num_points_, nr, lmmax, &sddk::linalg_const<double>::one(),
         &rlm_backward_(0, 0), lmmax_, flm, ld, &sddk::linalg_const<double>::zero(), ftp, num_points_);
 }
 
@@ -196,7 +196,7 @@ void SHT::backward_transform<double_complex>(int ld, double_complex const *flm, 
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', num_points_, nr, lmmax,
+    sddk::linalg(sddk::linalg_t::blas).gemm('T', 'N', num_points_, nr, lmmax,
         &sddk::linalg_const<double_complex>::one(), &ylm_backward_(0, 0), lmmax_, flm, ld,
         &sddk::linalg_const<double_complex>::zero(), ftp, num_points_);
 }
@@ -206,7 +206,7 @@ void SHT::forward_transform<double>(double const *ftp, int nr, int lmmax, int ld
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<double>::one(),
+    sddk::linalg(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<double>::one(),
         &rlm_forward_(0, 0), num_points_, ftp, num_points_, &sddk::linalg_const<double>::zero(), flm, ld);
 }
 
@@ -216,7 +216,7 @@ void SHT::forward_transform<double_complex>(double_complex const *ftp, int nr, i
 {
     assert(lmmax <= lmmax_);
     assert(ld >= lmmax);
-    sddk::linalg2(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<double_complex>::one(),
+    sddk::linalg(sddk::linalg_t::blas).gemm('T', 'N', lmmax, nr, num_points_, &sddk::linalg_const<double_complex>::one(),
         &ylm_forward_(0, 0), num_points_, ftp, num_points_, &sddk::linalg_const<double_complex>::zero(), flm, ld);
 }
 

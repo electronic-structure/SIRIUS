@@ -145,7 +145,7 @@ void Potential::generate_D_operator_matrix()
                     s << "Gvec_block_" << ib << "_veff_a";
                     utils::print_checksum(s.str(), cs);
                 }
-                linalg2(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
+                linalg(la).gemm('N', 'N', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * spl_ngv_loc.local_size(ib),
                                   &linalg_const<double>::one(),
                                   ctx_.augmentation_op(iat)->q_pw().at(mem, 0, 2 * g_begin),
                                   ctx_.augmentation_op(iat)->q_pw().ld(),

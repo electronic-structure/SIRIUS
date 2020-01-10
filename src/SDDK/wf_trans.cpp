@@ -47,7 +47,7 @@ void transform_local<double>(linalg_t la__, int ispn__, double* alpha__, Wave_fu
            wave-fucntions; in this case we set spin index of input wave-function to 0 */
         int in_s = (wf_in__->num_sc() == 1) ? 0 : s;
         /* transform plane-wave part */
-        linalg2(la__).gemm(
+        linalg(la__).gemm(
             'N', 'N', 2 * wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__, alpha__,
             reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__)),
             2 * wf_in__->pw_coeffs(in_s).prime().ld(), mtrx__, ld__, &linalg_const<double>::one(),
@@ -74,14 +74,14 @@ void transform_local<double_complex>(linalg_t la__, int ispn__, double_complex* 
            wave-fucntions; in this case we set spin index of input wave-function to 0 */
         int in_s = (wf_in__->num_sc() == 1) ? 0 : s;
         /* transform plane-wave part */
-        linalg2(la__).gemm('N', 'N', wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__, alpha__,
+        linalg(la__).gemm('N', 'N', wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__, alpha__,
                            wf_in__->pw_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__),
                            wf_in__->pw_coeffs(in_s).prime().ld(), mtrx__, ld__, &linalg_const<double_complex>::one(),
                            wf_out__->pw_coeffs(s).prime().at(wf_out__->preferred_memory_t(), 0, j0__),
                            wf_out__->pw_coeffs(s).prime().ld(), sid__);
         /* transform muffin-tin part */
         if (wf_in__->has_mt()) {
-            linalg2(la__).gemm('N', 'N', wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__, alpha__,
+            linalg(la__).gemm('N', 'N', wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__, alpha__,
                                wf_in__->mt_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__),
                                wf_in__->mt_coeffs(in_s).prime().ld(), mtrx__, ld__,
                                &linalg_const<double_complex>::one(),

@@ -148,20 +148,19 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
         PROFILE_START("sirius::Simulation_context::sum_fg_fl_yg|mul");
         switch (processing_unit()) {
             case device_t::CPU: {
-                linalg2(linalg_t::blas).gemm('N', 'N', lmmax, na, ngv_loc, 
+                linalg(linalg_t::blas).gemm('N', 'N', lmmax, na, ngv_loc,
                     &linalg_const<double_complex>::one(), zm.at(memory_t::host), zm.ld(),
                     phase_factors.at(memory_t::host), phase_factors.ld(),
                     &linalg_const<double_complex>::zero(), tmp.at(memory_t::host), tmp.ld());
                 break;
             }
             case device_t::GPU: {
-#if defined(__GPU)
                 zm.copy_to(memory_t::device);
-                linalg<device_t::GPU>::gemm(0, 0, lmmax, na, ngv_loc, zm.at(memory_t::device), zm.ld(),
-                                            phase_factors.at(memory_t::device), phase_factors.ld(),
-                                            tmp.at(memory_t::device), tmp.ld());
+                linalg(linalg_t::gpublas).gemm('N', 'N', lmmax, na, ngv_loc, 
+                    &linalg_const<double_complex>::one(), zm.at(memory_t::device), zm.ld(),
+                    phase_factors.at(memory_t::device), phase_factors.ld(),
+                    &linalg_const<double_complex>::zero(), tmp.at(memory_t::device), tmp.ld());
                 tmp.copy_to(memory_t::host);
-#endif
                 break;
             }
         }
