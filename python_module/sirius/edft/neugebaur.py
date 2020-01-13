@@ -1,5 +1,4 @@
-"""
-Freysoldt, C., Boeck, S., & Neugebauer, J., Direct minimization technique
+"""Freysoldt, C., Boeck, S., & Neugebauer, J., Direct minimization technique
 for metals in density functional theory.
 http://dx.doi.org/10.1103/PhysRevB.79.241103
 """
