@@ -225,7 +225,7 @@ Hamiltonian_k::get_h_o_diag_lapw() const
             }
         }
 
-        #pragma omp single
+        #pragma omp critical
         for (int igloc = 0; igloc < kp_.num_gkvec_loc(); igloc++) {
             if (what & 1) {
                 h_diag[igloc] += h_diag_omp[igloc];
