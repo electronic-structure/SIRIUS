@@ -104,6 +104,19 @@
         }
     },
     "control" : {
+        "print_checksum" :
+        {
+            "description"   : "print the control checksum",
+            "usage"         : "print_checksum true/false",
+            "default_value" : false
+        },
+        "verification" :
+        {
+            "description"   : "enable internal verifications",
+            "usage"         : "verification 2",
+            "default_value" : 0
+        },
+
         "mpi_grid_dims" :
         {
             "description" :  "Dimensions of the MPI grid",
