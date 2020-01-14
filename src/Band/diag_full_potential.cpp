@@ -396,6 +396,10 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
                                   N, ncomp, eval, evec, ophi, phi, opsi, psi, res, o_diag__, diag1,
                                   itso.converge_by_energy_, itso.residual_tolerance_,
                                   [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
+            kp.message(3, __func__, "number of added residuals: %i\n", n);
+            if (ctx_.control().print_checksum_) {
+                res.print_checksum(ctx_.processing_unit(), "res", 0, n);
+            }
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -445,6 +449,15 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     auto& kp = Hk__.kp();
 
     auto h_o_diag = Hk__.get_h_o_diag_lapw<3>();
+
+    if (ctx_.control().print_checksum_) {
+        auto cs1 = h_o_diag.first.checksum();
+        auto cs2 = h_o_diag.second.checksum();
+        if (kp.comm().rank() == 0) {
+            utils::print_checksum("h_dial_lapw", cs1);
+            utils::print_checksum("o_diag_lapw", cs2);
+         }
+    }
 
     get_singular_components(Hk__, h_o_diag.second);
 
