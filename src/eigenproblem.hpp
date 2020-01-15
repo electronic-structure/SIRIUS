@@ -94,7 +94,7 @@ inline ev_solver_t get_ev_solver_t(std::string name__)
     return map_to_type.at(name__);
 }
 
-const std::strings error_msg_not_implemented = "solver is not implemented";
+const std::string error_msg_not_implemented = "solver is not implemented";
 
 class Eigensolver
 {
