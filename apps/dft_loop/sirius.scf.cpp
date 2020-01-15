@@ -337,11 +337,6 @@ void run_tasks(cmd_args const& args)
 int main(int argn, char** argv)
 {
     std::feclearexcept(FE_ALL_EXCEPT);
-#if defined(_GNU_SOURCE)
-#if !defined(NDEBUG)
-    feenableexcept(FE_DIVBYZERO|FE_INVALID|FE_OVERFLOW|FE_UNDERFLOW);
-#endif
-#endif
     cmd_args args;
     args.register_key("--input=", "{string} input file name");
     args.register_key("--output=", "{string} output file name");
@@ -349,6 +344,7 @@ int main(int argn, char** argv)
     args.register_key("--aiida_output", "write output for AiiDA");
     args.register_key("--test_against=", "{string} json file with reference values");
     args.register_key("--repeat_update=", "{int} number of times to repeat update()");
+    args.register_key("--fpe", "enable check of floating-point exceptions using GNUC library");
     args.register_key("--control.processing_unit=", "");
     args.register_key("--control.verbosity=", "");
     args.register_key("--control.verification=", "");
@@ -368,6 +364,12 @@ int main(int argn, char** argv)
         args.print_help();
         return 0;
     }
+
+#if defined(_GNU_SOURCE)
+    if (args.exist("fpe") {
+        feenableexcept(FE_DIVBYZERO|FE_INVALID|FE_OVERFLOW|FE_UNDERFLOW);
+    }
+#endif
 
     sirius::initialize(1);
 
