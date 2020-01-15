@@ -367,7 +367,7 @@ int main(int argn, char** argv)
 
 #if defined(_GNU_SOURCE)
     if (args.exist("fpe")) {
-        feenableexcept(FE_DIVBYZERO|FE_INVALID|FE_OVERFLOW|FE_UNDERFLOW);
+        feenableexcept(FE_DIVBYZERO|FE_INVALID|FE_OVERFLOW);
     }
 #endif
 
