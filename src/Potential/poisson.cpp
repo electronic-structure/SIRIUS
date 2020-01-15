@@ -103,33 +103,37 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
             }
         }
 
+        double fourpi_omega = fourpi / unit_cell_.omega();
+
         /* add pseudo_density to interstitial charge density so that rho(G) has the correct
          * multipole moments in the muffin-tins */
         #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+        for (int igloc = ctx_.gvec().skip_g0(); igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
 
             double gR = ctx_.gvec().gvec_len(ig) * R;
             double gRn = std::pow(2.0 / gR, pseudo_density_order_ + 1);
 
             double_complex rho_G(0, 0);
-            if (ig) { // G!=0
-                /* loop over atoms of the same type */
-                for (int l = 0, lm = 0; l <= ctx_.lmax_rho(); l++) {
-                    double_complex zt1(0, 0);
-                    for (int m = -l; m <= l; m++, lm++) {
-                        zt1 += gvec_ylm_(lm, igloc) * qapf(lm, igloc);
-                    }
-                    rho_G += (fourpi / unit_cell_.omega()) * std::conj(zil_[l]) * zt1 * gamma_factors_R_(l, iat) *
-                             sbessel_mt_(l + pseudo_density_order_ + 1, igloc, iat) * gRn;
-                } // l
-            } else { // G=0
-                for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
-                    int ia = unit_cell_.atom_type(iat).atom_id(i);
-                    rho_G += (fourpi / unit_cell_.omega()) * y00 * (qmt__(0, ia) - qit__(0, ia));
+            /* loop over atoms of the same type */
+            for (int l = 0, lm = 0; l <= ctx_.lmax_rho(); l++) {
+                double_complex zt1(0, 0);
+                for (int m = -l; m <= l; m++, lm++) {
+                    zt1 += gvec_ylm_(lm, igloc) * qapf(lm, igloc);
                 }
+                rho_G += fourpi_omega * std::conj(zil_[l]) * zt1 * gamma_factors_R_(l, iat) *
+                         sbessel_mt_(l + pseudo_density_order_ + 1, igloc, iat) * gRn;
             }
             rho_pw__[igloc] += rho_G;
+        }
+        /* for G=0 case */
+        if (ctx_.comm().rank() == 0) {
+            double_complex rho_G(0, 0);
+            for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
+                int ia = unit_cell_.atom_type(iat).atom_id(i);
+                rho_G += fourpi_omega * y00 * (qmt__(0, ia) - qit__(0, ia));
+            }
+            rho_pw__[0] += rho_G;
         }
     }
 }

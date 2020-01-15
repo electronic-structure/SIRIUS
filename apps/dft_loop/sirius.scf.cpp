@@ -1,6 +1,8 @@
 #include "utils/profiler.hpp"
 #include <sirius.h>
 #include <utils/json.hpp>
+#include <cfenv>
+#include <fenv.h>
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -334,6 +336,7 @@ void run_tasks(cmd_args const& args)
 
 int main(int argn, char** argv)
 {
+    std::feclearexcept(FE_ALL_EXCEPT);
     cmd_args args;
     args.register_key("--input=", "{string} input file name");
     args.register_key("--output=", "{string} output file name");
@@ -341,6 +344,7 @@ int main(int argn, char** argv)
     args.register_key("--aiida_output", "write output for AiiDA");
     args.register_key("--test_against=", "{string} json file with reference values");
     args.register_key("--repeat_update=", "{int} number of times to repeat update()");
+    args.register_key("--fpe", "enable check of floating-point exceptions using GNUC library");
     args.register_key("--control.processing_unit=", "");
     args.register_key("--control.verbosity=", "");
     args.register_key("--control.verification=", "");
@@ -361,6 +365,12 @@ int main(int argn, char** argv)
         return 0;
     }
 
+#if defined(_GNU_SOURCE)
+    if (args.exist("fpe")) {
+        feenableexcept(FE_DIVBYZERO|FE_INVALID|FE_OVERFLOW);
+    }
+#endif
+
     sirius::initialize(1);
 
     run_tasks(args);
@@ -374,6 +384,18 @@ int main(int argn, char** argv)
         std::cout<< timing_result.print();
         std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
         ofs << timing_result.json();
+    }
+    if (std::fetestexcept(FE_DIVBYZERO)) {
+        std::cout << "FE_DIVBYZERO exception\n";
+    }
+    if (std::fetestexcept(FE_INVALID)) {
+        std::cout << "FE_INVALID exception\n";
+    }
+    if (std::fetestexcept(FE_UNDERFLOW)) {
+        std::cout << "FE_UNDERFLOW exception\n";
+    }
+    if (std::fetestexcept(FE_OVERFLOW)) {
+        std::cout << "FE_OVERFLOW exception\n";
     }
 
     return 0;
