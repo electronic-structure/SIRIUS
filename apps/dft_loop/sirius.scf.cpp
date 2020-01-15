@@ -1,6 +1,8 @@
 #include "utils/profiler.hpp"
 #include <sirius.h>
 #include <utils/json.hpp>
+#include <cfenv>
+#include <fenv.h>
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -334,6 +336,10 @@ void run_tasks(cmd_args const& args)
 
 int main(int argn, char** argv)
 {
+    std::feclearexcept(FE_ALL_EXCEPT);
+#if defined(_GNU_SOURCE)
+    feenableexcept(FE_DIVBYZERO|FE_INVALID|FE_OVERFLOW|FE_UNDERFLOW);
+#endif
     cmd_args args;
     args.register_key("--input=", "{string} input file name");
     args.register_key("--output=", "{string} output file name");
@@ -374,6 +380,18 @@ int main(int argn, char** argv)
         std::cout<< timing_result.print();
         std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
         ofs << timing_result.json();
+    }
+    if (std::fetestexcept(FE_DIVBYZERO)) {
+        std::cout << "FE_DIVBYZERO exception\n";
+    }
+    if (std::fetestexcept(FE_INVALID)) {
+        std::cout << "FE_INVALID exception\n";
+    }
+    if (std::fetestexcept(FE_UNDERFLOW)) {
+        std::cout << "FE_UNDERFLOW exception\n";
+    }
+    if (std::fetestexcept(FE_OVERFLOW)) {
+        std::cout << "FE_OVERFLOW exception\n";
     }
 
     return 0;
