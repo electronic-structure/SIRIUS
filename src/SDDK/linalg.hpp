@@ -47,8 +47,7 @@ inline bool is_set_device_id()
 }
 }
 
-//const std::string linalg_msg_wrong_type = "wrong type of linear algebra library";
-#define linalg_msg_wrong_type "[" + std::string(__func__) + "] " + "wrong type of linear algebra library: " + to_string(la_)
+#define linalg_msg_wrong_type "[" + std::string(__func__) + "] wrong type of linear algebra library: " + to_string(la_)
 
 const std::string linalg_msg_no_scalapack = "not compiled with ScaLAPACK";
 

@@ -94,6 +94,8 @@ inline ev_solver_t get_ev_solver_t(std::string name__)
     return map_to_type.at(name__);
 }
 
+const std::string error_msg_not_implemented = "solver is not implemented";
+
 class Eigensolver
 {
   protected:
@@ -119,20 +121,20 @@ class Eigensolver
     /// Solve a standard eigen-value problem for all eigen-pairs.
     virtual int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        TERMINATE("solver is not implemented");
+        TERMINATE(error_msg_not_implemented);
         return -1;
     }
     /// Solve a standard eigen-value problem for all eigen-pairs.
     virtual int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
     {
-        TERMINATE("solver is not implemented");
+        TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
-        TERMINATE("solver is not implemented");
+        TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
@@ -140,7 +142,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
                       dmatrix<double_complex>& Z__)
     {
-        TERMINATE("solver is not implemented");
+        TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
@@ -148,7 +150,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
                       dmatrix<double>& Z__)
     {
-        TERMINATE("solver is not implemented");
+        TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
@@ -156,7 +158,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__, double* eval__,
                       dmatrix<double_complex>& Z__)
     {
-        TERMINATE("solver is not implemented");
+        TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
@@ -164,7 +166,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
                       dmatrix<double>& Z__)
     {
-        TERMINATE("solver is not implemented");
+        TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
@@ -172,7 +174,7 @@ class Eigensolver
     virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
                       double* eval__, dmatrix<double_complex>& Z__)
     {
-        TERMINATE("solver is not implemented");
+        TERMINATE(error_msg_not_implemented);
         return -1;
     }
 
