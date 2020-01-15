@@ -338,7 +338,9 @@ int main(int argn, char** argv)
 {
     std::feclearexcept(FE_ALL_EXCEPT);
 #if defined(_GNU_SOURCE)
+#if !defined(NDEBUG)
     feenableexcept(FE_DIVBYZERO|FE_INVALID|FE_OVERFLOW|FE_UNDERFLOW);
+#endif
 #endif
     cmd_args args;
     args.register_key("--input=", "{string} input file name");
