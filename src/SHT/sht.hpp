@@ -49,6 +49,9 @@ namespace sirius {
 class SHT // TODO: better name
 {
   private:
+    /// Type of processing unit.
+    sddk::device_t pu_;
+
     /// Maximum \f$ \ell \f$ of spherical harmonics.
     int lmax_;
 
@@ -84,8 +87,9 @@ class SHT // TODO: better name
 
   public:
     /// Default constructor.
-    SHT(int lmax__, int  mesh_type__ = 0)
-        : lmax_(lmax__)
+    SHT(sddk::device_t pu__, int lmax__, int  mesh_type__ = 0)
+        : pu_(pu__)
+        , lmax_(lmax__)
         , mesh_type_(mesh_type__)
     {
         lmmax_ = (lmax_ + 1) * (lmax_ + 1);
@@ -134,35 +138,40 @@ class SHT // TODO: better name
         rlm_forward_ = sddk::mdarray<double, 2>(num_points_, lmmax_);
 
         for (int itp = 0; itp < num_points_; itp++) {
-            if (mesh_type_ == 0) {
-                coord_(0, itp) = x[itp];
-                coord_(1, itp) = y[itp];
-                coord_(2, itp) = z[itp];
+            switch (mesh_type_) {
+                case 0: {
+                    coord_(0, itp) = x[itp];
+                    coord_(1, itp) = y[itp];
+                    coord_(2, itp) = z[itp];
 
-                auto vs     = spherical_coordinates(geometry3d::vector3d<double>(x[itp], y[itp], z[itp]));
-                tp_(0, itp) = vs[1];
-                tp_(1, itp) = vs[2];
-                sf::spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
-                sf::spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
-                for (int lm = 0; lm < lmmax_; lm++) {
-                    ylm_forward_(itp, lm) = std::conj(ylm_backward_(lm, itp)) * w_[itp] * fourpi;
-                    rlm_forward_(itp, lm) = rlm_backward_(lm, itp) * w_[itp] * fourpi;
+                    auto vs = spherical_coordinates(geometry3d::vector3d<double>(x[itp], y[itp], z[itp]));
+
+                    tp_(0, itp) = vs[1];
+                    tp_(1, itp) = vs[2];
+                    sf::spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
+                    sf::spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
+                    for (int lm = 0; lm < lmmax_; lm++) {
+                        ylm_forward_(itp, lm) = std::conj(ylm_backward_(lm, itp)) * w_[itp] * fourpi;
+                        rlm_forward_(itp, lm) = rlm_backward_(lm, itp) * w_[itp] * fourpi;
+                    }
+                    break;
                 }
-            }
-            if (mesh_type_ == 1) {
-                double t = tp_(0, itp);
-                double p = tp_(1, itp);
+                case 1: {
+                    double t = tp_(0, itp);
+                    double p = tp_(1, itp);
 
-                coord_(0, itp) = std::sin(t) * std::cos(p);
-                coord_(1, itp) = std::sin(t) * std::sin(p);
-                coord_(2, itp) = std::cos(t);
+                    coord_(0, itp) = std::sin(t) * std::cos(p);
+                    coord_(1, itp) = std::sin(t) * std::sin(p);
+                    coord_(2, itp) = std::cos(t);
 
-                sf::spherical_harmonics(lmax_, t, p, &ylm_backward_(0, itp));
-                sf::spherical_harmonics(lmax_, t, p, &rlm_backward_(0, itp));
+                    sf::spherical_harmonics(lmax_, t, p, &ylm_backward_(0, itp));
+                    sf::spherical_harmonics(lmax_, t, p, &rlm_backward_(0, itp));
 
-                for (int lm = 0; lm < lmmax_; lm++) {
-                    ylm_forward_(lm, itp) = ylm_backward_(lm, itp);
-                    rlm_forward_(lm, itp) = rlm_backward_(lm, itp);
+                    for (int lm = 0; lm < lmmax_; lm++) {
+                        ylm_forward_(lm, itp) = ylm_backward_(lm, itp);
+                        rlm_forward_(lm, itp) = rlm_backward_(lm, itp);
+                    }
+                    break;
                 }
             }
         }
@@ -172,6 +181,18 @@ class SHT // TODO: better name
             sddk::linalg(sddk::linalg_t::lapack).geinv(lmmax_, rlm_forward_);
         }
 
+        switch (pu_) {
+            case sddk::device_t::GPU: {
+                ylm_forward_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+                rlm_forward_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+                ylm_backward_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+                rlm_backward_.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+                break;
+            }
+            case sddk::device_t::CPU: {
+                break;
+            }
+        }
     }
 
     /// Check the transformations.

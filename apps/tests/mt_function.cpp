@@ -40,7 +40,7 @@ using namespace sirius;
 template<typename T, typename U>
 void test1_angular_radial()
 {
-    SHT sht(7);
+    SHT sht(device_t::CPU, 7);
     int lmmax = 64;
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);
@@ -72,7 +72,7 @@ void test2(int lmax, int nr)
     int lmmax = utils::lmmax(lmax);
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, nr, 0.01, 2.0, 1.0);
 
-    SHT sht(lmax);
+    SHT sht(device_t::CPU, lmax);
     Spheric_function<function_domain_t::spectral, T> f1(lmmax, r);
 
     for (int ir = 0; ir < nr; ir++)
@@ -98,7 +98,7 @@ void test3(int lmax, int nr)
 { 
     int lmmax = utils::lmmax(lmax);
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, nr, 0.01, 2.0, 1.0);
-    SHT sht(lmax);
+    SHT sht(sddk::device_t::CPU, lmax);
 
     Spheric_function<function_domain_t::spectral, double> f1(lmmax, r);
     Spheric_function<function_domain_t::spatial, double_complex> f3(sht.num_points(), r);
@@ -449,7 +449,7 @@ void test10()
         }
     }
 
-    SHT sht(8);
+    SHT sht(device_t::CPU, 8);
 
     Spheric_vector_function<function_domain_t::spatial, double> grad_rho_up_tp(sht.num_points(), rgrid);
     Spheric_vector_function<function_domain_t::spatial, double> grad_rho_dn_tp(sht.num_points(), rgrid);
