@@ -76,7 +76,7 @@ class Spline : public Radial_grid<U>
 {
   private:
     /// Array of spline coefficients.
-    mdarray<T, 2> coeffs_;
+    sddk::mdarray<T, 2> coeffs_;
     /* forbid copy constructor */
     Spline(Spline<T, U> const& src__) = delete;
     /* forbid assigment operator */
@@ -127,7 +127,7 @@ class Spline : public Radial_grid<U>
     void init_grid(Radial_grid<U> const& radial_grid__)
     {
         /* copy the grid points */
-        this->x_ = mdarray<U, 1>(radial_grid__.num_points());
+        this->x_ = sddk::mdarray<U, 1>(radial_grid__.num_points());
         radial_grid__.x() >> this->x_;
         this->init();
     }
@@ -141,14 +141,14 @@ class Spline : public Radial_grid<U>
     Spline(Radial_grid<U> const& radial_grid__)
     {
         init_grid(radial_grid__);
-        coeffs_ = mdarray<T, 2>(this->num_points(), 4);
+        coeffs_ = sddk::mdarray<T, 2>(this->num_points(), 4);
         coeffs_.zero();
     }
     /// Constructor of a spline from a function.
     Spline(Radial_grid<U> const& radial_grid__, std::function<T(U)> f__)
     {
         init_grid(radial_grid__);
-        coeffs_ = mdarray<T, 2>(this->num_points(), 4);
+        coeffs_ = sddk::mdarray<T, 2>(this->num_points(), 4);
         for (int i = 0; i < this->num_points(); i++) {
             coeffs_(i, 0) = f__(this->x(i));
         }
@@ -159,7 +159,7 @@ class Spline : public Radial_grid<U>
     {
         init_grid(radial_grid__);
         assert(static_cast<int>(y__.size()) <= this->num_points());
-        coeffs_ = mdarray<T, 2>(this->num_points(), 4);
+        coeffs_ = sddk::mdarray<T, 2>(this->num_points(), 4);
         coeffs_.zero();
         int i{0};
         for (auto e : y__) {
@@ -279,11 +279,11 @@ class Spline : public Radial_grid<U>
         int ns = this->num_points();
         assert(ns >= 4);
         /* lower diagonal (use coeffs as temporary storage) */
-        T* dl = coeffs_.at(memory_t::host, 0, 1);
+        T* dl = coeffs_.at(sddk::memory_t::host, 0, 1);
         /* main diagonal */
-        T* d = coeffs_.at(memory_t::host, 0, 2);
+        T* d = coeffs_.at(sddk::memory_t::host, 0, 2);
         /* upper diagonal */
-        T* du = coeffs_.at(memory_t::host, 0, 3);
+        T* du = coeffs_.at(sddk::memory_t::host, 0, 3);
         /* m_i = 2 c_i */
         std::vector<T> m(ns);
         /* derivatives of function */
@@ -597,17 +597,17 @@ class Spline : public Radial_grid<U>
         return {coeffs_(i__, 0), coeffs_(i__, 1), coeffs_(i__, 2), coeffs_(i__, 3)};
     }
 
-    inline mdarray<T, 2> const& coeffs() const
+    inline sddk::mdarray<T, 2> const& coeffs() const
     {
         return coeffs_;
     }
 
-    void copy_to_device()
-    {
-        // Radial_grid<U>::copy_to_device();
-        coeffs_.allocate(memory_t::device);
-        coeffs_.template copy<memory_t::host, memory_t::device>();
-    }
+    //void copy_to_device()
+    //{
+    //    // Radial_grid<U>::copy_to_device();
+    //    coeffs_.allocate(sddk::memory_t::device);
+    //    coeffs_.template copy<memory_t::host, memory_t::device>();
+    //}
 
     std::vector<T> values() const
     {
@@ -626,7 +626,7 @@ inline Spline<T, U> operator*(Spline<T, U> const& a__, Spline<T, U> const& b__)
 
     auto& coeffs_a = a__.coeffs();
     auto& coeffs_b = b__.coeffs();
-    auto& coeffs   = const_cast<mdarray<T, 2>&>(s12.coeffs());
+    auto& coeffs   = const_cast<sddk::mdarray<T, 2>&>(s12.coeffs());
 
     for (int ir = 0; ir < a__.num_points(); ir++) {
         coeffs(ir, 0) = coeffs_a(ir, 0) * coeffs_b(ir, 0);
