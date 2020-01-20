@@ -85,7 +85,7 @@ class K_point
     std::unique_ptr<Wave_functions> fv_states_{nullptr};
 
     /// Two-component (spinor) wave functions describing the bands.
-    std::unique_ptr<Wave_functions> spinor_wave_functions_{nullptr};
+    std::shared_ptr<Wave_functions> spinor_wave_functions_{nullptr};
 
     /// Two-component (spinor) hubbard wave functions where the S matrix is applied (if ppus).
     std::unique_ptr<Wave_functions> hubbard_wave_functions_{nullptr}; // TODO: remove in future
