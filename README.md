@@ -49,6 +49,18 @@ respectively:
 - `MKLROOT` (optional)
 - `ELPAROOT` (optional)
 
+CUDA and other optional dependencies can be enabled using the `-DUSE_[PKGNAME]` arguments:
+```console
+$ CXX=mpic++ CC=mpicc FC=mpif90 cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/local
+                                          -DGPU_MODEL=P100 \
+                                          -DUSE_CUDA=On \
+                                          -DUSE_SCALAPACK=On \
+                                          -DUSE_MKL=Off \
+                                          -DUSE_ELPA=Off \
+                                          -DUSE_MAGMA=Off \
+                                          -DUSE_VDWXC=Off
+$ make install
+```
 
 ### Installation on Piz Daint
 We provide an EasyBuild script on Piz Daint. See also the [CSCS EasyBuild Documentation](https://user.cscs.ch/computing/compilation/easybuild/).
@@ -60,14 +72,15 @@ export EB_CUSTOM_REPOSITORY=${HOME}/production/easybuild
 module load daint-gpu
 module load Easybuild-custom/cscs
 # install easybuild package
-eb SIRIUS-6.2.0-CrayIntel-18.08-cuda-9.1.eb -r
+eb SIRIUS-6.4.4-CrayIntel-19.10-cuda-10.1.eb -r
 ```
 
 After the installation has completed, the module can be loaded using:
 ```console
-module load SIRIUS/6.2.0-CrayIntel-18.08-cuda-9.1
+module load SIRIUS/6.4.4-CrayIntel-19.10-cuda-10.1
 ```
-For the SIRIUS enabled version of QE use `eb QuantumESPRESSO-6.4-rc1-sirius-CrayIntel-18.08-cuda-9.1.eb -r`.
+
+For the SIRIUS enabled version of QE use `eb QuantumESPRESSO-6.4-rc3-sirius-CrayIntel-19.10-cuda-10.1.eb -r`.
 
 
 ### Installation via the Spack package manager
@@ -79,12 +92,6 @@ git clone https://github.com/spack/spack.git
 . spack/share/spack/setup-env.sh
 ```
 
-Clone the SIRIUS spack package repository:
-```console
-git clone  https://github.com/simonpintarelli/sirius-spack
-spack repo add sirius-spack
-```
-
 Install SIRIUS (with CUDA support):
 ```console
 spack install sirius +cuda
@@ -93,7 +100,7 @@ spack install sirius +cuda
 
 Load SIRIUS:
 ```console
-spack load sirius +cuda
+spack load -r sirius +cuda
 ```
 
 Consult the [Spack documentation](https://spack.readthedocs.io/en/latest/) for more information on how to use Spack.
