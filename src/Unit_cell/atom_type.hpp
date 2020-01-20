@@ -359,6 +359,21 @@ class Atom_type
         }
     }
 
+    /// Set radial grid of the free atom.
+    /** The grid is extended to effective infinity (usually > 100 a.u.) */
+    inline void set_free_atom_radial_grid(int num_points__, double const* points__)
+    {
+        if (num_points__ <= 0) {
+            TERMINATE("wrong number of radial points");
+        }
+        free_atom_radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
+    }
+
+    inline void set_free_atom_radial_grid(Radial_grid<double>&& rgrid__)
+    {
+        free_atom_radial_grid_ = std::move(rgrid__);
+    }
+
     /// Add augmented-wave descriptor.
     inline void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
     {
@@ -1143,16 +1158,6 @@ class Atom_type
         return parameters_;
     }
 
-    /// Set radial grid of the free atom.
-    /** The grid is extended to effective infinity (usually > 100 a.u.) */
-    inline void set_free_atom_radial_grid(int num_points__, double const* points__)
-    {
-        if (num_points__ <= 0) {
-            TERMINATE("wrong number of radial points");
-        }
-        free_atom_radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
-    }
-
     inline double_complex f_coefficients(int xi1, int xi2, int s1, int s2) const
     {
         return f_coefficients_(xi1, xi2, s1, s2);
@@ -1380,6 +1385,10 @@ inline void Atom_type::init(int offset_lo__)
 
 inline void Atom_type::init_free_atom_density(bool smooth)
 {
+    if (free_atom_density_.size() == 0) {
+        TERMINATE("free atom density is not set");
+    }
+
     free_atom_density_spline_ = Spline<double>(free_atom_radial_grid_, free_atom_density_);
 
     /* smooth free atom density inside the muffin-tin sphere */
