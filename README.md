@@ -12,13 +12,50 @@
 3. [Examples](#examples)
 
 ## Introduction
-SIRIUS is a domain specific library for electronic structure calculations. It implements plane wave pseudopotential (PW-PP) and full potential linearized augmented plane wave (FP-LAPW) methods and designed to work with popular community codes such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++11 with MPI, OpenMP and CUDA programming models.
+SIRIUS is a domain specific library for electronic structure calculations. It implements pseudopotential plane wave (PP-PW)
+and full potential linearized augmented plane wave (FP-LAPW) methods and designed to work with popular community codes
+such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++11 with MPI, OpenMP and CUDA/ROCm programming models.
 
 ## Installation
-SIRIUS depends on the following libraries: MPI, BLAS, LAPACK, GSL, LibXC, HDF5, spglib, FFTW and optionally on ScaLAPACK, ELPA, MAGMA and CUDA.
-We use CMake as a building tool.
+SIRIUS has a hard dependency on the following libraries: MPI, BLAS, LAPACK, GSL, LibXC, HDF5, spglib and SpFFT. They
+must be available on your platfrom. Optionally, there is a dependency on ScaLAPACK, ELPA, MAGMA and CUDA/ROCm.
+We use CMake as a building tool. If the libraries are installed in a standard location, cmake can find them automatically.
+Otherwise you need to provide a specific path of each library to cmake. We use Docker to create a reproducible work
+environment for the examples below.
 
-### Manual installation
+### Minimal installation
+Suppose we have the following minimal Linux installation:
+```dockerfile
+FROM ubuntu:bionic
+
+ENV DEBIAN_FRONTEND noninteractive
+
+ENV FORCE_UNSAFE_CONFIGURE 1
+
+RUN apt-get update
+
+RUN apt-get install -y apt-utils
+
+# install basic tools
+RUN apt-get install -y gcc g++ gfortran git make \
+    vim wget pkg-config valgrind tcl unzip python3-pip \
+    curl environment-modules iproute2 net-tools mpich \
+    apt-transport-https ca-certificates gnupg software-properties-common \
+    liblapack-dev
+
+# install latest CMake
+RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
+RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
+RUN apt-get update
+RUN apt-get install -y cmake
+RUN apt-get install -y kitware-archive-keyring
+RUN apt-key --keyring /etc/apt/trusted.gpg del C1F34CDD40CD72DA
+
+WORKDIR /root
+ENTRYPOINT ["bash", "-l"]
+```
+
+
 The minimal dependencies dependencies (GSL, LibXC, HDF5, spglib, FFTW) can be downloaded and configured automatically by the helper Python script ``prerequisite.py``, other libraries must be provided by a system or a developer. To compile and install SIRIUS (assuming that all the libraries are installed in the standard paths) run a cmake command from an empty directory followed by a make command:
 ```console
 $ mkdir _build
