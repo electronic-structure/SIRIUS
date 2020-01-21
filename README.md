@@ -24,7 +24,7 @@ Otherwise you need to provide a specific path of each library to cmake. We use D
 environment for the examples below.
 
 ### Minimal installation
-Suppose we have the following minimal Linux installation:
+Suppose we have the following minimal Linux installation (Dockerfile):
 ```dockerfile
 FROM ubuntu:bionic
 
@@ -37,11 +37,9 @@ RUN apt-get update
 RUN apt-get install -y apt-utils
 
 # install basic tools
-RUN apt-get install -y gcc g++ gfortran git make \
-    vim wget pkg-config valgrind tcl unzip python3-pip \
-    curl environment-modules iproute2 net-tools mpich \
-    apt-transport-https ca-certificates gnupg software-properties-common \
-    liblapack-dev
+RUN apt-get install -y gcc g++ gfortran mpich git make \
+    vim wget pkg-config python3 curl liblapack-dev \
+    apt-transport-https ca-certificates gnupg software-properties-common
 
 # install latest CMake
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
@@ -53,6 +51,16 @@ RUN apt-key --keyring /etc/apt/trusted.gpg del C1F34CDD40CD72DA
 
 WORKDIR /root
 ENTRYPOINT ["bash", "-l"]
+```
+We can then execute the following set of commands inside docker:
+```console
+$ git clone https://github.com/electronic-structure/SIRIUS.git
+$ cd SIRIUS
+$ git checkout develop
+$ CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp FFTW_ROOT=$HOME/local python3 prerequisite.py $HOME/local fftw spfft gsl hdf5 xc spg
+$ mkdir build
+$ cd build
+$ CXX=mpicxx CC=mpicc FC=mpif90 GSL_ROOT_DIR=$HOME/local LIBXCROOT=$HOME/local LIBSPGROOT=$HOME/local HDF5_ROOT=$HOME/local cmake ../ -DSpFFT_DIR=$HOME/local/lib/cmake/SpFFT
 ```
 
 
