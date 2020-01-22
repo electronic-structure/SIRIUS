@@ -7,9 +7,12 @@
 [![Licence](https://img.shields.io/badge/license-BSD-blue.svg)](https://raw.githubusercontent.com/electronic-structure/SIRIUS/master/LICENSE)
 
 ## Table of contents
-1. [Introduction](#introduction)
-2. [Installation](#installation)
-3. [Examples](#examples)
+* [Introduction](#introduction)
+* [Installation](#installation)
+  * [Minimal installation](#minimal-installation)
+  * [Installation with Spack software stack](#installation-with-Spack-software-stack)
+
+* [Examples](#examples)
 
 ## Introduction
 SIRIUS is a domain specific library for electronic structure calculations. It implements pseudopotential plane wave (PP-PW)
@@ -76,8 +79,8 @@ the corresponding libraries:
 - `MKLROOT` (optional)
 - `ELPAROOT` (optional)
 
-### Installation with SPack software stack
-Spack is a great tool to manage complex software installations. In the Dockerfile example below most of the software
+### Installation with Spack software stack
+Spack is a great tool to manage complex software installations. In the following Dockerfile example most of the software
 is installed using Spack:
 ```dockerfile
 FROM ubuntu:bionic
@@ -133,8 +136,6 @@ RUN echo "spack load --dependencies gsl %gcc@9.2.0" >> /etc/profile.d/spack.sh
 RUN echo "spack load --dependencies spfft %gcc@9.2.0" >> /etc/profile.d/spack.sh
 
 WORKDIR /root
-
-#COPY build_qe_sirius.x /root
 
 ENTRYPOINT ["bash", "-l"]
 
