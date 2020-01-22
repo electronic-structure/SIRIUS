@@ -24,7 +24,9 @@ and full potential linearized augmented plane wave (FP-LAPW) methods and designe
 such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++11 with MPI, OpenMP and CUDA/ROCm programming models.
 
 ## Installation
-SIRIUS has a hard dependency on the following libraries: MPI, BLAS, LAPACK, GSL, LibXC, HDF5, spglib and SpFFT. They
+SIRIUS has a hard dependency on the following libraries: MPI, BLAS, LAPACK, [GSL](https://www.gnu.org/software/gsl/),
+[LibXC](https://www.tddft.org/programs/libxc/), [HDF5](https://www.hdfgroup.org/solutions/hdf5/),
+[spglib](https://atztogo.github.io/spglib/) and [SpFFT](https://github.com/eth-cscs/SpFFT). They
 must be available on your platfrom. Optionally, there is a dependency on ScaLAPACK, ELPA, MAGMA and CUDA/ROCm.
 We use CMake as a building tool. If the libraries are installed in a standard location, cmake can find them automatically.
 Otherwise you need to provide a specific path of each library to cmake. We use Docker to create a reproducible work
@@ -142,15 +144,15 @@ RUN echo "spack load --dependencies spfft %gcc@9.2.0" >> /etc/profile.d/spack.sh
 WORKDIR /root
 
 ENTRYPOINT ["bash", "-l"]
-
 ```
+
 SIRIUS can be build inside this docker container using the following command:
 ```console
 $ git clone --recursive https://github.com/electronic-structure/SIRIUS.git
-mkdir SIRIUS/build
-cd SIRIUS/build
-cmake .. -DUSE_SCALAPACK=1 -DBUILD_TESTS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/local
-make -j install
+$ mkdir SIRIUS/build
+$ cd SIRIUS/build
+$ cmake .. -DUSE_SCALAPACK=1 -DBUILD_TESTS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/local
+$ make -j install
 ```
 
 ### Adding GPU support
