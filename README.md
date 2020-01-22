@@ -24,7 +24,7 @@ Otherwise you need to provide a specific path of each library to cmake. We use D
 environment for the examples below.
 
 ### Minimal installation
-Suppose we have the following minimal Linux installation (Dockerfile):
+Suppose we have a minimal Linux installation described the following Dockerfile:
 ```dockerfile
 FROM ubuntu:bionic
 
@@ -41,7 +41,7 @@ RUN apt-get install -y gcc g++ gfortran mpich git make \
     vim wget pkg-config python3 curl liblapack-dev \
     apt-transport-https ca-certificates gnupg software-properties-common
 
-# install latest CMake
+# install latest CMake (needed by SIRIUS and SpFFT)
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
 RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
 RUN apt-get update
@@ -54,38 +54,20 @@ ENTRYPOINT ["bash", "-l"]
 ```
 We can then execute the following set of commands inside docker:
 ```console
-$ git clone https://github.com/electronic-structure/SIRIUS.git
+$ git clone --recursive -b develop https://github.com/electronic-structure/SIRIUS.git
 $ cd SIRIUS
-$ git checkout develop
 $ CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp FFTW_ROOT=$HOME/local python3 prerequisite.py $HOME/local fftw spfft gsl hdf5 xc spg
 $ mkdir build
 $ cd build
-$ CXX=mpicxx CC=mpicc FC=mpif90 GSL_ROOT_DIR=$HOME/local LIBXCROOT=$HOME/local LIBSPGROOT=$HOME/local HDF5_ROOT=$HOME/local cmake ../ -DSpFFT_DIR=$HOME/local/lib/cmake/SpFFT
+$ CXX=mpicxx CC=mpicc FC=mpif90 GSL_ROOT_DIR=$HOME/local LIBXCROOT=$HOME/local LIBSPGROOT=$HOME/local HDF5_ROOT=$HOME/local cmake ../ -DSpFFT_DIR=$HOME/local/lib/cmake/SpFFT -DCMAKE_INSTALL_PREFIX=$HOME/local
+$ make -j install
 ```
+This will clone SIRIUS repository, install the compulsory dependencies (LibXC, GSL, spglib, SpFFT, HDF5) with the
+provided Python script ``prerequisite.py`` and then configure, make and install SIRIUS libray itself in a most simple
+configuration with CPU-only mode without parallel linear algebra routines.
 
-
-The minimal dependencies dependencies (GSL, LibXC, HDF5, spglib, FFTW) can be downloaded and configured automatically by the helper Python script ``prerequisite.py``, other libraries must be provided by a system or a developer. To compile and install SIRIUS (assuming that all the libraries are installed in the standard paths) run a cmake command from an empty directory followed by a make command:
-```console
-$ mkdir _build
-$ cd _build
-$ CXX=mpic++ CC=mpicc FC=mpif90 cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/local
-$ make
-$ make install
-```
-This will compile SIRIUS in a most simple way: CPU-only mode without parallel linear algebra routines.
-
-In order to download and build the compulsory dependencies (xc, gsl, spg, fftw)
-the script `prerequisite.py` can be used:
-
-```console
-$ mkdir -p libs
-$ python prerequisite.py ${PWD}/libs xc spg gsl fftw hdf5
-```
-
-Unless the dependencies are installed system wide, set the following
-environment variables to the installation path of FFTW, SPGLIB, and LibXC
-respectively:
-- `FFTWROOT`
+Unless the dependencies are installed system wide, set the following environment variables to the installation path of
+the corresponding libraries:
 - `LIBSPGROOT`
 - `LIBXCROOT`
 - `HDF5_ROOT`
@@ -93,6 +75,73 @@ respectively:
 - `MAGMAROOT` (optional)
 - `MKLROOT` (optional)
 - `ELPAROOT` (optional)
+
+### Installation with SPack software stack
+Spack is a great tool to manage complex software installations. In the Dockerfile example below most of the software
+is installed using Spack:
+```dockerfile
+FROM ubuntu:bionic
+
+ENV DEBIAN_FRONTEND noninteractive
+
+ENV FORCE_UNSAFE_CONFIGURE 1
+
+RUN apt-get update
+
+RUN apt-get install -y apt-utils
+
+# install basic tools
+RUN apt-get install -y gcc g++ gfortran git make cmake \
+  vim wget pkg-config python3-pip curl environment-modules tcl
+
+# get latest version of spack
+RUN cd && git clone https://github.com/spack/spack.git
+
+ENV SPACK_ROOT /root/spack
+
+# add environment variables
+RUN echo "source /root/spack/share/spack/setup-env.sh" >> /etc/profile.d/spack.sh
+
+# build GCC
+RUN /bin/bash -l -c "spack install gcc@9.2.0"
+
+# add GCC to environment
+RUN echo "spack load --dependencies gcc@9.2.0" >> /etc/profile.d/spack.sh
+
+# update list of spack compilers
+RUN /bin/bash -l -c "spack compiler find"
+
+# build CMake
+RUN /bin/bash -l -c "spack install --no-checksum cmake@3.16.2 %gcc@9.2.0"
+
+# build other packages
+RUN /bin/bash -l -c "spack install --no-checksum py-mpi4py %gcc@9.2.0"
+RUN /bin/bash -l -c "spack install --no-checksum netlib-scalapack ^openblas threads=openmp ^cmake@3.16.2 %gcc@9.2.0"
+RUN /bin/bash -l -c "spack install --no-checksum hdf5+hl %gcc@9.2.0"
+RUN /bin/bash -l -c "spack install --no-checksum libxc %gcc@9.2.0"
+RUN /bin/bash -l -c "spack install --no-checksum spglib %gcc@9.2.0"
+RUN /bin/bash -l -c "spack install --no-checksum gsl %gcc@9.2.0"
+RUN /bin/bash -l -c "spack install --no-checksum spfft %gcc@9.2.0"
+
+RUN echo "spack load --dependencies cmake@3.16.2 %gcc@9.2.0" >> /etc/profile.d/spack.sh
+RUN echo "spack load --dependencies netlib-scalapack %gcc@9.2.0" >> /etc/profile.d/spack.sh
+RUN echo "spack load --dependencies libxc %gcc@9.2.0" >> /etc/profile.d/spack.sh
+RUN echo "spack load --dependencies spglib %gcc@9.2.0" >> /etc/profile.d/spack.sh
+RUN echo "spack load --dependencies py-mpi4py %gcc@9.2.0" >> /etc/profile.d/spack.sh
+RUN echo "spack load --dependencies hdf5 %gcc@9.2.0" >> /etc/profile.d/spack.sh
+RUN echo "spack load --dependencies gsl %gcc@9.2.0" >> /etc/profile.d/spack.sh
+RUN echo "spack load --dependencies spfft %gcc@9.2.0" >> /etc/profile.d/spack.sh
+
+WORKDIR /root
+
+#COPY build_qe_sirius.x /root
+
+ENTRYPOINT ["bash", "-l"]
+
+```
+
+
+
 
 CUDA and other optional dependencies can be enabled using the `-DUSE_[PKGNAME]` arguments:
 ```console
