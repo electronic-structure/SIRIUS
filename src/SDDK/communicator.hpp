@@ -34,6 +34,7 @@
 #include <memory>
 #include <algorithm>
 #include <cstring>
+#include <cstdio>
 #include <map>
 
 namespace sddk {
@@ -41,7 +42,7 @@ namespace sddk {
 #define CALL_MPI(func__, args__)                                                     \
 {                                                                                    \
     if (func__ args__ != MPI_SUCCESS) {                                              \
-        printf("error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__);  \
+        std::printf("error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__);  \
         MPI_Abort(MPI_COMM_WORLD, -1);                                               \
     }                                                                                \
 }
@@ -277,7 +278,7 @@ class Communicator
     }
 
     /// Constructor for existing communicator.
-    Communicator(MPI_Comm mpi_comm__)
+    explicit Communicator(MPI_Comm mpi_comm__)
         : mpi_comm_raw_(mpi_comm__)
     {
     }
@@ -307,7 +308,7 @@ class Communicator
 
         MPI_Query_thread(&provided);
         if (provided < required__) {
-            printf("Warning! Required level of thread support is not provided.\nprovided: %d \nrequired: %d\n", provided, required__);
+            std::printf("Warning! Required level of thread support is not provided.\nprovided: %d \nrequired: %d\n", provided, required__);
         }
     }
 
@@ -786,7 +787,7 @@ class Communicator
     //==    }
     //==    if (n1 != local_sizes_in[rank()] || n2 != local_sizes_out[rank()])
     //==    {
-    //==        printf("wrong sizes");
+    //==        std::printf("wrong sizes");
     //==        MPI_Abort(MPI_COMM_WORLD, -1);
     //==    }
 

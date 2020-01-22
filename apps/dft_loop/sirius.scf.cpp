@@ -1,5 +1,8 @@
+#include "utils/profiler.hpp"
 #include <sirius.h>
 #include <utils/json.hpp>
+#include <cfenv>
+#include <fenv.h>
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -15,7 +18,7 @@ enum class task_t : int
 
 void json_output_common(json& dict__)
 {
-    dict__["git_hash"] = git_hash;
+    dict__["git_hash"] = sirius::git_hash();
     //dict__["build_date"] = build_date;
     dict__["comm_world_size"] = Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
@@ -32,15 +35,6 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
         TERMINATE("this is not a Gamma-point calculation")
     }
 
-    auto mpi_grid_dims = args__.value("mpi_grid", ctx.mpi_grid_dims());
-    ctx.set_mpi_grid_dims(mpi_grid_dims);
-
-    auto std_evp_solver_name = args__.value("std_evp_solver_name", ctx.control().std_evp_solver_name_);
-    ctx.std_evp_solver_name(std_evp_solver_name);
-
-    auto gen_evp_solver_name = args__.value("gen_evp_solver_name", ctx.control().gen_evp_solver_name_);
-    ctx.gen_evp_solver_name(gen_evp_solver_name);
-
     ctx.import(args__);
 
     return ctx_ptr;
@@ -52,9 +46,7 @@ double ground_state(Simulation_context& ctx,
                     cmd_args const&     args,
                     int                 write_output)
 {
-    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx.print_memory_usage(__FILE__, __LINE__);
 
     auto& inp = ctx.parameters_input();
 
@@ -65,9 +57,7 @@ double ground_state(Simulation_context& ctx,
     K_point_set kset(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
     DFT_ground_state dft(kset);
 
-    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    ctx.print_memory_usage(__FILE__, __LINE__);
 
     auto& potential = dft.potential();
     auto& density = dft.density();
@@ -85,7 +75,7 @@ double ground_state(Simulation_context& ctx,
     double initial_tol = ctx.iterative_solver_tolerance();
 
     /* launch the calculation */
-    auto result = dft.find(inp.potential_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
+    auto result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
 
     if (ctx.control().verification_ >= 1) {
         dft.check_scf_density();
@@ -95,11 +85,11 @@ double ground_state(Simulation_context& ctx,
     if (repeat_update) {
         for (int i = 0; i < repeat_update; i++) {
             dft.update();
-            result = dft.find(inp.potential_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
+            result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
         }
     }
 
-    dft.print_magnetic_moment();
+    //dft.print_magnetic_moment();
 
     if (ctx.control().print_stress_ && !ctx.full_potential()) {
         Stress& s       = dft.stress();
@@ -131,8 +121,8 @@ double ground_state(Simulation_context& ctx,
         double e1 = result["energy"]["total"];
         double e2 = dict_ref["ground_state"]["energy"]["total"];
 
-        if (std::abs(e1 - e2) > 1e-6) {
-            printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
+        if (std::abs(e1 - e2) > 1e-5) {
+            std::printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
             ctx.comm().abort(1);
         }
         if (result.count("stress") && dict_ref["ground_state"].count("stress")) {
@@ -144,8 +134,8 @@ double ground_state(Simulation_context& ctx,
                     diff += std::abs(s1[i][j] - s2[i][j]);
                 }
             }
-            if (diff > 1e-6) {
-                printf("total stress is different!");
+            if (diff > 1e-5) {
+                std::printf("total stress is different!");
                 std::cout << "  reference: " << dict_ref["ground_state"]["stress"] << "\n";
                 std::cout << "  computed: " << result["stress"] << "\n";
                 ctx.comm().abort(2);
@@ -161,7 +151,7 @@ double ground_state(Simulation_context& ctx,
                 }
             }
             if (diff > 1e-6) {
-                printf("total force is different!");
+                std::printf("total force is different!");
                 std::cout << "  reference: " << dict_ref["ground_state"]["forces"] << "\n";
                 std::cout << "  computed: " << result["forces"] << "\n";
                 ctx.comm().abort(3);
@@ -223,7 +213,7 @@ void run_tasks(cmd_args const& args)
     std::string fname = args.value<std::string>("input", "sirius.json");
     if (!utils::file_exists(fname)) {
         if (Communicator::world().rank() == 0) {
-            printf("input file does not exist\n");
+            std::printf("input file does not exist\n");
         }
         return;
     }
@@ -240,15 +230,13 @@ void run_tasks(cmd_args const& args)
     if (task == task_t::k_point_path) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->iterative_solver_tolerance(1e-12);
-        ctx->set_gamma_point(false);
+        ctx->gamma_point(false);
         ctx->initialize();
         //if (ctx->full_potential()) {
         //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
         //}
 
         Potential potential(*ctx);
-
-        Hamiltonian H(*ctx, potential);
 
         Density density(*ctx);
 
@@ -296,15 +284,16 @@ void run_tasks(cmd_args const& args)
         density.load();
         potential.generate(density);
         Band band(*ctx);
+        Hamiltonian0 H0(potential);
         if (!ctx->full_potential()) {
-            band.initialize_subspace(ks, H);
+            band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
                 TERMINATE("fix me");
-                H.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
-                H.U().calculate_hubbard_potential_and_energy();
+                potential.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
+                potential.U().calculate_hubbard_potential_and_energy();
             }
         }
-        band.solve(ks, H, true);
+        band.solve(ks, H0, true);
 
         ks.sync_band_energies();
         if (Communicator::world().rank() == 0) {
@@ -347,17 +336,15 @@ void run_tasks(cmd_args const& args)
 
 int main(int argn, char** argv)
 {
+    std::feclearexcept(FE_ALL_EXCEPT);
     cmd_args args;
     args.register_key("--input=", "{string} input file name");
     args.register_key("--output=", "{string} output file name");
     args.register_key("--task=", "{int} task id");
-    args.register_key("--mpi_grid=", "{vector int} MPI grid dimensions");
     args.register_key("--aiida_output", "write output for AiiDA");
     args.register_key("--test_against=", "{string} json file with reference values");
-    args.register_key("--std_evp_solver_name=", "{string} standard eigen-value solver");
-    args.register_key("--gen_evp_solver_name=", "{string} generalized eigen-value solver");
-    args.register_key("--processing_unit=", "{string} type of the processing unit");
     args.register_key("--repeat_update=", "{int} number of times to repeat update()");
+    args.register_key("--fpe", "enable check of floating-point exceptions using GNUC library");
     args.register_key("--control.processing_unit=", "");
     args.register_key("--control.verbosity=", "");
     args.register_key("--control.verification=", "");
@@ -373,10 +360,16 @@ int main(int argn, char** argv)
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
+        std::printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         return 0;
     }
+
+#if defined(_GNU_SOURCE)
+    if (args.exist("fpe")) {
+        feenableexcept(FE_DIVBYZERO|FE_INVALID|FE_OVERFLOW);
+    }
+#endif
 
     sirius::initialize(1);
 
@@ -387,12 +380,22 @@ int main(int argn, char** argv)
     sirius::finalize(1);
 
     if (my_rank == 0)  {
-        utils::timer::print();
-        json dict;
-        dict["flat"] = utils::timer::serialize();
-        dict["tree"] = utils::timer::serialize_tree();
+        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        std::cout<< timing_result.print();
         std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
-        ofs << dict.dump(4);
+        ofs << timing_result.json();
+    }
+    if (std::fetestexcept(FE_DIVBYZERO)) {
+        std::cout << "FE_DIVBYZERO exception\n";
+    }
+    if (std::fetestexcept(FE_INVALID)) {
+        std::cout << "FE_INVALID exception\n";
+    }
+    if (std::fetestexcept(FE_UNDERFLOW)) {
+        std::cout << "FE_UNDERFLOW exception\n";
+    }
+    if (std::fetestexcept(FE_OVERFLOW)) {
+        std::cout << "FE_OVERFLOW exception\n";
     }
 
     return 0;

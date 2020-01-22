@@ -24,6 +24,7 @@
  */
 
 #include "wf_trans.hpp"
+#include "utils/profiler.hpp"
 
 namespace sddk {
 
@@ -36,9 +37,9 @@ template <>
 void transform_local<double>(linalg_t la__, int ispn__, double* alpha__, Wave_functions* wf_in__, int i0__, int m__,
                              double* mtrx__, int ld__, Wave_functions* wf_out__, int j0__, int n__, stream_id sid__)
 {
-    utils::timer t1("sddk::transform|local");
+    PROFILE("sddk::transform|local");
 
-    auto spins = get_spins(ispn__);
+    auto spins = spin_range(ispn__);
 
     for (int s : spins) {
         /* input wave-functions may be scalar (this is the case of transformation of first-variational states
@@ -46,7 +47,7 @@ void transform_local<double>(linalg_t la__, int ispn__, double* alpha__, Wave_fu
            wave-fucntions; in this case we set spin index of input wave-function to 0 */
         int in_s = (wf_in__->num_sc() == 1) ? 0 : s;
         /* transform plane-wave part */
-        linalg2(la__).gemm(
+        linalg(la__).gemm(
             'N', 'N', 2 * wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__, alpha__,
             reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__)),
             2 * wf_in__->pw_coeffs(in_s).prime().ld(), mtrx__, ld__, &linalg_const<double>::one(),
@@ -63,9 +64,9 @@ void transform_local<double_complex>(linalg_t la__, int ispn__, double_complex* 
                                      int i0__, int m__, double_complex* mtrx__, int ld__, Wave_functions* wf_out__,
                                      int j0__, int n__, stream_id sid__)
 {
-    utils::timer t1("sddk::transform|local");
+    PROFILE("sddk::transform|local");
 
-    auto spins = get_spins(ispn__);
+    auto spins = spin_range(ispn__);
 
     for (int s : spins) {
         /* input wave-functions may be scalar (this is the case of transformation of first-variational states
@@ -73,14 +74,14 @@ void transform_local<double_complex>(linalg_t la__, int ispn__, double_complex* 
            wave-fucntions; in this case we set spin index of input wave-function to 0 */
         int in_s = (wf_in__->num_sc() == 1) ? 0 : s;
         /* transform plane-wave part */
-        linalg2(la__).gemm('N', 'N', wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__, alpha__,
+        linalg(la__).gemm('N', 'N', wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__, alpha__,
                            wf_in__->pw_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__),
                            wf_in__->pw_coeffs(in_s).prime().ld(), mtrx__, ld__, &linalg_const<double_complex>::one(),
                            wf_out__->pw_coeffs(s).prime().at(wf_out__->preferred_memory_t(), 0, j0__),
                            wf_out__->pw_coeffs(s).prime().ld(), sid__);
         /* transform muffin-tin part */
         if (wf_in__->has_mt()) {
-            linalg2(la__).gemm('N', 'N', wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__, alpha__,
+            linalg(la__).gemm('N', 'N', wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__, alpha__,
                                wf_in__->mt_coeffs(in_s).prime().at(wf_in__->preferred_memory_t(), 0, i0__),
                                wf_in__->mt_coeffs(in_s).prime().ld(), mtrx__, ld__,
                                &linalg_const<double_complex>::one(),
@@ -120,7 +121,7 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
 
     T alpha = alpha__;
 
-    utils::timer t1("sddk::transform|init");
+    PROFILE_START("sddk::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (beta__ == 0) {
@@ -129,7 +130,7 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
             wf_out__[iv]->scale(wf_out__[iv]->preferred_memory_t(), ispn__, j0__, n__, beta__);
         }
     }
-    t1.stop();
+    PROFILE_STOP("sddk::transform|init");
 
     if (sddk_pp) {
         comm.barrier();
@@ -157,7 +158,7 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
         if (sddk_pp) {
             time += omp_get_wtime();
             int k = wf_in__[0]->gkvec().num_gvec() + wf_in__[0]->num_mt_coeffs();
-            printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
+            std::printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
                    ngop * m__ * n__ * k * nwf / time, k, n__, m__, nwf, time);
         }
         return;
@@ -167,17 +168,22 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
 
     int num_streams = std::min(4, omp_get_max_threads());
 
-    mdarray<T, 1> buf;
-    mdarray<T, 3> submatrix;
-
+    static T* ptr_h{nullptr};
+    static T* ptr_d{nullptr};
+    static mdarray<T, 1> buf(BS * BS, memory_t::host, "transform::buf");
     if (is_device_memory(mem__)) {
-        buf       = mdarray<T, 1>(BS * BS, memory_t::host_pinned, "transform::buf");
-        submatrix = mdarray<T, 3>(BS, BS, num_streams, memory_t::host_pinned, "transform::submatrix");
-        submatrix.allocate(memory_t::device);
+        if (!ptr_h) {
+            ptr_h = sddk::allocate<T>(BS * BS * num_streams, memory_t::host_pinned);
+        }
+        if (!ptr_d) {
+            ptr_d = sddk::allocate<T>(BS * BS * num_streams, memory_t::device);
+        }
     } else {
-        buf       = mdarray<T, 1>(BS * BS, memory_t::host, "transform::buf");
-        submatrix = mdarray<T, 3>(BS, BS, num_streams, memory_t::host, "transform::submatrix");
+        if (!ptr_h) {
+            ptr_h = sddk::allocate<T>(BS * BS * num_streams, memory_t::host);
+        }
     }
+    mdarray<T, 3> submatrix(ptr_h, ptr_d, BS, BS, num_streams, "transform::submatrix");
 
     /* cache cartesian ranks */
     mdarray<int, 2> cart_rank(mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().num_ranks_col());
@@ -245,10 +251,13 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
                                 local_size_row * sizeof(T));
                 }
             }
-            utils::timer t0("sddk::transform|mpi");
+            auto t = std::chrono::high_resolution_clock::now();
+            PROFILE_START("sddk::transform|mpi");
             /* collect submatrix */
             comm.allgather(&buf[0], sd.counts.data(), sd.offsets.data());
-            time_mpi += t0.stop();
+            PROFILE_STOP("sddk::transform|mpi");
+            auto dt = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - t).count();
+            time_mpi += dt;
 
             if (is_device_memory(mem__)) {
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
@@ -298,7 +307,7 @@ void transform(memory_t mem__, linalg_t la__, int ispn__, double alpha__, std::v
         time += omp_get_wtime();
         int k = wf_in__[0]->gkvec().num_gvec() + wf_in__[0]->num_mt_coeffs();
         if (comm.rank() == 0) {
-            printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec), time_mpi=%f "
+            std::printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec), time_mpi=%f "
                    "(sec)]\n",
                    ngop * m__ * n__ * k * nwf / time / comm.size(), k, n__, m__, nwf, time, time_mpi);
         }

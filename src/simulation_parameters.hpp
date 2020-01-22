@@ -19,7 +19,7 @@
 
 /** \file simulation_parameters.hpp
  *
- *  \brief Contains definition and implementation of sirius::Simulation_parameters_base class.
+ *  \brief Contains definition and implementation of sirius::Simulation_parameters class.
  */
 
 #ifndef __SIMULATION_PARAMETERS_HPP__
@@ -33,6 +33,8 @@
 #include "memory.hpp"
 
 using namespace sddk;
+
+// TODO: put initialized_ flag here; do not allow to set parameters when initialised_ flag is set to true.
 
 namespace sirius {
 
@@ -141,14 +143,18 @@ class Simulation_parameters
         hubbard_input_.normalize_hubbard_orbitals_ = true;
     }
 
-    void set_gamma_point(bool gamma_point__)
+    /// Set flag for Gamma-point calculation.
+    bool gamma_point(bool gamma_point__)
     {
         parameters_input_.gamma_point_ = gamma_point__;
+        return parameters_input_.gamma_point_;
     }
 
-    void set_mpi_grid_dims(std::vector<int> mpi_grid_dims__)
+    /// Set dimensions of MPI grid for band diagonalization problem.
+    std::vector<int> const& mpi_grid_dims(std::vector<int> mpi_grid_dims__)
     {
         control_input_.mpi_grid_dims_ = mpi_grid_dims__;
+        return control_input_.mpi_grid_dims_;
     }
 
     void add_xc_functional(std::string name__)
@@ -176,9 +182,11 @@ class Simulation_parameters
         parameters_input_.molecule_ = molecule__;
     }
 
-    void set_verbosity(int level__)
+    /// Set verbosity level.
+    int verbosity(int level__)
     {
         control_input_.verbosity_ = level__;
+        return control_input_.verbosity_;
     }
 
     inline int lmax_apw() const
@@ -206,46 +214,56 @@ class Simulation_parameters
         return parameters_input_.lmax_pot_;
     }
 
-    int lmmax_pot() const
+    inline int lmmax_pot() const
     {
         return utils::lmmax(parameters_input_.lmax_pot_);
     }
 
-    double aw_cutoff() const
+    inline double aw_cutoff() const
     {
         return parameters_input_.aw_cutoff_;
     }
 
-    double aw_cutoff(double aw_cutoff__)
+    inline double aw_cutoff(double aw_cutoff__)
     {
         parameters_input_.aw_cutoff_ = aw_cutoff__;
         return parameters_input_.aw_cutoff_;
     }
 
     /// Plane-wave cutoff for G-vectors (in 1/[a.u.]).
-    double pw_cutoff() const
+    inline double pw_cutoff() const
     {
         return parameters_input_.pw_cutoff_;
     }
 
     /// Set plane-wave cutoff.
-    double pw_cutoff(double pw_cutoff__)
+    inline double pw_cutoff(double pw_cutoff__)
     {
         parameters_input_.pw_cutoff_ = pw_cutoff__;
         return parameters_input_.pw_cutoff_;
     }
 
     /// Cutoff for G+k vectors (in 1/[a.u.]).
-    double gk_cutoff() const
+    inline double gk_cutoff() const
     {
         return parameters_input_.gk_cutoff_;
     }
 
     /// Set the cutoff for G+k vectors.
-    double gk_cutoff(double gk_cutoff__);
+    inline double gk_cutoff(double gk_cutoff__)
+    {
+        parameters_input_.gk_cutoff_ = gk_cutoff__;
+        return parameters_input_.gk_cutoff_;
+    }
 
     /// Number of dimensions in the magnetization vector.
-    int num_mag_dims() const;
+    inline int num_mag_dims() const
+    {
+        assert(parameters_input_.num_mag_dims_ == 0 || parameters_input_.num_mag_dims_ == 1 ||
+               parameters_input_.num_mag_dims_ == 3);
+
+        return parameters_input_.num_mag_dims_;
+    }
 
     /// Number of spin components.
     /** This parameter can take only two values: 1 -- non-magnetic calcaulation and wave-functions,
@@ -270,31 +288,49 @@ class Simulation_parameters
     }
 
     /// Set the number of first-variational states.
-    int num_fv_states(int num_fv_states__)
+    inline int num_fv_states(int num_fv_states__)
     {
         parameters_input_.num_fv_states_ = num_fv_states__;
         return parameters_input_.num_fv_states_;
     }
 
     /// Number of first-variational states.
-    int num_fv_states() const
+    inline int num_fv_states() const
     {
         return parameters_input_.num_fv_states_;
     }
 
     /// Set the number of bands.
-    int num_bands(int num_bands__)
+    inline int num_bands(int num_bands__)
     {
         parameters_input_.num_bands_ = num_bands__;
         return parameters_input_.num_bands_;
     }
 
     /// Total number of bands.
-    int num_bands() const;
+    int num_bands() const
+    {
+        if (num_fv_states() != -1) {
+            if (num_mag_dims() != 3) {
+                return num_fv_states();
+            } else {
+                return num_spins() * num_fv_states();
+            }
+        } else {
+            return parameters_input_.num_bands_;
+        }
+    }
 
-    int max_occupancy() const
+    /// Maximum band occupancy.
+    inline int max_occupancy() const
     {
         return (num_mag_dims() == 0) ? 2 : 1;
+    }
+
+    /// Minimum occupancy to consider band to be occupied.
+    inline double min_occupancy() const
+    {
+        return 1e-14;
     }
 
     bool so_correction() const
@@ -419,6 +455,7 @@ class Simulation_parameters
         return parameters_input_.molecule_;
     }
 
+    /// Get a `using symmetry` flag.
     bool use_symmetry() const
     {
         return parameters_input_.use_symmetry_;
@@ -430,20 +467,23 @@ class Simulation_parameters
         return use_symmetry__;
     }
 
+    /// Get tolerance of the iterative solver.
     double iterative_solver_tolerance() const
     {
         return iterative_solver_input_.energy_tolerance_;
     }
 
+    /// Set the tolerance of the iterative solver.
     double iterative_solver_tolerance(double tolerance__)
     {
         iterative_solver_input_.energy_tolerance_ = tolerance__;
         return iterative_solver_input_.energy_tolerance_;
     }
 
-    void set_iterative_solver_type(std::string type__)
+    std::string const& iterative_solver_type(std::string type__)
     {
         iterative_solver_input_.type_ = type__;
+        return iterative_solver_input_.type_;
     }
 
     /// Set the tolerance for empty states.
@@ -473,29 +513,38 @@ class Simulation_parameters
         return parameters_input_;
     }
 
-    Parameters_input& parameters_input()
-    {
-        return parameters_input_;
-    }
-
     Settings_input const& settings() const
     {
         return settings_input_;
     }
 
-    Hubbard_input const& Hubbard() const
+    Hubbard_input const& hubbard_input() const
     {
         return hubbard_input_;
     }
 
-    /// get the options set at runtime
+    /// Get the options set at runtime.
     json& get_runtime_options_dictionary()
     {
         return runtime_options_dictionary_;
     }
 
-    /// print all options in the terminal
-    void print_options();
+    /// Set the variable which controls the type of sperical coverage.
+    inline int sht_coverage(int sht_coverage__)
+    {
+        settings_input_.sht_coverage_ = sht_coverage__;
+        return settings_input_.sht_coverage_;
+    }
+
+    inline std::string esm_bc(std::string const& esm_bc__)
+    {
+        parameters_input_.esm_bc_ = esm_bc__;
+        parameters_input_.enable_esm_ = true;
+        return parameters_input_.esm_bc_;
+    }
+
+    /// Print all options in the terminal.
+    void print_options() const;
 };
 
 }; // namespace sirius

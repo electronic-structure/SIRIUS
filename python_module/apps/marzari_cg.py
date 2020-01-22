@@ -65,8 +65,7 @@ assert m == 1
 kset = res['kpointset']
 potential = res['potential']
 density = res['density']
-hamiltonian = res['hamiltonian']
-H = ApplyHamiltonian(hamiltonian, kset)
+H = ApplyHamiltonian(potential, kset)
 E = Energy(kset, potential, density, H)
 T = args.T
 kT = kb*T
@@ -77,7 +76,7 @@ smearing = GaussianSplineSmearing(T=T, nel=nel, nspin=2, kw=kset.w)
 fn = kset.fn
 X = kset.C
 
-M = FreeEnergy(H=H, E=E, T=T, smearing=smearing)
+M = FreeEnergy(E=E, T=T, smearing=smearing)
 cg = CG(M, fd_slope_check=args.check_slope)
 tstart = time.time()
 FE, X, fn, success = cg.run(X, fn,

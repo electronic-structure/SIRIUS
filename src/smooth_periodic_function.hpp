@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -23,14 +23,21 @@
  *         sirius::Smooth_periodic_function_gradient classes.
  */
 
+#include "SDDK/fft.hpp"
+#include "SDDK/gvec.hpp"
+#include "utils/utils.hpp"
+#include "utils/profiler.hpp"
+
 #ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
 #define __SMOOTH_PERIODIC_FUNCTION_HPP__
 
 namespace sirius {
 
+using double_complex = std::complex<double>;
+
 /// Representation of a smooth (Fourier-transformable) periodic function.
 /** The class is designed to handle periodic functions such as density or potential, defined on a regular FFT grid.
- *  The following functionality is expected:
+ *  The following functionality is provided:
  *    - access to real-space values
  *    - access to plane-wave coefficients
  *    - distribution of plane-wave coefficients over entire communicator
@@ -42,25 +49,28 @@ class Smooth_periodic_function
 {
   protected:
     /// FFT driver.
-    FFT3D* fft_{nullptr};
+    spfft::Transform* spfft_{nullptr};
 
     /// Distribution of G-vectors.
-    Gvec_partition const* gvecp_{nullptr};
+    sddk::Gvec_partition const* gvecp_{nullptr};
 
     /// Function on the regular real-space grid.
-    mdarray<T, 1> f_rg_;
+    sddk::mdarray<T, 1> f_rg_;
 
     /// Local set of plane-wave expansion coefficients.
-    mdarray<double_complex, 1> f_pw_local_;
+    sddk::mdarray<double_complex, 1> f_pw_local_;
 
     /// Storage of the PW coefficients for the FFT transformation.
-    mdarray<double_complex, 1> f_pw_fft_;
+    sddk::mdarray<double_complex, 1> f_pw_fft_;
 
     /// Gather plane-wave coefficients for the subsequent FFT call.
     inline void gather_f_pw_fft()
     {
-        gvecp_->gather_pw_fft(f_pw_local_.at(memory_t::host), f_pw_fft_.at(memory_t::host));
+        gvecp_->gather_pw_fft(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host));
     }
+
+    Smooth_periodic_function(Smooth_periodic_function<T> const& src__) = delete;
+    Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T> const& src__) = delete;
 
   public:
     /// Default constructor.
@@ -68,35 +78,50 @@ class Smooth_periodic_function
     {
     }
 
-    Smooth_periodic_function(FFT3D& fft__, Gvec_partition const& gvecp__)
-        : fft_(&fft__)
+    /// Constructor.
+    Smooth_periodic_function(spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__, sddk::memory_pool* mp__ = nullptr)
+        : spfft_(&spfft__)
         , gvecp_(&gvecp__)
     {
-        f_rg_ = mdarray<T, 1>(fft_->local_size(), memory_t::host, "Smooth_periodic_function.f_rg_");
+        PROFILE("sirius::Smooth_periodic_function");
+
+        if (mp__) {
+            f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), *mp__, "Smooth_periodic_function.f_rg_");
+        } else {
+            f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), sddk::memory_t::host,
+                                        "Smooth_periodic_function.f_rg_");
+        }
         f_rg_.zero();
 
-        f_pw_fft_ = mdarray<double_complex, 1>(gvecp_->gvec_count_fft(), memory_t::host,
-                                               "Smooth_periodic_function.f_pw_fft_");
-        f_pw_fft_.zero();
-
-        f_pw_local_ = mdarray<double_complex, 1>(gvecp_->gvec().count(), memory_t::host,
-                                                 "Smooth_periodic_function.f_pw_local_");
+        if (mp__) {
+            f_pw_local_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec().count(), *mp__,
+                                                           "Smooth_periodic_function.f_pw_local_");
+        } else {
+            f_pw_local_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec().count(), sddk::memory_t::host,
+                                                       "Smooth_periodic_function.f_pw_local_");
+        }
         f_pw_local_.zero();
+        if (gvecp_->comm_ortho_fft().size() != 1) {
+            if (mp__) {
+                f_pw_fft_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec_count_fft(), *mp__,
+                                                             "Smooth_periodic_function.f_pw_fft_");
+            } else {
+                f_pw_fft_ = sddk::mdarray<double_complex, 1>(gvecp_->gvec_count_fft(), sddk::memory_t::host,
+                                                             "Smooth_periodic_function.f_pw_fft_");
+            }
+            f_pw_fft_.zero();
+        } else {
+            /* alias to f_pw_local array */
+            f_pw_fft_ = sddk::mdarray<double_complex, 1>(&f_pw_local_[0], gvecp_->gvec().count());
+        }
     }
+    Smooth_periodic_function(Smooth_periodic_function<T>&& src__) = default;
+    Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T>&& src__) = default;
 
+    /// Zero the values on the regular real-space grid.
     inline void zero()
     {
         f_rg_.zero();
-    }
-
-    inline mdarray<double_complex, 1>& pw_array()
-    {
-        return f_pw_local_;
-    }
-
-    inline mdarray<T, 1>& rg_array()
-    {
-        return f_rg_;
     }
 
     inline T& f_rg(int ir__)
@@ -109,12 +134,12 @@ class Smooth_periodic_function
         return f_rg_(ir__);
     }
 
-    inline mdarray<T, 1>& f_rg()
+    inline sddk::mdarray<T, 1>& f_rg()
     {
         return f_rg_;
     }
 
-    inline mdarray<T, 1> const& f_rg() const
+    inline sddk::mdarray<T, 1> const& f_rg() const
     {
         return f_rg_;
     }
@@ -129,7 +154,12 @@ class Smooth_periodic_function
         return f_pw_local_(ig__);
     }
 
-    inline mdarray<double_complex, 1>& f_pw_local()
+    inline sddk::mdarray<double_complex, 1>& f_pw_local()
+    {
+      return f_pw_local_;
+    }
+
+    inline const sddk::mdarray<double_complex, 1>& f_pw_local() const
     {
       return f_pw_local_;
     }
@@ -150,25 +180,25 @@ class Smooth_periodic_function
         return z;
     }
 
-    FFT3D& fft()
+    spfft::Transform& spfft()
     {
-        assert(fft_ != nullptr);
-        return *fft_;
+        assert(spfft_ != nullptr);
+        return *spfft_;
     }
 
-    FFT3D const& fft() const
+    spfft::Transform const& spfft() const
     {
-        assert(fft_ != nullptr);
-        return *fft_;
+        assert(spfft_ != nullptr);
+        return *spfft_;
     }
 
-    Gvec const& gvec() const
+    sddk::Gvec const& gvec() const
     {
         assert(gvecp_ != nullptr);
         return gvecp_->gvec();
     }
 
-    Gvec_partition const& gvec_partition() const
+    sddk::Gvec_partition const& gvec_partition() const
     {
         return *gvecp_;
     }
@@ -181,22 +211,27 @@ class Smooth_periodic_function
 
         switch (direction__) {
             case 1: {
-                gather_f_pw_fft();
-                fft_->transform<1>(f_pw_fft_.at(memory_t::host));
-                fft_->output(f_rg_.at(memory_t::host));
+                if (gvecp_->comm_ortho_fft().size() != 1) {
+                    gather_f_pw_fft();
+                }
+                spfft_->backward(reinterpret_cast<double const*>(f_pw_fft_.at(sddk::memory_t::host)), SPFFT_PU_HOST);
+                spfft_output(*spfft_, &f_rg_[0]);
                 break;
             }
             case -1: {
-                fft_->input(f_rg_.at(memory_t::host));
-                fft_->transform<-1>(f_pw_fft_.at(memory_t::host));
-                int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
-                int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
-                std::memcpy(f_pw_local_.at(memory_t::host), f_pw_fft_.at(memory_t::host, offset),
-                            count * sizeof(double_complex));
+                spfft_input(*spfft_, &f_rg_[0]);
+                spfft_->forward(SPFFT_PU_HOST, reinterpret_cast<double*>(f_pw_fft_.at(sddk::memory_t::host)),
+                                SPFFT_FULL_SCALING);
+                if (gvecp_->comm_ortho_fft().size() != 1) {
+                    int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
+                    int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
+                    std::memcpy(f_pw_local_.at(sddk::memory_t::host), f_pw_fft_.at(sddk::memory_t::host, offset),
+                                count * sizeof(double_complex));
+                }
                 break;
             }
             default: {
-                TERMINATE("wrong fft direction");
+                throw std::runtime_error("wrong FFT direction");
             }
         }
     }
@@ -220,7 +255,7 @@ class Smooth_periodic_function
     void add(Smooth_periodic_function<T> const& g__)
     {
         #pragma omp parallel for schedule(static)
-        for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+        for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
             this->f_rg_(irloc) += g__.f_rg(irloc);
         }
     }
@@ -228,7 +263,7 @@ class Smooth_periodic_function
     inline T checksum_rg() const
     {
         T cs = this->f_rg_.checksum();
-        this->fft_->comm().allreduce(&cs, 1);
+        sddk::Communicator(this->spfft_->communicator()).allreduce(&cs, 1);
         return cs;
     }
 
@@ -253,12 +288,16 @@ class Smooth_periodic_function
 
     inline uint64_t hash_f_rg() const
     {
-        auto h = f_rg_.hash();
-        fft_->comm().bcast(&h, 1, 0);
+        auto comm = sddk::Communicator(spfft_->communicator());
 
-        for (int r = 1; r < fft_->comm().size(); r++) {
-            h = f_rg_.hash(h);
-            fft_->comm().bcast(&h, 1, r);
+        uint64_t h;
+        for (int r = 0; r < comm.size(); r++) {
+            if (r == 0) {
+                h = f_rg_.hash();
+            } else {
+                h = f_rg_.hash(h);
+            }
+            comm.bcast(&h, 1, r);
         }
         return h;
     }
@@ -270,10 +309,13 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
 {
   private:
     /// FFT driver.
-    FFT3D* fft_{nullptr};
+    spfft::Transform* spfft_{nullptr};
 
     /// Distribution of G-vectors.
-    Gvec_partition const* gvecp_{nullptr};
+    sddk::Gvec_partition const* gvecp_{nullptr};
+
+    Smooth_periodic_vector_function(Smooth_periodic_vector_function<T> const& src__) = delete;
+    Smooth_periodic_vector_function<T>& operator=(Smooth_periodic_vector_function<T> const& src__) = delete;
 
   public:
     /// Default constructor does nothing.
@@ -281,22 +323,25 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
     {
     }
 
-    Smooth_periodic_vector_function(FFT3D& fft__, Gvec_partition const& gvecp__)
-        : fft_(&fft__)
+    Smooth_periodic_vector_function(spfft::Transform& spfft__, sddk::Gvec_partition const& gvecp__)
+        : spfft_(&spfft__)
         , gvecp_(&gvecp__)
     {
         for (int x : {0, 1, 2}) {
-            (*this)[x] = Smooth_periodic_function<T>(fft__, gvecp__);
+            (*this)[x] = Smooth_periodic_function<T>(spfft__, gvecp__);
         }
     }
+    Smooth_periodic_vector_function(Smooth_periodic_vector_function<T>&& src__) = default;
+    Smooth_periodic_vector_function<T>& operator=(Smooth_periodic_vector_function<T>&& src__) = default;
 
-    FFT3D& fft() const
+    spfft::Transform& spfft() const
     {
-        assert(fft_ != nullptr);
-        return *fft_;
+        assert(spfft_ != nullptr);
+        return *spfft_;
     }
 
-    Gvec_partition const& gvec_partition() const
+
+    sddk::Gvec_partition const& gvec_partition() const
     {
         assert(gvecp_ != nullptr);
         return *gvecp_;
@@ -307,13 +352,13 @@ class Smooth_periodic_vector_function : public std::array<Smooth_periodic_functi
 /** Input functions is expected in the plane wave domain, output function is also in the plane-wave domain */
 inline Smooth_periodic_vector_function<double> gradient(Smooth_periodic_function<double>& f__)
 {
-    utils::timer t1("sirius::gradient");
+    PROFILE("sirius::gradient");
 
-    Smooth_periodic_vector_function<double> g(f__.fft(), f__.gvec_partition());
+    Smooth_periodic_vector_function<double> g(f__.spfft(), f__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        auto G = f__.gvec().gvec_cart<index_domain_t::local>(igloc);
+        auto G = f__.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
         for (int x : {0, 1, 2}) {
             g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(0, G[x]);
         }
@@ -325,14 +370,14 @@ inline Smooth_periodic_vector_function<double> gradient(Smooth_periodic_function
 /** Input and output functions are in plane-wave domain */
 inline Smooth_periodic_function<double> divergence(Smooth_periodic_vector_function<double>& g__)
 {
-    utils::timer t1("sirius::divergence");
+    PROFILE("sirius::divergence");
 
     /* resulting scalar function */
-    Smooth_periodic_function<double> f(g__.fft(), g__.gvec_partition());
+    Smooth_periodic_function<double> f(g__.spfft(), g__.gvec_partition());
     f.zero();
     for (int x : {0, 1, 2}) {
         for (int igloc = 0; igloc < f.gvec().count(); igloc++) {
-            auto G = f.gvec().gvec_cart<index_domain_t::local>(igloc);
+            auto G = f.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
             f.f_pw_local(igloc) += g__[x].f_pw_local(igloc) * double_complex(0, G[x]);
         }
     }
@@ -343,13 +388,13 @@ inline Smooth_periodic_function<double> divergence(Smooth_periodic_vector_functi
 /// Laplacian of the function in the plane-wave domain.
 inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<double>& f__)
 {
-    utils::timer t1("sirius::laplacian");
+    PROFILE("sirius::laplacian");
 
-    Smooth_periodic_function<double> g(f__.fft(), f__.gvec_partition());
+    Smooth_periodic_function<double> g(f__.spfft(), f__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        auto G              = f__.gvec().gvec_cart<index_domain_t::local>(igloc);
+        auto G              = f__.gvec().gvec_cart<sddk::index_domain_t::local>(igloc);
         g.f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(-std::pow(G.length(), 2), 0);
     }
 
@@ -357,16 +402,16 @@ inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<doubl
 }
 
 template <typename T>
-inline Smooth_periodic_function<T> dot(Smooth_periodic_vector_function<T>& vf__,
-                                       Smooth_periodic_vector_function<T>& vg__)
+inline Smooth_periodic_function<T>
+dot(Smooth_periodic_vector_function<T>& vf__, Smooth_periodic_vector_function<T>& vg__)
 
 {
-    utils::timer t1("sirius::dot");
+    PROFILE("sirius::dot");
 
-    Smooth_periodic_function<T> result(vf__.fft(), vf__.gvec_partition());
+    Smooth_periodic_function<T> result(vf__.spfft(), vf__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
-    for (int ir = 0; ir < vf__.fft().local_size(); ir++) {
+    for (int ir = 0; ir < vf__.spfft().local_slice_size(); ir++) {
         double d{0};
         for (int x : {0, 1, 2}) {
             d += vf__[x].f_rg(ir) * vg__[x].f_rg(ir);
@@ -378,26 +423,50 @@ inline Smooth_periodic_function<T> dot(Smooth_periodic_vector_function<T>& vf__,
 }
 
 /// Compute inner product <f|g>
-template <typename T>
-T inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
+template <typename T, typename F>
+inline T
+inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
 {
-    utils::timer t1("sirius::Smooth_periodic_function|inner");
+    PROFILE("sirius::Smooth_periodic_function|inner_local");
 
-    assert(&f__.fft() == &g__.fft());
+    assert(&f__.spfft() == &g__.spfft());
 
     T result_rg{0};
 
     #pragma omp parallel for schedule(static) reduction(+:result_rg)
-    for (int irloc = 0; irloc < f__.fft().local_size(); irloc++) {
-        // result_rg += type_wrapper<T>::bypass(std::conj(f__.f_rg(irloc)) * g__.f_rg(irloc));
-        result_rg += utils::conj(f__.f_rg(irloc)) * g__.f_rg(irloc);
+    for (int irloc = 0; irloc < f__.spfft().local_slice_size(); irloc++) {
+        result_rg += utils::conj(f__.f_rg(irloc)) * g__.f_rg(irloc) * theta__(irloc);
     }
 
-    result_rg *= (f__.gvec().omega() / f__.fft().size());
-
-    f__.fft().comm().allreduce(&result_rg, 1);
+    result_rg *= (f__.gvec().omega() / spfft_grid_size(f__.spfft()));
 
     return result_rg;
+}
+template <typename T, typename F>
+inline T
+inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
+{
+    PROFILE("sirius::Smooth_periodic_function|inner");
+
+
+    T result_rg = inner_local(f__, g__, std::forward<F>(theta__));
+    sddk::Communicator(f__.spfft().communicator()).allreduce(&result_rg, 1);
+
+    return result_rg;
+}
+
+/// Compute inner product <f|g>
+template <typename T>
+inline T
+inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
+{
+    return inner(f__, g__, [](int ir){return 1;});
+}
+template <typename T>
+inline T
+inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
+{
+    return inner_local(f__, g__, [](int ir){return 1;});
 }
 
 } // namespace sirius

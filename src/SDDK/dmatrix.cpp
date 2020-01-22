@@ -83,13 +83,12 @@ dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& 
 template <typename T>
 dmatrix<T>::dmatrix(memory_pool& mp__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__,
                     int bs_col__)
-    : matrix<T>(mp__,
-                splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(),
+    : matrix<T>(splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(),
                                                    bs_row__)
                     .local_size(),
                 splindex<splindex_t::block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(),
                                                    bs_col__)
-                    .local_size())
+                    .local_size(), mp__)
     , num_rows_(num_rows__)
     , num_cols_(num_cols__)
     , bs_row_(bs_row__)
@@ -266,23 +265,23 @@ void dmatrix<double_complex>::serialize(std::string name__, int n__) const
         // std::cout << "mtrx: " << name__ << std::endl;
         // std::cout << dict.dump(4);
 
-        printf("matrix label: %s\n", name__.c_str());
-        printf("{\n");
+        std::printf("matrix label: %s\n", name__.c_str());
+        std::printf("{\n");
         for (int i = 0; i < n__; i++) {
-            printf("{");
+            std::printf("{");
             for (int j = 0; j < n__; j++) {
-                printf("%18.13f + I * %18.13f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
+                std::printf("%18.13f + I * %18.13f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
                 if (j != n__ - 1) {
-                    printf(",");
+                    std::printf(",");
                 }
             }
             if (i != n__ - 1) {
-                printf("},\n");
+                std::printf("},\n");
             } else {
-                printf("}\n");
+                std::printf("}\n");
             }
         }
-        printf("}\n");
+        std::printf("}\n");
     }
 
     // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
@@ -320,23 +319,23 @@ void dmatrix<double>::serialize(std::string name__, int n__) const
     // ofs << dict.dump(4);
 
     if (blacs_grid_->comm().rank() == 0) {
-        printf("matrix label: %s\n", name__.c_str());
-        printf("{\n");
+        std::printf("matrix label: %s\n", name__.c_str());
+        std::printf("{\n");
         for (int i = 0; i < n__; i++) {
-            printf("{");
+            std::printf("{");
             for (int j = 0; j < n__; j++) {
-                printf("%18.13f", full_mtrx(i, j));
+                std::printf("%18.13f", full_mtrx(i, j));
                 if (j != n__ - 1) {
-                    printf(",");
+                    std::printf(",");
                 }
             }
             if (i != n__ - 1) {
-                printf("},\n");
+                std::printf("},\n");
             } else {
-                printf("}\n");
+                std::printf("}\n");
             }
         }
-        printf("}\n");
+        std::printf("}\n");
     }
 }
 

@@ -25,11 +25,17 @@
 #ifndef __BAND_HPP__
 #define __BAND_HPP__
 
-#include "periodic_function.hpp"
-#include "K_point/k_point_set.hpp"
+#include "SDDK/memory.hpp"
 #include "Hamiltonian/hamiltonian.hpp"
 
+namespace sddk {
+/* forward declaration */
+class BLACS_grid;
+}
+
 namespace sirius {
+/* forward declaration */
+class K_point_set;
 
 /// Setup and solve the eigen value problem.
 class Band // TODO: Band class is lightweight and in principle can be converted to a namespace
@@ -42,141 +48,84 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     Unit_cell& unit_cell_;
 
     /// BLACS grid for distributed linear algebra operations.
-    BLACS_grid const& blacs_grid_;
-
-    void solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__) const;
+    sddk::BLACS_grid const& blacs_grid_;
 
     /// Solve the first-variational (non-magnetic) problem with exact diagonalization.
     /** This is only used by the LAPW method. */
-    void diag_full_potential_first_variation_exact(K_point& kp__, Hamiltonian& hamiltonian__) const;
+    void diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const;
 
     /// Solve the first-variational (non-magnetic) problem with iterative Davidson diagonalization.
-    void diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltonian& hamiltonian__) const;
+    void diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) const;
 
     /// Solve second-variational problem.
-    void diag_full_potential_second_variation(K_point& kp, Hamiltonian& hamiltonian__) const;
+    void diag_full_potential_second_variation(Hamiltonian_k& Hk__) const;
 
     /// Get singular components of the LAPW overlap matrix.
     /** Singular components are the eigen-vectors with a very small eigen-value. */
-    void get_singular_components(K_point& kp__, Hamiltonian& H__) const;
+    void get_singular_components(Hamiltonian_k& Hk__, sddk::mdarray<double, 2>& odiag__) const;
 
     /// Diagonalize a pseudo-potential Hamiltonian.
     template <typename T>
-    int diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const;
+    int diag_pseudo_potential(Hamiltonian_k& Hk__) const;
 
     /// Exact (not iterative) diagonalization of the Hamiltonian.
     template <typename T>
-    void diag_pseudo_potential_exact(K_point* kp__, int ispn__, Hamiltonian& H__) const;
+    void diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const;
 
     /// Iterative Davidson diagonalization.
     template <typename T>
-    int diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const;
+    int diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const;
 
+    /// Diagonalize S operator to check for the negative eigen-values.
     template <typename T>
-    mdarray<double, 1> diag_S_davidson(K_point& kp__, Hamiltonian& H__) const;
+    sddk::mdarray<double, 1> diag_S_davidson(Hamiltonian_k& Hk__) const;
 
     ///// RMM-DIIS diagonalization.
     //template <typename T>
     //void diag_pseudo_potential_rmm_diis(K_point* kp__, int ispn__, Hamiltonian& H__) const;
 
-    /// Check wave-functions for orthonormalization.
-    template <typename T>
-    void check_wave_functions(K_point& kp__, Hamiltonian& H__) const
-    {
-        if (kp__.comm().rank() == 0) {
-            printf("checking wave-functions\n");
-        }
-
-        if (!ctx_.full_potential()) {
-
-            dmatrix<T> ovlp(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
-
-            const bool nc_mag = (ctx_.num_mag_dims() == 3);
-            const int num_sc = nc_mag ? 2 : 1;
-
-            auto& psi = kp__.spinor_wave_functions();
-            Wave_functions spsi(kp__.gkvec_partition(), ctx_.num_bands(), ctx_.preferred_memory_t(), num_sc);
-
-            if (is_device_memory(ctx_.preferred_memory_t())) {
-                auto& mpd = ctx_.mem_pool(memory_t::device);
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    psi.pw_coeffs(ispn).allocate(mpd);
-                    psi.pw_coeffs(ispn).copy_to(memory_t::device, 0, ctx_.num_bands());
-                }
-                for (int i = 0; i < num_sc; i++) {
-                    spsi.pw_coeffs(i).allocate(mpd);
-                }
-                ovlp.allocate(memory_t::device);
-            }
-            kp__.beta_projectors().prepare();
-            /* compute residuals */
-            for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
-                /* apply Hamiltonian and S operators to the wave-functions */
-                H__.apply_h_s<T>(&kp__, nc_mag ? 2 : ispin_step, 0, ctx_.num_bands(), psi, nullptr, &spsi);
-                inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, psi, 0, ctx_.num_bands(),
-                      spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
-
-                double diff = check_identity(ovlp, ctx_.num_bands());
-
-                if (kp__.comm().rank() == 0) {
-                    if (diff > 1e-12) {
-                        printf("overlap matrix is not identity, maximum error : %20.12f\n", diff);
-                    } else {
-                        printf("OK! Wave functions are orthonormal.\n");
-                    }
-                }
-            }
-            if (is_device_memory(ctx_.preferred_memory_t())) {
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    psi.pw_coeffs(ispn).deallocate(memory_t::device);
-                }
-            }
-            kp__.beta_projectors().dismiss();
-        }
-    }
-
   public:
     /// Constructor
-    Band(Simulation_context& ctx__)
-        : ctx_(ctx__)
-        , unit_cell_(ctx__.unit_cell())
-        , blacs_grid_(ctx__.blacs_grid())
-    {
-        if (!ctx_.initialized()) {
-            TERMINATE("Simulation_context is not initialized");
-        }
-    }
+    Band(Simulation_context& ctx__);
 
     /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
      *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
      *  in the CPU pointer because most of the standard math libraries start from the CPU. */
     template <typename T>
-    void set_subspace_mtrx(int N__,
-                           int n__,
-                           Wave_functions& phi__,
-                           Wave_functions& op_phi__,
-                           dmatrix<T>& mtrx__,
-                           dmatrix<T>* mtrx_old__ = nullptr) const;
+    void set_subspace_mtrx(int N__, int n__, sddk::Wave_functions& phi__, sddk::Wave_functions& op_phi__,
+                           sddk::dmatrix<T>& mtrx__, sddk::dmatrix<T>* mtrx_old__ = nullptr) const;
 
+    /// Solve the band eigen-problem for pseudopotential case.
     template <typename T>
-    int solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const;
+    int solve_pseudo_potential(Hamiltonian_k& Hk__) const;
 
+    /// Solve the band eigen-problem for full-potential case.
+    void solve_full_potential(Hamiltonian_k& Hk__) const;
+
+    /// Check the residuals of wave-functions.
     template <typename T>
-    void check_residuals(K_point& kp__, Hamiltonian& H__) const;
+    void check_residuals(Hamiltonian_k& Hk__) const;
+
+    /// Check wave-functions for orthonormalization.
+    template <typename T>
+    void check_wave_functions(Hamiltonian_k& Hk__) const;
 
     /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
-    void solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) const;
+    void solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const;
 
     /// Initialize the subspace for the entire k-point set.
-    void initialize_subspace(K_point_set& kset__, Hamiltonian& hamiltonian__) const;
+    void initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const;
 
-    /// Initialize the wave-functions subspace.
+    /// Initialize the wave-functions subspace at a given k-point.
+    /** If the number of atomic orbitals is smaller than the number of bands, the rest of the inital wave-functions
+     *  are created from the random numbers. */
     template <typename T>
-    void initialize_subspace(K_point* kp__, Hamiltonian& hamiltonian__, int num_ao__) const;
+    void initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const;
 
-    static double& evp_work_count() // TODO: move counters to sim.ctx
+    static double evp_work_count(double w__ = 0) // TODO: move counters to sim.ctx
     {
         static double evp_work_count_{0};
+        evp_work_count_ += w__;
         return evp_work_count_;
     }
 };

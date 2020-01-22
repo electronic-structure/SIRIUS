@@ -478,7 +478,7 @@ inline void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__
             double b[]    = {0, 0, 0};
             b[num_rs - 1] = 1.0;
 
-            int info = linalg<device_t::CPU>::gesv(num_rs, 1, &a[0][0], 3, b, 3);
+            int info = linalg(linalg_t::lapack).gesv(num_rs, 1, &a[0][0], 3, b, 3);
 
             if (info) {
                 std::stringstream s;
@@ -575,21 +575,21 @@ inline std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double
     stdevp.solve(num_lo_descriptors(), loprod, &loprod_eval[0], loprod_evec);
 
     if (std::abs(loprod_eval[0]) < tol__) {
-        printf("\n");
-        printf("local orbitals for atom symmetry class %i are almost linearly dependent\n", id_);
-        printf("local orbitals overlap matrix:\n");
+        std::printf("\n");
+        std::printf("local orbitals for atom symmetry class %i are almost linearly dependent\n", id_);
+        std::printf("local orbitals overlap matrix:\n");
         for (int i = 0; i < num_lo_descriptors(); i++) {
             for (int j = 0; j < num_lo_descriptors(); j++) {
-                printf("%12.6f", ovlp(i, j));
+                std::printf("%12.6f", ovlp(i, j));
             }
-            printf("\n");
+            std::printf("\n");
         }
-        printf("overlap matrix eigen-values:\n");
+        std::printf("overlap matrix eigen-values:\n");
         for (int i = 0; i < num_lo_descriptors(); i++) {
-            printf("%12.6f", loprod_eval[i]);
+            std::printf("%12.6f", loprod_eval[i]);
         }
-        printf("\n");
-        printf("smallest eigenvalue: %20.16f\n", loprod_eval[0]);
+        std::printf("\n");
+        std::printf("smallest eigenvalue: %20.16f\n", loprod_eval[0]);
     }
 
     std::vector<int> inc(num_lo_descriptors(), 0);
@@ -617,7 +617,7 @@ inline std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double
         stdevp.solve(static_cast<int>(ilo.size()), tmp, &eval[0], evec);
 
         if (eval[0] < tol__) {
-            printf("local orbital %i can be removed\n", i);
+            std::printf("local orbital %i can be removed\n", i);
             inc[i] = 0;
         }
     }

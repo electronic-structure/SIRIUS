@@ -14,12 +14,19 @@ if(USE_CUDA)
   set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
 
-set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.cpp"
-  "Band/diag_pseudo_potential.cpp;Band/diag_full_potential.cpp;Band/residuals.cpp"
+set(_SOURSES "Hamiltonian/hamiltonian.cpp"
+  "Hamiltonian/hamiltonian_k.cpp"
+  "Band/band.cpp"
+  "Band/solve.cpp"
+  "Density/density.cpp"
+  "Density/augmentation_operator.cpp"
+  "dft_ground_state.cpp"
+  "Band/diag_pseudo_potential.cpp"
+  "Band/diag_full_potential.cpp"
+  "Band/residuals.cpp"
   "Beta_projectors/beta_projectors_base.cpp"
   "Hubbard/apply_hubbard_potential.cpp"
-  "Hubbard/Hubbard.cpp"
-  "Hubbard/hubbard_generate_atomic_orbitals.cpp"
+  "Hubbard/hubbard.cpp"
   "Hubbard/hubbard_occupancies_derivatives.cpp"
   "Hubbard/hubbard_occupancy.cpp"
   "Hubbard/hubbard_potential_energy.cpp"
@@ -29,30 +36,30 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "Potential/poisson.cpp"
   "Potential/xc.cpp"
   "Unit_cell/unit_cell.cpp"
+  "Unit_cell/unit_cell_symmetry.cpp"
   "simulation_context.cpp"
   "simulation_parameters.cpp"
   "Geometry/force.cpp"
   "Geometry/stress.cpp"
   "Geometry/non_local_functor.cpp"
-  "Hamiltonian/apply.cpp"
-  "Hamiltonian/set_lapw_h_o.cpp"
   "Hamiltonian/local_operator.cpp"
   "Hamiltonian/non_local_operator.cpp"
-  "Hamiltonian/get_h_o_diag.cpp"
   "K_point/generate_atomic_wave_functions.cpp"
   "K_point/generate_fv_states.cpp"
   "K_point/generate_spinor_wave_functions.cpp"
   "K_point/k_point.cpp"
   "K_point/k_point_set.cpp"
-  "K_point/initialize.cpp"
   "K_point/generate_gklo_basis.cpp"
   "K_point/test_fv_states.cpp"
+  "energy.cpp"
   "field4d.cpp"
   "radial_integrals.cpp"
   "sbessel.cpp"
   "utils/cmd_args.cpp"
   "utils/timer.cpp"
   "utils/utils.cpp"
+  "utils/rt_graph.cpp"
+  "utils/profiler.cpp"
   "SDDK/wf_inner.cpp"
   "SDDK/wf_ortho.cpp"
   "SDDK/wf_trans.cpp"
@@ -62,10 +69,13 @@ set(_SOURSES "Band/band.cpp;Band/solve.cpp;Density/density.cpp;dft_ground_state.
   "SDDK/gvec.cpp"
   "SDDK/matrix_storage.cpp"
   "SDDK/GPU/acc.cpp"
+  "SHT/sht.cpp"
+  "sirius_version.cpp"
+  "Mixer/mixer_functions.cpp"
   )
 
 # create library with .cpp, .cu and .f90 sources
-add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}" SHT/sht.cpp)
+add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
 
 # add dependency on auto-generated headers
 add_dependencies(sirius generate_version_hpp)
@@ -79,13 +89,12 @@ INSTALL (TARGETS sirius ARCHIVE DESTINATION
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   )
-target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX)
+target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX SpFFT::spfft)
+
 
 if(CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
-  INSTALL ( CODE
-    "EXECUTE_PROCESS (COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${PROJECT_BINARY_DIR}/src/mod_files\" \"${CMAKE_INSTALL_PREFIX}/include/sirius/\")"
-    )
+  install(FILES ${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
 endif()
 
 if(USE_ROCM)

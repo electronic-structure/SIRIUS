@@ -6,7 +6,7 @@ then
 fi
 
 if [[ $(type -f srun 2> /dev/null) ]]; then
-    SRUN_CMD="srun -u"
+    SRUN_CMD="srun -n4 -c2 --unbuffered --hint=nomultithread"
 else
     SRUN_CMD="mpirun -np 4"
 fi
@@ -21,10 +21,11 @@ for f in ./*; do
         (
             cd ${f}
             ${SRUN_CMD} ${exe} \
-                   --test_against=output_ref.json \
-                   --std_evp_solver_name=scalapack \
-                   --gen_evp_solver_name=scalapack \
-                   --control.processing_unit=gpu --mpi_grid="2 2"
+                --test_against=output_ref.json \
+                --control.std_evp_solver_name=scalapack \
+                --control.gen_evp_solver_name=scalapack \
+                --control.mpi_grid_dims=2:2 \
+                --control.processing_unit=gpu
             err=$?
 
             if [ ${err} == 0 ]; then

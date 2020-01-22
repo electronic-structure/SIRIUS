@@ -27,8 +27,8 @@
 
 #include "SHT/gaunt.hpp"
 #include "atom_symmetry_class.hpp"
-//#include "sddk.hpp"
 #include "spheric_function.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -63,14 +63,8 @@ class Atom
     /// Maximum l for potential and magnetic field.
     int lmax_pot_{-1};
 
-    /// Offset in the array of matching coefficients.
-    int offset_aw_{-1};
-
     /// Offset in the block of local orbitals of the Hamiltonian and overlap matrices and in the eigen-vectors.
     int offset_lo_{-1}; // TODO: better name for this
-
-    /// Offset in the wave-function array.
-    int offset_mt_coeffs_{-1};
 
     /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
     mdarray<double_complex, 4> occupation_matrix_;
@@ -112,13 +106,9 @@ class Atom
     }
 
     /// Initialize atom.
-    inline void init(int offset_aw__, int offset_lo__, int offset_mt_coeffs__)
+    inline void init(int offset_lo__)
     {
-        assert(offset_aw__ >= 0);
-
-        offset_aw_        = offset_aw__;
-        offset_lo_        = offset_lo__;
-        offset_mt_coeffs_ = offset_mt_coeffs__;
+        offset_lo_ = offset_lo__;
 
         lmax_pot_ = type().parameters().lmax_pot();
 
@@ -222,10 +212,9 @@ class Atom
             auto& rf_coef  = type().rf_coef();
             auto& vrf_coef = type().vrf_coef();
 
-            utils::timer t1("sirius::Atom::generate_radial_integrals|interp");
+            PROFILE_START("sirius::Atom::generate_radial_integrals|interp");
             #pragma omp parallel
             {
-                // int tid = Platform::thread_id();
                 #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
@@ -254,10 +243,9 @@ class Atom
                 }
             }
             vrf_coef.copy_to(memory_t::device);
-            t1.stop();
+            PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
 
             result.allocate(memory_t::device);
-            //utils::timer t2("sirius::Atom::generate_radial_integrals|inner");
             spline_inner_product_gpu_v3(idx_ri.at(memory_t::device), (int)idx_ri.size(1), nmtp, rgrid.x().at(memory_t::device),
                                         rgrid.dx().at(memory_t::device), rf_coef.at(memory_t::device), vrf_coef.at(memory_t::device), result.at(memory_t::device));
             acc::sync();
@@ -271,7 +259,7 @@ class Atom
 #endif
         }
         if (pu__ == device_t::CPU) {
-            utils::timer t1("sirius::Atom::generate_radial_integrals|interp");
+            PROFILE_START("sirius::Atom::generate_radial_integrals|interp");
             #pragma omp parallel
             {
                 #pragma omp for
@@ -292,9 +280,9 @@ class Atom
                     }
                 }
             }
-            t1.stop();
+            PROFILE_STOP("sirius::Atom::generate_radial_integrals|interp");
 
-            utils::timer t2("sirius::Atom::generate_radial_integrals|inner");
+            PROFILE("sirius::Atom::generate_radial_integrals|inner");
             #pragma omp parallel for
             for (int j = 0; j < (int)idx_ri.size(1); j++) {
                 result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
@@ -334,13 +322,13 @@ class Atom
         //}
     }
 
-    /// Return pointer to corresponding atom type class.
+    /// Return const reference to corresponding atom type obeject.
     inline Atom_type const& type() const
     {
         return type_;
     }
 
-    /// Return corresponding atom symmetry class.
+    /// Return reference to corresponding atom symmetry class.
     inline Atom_symmetry_class& symmetry_class()
     {
         return (*symmetry_class_);
@@ -413,22 +401,10 @@ class Atom
         comm__.bcast(occupation_matrix_.at(memory_t::host), (int)occupation_matrix_.size(), rank__);
     }
 
-    inline int offset_aw() const
-    {
-        assert(offset_aw_ >= 0);
-        return offset_aw_;
-    }
-
     inline int offset_lo() const
     {
         assert(offset_lo_ >= 0);
         return offset_lo_;
-    }
-
-    inline int offset_mt_coeffs() const
-    {
-        assert(offset_mt_coeffs_ >= 0);
-        return offset_mt_coeffs_;
     }
 
     inline double const* h_radial_integrals(int idxrf1, int idxrf2) const

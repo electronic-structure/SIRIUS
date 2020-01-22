@@ -89,12 +89,14 @@ double test_diag(BLACS_grid const& blacs_grid__,
     }
     if (test_gen__) {
         /* lambda * B * Z */
-        linalg<device_t::CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), B_ref, A, linalg_const<T>::zero(), B);
+        linalg(linalg_t::scalapack).gemm('N', 'N', n__, nev__, n__, &linalg_const<T>::one(), B_ref, 0, 0, A, 0, 0,
+            &linalg_const<T>::zero(), B, 0, 0);
         B >> A;
     }
 
     /* A * Z - lambda * B * Z */
-    linalg<device_t::CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), A_ref, Z, linalg_const<T>::m_one(), A);
+    linalg(linalg_t::scalapack).gemm('N', 'N', n__, nev__, n__, &linalg_const<T>::one(), A_ref, 0, 0, Z, 0, 0,
+        &linalg_const<T>::m_one(), A, 0, 0);
 
     double diff{0};
     for (int j = 0; j < A.num_cols_local(); j++) {

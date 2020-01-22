@@ -1,0 +1,88 @@
+{
+  "control": {
+    "processing_unit": "cpu",
+    "gen_evp_solver_type": "lapack",
+    "std_evp_solver_type": "lapack",
+    "cyclic_block_size": 16,
+    "rmt_max": 2.2,
+    "verbosity" : 1
+  },
+  "unit_cell": {
+    "lattice_vectors": [
+      [
+        0.0,
+        2.42125577322746,
+        2.42125577322746
+      ],
+      [
+        2.42125577322746,
+        0.0,
+        2.42125577322746
+      ],
+      [
+        2.42125577322746,
+        2.42125577322746,
+        0.0
+      ]
+    ],
+    "lattice_vectors_scale": 1.889725989,
+    "atom_types": [
+      "Y",
+      "N"
+    ],
+    "atom_files": {
+      "Y": "Y.json",
+      "N": "N.json"
+    },
+    "atoms": {
+      "Y": [
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "N": [
+        [
+          0.5,
+          0.5,
+          0.5
+        ]
+      ]
+    }
+  },
+  "mixer": {
+    "max_history": 4,
+    "beta": 0.5,
+    "type": "broyden1",
+    "!linear_mix_rms_tol": 20.0,
+    "!beta0": 0.15
+  },
+  "parameters": {
+    "!num_fv_states": 50,
+    "energy_tol": 1e-06,
+    "use_symmetry": true,
+    "valence_relativity": "iora",
+    "aw_cutoff": 6,
+    "xc_functionals": [
+      "XC_LDA_X",
+      "XC_LDA_C_PZ"
+    ],
+    "density_tol": 1e-08,
+    "num_dft_iter": 100,
+    "pw_cutoff": 14.0,
+    "auto_rmt": 0,
+    "smearing_width": 0.01,
+    "electronic_structure_method": "full_potential_lapwlo",
+    "core_relativity": "dirac",
+    "ngridk": [
+      2,
+      2,
+      2
+    ],
+    "lmax_apw" : 6,
+    "lmax_rho" : 6,
+    "lmax_pot" : 6
+  },
+  "title": "input file created with AiiDA"
+}

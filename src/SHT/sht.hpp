@@ -38,6 +38,7 @@
 #include "typedefs.hpp"
 #include "linalg.hpp"
 #include "lebedev_grids.hpp"
+#include "specfunc/specfunc.hpp"
 
 namespace sirius {
 
@@ -83,16 +84,24 @@ class SHT // TODO: better name
 
   public:
     /// Default constructor.
-    SHT(int lmax__)
+    SHT(int lmax__, int  mesh_type__ = 0)
         : lmax_(lmax__)
+        , mesh_type_(mesh_type__)
     {
         lmmax_ = (lmax_ + 1) * (lmax_ + 1);
 
-        if (mesh_type_ == 0) {
-            num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
-        }
-        if (mesh_type_ == 1) {
-            num_points_ = lmmax_;
+        switch (mesh_type_) {
+            case 0: {
+                num_points_ = Lebedev_Laikov_npoint(2 * lmax_);
+                break;
+            }
+            case 1: {
+                num_points_ = lmmax_;
+                break;
+            }
+            default: {
+                throw std::runtime_error("Wrong spherical coverage parameter");
+            }
         }
 
         std::vector<double> x(num_points_);
@@ -105,11 +114,15 @@ class SHT // TODO: better name
 
         w_.resize(num_points_);
 
-        if (mesh_type_ == 0) {
-            Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
-        }
-        if (mesh_type_ == 1) {
-            uniform_coverage();
+        switch (mesh_type_) {
+            case 0: {
+                Lebedev_Laikov_sphere(num_points_, &x[0], &y[0], &z[0], &w_[0]);
+                break;
+            }
+            case 1: {
+                uniform_coverage();
+                break;
+            }
         }
 
         ylm_backward_ = sddk::mdarray<double_complex, 2>(lmmax_, num_points_);
@@ -129,8 +142,8 @@ class SHT // TODO: better name
                 auto vs     = spherical_coordinates(geometry3d::vector3d<double>(x[itp], y[itp], z[itp]));
                 tp_(0, itp) = vs[1];
                 tp_(1, itp) = vs[2];
-                spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
-                spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
+                sf::spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
+                sf::spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
                 for (int lm = 0; lm < lmmax_; lm++) {
                     ylm_forward_(itp, lm) = std::conj(ylm_backward_(lm, itp)) * w_[itp] * fourpi;
                     rlm_forward_(itp, lm) = rlm_backward_(lm, itp) * w_[itp] * fourpi;
@@ -140,12 +153,12 @@ class SHT // TODO: better name
                 double t = tp_(0, itp);
                 double p = tp_(1, itp);
 
-                coord_(0, itp) = sin(t) * cos(p);
-                coord_(1, itp) = sin(t) * sin(p);
-                coord_(2, itp) = cos(t);
+                coord_(0, itp) = std::sin(t) * std::cos(p);
+                coord_(1, itp) = std::sin(t) * std::sin(p);
+                coord_(2, itp) = std::cos(t);
 
-                spherical_harmonics(lmax_, t, p, &ylm_backward_(0, itp));
-                spherical_harmonics(lmax_, t, p, &rlm_backward_(0, itp));
+                sf::spherical_harmonics(lmax_, t, p, &ylm_backward_(0, itp));
+                sf::spherical_harmonics(lmax_, t, p, &rlm_backward_(0, itp));
 
                 for (int lm = 0; lm < lmmax_; lm++) {
                     ylm_forward_(lm, itp) = ylm_backward_(lm, itp);
@@ -155,69 +168,14 @@ class SHT // TODO: better name
         }
 
         if (mesh_type_ == 1) {
-            sddk::linalg<sddk::device_t::CPU>::geinv(lmmax_, ylm_forward_);
-            sddk::linalg<sddk::device_t::CPU>::geinv(lmmax_, rlm_forward_);
+            sddk::linalg(sddk::linalg_t::lapack).geinv(lmmax_, ylm_forward_);
+            sddk::linalg(sddk::linalg_t::lapack).geinv(lmmax_, rlm_forward_);
         }
 
-#if (__VERIFICATION > 0)
-        {
-            double dr = 0;
-            double dy = 0;
-
-            for (int lm = 0; lm < lmmax_; lm++) {
-                for (int lm1 = 0; lm1 < lmmax_; lm1++) {
-                    double         t = 0;
-                    double_complex zt(0, 0);
-                    for (int itp = 0; itp < num_points_; itp++) {
-                        zt += ylm_forward_(itp, lm) * ylm_backward_(lm1, itp);
-                        t += rlm_forward_(itp, lm) * rlm_backward_(lm1, itp);
-                    }
-
-                    if (lm == lm1) {
-                        zt -= 1.0;
-                        t -= 1.0;
-                    }
-                    dr += std::abs(t);
-                    dy += std::abs(zt);
-                }
-            }
-            dr = dr / lmmax_ / lmmax_;
-            dy = dy / lmmax_ / lmmax_;
-
-            if (dr > 1e-15 || dy > 1e-15) {
-                std::stringstream s;
-                s << "spherical mesh error is too big" << std::endl
-                  << "  real spherical integration error " << dr << std::endl
-                  << "  complex spherical integration error " << dy;
-                WARNING(s.str())
-            }
-
-            std::vector<double> flm(lmmax_);
-            std::vector<double> ftp(num_points_);
-            for (int lm = 0; lm < lmmax_; lm++) {
-                std::memset(&flm[0], 0, lmmax_ * sizeof(double));
-                flm[lm] = 1.0;
-                backward_transform(lmmax_, &flm[0], 1, lmmax_, &ftp[0]);
-                forward_transform(&ftp[0], 1, lmmax_, lmmax_, &flm[0]);
-                flm[lm] -= 1.0;
-
-                double t = 0.0;
-                for (int lm1 = 0; lm1 < lmmax_; lm1++) {
-                    t += std::abs(flm[lm1]);
-                }
-
-                t /= lmmax_;
-
-                if (t > 1e-15) {
-                    std::stringstream s;
-                    s << "test of backward / forward real SHT failed" << std::endl
-                      << "  total error " << t;
-                    WARNING(s.str());
-                }
-            }
-        }
-#endif
     }
+
+    /// Check the transformations.
+    void check() const;
 
     /// Perform a backward transformation from spherical harmonics to spherical coordinates.
     /** \f[
@@ -343,70 +301,6 @@ class SHT // TODO: better name
         }
 
         return vs;
-    }
-
-    /// Generate complex spherical harmonics Ylm
-    static void spherical_harmonics(int lmax, double theta, double phi, double_complex* ylm)
-    {
-        double x = std::cos(theta);
-
-        std::vector<double> result_array(lmax + 1);
-
-        for (int l = 0; l <= lmax; l++) {
-            for (int m = 0; m <= l; m++) {
-                double_complex z     = std::exp(double_complex(0.0, m * phi));
-                ylm[utils::lm(l, m)] = gsl_sf_legendre_sphPlm(l, m, x) * z;
-                if (m % 2) {
-                    ylm[utils::lm(l, -m)] = -std::conj(ylm[utils::lm(l, m)]);
-                } else {
-                    ylm[utils::lm(l, -m)] = std::conj(ylm[utils::lm(l, m)]);
-                }
-            }
-        }
-    }
-
-    /// Generate real spherical harmonics Rlm
-    /** Mathematica code:
-     *  \verbatim
-     *  R[l_, m_, th_, ph_] :=
-     *   If[m > 0, std::sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]],
-     *   If[m < 0, std::sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]],
-     *   If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]]]
-     *  \endverbatim
-     */
-    static void spherical_harmonics(int lmax, double theta, double phi, double* rlm)
-    {
-        int lmmax = (lmax + 1) * (lmax + 1);
-
-        std::vector<double_complex> ylm(lmmax);
-        spherical_harmonics(lmax, theta, phi, &ylm[0]);
-
-        double const t = std::sqrt(2.0);
-
-        rlm[0] = y00;
-
-        for (int l = 1; l <= lmax; l++) {
-            for (int m = -l; m < 0; m++) {
-                rlm[utils::lm(l, m)] = t * ylm[utils::lm(l, m)].imag();
-            }
-
-            rlm[utils::lm(l, 0)] = ylm[utils::lm(l, 0)].real();
-
-            for (int m = 1; m <= l; m++) {
-                rlm[utils::lm(l, m)] = t * ylm[utils::lm(l, m)].real();
-            }
-        }
-    }
-
-    /// Generate real or complex spherical harmonics for a given Cartesian vectors.
-    template <typename T>
-    static std::vector<T> spherical_harmonics(int lmax__, geometry3d::vector3d<double> vc__)
-    {
-        auto rtp = spherical_coordinates(vc__);
-
-        std::vector<T> v(utils::lmmax(lmax__));
-        spherical_harmonics(lmax__, rtp[1], rtp[2], v.data());
-        return std::move(v);
     }
 
     /// Compute element of the transformation matrix from complex to real spherical harmonics.
@@ -676,90 +570,14 @@ class SHT // TODO: better name
         }
     }
 
-    /// Compute derivative of real-spherical harmonic with respect to theta angle.
-    static void dRlm_dtheta(int lmax, double theta, double phi, sddk::mdarray<double, 1>& data);
-    ///  Compute derivative of real-spherical harmonic with respect to phi angle and divide by sin(theta).
-    static void dRlm_dphi_sin_theta(int lmax, double theta, double phi, sddk::mdarray<double, 1>& data);
-
-    /// Compute the derivatives of real spherical harmonics over the components of cartesian vector.
-    /** The following derivative is computed:
-      *  \f[
-      *    \frac{\partial R_{\ell m}(\theta_r, \phi_r)}{\partial r_{\mu}} =
-      *      \frac{\partial R_{\ell m}(\theta_r, \phi_r)}{\partial \theta_r} \frac{\partial \theta_r}{\partial r_{\mu}} +
-      *      \frac{\partial R_{\ell m}(\theta_r, \phi_r)}{\partial \phi_r} \frac{\partial \phi_r}{\partial r_{\mu}}
-      *  \f]
-      *  The derivatives of angles are:
-      *  \f[
-      *     \frac{\partial \theta_r}{\partial r_{x}} = \frac{\cos(\phi_r) \cos(\theta_r)}{r} \\
-      *     \frac{\partial \theta_r}{\partial r_{y}} = \frac{\cos(\theta_r) \sin(\phi_r)}{r} \\
-      *     \frac{\partial \theta_r}{\partial r_{z}} = -\frac{\sin(\theta_r)}{r}
-      *  \f]
-      *  and
-      *  \f[
-      *     \frac{\partial \phi_r}{\partial r_{x}} = -\frac{\sin(\phi_r)}{\sin(\theta_r) r} \\
-      *     \frac{\partial \phi_r}{\partial r_{y}} = \frac{\cos(\phi_r)}{\sin(\theta_r) r} \\
-      *     \frac{\partial \phi_r}{\partial r_{z}} = 0
-      *  \f]
-      *  The derivative of \f$ \phi \f$ has discontinuities at \f$ \theta = 0, \theta=\pi \f$. This, however, is not a problem, because
-      *  multiplication by the the derivative of \f$ R_{\ell m} \f$ removes it. The following functions have to be hardcoded:
-      *  \f[
-      *    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \\
-      *    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{1}{\sin(\theta)}
-      *  \f]
-      *
-      *  Mathematica script for spherical harmonic derivatives:
-         \verbatim
-         Rlm[l_, m_, th_, ph_] :=
-          If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]],
-            If[m < 0, Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]],
-              If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]
-            ]
-          ]
-         Do[Print[FullSimplify[D[Rlm[l, m, theta, phi], theta]]], {l, 0, 4}, {m, -l, l}]
-         Do[Print[FullSimplify[TrigExpand[D[Rlm[l, m, theta, phi], phi]/Sin[theta]]]], {l, 0, 4}, {m, -l, l}]
-         \endverbatim
-     */
-    static void dRlm_dr(int lmax__, geometry3d::vector3d<double>& r__, sddk::mdarray<double, 2>& data__);
-
-    /// Generate \f$ \cos(m x) \f$ for m in [1, n] using recursion.
-    static sddk::mdarray<double, 1> cosxn(int n__, double x__)
-    {
-        assert(n__ > 0);
-        sddk::mdarray<double, 1> data(n__);
-        data[0] = std::cos(x__);
-        if (n__ > 1) {
-            data[1] = std::cos(2 * x__);
-            for (int i = 2; i < n__; i++) {
-                data[i] = 2 * data[0] * data[i - 1] - data[i - 2];
-            }
-        }
-        return data;
-    }
-
-    /// Generate \f$ \sin(m x) \f$ for m in [1, n] using recursion.
-    static sddk::mdarray<double, 1> sinxn(int n__, double x__)
-    {
-        assert(n__ > 0);
-        sddk::mdarray<double, 1> data(n__);
-        auto               cosx = std::cos(x__);
-        data[0]                 = std::sin(x__);
-        if (n__ > 1) {
-            data[1] = std::sin(2 * x__);
-            for (int i = 2; i < n__; i++) {
-                data[i] = 2 * cosx * data[i - 1] - data[i - 2];
-            }
-        }
-        return data;
-    }
-
     static double ClebschGordan(const int l, const double j, const double mj, const int spin);
-// this function computes the U^sigma_{ljm mj} coefficient that
-// rotates the complex spherical harmonics to the real one for the
-// spin orbit case
 
-// mj is normally half integer from -j to j but to avoid computation
-// error it is considered as integer so mj = 2 mj
+    // this function computes the U^sigma_{ljm mj} coefficient that
+    // rotates the complex spherical harmonics to the real one for the
+    // spin orbit case
 
+    // mj is normally half integer from -j to j but to avoid computation
+    // error it is considered as integer so mj = 2 mj
     static double_complex
     calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma);
 };

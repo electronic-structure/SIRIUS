@@ -29,7 +29,8 @@ namespace sirius {
 
 /// Descriptor for the atomic radial functions.
 /** The radial functions \f$ f_{\ell \nu}(r) \f$ are labeled by two indices: orbital quantum number \f$ \ell \f$ and
- *  an order \f$ \nu \f$ for a given \f$ \ell \f$.
+ *  an order \f$ \nu \f$ for a given \f$ \ell \f$. Radial functions can be any of augmented waves of local orbitals
+ *  (in case of FP-LAPW) or bete projectors, atomic or Hubbard wave functions in case of PP-PW.
  */
 struct radial_function_index_descriptor
 {
@@ -90,21 +91,29 @@ class radial_functions_index
     // Maximum number of radial functions across all angular momentums.
     int max_num_rf_;
 
+    /// Maximum orbital quantum number of augmented-wave radial functions.
     int lmax_aw_;
 
+    /// Maximum orbital quantum number of local orbital radial functions.
     int lmax_lo_;
 
+    /// Maximum orbital quantum number of radial functions.
     int lmax_;
 
   public:
-    void init(std::vector<local_orbital_descriptor> const& lo_descriptors__)
+    /// Initialize a list of radial functions from the list of local orbitals.
+    template <typename T>
+    void init(std::vector<T> const& lo_descriptors__)
     {
+        /* create an empty descriptor */
         std::vector<radial_solution_descriptor_set> aw_descriptors;
-        init(aw_descriptors, lo_descriptors__);
+        this->init(aw_descriptors, lo_descriptors__);
     }
 
+    /// Initialize a list of radial functions from the list of APW radial functions and the list of local orbitals.
+    template <typename T>
     void init(std::vector<radial_solution_descriptor_set> const& aw_descriptors,
-              std::vector<local_orbital_descriptor> const& lo_descriptors)
+              std::vector<T> const& lo_descriptors)
     {
         lmax_aw_ = static_cast<int>(aw_descriptors.size()) - 1;
         lmax_lo_ = -1;
@@ -162,7 +171,7 @@ class radial_functions_index
 
     inline int size() const
     {
-        return (int)radial_function_index_descriptors_.size();
+        return static_cast<int>(radial_function_index_descriptors_.size());
     }
 
     inline radial_function_index_descriptor const& operator[](int i) const

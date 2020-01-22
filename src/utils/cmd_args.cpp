@@ -19,7 +19,7 @@
 
 /** \file cmd_args.cpp
  *
- *  \brief Definitions.
+ *  \brief Contains definition on cmd_args class.
  *
  */
 
@@ -120,16 +120,16 @@ void cmd_args::print_help()
         max_key_width = std::max(max_key_width, (int)key_desc_[i].first.length());
     }
 
-    printf("Options:\n");
+    std::printf("Options:\n");
 
     for (int i = 0; i < (int)key_desc_.size(); i++) {
-        printf("  %s", key_desc_[i].first.c_str());
+        std::printf("  %s", key_desc_[i].first.c_str());
         int k = (int)key_desc_[i].first.length();
 
         for (int j = 0; j < max_key_width - k + 1; j++) {
-            printf(" ");
+            std::printf(" ");
         }
 
-        printf("%s\n", key_desc_[i].second.c_str());
+        std::printf("%s\n", key_desc_[i].second.c_str());
     }
 }

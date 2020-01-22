@@ -23,6 +23,7 @@
  *
  */
 #include "matrix_storage.hpp"
+#include "utils/profiler.hpp"
 
 namespace sddk {
 
@@ -55,10 +56,10 @@ void matrix_storage<T, matrix_storage_t::slab>::set_num_extra(int n__, int idx0_
         size_t sz = gvp_->gvec_count_fft() * ncol;
         /* reallocate buffers if necessary */
         if (extra_buf_.size() < sz) {
-            utils::timer t1("sddk::matrix_storage::set_num_extra|alloc");
+            PROFILE("sddk::matrix_storage::set_num_extra|alloc");
             if (mp__) {
-                send_recv_buf_ = mdarray<T, 1>(*mp__, sz, "matrix_storage.send_recv_buf_");
-                extra_buf_     = mdarray<T, 1>(*mp__, sz, "matrix_storage.extra_buf_");
+                send_recv_buf_ = mdarray<T, 1>(sz, *mp__, "matrix_storage.send_recv_buf_");
+                extra_buf_     = mdarray<T, 1>(sz, *mp__, "matrix_storage.extra_buf_");
             } else {
                 send_recv_buf_ = mdarray<T, 1>(sz, memory_t::host, "matrix_storage.send_recv_buf_");
                 extra_buf_     = mdarray<T, 1>(sz, memory_t::host, "matrix_storage.extra_buf_");
@@ -185,7 +186,7 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_backward(int n__, int idx0
     int n_loc = spl_num_col_.local_size();
 
     /* reorder sending blocks */
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < n_loc; i++) {
         for (int j = 0; j < comm_col.size(); j++) {
             int offset = row_distr.offsets[j];
@@ -207,10 +208,11 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_backward(int n__, int idx0
 
     T* recv_buf = (num_rows_loc_ == 0) ? nullptr : prime_.at(memory_t::host, 0, idx0__);
 
-    utils::timer t1("sddk::matrix_storage::remap_backward|mpi");
-    comm_col.alltoall(send_recv_buf_.at(memory_t::host), sd.counts.data(), sd.offsets.data(), recv_buf,
-                      rd.counts.data(), rd.offsets.data());
-    t1.stop();
+    {
+        PROFILE("sddk::matrix_storage::remap_backward|mpi");
+        comm_col.alltoall(send_recv_buf_.at(memory_t::host), sd.counts.data(), sd.offsets.data(), recv_buf,
+                          rd.counts.data(), rd.offsets.data());
+    }
 
     /* move data back to device */
     if (prime_.on_device()) {
@@ -248,13 +250,14 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_forward(int n__, int idx0_
 
     T* send_buf = (num_rows_loc_ == 0) ? nullptr : prime_.at(memory_t::host, 0, idx0__);
 
-    utils::timer t1("sddk::matrix_storage::remap_forward|mpi");
-    comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf_.at(memory_t::host),
-                      rd.counts.data(), rd.offsets.data());
-    t1.stop();
+    {
+        PROFILE("sddk::matrix_storage::remap_forward|mpi");
+        comm_col.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf_.at(memory_t::host),
+                          rd.counts.data(), rd.offsets.data());
+    }
 
     /* reorder recieved blocks */
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < n_loc; i++) {
         for (int j = 0; j < comm_col.size(); j++) {
             int offset = row_distr.offsets[j];
@@ -284,7 +287,7 @@ void matrix_storage<T, matrix_storage_t::slab>::scale(memory_t mem__, int i0__, 
 }
 
 template <>
-double_complex matrix_storage<std::complex<double>, matrix_storage_t::slab>::checksum(device_t pu__, int i0__, int n__)
+double_complex matrix_storage<std::complex<double>, matrix_storage_t::slab>::checksum(device_t pu__, int i0__, int n__) const
 {
     double_complex cs(0, 0);
 
@@ -312,7 +315,7 @@ double_complex matrix_storage<std::complex<double>, matrix_storage_t::slab>::che
 }
 
 template <>
-double_complex matrix_storage<double, matrix_storage_t::slab>::checksum(device_t, int, int)
+double_complex matrix_storage<double, matrix_storage_t::slab>::checksum(device_t, int, int) const
 {
     TERMINATE("matrix_storage<double, ..>::checksum is not implemented for double\n");
     return 0;

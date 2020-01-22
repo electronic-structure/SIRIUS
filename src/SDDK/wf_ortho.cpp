@@ -26,6 +26,7 @@
 #include "wf_ortho.hpp"
 #include "wf_inner.hpp"
 #include "wf_trans.hpp"
+#include "utils/profiler.hpp"
 
 namespace sddk {
 
@@ -81,23 +82,23 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
     }
 
     if (sddk_debug >= 2) {
-        if (o__.comm().rank() == 0) {
-            printf("check QR decomposition, matrix size : %i\n", n__);
-        }
-        inner(mem__, la__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+        //if (o__.comm().rank() == 0) {
+        //    std::printf("check QR decomposition, matrix size : %i\n", n__);
+        //}
+        //inner(mem__, la__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
-        linalg<device_t::CPU>::geqrf(n__, n__, o__, 0, 0);
-        auto diag = o__.get_diag(n__);
-        if (o__.comm().rank() == 0) {
-            for (int i = 0; i < n__; i++) {
-                if (std::abs(diag[i]) < 1e-6) {
-                    std::cout << "small norm: " << i << " " << diag[i] << std::endl;
-                }
-            }
-        }
+        //linalg<device_t::CPU>::geqrf(n__, n__, o__, 0, 0);
+        //auto diag = o__.get_diag(n__);
+        //if (o__.comm().rank() == 0) {
+        //    for (int i = 0; i < n__; i++) {
+        //        if (std::abs(diag[i]) < 1e-6) {
+        //            std::cout << "small norm: " << i << " " << diag[i] << std::endl;
+        //        }
+        //    }
+        //}
 
         if (o__.comm().rank() == 0) {
-            printf("check eigen-values, matrix size : %i\n", n__);
+            std::printf("check eigen-values, matrix size : %i\n", n__);
         }
         inner(mem__, la__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -125,7 +126,7 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
 
     if (sddk_debug >= 1) {
         if (o__.comm().rank() == 0) {
-            printf("check diagonal\n");
+            std::printf("check diagonal\n");
         }
         auto diag = o__.get_diag(n__);
         for (int i = 0; i < n__; i++) {
@@ -134,7 +135,7 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
             }
         }
         if (o__.comm().rank() == 0) {
-            printf("check hermitian\n");
+            std::printf("check hermitian\n");
         }
         double d = check_hermitian(o__, n__);
         if (d > 1e-12 && o__.comm().rank() == 0) {
@@ -159,21 +160,21 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
         //        }
         //#endif
 
-        utils::timer t1("sddk::orthogonalize|tmtrx");
+        PROFILE_START("sddk::orthogonalize|tmtrx");
         if (use_magma) {
             /* Cholesky factorization */
-            if (int info = linalg2(linalg_t::magma).potrf(n__, o__.at(memory_t::device), o__.ld())) {
+            if (int info = linalg(linalg_t::magma).potrf(n__, o__.at(memory_t::device), o__.ld())) {
                 std::stringstream s;
                 s << "error in GPU factorization, info = " << info;
                 TERMINATE(s);
             }
             /* inversion of triangular matrix */
-            if (linalg2(linalg_t::magma).trtri(n__, o__.at(memory_t::device), o__.ld())) {
+            if (linalg(linalg_t::magma).trtri(n__, o__.at(memory_t::device), o__.ld())) {
                 TERMINATE("error in inversion");
             }
         } else { /* CPU version */
             /* Cholesky factorization */
-            if (int info = linalg2(linalg_t::lapack).potrf(n__, &o__(0, 0), o__.ld())) {
+            if (int info = linalg(linalg_t::lapack).potrf(n__, &o__(0, 0), o__.ld())) {
                 std::stringstream s;
                 s << "error in factorization, info = " << info << std::endl
                   << "number of existing states: " << N__ << std::endl
@@ -184,16 +185,16 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
                 TERMINATE(s);
             }
             /* inversion of triangular matrix */
-            if (linalg2(linalg_t::lapack).trtri(n__, &o__(0, 0), o__.ld())) {
+            if (linalg(linalg_t::lapack).trtri(n__, &o__(0, 0), o__.ld())) {
                 TERMINATE("error in inversion");
             }
             if (is_device_memory(mem__)) {
                 acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), n__, n__);
             }
         }
-        t1.stop();
+        PROFILE_STOP("sddk::orthogonalize|tmtrx");
 
-        utils::timer t2("sddk::orthogonalize|transform");
+        PROFILE_START("sddk::orthogonalize|transform");
 
         int sid{0};
         for (int s : spins) {
@@ -201,14 +202,14 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
             for (auto& e : wfs__) {
                 /* wave functions are complex, transformation matrix is complex */
                 if (std::is_same<T, double_complex>::value) {
-                    linalg2(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__,
+                    linalg(la__).trmm('R', 'U', 'N', e->pw_coeffs(s).num_rows_loc(), n__,
                                        &linalg_const<double_complex>::one(),
                                        reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
                                        e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
                                        e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
-                        linalg2(la__).trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__,
+                        linalg(la__).trmm('R', 'U', 'N', e->mt_coeffs(s).num_rows_loc(), n__,
                                            &linalg_const<double_complex>::one(),
                                            reinterpret_cast<double_complex*>(o__.at(mem__)), o__.ld(),
                                            e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__),
@@ -217,14 +218,14 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
                 }
                 /* wave functions are real (psi(G) = psi^{*}(-G)), transformation matrix is real */
                 if (std::is_same<T, double>::value) {
-                    linalg2(la__).trmm(
+                    linalg(la__).trmm(
                         'R', 'U', 'N', 2 * e->pw_coeffs(s).num_rows_loc(), n__, &linalg_const<double>::one(),
                         reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
                         reinterpret_cast<double*>(e->pw_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
                         2 * e->pw_coeffs(s).prime().ld(), stream_id(sid++));
 
                     if (e->has_mt()) {
-                        linalg2(la__).trmm(
+                        linalg(la__).trmm(
                             'R', 'U', 'N', 2 * e->mt_coeffs(s).num_rows_loc(), n__, &linalg_const<double>::one(),
                             reinterpret_cast<double*>(o__.at(mem__)), o__.ld(),
                             reinterpret_cast<double*>(e->mt_coeffs(s).prime().at(e->preferred_memory_t(), 0, N__)),
@@ -233,18 +234,21 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
                 }
             }
         }
-        for (int i = 0; i < sid; i++) {
-            acc::sync_stream(stream_id(i));
+        if (la__ == linalg_t::gpublas || la__ == linalg_t::cublasxt || la__ == linalg_t::magma) {
+            // sync stream only if processing unit is gpu
+            for (int i = 0; i < sid; i++) {
+                acc::sync_stream(stream_id(i));
+            }
         }
-        t2.stop();
+        PROFILE_STOP("sddk::orthogonalize|transform");
     } else { /* parallel transformation */
-        utils::timer t1("sddk::orthogonalize|potrf");
+        PROFILE_START("sddk::orthogonalize|potrf");
         mdarray<T, 1> diag;
         o__.make_real_diag(n__);
         if (sddk_debug >= 1) {
             diag = o__.get_diag(n__);
         }
-        if (int info = linalg2(linalg_t::scalapack).potrf(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
+        if (int info = linalg(linalg_t::scalapack).potrf(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
             std::stringstream s;
             s << "error in Cholesky factorization, info = " << info << ", matrix size = " << n__;
             if (sddk_debug >= 1) {
@@ -252,13 +256,13 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
             }
             TERMINATE(s);
         }
-        t1.stop();
+        PROFILE_STOP("sddk::orthogonalize|potrf");
 
-        utils::timer t2("sddk::orthogonalize|trtri");
-        if (linalg2(linalg_t::scalapack).trtri(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
+        PROFILE_START("sddk::orthogonalize|trtri");
+        if (linalg(linalg_t::scalapack).trtri(n__, o__.at(memory_t::host), o__.ld(), o__.descriptor())) {
             TERMINATE("error in inversion");
         }
-        t2.stop();
+        PROFILE_STOP("sddk::orthogonalize|trtri");
 
         /* o is upper triangular matrix */
         for (int i = 0; i < n__; i++) {

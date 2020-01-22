@@ -31,6 +31,7 @@
 #include <apex_api.hpp>
 #endif
 #include "timer.hpp"
+#include "rt_graph.hpp"
 #if defined(__GPU) && defined(__CUDA_NVTX)
 #include "GPU/acc.hpp"
 #endif
@@ -96,11 +97,11 @@ class profiler
         tab = static_cast<int>(call_stack().size()) - 1;
 #endif
         for (int i = 0; i < tab; i++) {
-            printf(" ");
+            std::printf(" ");
         }
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        printf("[rank%04i] + %s\n", rank, label_.c_str());
+        std::printf("[rank%04i] + %s\n", rank, label_.c_str());
 #endif
 
 #if defined(__PROFILE_TIME)
@@ -123,11 +124,11 @@ class profiler
         tab = static_cast<int>(call_stack().size()) - 1;
 #endif
         for (int i = 0; i < tab; i++) {
-            printf(" ");
+            std::printf(" ");
         }
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        printf("[rank%04i] - %s\n", rank, label_.c_str());
+        std::printf("[rank%04i] - %s\n", rank, label_.c_str());
 #endif
 
 #ifdef __PROFILE_STACK
@@ -148,9 +149,9 @@ class profiler
         int t{0};
         for (auto it = call_stack().rbegin(); it != call_stack().rend(); it++) {
             for (int i = 0; i < t; i++) {
-                printf(" ");
+                std::printf(" ");
             }
-            printf("[%s]\n", it->c_str());
+            std::printf("[%s]\n", it->c_str());
             t++;
         }
 #endif
@@ -163,12 +164,29 @@ class profiler
     #define __function_name__ __func__
 #endif
 
+// --------------------
+// Profile with RTGraph
+// --------------------
+
+extern ::rt_graph::Timer global_rtgraph_timer;
+
 #ifdef __PROFILE
-    #define PROFILE(name) utils::profiler profiler__(__function_name__, __FILE__, __LINE__, name);
+#define PROFILER_CONCAT_IMPL(x, y) x##y
+#define PROFILER_CONCAT(x, y) PROFILER_CONCAT_IMPL(x, y)
+
+#define PROFILE(identifier)                                                                                            \
+    ::rt_graph::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier,                            \
+                                                                                ::utils::global_rtgraph_timer);
+
+#define PROFILE_START(identifier) ::utils::global_rtgraph_timer.start(identifier);
+#define PROFILE_STOP(identifier) ::utils::global_rtgraph_timer.stop(identifier);
+
 #else
-    #define PROFILE(...)
+#define PROFILE(...)
+#define PROFILE_START(...)
+#define PROFILE_STOP(...)
 #endif
 
-}
+} // namespace utils
 
 #endif

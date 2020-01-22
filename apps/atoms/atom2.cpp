@@ -37,31 +37,31 @@ int main(int argn, char **argv)
     args.register_key("--xml", "xml output for Exciting code");
     args.register_key("--rel", "use scalar-relativistic solver");
     args.parse_args(argn, argv);
-    
+
     if (argn == 1 || args.exist("help")) {
-        printf("\n");
-        printf("Atom (L)APW+lo basis generation.\n");
-        printf("\n");
-        printf("Usage: %s [options]\n", argv[0]);
+        std::printf("\n");
+        std::printf("Atom (L)APW+lo basis generation.\n");
+        std::printf("\n");
+        std::printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
-        printf("\n");
-        printf("Definition of the local orbital types:\n");
-        printf("  lo  : 2nd order local orbitals composed of u(E) and udot(E),\n");
-        printf("        where E is the energy of the bound-state level {n,l}\n");
-        printf("  LO  : 3rd order local orbitals composed of u(E), udot(E) and u(E1),\n");
-        printf("        where E and E1 are the energies of the bound-state levels {n,l} and {n+1,l}\n");
-        printf("\n");
-        printf("Examples:\n");
-        printf("\n");
-        printf("  generate default basis for lithium:\n");
-        printf("    ./atom --symbol=Li\n"); 
-        printf("\n");
-        printf("  generate high precision basis for titanium:\n");
-        printf("    ./atom --type=lo+LO --symbol=Ti\n"); 
-        printf("\n");
-        printf("  make all states of iron to be valence:\n");
-        printf("    ./atom --core=-1000 --symbol=Fe\n"); 
-        printf("\n");
+        std::printf("\n");
+        std::printf("Definition of the local orbital types:\n");
+        std::printf("  lo  : 2nd order local orbitals composed of u(E) and udot(E),\n");
+        std::printf("        where E is the energy of the bound-state level {n,l}\n");
+        std::printf("  LO  : 3rd order local orbitals composed of u(E), udot(E) and u(E1),\n");
+        std::printf("        where E and E1 are the energies of the bound-state levels {n,l} and {n+1,l}\n");
+        std::printf("\n");
+        std::printf("Examples:\n");
+        std::printf("\n");
+        std::printf("  generate default basis for lithium:\n");
+        std::printf("    ./atom --symbol=Li\n");
+        std::printf("\n");
+        std::printf("  generate high precision basis for titanium:\n");
+        std::printf("    ./atom --type=lo+LO --symbol=Ti\n");
+        std::printf("\n");
+        std::printf("  make all states of iron to be valence:\n");
+        std::printf("    ./atom --core=-1000 --symbol=Fe\n");
+        std::printf("\n");
         return 0;
     }
 

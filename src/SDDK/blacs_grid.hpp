@@ -87,10 +87,14 @@ class BLACS_grid
 
     ~BLACS_grid()
     {
+        int mpi_finalized;
+        MPI_Finalized(&mpi_finalized);
+        if(mpi_finalized==0) {
 #ifdef __SCALAPACK
-        linalg_base::gridexit(blacs_context_);
-        linalg_base::free_blacs_handler(blacs_handler_);
+            linalg_base::gridexit(blacs_context_);
+            linalg_base::free_blacs_handler(blacs_handler_);
 #endif
+        }
     }
 
     inline int context() const

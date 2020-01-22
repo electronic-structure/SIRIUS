@@ -44,8 +44,11 @@ double test_gemm(int M, int N, int K, int transa)
     printf("a.ld() = %i\n", a.ld());
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
-    utils::timer t1("gemm_only"); 
-    linalg<device_t::CPU>::gemm(transa, 0, M, N, K, a.at(memory_t::host), a.ld(), b.at(memory_t::host), b.ld(), c.at(memory_t::host), c.ld());
+    const char ta[] = {'N', 'T', 'C'};
+    utils::timer t1("gemm_only");
+    linalg(linalg_t::blas).gemm(ta[transa], 'N', M, N, K, &sddk::linalg_const<gemm_type>::one(),
+        a.at(memory_t::host), a.ld(), b.at(memory_t::host), b.ld(), &sddk::linalg_const<gemm_type>::zero(),
+        c.at(memory_t::host), c.ld());
     double tval = t1.stop();
     double perf = nop_gemm * 1e-9 * M * N * K / tval;
     printf("execution time (sec) : %12.6f\n", tval);
@@ -97,7 +100,8 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     utils::timer t1("gemm_only");
     gemm_type one = 1;
     gemm_type zero = 0;
-    linalg<device_t::CPU>::gemm(transa, 0, M, N - n, K, one, a, 0, 0, b, 0, n, zero, c, 0, 0);
+    const char TA [] = {'N', 'T', 'C'};
+    linalg(linalg_t::scalapack).gemm(TA[transa], 'N', M, N - n, K, &one, a, 0, 0, b, 0, n, &zero, c, 0, 0);
     //== #ifdef _GPU_
     //== cuda_device_synchronize();
     //== #endif
@@ -224,7 +228,7 @@ int main(int argn, char **argv)
             printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);
         }
         #else
-        TERMINATE_NO_SCALAPACK;
+        throw std::runtime_error("not compiled with ScaLAPACK");
         #endif
     }
 

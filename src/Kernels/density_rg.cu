@@ -25,30 +25,61 @@
 #include "../SDDK/GPU/cuda_common.hpp"
 #include "../SDDK/GPU/acc_runtime.hpp"
 
-__global__ void update_density_rg_1_gpu_kernel(int size__,
-                                               acc_complex_double_t const* psi_rg__,
-                                               double wt__,
-                                               double* density_rg__)
+__global__ void update_density_rg_1_complex_gpu_kernel(int size__,
+                                                       acc_complex_double_t const* psi_rg__,
+                                                       double wt__,
+                                                       double* density_rg__)
 {
     int ir = blockIdx.x * blockDim.x + threadIdx.x;
-    if (ir < size__)
-    {
+    if (ir < size__) {
         acc_complex_double_t z = psi_rg__[ir];
         density_rg__[ir] += (z.x * z.x + z.y * z.y) * wt__;
     }
 }
 
-extern "C" void update_density_rg_1_gpu(int size__, 
-                                        acc_complex_double_t const* psi_rg__, 
-                                        double wt__, 
-                                        double* density_rg__)
+/* Update one density component from one complex wave-function */
+extern "C" void update_density_rg_1_complex_gpu(int size__, 
+                                                acc_complex_double_t const* psi_rg__, 
+                                                double wt__, 
+                                                double* density_rg__)
 {
     //CUDA_timer t("update_density_rg_1_gpu");
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(size__, grid_t.x));
 
-    accLaunchKernel((update_density_rg_1_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
+    accLaunchKernel((update_density_rg_1_complex_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
+        size__,
+        psi_rg__,
+        wt__,
+        density_rg__
+    );
+}
+
+__global__ void update_density_rg_1_real_gpu_kernel(int size__,
+                                                    double const* psi_rg__,
+                                                    double wt__,
+                                                    double* density_rg__)
+{
+    int ir = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ir < size__) {
+        double p = psi_rg__[ir];
+        density_rg__[ir] += p * p * wt__;
+    }
+}
+
+/* Update one density component from one real wave-function */
+extern "C" void update_density_rg_1_real_gpu(int size__,
+                                             double const* psi_rg__,
+                                             double wt__, 
+                                             double* density_rg__)
+{
+    //CUDA_timer t("update_density_rg_1_gpu");
+
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(size__, grid_t.x));
+
+    accLaunchKernel((update_density_rg_1_real_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
         size__,
         psi_rg__,
         wt__,
@@ -71,10 +102,11 @@ __global__ void update_density_rg_2_gpu_kernel(int size__,
     }
 }
 
-extern "C" void update_density_rg_2_gpu(int size__, 
-                                        acc_complex_double_t const* psi_up_rg__, 
-                                        acc_complex_double_t const* psi_dn_rg__, 
-                                        double wt__, 
+/* Update off-diagonal density component in non-collinear case */
+extern "C" void update_density_rg_2_gpu(int size__,
+                                        acc_complex_double_t const* psi_up_rg__,
+                                        acc_complex_double_t const* psi_dn_rg__,
+                                        double wt__,
                                         double* density_x_rg__,
                                         double* density_y_rg__)
 {
@@ -83,7 +115,7 @@ extern "C" void update_density_rg_2_gpu(int size__,
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(size__, grid_t.x));
 
-    accLaunchKernel((update_density_rg_2_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0, 
+    accLaunchKernel((update_density_rg_2_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0,
         size__,
         psi_up_rg__,
         psi_dn_rg__,

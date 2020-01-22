@@ -35,7 +35,7 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
             const auto& atom = this->unit_cell_.atom(ia);
             if (atom.type().hubbard_correction()) {
                 double    U_effective = 0.0;
-                const int lmax_at     = 2 * atom.type().hubbard_orbital(0).l() + 1;
+                const int lmax_at     = 2 * atom.type().hubbard_orbital(0).l + 1;
                 if ((atom.type().hubbard_orbital(0).Hubbard_U() != 0.0) || (atom.type().hubbard_orbital(0).Hubbard_alpha() != 0.0)) {
 
                     U_effective = atom.type().hubbard_orbital(0).Hubbard_U();
@@ -81,7 +81,7 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
 
                             this->U(m1, m1, is, ia) += sign * atom.type().hubbard_orbital(0).Hubbard_beta();
 
-                            for (int m2 = 0; m2 < 2 * atom.type().hubbard_orbital(0).l() + 1; m2++) {
+                            for (int m2 = 0; m2 < 2 * atom.type().hubbard_orbital(0).l + 1; m2++) {
                                 this->hubbard_energy_ +=
                                     0.5 * atom.type().hubbard_orbital(0).Hubbard_J0() *
                                     (this->occupancy_number_(m2, m1, is, ia) * this->occupancy_number_(m1, m2, s_opposite, ia))
@@ -115,7 +115,7 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
             // n_up and n_down spins
             double n_updown[2] = {0.0, 0.0};
 
-            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
+            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
 
             for (int s = 0; s < ctx_.num_spins(); s++) {
                 for (int m = 0; m < lmax_at; m++) {
@@ -144,7 +144,7 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
             // now hubbard contribution
 
             for (int is = 0; is < ctx_.num_spins(); is++) {
-                for (int m1 = 0; m1 < 2 * atom.type().hubbard_orbital(0).l() + 1; m1++) {
+                for (int m1 = 0; m1 < 2 * atom.type().hubbard_orbital(0).l + 1; m1++) {
 
                     // dc contribution
                     this->U(m1, m1, is, ia) += atom.type().hubbard_orbital(0).Hubbard_J() * n_updown[is] +
@@ -152,9 +152,9 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
                                                atom.type().hubbard_orbital(0).Hubbard_U() * n_total;
 
                     // the u contributions
-                    for (int m2 = 0; m2 < 2 * atom.type().hubbard_orbital(0).l() + 1; m2++) {
-                        for (int m3 = 0; m3 < 2 * atom.type().hubbard_orbital(0).l() + 1; m3++) {
-                            for (int m4 = 0; m4 < 2 * atom.type().hubbard_orbital(0).l() + 1; m4++) {
+                    for (int m2 = 0; m2 < 2 * atom.type().hubbard_orbital(0).l + 1; m2++) {
+                        for (int m3 = 0; m3 < 2 * atom.type().hubbard_orbital(0).l + 1; m3++) {
+                            for (int m4 = 0; m4 < 2 * atom.type().hubbard_orbital(0).l + 1; m4++) {
 
                                 // why should we consider the spinless case
 
@@ -193,7 +193,7 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
     }
 
     if ((ctx_.control().verbosity_ >= 1) && (ctx_.comm().rank() == 0)) {
-        printf("\n hub Energy (total) %.5lf  (dc) %.5lf\n", this->hubbard_energy_, this->hubbard_energy_dc_contribution_);
+        std::printf("\n hub Energy (total) %.5lf  (dc) %.5lf\n", this->hubbard_energy_, this->hubbard_energy_dc_contribution_);
     }
 }
 
@@ -209,7 +209,7 @@ Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
         auto& atom = unit_cell_.atom(ia);
         if (atom.type().hubbard_correction()) {
 
-            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
+            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
 
             // compute the charge and magnetization of the hubbard bands for
             // calculation of the double counting term in the hubbard correction
@@ -342,7 +342,7 @@ Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
     this->hubbard_energy_ = this->hubbard_energy_noflip_ + this->hubbard_energy_flip_ - this->hubbard_energy_dc_contribution_;
 
     if ((ctx_.control().verbosity_ >= 1) && (ctx_.comm().rank() == 0)) {
-        printf("\n hub Energy (total) %.5lf (no-flip) %.5lf (flip) %.5lf (dc) %.5lf\n", this->hubbard_energy_, this->hubbard_energy_noflip_,
+        std::printf("\n hub Energy (total) %.5lf (no-flip) %.5lf (flip) %.5lf (dc) %.5lf\n", this->hubbard_energy_, this->hubbard_energy_noflip_,
                this->hubbard_energy_flip_, this->hubbard_energy_dc_contribution_);
     }
 }
@@ -401,7 +401,7 @@ Hubbard::access_hubbard_potential(char const*     what__,
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         auto& atom = ctx_.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
-            const int l = ctx_.unit_cell().atom(ia).type().hubbard_orbital(0).l();
+            const int l = ctx_.unit_cell().atom(ia).type().hubbard_orbital(0).l;
             for (int m1 = -l; m1 <= l; m1++) {
                 for (int m2 = -l; m2 <= l; m2++) {
                     if (what == "get") {

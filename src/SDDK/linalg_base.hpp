@@ -100,6 +100,41 @@ inline linalg_t get_linalg_t(std::string name__)
     return map_to_type.at(name__);
 }
 
+inline std::string to_string(linalg_t la__)
+{
+    switch (la__) {
+        case linalg_t::none: {
+            return "none";
+            break;
+        }
+        case linalg_t::blas: {
+            return "blas";
+            break;
+        }
+        case linalg_t::lapack: {
+            return "lapack";
+            break;
+        }
+        case linalg_t::scalapack: {
+            return "scalapack";
+            break;
+        }
+        case linalg_t::gpublas: {
+            return "gpublas";
+            break;
+        }
+        case linalg_t::cublasxt: {
+            return "cublasxt";
+            break;
+        }
+        case linalg_t::magma: {
+            return "magma";
+            break;
+        }
+    }
+    return ""; // make compiler happy
+}
+
 extern "C" {
 
 ftn_int FORTRAN(ilaenv)(ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n1, ftn_int* n2, ftn_int* n3,
@@ -124,14 +159,14 @@ void Cblacs_barrier(int ConTxt, const char* scope);
 
 void Cblacs_gridexit(int ConTxt);
 
-void FORTRAN(pdgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double* aplha,
-                     ftn_double* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double* B, ftn_int* ib,
-                     ftn_int* jb, ftn_int const* descb, ftn_double* beta, ftn_double* C, ftn_int* ic, ftn_int* jc,
+void FORTRAN(pdgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double const* aplha,
+                     ftn_double const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double const* B, ftn_int* ib,
+                     ftn_int* jb, ftn_int const* descb, ftn_double const* beta, ftn_double* C, ftn_int* ic, ftn_int* jc,
                      ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
-void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double_complex* aplha,
-                     ftn_double_complex* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double_complex* B,
-                     ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_double_complex* beta, ftn_double_complex* C,
+void FORTRAN(pzgemm)(ftn_char transa, ftn_char transb, ftn_int* m, ftn_int* n, ftn_int* k, ftn_double_complex const* aplha,
+                     ftn_double_complex const* A, ftn_int* ia, ftn_int* ja, ftn_int const* desca, ftn_double_complex const* B,
+                     ftn_int* ib, ftn_int* jb, ftn_int const* descb, ftn_double_complex const* beta, ftn_double_complex* C,
                      ftn_int* ic, ftn_int* jc, ftn_int const* descc, ftn_len transa_len, ftn_len transb_len);
 
 void FORTRAN(descinit)(ftn_int const* desc, ftn_int* m, ftn_int* n, ftn_int* mb, ftn_int* nb, ftn_int* irsrc,
@@ -220,8 +255,8 @@ class linalg_base
         FORTRAN(descinit)(desc, &m, &n, &mb, &nb, &irsrc, &icsrc, &ictxt, &lld1, &info);
 
         if (info) {
-            printf("error in descinit()\n");
-            printf("m=%i n=%i mb=%i nb=%i irsrc=%i icsrc=%i lld=%i\n", m, n, mb, nb, irsrc, icsrc, lld);
+            std::printf("error in descinit()\n");
+            std::printf("m=%i n=%i mb=%i nb=%i irsrc=%i icsrc=%i lld=%i\n", m, n, mb, nb, irsrc, icsrc, lld);
             exit(-1);
         }
     }

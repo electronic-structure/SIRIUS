@@ -39,6 +39,8 @@
 namespace sirius {
 void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 {
+    PROFILE("sirius::Hubbard::compute_occupancy");
+
     if (!ctx_.hubbard_correction()) {
         return;
     }
@@ -164,13 +166,14 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 
         // now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk}
         const double scal = (ctx_.num_mag_dims() == 0) ? 0.5 : 1.0;
-        linalg<device_t::CPU>::gemm(2, 0, this->number_of_hubbard_orbitals() * Ncf, this->number_of_hubbard_orbitals() * Ncf, HowManyBands,
-                          double_complex(kp->weight() * scal, 0.0), dynamic_cast<matrix<double_complex>&>(dm), dm1,
-                          linalg_const<double_complex>::zero(), Op);
+        auto alpha = double_complex(kp->weight() * scal, 0.0);
+        linalg(linalg_t::blas).gemm('C', 'N', this->number_of_hubbard_orbitals() * Ncf,
+            this->number_of_hubbard_orbitals() * Ncf, HowManyBands, &alpha, dm.at(memory_t::host), dm.ld(),
+            dm1.at(memory_t::host), dm1.ld(), &linalg_const<double_complex>::zero(), Op.at(memory_t::host), Op.ld());
 
         if (ctx_.num_mag_dims() == 3) {
             // there must be a way to do that with matrix multiplication
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 const auto& atom = unit_cell_.atom(ia);
                 if (atom.type().hubbard_correction()) {
@@ -181,19 +184,19 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
                        relativistic wave functions have different total angular
                        momentum for the same n */
 
-                    for (int orb = 0; orb < ((int)atom.type().hubbard_orbital().size()); orb += (atom.type().spin_orbit_coupling() ? 2 : 1)) {
+                    for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb += (atom.type().spin_orbit_coupling() ? 2 : 1)) {
                         /*
                            I know that the index of the hubbard wave functions (indexb_....) is
                            consistent with the index of the hubbard orbitals
                         */
-                        const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
+                        const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
                         for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                             for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                                 int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
                                 for (int mp = 0; mp < lmax_at; mp++) {
                                     for (int m = 0; m < lmax_at; m++) {
                                         this->occupancy_number_(m, mp, s, ia) +=
-                                            Op(this->offset[ia] + m + s1 * lmax_at, this->offset[ia] + mp + s2 * lmax_at);
+                                            Op(this->offset_[ia] + m + s1 * lmax_at, this->offset_[ia] + mp + s2 * lmax_at);
                                     }
                                 }
                             }
@@ -210,17 +213,17 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
             // compensate for it because it is taken into account in the
             // calculation of the hubbard potential
 
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 const auto& atom = unit_cell_.atom(ia);
                 if (atom.type().hubbard_correction()) {
-                    for (int orb = 0; orb < (int)atom.type().hubbard_orbital().size(); orb++) {
-                        const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
+                    for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb++) {
+                        const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                             for (int mp = 0; mp < lmax_at; mp++) {
-                                const int mmp = this->offset[ia] + mp + ispn * this->number_of_hubbard_orbitals();
+                                const int mmp = this->offset_[ia] + mp + ispn * this->number_of_hubbard_orbitals();
                                 for (int m = 0; m < lmax_at; m++) {
-                                    const int mm = this->offset[ia] + m + ispn * this->number_of_hubbard_orbitals();
+                                    const int mm = this->offset_[ia] + m + ispn * this->number_of_hubbard_orbitals();
                                     this->occupancy_number_(m, mp, ispn, ia) += Op(mm, mmp);
                                 }
                             }
@@ -236,9 +239,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
                                                            static_cast<int>(this->occupancy_number_.size()));
 
     // Now symmetrization procedure. We need to review that
-    if (0) {
-        symmetrize_occupancy_matrix();
-    }
+    //symmetrize_occupancy_matrix();
 
     print_occupancies();
 }
@@ -255,7 +256,7 @@ Hubbard::calculate_initial_occupation_numbers()
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         const auto& atom = unit_cell_.atom(ia);
         if (atom.type().hubbard_correction()) {
-            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
+            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
             // compute the total charge for the hubbard orbitals
             double charge = atom.type().hubbard_orbital(0).occupancy();
             bool   nm     = true; // true if the atom is non magnetic
@@ -335,45 +336,45 @@ Hubbard::calculate_initial_occupation_numbers()
 void Hubbard::print_occupancies()
 {
     if (ctx_.control().verbosity_ > 1 && ctx_.comm().rank() == 0) {
-        printf("\n");
+        std::printf("\n");
         for (int ci = 0; ci < 10; ci++) {
-            printf("--------");
+            std::printf("--------");
         }
-        printf("\n");
-        printf("hubbard occupancies\n");
+        std::printf("\n");
+        std::printf("hubbard occupancies\n");
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            printf("Atom : %d\n", ia);
-            printf("Mag Dim : %d\n", ctx_.num_mag_dims());
+            std::printf("Atom : %d\n", ia);
+            std::printf("Mag Dim : %d\n", ctx_.num_mag_dims());
             const auto& atom = unit_cell_.atom(ia);
 
             if (atom.type().hubbard_correction()) {
-                const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
+                const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
                 for (int m1 = 0; m1 < lmax_at; m1++) {
                     for (int m2 = 0; m2 < lmax_at; m2++) {
-                        printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 0, ia)));
+                        std::printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 0, ia)));
                     }
 
                     if (ctx_.num_mag_dims() == 3) {
-                        printf(" ");
+                        std::printf(" ");
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 2, ia)));
+                            std::printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 2, ia)));
                         }
                     }
-                    printf("\n");
+                    std::printf("\n");
                 }
 
                 if (ctx_.num_spins() == 2) {
                     for (int m1 = 0; m1 < lmax_at; m1++) {
                         if (ctx_.num_mag_dims() == 3) {
                             for (int m2 = 0; m2 < lmax_at; m2++) {
-                                printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 3, ia)));
+                                std::printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 3, ia)));
                             }
-                            printf(" ");
+                            std::printf(" ");
                         }
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 1, ia)));
+                            std::printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 1, ia)));
                         }
-                        printf("\n");
+                        std::printf("\n");
                     }
                 }
 
@@ -389,19 +390,19 @@ void Hubbard::print_occupancies()
                         n_down += this->occupancy_number_(m1, m1, 1, ia).real();
                     }
                 }
-                printf("\n");
+                std::printf("\n");
                 n_total = n_up + n_down;
                 if (ctx_.num_spins() == 2) {
-                    printf("Atom charge (total) %.5lf (n_up) %.5lf (n_down) %.5lf (mz) %.5lf\n", n_total, n_up, n_down, n_up - n_down);
+                    std::printf("Atom charge (total) %.5lf (n_up) %.5lf (n_down) %.5lf (mz) %.5lf\n", n_total, n_up, n_down, n_up - n_down);
                 } else {
-                    printf("Atom charge (total) %.5lf\n", 2.0 * n_total);
+                    std::printf("Atom charge (total) %.5lf\n", 2.0 * n_total);
                 }
 
-                printf("\n");
+                std::printf("\n");
                 for (int ci = 0; ci < 10; ci++) {
-                    printf("--------");
+                    std::printf("--------");
                 }
-                printf("\n");
+                std::printf("\n");
             }
         }
     }
@@ -509,7 +510,7 @@ Hubbard::access_hubbard_occupancies(char const*     what__,
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         auto& atom = ctx_.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
-            const int l = ctx_.unit_cell().atom(ia).type().hubbard_orbital(0).l();
+            const int l = ctx_.unit_cell().atom(ia).type().hubbard_orbital(0).l;
             for (int m1 = -l; m1 <= l; m1++) {
                 for (int m2 = -l; m2 <= l; m2++) {
                     if (what == "get") {

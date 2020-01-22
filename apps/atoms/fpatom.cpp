@@ -304,7 +304,7 @@ void generate_radial_integrals(int lmax__,
     }
     for (int i = 0; i < omp_get_thread_num(); i++)
     {
-        printf("thread: %i, timers: %12.6f %12.6f %12.6f\n", i, timers(0, i), timers(1, i), timers(2, i));
+        std::printf("thread: %i, timers: %12.6f %12.6f %12.6f\n", i, timers(0, i), timers(1, i), timers(2, i));
     }
     t2.stop();
 }
@@ -342,7 +342,7 @@ std::pair< std::vector<double>, matrix<double_complex> > solve_gen_evp(int ispn_
     }
     if (evp_solver.solve(N, N, h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), &result.first[0], result.second.at<CPU>(), result.second.ld()))
     {
-        printf("error in evp solver\n");
+        std::printf("error in evp solver\n");
         exit(0);
     }
    
@@ -445,7 +445,7 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
 
     //for (int i = 0; i < (int)basis_functions_desc.size(); i++)
     //{
-    //    printf("%i: %i %i %i\n", i, basis_functions_desc[i].n, basis_functions_desc[i].l, basis_functions_desc[i].m);
+    //    std::printf("%i: %i %i %i\n", i, basis_functions_desc[i].n, basis_functions_desc[i].l, basis_functions_desc[i].m);
     //}
 
     //sirius::Radial_grid rgrid(pow2_grid, 25000, 1e-7, 100.0);
@@ -515,32 +515,32 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
 
     for (int iter = 0; iter < niter; iter++)
     {
-        printf("\n");
-        printf("iteration: %i\n", iter);
+        std::printf("\n");
+        std::printf("iteration: %i\n", iter);
         for (int ispn = 0; ispn < 2; ispn++)
         {
             for (int ir = 0; ir < rgrid.num_points(); ir++)
                 veff_spherical[ispn][ir] = vefflm[ispn](0, ir) * y00;
         }
-        
+
         STOP();
         //generate_radial_functions(radial_functions_desc, rsolver, rgrid, veff_spherical, zn, enu, radial_functions);
 
         generate_radial_integrals(lmax_pot, rgrid, radial_functions_desc, radial_functions, vefflm,
                                   h_radial_integrals, o_radial_integrals);
-        
+
         double eband = 0;
         for (int ispn = 0; ispn < 2; ispn++)
         {
             if (occ[ispn] == 0) continue;
             auto evp = solve_gen_evp(ispn, basis_functions_desc, gaunt, h_radial_integrals, o_radial_integrals);
-            
+
             generate_density(lmmax_pot, occ[ispn], ispn, radial_functions_desc, basis_functions_desc,
                              evp.second, gaunt, radial_functions, rholm_new[ispn]);
-            printf("eigen-values for spin %i:\n", ispn);
+            std::printf("eigen-values for spin %i:\n", ispn);
             for (int j = 0; j < occ[ispn]; j++)
-                printf("%12.6f ", evp.first[j]);
-            printf("\n");
+                std::printf("%12.6f ", evp.first[j]);
+            std::printf("\n");
 
             for (int j = 0; j < occ[ispn]; j++) eband += evp.first[j];
         }
@@ -559,7 +559,7 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
                     }
                 }
             }
-            printf("rho diff: %12.6f\n", d);
+            std::printf("rho diff: %12.6f\n", d);
         }
         else
         {
@@ -568,13 +568,13 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
         }
 
         rholm_tot = rholm[0] + rholm[1];
-            
-        printf("density: %12.6f\n", rholm_tot.component(0).integrate(2) * y00 * fourpi);
+
+        std::printf("density: %12.6f\n", rholm_tot.component(0).integrate(2) * y00 * fourpi);
         generate_vha(rholm_tot, vhalm);
         double Ecoul = 0.5 * inner(rholm_tot, vhalm);
 
         for (int ir = 0; ir < rgrid.num_points(); ir++) vhalm(0, ir) -= zn / rgrid[ir] / y00;
-        
+
         generate_xc(lmmax_pot, rholm, vxclm, exclm);
 
         vefflm[0] = vxclm[0] + vhalm;
@@ -584,14 +584,14 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
         double Eenuc = -fourpi * y00 * zn * rholm_tot.component(0).integrate(1);
         double Exc =  inner(rholm_tot, exclm);
         double Etot = Ekin + Ecoul + Eenuc + Exc;
-        
-        printf("Etot : %12.6f\n", Etot);
-        printf("Ekin : %12.6f\n", Ekin);
-        printf("Ecoul: %12.6f\n", Ecoul);
-        printf("Eenuc: %12.6f\n", Eenuc);
-        printf("Exc  : %12.6f\n", Exc);
 
-        printf("Etot_diff : %12.10f\n", std::abs(Etot - Etot_old));
+        std::printf("Etot : %12.6f\n", Etot);
+        std::printf("Ekin : %12.6f\n", Ekin);
+        std::printf("Ecoul: %12.6f\n", Ecoul);
+        std::printf("Eenuc: %12.6f\n", Eenuc);
+        std::printf("Exc  : %12.6f\n", Exc);
+
+        std::printf("Etot_diff : %12.10f\n", std::abs(Etot - Etot_old));
         Etot_old = Etot;
     }
 }
@@ -610,10 +610,10 @@ int main(int argn, char **argv)
     
     if (argn == 1)
     {
-        printf("\n");
-        printf("Full-potential atom solver.\n");
-        printf("\n");
-        printf("Usage: %s [options] \n", argv[0]);
+        std::printf("\n");
+        std::printf("Full-potential atom solver.\n");
+        std::printf("\n");
+        std::printf("Usage: %s [options] \n", argv[0]);
         args.print_help();
         exit(0);
     }

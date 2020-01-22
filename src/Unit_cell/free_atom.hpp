@@ -25,6 +25,7 @@
 #ifndef __FREE_ATOM_HPP__
 #define __FREE_ATOM_HPP__
 
+#include "Mixer/broyden1_mixer.hpp"
 #include "atom_type_base.hpp"
 #include "radial_solver.hpp"
 
@@ -140,11 +141,35 @@ class Free_atom : public Atom_type_base
             vrho[i] = 0;
         }
 
-        auto mixer = std::unique_ptr<Broyden1<double>>(new Broyden1<double>(0, np, 12, 0.8, 0.1, 1.0, Communicator::self()));
-        for (int i = 0; i < np; i++) {
-            mixer->input_local(i, vrho[i]);
-        }
-        mixer->initialize();
+        auto mixer = std::make_shared<sirius::mixer::Broyden1<std::vector<double>>>(12,  // max history
+                                                                                    0.8, // beta
+                                                                                    0.1, // beta0
+                                                                                    1.0  // beta scaling factor
+        );
+
+        // use simple inner product for mixing
+        auto mixer_function_prop = sirius::mixer::FunctionProperties<std::vector<double>>(
+            [](const std::vector<double>& x) -> std::size_t { return x.size(); },
+            [](const std::vector<double>& x, const std::vector<double>& y) -> double {
+                double result = 0.0;
+                for (std::size_t i = 0; i < x.size(); ++i)
+                    result += x[i] * y[i];
+                return result;
+            },
+            [](double alpha, std::vector<double>& x) -> void {
+                for (auto& val : x)
+                    val *= alpha;
+            },
+            [](const std::vector<double>& x, std::vector<double>& y) -> void {
+                std::copy(x.begin(), x.end(), y.begin());
+            },
+            [](double alpha, const std::vector<double>& x, std::vector<double>& y) -> void {
+                for (std::size_t i = 0; i < x.size(); ++i)
+                    y[i] += alpha * x[i];
+            });
+
+        // initialize with value of vrho
+        mixer->initialize_function<0>(mixer_function_prop, vrho, vrho.size());
 
         free_atom_density_spline_ = Spline<double>(free_atom_radial_grid());
 
@@ -209,11 +234,12 @@ class Free_atom : public Atom_type_base
 
             /* mix old and new effective potential */
             for (int i = 0; i < np; i++) {
-                mixer->input_local(i, vh[i] + vxc[i]);
+                vrho[i] = vh[i] + vxc[i];
             }
+            mixer->set_input<0>(vrho);
             mixer->mix(1e-16);
+            mixer->get_output<0>(vrho);
             for (int i = 0; i < np; i++) {
-                vrho[i] = mixer->output_local(i);
                 veff[i] = vrho[i] + vnuc[i];
             }
 

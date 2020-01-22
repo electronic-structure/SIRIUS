@@ -72,6 +72,7 @@ enum class function_domain_t
     spectral
 };
 
+/// Type of relativity treatment in the case of LAPW.
 enum class relativity_t
 {
     none,

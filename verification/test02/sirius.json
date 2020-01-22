@@ -1,0 +1,70 @@
+{
+    "control" : {
+        "processing_unit" : "cpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack",
+        "verbosity" : 1,
+        "print_forces" : false,
+        "print_stress" : false,
+        "print_checksum" : false
+    },
+
+    "parameters" : {
+        "electronic_structure_method" : "full_potential_lapwlo",
+        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_VWN"],
+        "smearing_width" : 0.05,
+        "valence_relativity" : "none",
+        "core_relativity" : "none",
+        "num_fv_states" : 10,
+        "aw_cutoff" : 8,
+        "pw_cutoff" : 20.00,
+        "auto_rmt" : 0,
+        "use_symmetry": true,
+        "ngridk" : [1,1,1],
+        "density_tol" : 1e-7,
+        "energy_tol" : 1e-7,
+        "num_dft_iter" : 20,
+        "lmax_apw"     : 8,
+        "lmax_pot"     : 8,
+        "lmax_rho"     : 8,
+        "molecule"     : true
+    },
+
+    "iterative_solver" : {
+        "energy_tolerance" : 1e-4,
+        "residual_tolerance" : 1e-5,
+        "num_steps" : 8,
+        "subspace_size" : 8,
+        "type" : "davidson",
+        "converge_by_energy" : 0,
+        "min_occupancy" : 0
+    },
+
+    "unit_cell" : {
+
+        "lattice_vectors" : [ [1, 0, 0], 
+                              [0, 1, 0], 
+                              [0, 0, 1]
+                            ],
+        "lattice_vectors_scale" : 10,
+
+        "atom_types" : ["He"],
+
+        "atom_files" : {
+            "He" : "He.json"
+        },
+
+        "atoms" : {
+            "He" : [
+                [0, 0, 0]
+            ]
+        }
+    },
+    
+    "mixer" : {
+        "beta" : 0.95,
+        "type" : "broyden1",
+        "max_history" : 8
+    }
+
+}

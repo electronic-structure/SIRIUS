@@ -30,6 +30,7 @@
 #include "SDDK/gvec.hpp"
 #include "typedefs.hpp"
 #include "SHT/sht.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -92,7 +93,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
                sym_phase_factors__(2, G[2], isym);
     };
 
-    utils::timer t1("sirius::symmetrize_function|fpw|local");
+    PROFILE_START("sirius::symmetrize_function|fpw|local");
 
     #pragma omp parallel
     {
@@ -147,7 +148,7 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Gvec_shells con
             }
         } /* loop over igloc */
     }
-    t1.stop();
+    PROFILE_STOP("sirius::symmetrize_function|fpw|local");
 
 
     gvec_shells__.remap_backward(sym_f_pw, f_pw__);
@@ -377,8 +378,8 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator co
             int ja = sym__.sym_table(ia, isym);
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
-                linalg<device_t::CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at(memory_t::host), rotm.ld(),
-                                            frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), 1.0,
+                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                                            frlm__.at(memory_t::host, 0, 0, ia), frlm__.ld(), &linalg_const<double>::one(),
                                             fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
             }
         }
@@ -424,9 +425,10 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
             int ja = sym__.sym_table(ia, isym);
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
-                linalg<device_t::CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha * S(2, 2), rotm.at(memory_t::host), rotm.ld(),
-                                  vz_rlm__.at(memory_t::host, 0, 0, ia), vz_rlm__.ld(), 1.0,
-                                  fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
+                double a = alpha * S(2, 2);
+                linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &a, rotm.at(memory_t::host),
+                rotm.ld(), vz_rlm__.at(memory_t::host, 0, 0, ia), vz_rlm__.ld(), &linalg_const<double>::one(),
+                fsym.at(memory_t::host, 0, 0, location.local_index), fsym.ld());
             }
         }
     }
@@ -474,9 +476,9 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
             auto location = spl_atoms.location(ja);
             if (location.rank == comm__.rank()) {
                 for (int k: {0, 1, 2}) {
-                    linalg<device_t::CPU>::gemm(0, 0, lmmax, nrmax, lmmax, alpha, rotm.at(memory_t::host), rotm.ld(),
-                                                vrlm[k]->at(memory_t::host, 0, 0, ia), vrlm[k]->ld(), 0.0,
-                                                vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
+                    linalg(linalg_t::blas).gemm('N', 'N', lmmax, nrmax, lmmax, &alpha, rotm.at(memory_t::host), rotm.ld(),
+                                                vrlm[k]->at(memory_t::host, 0, 0, ia), vrlm[k]->ld(),
+                                                &linalg_const<double>::zero(), vtmp.at(memory_t::host, 0, 0, k), vtmp.ld());
                 }
                 #pragma omp parallel
                 for (int k: {0, 1, 2}) {
@@ -556,14 +558,14 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
 //}
 
 
-/*
-  symmetrize the occupation matrix according to a given list of beta or wfc
-  list. the symmetrization does depend explicitly on the beta or wfc the last
-  parameter is on when the atom has spin-orbit coupling and hubbard correction in
-  that case, we must skip half of the indices because of the averaging of the
-  radial integrals over the total angular momentum
-*/
-
+/// Symmetrize density or occupancy matrix according to a given list of basis functions.
+/** Density matrix arises in LAPW or PW methods. In PW it is computed in the basis of beta-projectors. Occupancy
+ *  matrix is computed for the Hubbard-U correction. In both cases the matrix has the same structure and is
+ *  symmetrized in the same way The symmetrization does depend explicitly on the beta or wfc. The last
+ *  parameter is on when the atom has spin-orbit coupling and hubbard correction in
+ *  that case, we must skip half of the indices because of the averaging of the
+ *  radial integrals over the total angular momentum
+ */
 inline void symmetrize(const mdarray<double_complex, 4> &ns_,
                        const basis_functions_index &indexb,
                        const int ia,

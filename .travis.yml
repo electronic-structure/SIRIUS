@@ -1,0 +1,21 @@
+sudo: false
+
+dist: bionic
+
+language: c++
+
+git:
+  depth: 3
+
+before_install:
+
+branches:
+  only:
+    - develop
+
+script:
+  - ./check_format.x
+
+after_success:
+after_failure:
+

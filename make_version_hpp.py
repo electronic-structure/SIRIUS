@@ -44,7 +44,7 @@ def get_sha(vstr, dirname):
                              stderr=subprocess.PIPE,
                              cwd=dirname)
         sha_str = p.communicate()[0].strip()
-        if p.returncode is not 0:
+        if p.returncode != 0:
             raise RuntimeError
         return to_string(sha_str)
     except (RuntimeError, FileNotFoundError, OSError):
@@ -117,7 +117,7 @@ def main():
 
     print("const char* const git_hash = \"%s\";" % sha_str)
     print("const char* const git_branchname = \"%s\";" % branch_name)
-    #print("const char* const build_date = \"%s\";"%(now.strftime("%a, %e %b %Y %H:%M:%S")))
+    print("const char* const build_date = \"%s\";"%(now.strftime("%a, %e %b %Y %H:%M:%S")))
     print("const int major_version = %i;" % major_version)
     print("const int minor_version = %i;" % minor_version);
     print("const int revision      = %i;" % revision);

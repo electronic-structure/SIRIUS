@@ -126,81 +126,83 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
 
 void Unit_cell::print_info(int verbosity__) const
 {
-    printf("\n");
-    printf("Unit cell\n");
+    std::printf("\n");
+    std::printf("Unit cell\n");
     for (int i = 0; i < 80; i++) {
-        printf("-");
+        std::printf("-");
     }
-    printf("\n");
+    std::printf("\n");
 
-    printf("lattice vectors\n");
+    std::printf("lattice vectors\n");
     for (int i = 0; i < 3; i++) {
-        printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_(0, i), lattice_vectors_(1, i),
+        std::printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_(0, i), lattice_vectors_(1, i),
                lattice_vectors_(2, i));
     }
-    printf("reciprocal lattice vectors\n");
+    std::printf("reciprocal lattice vectors\n");
     for (int i = 0; i < 3; i++) {
-        printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_(0, i),
+        std::printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_(0, i),
                reciprocal_lattice_vectors_(1, i), reciprocal_lattice_vectors_(2, i));
     }
-    printf("\n");
-    printf("unit cell volume : %18.8f [a.u.^3]\n", omega());
-    printf("1/sqrt(omega)    : %18.8f\n", 1.0 / sqrt(omega()));
-    printf("MT volume        : %f (%5.2f%%)\n", volume_mt(), volume_mt() * 100 / omega());
-    printf("IT volume        : %f (%5.2f%%)\n", volume_it(), volume_it() * 100 / omega());
+    std::printf("\n");
+    std::printf("unit cell volume : %18.8f [a.u.^3]\n", omega());
+    std::printf("1/sqrt(omega)    : %18.8f\n", 1.0 / sqrt(omega()));
+    std::printf("MT volume        : %f (%5.2f%%)\n", volume_mt(), volume_mt() * 100 / omega());
+    std::printf("IT volume        : %f (%5.2f%%)\n", volume_it(), volume_it() * 100 / omega());
 
-    printf("\n");
-    printf("number of atom types : %i\n", num_atom_types());
+    std::printf("\n");
+    std::printf("number of atom types : %i\n", num_atom_types());
     for (int i = 0; i < num_atom_types(); i++) {
         int id = atom_type(i).id();
-        printf("type id : %i   symbol : %2s   mt_radius : %10.6f, num_atoms: %i\n", id, atom_type(i).symbol().c_str(),
+        std::printf("type id : %i   symbol : %2s   mt_radius : %10.6f, num_atoms: %i\n", id, atom_type(i).symbol().c_str(),
                atom_type(i).mt_radius(), atom_type(i).num_atoms());
     }
 
-    printf("total number of atoms : %i\n", num_atoms());
-    printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
+    std::printf("total number of atoms : %i\n", num_atoms());
+    std::printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
     if (!parameters_.full_potential()) {
-        printf("number of PAW atoms : %i\n", num_paw_atoms());
+        std::printf("number of PAW atoms : %i\n", num_paw_atoms());
     }
     if (verbosity__ >= 2) {
-        printf("\n");
-        printf("atom id              position                    vector_field        type id    class id\n");
-        printf("----------------------------------------------------------------------------------------\n");
+        std::printf("\n");
+        std::printf("atom id              position                    vector_field        type id    class id\n");
+        std::printf("----------------------------------------------------------------------------------------\n");
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vf  = atom(i).vector_field();
-            printf("%6i      %f %f %f   %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], vf[0], vf[1], vf[2],
+            std::printf("%6i      %f %f %f   %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], vf[0], vf[1], vf[2],
                    atom(i).type_id(), atom(i).symmetry_class_id());
         }
 
-        printf("\n");
+        std::printf("\n");
         for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-            printf("class id : %i   atom id : ", ic);
+            std::printf("class id : %i   atom id : ", ic);
             for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++) {
-                printf("%i ", atom_symmetry_class(ic).atom_id(i));
+                std::printf("%i ", atom_symmetry_class(ic).atom_id(i));
             }
-            printf("\n");
+            std::printf("\n");
         }
-        printf("\n");
-        printf("atom id              position (Cartesian, a.u.)\n");
-        printf("----------------------------------------------------------------------------------------\n");
+        std::printf("\n");
+        std::printf("atom id              position (Cartesian, a.u.)\n");
+        std::printf("----------------------------------------------------------------------------------------\n");
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
             auto vc  = get_cartesian_coordinates(pos);
-            printf("%6i      %18.12f %18.12f %18.12f\n", i, vc[0], vc[1], vc[2]);
+            std::printf("%6i      %18.12f %18.12f %18.12f\n", i, vc[0], vc[1], vc[2]);
         }
 
-        printf("\n");
+        std::printf("\n");
         for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
-            printf("class id : %i   atom id : ", ic);
+            std::printf("class id : %i   atom id : ", ic);
             for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++) {
-                printf("%i ", atom_symmetry_class(ic).atom_id(i));
+                std::printf("%i ", atom_symmetry_class(ic).atom_id(i));
             }
-            printf("\n");
+            std::printf("\n");
         }
     }
-    printf("\nminimum bond length: %20.12f\n", min_bond_length());
-
+    std::printf("\nminimum bond length: %20.12f\n", min_bond_length());
+    if (!parameters_.full_potential()) {
+        std::printf("\nnumber of pseudo wave-functions: %i\n", this->num_ps_atomic_wf());
+    }
     print_symmetry_info(verbosity__);
 }
 
@@ -254,7 +256,7 @@ void Unit_cell::write_cif()
     }
 }
 
-json Unit_cell::serialize()
+json Unit_cell::serialize(bool cart_pos__) const
 {
     json dict;
 
@@ -275,6 +277,10 @@ json Unit_cell::serialize()
         for (int i = 0; i < atom_type(iat).num_atoms(); i++) {
             int ia = atom_type(iat).atom_id(i);
             auto v = atom(ia).position();
+            /* convert to Cartesian coordinates */
+            if (cart_pos__) {
+                v = lattice_vectors_ * v;
+            }
             dict["atoms"][atom_type(iat).label()].push_back({v[0], v[1], v[2]});
         }
     }
@@ -290,7 +296,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
     nearest_neighbours_.clear();
     nearest_neighbours_.resize(num_atoms());
 
-#pragma omp parallel for default(shared)
+    #pragma omp parallel for default(shared)
     for (int ia = 0; ia < num_atoms(); ia++) {
         auto iapos = get_cartesian_coordinates(atom(ia).position());
 
@@ -335,26 +341,26 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
     }
 
     if (parameters_.control().print_neighbors_ && comm_.rank() == 0) {
-        printf("Nearest neighbors\n");
-        printf("=================\n");
+        std::printf("Nearest neighbors\n");
+        std::printf("=================\n");
         for (int ia = 0; ia < num_atoms(); ia++) {
-            printf("Central atom: %s (%i)\n", atom(ia).type().symbol().c_str(), ia);
+            std::printf("Central atom: %s (%i)\n", atom(ia).type().symbol().c_str(), ia);
             for (int i = 0; i < 80; i++) {
-                printf("-");
+                std::printf("-");
             }
-            printf("\n");
-            printf("atom (  id)       D [a.u.]    translation\n");
+            std::printf("\n");
+            std::printf("atom (  id)       D [a.u.]    translation\n");
             for (int i = 0; i < 80; i++) {
-                printf("-");
+                std::printf("-");
             }
-            printf("\n");
+            std::printf("\n");
             for (int i = 0; i < (int)nearest_neighbours_[ia].size(); i++) {
                 int ja = nearest_neighbours_[ia][i].atom_id;
-                printf("%4s (%4i)   %12.6f  %4i %4i %4i\n", atom(ja).type().symbol().c_str(), ja,
+                std::printf("%4s (%4i)   %12.6f  %4i %4i %4i\n", atom(ja).type().symbol().c_str(), ja,
                        nearest_neighbours_[ia][i].distance, nearest_neighbours_[ia][i].translation[0],
                        nearest_neighbours_[ia][i].translation[1], nearest_neighbours_[ia][i].translation[2]);
             }
-            printf("\n");
+            std::printf("\n");
         }
     }
 }
@@ -430,8 +436,8 @@ void Unit_cell::generate_radial_functions()
         }
 
         if (comm_.rank() == 0) {
-            printf("\n");
-            printf("Linearization energies\n");
+            std::printf("\n");
+            std::printf("Linearization energies\n");
         }
     }
     if (parameters_.control().verbosity_ >= 4 && comm_.rank() == 0) {
@@ -557,13 +563,10 @@ void Unit_cell::initialize()
 
     /* initialize atoms */
     for (int ia = 0; ia < num_atoms(); ia++) {
-        atom(ia).init(mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
+        atom(ia).init(mt_lo_basis_size_);
         mt_aw_basis_size_ += atom(ia).mt_aw_basis_size();
         mt_lo_basis_size_ += atom(ia).mt_lo_basis_size();
-        mt_basis_size_ += atom(ia).mt_basis_size();
     }
-
-    assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
 
     init_paw();
 
@@ -653,207 +656,273 @@ void Unit_cell::get_symmetry()
     assert(num_atom_symmetry_classes() != 0);
 }
 
-    void Unit_cell::import(Unit_cell_input const &inp__) {
-        if (inp__.exist_) {
-            /* first, load all types */
-            for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
-                auto label = inp__.labels_[iat];
-                auto fname = inp__.atom_files_.at(label);
-                add_atom_type(label, fname);
-            }
-            /* then load atoms */
-            for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
-                auto label = inp__.labels_[iat];
-                auto fname = inp__.atom_files_.at(label);
-                for (size_t ia = 0; ia < inp__.coordinates_[iat].size(); ia++) {
-                    auto v = inp__.coordinates_[iat][ia];
-                    vector3d<double> p(v[0], v[1], v[2]);
-                    vector3d<double> f(v[3], v[4], v[5]);
-                    add_atom(label, p, f);
-                }
-            }
-
-            set_lattice_vectors(inp__.a0_, inp__.a1_, inp__.a2_);
+void Unit_cell::import(Unit_cell_input const &inp__)
+{
+    if (inp__.exist_) {
+        /* first, load all types */
+        for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
+            auto label = inp__.labels_[iat];
+            auto fname = inp__.atom_files_.at(label);
+            add_atom_type(label, fname);
         }
+        /* then load atoms */
+        for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
+            auto label = inp__.labels_[iat];
+            auto fname = inp__.atom_files_.at(label);
+            for (size_t ia = 0; ia < inp__.coordinates_[iat].size(); ia++) {
+                auto v = inp__.coordinates_[iat][ia];
+                vector3d<double> p(v[0], v[1], v[2]);
+                vector3d<double> f(v[3], v[4], v[5]);
+                add_atom(label, p, f);
+            }
+        }
+
+        set_lattice_vectors(inp__.a0_, inp__.a1_, inp__.a2_);
     }
+}
 
-    void Unit_cell::update() {
-        PROFILE("sirius::Unit_cell::update");
+void Unit_cell::update()
+{
+    PROFILE("sirius::Unit_cell::update");
 
-        auto v0 = lattice_vector(0);
-        auto v1 = lattice_vector(1);
-        auto v2 = lattice_vector(2);
+    auto v0 = lattice_vector(0);
+    auto v1 = lattice_vector(1);
+    auto v2 = lattice_vector(2);
 
-        double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())),
-                            parameters_.parameters_input().nn_radius_);
+    double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())),
+                        parameters_.parameters_input().nn_radius_);
 
-        find_nearest_neighbours(r);
+    find_nearest_neighbours(r);
 
-        if (parameters_.full_potential()) {
-            /* find new MT radii and initialize radial grid */
-            if (parameters_.auto_rmt()) {
-                auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
-                std::vector<double> Rmt = find_mt_radii();
-                for (int iat = 0; iat < num_atom_types(); iat++) {
-                    double r0 = atom_type(iat).radial_grid().first();
+    if (parameters_.full_potential()) {
+        /* find new MT radii and initialize radial grid */
+        if (parameters_.auto_rmt()) {
+            auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
+            std::vector<double> Rmt = find_mt_radii();
+            for (int iat = 0; iat < num_atom_types(); iat++) {
+                double r0 = atom_type(iat).radial_grid().first();
 
-                    atom_type(iat).set_radial_grid(rg.first, atom_type(iat).num_mt_points(), r0, Rmt[iat], rg.second);
-                }
-            }
-
-            int ia, ja;
-            if (check_mt_overlap(ia, ja)) {
-                std::stringstream s;
-                s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia).type().symbol() << ")"
-                  << " and " << ja << "(" << atom(ja).type().symbol() << ")" << std::endl
-                  << "  radius of atom " << ia << " : " << atom(ia).mt_radius() << std::endl
-                  << "  radius of atom " << ja << " : " << atom(ja).mt_radius() << std::endl
-                  << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
-                TERMINATE(s);
-            }
-
-            min_mt_radius_ = 1e100;
-            max_mt_radius_ = 0;
-            for (int i = 0; i < num_atom_types(); i++) {
-                min_mt_radius_ = std::min(min_mt_radius_, atom_type(i).mt_radius());
-                max_mt_radius_ = std::max(max_mt_radius_, atom_type(i).mt_radius());
+                atom_type(iat).set_radial_grid(rg.first, atom_type(iat).num_mt_points(), r0, Rmt[iat], rg.second);
             }
         }
 
-        get_symmetry();
-
-        spl_num_atom_symmetry_classes_ = splindex<splindex_t::block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
-
-        volume_mt_ = 0.0;
-        if (parameters_.full_potential()) {
-            for (int ia = 0; ia < num_atoms(); ia++) {
-                volume_mt_ += fourpi * std::pow(atom(ia).mt_radius(), 3) / 3.0;
-            }
-        }
-
-        volume_it_ = omega() - volume_mt_;
-
-        for (int iat = 0; iat < num_atom_types(); iat++) {
-            int nat = atom_type(iat).num_atoms();
-            if (nat > 0) {
-                for (int i = 0; i < nat; i++) {
-                    int ia = atom_type(iat).atom_id(i);
-                    for (int x: {0, 1, 2}) {
-                        atom_coord_[iat](i, x) = atom(ia).position()[x];
-                    }
-                }
-                if (parameters_.processing_unit() == device_t::GPU) {
-                    atom_coord_[iat].copy_to(memory_t::device);
-                }
-            }
-        }
-    }
-
-    void Unit_cell::print_symmetry_info(int verbosity__) const {
-        if (symmetry_ != nullptr) {
-            printf("\n");
-            printf("space group number   : %i\n", symmetry_->spacegroup_number());
-            printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
-            printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
-            printf("number of operations : %i\n", symmetry_->num_mag_sym());
-            printf("transformation matrix : \n");
-            auto tm = symmetry_->transformation_matrix();
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    printf("%12.6f ", tm(i, j));
-                }
-                printf("\n");
-            }
-            printf("origin shift : \n");
-            auto t = symmetry_->origin_shift();
-            printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
-
-            if (verbosity__ >= 2) {
-                printf("symmetry operations  : \n");
-                for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
-                    auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
-                    auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
-                    auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
-
-                    printf("isym : %i\n", isym);
-                    printf("R : ");
-                    for (int i = 0; i < 3; i++) {
-                        if (i) {
-                            printf("    ");
-                        }
-                        for (int j = 0; j < 3; j++) {
-                            printf("%3i ", R(i, j));
-                        }
-                        printf("\n");
-                    }
-                    printf("T : ");
-                    for (int j = 0; j < 3; j++) {
-                        printf("%8.4f ", t[j]);
-                    }
-                    printf("\n");
-                    printf("S : ");
-                    for (int i = 0; i < 3; i++) {
-                        if (i) {
-                            printf("    ");
-                        }
-                        for (int j = 0; j < 3; j++) {
-                            printf("%8.4f ", S(i, j));
-                        }
-                        printf("\n");
-                    }
-                    printf("\n");
-                }
-            }
-        }
-    }
-
-    void Unit_cell::set_lattice_vectors(matrix3d<double> lattice_vectors__) {
-        lattice_vectors_            = lattice_vectors__;
-        inverse_lattice_vectors_    = inverse(lattice_vectors_);
-        omega_                      = std::abs(lattice_vectors_.det());
-        reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
-    }
-
-    void Unit_cell::set_lattice_vectors(vector3d<double> a0__, vector3d<double> a1__, vector3d<double> a2__) {
-        matrix3d<double> lv;
-        for (int x : {0, 1, 2}) {
-            lv(x, 0) = a0__[x];
-            lv(x, 1) = a1__[x];
-            lv(x, 2) = a2__[x];
-        }
-        set_lattice_vectors(lv);
-    }
-
-    int Unit_cell::atom_id_by_position(vector3d<double> position__) {
-        for (int ia = 0; ia < num_atoms(); ia++) {
-            auto vd = atom(ia).position() - position__;
-            if (vd.length() < 1e-10) {
-                return ia;
-            }
-        }
-        return -1;
-    }
-
-    int Unit_cell::next_atom_type_id(std::string label__) {
-        /* check if the label was already added */
-        if (atom_type_id_map_.count(label__) != 0) {
+        int ia, ja;
+        if (check_mt_overlap(ia, ja)) {
             std::stringstream s;
-            s << "atom type with label " << label__ << " is already in list";
+            s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia).type().symbol() << ")"
+              << " and " << ja << "(" << atom(ja).type().symbol() << ")" << std::endl
+              << "  radius of atom " << ia << " : " << atom(ia).mt_radius() << std::endl
+              << "  radius of atom " << ja << " : " << atom(ja).mt_radius() << std::endl
+              << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
             TERMINATE(s);
         }
-        /* take text id */
-        atom_type_id_map_[label__] = static_cast<int>(atom_types_.size());
-        return atom_type_id_map_[label__];
+
+        min_mt_radius_ = 1e100;
+        max_mt_radius_ = 0;
+        for (int i = 0; i < num_atom_types(); i++) {
+            min_mt_radius_ = std::min(min_mt_radius_, atom_type(i).mt_radius());
+            max_mt_radius_ = std::max(max_mt_radius_, atom_type(i).mt_radius());
+        }
     }
 
-    void Unit_cell::init_paw() {
+    get_symmetry();
+
+    spl_num_atom_symmetry_classes_ = splindex<splindex_t::block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
+
+    volume_mt_ = 0.0;
+    if (parameters_.full_potential()) {
         for (int ia = 0; ia < num_atoms(); ia++) {
-            if (atom(ia).type().is_paw()) {
-                paw_atom_index_.push_back(ia);
+            volume_mt_ += fourpi * std::pow(atom(ia).mt_radius(), 3) / 3.0;
+        }
+    }
+
+    volume_it_ = omega() - volume_mt_;
+
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        int nat = atom_type(iat).num_atoms();
+        if (nat > 0) {
+            for (int i = 0; i < nat; i++) {
+                int ia = atom_type(iat).atom_id(i);
+                for (int x: {0, 1, 2}) {
+                    atom_coord_[iat](i, x) = atom(ia).position()[x];
+                }
+            }
+            if (parameters_.processing_unit() == device_t::GPU) {
+                atom_coord_[iat].copy_to(memory_t::device);
             }
         }
-
-        spl_num_paw_atoms_ = splindex<splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
     }
+}
+
+void Unit_cell::print_symmetry_info(int verbosity__) const
+{
+    if (symmetry_ != nullptr) {
+        std::printf("\n");
+        std::printf("space group number   : %i\n", symmetry_->spacegroup_number());
+        std::printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
+        std::printf("Hall symbol          : %s\n", symmetry_->hall_symbol().c_str());
+        std::printf("number of operations : %i\n", symmetry_->num_mag_sym());
+        std::printf("transformation matrix : \n");
+        auto tm = symmetry_->transformation_matrix();
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                std::printf("%12.6f ", tm(i, j));
+            }
+            std::printf("\n");
+        }
+        std::printf("origin shift : \n");
+        auto t = symmetry_->origin_shift();
+        std::printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+
+        if (verbosity__ >= 2) {
+            std::printf("symmetry operations  : \n");
+            for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
+                auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
+                auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
+                auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
+
+                std::printf("isym : %i\n", isym);
+                std::printf("R : ");
+                for (int i = 0; i < 3; i++) {
+                    if (i) {
+                        std::printf("    ");
+                    }
+                    for (int j = 0; j < 3; j++) {
+                        std::printf("%3i ", R(i, j));
+                    }
+                    std::printf("\n");
+                }
+                std::printf("T : ");
+                for (int j = 0; j < 3; j++) {
+                    std::printf("%8.4f ", t[j]);
+                }
+                std::printf("\n");
+                std::printf("S : ");
+                for (int i = 0; i < 3; i++) {
+                    if (i) {
+                        std::printf("    ");
+                    }
+                    for (int j = 0; j < 3; j++) {
+                        std::printf("%8.4f ", S(i, j));
+                    }
+                    std::printf("\n");
+                }
+                std::printf("\n");
+            }
+        }
+    }
+}
+
+void Unit_cell::set_lattice_vectors(matrix3d<double> lattice_vectors__)
+{
+    lattice_vectors_            = lattice_vectors__;
+    inverse_lattice_vectors_    = inverse(lattice_vectors_);
+    omega_                      = std::abs(lattice_vectors_.det());
+    reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
+}
+
+void Unit_cell::set_lattice_vectors(vector3d<double> a0__, vector3d<double> a1__, vector3d<double> a2__)
+{
+    matrix3d<double> lv;
+    for (int x : {0, 1, 2}) {
+        lv(x, 0) = a0__[x];
+        lv(x, 1) = a1__[x];
+        lv(x, 2) = a2__[x];
+    }
+    set_lattice_vectors(lv);
+}
+
+int Unit_cell::atom_id_by_position(vector3d<double> position__)
+{
+    for (int ia = 0; ia < num_atoms(); ia++) {
+        auto vd = atom(ia).position() - position__;
+        if (vd.length() < 1e-10) {
+            return ia;
+        }
+    }
+    return -1;
+}
+
+int Unit_cell::next_atom_type_id(std::string label__)
+{
+    /* check if the label was already added */
+    if (atom_type_id_map_.count(label__) != 0) {
+        std::stringstream s;
+        s << "atom type with label " << label__ << " is already in list";
+        TERMINATE(s);
+    }
+    /* take text id */
+    atom_type_id_map_[label__] = static_cast<int>(atom_types_.size());
+    return atom_type_id_map_[label__];
+}
+
+void Unit_cell::init_paw()
+{
+    for (int ia = 0; ia < num_atoms(); ia++) {
+        if (atom(ia).type().is_paw()) {
+            paw_atom_index_.push_back(ia);
+        }
+    }
+
+    spl_num_paw_atoms_ = splindex<splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
+}
+
+std::pair<int, std::vector<int>> Unit_cell::num_wf_with_U() const // TODO: remove in future
+{
+    std::vector<int> offs(this->num_atoms(), -1);
+    int counter{0};
+
+    /* we loop over atoms to check which atom has hubbard orbitals and then
+       compute the number of hubbard orbitals associated to it */
+    for (auto ia = 0; ia < this->num_atoms(); ia++) {
+        auto& atom = this->atom(ia);
+        if (atom.type().hubbard_correction()) {
+            offs[ia] = counter;
+            int fact{1};
+            /* there is a factor two when the pseudo-potential has no SO but
+               we do full non colinear magnetism. Note that we can consider
+               now multiple orbitals calculations. The API still does not
+               support it */
+            if ((this->parameters().num_mag_dims() == 3) && (!atom.type().spin_orbit_coupling())) {
+                fact = 2;
+            }
+            counter += fact * atom.type().hubbard_indexb_wfc().size();
+        }
+    }
+    return std::make_pair(counter, offs);
+}
+
+std::pair<int, std::vector<int>> Unit_cell::num_hubbard_wf() const
+{
+    std::vector<int> offs(this->num_atoms(), -1);
+    int counter{0};
+
+    /* we loop over atoms to check which atom has hubbard orbitals and then
+       compute the number of hubbard orbitals associated to it */
+    for (auto ia = 0; ia < this->num_atoms(); ia++) {
+        auto& atom = this->atom(ia);
+        if (atom.type().hubbard_correction()) {
+            offs[ia] = counter;
+            counter += atom.type().indexb_hub().size();
+        }
+    }
+    return std::make_pair(counter, offs);
+}
+
+int Unit_cell::num_ps_atomic_wf() const
+{
+    /* TODO: in spinorbit case this function will work only when pairs of spinor components are present. */
+    int N{0};
+    /* get the total number of atomic-centered orbitals */
+    for (int iat = 0; iat < this->num_atom_types(); iat++) {
+        int n{0};
+        for (int i = 0; i < this->atom_type(iat).indexr_wfs().size(); i++) {
+            /* number of m-components is 2l + 1 */
+            n += (2 * std::abs(std::get<1>(atom_type(iat).ps_atomic_wf(i))) + 1);
+        }
+        N += atom_type(iat).num_atoms() * n;
+    }
+    return N;
+}
 
 } // namespace sirius

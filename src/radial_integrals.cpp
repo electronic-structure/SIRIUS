@@ -6,16 +6,16 @@ namespace sirius {
 template <bool jl_deriv>
 void Radial_integrals_atomic_wf<jl_deriv>::generate()
 {
-    PROFILE("sirius::Radial_integrals|atomic_centered_wfc");
+    PROFILE("sirius::Radial_integrals|atomic_wfs");
 
     /* spherical Bessel functions jl(qx) */
-    mdarray<Spherical_Bessel_functions, 1> jl(nq());
+    sddk::mdarray<Spherical_Bessel_functions, 1> jl(nq());
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
 
         auto& atom_type = unit_cell_.atom_type(iat);
 
-        int nwf = atom_type.num_ps_atomic_wf();
+        int nwf = (hubbard_) ? atom_type.indexr_hub().size() : atom_type.indexr_wfs().size();
         if (!nwf) {
             continue;
         }
@@ -29,16 +29,17 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate()
         /* loop over all pseudo wave-functions */
         for (int i = 0; i < nwf; i++) {
             values_(i, iat) = Spline<double>(grid_q_);
-            auto& wf        = atom_type.ps_atomic_wf(i);
-            const int l     = std::abs(wf.first);
+
+            int l = (hubbard_) ? atom_type.indexr_hub(i).l : atom_type.indexr_wfs(i).l;
+            auto& rwf = (hubbard_) ? atom_type.hubbard_radial_function(i) : std::get<3>(atom_type.ps_atomic_wf(i));
 
             #pragma omp parallel for
             for (int iq = 0; iq < nq(); iq++) {
                 if (jl_deriv) {
                     auto s              = jl(iq).deriv_q(l);
-                    values_(i, iat)(iq) = sirius::inner(s, wf.second, 1);
+                    values_(i, iat)(iq) = sirius::inner(s, rwf, 1);
                 } else {
-                    values_(i, iat)(iq) = sirius::inner(jl(iq)[l], wf.second, 1);
+                    values_(i, iat)(iq) = sirius::inner(jl(iq)[l], rwf, 1);
                 }
             }
 
@@ -89,10 +90,10 @@ void Radial_integrals_aug<jl_deriv>::generate()
                             if (jl_deriv) {
                                 auto s = jl.deriv_q(l3);
                                 values_(idx, l3, iat)(iq) =
-                            sirius::inner(s, atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
+                                    sirius::inner(s, atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
                             } else {
                                 values_(idx, l3, iat)(iq) =
-                            sirius::inner(jl[l3], atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
+                                    sirius::inner(jl[l3], atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
                             }
                         }
                     }
@@ -191,7 +192,7 @@ void Radial_integrals_beta<jl_deriv>::generate()
             values_(idxrf, iat) = Spline<double>(grid_q_);
         }
 
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int iq_loc = 0; iq_loc < spl_q_.local_size(); iq_loc++) {
             int iq = spl_q_[iq_loc];
             Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_q_[iq]);

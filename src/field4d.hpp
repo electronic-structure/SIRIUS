@@ -29,6 +29,8 @@
 #include <array>
 #include <cassert>
 #include <stdexcept>
+#include "SDDK/memory.hpp"
+#include "typedefs.hpp"
 
 namespace sirius {
 
@@ -39,8 +41,7 @@ namespace sirius {
 // forward declarations
 class Simulation_context;
 template<class> class Periodic_function;
-template<class> class Mixer;
-class Mixer_input;
+//class Mixer_input;
 
 class Field4D
 {
@@ -48,10 +49,9 @@ class Field4D
     /// Four components of the field: scalar, vector_z, vector_x, vector_y
     std::array<std::unique_ptr<Periodic_function<double>>, 4> components_;
 
-    /// Default mixer.
-    std::unique_ptr<Mixer<double>> mixer_{nullptr};
-
   protected:
+    int lmmax_;
+
     Simulation_context& ctx_;
 
     void symmetrize(Periodic_function<double>* f__,
@@ -107,15 +107,10 @@ class Field4D
 
     void fft_transform(int direction__);
 
-    void mixer_input();
-
-    void mixer_output();
-
-    void mixer_init(Mixer_input mixer_cfg__);
-
-    double mix(double rss_min__);
-
-    Mixer<double>& mixer();
+    Simulation_context& ctx()
+    {
+        return ctx_;
+    }
 };
 
 } // namespace sirius

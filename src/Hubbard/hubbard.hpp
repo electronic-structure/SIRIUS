@@ -39,19 +39,18 @@
 #include "Beta_projectors/beta_projectors_gradient.hpp"
 #include "Beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "radial_integrals.hpp"
-#include "mixer.hpp"
 
 namespace sirius {
 
 /// Apply Hubbard correction in the colinear case
 class Hubbard
 {
-private:
+  private:
     Simulation_context& ctx_;
 
     Unit_cell& unit_cell_;
 
-    int lmax_{-1};
+    int max_number_of_orbitals_per_atom_{-1};
 
     int number_of_hubbard_orbitals_{0};
 
@@ -77,7 +76,6 @@ private:
 
     /// hubbard correction with next nearest neighbors
     bool hubbard_U_plus_V_{false};
-
 
     /// hubbard projection method. By default we use the wave functions
     /// provided by the pseudo potentials.
@@ -106,28 +104,14 @@ private:
     void calculate_wavefunction_with_U_offset();
 
     /// Compute the strain gradient of the hubbard wave functions.
-    /// Unfortunately it is dependent of the pp.
-
-    void compute_gradient_strain_wavefunctions(K_point&                  kp,
-                                               Wave_functions&           dphi,
-                                               const mdarray<double, 2>& rlm_g,
-                                               const mdarray<double, 3>& rlm_dg,
-                                               const int                 mu,
-                                               const int                 nu);
-
-    /// apply the S operator in the us pp case. Otherwise it makes a simple copy
-    void apply_S_operator(K_point&        kp,
-                          Q_operator&     q_op,
-                          Wave_functions& phi,
-                          Wave_functions& ophi,
-                          const int       idx0,
-                          const int       num_phi);
-
-    /// orthogonize (normalize) the hubbard wave functions
-    void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions& sphi);
+    void wavefunctions_strain_deriv(K_point& kp, Wave_functions& dphi, mdarray<double, 2> const& rlm_g,
+                                    mdarray<double, 3> const& rlm_dg, const int mu, const int nu);
 
   public:
-    std::vector<int> offset;
+    /// Constructor.
+    Hubbard(Simulation_context& ctx__);
+
+    std::vector<int> offset_;
 
     void set_hubbard_U_plus_V()
     {
@@ -139,9 +123,9 @@ private:
         approximation_ = true;
     }
 
-    inline int lmax() const
+    inline int max_number_of_orbitals_per_atom() const
     {
-        return lmax_;
+        return max_number_of_orbitals_per_atom_;
     }
 
     void set_orthogonalize_hubbard_orbitals(const bool test)
@@ -175,7 +159,7 @@ private:
     }
 
     /// Apply the hubbard potential on wave functions
-    void apply_hubbard_potential(K_point&        kp,
+    void apply_hubbard_potential(Wave_functions& hub_wf,
                                  const int       ispn,
                                  const int       idx,
                                  const int       n,
@@ -183,7 +167,7 @@ private:
                                  Wave_functions& ophi);
 
     /// Generate the atomic orbitals.
-    void generate_atomic_orbitals(K_point& kp, Q_operator& q_op);
+    //void generate_atomic_orbitals(K_point& kp, Q_operator& q_op);
 
     void hubbard_compute_occupation_numbers(K_point_set& kset_);
 
@@ -230,8 +214,6 @@ private:
         return number_of_hubbard_orbitals_;
     }
 
-    Hubbard(Simulation_context& ctx__);
-
     mdarray<double_complex, 4>& occupation_matrix()
     {
         return occupancy_number_;
@@ -250,8 +232,8 @@ private:
                                     double_complex* occ,
                                     int const*      ld);
 
-//#include "Density/Symmetrize.hpp"
 };
+
 } // namespace sirius
 
 #endif // __HUBBARD_HPP__

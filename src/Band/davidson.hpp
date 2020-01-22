@@ -25,8 +25,15 @@
 #ifndef __DAVIDSON_HPP__
 #define __DAVIDSON_HPP__
 
+#include "utils/profiler.hpp"
 #include "residuals.hpp"
 
+/// Solve the eigen-problem using Davidson iterative method.
+/**
+\tparam T  type of the wave-functions in real space
+\param [in] Hk  Hamiltonian for a given k-point
+\return list of eigen-values
+*/
 template <typename T>
 inline mdarray<double, 1>
 davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int subspace_size__, int num_steps__,
@@ -76,7 +83,6 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
     auto& mp = ctx.mem_pool(ctx.host_memory_t());
 
     /* allocate wave-functions */
-    //utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
 
     /* auxiliary wave-functions */
     Wave_functions phi(mp, gkvecp, num_phi, ctx.aux_preferred_memory_t(), num_sc);
@@ -106,6 +112,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
     if (is_device_memory(ctx.aux_preferred_memory_t())) {
         auto& mpd = ctx.mem_pool(memory_t::device);
+
         for (int i = 0; i < num_sc; i++) {
             phi.pw_coeffs(i).allocate(mpd);
         }
@@ -113,6 +120,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
     if (is_device_memory(ctx.preferred_memory_t())) {
         auto& mpd = ctx.mem_pool(memory_t::device);
+
         for (int ispn = 0; ispn < psi__.num_sc(); ispn++) {
             psi__.pw_coeffs(ispn).allocate(mpd);
             psi__.pw_coeffs(ispn).copy_to(memory_t::device, 0, num_bands);
@@ -135,6 +143,8 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
         }
     }
 
+    Hk__.kp().copy_hubbard_orbitals_on_device();
+
     //ctx_.print_memory_usage(__FILE__, __LINE__);
     //t2.stop();
 
@@ -148,7 +158,6 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
     mdarray<double, 1> eval_out(num_bands);
 
-    //utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
 
         mdarray<double, 1> eval(num_bands);
@@ -208,7 +217,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
                 eval[i] = hsdiag(i, 0) / hsdiag(i, 1);
             }
         } else {
-            utils::timer t1("sirius::davidson|evp");
+            PROFILE("sirius::davidson|evp");
             /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
             if (keep_phi_orthogonal__) {
                 if (std_solver.solve(N, num_bands, hmlt, eval.at(memory_t::host), evec)) {
@@ -227,7 +236,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
         ////if (ctx_.control().verbosity_ >= 4 && kp__->comm().rank() == 0) {
         //    for (int i = 0; i < num_bands; i++) {
-        //        printf("eval[%i]=%20.16f\n", i, eval[i]);
+        //        std::printf("eval[%i]=%20.16f\n", i, eval[i]);
         //    }
         ////}
 
@@ -254,7 +263,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
             if (N + n > num_phi || n == 0 || k == num_steps__) {
-                utils::timer t1("sirius::davidson|update_phi");
+                PROFILE("sirius::davidson|update_phi");
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
                 /* in case of non-collinear magnetism transform two components */
@@ -339,7 +348,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
             eval >> eval_old;
 
-            utils::timer t1("sirius::davidson|evp");
+            PROFILE_START("sirius::davidson|evp");
             if (keep_phi_orthogonal__) {
                 /* solve standard eigen-value problem with the size N */
                 if (std_solver.solve(N, num_bands, hmlt, eval.at(memory_t::host), evec)) {
@@ -355,13 +364,13 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
                     TERMINATE(s);
                 }
             }
-            t1.stop();
+            PROFILE_STOP("sirius::davidson|evp");
 
             //if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
-                printf("step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
+                std::printf("step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
                 //if (ctx_.control().verbosity_ >= 4) {
                     for (int i = 0; i < num_bands; i++) {
-                        printf("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]),
+                        std::printf("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]),
                              occupancy__(i, ispin_step));
                     }
                 //}
@@ -379,6 +388,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
         psi__.deallocate(spin_range(psi__.num_sc()), memory_t::device);
     }
 
+    Hk__.kp().release_hubbard_orbitals_on_device();
     //return niter;
     return eval_out;
 }

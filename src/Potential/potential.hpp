@@ -26,6 +26,7 @@
 #define __POTENTIAL_HPP__
 
 #include "Density/density.hpp"
+#include "Hubbard/hubbard.hpp"
 #include "xc_functional.hpp"
 
 namespace sirius {
@@ -37,6 +38,10 @@ namespace sirius {
 class Potential : public Field4D
 {
   private:
+
+    /* Alias for spherical functions */
+    using sf = Spheric_function<function_domain_t::spectral, double>;
+
     Unit_cell& unit_cell_;
 
     Communicator const& comm_;
@@ -110,8 +115,8 @@ class Potential : public Field4D
 
         int ia_paw{-1};
 
-        std::vector<Spheric_function<function_domain_t::spectral, double>> ae_potential_;
-        std::vector<Spheric_function<function_domain_t::spectral, double>> ps_potential_;
+        std::vector<sf> ae_potential_;
+        std::vector<sf> ps_potential_;
 
         double hartree_energy_{0.0};
         double xc_energy_{0.0};
@@ -137,54 +142,54 @@ class Potential : public Field4D
 
     mdarray<double, 2> aux_bf_;
 
+    /// Hubbard potential correction.
+    std::unique_ptr<Hubbard> U_;
+
+    /// A debug variable to scale the density when computing the XC potential.
+    /** This is used to verify the variational derivative of Exc */
+    double scale_rho_xc_{1};
+
     void init_PAW();
 
-    double xc_mt_PAW_nonmagnetic(Spheric_function<function_domain_t::spectral, double>&       full_potential,
-                                 Spheric_function<function_domain_t::spectral, double> const& full_density,
-                                 std::vector<double> const&                rho_core);
+    double xc_mt_PAW_nonmagnetic(sf& full_potential, sf const& full_density, std::vector<double> const& rho_core);
 
-    double xc_mt_PAW_collinear(std::vector<Spheric_function<function_domain_t::spectral, double>>&       potential,
-                               std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
-                               std::vector<double> const&                             rho_core);
+    double xc_mt_PAW_collinear(std::vector<sf>& potential, std::vector<sf const*> density,
+                               std::vector<double> const& rho_core);
 
-    double xc_mt_PAW_noncollinear(std::vector<Spheric_function<function_domain_t::spectral, double>>&       potential,
-                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& density,
-                                  std::vector<double> const&                             rho_core);
+    double xc_mt_PAW_noncollinear(std::vector<sf>& potential, std::vector<sf const*> density,
+                                  std::vector<double> const& rho_core);
 
-    void calc_PAW_local_potential(paw_potential_data_t&                                  pdd,
-                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& ae_density,
-                                  std::vector<Spheric_function<function_domain_t::spectral, double>> const& ps_density);
+    void calc_PAW_local_potential(paw_potential_data_t& pdd, std::vector<sf const*> ae_density,
+                                  std::vector<sf const*> ps_density);
 
     void calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>& paw_dij);
 
-    double calc_PAW_hartree_potential(Atom&                                     atom,
-                                      Spheric_function<function_domain_t::spectral, double> const& full_density,
-                                      Spheric_function<function_domain_t::spectral, double>&       full_potential);
+    double calc_PAW_hartree_potential(Atom& atom, sf const& full_density, sf& full_potential);
 
-    double calc_PAW_one_elec_energy(paw_potential_data_t&             pdd,
-                                    const mdarray<double_complex, 4>& density_matrix,
-                                    const mdarray<double, 4>&         paw_dij);
+    double calc_PAW_one_elec_energy(paw_potential_data_t& pdd, mdarray<double_complex, 4> const& density_matrix,
+                                    mdarray<double, 4> const& paw_dij);
 
     void add_paw_Dij_to_atom_Dmtrx();
 
     /// Compute MT part of the potential and MT multipole moments
-    void poisson_vmt(Periodic_function<double> const& rho__,
-                            mdarray<double_complex, 2>&      qmt__)
+    sddk::mdarray<double_complex,2> poisson_vmt(Periodic_function<double> const& rho__) const
     {
         PROFILE("sirius::Potential::poisson_vmt");
 
-        qmt__.zero();
+        sddk::mdarray<double_complex, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
+        qmt.zero();
 
         for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
             int ia = unit_cell_.spl_num_atoms(ialoc);
 
-            auto qmt = poisson_vmt<false>(unit_cell_.atom(ia), rho__.f_mt(ialoc),
-                                          const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->f_mt(ialoc)));
+            auto qmt_re = poisson_vmt<false>(unit_cell_.atom(ia), rho__.f_mt(ialoc),
+                const_cast<Spheric_function<function_domain_t::spectral, double>&>(hartree_potential_->f_mt(ialoc)));
 
-            SHT::convert(ctx_.lmax_rho(), &qmt[0], &qmt__(0, ia));
+            SHT::convert(ctx_.lmax_rho(), &qmt_re[0], &qmt(0, ia));
         }
 
-        ctx_.comm().allreduce(&qmt__(0, 0), (int)qmt__.size());
+        ctx_.comm().allreduce(&qmt(0, 0), (int)qmt.size());
+        return qmt;
     }
 
     /// Add contribution from the pseudocharge to the plane-wave expansion
@@ -319,7 +324,10 @@ class Potential : public Field4D
         lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
 
         if (lmax_ >= 0) {
-            sht_  = std::unique_ptr<SHT>(new SHT(lmax_));
+            sht_  = std::unique_ptr<SHT>(new SHT(lmax_, ctx_.settings().sht_coverage_));
+            if (ctx_.control().verification_ >= 1)  {
+                sht_->check();
+            }
             l_by_lm_ = utils::l_by_lm(lmax_);
 
             /* precompute i^l */
@@ -338,7 +346,7 @@ class Potential : public Field4D
 
         /* create list of XC functionals */
         for (auto& xc_label : ctx_.xc_functionals()) {
-            xc_func_.push_back(std::move(XC_functional(ctx_.fft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins())));
+            xc_func_.push_back(std::move(XC_functional(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins())));
         }
 
         using pf = Periodic_function<double>;
@@ -354,12 +362,12 @@ class Potential : public Field4D
         xc_energy_density_->allocate_mt(false);
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            vsigma_[ispn] = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
+            vsigma_[ispn] = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
         }
 
         if (!ctx_.full_potential()) {
-            local_potential_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
-            dveff_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
+            local_potential_ = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
+            dveff_ = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
             dveff_->zero();
         }
 
@@ -394,6 +402,10 @@ class Potential : public Field4D
 
         /* in case of PAW */
         init_PAW();
+
+        if (ctx_.hubbard_correction()) {
+            U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
+        }
 
         update();
     }
@@ -483,7 +495,7 @@ class Potential : public Field4D
                 Spheric_function<function_domain_t::spectral, T> const& rho_mt__,
                 Spheric_function<function_domain_t::spectral, T>&       vha_mt__) const
     {
-        const bool use_r_prefact{true};
+        const bool use_r_prefact{false};
 
         int lmmax_rho = rho_mt__.angular_domain_size();
         int lmmax_pot = vha_mt__.angular_domain_size();
@@ -553,7 +565,7 @@ class Potential : public Field4D
             }
         }
         if (!free_atom) {
-            /* constant part of nuclear potential -z*(1/r - 1/R) */
+            /* contribution from nuclear potential -z*(1/r - 1/R) */
             for (int ir = 0; ir < nmtp; ir++) {
 #ifdef __VHA_AUX
                 double r = atom__.radial_grid(ir);
@@ -1141,15 +1153,21 @@ class Potential : public Field4D
     /// Integral of \f$ \rho({\bf r}) V^{XC}({\bf r}) \f$.
     double energy_vxc(Density const& density__) const
     {
-        return density__.rho().inner(xc_potential());
+        return inner(density__.rho(), xc_potential());
+    }
+
+    /// Integral of \f$ \rho_{c}({\bf r}) V^{XC}({\bf r}) \f$.
+    double energy_vxc_core(Density const& density__) const
+    {
+        return inner(density__.rho_pseudo_core(), xc_potential());
     }
 
     /// Integral of \f$ \rho({\bf r}) \epsilon^{XC}({\bf r}) \f$.
     double energy_exc(Density const& density__) const
     {
-        double exc = density__.rho().inner(xc_energy_density());
+        double exc = scale_rho_xc_ * inner(density__.rho(), xc_energy_density());
         if (!ctx_.full_potential()) {
-            exc += inner(density__.rho_pseudo_core(), xc_energy_density());
+            exc += scale_rho_xc_ * inner(density__.rho_pseudo_core(), xc_energy_density());
         }
         return exc;
     }
@@ -1180,13 +1198,18 @@ class Potential : public Field4D
         Field4D::symmetrize(&effective_potential(), &effective_magnetic_field(0),
                             &effective_magnetic_field(1), &effective_magnetic_field(2));
     }
-};
 
-// #include "generate_d_operator_matrix.hpp"
-// #include "generate_pw_coefs.hpp"
-// #include "xc.hpp"
-// #include "poisson.hpp"
-// #include "paw_potential.hpp"
+    /// Set the scale_rho_xc variable.
+    inline void scale_rho_xc(double d__)
+    {
+        scale_rho_xc_ = d__;
+    }
+
+    Hubbard& U() const
+    {
+        return *U_;
+    }
+};
 
 }; // namespace sirius
 

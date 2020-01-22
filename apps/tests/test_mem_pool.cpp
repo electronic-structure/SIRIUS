@@ -31,7 +31,7 @@ void test(int nGb, int gran, memory_t M__)
         auto t = -utils::wtime();
         v.clear();
         for (auto s: sizes) {
-            v.push_back(std::move(mdarray<char, 1>(mpool, s)));
+            v.push_back(std::move(mdarray<char, 1>(s, mpool)));
             v.back().zero(M__);
         }
         std::random_shuffle(v.begin(), v.end());

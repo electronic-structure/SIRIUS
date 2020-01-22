@@ -24,8 +24,9 @@
 
 #include "SDDK/geometry3d.hpp"
 #include "K_point/k_point.hpp"
-#include "Hamiltonian/hamiltonian.hpp"
 #include "stress.hpp"
+#include "non_local_functor.hpp"
+#include "utils/profiler.hpp"
 
 namespace sirius {
 
@@ -41,6 +42,13 @@ void Stress::calc_stress_nonloc_aux()
 
     stress_nonloc_.zero();
 
+    /* if there are no beta projectors then get out there */
+    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+        return;
+    }
+
+    ctx_.print_memory_usage(__FILE__, __LINE__);
+
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
@@ -48,7 +56,7 @@ void Stress::calc_stress_nonloc_aux()
             int nbnd = ctx_.num_bands();
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* allocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).allocate(memory_t::device);
+                kp->spinor_wave_functions().pw_coeffs(ispn).allocate(ctx_.mem_pool(memory_t::device));
                 kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
             }
         }
@@ -124,9 +132,17 @@ matrix3d<double> Stress::calc_stress_hubbard()
 {
     stress_hubbard_.zero();
 
-    mdarray<double_complex, 5> dn(2 * hamiltonian_.U().lmax() + 1, 2 * hamiltonian_.U().lmax() + 1, 2,
-                                  ctx_.unit_cell().num_atoms(), 9);
-    // hamiltonian_.prepare<double_complex>();
+    /* if there are no beta projectors then get out there */
+    /* TODO : Need to fix the case where pp have no beta projectors */
+    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+        TERMINATE("Hubbard forces : Your pseudo potentials do not have beta projectors. This need a proper fix");
+        return stress_hubbard_;
+    }
+
+    mdarray<double_complex, 5> dn(potential_.U().max_number_of_orbitals_per_atom(),
+                                  potential_.U().max_number_of_orbitals_per_atom(),
+                                  2, ctx_.unit_cell().num_atoms(), 9);
+
     Q_operator q_op(ctx_);
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
@@ -137,20 +153,19 @@ matrix3d<double> Stress::calc_stress_hubbard()
             TERMINATE("Hubbard stress correction is only implemented for the simple hubbard correction.");
 
         /* compute the derivative of the occupancies numbers */
-        hamiltonian_.U().compute_occupancies_stress_derivatives(*kp__, q_op, dn);
+        potential_.U().compute_occupancies_stress_derivatives(*kp__, q_op, dn);
         for (int dir1 = 0; dir1 < 3; dir1++) {
             for (int dir2 = 0; dir2 < 3; dir2++) {
                 for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
                     const auto& atom = ctx_.unit_cell().atom(ia1);
                     if (atom.type().hubbard_correction()) {
-                        const int lmax_at = 2 * atom.type().hubbard_orbital(0).l() + 1;
+                        const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    stress_hubbard_(dir1, dir2) -=
-                                        (hamiltonian_.U().U(m2, m1, ispn, ia1) * dn(m1, m2, ispn, ia1, dir1 + 3 * dir2))
-                                            .real() /
-                                        ctx_.unit_cell().omega();
+                                    stress_hubbard_(dir1, dir2) -= (potential_.U().U(m2, m1, ispn, ia1) *
+                                                                    dn(m1, m2, ispn, ia1, dir1 + 3 * dir2)).real() /
+                                                                    ctx_.unit_cell().omega();
                                 }
                             }
                         }
@@ -159,8 +174,6 @@ matrix3d<double> Stress::calc_stress_hubbard()
             }
         }
     }
-
-    // hamiltonian_.dismiss();
 
     /* global reduction */
     kset_.comm().allreduce<double, mpi_op_t::sum>(&stress_hubbard_(0, 0), 9);
@@ -204,9 +217,8 @@ matrix3d<double> Stress::calc_stress_core()
 
         for (int mu : {0, 1, 2}) {
             for (int nu : {0, 1, 2}) {
-                stress_core_(mu, nu) -=
-                    std::real(std::conj(potential_.xc_potential().f_pw_local(igloc)) * drhoc[igloc]) * G[mu] * G[nu] /
-                    g;
+                stress_core_(mu, nu) -= std::real(std::conj(potential_.xc_potential().f_pw_local(igloc)) *
+                    drhoc[igloc]) * G[mu] * G[nu] / g;
             }
         }
 
@@ -219,8 +231,8 @@ matrix3d<double> Stress::calc_stress_core()
         sdiag *= 2;
     }
     if (ctx_.comm().rank() == 0) {
-        sdiag +=
-            std::real(std::conj(potential_.xc_potential().f_pw_local(0)) * density_.rho_pseudo_core().f_pw_local(0));
+        sdiag += std::real(std::conj(potential_.xc_potential().f_pw_local(0)) *
+            density_.rho_pseudo_core().f_pw_local(0));
     }
 
     for (int mu : {0, 1, 2}) {
@@ -246,7 +258,7 @@ matrix3d<double> Stress::calc_stress_xc()
 
     if (potential_.is_gradient_correction()) {
 
-        Smooth_periodic_function<double> rhovc(ctx_.fft(), ctx_.gvec_partition());
+        Smooth_periodic_function<double> rhovc(ctx_.spfft(), ctx_.gvec_partition());
         rhovc.zero();
         rhovc.add(density_.rho());
         rhovc.add(density_.rho_pseudo_core());
@@ -263,15 +275,15 @@ matrix3d<double> Stress::calc_stress_xc()
         }
 
         matrix3d<double> t;
-        for (int irloc = 0; irloc < ctx_.fft().local_size(); irloc++) {
+        for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
             for (int mu = 0; mu < 3; mu++) {
                 for (int nu = 0; nu < 3; nu++) {
                     t(mu, nu) += grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) * potential_.vsigma(0).f_rg(irloc);
                 }
             }
         }
-        ctx_.fft().comm().allreduce(&t(0, 0), 9);
-        t *= (-2.0 / ctx_.fft().size()); // factor 2 comes from the derivative of sigma (which is grad(rho) * grad(rho))
+        Communicator(ctx_.spfft().communicator()).allreduce(&t(0, 0), 9);
+        t *= (-2.0 / ctx_.fft_grid().num_points()); // factor 2 comes from the derivative of sigma (which is grad(rho) * grad(rho))
         // with respect to grad(rho) components
         stress_xc_ += t;
     }
@@ -287,7 +299,10 @@ matrix3d<double> Stress::calc_stress_us()
 
     stress_us_.zero();
 
-    potential_.effective_potential().fft_transform(-1);
+    /* check if we have beta projectors. Only for pseudo potentials */
+    if (ctx_.unit_cell().mt_lo_basis_size() == 0) {
+        return stress_us_;
+    }
 
     auto& ri    = ctx_.aug_ri();
     auto& ri_dq = ctx_.aug_ri_djl();
@@ -295,6 +310,22 @@ matrix3d<double> Stress::calc_stress_us()
     potential_.fft_transform(-1);
 
     Augmentation_operator_gvec_deriv q_deriv(ctx_.unit_cell().lmax(), ctx_.gvec(), ctx_.comm());
+
+    linalg_t la{linalg_t::none};
+
+    memory_pool* mp{nullptr};
+    switch (ctx_.processing_unit()) {
+        case device_t::CPU: {
+            mp = &ctx_.mem_pool(memory_t::host);
+            la = linalg_t::blas;
+            break;
+        }
+        case device_t::GPU: {
+            mp = &ctx_.mem_pool(memory_t::host_pinned);
+            la = linalg_t::cublasxt;
+            break;
+        }
+    }
 
     for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
         auto& atom_type = ctx_.unit_cell().atom_type(iat);
@@ -307,41 +338,28 @@ matrix3d<double> Stress::calc_stress_us()
         /* get auxiliary density matrix */
         auto dm = density_.density_matrix_aux(iat);
 
-        mdarray<double_complex, 2> phase_factors(ctx_.mem_pool(memory_t::host), atom_type.num_atoms(),
-                                                 ctx_.gvec().count());
+        mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count(),
+                                                 ctx_.mem_pool(memory_t::host));
 
-        utils::timer t0("sirius::Stress|us|phase_fac");
+        PROFILE_START("sirius::Stress|us|phase_fac");
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
             for (int i = 0; i < atom_type.num_atoms(); i++) {
-                int ia                  = atom_type.atom_id(i);
-                phase_factors(i, igloc) = ctx_.gvec_phase_factor(ig, ia);
+                phase_factors(i, igloc) = ctx_.gvec_phase_factor(ig, atom_type.atom_id(i));
             }
         }
-        t0.stop();
+        PROFILE_STOP("sirius::Stress|us|phase_fac");
 
-        memory_pool* mp{nullptr};
-        switch (ctx_.processing_unit()) {
-            case device_t::CPU: {
-                mp = &ctx_.mem_pool(memory_t::host);
-                break;
-            }
-            case device_t::GPU: {
-                mp = &ctx_.mem_pool(memory_t::host_pinned);
-                break;
-            }
-        }
-
-        mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
-        mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
+        mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2, *mp);
+        mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms(), *mp);
         /* over spin components, can be from 1 to 4 */
         for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++) {
             for (int nu = 0; nu < 3; nu++) {
                 q_deriv.generate_pw_coeffs(atom_type, ri, ri_dq, nu, *mp);
 
                 for (int mu = 0; mu < 3; mu++) {
-                    utils::timer t2("sirius::Stress|us|prepare");
+                    PROFILE_START("sirius::Stress|us|prepare");
                     int igloc0{0};
                     if (ctx_.comm().rank() == 0) {
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
@@ -361,12 +379,17 @@ matrix3d<double> Stress::calc_stress_us()
                             v_tmp(ia, 2 * igloc + 1) = z.imag();
                         }
                     }
-                    t2.stop();
+                    PROFILE_STOP("sirius::Stress|us|prepare");
 
-                    utils::timer t1("sirius::Stress|us|gemm");
-                    linalg<device_t::CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(),
-                                                2 * ctx_.gvec().count(), q_deriv.q_pw(), v_tmp, tmp);
-                    t1.stop();
+                    PROFILE_START("sirius::Stress|us|gemm");
+                    linalg(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                        &linalg_const<double>::one(),
+                        q_deriv.q_pw().at(memory_t::host), q_deriv.q_pw().ld(),
+                        v_tmp.at(memory_t::host), v_tmp.ld(),
+                        &linalg_const<double>::zero(),
+                        tmp.at(memory_t::host), tmp.ld());
+                    PROFILE_STOP("sirius::Stress|us|gemm");
+
                     for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                         for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
                             stress_us_(mu, nu) += tmp(i, ia) * dm(i, ia, ispin) * q_deriv.sym_weight(i);
@@ -473,7 +496,7 @@ void Stress::print_info() const
 
         auto print_stress = [&](matrix3d<double> const& s) {
             for (int mu : {0, 1, 2}) {
-                printf("%12.6f %12.6f %12.6f\n", s(mu, 0), s(mu, 1), s(mu, 2));
+                std::printf("%12.6f %12.6f %12.6f\n", s(mu, 0), s(mu, 1), s(mu, 2));
             }
         };
 
@@ -486,37 +509,37 @@ void Stress::print_info() const
         auto stress_us       = stress_us_ * au2kbar;
         auto stress_hubbard  = stress_hubbard_ * au2kbar;
 
-        printf("== stress tensor components [kbar] ===\n");
+        std::printf("== stress tensor components [kbar] ===\n");
 
-        printf("== stress_kin ==\n");
+        std::printf("== stress_kin ==\n");
         print_stress(stress_kin);
 
-        printf("== stress_har ==\n");
+        std::printf("== stress_har ==\n");
         print_stress(stress_har);
 
-        printf("== stress_ewald ==\n");
+        std::printf("== stress_ewald ==\n");
         print_stress(stress_ewald);
 
-        printf("== stress_vloc ==\n");
+        std::printf("== stress_vloc ==\n");
         print_stress(stress_vloc);
 
-        printf("== stress_nonloc ==\n");
+        std::printf("== stress_nonloc ==\n");
         print_stress(stress_nonloc);
 
-        printf("== stress_us ==\n");
+        std::printf("== stress_us ==\n");
         print_stress(stress_us);
 
         stress_us = stress_us + stress_nonloc;
-        printf("== stress_us_nl ==\n");
+        std::printf("== stress_us_nl ==\n");
         print_stress(stress_us);
 
         if (ctx_.hubbard_correction()) {
-            printf("== stress_hubbard ==\n");
+            std::printf("== stress_hubbard ==\n");
             print_stress(stress_hubbard);
         }
 
         auto stress_total = stress_total_ * au2kbar;
-        printf("== stress_total ==\n");
+        std::printf("== stress_total ==\n");
         print_stress(stress_total);
     }
 }

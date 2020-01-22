@@ -35,19 +35,19 @@ namespace sddk {
  */
 template <typename T>
 void transform(memory_t                     mem__,
-                      linalg_t                     la__,
-                      int                          ispn__,
-                      double                       alpha__,
-                      std::vector<Wave_functions*> wf_in__,
-                      int                          i0__,
-                      int                          m__,
-                      dmatrix<T>&                  mtrx__,
-                      int                          irow0__,
-                      int                          jcol0__,
-                      double                       beta__,
-                      std::vector<Wave_functions*> wf_out__,
-                      int                          j0__,
-                      int                          n__);
+               linalg_t                     la__,
+               int                          ispn__,
+               double                       alpha__,
+               std::vector<Wave_functions*> wf_in__,
+               int                          i0__,
+               int                          m__,
+               dmatrix<T>&                  mtrx__,
+               int                          irow0__,
+               int                          jcol0__,
+               double                       beta__,
+               std::vector<Wave_functions*> wf_out__,
+               int                          j0__,
+               int                          n__);
 
 template <typename T>
 inline void transform(memory_t                     mem__,

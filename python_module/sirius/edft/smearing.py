@@ -305,7 +305,7 @@ class Smearing:
         self.nspin = nspin
         self.kw = kw
         self.comm = comm
-        assert nspin == 2  # magnetic case
+        # assert nspin == 2  # magnetic case
 
     @property
     def mo(self):
@@ -393,11 +393,10 @@ class GaussianSplineSmearing(Smearing):
         ek -- band energies
         """
         factor = {1: 2, 2: 1}
-        # argh: have to find chemical potential
         mu = chemical_potential(
             ek,
             T=self.T,
-            nel=self.nel,
+            nel=self.nel / factor[self.nspin],
             fermi_function=efermi_spline,
             kw=self.kw,
             comm=self.comm)
@@ -415,7 +414,6 @@ class FermiDiracSmearing(Smearing):
     """
     Fermi-Dirac smearing
     """
-
 
     def __init__(self, T, nel, nspin, kw, comm=MPI.COMM_SELF):
         """
@@ -440,7 +438,7 @@ class FermiDiracSmearing(Smearing):
         mu = chemical_potential(
             ek,
             T=self.T,
-            nel=self.nel,
+            nel=self.nel / factor[self.nspin],
             fermi_function=fermi_dirac,
             kw=self.kw,
             comm=self.comm,
@@ -495,10 +493,12 @@ class FermiDiracSmearingReg(Smearing):
         fn  -- occupation numbers
         mu  -- chemical potential
         """
+
+        factor = {1: 2, 2: 1}
         mu = chemical_potential(
             ek,
             T=self.T,
-            nel=self.nel / self.nspin,
+            nel=self.nel / factor[self.nspin],
             kw=self.kw,
             comm=self.comm,
             fermi_function=lambda x: fermi_dirac(x),
@@ -535,24 +535,26 @@ class FermiDiracSmearingReg(Smearing):
 
 
 def make_gaussian_spline_smearing(T, ctx, kset):
-    nel = ctx.unit_cell().num_valence_electrons()
+    nel = ctx.unit_cell().num_valence_electrons
     mo = ctx.max_occupancy()
-    assert mo == 1
+    nspin = {1: 2, 2: 1}
+    # assert mo == 1
     smearing = GaussianSplineSmearing(T=T,
                                       nel=nel,
-                                      nspin=2,
+                                      nspin=nspin[mo],
                                       kw=kset.w,
                                       comm=kset.ctx().comm_k())
     return smearing
 
 
 def make_fermi_dirac_smearing(T, ctx, kset):
-    nel = ctx.unit_cell().num_valence_electrons()
+    nel = ctx.unit_cell().num_valence_electrons
     mo = ctx.max_occupancy()
-    assert mo == 1
+    # assert mo == 1
+    nspin = {1: 2, 2: 1}
     smearing = FermiDiracSmearing(T=T,
                                   nel=nel,
-                                  nspin=2,
+                                  nspin=nspin[mo],
                                   kw=kset.w,
                                   comm=kset.ctx().comm_k())
     return smearing

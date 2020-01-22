@@ -39,7 +39,7 @@ struct basis_function_index_descriptor
     double j;
     /// Order of the radial function for a given l (j).
     int order;
-    /// Indice of local orbital.
+    /// Index of local orbital.
     int idxlo;
     /// Index of the radial function or beta projector in the case of pseudo potential.
     int idxrf;
@@ -101,27 +101,6 @@ class basis_functions_index
     int lmax_{-1};
 
   public:
-
-    //struct iterator
-    //{
-    //    int xi;
-    //    std::vector<basis_function_index_descriptor>& ref_basis_function_index_descriptors_;
-
-    //    iterator(int xi__)
-    //        : xi(xi__)
-    //    {
-    //    }
-
-    //    bool operator!=(int pos__) const
-    //    {
-    //        return xi != pos__;
-    //    }
-
-    //    iterator& operator++()
-    //    {
-    //        xi++;
-    //    }
-    //};
 
     void init(radial_functions_index& indexr__)
     {
@@ -193,6 +172,7 @@ class basis_functions_index
         return index_by_idxrf_(idxrf);
     }
 
+    /// Return descriptor of the given basis function.
     inline basis_function_index_descriptor const& operator[](int i) const
     {
         assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());

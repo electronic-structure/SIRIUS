@@ -56,8 +56,8 @@ class Spherical_Bessel_functions
 
     /// Derivative of Bessel function with respect to q.
     /** \f[
-     *    \frac{\partial j_{\ell}(q x)}{\partial q} = \frac{\ell}{q} j_{\ell}(q x) - x j_{\ell+1}(q x)
-     *  \f]
+        \frac{\partial j_{\ell}(q x)}{\partial q} = \frac{\ell}{q} j_{\ell}(q x) - x j_{\ell+1}(q x)
+        \f]
      */
     Spline<double> deriv_q(int l__);
 

@@ -23,6 +23,8 @@
  *
  */
 #include "wf_inner.hpp"
+#include "utils/profiler.hpp"
+#include <chrono>
 
 namespace sddk {
 template <>
@@ -30,15 +32,15 @@ void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functio
                          Wave_functions& ket__, int j0__, int n__, double* beta__, double* buf__, int ld__,
                          stream_id sid__)
 {
-    utils::timer t1("sddk::inner|local");
+    PROFILE("sddk::inner|local");
     auto& comm = bra__.comm();
-    auto spins = get_spins(ispn__);
+    auto spins = spin_range(ispn__);
     *beta__    = 0;
     for (auto s : spins) {
         if (bra__.has_mt()) {
             TERMINATE("not implemented");
         }
-        linalg2(la__).gemm(
+        linalg(la__).gemm(
             'C', 'N', m__, n__, 2 * bra__.pw_coeffs(s).num_rows_loc(), &linalg_const<double>::two(),
             reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
             2 * bra__.pw_coeffs(s).prime().ld(),
@@ -47,7 +49,7 @@ void inner_local<double>(memory_t mem__, linalg_t la__, int ispn__, Wave_functio
         /* subtract one extra G=0 contribution */
         if (comm.rank() == 0) {
             linalg_t la = is_host_memory(mem__) ? linalg_t::blas : linalg_t::gpublas;
-            linalg2(la).ger(
+            linalg(la).ger(
                 m__, n__, &linalg_const<double>::m_one(),
                 reinterpret_cast<double*>(bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
                 2 * bra__.pw_coeffs(s).prime().ld(),
@@ -63,17 +65,17 @@ void inner_local<double_complex>(memory_t mem__, linalg_t la__, int ispn__, Wave
                                  Wave_functions& ket__, int j0__, int n__, double_complex* beta__,
                                  double_complex* buf__, int ld__, stream_id sid__)
 {
-    utils::timer t1("sddk::inner|local");
-    auto spins = get_spins(ispn__);
+    PROFILE("sddk::inner|local");
+    auto spins = spin_range(ispn__);
     *beta__    = 0;
     for (auto s : spins) {
-        linalg2(la__).gemm('C', 'N', m__, n__, bra__.pw_coeffs(s).num_rows_loc(), &linalg_const<double_complex>::one(),
+        linalg(la__).gemm('C', 'N', m__, n__, bra__.pw_coeffs(s).num_rows_loc(), &linalg_const<double_complex>::one(),
                            bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__),
                            bra__.pw_coeffs(s).prime().ld(),
                            ket__.pw_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__),
                            ket__.pw_coeffs(s).prime().ld(), beta__, buf__, ld__, sid__);
         if (bra__.has_mt()) {
-            linalg2(la__).gemm(
+            linalg(la__).gemm(
                 'C', 'N', m__, n__, bra__.mt_coeffs(s).num_rows_loc(), &linalg_const<double_complex>::one(),
                 bra__.mt_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__), bra__.mt_coeffs(s).prime().ld(),
                 ket__.mt_coeffs(s).prime().at(ket__.preferred_memory_t(), 0, j0__), ket__.mt_coeffs(s).prime().ld(),
@@ -123,7 +125,7 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
         if (sddk_pp) {
             time += omp_get_wtime();
             int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();
-            printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
+            std::printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
                    ngop * m__ * n__ * k / time, m__, n__, k, time);
         }
         return;
@@ -131,17 +133,18 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
         inner_local<T>(mem__, la__, ispn__, bra__, i0__, m__, ket__, j0__, n__, &beta,
                        result__.at(mem__, irow0__, jcol0__), result__.ld(), stream_id(-1));
         if (is_device_memory(mem__)) {
-            utils::timer t1("sddk::inner|device_copy");
+            PROFILE("sddk::inner|device_copy");
+            const auto t1 = std::chrono::high_resolution_clock::now();
             acc::copyout(result__.at(memory_t::host, irow0__, jcol0__), result__.ld(),
                          result__.at(memory_t::device, irow0__, jcol0__), result__.ld(), m__, n__);
             if (sddk_pp) {
-                double t = t1.stop();
+                std::chrono::duration<double> t = std::chrono::high_resolution_clock::now()- t1;
                 if (comm.rank() == 0) {
-                    printf("inner() copyout speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
+                    std::printf("inner() copyout speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t.count());
                 }
             }
         }
-        utils::timer t3("sddk::inner|store");
+        PROFILE_START("sddk::inner|store");
         mdarray<T, 2> tmp(m__, n__);
 #pragma omp parallel for schedule(static)
         for (int j = 0; j < n__; j++) {
@@ -149,26 +152,27 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
                 tmp(i, j) = result__(irow0__ + i, jcol0__ + j);
             }
         }
-        t3.stop();
-        utils::timer t1("sddk::inner|mpi");
+        PROFILE_STOP("sddk::inner|store");
+        PROFILE_START("sddk::inner|mpi");
         comm.allreduce(tmp.at(memory_t::host), m__ * n__);
-        t1.stop();
-        utils::timer t2("sddk::inner|store");
+        PROFILE_STOP("sddk::inner|mpi");
+        PROFILE_START("sddk::inner|store");
 #pragma omp parallel for schedule(static)
         for (int j = 0; j < n__; j++) {
             for (int i = 0; i < m__; i++) {
                 result__(irow0__ + i, jcol0__ + j) = tmp(i, j);
             }
         }
-        t2.stop();
+        PROFILE_STOP("sddk::inner|store");
         if (is_device_memory(mem__)) {
-            utils::timer t1("sddk::inner|device_copy");
+            PROFILE("sddk::inner|device_copy");
+            const auto t1 = std::chrono::high_resolution_clock::now();
             acc::copyin(result__.at(memory_t::device, irow0__, jcol0__), result__.ld(),
                         result__.at(memory_t::host, irow0__, jcol0__), result__.ld(), m__, n__);
             if (sddk_pp) {
-                double t = t1.stop();
+                std::chrono::duration<double> t = std::chrono::high_resolution_clock::now()- t1;
                 if (comm.rank() == 0) {
-                    printf("inner() copyin speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t);
+                    std::printf("inner() copyin speed: %12.6f GB/s\n", m__ * n__ * sizeof(T) / std::pow(2.0, 30) / t.count());
                 }
             }
         }
@@ -176,7 +180,7 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
             time += omp_get_wtime();
             int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();
             if (comm.rank() == 0) {
-                printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
+                std::printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
                        ngop * m__ * n__ * k / time / comm.size(), m__, n__, k, time);
             }
         }
@@ -189,13 +193,21 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
 
     const int num_streams{4};
 
-    mdarray<T, 2> c_tmp;
+    static T* ptr_h{nullptr};
+    static T* ptr_d{nullptr};
     if (is_device_memory(mem__)) {
-        c_tmp = mdarray<T, 2>(BS * BS, num_streams, memory_t::host_pinned, "inner::c_tmp");
-        c_tmp.allocate(memory_t::device);
+        if (!ptr_h) {
+            ptr_h = sddk::allocate<T>(BS * BS * num_streams, memory_t::host_pinned);
+        }
+        if (!ptr_d) {
+            ptr_d = sddk::allocate<T>(BS * BS * num_streams, memory_t::device);
+        }
     } else {
-        c_tmp = mdarray<T, 2>(BS * BS, num_streams, memory_t::host, "inner::c_tmp");
+        if (!ptr_h) {
+            ptr_h = sddk::allocate<T>(BS * BS * num_streams, memory_t::host);
+        }
     }
+    mdarray<T, 2> c_tmp(ptr_h, ptr_d, BS * BS, num_streams, "inner::c_tmp");
 
     /* compute the number of movements of the windows needed to cover the whole matrix size.
      * If m__  is not divided by BS, you need to cover the remaining border; the same for n__
@@ -320,10 +332,10 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
 
     if (is_host_memory(mem__)) {
         auto store_panel = [&req, &result__, &dims, &c_tmp, irow0__, jcol0__](int s) {
-            utils::timer t1("sddk::inner|store");
-            utils::timer t2("sddk::inner|store|mpi");
+            PROFILE("sddk::inner|store");
+            PROFILE_START("sddk::inner|store|mpi");
             MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
-            t2.stop();
+            PROFILE_STOP("sddk::inner|store|mpi");
 
             //#pragma omp parallel for schedule(static)
             // for (int jcol = 0; jcol < dims[s % 2][3]; jcol++) {
@@ -376,7 +388,7 @@ void inner(memory_t mem__, linalg_t la__, int ispn__, Wave_functions& bra__, int
         time += omp_get_wtime();
         int k = bra__.gkvec().num_gvec() + bra__.num_mt_coeffs();
         if (comm.rank() == 0) {
-            printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
+            std::printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
                    ngop * m__ * n__ * k / time / comm.size(), m__, n__, k, time);
         }
     }

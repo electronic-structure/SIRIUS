@@ -22,12 +22,16 @@
  *  \brief Compute residuals from the eigen-vectors and basis functions.
  */
 
+#include "typedefs.hpp"
 #include "memory.hpp"
 #include "linalg.hpp"
-#include "wave_functions.hpp"
-#include "wf_inner.hpp"
-#include "wf_ortho.hpp"
-#include "wf_trans.hpp"
+
+namespace sddk {
+template <typename T>
+class dmatrix;
+class Wave_functions;
+};
+
 
 #if defined(__GPU)
 extern "C" void residuals_aux_gpu(int num_gvec_loc__,
@@ -63,16 +67,21 @@ extern "C" void make_real_g0_gpu(double_complex* res__,
                                  int n__);
 #endif
 
-using namespace sddk;
-
 namespace sirius {
 
+/// Compute preconditionined residuals.
+/** The residuals of wave-functions are difined as:
+    \f[
+      R_{i} = \hat H \psi_{i} - \epsilon_{i} \hat S \psi_{i}
+    \f]
+ */
 template <typename T>
 int
-residuals(memory_t mem_type__, linalg_t la_type__, int ispn__, int N__, int num_bands__, mdarray<double, 1>& eval__,
-          dmatrix<T>& evec__, Wave_functions& hphi__, Wave_functions& ophi__, Wave_functions& hpsi__,
-          Wave_functions& opsi__, Wave_functions& res__, mdarray<double, 2> const& h_diag__,
-          mdarray<double, 2> const& o_diag__, bool estimate_eval__, double norm_tolerance__,
+residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N__, int num_bands__,
+          sddk::mdarray<double, 1>& eval__, sddk::dmatrix<T>& evec__, sddk::Wave_functions& hphi__,
+          sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__,
+          sddk::Wave_functions& opsi__, sddk::Wave_functions& res__, sddk::mdarray<double, 2> const& h_diag__,
+          sddk::mdarray<double, 2> const& o_diag__, bool estimate_eval__, double norm_tolerance__,
           std::function<bool(int, int)> is_converged__);
 
 }

@@ -198,7 +198,7 @@ class Spline : public Radial_grid<U>
     }
 
     /// Get value at the point x[i].
-    inline T operator()(const int i) const
+    inline T const& operator()(const int i) const
     {
         return coeffs_(i, 0);
     }
@@ -212,6 +212,7 @@ class Spline : public Radial_grid<U>
         return coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
     }
 
+    /// Compute value at any point.
     inline T at_point(U x) const
     {
         int j = this->index_of(x);
@@ -331,7 +332,7 @@ class Spline : public Radial_grid<U>
 
         if (info) {
             std::stringstream s;
-            s << "error in tridiagonal solver: " << info;
+            s << "[sirius::Spline::interpolate] error in tridiagonal solver: " << info;
             throw std::runtime_error(s.str());
         }
 
@@ -353,6 +354,71 @@ class Spline : public Radial_grid<U>
     }
 
     /// Integrate spline with r^m prefactor.
+    /**
+    Derivation for r^2 prefactor is based on the following Mathematica notebook:
+    \verbatim
+            In[26]:= result = 
+         FullSimplify[
+          Integrate[
+           x^(2)*(a0 + a1*(x - x0) + a2*(x - x0)^2 + a3*(x - x0)^3), {x, x0, 
+            x1}],
+          Assumptions -> {Element[{x0, x1}, Reals], x1 > x0 > 0}]
+        
+        
+        Out[26]= 1/60 (20 a0 (-x0^3 + x1^3) + 
+           5 a1 (x0^4 - 4 x0 x1^3 + 3 x1^4) + (x0 - 
+              x1)^3 (-2 a2 (x0^2 + 3 x0 x1 + 6 x1^2) + 
+              a3 (x0 - x1) (x0^2 + 4 x0 x1 + 10 x1^2)))
+        
+        In[27]:= r = Expand[result] /. {x1 -> x0 + dx}
+        
+        Out[27]= -((a0 x0^3)/3) + (a1 x0^4)/12 - (a2 x0^5)/30 + (
+         a3 x0^6)/60 + 1/3 a0 (dx + x0)^3 - 1/3 a1 x0 (dx + x0)^3 + 
+         1/3 a2 x0^2 (dx + x0)^3 - 1/3 a3 x0^3 (dx + x0)^3 + 
+         1/4 a1 (dx + x0)^4 - 1/2 a2 x0 (dx + x0)^4 + 
+         3/4 a3 x0^2 (dx + x0)^4 + 1/5 a2 (dx + x0)^5 - 
+         3/5 a3 x0 (dx + x0)^5 + 1/6 a3 (dx + x0)^6
+        
+        In[34]:= Collect[r, dx, Simplify]
+        
+        Out[34]= (a3 dx^6)/6 + a0 dx x0^2 + 1/2 dx^2 x0 (2 a0 + a1 x0) + 
+         1/5 dx^5 (a2 + 2 a3 x0) + 1/3 dx^3 (a0 + x0 (2 a1 + a2 x0)) + 
+         1/4 dx^4 (a1 + x0 (2 a2 + a3 x0))
+        
+        In[28]:= r1 = Collect[r/dx, dx, Simplify]
+        
+        Out[28]= (a3 dx^5)/6 + a0 x0^2 + 1/2 dx x0 (2 a0 + a1 x0) + 
+         1/5 dx^4 (a2 + 2 a3 x0) + 1/3 dx^2 (a0 + x0 (2 a1 + a2 x0)) + 
+         1/4 dx^3 (a1 + x0 (2 a2 + a3 x0))
+        
+        In[29]:= r2 = Collect[(r1 - a0*x0^2)/dx, dx, Simplify]
+        
+        Out[29]= (a3 dx^4)/6 + 1/2 x0 (2 a0 + a1 x0) + 
+         1/5 dx^3 (a2 + 2 a3 x0) + 1/3 dx (a0 + x0 (2 a1 + a2 x0)) + 
+         1/4 dx^2 (a1 + x0 (2 a2 + a3 x0))
+        
+        In[30]:= r3 = Collect[(r2 - 1/2 x0 (2 a0 + a1 x0))/dx, dx, Simplify]
+        
+        Out[30]= (a3 dx^3)/6 + 1/5 dx^2 (a2 + 2 a3 x0) + 
+         1/3 (a0 + x0 (2 a1 + a2 x0)) + 1/4 dx (a1 + x0 (2 a2 + a3 x0))
+        
+        In[31]:= r4 = 
+         Collect[(r3 - 1/3 (a0 + x0 (2 a1 + a2 x0)))/dx, dx, Simplify]
+        
+        Out[31]= (a3 dx^2)/6 + 1/5 dx (a2 + 2 a3 x0) + 
+         1/4 (a1 + x0 (2 a2 + a3 x0))
+        
+        In[32]:= r5 = 
+         Collect[(r4 - 1/4 (a1 + x0 (2 a2 + a3 x0)))/dx, dx, Simplify]
+        
+        Out[32]= (a3 dx)/6 + 1/5 (a2 + 2 a3 x0)
+        
+        In[33]:= r6 = Collect[(r5 - 1/5 (a2 + 2 a3 x0))/dx, dx, Simplify]
+        
+        Out[33]= a3/6
+
+    \endverbatim
+    */
     T integrate(std::vector<T>& g__, int m__) const
     {
         g__    = std::vector<T>(this->num_points());
@@ -370,21 +436,17 @@ class Spline : public Radial_grid<U>
             case 2: {
                 for (int i = 0; i < this->num_points() - 1; i++) {
                     U x0 = this->x(i);
-                    U x1 = this->x(i + 1);
                     U dx = this->dx(i);
                     T a0 = coeffs_(i, 0);
                     T a1 = coeffs_(i, 1);
                     T a2 = coeffs_(i, 2);
                     T a3 = coeffs_(i, 3);
 
-                    U x0_2 = x0 * x0;
-                    U x0_3 = x0_2 * x0;
-                    U x1_2 = x1 * x1;
-                    U x1_3 = x1_2 * x1;
+                    T val = dx * (dx * (dx * (dx * (dx * (dx * a3 / 6.0 + (a2 + 2.0 * a3 * x0) / 5.0) +
+                        (a1 + x0 * (2.0 * a2 + a3 * x0)) / 4.0) + (a0 + x0 * (2.0 * a1 + a2 * x0)) / 3.0) +
+                        x0 * (2.0 * a0 + a1 * x0) / 2.0) + a0 * x0 * x0);
 
-                    g__[i + 1] = g__[i] + (20.0 * a0 * (x1_3 - x0_3) + 5.0 * a1 * (x0 * x0_3 + x1_3 * (3.0 * dx - x0)) -
-                                           dx * dx * dx * (-2.0 * a2 * (x0_2 + 3.0 * x0 * x1 + 6.0 * x1_2) - a3 * dx * (x0_2 + 4.0 * x0 * x1 + 10.0 * x1_2))) /
-                                              60.0;
+                    g__[i + 1] = g__[i] + val;
                 }
                 break;
             }

@@ -31,12 +31,14 @@
 #include <cassert>
 #include <cmath>
 #include <string>
+#include <iostream>
 #include <vector>
 #include <fstream>
 #include <sstream>
 #include <sys/time.h>
 #include <unistd.h>
 #include <complex>
+#include <chrono>
 #include "json.hpp"
 
 /// Namespace for simple utility functions.
@@ -47,7 +49,7 @@ inline void terminate(const char* file_name__, int line_number__, const std::str
 {
     std::stringstream s;
     s << "\n=== Fatal error at line " << line_number__ << " of file " << file_name__ << " ===\n";
-    s << message__ << "\n\n";
+    s << message__ << "\n";
     throw std::runtime_error(s.str());
 }
 
@@ -60,8 +62,8 @@ inline void terminate(const char* file_name__, int line_number__, const std::str
 /// Issue a warning message.
 inline void warning(const char* file_name__, int line_number__, const std::string& message__)
 {
-    printf("\n=== Warning at line %i of file %s ===\n", line_number__, file_name__);
-    printf("%s\n\n", message__.c_str());
+    std::printf("\n=== Warning at line %i of file %s ===\n", line_number__, file_name__);
+    std::printf("%s\n\n", message__.c_str());
 }
 
 /// Issue a warning message.
@@ -78,17 +80,17 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 
 inline void print_checksum(std::string label__, double cs__)
 {
-    printf("checksum(%s): %18.12f\n", label__.c_str(), cs__);
+    std::printf("checksum(%s): %18.12f\n", label__.c_str(), cs__);
 }
 
 inline void print_checksum(std::string label__, std::complex<double> cs__)
 {
-    printf("checksum(%s): %18.12f %18.12f\n", label__.c_str(), cs__.real(), cs__.imag());
+    std::printf("checksum(%s): %18.12f %18.12f\n", label__.c_str(), cs__.real(), cs__.imag());
 }
 
 inline void print_hash(std::string label__, unsigned long long int hash__)
 {
-    printf("hash(%s): %llx\n", label__.c_str(), hash__);
+    std::printf("hash(%s): %llx\n", label__.c_str(), hash__);
 }
 
 /// Maximum number of \f$ \ell, m \f$ combinations for a given \f$ \ell_{max} \f$
@@ -139,8 +141,7 @@ inline bool file_exists(std::string file_name)
 }
 
 /// Return the timestamp string in a specified format.
-/** Typical format strings: "%Y%m%d_%H%M%S", "%Y-%m-%d %H:%M:%S", "%H:%M:%S" 
- */
+/** Typical format strings: "%Y%m%d_%H%M%S", "%Y-%m-%d %H:%M:%S", "%H:%M:%S" */
 std::string timestamp(std::string fmt);
 
 /// Wall-clock time in seconds.
@@ -151,11 +152,32 @@ inline double wtime()
     return double(t.tv_sec) + double(t.tv_usec) / 1e6;
 }
 
+inline std::chrono::high_resolution_clock::time_point time_now()
+{
+    return std::chrono::high_resolution_clock::now();
+}
+
+inline double time_interval(std::chrono::high_resolution_clock::time_point t0)
+{
+    return std::chrono::duration_cast<std::chrono::duration<double>>(time_now() - t0).count();
+}
+
 /// Sign of the variable.
 template <typename T>
 inline int sign(T val)
 {
     return (T(0) < val) - (val < T(0));
+}
+
+/// Checks if number is integer with a given tolerance.
+template <typename T>
+inline bool is_int(T val__, T eps__)
+{
+    if (std::abs(std::round(val__) - val__) > eps__) {
+        return false;
+    } else {
+        return true;
+    }
 }
 
 /// Pack two indices into one for symmetric matrices.
@@ -223,7 +245,7 @@ inline std::complex<double> round(std::complex<double> a__, int n__)
 }
 
 /// Simple hash function.
-/** Example: printf("hash: %16llX\n", hash()); */
+/** Example: std::printf("hash: %16llX\n", hash()); */
 inline uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
 {
     unsigned char const* p = static_cast<unsigned char const*>(buff);
@@ -314,7 +336,6 @@ inline double random<double>()
     return static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
 }
 
-
 template <>
 inline std::complex<double> random<std::complex<double>>()
 {
@@ -334,6 +355,22 @@ inline long get_num_pages()
 inline long get_total_memory()
 {
     return get_page_size() * get_num_pages();
+}
+
+///// Check if lambda F(Args) is of type T.
+//template <typename T, typename F, typename ...Args>
+//constexpr bool check_lambda_type()
+//{
+//    return std::is_same<typedef std::result_of<F(Args...)>::type, T>::value;
+//}
+
+inline std::string boolstr(bool b__)
+{
+    if (b__) {
+        return "true";
+    } else {
+        return "false";
+    }
 }
 
 } // namespace

@@ -33,7 +33,7 @@
         "lmax_pot" : 8,
         "lmax_rho" : 8,
 
-        "potential_tol" : 1e-7,
+        "density_tol" : 1e-7,
         "energy_tol" : 1e-8,
 
         "smearing_width" : 0.1
@@ -42,7 +42,7 @@
     "mixer" : {
         "beta" : 0.25,
         "type" : "broyden1",
-        "max_history" : 8
+        "max_history" : 4
     },
     
     "unit_cell" : {

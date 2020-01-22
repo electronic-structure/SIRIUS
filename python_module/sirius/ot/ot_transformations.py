@@ -50,15 +50,15 @@ def c(x, c0):
         return cres
     else:
         x = matview(x)
-        assert (np.linalg.norm(np.dot(x.H, c0), 'fro') < 1e-7)
+        assert np.linalg.norm(np.dot(x.H, c0), 'fro') < 1e-7
         XX = np.dot(x.H, x)
         w, R = eigh(XX)
         w = np.sqrt(w)
         R = matview(R)
         err = np.linalg.norm(R.H * R - np.eye(*R.shape), 'fro')
         # TODO: remove: check that we are not loosing accuracy for small x
-        assert(np.isclose(R * np.diag(w**2) * R.H, XX).all())
-        assert(err < 1e-11)
+        assert np.isclose(R * np.diag(w**2) * R.H, XX).all()
+        assert err < 1e-11
 
         Wsinc = np.diag(np.sinc(w/np.pi))
         sincU = np.dot(np.dot(R, Wsinc), R.H)
@@ -88,7 +88,7 @@ class ConstrainedGradient:
         x = np.matrix(x, copy=False)
 
         # check that x fulfills constraint condition
-        assert (np.linalg.norm(np.dot(x.H, c0), 'fro') < 1e-7)
+        assert np.linalg.norm(np.dot(x.H, c0), 'fro') < 1e-7
 
         # compute eigenvectors and eigenvalues of U
         XX = np.dot(x.H, x)
@@ -99,7 +99,7 @@ class ConstrainedGradient:
 
         # check for orthonormality
         err = np.linalg.norm(R.H * R - np.eye(*R.shape), 'fro')
-        assert (err < 1e-10)
+        assert err < 1e-10
 
         # pre-compute matrix functions sin, cos, and inverse of U
         Wsinc = np.diag(np.sinc(w/np.pi))
@@ -107,7 +107,7 @@ class ConstrainedGradient:
         # cos
         Wcos = np.diag(np.cos(w))
         cosU = np.dot(np.dot(R, Wcos), R.H)
-        assert(isinstance(cosU, np.matrix))
+        assert isinstance(cosU, np.matrix)
 
         # compute c(c0, x)
         c = np.dot(c0, cosU) + np.dot(x, sincU)
@@ -160,8 +160,8 @@ class ConstrainedGradient:
             return Gx_out, Hx_out
         else:
             # valid input?
-            assert(ispn is not None)
-            assert(ki is not None)
+            assert ispn is not None
+            assert ki is not None
             # compute matrix functions
             c, Λ, sincU, R = self._prepare_fX(x, self.c0)
             # compute ∂E/∂c
@@ -189,10 +189,10 @@ class ConstrainedGradient:
         #   VandeVondele, J., & Hutter, J. . An efficient orbital transformation method
         #   for electronic structure calculations. , 118(10), 4365–4369.
         #   http://dx.doi.org/10.1063/1.1543154
-        assert(isinstance(R, np.matrix))
-        assert(isinstance(sincU, np.matrix))
-        assert(isinstance(Hc, np.matrix))
-        assert(isinstance(c0, np.matrix))
+        assert isinstance(R, np.matrix)
+        assert isinstance(sincU, np.matrix)
+        assert isinstance(Hc, np.matrix)
+        assert isinstance(c0, np.matrix)
 
         v = np.sinc(np.sqrt(Λ)/np.pi)
         v = v[:, np.newaxis]
@@ -237,7 +237,7 @@ class ConstrainedGradient:
 
         # Lagrange multiplier
         # TODO: this can be precomputed and stored
-        lM = solve(c0.H * c0, c0.H * dEdx)
-        correction = -1 * c0 * lM
+        lM = solve(c0.H @ c0, c0.H @ dEdx)
+        correction = -1 * c0 @ lM
 
         return dEdx + correction, dEdx

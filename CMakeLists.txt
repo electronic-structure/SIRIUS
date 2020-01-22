@@ -8,7 +8,8 @@ endif()
 
 # set language and standard
 enable_language(CXX Fortran)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 # user variables
 set(CREATE_PYTHON_MODULE OFF CACHE BOOL "create sirius python module")
@@ -29,6 +30,7 @@ set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
 set(USE_OPENMP ON CACHE BOOL "use OpenMP")
 set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
 set(USE_TIMER ON CACHE BOOL "measure execution of functions with timer")
+set(USE_MEMORY_POOL ON CACHE BOOL "use memory pool")
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
 
@@ -83,6 +85,10 @@ if (USE_TIMER)
   add_definitions("-D__PROFILE_TIME")
 endif()
 
+if (USE_MEMORY_POOL)
+  add_definitions("-D__USE_MEMORY_POOL")
+endif()
+
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
 set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${GSL_LIBRARY}")
@@ -106,14 +112,15 @@ else()
   endif()
 endif()
 
-find_package(FFTW REQUIRED)
 if (USE_OPENMP)
   find_package(OpenMP REQUIRED)
 endif()
 find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
-find_package(HDF5 REQUIRED C HL)
+find_package(HDF5 REQUIRED C)
+find_package(SpFFT 0.9.6 CONFIG REQUIRED)
 
+set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};SpFFT::spfft")
 
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
@@ -180,7 +187,7 @@ set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${LIBXC_LIBRARIES
 
 
 # include library headers
-include_directories(BEFORE SYSTEM ${FFTW_INCLUDE_DIR})
+
 include_directories(BEFORE SYSTEM ${LIBXC_INCLUDE_DIR})
 include_directories(BEFORE SYSTEM ${LIBSPG_INCLUDE_DIR})
 include_directories(BEFORE SYSTEM ${HDF5_INCLUDE_DIR})
@@ -191,7 +198,7 @@ if(USE_VDWXC)
   find_package(LibVDWXC 0.3.0 REQUIRED)
   include_directories(${LIBVDWXC_INCLUDE_DIR})
   set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${LIBVDWXC_LIBRARIES}")
-  add_definitions("-DUSE_VDWXC")
+  add_definitions("-D__USE_VDWXC")
 endif(USE_VDWXC)
 
 # project header locations
@@ -248,7 +255,7 @@ MACRO(SIRIUS_SETUP_TARGET _target)
   add_dependencies(${_target} generate_version_hpp)
   add_dependencies(${_target} runtime_options_json_hpp)
 
-  target_link_libraries(${_target} PRIVATE "${sirius_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES};${HDF5_C_HL_LIBRARIES}")
+  target_link_libraries(${_target} PRIVATE "${sirius_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES}")
   if(USE_MKL)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
       target_link_libraries(${_target} PRIVATE "-Wl,--no-as-needed;${MKL_LIBRARIES}")
@@ -258,7 +265,7 @@ MACRO(SIRIUS_SETUP_TARGET _target)
       message(FATAL_ERROR "Unsupported compiler")
     endif()
   else()
-    target_link_libraries(${_target} PRIVATE "${LAPACK_LIBRARIES};${FFTW_LIBRARIES}")
+    target_link_libraries(${_target} PRIVATE "${LAPACK_LIBRARIES}")
   endif()
 
   if(USE_ROCM)

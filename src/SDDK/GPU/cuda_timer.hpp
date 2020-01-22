@@ -48,13 +48,13 @@ class CUDA_timers_wrapper
 
         void print()
         {
-            printf("\n");
-            printf("CUDA timers \n");
-            for (int i = 0; i < 115; i++) printf("-");
-            printf("\n");
-            printf("name                                                              count      total        min        max    average\n");
-            for (int i = 0; i < 115; i++) printf("-");
-            printf("\n");
+            std::printf("\n");
+            std::printf("CUDA timers \n");
+            for (int i = 0; i < 115; i++) std::printf("-");
+            std::printf("\n");
+            std::printf("name                                                              count      total        min        max    average\n");
+            for (int i = 0; i < 115; i++) std::printf("-");
+            std::printf("\n");
 
             std::map<std::string, std::vector<float> >::iterator it;
             for (it = cuda_timers_.begin(); it != cuda_timers_.end(); it++) {
@@ -72,7 +72,7 @@ class CUDA_timers_wrapper
                     minval = 0.0;
                 }
 
-                printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), count, total, minval, maxval, average);
+                std::printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), count, total, minval, maxval, average);
             }
         }
 };

@@ -245,7 +245,7 @@ double test_alloc_array(size_t n, memory_pool& mp)
     utils::timer tt("test_alloc|mp");
     double t0 = wtime();
     /* time to allocate + fill */
-    mdarray<char, 1> p(mp, n);
+    mdarray<char, 1> p(n, mp);
     p.zero();
     double t1 = wtime();
     /* time fo fill */

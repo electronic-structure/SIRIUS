@@ -43,23 +43,21 @@ def validate_config(dd):
 
 def initial_state(sirius_input, nscf):
     from sirius import DFT_ground_state_find
-    load = nscf == -1
-    res = DFT_ground_state_find(nscf, config=sirius_input, load=load)
+    res = DFT_ground_state_find(nscf, config=sirius_input)
     ctx = res['ctx']
     m = ctx.max_occupancy()
     # not yet implemented for single spin channel system
-    assert m == 1
+    # assert m == 1
     kset = res['kpointset']
     potential = res['potential']
     density = res['density']
-    hamiltonian = res['hamiltonian']
-    H = ApplyHamiltonian(hamiltonian, kset)
+    H = ApplyHamiltonian(potential, kset)
     E = Energy(kset, potential, density, H)
 
     fn = kset.fn
     X = kset.C
 
-    return X, fn, H, E, ctx, kset
+    return X, fn, E, ctx, kset
 
 
 def make_smearing(label, T, ctx, kset):
@@ -69,7 +67,7 @@ def make_smearing(label, T, ctx, kset):
     from sirius.edft import make_fermi_dirac_smearing, make_gaussian_spline_smearing
     if label == 'fermi-dirac':
         return make_fermi_dirac_smearing(T, ctx, kset)
-    elif label =='gaussian-spline':
+    elif label == 'gaussian-spline':
         return make_gaussian_spline_smearing(T, ctx, kset)
     else:
         raise NotImplementedError('invalid smearing: ', label)
@@ -100,13 +98,13 @@ def run_marzari(config, sirius_config, callback=None, final_callback=None):
 
     cg_config = config['CG']
 
-    X, fn, H, E, ctx, kset = initial_state(sirius_config, cg_config['nscf'])
+    X, fn, E, ctx, kset = initial_state(sirius_config, cg_config['nscf'])
 
     T = config['System']['T']
     smearing = make_smearing(config['System']['smearing'], T, ctx, kset)
-    M = FreeEnergy(H=H, E=E, T=T, smearing=smearing)
-    neugebaur_config = config['CG']['method']
-    cg = CG(M, fd_slope_check=neugebaur_config['fd_slope_check'])
+    M = FreeEnergy(E=E, T=T, smearing=smearing)
+    method_config = config['CG']['method']
+    cg = CG(M, fd_slope_check=method_config['fd_slope_check'])
     K = make_precond(cg_config, kset)
 
     tstart = time.time()
@@ -116,6 +114,7 @@ def run_marzari(config, sirius_config, callback=None, final_callback=None):
                                 ninner=cg_config['method']['inner'],
                                 K=K,
                                 callback=callback(kset, E=E))
+    assert success
     tstop = time.time()
     logger('cg.run took: ', tstop-tstart, ' seconds')
     if final_callback is not None:
@@ -132,12 +131,11 @@ def run_neugebaur(config, sirius_config, callback=None, final_callback=None):
     from sirius.edft import NeugebaurCG as CG, FreeEnergy
 
     cg_config = config['CG']
-    X, fn, H, E, ctx, kset = initial_state(sirius_config, cg_config['nscf'])
+    X, fn, E, ctx, kset = initial_state(sirius_config, cg_config['nscf'])
     T = config['System']['T']
     smearing = make_smearing(config['System']['smearing'], T, ctx, kset)
-    M = FreeEnergy(H=H, E=E, T=T, smearing=smearing)
-    marzari_config = config['CG']['method']
-    cg = CG(M )
+    M = FreeEnergy(E=E, T=T, smearing=smearing)
+    cg = CG(M)
     K = make_precond(cg_config, kset)
 
     tstart = time.time()
@@ -150,6 +148,7 @@ def run_neugebaur(config, sirius_config, callback=None, final_callback=None):
                                 cgtype=cg_config['type'],
                                 tau=cg_config['tau'],
                                 callback=callback(kset, E=E))
+    assert success
     tstop = time.time()
     logger('cg.run took: ', tstop-tstart, ' seconds')
     if final_callback is not None:

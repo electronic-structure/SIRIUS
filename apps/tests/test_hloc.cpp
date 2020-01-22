@@ -11,30 +11,14 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     matrix3d<double> M = {{10, 0, 0}, {0, 10, 0}, {0, 0, 10}};
 
-    //matrix3d<double> M = transpose(matrix3d<double>({{0.1876146971, 0.1083182969, -0.0001874171},
-    //                                                 {0.0003106919, 0.2160983064, -0.0000921806},
-    //                                                 {-0.0000819370, -0.0000453654, 0.1171347286}}));
-
     for (int i = 0; i < 3; i++) {
         printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, M(0, i), M(1, i), M(2, i));
     }
 
-    //FFT3D_grid fft_box(find_translations(2 * cutoff__, M));
-
-    //FFT3D fft(find_translations(2 * cutoff__, M), mpi_grid.communicator(1 << 0), pu);
-
-    //Communicator comm_ortho_fft = Communicator::world().split(fft.comm().rank());
-
-
-    //Gvec gvec(M, cutoff__, Communicator::world(), reduce_gvec__);
-
-    //Gvec_partition gvecp(gvec,  fft.comm(), comm_ortho_fft);
-
-
     Simulation_context params;
     params.set_processing_unit(pu);
     params.unit_cell().set_lattice_vectors(M);
-    params.set_mpi_grid_dims(mpi_grid_dims__);
+    params.mpi_grid_dims(mpi_grid_dims__);
     params.pw_cutoff(cutoff__ + 1);
     params.gk_cutoff(cutoff__ / 2);
     params.electronic_structure_method("pseudopotential");
@@ -43,12 +27,12 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     auto& gvec = params.gvec();
     auto& gvecp = params.gvec_partition();
-    auto& fft = params.fft();
-    
+    auto& fft = params.spfft();
+
     if (Communicator::world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
         printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
-        printf("FFT grid size: %i %i %i\n", fft.size(0), fft.size(1), fft.size(2));
+        printf("FFT grid size: %i %i %i\n", fft.dim_x(), fft.dim_y(), fft.dim_z());
         printf("number of FFT threads: %i\n", omp_get_max_threads());
         printf("number of FFT groups: %i\n", params.comm_ortho_fft().size());
         //printf("MPI grid: %i %i\n", mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size());
@@ -57,52 +41,50 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     Local_operator hloc(params, fft, gvecp);
 
-    Wave_functions phi(gvecp, 4 * num_bands__, memory_t::host);
-    for (int i = 0; i < 4 * num_bands__; i++) {
-        for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
-            phi.pw_coeffs(0).prime(j, i) = utils::random<double_complex>();
-        }
-        phi.pw_coeffs(0).prime(0, i) = 1.0;
-    }
-    Wave_functions hphi(gvecp, 4 * num_bands__, memory_t::host);
+    //Wave_functions phi(gvecp, 4 * num_bands__, memory_t::host);
+    //for (int i = 0; i < 4 * num_bands__; i++) {
+    //    for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
+    //        phi.pw_coeffs(0).prime(j, i) = utils::random<double_complex>();
+    //    }
+    //    phi.pw_coeffs(0).prime(0, i) = 1.0;
+    //}
+    //Wave_functions hphi(gvecp, 4 * num_bands__, memory_t::host);
 
-    if (pu == device_t::GPU) {
-        phi.pw_coeffs(0).allocate(memory_t::device);
-        phi.pw_coeffs(0).copy_to(memory_t::device, 0, 4 * num_bands__);
-        hphi.pw_coeffs(0).allocate(memory_t::device);
-    }
-    hloc.prepare(gvecp); 
-    Communicator::world().barrier();
-    utils::timer t1("h_loc");
-    for (int i = 0; i < 4; i++) {
-        hloc.apply_h(0, phi, hphi, i * num_bands__, num_bands__);
-    }
-    Communicator::world().barrier();
-    t1.stop();
-    hloc.dismiss();
+    //if (pu == device_t::GPU) {
+    //    phi.pw_coeffs(0).allocate(memory_t::device);
+    //    phi.pw_coeffs(0).copy_to(memory_t::device, 0, 4 * num_bands__);
+    //    hphi.pw_coeffs(0).allocate(memory_t::device);
+    //}
+    //hloc.prepare(gvecp); 
+    //Communicator::world().barrier();
+    //utils::timer t1("h_loc");
+    //for (int i = 0; i < 4; i++) {
+    //    hloc.apply_h(fft, spin_range(0), phi, hphi, i * num_bands__, num_bands__);
+    //}
+    //Communicator::world().barrier();
+    //t1.stop();
+    //hloc.dismiss();
 
 
-    double diff{0};
-    for (int i = 0; i < 4 * num_bands__; i++) {
-        for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
-            int ig = gvec.offset() + j;
-            auto gc = gvec.gvec_cart<index_domain_t::global>(ig);
-            diff += std::pow(std::abs((2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(0).prime(j, i) - hphi.pw_coeffs(0).prime(j, i)), 2);
-        }
-    }
-    if (diff != diff) {
-        TERMINATE("NaN");
-    }
-    Communicator::world().allreduce(&diff, 1);
-    diff = std::sqrt(diff / 4 / num_bands__ / gvec.num_gvec());
-    if (Communicator::world().rank() == 0) {
-        printf("RMS: %18.16f\n", diff);
-    }
-    if (diff > 1e-12) {
-        TERMINATE("RMS is too large");
-    }
-
-    fft.dismiss();
+    //double diff{0};
+    //for (int i = 0; i < 4 * num_bands__; i++) {
+    //    for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
+    //        int ig = gvec.offset() + j;
+    //        auto gc = gvec.gvec_cart<index_domain_t::global>(ig);
+    //        diff += std::pow(std::abs((2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(0).prime(j, i) - hphi.pw_coeffs(0).prime(j, i)), 2);
+    //    }
+    //}
+    //if (diff != diff) {
+    //    TERMINATE("NaN");
+    //}
+    //Communicator::world().allreduce(&diff, 1);
+    //diff = std::sqrt(diff / 4 / num_bands__ / gvec.num_gvec());
+    //if (Communicator::world().rank() == 0) {
+    //    printf("RMS: %18.16f\n", diff);
+    //}
+    //if (diff > 1e-12) {
+    //    TERMINATE("RMS is too large");
+    //}
 }
 
 int main(int argn, char** argv)

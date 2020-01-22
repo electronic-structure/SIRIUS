@@ -28,8 +28,8 @@
 #include <xc.h>
 #include <string.h>
 #include "xc_functional_base.hpp"
-#include "SDDK/fft3d.hpp"
-#ifdef USE_VDWXC
+#include "SDDK/fft.hpp"
+#if defined(__USE_VDWXC)
 #include <vdwxc.h>
 #if __HAVE_VDWXC_MPI
 #include <vdwxc_mpi.h>
@@ -44,7 +44,7 @@ namespace sirius {
     private:
         // I can not use a generic void pointer because xc_func_type is a structure
         // while wdv_functional_ is a pointer over structure.
-#ifdef USE_VDWXC
+#if defined(__USE_VDWXC)
         vdwxc_data handler_vdw_{nullptr};
         bool vdw_functional_{false};
 #endif
@@ -57,11 +57,12 @@ namespace sirius {
     public:
     /* we need the context because libvdwxc asks for lattice vectors and fft parameters */
 
-    XC_functional(const FFT3D& fft, const matrix3d<double>& lattice_vectors_, const std::string libxc_name__, int num_spins__)
+    XC_functional(spfft::Transform const& fft__, const matrix3d<double>& lattice_vectors__,
+                  const std::string libxc_name__, int num_spins__)
         :  XC_functional_base(libxc_name__, num_spins__)
         {
 
-#ifdef USE_VDWXC
+#if defined(__USE_VDWXC)
             /* return immediately if the functional_base class is initialized */
             if (this->libxc_initialized_) {
                 return;
@@ -102,22 +103,21 @@ namespace sirius {
                     TERMINATE(s);
                 }
 
-                double v1[3] = { lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0) };
-                double v2[3] = { lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1) };
-                double v3[3] = { lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2) };
+                double v1[3] = { lattice_vectors__(0, 0), lattice_vectors__(1, 0), lattice_vectors__(2, 0) };
+                double v2[3] = { lattice_vectors__(0, 1), lattice_vectors__(1, 1), lattice_vectors__(2, 1) };
+                double v3[3] = { lattice_vectors__(0, 2), lattice_vectors__(1, 2), lattice_vectors__(2, 2) };
                 vdwxc_set_unit_cell(handler_vdw_,
-                                    fft.size(0),
-                                    fft.size(1),
-                                    fft.size(2),
+                                    fft__.dim_x(),
+                                    fft__.dim_y(),
+                                    fft__.dim_z(),
                                     v1[0], v1[1], v1[2],
                                     v2[0], v2[1], v2[2],
                                     v3[0], v3[1], v3[2]);
-
-                if (fft.comm().size() == 1) {
+                if (Communicator(fft__.communicator()).size() == 1) {
                     vdwxc_init_serial(handler_vdw_);
                 } else {
 #if __HAVE_VDWXC_MPI
-                    vdwxc_init_mpi(handler_vdw_, fft.comm().mpi_comm());
+                    vdwxc_init_mpi(handler_vdw_, fft__.communicator());
 #else
                     vdwxc_init_serial(handler_vdw_);
 #endif
@@ -139,13 +139,13 @@ namespace sirius {
                 s << "XC functional " << libxc_name__ << " is unknown";
                 TERMINATE(s);
             }
-#endif /* USE_VDWXC */
+#endif /* __USE_VDWXC */
         }
 
     XC_functional(XC_functional&& src__)
         :XC_functional_base(std::move(src__))
         {
-#ifdef USE_VDWXC
+#if defined(__USE_VDWXC)
             this->handler_vdw_ = src__.handler_vdw_;
             this->vdw_functional_ = src__.vdw_functional_;
             src__.vdw_functional_ = false;
@@ -154,7 +154,7 @@ namespace sirius {
 
     ~XC_functional()
         {
-#ifdef USE_VDWXC
+#if defined(__USE_VDWXC)
             if (this->vdw_functional_) {
                 vdwxc_finalize(&this->handler_vdw_);
                 this->vdw_functional_ = false;
@@ -165,7 +165,7 @@ namespace sirius {
 
         const std::string refs() const
         {
-#ifdef USE_VDWXC
+#if defined(__USE_VDWXC)
             std::stringstream s;
             if (vdw_functional_) {
                 s << "==============================================================================\n";
@@ -184,7 +184,7 @@ namespace sirius {
 
         int family() const
         {
-#ifdef USE_VDWXC
+#if defined(__USE_VDWXC)
             if (this->vdw_functional_ == true) {
                 return XC_FAMILY_UNKNOWN;
             }
@@ -194,7 +194,7 @@ namespace sirius {
 
         bool is_vdw() const
         {
-#ifdef USE_VDWXC
+#if defined(__USE_VDWXC)
             return this->vdw_functional_;
 #else
             return false;
@@ -203,7 +203,7 @@ namespace sirius {
         int kind() const
         {
 
-#ifdef USE_VDWXC
+#if defined(__USE_VDWXC)
             if (this->vdw_functional_ == true) {
                 return -1;
             }
@@ -211,7 +211,7 @@ namespace sirius {
             return XC_functional_base::kind();
         }
 
-#ifdef USE_VDWXC
+#if defined(__USE_VDWXC)
     /// get van der walls contribution for the exchange term
     void get_vdw(double* rho,
                  double* sigma,

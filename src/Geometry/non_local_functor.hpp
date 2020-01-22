@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Ilia Sivkov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Ilia Sivkov, Mathieu Taillefumier, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -46,8 +46,8 @@ class Non_local_functor
     {
     }
 
-    /// collect summation result in an array
-    void add_k_point_contribution(K_point& kpoint__, mdarray<double, 2>& collect_res__);
+    /// Collect summation result in an array
+    void add_k_point_contribution(K_point& kpoint__, sddk::mdarray<double, 2>& collect_res__);
 };
 }
 

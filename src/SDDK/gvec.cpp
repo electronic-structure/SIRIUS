@@ -19,9 +19,10 @@
 
 /** \file gvec.cpp
  *
- *  \brief Definitions.
+ *  \brief Contains the implementation of Gvec class.
  *
  */
+#include "Symmetry/find_lat_sym.hpp"
 #include "gvec.hpp"
 
 namespace sddk {
@@ -51,7 +52,7 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
         std::vector<int> zcol;
 
         /* in general case take z in [0, Nz) */
-        int zmax = fft_box__.size(2) - 1;
+        int zmax = fft_box__[2] - 1;
         /* in case of G-vector reduction take z in [0, Nz/2] for {x=0,y=0} stick */
         if (reduce_gvec_ && !i && !j) {
             zmax = fft_box__.limits(2).second;
@@ -94,7 +95,8 @@ void sddk::Gvec::find_z_columns(double Gmax__, const FFT3D_grid& fft_box__)
         }
     }
 
-    for (int i = fft_box__.limits(0).first; i <= fft_box__.limits(0).second; i++) {
+    // Check all z-columns and add if within sphere. Only allow non-negative x-indices for reduced case
+    for (int i = reduce_gvec_? 0 : fft_box__.limits(0).first; i <= fft_box__.limits(0).second; i++) {
         for (int j = fft_box__.limits(1).first; j <= fft_box__.limits(1).second; j++) {
             add_new_column(i, j);
         }
@@ -176,7 +178,7 @@ void Gvec::distribute_z_columns()
         ng += gvec_distr_.counts[rank];
     }
     if (ng != num_gvec_) {
-        TERMINATE("wrong number of G-vectors");
+        throw std::runtime_error("wrong number of G-vectors");
     }
 }
 
@@ -216,7 +218,7 @@ void Gvec::find_gvec_shells()
     }
     for (int ig = 0; ig < num_gvec_; ig++) {
         if (gvec_shell_[ig] == -1) {
-            TERMINATE("wrong G-vector shell");
+            throw std::runtime_error("[sddk::Gvec] wrong G-vector shell");
         }
     }
 
@@ -233,21 +235,22 @@ void Gvec::find_gvec_shells()
                so tolerance on length should be square root of that */
             if (std::abs(gvec_shell_len_[igsh] - g) > 1e-3) {
                 std::stringstream s;
-                s << "wrong G-vector length"
-                  << "\n"
+                s << "[sddk::Gvec] wrong G-vector length\n"
                   << "  length of G-shell : " << gvec_shell_len_[igsh] << "\n"
                   << "  length of current G-vector: " << g << "\n"
                   << "  index of G-vector: " << ig << "\n"
                   << "  index of G-shell: " << igsh << "\n"
                   << "  length difference: " << std::abs(gvec_shell_len_[igsh] - g);
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
         }
     }
 
+    // TODO: maybe, make an average G-shell length.
+
     /* list of pairs (length, index of G-vector) */
     std::vector<std::pair<uint64_t, int>> tmp(num_gvec_);
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (int ig = 0; ig < num_gvec(); ig++) {
         /* make some reasonable roundoff */
         uint64_t len = static_cast<uint64_t>(gvec_shell_len_[gvec_shell_[ig]] * 1e10);
@@ -276,6 +279,28 @@ void Gvec::find_gvec_shells()
     }
     gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
     std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at(memory_t::host));
+
+    /* map from global index of G-shell to a list of local G-vectors */
+    std::map<int, std::vector<int>> gshmap;
+    for (int igloc = 0; igloc < this->count(); igloc++) {
+        int igsh = this->shell(this->offset() + igloc);
+        if (gshmap.count(igsh) == 0) {
+            gshmap[igsh] = std::vector<int>();
+        }
+        gshmap[igsh].push_back(igloc);
+    }
+
+    num_gvec_shells_local_ = 0;
+    gvec_shell_idx_local_.resize(this->count());
+    gvec_shell_len_local_.clear();
+    for (auto it = gshmap.begin(); it != gshmap.end(); ++it) {
+        int igsh = it->first;
+        gvec_shell_len_local_.push_back(this->shell_len(igsh));
+        for (auto igloc: it->second) {
+            gvec_shell_idx_local_[igloc] = num_gvec_shells_local_;
+        }
+        num_gvec_shells_local_++;
+    }
 }
 
 void Gvec::init_gvec_cart()
@@ -321,21 +346,21 @@ void Gvec::init(FFT3D_grid const& fft_grid)
         }
     }
     if (ig != num_gvec_) {
-        TERMINATE("wrong G-vector count");
+        throw std::runtime_error("wrong G-vector count");
     }
     for (int ig = 0; ig < num_gvec_; ig++) {
         auto gv = gvec(ig);
         if (index_by_gvec(gv) != ig) {
             std::stringstream s;
             s << "wrong G-vector index: ig=" << ig << " gv=" << gv << " index_by_gvec(gv)=" << index_by_gvec(gv);
-            TERMINATE(s);
+            throw std::runtime_error(s.str());
         }
     }
 
     /* first G-vector must be (0, 0, 0); never reomove this check!!! */
     auto g0 = gvec_by_full_index(gvec_full_index_(0));
     if (g0[0] || g0[1] || g0[2]) {
-        TERMINATE("first G-vector is not zero");
+        throw std::runtime_error("first G-vector is not zero");
     }
 
     init_gvec_cart();
@@ -364,7 +389,7 @@ void Gvec::init(FFT3D_grid const& fft_grid)
                   << " G-vector index in new distribution : " << index_by_gvec(G) << std::endl
                   << " offset in G-vector index for this rank: " << offset() << std::endl
                   << " local number of G-vectors for this rank: " << count();
-                TERMINATE(s);
+                throw std::runtime_error(s.str());
             }
         }
     }
@@ -409,7 +434,7 @@ std::pair<int, bool> Gvec::index_g12_safe(vector3d<int> const& g1__, vector3d<in
           << "  G': " << g2__ << std::endl
           << "  G - G': " << v << std::endl
           << " idx: " << idx;
-        TERMINATE(s);
+        throw std::runtime_error(s.str());
     }
     return std::make_pair(idx, conj);
 }
@@ -572,11 +597,11 @@ Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm_
 {
     if (fft_comm_.size() * comm_ortho_fft_.size() != gvec_.comm().size()) {
         std::stringstream s;
-        s << "wrong size of communicators" << std::endl
+        s << "[sddk::Gvec] wrong size of communicators" << std::endl
           << "  fft_comm_.size()       = " << fft_comm_.size() << std::endl
           << "  comm_ortho_fft_.size() = " << comm_ortho_fft_.size() << std::endl
           << "  gvec_.comm().size()    = " << gvec_.comm().size();
-        TERMINATE(s);
+        throw std::runtime_error(s.str());
     }
     rank_map_ = mdarray<int, 2>(fft_comm_.size(), comm_ortho_fft_.size());
     rank_map_.zero();
@@ -603,13 +628,26 @@ Gvec_partition::Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm_
     int ig{0};
     for (int i = 0; i < comm_ortho_fft_.size(); i++) {
         for (int k = 0; k < gvec_.gvec_count(rank_map_(fft_comm_.rank(), i)); k++) {
-            idx_gvec_(ig) = gvec_.gvec_offset(rank_map_(fft_comm_.rank(), i)) + k;
+            idx_gvec_[ig] = gvec_.gvec_offset(rank_map_(fft_comm_.rank(), i)) + k;
             ig++;
         }
     }
 
     calc_offsets();
     pile_gvec();
+}
+
+mdarray<int, 2> Gvec_partition::get_gvec() const
+{
+    mdarray<int, 2> gv(3, gvec_count_fft());
+    for (int i = 0; i < gvec_count_fft(); i++) {
+        int ig = idx_gvec_[i];
+        auto G = gvec_.gvec(ig);
+        for (int x: {0, 1, 2}) {
+            gv(x, i) = G[x];
+        }
+    }
+    return gv;
 }
 
 void Gvec_partition::gather_pw_fft(std::complex<double>* f_pw_local__, std::complex<double>* f_pw_fft__) const
@@ -652,7 +690,7 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     a2a_send.calc_offsets();
     /* sanity check: total number of elements to send is equal to the local number of G-vector */
     if (a2a_send.size() != gvec_.count()) {
-        TERMINATE("wrong number of G-vectors");
+        throw std::runtime_error("wrong number of G-vectors");
     }
     /* count the number of elements to receive */
     for (int r = 0; r < comm_.size(); r++) {
@@ -671,7 +709,7 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
     int ng = gvec_count_remapped();
     comm_.allreduce(&ng, 1);
     if (ng != gvec_.num_gvec()) {
-        TERMINATE("wrong number of G-vectors");
+        throw std::runtime_error("wrong number of G-vectors");
     }
 
     /* local set of G-vectors in the remapped order */
@@ -696,4 +734,5 @@ Gvec_shells::Gvec_shells(Gvec const& gvec__)
         idx_gvec[gvec_remapped(ig)] = ig;
     }
 }
+
 } // namespace sddk

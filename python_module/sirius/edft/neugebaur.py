@@ -26,11 +26,11 @@ kb = (physical_constants['Boltzmann constant in eV/K'][0] /
 
 
 class StepError(Exception):
-    pass
+    """StepError."""
 
 
 class SlopeError(Exception):
-    pass
+    """Slope error. Non-descent direction."""
 
 
 def _solve(A, X):
@@ -43,7 +43,7 @@ def _solve(A, X):
     return out
 
 
-def grad_eta(Hij, ek, fn, T, kw):
+def grad_eta(Hij, ek, fn, T, kw, mo):
     """
     Computes ∂L/∂η
 
@@ -53,20 +53,21 @@ def grad_eta(Hij, ek, fn, T, kw):
     fn  -- occupation numbers
     T   -- temperature
     kw  -- kpoint weights
+    mo  -- max occupancy, mo=1 in magnetic case
 
     Returns:
     g_eta -- gradient wrt η of the free-energy Lagrangian
     """
     kT = kb * T
-    g_eta_1 = -1/kT * diag(diag(Hij) - kw*ek) * fn * (1-fn)
+    g_eta_1 = -1/kT * diag(diag(Hij) - kw*ek) * fn * (mo-fn)
     dFdmu = np.sum(np.real(
-        1/kT * einsum('i,i', (diag(Hij) - kw*ek).asarray().flatten(), fn * (1-fn))))
-    sumfn = np.sum(kw*fn*(1-fn))
+        1/kT * einsum('i,i', (diag(Hij) - kw*ek).asarray().flatten(), fn * (mo-fn))))
+    sumfn = np.sum(kw*fn*(mo-fn))
     # g_eta_2 is zero if all f_i are either 0 or 1
     if np.abs(sumfn) < 1e-10:
         g_eta_2 = 0
     else:
-        g_eta_2 = diag(kw * fn * (1-fn) / sumfn * dFdmu)
+        g_eta_2 = diag(kw * fn * (mo-fn) / sumfn * dFdmu)
     # off-diagonal terms
     II = diag(ca.ones_like(fn))
     Eij = ek-ek.T + II
@@ -79,7 +80,6 @@ def grad_eta(Hij, ek, fn, T, kw):
     g_eta_3 = Fij / Eij * Hij * (1-II)
     g_eta = (g_eta_1 + g_eta_2 + g_eta_3)
     return g_eta
-
 
 
 def btsearch(f, b, f0, maxiter=20, tau=0.5):
@@ -126,7 +126,7 @@ def gss(f, a, b, tol=1e-3):
     yc = f(c)
     yd = f(d)
 
-    for k in range(n - 1):
+    for _ in range(n - 1):
         if yc < yd:
             b = d
             d = c
@@ -150,7 +150,7 @@ def gss(f, a, b, tol=1e-3):
         return (c, b)
 
 
-class F():
+class F:
     """
     Evaluate free energy along a fixed direction.
     """
@@ -402,9 +402,9 @@ class CG:
         m = kset.ctx().max_occupancy()
         # set occupation numbers from band energies
         fn, _ = self.M.smearing.fn(kset.e)
-        ek = self.M.smearing.ek(fn)
+        # ek = self.M.smearing.ek(fn)
 
-        eta = diag(ek)
+        eta = diag(kset.e)
         w, U = eta.eigh()
         ek = w
         X = X@U
@@ -414,7 +414,7 @@ class CG:
 
         HX = Hx * kw
         Hij = X.H @ HX
-        g_eta = grad_eta(Hij, ek, fn, T, kw)
+        g_eta = grad_eta(Hij, ek, fn, T, kw, mo=m)
         XhKHXF = X.H @ (K @ HX)
         XhKX = X.H @ (K @ X)
         LL = _solve(XhKX, XhKHXF)
@@ -432,14 +432,14 @@ class CG:
         for ii in range(1, 1+maxiter):
             slope = np.real(2*inner(g_X, G_X) + inner(g_eta, G_eta))
 
-            if np.abs(slope) < tol:
+            if np.abs(slope) < tol and ii > 1:
                 return X, fn, FE, True
 
             if slope > 0:
                 if cg_restart_inprogress:
                     raise SlopeError('Error: _ascent_ direction, slope %.4e' % slope)
-                else:
-                    cg_restart_inprogress = True
+                cg_restart_inprogress = True
+                # TODO: tmin is not set, but used later
             else:
                 try:
                     X, fn, ek, FE, Hx, U, tmin = self.step(X, fn, eta, G_X, G_eta,
@@ -461,17 +461,11 @@ class CG:
                         kappa = kappa/3
                         logger('kappa: ', kappa)
                         tmin = 0
-            callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, it=ii)
+            callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, FE=FE, it=ii)
             logger('step %5d' % ii, 'F: %.11f res: X,eta %+10.5e, %+10.5e' %
                    (FE, np.real(inner(g_X, G_X)), np.real(inner(g_eta, G_eta))))
-            mag, mag_norm = magnetization(self.M.energy.density, self.M.energy.kpointset.ctx())
-
-            # if ii > 5 and not has_enough_bands(fn).to_array().all():
-            #     logger(fn, all_print=True)
-            #     raise NotEnoughBands("increase num_fv_states.")
-
-            for m, mn in zip(mag, mag_norm):
-                logger('magnetization: %.5f %.5f %.5f, %.5f' % (m[0], m[1], m[2], mn))
+            mag = magnetization(self.M.energy.density)
+            logger('magnetization: %.5f %.5f %.5f, total: %.5f' % (mag[0], mag[1], mag[2], np.linalg.norm(mag)))
             eta = diag(ek)
             # keep previous search directions
             GP_X = G_X@U
@@ -482,7 +476,7 @@ class CG:
             HX = Hx*kw
             Hij = X.H @ HX
             gp_eta = U.H @ g_eta @ U
-            g_eta = grad_eta(Hij, ek, fn, T, kw)
+            g_eta = grad_eta(Hij, ek, fn, T, kw, mo=m)
             # Lagrange multipliers
             XhKHXF = X.H @ (K @ HX)
             XhKX = X.H @ (K @ X)
