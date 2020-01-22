@@ -20,17 +20,17 @@
 
 ## Introduction
 SIRIUS is a domain specific library for electronic structure calculations. It implements pseudopotential plane wave (PP-PW)
-and full potential linearized augmented plane wave (FP-LAPW) methods and designed to work with popular community codes
-such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++11 with MPI, OpenMP and CUDA/ROCm programming models.
+and full potential linearized augmented plane wave (FP-LAPW) methods and is designed for GPU acceleration of popular community
+codes such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++11 with MPI, OpenMP and CUDA/ROCm programming models.
 
 ## Installation
 SIRIUS has a hard dependency on the following libraries: MPI, BLAS, LAPACK, [GSL](https://www.gnu.org/software/gsl/),
 [LibXC](https://www.tddft.org/programs/libxc/), [HDF5](https://www.hdfgroup.org/solutions/hdf5/),
 [spglib](https://atztogo.github.io/spglib/) and [SpFFT](https://github.com/eth-cscs/SpFFT). They
-must be available on your platfrom. Optionally, there is a dependency on ScaLAPACK, ELPA, MAGMA and CUDA/ROCm.
-We use CMake as a building tool. If the libraries are installed in a standard location, cmake can find them automatically.
-Otherwise you need to provide a specific path of each library to cmake. We use Docker to create a reproducible work
-environment for the examples below.
+must be available on your platfrom. Optionally, there is a dependency on ScaLAPACK, [ELPA](https://elpa.mpcdf.mpg.de/software),
+[MAGMA](https://icl.cs.utk.edu/magma/) and CUDA/ROCm. We use CMake as a building tool. If the libraries are installed
+in a standard location, cmake can find them automatically.  Otherwise you need to provide a specific path of each
+library to cmake. We use Docker to create a reproducible work environment for the examples below.
 
 ### Minimal installation
 Suppose we have a minimal Linux installation described the following Dockerfile:
@@ -182,12 +182,12 @@ We provide an EasyBuild script on Piz Daint. See also the [CSCS EasyBuild Docume
 
 ```console
 # obtain the official CSCS easybuild custom repository
-git clone https://github.com/eth-cscs/production
-export EB_CUSTOM_REPOSITORY=${HOME}/production/easybuild
-module load daint-gpu
-module load Easybuild-custom/cscs
+$ git clone https://github.com/eth-cscs/production
+$ export EB_CUSTOM_REPOSITORY=${HOME}/production/easybuild
+$ module load daint-gpu
+$ module load Easybuild-custom/cscs
 # install easybuild package
-eb SIRIUS-6.4.4-CrayIntel-19.10-cuda-10.1.eb -r
+$ eb SIRIUS-6.4.4-CrayIntel-19.10-cuda-10.1.eb -r
 ```
 
 After the installation has completed, the module can be loaded using:
