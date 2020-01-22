@@ -12,6 +12,10 @@
   * [Minimal installation](#minimal-installation)
   * [Installation using Spack software stack](#installation-using-Spack-software-stack)
   * [Adding GPU support](#adding-gpu-support)
+  * [Parallel eigensolvers](#parallel-eigensolvers)
+  * [Python module](#python-module)
+  * [Additional options](#additional-options)
+  * [Installation on Piz Daint](#installation-on-piz-daint)
 * [Examples](#examples)
 
 ## Introduction
@@ -149,28 +153,24 @@ $ CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp FFTW_ROOT=$HOME/local python3 prerequi
 
 ### Adding GPU support
 To enable CUDA you need to pass the following options to cmake: `-DUSE_CUDA=On -DGPU_MODEL='P100'`. The currently
-supported GPU models are `P100`, `V100` and `G10x0` but other can be added easily. If CUDA is installed in a
-non-standard path, you have to pass additional parameter to cmake `-DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda`.
+supported GPU models are `P100`, `V100` and `G10x0` but other architectures can be added easily. If CUDA is installed in a
+non-standard directory, you have to pass additional parameter to cmake `-DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda`.
 
 To enable MAGMA (GPU implementation of Lapack) you need to pass the following option to cmake: `-DUSE_MAGMA=On`. If MAGMA
-was installed in a non-standard path you need to export additional environment variable `MAGMAROOT=/path/to/magma`.
+was installed in a non-standard directory you need to export additional environment variable `MAGMAROOT=/path/to/magma`.
 
+### Parallel eigensolvers
+To compile with ScaLAPACK use the following option: `-DUSE_SCALAPACK=On`. Additional environment variable `SCALAPACKROOT`
+might be required to specify the location of ScaLAPACK library. To compile with ELPA use `-DUSE_ELPA=On` option. In this
+case additional environment variable `ELPAROOT` might be required.
 
+### Python module
+To create Python module you need to specify `-DCREATE_PYTHON_MODULE=On`. SIRIUS Python module depends on `mpi4py` and
+`pybind11` packages. They must be installed on your platform.
 
-
-
-CUDA and other optional dependencies can be enabled using the `-DUSE_[PKGNAME]` arguments:
-```console
-$ CXX=mpic++ CC=mpicc FC=mpif90 cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/local
-                                          -DGPU_MODEL=P100 \
-                                          -DUSE_CUDA=On \
-                                          -DUSE_SCALAPACK=On \
-                                          -DUSE_MKL=Off \
-                                          -DUSE_ELPA=Off \
-                                          -DUSE_MAGMA=Off \
-                                          -DUSE_VDWXC=Off
-$ make install
-```
+### Additional options
+To link against MKL you need to specify `-DUSE_MKL=On` parameter. For Cray libsci use `-DUSE_CRAY_LIBSCI=On`. To build
+tests you need to specify `-DBUILD_TESTS=On`.
 
 ### Installation on Piz Daint
 We provide an EasyBuild script on Piz Daint. See also the [CSCS EasyBuild Documentation](https://user.cscs.ch/computing/compilation/easybuild/).
