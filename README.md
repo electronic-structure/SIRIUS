@@ -10,8 +10,8 @@
 * [Introduction](#introduction)
 * [Installation](#installation)
   * [Minimal installation](#minimal-installation)
-  * [Installation with Spack software stack](#installation-with-Spack-software-stack)
-
+  * [Installation using Spack software stack](#installation-using-Spack-software-stack)
+  * [Adding GPU support](#adding-gpu-support)
 * [Examples](#examples)
 
 ## Introduction
@@ -55,7 +55,7 @@ RUN apt-key --keyring /etc/apt/trusted.gpg del C1F34CDD40CD72DA
 WORKDIR /root
 ENTRYPOINT ["bash", "-l"]
 ```
-We can then execute the following set of commands inside docker:
+We can then execute the following set of commands inside the docker container:
 ```console
 $ git clone --recursive -b develop https://github.com/electronic-structure/SIRIUS.git
 $ cd SIRIUS
@@ -79,7 +79,7 @@ the corresponding libraries:
 - `MKLROOT` (optional)
 - `ELPAROOT` (optional)
 
-### Installation with Spack software stack
+### Installation using Spack software stack
 Spack is a great tool to manage complex software installations. In the following Dockerfile example most of the software
 is installed using Spack:
 ```dockerfile
@@ -94,7 +94,7 @@ RUN apt-get update
 RUN apt-get install -y apt-utils
 
 # install basic tools
-RUN apt-get install -y gcc g++ gfortran git make cmake \
+RUN apt-get install -y gcc g++ gfortran git make cmake unzip \
   vim wget pkg-config python3-pip curl environment-modules tcl
 
 # get latest version of spack
@@ -140,6 +140,21 @@ WORKDIR /root
 ENTRYPOINT ["bash", "-l"]
 
 ```
+SIRIUS can be build inside this docker container using the following command:
+```console
+$ git clone --recursive -b develop https://github.com/electronic-structure/SIRIUS.git
+$ cd SIRIUS
+$ CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp FFTW_ROOT=$HOME/local python3 prerequisite.py $HOME/local fftw spfft gsl hdf5 xc spg
+```
+
+### Adding GPU support
+To enable CUDA you need to pass the following options to cmake: `-DUSE_CUDA=On -DGPU_MODEL='P100'`. The currently
+supported GPU models are `P100`, `V100` and `G10x0` but other can be added easily. If CUDA is installed in a
+non-standard path, you have to pass additional parameter to cmake `-DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda`.
+
+To enable MAGMA (GPU implementation of Lapack) you need to pass the following option to cmake: `-DUSE_MAGMA=On`. If MAGMA
+was installed in a non-standard path you need to export additional environment variable `MAGMAROOT=/path/to/magma`.
+
 
 
 
