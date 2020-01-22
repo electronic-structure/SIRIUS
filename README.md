@@ -61,7 +61,7 @@ ENTRYPOINT ["bash", "-l"]
 ```
 We can then execute the following set of commands inside the docker container:
 ```console
-$ git clone --recursive -b develop https://github.com/electronic-structure/SIRIUS.git
+$ git clone --recursive https://github.com/electronic-structure/SIRIUS.git
 $ cd SIRIUS
 $ CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp FFTW_ROOT=$HOME/local python3 prerequisite.py $HOME/local fftw spfft gsl hdf5 xc spg
 $ mkdir build
@@ -146,9 +146,11 @@ ENTRYPOINT ["bash", "-l"]
 ```
 SIRIUS can be build inside this docker container using the following command:
 ```console
-$ git clone --recursive -b develop https://github.com/electronic-structure/SIRIUS.git
-$ cd SIRIUS
-$ CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp FFTW_ROOT=$HOME/local python3 prerequisite.py $HOME/local fftw spfft gsl hdf5 xc spg
+$ git clone --recursive https://github.com/electronic-structure/SIRIUS.git
+mkdir SIRIUS/build
+cd SIRIUS/build
+cmake .. -DUSE_SCALAPACK=1 -DBUILD_TESTS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/local
+make -j install
 ```
 
 ### Adding GPU support
@@ -161,8 +163,9 @@ was installed in a non-standard directory you need to export additional environm
 
 ### Parallel eigensolvers
 To compile with ScaLAPACK use the following option: `-DUSE_SCALAPACK=On`. Additional environment variable `SCALAPACKROOT`
-might be required to specify the location of ScaLAPACK library. To compile with ELPA use `-DUSE_ELPA=On` option. In this
-case additional environment variable `ELPAROOT` might be required.
+might be required to specify the location of ScaLAPACK library. To compile with ELPA use `-DUSE_SCALAPACK=On -DUSE_ELPA=On` options.
+In this case additional environment variable `ELPAROOT` might be required. In the current implentation we need
+ScaLAPACK functionality to transform generalized eigenvalue problem to a standard form bofore using ELPA.
 
 ### Python module
 To create Python module you need to specify `-DCREATE_PYTHON_MODULE=On`. SIRIUS Python module depends on `mpi4py` and
