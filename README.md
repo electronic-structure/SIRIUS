@@ -63,13 +63,13 @@ ENTRYPOINT ["bash", "-l"]
 ```
 We can then execute the following set of commands inside the docker container:
 ```console
-$ git clone --recursive https://github.com/electronic-structure/SIRIUS.git
-$ cd SIRIUS
-$ CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp FFTW_ROOT=$HOME/local python3 prerequisite.py $HOME/local fftw spfft gsl hdf5 xc spg
-$ mkdir build
-$ cd build
-$ CXX=mpicxx CC=mpicc FC=mpif90 GSL_ROOT_DIR=$HOME/local LIBXCROOT=$HOME/local LIBSPGROOT=$HOME/local HDF5_ROOT=$HOME/local cmake ../ -DSpFFT_DIR=$HOME/local/lib/cmake/SpFFT -DCMAKE_INSTALL_PREFIX=$HOME/local
-$ make -j install
+git clone --recursive https://github.com/electronic-structure/SIRIUS.git
+cd SIRIUS
+CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp FFTW_ROOT=$HOME/local python3 prerequisite.py $HOME/local fftw spfft gsl hdf5 xc spg
+mkdir build
+cd build
+CXX=mpicxx CC=mpicc FC=mpif90 GSL_ROOT_DIR=$HOME/local LIBXCROOT=$HOME/local LIBSPGROOT=$HOME/local HDF5_ROOT=$HOME/local cmake ../ -DSpFFT_DIR=$HOME/local/lib/cmake/SpFFT -DCMAKE_INSTALL_PREFIX=$HOME/local
+make -j install
 ```
 This will clone SIRIUS repository, install the compulsory dependencies (LibXC, GSL, spglib, SpFFT, HDF5) with the
 provided Python script ``prerequisite.py`` and then configure, make and install SIRIUS libray itself in a most simple
@@ -148,11 +148,11 @@ ENTRYPOINT ["bash", "-l"]
 
 SIRIUS can be build inside this docker container using the following command:
 ```console
-$ git clone --recursive https://github.com/electronic-structure/SIRIUS.git
-$ mkdir SIRIUS/build
-$ cd SIRIUS/build
-$ cmake .. -DUSE_SCALAPACK=1 -DBUILD_TESTS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/local
-$ make -j install
+git clone --recursive https://github.com/electronic-structure/SIRIUS.git
+mkdir SIRIUS/build
+cd SIRIUS/build
+cmake .. -DUSE_SCALAPACK=1 -DBUILD_TESTS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/local
+make -j install
 ```
 
 ### Adding GPU support
@@ -219,12 +219,12 @@ See also the [CSCS EasyBuild Documentation](https://user.cscs.ch/computing/compi
 
 ```console
 # obtain the official CSCS easybuild custom repository
-$ git clone https://github.com/eth-cscs/production
-$ export EB_CUSTOM_REPOSITORY=${HOME}/production/easybuild
-$ module load daint-gpu
-$ module load Easybuild-custom/cscs
+git clone https://github.com/eth-cscs/production
+export EB_CUSTOM_REPOSITORY=${HOME}/production/easybuild
+module load daint-gpu
+module load Easybuild-custom/cscs
 # install easybuild package
-$ eb SIRIUS-6.4.4-CrayIntel-19.10-cuda-10.1.eb -r
+eb SIRIUS-6.4.4-CrayIntel-19.10-cuda-10.1.eb -r
 ```
 
 After the installation has completed, the module can be loaded using:
