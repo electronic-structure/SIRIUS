@@ -178,7 +178,44 @@ To link against MKL you need to specify `-DUSE_MKL=On` parameter. For Cray libsc
 tests you need to specify `-DBUILD_TESTS=On`.
 
 ### Installation on Piz Daint
-We provide an EasyBuild script on Piz Daint. See also the [CSCS EasyBuild Documentation](https://user.cscs.ch/computing/compilation/easybuild/).
+
+#### Custom build with GNU programming environment
+Fist, you need to load the necessary modules:
+```console
+module swap PrgEnv-cray PrgEnv-gnu
+module load cray-hdf5
+module load cudatoolkit
+module load intel
+
+module load daint-gpu
+module load EasyBuild-custom/cscs
+
+module load GSL/2.5-CrayGNU-19.10
+module load libxc/4.3.4-CrayGNU-19.10
+module load magma/2.5.1-CrayGNU-19.10-cuda-10.1
+module load spglib/1.14.1-CrayGNU-19.10
+module load SpFFT/0.9.9-CrayGNU-19.10-cuda-10.1-mkl
+
+module load CMake/3.14.5
+module load cray-python/3.6.5.7
+module unload cray-libsci
+module unload cray-libsci_acc
+module unload perftools-base
+```
+Then execute the following command:
+```console
+git clone --recursive https://github.com/electronic-structure/SIRIUS.git
+cd ./SIRIUS
+mkdir build
+cd build
+cmake ../ -DUSE_CUDA=1 -DGPU_MODEL='P100' -DCMAKE_INSTALL_PREFIX=$HOME/local -DUSE_MKL=1 -DBUILD_TESTS=1 -DUSE_MAGMA=1 -DCMAKE_BUILD_TYPE=Release -DCREATE_PYTHON_MODULE=1 -DUSE_SCALAPACK=1 -DCREATE_FORTRAN_BINDINGS=1 -DSpFFT_DIR=$EBROOTSPFFT/lib/cmake/SpFFT
+make -j install
+```
+
+#### Using EasyBuild scripts
+
+We provide EasyBuild scripts for the supported application on Piz Daint.
+See also the [CSCS EasyBuild Documentation](https://user.cscs.ch/computing/compilation/easybuild/).
 
 ```console
 # obtain the official CSCS easybuild custom repository
