@@ -1421,23 +1421,34 @@ void sirius_get_q_operator_matrix(void* const* handler__,
 void sirius_get_density_matrix(void*          const* handler__,
                                int            const* ia__,
                                std::complex<double>* dm__,
-                               int            const* ld__)
+                               int            const* ld__) // TODO: this should be generalized for any phase factor convention
 {
     auto& gs = get_gs(handler__);
 
     mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
 
     auto& atom = gs.ctx().unit_cell().atom(*ia__ - 1);
-    auto idx_map = atomic_orbital_index_map_QE(atom.type());
-    int nbf = atom.mt_basis_size();
-    assert(nbf <= *ld__);
+    if (gs.ctx().full_potential()) {
+        int nbf = std::min(atom.mt_basis_size(), *ld__);
+        for (int icomp = 0; icomp < gs.ctx().num_mag_comp(); icomp++) {
+            for (int i = 0; i < nbf; i++) {
+                for (int j = 0; j < nbf; j++) {
+                    dm(i, j, icomp) = gs.density().density_matrix()(i, j, icomp, *ia__ - 1);
+                }
+            }
+        }
+    } else {
+        auto idx_map = atomic_orbital_index_map_QE(atom.type());
+        int nbf = atom.mt_basis_size();
+        assert(nbf <= *ld__);
 
-    for (int icomp = 0; icomp < gs.ctx().num_mag_comp(); icomp++) {
-        for (int i = 0; i < nbf; i++) {
-            int p1 = phase_Rlm_QE(atom.type(), i);
-            for (int j = 0; j < nbf; j++) {
-                int p2 = phase_Rlm_QE(atom.type(), j);
-                dm(idx_map[i], idx_map[j], icomp) = gs.density().density_matrix()(i, j, icomp, *ia__ - 1) * static_cast<double>(p1 * p2);
+        for (int icomp = 0; icomp < gs.ctx().num_mag_comp(); icomp++) {
+            for (int i = 0; i < nbf; i++) {
+                int p1 = phase_Rlm_QE(atom.type(), i);
+                for (int j = 0; j < nbf; j++) {
+                    int p2 = phase_Rlm_QE(atom.type(), j);
+                    dm(idx_map[i], idx_map[j], icomp) = gs.density().density_matrix()(i, j, icomp, *ia__ - 1) * static_cast<double>(p1 * p2);
+                }
             }
         }
     }
