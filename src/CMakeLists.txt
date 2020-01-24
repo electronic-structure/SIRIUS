@@ -78,19 +78,35 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp"
 add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
 target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX 
                                     SpFFT::spfft
+                                    GSL::gsl
+                                    "${LINALG_LIB}"
+                                    MPI::MPI_CXX
+                                    libxc::libxc
+                                    libspg::libspg
+                                    hdf5::hdf5
+                                    $<TARGET_NAME_IF_EXISTS:elpa::elpa>
+                                    $<TARGET_NAME_IF_EXISTS:magma::magma>
+                                    $<TARGET_NAME_IF_EXISTS:libvdwxc::libvdwxc>
+                                    $<TARGET_NAME_IF_EXISTS:cuda::cudalibs>
+                                    $<$<BOOL:${USE_NVTX}>:nvToolsExt>
+                                    # TODO: ROCM target
                                     )
-target_include_directories(sirius PUBLIC "${PROJECT_SOURCE_DIR}/src")
+
+target_include_directories(sirius PUBLIC "${PROJECT_SOURCE_DIR}/src"
+                                         "${PROJECT_SOURCE_DIR}/src/SDDK"
+                                         "${PROJECT_BINARY_DIR}/src")
 target_compile_definitions(sirius PUBLIC 
-  $<$<BOOL:${USE_TIMER}>: __USE_TIMER __PROFILE __PROFILE_TIME >
-  $<$<BOOL:${USE_SCALAPACK}>: __SCALAPACK >
-  $<$<BOOL:${USE_MEMORY_POOL}>: __USE_MEMORY_POOL >
-  $<$<BOOL:${DEBUG_MEMORY_POOL}>: __DEBUG_MEMORY_POOL >
-  $<$<BOOL:${USE_ELPA}>: __ELPA >
-  $<$<BOOL:${USE_CUDA}>: __GPU __CUDA >
-  $<$<BOOL:${USE_NVTX}>: __CUDA_NVTX >
-  $<$<BOOL:${USE_MAGMA}>: __MAGMA >
-  $<$<BOOL:${USE_ROCM}>: __GPU __ROCM >
-  $<$<BOOL:${USE_VDWXC}>: __USE_VDWXC >
+  $<$<BOOL:${USE_TIMER}>:__USE_TIMER __PROFILE __PROFILE_TIME>
+  $<$<BOOL:${USE_SCALAPACK}>:__SCALAPACK>
+  $<$<BOOL:${USE_MEMORY_POOL}>:__USE_MEMORY_POOL>
+  $<$<BOOL:${DEBUG_MEMORY_POOL}>:__DEBUG_MEMORY_POOL>
+  $<$<BOOL:${USE_ELPA}>:__ELPA>
+  $<$<BOOL:${USE_CUDA}>:__GPU __CUDA>
+  $<$<BOOL:${USE_NVTX}>:__CUDA_NVTX>
+  $<$<BOOL:${USE_MAGMA}>:__MAGMA>
+  $<$<BOOL:${USE_ROCM}>:__GPU __ROCM>
+  $<$<BOOL:${USE_VDWXC}>:__USE_VDWXC>
+  $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:__HAVE_VDWXC_MPI>
 )
 
 # add dependency on auto-generated headers
