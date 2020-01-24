@@ -76,8 +76,22 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp"
 
 # create library with .cpp, .cu and .f90 sources
 add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
-target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX SpFFT::spfft)
+target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX 
+                                    SpFFT::spfft
+                                    )
 target_include_directories(sirius PUBLIC "${PROJECT_SOURCE_DIR}/src")
+target_compile_definitions(sirius PUBLIC 
+  $<$<BOOL:${USE_TIMER}>: __USE_TIMER __PROFILE __PROFILE_TIME >
+  $<$<BOOL:${USE_SCALAPACK}>: __SCALAPACK >
+  $<$<BOOL:${USE_MEMORY_POOL}>: __USE_MEMORY_POOL >
+  $<$<BOOL:${DEBUG_MEMORY_POOL}>: __DEBUG_MEMORY_POOL >
+  $<$<BOOL:${USE_ELPA}>: __ELPA >
+  $<$<BOOL:${USE_CUDA}>: __GPU __CUDA >
+  $<$<BOOL:${USE_NVTX}>: __CUDA_NVTX >
+  $<$<BOOL:${USE_MAGMA}>: __MAGMA >
+  $<$<BOOL:${USE_ROCM}>: __GPU __ROCM >
+  $<$<BOOL:${USE_VDWXC}>: __USE_VDWXC >
+)
 
 # add dependency on auto-generated headers
 add_dependencies(sirius generate_version_hpp runtime_options_json_hpp)
