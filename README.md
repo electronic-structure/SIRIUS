@@ -10,11 +10,13 @@
 * [Introduction](#introduction)
 * [Installation](#installation)
   * [Minimal installation](#minimal-installation)
-  * [Installation using Spack software stack](#installation-using-Spack-software-stack)
+  * [Installation using Spack software stack](#installation-using-spack-software-stack)
   * [Adding GPU support](#adding-gpu-support)
   * [Parallel eigensolvers](#parallel-eigensolvers)
   * [Python module](#python-module)
   * [Additional options](#additional-options)
+  * [Installation via the Spack package manager](#installation-via-the-spack-package-manager)
+  * [Archlinux](#archlinux)
   * [Installation on Piz Daint](#installation-on-piz-daint)
 * [Examples](#examples)
 
@@ -178,88 +180,6 @@ To create Python module you need to specify `-DCREATE_PYTHON_MODULE=On`. SIRIUS 
 To link against MKL you need to specify `-DUSE_MKL=On` parameter. For Cray libsci use `-DUSE_CRAY_LIBSCI=On`. To build
 tests you need to specify `-DBUILD_TESTS=On`.
 
-### Installation on Piz Daint
-Please refer to [SIRIUS wiki page](https://github.com/electronic-structure/SIRIUS/wiki/Compiling-on-Piz-Daint) for
-specific details.
-
-#### Custom build with GNU programming environment
-Fist, you need to load the necessary modules:
-```console
-module swap PrgEnv-cray PrgEnv-gnu
-module load cray-hdf5
-module load cudatoolkit
-module load intel
-
-module load daint-gpu
-module load EasyBuild-custom/cscs
-
-module load GSL/2.5-CrayGNU-19.10
-module load libxc/4.3.4-CrayGNU-19.10
-module load magma/2.5.2-CrayGNU-19.10-cuda-10.1-mkl
-module load spglib/1.14.1-CrayGNU-19.10
-module load SpFFT/0.9.10-CrayGNU-19.10-cuda-10.1-mkl
-
-module load CMake/3.14.5
-module load cray-python/3.6.5.7
-module unload cray-libsci
-module unload cray-libsci_acc
-module unload perftools-base
-```
-Then configure and build SIRIUS with the following command:
-```console
-git clone --recursive https://github.com/electronic-structure/SIRIUS.git
-cd ./SIRIUS
-mkdir build
-cd build
-cmake ../ -DUSE_CUDA=1 -DGPU_MODEL='P100' -DCMAKE_INSTALL_PREFIX=$HOME/local -DUSE_MKL=1 -DBUILD_TESTS=1 -DUSE_MAGMA=1 -DCMAKE_BUILD_TYPE=Release -DCREATE_PYTHON_MODULE=1 -DUSE_SCALAPACK=1 -DCREATE_FORTRAN_BINDINGS=1 -DSpFFT_DIR=$EBROOTSPFFT/lib/cmake/SpFFT
-make -j install
-```
-
-#### Custom build with Intel programming environment
-```console
-module swap PrgEnv-cray PrgEnv-intel
-module load cray-hdf5
-module load cudatoolkit
-module load gcc
-module load intel
-
-module load daint-gpu
-module load EasyBuild-custom/cscs
-module load GSL/2.5-CrayIntel-19.10
-module load libxc/4.3.4-CrayIntel-19.10
-module load magma/2.5.2-CrayIntel-19.10-cuda-10.1
-module load spglib/1.14.1-CrayIntel-19.10
-module load CMake/3.14.5
-module load cray-python/3.6.5.7
-module load ELPA/2019.05.002-CrayIntel-19.10
-module load SpFFT/0.9.9-CrayIntel-19.10-cuda-10.1
-module unload cray-libsci
-module unload cray-libsci_acc
-module unload perftools-base
-```
-
-#### Using EasyBuild scripts
-
-We provide EasyBuild scripts for the supported application on Piz Daint.
-See also the [CSCS EasyBuild Documentation](https://user.cscs.ch/computing/compilation/easybuild/).
-
-```console
-# obtain the official CSCS easybuild custom repository
-git clone https://github.com/eth-cscs/production
-export EB_CUSTOM_REPOSITORY=${HOME}/production/easybuild
-module load daint-gpu
-module load Easybuild-custom/cscs
-# install easybuild package
-eb SIRIUS-6.4.4-CrayIntel-19.10-cuda-10.1.eb -r
-```
-
-After the installation has completed, the module can be loaded using:
-```console
-module load SIRIUS/6.4.4-CrayIntel-19.10-cuda-10.1
-```
-
-For the SIRIUS enabled version of QE use `eb QuantumESPRESSO-6.4-rc3-sirius-CrayIntel-19.10-cuda-10.1.eb -r`.
-
 
 ### Installation via the Spack package manager
 [Spack](https://spack.io) is a package manager for supercomputers, Linux and macOS. It makes installing scientifc software easy.
@@ -284,8 +204,16 @@ spack load -r sirius +cuda
 Consult the [Spack documentation](https://spack.readthedocs.io/en/latest/) for more information on how to use Spack.
 
 
-
 ### Archlinux
 Archlinux users can find SIRIUS in the [AUR](https://aur.archlinux.org/packages/sirius-git/).
+
+### Installation on Piz Daint
+Please refer to [SIRIUS wiki page](https://github.com/electronic-structure/SIRIUS/wiki/Build-on-Piz-Daint) for
+specific details.
+
+
+
+For the SIRIUS enabled version of QE use `eb QuantumESPRESSO-6.4-rc3-sirius-CrayIntel-19.10-cuda-10.1.eb -r`.
+
 
 ## Examples
