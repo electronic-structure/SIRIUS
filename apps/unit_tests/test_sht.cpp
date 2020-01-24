@@ -4,7 +4,7 @@ using namespace sirius;
 
 double test1_angular_radial_double(int lmax__)
 {
-    SHT sht(lmax__);
+    SHT sht(sddk::device_t::CPU, lmax__);
     int lmmax = utils::lmmax(lmax__);
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);
@@ -30,7 +30,7 @@ double test1_angular_radial_double(int lmax__)
 
 double test1_angular_radial_complex(int lmax__)
 {
-    SHT sht(lmax__);
+    SHT sht(sddk::device_t::CPU, lmax__);
     int lmmax = utils::lmmax(lmax__);
 
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, 1000, 0.01, 2.0, 1.0);

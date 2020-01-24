@@ -37,8 +37,6 @@ void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
                                   Spheric_function<function_domain_t::spatial, double>& vxc_tp,
                                   Spheric_function<function_domain_t::spatial, double>& exc_tp)
 {
-    PROFILE("sirius::Potential::xc_mt_nonmagnetic");
-
     /* use Laplacian (true) or divergence of gradient (false) */
     bool use_lapl{false};
 
@@ -83,46 +81,38 @@ void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
     for (auto& ixc: xc_func) {
         /* if this is an LDA functional */
         if (ixc.is_lda()) {
-            #pragma omp parallel
-            {
-                std::vector<double> exc_t(sht_->num_points());
-                std::vector<double> vxc_t(sht_->num_points());
-                #pragma omp for
-                for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                    ixc.get_lda(sht_->num_points(), &rho_tp(0, ir), &vxc_t[0], &exc_t[0]);
-                    for (int itp = 0; itp < sht_->num_points(); itp++) {
-                        /* add Exc contribution */
-                        exc_tp(itp, ir) += exc_t[itp];
+            std::vector<double> exc_t(sht_->num_points());
+            std::vector<double> vxc_t(sht_->num_points());
+            for (int ir = 0; ir < rgrid.num_points(); ir++) {
+                ixc.get_lda(sht_->num_points(), &rho_tp(0, ir), &vxc_t[0], &exc_t[0]);
+                for (int itp = 0; itp < sht_->num_points(); itp++) {
+                    /* add Exc contribution */
+                    exc_tp(itp, ir) += exc_t[itp];
 
-                        /* directly add to Vxc */
-                        vxc_tp(itp, ir) += vxc_t[itp];
-                    }
+                    /* directly add to Vxc */
+                    vxc_tp(itp, ir) += vxc_t[itp];
                 }
             }
         }
         if (ixc.is_gga()) {
-            #pragma omp parallel
-            {
-                std::vector<double> exc_t(sht_->num_points());
-                std::vector<double> vrho_t(sht_->num_points());
-                std::vector<double> vsigma_t(sht_->num_points());
-                #pragma omp for
-                for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                    ixc.get_gga(sht_->num_points(), &rho_tp(0, ir), &grad_rho_grad_rho_tp(0, ir), &vrho_t[0], &vsigma_t[0], &exc_t[0]);
-                    for (int itp = 0; itp < sht_->num_points(); itp++) {
-                        /* add Exc contribution */
-                        exc_tp(itp, ir) += exc_t[itp];
+            std::vector<double> exc_t(sht_->num_points());
+            std::vector<double> vrho_t(sht_->num_points());
+            std::vector<double> vsigma_t(sht_->num_points());
+            for (int ir = 0; ir < rgrid.num_points(); ir++) {
+                ixc.get_gga(sht_->num_points(), &rho_tp(0, ir), &grad_rho_grad_rho_tp(0, ir), &vrho_t[0], &vsigma_t[0], &exc_t[0]);
+                for (int itp = 0; itp < sht_->num_points(); itp++) {
+                    /* add Exc contribution */
+                    exc_tp(itp, ir) += exc_t[itp];
 
-                        /* directly add to Vxc available contributions */
-                        vxc_tp(itp, ir) += vrho_t[itp];
+                    /* directly add to Vxc available contributions */
+                    vxc_tp(itp, ir) += vrho_t[itp];
 
-                        if (use_lapl) {
-                            vxc_tp(itp, ir) -= 2 * vsigma_t[itp] * lapl_rho_tp(itp, ir);
-                        }
-
-                        /* save the sigma derivative */
-                        vsigma_tp(itp, ir) += vsigma_t[itp];
+                    if (use_lapl) {
+                        vxc_tp(itp, ir) -= 2 * vsigma_t[itp] * lapl_rho_tp(itp, ir);
                     }
+
+                    /* save the sigma derivative */
+                    vsigma_tp(itp, ir) += vsigma_t[itp];
                 }
             }
         }
@@ -180,8 +170,6 @@ void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
                                Spheric_function<function_domain_t::spatial, double>& vxc_dn_tp,
                                Spheric_function<function_domain_t::spatial, double>& exc_tp)
 {
-    PROFILE("sirius::Potential::xc_mt_magnetic");
-
     bool is_gga = is_gradient_correction();
 
     Spheric_vector_function<function_domain_t::spatial, double> grad_rho_up_tp(sht_->num_points(), rgrid);
@@ -243,62 +231,54 @@ void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
     for (auto& ixc: xc_func) {
         /* if this is an LDA functional */
         if (ixc.is_lda()) {
-            #pragma omp parallel
-            {
-                std::vector<double> exc_t(sht_->num_points());
-                std::vector<double> vxc_up_t(sht_->num_points());
-                std::vector<double> vxc_dn_t(sht_->num_points());
-                #pragma omp for
-                for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                    ixc.get_lda(sht_->num_points(), &rho_up_tp(0, ir), &rho_dn_tp(0, ir), &vxc_up_t[0], &vxc_dn_t[0], &exc_t[0]);
-                    for (int itp = 0; itp < sht_->num_points(); itp++) {
-                        /* add Exc contribution */
-                        exc_tp(itp, ir) += exc_t[itp];
+            std::vector<double> exc_t(sht_->num_points());
+            std::vector<double> vxc_up_t(sht_->num_points());
+            std::vector<double> vxc_dn_t(sht_->num_points());
+            for (int ir = 0; ir < rgrid.num_points(); ir++) {
+                ixc.get_lda(sht_->num_points(), &rho_up_tp(0, ir), &rho_dn_tp(0, ir), &vxc_up_t[0], &vxc_dn_t[0], &exc_t[0]);
+                for (int itp = 0; itp < sht_->num_points(); itp++) {
+                    /* add Exc contribution */
+                    exc_tp(itp, ir) += exc_t[itp];
 
-                        /* directly add to Vxc */
-                        vxc_up_tp(itp, ir) += vxc_up_t[itp];
-                        vxc_dn_tp(itp, ir) += vxc_dn_t[itp];
-                    }
+                    /* directly add to Vxc */
+                    vxc_up_tp(itp, ir) += vxc_up_t[itp];
+                    vxc_dn_tp(itp, ir) += vxc_dn_t[itp];
                 }
             }
         }
         if (ixc.is_gga()) {
-            #pragma omp parallel
-            {
-                std::vector<double> exc_t(sht_->num_points());
-                std::vector<double> vrho_up_t(sht_->num_points());
-                std::vector<double> vrho_dn_t(sht_->num_points());
-                std::vector<double> vsigma_uu_t(sht_->num_points());
-                std::vector<double> vsigma_ud_t(sht_->num_points());
-                std::vector<double> vsigma_dd_t(sht_->num_points());
-                #pragma omp for
-                for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                    ixc.get_gga(sht_->num_points(),
-                                &rho_up_tp(0, ir),
-                                &rho_dn_tp(0, ir),
-                                &grad_rho_up_grad_rho_up_tp(0, ir),
-                                &grad_rho_up_grad_rho_dn_tp(0, ir),
-                                &grad_rho_dn_grad_rho_dn_tp(0, ir),
-                                &vrho_up_t[0],
-                                &vrho_dn_t[0],
-                                &vsigma_uu_t[0],
-                                &vsigma_ud_t[0],
-                                &vsigma_dd_t[0],
-                                &exc_t[0]);
+            std::vector<double> exc_t(sht_->num_points());
+            std::vector<double> vrho_up_t(sht_->num_points());
+            std::vector<double> vrho_dn_t(sht_->num_points());
+            std::vector<double> vsigma_uu_t(sht_->num_points());
+            std::vector<double> vsigma_ud_t(sht_->num_points());
+            std::vector<double> vsigma_dd_t(sht_->num_points());
+            for (int ir = 0; ir < rgrid.num_points(); ir++) {
+                ixc.get_gga(sht_->num_points(),
+                            &rho_up_tp(0, ir),
+                            &rho_dn_tp(0, ir),
+                            &grad_rho_up_grad_rho_up_tp(0, ir),
+                            &grad_rho_up_grad_rho_dn_tp(0, ir),
+                            &grad_rho_dn_grad_rho_dn_tp(0, ir),
+                            &vrho_up_t[0],
+                            &vrho_dn_t[0],
+                            &vsigma_uu_t[0],
+                            &vsigma_ud_t[0],
+                            &vsigma_dd_t[0],
+                            &exc_t[0]);
 
-                    for (int itp = 0; itp < sht_->num_points(); itp++) {
-                        /* add Exc contribution */
-                        exc_tp(itp, ir) += exc_t[itp];
+                for (int itp = 0; itp < sht_->num_points(); itp++) {
+                    /* add Exc contribution */
+                    exc_tp(itp, ir) += exc_t[itp];
 
-                        /* directly add to Vxc available contributions */
-                        vxc_up_tp(itp, ir) += (vrho_up_t[itp] - 2 * vsigma_uu_t[itp] * lapl_rho_up_tp(itp, ir) - vsigma_ud_t[itp] * lapl_rho_dn_tp(itp, ir));
-                        vxc_dn_tp(itp, ir) += (vrho_dn_t[itp] - 2 * vsigma_dd_t[itp] * lapl_rho_dn_tp(itp, ir) - vsigma_ud_t[itp] * lapl_rho_up_tp(itp, ir));
+                    /* directly add to Vxc available contributions */
+                    vxc_up_tp(itp, ir) += (vrho_up_t[itp] - 2 * vsigma_uu_t[itp] * lapl_rho_up_tp(itp, ir) - vsigma_ud_t[itp] * lapl_rho_dn_tp(itp, ir));
+                    vxc_dn_tp(itp, ir) += (vrho_dn_t[itp] - 2 * vsigma_dd_t[itp] * lapl_rho_dn_tp(itp, ir) - vsigma_ud_t[itp] * lapl_rho_up_tp(itp, ir));
 
-                        /* save the sigma derivatives */
-                        vsigma_uu_tp(itp, ir) += vsigma_uu_t[itp];
-                        vsigma_ud_tp(itp, ir) += vsigma_ud_t[itp];
-                        vsigma_dd_tp(itp, ir) += vsigma_dd_t[itp];
-                    }
+                    /* save the sigma derivatives */
+                    vsigma_uu_tp(itp, ir) += vsigma_uu_t[itp];
+                    vsigma_ud_tp(itp, ir) += vsigma_ud_t[itp];
+                    vsigma_dd_tp(itp, ir) += vsigma_dd_t[itp];
                 }
             }
         }
@@ -345,6 +325,7 @@ void Potential::xc_mt(Density const& density__)
 {
     PROFILE("sirius::Potential::xc_mt");
 
+    #pragma omp parallel for
     for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
         int ia = unit_cell_.spl_num_atoms(ialoc);
         auto& rgrid = unit_cell_.atom(ia).radial_grid();
@@ -478,7 +459,7 @@ void Potential::xc_mt(Density const& density__)
                 xc_energy_density_->f_mt<index_domain_t::local>(lm, ir, ialoc) = excrlm(lm, ir);
             }
         }
-    }
+    } // ialoc
 }
 
 template <bool add_pseudo_core__>

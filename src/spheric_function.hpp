@@ -576,7 +576,7 @@ inline Spheric_vector_function<function_domain_t::spectral, double_complex> grad
 inline Spheric_vector_function<function_domain_t::spectral, double> gradient(Spheric_function<function_domain_t::spectral, double> const& f__)
 {
     int lmax = utils::lmax(f__.angular_domain_size());
-    SHT sht(lmax);
+    SHT sht(device_t::CPU, lmax);
     auto zf = convert(f__);
     auto zg = gradient(zf);
     Spheric_vector_function<function_domain_t::spectral, double> g(f__.angular_domain_size(), f__.radial_grid());
