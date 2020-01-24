@@ -17,6 +17,8 @@
   * [Additional options](#additional-options)
   * [Archlinux](#archlinux)
   * [Installation on Piz Daint](#installation-on-piz-daint)
+* [Accelerating DFT codes](#accelerating-dft-codes)
+  * [Quantum ESPRESSO](#quantum-espresso)
 * [Examples](#examples)
 
 ## Introduction
@@ -215,5 +217,8 @@ specific details.
 
 For the SIRIUS enabled version of QE use `eb QuantumESPRESSO-6.4-rc3-sirius-CrayIntel-19.10-cuda-10.1.eb -r`.
 
+## Accelerating DFT codes
+
+### Quantum ESPRESSO
 
 ## Examples
