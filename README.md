@@ -220,5 +220,7 @@ For the SIRIUS enabled version of QE use `eb QuantumESPRESSO-6.4-rc3-sirius-Cray
 ## Accelerating DFT codes
 
 ### Quantum ESPRESSO
+[Quantum ESPRESSO](https://www.quantum-espresso.org/) is a popular open-source project to perform DFT simulations
+using plane-wave pseudopotential approach.
 
 ## Examples
