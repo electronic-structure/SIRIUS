@@ -64,7 +64,7 @@ WORKDIR /root
 ENTRYPOINT ["bash", "-l"]
 ```
 We can then execute the following set of commands inside the docker container:
-```console
+```bash
 git clone --recursive https://github.com/electronic-structure/SIRIUS.git
 cd SIRIUS
 CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp FFTW_ROOT=$HOME/local python3 prerequisite.py $HOME/local fftw spfft gsl hdf5 xc spg
@@ -90,7 +90,7 @@ the corresponding libraries:
 ### Installation using Spack
 [Spack](https://spack.io) is a package manager for supercomputers, Linux and macOS. It is a great tool to manage
 complex scientifc software installations. Install Spack (if it is not already on your system):
-```console
+```bash
 git clone https://github.com/spack/spack.git
 . spack/share/spack/setup-env.sh
 ```
@@ -156,7 +156,7 @@ ENTRYPOINT ["bash", "-l"]
 ```
 
 SIRIUS can be build inside this docker container using the following command:
-```console
+```bash
 git clone --recursive https://github.com/electronic-structure/SIRIUS.git
 mkdir SIRIUS/build
 cd SIRIUS/build
