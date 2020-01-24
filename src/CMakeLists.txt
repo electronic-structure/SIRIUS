@@ -75,26 +75,18 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp"
   )
 
 # create library with .cpp, .cu and .f90 sources
-add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
+add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
+target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX SpFFT::spfft)
+target_include_directories(sirius PUBLIC "${PROJECT_SOURCE_DIR}/src")
 
 # add dependency on auto-generated headers
-add_dependencies(sirius generate_version_hpp)
-add_dependencies(sirius runtime_options_json_hpp)
-
+add_dependencies(sirius generate_version_hpp runtime_options_json_hpp)
 set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-include_directories(".")
-
-INSTALL (TARGETS sirius ARCHIVE DESTINATION
-  ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-  )
-target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX SpFFT::spfft)
-
 
 if(CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
-  install(FILES ${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
+  install(FILES ${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod 
+          DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
 endif()
 
 if(USE_ROCM)
@@ -116,5 +108,11 @@ if(USE_ROCM)
     FLAGS ${DEFINITIONS_GENERATOR} ${INCLUDE_DIR_GENERATOR} "-Wno-macro-redefined" OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-install(DIRECTORY ./ DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius" FILES_MATCHING REGEX ".*(hpp|h)$")
-install(FILES ${PROJECT_BINARY_DIR}/src/version.hpp DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
+install(TARGETS sirius 
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/src" 
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius" 
+        FILES_MATCHING REGEX ".*(hpp|h)$")
+install(FILES ${PROJECT_BINARY_DIR}/src/version.hpp 
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")

@@ -33,8 +33,9 @@ set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 
-# include custom defined FindPackage modules
-include(GitSubmodule)
+
+include(GitSubmodule)    # include custom defined FindPackage modules
+include(GNUInstallDirs)  # required to get a proper LIBDIR variable
 
 if(PYTHON2)
   # force cmake to use python2
@@ -64,6 +65,22 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2")
 endif()
+
+# preserve rpaths when installing
+# https://spack.readthedocs.io/en/latest/workflows.html#write-the-cmake-build
+set(CMAKE_MACOSX_RPATH 1)
+set(CMAKE_SKIP_BUILD_RPATH  FALSE)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(SIRIUS_RPATH_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES ${SIRIUS_RPATH_DIR} is_sys_dir)
+if("${is_sys_dir}" STREQUAL "-1")
+  # set only if installed in outside of a system directory
+  set(CMAKE_INSTALL_RPATH ${SIRIUS_RPATH_DIR})
+endif()
+
+# build shared libraries by default
+option(BUILD_SHARED_LIBS "Build shared libraries (.dll/.so) instead of static ones (.lib/.a)" ON)
 
 # generate compile_commands.json with compile commands for each target
 set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")
@@ -248,11 +265,10 @@ include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
 
 MACRO(SIRIUS_SETUP_TARGET _target)
 
-  add_dependencies(${_target} sirius)
   add_dependencies(${_target} generate_version_hpp)
   add_dependencies(${_target} runtime_options_json_hpp)
 
-  target_link_libraries(${_target} PRIVATE "${sirius_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES}")
+  target_link_libraries(${_target} PRIVATE sirius "${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES}")
   if(USE_MKL)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
       target_link_libraries(${_target} PRIVATE "-Wl,--no-as-needed;${MKL_LIBRARIES}")
@@ -267,10 +283,6 @@ MACRO(SIRIUS_SETUP_TARGET _target)
 
   if(USE_ROCM)
     target_link_libraries(${_target} PRIVATE sirius_rocm sirius_rocm_interface hipblas_port ${ROCM_LIBRARIES})
-  endif()
-
-  if(OpenMP_CXX_FOUND)
-    target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
   endif()
 
   if(HAVE_LIBVDW_WITH_MPI)
@@ -294,9 +306,9 @@ if(BUILD_TESTS)
   add_subdirectory(apps/unit_tests)
 endif(BUILD_TESTS)
 
-add_subdirectory(apps/atoms)
-add_subdirectory(apps/dft_loop)
-add_subdirectory(apps/upf)
-add_subdirectory(apps/utils)
+#add_subdirectory(apps/atoms)
+#add_subdirectory(apps/dft_loop)
+#add_subdirectory(apps/upf)
+#add_subdirectory(apps/utils)
 add_subdirectory(python_module)
 add_subdirectory(doc)

@@ -24,7 +24,7 @@
 
 #include "simulation_context.hpp"
 #include "Hamiltonian/hamiltonian.hpp"
-#include "Hamiltonian/local_operator.cpp"
+#include "Hamiltonian/local_operator.hpp"
 #include "Hamiltonian/non_local_operator.hpp"
 #include "Potential/potential.hpp"
 #include "SDDK/wave_functions.hpp"
