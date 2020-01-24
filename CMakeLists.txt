@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
+
 project(SIRIUS)
 
 # set language and standard
@@ -29,10 +30,11 @@ set(USE_MEMORY_POOL ON CACHE BOOL "use memory pool")
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
 
-# include custom defined FindPackage modules
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
-include(GitSubmodule)
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
+
+# include custom defined FindPackage modules
+include(GitSubmodule)
 
 if(PYTHON2)
   # force cmake to use python2
