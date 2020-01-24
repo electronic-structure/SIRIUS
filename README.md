@@ -166,7 +166,7 @@ make -j install
 ```
 
 You can also use Spack to install SIRIUS. For example:
-```console
+```bash
 # install SIRIUS with CUDA support
 spack install sirius +cuda
 ```
