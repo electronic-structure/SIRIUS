@@ -460,6 +460,11 @@ class K_point
         return *spinor_wave_functions_;
     }
 
+    inline std::shared_ptr<Wave_functions> spinor_wave_functions_ptr()
+    {
+        return spinor_wave_functions_;
+    }
+
     inline Wave_functions& hubbard_wave_functions()
     {
         assert(hubbard_wave_functions_ != nullptr);
