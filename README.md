@@ -10,12 +10,11 @@
 * [Introduction](#introduction)
 * [Installation](#installation)
   * [Minimal installation](#minimal-installation)
-  * [Installation using Spack software stack](#installation-using-spack-software-stack)
+  * [Installation using Spack](#installation-using-spack)
   * [Adding GPU support](#adding-gpu-support)
   * [Parallel eigensolvers](#parallel-eigensolvers)
   * [Python module](#python-module)
   * [Additional options](#additional-options)
-  * [Installation via the Spack package manager](#installation-via-the-spack-package-manager)
   * [Archlinux](#archlinux)
   * [Installation on Piz Daint](#installation-on-piz-daint)
 * [Examples](#examples)
@@ -24,7 +23,7 @@
 SIRIUS is a domain specific library for electronic structure calculations. It implements pseudopotential plane wave (PP-PW)
 and full potential linearized augmented plane wave (FP-LAPW) methods and is designed for GPU acceleration of popular community
 codes such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++11 with MPI, OpenMP and CUDA/ROCm programming models.
-SIRIUS is organised as a collection of classes that abstract away different building blocks of DFT self-consistency cycle.
+SIRIUS is organised as a collection of classes that abstract away the different building blocks of DFT self-consistency cycle.
 
 ## Installation
 SIRIUS has a hard dependency on the following libraries: MPI, BLAS, LAPACK, [GSL](https://www.gnu.org/software/gsl/),
@@ -88,9 +87,16 @@ the corresponding libraries:
 - `MKLROOT` (optional)
 - `ELPAROOT` (optional)
 
-### Installation using Spack software stack
-Spack is a great tool to manage complex software installations. In the following Dockerfile example most of the software
-is installed using Spack:
+### Installation using Spack
+[Spack](https://spack.io) is a package manager for supercomputers, Linux and macOS. It is a great tool to manage
+complex scientifc software installations. Install Spack (if it is not already on your system):
+```console
+git clone https://github.com/spack/spack.git
+. spack/share/spack/setup-env.sh
+```
+
+
+In the following Dockerfile example most of the software is installed using Spack:
 ```dockerfile
 FROM ubuntu:bionic
 
@@ -156,7 +162,24 @@ mkdir SIRIUS/build
 cd SIRIUS/build
 cmake .. -DUSE_SCALAPACK=1 -DBUILD_TESTS=1 -DCREATE_PYTHON_MODULE=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/local
 make -j install
+
 ```
+
+You can also use Spack to install SIRIUS. For example:
+```console
+# install SIRIUS with CUDA support
+spack install sirius +cuda
+```
+(see `spack info sirius` for all build options).
+
+Load SIRIUS:
+```console
+spack load -r sirius +cuda
+```
+
+Please refere to [Spack documentation](https://spack.readthedocs.io/en/latest/) for more information on how to use Spack.
+
+
 
 ### Adding GPU support
 To enable CUDA you need to pass the following options to cmake: `-DUSE_CUDA=On -DGPU_MODEL='P100'`. The currently
@@ -179,29 +202,6 @@ To create Python module you need to specify `-DCREATE_PYTHON_MODULE=On`. SIRIUS 
 ### Additional options
 To link against MKL you need to specify `-DUSE_MKL=On` parameter. For Cray libsci use `-DUSE_CRAY_LIBSCI=On`. To build
 tests you need to specify `-DBUILD_TESTS=On`.
-
-
-### Installation via the Spack package manager
-[Spack](https://spack.io) is a package manager for supercomputers, Linux and macOS. It makes installing scientifc software easy.
-
-Install spack (if it is not already on your system):
-```console
-git clone https://github.com/spack/spack.git
-. spack/share/spack/setup-env.sh
-```
-
-Install SIRIUS (with CUDA support):
-```console
-spack install sirius +cuda
-```
-(see `spack info sirius` for all build options).
-
-Load SIRIUS:
-```console
-spack load -r sirius +cuda
-```
-
-Consult the [Spack documentation](https://spack.readthedocs.io/en/latest/) for more information on how to use Spack.
 
 
 ### Archlinux
