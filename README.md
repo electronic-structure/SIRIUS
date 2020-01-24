@@ -172,8 +172,8 @@ spack install sirius +cuda
 ```
 (see `spack info sirius` for all build options).
 
-Load SIRIUS:
-```console
+To load SIRIUS you need to run:
+```bash
 spack load -r sirius +cuda
 ```
 
