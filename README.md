@@ -177,7 +177,7 @@ To load SIRIUS you need to run:
 spack load -r sirius +cuda
 ```
 
-Please refere to [Spack documentation](https://spack.readthedocs.io/en/latest/) for more information on how to use Spack.
+Please refer to [Spack documentation](https://spack.readthedocs.io/en/latest/) for more information on how to use Spack.
 
 
 
