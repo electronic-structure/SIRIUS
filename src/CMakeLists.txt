@@ -2,8 +2,6 @@
 # working correctly
 # list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 
-include(GNUInstallDirs)  # required to get a proper LIBDIR variable
-
 if(CREATE_FORTRAN_BINDINGS)
   set(_FSOURCES "sirius_api.cpp;sirius.f90")
 endif()
@@ -74,6 +72,25 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp"
   "Mixer/mixer_functions.cpp"
   )
 
+if(USE_ROCM)
+  add_library(sirius_rocm_interface STATIC ./SDDK/GPU/rocfft_interface.cpp)
+  set_target_properties(sirius_rocm_interface PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  # don't install as it is STATIC and not meant to be used by external projects
+  target_link_libraries(sirius_rocm_interface PUBLIC OpenMP::OpenMP_CXX)
+
+  # use include directories and definitions of sirius_rocm_interface (using custom targets not possible with generators)
+  set(DEFINITIONS_PROP "$<TARGET_PROPERTY:sirius_rocm_interface,COMPILE_DEFINITIONS>")
+  set(DEFINITIONS_GENERATOR "$<$<BOOL:${DEFINITIONS_PROP}>:-D$<JOIN:${DEFINITIONS_PROP}, -D>>")
+  set(INCLUDE_DIR_PROP "$<TARGET_PROPERTY:sirius_rocm_interface,INCLUDE_DIRECTORIES>")
+  set(INCLUDE_DIR_GENERATOR "$<$<BOOL:${INCLUDE_DIR_PROP}>:-I$<JOIN:${INCLUDE_DIR_PROP}, -I>>")
+
+  # create gpu library compiled with hip
+  file(GLOB_RECURSE HIPFILES_KERNELS "Kernels/*.cu")
+  file(GLOB_RECURSE HIPFILES_SDDK "SDDK/*.cu")
+  rocm_hip_add_library(sirius_rocm SHARED ${HIPFILES_SDDK} ${HIPFILES_KERNELS}
+    FLAGS ${DEFINITIONS_GENERATOR} ${INCLUDE_DIR_GENERATOR} "-Wno-macro-redefined" OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+
 # create library with .cpp, .cu and .f90 sources
 add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
 target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX 
@@ -88,8 +105,8 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     $<TARGET_NAME_IF_EXISTS:magma::magma>
                                     $<TARGET_NAME_IF_EXISTS:libvdwxc::libvdwxc>
                                     $<TARGET_NAME_IF_EXISTS:cuda::cudalibs>
+                                    $<$<BOOL:${USE_ROCM}>:sirius_rocm sirius_rocm_interface hipblas_port ${ROCM_LIBRARIES}>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
-                                    # TODO: ROCM target
                                     )
 
 target_include_directories(sirius PUBLIC "${PROJECT_SOURCE_DIR}/src"
@@ -117,25 +134,6 @@ if(CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
   install(FILES ${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod 
           DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
-endif()
-
-if(USE_ROCM)
-  add_library(sirius_rocm_interface STATIC ./SDDK/GPU/rocfft_interface.cpp)
-  set_target_properties(sirius_rocm_interface PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  # don't install as it is STATIC and not meant to be used by external projects
-  target_link_libraries(sirius_rocm_interface PUBLIC OpenMP::OpenMP_CXX)
-
-  # use include directories and definitions of sirius_rocm_interface (using custom targets not possible with generators)
-  set(DEFINITIONS_PROP "$<TARGET_PROPERTY:sirius_rocm_interface,COMPILE_DEFINITIONS>")
-  set(DEFINITIONS_GENERATOR "$<$<BOOL:${DEFINITIONS_PROP}>:-D$<JOIN:${DEFINITIONS_PROP}, -D>>")
-  set(INCLUDE_DIR_PROP "$<TARGET_PROPERTY:sirius_rocm_interface,INCLUDE_DIRECTORIES>")
-  set(INCLUDE_DIR_GENERATOR "$<$<BOOL:${INCLUDE_DIR_PROP}>:-I$<JOIN:${INCLUDE_DIR_PROP}, -I>>")
-
-  # create gpu library compiled with hip
-  file(GLOB_RECURSE HIPFILES_KERNELS "Kernels/*.cu")
-  file(GLOB_RECURSE HIPFILES_SDDK "SDDK/*.cu")
-  rocm_hip_add_library(sirius_rocm SHARED ${HIPFILES_SDDK} ${HIPFILES_KERNELS}
-    FLAGS ${DEFINITIONS_GENERATOR} ${INCLUDE_DIR_GENERATOR} "-Wno-macro-redefined" OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 install(TARGETS sirius 

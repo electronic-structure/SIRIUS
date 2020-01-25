@@ -223,22 +223,8 @@ add_custom_command(
 
 add_custom_target(runtime_options_json_hpp DEPENDS ${runtime_options_json_path})
 
-MACRO(SIRIUS_SETUP_TARGET _target)
-
-  add_dependencies(${_target} generate_version_hpp)
-  add_dependencies(${_target} runtime_options_json_hpp)
-
-  target_link_libraries(${_target} PRIVATE sirius)
-
-  if(USE_ROCM)
-    target_link_libraries(${_target} PRIVATE sirius_rocm sirius_rocm_interface hipblas_port ${ROCM_LIBRARIES})
-  endif()
-
-ENDMACRO()
-
 # sirius library
 add_subdirectory(src)
-set(sirius_location $<TARGET_FILE:sirius>)
 
 # applications
 if(BUILD_TESTS)

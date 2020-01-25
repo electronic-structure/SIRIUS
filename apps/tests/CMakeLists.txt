@@ -5,19 +5,19 @@ test_mem_pool;test_mem_alloc;test_examples;test_fft_full_grid;test_wf_inner_v4;t
 test_wf_ortho_6;test_mixer_v1;test_davidson")
 
 foreach(_test ${_tests})
-  add_executable(${_test} "${_test}.cpp")
-  SIRIUS_SETUP_TARGET(${_test})
+  add_executable(${_test} ${_test}.cpp)
+  target_link_libraries(${_test} PRIVATE sirius)
   install(TARGETS ${_test} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 endforeach()
 
 #set(_test test_gemm)
 #add_executable("${_test}_real" "${_test}.cpp")
-#SIRIUS_SETUP_TARGET(${_test})
+#target_link_libraries(${_test} PRIVATE sirius)
 #target_compile_definitions(${_test} PRIVATE COMPILE_DEFINITIONS "-D__TEST_REAL")
 #install(TARGETS ${_test} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 #
 #set(_test test_gemm2)
 #add_executable("${_test}_real" "${_test}.cpp")
-#SIRIUS_SETUP_TARGET(${_test})
+#target_link_libraries(${_test} PRIVATE sirius)
 #target_compile_definitions(${_test} PRIVATE COMPILE_DEFINITIONS "-D__TEST_REAL")
 #install(TARGETS ${_test} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
