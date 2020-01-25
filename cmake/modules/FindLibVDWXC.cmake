@@ -17,7 +17,6 @@ find_path(LIBVDWXC_INCLUDE_DIR
   ${_LIBVDWXC_INCLUDE_DIRS}
   DOC "vdwxc include directory")
 
-
 find_library(LIBVDWXC_LIBRARIES
   NAMES vdwxc
   PATH_SUFFIXES lib
@@ -36,7 +35,7 @@ find_package_handle_standard_args(LibVDWXC DEFAULT_MSG LIBVDWXC_LIBRARIES LIBVDW
 
 if(LibVDWXC_FOUND AND NOT TARGET libvdwxc::libvdwxc)
   add_library(libvdwxc::libvdwxc INTERFACE IMPORTED)
-  set_target_properties(libvdwxc::libvdwxc PROPERTIES 
+  set_target_properties(libvdwxc::libvdwxc PROPERTIES
                                            INTERFACE_INCLUDE_DIRECTORIES "${LIBVDWXC_INCLUDE_DIR}"
                                            INTERFACE_LINK_LIBRARIES "${LIBVDWXC_LIBRARIES}")
 endif()

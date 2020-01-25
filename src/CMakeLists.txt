@@ -93,7 +93,7 @@ endif()
 
 # create library with .cpp, .cu and .f90 sources
 add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
-target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX 
+target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     SpFFT::spfft
                                     GSL::gsl
                                     "${LINALG_LIB}"
@@ -115,7 +115,7 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
 target_include_directories(sirius PUBLIC "${PROJECT_SOURCE_DIR}/src"
                                          "${PROJECT_SOURCE_DIR}/src/SDDK"
                                          "${PROJECT_BINARY_DIR}/src")
-target_compile_definitions(sirius PUBLIC 
+target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_TIMER}>:__USE_TIMER __PROFILE __PROFILE_TIME>
   $<$<BOOL:${USE_SCALAPACK}>:__SCALAPACK>
   $<$<BOOL:${USE_MEMORY_POOL}>:__USE_MEMORY_POOL>
@@ -133,16 +133,15 @@ set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
-  install(FILES ${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod 
+  install(FILES ${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod
           DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
 endif()
 
-install(TARGETS sirius 
+install(TARGETS sirius
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
-install(DIRECTORY "${PROJECT_SOURCE_DIR}/src" 
-        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius" 
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/src"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius"
         FILES_MATCHING REGEX ".*(hpp|h)$")
-install(FILES "${PROJECT_BINARY_DIR}/src/version.hpp" 
-              "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
+install(FILES ${PROJECT_BINARY_DIR}/src/version.hpp
         DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
