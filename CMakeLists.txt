@@ -77,21 +77,29 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2")
 endif()
 
-# preserve rpaths when installing
+# Makes the build directory relocatable: requires CMake 3.14.7
+#set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
+
+# preserve rpaths when installing and make the install folder relocatable
+# use `CMAKE_SKIP_INSTALL_RPATH` to skip this
 # https://spack.readthedocs.io/en/latest/workflows.html#write-the-cmake-build
-set(CMAKE_MACOSX_RPATH 1)
-set(CMAKE_SKIP_BUILD_RPATH  FALSE)
-set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-set(SIRIUS_RPATH_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
-list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES ${SIRIUS_RPATH_DIR} is_sys_dir)
-if("${is_sys_dir}" STREQUAL "-1")
-  # set only if installed in outside of a system directory
-  set(CMAKE_INSTALL_RPATH ${SIRIUS_RPATH_DIR})
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES 
+          "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" isSystemDir)
+# skip RPATH if SIRIUS is installed to system directories
+if(isSystemDir STREQUAL "-1")
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+  if(APPLE)
+    set(basePoint @loader_path)
+  else()
+    set(basePoint $ORIGIN)
+  endif()
+  file(RELATIVE_PATH relDir ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}
+                            ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
+  set(CMAKE_INSTALL_RPATH ${basePoint} ${basePoint}/${relDir})
 endif()
 
 # build shared libraries by default
-option(BUILD_SHARED_LIBS "Build shared libraries (.dll/.so) instead of static ones (.lib/.a)" ON)
+option(BUILD_SHARED_LIBS "Build shared libraries." ON)
 
 # generate compile_commands.json with compile commands for each target
 set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")

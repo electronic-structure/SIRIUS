@@ -105,7 +105,10 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     $<TARGET_NAME_IF_EXISTS:magma::magma>
                                     $<TARGET_NAME_IF_EXISTS:libvdwxc::libvdwxc>
                                     $<TARGET_NAME_IF_EXISTS:cuda::cudalibs>
-                                    $<$<BOOL:${USE_ROCM}>:sirius_rocm sirius_rocm_interface hipblas_port ${ROCM_LIBRARIES}>
+                                    $<TARGET_NAME_IF_EXISTS:sirius_rocm>
+                                    $<TARGET_NAME_IF_EXISTS:sirius_rocm_interface>
+                                    $<TARGET_NAME_IF_EXISTS:hipblas_port>
+                                    $<$<BOOL:${USE_ROCM}>:${ROCM_LIBRARIES}>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     )
 
