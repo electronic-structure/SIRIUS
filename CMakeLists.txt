@@ -197,8 +197,14 @@ if(EXISTS "${PROJECT_SOURCE_DIR}/.git")
                   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
                   ERROR_QUIET
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND git describe --all
+                  OUTPUT_VARIABLE SIRIUS_GIT_BRANCH
+                  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+                  ERROR_QUIET
+                  OUTPUT_STRIP_TRAILING_WHITESPACE)
 else()
-  set(SIRIUS_SHA "release archive")
+  set(SIRIUS_GIT_BRANCH "release v${SIRIUS_VERSION}")
+  set(SIRIUS_SHA "n/a")
 endif()
 configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" 
                "${PROJECT_BINARY_DIR}/src/version.hpp"
