@@ -29,7 +29,7 @@ if(CREATE_PYTHON_MODULE)
     target_link_libraries(${libname} PRIVATE ${MKL_DEF_LIBRARY})
   endif()
 
-  SIRIUS_SETUP_TARGET(${libname})
+  target_link_libraries(${libname} PRIVATE sirius)
   # collect python files in module dir
   # install to cmake prefix
 

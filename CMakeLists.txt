@@ -1,15 +1,10 @@
 cmake_minimum_required(VERSION 3.12)
-project(SIRIUS)
 
-if(POLICY CMP0074)
-  # allow {module}_ROOT variables to be set
-  cmake_policy(SET CMP0074 NEW)
-endif()
+project(SIRIUS)
 
 # set language and standard
 enable_language(CXX Fortran)
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 # user variables
 set(CREATE_PYTHON_MODULE OFF CACHE BOOL "create sirius python module")
@@ -32,12 +27,26 @@ set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
 set(USE_TIMER ON CACHE BOOL "measure execution of functions with timer")
 set(USE_MEMORY_POOL ON CACHE BOOL "use memory pool")
 
+if(USE_MAGMA AND NOT USE_CUDA)
+  message(FATAL_ERROR "MAGMA depends on Cuda, must enable Cuda or disable MAGMA")
+endif()
+
+if(USE_CUDA AND USE_ROCM)
+  message(FATAL_ERROR "USE_CUDA and USE_ROCM must not be enabled at the same time!")
+endif()
+
+if(USE_MKL AND NOT (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Intel"))
+  message(FATAL_ERROR "Unsupported compiler")
+endif()
+
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
 
-# include custom defined FindPackage modules
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
-include(GitSubmodule)
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
+
+
+include(GitSubmodule)    # include custom defined FindPackage modules
+include(GNUInstallDirs)  # required to get a proper LIBDIR variable
 
 if(PYTHON2)
   # force cmake to use python2
@@ -68,74 +77,77 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2")
 endif()
 
+# Makes the build directory relocatable: requires CMake 3.14.7
+#set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
+
+# preserve rpaths when installing and make the install folder relocatable
+# use `CMAKE_SKIP_INSTALL_RPATH` to skip this
+# https://spack.readthedocs.io/en/latest/workflows.html#write-the-cmake-build
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES 
+          "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" isSystemDir)
+# skip RPATH if SIRIUS is installed to system directories
+if(isSystemDir STREQUAL "-1")
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+  if(APPLE)
+    set(basePoint @loader_path)
+  else()
+    set(basePoint $ORIGIN)
+  endif()
+  file(RELATIVE_PATH relDir ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}
+                            ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
+  set(CMAKE_INSTALL_RPATH ${basePoint} ${basePoint}/${relDir})
+endif()
+
+# build shared libraries by default
+option(BUILD_SHARED_LIBS "Build shared libraries." ON)
+
 # generate compile_commands.json with compile commands for each target
 set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")
 
-if(DEBUG_MEMORY_POOL)
-  add_definitions("-D__DEBUG_MEMORY_POOL")
-endif()
-
-if(USE_SCALAPACK)
-  add_definitions("-D__SCALAPACK")
-endif()
-
-if (USE_TIMER)
-  add_definitions("-D__USE_TIMER")
-  add_definitions("-D__PROFILE")
-  add_definitions("-D__PROFILE_TIME")
-endif()
-
-if (USE_MEMORY_POOL)
-  add_definitions("-D__USE_MEMORY_POOL")
-endif()
-
+# dependencies
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
-set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${GSL_LIBRARY}")
-
-if(USE_MKL)
-  set(USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
-  find_package(MKL REQUIRED)
-  include_directories(BEFORE ${MKL_INCLUDE_DIR})
-elseif(USE_CRAY_LIBSCI)
-  if(USE_MKL)
-    message(FATAL_ERROR "CANNOT USE_CRAY_LIBSCI _AND_ USE_MKL, use one of them.")
-  endif()
-  find_package(CRAY_LIBSCI REQUIRED)
-  set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${CRAY_LIBSCI_LIBRARIES}")
-else()
-  find_package(LAPACK REQUIRED)
-  if(USE_SCALAPACK)
-    find_package(SCALAPACK REQUIRED) # just sets scalapack_DIR
-    #include_directories(BEFORE ${SCALAPACK_INCLUDE_DIR})
-    set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${SCALAPACK_LIBRARIES}")
-  endif()
-endif()
-
-if (USE_OPENMP)
-  find_package(OpenMP REQUIRED)
-endif()
 find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C)
 find_package(SpFFT 0.9.6 CONFIG REQUIRED)
 
-set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};SpFFT::spfft")
+if (USE_OPENMP)
+  find_package(OpenMP REQUIRED)
+endif()
+
+set(LINALG_LIB "")
+if(USE_MKL)
+  set(USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
+  find_package(MKL REQUIRED)
+  set(LINALG_LIB "mkl::mkl")
+elseif(USE_CRAY_LIBSCI)
+  find_package(CRAY_LIBSCI REQUIRED)
+  set(LINALG_TGT "${CRAY_LIBSCI_LIBRARIES}")
+else()
+  find_package(LAPACK REQUIRED)
+  set(LINALG_LIB "${LAPACK_LIBRARIES}")
+  if(USE_SCALAPACK)
+    find_package(SCALAPACK REQUIRED) # just sets scalapack_DIR
+    set(LINALG_LIB "${LINALG_LIB};${SCALAPACK_LIBRARIES}")
+  endif()
+endif()
 
 if(USE_ELPA)
   find_package(Elpa REQUIRED)
-  include_directories(BEFORE SYSTEM "${ELPA_INCLUDE_DIR}")
-  set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${ELPA_LIBRARIES}")
-  add_definitions("-D__ELPA")
 endif(USE_ELPA)
+
+if(USE_MAGMA)
+  find_package(MAGMA REQUIRED)
+endif(USE_MAGMA)
+
+if(USE_VDWXC)
+  find_package(LibVDWXC 0.3.0 REQUIRED)
+endif(USE_VDWXC)
 
 if(USE_CUDA)
   enable_language(CUDA)
   find_package(CUDA)
-  add_definitions("-D__GPU")
-  add_definitions("-D__CUDA")
-  include_directories(BEFORE SYSTEM ${CUDA_INCLUDE_DIRS})
-  set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${CUDA_LIBRARIES};${CUDA_CUBLAS_LIBRARIES};${CUDA_CUFFT_LIBRARIES};${CUDA_cusolver_LIBRARY}")
 
   if(GPU_MODEL MATCHES "P100")
     message("set nvcc flags for P100")
@@ -147,63 +159,35 @@ if(USE_CUDA)
     message("set nvcc flags for geforce 1000")
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_61")
   endif()
-
-  if(USE_NVTX)
-    add_definitions("-D__CUDA_NVTX")
-    set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};-lnvToolsExt")
-  endif()
+  
 endif(USE_CUDA)
 
-if(USE_MAGMA)
-  if(NOT USE_CUDA)
-    message(FATAL_ERROR "MAGMA depends on Cuda, must enable Cuda or disable MAGMA")
-  endif(NOT USE_CUDA)
-  find_package(MAGMA)
-  add_definitions("-D__MAGMA")
-  include_directories(BEFORE SYSTEM ${MAGMA_INCLUDE_DIR})
-  set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MAGMA_LIBRARIES}")
-endif(USE_MAGMA)
-
-if(USE_CUDA AND USE_ROCM)
-  message(FATAL_ERROR "USE_CUDA and USE_ROCM must not be enabled at the same time!")
-endif()
-
 if(USE_ROCM)
-    message(STATUS "WARNING: ROCM enabled, prototype feature! Only limited functionality available.")
-    find_package(ROCM COMPONENTS rocfft hipblas)
-    if(NOT ${ROCM_HIP_PLATFORM} STREQUAL hcc)
-  message(FATAL_ERROR "Compilation on Nvidia platform not supported with ROCM enabled!")
-    endif()
-    add_definitions("-D__GPU")
-    add_definitions("-D__ROCM")
-    add_definitions(${ROCM_DEFINITIONS})
-    include_directories(${ROCM_INCLUDE_DIRS})
-    add_subdirectory(src/SDDK/GPU/hipblas_port)
-    include_directories(src/SDDK/GPU/hipblas_port)
+  message(STATUS "WARNING: ROCM enabled, prototype feature! Only limited functionality available.")
+  find_package(ROCM COMPONENTS rocfft hipblas)
+  if(NOT ${ROCM_HIP_PLATFORM} STREQUAL hcc)
+    message(FATAL_ERROR "Compilation on Nvidia platform not supported with ROCM enabled!")
+  endif()
+  add_definitions(${ROCM_DEFINITIONS})
+  include_directories(${ROCM_INCLUDE_DIRS})
+  add_subdirectory(src/SDDK/GPU/hipblas_port)
+  include_directories(src/SDDK/GPU/hipblas_port)
 endif()
 
-# add required libraries
-set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${MPI_CXX_LIBRARIES};${LIBXC_LIBRARIES};${LIBSPG_LIBRARIES}")
+# external library targets
+if(NOT TARGET hdf5::hdf5)
+  add_library(hdf5::hdf5 INTERFACE IMPORTED)
+  set_target_properties(hdf5::hdf5 PROPERTIES 
+                                   INTERFACE_INCLUDE_DIRECTORIES "${HDF5_INCLUDE_DIR}"
+                                   INTERFACE_LINK_LIBRARIES "${HDF5_C_LIBRARIES}")
+endif()
 
-
-# include library headers
-
-include_directories(BEFORE SYSTEM ${LIBXC_INCLUDE_DIR})
-include_directories(BEFORE SYSTEM ${LIBSPG_INCLUDE_DIR})
-include_directories(BEFORE SYSTEM ${HDF5_INCLUDE_DIR})
-include_directories(BEFORE SYSTEM ${MPI_C_INCLUDE_DIRS})
-include_directories(BEFORE SYSTEM ${GSL_INCLUDE_DIRS})
-
-if(USE_VDWXC)
-  find_package(LibVDWXC 0.3.0 REQUIRED)
-  include_directories(${LIBVDWXC_INCLUDE_DIR})
-  set(SYSTEM_LIBRARIES "${SYSTEM_LIBRARIES};${LIBVDWXC_LIBRARIES}")
-  add_definitions("-D__USE_VDWXC")
-endif(USE_VDWXC)
-
-# project header locations
-include_directories(BEFORE src)
-include_directories(BEFORE src/SDDK)
+if (USE_CUDA AND NOT TARGET cuda::cudalibs)
+  add_library(cuda::cudalibs INTERFACE IMPORTED)
+  set_target_properties(cuda::cudalibs PROPERTIES 
+                                       INTERFACE_INCLUDE_DIRECTORIES "${CUDA_INCLUDE_DIRS}"
+                                       INTERFACE_LINK_LIBRARIES "${CUDA_LIBRARIES};${CUDA_CUBLAS_LIBRARIES};${CUDA_CUFFT_LIBRARIES};${CUDA_cusolver_LIBRARY}")
+endif()
 
 # configure generation of the version header
 add_custom_command(
@@ -247,49 +231,8 @@ add_custom_command(
 
 add_custom_target(runtime_options_json_hpp DEPENDS ${runtime_options_json_path})
 
-include_directories(BEFORE ${PROJECT_BINARY_DIR}/src)
-
-MACRO(SIRIUS_SETUP_TARGET _target)
-
-  add_dependencies(${_target} sirius)
-  add_dependencies(${_target} generate_version_hpp)
-  add_dependencies(${_target} runtime_options_json_hpp)
-
-  target_link_libraries(${_target} PRIVATE "${sirius_location};${SYSTEM_LIBRARIES};${HDF5_C_LIBRARIES}")
-  if(USE_MKL)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-      target_link_libraries(${_target} PRIVATE "-Wl,--no-as-needed;${MKL_LIBRARIES}")
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-      target_link_libraries(${_target} PRIVATE "${MKL_LIBRARIES}")
-    else()
-      message(FATAL_ERROR "Unsupported compiler")
-    endif()
-  else()
-    target_link_libraries(${_target} PRIVATE "${LAPACK_LIBRARIES}")
-  endif()
-
-  if(USE_ROCM)
-    target_link_libraries(${_target} PRIVATE sirius_rocm sirius_rocm_interface hipblas_port ${ROCM_LIBRARIES})
-  endif()
-
-  if(OpenMP_CXX_FOUND)
-    target_link_libraries(${_target} PUBLIC OpenMP::OpenMP_CXX)
-  endif()
-
-  if(HAVE_LIBVDW_WITH_MPI)
-    target_compile_definitions(${_target} PUBLIC -D__HAVE_VDWXC_MPI)
-  endif()
-
-  # target_link_libraries(${_target} PRIVATE GSL::gsl)
-
-  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_link_libraries(${_target} PRIVATE "-lgfortran")
-  endif()
-ENDMACRO()
-
 # sirius library
 add_subdirectory(src)
-set(sirius_location $<TARGET_FILE:sirius>)
 
 # applications
 if(BUILD_TESTS)

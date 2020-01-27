@@ -20,3 +20,11 @@ find_path(LIBXC_INCLUDE_DIR NAMES xc.h xc_f90_types_m.mod
   )
 
 find_package_handle_standard_args(LibXC DEFAULT_MSG LIBXC_LIBRARIES LIBXC_INCLUDE_DIR)
+
+if(LibXC_FOUND AND NOT TARGET libxc::libxc)
+  add_library(libxc::libxc INTERFACE IMPORTED)
+  set_target_properties(libxc::libxc PROPERTIES 
+                                     INTERFACE_INCLUDE_DIRECTORIES "${LIBXC_INCLUDE_DIR}"
+                                     INTERFACE_LINK_LIBRARIES "${LIBXC_LIBRARIES}")
+endif()
+

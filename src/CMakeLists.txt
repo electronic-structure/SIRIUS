@@ -2,8 +2,6 @@
 # working correctly
 # list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 
-include(GNUInstallDirs)  # required to get a proper LIBDIR variable
-
 if(CREATE_FORTRAN_BINDINGS)
   set(_FSOURCES "sirius_api.cpp;sirius.f90")
 endif()
@@ -74,29 +72,6 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp"
   "Mixer/mixer_functions.cpp"
   )
 
-# create library with .cpp, .cu and .f90 sources
-add_library(sirius STATIC "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
-
-# add dependency on auto-generated headers
-add_dependencies(sirius generate_version_hpp)
-add_dependencies(sirius runtime_options_json_hpp)
-
-set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-include_directories(".")
-
-INSTALL (TARGETS sirius ARCHIVE DESTINATION
-  ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-  )
-target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX SpFFT::spfft)
-
-
-if(CREATE_FORTRAN_BINDINGS)
-  set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
-  install(FILES ${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
-endif()
-
 if(USE_ROCM)
   add_library(sirius_rocm_interface STATIC ./SDDK/GPU/rocfft_interface.cpp)
   set_target_properties(sirius_rocm_interface PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -116,5 +91,59 @@ if(USE_ROCM)
     FLAGS ${DEFINITIONS_GENERATOR} ${INCLUDE_DIR_GENERATOR} "-Wno-macro-redefined" OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-install(DIRECTORY ./ DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius" FILES_MATCHING REGEX ".*(hpp|h)$")
-install(FILES ${PROJECT_BINARY_DIR}/src/version.hpp DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
+# create library with .cpp, .cu and .f90 sources
+add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
+target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX 
+                                    SpFFT::spfft
+                                    GSL::gsl
+                                    "${LINALG_LIB}"
+                                    MPI::MPI_CXX
+                                    libxc::libxc
+                                    libspg::libspg
+                                    hdf5::hdf5
+                                    $<TARGET_NAME_IF_EXISTS:elpa::elpa>
+                                    $<TARGET_NAME_IF_EXISTS:magma::magma>
+                                    $<TARGET_NAME_IF_EXISTS:libvdwxc::libvdwxc>
+                                    $<TARGET_NAME_IF_EXISTS:cuda::cudalibs>
+                                    $<TARGET_NAME_IF_EXISTS:sirius_rocm>
+                                    $<TARGET_NAME_IF_EXISTS:sirius_rocm_interface>
+                                    $<TARGET_NAME_IF_EXISTS:hipblas_port>
+                                    $<$<BOOL:${USE_ROCM}>:${ROCM_LIBRARIES}>
+                                    $<$<BOOL:${USE_NVTX}>:nvToolsExt>
+                                    )
+
+target_include_directories(sirius PUBLIC "${PROJECT_SOURCE_DIR}/src"
+                                         "${PROJECT_SOURCE_DIR}/src/SDDK"
+                                         "${PROJECT_BINARY_DIR}/src")
+target_compile_definitions(sirius PUBLIC 
+  $<$<BOOL:${USE_TIMER}>:__USE_TIMER __PROFILE __PROFILE_TIME>
+  $<$<BOOL:${USE_SCALAPACK}>:__SCALAPACK>
+  $<$<BOOL:${USE_MEMORY_POOL}>:__USE_MEMORY_POOL>
+  $<$<BOOL:${DEBUG_MEMORY_POOL}>:__DEBUG_MEMORY_POOL>
+  $<$<BOOL:${USE_ELPA}>:__ELPA>
+  $<$<BOOL:${USE_CUDA}>:__GPU __CUDA>
+  $<$<BOOL:${USE_NVTX}>:__CUDA_NVTX>
+  $<$<BOOL:${USE_MAGMA}>:__MAGMA>
+  $<$<BOOL:${USE_ROCM}>:__GPU __ROCM>
+  $<$<BOOL:${USE_VDWXC}>:__USE_VDWXC>
+  $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:__HAVE_VDWXC_MPI>
+)
+
+# add dependency on auto-generated headers
+add_dependencies(sirius generate_version_hpp runtime_options_json_hpp)
+set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+if(CREATE_FORTRAN_BINDINGS)
+  set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
+  install(FILES ${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod 
+          DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
+endif()
+
+install(TARGETS sirius 
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/src" 
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius" 
+        FILES_MATCHING REGEX ".*(hpp|h)$")
+install(FILES ${PROJECT_BINARY_DIR}/src/version.hpp 
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
