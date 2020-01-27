@@ -46,11 +46,12 @@ SIRIUS has a hard dependency on the following tools and libraries:
  * C++ compiler with C++11 support
  * MPI
  * BLAS/LAPACK
- * [GSL](https://www.gnu.org/software/gsl/)
- * [LibXC](https://www.tddft.org/programs/libxc/)
+ * GNU scientifc library [GSL](https://www.gnu.org/software/gsl/)
+ * Library of exchange-correlation potentials [LibXC](https://www.tddft.org/programs/libxc/)
  * [HDF5](https://www.hdfgroup.org/solutions/hdf5/)
- * [spglib](https://atztogo.github.io/spglib/)
- * [SpFFT](https://github.com/eth-cscs/SpFFT)
+ * Library for finding and handling crystal symmetries [spglib](https://atztogo.github.io/spglib/) 
+ * Domain-specific FFT library [SpFFT](https://github.com/eth-cscs/SpFFT)
+
 They must be available on your platfrom. Optionally, there is a dependency on ScaLAPACK, [ELPA](https://elpa.mpcdf.mpg.de/software),
 [MAGMA](https://icl.cs.utk.edu/magma/) and CUDA/ROCm. We use CMake as a building tool. If the libraries are installed
 in a standard location, cmake can find them automatically.  Otherwise you need to provide a specific path of each
