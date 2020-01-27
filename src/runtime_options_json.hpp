@@ -1,3 +1,6 @@
+#pragma once
+
+const json all_options_dictionary_ = R"sirius(
 {
     "mixer" : {
         "type" :
@@ -455,3 +458,5 @@
         }
     }
 }
+)sirius"_json;
+

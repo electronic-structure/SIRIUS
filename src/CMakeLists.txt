@@ -130,7 +130,7 @@ target_compile_definitions(sirius PUBLIC
 )
 
 # add dependency on auto-generated headers
-add_dependencies(sirius generate_version_hpp runtime_options_json_hpp)
+add_dependencies(sirius generate_version_hpp)
 set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(CREATE_FORTRAN_BINDINGS)
