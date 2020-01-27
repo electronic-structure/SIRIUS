@@ -189,7 +189,7 @@ if (USE_CUDA AND NOT TARGET cuda::cudalibs)
                                        INTERFACE_LINK_LIBRARIES "${CUDA_LIBRARIES};${CUDA_CUBLAS_LIBRARIES};${CUDA_CUFFT_LIBRARIES};${CUDA_cusolver_LIBRARY}")
 endif()
 
-# generate a version header
+# generate version header
 string(TIMESTAMP SIRIUS_TIMESTAMP "%Y-%m-%d %H:%M:%S")
 if(EXISTS "${PROJECT_SOURCE_DIR}/.git")
   execute_process(COMMAND git rev-parse HEAD
@@ -204,31 +204,12 @@ configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in"
                "${PROJECT_BINARY_DIR}/src/version.hpp"
                @ONLY)
 
-# handle the generation of runtime_options_json.hpp file
-add_custom_command(
-  OUTPUT _always_rebuild
-  COMMAND true
-  )
-
-add_custom_command(
-  OUTPUT runtime_options_json.hpp-test
-  DEPENDS _always_rebuild
-  COMMAND ${CMAKE_SOURCE_DIR}/generate_options_header_file.sh $(CMAKE_SOURCE_DIR)/src/options.json > runtime_options_json.hpp-test
-  )
-
-set(runtime_options_json_path src/runtime_options_json.hpp)
-add_custom_command(
-  OUTPUT ${runtime_options_json_path}-test
-  DEPENDS _always_rebuild
-  COMMAND ${CMAKE_SOURCE_DIR}/generate_options_header_file.sh ${CMAKE_SOURCE_DIR}/src/options.json > ${runtime_options_json_path}-test
-  )
-add_custom_command(
-  OUTPUT ${runtime_options_json_path}
-  DEPENDS ${runtime_options_json_path}-test
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${runtime_options_json_path}-test ${runtime_options_json_path}
-  )
-
-add_custom_target(runtime_options_json_hpp DEPENDS ${runtime_options_json_path})
+# generate runtime options
+file(STRINGS "${PROJECT_SOURCE_DIR}/src/options.json" 
+              SIRIUS_RUNTIME_OPTIONS NEWLINE_CONSUME)
+configure_file("${PROJECT_SOURCE_DIR}/src/runtime_options_json.hpp.in"
+               "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
+               @ONLY)
 
 # sirius library
 add_subdirectory(src)
