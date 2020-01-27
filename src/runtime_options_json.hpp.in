@@ -1,0 +1,6 @@
+#pragma once
+
+const json all_options_dictionary_ = R"sirius(
+@SIRIUS_RUNTIME_OPTIONS@
+)sirius"_json;
+
