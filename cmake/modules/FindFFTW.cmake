@@ -8,7 +8,7 @@ find_path(FFTW_INCLUDE_DIR
   HINTS ENV FFTW_INC
   )
 
-find_library(FFTW_LIBRARIES 
+find_library(FFTW_LIBRARIES
   NAMES fftw3
   PATH_SUFFIXES lib
   HINTS ENV MKLROOT

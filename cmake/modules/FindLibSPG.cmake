@@ -25,7 +25,7 @@ find_package_handle_standard_args(LibSPG DEFAULT_MSG LIBSPG_LIBRARIES LIBSPG_INC
 
 if(LibSPG_FOUND AND NOT TARGET libspg::libspg)
   add_library(libspg::libspg INTERFACE IMPORTED)
-  set_target_properties(libspg::libspg PROPERTIES 
+  set_target_properties(libspg::libspg PROPERTIES
                                        INTERFACE_INCLUDE_DIRECTORIES "${LIBSPG_INCLUDE_DIR}"
                                        INTERFACE_LINK_LIBRARIES "${LIBSPG_LIBRARIES}")
 endif()

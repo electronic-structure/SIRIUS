@@ -26,7 +26,7 @@ find_package_handle_standard_args(Elpa "DEFAULT_MSG" ELPA_LIBRARIES ELPA_INCLUDE
 
 if(Elpa_FOUND AND NOT TARGET elpa::elpa)
   add_library(elpa::elpa INTERFACE IMPORTED)
-  set_target_properties(elpa::elpa PROPERTIES 
+  set_target_properties(elpa::elpa PROPERTIES
                                    INTERFACE_INCLUDE_DIRECTORIES "${ELPA_INCLUDE_DIR}"
                                    INTERFACE_LINK_LIBRARIES "${ELPA_LIBRARIES}")
 endif()
