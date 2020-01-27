@@ -19,3 +19,10 @@ find_library(MAGMA_LIBRARIES NAMES magma magma_sparse
 
 find_package_handle_standard_args(MAGMA DEFAULT_MSG MAGMA_INCLUDE_DIR MAGMA_LIBRARIES)
 mark_as_advanced(MAGMA_FOUND MAGMA_INCLUDE_DIR MAGMA_LIBRARIES)
+
+if(MAGMA_FOUND AND NOT TARGET magma::magma)
+  add_library(magma::magma INTERFACE IMPORTED)
+  set_target_properties(magma::magma PROPERTIES 
+                                     INTERFACE_INCLUDE_DIRECTORIES "${MAGMA_INCLUDE_DIR}"
+                                     INTERFACE_LINK_LIBRARIES "${MAGMA_LIBRARIES}")
+endif()
