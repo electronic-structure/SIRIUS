@@ -17,6 +17,8 @@
   * [Additional options](#additional-options)
   * [Archlinux](#archlinux)
   * [Installation on Piz Daint](#installation-on-piz-daint)
+* [Accelerating DFT codes](#accelerating-dft-codes)
+  * [Quantum ESPRESSO](#quantum-espresso)
 * [Examples](#examples)
 
 ## Introduction
@@ -24,6 +26,19 @@ SIRIUS is a domain specific library for electronic structure calculations. It im
 and full potential linearized augmented plane wave (FP-LAPW) methods and is designed for GPU acceleration of popular community
 codes such as Exciting, Elk and Quantum ESPRESSO. SIRIUS is written in C++11 with MPI, OpenMP and CUDA/ROCm programming models.
 SIRIUS is organised as a collection of classes that abstract away the different building blocks of DFT self-consistency cycle.
+
+The following functionality is currently implemented in SIRIUS:
+ * (PP-PW) Norm-conserving, ultrasoft and PAW pseudopotentials
+ * (PP-PW) Spin-orbit coupling
+ * (PP-PW) Stress tensor
+ * (PP-PW, FP-LAPW) Atomic forces
+ * (PP-PW, FP-LAPW) Collinear and non-collinear magnetism
+ * (FP-LAPW) APW and LAPW basis sets with arbitray number of local orbitals
+ * (FP-LAPW) ZORA and IORA approximations for valence states; full relativistic Dirac equation for core states
+ * Python frontend
+ * Symmetrization of lattice-periodic functions and on-site matrices
+ * Generation of irreducible k-meshes
+
 
 ## Installation
 SIRIUS has a hard dependency on the following libraries: MPI, BLAS, LAPACK, [GSL](https://www.gnu.org/software/gsl/),
@@ -215,5 +230,11 @@ specific details.
 
 For the SIRIUS enabled version of QE use `eb QuantumESPRESSO-6.4-rc3-sirius-CrayIntel-19.10-cuda-10.1.eb -r`.
 
+## Accelerating DFT codes
+
+### Quantum ESPRESSO
+[Quantum ESPRESSO](https://www.quantum-espresso.org/) is a popular open source suite of computer codes for
+electronic-structure calculations and materials modeling at the nanoscale. It is based on DFT, plane waves, and 
+pseudopotentials.
 
 ## Examples
