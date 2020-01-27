@@ -23,7 +23,7 @@ if(CREATE_PYTHON_MODULE)
   pybind11_add_module(${libname} py_sirius.cpp)
 
   add_dependencies(${libname} sirius)
-  target_include_directories(${libname} PRIVATE ${MPI4PY_INCLUDE_DIR})
+  target_link_libraries(${libname} PRIVATE mpi4py::mpi4py)
   if(USE_MKL)
     # workaround for `Intel MKL FATAL ERROR: Cannot load libmkl_avx2.so or libmkl_def.so.`
     target_link_libraries(${libname} PRIVATE ${MKL_DEF_LIBRARY})

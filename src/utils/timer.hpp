@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file timer.hpp
@@ -78,18 +78,10 @@ class timer
     bool active_{false};
 
     /// List of child timers that we called inside another timer.
-    static std::vector<std::string>& stack()
-    {
-        static std::vector<std::string> stack_;
-        return stack_;
-    }
+    static std::vector<std::string>& stack();
 
     /// Mapping between timer label and timer counters.
-    static std::map<std::string, timer_stats_t>& timer_values()
-    {
-        static std::map<std::string, timer_stats_t> timer_values_;
-        return timer_values_;
-    }
+    static std::map<std::string, timer_stats_t>& timer_values();
 
     /// Return a reference to values of a given timer.
     static timer_stats_t& timer_values(std::string label__)
@@ -100,22 +92,7 @@ class timer
     /// Mapping between parent timer and child timers.
     /** This map is needed to build a call tree of timers with the information about "self" time
         and time spent in calling other timers. */
-    static std::map<std::string, std::map<std::string, double>>& timer_values_ex()
-    {
-        /* the following map is stored:
-
-           parent_timer_label1  |--- child_timer_label1, time1a
-                                |--- child timer_label2, time2
-                                |--- child_timer_label3, time3
-
-           parent_timer_label2  |--- child_timer_label1, time1b
-                                |--- child_timer_label4, time4
-
-           etc.
-        */
-        static std::map<std::string, std::map<std::string, double>> timer_values_ex_;
-        return timer_values_ex_;
-    }
+    static std::map<std::string, std::map<std::string, double>>& timer_values_ex();
 
     /// Keep track of the starting time.
     static time_point_t& global_starting_time();
