@@ -210,6 +210,11 @@ add_custom_command(
 
 add_custom_target(generate_version_hpp DEPENDS ${version_hpp_path})
 
+file(STRINGS "${PROJECT_SOURCE_DIR}/src/options.json" SIRIUS_RUNTIME_OPTIONS)
+configure_file("${PROJECT_SOURCE_DIR}/src/runtime_options_json.hpp.in"
+               "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
+               @ONLY)
+
 # sirius library
 add_subdirectory(src)
 
