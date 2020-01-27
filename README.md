@@ -254,5 +254,26 @@ CALL vloc_of_g( rgrid(nt)%mesh, msh(nt), rgrid(nt)%rab, rgrid(nt)%r, &
 ENDIF ! sirius
 
 ```
+To compile QE+SIRIUS you need to do this basic steps:
+ * Compile and install SIRIUS
+ * Configure QE+SIRIUS
+ * `make pw`
+
+The behaviour of QE configuration script changes from time to time, so you have to figure out how it works on your
+system. As a starting point, try this set of commands:
+```bash
+git clone --recursive -b qe_sirius https://github.com/electronic-structure/q-e-sirius.git
+cd ./q-e-sirius
+CC=mpicc FC=mpif90 LIBS="-L$/path/to/sirius/lib -Wl,-rpath,/path/to/sirius/lib -lsirius -lpthread -fopenmp" LDFLAGS=$LIBS LD_LIBS=$LIBS F90FLAGS="-I/path/to/sirius/include -I$MKLROOT/include/fftw" ./configure --enable-openmp --enable-parallel --with-scalapack
+
+# sometimes this is also needed if BLAS/LAPACK provider is not recognized properly
+sed -i -e "/LAPACK_LIBS    =/d" make.inc
+sed -i -e "s/LAPACK_LIBS_SWITCH = internal/LAPACK_LIBS_SWITCH = external/" make.inc
+
+make -j pw
+```
+This should hopefully produce the `pw.x` binary in `PW/src` folder. If this doesn't work, try to configure QE as you 
+usually do and then modify `make.inc` file by hand to add `-I/path/to/sirius/include` directory to the Fortran compiler
+options and `-L$/path/to/sirius/lib -Wl,-rpath,/path/to/sirius/lib -lsirius` to the linker flags.
 
 ## Examples
