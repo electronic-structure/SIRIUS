@@ -22,12 +22,14 @@
  *  \brief Definitions.
  *
  */
-
+#include <vector>
+#include <map>
+#include <string>
 #include "utils/timer.hpp"
 
 namespace utils {
 
-time_point_t& utils::timer::global_starting_time()
+time_point_t& timer::global_starting_time()
 {
     static bool initialized{false};
     static time_point_t t_;
@@ -39,13 +41,46 @@ time_point_t& utils::timer::global_starting_time()
     return t_;
 }
 
-utils::timer::timer(timer&& src__)
+timer::timer(timer&& src__)
 {
     this->label_         = src__.label_;
     this->starting_time_ = src__.starting_time_;
     this->active_        = src__.active_;
     src__.active_        = false;
 }
+
+
+std::vector<std::string>& timer::stack()
+{
+  static std::vector<std::string> stack_;
+  return stack_;
+}
+
+std::map<std::string, timer_stats_t>& timer::timer_values()
+{
+  static std::map<std::string, timer_stats_t> timer_values_;
+  return timer_values_;
+}
+
+std::map<std::string, std::map<std::string, double>>& timer::timer_values_ex()
+{
+  /* the following map is stored:
+
+     parent_timer_label1  |--- child_timer_label1, time1a
+     |--- child timer_label2, time2
+     |--- child_timer_label3, time3
+
+     parent_timer_label2  |--- child_timer_label1, time1b
+     |--- child_timer_label4, time4
+
+     etc.
+  */
+  static std::map<std::string, std::map<std::string, double>> timer_values_ex_;
+  return timer_values_ex_;
+}
+
+
+
 
 double utils::timer::stop()
 {
