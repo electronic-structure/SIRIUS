@@ -235,6 +235,24 @@ For the SIRIUS enabled version of QE use `eb QuantumESPRESSO-6.4-rc3-sirius-Cray
 ### Quantum ESPRESSO
 [Quantum ESPRESSO](https://www.quantum-espresso.org/) is a popular open source suite of computer codes for
 electronic-structure calculations and materials modeling at the nanoscale. It is based on DFT, plane waves, and 
-pseudopotentials.
+pseudopotentials. We maintain the version of Quantum ESPRESSO with SIRIUS bindings which is available 
+[here](https://github.com/electronic-structure/q-e-sirius). This version is frequently synchronised with the
+`develop` branch of the official [QE repository](https://gitlab.com/QEF/q-e). A typical example of using SIRIUS
+inside QE looks like this:
+```Fortran
+IF (use_sirius.AND.use_sirius_vloc) THEN
+  ALLOCATE(tmp(ngm))
+  CALL sirius_get_pw_coeffs_real(sctx, atom_type(nt)%label, string("vloc"), tmp(1), ngm, mill(1, 1), intra_bgrp_comm)
+  DO i = 1, ngm
+    vloc(igtongl(i), nt) = tmp(i) * 2 ! convert to Ry
+  ENDDO
+  DEALLOCATE(tmp)
+ELSE
+CALL vloc_of_g( rgrid(nt)%mesh, msh(nt), rgrid(nt)%rab, rgrid(nt)%r, &
+                upf(nt)%vloc(1), upf(nt)%zp, tpiba2, ngl, gl, omega, &
+                vloc(1,nt) )
+ENDIF ! sirius
+
+```
 
 ## Examples
