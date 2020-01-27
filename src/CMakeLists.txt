@@ -129,8 +129,6 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:__HAVE_VDWXC_MPI>
 )
 
-# add dependency on auto-generated headers
-add_dependencies(sirius generate_version_hpp)
 set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(CREATE_FORTRAN_BINDINGS)
@@ -145,5 +143,6 @@ install(TARGETS sirius
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/src" 
         DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius" 
         FILES_MATCHING REGEX ".*(hpp|h)$")
-install(FILES ${PROJECT_BINARY_DIR}/src/version.hpp 
+install(FILES "${PROJECT_BINARY_DIR}/src/version.hpp" 
+              "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
         DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")

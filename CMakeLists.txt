@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(SIRIUS)
+project(SIRIUS VERSION 6.4.4)
 
 # set language and standard
 enable_language(CXX Fortran)
@@ -123,7 +123,7 @@ if(USE_MKL)
   set(LINALG_LIB "mkl::mkl")
 elseif(USE_CRAY_LIBSCI)
   find_package(CRAY_LIBSCI REQUIRED)
-  set(LINALG_TGT "${CRAY_LIBSCI_LIBRARIES}")
+  set(LINALG_LIB "${CRAY_LIBSCI_LIBRARIES}")
 else()
   find_package(LAPACK REQUIRED)
   set(LINALG_LIB "${LAPACK_LIBRARIES}")
@@ -189,28 +189,24 @@ if (USE_CUDA AND NOT TARGET cuda::cudalibs)
                                        INTERFACE_LINK_LIBRARIES "${CUDA_LIBRARIES};${CUDA_CUBLAS_LIBRARIES};${CUDA_CUFFT_LIBRARIES};${CUDA_cusolver_LIBRARY}")
 endif()
 
-# configure generation of the version header
-add_custom_command(
-  OUTPUT _always_rebuild
-  COMMAND true
-  )
+# generate version header
+string(TIMESTAMP SIRIUS_TIMESTAMP "%Y-%m-%d %H:%M:%S")
+if(EXISTS "${PROJECT_SOURCE_DIR}/.git")
+  execute_process(COMMAND git rev-parse HEAD
+                  OUTPUT_VARIABLE SIRIUS_SHA
+                  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+                  ERROR_QUIET
+                  OUTPUT_STRIP_TRAILING_WHITESPACE)
+else()
+  set(SIRIUS_SHA "release archive")
+endif()
+configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" 
+               "${PROJECT_BINARY_DIR}/src/version.hpp"
+               @ONLY)
 
-# handle the generation of the version.hpp file
-add_custom_command(
-  OUTPUT version.hpp-test
-  DEPENDS _always_rebuild
-  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/make_version_hpp.py ${CMAKE_SOURCE_DIR}/VERSION > version.hpp-test
-  )
-set(version_hpp_path src/version.hpp)
-add_custom_command(
-  OUTPUT ${version_hpp_path}
-  DEPENDS version.hpp-test
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different version.hpp-test ${version_hpp_path}
-  )
-
-add_custom_target(generate_version_hpp DEPENDS ${version_hpp_path})
-
-file(STRINGS "${PROJECT_SOURCE_DIR}/src/options.json" SIRIUS_RUNTIME_OPTIONS)
+# generate runtime options
+file(STRINGS "${PROJECT_SOURCE_DIR}/src/options.json" 
+              SIRIUS_RUNTIME_OPTIONS NEWLINE_CONSUME)
 configure_file("${PROJECT_SOURCE_DIR}/src/runtime_options_json.hpp.in"
                "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
                @ONLY)
