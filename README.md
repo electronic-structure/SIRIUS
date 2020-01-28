@@ -268,8 +268,8 @@ ENDIF ! sirius
 
 ```
 To compile QE+SIRIUS you need to go through this basic steps:
- * Compile and install SIRIUS
- * Configure QE+SIRIUS
+ * compile and install SIRIUS
+ * configure QE+SIRIUS
  * `make pw`
 
 The behaviour of QE configuration script changes from time to time, so you have to figure out how it works on your
