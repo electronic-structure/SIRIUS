@@ -243,9 +243,10 @@ Please refer to [SIRIUS wiki page](https://github.com/electronic-structure/SIRIU
 
 ### Quantum ESPRESSO
 [Quantum ESPRESSO](https://www.quantum-espresso.org/) is a popular open source suite of computer codes for
-electronic-structure calculations and materials modeling at the nanoscale. It is based on DFT, plane waves, and 
-pseudopotentials. We maintain the version of Quantum ESPRESSO with SIRIUS bindings which is available 
-[here](https://github.com/electronic-structure/q-e-sirius). This version is frequently synchronised with the
+electronic-structure calculations and materials modeling at the nanoscale. It is based on DFT, plane waves, and
+pseudopotentials. We maintain the GPU-accelerated version of 
+[Quantum ESPRESSO with SIRIUS bindings](https://github.com/electronic-structure/q-e-sirius).
+This version is frequently synchronised with the
 `develop` branch of the official [QE repository](https://gitlab.com/QEF/q-e). A typical example of using SIRIUS
 inside QE looks like this:
 ```Fortran
