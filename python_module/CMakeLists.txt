@@ -29,20 +29,28 @@ if(CREATE_PYTHON_MODULE)
     target_link_libraries(${libname} PRIVATE ${MKL_DEF_LIBRARY})
   endif()
 
+  set(PYTHON_INSTALL_SITE_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages)
+
+  # set relative RPATH
+  if(isSystemDir STREQUAL "-1")
+    file(RELATIVE_PATH relDir ${PYTHON_INSTALL_SITE_DIR}/sirius
+      ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+    set_target_properties(${libname} PROPERTIES INSTALL_RPATH "${basePoint};${basePoint}/${relDir}")
+  endif()
+
   target_link_libraries(${libname} PRIVATE sirius)
   # collect python files in module dir
   # install to cmake prefix
-
   if(NOT PYTHON2)
     install(DIRECTORY sirius
       DESTINATION
-      ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/
+      ${PYTHON_INSTALL_SITE_DIR}
       FILES_MATCHING REGEX
       ".*py"
       )
     install(TARGETS ${libname}
       LIBRARY
-      DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
+      DESTINATION ${PYTHON_INSTALL_SITE_DIR}/sirius)
     install(
       PROGRAMS
       ${CMAKE_SOURCE_DIR}/python_module/apps/neugebaur_cg.py
@@ -55,12 +63,12 @@ if(CREATE_PYTHON_MODULE)
     # minimal support for Python 2.7, full functionality is provided for Python >3.5 only
     install(DIRECTORY sirius_minimal/
       DESTINATION
-      ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius
+      ${PYTHON_INSTALL_SITE_DIR}sirius
       FILES_MATCHING REGEX
       ".*py")
     install(TARGETS ${libname}
       LIBRARY
-      DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
+      DESTINATION ${PYTHON_INSTALL_SITE_DIR}/sirius)
   endif()
 
 endif(CREATE_PYTHON_MODULE)
