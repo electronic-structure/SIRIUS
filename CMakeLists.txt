@@ -189,9 +189,12 @@ if (USE_CUDA AND NOT TARGET cuda::cudalibs)
                                        INTERFACE_LINK_LIBRARIES "${CUDA_LIBRARIES};${CUDA_CUBLAS_LIBRARIES};${CUDA_CUFFT_LIBRARIES};${CUDA_cusolver_LIBRARY}")
 endif()
 
+# check if git command exists
+find_program(GIT_EXE NAMES git)
+
 # generate version header
 string(TIMESTAMP SIRIUS_TIMESTAMP "%Y-%m-%d %H:%M:%S")
-if(EXISTS "${PROJECT_SOURCE_DIR}/.git")
+if(DEFINED GIT_EXE AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
   execute_process(COMMAND git rev-parse HEAD
                   OUTPUT_VARIABLE SIRIUS_SHA
                   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -204,9 +207,9 @@ if(EXISTS "${PROJECT_SOURCE_DIR}/.git")
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
 else()
   set(SIRIUS_GIT_BRANCH "release v${SIRIUS_VERSION}")
-  set(SIRIUS_SHA "n/a")
+  set(SIRIUS_SHA "https://api.github.com/repos/electronic-structure/SIRIUS/git/ref/tags/v${SIRIUS_VERSION}")
 endif()
-configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in" 
+configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in"
                "${PROJECT_BINARY_DIR}/src/version.hpp"
                @ONLY)
 
