@@ -236,12 +236,8 @@ tests you need to specify `-DBUILD_TESTS=On`.
 Archlinux users can find SIRIUS in the [AUR](https://aur.archlinux.org/packages/sirius-git/).
 
 ### Installation on Piz Daint
-Please refer to [SIRIUS wiki page](https://github.com/electronic-structure/SIRIUS/wiki/Build-on-Piz-Daint) for
-specific details.
-
-
-
-For the SIRIUS enabled version of QE use `eb QuantumESPRESSO-6.4-rc3-sirius-CrayIntel-19.10-cuda-10.1.eb -r`.
+Please refer to [SIRIUS wiki page](https://github.com/electronic-structure/SIRIUS/wiki/Build-on-Piz-Daint) and 
+[CSCS User portal](https://user.cscs.ch/computing/applications/sirius/) for detailed instructions.
 
 ## Accelerating DFT codes
 
@@ -277,7 +273,9 @@ system. As a starting point, try this set of commands:
 ```bash
 git clone --recursive -b qe_sirius https://github.com/electronic-structure/q-e-sirius.git
 cd ./q-e-sirius
-CC=mpicc FC=mpif90 LIBS="-L$/path/to/sirius/lib -Wl,-rpath,/path/to/sirius/lib -lsirius -lpthread -fopenmp" LDFLAGS=$LIBS LD_LIBS=$LIBS F90FLAGS="-I/path/to/sirius/include -I$MKLROOT/include/fftw" ./configure --enable-openmp --enable-parallel --with-scalapack
+CC=mpicc FC=mpif90 LIBS="-L$/path/to/sirius/lib -Wl,-rpath,/path/to/sirius/lib -lsirius -lpthread -fopenmp" \
+  LDFLAGS=$LIBS LD_LIBS=$LIBS F90FLAGS="-I/path/to/sirius/include -I$MKLROOT/include/fftw" \
+  ./configure --enable-openmp --enable-parallel --with-scalapack
 
 # sometimes this is also needed if BLAS/LAPACK provider is not recognized properly
 sed -i -e "/LAPACK_LIBS    =/d" make.inc
