@@ -3324,7 +3324,7 @@ end subroutine sirius_get_total_magnetization
 !> @brief Get the total number of kpoints
 !> @param [in] handler Kpoint set handler
 !> @param [out] num_kpoints number of kpoints in the set
-!> @param [out] error_code error_code parameter
+!> @param [out] error_code Error code.
 subroutine sirius_get_num_kpoints(handler,num_kpoints,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -3348,9 +3348,9 @@ call sirius_get_num_kpoints_aux(handler,num_kpoints,error_code_ptr)
 end subroutine sirius_get_num_kpoints
 
 !> @brief Get the number of computed bands
-!> @param [in] handler ground state handler
-!> @param [out] num_kpoints number of kpoints in the set
-!> @param [out] error_code error_code parameter
+!> @param [in] handler Simulation context handler.
+!> @param [out] num_kpoints Number of kpoints in the set
+!> @param [out] error_code Error code.
 subroutine sirius_get_num_bands(handler,num_kpoints,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -3374,21 +3374,21 @@ call sirius_get_num_bands_aux(handler,num_kpoints,error_code_ptr)
 end subroutine sirius_get_num_bands
 
 !> @brief Get the number of spin components
-!> @param [in] handler ground state handler
-!> @param [out] num_kpoints number of kpoints in the spin_components
-!> @param [out] error_code error_code parameter
-subroutine sirius_get_num_spin_components(handler,num_kpoints,error_code)
+!> @param [in] handler Simulation context handler
+!> @param [out] num_spin_components Number of spin components.
+!> @param [out] error_code Error code.
+subroutine sirius_get_num_spin_components(handler,num_spin_components,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: num_kpoints
+integer(C_INT), intent(out) :: num_spin_components
 integer(C_INT), optional, target, intent(out) :: error_code
 type(C_PTR) :: error_code_ptr
 interface
-subroutine sirius_get_num_spin_components_aux(handler,num_kpoints,error_code)&
+subroutine sirius_get_num_spin_components_aux(handler,num_spin_components,error_code)&
 &bind(C, name="sirius_get_num_spin_components")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: num_kpoints
+integer(C_INT), intent(out) :: num_spin_components
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -3396,35 +3396,94 @@ end interface
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) error_code_ptr = C_LOC(error_code)
 
-call sirius_get_num_spin_components_aux(handler,num_kpoints,error_code_ptr)
+call sirius_get_num_spin_components_aux(handler,num_spin_components,error_code_ptr)
 end subroutine sirius_get_num_spin_components
 
 !> @brief Get the kpoint properties
 !> @param [in] handler Kpoint set handler
-!> @param [in] ik index of the kpoint
-!> @param [out] weight weight of the kpoint
-!> @param [out] coordinates coordinates of the kpoint
-subroutine sirius_get_kpoint_properties(handler,ik,weight,coordinates)
+!> @param [in] ik Index of the kpoint
+!> @param [out] weight Weight of the kpoint
+!> @param [out] coordinates Coordinates of the kpoint
+!> @param [out] error_code Error code.
+subroutine sirius_get_kpoint_properties(handler,ik,weight,coordinates,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ik
 real(C_DOUBLE), intent(out) :: weight
 real(C_DOUBLE), optional, target, intent(out) :: coordinates
+integer(C_INT), optional, target, intent(out) :: error_code
 type(C_PTR) :: coordinates_ptr
+type(C_PTR) :: error_code_ptr
 interface
-subroutine sirius_get_kpoint_properties_aux(handler,ik,weight,coordinates)&
+subroutine sirius_get_kpoint_properties_aux(handler,ik,weight,coordinates,error_code)&
 &bind(C, name="sirius_get_kpoint_properties")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ik
 real(C_DOUBLE), intent(out) :: weight
 type(C_PTR), value :: coordinates
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 
 coordinates_ptr = C_NULL_PTR
 if (present(coordinates)) coordinates_ptr = C_LOC(coordinates)
 
-call sirius_get_kpoint_properties_aux(handler,ik,weight,coordinates_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
+call sirius_get_kpoint_properties_aux(handler,ik,weight,coordinates_ptr,error_code_ptr)
 end subroutine sirius_get_kpoint_properties
+
+!> @brief Get maximum APW basis size across all atoms.
+!> @param [in] handler Simulation context handler.
+!> @param [out] max_mt_aw_basis_size Maximum APW basis size.
+!> @param [out] error_code Error code.
+subroutine sirius_get_max_mt_aw_basis_size(handler,max_mt_aw_basis_size,error_code)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: max_mt_aw_basis_size
+integer(C_INT), optional, target, intent(out) :: error_code
+type(C_PTR) :: error_code_ptr
+interface
+subroutine sirius_get_max_mt_aw_basis_size_aux(handler,max_mt_aw_basis_size,error_code)&
+&bind(C, name="sirius_get_max_mt_aw_basis_size")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: max_mt_aw_basis_size
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
+call sirius_get_max_mt_aw_basis_size_aux(handler,max_mt_aw_basis_size,error_code_ptr)
+end subroutine sirius_get_max_mt_aw_basis_size
+
+!> @brief Get matching coefficients for atom.
+!> @param [in] handler K-point set handler.
+!> @param [in] ik Index of k-point.
+!> @param [out] error_code Error code.
+subroutine sirius_get_matching_coefficients(handler,ik,error_code)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), optional, target, intent(out) :: error_code
+type(C_PTR) :: error_code_ptr
+interface
+subroutine sirius_get_matching_coefficients_aux(handler,ik,error_code)&
+&bind(C, name="sirius_get_matching_coefficients")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ik
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
+call sirius_get_matching_coefficients_aux(handler,ik,error_code_ptr)
+end subroutine sirius_get_matching_coefficients
 

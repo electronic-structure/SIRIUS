@@ -27,6 +27,61 @@
 #include "sirius.h"
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
+#include "error_codes.hpp"
+
+static inline void sirius_exit(int error_code__, std::string msg__ = "")
+{
+    switch (error_code__) {
+        case SIRIUS_ERROR_UNKNOWN: {
+            printf("Unknown error\n");
+            break;
+        }
+        case SIRIUS_ERROR_RUNTIME: {
+            printf("Run-time error\n");
+            break;
+        }
+        default: {
+            printf("Unknown error code: %i\n", error_code__);
+            break;
+        }
+    }
+
+    if (msg__.size()) {
+        printf("%s\n", msg__.c_str());
+    }
+    if (!Communicator::is_finalized()) {
+        Communicator::world().abort(error_code__);
+    }
+    std::exit(error_code__);
+}
+
+
+#define CALL_SIRIUS(X)                                  \
+{                                                       \
+    try {                                               \
+        X                                               \
+        if (error_code__) {                             \
+            *error_code__ = SIRIUS_SUCCESS;             \
+            return;                                     \
+        }                                               \
+    }                                                   \
+    catch (std::runtime_error const& e) {               \
+        if (error_code__) {                             \
+            *error_code__ = SIRIUS_ERROR_RUNTIME;       \
+            return;                                     \
+       } else {                                         \
+           sirius_exit(SIRIUS_ERROR_RUNTIME, e.what()); \
+       }                                                \
+    }                                                   \
+    catch (...) {                                       \
+        if (error_code__) {                             \
+            *error_code__ = SIRIUS_ERROR_UNKNOWN;       \
+            return;                                     \
+        } else {                                        \
+            sirius_exit(SIRIUS_ERROR_UNKNOWN);          \
+        }                                               \
+    }                                                   \
+}
 
 // TODO: try..catch in all calls to SIRIUS, return error codes to fortran as last optional argument
 
@@ -3358,93 +3413,113 @@ void sirius_get_total_magnetization(void* const* handler__,
 /* @fortran begin function void sirius_get_num_kpoints         Get the total number of kpoints
    @fortran argument in   required void* handler               Kpoint set handler
    @fortran argument out  required int   num_kpoints           number of kpoints in the set
-   @fortran argument out  optional int   error_code            error_code parameter
+   @fortran argument out  optional int   error_code            Error code.
    @fortran end */
 
-void sirius_get_num_kpoints(void* const* ks_handler__,
-                            int *num_kpoints,
-                            int *error_code)
+void sirius_get_num_kpoints(void* const* handler__,
+                            int *num_kpoints__,
+                            int *error_code__)
 {
-    try {
-        auto& ks = get_ks(ks_handler__);
-        *num_kpoints = ks.num_kpoints();
-    } catch (...) {
-        if (error_code) {
-            *error_code = 1;
-        }
-    }
+    CALL_SIRIUS(
+        auto& ks = get_ks(handler__);
+        *num_kpoints__ = ks.num_kpoints();
+    )
 }
 
 /* @fortran begin function void sirius_get_num_bands         Get the number of computed bands
-   @fortran argument in   required void* handler             ground state handler
-   @fortran argument out  required int   num_kpoints         number of kpoints in the set
-   @fortran argument out  optional int   error_code          error_code parameter
+   @fortran argument in   required void* handler             Simulation context handler.
+   @fortran argument out  required int   num_kpoints         Number of kpoints in the set
+   @fortran argument out  optional int   error_code          Error code.
    @fortran end */
-
-void sirius_get_num_bands(void* const* ctx_handler__,
-                          int *num_bands,
-                          int *error_code)
+void sirius_get_num_bands(void* const* handler__,
+                          int *num_bands__,
+                          int *error_code__)
 {
-    try {
-        auto& sim_ctx = get_sim_ctx(ctx_handler__);
-        *num_bands = sim_ctx.num_bands();
-    } catch (...) {
-        if (error_code) {
-            *error_code = 1;
-        }
-    }
+    CALL_SIRIUS(
+        auto& sim_ctx = get_sim_ctx(handler__);
+        *num_bands__ = sim_ctx.num_bands();
+    )
 }
 
 /* @fortran begin function void sirius_get_num_spin_components        Get the number of spin components
-   @fortran argument in   required void* handler                      ground state handler
-   @fortran argument out  required int   num_kpoints                  number of kpoints in the spin_components
-   @fortran argument out  optional int   error_code                   error_code parameter
+   @fortran argument in   required void* handler                      Simulation context handler
+   @fortran argument out  required int   num_spin_components          Number of spin components.
+   @fortran argument out  optional int   error_code                   Error code.
    @fortran end */
-
-void sirius_get_num_spin_components(void* const* ctx_handler__,
-                                    int *num_spin_components,
-                                    int *error_code)
+void sirius_get_num_spin_components(void* const* handler__,
+                                    int *num_spin_components__,
+                                    int *error_code__)
 {
-    try {
-        auto& sim_ctx = get_sim_ctx(ctx_handler__);
+    CALL_SIRIUS(
+        auto& sim_ctx = get_sim_ctx(handler__);
         if (sim_ctx.num_mag_dims() == 0) {
-            *num_spin_components = 1;
+            *num_spin_components__ = 1;
         } else {
-            *num_spin_components = 2;
+            *num_spin_components__ = 2;
         }
-    } catch(...) {
-        if (error_code)
-            *error_code = 1;
-    };
+    )
 }
 
 /* @fortran begin function void sirius_get_kpoint_properties      Get the kpoint properties
    @fortran argument in  required void*    handler                Kpoint set handler
-   @fortran argument in  required int      ik                     index of the kpoint
-   @fortran argument out required double   weight                 weight of the kpoint
-   @fortran argument out optional double   coordinates            coordinates of the kpoint
+   @fortran argument in  required int      ik                     Index of the kpoint
+   @fortran argument out required double   weight                 Weight of the kpoint
+   @fortran argument out optional double   coordinates            Coordinates of the kpoint
+   @fortran argument out optional int      error_code             Error code.
    @fortran end */
-
-void sirius_get_kpoint_properties(void* const* ks_handler__,
-                                  int const*ik,
-                                  double *weight,
-                                  double *coordinates,
-                                  int *error_code)
+void sirius_get_kpoint_properties(void* const* handler__,
+                                  int const* ik__,  // TODO assume Fortran index (starting from 1)
+                                  double *weight__,
+                                  double *coordinates__,
+                                  int *error_code__)
 {
-    try {
-        auto& ks = get_ks(ks_handler__);
-        *weight = ks[*ik]->weight();
+    CALL_SIRIUS(
+        auto& ks = get_ks(handler__);
+        int ik = *ik__;
+        *weight__ = ks[ik]->weight();
 
-        if (coordinates) {
-            coordinates[0] = ks[*ik]->vk()[0];
-            coordinates[1] = ks[*ik]->vk()[1];
-            coordinates[2] = ks[*ik]->vk()[2];
+        if (coordinates__) {
+            coordinates__[0] = ks[ik]->vk()[0];
+            coordinates__[1] = ks[ik]->vk()[1];
+            coordinates__[2] = ks[ik]->vk()[2];
         }
-    } catch(...) {
-        if(error_code) {
-            *error_code = 1;
-        }
-    }
+    )
 }
+
+/* @fortran begin function void sirius_get_max_mt_aw_basis_size   Get maximum APW basis size across all atoms.
+   @fortran argument in  required void*    handler                Simulation context handler.
+   @fortran argument out required int      max_mt_aw_basis_size   Maximum APW basis size.
+   @fortran argument out optional int      error_code             Error code.
+   @fortran end */
+void sirius_get_max_mt_aw_basis_size(void* const* handler__, int* max_mt_aw_basis_size__, int* error_code__)
+{
+    CALL_SIRIUS(
+        auto& sim_ctx = get_sim_ctx(handler__);
+        *max_mt_aw_basis_size__ = sim_ctx.unit_cell().max_mt_aw_basis_size();
+    )
+}
+
+/* @fortran begin function void sirius_get_matching_coefficients  Get matching coefficients for atom.
+   @fortran argument in  required void*    handler                K-point set handler.
+   @fortran argument in  required int      ik                     Index of k-point.
+   @fortran argument out optional int      error_code             Error code.
+   @fortran end */
+void sirius_get_matching_coefficients(void* const* handler__, int const* ik__, int* error_code__)
+{
+    CALL_SIRIUS(
+        auto& ks = get_ks(handler__);
+        auto& sctx = ks.ctx();
+
+        auto& uc = sctx.unit_cell();
+        auto& kp = *ks[*ik__ - 1];
+        auto& gk = kp.gkvec();
+
+        std::vector<int> igk(gk.num_gvec());
+        std::iota(igk.begin(), igk.end(), 0);
+
+        sirius::Matching_coefficients alm(uc, sctx.lmax_apw(), gk.num_gvec(), igk, gk);
+    )
+}
+
 
 } // extern "C"
