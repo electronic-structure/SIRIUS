@@ -3461,22 +3461,26 @@ if (present(error_code)) error_code_ptr = C_LOC(error_code)
 call sirius_get_max_mt_aw_basis_size_aux(handler,max_mt_aw_basis_size,error_code_ptr)
 end subroutine sirius_get_max_mt_aw_basis_size
 
-!> @brief Get matching coefficients for atom.
+!> @brief Get matching coefficients for all atoms.
+!> @details Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution.
 !> @param [in] handler K-point set handler.
 !> @param [in] ik Index of k-point.
+!> @param [out] alm Matching coefficients.
 !> @param [out] error_code Error code.
-subroutine sirius_get_matching_coefficients(handler,ik,error_code)
+subroutine sirius_get_matching_coefficients(handler,ik,alm,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ik
+complex(C_DOUBLE), intent(out) :: alm
 integer(C_INT), optional, target, intent(out) :: error_code
 type(C_PTR) :: error_code_ptr
 interface
-subroutine sirius_get_matching_coefficients_aux(handler,ik,error_code)&
+subroutine sirius_get_matching_coefficients_aux(handler,ik,alm,error_code)&
 &bind(C, name="sirius_get_matching_coefficients")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ik
+complex(C_DOUBLE), intent(out) :: alm
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -3484,6 +3488,6 @@ end interface
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) error_code_ptr = C_LOC(error_code)
 
-call sirius_get_matching_coefficients_aux(handler,ik,error_code_ptr)
+call sirius_get_matching_coefficients_aux(handler,ik,alm,error_code_ptr)
 end subroutine sirius_get_matching_coefficients
 

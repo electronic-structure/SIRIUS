@@ -55,32 +55,32 @@ static inline void sirius_exit(int error_code__, std::string msg__ = "")
     std::exit(error_code__);
 }
 
-
-#define CALL_SIRIUS(X)                                  \
-{                                                       \
-    try {                                               \
-        X                                               \
-        if (error_code__) {                             \
-            *error_code__ = SIRIUS_SUCCESS;             \
-            return;                                     \
-        }                                               \
-    }                                                   \
-    catch (std::runtime_error const& e) {               \
-        if (error_code__) {                             \
-            *error_code__ = SIRIUS_ERROR_RUNTIME;       \
-            return;                                     \
-       } else {                                         \
-           sirius_exit(SIRIUS_ERROR_RUNTIME, e.what()); \
-       }                                                \
-    }                                                   \
-    catch (...) {                                       \
-        if (error_code__) {                             \
-            *error_code__ = SIRIUS_ERROR_UNKNOWN;       \
-            return;                                     \
-        } else {                                        \
-            sirius_exit(SIRIUS_ERROR_UNKNOWN);          \
-        }                                               \
-    }                                                   \
+template <typename F>
+static void call_sirius(F&& f__, int* error_code__)
+{
+    try {
+        f__();
+        if (error_code__) {
+            *error_code__ = SIRIUS_SUCCESS;
+            return;
+        }
+    }
+    catch (std::runtime_error const& e) {
+        if (error_code__) {
+            *error_code__ = SIRIUS_ERROR_RUNTIME;
+            return;
+       } else {
+           sirius_exit(SIRIUS_ERROR_RUNTIME, e.what());
+       }
+    }
+    catch (...) {
+        if (error_code__) {
+            *error_code__ = SIRIUS_ERROR_UNKNOWN;
+            return;
+        } else {
+            sirius_exit(SIRIUS_ERROR_UNKNOWN);
+        }
+    }
 }
 
 // TODO: try..catch in all calls to SIRIUS, return error codes to fortran as last optional argument
@@ -3420,10 +3420,11 @@ void sirius_get_num_kpoints(void* const* handler__,
                             int *num_kpoints__,
                             int *error_code__)
 {
-    CALL_SIRIUS(
+    call_sirius([&]()
+    {
         auto& ks = get_ks(handler__);
         *num_kpoints__ = ks.num_kpoints();
-    )
+    }, error_code__);
 }
 
 /* @fortran begin function void sirius_get_num_bands         Get the number of computed bands
@@ -3435,10 +3436,11 @@ void sirius_get_num_bands(void* const* handler__,
                           int *num_bands__,
                           int *error_code__)
 {
-    CALL_SIRIUS(
+    call_sirius([&]()
+    {
         auto& sim_ctx = get_sim_ctx(handler__);
         *num_bands__ = sim_ctx.num_bands();
-    )
+    }, error_code__);
 }
 
 /* @fortran begin function void sirius_get_num_spin_components        Get the number of spin components
@@ -3450,14 +3452,15 @@ void sirius_get_num_spin_components(void* const* handler__,
                                     int *num_spin_components__,
                                     int *error_code__)
 {
-    CALL_SIRIUS(
+    call_sirius([&]()
+    {
         auto& sim_ctx = get_sim_ctx(handler__);
         if (sim_ctx.num_mag_dims() == 0) {
             *num_spin_components__ = 1;
         } else {
             *num_spin_components__ = 2;
         }
-    )
+    }, error_code__);
 }
 
 /* @fortran begin function void sirius_get_kpoint_properties      Get the kpoint properties
@@ -3473,7 +3476,8 @@ void sirius_get_kpoint_properties(void* const* handler__,
                                   double *coordinates__,
                                   int *error_code__)
 {
-    CALL_SIRIUS(
+    call_sirius([&]()
+    {
         auto& ks = get_ks(handler__);
         int ik = *ik__;
         *weight__ = ks[ik]->weight();
@@ -3483,7 +3487,7 @@ void sirius_get_kpoint_properties(void* const* handler__,
             coordinates__[1] = ks[ik]->vk()[1];
             coordinates__[2] = ks[ik]->vk()[2];
         }
-    )
+    }, error_code__);
 }
 
 /* @fortran begin function void sirius_get_max_mt_aw_basis_size   Get maximum APW basis size across all atoms.
@@ -3493,20 +3497,26 @@ void sirius_get_kpoint_properties(void* const* handler__,
    @fortran end */
 void sirius_get_max_mt_aw_basis_size(void* const* handler__, int* max_mt_aw_basis_size__, int* error_code__)
 {
-    CALL_SIRIUS(
+    call_sirius([&]()
+    {
         auto& sim_ctx = get_sim_ctx(handler__);
         *max_mt_aw_basis_size__ = sim_ctx.unit_cell().max_mt_aw_basis_size();
-    )
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_matching_coefficients  Get matching coefficients for atom.
+/* @fortran begin function void sirius_get_matching_coefficients  Get matching coefficients for all atoms.
    @fortran argument in  required void*    handler                K-point set handler.
    @fortran argument in  required int      ik                     Index of k-point.
+   @fortran argument out required complex  alm                    Matching coefficients.
    @fortran argument out optional int      error_code             Error code.
+   @fortran details
+   Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution.
    @fortran end */
-void sirius_get_matching_coefficients(void* const* handler__, int const* ik__, int* error_code__)
+void sirius_get_matching_coefficients(void* const* handler__, int const* ik__, std::complex<double>* alm__,
+                                      int* error_code__)
 {
-    CALL_SIRIUS(
+    call_sirius([&]()
+    {
         auto& ks = get_ks(handler__);
         auto& sctx = ks.ctx();
 
@@ -3517,8 +3527,13 @@ void sirius_get_matching_coefficients(void* const* handler__, int const* ik__, i
         std::vector<int> igk(gk.num_gvec());
         std::iota(igk.begin(), igk.end(), 0);
 
-        sirius::Matching_coefficients alm(uc, sctx.lmax_apw(), gk.num_gvec(), igk, gk);
-    )
+        sddk::mdarray<std::complex<double>, 3> alm(alm__, gk.num_gvec(), uc.max_mt_aw_basis_size(), uc.num_atoms());
+        sirius::Matching_coefficients Alm(uc, sctx.lmax_apw(), gk.num_gvec(), igk, gk);
+        for (int ia = 0; ia < uc.num_atoms(); ia++) {
+            sddk::mdarray<std::complex<double>, 2> alm_tmp(&alm(0, 0, ia), gk.num_gvec(), uc.max_mt_aw_basis_size());
+            Alm.generate<false>(uc.atom(ia), alm_tmp);
+        }
+    }, error_code__);
 }
 
 

@@ -56,22 +56,22 @@ class Atom_symmetry_class
      *  1-st dimension: index of radial point \n
      *  2-nd dimension: index of radial function \n
      *  3-nd dimension: 0 - function itself, 1 - radial derivative */
-    mdarray<double, 3> radial_functions_;
+    sddk::mdarray<double, 3> radial_functions_;
 
     /// Surface derivatives of AW radial functions.
-    mdarray<double, 3> aw_surface_derivatives_;
+    sddk::mdarray<double, 3> aw_surface_derivatives_;
 
     /// Spherical part of radial integral.
-    mdarray<double, 2> h_spherical_integrals_;
+    sddk::mdarray<double, 2> h_spherical_integrals_;
 
     /// Overlap integrals.
-    mdarray<double, 3> o_radial_integrals_;
+    sddk::mdarray<double, 3> o_radial_integrals_;
 
     /// Overlap integrals for IORA relativistic treatment.
-    mdarray<double, 2> o1_radial_integrals_;
+    sddk::mdarray<double, 2> o1_radial_integrals_;
 
     /// Spin-orbit interaction integrals.
-    mdarray<double, 3> so_radial_integrals_;
+    sddk::mdarray<double, 3> so_radial_integrals_;
 
     /// Core charge density.
     /** All-electron core charge density of the LAPW method. It is recomputed on every SCF iteration due to
