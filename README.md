@@ -309,8 +309,9 @@ In the following example we compare performace of native and SIRIUS-enabled vers
 dual-socket nodes containing two 18-core Intel Haswell CPUs.
 
 
-<img src="doc/images/Si511Ge_perf.png" align="middle">
-
+<p align="center">
+<img src="doc/images/Si511Ge_perf.png">
+</p>
 
 
 
