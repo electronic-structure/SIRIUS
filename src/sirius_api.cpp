@@ -2616,7 +2616,7 @@ void sirius_set_radial_function(void*  const* handler__,
     }
     if (l__ != nullptr && o__ != nullptr) {
         int n = atom.num_mt_points();
-        atom.symmetry_class().set_aw_surface_deriv(*l__, *o__ - 1, *deriv_order__, f__[n - 1]);
+        atom.symmetry_class().aw_surface_deriv(*l__, *o__ - 1, *deriv_order__, f__[n - 1]);
     }
 }
 

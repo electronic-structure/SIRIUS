@@ -224,7 +224,7 @@ class Matching_coefficients // TODO: compute on GPU
             /* create matrix of radial derivatives */
             for (int order = 0; order < num_aw; order++) {
                 for (int dm = 0; dm < num_aw; dm++) {
-                    A(dm, order) = atom__.symmetry_class().aw_surface_dm(l, order, dm);
+                    A(dm, order) = atom__.symmetry_class().aw_surface_deriv(l, order, dm);
                 }
             }
 
