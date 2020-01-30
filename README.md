@@ -305,7 +305,11 @@ SIRIUS library is usgin OpenMP for node-level parallelization. To run QE/SIRIUS 
    the GPU card using more MPI ranks (e.g.: on a 12-core node, use 2-3-4 ranks with 6-4-3 OMP threads)
 
 #### Example: ground state of Si511Ge
-<img src="doc/images/Si511Ge_perf.png">
+In the following example we compare performace of native and SIRIUS-enabled versions of QE. Native QE was run on the
+dual-socket nodes containing two 18-core Intel Haswell CPUs.
+
+
+<img src="doc/images/Si511Ge_perf.png" align="middle">
 
 
 
