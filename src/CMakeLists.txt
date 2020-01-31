@@ -98,13 +98,13 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     GSL::gsl
                                     "${LINALG_LIB}"
                                     MPI::MPI_CXX
-                                    libxc::libxc
-                                    libspg::libspg
-                                    hdf5::hdf5
-                                    $<TARGET_NAME_IF_EXISTS:elpa::elpa>
-                                    $<TARGET_NAME_IF_EXISTS:magma::magma>
-                                    $<TARGET_NAME_IF_EXISTS:libvdwxc::libvdwxc>
-                                    $<TARGET_NAME_IF_EXISTS:cuda::cudalibs>
+                                    sirius::libxc
+                                    sirius::libspg
+                                    sirius::hdf5
+                                    $<TARGET_NAME_IF_EXISTS:sirius::elpa>
+                                    $<TARGET_NAME_IF_EXISTS:sirius::magma>
+                                    $<TARGET_NAME_IF_EXISTS:sirius::libvdwxc>
+                                    $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
                                     $<TARGET_NAME_IF_EXISTS:sirius_rocm>
                                     $<TARGET_NAME_IF_EXISTS:sirius_rocm_interface>
                                     $<TARGET_NAME_IF_EXISTS:hipblas_port>
@@ -112,9 +112,9 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
                                     )
 
-target_include_directories(sirius PUBLIC "${PROJECT_SOURCE_DIR}/src"
-                                         "${PROJECT_SOURCE_DIR}/src/SDDK"
-                                         "${PROJECT_BINARY_DIR}/src")
+target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+                                         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
+                                         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>)
 target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_TIMER}>:__USE_TIMER __PROFILE __PROFILE_TIME>
   $<$<BOOL:${USE_SCALAPACK}>:__SCALAPACK>
@@ -133,15 +133,23 @@ set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
-  install(FILES ${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod
-          DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
+  install(FILES "${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod"
+          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
 endif()
 
 install(TARGETS sirius
+        EXPORT sirius_targets
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
+                             "${CMAKE_INSTALL_INCLUDEDIR}/sirius/SDDK")
+install(EXPORT sirius_targets
+        FILE siriusTargets.cmake
+        NAMESPACE sirius::
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/src"
-        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
         FILES_MATCHING REGEX ".*(hpp|h)$")
-install(FILES ${PROJECT_BINARY_DIR}/src/version.hpp
-        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius")
+install(FILES "${PROJECT_BINARY_DIR}/src/version.hpp"
+              "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
