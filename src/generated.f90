@@ -230,11 +230,12 @@ end subroutine sirius_import_parameters
 !> @param [in] hubbard_correction_kind Type of LDA+U implementation (simplified or full).
 !> @param [in] hubbard_orbitals Type of localized orbitals.
 !> @param [in] sht_coverage Type of spherical coverage (0: Lebedev-Laikov, 1: uniform).
+!> @param [in] min_occupancy Minimum band occupancy to trat is as "occupied".
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,&
 &iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,&
-&sht_coverage)
+&sht_coverage,min_occupancy)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), optional, target, intent(in) :: lmax_apw
@@ -261,6 +262,7 @@ logical(C_BOOL), optional, target, intent(in) :: hubbard_correction
 integer(C_INT), optional, target, intent(in) :: hubbard_correction_kind
 character(C_CHAR), optional, target, dimension(*), intent(in) :: hubbard_orbitals
 integer(C_INT), optional, target, intent(in) :: sht_coverage
+real(C_DOUBLE), optional, target, intent(in) :: min_occupancy
 type(C_PTR) :: lmax_apw_ptr
 type(C_PTR) :: lmax_rho_ptr
 type(C_PTR) :: lmax_pot_ptr
@@ -285,12 +287,13 @@ type(C_PTR) :: hubbard_correction_ptr
 type(C_PTR) :: hubbard_correction_kind_ptr
 type(C_PTR) :: hubbard_orbitals_ptr
 type(C_PTR) :: sht_coverage_ptr
+type(C_PTR) :: min_occupancy_ptr
 interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,&
 &iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,&
-&sht_coverage)&
+&sht_coverage,min_occupancy)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
@@ -318,6 +321,7 @@ type(C_PTR), value :: hubbard_correction
 type(C_PTR), value :: hubbard_correction_kind
 type(C_PTR), value :: hubbard_orbitals
 type(C_PTR), value :: sht_coverage
+type(C_PTR), value :: min_occupancy
 end subroutine
 end interface
 
@@ -393,11 +397,15 @@ if (present(hubbard_orbitals)) hubbard_orbitals_ptr = C_LOC(hubbard_orbitals)
 sht_coverage_ptr = C_NULL_PTR
 if (present(sht_coverage)) sht_coverage_ptr = C_LOC(sht_coverage)
 
+min_occupancy_ptr = C_NULL_PTR
+if (present(min_occupancy)) min_occupancy_ptr = C_LOC(min_occupancy)
+
 call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,num_fv_states_ptr,&
 &num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,auto_rmt_ptr,&
 &gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,core_rel_ptr,&
 &esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,verbosity_ptr,&
-&hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,sht_coverage_ptr)
+&hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,sht_coverage_ptr,&
+&min_occupancy_ptr)
 end subroutine sirius_set_parameters
 
 !> @brief Get parameters of the simulation.

@@ -330,7 +330,14 @@ class Simulation_parameters
     /// Minimum occupancy to consider band to be occupied.
     inline double min_occupancy() const
     {
-        return 1e-14;
+        return settings_input_.min_occupancy_;
+    }
+
+    /// Set minimum occupancy.
+    inline double min_occupancy(double val__)
+    {
+        settings_input_.min_occupancy_ = val__;
+        return this->min_occupancy();
     }
 
     bool so_correction() const

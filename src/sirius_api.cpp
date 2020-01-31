@@ -281,6 +281,7 @@ void sirius_import_parameters(void* const* handler__,
    @fortran argument in optional int    hubbard_correction_kind  Type of LDA+U implementation (simplified or full).
    @fortran argument in optional string hubbard_orbitals         Type of localized orbitals.
    @fortran argument in optional int    sht_coverage             Type of spherical coverage (0: Lebedev-Laikov, 1: uniform).
+   @fortran argument in optional double min_occupancy            Minimum band occupancy to trat is as "occupied".
    @fortran end */
 void sirius_set_parameters(void*  const* handler__,
                            int    const* lmax_apw__,
@@ -306,7 +307,8 @@ void sirius_set_parameters(void*  const* handler__,
                            bool   const* hubbard_correction__,
                            int    const* hubbard_correction_kind__,
                            char   const* hubbard_orbitals__,
-                           int    const* sht_coverage__)
+                           int    const* sht_coverage__,
+                           double const* min_occupancy__)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     if (lmax_apw__ != nullptr) {
@@ -388,6 +390,9 @@ void sirius_set_parameters(void*  const* handler__,
     }
     if (sht_coverage__ != nullptr) {
         sim_ctx.sht_coverage(*sht_coverage__);
+    }
+    if (min_occupancy__ != nullptr) {
+        sim_ctx.min_occupancy(*min_occupancy__);
     }
 }
 
@@ -3435,7 +3440,7 @@ void sirius_get_num_kpoints(void* const* handler__,
 void sirius_get_num_bands(void* const* handler__,
                           int *num_bands__,
                           int *error_code__)
-{
+{ // TODO: already exists in sirius_get_parameters
     call_sirius([&]()
     {
         auto& sim_ctx = get_sim_ctx(handler__);
@@ -3451,7 +3456,7 @@ void sirius_get_num_bands(void* const* handler__,
 void sirius_get_num_spin_components(void* const* handler__,
                                     int *num_spin_components__,
                                     int *error_code__)
-{
+{ // TODO: merge into sirius_get_parameters
     call_sirius([&]()
     {
         auto& sim_ctx = get_sim_ctx(handler__);
@@ -3496,7 +3501,7 @@ void sirius_get_kpoint_properties(void* const* handler__,
    @fortran argument out optional int      error_code             Error code.
    @fortran end */
 void sirius_get_max_mt_aw_basis_size(void* const* handler__, int* max_mt_aw_basis_size__, int* error_code__)
-{
+{ // TODO: merge into sirius_get_parameters
     call_sirius([&]()
     {
         auto& sim_ctx = get_sim_ctx(handler__);

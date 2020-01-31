@@ -633,6 +633,9 @@ struct Settings_input
     /// Minimum tolerance of the iterative solver.
     double itsol_tol_min_{1e-13};
 
+    /// Minimum occupancy below which the band is treated as being "empty".
+    double min_occupancy_{1e-14};
+
     /// Scaling parameters of the iterative  solver tolerance.
     /** First number is the scaling of density RMS, that gives the estimate of the new tolerance. Second number is
         the scaling of the old tolerance. New tolerance is then the minimum between the two. This is how it is
@@ -676,6 +679,7 @@ struct Settings_input
             fft_grid_size_    = section.value("fft_grid_size", fft_grid_size_);
             itsol_tol_scale_  = section.value("itsol_tol_scale", itsol_tol_scale_);
             sht_coverage_     = section.value("sht_coverage", sht_coverage_);
+            min_occupancy_    = section.value("min_occupancy", min_occupancy_);
         }
     }
 };
