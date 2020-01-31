@@ -110,6 +110,7 @@ find_package(GSL REQUIRED)
 find_package(LibXC 3.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C)
+include(cmake/hdf5_target.cmake)
 find_package(SpFFT 0.9.6 CONFIG REQUIRED)
 
 if (USE_OPENMP)
@@ -120,7 +121,7 @@ set(LINALG_LIB "")
 if(USE_MKL)
   set(USE_MKL_SHARED_LIBS On) # link against shared MKL libraries
   find_package(MKL REQUIRED)
-  set(LINALG_LIB "mkl::mkl")
+  set(LINALG_LIB "sirius::mkl")
 elseif(USE_CRAY_LIBSCI)
   find_package(CRAY_LIBSCI REQUIRED)
   set(LINALG_LIB "${CRAY_LIBSCI_LIBRARIES}")
@@ -148,6 +149,7 @@ endif(USE_VDWXC)
 if(USE_CUDA)
   enable_language(CUDA)
   find_package(CUDA)
+  include(cmake/cudalibs_target.cmake)
 
   if(GPU_MODEL MATCHES "P100")
     message("set nvcc flags for P100")
@@ -172,21 +174,6 @@ if(USE_ROCM)
   include_directories(${ROCM_INCLUDE_DIRS})
   add_subdirectory(src/SDDK/GPU/hipblas_port)
   include_directories(src/SDDK/GPU/hipblas_port)
-endif()
-
-# external library targets
-if(NOT TARGET hdf5::hdf5)
-  add_library(hdf5::hdf5 INTERFACE IMPORTED)
-  set_target_properties(hdf5::hdf5 PROPERTIES
-                                   INTERFACE_INCLUDE_DIRECTORIES "${HDF5_INCLUDE_DIR}"
-                                   INTERFACE_LINK_LIBRARIES "${HDF5_C_LIBRARIES}")
-endif()
-
-if (USE_CUDA AND NOT TARGET cuda::cudalibs)
-  add_library(cuda::cudalibs INTERFACE IMPORTED)
-  set_target_properties(cuda::cudalibs PROPERTIES
-                                       INTERFACE_INCLUDE_DIRECTORIES "${CUDA_INCLUDE_DIRS}"
-                                       INTERFACE_LINK_LIBRARIES "${CUDA_LIBRARIES};${CUDA_CUBLAS_LIBRARIES};${CUDA_CUFFT_LIBRARIES};${CUDA_cusolver_LIBRARY}")
 endif()
 
 # check if git command exists
@@ -214,11 +201,24 @@ configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in"
                @ONLY)
 
 # generate runtime options
-file(STRINGS "${PROJECT_SOURCE_DIR}/src/options.json" 
+file(STRINGS "${PROJECT_SOURCE_DIR}/src/options.json"
               SIRIUS_RUNTIME_OPTIONS NEWLINE_CONSUME)
 configure_file("${PROJECT_SOURCE_DIR}/src/runtime_options_json.hpp.in"
                "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
                @ONLY)
+
+# install targets and modules
+include(cmake/env_vars_map.cmake)
+configure_file("${PROJECT_SOURCE_DIR}/cmake/siriusConfig.cmake.in"
+               "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
+               @ONLY)
+install(FILES "${PROJECT_BINARY_DIR}/siriusConfig.cmake"
+              "${PROJECT_SOURCE_DIR}/cmake/cudalibs_target.cmake"
+              "${PROJECT_SOURCE_DIR}/cmake/hdf5_target.cmake"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius")
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/modules"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sirius"
+        FILES_MATCHING PATTERN "*.cmake")
 
 # sirius library
 add_subdirectory(src)
