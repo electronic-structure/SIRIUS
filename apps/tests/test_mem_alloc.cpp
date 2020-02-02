@@ -4,7 +4,6 @@ using namespace sirius;
 
 void test(std::vector<int> sizes, memory_t M__)
 {
-    utils::timer t1("alloc");
     std::vector<char*> ptrs;
     for (auto sm: sizes) {
         auto s = sm * (size_t(1) << 20);
@@ -36,8 +35,6 @@ void test(std::vector<int> sizes, memory_t M__)
     for (auto p: ptrs) {
         sddk::deallocate(p, M__);
     }
-    t1.stop();
-    utils::timer::print();
 }
 
 int main(int argn, char** argv)

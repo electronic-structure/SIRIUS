@@ -65,12 +65,8 @@ int run_test(cmd_args& args)
 
             mdarray<double_complex, 2> ylm_rot_mtrx(utils::lmmax(lmax), utils::lmmax(lmax));
             mdarray<double, 2> rlm_rot_mtrx(utils::lmmax(lmax), utils::lmmax(lmax));
-            utils::timer t0("rotation_matrix_Ylm");
             SHT::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx);
-            t0.stop();
-            utils::timer t1("rotation_matrix_Rlm");
             SHT::rotation_matrix(lmax, ang, proper_rotation, rlm_rot_mtrx);
-            t1.stop();
 
             mdarray<double_complex, 1> ylm1(utils::lmmax(lmax));
             ylm1.zero();

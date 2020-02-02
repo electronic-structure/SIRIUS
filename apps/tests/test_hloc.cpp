@@ -118,15 +118,16 @@ int main(int argn, char** argv)
     for (int i = 0; i < repeat; i++) {
         test_hloc(mpi_grid_dims, cutoff, num_bands, reduce_gvec, use_gpu, gpu_ptr);
     }
-    Communicator::world().barrier();
-    if (Communicator::world().rank() == 0) {
-        utils::timer::print();
+    int my_rank = Communicator::world().rank();
 
-        if (!t_file.empty()) {
-            std::ofstream json_file(t_file);
-            json_file << std::setw(2) << utils::timer::serialize() << std::endl;
-        }
+    sirius::finalize(1);
+
+    if (my_rank == 0)  {
+        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        std::cout << timing_result.print();
+        //if (!t_file.empty()) {
+        //    std::ofstream json_file(t_file);
+        //    json_file << std::setw(2) << utils::timer::serialize() << std::endl;
+        //}
     }
-    Communicator::world().barrier();
-    sirius::finalize();
 }

@@ -57,10 +57,10 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     inner(mem__, la__, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
     Communicator::world().barrier();
 
-    utils::timer t1("inner");
+    double t = -utils::wtime();
     inner(mem__, la__, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
     Communicator::world().barrier();
-    double t = t1.stop();
+    t += utils::wtime();
 
     double perf = 8e-9 * num_bands__ * num_bands__ *  gvec.num_gvec() / t;
     if (Communicator::world().rank() == 0) {
@@ -114,8 +114,14 @@ int main(int argn, char** argv)
     test_wf_inner(mpi_grid_dims, cutoff, num_bands, bs, get_linalg_t(linalg_t_str), get_memory_t(memory_t_str));
 
     Communicator::world().barrier();
-    if (Communicator::world().rank() == 0) {
-        utils::timer::print();
+    int my_rank = Communicator::world().rank();
+
+    sirius::finalize(1);
+
+    if (my_rank == 0)  {
+        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        std::cout << timing_result.print();
+        //std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
+        //ofs << timing_result.json();
     }
-    sirius::finalize();
 }

@@ -116,8 +116,12 @@ int main(int argn, char** argv)
     test_wf_inner(mpi_grid_dims, cutoff, num_bands, bs, la, mem_bra, mem_ket, mem_o);
 
     Communicator::world().barrier();
-    if (Communicator::world().rank() == 0) {
-        utils::timer::print();
+    int rank = Communicator::world().rank();
+
+    sirius::finalize(1);
+
+    if (rank == 0)  {
+        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        std::cout << timing_result.print();
     }
-    sirius::finalize();
 }
