@@ -41,50 +41,45 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     Local_operator hloc(params, fft, gvecp);
 
-    //Wave_functions phi(gvecp, 4 * num_bands__, memory_t::host);
-    //for (int i = 0; i < 4 * num_bands__; i++) {
-    //    for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
-    //        phi.pw_coeffs(0).prime(j, i) = utils::random<double_complex>();
-    //    }
-    //    phi.pw_coeffs(0).prime(0, i) = 1.0;
-    //}
-    //Wave_functions hphi(gvecp, 4 * num_bands__, memory_t::host);
+    Wave_functions phi(gvecp, 4 * num_bands__, memory_t::host);
+    for (int i = 0; i < 4 * num_bands__; i++) {
+        for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
+            phi.pw_coeffs(0).prime(j, i) = utils::random<double_complex>();
+        }
+        phi.pw_coeffs(0).prime(0, i) = 1.0;
+    }
+    Wave_functions hphi(gvecp, 4 * num_bands__, memory_t::host);
 
-    //if (pu == device_t::GPU) {
-    //    phi.pw_coeffs(0).allocate(memory_t::device);
-    //    phi.pw_coeffs(0).copy_to(memory_t::device, 0, 4 * num_bands__);
-    //    hphi.pw_coeffs(0).allocate(memory_t::device);
-    //}
-    //hloc.prepare(gvecp); 
-    //Communicator::world().barrier();
-    //utils::timer t1("h_loc");
-    //for (int i = 0; i < 4; i++) {
-    //    hloc.apply_h(fft, spin_range(0), phi, hphi, i * num_bands__, num_bands__);
-    //}
-    //Communicator::world().barrier();
-    //t1.stop();
+    if (pu == device_t::GPU) {
+        phi.pw_coeffs(0).allocate(memory_t::device);
+        phi.pw_coeffs(0).copy_to(memory_t::device, 0, 4 * num_bands__);
+        hphi.pw_coeffs(0).allocate(memory_t::device);
+    }
+    hloc.prepare_k(gvecp); 
+    for (int i = 0; i < 4; i++) {
+        hloc.apply_h(fft, gvecp, spin_range(0), phi, hphi, i * num_bands__, num_bands__);
+    }
     //hloc.dismiss();
 
-
-    //double diff{0};
-    //for (int i = 0; i < 4 * num_bands__; i++) {
-    //    for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
-    //        int ig = gvec.offset() + j;
-    //        auto gc = gvec.gvec_cart<index_domain_t::global>(ig);
-    //        diff += std::pow(std::abs((2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(0).prime(j, i) - hphi.pw_coeffs(0).prime(j, i)), 2);
-    //    }
-    //}
-    //if (diff != diff) {
-    //    TERMINATE("NaN");
-    //}
-    //Communicator::world().allreduce(&diff, 1);
-    //diff = std::sqrt(diff / 4 / num_bands__ / gvec.num_gvec());
-    //if (Communicator::world().rank() == 0) {
-    //    printf("RMS: %18.16f\n", diff);
-    //}
-    //if (diff > 1e-12) {
-    //    TERMINATE("RMS is too large");
-    //}
+    double diff{0};
+    for (int i = 0; i < 4 * num_bands__; i++) {
+        for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
+            int ig = gvec.offset() + j;
+            auto gc = gvec.gvec_cart<index_domain_t::global>(ig);
+            diff += std::pow(std::abs((2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(0).prime(j, i) - hphi.pw_coeffs(0).prime(j, i)), 2);
+        }
+    }
+    if (diff != diff) {
+        TERMINATE("NaN");
+    }
+    Communicator::world().allreduce(&diff, 1);
+    diff = std::sqrt(diff / 4 / num_bands__ / gvec.num_gvec());
+    if (Communicator::world().rank() == 0) {
+        printf("RMS: %18.16f\n", diff);
+    }
+    if (diff > 1e-12) {
+        TERMINATE("RMS is too large");
+    }
 }
 
 int main(int argn, char** argv)
