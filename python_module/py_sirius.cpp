@@ -154,10 +154,8 @@ PYBIND11_MODULE(py_sirius, m)
         return;
     }
 
-    m.def("timer_print", &utils::timer::print);
-#ifdef __GPU
+    //m.def("timer_print", &utils::timer::print);
     m.def("num_devices", &acc::num_devices);
-#endif
 
     py::class_<Parameters_input>(m, "Parameters_input")
         .def(py::init<>())

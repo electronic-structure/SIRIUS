@@ -54,7 +54,6 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp"
   "radial_integrals.cpp"
   "sbessel.cpp"
   "utils/cmd_args.cpp"
-  "utils/timer.cpp"
   "utils/utils.cpp"
   "utils/rt_graph.cpp"
   "utils/profiler.cpp"
@@ -116,7 +115,7 @@ target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
                                          $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>)
 target_compile_definitions(sirius PUBLIC
-  $<$<BOOL:${USE_TIMER}>:__USE_TIMER __PROFILE __PROFILE_TIME>
+  $<$<BOOL:${USE_PROFILER}>:__PROFILE>
   $<$<BOOL:${USE_SCALAPACK}>:__SCALAPACK>
   $<$<BOOL:${USE_MEMORY_POOL}>:__USE_MEMORY_POOL>
   $<$<BOOL:${DEBUG_MEMORY_POOL}>:__DEBUG_MEMORY_POOL>

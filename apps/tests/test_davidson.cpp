@@ -47,7 +47,7 @@ void test_davidson(cmd_args const& args__)
     auto mpi_grid  = args__.value<std::vector<int>>("mpi_grid", {1, 1});
     auto solver    = args__.value<std::string>("solver", "lapack");
 
-    utils::timer t1("test_davidson|setup");
+    PROFILE_START("test_davidson|setup")
 
     /* create simulation context */
     Simulation_context ctx(
@@ -130,7 +130,7 @@ void test_davidson(cmd_args const& args__)
     ctx.gen_evp_solver_name(solver);
     ctx.std_evp_solver_name(solver);
 
-    t1.stop();
+    PROFILE_STOP("test_davidson|setup")
 
     ctx.verbosity(1);
     ctx.iterative_solver_tolerance(1e-12);
@@ -260,8 +260,8 @@ int main(int argn, char** argv)
     test_davidson(args);
     int rank = Communicator::world().rank();
     sirius::finalize();
-    if (!rank) {
-        utils::timer::print();
-        utils::timer::print_tree();
+    if (rank == 0)  {
+        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        std::cout<< timing_result.print();
     }
 }

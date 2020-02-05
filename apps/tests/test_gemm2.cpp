@@ -11,8 +11,6 @@ int const nop_gemm = 8;
 
 double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t memA__, memory_t memB__, memory_t memC__)
 {
-    utils::timer t("test_gemm"); 
-
     mdarray<gemm_type, 2> a, b, c;
     int imax, jmax;
     if (transa == 0) {
@@ -54,7 +52,7 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t memA__
     printf("a.ld() = %i\n", a.ld());
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
-    utils::timer t1("gemm_only");
+    double t = -utils::wtime();
     linalg(la__).gemm(TA[transa], 'N', M, N, K, &linalg_const<gemm_type>::one(),
                        a.at(memA__), a.ld(), b.at(memB__), b.ld(),
                        &linalg_const<gemm_type>::zero(),
@@ -63,9 +61,9 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t memA__
         c.copy_to(memory_t::host);
     }
 
-    double tval = t1.stop();
-    double perf = nop_gemm * 1e-9 * M * N * K / tval;
-    printf("execution time (sec) : %12.6f\n", tval);
+    t += utils::wtime();
+    double perf = nop_gemm * 1e-9 * M * N * K / t;
+    printf("execution time (sec) : %12.6f\n", t);
     printf("performance (GFlops) : %12.6f\n", perf);
 
     return perf;
