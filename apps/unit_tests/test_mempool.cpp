@@ -3,7 +3,6 @@
 #include <memory.hpp>
 #include <complex>
 #include <sys/time.h>
-#include "utils/timer.hpp"
 
 using double_complex = std::complex<double>;
 using namespace sddk;
