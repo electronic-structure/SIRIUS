@@ -19,7 +19,7 @@
 
 /** \file band.cpp
  *
- *   \brief Contains implementation of sirius::Band class.
+ *  \brief Contains implementation of sirius::Band class.
  */
 
 #include "band.hpp"
@@ -330,7 +330,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
                 s << "error in diagonalization";
                 TERMINATE(s);
             }
-            Hk__.kp().message(1, __func__, "minimum eigen-value of the overlap matrix: %18.12f\n", eo[0]);
+            Hk__.kp().message(1, __function_name__, "minimum eigen-value of the overlap matrix: %18.12f\n", eo[0]);
             if (eo[0] < 0) {
                 TERMINATE("overlap matrix is not positively defined");
             }
@@ -365,7 +365,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
             }
         }
         for (int i = 0; i < num_bands; i++) {
-            Hk__.kp().message(3, __func__, "eval[%i]=%20.16f\n", i, eval[i]);
+            Hk__.kp().message(3, __function_name__, "eval[%i]=%20.16f\n", i, eval[i]);
         }
 
         /* compute wave-functions */
@@ -422,7 +422,7 @@ template <typename T>
 void Band::check_residuals(Hamiltonian_k& Hk__) const
 {
     auto& kp = Hk__.kp();
-    kp.message(1, __func__, "%s", "checking residuals\n");
+    kp.message(1, __function_name__, "%s", "checking residuals\n");
 
     const bool nc_mag = (ctx_.num_mag_dims() == 3);
     const int num_sc = nc_mag ? 2 : 1;
@@ -469,7 +469,7 @@ void Band::check_residuals(Hamiltonian_k& Hk__) const
         auto l2norm = res.l2norm(device_t::CPU, nc_mag ? spin_range(2) : spin_range(0), ctx_.num_bands());
 
         for (int j = 0; j < ctx_.num_bands(); j++) {
-            Hk__.kp().message(1, __func__, "band: %3i, residual l2norm: %18.12f\n", j, l2norm[j]);
+            Hk__.kp().message(1, __function_name__, "band: %3i, residual l2norm: %18.12f\n", j, l2norm[j]);
         }
     }
     if (is_device_memory(ctx_.preferred_memory_t())) {
@@ -486,7 +486,7 @@ template <typename T>
 void Band::check_wave_functions(Hamiltonian_k& Hk__) const
 {
     auto& kp = Hk__.kp();
-    kp.message(1, __func__, "%s", "checking wave-functions\n");
+    kp.message(1, __function_name__, "%s", "checking wave-functions\n");
 
     if (!ctx_.full_potential()) {
 
@@ -522,9 +522,9 @@ void Band::check_wave_functions(Hamiltonian_k& Hk__) const
             double diff = check_identity(ovlp, ctx_.num_bands());
 
             if (diff > 1e-12) {
-                kp.message(1, __func__, "overlap matrix is not identity, maximum error : %20.12f\n", diff);
+                kp.message(1, __function_name__, "overlap matrix is not identity, maximum error : %20.12f\n", diff);
             } else {
-                kp.message(1, __func__, "%s", "OK! Wave functions are orthonormal.\n");
+                kp.message(1, __function_name__, "%s", "OK! Wave functions are orthonormal.\n");
             }
         }
         if (is_device_memory(ctx_.preferred_memory_t())) {

@@ -69,7 +69,6 @@ class DFT_ground_state
     /// Store Ewald energy which is computed once and which doesn't change during the run.
     double ewald_energy_{0};
 
-
   public:
     /// Constructor.
     DFT_ground_state(K_point_set& kset__)
@@ -85,6 +84,11 @@ class DFT_ground_state
         if (!ctx_.full_potential()) {
             ewald_energy_ = sirius::ewald_energy(ctx_, ctx_.gvec(), ctx_.unit_cell());
         }
+    }
+    ~DFT_ground_state()
+    {
+        ctx_.message(2, __function_name__, "local op. applied: %i\n", ctx_.num_loc_op_applied());
+        ctx_.message(2, __function_name__, "evp. work count: %f\n", ctx_.evp_work_count());
     }
 
     /// Return reference to a simulation context.

@@ -457,7 +457,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
     PROFILE_STOP("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
     std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;
     if (kp.comm().rank() == 0 && H0_.ctx().control().print_performance_) {
-        kp.message(1, __func__, "effective zgemm performance: %12.6f GFlops",
+        kp.message(1, __function_name__, "effective zgemm performance: %12.6f GFlops",
                2 * 8e-9 * kp.num_gkvec() * kp.num_gkvec() * uc.mt_aw_basis_size() / tval.count());
     }
 
@@ -728,7 +728,7 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
     t1 += omp_get_wtime();
 
     if (H0().ctx().control().print_performance_) {
-        kp().message(1, __func__, "hloc performace: %12.6f bands/sec", n__ / t1);
+        kp().message(1, __function_name__, "hloc performace: %12.6f bands/sec", n__ / t1);
     }
 
     if (H0().ctx().control().print_checksum_ && hphi__) {

@@ -37,16 +37,6 @@
 
 namespace utils {
 
-#ifdef __GNUC__
-    #define __function_name__ __PRETTY_FUNCTION__
-#else
-    #define __function_name__ __func__
-#endif
-
-// --------------------
-// Profile with RTGraph
-// --------------------
-
 extern ::rt_graph::Timer global_rtgraph_timer;
 
 // TODO: add calls to apex and cudaNvtx

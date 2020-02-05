@@ -287,7 +287,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& g
     }
 
     /* increment the counter by the number of wave-functions */
-    num_applied(n__);
+    ctx_.num_loc_op_applied(n__);
 
     /* this memory pool will be used to allocate extra storage in the host memory */
     auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(ctx_.host_memory_t());
@@ -616,7 +616,7 @@ void Local_operator::apply_h_o(spfft::Transform& spfftk__, Gvec_partition const&
 {
     PROFILE("sirius::Local_operator::apply_h_o");
 
-    num_applied(n__);
+    ctx_.num_loc_op_applied(n__);
 
     mdarray<double_complex, 1> buf_pw(gkvec_p__.gvec_count_fft(), ctx_.mem_pool(memory_t::host));
 
