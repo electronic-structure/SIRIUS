@@ -397,7 +397,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         auto is_converged = [&](int j__, int ispn__) -> bool
         {
             double tol = ctx_.iterative_solver_tolerance();
-            double empy_tol = std::max(tol * 5, itso.empty_states_tolerance_);
+            double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
             /* if band is empty, decrease the tolerance */
             if (std::abs(kp.band_occupancy(j__, ispn__)) < ctx_.min_occupancy() * ctx_.max_occupancy()) {
                 tol += empy_tol;
