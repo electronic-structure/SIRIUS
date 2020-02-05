@@ -219,7 +219,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const
         }
     }
     if (ctx_.control().verification_ >= 2) {
-        ctx_.message(1, __func__, "%s", "checking eigen-values of S-matrix\n");
+        ctx_.message(1, __function_name__, "%s", "checking eigen-values of S-matrix\n");
 
         dmatrix<T> ovlp1(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
         dmatrix<T> evec(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
@@ -233,7 +233,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const
 
         for (int i = 0; i < kp.num_gkvec(); i++) {
             if (eo[i] < 1e-6) {
-                ctx_.message(1, __func__, "small eigen-value: %18.10f\n", eo[i]);
+                ctx_.message(1, __function_name__, "small eigen-value: %18.10f\n", eo[i]);
             }
         }
     }
@@ -466,10 +466,10 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         }
         PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|evp");
 
-        evp_work_count(1);
+        ctx_.evp_work_count(1);
 
         for (int i = 0; i < num_bands; i++) {
-            kp.message(4, __func__, "eval[%i]=%20.16f\n", i, eval[i]);
+            kp.message(4, __function_name__, "eval[%i]=%20.16f\n", i, eval[i]);
         }
 
         /* number of newly added basis functions */
@@ -501,14 +501,14 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         kp.band_energy(j, ispin_step, eval[j]);
                     }
                 } else {
-                    kp.message(2, __func__, "%s", "wave-functions are not recomputed\n");
+                    kp.message(2, __function_name__, "%s", "wave-functions are not recomputed\n");
                 }
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
                 if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                     break;
                 } else { /* otherwise, set Psi as a new trial basis */
-                    kp.message(3, __func__, "%s", "subspace size limit reached\n");
+                    kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
                     hmlt_old.zero();
                     for (int i = 0; i < num_bands; i++) {
                         hmlt_old.set(i, i, eval[i]);
@@ -601,11 +601,11 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             }
             PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|evp");
 
-            evp_work_count(std::pow(static_cast<double>(N) / num_bands, 3));
+            ctx_.evp_work_count(std::pow(static_cast<double>(N) / num_bands, 3));
 
-            kp.message(2, __func__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
+            kp.message(2, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
             for (int i = 0; i < num_bands; i++) {
-                kp.message(4, __func__, "eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i],
+                kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i],
                     std::abs(eval[i] - eval_old[i]), kp.band_occupancy(i, ispin_step));
             }
             niter++;
@@ -804,9 +804,9 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
             TERMINATE(s);
         }
 
-        kp.message(3, __func__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
+        kp.message(3, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
         for (int i = 0; i < nevec; i++) {
-            kp.message(4, __func__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
+            kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
         }
 
         /* don't compute residuals on last iteration */
@@ -833,7 +833,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                 break;
             } else { /* otherwise, set Psi as a new trial basis */
-                kp.message(3, __func__, "%s", "subspace size limit reached\n");
+                kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
 
                 if (itso.converge_by_energy_) {
                     transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, sphi, 0, N, evec, 0, 0, spsi, 0, nevec);

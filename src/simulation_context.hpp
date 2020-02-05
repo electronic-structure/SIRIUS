@@ -43,6 +43,14 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, 
                                            double const* atom_pos__, double_complex* phase_factors__);
 #endif
 
+//#ifdef __GNUC__
+//    #define __function_name__ __PRETTY_FUNCTION__
+//#else
+//    #define __function_name__ __func__
+//#endif
+
+#define __function_name__ __func__
+
 namespace sirius {
 
 /// Utility function to print a CPU and GPU memory utilization.
@@ -210,6 +218,9 @@ class Simulation_context : public Simulation_parameters
 
     /// Type of BLAS linear algebra library.
     linalg_t blas_linalg_t_{linalg_t::none};
+
+    mutable double evp_work_count_{0};
+    mutable int num_loc_op_applied_{0};
 
     /// True if the context is already initialized.
     bool initialized_{false};
@@ -731,6 +742,20 @@ class Simulation_context : public Simulation_parameters
     {
         return fft_coarse_grid_;
     }
+
+    inline double evp_work_count(double w__ = 0) const
+    {
+        evp_work_count_ += w__;
+        return evp_work_count_;
+    }
+
+    /// Keep track of the total number of wave-functions to which the local operator was applied.
+    inline int num_loc_op_applied(int n = 0) const
+    {
+        num_loc_op_applied_ += n;
+        return num_loc_op_applied_;
+    }
+
 };
 
 

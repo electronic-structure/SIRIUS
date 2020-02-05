@@ -167,8 +167,8 @@ double ground_state(Simulation_context& ctx,
         dict["ground_state"] = result;
         //dict["timers"] = utils::timer::serialize();
         dict["counters"] = json::object();
-        dict["counters"]["local_operator_num_applied"] = Local_operator::num_applied();
-        dict["counters"]["band_evp_work_count"] = Band::evp_work_count();
+        dict["counters"]["local_operator_num_applied"] = ctx.num_loc_op_applied();
+        dict["counters"]["band_evp_work_count"] = ctx.evp_work_count();
 
         if (ctx.comm().rank() == 0) {
             std::string output_file = args.value<std::string>("output", std::string("output_") +
