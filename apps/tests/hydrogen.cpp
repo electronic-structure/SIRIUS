@@ -74,7 +74,6 @@ int main(int argn, char** argv)
 
     std::vector<double> err(levels.size());
     
-    utils::timer t("all_states");
     #pragma omp parallel for
     for (int j = 0; j < (int)levels.size(); j++)
     {
@@ -122,8 +121,6 @@ int main(int argn, char** argv)
         }
         err[j] = rel_err;
     }
-    double tval = t.stop();
-    printf("done in %f sec.\n", tval);
 
     FILE* fout = fopen("err.dat", "w");
     for (int j = 0; j < (int)err.size(); j++)

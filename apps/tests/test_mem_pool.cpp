@@ -25,7 +25,6 @@ void test(int nGb, int gran, memory_t M__)
     std::cout << "number of memory blocks: " << sizes.size() << "\n";
     std::cout << "total size: " << tot_size << "\n";
 
-    utils::timer t1("alloc");
     std::vector<mdarray<char, 1>> v;
     for (int k = 0; k < 4; k++) {
         auto t = -utils::wtime();
@@ -54,8 +53,6 @@ void test(int nGb, int gran, memory_t M__)
         t += utils::wtime();
         std::cout << "pass : " << k << ", time : " << t << "\n";
     }
-    t1.stop();
-    utils::timer::print();
 }
 
 int main(int argn, char** argv)

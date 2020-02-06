@@ -24,7 +24,7 @@ set(GPU_MODEL "none" CACHE STRING "The target GPU architecture; one of {none,P10
 set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
 set(USE_OPENMP ON CACHE BOOL "use OpenMP")
 set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
-set(USE_TIMER ON CACHE BOOL "measure execution of functions with timer")
+set(USE_PROFILER ON CACHE BOOL "measure execution of functions with timer")
 set(USE_MEMORY_POOL ON CACHE BOOL "use memory pool")
 
 if(USE_MAGMA AND NOT USE_CUDA)

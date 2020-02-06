@@ -57,7 +57,7 @@ They must be available on your platfrom. Optionally, there is a dependency on:
  * [ELPA](https://elpa.mpcdf.mpg.de/software)
  * [MAGMA](https://icl.cs.utk.edu/magma/)
  * CUDA/ROCm
- 
+
 We use CMake as a building tool. If the libraries are installed in a standard location, cmake can find them
 automatically.  Otherwise you need to provide a specific path of each library to cmake. We use Docker to create a
 reproducible work environment for the examples below.
@@ -303,6 +303,17 @@ SIRIUS library is usgin OpenMP for node-level parallelization. To run QE/SIRIUS 
  * use as few MPI ranks as possible for band parallelization
  * by default, use one rank per node and many OMP threads; if the calculated system is really small, try to saturate 
    the GPU card using more MPI ranks (e.g.: on a 12-core node, use 2-3-4 ranks with 6-4-3 OMP threads)
+
+#### Example: ground state of Si511Ge
+In the following example we compare performace of native and SIRIUS-enabled versions of QE. Native QE was run on the
+dual-socket nodes containing two 18-core Intel Haswell CPUs.
+
+
+<p align="center">
+<img src="doc/images/Si511Ge_perf.png">
+</p>
+
+
 
 
 ## Examples

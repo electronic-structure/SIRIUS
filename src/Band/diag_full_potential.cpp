@@ -94,7 +94,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     kp.set_fv_eigen_values(&eval[0]);
 
     for (int i = 0; i < ctx_.num_fv_states(); i++) {
-        kp.message(4, __func__, "eval[%i]=%20.16f\n", i, eval[i]);
+        kp.message(4, __function_name__, "eval[%i]=%20.16f\n", i, eval[i]);
     }
 
     if (ctx_.control().print_checksum_) {
@@ -168,7 +168,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
         kp.comm().allreduce(norm);
         if (ctx_.control().verbosity_ >= 2) {
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
-                kp.message(2, __func__, "norm(%i)=%18.12f\n", i, norm[i]);
+                kp.message(2, __function_name__, "norm(%i)=%18.12f\n", i, norm[i]);
             }
         }
         #pragma omp parallel for schedule(static)
@@ -184,7 +184,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     }
 
     if (ctx_.control().verification_ >= 2) {
-        kp.message(1, __func__, "%s", "checking application of H and O\n");
+        kp.message(1, __function_name__, "%s", "checking application of H and O\n");
         /* check application of H and O */
         Wave_functions hphi(kp.gkvec_partition(), unit_cell_.num_atoms(),
                             [this](int ia) { return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states(),
@@ -269,7 +269,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
 
     int ncomp = psi.num_wf();
 
-    ctx_.message(3, __func__, "number of singular components: %i\n", ncomp);
+    ctx_.message(3, __function_name__, "number of singular components: %i\n", ncomp);
 
     auto& itso = ctx_.iterative_solver_input();
 
@@ -315,7 +315,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
     /* number of newly added basis functions */
     int n = ncomp;
 
-    ctx_.message(3, __func__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
+    ctx_.message(3, __function_name__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -384,9 +384,9 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
             }
         }
 
-        kp.message(3, __func__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
+        kp.message(3, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
         for (int i = 0; i < ncomp; i++) {
-            kp.message(4, __func__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
+            kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
         }
 
         /* don't compute residuals on last iteration */
@@ -396,7 +396,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
                                   N, ncomp, eval, evec, ophi, phi, opsi, psi, res, o_diag__, diag1,
                                   itso.converge_by_energy_, itso.residual_tolerance_,
                                   [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
-            kp.message(3, __func__, "number of added residuals: %i\n", n);
+            kp.message(3, __function_name__, "number of added residuals: %i\n", n);
             if (ctx_.control().print_checksum_) {
                 res.print_checksum(ctx_.processing_unit(), "res", 0, n);
             }
@@ -413,7 +413,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                 break;
             } else { /* otherwise, set Psi as a new trial basis */
-                kp.message(3, __func__, "%s", "subspace size limit reached\n");
+                kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
 
                 if (itso.converge_by_energy_) {
                     transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
@@ -439,7 +439,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
         psi.pw_coeffs(0).deallocate(memory_t::device);
     }
 
-    kp.message(2, __func__, "smallest eigen-value of the singular components: %20.16f\n", eval[0]);
+    kp.message(2, __function_name__, "smallest eigen-value of the singular components: %20.16f\n", eval[0]);
 }
 
 void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) const
@@ -482,7 +482,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
         TERMINATE("subspace is too big");
     }
 
-    ctx_.message(2, __func__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
+    ctx_.message(2, __function_name__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
 
     /* allocate wave-functions */
     Wave_functions phi(kp.gkvec_partition(), unit_cell_.num_atoms(),
@@ -573,7 +573,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     phi.copy_from(ctx_.processing_unit(), num_bands, psi, 0, 0, 0, nlo + ncomp);
 
     if (ctx_.control().print_checksum_) {
-        kp.message(1, __func__, "%s", "checksum of initial wave-functions\n");
+        kp.message(1, __function_name__, "%s", "checksum of initial wave-functions\n");
         psi.print_checksum(ctx_.processing_unit(), "psi", 0, num_bands);
         phi.print_checksum(ctx_.processing_unit(), "phi", 0,  nlo + ncomp + num_bands);
     }
@@ -616,9 +616,9 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
             s << "[sirius::Band::diag_full_potential_first_variation_davidson] error in diagonalziation";
             TERMINATE(s);
         }
-        kp.message(2, __func__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
+        kp.message(2, __function_name__, "step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
         for (int i = 0; i < num_bands; i++) {
-            kp.message(4, __func__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
+            kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
         }
 
         /* don't compute residuals on last iteration */
@@ -641,7 +641,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                 break;
             } else { /* otherwise, set Psi as a new trial basis */
-                kp.message(3, __func__, "%s", "subspace size limit reached\n");
+                kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
                 /* update basis functions */
                 /* first nlo + ncomp functions are fixed, don't update them */
                 phi.copy_from(ctx_.processing_unit(), num_bands, psi, 0, 0, 0, nlo + ncomp);

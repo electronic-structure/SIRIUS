@@ -114,9 +114,14 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     call_test(mpi_grid_dims, cutoff, num_bands, bs, num_mag_dims, mem, la, 1);
-    Communicator::world().barrier();
-    if (Communicator::world().rank() == 0) {
-        utils::timer::print();
+    int my_rank = Communicator::world().rank();
+
+    sirius::finalize(1);
+
+    if (my_rank == 0)  {
+        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        std::cout << timing_result.print();
+        //std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
+        //ofs << timing_result.json();
     }
-    sirius::finalize();
 }

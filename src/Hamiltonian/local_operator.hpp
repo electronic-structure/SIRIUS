@@ -124,14 +124,6 @@ class Local_operator
                    sddk::Gvec_partition const& gvec_coarse_p__,
                    Potential*                  potential__ = nullptr);
 
-    /// Keep track of the total number of wave-functions to which the local operator was applied.
-    static int num_applied(int n = 0)
-    {
-        static int num_applied_{0};
-        num_applied_ += n;
-        return num_applied_;
-    }
-
     /// Prepare the k-point dependent arrays.
     /** \param [in] gkvec_p  FFT-friendly G+k vector partitioning. */
     void prepare_k(sddk::Gvec_partition const& gkvec_p__);
