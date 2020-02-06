@@ -47,6 +47,9 @@ void test_davidson(cmd_args const& args__)
     auto mpi_grid  = args__.value<std::vector<int>>("mpi_grid", {1, 1});
     auto solver    = args__.value<std::string>("solver", "lapack");
 
+    bool add_dion{false};
+    bool add_vloc{false};
+
     PROFILE_START("test_davidson|setup")
 
     /* create simulation context */
@@ -82,20 +85,35 @@ void test_davidson(cmd_args const& args__)
         atype.add_beta_radial_function(l, beta);
         atype.add_beta_radial_function(l, beta1);
     }
+
+    std::vector<double> ps_wf(atype.radial_grid().num_points());
+    for (int l = 0; l <= 2; l++) {
+        for (int i = 0; i < atype.radial_grid().num_points(); i++) {
+            double x = atype.radial_grid(i);
+            ps_wf[i] = std::exp(-x) * std::pow(x, l);
+        }
+        /* add radial function for l */
+        atype.add_ps_atomic_wf(3, l, ps_wf);
+    }
+
     /* set local part of potential */
-    std::vector<double> vloc(atype.radial_grid().num_points());
-    for (int i = 0; i < atype.radial_grid().num_points(); i++) {
-        //double x =  atype.radial_grid(i);
-        vloc[i] = 0.0; //-atype.zn() / (std::exp(-x * (x + 1)) + x);
+    std::vector<double> vloc(atype.radial_grid().num_points(), 0);
+    if (add_vloc) {
+        for (int i = 0; i < atype.radial_grid().num_points(); i++) {
+            double x = atype.radial_grid(i);
+            vloc[i] = -atype.zn() / (std::exp(-x * (x + 1)) + x);
+        }
     }
     atype.local_potential(vloc);
     /* set Dion matrix */
     int nbf = atype.num_beta_radial_functions();
     matrix<double> dion(nbf, nbf);
     dion.zero();
-    //for (int i = 0; i < nbf; i++) {
-    //    dion(i, i) = -10.0;
-    //}
+    if (add_dion) {
+        for (int i = 0; i < nbf; i++) {
+            dion(i, i) = -10.0;
+        }
+    }
     atype.d_mtrx_ion(dion);
     /* set atomic density */
     std::vector<double> arho(atype.radial_grid().num_points());
@@ -122,7 +140,7 @@ void test_davidson(cmd_args const& args__)
     }
 
     /* initialize the context */
-    ctx.verbosity(1);
+    ctx.verbosity(2);
     ctx.pw_cutoff(pw_cutoff);
     ctx.gk_cutoff(gk_cutoff);
     ctx.set_processing_unit(pu);
@@ -132,10 +150,15 @@ void test_davidson(cmd_args const& args__)
 
     PROFILE_STOP("test_davidson|setup")
 
-    ctx.verbosity(1);
     ctx.iterative_solver_tolerance(1e-12);
     //ctx.set_iterative_solver_type("exact");
+
+    const_cast<Iterative_solver_input&>(ctx.iterative_solver_input()).num_steps_ = 40;
+
+    /* initialize simulation context */
     ctx.initialize();
+
+    std::cout << "number of atomic orbitals: " << ctx.unit_cell().num_ps_atomic_wf() << "\n";
 
     Density rho(ctx);
     rho.initial_density();
@@ -154,14 +177,17 @@ void test_davidson(cmd_args const& args__)
         for (int i = 0; i < ctx.num_bands(); i++) {
             kp.band_occupancy(i, 0, 2);
         }
-        init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
+        //init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
 
         Hamiltonian0 H0(pot);
         auto hk = H0(kp);
+        Band(ctx).initialize_subspace<double_complex>(hk, ctx.unit_cell().num_ps_atomic_wf());
+        for (int i = 0; i < ctx.num_bands(); i++) {
+            kp.band_energy(i, 0, 0);
+        }
+        //init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
         Band(ctx).solve_pseudo_potential<double_complex>(hk);
-        //for (int i = 0; i < ctx.num_bands(); i++) {
-        //    std::cout << "energy[" << i << "]=" << kp.band_energy(i, 0) << "\n";
-        //}
+
         std::vector<double> ekin(kp.num_gkvec());
         for (int i = 0; i < kp.num_gkvec(); i++) {
             ekin[i] = 0.5 * kp.gkvec().gkvec_cart<index_domain_t::global>(i).length2();
@@ -177,9 +203,6 @@ void test_davidson(cmd_args const& args__)
             printf("maximum eigen-value difference: %20.16e\n", max_diff);
         }
     }
-
-    //ctx.set_iterative_solver_type("davidson");
-    //Band(ctx).solve_pseudo_potential<double_complex>(kp, H);
 
     //for (int i = 0; i < 1; i++) {
 
@@ -205,39 +228,6 @@ void test_davidson(cmd_args const& args__)
     //}
 
     //}
-
-    //for (int i = 0; i < 1; i++) {
-
-    //    double vk[] = {0.1 * i, 0.1 * i, 0.1 * i};
-    //    K_point kp(ctx, vk, 1.0);
-    //    kp.initialize();
-    //    for (int i = 0; i < ctx.num_bands(); i++) {
-    //        kp.band_occupancy(i, 0, 2);
-    //    }
-    //    init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-
-    //    Hamiltonian H(ctx, pot);
-    //    H.prepare();
-    //    Band(ctx).solve_pseudo_potential<double_complex>(kp, H);
-    //}
-
-    //for (int i = 0; i < 1; i++) {
-
-    //    double vk[] = {0.1 * i, 0.1 * i, 0.1 * i};
-    //    K_point kp(ctx, vk, 1.0);
-    //    kp.initialize();
-    //    for (int i = 0; i < ctx.num_bands(); i++) {
-    //        kp.band_occupancy(i, 0, 2);
-    //    }
-    //    init_wf(&kp, kp.spinor_wave_functions(), ctx.num_bands(), 0);
-
-    //    Hamiltonian H(ctx, pot);
-    //    H.prepare();
-    //    Band(ctx).solve_pseudo_potential<double_complex>(kp, H);
-    //}
-
-
-
 }
 
 int main(int argn, char** argv)
