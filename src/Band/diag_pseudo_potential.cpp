@@ -506,6 +506,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
                 if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
+                    kp.message(3, __function_name__, "end of iterative diagonalization; n=%i, k=%i\n", n, k);
                     break;
                 } else { /* otherwise, set Psi as a new trial basis */
                     kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
