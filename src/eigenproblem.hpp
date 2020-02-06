@@ -616,7 +616,6 @@ class Eigensolver_elpa : public Eigensolver
             TERMINATE("number of columns in A and Z don't match");
         }
 
-        utils::timer t1("Eigensolver_elpa|solve_std|setup");
         int bs = A__.bs_row();
 
         int error;
