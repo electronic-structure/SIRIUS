@@ -435,6 +435,11 @@ void Simulation_context::initialize()
     }
 
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
+#if defined(__CUDA)
+    bool is_cuda{true};
+#else
+    bool is_cuda{false};
+#endif
 #if defined(__MAGMA)
     bool is_magma{true};
 #else
@@ -459,7 +464,9 @@ void Simulation_context::initialize()
         if (evsn[i] == "") {
             /* conditions for sequential diagonalization */
             if (comm_band().size() == 1 || npc == 1 || npr == 1 || !is_scalapack) {
-                if (is_magma && num_bands() > 200) {
+                if (is_cuda) {
+                    evsn[i] = "cusolver";
+                } else if (is_magma && num_bands() > 200) {
                     evsn[i] = "magma";
                 } else {
                     evsn[i] = "lapack";
