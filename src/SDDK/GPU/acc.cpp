@@ -3,7 +3,7 @@
  *  \brief Definition of the functions for the acc:: namespace.
  *
  */
-
+#include <atomic>
 #include "acc.hpp"
 
 namespace acc {
