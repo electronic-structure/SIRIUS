@@ -127,6 +127,12 @@ inline void stack_backtrace()
     raise(SIGQUIT);
 }
 
+/// Namespace for accelerator-related functions.
+namespace acc {
+/// Get the number of devices.
+int num_devices();
+}
+
 #if defined(__CUDA)
 #ifdef NDEBUG
 #define CALL_CUDA(func__, args__)                                                                                  \
@@ -161,12 +167,15 @@ inline void stack_backtrace()
 #if defined(__CUDA) || defined(__ROCM)
 #define CALL_DEVICE_API(func__, args__)                                                                            \
 {                                                                                                                  \
+    if (!acc::num_devices()) {                                                                                     \
+        return;                                                                                                    \
+    }                                                                                                              \
     acc_error_t error;                                                                                             \
-    error = GPU_PREFIX(func__) args__;                                                                                      \
-    if (error != GPU_PREFIX(Success)) {                                                                                     \
+    error = GPU_PREFIX(func__) args__;                                                                             \
+    if (error != GPU_PREFIX(Success)) {                                                                            \
         char nm[1024];                                                                                             \
         gethostname(nm, 1024);                                                                                     \
-        std::printf("hostname: %s\n", nm);                                                                              \
+        std::printf("hostname: %s\n", nm);                                                                         \
         std::printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, GPU_PREFIX(GetErrorString)(error));  \
         stack_backtrace();                                                                                         \
     }                                                                                                              \
@@ -177,9 +186,6 @@ inline void stack_backtrace()
 
 /// Namespace for accelerator-related functions.
 namespace acc {
-
-/// Get the number of devices.
-int num_devices();
 
 /// Set the GPU id.
 inline void set_device_id(int id__)
