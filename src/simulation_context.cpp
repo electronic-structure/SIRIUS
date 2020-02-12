@@ -456,7 +456,7 @@ void Simulation_context::initialize()
     bool is_elpa{false};
 #endif
 
-    if (acc::num_devices() == 0) {
+    if (processing_unit() == device_t::CPU || acc::num_devices() == 0) {
         is_cuda = false;
         is_magma = false;
     }
