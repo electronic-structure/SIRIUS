@@ -113,7 +113,6 @@ class stream_id
     }
 };
 
-
 inline void stack_backtrace()
 {
     void *array[10];
@@ -132,37 +131,6 @@ namespace acc {
 /// Get the number of devices.
 int num_devices();
 }
-
-#if defined(__CUDA)
-#ifdef NDEBUG
-#define CALL_CUDA(func__, args__)                                                                                  \
-{                                                                                                                  \
-    cudaError_t error = func__ args__;                                                                             \
-    if (error != cudaSuccess) {                                                                                    \
-        char nm[1024];                                                                                             \
-        gethostname(nm, 1024);                                                                                     \
-        std::printf("hostname: %s\n", nm);                                                                              \
-        std::printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        stack_backtrace();                                                                                         \
-    }                                                                                                              \
-}
-#else
-#define CALL_CUDA(func__, args__)                                                                                  \
-{                                                                                                                  \
-    cudaError_t error;                                                                                             \
-    func__ args__;                                                                                                 \
-    cudaDeviceSynchronize();                                                                                       \
-    error = cudaGetLastError();                                                                                    \
-    if (error != cudaSuccess) {                                                                                    \
-        char nm[1024];                                                                                             \
-        gethostname(nm, 1024);                                                                                     \
-        std::printf("hostname: %s\n", nm);                                                                              \
-        std::printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        stack_backtrace();                                                                                         \
-    }                                                                                                              \
-}
-#endif
-#endif
 
 #if defined(__CUDA) || defined(__ROCM)
 #define CALL_DEVICE_API(func__, args__)                                                                                \
@@ -467,12 +435,12 @@ inline void register_host(T* ptr__, size_t size__)
 {
     assert(ptr__);
 
-    CALL_CUDA(cudaHostRegister, (ptr__, size__ * sizeof(T), cudaHostRegisterMapped));
+    CALL_DEVICE_API(HostRegister, (ptr__, size__ * sizeof(T), cudaHostRegisterMapped));
 }
 
 inline void unregister_host(void* ptr)
 {
-    CALL_CUDA(cudaHostUnregister, (ptr));
+    CALL_DEVICE_API(HostUnregister, (ptr));
 }
 
 inline void check_last_error()

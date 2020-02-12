@@ -15,8 +15,10 @@ int num_devices()
     if (count.load(std::memory_order_relaxed) == -1) {
         int c;
         if (GPU_PREFIX(GetDeviceCount)(&c) != GPU_PREFIX(Success)) {
+            count.store(0, std::memory_order_relaxed);
+        } else {
             count.store(c, std::memory_order_relaxed);
-        }
+	}
     }
     return count.load(std::memory_order_relaxed);
 #else

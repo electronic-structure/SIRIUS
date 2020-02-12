@@ -456,6 +456,11 @@ void Simulation_context::initialize()
     bool is_elpa{false};
 #endif
 
+    if (acc::num_devices() == 0) {
+        is_cuda = false;
+	is_magma = false;
+    }
+
     int npr = control_input_.mpi_grid_dims_[0];
     int npc = control_input_.mpi_grid_dims_[1];
 
@@ -699,6 +704,7 @@ void Simulation_context::print_info() const
         }
         case device_t::GPU: {
             std::printf("GPU\n");
+	    printf("number of devices                   : %i\n", acc::num_devices());
             acc::print_device_info(0);
             break;
         }
