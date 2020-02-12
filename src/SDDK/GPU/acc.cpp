@@ -18,7 +18,7 @@ int num_devices()
             count.store(0, std::memory_order_relaxed);
         } else {
             count.store(c, std::memory_order_relaxed);
-	}
+        }
     }
     return count.load(std::memory_order_relaxed);
 #else

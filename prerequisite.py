@@ -101,31 +101,15 @@ def configure_package(package_name, prefix):
     else:
         new_env['CFLAGS'] += ' -fPIC'
 
-    new_env['FFTW_ROOT'] = prefix
-
     # spglib requires a special care
     if package_name == 'spg':
         os.mkdir('./libs/_build')
         p = subprocess.Popen(["cmake", "../" + package_dir, "-DCMAKE_INSTALL_PREFIX=" + prefix], cwd = './libs/_build', env = new_env)
         p.wait()
 
-        #p = subprocess.Popen(["aclocal"], cwd = "./libs/" + package_dir, env = new_env)
-        #p.wait()
-        #p = subprocess.Popen(["autoheader"], cwd = "./libs/" + package_dir, env = new_env)
-        #p.wait()
-        #if sys.platform == 'darwin':
-        #    p = subprocess.Popen(["glibtoolize"], cwd = "./libs/" + package_dir, env = new_env)
-        #else:
-        #    p = subprocess.Popen(["libtoolize"], cwd = "./libs/" + package_dir, env = new_env)
-        #p.wait()
-        #p = subprocess.Popen(["touch", "INSTALL", "NEWS", "README", "AUTHORS"], cwd = "./libs/" + package_dir, env = new_env)
-        #p.wait()
-        #p = subprocess.Popen(["automake", "-acf"], cwd = "./libs/" + package_dir, env = new_env)
-        #p.wait()
-        #p = subprocess.Popen(["autoconf"], cwd = "./libs/" + package_dir, env = new_env)
-        #p.wait()
         p = subprocess.Popen(["make", "install"], cwd = './libs/_build', env = new_env)
         p.wait()
+
         shutil.rmtree('./libs/_build')
         os.makedirs(prefix + '/include/spglib', exist_ok=True)
         shutil.copyfile(prefix + '/include/spglib.h', prefix + '/include/spglib/spglib.h')
