@@ -47,6 +47,11 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
 
+    if (ctx_.gen_evp_solver_type() == ev_solver_t::cusolver || ctx_.processing_unit() == device_t::GPU) {
+        h.allocate(ctx_.mem_pool(memory_t::device));
+        o.allocate(ctx_.mem_pool(memory_t::device));
+    }
+
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     /* setup Hamiltonian and overlap */
