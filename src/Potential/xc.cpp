@@ -175,8 +175,8 @@ void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
     Spheric_vector_function<function_domain_t::spatial, double> grad_rho_up_tp(sht_->num_points(), rgrid);
     Spheric_vector_function<function_domain_t::spatial, double> grad_rho_dn_tp(sht_->num_points(), rgrid);
 
-    Spheric_function<function_domain_t::spatial, double> lapl_rho_up_tp(ctx_.mem_pool(memory_t::host), sht_->num_points(), rgrid);
-    Spheric_function<function_domain_t::spatial, double> lapl_rho_dn_tp(ctx_.mem_pool(memory_t::host), sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> lapl_rho_up_tp(sht_->num_points(), rgrid);
+    Spheric_function<function_domain_t::spatial, double> lapl_rho_dn_tp(sht_->num_points(), rgrid);
 
     Spheric_function<function_domain_t::spatial, double> grad_rho_up_grad_rho_up_tp;
     Spheric_function<function_domain_t::spatial, double> grad_rho_dn_grad_rho_dn_tp;
@@ -217,13 +217,13 @@ void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
     Spheric_function<function_domain_t::spatial, double> vsigma_ud_tp;
     Spheric_function<function_domain_t::spatial, double> vsigma_dd_tp;
     if (is_gga) {
-        vsigma_uu_tp = Spheric_function<function_domain_t::spatial, double>(ctx_.mem_pool(memory_t::host), sht_->num_points(), rgrid);
+        vsigma_uu_tp = Spheric_function<function_domain_t::spatial, double>(sht_->num_points(), rgrid);
         vsigma_uu_tp.zero();
 
-        vsigma_ud_tp = Spheric_function<function_domain_t::spatial, double>(ctx_.mem_pool(memory_t::host), sht_->num_points(), rgrid);
+        vsigma_ud_tp = Spheric_function<function_domain_t::spatial, double>(sht_->num_points(), rgrid);
         vsigma_ud_tp.zero();
 
-        vsigma_dd_tp = Spheric_function<function_domain_t::spatial, double>(ctx_.mem_pool(memory_t::host), sht_->num_points(), rgrid);
+        vsigma_dd_tp = Spheric_function<function_domain_t::spatial, double>(sht_->num_points(), rgrid);
         vsigma_dd_tp.zero();
     }
 
