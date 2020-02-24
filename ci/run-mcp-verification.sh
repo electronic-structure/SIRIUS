@@ -1,7 +1,8 @@
 #!/bin/bash -l
 #SBATCH --job-name=sirius-mcp-tests
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=4
+#SBATCH --ntasks-per-node=4
+#SBATCH --ntasks-per-core=3
 #SBATCH --constraint=gpu
 #SBATCH --partition=cscsci
 #SBATCH --time=00:20:00
@@ -19,5 +20,5 @@ source ${ENVFILE}
     module list
     echo "run-mc-parallel-verification: running on $(hostname)"
     cd ../verification
-    ./run_tests_parallel.x
+    srun -n4 -c2 --unbuffered --hint=nomultithread ./run_tests_parallel.x
 )

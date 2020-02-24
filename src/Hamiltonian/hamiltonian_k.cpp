@@ -302,8 +302,10 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             alm_row.allocate(memory_t::device);
             alm_col.allocate(memory_t::device);
             halm_col.allocate(memory_t::device);
-            h__.allocate(memory_t::device).zero(memory_t::device);
-            o__.allocate(memory_t::device).zero(memory_t::device);
+            //h__.allocate(memory_t::device).zero(memory_t::device);
+            //o__.allocate(memory_t::device).zero(memory_t::device);
+            h__.zero(memory_t::device);
+            o__.zero(memory_t::device);
             break;
         }
         case device_t::CPU: {
@@ -448,11 +450,11 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
                          h__.at(mt), h__.ld());
     }
 
-    if (pu == device_t::GPU) {
+    if (pu == device_t::GPU) { // TODO: if solver is cusolver, this is an additional copy, not necessary
         acc::copyout(h__.at(memory_t::host), h__.ld(), h__.at(memory_t::device), h__.ld(), kp.num_gkvec_row(), kp.num_gkvec_col());
         acc::copyout(o__.at(memory_t::host), o__.ld(), o__.at(memory_t::device), o__.ld(), kp.num_gkvec_row(), kp.num_gkvec_col());
-        h__.deallocate(memory_t::device);
-        o__.deallocate(memory_t::device);
+        //h__.deallocate(memory_t::device);
+        //o__.deallocate(memory_t::device);
     }
     PROFILE_STOP("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
     std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;

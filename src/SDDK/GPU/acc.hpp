@@ -113,7 +113,6 @@ class stream_id
     }
 };
 
-
 inline void stack_backtrace()
 {
     void *array[10];
@@ -127,49 +126,26 @@ inline void stack_backtrace()
     raise(SIGQUIT);
 }
 
-#if defined(__CUDA)
-#ifdef NDEBUG
-#define CALL_CUDA(func__, args__)                                                                                  \
-{                                                                                                                  \
-    cudaError_t error = func__ args__;                                                                             \
-    if (error != cudaSuccess) {                                                                                    \
-        char nm[1024];                                                                                             \
-        gethostname(nm, 1024);                                                                                     \
-        std::printf("hostname: %s\n", nm);                                                                              \
-        std::printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        stack_backtrace();                                                                                         \
-    }                                                                                                              \
+/// Namespace for accelerator-related functions.
+namespace acc {
+/// Get the number of devices.
+int num_devices();
 }
-#else
-#define CALL_CUDA(func__, args__)                                                                                  \
-{                                                                                                                  \
-    cudaError_t error;                                                                                             \
-    func__ args__;                                                                                                 \
-    cudaDeviceSynchronize();                                                                                       \
-    error = cudaGetLastError();                                                                                    \
-    if (error != cudaSuccess) {                                                                                    \
-        char nm[1024];                                                                                             \
-        gethostname(nm, 1024);                                                                                     \
-        std::printf("hostname: %s\n", nm);                                                                              \
-        std::printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, cudaGetErrorString(error)); \
-        stack_backtrace();                                                                                         \
-    }                                                                                                              \
-}
-#endif
-#endif
 
 #if defined(__CUDA) || defined(__ROCM)
-#define CALL_DEVICE_API(func__, args__)                                                                            \
-{                                                                                                                  \
-    acc_error_t error;                                                                                             \
-    error = GPU_PREFIX(func__) args__;                                                                                      \
-    if (error != GPU_PREFIX(Success)) {                                                                                     \
-        char nm[1024];                                                                                             \
-        gethostname(nm, 1024);                                                                                     \
-        std::printf("hostname: %s\n", nm);                                                                              \
-        std::printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, GPU_PREFIX(GetErrorString)(error));  \
-        stack_backtrace();                                                                                         \
-    }                                                                                                              \
+#define CALL_DEVICE_API(func__, args__)                                                                                \
+{                                                                                                                      \
+    if (acc::num_devices()) {                                                                                          \
+        acc_error_t error;                                                                                             \
+        error = GPU_PREFIX(func__) args__;                                                                             \
+        if (error != GPU_PREFIX(Success)) {                                                                            \
+            char nm[1024];                                                                                             \
+            gethostname(nm, 1024);                                                                                     \
+            std::printf("hostname: %s\n", nm);                                                                         \
+            std::printf("Error in %s at line %i of file %s: %s\n", #func__, __LINE__, __FILE__, GPU_PREFIX(GetErrorString)(error));  \
+            stack_backtrace();                                                                                         \
+        }                                                                                                              \
+    }                                                                                                                  \
 }
 #else
 #define CALL_DEVICE_API(func__, args__)
@@ -177,9 +153,6 @@ inline void stack_backtrace()
 
 /// Namespace for accelerator-related functions.
 namespace acc {
-
-/// Get the number of devices.
-int num_devices();
 
 /// Set the GPU id.
 inline void set_device_id(int id__)
@@ -411,7 +384,7 @@ inline void zero(T* ptr__, int ld__, int nrow__, int ncol__)
 /// Allocate memory on the GPU.
 template <typename T>
 inline T* allocate(size_t size__) {
-    T* ptr;
+    T* ptr{nullptr};
     CALL_DEVICE_API(Malloc, (&ptr, size__ * sizeof(T)));
     return ptr;
 }
@@ -425,7 +398,7 @@ inline void deallocate(void* ptr__)
 /// Allocate pinned memory on the host.
 template <typename T>
 inline T* allocate_host(size_t size__) {
-    T* ptr;
+    T* ptr{nullptr};
 #if defined(__CUDA)
     CALL_DEVICE_API(MallocHost, (&ptr, size__ * sizeof(T)));
 #endif
@@ -462,12 +435,12 @@ inline void register_host(T* ptr__, size_t size__)
 {
     assert(ptr__);
 
-    CALL_CUDA(cudaHostRegister, (ptr__, size__ * sizeof(T), cudaHostRegisterMapped));
+    CALL_DEVICE_API(HostRegister, (ptr__, size__ * sizeof(T), cudaHostRegisterMapped));
 }
 
 inline void unregister_host(void* ptr)
 {
-    CALL_CUDA(cudaHostUnregister, (ptr));
+    CALL_DEVICE_API(HostUnregister, (ptr));
 }
 
 inline void check_last_error()

@@ -20,5 +20,5 @@ source ${ENVFILE}
     module list
     echo "run-gpup-verification: running on $(hostname)"
     cd ../verification
-    ./run_tests_parallel_gpu.x
+    srun -n4 -c2 --unbuffered --hint=nomultithread ./run_tests_parallel_gpu.x
 )

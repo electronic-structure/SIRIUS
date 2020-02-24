@@ -3,7 +3,7 @@
  *  \brief Definition of the functions for the acc:: namespace.
  *
  */
-
+#include <atomic>
 #include "acc.hpp"
 
 namespace acc {
@@ -11,13 +11,16 @@ namespace acc {
 int num_devices()
 {
 #if defined(__CUDA) || defined(__ROCM)
-    static int count{-1};
-    if (count == -1) {
-        if (GPU_PREFIX(GetDeviceCount)(&count) != GPU_PREFIX(Success)) {
-            count = 0;
+    static std::atomic<int> count(-1);
+    if (count.load(std::memory_order_relaxed) == -1) {
+        int c;
+        if (GPU_PREFIX(GetDeviceCount)(&c) != GPU_PREFIX(Success)) {
+            count.store(0, std::memory_order_relaxed);
+        } else {
+            count.store(c, std::memory_order_relaxed);
         }
     }
-    return count;
+    return count.load(std::memory_order_relaxed);
 #else
     return 0;
 #endif
