@@ -389,8 +389,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
 
-        mdarray<double, 1> eval(num_bands);
-        mdarray<double, 1> eval_old(num_bands);
+        sddk::mdarray<double, 1> eval(num_bands);
+        sddk::mdarray<double, 1> eval_old(num_bands);
         eval_old = [](){return 1e10;};
 
         /* check if band energy is converged */
@@ -440,6 +440,13 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
          * N is the number of previous basis functions
          * n is the number of new basis functions */
         set_subspace_mtrx(0, num_bands, phi, hphi, hmlt, &hmlt_old);
+
+        if (!itso.orthogonalize_) {
+            ovlp_old.zero();
+            for (int i = 0; i < num_bands; i++) {
+                ovlp_old.set(i, i, 1.0);
+            }
+        }
 
         if (ctx_.control().verification_ >= 1) {
             double max_diff = check_hermitian(hmlt, num_bands);
