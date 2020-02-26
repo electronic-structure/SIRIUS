@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file simulation_context.cpp
+ *
+ *  \brief Implementation of Simulation_context class.
+ */
+
 #include <gsl/gsl_sf_bessel.h>
 #include "sirius_version.hpp"
 #include "simulation_context.hpp"
@@ -863,12 +887,12 @@ void Simulation_context::update()
         /* radial integrals with pw_cutoff */
         if (!aug_ri_ || aug_ri_->qmax() < new_pw_cutoff) {
             aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
-                new Radial_integrals_aug<false>(unit_cell(), new_pw_cutoff, settings().nprii_aug_));
+                new Radial_integrals_aug<false>(unit_cell(), new_pw_cutoff, settings().nprii_aug_, aug_ri_callback_));
         }
 
         if (!aug_ri_djl_ || aug_ri_djl_->qmax() < new_pw_cutoff) {
             aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
-                new Radial_integrals_aug<true>(unit_cell(), new_pw_cutoff, settings().nprii_aug_));
+                new Radial_integrals_aug<true>(unit_cell(), new_pw_cutoff, settings().nprii_aug_, nullptr));
         }
 
         if (!ps_core_ri_ || ps_core_ri_->qmax() < new_pw_cutoff) {
@@ -899,12 +923,12 @@ void Simulation_context::update()
         /* radial integrals with pw_cutoff */
         if (!beta_ri_ || beta_ri_->qmax() < new_gk_cutoff) {
             beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(
-                new Radial_integrals_beta<false>(unit_cell(), new_gk_cutoff, settings().nprii_beta_));
+                new Radial_integrals_beta<false>(unit_cell(), new_gk_cutoff, settings().nprii_beta_, beta_ri_callback_));
         }
 
         if (!beta_ri_djl_ || beta_ri_djl_->qmax() < new_gk_cutoff) {
             beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
-                new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, settings().nprii_beta_));
+                new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, settings().nprii_beta_, nullptr));
         }
 
         if (!atomic_wf_ri_ || atomic_wf_ri_->qmax() < new_gk_cutoff) {
@@ -1139,7 +1163,6 @@ void Simulation_context::update()
                 augmentation_op_[iat] = std::unique_ptr<Augmentation_operator>(
                     new Augmentation_operator(unit_cell().atom_type(iat), gvec()));
                 augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), gvec_tp_, *mp, mpd);
-
             } else {
                 augmentation_op_[iat] = nullptr;
             }

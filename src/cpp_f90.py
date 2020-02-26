@@ -9,6 +9,7 @@ import re
 
 in_type_map = {
     'void*'   : 'type(C_PTR)',
+    'func'    : 'type(C_FUNPTR)',
     'int'     : 'integer(C_INT)',
     'double'  : 'real(C_DOUBLE)',
     'string'  : 'character(C_CHAR)',
@@ -64,6 +65,8 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
             o.write(', optional, target')
         if a['type'] == 'string':
             o.write(', dimension(*)')
+        if a['type'] == 'func':
+            o.write(', value')
         o.write(', intent(' + a['intent'] + ') :: ' + a['name'])
         o.write('\n')
 
@@ -100,6 +103,8 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
             o.write(in_type_map[a['type']])
             if a['type'] == 'string':
                 o.write(', dimension(*)')
+            if a['type'] == 'func':
+                o.write(', value')
             o.write(', intent(' + a['intent'] + ') :: ' + a['name'])
         o.write('\n')
 

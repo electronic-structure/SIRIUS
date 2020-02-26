@@ -788,6 +788,29 @@ end interface
 res = sirius_create_ground_state_aux(ks_handler)
 end function sirius_create_ground_state
 
+!> @brief Initialize k-point set.
+!> @param [in] ks_handler K-point set handler.
+!> @param [out] error_code Error code.
+subroutine sirius_initialize_kset(ks_handler,error_code)
+implicit none
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), optional, target, intent(out) :: error_code
+type(C_PTR) :: error_code_ptr
+interface
+subroutine sirius_initialize_kset_aux(ks_handler,error_code)&
+&bind(C, name="sirius_initialize_kset")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
+call sirius_initialize_kset_aux(ks_handler,error_code_ptr)
+end subroutine sirius_initialize_kset
+
 !> @brief Find the ground state.
 !> @param [in] gs_handler Handler of the ground state.
 !> @param [in] density_tol Tolerance on RMS in density.
@@ -3498,4 +3521,33 @@ if (present(error_code)) error_code_ptr = C_LOC(error_code)
 
 call sirius_get_matching_coefficients_aux(handler,ik,alm,error_code_ptr)
 end subroutine sirius_get_matching_coefficients
+
+!> @brief Set callback function to compute various radial integrals.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Lable of the callback function.
+!> @param [in] fptr Pointer to callback function.
+!> @param [out] error_code Error code.
+subroutine sirius_set_callback_function(handler,label,fptr,error_code)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+type(C_FUNPTR), value, intent(in) :: fptr
+integer(C_INT), optional, target, intent(out) :: error_code
+type(C_PTR) :: error_code_ptr
+interface
+subroutine sirius_set_callback_function_aux(handler,label,fptr,error_code)&
+&bind(C, name="sirius_set_callback_function")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+type(C_FUNPTR), value, intent(in) :: fptr
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
+call sirius_set_callback_function_aux(handler,label,fptr,error_code_ptr)
+end subroutine sirius_set_callback_function
 

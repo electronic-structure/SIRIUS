@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(SIRIUS VERSION 6.5.0)
+project(SIRIUS VERSION 6.5.1)
 
 # set language and standard
 enable_language(CXX Fortran)
