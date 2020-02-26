@@ -153,6 +153,8 @@ class Simulation_context : public Simulation_parameters
     /// Radial integrals of beta-projectors with derivatives of spherical Bessel functions.
     std::unique_ptr<Radial_integrals_beta<true>> beta_ri_djl_;
 
+    std::function<void(int, double, double*, int)> beta_ri_djl_callback_{nullptr};
+
     /// Radial integrals of augmentation operator.
     std::unique_ptr<Radial_integrals_aug<false>> aug_ri_;
 
@@ -161,6 +163,8 @@ class Simulation_context : public Simulation_parameters
 
     /// Radial integrals of augmentation operator with derivatives of spherical Bessel functions.
     std::unique_ptr<Radial_integrals_aug<true>> aug_ri_djl_;
+
+    std::function<void(int, double, double*, int, int)> aug_ri_djl_callback_{nullptr};
 
     /// Radial integrals of atomic wave-functions.
     std::unique_ptr<Radial_integrals_atomic_wf<false>> atomic_wf_ri_;
@@ -763,10 +767,21 @@ class Simulation_context : public Simulation_parameters
         beta_ri_callback_ = fptr__;
     }
 
+    inline void beta_ri_djl_callback(void (*fptr__)(int, double, double*, int))
+    {
+        beta_ri_djl_callback_ = fptr__;
+    }
+
     /// Set the callback function.
     inline void aug_ri_callback(void (*fptr__)(int, double, double*, int, int))
     {
         aug_ri_callback_ = fptr__;
+    }
+
+    /// Set the callback function.
+    inline void aug_ri_djl_callback(void (*fptr__)(int, double, double*, int, int))
+    {
+        aug_ri_djl_callback_ = fptr__;
     }
 };
 

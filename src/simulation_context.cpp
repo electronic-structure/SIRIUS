@@ -892,7 +892,7 @@ void Simulation_context::update()
 
         if (!aug_ri_djl_ || aug_ri_djl_->qmax() < new_pw_cutoff) {
             aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
-                new Radial_integrals_aug<true>(unit_cell(), new_pw_cutoff, settings().nprii_aug_, nullptr));
+                new Radial_integrals_aug<true>(unit_cell(), new_pw_cutoff, settings().nprii_aug_, aug_ri_djl_callback_));
         }
 
         if (!ps_core_ri_ || ps_core_ri_->qmax() < new_pw_cutoff) {
@@ -928,7 +928,7 @@ void Simulation_context::update()
 
         if (!beta_ri_djl_ || beta_ri_djl_->qmax() < new_gk_cutoff) {
             beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
-                new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, settings().nprii_beta_, nullptr));
+                new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, settings().nprii_beta_, beta_ri_djl_callback_));
         }
 
         if (!atomic_wf_ri_ || atomic_wf_ri_->qmax() < new_gk_cutoff) {

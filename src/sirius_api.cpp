@@ -3569,8 +3569,12 @@ void sirius_set_callback_function(void* const* handler__, char const* label__, v
         auto& sim_ctx = get_sim_ctx(handler__);
         if (label == "beta_ri") {
             sim_ctx.beta_ri_callback(reinterpret_cast<void(*)(int, double, double*, int)>(fptr__));
+        } else if (label == "beta_ri_djl") {
+            sim_ctx.beta_ri_djl_callback(reinterpret_cast<void(*)(int, double, double*, int)>(fptr__));
         } else if (label == "aug_ri") {
             sim_ctx.aug_ri_callback(reinterpret_cast<void(*)(int, double, double*, int, int)>(fptr__));
+        } else if (label == "aug_ri_djl") {
+            sim_ctx.aug_ri_djl_callback(reinterpret_cast<void(*)(int, double, double*, int, int)>(fptr__));
         } else {
             throw std::runtime_error("wrong label of callback function");
         }
