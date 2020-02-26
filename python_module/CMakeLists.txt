@@ -23,26 +23,34 @@ if(CREATE_PYTHON_MODULE)
   pybind11_add_module(${libname} py_sirius.cpp)
 
   add_dependencies(${libname} sirius)
-  target_include_directories(${libname} PRIVATE ${MPI4PY_INCLUDE_DIR})
+  target_link_libraries(${libname} PRIVATE mpi4py::mpi4py)
   if(USE_MKL)
     # workaround for `Intel MKL FATAL ERROR: Cannot load libmkl_avx2.so or libmkl_def.so.`
     target_link_libraries(${libname} PRIVATE ${MKL_DEF_LIBRARY})
   endif()
 
-  SIRIUS_SETUP_TARGET(${libname})
+  set(PYTHON_INSTALL_SITE_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages)
+
+  # set relative RPATH
+  if(isSystemDir STREQUAL "-1")
+    file(RELATIVE_PATH relDir ${PYTHON_INSTALL_SITE_DIR}/sirius
+      ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+    set_target_properties(${libname} PROPERTIES INSTALL_RPATH "${basePoint};${basePoint}/${relDir}")
+  endif()
+
+  target_link_libraries(${libname} PRIVATE sirius)
   # collect python files in module dir
   # install to cmake prefix
-
   if(NOT PYTHON2)
     install(DIRECTORY sirius
       DESTINATION
-      ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/
+      ${PYTHON_INSTALL_SITE_DIR}
       FILES_MATCHING REGEX
       ".*py"
       )
     install(TARGETS ${libname}
       LIBRARY
-      DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
+      DESTINATION ${PYTHON_INSTALL_SITE_DIR}/sirius)
     install(
       PROGRAMS
       ${CMAKE_SOURCE_DIR}/python_module/apps/neugebaur_cg.py
@@ -55,12 +63,12 @@ if(CREATE_PYTHON_MODULE)
     # minimal support for Python 2.7, full functionality is provided for Python >3.5 only
     install(DIRECTORY sirius_minimal/
       DESTINATION
-      ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius
+      ${PYTHON_INSTALL_SITE_DIR}sirius
       FILES_MATCHING REGEX
       ".*py")
     install(TARGETS ${libname}
       LIBRARY
-      DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
+      DESTINATION ${PYTHON_INSTALL_SITE_DIR}/sirius)
   endif()
 
 endif(CREATE_PYTHON_MODULE)

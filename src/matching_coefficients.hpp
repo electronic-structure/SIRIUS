@@ -50,14 +50,19 @@ namespace sirius {
 class Matching_coefficients // TODO: compute on GPU
 {
   private:
+    /// Description of the unit cell.
     Unit_cell const& unit_cell_;
 
+    /// Number of the G+k vectors for which matching coefficients are constructed.
     int num_gkvec_;
 
+    /// Index of the G+k vectors inside gkvec class, for which the matching coefficients are constructed.
     std::vector<int>& igk_;
 
+    /// Description of the G+k vectors.
     Gvec const& gkvec_;
 
+    /// Spherical harmonics Ylm(theta, phi) of the G+k vectors.
     sddk::mdarray<double_complex, 2> gkvec_ylm_;
 
     std::vector<double> gkvec_len_;
@@ -219,7 +224,7 @@ class Matching_coefficients // TODO: compute on GPU
             /* create matrix of radial derivatives */
             for (int order = 0; order < num_aw; order++) {
                 for (int dm = 0; dm < num_aw; dm++) {
-                    A(dm, order) = atom__.symmetry_class().aw_surface_dm(l, order, dm);
+                    A(dm, order) = atom__.symmetry_class().aw_surface_deriv(l, order, dm);
                 }
             }
 

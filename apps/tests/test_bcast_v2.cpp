@@ -4,14 +4,14 @@ using namespace sirius;
 
 int test1(int size)
 {
-    utils::timer t1("test1");
+    double t = -utils::wtime();
     sddk::mdarray<char, 1> buf(size);
     buf.zero();
 
     for (int r = 0; r < Communicator::world().size(); r++) {
         Communicator::world().bcast(buf.at(memory_t::host), size, r);
     }
-    double t = t1.stop();
+    t += utils::wtime();
     if (Communicator::world().rank() == 0) {
         printf("time : %f sec.\n", t);
     }

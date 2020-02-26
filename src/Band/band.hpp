@@ -121,13 +121,6 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
      *  are created from the random numbers. */
     template <typename T>
     void initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const;
-
-    static double evp_work_count(double w__ = 0) // TODO: move counters to sim.ctx
-    {
-        static double evp_work_count_{0};
-        evp_work_count_ += w__;
-        return evp_work_count_;
-    }
 };
 
 }

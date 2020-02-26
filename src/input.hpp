@@ -633,6 +633,20 @@ struct Settings_input
     /// Minimum tolerance of the iterative solver.
     double itsol_tol_min_{1e-13};
 
+    /// Minimum occupancy below which the band is treated as being "empty".
+    double min_occupancy_{1e-14};
+
+    /// Fine control of the empty states tolerance.
+    /** This is the ratio between the tolerance of empty and occupied states. Used in the code like this:
+        \code{.cpp}
+        // tolerance of occupied bands
+        double tol = ctx_.iterative_solver_tolerance();
+        // final tolerance of empty bands
+        double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
+        \endcode
+    */
+    double itsol_tol_ratio_{0};
+
     /// Scaling parameters of the iterative  solver tolerance.
     /** First number is the scaling of density RMS, that gives the estimate of the new tolerance. Second number is
         the scaling of the old tolerance. New tolerance is then the minimum between the two. This is how it is
@@ -674,8 +688,10 @@ struct Settings_input
             auto_enu_tol_     = section.value("auto_enu_tol", auto_enu_tol_);
             radial_grid_      = section.value("radial_grid", radial_grid_);
             fft_grid_size_    = section.value("fft_grid_size", fft_grid_size_);
+            itsol_tol_ratio_  = section.value("itsol_tol_ratio", itsol_tol_ratio_);
             itsol_tol_scale_  = section.value("itsol_tol_scale", itsol_tol_scale_);
             sht_coverage_     = section.value("sht_coverage", sht_coverage_);
+            min_occupancy_    = section.value("min_occupancy", min_occupancy_);
         }
     }
 };

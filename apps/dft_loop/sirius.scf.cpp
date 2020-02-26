@@ -165,10 +165,10 @@ double ground_state(Simulation_context& ctx,
 
         dict["task"] = static_cast<int>(task);
         dict["ground_state"] = result;
-        dict["timers"] = utils::timer::serialize();
+        //dict["timers"] = utils::timer::serialize();
         dict["counters"] = json::object();
-        dict["counters"]["local_operator_num_applied"] = Local_operator::num_applied();
-        dict["counters"]["band_evp_work_count"] = Band::evp_work_count();
+        dict["counters"]["local_operator_num_applied"] = ctx.num_loc_op_applied();
+        dict["counters"]["band_evp_work_count"] = ctx.evp_work_count();
 
         if (ctx.comm().rank() == 0) {
             std::string output_file = args.value<std::string>("output", std::string("output_") +
@@ -381,7 +381,7 @@ int main(int argn, char** argv)
 
     if (my_rank == 0)  {
         const auto timing_result = ::utils::global_rtgraph_timer.process();
-        std::cout<< timing_result.print();
+        std::cout << timing_result.print();
         std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
         ofs << timing_result.json();
     }

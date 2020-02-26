@@ -55,7 +55,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
     //bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
-    //ctx_.message(2, __func__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
+    //ctx_.message(2, __function_name__, "iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
 
     /* true if this is a non-collinear case */
     bool const nc_mag = (num_mag_dims__ == 3);

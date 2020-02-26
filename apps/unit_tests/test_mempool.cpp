@@ -3,7 +3,6 @@
 #include <memory.hpp>
 #include <complex>
 #include <sys/time.h>
-#include "utils/timer.hpp"
 
 using double_complex = std::complex<double>;
 using namespace sddk;
@@ -92,7 +91,6 @@ inline double wtime()
 
 double test_alloc(size_t n)
 {
-    utils::timer tt("test_alloc|std");
     double t0 = wtime();
     /* time to allocate + fill */
     char* ptr = (char*)std::malloc(n);
@@ -112,7 +110,6 @@ double test_alloc(size_t n)
 
 double test_alloc(size_t n, memory_pool& mp)
 {
-    utils::timer tt("test_alloc|mp");
     double t0 = wtime();
     /* time to allocate + fill */
     char* ptr = mp.allocate<char>(n);
@@ -169,7 +166,6 @@ void test6a()
     }
     std::cout << "std::malloc time: " << t0 << ", sddk::memory_pool time: " << t1 << "\n";
     mp.print();
-    utils::timer::print();
 }
 
 void test7()
@@ -222,7 +218,6 @@ void test7()
 
 double test_alloc_array(size_t n)
 {
-    utils::timer tt("test_alloc|std");
     double t0 = wtime();
     /* time to allocate + fill */
     mdarray<char, 1> p(n);
@@ -242,7 +237,6 @@ double test_alloc_array(size_t n)
 
 double test_alloc_array(size_t n, memory_pool& mp)
 {
-    utils::timer tt("test_alloc|mp");
     double t0 = wtime();
     /* time to allocate + fill */
     mdarray<char, 1> p(n, mp);
@@ -278,7 +272,6 @@ void test9()
         }
     }
     std::cout << "std::malloc time: " << t0 << ", sddk::memory_pool time: " << t1 << "\n";
-    utils::timer::print();
 }
 
 int run_test()

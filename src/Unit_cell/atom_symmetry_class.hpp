@@ -56,22 +56,22 @@ class Atom_symmetry_class
      *  1-st dimension: index of radial point \n
      *  2-nd dimension: index of radial function \n
      *  3-nd dimension: 0 - function itself, 1 - radial derivative */
-    mdarray<double, 3> radial_functions_;
+    sddk::mdarray<double, 3> radial_functions_;
 
     /// Surface derivatives of AW radial functions.
-    mdarray<double, 3> aw_surface_derivatives_;
+    sddk::mdarray<double, 3> aw_surface_derivatives_;
 
     /// Spherical part of radial integral.
-    mdarray<double, 2> h_spherical_integrals_;
+    sddk::mdarray<double, 2> h_spherical_integrals_;
 
     /// Overlap integrals.
-    mdarray<double, 3> o_radial_integrals_;
+    sddk::mdarray<double, 3> o_radial_integrals_;
 
     /// Overlap integrals for IORA relativistic treatment.
-    mdarray<double, 2> o1_radial_integrals_;
+    sddk::mdarray<double, 2> o1_radial_integrals_;
 
     /// Spin-orbit interaction integrals.
-    mdarray<double, 3> so_radial_integrals_;
+    sddk::mdarray<double, 3> so_radial_integrals_;
 
     /// Core charge density.
     /** All-electron core charge density of the LAPW method. It is recomputed on every SCF iteration due to
@@ -162,6 +162,7 @@ class Atom_symmetry_class
     /// Find core states and generate core density.
     inline void generate_core_charge_density(relativity_t core_rel__);
 
+    /// Find linearization energy.
     inline void find_enu(relativity_t rel__);
 
     inline void write_enu(pstdout& pout) const;
@@ -179,14 +180,15 @@ class Atom_symmetry_class
      */
     inline void generate_radial_integrals(relativity_t rel__);
 
-    /// Compute m-th order radial derivative at the MT surface.
-    inline double aw_surface_dm(int l, int order, int dm) const
+    /// Get m-th order radial derivative of AW functions at the MT surface.
+    inline double aw_surface_deriv(int l, int order, int dm) const
     {
         assert(dm <= 2);
         return aw_surface_derivatives_(order, l, dm);
     }
 
-    inline void set_aw_surface_deriv(int l, int order, int dm, double deriv)
+    /// Set surface derivative of AW radial functions.
+    inline void aw_surface_deriv(int l, int order, int dm, double deriv)
     {
         assert(dm <= 2);
         aw_surface_derivatives_(order, l, dm) = deriv;

@@ -17,7 +17,6 @@ find_path(LIBVDWXC_INCLUDE_DIR
   ${_LIBVDWXC_INCLUDE_DIRS}
   DOC "vdwxc include directory")
 
-
 find_library(LIBVDWXC_LIBRARIES
   NAMES vdwxc
   PATH_SUFFIXES lib
@@ -33,3 +32,10 @@ set(CMAKE_REQUIRED_LIBRARIES "${LIBVDWXC_LIBRARIES}")
 check_symbol_exists(vdwxc_init_mpi "${LIBVDWXC_INCLUDE_DIR}/vdwxc_mpi.h" HAVE_LIBVDW_WITH_MPI)
 
 find_package_handle_standard_args(LibVDWXC DEFAULT_MSG LIBVDWXC_LIBRARIES LIBVDWXC_INCLUDE_DIR)
+
+if(LibVDWXC_FOUND AND NOT TARGET sirius::libvdwxc)
+  add_library(sirius::libvdwxc INTERFACE IMPORTED)
+  set_target_properties(sirius::libvdwxc PROPERTIES
+                                         INTERFACE_INCLUDE_DIRECTORIES "${LIBVDWXC_INCLUDE_DIR}"
+                                         INTERFACE_LINK_LIBRARIES "${LIBVDWXC_LIBRARIES}")
+endif()

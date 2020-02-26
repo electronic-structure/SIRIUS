@@ -567,6 +567,8 @@ class Eigensolver_elpa : public Eigensolver
     {
         PROFILE("Eigensolver_elpa|solve_std");
 
+        int nt = omp_get_max_threads();
+
         if (A__.num_cols_local() != Z__.num_cols_local()) {
             TERMINATE("number of columns in A and Z don't match");
         }
@@ -602,7 +604,13 @@ class Eigensolver_elpa : public Eigensolver
         elpa_deallocate(handle, &error);
 
         std::copy(w.get(), w.get() + nev__, eval__);
-
+        if (nt != omp_get_max_threads()) {
+            std::stringstream s;
+            s << "number of OMP threads was changed by elpa" << std::endl
+              << "  initial number of threads : " << nt << std::endl
+              << "  new number of threads : " <<  omp_get_max_threads();
+            TERMINATE(s);
+        }
         return 0;
     }
 
@@ -612,11 +620,12 @@ class Eigensolver_elpa : public Eigensolver
     {
         PROFILE("Eigensolver_elpa|solve_std");
 
+        int nt = omp_get_max_threads();
+
         if (A__.num_cols_local() != Z__.num_cols_local()) {
             TERMINATE("number of columns in A and Z don't match");
         }
 
-        utils::timer t1("Eigensolver_elpa|solve_std|setup");
         int bs = A__.bs_row();
 
         int error;
@@ -646,6 +655,14 @@ class Eigensolver_elpa : public Eigensolver
         elpa_deallocate(handle, &error);
 
         std::copy(w.get(), w.get() + nev__, eval__);
+
+        if (nt != omp_get_max_threads()) {
+            std::stringstream s;
+            s << "number of OMP threads was changed by elpa" << std::endl
+              << "  initial number of threads : " << nt << std::endl
+              << "  new number of threads : " <<  omp_get_max_threads();
+            TERMINATE(s);
+        }
 
         return 0;
     }

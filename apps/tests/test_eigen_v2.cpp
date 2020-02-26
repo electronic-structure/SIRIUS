@@ -56,7 +56,7 @@ double test_diag(BLACS_grid const& blacs_grid__,
             printf("complex data type\n");
         }
     }
-    utils::timer t1("evp");
+    double t = -utils::wtime();
     if (test_gen__) {
         if (n__ == nev__) {
             solver.solve(n__, A, B, eval.data(), Z);
@@ -70,7 +70,7 @@ double test_diag(BLACS_grid const& blacs_grid__,
             solver.solve(n__, nev__, A, eval.data(), Z);
         }
     }
-    double t = t1.stop();
+    t += utils::wtime();
 
     if (blacs_grid__.comm().rank() == 0) {
         printf("eigen-values (min, max): %18.12f %18.12f\n", eval.front(), eval.back());
@@ -236,9 +236,5 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     call_test(mpi_grid_dims, N, n, nev, bs, test_gen, name, fname, repeat, type);
-    Communicator::world().barrier();
-    if (Communicator::world().rank() == 0) {
-        utils::timer::print();
-    }
     sirius::finalize();
 }

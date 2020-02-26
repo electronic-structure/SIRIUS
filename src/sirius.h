@@ -80,7 +80,7 @@ inline void initialize(bool call_mpi_init__ = true)
 #if defined(__APEX)
     apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
 #endif
-    utils::start_global_timer();
+    //utils::start_global_timer();
 
     if (Communicator::world().rank() == 0) {
         std::printf("SIRIUS %i.%i.%i, git hash: %s\n", sirius::major_version(), sirius::minor_version(),
@@ -155,7 +155,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
         }
     }
 
-    utils::stop_global_timer();
+    //utils::stop_global_timer();
 #if defined(__APEX)
     apex::finalize();
 #endif

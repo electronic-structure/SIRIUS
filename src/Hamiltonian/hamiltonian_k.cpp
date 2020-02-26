@@ -24,7 +24,7 @@
 
 #include "simulation_context.hpp"
 #include "Hamiltonian/hamiltonian.hpp"
-#include "Hamiltonian/local_operator.cpp"
+#include "Hamiltonian/local_operator.hpp"
 #include "Hamiltonian/non_local_operator.hpp"
 #include "Potential/potential.hpp"
 #include "SDDK/wave_functions.hpp"
@@ -302,8 +302,10 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             alm_row.allocate(memory_t::device);
             alm_col.allocate(memory_t::device);
             halm_col.allocate(memory_t::device);
-            h__.allocate(memory_t::device).zero(memory_t::device);
-            o__.allocate(memory_t::device).zero(memory_t::device);
+            //h__.allocate(memory_t::device).zero(memory_t::device);
+            //o__.allocate(memory_t::device).zero(memory_t::device);
+            h__.zero(memory_t::device);
+            o__.zero(memory_t::device);
             break;
         }
         case device_t::CPU: {
@@ -448,16 +450,16 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
                          h__.at(mt), h__.ld());
     }
 
-    if (pu == device_t::GPU) {
+    if (pu == device_t::GPU) { // TODO: if solver is cusolver, this is an additional copy, not necessary
         acc::copyout(h__.at(memory_t::host), h__.ld(), h__.at(memory_t::device), h__.ld(), kp.num_gkvec_row(), kp.num_gkvec_col());
         acc::copyout(o__.at(memory_t::host), o__.ld(), o__.at(memory_t::device), o__.ld(), kp.num_gkvec_row(), kp.num_gkvec_col());
-        h__.deallocate(memory_t::device);
-        o__.deallocate(memory_t::device);
+        //h__.deallocate(memory_t::device);
+        //o__.deallocate(memory_t::device);
     }
     PROFILE_STOP("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
     std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;
     if (kp.comm().rank() == 0 && H0_.ctx().control().print_performance_) {
-        kp.message(1, __func__, "effective zgemm performance: %12.6f GFlops",
+        kp.message(1, __function_name__, "effective zgemm performance: %12.6f GFlops",
                2 * 8e-9 * kp.num_gkvec() * kp.num_gkvec() * uc.mt_aw_basis_size() / tval.count());
     }
 
@@ -728,7 +730,7 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
     t1 += omp_get_wtime();
 
     if (H0().ctx().control().print_performance_) {
-        kp().message(1, __func__, "hloc performace: %12.6f bands/sec", n__ / t1);
+        kp().message(1, __function_name__, "hloc performace: %12.6f bands/sec", n__ / t1);
     }
 
     if (H0().ctx().control().print_checksum_ && hphi__) {

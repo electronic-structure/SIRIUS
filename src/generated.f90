@@ -230,11 +230,12 @@ end subroutine sirius_import_parameters
 !> @param [in] hubbard_correction_kind Type of LDA+U implementation (simplified or full).
 !> @param [in] hubbard_orbitals Type of localized orbitals.
 !> @param [in] sht_coverage Type of spherical coverage (0: Lebedev-Laikov, 1: uniform).
+!> @param [in] min_occupancy Minimum band occupancy to trat is as "occupied".
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,&
 &iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,&
-&sht_coverage)
+&sht_coverage,min_occupancy)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), optional, target, intent(in) :: lmax_apw
@@ -261,6 +262,7 @@ logical(C_BOOL), optional, target, intent(in) :: hubbard_correction
 integer(C_INT), optional, target, intent(in) :: hubbard_correction_kind
 character(C_CHAR), optional, target, dimension(*), intent(in) :: hubbard_orbitals
 integer(C_INT), optional, target, intent(in) :: sht_coverage
+real(C_DOUBLE), optional, target, intent(in) :: min_occupancy
 type(C_PTR) :: lmax_apw_ptr
 type(C_PTR) :: lmax_rho_ptr
 type(C_PTR) :: lmax_pot_ptr
@@ -285,12 +287,13 @@ type(C_PTR) :: hubbard_correction_ptr
 type(C_PTR) :: hubbard_correction_kind_ptr
 type(C_PTR) :: hubbard_orbitals_ptr
 type(C_PTR) :: sht_coverage_ptr
+type(C_PTR) :: min_occupancy_ptr
 interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,&
 &iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,&
-&sht_coverage)&
+&sht_coverage,min_occupancy)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
@@ -318,6 +321,7 @@ type(C_PTR), value :: hubbard_correction
 type(C_PTR), value :: hubbard_correction_kind
 type(C_PTR), value :: hubbard_orbitals
 type(C_PTR), value :: sht_coverage
+type(C_PTR), value :: min_occupancy
 end subroutine
 end interface
 
@@ -393,11 +397,15 @@ if (present(hubbard_orbitals)) hubbard_orbitals_ptr = C_LOC(hubbard_orbitals)
 sht_coverage_ptr = C_NULL_PTR
 if (present(sht_coverage)) sht_coverage_ptr = C_LOC(sht_coverage)
 
+min_occupancy_ptr = C_NULL_PTR
+if (present(min_occupancy)) min_occupancy_ptr = C_LOC(min_occupancy)
+
 call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,num_fv_states_ptr,&
 &num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,auto_rmt_ptr,&
 &gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,core_rel_ptr,&
 &esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,verbosity_ptr,&
-&hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,sht_coverage_ptr)
+&hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,sht_coverage_ptr,&
+&min_occupancy_ptr)
 end subroutine sirius_set_parameters
 
 !> @brief Get parameters of the simulation.
@@ -3324,7 +3332,7 @@ end subroutine sirius_get_total_magnetization
 !> @brief Get the total number of kpoints
 !> @param [in] handler Kpoint set handler
 !> @param [out] num_kpoints number of kpoints in the set
-!> @param [out] error_code error_code parameter
+!> @param [out] error_code Error code.
 subroutine sirius_get_num_kpoints(handler,num_kpoints,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -3348,9 +3356,9 @@ call sirius_get_num_kpoints_aux(handler,num_kpoints,error_code_ptr)
 end subroutine sirius_get_num_kpoints
 
 !> @brief Get the number of computed bands
-!> @param [in] handler ground state handler
-!> @param [out] num_kpoints number of kpoints in the set
-!> @param [out] error_code error_code parameter
+!> @param [in] handler Simulation context handler.
+!> @param [out] num_kpoints Number of kpoints in the set
+!> @param [out] error_code Error code.
 subroutine sirius_get_num_bands(handler,num_kpoints,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -3374,21 +3382,21 @@ call sirius_get_num_bands_aux(handler,num_kpoints,error_code_ptr)
 end subroutine sirius_get_num_bands
 
 !> @brief Get the number of spin components
-!> @param [in] handler ground state handler
-!> @param [out] num_kpoints number of kpoints in the spin_components
-!> @param [out] error_code error_code parameter
-subroutine sirius_get_num_spin_components(handler,num_kpoints,error_code)
+!> @param [in] handler Simulation context handler
+!> @param [out] num_spin_components Number of spin components.
+!> @param [out] error_code Error code.
+subroutine sirius_get_num_spin_components(handler,num_spin_components,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: num_kpoints
+integer(C_INT), intent(out) :: num_spin_components
 integer(C_INT), optional, target, intent(out) :: error_code
 type(C_PTR) :: error_code_ptr
 interface
-subroutine sirius_get_num_spin_components_aux(handler,num_kpoints,error_code)&
+subroutine sirius_get_num_spin_components_aux(handler,num_spin_components,error_code)&
 &bind(C, name="sirius_get_num_spin_components")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: num_kpoints
+integer(C_INT), intent(out) :: num_spin_components
 type(C_PTR), value :: error_code
 end subroutine
 end interface
@@ -3396,35 +3404,98 @@ end interface
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) error_code_ptr = C_LOC(error_code)
 
-call sirius_get_num_spin_components_aux(handler,num_kpoints,error_code_ptr)
+call sirius_get_num_spin_components_aux(handler,num_spin_components,error_code_ptr)
 end subroutine sirius_get_num_spin_components
 
 !> @brief Get the kpoint properties
 !> @param [in] handler Kpoint set handler
-!> @param [in] ik index of the kpoint
-!> @param [out] weight weight of the kpoint
-!> @param [out] coordinates coordinates of the kpoint
-subroutine sirius_get_kpoint_properties(handler,ik,weight,coordinates)
+!> @param [in] ik Index of the kpoint
+!> @param [out] weight Weight of the kpoint
+!> @param [out] coordinates Coordinates of the kpoint
+!> @param [out] error_code Error code.
+subroutine sirius_get_kpoint_properties(handler,ik,weight,coordinates,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ik
 real(C_DOUBLE), intent(out) :: weight
 real(C_DOUBLE), optional, target, intent(out) :: coordinates
+integer(C_INT), optional, target, intent(out) :: error_code
 type(C_PTR) :: coordinates_ptr
+type(C_PTR) :: error_code_ptr
 interface
-subroutine sirius_get_kpoint_properties_aux(handler,ik,weight,coordinates)&
+subroutine sirius_get_kpoint_properties_aux(handler,ik,weight,coordinates,error_code)&
 &bind(C, name="sirius_get_kpoint_properties")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: ik
 real(C_DOUBLE), intent(out) :: weight
 type(C_PTR), value :: coordinates
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 
 coordinates_ptr = C_NULL_PTR
 if (present(coordinates)) coordinates_ptr = C_LOC(coordinates)
 
-call sirius_get_kpoint_properties_aux(handler,ik,weight,coordinates_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
+call sirius_get_kpoint_properties_aux(handler,ik,weight,coordinates_ptr,error_code_ptr)
 end subroutine sirius_get_kpoint_properties
+
+!> @brief Get maximum APW basis size across all atoms.
+!> @param [in] handler Simulation context handler.
+!> @param [out] max_mt_aw_basis_size Maximum APW basis size.
+!> @param [out] error_code Error code.
+subroutine sirius_get_max_mt_aw_basis_size(handler,max_mt_aw_basis_size,error_code)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: max_mt_aw_basis_size
+integer(C_INT), optional, target, intent(out) :: error_code
+type(C_PTR) :: error_code_ptr
+interface
+subroutine sirius_get_max_mt_aw_basis_size_aux(handler,max_mt_aw_basis_size,error_code)&
+&bind(C, name="sirius_get_max_mt_aw_basis_size")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: max_mt_aw_basis_size
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
+call sirius_get_max_mt_aw_basis_size_aux(handler,max_mt_aw_basis_size,error_code_ptr)
+end subroutine sirius_get_max_mt_aw_basis_size
+
+!> @brief Get matching coefficients for all atoms.
+!> @details Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution.
+!> @param [in] handler K-point set handler.
+!> @param [in] ik Index of k-point.
+!> @param [out] alm Matching coefficients.
+!> @param [out] error_code Error code.
+subroutine sirius_get_matching_coefficients(handler,ik,alm,error_code)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ik
+complex(C_DOUBLE), intent(out) :: alm
+integer(C_INT), optional, target, intent(out) :: error_code
+type(C_PTR) :: error_code_ptr
+interface
+subroutine sirius_get_matching_coefficients_aux(handler,ik,alm,error_code)&
+&bind(C, name="sirius_get_matching_coefficients")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ik
+complex(C_DOUBLE), intent(out) :: alm
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
+call sirius_get_matching_coefficients_aux(handler,ik,alm,error_code_ptr)
+end subroutine sirius_get_matching_coefficients
 

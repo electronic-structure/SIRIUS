@@ -5,12 +5,6 @@ then
     export SIRIUS_BINARIES=$(pwd)/../build/apps/dft_loop
 fi
 
-if [[ $(type -f srun 2> /dev/null) ]]; then
-    SRUN_CMD="srun -n4 -c2 --unbuffered --hint=nomultithread"
-else
-    SRUN_CMD="mpirun -np 4"
-fi
-
 exe=${SIRIUS_BINARIES}/sirius.scf
 # check if path is correct
 type -f ${exe} || exit 1
@@ -20,7 +14,7 @@ for f in ./*; do
         echo "running '${f}'"
         (
             cd ${f}
-            ${SRUN_CMD} ${exe} \
+            ${exe} \
                 --test_against=output_ref.json \
                 --control.std_evp_solver_name=scalapack \
                 --control.gen_evp_solver_name=scalapack \

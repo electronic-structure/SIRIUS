@@ -435,6 +435,11 @@ void Simulation_context::initialize()
     }
 
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
+#if defined(__CUDA)
+    bool is_cuda{true};
+#else
+    bool is_cuda{false};
+#endif
 #if defined(__MAGMA)
     bool is_magma{true};
 #else
@@ -451,6 +456,11 @@ void Simulation_context::initialize()
     bool is_elpa{false};
 #endif
 
+    if (processing_unit() == device_t::CPU || acc::num_devices() == 0) {
+        is_cuda = false;
+        is_magma = false;
+    }
+
     int npr = control_input_.mpi_grid_dims_[0];
     int npc = control_input_.mpi_grid_dims_[1];
 
@@ -459,7 +469,9 @@ void Simulation_context::initialize()
         if (evsn[i] == "") {
             /* conditions for sequential diagonalization */
             if (comm_band().size() == 1 || npc == 1 || npr == 1 || !is_scalapack) {
-                if (is_magma && num_bands() > 200) {
+                if (is_cuda) {
+                    evsn[i] = "cusolver";
+                } else if (is_magma && num_bands() > 200) {
                     evsn[i] = "magma";
                 } else {
                     evsn[i] = "lapack";
@@ -692,6 +704,7 @@ void Simulation_context::print_info() const
         }
         case device_t::GPU: {
             std::printf("GPU\n");
+            printf("number of devices                  : %i\n", acc::num_devices());
             acc::print_device_info(0);
             break;
         }

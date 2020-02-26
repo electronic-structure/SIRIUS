@@ -23,3 +23,10 @@ find_path(ELPA_INCLUDE_DIR
   ENV EBROOTELPA)
 
 find_package_handle_standard_args(Elpa "DEFAULT_MSG" ELPA_LIBRARIES ELPA_INCLUDE_DIR)
+
+if(Elpa_FOUND AND NOT TARGET sirius::elpa)
+  add_library(sirius::elpa INTERFACE IMPORTED)
+  set_target_properties(sirius::elpa PROPERTIES
+                                     INTERFACE_INCLUDE_DIRECTORIES "${ELPA_INCLUDE_DIR}"
+                                     INTERFACE_LINK_LIBRARIES "${ELPA_LIBRARIES}")
+endif()
