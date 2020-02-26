@@ -267,8 +267,7 @@ struct Iterative_solver_input
     /// Defines the flavour of the iterative solver.
     /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
         is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
-        unconverged residuals and then compute only the unconverged ones.
-     */
+        unconverged residuals and then compute only the unconverged ones. */
     int converge_by_energy_{1}; // TODO: rename, this is meaningless
 
     /// Minimum number of residuals to continue iterative diagonalization process.
@@ -279,8 +278,7 @@ struct Iterative_solver_input
 
     /// Control the subspace expansion.
     /** If true, keep basis orthogonal and solve standard eigen-value problem. If false, add preconditioned residuals
-        as they are and solve generalized eigen-value problem.
-     */
+        as they are and solve generalized eigen-value problem. */
     bool orthogonalize_{true};
 
     /// Initialize eigen-values with previous (old) values.
@@ -288,8 +286,7 @@ struct Iterative_solver_input
 
     /// Tell how to initialize the subspace.
     /** It can be either "lcao", i.e. start from the linear combination of atomic orbitals or "random" –- start from
-        the randomized wave functions.
-     */
+        the randomized wave functions. */
     std::string init_subspace_{"lcao"};
 
     void read(json const& parser)
