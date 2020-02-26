@@ -40,11 +40,11 @@ class Augmentation_operator
 
     Gvec const& gvec_;
 
-    mdarray<double, 2> q_mtrx_;
+    sddk::mdarray<double, 2> q_mtrx_;
 
-    mutable mdarray<double, 2> q_pw_;
+    mutable sddk::mdarray<double, 2> q_pw_;
 
-    mutable mdarray<double, 1> sym_weight_;
+    mutable sddk::mdarray<double, 1> sym_weight_;
 
   public:
     Augmentation_operator(Atom_type const& atom_type__, Gvec const& gvec__)

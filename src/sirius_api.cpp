@@ -679,6 +679,19 @@ void* sirius_create_ground_state(void* const* ks_handler__)
     return new utils::any_ptr(new sirius::DFT_ground_state(ks));
 }
 
+/* @fortran begin function void sirius_initialize_kset    Initialize k-point set.
+   @fortran argument in required void* ks_handler         K-point set handler.
+   @fortran argument out optional int error_code          Error code.
+   @fortran end */
+void sirius_initialize_kset(void* const* ks_handler__, int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto& ks = get_ks(ks_handler__);
+        ks.initialize();
+    }, error_code__);
+}
+
 /* @fortran begin function void sirius_find_ground_state        Find the ground state.
    @fortran argument in required void*  gs_handler              Handler of the ground state.
    @fortran argument in optional double density_tol             Tolerance on RMS in density.
@@ -3537,6 +3550,33 @@ void sirius_get_matching_coefficients(void* const* handler__, int const* ik__, s
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
             sddk::mdarray<std::complex<double>, 2> alm_tmp(&alm(0, 0, ia), gk.num_gvec(), uc.max_mt_aw_basis_size());
             Alm.generate<false>(uc.atom(ia), alm_tmp);
+        }
+    }, error_code__);
+}
+
+/* @fortran begin function void sirius_set_callback_function    Set callback function to compute various radial integrals.
+   @fortran argument in  required void*    handler              Simulation context handler.
+   @fortran argument in  required string   label                Lable of the callback function.
+   @fortran argument in  required func     fptr                 Pointer to callback function.
+   @fortran argument out optional int      error_code           Error code.
+   @fortran end */
+void sirius_set_callback_function(void* const* handler__, char const* label__, void(*fptr__)(), int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto label = std::string(label__);
+        std::transform(label.begin(), label.end(), label.begin(), ::tolower);
+        auto& sim_ctx = get_sim_ctx(handler__);
+        if (label == "beta_ri") {
+            sim_ctx.beta_ri_callback(reinterpret_cast<void(*)(int, double, double*, int)>(fptr__));
+        } else if (label == "beta_ri_djl") {
+            sim_ctx.beta_ri_djl_callback(reinterpret_cast<void(*)(int, double, double*, int)>(fptr__));
+        } else if (label == "aug_ri") {
+            sim_ctx.aug_ri_callback(reinterpret_cast<void(*)(int, double, double*, int, int)>(fptr__));
+        } else if (label == "aug_ri_djl") {
+            sim_ctx.aug_ri_djl_callback(reinterpret_cast<void(*)(int, double, double*, int, int)>(fptr__));
+        } else {
+            throw std::runtime_error("wrong label of callback function");
         }
     }, error_code__);
 }

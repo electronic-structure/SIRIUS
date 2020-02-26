@@ -23,9 +23,6 @@
  */
 
 #include "K_point/k_point.hpp"
-#include "Density/augmentation_operator.hpp"
-#include "Beta_projectors/beta_projectors.hpp"
-#include "Beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "Geometry/non_local_functor.hpp"
 
 namespace sirius {

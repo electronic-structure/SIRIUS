@@ -47,6 +47,7 @@ class Radial_integrals_base
     /// Array with integrals.
     sddk::mdarray<Spline<double>, N> values_;
 
+    /// Maximum length of the reciprocal wave-vector.
     double qmax_{0};
 
   public:
@@ -84,6 +85,7 @@ class Radial_integrals_base
         return result;
     }
 
+    /// Return value of the radial integral with specific indices.
     template <typename... Args>
     inline double value(Args... args, double q__) const
     {
@@ -159,33 +161,44 @@ template <bool jl_deriv>
 class Radial_integrals_aug : public Radial_integrals_base<3>
 {
   private:
+    std::function<void(int, double, double*, int, int)> ri_callback_{nullptr};
+
     void generate();
 
   public:
-    Radial_integrals_aug(Unit_cell const& unit_cell__, double qmax__, int np__)
+    Radial_integrals_aug(Unit_cell const& unit_cell__, double qmax__, int np__,
+        std::function<void(int, double, double*, int, int)> ri_callback__)
         : Radial_integrals_base<3>(unit_cell__, qmax__, np__)
+        , ri_callback_(ri_callback__)
     {
-        int nmax = unit_cell_.max_mt_radial_basis_size();
-        int lmax = unit_cell_.lmax();
+        if (ri_callback_ == nullptr) {
+            int nmax = unit_cell_.max_mt_radial_basis_size();
+            int lmax = unit_cell_.lmax();
 
-        values_ = sddk::mdarray<Spline<double>, 3>(nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types());
+            values_ = sddk::mdarray<Spline<double>, 3>(nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types());
 
-        generate();
+            generate();
+        }
     }
 
     inline sddk::mdarray<double, 2> values(int iat__, double q__) const
     {
-        auto idx = iqdq(q__);
-
         auto& atom_type = unit_cell_.atom_type(iat__);
         int lmax        = atom_type.indexr().lmax();
         int nbrf        = atom_type.mt_radial_basis_size();
 
         sddk::mdarray<double, 2> val(nbrf * (nbrf + 1) / 2, 2 * lmax + 1);
-        for (int l = 0; l <= 2 * lmax; l++) {
-            for (int i = 0; i < nbrf * (nbrf + 1) / 2; i++) {
-                val(i, l) = values_(i, l, iat__)(idx.first, idx.second);
+
+        if (ri_callback_ == nullptr) {
+            auto idx = iqdq(q__);
+
+            for (int l = 0; l <= 2 * lmax; l++) {
+                for (int i = 0; i < nbrf * (nbrf + 1) / 2; i++) {
+                    val(i, l) = values_(i, l, iat__)(idx.first, idx.second);
+                }
             }
+        } else {
+            ri_callback_(iat__ + 1, q__, &val[0], nbrf * (nbrf + 1) / 2, 2 * lmax + 1);
         }
         return val;
     }
@@ -232,54 +245,66 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
     }
 };
 
-
+/// Radial integrals of beta projectors.
 template <bool jl_deriv>
 class Radial_integrals_beta : public Radial_integrals_base<2>
 {
   private:
+    /// Callback function to compute radial integrals using the host code.
+    std::function<void(int, double, double*, int)> ri_callback_{nullptr};
+
+    /// Generate radial integrals on the q-grid.
     void generate();
 
   public:
-    Radial_integrals_beta(Unit_cell const& unit_cell__, double qmax__, int np__)
+    Radial_integrals_beta(Unit_cell const& unit_cell__, double qmax__, int np__,
+        std::function<void(int, double, double*, int)> ri_callback__)
         : Radial_integrals_base<2>(unit_cell__, qmax__, np__)
+        , ri_callback_(ri_callback__)
     {
-        /* create space for <j_l(qr)|beta> or <d j_l(qr) / dq|beta> radial integrals */
-        values_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
-        generate();
+        if (ri_callback_ == nullptr) {
+            /* create space for <j_l(qr)|beta> or <d j_l(qr) / dq|beta> radial integrals */
+            values_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
+            generate();
+        }
     }
 
     /// Get all values for a given atom type and q-point.
-    inline mdarray<double, 1> values(int iat__, double q__) const
+    inline sddk::mdarray<double, 1> values(int iat__, double q__) const
     {
-        auto idx        = iqdq(q__);
         auto& atom_type = unit_cell_.atom_type(iat__);
-        mdarray<double, 1> val(atom_type.mt_radial_basis_size());
-        for (int i = 0; i < atom_type.mt_radial_basis_size(); i++) {
-            val(i) = values_(i, iat__)(idx.first, idx.second);
+        sddk::mdarray<double, 1> val(atom_type.mt_radial_basis_size());
+        if (ri_callback_ == nullptr) {
+            auto idx = iqdq(q__);
+            for (int i = 0; i < atom_type.mt_radial_basis_size(); i++) {
+                val(i) = values_(i, iat__)(idx.first, idx.second);
+            }
+        } else {
+            ri_callback_(iat__ + 1, q__, &val[0], atom_type.mt_radial_basis_size());
         }
         return val;
     }
 };
 
 
-class Radial_integrals_beta_jl : public Radial_integrals_base<3>
-{
-  private:
-    int lmax_;
-
-    void generate();
-
-  public:
-    Radial_integrals_beta_jl(Unit_cell const& unit_cell__, double qmax__, int np__)
-        : Radial_integrals_base<3>(unit_cell__, qmax__, np__)
-    {
-        lmax_ = unit_cell__.lmax() + 2;
-        /* create space for <j_l(qr)|beta> radial integrals */
-        values_ = mdarray<Spline<double>, 3>(unit_cell_.max_mt_radial_basis_size(), lmax_ + 1,
-                                             unit_cell_.num_atom_types());
-        generate();
-    }
-};
+//class Radial_integrals_beta_jl : public Radial_integrals_base<3>
+//{
+//  private:
+//    int lmax_;
+//
+//    void generate();
+//
+//  public:
+//    Radial_integrals_beta_jl(Unit_cell const& unit_cell__, double qmax__, int np__)
+//        : Radial_integrals_base<3>(unit_cell__, qmax__, np__)
+//    {
+//        lmax_ = unit_cell__.lmax() + 2;
+//        /* create space for <j_l(qr)|beta> radial integrals */
+//        values_ = mdarray<Spline<double>, 3>(unit_cell_.max_mt_radial_basis_size(), lmax_ + 1,
+//                                             unit_cell_.num_atom_types());
+//        generate();
+//    }
+//};
 
 
 template <bool jl_deriv>

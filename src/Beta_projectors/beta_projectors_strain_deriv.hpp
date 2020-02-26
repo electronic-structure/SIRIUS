@@ -79,6 +79,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base
 
                         for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
                             auto& atom_type = ctx_.unit_cell().atom_type(iat);
+                            auto ri0 = beta_ri0.values(iat, gvs[0]);
+
                             for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
                                 int l     = atom_type.indexb(xi).l;
                                 int idxrf = atom_type.indexb(xi).idxrf;
@@ -86,7 +88,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base
                                 if (l == 0) {
                                     auto z = fourpi / std::sqrt(ctx_.unit_cell().omega());
 
-                                    auto d1 = beta_ri0.value<int, int>(idxrf, iat, gvs[0]) * (-p * y00);
+                                    auto d1 = ri0(idxrf) * (-p * y00);
 
                                     pw_coeffs_t_(igkloc, atom_type.offset_lo() + xi, mu + nu * 3) = z * d1;
                                 } else {

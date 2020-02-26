@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file radial_integrals.cpp
+ *
+ *  \brief Implementation of various radial integrals.
+ */
+
 #include "radial_integrals.hpp"
 #include <omp.h>
 
@@ -216,45 +240,45 @@ void Radial_integrals_beta<jl_deriv>::generate()
     }
 }
 
-void Radial_integrals_beta_jl::generate()
-{
-    PROFILE("sirius::Radial_integrals|beta_jl");
-
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-        int nrb         = atom_type.num_beta_radial_functions();
-
-        if (!nrb) {
-            continue;
-        }
-
-        for (int idxrf = 0; idxrf < nrb; idxrf++) {
-            for (int l = 0; l <= lmax_; l++) {
-                values_(idxrf, l, iat) = Spline<double>(grid_q_);
-            }
-        }
-
-        #pragma omp parallel for
-        for (int iq = 0; iq < grid_q_.num_points(); iq++) {
-            Spherical_Bessel_functions jl(lmax_, atom_type.radial_grid(), grid_q_[iq]);
-            for (int idxrf = 0; idxrf < nrb; idxrf++) {
-                // int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
-                for (int l = 0; l <= lmax_; l++) {
-                    /* compute \int j_{l'}(q * r) beta_l(r) r^2 * r * dr */
-                    /* remeber that beta(r) are defined as miltiplied by r */
-                    values_(idxrf, l, iat)(iq) = sirius::inner(jl[l], atom_type.beta_radial_function(idxrf), 2);
-                }
-            }
-        }
-
-        #pragma omp parallel for
-        for (int idxrf = 0; idxrf < nrb; idxrf++) {
-            for (int l = 0; l <= lmax_; l++) {
-                values_(idxrf, l, iat).interpolate();
-            }
-        }
-    }
-}
+//void Radial_integrals_beta_jl::generate()
+//{
+//    PROFILE("sirius::Radial_integrals|beta_jl");
+//
+//    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+//        auto& atom_type = unit_cell_.atom_type(iat);
+//        int nrb         = atom_type.num_beta_radial_functions();
+//
+//        if (!nrb) {
+//            continue;
+//        }
+//
+//        for (int idxrf = 0; idxrf < nrb; idxrf++) {
+//            for (int l = 0; l <= lmax_; l++) {
+//                values_(idxrf, l, iat) = Spline<double>(grid_q_);
+//            }
+//        }
+//
+//        #pragma omp parallel for
+//        for (int iq = 0; iq < grid_q_.num_points(); iq++) {
+//            Spherical_Bessel_functions jl(lmax_, atom_type.radial_grid(), grid_q_[iq]);
+//            for (int idxrf = 0; idxrf < nrb; idxrf++) {
+//                // int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
+//                for (int l = 0; l <= lmax_; l++) {
+//                    /* compute \int j_{l'}(q * r) beta_l(r) r^2 * r * dr */
+//                    /* remeber that beta(r) are defined as miltiplied by r */
+//                    values_(idxrf, l, iat)(iq) = sirius::inner(jl[l], atom_type.beta_radial_function(idxrf), 2);
+//                }
+//            }
+//        }
+//
+//        #pragma omp parallel for
+//        for (int idxrf = 0; idxrf < nrb; idxrf++) {
+//            for (int l = 0; l <= lmax_; l++) {
+//                values_(idxrf, l, iat).interpolate();
+//            }
+//        }
+//    }
+//}
 
 template <bool jl_deriv>
 void Radial_integrals_vloc<jl_deriv>::generate()

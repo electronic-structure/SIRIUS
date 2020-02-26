@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -74,11 +74,6 @@ class Simulation_context : public Simulation_parameters
     /// Communicator for this simulation.
     Communicator const& comm_;
 
-    /// Auxiliary communicator for the fine-grid FFT transformation.
-    /** This communicator is orthogonal to the FFT communicator for density and potential within the full
-     *  communicator of the simulation context. In other words, comm_ortho_fft_ \otimes comm_fft() = ctx_.comm() */
-    //Communicator comm_ortho_fft_{MPI_COMM_SELF};
-
     /// Auxiliary communicator for the coarse-grid FFT transformation.
     Communicator comm_ortho_fft_coarse_;
 
@@ -152,14 +147,24 @@ class Simulation_context : public Simulation_parameters
     /// Radial integrals of beta-projectors.
     std::unique_ptr<Radial_integrals_beta<false>> beta_ri_;
 
+    /// Callback function provided by the host code to compute radial integrals of beta projectors.
+    std::function<void(int, double, double*, int)> beta_ri_callback_{nullptr};
+
     /// Radial integrals of beta-projectors with derivatives of spherical Bessel functions.
     std::unique_ptr<Radial_integrals_beta<true>> beta_ri_djl_;
+
+    std::function<void(int, double, double*, int)> beta_ri_djl_callback_{nullptr};
 
     /// Radial integrals of augmentation operator.
     std::unique_ptr<Radial_integrals_aug<false>> aug_ri_;
 
+    /// Callback function provided by the host code to compute radial integrals of augmentation operator.
+    std::function<void(int, double, double*, int, int)> aug_ri_callback_{nullptr};
+
     /// Radial integrals of augmentation operator with derivatives of spherical Bessel functions.
     std::unique_ptr<Radial_integrals_aug<true>> aug_ri_djl_;
+
+    std::function<void(int, double, double*, int, int)> aug_ri_djl_callback_{nullptr};
 
     /// Radial integrals of atomic wave-functions.
     std::unique_ptr<Radial_integrals_atomic_wf<false>> atomic_wf_ri_;
@@ -756,6 +761,28 @@ class Simulation_context : public Simulation_parameters
         return num_loc_op_applied_;
     }
 
+    /// Set the callback function.
+    inline void beta_ri_callback(void (*fptr__)(int, double, double*, int))
+    {
+        beta_ri_callback_ = fptr__;
+    }
+
+    inline void beta_ri_djl_callback(void (*fptr__)(int, double, double*, int))
+    {
+        beta_ri_djl_callback_ = fptr__;
+    }
+
+    /// Set the callback function.
+    inline void aug_ri_callback(void (*fptr__)(int, double, double*, int, int))
+    {
+        aug_ri_callback_ = fptr__;
+    }
+
+    /// Set the callback function.
+    inline void aug_ri_djl_callback(void (*fptr__)(int, double, double*, int, int))
+    {
+        aug_ri_djl_callback_ = fptr__;
+    }
 };
 
 
