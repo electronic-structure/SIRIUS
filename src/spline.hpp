@@ -25,7 +25,7 @@
 #ifndef __SPLINE_HPP__
 #define __SPLINE_HPP__
 
-#include "radial_grid.hpp"
+#include "Radial/radial_grid.hpp"
 
 namespace sirius {
 

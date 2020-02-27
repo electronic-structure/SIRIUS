@@ -3,7 +3,7 @@
 # list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 
 if(CREATE_FORTRAN_BINDINGS)
-  set(_FSOURCES "sirius_api.cpp;sirius.f90")
+  set(_FSOURCES "API/sirius_api.cpp;API/sirius.f90")
 endif()
 
 if(USE_CUDA)
@@ -51,7 +51,7 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp"
   "K_point/test_fv_states.cpp"
   "energy.cpp"
   "field4d.cpp"
-  "radial_integrals.cpp"
+  "Radial/radial_integrals.cpp"
   "sbessel.cpp"
   "utils/cmd_args.cpp"
   "utils/utils.cpp"

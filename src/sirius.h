@@ -37,7 +37,7 @@ using json = nlohmann::json;
 #include "input.hpp"
 #include "simulation_context.hpp"
 #include "Hamiltonian/local_operator.hpp"
-#include "radial_solver.hpp"
+#include "Radial/radial_solver.hpp"
 #include "SHT/sht.hpp"
 #include "SHT/gaunt.hpp"
 #include "hdf5_tree.hpp"
