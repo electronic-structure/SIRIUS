@@ -25,7 +25,7 @@
 #ifndef __HUBBARD_ORBITALS_DESCRIPTOR_HPP__
 #define __HUBBARD_ORBITALS_DESCRIPTOR_HPP__
 
-#include "SHT/sht.hpp"
+#include "sht/sht.hpp"
 
 namespace sirius {
 

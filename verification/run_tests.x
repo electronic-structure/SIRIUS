@@ -20,7 +20,7 @@ for f in ./*; do
   if [ -d "$f" ]; then
     echo "running '${f}'"
     cd ${f}
-    ${SRUN_CMD} ${exe} --test_against=output_ref.json
+    ${SRUN_CMD} ${exe} --test_against=output_ref.json --fpe
     err=$?
 
     if [ ${err} == 0 ]; then

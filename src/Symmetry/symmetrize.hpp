@@ -26,10 +26,10 @@
 #define __SYMMETRIZE_HPP__
 
 #include <omp.h>
-#include "Unit_cell/unit_cell_symmetry.hpp"
+#include "unit_cell/unit_cell_symmetry.hpp"
 #include "SDDK/gvec.hpp"
 #include "typedefs.hpp"
-#include "SHT/sht.hpp"
+#include "sht/sht.hpp"
 #include "utils/profiler.hpp"
 
 namespace sirius {

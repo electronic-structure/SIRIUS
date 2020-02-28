@@ -15,7 +15,7 @@
 #include <mpi.h>
 
 #include "utils/json.hpp"
-#include "Unit_cell/free_atom.hpp"
+#include "unit_cell/free_atom.hpp"
 #include "energy.hpp"
 #include "magnetization.hpp"
 #include "unit_cell_accessors.hpp"

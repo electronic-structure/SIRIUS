@@ -29,7 +29,7 @@
 #include <array>
 #include <typeinfo>
 #include "spline.hpp"
-#include "SHT/sht.hpp"
+#include "sht/sht.hpp"
 
 namespace sirius {
 

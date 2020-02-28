@@ -26,7 +26,7 @@
 #define __MATCHING_COEFFICIENTS_HPP__
 
 #include <gsl/gsl_sf_bessel.h>
-#include "Unit_cell/unit_cell.hpp"
+#include "unit_cell/unit_cell.hpp"
 #include "SDDK/gvec.hpp"
 
 namespace sirius {
