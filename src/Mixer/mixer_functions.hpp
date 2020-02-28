@@ -25,7 +25,7 @@
 #ifndef __MIXER_FUNCTIONS_HPP__
 #define __MIXER_FUNCTIONS_HPP__
 
-#include "periodic_function.hpp"
+#include "function3d/periodic_function.hpp"
 #include "SDDK/memory.hpp"
 #include "Mixer/mixer.hpp"
 #include "Density/paw_density.hpp"

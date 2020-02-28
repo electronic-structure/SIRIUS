@@ -24,7 +24,7 @@
 
 #include "local_operator.hpp"
 #include "Potential/potential.hpp"
-#include "smooth_periodic_function.hpp"
+#include "function3d/smooth_periodic_function.hpp"
 #include "utils/profiler.hpp"
 
 using namespace sddk;

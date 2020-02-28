@@ -26,7 +26,7 @@
 #define __ATOM_TYPE_BASE_HPP__
 
 #include "atomic_data.hpp"
-#include "radial_grid.hpp"
+#include "Radial/radial_grid.hpp"
 
 namespace sirius {
 

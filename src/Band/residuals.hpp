@@ -24,7 +24,7 @@
 
 #include "typedefs.hpp"
 #include "memory.hpp"
-#include "linalg.hpp"
+#include "linalg/linalg.hpp"
 
 namespace sddk {
 template <typename T>

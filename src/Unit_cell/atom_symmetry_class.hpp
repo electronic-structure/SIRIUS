@@ -26,7 +26,7 @@
 #define __ATOM_SYMMETRY_CLASS_HPP__
 
 #include "atom_type.hpp"
-#include "eigenproblem.hpp"
+#include "linalg/eigenproblem.hpp"
 
 namespace sirius {
 

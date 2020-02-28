@@ -25,7 +25,7 @@
 #ifndef __K_POINT_HPP__
 #define __K_POINT_HPP__
 
-#include "matching_coefficients.hpp"
+#include "lapw/matching_coefficients.hpp"
 #include "Beta_projectors/beta_projectors.hpp"
 #include "wave_functions.hpp"
 

@@ -36,7 +36,7 @@
 #include <constants.hpp>
 
 #include "typedefs.hpp"
-#include "linalg.hpp"
+#include "linalg/linalg.hpp"
 #include "lebedev_grids.hpp"
 #include "specfunc/specfunc.hpp"
 

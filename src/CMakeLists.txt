@@ -3,7 +3,7 @@
 # list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 
 if(CREATE_FORTRAN_BINDINGS)
-  set(_FSOURCES "API/sirius_api.cpp;API/sirius.f90")
+  set(_FSOURCES "api/sirius_api.cpp;api/sirius.f90")
 endif()
 
 if(USE_CUDA)
@@ -12,7 +12,8 @@ if(USE_CUDA)
   set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
 
-set(_SOURSES "Hamiltonian/hamiltonian.cpp"
+set(_SOURSES
+  "Hamiltonian/hamiltonian.cpp"
   "Hamiltonian/hamiltonian_k.cpp"
   "Band/band.cpp"
   "Band/solve.cpp"
@@ -33,8 +34,8 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp"
   "Potential/paw_potential.cpp"
   "Potential/poisson.cpp"
   "Potential/xc.cpp"
-  "Unit_cell/unit_cell.cpp"
-  "Unit_cell/unit_cell_symmetry.cpp"
+  "unit_cell/unit_cell.cpp"
+  "unit_cell/unit_cell_symmetry.cpp"
   "simulation_context.cpp"
   "simulation_parameters.cpp"
   "Geometry/force.cpp"
@@ -50,7 +51,7 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp"
   "K_point/generate_gklo_basis.cpp"
   "K_point/test_fv_states.cpp"
   "energy.cpp"
-  "field4d.cpp"
+  "function3d/field4d.cpp"
   "Radial/radial_integrals.cpp"
   "sbessel.cpp"
   "utils/cmd_args.cpp"
@@ -66,7 +67,7 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp"
   "SDDK/gvec.cpp"
   "SDDK/matrix_storage.cpp"
   "SDDK/GPU/acc.cpp"
-  "SHT/sht.cpp"
+  "sht/sht.cpp"
   "sirius_version.cpp"
   "Mixer/mixer_functions.cpp"
   )

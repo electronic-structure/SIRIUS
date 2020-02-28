@@ -25,7 +25,7 @@
 #ifndef __NON_LOCAL_FUNCTOR_HPP__
 #define __NON_LOCAL_FUNCTOR_HPP__
 
-#include "periodic_function.hpp"
+#include "function3d/periodic_function.hpp"
 #include "K_point/k_point.hpp"
 #include "Density/augmentation_operator.hpp"
 #include "Beta_projectors/beta_projectors.hpp"

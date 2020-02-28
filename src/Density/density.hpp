@@ -26,8 +26,8 @@
 #define __DENSITY_HPP__
 
 #include <iomanip>
-#include "field4d.hpp"
-#include "periodic_function.hpp"
+#include "function3d/field4d.hpp"
+#include "function3d/periodic_function.hpp"
 #include "K_point/k_point_set.hpp"
 #include "Mixer/mixer.hpp"
 #include "paw_density.hpp"

@@ -37,7 +37,7 @@
 
 #include "SDDK/memory.hpp"
 #include "Mixer/mixer.hpp"
-#include "SDDK/linalg.hpp"
+#include "linalg/linalg.hpp"
 
 namespace sirius {
 namespace mixer {
