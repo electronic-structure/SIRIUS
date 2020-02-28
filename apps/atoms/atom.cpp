@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
-#include <sirius.h>
+#include <sirius.hpp>
 #include "Mixer/broyden1_mixer.hpp"
 
 double const rmin{1e-5};

@@ -24,7 +24,7 @@
 
 #include <ctype.h>
 #include <iostream>
-#include "sirius.h"
+#include "sirius.hpp"
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
 #include "error_codes.hpp"

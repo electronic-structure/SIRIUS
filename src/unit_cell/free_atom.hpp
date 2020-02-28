@@ -27,7 +27,7 @@
 
 #include "Mixer/broyden1_mixer.hpp"
 #include "atom_type_base.hpp"
-#include "Radial/radial_solver.hpp"
+#include "radial/radial_solver.hpp"
 
 namespace sirius {
 

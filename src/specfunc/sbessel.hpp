@@ -27,7 +27,7 @@
 
 #include <vector>
 #include "spline.hpp"
-#include "Radial/radial_grid.hpp"
+#include "radial/radial_grid.hpp"
 
 namespace sirius {
 

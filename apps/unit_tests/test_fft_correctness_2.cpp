@@ -1,4 +1,4 @@
-#include <sirius.h>
+#include <sirius.hpp>
 
 /* test FFT: tranfrom random function to real space, transfrom back and compare with the original function */
 

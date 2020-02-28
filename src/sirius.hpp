@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file sirius.h
+/** \file sirius.hpp
  *
  *  \brief "All-in-one" include file.
  */
 
-#ifndef __SIRIUS_H__
-#define __SIRIUS_H__
+#ifndef __SIRIUS_HPP__
+#define __SIRIUS_HPP__
 
 #if defined(__APEX)
 #include <apex_api.hpp>
@@ -37,12 +37,12 @@ using json = nlohmann::json;
 #include "input.hpp"
 #include "simulation_context.hpp"
 #include "Hamiltonian/local_operator.hpp"
-#include "Radial/radial_solver.hpp"
+#include "radial/radial_solver.hpp"
 #include "sht/sht.hpp"
 #include "sht/gaunt.hpp"
 #include "hdf5_tree.hpp"
 #include "Band/band.hpp"
-#include "dft_ground_state.hpp"
+#include "dft/dft_ground_state.hpp"
 #include "sirius_version.hpp"
 
 #if defined(__PLASMA)
@@ -174,7 +174,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 }
 
 }
-#endif // __SIRIUS_H__
+#endif // __SIRIUS_HPP__
 
 /** \mainpage Welcome to SIRIUS
 

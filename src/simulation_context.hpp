@@ -29,7 +29,7 @@
 
 #include "simulation_parameters.hpp"
 #include "mpi_grid.hpp"
-#include "Radial/radial_integrals.hpp"
+#include "radial/radial_integrals.hpp"
 #include "utils/utils.hpp"
 #include "Density/augmentation_operator.hpp"
 #include "Potential/xc_functional.hpp"

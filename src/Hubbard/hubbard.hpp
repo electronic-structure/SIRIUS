@@ -38,7 +38,7 @@
 #include "Beta_projectors/beta_projectors.hpp"
 #include "Beta_projectors/beta_projectors_gradient.hpp"
 #include "Beta_projectors/beta_projectors_strain_deriv.hpp"
-#include "Radial/radial_integrals.hpp"
+#include "radial/radial_integrals.hpp"
 
 namespace sirius {
 
