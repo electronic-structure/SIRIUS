@@ -26,7 +26,7 @@
 #define __BLACS_GRID_HPP__
 
 #include <memory>
-#include "mpi_grid.hpp"
+#include "mpi/mpi_grid.hpp"
 #include "linalg_base.hpp"
 
 namespace sddk {

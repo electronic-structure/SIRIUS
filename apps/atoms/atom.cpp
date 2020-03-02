@@ -19,7 +19,7 @@
 
 #include <algorithm>
 #include <sirius.hpp>
-#include "Mixer/broyden1_mixer.hpp"
+#include "mixer/broyden1_mixer.hpp"
 
 double const rmin{1e-5};
 

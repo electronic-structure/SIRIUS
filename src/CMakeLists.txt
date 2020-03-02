@@ -62,18 +62,18 @@ set(_SOURSES
   "SDDK/wf_ortho.cpp"
   "SDDK/wf_trans.cpp"
   "SDDK/wave_functions.cpp"
-  "SDDK/communicator.cpp"
+  "mpi/communicator.cpp"
   "SDDK/dmatrix.cpp"
   "SDDK/gvec.cpp"
   "SDDK/matrix_storage.cpp"
-  "SDDK/GPU/acc.cpp"
+  "gpu/acc.cpp"
   "sht/sht.cpp"
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
   )
 
 if(USE_ROCM)
-  add_library(sirius_rocm_interface STATIC ./SDDK/GPU/rocfft_interface.cpp)
+  add_library(sirius_rocm_interface STATIC ./gpu/rocfft_interface.cpp)
   set_target_properties(sirius_rocm_interface PROPERTIES POSITION_INDEPENDENT_CODE ON)
   # don't install as it is STATIC and not meant to be used by external projects
   target_link_libraries(sirius_rocm_interface PUBLIC OpenMP::OpenMP_CXX)
@@ -85,7 +85,7 @@ if(USE_ROCM)
   set(INCLUDE_DIR_GENERATOR "$<$<BOOL:${INCLUDE_DIR_PROP}>:-I$<JOIN:${INCLUDE_DIR_PROP}, -I>>")
 
   # create gpu library compiled with hip
-  file(GLOB_RECURSE HIPFILES_KERNELS "Kernels/*.cu")
+  file(GLOB_RECURSE HIPFILES_KERNELS "gpu/*.cu")
   file(GLOB_RECURSE HIPFILES_SDDK "SDDK/*.cu")
   rocm_hip_add_library(sirius_rocm SHARED ${HIPFILES_SDDK} ${HIPFILES_KERNELS}
     FLAGS ${DEFINITIONS_GENERATOR} ${INCLUDE_DIR_GENERATOR} "-Wno-macro-redefined" OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
