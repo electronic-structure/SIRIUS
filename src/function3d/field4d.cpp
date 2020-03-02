@@ -24,7 +24,7 @@
 
 #include "field4d.hpp"
 #include "periodic_function.hpp"
-#include "Symmetry/symmetrize.hpp"
+#include "symmetry/symmetrize.hpp"
 
 namespace sirius {
 

@@ -1,8 +1,8 @@
 #ifndef __ENERGY_HPP__
 #define __ENERGY_HPP__
 
-#include "Density/density.hpp"
-#include "Potential/potential.hpp"
+#include "density/density.hpp"
+#include "potential/potential.hpp"
 #include "simulation_context.hpp"
 
 namespace sirius {

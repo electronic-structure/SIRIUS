@@ -25,7 +25,7 @@
 #include <gsl/gsl_sf_bessel.h>
 #include "sirius_version.hpp"
 #include "simulation_context.hpp"
-#include "Symmetry/find_lat_sym.hpp"
+#include "symmetry/find_lat_sym.hpp"
 #include "utils/profiler.hpp"
 
 namespace sirius {

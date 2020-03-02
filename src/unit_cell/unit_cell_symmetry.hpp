@@ -31,7 +31,7 @@ extern "C" {
 #include <spglib.h>
 }
 
-#include "Symmetry/rotation.hpp"
+#include "symmetry/rotation.hpp"
 #include "utils/profiler.hpp"
 
 using namespace geometry3d;

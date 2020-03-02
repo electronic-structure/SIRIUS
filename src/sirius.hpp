@@ -36,12 +36,12 @@ using json = nlohmann::json;
 
 #include "input.hpp"
 #include "simulation_context.hpp"
-#include "Hamiltonian/local_operator.hpp"
+#include "hamiltonian/local_operator.hpp"
 #include "radial/radial_solver.hpp"
 #include "sht/sht.hpp"
 #include "sht/gaunt.hpp"
 #include "hdf5_tree.hpp"
-#include "Band/band.hpp"
+#include "band/band.hpp"
 #include "dft/dft_ground_state.hpp"
 #include "sirius_version.hpp"
 

@@ -25,7 +25,7 @@
 #ifndef __FREE_ATOM_HPP__
 #define __FREE_ATOM_HPP__
 
-#include "Mixer/broyden1_mixer.hpp"
+#include "mixer/broyden1_mixer.hpp"
 #include "atom_type_base.hpp"
 #include "radial/radial_solver.hpp"
 

@@ -25,12 +25,12 @@
 #ifndef __DFT_GROUND_STATE_HPP__
 #define __DFT_GROUND_STATE_HPP__
 
-#include "K_point/k_point_set.hpp"
+#include "k_point/k_point_set.hpp"
 #include "utils/json.hpp"
-#include "Hubbard/hubbard.hpp"
-#include "Geometry/stress.hpp"
-#include "Geometry/force.hpp"
-#include "Band/band.hpp"
+#include "hubbard/hubbard.hpp"
+#include "geometry/stress.hpp"
+#include "geometry/force.hpp"
+#include "band/band.hpp"
 #include "energy.hpp"
 
 using json = nlohmann::json;
