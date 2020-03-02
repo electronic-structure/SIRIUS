@@ -1,5 +1,5 @@
 #include "utils/profiler.hpp"
-#include <sirius.h>
+#include <sirius.hpp>
 #include <utils/json.hpp>
 #include <cfenv>
 #include <fenv.h>

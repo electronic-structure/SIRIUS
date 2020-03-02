@@ -25,7 +25,7 @@
 #ifndef __DMATRIX_HPP__
 #define __DMATRIX_HPP__
 
-#include "blacs_grid.hpp"
+#include "linalg/blacs_grid.hpp"
 #include "splindex.hpp"
 #include "hdf5_tree.hpp"
 

@@ -35,7 +35,7 @@
 #include <array>
 #include <complex>
 #include <cassert>
-#include "GPU/acc.hpp"
+#include "gpu/acc.hpp"
 
 namespace sddk {
 

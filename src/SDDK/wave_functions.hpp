@@ -28,8 +28,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <omp.h>
-#include "linalg.hpp"
-#include "eigenproblem.hpp"
+#include "linalg/linalg.hpp"
+#include "linalg/eigenproblem.hpp"
 #include "hdf5_tree.hpp"
 #include "utils/env.hpp"
 #include "gvec.hpp"

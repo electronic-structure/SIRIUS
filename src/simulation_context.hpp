@@ -28,14 +28,14 @@
 #include <algorithm>
 
 #include "simulation_parameters.hpp"
-#include "mpi_grid.hpp"
-#include "radial_integrals.hpp"
+#include "mpi/mpi_grid.hpp"
+#include "radial/radial_integrals.hpp"
 #include "utils/utils.hpp"
-#include "Density/augmentation_operator.hpp"
-#include "Potential/xc_functional.hpp"
-#include "SDDK/GPU/acc.hpp"
-#include "Symmetry/check_gvec.hpp"
-#include "Symmetry/rotation.hpp"
+#include "density/augmentation_operator.hpp"
+#include "potential/xc_functional.hpp"
+#include "gpu/acc.hpp"
+#include "symmetry/check_gvec.hpp"
+#include "symmetry/rotation.hpp"
 #include "spfft/spfft.hpp"
 
 #ifdef __GPU

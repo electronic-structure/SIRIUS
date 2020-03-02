@@ -26,7 +26,7 @@
 #define __FFT_HPP__
 
 #include "splindex.hpp"
-#include "communicator.hpp"
+#include "mpi/communicator.hpp"
 #include "spfft/spfft.hpp"
 
 using double_complex = std::complex<double>;

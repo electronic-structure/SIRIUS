@@ -172,8 +172,8 @@ if(USE_ROCM)
   endif()
   add_definitions(${ROCM_DEFINITIONS})
   include_directories(${ROCM_INCLUDE_DIRS})
-  add_subdirectory(src/SDDK/GPU/hipblas_port)
-  include_directories(src/SDDK/GPU/hipblas_port)
+  add_subdirectory(src/gpu/hipblas_port)
+  include_directories(src/gpu/hipblas_port)
 endif()
 
 # check if git command exists

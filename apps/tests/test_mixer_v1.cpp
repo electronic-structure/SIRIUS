@@ -1,4 +1,4 @@
-#include <sirius.h>
+#include <sirius.hpp>
 #include <numeric>
 
 using namespace sirius;

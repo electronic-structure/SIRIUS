@@ -5,7 +5,7 @@
 #include <vector>
 #include <pybind11/pybind11.h>
 
-#include "Unit_cell/unit_cell.hpp"
+#include "unit_cell/unit_cell.hpp"
 
 
 namespace sirius {
