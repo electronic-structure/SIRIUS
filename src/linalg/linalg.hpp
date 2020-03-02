@@ -27,10 +27,10 @@
 
 #include <stdint.h>
 #ifdef __GPU
-#include "GPU/gpublas_interface.hpp"
+#include "gpu/gpublas_interface.hpp"
 #endif
 #ifdef __MAGMA
-#include "GPU/magma.hpp"
+#include "gpu/magma.hpp"
 #endif
 #include "blas_lapack.h"
 #include "memory.hpp"

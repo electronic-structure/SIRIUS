@@ -22,11 +22,11 @@
  *  \brief CUDA kernel for the generation of beta(G+k) projectors.
  */
 
-#include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/acc_runtime.hpp"
+#include "gpu/cuda_common.hpp"
+#include "gpu/acc_runtime.hpp"
 
 #ifdef __CUDA
-#include "../SDDK/GPU/cuda_timer.hpp"
+#include "gpu/cuda_timer.hpp"
 #endif
 
 __global__ void create_beta_gk_gpu_kernel

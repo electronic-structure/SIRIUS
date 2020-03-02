@@ -22,8 +22,8 @@
  *  \brief CUDA kernel to generate plane-wave atomic phase factors.
  */
 
-#include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/acc_runtime.hpp"
+#include "gpu/cuda_common.hpp"
+#include "gpu/acc_runtime.hpp"
 
 __global__ void generate_phase_factors_gpu_kernel
 (

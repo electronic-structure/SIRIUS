@@ -22,8 +22,8 @@
  *  \brief CUDA kernel to update density on the regular FFT grid.
  */
 
-#include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/acc_runtime.hpp"
+#include "gpu/cuda_common.hpp"
+#include "gpu/acc_runtime.hpp"
 
 __global__ void update_density_rg_1_complex_gpu_kernel(int size__,
                                                        acc_complex_double_t const* psi_rg__,

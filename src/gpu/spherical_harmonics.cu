@@ -22,8 +22,8 @@
  *  \brief CUDA kernels to generate spherical harminics.
  */
 
-#include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/acc_runtime.hpp"
+#include "gpu/cuda_common.hpp"
+#include "gpu/acc_runtime.hpp"
 
 inline __device__ int lmidx(int l, int m)
 {

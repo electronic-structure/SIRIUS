@@ -22,8 +22,8 @@
  *  \brief CUDA kernels to multiply wave-functions by effective potential.
  */
 
-#include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/acc_runtime.hpp"
+#include "gpu/cuda_common.hpp"
+#include "gpu/acc_runtime.hpp"
 
 __global__ void mul_by_veff_real_real_gpu_kernel(int nr__, double* buf__, double const* veff__)
 {

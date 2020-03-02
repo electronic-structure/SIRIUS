@@ -22,11 +22,11 @@
  *  \brief CUDA kernel to perform a summation over xi,xi' indices for the charge density augmentation.
  */
 
-#include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/acc_runtime.hpp"
+#include "gpu/cuda_common.hpp"
+#include "gpu/acc_runtime.hpp"
 
 #ifdef __CUDA
-#include "../SDDK/GPU/cuda_timer.hpp"
+#include "gpu/cuda_timer.hpp"
 #endif
 
 __global__ void sum_q_pw_dm_pw_gpu_kernel

@@ -37,11 +37,11 @@ extern "C" {
 #endif
 
 #if defined(__GPU) && defined(__MAGMA)
-#include "GPU/magma.hpp"
+#include "gpu/magma.hpp"
 #endif
 
 #if defined(__GPU) && defined(__CUDA)
-#include "GPU/cusolver.hpp"
+#include "gpu/cusolver.hpp"
 #endif
 
 using namespace sddk;

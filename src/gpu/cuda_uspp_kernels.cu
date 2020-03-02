@@ -22,8 +22,8 @@
  *  \brief CUDA kernel for the PW-PW method.
  */
 
-#include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/acc_runtime.hpp"
+#include "gpu/cuda_common.hpp"
+#include "gpu/acc_runtime.hpp"
 
 extern acc_stream_t* streams;
 

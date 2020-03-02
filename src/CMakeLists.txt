@@ -7,9 +7,8 @@ if(CREATE_FORTRAN_BINDINGS)
 endif()
 
 if(USE_CUDA)
-  file(GLOB_RECURSE CUFILES_SDDK "SDDK/*.cu")
-  file(GLOB_RECURSE CUFILES_KERNELS "Kernels/*.cu")
-  set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
+  file(GLOB_RECURSE CUFILES "gpu/*.cu")
+  set(_CUSOURCES "${CUFILES}")
 endif()
 
 set(_SOURSES

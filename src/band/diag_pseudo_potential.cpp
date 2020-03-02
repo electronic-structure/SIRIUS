@@ -28,7 +28,7 @@
 #include "utils/profiler.hpp"
 
 #if defined(__GPU) && defined(__CUDA)
-#include "../SDDK/GPU/acc.hpp"
+#include "gpu/acc.hpp"
 extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  int n,
                                                  double c,

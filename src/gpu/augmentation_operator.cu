@@ -22,8 +22,8 @@
  *  \brief CUDA kernels to generate augmentation operator and its derivative.
  */
 
-#include "../SDDK/GPU/cuda_common.hpp"
-#include "../SDDK/GPU/acc_runtime.hpp"
+#include "gpu/cuda_common.hpp"
+#include "gpu/acc_runtime.hpp"
 
 __global__ void aug_op_pw_coeffs_gpu_kernel(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
                                             acc_complex_double_t const* zilm__, int const* l_by_lm__, int lmmax__,
