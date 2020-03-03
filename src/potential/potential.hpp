@@ -641,7 +641,7 @@ class Potential : public Field4D
      *                                   \frac{R^3}{3} \delta_{\ell 0} & G = 0 \end{array} \right.
      *  \f]
      *
-     *  Final expression for the muffin-tin multipole moments of the interstitial charge denisty:
+     *  Final expression for the muffin-tin multipole moments of the interstitial charge density:
      *  \f[
      *      q_{\ell m}^{I,\alpha} = \sum_{\bf G}\rho({\bf G}) q_{\ell m}^{\alpha}({\bf G})
      *  \f]

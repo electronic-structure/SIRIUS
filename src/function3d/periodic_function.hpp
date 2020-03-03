@@ -81,7 +81,7 @@ class Periodic_function : public Smooth_periodic_function<T>
     /* forbid copy constructor */
     Periodic_function(const Periodic_function<T>& src) = delete;
 
-    /* forbid assigment operator */
+    /* forbid assignment operator */
     Periodic_function<T>& operator=(const Periodic_function<T>& src) = delete;
 
   public:

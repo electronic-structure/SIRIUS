@@ -78,7 +78,7 @@ class Radial_grid
 
     /* forbid copy constructor */
     Radial_grid(Radial_grid<T> const& src__) = delete;
-    /* forbid assigment operator */
+    /* forbid assignment operator */
     Radial_grid& operator=(Radial_grid<T> const& src__) = delete;
 
   public:

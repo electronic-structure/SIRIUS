@@ -222,7 +222,7 @@ void Radial_integrals_beta<jl_deriv>::generate()
             for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 int l  = atom_type.indexr(idxrf).l;
                 /* compute \int j_l(q * r) beta_l(r) r^2 dr or \int d (j_l(q*r) / dq) beta_l(r) r^2  */
-                /* remeber that beta(r) are defined as miltiplied by r */
+                /* remember that beta(r) are defined as miltiplied by r */
                 if (jl_deriv) {
                     auto s  = jl.deriv_q(l);
                     values_(idxrf, iat)(iq) = sirius::inner(s, atom_type.beta_radial_function(idxrf), 1);
@@ -264,7 +264,7 @@ void Radial_integrals_beta<jl_deriv>::generate()
 //                // int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
 //                for (int l = 0; l <= lmax_; l++) {
 //                    /* compute \int j_{l'}(q * r) beta_l(r) r^2 * r * dr */
-//                    /* remeber that beta(r) are defined as miltiplied by r */
+//                    /* remember that beta(r) are defined as miltiplied by r */
 //                    values_(idxrf, l, iat)(iq) = sirius::inner(jl[l], atom_type.beta_radial_function(idxrf), 2);
 //                }
 //            }

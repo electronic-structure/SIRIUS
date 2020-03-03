@@ -268,7 +268,7 @@ class Communicator
     std::unique_ptr<MPI_Comm, mpi_comm_deleter> mpi_comm_;
     /* copy is not allowed */
     Communicator(Communicator const& src__) = delete;
-    /* assigment is not allowed */
+    /* assignment is not allowed */
     Communicator operator=(Communicator const& src__) = delete;
 
   public:
@@ -289,7 +289,7 @@ class Communicator
         *this = std::move(src__);
     }
 
-    /// Move assigment operator.
+    /// Move assignment operator.
     Communicator& operator=(Communicator&& src__)
     {
         if (this != &src__) {
@@ -766,7 +766,7 @@ class Communicator
     //==            int j0 = offs_out[rr];
     //==            int j1 = offs_out[rr] + local_sizes_out[rr] - 1;
 
-    //==            /* rank rr recieves nothing from rank sr*/
+    //==            /* rank rr receives nothing from rank sr*/
     //==            if (j1 < i0 || i1 < j0) continue;
 
     //==            int s_ofs = std::max(j0 - i0, 0);

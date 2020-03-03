@@ -774,7 +774,7 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
     t1 += omp_get_wtime();
 
     if (H0().ctx().control().print_performance_) {
-        kp().message(1, __function_name__, "hloc performace: %12.6f bands/sec", n__ / t1);
+        kp().message(1, __function_name__, "hloc performance: %12.6f bands/sec", n__ / t1);
     }
 
     if (H0().ctx().control().print_checksum_ && hphi__) {
@@ -792,7 +792,7 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
         }
     }
 
-    /* set intial sphi */
+    /* set initial sphi */
     if (sphi__ != nullptr) {
         for (int ispn: spins__) {
             sphi__->copy_from(phi__, n__, ispn, N__, ispn, N__);

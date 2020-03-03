@@ -52,7 +52,7 @@ class Spheric_function: public mdarray<T, 2>
     /* copy constructir is disabled */
     Spheric_function(Spheric_function<domain_t, T> const& src__) = delete;
 
-    /* copy assigment operator is disabled */
+    /* copy assignment operator is disabled */
     Spheric_function<domain_t, T>& operator=(Spheric_function<domain_t, T> const& src__) = delete;
 
   public:

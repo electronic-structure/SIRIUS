@@ -273,7 +273,7 @@ class matrix3d
         }
     }
 
-    /// Assigment operator.
+    /// Assignment operator.
     matrix3d<T>& operator=(const matrix3d<T>& rhs)
     {
         if (this != &rhs) {
@@ -504,7 +504,7 @@ inline std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<do
 }
 
 /// Find supercell that circumscribes the sphere with a given radius.
-/** Serach for the translation limits (N1, N2, N3) such that the resulting supercell with the lattice
+/** Search for the translation limits (N1, N2, N3) such that the resulting supercell with the lattice
  *  vectors a1 * N1, a2 * N2, a3 * N3 fully contains the sphere with a given radius. This is done
  *  by equating the expressions for the volume of the supercell:
  *   Volume = |(A1 x A2) * A3| = N1 * N2 * N3 * |(a1 x a2) * a3|

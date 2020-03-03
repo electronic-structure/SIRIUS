@@ -403,7 +403,7 @@ void Simulation_context::initialize()
                 }
             }
             if (!found) {
-                TERMINATE("spglib lattice symetry was not found in the list of SIRIUS generated symmetries");
+                TERMINATE("spglib lattice symmetry was not found in the list of SIRIUS generated symmetries");
             }
         }
     }

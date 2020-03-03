@@ -231,7 +231,7 @@ void Gvec::find_gvec_shells()
         if (gvec_shell_len_[igsh] < 0) {
             gvec_shell_len_[igsh] = g;
         } else {
-            /* lattice symmetries were found wih 1e-6 tolererance for the metric tensor,
+            /* lattice symmetries were found with 1e-6 tolererance for the metric tensor,
                so tolerance on length should be square root of that */
             if (std::abs(gvec_shell_len_[igsh] - g) > 1e-3) {
                 std::stringstream s;
