@@ -7,13 +7,15 @@ language: c++
 git:
   depth: 3
 
-env:
-    - CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp
+#env:
+#    - CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp
 
 #before_install:
 
 install:
     - sudo apt-get install -y gfortran mpich liblapack-dev libhdf5-dev libgsl-dev libfftw3-dev
+    - mpic++ --version
+    - mpicc --version
     - python3 prerequisite.py /home/travis/local spfft xc spg
 #    - sudo apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common
 #    - sudo wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
