@@ -8,11 +8,7 @@ git:
   depth: 3
 
 env:
-    - CC=mpicc
-    - CXX=mpic++
-    - FC=mpif90
-    - FCCPP=cpp
-#    - FFTW_ROOT=/home/travis/local
+    - CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp
 
 #before_install:
 
@@ -33,7 +29,6 @@ branches:
 
 script:
   - ./check_format.x
-  - 
 
 #after_success:
 #after_failure:
