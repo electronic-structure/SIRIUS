@@ -8,13 +8,15 @@ git:
   depth: 3
 
 env:
-    - CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp LIBXCROOT=/home/travis/local LIBSPGROOT=/home/travis/local
+#    - CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp LIBXCROOT=/home/travis/local LIBSPGROOT=/home/travis/local
+    - CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp LIBSPGROOT=/home/travis/local
 
 #before_install:
 
 install:
-    - sudo apt-get install -y gfortran mpich libmpich-dev liblapack-dev libhdf5-dev libgsl-dev libfftw3-dev
-    - python3 prerequisite.py /home/travis/local spfft xc spg
+    - sudo apt-get install -y gfortran mpich libmpich-dev liblapack-dev libhdf5-dev libgsl-dev libfftw3-dev libxc-dev
+#    - python3 prerequisite.py /home/travis/local spfft xc spg
+    - python3 prerequisite.py /home/travis/local spfft spg
     - mkdir build && cd build && cmake ../ -DSpFFT_DIR=/home/travis/local/lib/cmake/SpFFT -DCMAKE_INSTALL_PREFIX=/home/travis/local
 
 #    - sudo apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common
