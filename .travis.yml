@@ -14,7 +14,7 @@ git:
 
 install:
     - sudo apt-get install -y gfortran mpich liblapack-dev libhdf5-dev libgsl-dev libfftw3-dev
-    - mpic++ --version
+    - mpicxx --version
     - mpicc --version
     - python3 prerequisite.py /home/travis/local spfft xc spg
 #    - sudo apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common
