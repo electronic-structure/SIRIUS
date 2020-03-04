@@ -13,7 +13,7 @@ install:
     - sudo apt-get install -y gcc g++ gfortran mpich git make
     - sudo apt-get install -y wget pkg-config python3 curl liblapack-dev
     - sudo apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common
-    - sudo wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
+    - sudo wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
     - sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
     - sudo apt-get update
     - sudo apt-get install -y cmake
