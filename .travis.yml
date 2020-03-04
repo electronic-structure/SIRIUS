@@ -7,18 +7,25 @@ language: c++
 git:
   depth: 3
 
+env:
+    - CC=mpicc
+    - CXX=mpic++
+    - FC=mpif90
+    - FCCPP=cpp
+#    - FFTW_ROOT=/home/travis/local
+
 #before_install:
 
 install:
-    - sudo apt-get install -y gcc g++ gfortran mpich git make
-    - sudo apt-get install -y wget pkg-config python3 curl liblapack-dev
-    - sudo apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common
-    - sudo wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
-    - sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
-    - sudo apt-get update
-    - sudo apt-get install -y cmake
-    - sudo apt-get install -y kitware-archive-keyring
-    - sudo apt-key --keyring /etc/apt/trusted.gpg del C1F34CDD40CD72DA
+    - sudo apt-get install -y gfortran mpich liblapack-dev libhdf5-dev libgsl-dev libfftw3-dev
+    - python3 prerequisite.py /home/travis/local spfft xc spg
+#    - sudo apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common
+#    - sudo wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
+#    - sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
+#    - sudo apt-get update
+#    - sudo apt-get install -y cmake
+#    - sudo apt-get install -y kitware-archive-keyring
+#    - sudo apt-key --keyring /etc/apt/trusted.gpg del C1F34CDD40CD72DA
 
 branches:
   only:
@@ -26,6 +33,7 @@ branches:
 
 script:
   - ./check_format.x
+  - 
 
 #after_success:
 #after_failure:
