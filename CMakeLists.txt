@@ -48,14 +48,16 @@ list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 include(GitSubmodule)    # include custom defined FindPackage modules
 include(GNUInstallDirs)  # required to get a proper LIBDIR variable
 
-if(PYTHON2)
-  # force cmake to use python2
-  set(PYBIND11_PYTHON_VERSION 2.7)
-  find_package(Python2 REQUIRED)
-  set(PYTHON_EXECUTABLE ${Python2_EXECUTABLE})
-else()
-  find_package(Python3 REQUIRED)
-  set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+if (CREATE_PYTHON_MODULE)
+  if(PYTHON2)
+    # force cmake to use python2
+    set(PYBIND11_PYTHON_VERSION 2.7)
+    find_package(Python2 REQUIRED)
+    set(PYTHON_EXECUTABLE ${Python2_EXECUTABLE})
+  else()
+    find_package(Python3 REQUIRED)
+    set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+  endif()
 endif()
 
 # Set release as the default build type.
