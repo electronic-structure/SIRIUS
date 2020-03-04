@@ -15,7 +15,7 @@ env:
 install:
     - sudo apt-get install -y gfortran mpich libmpich-dev liblapack-dev libhdf5-dev libgsl-dev libfftw3-dev libxc-dev
     - python3 prerequisite.py /home/travis/local spfft spg
-    - mkdir build && cmake -B./build -DSpFFT_DIR=/home/travis/local/lib/cmake/SpFFT -DCMAKE_INSTALL_PREFIX=/home/travis/local
+    - mkdir build && cmake -S./ -B./build -DSpFFT_DIR=/home/travis/local/lib/cmake/SpFFT -DCMAKE_INSTALL_PREFIX=/home/travis/local
     - make -C./build -j 2 install
 
 #    - sudo apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common
