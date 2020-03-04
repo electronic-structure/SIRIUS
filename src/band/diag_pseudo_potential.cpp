@@ -19,7 +19,7 @@
 
 /** \file diag_pseudo_potential.cpp
  *
- *   \brief Diagonalization of pseudopotential Hamiltonian.
+ *  \brief Diagonalization of pseudopotential Hamiltonian.
  */
 
 #include "band.hpp"
@@ -655,7 +655,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 }
 
 template <typename T>
-mdarray<double, 1>
+sddk::mdarray<double, 1>
 Band::diag_S_davidson(Hamiltonian_k& Hk__) const
 {
     PROFILE("sirius::Band::diag_S_davidson");
@@ -708,6 +708,20 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
                 if (igk == i + 4) {
                     psi.pw_coeffs(ispn).prime(igk_loc, i) = 0.125;
                 }
+            }
+        }
+    }
+    std::vector<double> tmp(4096);
+    for (int i = 0; i < 4096; i++) {
+        tmp[i] = utils::random<double>();
+    }
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < nevec; i++) {
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            for (int igk_loc = kp.gkvec().skip_g0(); igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+                /* global index of G+k vector */
+                int igk = kp.idxgk(igk_loc);
+                psi.pw_coeffs(ispn).prime(igk_loc, i) += tmp[igk & 0xFFF] * 1e-5;
             }
         }
     }
@@ -799,6 +813,9 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
          * N is the number of previous basis functions
          * n is the number of new basis functions */
         set_subspace_mtrx(N, n, phi, sphi, ovlp, &ovlp_old);
+        if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
+            ovlp.serialize("<i|S|j> subspace matrix", N + n);
+        }
 
         /* increase size of the variation space */
         N += n;
