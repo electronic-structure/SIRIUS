@@ -28,7 +28,7 @@
 
 #include <array>
 #include <typeinfo>
-#include "spline.hpp"
+#include "radial/spline.hpp"
 #include "sht/sht.hpp"
 
 namespace sirius {

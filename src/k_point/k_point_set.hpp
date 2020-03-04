@@ -27,7 +27,7 @@
 
 #include "k_point.hpp"
 #include "geometry3d.hpp"
-#include "smearing.hpp"
+#include "dft/smearing.hpp"
 #include "symmetry/get_irreducible_reciprocal_mesh.hpp"
 
 namespace sirius {

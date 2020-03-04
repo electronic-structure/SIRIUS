@@ -134,133 +134,21 @@ class Augmentation_operator_gvec_deriv
   private:
     Gvec const& gvec_;
 
-    Communicator const& comm_;
+    sddk::mdarray<double, 2> q_pw_;
 
-    mdarray<double, 2> q_pw_;
+    sddk::mdarray<double, 1> sym_weight_;
 
-    mdarray<double, 1> sym_weight_;
+    sddk::mdarray<double, 2> rlm_g_;
 
-    mdarray<double, 2> rlm_g_;
-
-    mdarray<double, 3> rlm_dg_;
+    sddk::mdarray<double, 3> rlm_dg_;
 
     std::unique_ptr<Gaunt_coefficients<double>> gaunt_coefs_;
 
   public:
-    Augmentation_operator_gvec_deriv(int lmax__, Gvec const& gvec__, Communicator const& comm__)
-        : gvec_(gvec__)
-        , comm_(comm__)
-    {
-        PROFILE("sirius::Augmentation_operator_gvec_deriv");
+    Augmentation_operator_gvec_deriv(int lmax__, Gvec const& gvec__, sddk::mdarray<double, 2> const& tp__);
 
-        int lmax  = lmax__;
-        int lmmax = utils::lmmax(2 * lmax);
-
-        /* Gaunt coefficients of three real spherical harmonics */
-        gaunt_coefs_ = std::unique_ptr<Gaunt_coefficients<double>>(new Gaunt_coefficients<double>(lmax, 2 * lmax, lmax, SHT::gaunt_rlm));
-
-        /* split G-vectors between ranks */
-        int gvec_count  = gvec__.count();
-
-        rlm_g_  = mdarray<double, 2>(lmmax, gvec_count);
-        rlm_dg_ = mdarray<double, 3>(lmmax, 3, gvec_count);
-
-        /* array of real spherical harmonics and derivatives for each G-vector */
-        #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < gvec_count; igloc++) {
-            auto gv = gvec__.gvec_cart<index_domain_t::local>(igloc);
-            auto rtp = SHT::spherical_coordinates(gvec__.gvec_cart<index_domain_t::local>(igloc));
-
-            double theta = rtp[1];
-            double phi   = rtp[2];
-
-            sf::spherical_harmonics(2 * lmax, theta, phi, &rlm_g_(0, igloc));
-
-            sddk::mdarray<double, 2> tmp(&rlm_dg_(0, 0, igloc), lmmax, 3);
-            sf::dRlm_dr(2 * lmax, gv, tmp, false);
-        }
-    }
-
-    void generate_pw_coeffs(Atom_type                   const& atom_type__,
-                            Radial_integrals_aug<false> const& ri__,
-                            Radial_integrals_aug<true>  const& ri_dq__,
-                            int                                nu__,
-                            memory_pool&                       mp__)
-    {
-        PROFILE("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs");
-
-        /* maximum l of beta-projectors */
-        int lmax_beta = atom_type__.indexr().lmax();
-        int lmmax     = utils::lmmax(2 * lmax_beta);
-
-        auto l_by_lm = utils::l_by_lm(2 * lmax_beta);
-
-        std::vector<double_complex> zilm(lmmax);
-        for (int l = 0, lm = 0; l <= 2 * lmax_beta; l++) {
-            for (int m = -l; m <= l; m++, lm++) {
-                zilm[lm] = std::pow(double_complex(0, 1), l);
-            }
-        }
-
-        /* split G-vectors between ranks */
-        int gvec_count  = gvec_.count();
-        int gvec_offset = gvec_.offset();
-
-        /* number of beta-projectors */
-        int nbf = atom_type__.mt_basis_size();
-
-        /* array of plane-wave coefficients */
-        q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp__, "q_pw_dg_");
-        #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < gvec_count; igloc++) {
-            int    ig  = gvec_offset + igloc;
-            double g   = gvec_.gvec_len(ig);
-            auto   gvc = gvec_.gvec_cart<index_domain_t::local>(igloc);
-
-            std::vector<double_complex> v(lmmax);
-
-            auto ri    = ri__.values(atom_type__.id(), g);
-            auto ri_dg = ri_dq__.values(atom_type__.id(), g);
-
-            for (int xi2 = 0; xi2 < nbf; xi2++) {
-                int lm2    = atom_type__.indexb(xi2).lm;
-                int idxrf2 = atom_type__.indexb(xi2).idxrf;
-
-                for (int xi1 = 0; xi1 <= xi2; xi1++) {
-                    int lm1    = atom_type__.indexb(xi1).lm;
-                    int idxrf1 = atom_type__.indexb(xi1).idxrf;
-
-                    /* packed orbital index */
-                    int idx12 = utils::packed_index(xi1, xi2);
-                    /* packed radial-function index */
-                    int idxrf12 = utils::packed_index(idxrf1, idxrf2);
-
-                    for (int lm3 = 0; lm3 < lmmax; lm3++) {
-                        v[lm3] = std::conj(zilm[lm3]) * (rlm_dg_(lm3, nu__, igloc) * ri(idxrf12, l_by_lm[lm3]) +
-                                                         rlm_g_(lm3, igloc) * ri_dg(idxrf12, l_by_lm[lm3]) * gvc[nu__]);
-                    }
-
-                    double_complex z = fourpi * gaunt_coefs_->sum_L3_gaunt(lm2, lm1, &v[0]);
-
-                    q_pw_(idx12, 2 * igloc)     = z.real();
-                    q_pw_(idx12, 2 * igloc + 1) = z.imag();
-                }
-            }
-        }
-
-        memory_t mem{memory_t::host};
-        if (atom_type__.parameters().processing_unit() == device_t::GPU) {
-            mem = memory_t::host_pinned;
-        }
-        sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, mem, "sym_weight_");
-        for (int xi2 = 0; xi2 < nbf; xi2++) {
-            for (int xi1 = 0; xi1 <= xi2; xi1++) {
-                /* packed orbital index */
-                int idx12          = xi2 * (xi2 + 1) / 2 + xi1;
-                sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
-            }
-        }
-    }
+    void generate_pw_coeffs(Atom_type const& atom_type__, Radial_integrals_aug<false> const& ri__,
+        Radial_integrals_aug<true> const& ri_dq__, int nu__, memory_pool& mp__, memory_pool* mpd__);
 
     //void prepare(int stream_id__) const
     //{

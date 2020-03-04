@@ -26,7 +26,7 @@
 #define __SBESSEL_HPP__
 
 #include <vector>
-#include "spline.hpp"
+#include "radial/spline.hpp"
 #include "radial/radial_grid.hpp"
 
 namespace sirius {
