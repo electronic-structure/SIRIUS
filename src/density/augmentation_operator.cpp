@@ -378,7 +378,7 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
             sddk::mdarray<int, 1> l_by_lm_d(&l_by_lm[0], lmmax);
             l_by_lm_d.allocate(*mpd__).copy_to(memory_t::device);
 
-            auto gc = gaunt_coefs.get_full_set_L3();
+            auto gc = gaunt_coefs_->get_full_set_L3();
             gc.allocate(*mpd__).copy_to(memory_t::device);
 
             ri_values.allocate(*mpd__).copy_to(memory_t::device);
@@ -392,7 +392,7 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
             int ld1 = static_cast<int>(gc.size(1));
             aug_op_pw_coeffs_deriv_gpu(gvec_count, gvec_shell.at(memory_t::device), gvec_cart.at(memory_t::device),
                 idx.at(memory_t::device), idxmax, zilm.at(memory_t::device), l_by_lm_d.at(memory_t::device), lmmax,
-                gc.at(memory_t::device), ld0, ld1, rlm_g_.at(memory_t::device), rlm_dg__.at(memory_t::device), lmmax,
+                gc.at(memory_t::device), ld0, ld1, rlm_g_.at(memory_t::device), rlm_dg_.at(memory_t::device), lmmax,
                 ri_values.at(memory_t::device), ri_dg_values.at(memory_t::device), static_cast<int>(ri_values.size(0)),
                 static_cast<int>(ri_values.size(1)), q_pw_.at(memory_t::device), static_cast<int>(q_pw_.size(0)),
                 fourpi, nu__);

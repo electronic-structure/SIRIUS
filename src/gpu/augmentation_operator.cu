@@ -109,7 +109,7 @@ extern "C" void aug_op_pw_coeffs_deriv_gpu(int ngvec__, int const* gvec_shell__,
                                            int const* l_by_lm__, int lmmax__,
                                            double const* gc__, int ld0__, int ld1__,
                                            double const* gvec_rlm__, double const* rlm_dg__, int ld2__,
-                                           double const* ri_values__, ri_dg_values__, int ld3__, int ld4__,
+                                           double const* ri_values__, double const* ri_dg_values__, int ld3__, int ld4__,
                                            double* q_pw__, int ld5__, double fourpi__, int nu__)
 {
     dim3 grid_t(32);
@@ -117,6 +117,6 @@ extern "C" void aug_op_pw_coeffs_deriv_gpu(int ngvec__, int const* gvec_shell__,
 
     accLaunchKernel((aug_op_pw_coeffs_deriv_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0,
         ngvec__, gvec_shell__, gvec_cart__, idx__, idxmax__, zilm__, l_by_lm__, lmmax__, gc__, ld0__, ld1__,
-        gvec_rlm__, rlm_dg__, ld2__, ri_values__, ri_dg_values__, ld3__, ld4__, q_pw__, ld5__, fourpi__);
+        gvec_rlm__, rlm_dg__, ld2__, ri_values__, ri_dg_values__, ld3__, ld4__, q_pw__, ld5__, fourpi__, nu__);
 }
 
