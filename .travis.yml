@@ -24,7 +24,7 @@ before_install:
 install:
     - ./ci/travis_build_sirius.sh
 
-script:
+#script:
 #    - ./verification/run_tests.x
 
 #after_success:
