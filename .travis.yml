@@ -12,18 +12,20 @@ branches:
     - develop
 
 env:
-    - CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp LIBSPGROOT=/home/travis/local SIRIUS_BINARIES=/home/travis/local/bin
+    - CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp SIRIUS_BINARIES=/home/travis/local/bin
 
 before_install:
     - ./check_format.x
     - sudo apt-get install -y gfortran mpich libmpich-dev liblapack-dev libhdf5-dev libgsl-dev libfftw3-dev libxc-dev
-    - python3 prerequisite.py /home/travis/local spfft spg
+    - ./ci/travis_build_dependencies.sh
+    - ls
+    - ls ..
 
 install:
     - ./ci/travis_build.sh
 
 script:
-  - ./verification/run_tests.x
+#    - ./verification/run_tests.x
 
 #after_success:
 #after_failure:
