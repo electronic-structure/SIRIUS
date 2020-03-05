@@ -435,11 +435,12 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
 #if defined(__GPU)
             int ld0 = static_cast<int>(gc.size(0));
             int ld1 = static_cast<int>(gc.size(1));
-            aug_op_pw_coeffs_deriv_gpu(gvec_count, gvec_shell.at(memory_t::device), gvec_cart.at(memory_t::device),
-                idx.at(memory_t::device), idxmax, zilm.at(memory_t::device), l_by_lm_d.at(memory_t::device), lmmax,
+            aug_op_pw_coeffs_deriv_gpu(gvec_count, gvec_shell_.at(memory_t::device), gvec_cart_.at(memory_t::device),
+                idx_.at(memory_t::device), static_cast<int>(idx_.size(1)), zilm.at(memory_t::device),
+                l_by_lm_d.at(memory_t::device), lmmax,
                 gc.at(memory_t::device), ld0, ld1, rlm_g_.at(memory_t::device), rlm_dg_.at(memory_t::device), lmmax,
-                ri_values.at(memory_t::device), ri_dg_values.at(memory_t::device), static_cast<int>(ri_values.size(0)),
-                static_cast<int>(ri_values.size(1)), q_pw_.at(memory_t::device), static_cast<int>(q_pw_.size(0)),
+                ri_values_.at(memory_t::device), ri_dg_values_.at(memory_t::device), static_cast<int>(ri_values_.size(0)),
+                static_cast<int>(ri_values_.size(1)), q_pw_.at(memory_t::device), static_cast<int>(q_pw_.size(0)),
                 fourpi, nu__);
 #endif
             q_pw_.copy_to(memory_t::host);
