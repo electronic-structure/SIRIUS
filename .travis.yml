@@ -22,7 +22,7 @@ before_install:
     - ls ..
 
 install:
-    - ./ci/travis_build.sh
+    - ./ci/travis_build_sirius.sh
 
 script:
 #    - ./verification/run_tests.x
