@@ -306,7 +306,7 @@ class Free_atom : public sirius::Atom_type
     }
 };
 
-Free_atom init_atom_configuration(const std::string& label, sirius::Simulation_parameters param__)
+Free_atom init_atom_configuration(const std::string& label, sirius::Simulation_parameters const& param__)
 {
     json jin;
     std::ifstream("atoms.json") >> jin;

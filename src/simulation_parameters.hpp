@@ -90,7 +90,17 @@ class Simulation_parameters
     /// json dictionary containing all runtime options set up through the interface
     json runtime_options_dictionary_;
 
+    /// Storage for various memory pools.
+    mutable std::map<memory_t, memory_pool> memory_pool_;
+
+    /* copy constructor is forbidden */
+    Simulation_parameters(Simulation_parameters const&) = delete;
   public:
+
+    Simulation_parameters()
+    {
+    }
+
     /// Import parameters from a file or a serialized json string.
     void import(std::string const& str__);
 
@@ -552,6 +562,32 @@ class Simulation_parameters
 
     /// Print all options in the terminal.
     void print_options() const;
+
+    /// Return a reference to a memory pool.
+    /** A memory pool is created when this function called for the first time. */
+    memory_pool& mem_pool(memory_t M__) const
+    {
+        if (memory_pool_.count(M__) == 0) {
+            memory_pool_.emplace(M__, std::move(memory_pool(M__)));
+        }
+        return memory_pool_.at(M__);
+    }
+
+    /// Get a default memory pool for a given device.
+    memory_pool& mem_pool(device_t dev__)
+    {
+        switch (dev__) {
+            case device_t::CPU: {
+                return mem_pool(memory_t::host);
+                break;
+            }
+            case device_t::GPU: {
+                return mem_pool(memory_t::device);
+                break;
+            }
+        }
+        return mem_pool(memory_t::host); // make compiler happy
+    }
 };
 
 }; // namespace sirius

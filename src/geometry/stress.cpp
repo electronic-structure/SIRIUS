@@ -309,7 +309,7 @@ matrix3d<double> Stress::calc_stress_us()
 
     potential_.fft_transform(-1);
 
-    Augmentation_operator_gvec_deriv q_deriv(ctx_.unit_cell().lmax(), ctx_.gvec(), ctx_.gvec_tp());
+    Augmentation_operator_gvec_deriv q_deriv(ctx_, ctx_.unit_cell().lmax(), ctx_.gvec(), ctx_.gvec_tp());
 
     linalg_t la{linalg_t::none};
 
@@ -332,6 +332,8 @@ matrix3d<double> Stress::calc_stress_us()
         if (!atom_type.augment() || atom_type.num_atoms() == 0) {
             continue;
         }
+
+        q_deriv.prepare(atom_type, ri, ri_dq);
 
         int nbf = atom_type.mt_basis_size();
 
@@ -356,7 +358,7 @@ matrix3d<double> Stress::calc_stress_us()
         /* over spin components, can be from 1 to 4 */
         for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++) {
             for (int nu = 0; nu < 3; nu++) {
-                q_deriv.generate_pw_coeffs(atom_type, ri, ri_dq, nu, *mp, nullptr);
+                q_deriv.generate_pw_coeffs(atom_type, nu);
 
                 for (int mu = 0; mu < 3; mu++) {
                     PROFILE_START("sirius::Stress|us|prepare");

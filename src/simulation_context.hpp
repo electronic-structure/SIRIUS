@@ -68,8 +68,8 @@ double unit_step_function_form_factors(double R__, double g__);
 class Simulation_context : public Simulation_parameters
 {
   private:
-    /// Storage for various memory pools.
-    mutable std::map<memory_t, memory_pool> memory_pool_;
+    ///// Storage for various memory pools.
+    //mutable std::map<memory_t, memory_pool> memory_pool_;
 
     /// Communicator for this simulation.
     Communicator const& comm_;
@@ -83,7 +83,7 @@ class Simulation_context : public Simulation_parameters
     Communicator comm_band_ortho_fft_coarse_;
 
     /// Unit cell of the simulation.
-    Unit_cell unit_cell_;
+    std::unique_ptr<Unit_cell> unit_cell_;
 
     /// MPI grid for this simulation.
     std::unique_ptr<MPI_grid> mpi_grid_;
@@ -290,29 +290,29 @@ class Simulation_context : public Simulation_parameters
     /// Create a simulation context with an explicit communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__, Communicator const& comm__)
         : comm_(comm__)
-        , unit_cell_(*this, comm_)
     {
+        unit_cell_ = std::unique_ptr<Unit_cell>(new Unit_cell(*this, comm_));
         start();
         import(str__);
-        unit_cell_.import(unit_cell_input_);
+        unit_cell_->import(unit_cell_input_);
     }
 
     /// Create an empty simulation context with an explicit communicator.
     Simulation_context(Communicator const& comm__ = Communicator::world())
         : comm_(comm__)
-        , unit_cell_(*this, comm_)
     {
+        unit_cell_ = std::unique_ptr<Unit_cell>(new Unit_cell(*this, comm_));
         start();
     }
 
     /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__)
         : comm_(Communicator::world())
-        , unit_cell_(*this, comm_)
     {
+        unit_cell_ = std::unique_ptr<Unit_cell>(new Unit_cell(*this, comm_));
         start();
         import(str__);
-        unit_cell_.import(unit_cell_input_);
+        unit_cell_->import(unit_cell_input_);
     }
 
     /// Destructor.
@@ -353,12 +353,12 @@ class Simulation_context : public Simulation_parameters
 
     Unit_cell& unit_cell()
     {
-        return unit_cell_;
+        return *unit_cell_;
     }
 
     Unit_cell const& unit_cell() const
     {
-        return unit_cell_;
+        return *unit_cell_;
     }
 
     Gvec const& gvec() const
@@ -507,7 +507,7 @@ class Simulation_context : public Simulation_parameters
     {
         PROFILE("sirius::Simulation_context::make_periodic_function");
 
-        double fourpi_omega = fourpi / unit_cell_.omega();
+        double fourpi_omega = fourpi / unit_cell().omega();
 
         int ngv = (index_domain == index_domain_t::local) ? gvec().count() : gvec().num_gvec();
         std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
@@ -519,7 +519,7 @@ class Simulation_context : public Simulation_parameters
             double g = gvec().gvec_len(ig);
 
             int j = (index_domain == index_domain_t::local) ? igloc : ig;
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
                 f_pw[j] += fourpi_omega * std::conj(phase_factors_t_(igloc, iat)) * form_factors__(iat, g);
             }
         }
@@ -626,31 +626,31 @@ class Simulation_context : public Simulation_parameters
         return sym_phase_factors_;
     }
 
-    /// Return a reference to a memory pool.
-    /** A memory pool is created when this function called for the first time. */
-    memory_pool& mem_pool(memory_t M__) const
-    {
-        if (memory_pool_.count(M__) == 0) {
-            memory_pool_.emplace(M__, std::move(memory_pool(M__)));
-        }
-        return memory_pool_.at(M__);
-    }
+    ///// Return a reference to a memory pool.
+    ///** A memory pool is created when this function called for the first time. */
+    //memory_pool& mem_pool(memory_t M__) const
+    //{
+    //    if (memory_pool_.count(M__) == 0) {
+    //        memory_pool_.emplace(M__, std::move(memory_pool(M__)));
+    //    }
+    //    return memory_pool_.at(M__);
+    //}
 
-    /// Get a default memory pool for a given device.
-    memory_pool& mem_pool(device_t dev__)
-    {
-        switch (dev__) {
-            case device_t::CPU: {
-                return mem_pool(memory_t::host);
-                break;
-            }
-            case device_t::GPU: {
-                return mem_pool(memory_t::device);
-                break;
-            }
-        }
-        return mem_pool(memory_t::host); // make compiler happy
-    }
+    ///// Get a default memory pool for a given device.
+    //memory_pool& mem_pool(device_t dev__)
+    //{
+    //    switch (dev__) {
+    //        case device_t::CPU: {
+    //            return mem_pool(memory_t::host);
+    //            break;
+    //        }
+    //        case device_t::GPU: {
+    //            return mem_pool(memory_t::device);
+    //            break;
+    //        }
+    //    }
+    //    return mem_pool(memory_t::host); // make compiler happy
+    //}
 
     inline bool initialized() const
     {

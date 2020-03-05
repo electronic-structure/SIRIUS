@@ -142,13 +142,26 @@ class Augmentation_operator_gvec_deriv
 
     sddk::mdarray<double, 3> rlm_dg_;
 
+    sddk::mdarray<double, 3> ri_values_;
+
+    sddk::mdarray<double, 3> ri_dg_values_;
+
+    sddk::mdarray<int, 2> idx_;
+
+    sddk::mdarray<double, 2> gvec_cart_;
+
+    sddk::mdarray<int, 1> gvec_shell_;
+
     std::unique_ptr<Gaunt_coefficients<double>> gaunt_coefs_;
 
   public:
-    Augmentation_operator_gvec_deriv(int lmax__, Gvec const& gvec__, sddk::mdarray<double, 2> const& tp__);
+    Augmentation_operator_gvec_deriv(Simulation_parameters const& param__, int lmax__, Gvec const& gvec__,
+        sddk::mdarray<double, 2> const& tp__);
 
-    void generate_pw_coeffs(Atom_type const& atom_type__, Radial_integrals_aug<false> const& ri__,
-        Radial_integrals_aug<true> const& ri_dq__, int nu__, memory_pool& mp__, memory_pool* mpd__);
+    void generate_pw_coeffs(Atom_type const& atom_type__, int nu__);
+
+    void prepare(Atom_type const& atom_type__, Radial_integrals_aug<false> const& ri__,
+        Radial_integrals_aug<true> const& ri_dq__);
 
     //void prepare(int stream_id__) const
     //{

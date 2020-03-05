@@ -234,8 +234,8 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     }
 }
 
-Augmentation_operator_gvec_deriv::Augmentation_operator_gvec_deriv(int lmax__, Gvec const& gvec__,
-    sddk::mdarray<double, 2> const& tp__)
+Augmentation_operator_gvec_deriv::Augmentation_operator_gvec_deriv(Simulation_parameters const& param__, int lmax__,
+    Gvec const& gvec__, sddk::mdarray<double, 2> const& tp__)
     : gvec_(gvec__)
 {
     PROFILE("sirius::Augmentation_operator_gvec_deriv");
@@ -247,7 +247,7 @@ Augmentation_operator_gvec_deriv::Augmentation_operator_gvec_deriv(int lmax__, G
         new Gaunt_coefficients<double>(lmax__, 2 * lmax__, lmax__, SHT::gaunt_rlm));
 
     /* split G-vectors between ranks */
-    int gvec_count  = gvec__.count();
+    int gvec_count = gvec__.count();
 
     rlm_g_  = mdarray<double, 2>(lmmax, gvec_count);
     rlm_dg_ = mdarray<double, 3>(lmmax, 3, gvec_count);
@@ -262,11 +262,99 @@ Augmentation_operator_gvec_deriv::Augmentation_operator_gvec_deriv(int lmax__, G
         auto gv = gvec__.gvec_cart<index_domain_t::local>(igloc);
         sf::dRlm_dr(2 * lmax__, gv, tmp, false);
     }
+    switch (param__.processing_unit()) {
+        case device_t::CPU: {
+            break;
+        }
+        case device_t::GPU: {
+            rlm_g_.allocate(param__.mem_pool(memory_t::device)).copy_to(memory_t::device);
+            rlm_dg_.allocate(param__.mem_pool(memory_t::device)).copy_to(memory_t::device);
+        }
+    }
 }
 
-void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_type__,
-    Radial_integrals_aug<false> const& ri__, Radial_integrals_aug<true> const& ri_dq__, int nu__,
-    memory_pool& mp__, memory_pool* mpd__)
+void Augmentation_operator_gvec_deriv::prepare(Atom_type const& atom_type__,
+    Radial_integrals_aug<false> const& ri__, Radial_integrals_aug<true> const& ri_dq__)
+{
+    PROFILE("sirius::Augmentation_operator_gvec_deriv::prepare");
+
+    int lmax_beta = atom_type__.indexr().lmax();
+
+    /* number of beta- radial functions */
+    int nbrf = atom_type__.mt_radial_basis_size();
+
+    auto& mp = atom_type__.parameters().mem_pool(memory_t::host);
+
+    ri_values_ = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1, gvec_.num_gvec_shells_local(), mp);
+    ri_dg_values_ = sddk::mdarray<double, 3>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1, gvec_.num_gvec_shells_local(),
+        mp);
+    #pragma omp parallel for
+    for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
+        auto ri = ri__.values(atom_type__.id(), gvec_.gvec_shell_len_local(j));
+        auto ri_dg = ri_dq__.values(atom_type__.id(), gvec_.gvec_shell_len_local(j));
+        for (int l = 0; l <= 2 * lmax_beta; l++) {
+            for (int i = 0; i < nbrf * (nbrf + 1) / 2; i++) {
+                ri_values_(i, l, j) = ri(i, l);
+                ri_dg_values_(i, l, j) = ri_dg(i, l);
+            }
+        }
+    }
+
+    /* number of beta-projectors */
+    int nbf = atom_type__.mt_basis_size();
+
+    int idxmax = nbf * (nbf + 1) / 2;
+
+    /* flatten the indices */
+    idx_ = sddk::mdarray<int, 2>(3, idxmax, mp);
+    for (int xi2 = 0; xi2 < nbf; xi2++) {
+        int lm2    = atom_type__.indexb(xi2).lm;
+        int idxrf2 = atom_type__.indexb(xi2).idxrf;
+
+        for (int xi1 = 0; xi1 <= xi2; xi1++) {
+            int lm1    = atom_type__.indexb(xi1).lm;
+            int idxrf1 = atom_type__.indexb(xi1).idxrf;
+
+            /* packed orbital index */
+            int idx12 = utils::packed_index(xi1, xi2);
+            /* packed radial-function index */
+            int idxrf12 = utils::packed_index(idxrf1, idxrf2);
+
+            idx_(0, idx12) = lm1;
+            idx_(1, idx12) = lm2;
+            idx_(2, idx12) = idxrf12;
+        }
+    }
+
+    int gvec_count  = gvec_.count();
+
+    gvec_shell_ = sddk::mdarray<int, 1>(gvec_count, atom_type__.parameters().mem_pool(memory_t::host));
+    gvec_cart_ = sddk::mdarray<double, 2>(3, gvec_count, atom_type__.parameters().mem_pool(memory_t::host));
+    for (int igloc = 0; igloc < gvec_count; igloc++) {
+        auto gvc = gvec_.gvec_cart<index_domain_t::local>(igloc);
+        gvec_shell_(igloc) = gvec_.gvec_shell_idx_local(igloc);
+        for (int x: {0, 1, 2}) {
+            gvec_cart_(x, igloc) = gvc[x];
+        }
+    }
+
+    switch (atom_type__.parameters().processing_unit()) {
+        case device_t::CPU: {
+            break;
+        }
+        case device_t::GPU: {
+            auto& mpd = atom_type__.parameters().mem_pool(memory_t::device);
+            ri_values_.allocate(mpd).copy_to(memory_t::device);
+            ri_dg_values_.allocate(mpd).copy_to(memory_t::device);
+            idx_.allocate(mpd).copy_to(memory_t::device);
+            gvec_shell_.allocate(mpd).copy_to(memory_t::device);
+            gvec_cart_.allocate(mpd).copy_to(memory_t::device);
+            break;
+        }
+    }
+}
+
+void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_type__, int nu__)
 {
     PROFILE("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs");
 
@@ -282,57 +370,28 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
             zilm[lm] = std::pow(double_complex(0, 1), l);
         }
     }
-
-    /* number of beta- radial functions */
-    int nbrf = atom_type__.mt_radial_basis_size();
-
-    PROFILE_START("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|1");
-    sddk::mdarray<double, 3> ri_values(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1, gvec_.num_gvec_shells_local(), mp__);
-    sddk::mdarray<double, 3> ri_dg_values(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1, gvec_.num_gvec_shells_local(), mp__);
-    #pragma omp parallel for
-    for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
-        auto ri = ri__.values(atom_type__.id(), gvec_.gvec_shell_len_local(j));
-        auto ri_dg = ri_dq__.values(atom_type__.id(), gvec_.gvec_shell_len_local(j));
-        for (int l = 0; l <= 2 * lmax_beta; l++) {
-            for (int i = 0; i < nbrf * (nbrf + 1) / 2; i++) {
-                ri_values(i, l, j) = ri(i, l);
-                ri_dg_values(i, l, j) = ri_dg(i, l);
-            }
+    memory_pool* mp_ptr{nullptr};
+    switch (atom_type__.parameters().processing_unit()) {
+        case device_t::CPU: {
+            mp_ptr = &atom_type__.parameters().mem_pool(memory_t::host);
+            break;
+        }
+        case device_t::GPU: {
+            mp_ptr = &atom_type__.parameters().mem_pool(memory_t::host_pinned);
+            break;
         }
     }
-    PROFILE_STOP("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|1");
+
+    auto& mp = *mp_ptr;
 
     /* number of beta-projectors */
     int nbf = atom_type__.mt_basis_size();
-
-    int idxmax = nbf * (nbf + 1) / 2;
-
-    /* flatten the indices */
-    sddk::mdarray<int, 2> idx(3, idxmax, mp__);
-    for (int xi2 = 0; xi2 < nbf; xi2++) {
-        int lm2    = atom_type__.indexb(xi2).lm;
-        int idxrf2 = atom_type__.indexb(xi2).idxrf;
-
-        for (int xi1 = 0; xi1 <= xi2; xi1++) {
-            int lm1    = atom_type__.indexb(xi1).lm;
-            int idxrf1 = atom_type__.indexb(xi1).idxrf;
-
-            /* packed orbital index */
-            int idx12 = utils::packed_index(xi1, xi2);
-            /* packed radial-function index */
-            int idxrf12 = utils::packed_index(idxrf1, idxrf2);
-
-            idx(0, idx12) = lm1;
-            idx(1, idx12) = lm2;
-            idx(2, idx12) = idxrf12;
-        }
-    }
 
     /* split G-vectors between ranks */
     int gvec_count  = gvec_.count();
 
     /* array of plane-wave coefficients */
-    q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp__, "q_pw_dg_");
+    q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp, "q_pw_dg_");
 
     PROFILE_START("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|2");
 
@@ -340,16 +399,17 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
         case device_t::CPU: {
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
-                auto gvc = gvec_.gvec_cart<index_domain_t::local>(igloc);
+                /* index of the G-vector shell */
+                int igsh = gvec_.gvec_shell_idx_local(igloc);
                 std::vector<double_complex> v(lmmax);
                 for (int idx12 = 0; idx12 < nbf * (nbf + 1) / 2; idx12++) {
-                    int lm1     = idx(0, idx12);
-                    int lm2     = idx(1, idx12);
-                    int idxrf12 = idx(2, idx12);
+                    int lm1     = idx_(0, idx12);
+                    int lm2     = idx_(1, idx12);
+                    int idxrf12 = idx_(2, idx12);
                     for (int lm3 = 0; lm3 < lmmax; lm3++) {
                         v[lm3] = std::conj(zilm[lm3]) *
-                            (rlm_dg_(lm3, nu__, igloc) * ri_values(idxrf12, l_by_lm[lm3], gvec_.gvec_shell_idx_local(igloc)) +
-                             rlm_g_(lm3, igloc) * ri_dg_values(idxrf12, l_by_lm[lm3], gvec_.gvec_shell_idx_local(igloc)) * gvc[nu__]);
+                            (rlm_dg_(lm3, nu__, igloc) * ri_values_(idxrf12, l_by_lm[lm3], igsh) +
+                             rlm_g_(lm3, igloc) * ri_dg_values_(idxrf12, l_by_lm[lm3], igsh) * gvec_cart_(nu__, igloc));
                     }
                     double_complex z = fourpi * gaunt_coefs_->sum_L3_gaunt(lm2, lm1, &v[0]);
                     q_pw_(idx12, 2 * igloc)     = z.real();
@@ -359,32 +419,17 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
             break;
         }
         case device_t::GPU: {
-            sddk::mdarray<int, 1> gvec_shell(gvec_count, mp__);
-            sddk::mdarray<double, 2> gvec_cart(3, gvec_count, mp__);
-            for (int igloc = 0; igloc < gvec_count; igloc++) {
-                auto gvc = gvec_.gvec_cart<index_domain_t::local>(igloc);
-                gvec_shell(igloc) = gvec_.gvec_shell_idx_local(igloc);
-                for (int x: {0, 1, 2}) {
-                    gvec_cart(x, igloc) = gvc[x];
-                }
-            }
-            gvec_shell.allocate(*mpd__).copy_to(memory_t::device);
-            gvec_cart.allocate(*mpd__).copy_to(memory_t::device);
+            auto& mpd = atom_type__.parameters().mem_pool(memory_t::device);
 
-            idx.allocate(*mpd__).copy_to(memory_t::device);
-
-            zilm.allocate(*mpd__).copy_to(memory_t::device);
+            zilm.allocate(mpd).copy_to(memory_t::device);
 
             sddk::mdarray<int, 1> l_by_lm_d(&l_by_lm[0], lmmax);
-            l_by_lm_d.allocate(*mpd__).copy_to(memory_t::device);
+            l_by_lm_d.allocate(mpd).copy_to(memory_t::device);
 
             auto gc = gaunt_coefs_->get_full_set_L3();
-            gc.allocate(*mpd__).copy_to(memory_t::device);
+            gc.allocate(mpd).copy_to(memory_t::device);
 
-            ri_values.allocate(*mpd__).copy_to(memory_t::device);
-            ri_dg_values.allocate(*mpd__).copy_to(memory_t::device);
-
-            q_pw_.allocate(*mpd__);
+            q_pw_.allocate(mpd);
 
             PROFILE_START("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|gpu");
 #if defined(__GPU)
