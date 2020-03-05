@@ -423,32 +423,33 @@ class Gvec
 
     /// Return G vector in Cartesian coordinates.
     template <index_domain_t idx_t>
-    inline vector3d<double> gvec_cart(int ig__) const
+    inline std::enable_if_t<idx_t == index_domain_t::local, vector3d<double>>
+    gvec_cart(int ig__) const
     {
-        switch (idx_t) {
-            case index_domain_t::local: {
-                return vector3d<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
-            }
-            case index_domain_t::global: {
-                auto G = gvec_by_full_index(gvec_full_index_(ig__));
-                return lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
-            }
-        }
+        return vector3d<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
+    }
+
+    /// Return G vector in Cartesian coordinates.
+    template <index_domain_t idx_t>
+    inline std::enable_if_t<idx_t == index_domain_t::global, vector3d<double>> gvec_cart(int ig__) const
+    {
+        auto G = gvec_by_full_index(gvec_full_index_(ig__));
+        return lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
     }
 
     /// Return G+k vector in Cartesian coordinates.
     template <index_domain_t idx_t>
-    inline vector3d<double> gkvec_cart(int ig__) const
+    inline std::enable_if_t<idx_t==index_domain_t::local, vector3d<double>> gkvec_cart(int ig__) const
     {
-        switch (idx_t) {
-            case index_domain_t::local: {
-                return vector3d<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
-            }
-            case index_domain_t::global: {
-                auto G = gvec_by_full_index(gvec_full_index_(ig__));
-                return lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
-            }
-        }
+        return vector3d<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
+    }
+
+    /// Return G+k vector in Cartesian coordinates.
+    template <index_domain_t idx_t>
+    inline std::enable_if_t<idx_t == index_domain_t::global, vector3d<double>> gkvec_cart(int ig__) const
+    {
+        auto G = gvec_by_full_index(gvec_full_index_(ig__));
+        return lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
     }
 
     inline int shell(int ig__) const
