@@ -312,17 +312,20 @@ matrix3d<double> Stress::calc_stress_us()
     Augmentation_operator_gvec_deriv q_deriv(ctx_, ctx_.unit_cell().lmax(), ctx_.gvec(), ctx_.gvec_tp());
 
     linalg_t la{linalg_t::none};
+    memory_t qmem{memory_t::none};
 
     memory_pool* mp{nullptr};
     switch (ctx_.processing_unit()) {
         case device_t::CPU: {
             mp = &ctx_.mem_pool(memory_t::host);
             la = linalg_t::blas;
+            qmem = memory_t::host;
             break;
         }
         case device_t::GPU: {
             mp = &ctx_.mem_pool(memory_t::host_pinned);
             la = linalg_t::cublasxt;
+            qmem = memory_t::device;
             break;
         }
     }
@@ -386,7 +389,7 @@ matrix3d<double> Stress::calc_stress_us()
                     PROFILE_START("sirius::Stress|us|gemm");
                     linalg(la).gemm('N', 'T', nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                         &linalg_const<double>::one(),
-                        q_deriv.q_pw().at(memory_t::host), q_deriv.q_pw().ld(),
+                        q_deriv.q_pw().at(qmem), q_deriv.q_pw().ld(),
                         v_tmp.at(memory_t::host), v_tmp.ld(),
                         &linalg_const<double>::zero(),
                         tmp.at(memory_t::host), tmp.ld());

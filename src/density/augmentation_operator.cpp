@@ -338,8 +338,19 @@ void Augmentation_operator_gvec_deriv::prepare(Atom_type const& atom_type__,
         }
     }
 
+    sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, mp, "sym_weight_");
+    for (int xi2 = 0; xi2 < nbf; xi2++) {
+        for (int xi1 = 0; xi1 <= xi2; xi1++) {
+            /* packed orbital index */
+            int idx12          = xi2 * (xi2 + 1) / 2 + xi1;
+            sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
+        }
+    }
+
     switch (atom_type__.parameters().processing_unit()) {
         case device_t::CPU: {
+            /* array of plane-wave coefficients */
+            q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp, "q_pw_dg_");
             break;
         }
         case device_t::GPU: {
@@ -349,6 +360,8 @@ void Augmentation_operator_gvec_deriv::prepare(Atom_type const& atom_type__,
             idx_.allocate(mpd).copy_to(memory_t::device);
             gvec_shell_.allocate(mpd).copy_to(memory_t::device);
             gvec_cart_.allocate(mpd).copy_to(memory_t::device);
+            /* array of plane-wave coefficients */
+            q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mpd, "q_pw_dg_");
             break;
         }
     }
@@ -373,28 +386,12 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
             zilm[lm] = std::pow(double_complex(0, 1), l);
         }
     }
-    memory_pool* mp_ptr{nullptr};
-    switch (atom_type__.parameters().processing_unit()) {
-        case device_t::CPU: {
-            mp_ptr = &atom_type__.parameters().mem_pool(memory_t::host);
-            break;
-        }
-        case device_t::GPU: {
-            mp_ptr = &atom_type__.parameters().mem_pool(memory_t::host_pinned);
-            break;
-        }
-    }
-
-    auto& mp = *mp_ptr;
 
     /* number of beta-projectors */
     int nbf = atom_type__.mt_basis_size();
 
     /* split G-vectors between ranks */
     int gvec_count  = gvec_.count();
-
-    /* array of plane-wave coefficients */
-    q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp, "q_pw_dg_");
 
     PROFILE_START("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|2");
 
@@ -434,8 +431,6 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
             auto gc = gaunt_coefs_->get_full_set_L3();
             gc.allocate(mpd).copy_to(memory_t::device);
 
-            q_pw_.allocate(mpd);
-
             PROFILE_START("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|gpu");
 #if defined(__GPU)
             aug_op_pw_coeffs_deriv_gpu(gvec_count, gvec_shell_.at(memory_t::device), gvec_cart_.at(memory_t::device),
@@ -447,27 +442,11 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
                 static_cast<int>(ri_values_.size(1)), q_pw_.at(memory_t::device), static_cast<int>(q_pw_.size(0)),
                 fourpi, nu__, lmax_q);
 #endif
-            q_pw_.copy_to(memory_t::host);
             PROFILE_STOP("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|gpu");
-
-            q_pw_.deallocate(memory_t::device);
         }
     }
 
     PROFILE_STOP("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|2");
-
-    memory_t mem{memory_t::host};
-    if (atom_type__.parameters().processing_unit() == device_t::GPU) {
-        mem = memory_t::host_pinned;
-    }
-    sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, mem, "sym_weight_");
-    for (int xi2 = 0; xi2 < nbf; xi2++) {
-        for (int xi1 = 0; xi1 <= xi2; xi1++) {
-            /* packed orbital index */
-            int idx12          = xi2 * (xi2 + 1) / 2 + xi1;
-            sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
-        }
-    }
 }
 
 } // namespace sirius

@@ -35,8 +35,6 @@
 
 namespace sirius {
 
-//using namespace geometry3d;
-
 Force::Force(Simulation_context& ctx__, Density& density__, Potential& potential__, K_point_set& kset__)
     : ctx_(ctx__)
     , density_(density__)
