@@ -414,7 +414,7 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
                         int l = l_by_lm[lm3];
                         v[lm3] = std::conj(zilm[lm3]) *
                             (rlm_dg_(lm3, nu__, igloc) * ri_values_(l, idxrf12, igsh) +
-                             rlm_g_(lm3, igloc) * ri_dg_values_(l, idxrf12, igsh) * gvc_nu;
+                             rlm_g_(lm3, igloc) * ri_dg_values_(l, idxrf12, igsh) * gvc_nu);
                     }
                     double_complex z = fourpi * gaunt_coefs_->sum_L3_gaunt(lm2, lm1, &v[0]);
                     q_pw_(idx12, 2 * igloc)     = z.real();
