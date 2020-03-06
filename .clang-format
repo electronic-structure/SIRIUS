@@ -24,7 +24,7 @@ AllowShortFunctionsOnASingleLine: 'None'
 AllowShortIfStatementsOnASingleLine : 'false'
 AllowShortLoopsOnASingleLine: 'false'
 KeepEmptyLinesAtTheStartOfBlocks: 'true'
-AlwaysBreakTemplateDeclarations: 'true'
+AlwaysBreakTemplateDeclarations: 'Yes'
 PointerAlignment: Left
 AllowAllParametersOfDeclarationOnNextLine: 'true'
 AlignConsecutiveAssignments: 'true'
@@ -37,4 +37,8 @@ BreakConstructorInitializersBeforeComma: 'true'
 #BreakConstructorInitializersStyle: 'BeforeComma'
 ConstructorInitializerIndentWidth: 4
 Cpp11BracedListStyle: 'true'
+
+#AlwaysBreakAfterReturnType: None
+AlwaysBreakAfterReturnType: 'TopLevelDefinitions'
+
 ...

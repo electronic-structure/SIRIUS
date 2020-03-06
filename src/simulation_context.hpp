@@ -68,8 +68,6 @@ double unit_step_function_form_factors(double R__, double g__);
 class Simulation_context : public Simulation_parameters
 {
   private:
-    ///// Storage for various memory pools.
-    //mutable std::map<memory_t, memory_pool> memory_pool_;
 
     /// Communicator for this simulation.
     Communicator const& comm_;
@@ -625,32 +623,6 @@ class Simulation_context : public Simulation_parameters
     {
         return sym_phase_factors_;
     }
-
-    ///// Return a reference to a memory pool.
-    ///** A memory pool is created when this function called for the first time. */
-    //memory_pool& mem_pool(memory_t M__) const
-    //{
-    //    if (memory_pool_.count(M__) == 0) {
-    //        memory_pool_.emplace(M__, std::move(memory_pool(M__)));
-    //    }
-    //    return memory_pool_.at(M__);
-    //}
-
-    ///// Get a default memory pool for a given device.
-    //memory_pool& mem_pool(device_t dev__)
-    //{
-    //    switch (dev__) {
-    //        case device_t::CPU: {
-    //            return mem_pool(memory_t::host);
-    //            break;
-    //        }
-    //        case device_t::GPU: {
-    //            return mem_pool(memory_t::device);
-    //            break;
-    //        }
-    //    }
-    //    return mem_pool(memory_t::host); // make compiler happy
-    //}
 
     inline bool initialized() const
     {
