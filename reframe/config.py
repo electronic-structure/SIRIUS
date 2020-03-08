@@ -1,6 +1,5 @@
 
 class ReframeSettings:
-    reframe_module = 'reframe'
     job_poll_intervals = [1, 2, 3]
     job_submit_timeout = 60
     checks_path = ['checks/']
@@ -20,11 +19,34 @@ class ReframeSettings:
                         'max_jobs': 1
                     }
                 }
+            },
+            'linux': {
+                'descr': 'Ubuntu linux box',
+                'hostnames': ['localhost'],
+                'modules_system': None,
+                'resourcesdir': '',
+                'partitions': {
+                    'cpu': {
+                        'scheduler': 'local+local',
+                        'environs': ['PrgEnv-gnu'],
+                        'descr': 'CPU execution',
+                        'max_jobs': 1
+                    }
+                }
             }
         },
 
         'environments': {
             'osx': {
+                'PrgEnv-gnu': {
+                    'type': 'ProgEnvironment',
+                    'modules': [],
+                    'cc':  'mpicc',
+                    'cxx': 'mpic++',
+                    'ftn': 'mpif90',
+                }
+            },
+            'linux': {
                 'PrgEnv-gnu': {
                     'type': 'ProgEnvironment',
                     'modules': [],
@@ -65,37 +87,27 @@ class ReframeSettings:
         ]
     }
 
-    #perf_logging_config = {
-    #    'level': 'DEBUG',
-    #    'handlers': [
-    #        #@ {
-    #        #@     'type': 'graylog',
-    #        #@     'host': 'your-server-here',
-    #        #@     'port': 12345,
-    #        #@     'level': 'INFO',
-    #        #@     'format': '%(message)s',
-    #        #@     'extras': {
-    #        #@         'facility': 'reframe',
-    #        #@         'data-version': '1.0',
-    #        #@     }
-    #        #@ },
-    #        {
-    #            'type': 'filelog',
-    #            'prefix': '%(check_system)s/%(check_partition)s',
-    #            'level': 'INFO',
-    #            'format': (
-    #                '%(asctime)s|reframe %(version)s|'
-    #                '%(check_info)s|jobid=%(check_jobid)s|'
-    #                '%(check_perf_var)s=%(check_perf_value)s|'
-    #                'ref=%(check_perf_ref)s '
-    #                '(l=%(check_perf_lower_thres)s, '
-    #                'u=%(check_perf_upper_thres)s)|'
-    #                '%(check_perf_unit)s'
-    #            ),
-    #            'append': True
-    #        }
-    #    ]
-    #}
+    perf_logging_config = {
+        'level': 'DEBUG',
+        'handlers': [
+            {
+                'type': 'filelog',
+                'prefix': '%(check_system)s/%(check_partition)s',
+                'level': 'INFO',
+                'format': (
+                    '%(check_job_completion_time)s|reframe %(version)s|'
+                    '%(check_info)s|jobid=%(check_jobid)s|'
+                    'num_tasks=%(check_num_tasks)s|'
+                    '%(check_perf_var)s=%(check_perf_value)s|'
+                    'ref=%(check_perf_ref)s '
+                    '(l=%(check_perf_lower_thres)s, '
+                    'u=%(check_perf_upper_thres)s)|'
+                    '%(check_perf_unit)s'
+                ),
+                'append': True
+            }
+        ]
+    }
 
 settings = ReframeSettings()
 
