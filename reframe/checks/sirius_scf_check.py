@@ -50,7 +50,7 @@ class sirius_scf_base_test(rfm.RunOnlyRegressionTest):
     def __init__(self, num_ranks, test_folder):
         super().__init__()
         self.descr = 'SCF check'
-        self.valid_systems = ['osx', 'daint']
+        self.valid_systems = ['osx', 'daint', 'linux']
         self.valid_prog_environs = ['PrgEnv-gnu', 'PrgEnv-intel']
 
         self.num_tasks = num_ranks

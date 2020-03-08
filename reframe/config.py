@@ -20,11 +20,34 @@ class ReframeSettings:
                         'max_jobs': 1
                     }
                 }
+            },
+            'linux': {
+                'descr': 'Ubuntu linux box',
+                'hostnames': ['localhost'],
+                'modules_system': None,
+                'resourcesdir': '',
+                'partitions': {
+                    'cpu': {
+                        'scheduler': 'local+mpirun',
+                        'environs': ['PrgEnv-gnu'],
+                        'descr': 'CPU execution',
+                        'max_jobs': 1
+                    }
+                }
             }
         },
 
         'environments': {
             'osx': {
+                'PrgEnv-gnu': {
+                    'type': 'ProgEnvironment',
+                    'modules': [],
+                    'cc':  'mpicc',
+                    'cxx': 'mpic++',
+                    'ftn': 'mpif90',
+                }
+            },
+            'linux': {
                 'PrgEnv-gnu': {
                     'type': 'ProgEnvironment',
                     'modules': [],
