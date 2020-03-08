@@ -28,7 +28,7 @@ class ReframeSettings:
                 'resourcesdir': '',
                 'partitions': {
                     'cpu': {
-                        'scheduler': 'local+mpirun',
+                        'scheduler': 'local+local',
                         'environs': ['PrgEnv-gnu'],
                         'descr': 'CPU execution',
                         'max_jobs': 1
