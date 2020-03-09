@@ -339,4 +339,10 @@ The development of SIRIUS library is supported by:
 |  Platform for Advanced Scientific Computing |
 |  https://www.pasc-ch.org/                   |
 
+| ![pasc](doc/images/logo_max.png)            |
+|:-------------------------------------------:|
+|  MAX (MAterials design at the eXascale) <br> European Centre of Excellence |
+|  http://www.max-centre.eu/        |
+
+
 
