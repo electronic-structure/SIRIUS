@@ -21,6 +21,7 @@
 * [Accelerating DFT codes](#accelerating-dft-codes)
   * [Quantum ESPRESSO](#quantum-espresso)
 * [Examples](#examples)
+* [Acknowledgements](#acknowledgements)
 
 ## Introduction
 SIRIUS is a domain specific library for electronic structure calculations. It implements pseudopotential plane wave (PP-PW)
@@ -318,3 +319,7 @@ dual-socket nodes containing two 18-core Intel Haswell CPUs.
 
 
 ## Examples
+
+## Acknowledgements
+The development of SIRIUS library is supported by:
+  * ETH Zürich ![ethz](doc/images/logo_ethz.png)

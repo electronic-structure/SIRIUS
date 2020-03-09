@@ -16,7 +16,7 @@ branches:
 #    - develop
 
 env:
-    - CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp SIRIUS_BINARIES=/home/travis/local/bin PATH=/home/travis/local/bin:$PATH
+    - CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp PATH=/home/travis/local/bin:$PATH
 
 before_install:
     - ./check_format.x
