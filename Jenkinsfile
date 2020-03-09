@@ -8,6 +8,8 @@ pipeline {
     }
     environment {
         EB_CUSTOM_REPOSITORY = '/users/simonpi/jenkins/production/easybuild'
+        LOGS_REPO = 'git@github.com:haampie/SIRIUS_logs.git'
+        LOGS_TREE_URL = 'https://github.com/haampie/SIRIUS_logs/tree/master/'
     }
     stages {
         stage('Checkout') {
@@ -103,6 +105,31 @@ pipeline {
                     }
                 }
             }
+        }
+        stage ('Deploy logs') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: 'github-logs', keyFileVariable: 'SSH_KEY_PATH')]) {
+                    dir('collect_logs') {
+                        deleteDir()
+                        // StrictHostKeyChecking=no seems to be required, otherwise the build hangs in an interactive mode
+                        sh """
+                            export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -i $SSH_KEY_PATH"
+                            git clone ${env.LOGS_REPO} .
+                            rm -rf ${pullRequest.head}
+                            mkdir ${pullRequest.head}
+                            cp ${env.WORKSPACE}/**/{sirius,build}*.{out,err} ${pullRequest.head}
+                            git add ${pullRequest.head}
+                            git commit -m "Logs for ${pullRequest.url}"
+                            git push origin master
+                        """
+                    }
+                }
+                script {
+                    pullRequest.comment("See ${env.LOGS_TREE_URL}${pullRequest.head} for the build details and benchmarks of (${pullRequest.head}).")
+                }
+            }
+
+            when { changeRequest() }
         }
     }
 
