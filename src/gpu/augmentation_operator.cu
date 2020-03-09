@@ -72,7 +72,6 @@ extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int c
 
 __global__ void aug_op_pw_coeffs_deriv_gpu_kernel(int ngvec__, int const* gvec_shell__, double const* gvec_cart__,
                                                   int const* idx__, int idxmax__,
-                                                  acc_complex_double_t const* zilm__, int const* l_by_lm__, int lmmax__,
                                                   double const* gc__, int ld0__, int ld1__,
                                                   double const* rlm__, double const* rlm_dg__, int ld2__,
                                                   double const* ri_values__, double const* ri_dg_values__, int ld3__,
@@ -91,6 +90,7 @@ __global__ void aug_op_pw_coeffs_deriv_gpu_kernel(int ngvec__, int const* gvec_s
         double gvc_nu = gvec_cart__[array2D_offset(nu__, igloc, 3)];
 
         acc_complex_double_t z = make_accDoubleComplex(0, 0);
+        acc_complex_double_t phase = make_accDoubleComplex(1, 0);
         int lm = 0;
         for (int l = 0; l <= lmax_q__; l++) {
             double d1 = 0;
@@ -102,8 +102,10 @@ __global__ void aug_op_pw_coeffs_deriv_gpu_kernel(int ngvec__, int const* gvec_s
             }
             double d = d1 * ri_values__[array3D_offset(l, idxrf12, idxsh, ld3__, ld4__)] +
                        d2 * ri_dg_values__[array3D_offset(l, idxrf12, idxsh, ld3__, ld4__)] * gvc_nu;
-            z.x += d * zilm__[lm].x;
-            z.y -= d * zilm__[lm].y;
+            z.x += d * phase.x;
+            z.y -= d * phase.y;
+            /* i^l */
+            phase = accCmul(phase, make_accDoubleComplex(0, -1));
         }
         q_pw__[array2D_offset(idx12, 2 * igloc,     ld5__)] = z.x * fourpi__;
         q_pw__[array2D_offset(idx12, 2 * igloc + 1, ld5__)] = z.y * fourpi__;
@@ -111,10 +113,9 @@ __global__ void aug_op_pw_coeffs_deriv_gpu_kernel(int ngvec__, int const* gvec_s
 }
 
 extern "C" void aug_op_pw_coeffs_deriv_gpu(int ngvec__, int const* gvec_shell__, double const* gvec_cart__,
-                                           int const* idx__, int idxmax__, acc_complex_double_t const* zilm__,
-                                           int const* l_by_lm__, int lmmax__,
+                                           int const* idx__, int idxmax__,
                                            double const* gc__, int ld0__, int ld1__,
-                                           double const* gvec_rlm__, double const* rlm_dg__, int ld2__,
+                                           double const* rlm__, double const* rlm_dg__, int ld2__,
                                            double const* ri_values__, double const* ri_dg_values__, int ld3__, int ld4__,
                                            double* q_pw__, int ld5__, double fourpi__, int nu__, int lmax_q__)
 {
@@ -122,7 +123,7 @@ extern "C" void aug_op_pw_coeffs_deriv_gpu(int ngvec__, int const* gvec_shell__,
     dim3 grid_b(num_blocks(ngvec__, grid_t.x), idxmax__);
 
     accLaunchKernel((aug_op_pw_coeffs_deriv_gpu_kernel), dim3(grid_b), dim3(grid_t), 0, 0,
-        ngvec__, gvec_shell__, gvec_cart__, idx__, idxmax__, zilm__, l_by_lm__, lmmax__, gc__, ld0__, ld1__,
-        gvec_rlm__, rlm_dg__, ld2__, ri_values__, ri_dg_values__, ld3__, ld4__, q_pw__, ld5__, fourpi__, nu__, lmax_q__);
+        ngvec__, gvec_shell__, gvec_cart__, idx__, idxmax__, gc__, ld0__, ld1__,
+        rlm__, rlm_dg__, ld2__, ri_values__, ri_dg_values__, ld3__, ld4__, q_pw__, ld5__, fourpi__, nu__, lmax_q__);
 }
 

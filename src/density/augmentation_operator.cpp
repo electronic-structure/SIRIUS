@@ -35,9 +35,8 @@ extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int c
                                      double* q_pw__, int ld5__, double fourpi_omega__);
 extern "C" void aug_op_pw_coeffs_deriv_gpu(int ngvec__, int const* gvec_shell__, double const* gvec_cart__,
                                            int const* idx__, int idxmax__,
-                                           double_complex const* zilm__, int const* l_by_lm__, int lmmax__,
                                            double const* gc__, int ld0__, int ld1__,
-                                           double const* gvec_rlm__, double const* rlm_dg__, int ld2__,
+                                           double const* rlm__, double const* rlm_dg__, int ld2__,
                                            double const* ri_values__, double const* ri_dg_values__, int ld3__, int ld4__,
                                            double* q_pw__, int ld5__, double fourpi__, int nu__, int lmax_q__);
 
@@ -393,10 +392,9 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
     /* split G-vectors between ranks */
     int gvec_count  = gvec_.count();
 
-    PROFILE_START("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|2");
-
     switch (atom_type__.parameters().processing_unit()) {
         case device_t::CPU: {
+            auto gc = gaunt_coefs_->get_full_set_L3();
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 /* index of the G-vector shell */
@@ -423,30 +421,21 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
         case device_t::GPU: {
             auto& mpd = atom_type__.parameters().mem_pool(memory_t::device);
 
-            zilm.allocate(mpd).copy_to(memory_t::device);
-
-            sddk::mdarray<int, 1> l_by_lm_d(&l_by_lm[0], lmmax);
-            l_by_lm_d.allocate(mpd).copy_to(memory_t::device);
-
             auto gc = gaunt_coefs_->get_full_set_L3();
             gc.allocate(mpd).copy_to(memory_t::device);
 
-            PROFILE_START("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|gpu");
 #if defined(__GPU)
             aug_op_pw_coeffs_deriv_gpu(gvec_count, gvec_shell_.at(memory_t::device), gvec_cart_.at(memory_t::device),
-                idx_.at(memory_t::device), static_cast<int>(idx_.size(1)), zilm.at(memory_t::device),
-                l_by_lm_d.at(memory_t::device), lmmax,
+                idx_.at(memory_t::device), static_cast<int>(idx_.size(1)),
                 gc.at(memory_t::device), static_cast<int>(gc.size(0)), static_cast<int>(gc.size(1)),
                 rlm_g_.at(memory_t::device), rlm_dg_.at(memory_t::device), lmmax,
                 ri_values_.at(memory_t::device), ri_dg_values_.at(memory_t::device), static_cast<int>(ri_values_.size(0)),
                 static_cast<int>(ri_values_.size(1)), q_pw_.at(memory_t::device), static_cast<int>(q_pw_.size(0)),
                 fourpi, nu__, lmax_q);
 #endif
-            PROFILE_STOP("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|gpu");
+            break;
         }
     }
-
-    PROFILE_STOP("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|2");
 }
 
 } // namespace sirius
