@@ -7,15 +7,28 @@ language: c++
 git:
   depth: 3
 
-before_install:
-
 branches:
   only:
-    - develop
+  - /.*/
+
+#branches:
+#  only:
+#    - develop
+
+env:
+    - CC=mpicc CXX=mpic++ FC=mpif90 FCCPP=cpp SIRIUS_BINARIES=/home/travis/local/bin PATH=/home/travis/local/bin:$PATH
+
+before_install:
+    - ./check_format.x
+    - sudo apt-get install -y gfortran mpich libmpich-dev liblapack-dev libhdf5-dev libgsl-dev libfftw3-dev libxc-dev
+    - ./ci/travis_build_dependencies.sh
+
+install:
+    - ./ci/travis_build_sirius.sh
 
 script:
-  - ./check_format.x
+    - ./ci/travis_run_verification.sh
 
-after_success:
-after_failure:
+#after_success:
+#after_failure:
 

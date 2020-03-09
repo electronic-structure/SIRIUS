@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(SIRIUS VERSION 6.5.0)
+project(SIRIUS VERSION 6.5.1)
 
 # set language and standard
 enable_language(CXX Fortran)
@@ -48,14 +48,16 @@ list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 include(GitSubmodule)    # include custom defined FindPackage modules
 include(GNUInstallDirs)  # required to get a proper LIBDIR variable
 
-if(PYTHON2)
-  # force cmake to use python2
-  set(PYBIND11_PYTHON_VERSION 2.7)
-  find_package(Python2 REQUIRED)
-  set(PYTHON_EXECUTABLE ${Python2_EXECUTABLE})
-else()
-  find_package(Python3 REQUIRED)
-  set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+if (CREATE_PYTHON_MODULE)
+  if(PYTHON2)
+    # force cmake to use python2
+    set(PYBIND11_PYTHON_VERSION 2.7)
+    find_package(Python2 REQUIRED)
+    set(PYTHON_EXECUTABLE ${Python2_EXECUTABLE})
+  else()
+    find_package(Python3 REQUIRED)
+    set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+  endif()
 endif()
 
 # Set release as the default build type.
@@ -172,8 +174,8 @@ if(USE_ROCM)
   endif()
   add_definitions(${ROCM_DEFINITIONS})
   include_directories(${ROCM_INCLUDE_DIRS})
-  add_subdirectory(src/SDDK/GPU/hipblas_port)
-  include_directories(src/SDDK/GPU/hipblas_port)
+  add_subdirectory(src/gpu/hipblas_port)
+  include_directories(src/gpu/hipblas_port)
 endif()
 
 # check if git command exists

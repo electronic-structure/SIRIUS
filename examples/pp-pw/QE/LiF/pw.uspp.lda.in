@@ -10,7 +10,7 @@
     nstep=2
  /
  &system
-    ibrav=0, celldm(1)=7.60501685, nat=2, ntyp=2,
+    ibrav=0, celldm(1)=1, nat=2, ntyp=2,
     ecutwfc=36.0, ecutrho = 400,
     occupations = 'smearing', smearing = 'gauss', degauss = 0.02
  /
@@ -30,9 +30,9 @@ ATOMIC_SPECIES
  Li 0 li_pbe_v1.4.uspp.F.UPF
  F  0 f_pbe_v1.4.uspp.F.UPF
 CELL_PARAMETERS
-   0.150000000   0.500000000   0.500000000
-   0.500000000   0.000000000   0.500000000
-   0.500000000   0.500000000   0.000000000
+   0.0000000   3.30501685   3.30501685
+   3.30501685   0.000000000   3.30501685
+   3.30501685   3.305016850   0.000000000
 ATOMIC_POSITIONS (alat)
 Li       0.0           0.0           0.0
 F        0.5           0.5           0.5

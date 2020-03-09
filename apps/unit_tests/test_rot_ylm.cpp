@@ -1,4 +1,4 @@
-#include <sirius.h>
+#include <sirius.hpp>
 
 /* test rotation of spherical harmonics */
 

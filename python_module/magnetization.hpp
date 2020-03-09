@@ -1,7 +1,7 @@
 #include <list>
 #include <vector>
 #include <tuple>
-#include "Density/density.hpp"
+#include "density/density.hpp"
 #include "simulation_context.hpp"
 
 namespace sirius {

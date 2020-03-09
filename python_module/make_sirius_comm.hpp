@@ -1,4 +1,4 @@
-#include "SDDK/communicator.hpp"
+#include "mpi/communicator.hpp"
 
 #include <mpi4py/mpi4py.h>
 #include <pybind11/pybind11.h>

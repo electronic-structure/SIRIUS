@@ -1,4 +1,4 @@
-#include <sirius.h>
+#include <sirius.hpp>
 
 /* test FFT: transform single harmonic and compare with plane wave exp(iGr) */
 
