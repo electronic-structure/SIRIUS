@@ -21,6 +21,7 @@
 * [Accelerating DFT codes](#accelerating-dft-codes)
   * [Quantum ESPRESSO](#quantum-espresso)
 * [Examples](#examples)
+* [Contacts](#contacts)
 * [Acknowledgements](#acknowledgements)
 
 ## Introduction
@@ -319,6 +320,12 @@ dual-socket nodes containing two 18-core Intel Haswell CPUs.
 
 
 ## Examples
+
+## Contacts
+Have you got any questions, feel free to contact us:
+  * Anton Kozhevnikov (anton.kozhevnikov@cscs.ch)
+  * Mathieu Taillefumier (mathieu.taillefumier@cscs.ch)
+  * Simon Pintarelli (simon.pintarelli@cscs.ch)
 
 ## Acknowledgements
 The development of SIRIUS library is supported by:
