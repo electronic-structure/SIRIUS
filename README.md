@@ -323,7 +323,7 @@ dual-socket nodes containing two 18-core Intel Haswell CPUs.
 ## Acknowledgements
 The development of SIRIUS library is supported by:
 
-<p align="center">
+<center>
 
 | ![ethz](doc/images/logo_ethz.png)                |
 |:------------------------------------------------:|
@@ -345,5 +345,5 @@ The development of SIRIUS library is supported by:
 |  MAX (MAterials design at the eXascale) <br> European Centre of Excellence |
 |  http://www.max-centre.eu/        |
 
-</p>
+</center>
 
