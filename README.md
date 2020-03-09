@@ -326,11 +326,17 @@ The development of SIRIUS library is supported by:
 
 | ![ethz](doc/images/logo_ethz.png)                |
 |:------------------------------------------------:|
-| Swiss Federal Institute of Technology in Zürich  | 
-| https://www.ethz.ch                              | 
+| Swiss Federal Institute of Technology in Zürich  |
+| https://www.ethz.ch/                             |
 
 | ![cscs](doc/images/logo_cscs.png)      |
 |:--------------------------------------:|
 |  Swiss National Supercomputing Centre  |
 |  https://www.cscs.ch/                  |
+
+| ![pasc](doc/images/logo_pasc.png)           |
+|:-------------------------------------------:|
+|  Platform for Advanced Scientific Computing |
+|  https://www.pasc-ch.org/                   |
+
 
