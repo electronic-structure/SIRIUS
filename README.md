@@ -323,8 +323,6 @@ dual-socket nodes containing two 18-core Intel Haswell CPUs.
 ## Acknowledgements
 The development of SIRIUS library is supported by:
 
-<center>
-
 | ![ethz](doc/images/logo_ethz.png)                |
 |:------------------------------------------------:|
 | Swiss Federal Institute of Technology in Zürich  |
@@ -340,10 +338,15 @@ The development of SIRIUS library is supported by:
 |  Platform for Advanced Scientific Computing |
 |  https://www.pasc-ch.org/                   |
 
-| ![pasc](doc/images/logo_max.png)            |
-|:-------------------------------------------:|
+| ![pasc](doc/images/logo_max.png)                                           |
+|:--------------------------------------------------------------------------:|
 |  MAX (MAterials design at the eXascale) <br> European Centre of Excellence |
-|  http://www.max-centre.eu/        |
+|  http://www.max-centre.eu/                                                 |
 
-</center>
+| ![pasc](doc/images/logo_prace.png)            |
+|:---------------------------------------------:|
+|  Partnership for Advanced Computing in Europe |
+|  https://prace-ri.eu/                         |
+
+
 
