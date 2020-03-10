@@ -112,12 +112,6 @@ pipeline {
 
     post {
         always {
-            // dir('SIRIUS') {
-            //     sh '''
-            //        # delete heavy directories
-            //        rm -rf  build verification examples
-            //        '''
-            // }
             archiveArtifacts artifacts: '**/sirius*.out', fingerprint: true
             archiveArtifacts artifacts: '**/sirius*.err', fingerprint: true
             archiveArtifacts artifacts: '**/build*.out', fingerprint: true
