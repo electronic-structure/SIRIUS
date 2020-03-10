@@ -415,6 +415,8 @@ void sirius_set_parameters(void*  const* handler__,
    @fortran argument out optional double iter_solver_tol_empty    Tolerance for the empty states.
    @fortran argument out optional int    verbosity                Verbosity level.
    @fortran argument out optional bool   hubbard_correction       True if LDA+U correction is enabled.
+   @fortran argument out optional double evp_work_count           Internal counter of total eigen-value problem work.
+   @fortran argument out optional int    error_code               Error code.
    @fortran end */
 void sirius_get_parameters(void* const* handler__,
                            int*         lmax_apw__,
@@ -433,62 +435,70 @@ void sirius_get_parameters(void* const* handler__,
                            double*      iter_solver_tol__,
                            double*      iter_solver_tol_empty__,
                            int*         verbosity__,
-                           bool*        hubbard_correction__)
+                           bool*        hubbard_correction__,
+                           double*      evp_work_count__,
+                           int*         error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    if (lmax_apw__ != nullptr) {
-        *lmax_apw__ = sim_ctx.lmax_apw();
-    }
-    if (lmax_rho__ != nullptr) {
-        *lmax_rho__ = sim_ctx.lmax_rho();
-    }
-    if (lmax_pot__ != nullptr) {
-        *lmax_pot__ = sim_ctx.lmax_pot();
-    }
-    if (num_fv_states__ != nullptr) {
-        *num_fv_states__ = sim_ctx.num_fv_states();
-    }
-    if (num_bands__ != nullptr) {
-        *num_bands__ = sim_ctx.num_bands();
-    }
-    if (num_mag_dims__ != nullptr) {
-        *num_mag_dims__ = sim_ctx.num_mag_dims();
-    }
-    if (pw_cutoff__ != nullptr) {
-        *pw_cutoff__ = sim_ctx.pw_cutoff();
-    }
-    if (gk_cutoff__ != nullptr) {
-        *gk_cutoff__ = sim_ctx.gk_cutoff();
-    }
-    if (auto_rmt__ != nullptr) {
-        *auto_rmt__ = sim_ctx.auto_rmt();
-    }
-    if (gamma_point__ != nullptr) {
-        *gamma_point__ = sim_ctx.gamma_point();
-    }
-    if (use_symmetry__ != nullptr) {
-        *use_symmetry__ = sim_ctx.use_symmetry();
-    }
-    if (so_correction__ != nullptr) {
-        *so_correction__ = sim_ctx.so_correction();
-    }
-    if (iter_solver_tol__ != nullptr) {
-        *iter_solver_tol__ = sim_ctx.iterative_solver_tolerance();
-    }
-    if (iter_solver_tol_empty__ != nullptr) {
-        *iter_solver_tol_empty__ = sim_ctx.iterative_solver_input().empty_states_tolerance_;
-    }
-    if (verbosity__ != nullptr) {
-        *verbosity__ = sim_ctx.control().verbosity_;
-    }
-    if (hubbard_correction__ != nullptr) {
-        *hubbard_correction__ = sim_ctx.hubbard_correction();
-    }
-    if (fft_grid_size__ != nullptr) {
-        for (int x: {0, 1, 2}) {
-            fft_grid_size__[x] = sim_ctx.fft_grid()[x];
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        if (lmax_apw__ != nullptr) {
+            *lmax_apw__ = sim_ctx.lmax_apw();
         }
-    }
+        if (lmax_rho__ != nullptr) {
+            *lmax_rho__ = sim_ctx.lmax_rho();
+        }
+        if (lmax_pot__ != nullptr) {
+            *lmax_pot__ = sim_ctx.lmax_pot();
+        }
+        if (num_fv_states__ != nullptr) {
+            *num_fv_states__ = sim_ctx.num_fv_states();
+        }
+        if (num_bands__ != nullptr) {
+            *num_bands__ = sim_ctx.num_bands();
+        }
+        if (num_mag_dims__ != nullptr) {
+            *num_mag_dims__ = sim_ctx.num_mag_dims();
+        }
+        if (pw_cutoff__ != nullptr) {
+            *pw_cutoff__ = sim_ctx.pw_cutoff();
+        }
+        if (gk_cutoff__ != nullptr) {
+            *gk_cutoff__ = sim_ctx.gk_cutoff();
+        }
+        if (auto_rmt__ != nullptr) {
+            *auto_rmt__ = sim_ctx.auto_rmt();
+        }
+        if (gamma_point__ != nullptr) {
+            *gamma_point__ = sim_ctx.gamma_point();
+        }
+        if (use_symmetry__ != nullptr) {
+            *use_symmetry__ = sim_ctx.use_symmetry();
+        }
+        if (so_correction__ != nullptr) {
+            *so_correction__ = sim_ctx.so_correction();
+        }
+        if (iter_solver_tol__ != nullptr) {
+            *iter_solver_tol__ = sim_ctx.iterative_solver_tolerance();
+        }
+        if (iter_solver_tol_empty__ != nullptr) {
+            *iter_solver_tol_empty__ = sim_ctx.iterative_solver_input().empty_states_tolerance_;
+        }
+        if (verbosity__ != nullptr) {
+            *verbosity__ = sim_ctx.control().verbosity_;
+        }
+        if (hubbard_correction__ != nullptr) {
+            *hubbard_correction__ = sim_ctx.hubbard_correction();
+        }
+        if (fft_grid_size__ != nullptr) {
+            for (int x: {0, 1, 2}) {
+                fft_grid_size__[x] = sim_ctx.fft_grid()[x];
+            }
+        }
+        if (evp_work_count__ != nullptr) {
+            *evp_work_count__ = sim_ctx.evp_work_count();
+        }
+    }, error_code__);
 }
 
 
@@ -3580,6 +3590,5 @@ void sirius_set_callback_function(void* const* handler__, char const* label__, v
         }
     }, error_code__);
 }
-
 
 } // extern "C"

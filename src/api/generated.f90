@@ -427,9 +427,12 @@ end subroutine sirius_set_parameters
 !> @param [out] iter_solver_tol_empty Tolerance for the empty states.
 !> @param [out] verbosity Verbosity level.
 !> @param [out] hubbard_correction True if LDA+U correction is enabled.
+!> @param [out] evp_work_count Internal counter of total eigen-value problem work.
+!> @param [out] error_code Error code.
 subroutine sirius_get_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
-&so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction)
+&so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction,&
+&evp_work_count,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), optional, target, intent(out) :: lmax_apw
@@ -449,6 +452,8 @@ real(C_DOUBLE), optional, target, intent(out) :: iter_solver_tol
 real(C_DOUBLE), optional, target, intent(out) :: iter_solver_tol_empty
 integer(C_INT), optional, target, intent(out) :: verbosity
 logical(C_BOOL), optional, target, intent(out) :: hubbard_correction
+real(C_DOUBLE), optional, target, intent(out) :: evp_work_count
+integer(C_INT), optional, target, intent(out) :: error_code
 type(C_PTR) :: lmax_apw_ptr
 type(C_PTR) :: lmax_rho_ptr
 type(C_PTR) :: lmax_pot_ptr
@@ -466,10 +471,13 @@ type(C_PTR) :: iter_solver_tol_ptr
 type(C_PTR) :: iter_solver_tol_empty_ptr
 type(C_PTR) :: verbosity_ptr
 type(C_PTR) :: hubbard_correction_ptr
+type(C_PTR) :: evp_work_count_ptr
+type(C_PTR) :: error_code_ptr
 interface
 subroutine sirius_get_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
-&so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction)&
+&so_correction,iter_solver_tol,iter_solver_tol_empty,verbosity,hubbard_correction,&
+&evp_work_count,error_code)&
 &bind(C, name="sirius_get_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
@@ -490,6 +498,8 @@ type(C_PTR), value :: iter_solver_tol
 type(C_PTR), value :: iter_solver_tol_empty
 type(C_PTR), value :: verbosity
 type(C_PTR), value :: hubbard_correction
+type(C_PTR), value :: evp_work_count
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 
@@ -544,10 +554,16 @@ if (present(verbosity)) verbosity_ptr = C_LOC(verbosity)
 hubbard_correction_ptr = C_NULL_PTR
 if (present(hubbard_correction)) hubbard_correction_ptr = C_LOC(hubbard_correction)
 
+evp_work_count_ptr = C_NULL_PTR
+if (present(evp_work_count)) evp_work_count_ptr = C_LOC(evp_work_count)
+
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
 call sirius_get_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,num_fv_states_ptr,&
 &num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,auto_rmt_ptr,&
 &gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,&
-&verbosity_ptr,hubbard_correction_ptr)
+&verbosity_ptr,hubbard_correction_ptr,evp_work_count_ptr,error_code_ptr)
 end subroutine sirius_get_parameters
 
 !> @brief Add one of the XC functionals.
