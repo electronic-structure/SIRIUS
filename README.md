@@ -328,9 +328,9 @@ Have you got any questions, feel free to contact us:
   * Simon Pintarelli (simon.pintarelli@cscs.ch)
 
 ## Acknowledgements
-The development of SIRIUS library is supported by:
+The development of SIRIUS library would  not be possible without the support of the following organizations:
 
-|–––––––––––––––––––––––––––––––––––––––––––– |
+|List of supporting organizations                  |
 |:------------------------------------------------:|
 |                                                  |
 | Swiss Federal Institute of Technology in Zürich  |                                                  |
