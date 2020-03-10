@@ -123,22 +123,24 @@ pipeline {
 
                 dir('tmp') {
                     deleteDir()
+
+                    // GIT_SSH_COMMAND seems currently the easiest way to use a deployment key with Jenkins
                     withCredentials([sshUserPrivateKey(credentialsId: 'github-logs', keyFileVariable: 'SSH_KEY_PATH')]) {
-                        env.GIT_SSH_COMMAND = 'ssh -o StrictHostKeyChecking=no -i $SSH_KEY_PATH'
+                        withEnv(["GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_PATH}'"]) {
+                            // Clone the logs repo
+                            sh "git clone --depth=1 ${env.LOGS_REPO} ."
 
-                        // Clone the logs repo
-                        sh "git clone --depth=1 ${env.LOGS_REPO} ."
+                            // Unpack the artifacts plus a readme in a folder with the name of the SHA
+                            dir(pullRequest.head) {
+                                unarchive mapping: ['**/**' : '.']
+                                writeFile file: "readme.md", text: "Logs for ${pullRequest.url}"
+                            }
 
-                        // Unpack the artifacts plus a readme in a folder with the name of the SHA
-                        dir(pullRequest.head) {
-                            unarchive mapping: ['**/**' : '.']
-                            writeFile file: "readme.md", text: "Logs for ${pullRequest.url}"
+                            // Push
+                            sh "git add ${pullRequest.head}"
+                            sh "git commit --allow-empty -m 'Add logs for ${pullRequest.url}'"
+                            sh "git push origin master"
                         }
-
-                        // Push
-                        sh "git add ${pullRequest.head}"
-                        sh "git commit --allow-empty -m 'Add logs for ${pullRequest.url}'"
-                        sh "git push origin master"
                     }
                 }
 
