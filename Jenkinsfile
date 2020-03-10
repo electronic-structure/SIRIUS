@@ -17,6 +17,7 @@ pipeline {
                 dir('SIRIUS') {
                     checkout scm
                     echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
+                    sh "git --version"
                 }
             }
         }
