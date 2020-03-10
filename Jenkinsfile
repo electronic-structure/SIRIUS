@@ -124,8 +124,10 @@ pipeline {
                 dir('tmp') {
                     deleteDir()
                     withCredentials([sshUserPrivateKey(credentialsId: 'github-logs', keyFileVariable: 'SSH_KEY_PATH')]) {
+                        env.GIT_SSH_COMMAND = 'ssh -o StrictHostKeyChecking=no -i $SSH_KEY_PATH'
+
                         // Clone the logs repo
-                        sh """GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -i \$SSH_KEY_PATH" git clone --depth=1 ${env.LOGS_REPO} ."""
+                        sh "git clone --depth=1 ${env.LOGS_REPO} ."
 
                         // Unpack the artifacts plus a readme in a folder with the name of the SHA
                         dir(pullRequest.head) {
@@ -136,7 +138,7 @@ pipeline {
                         // Push
                         sh "git add ${pullRequest.head}"
                         sh "git commit --allow-empty -m 'Add logs for ${pullRequest.url}'"
-                        sh """GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -i \$SSH_KEY_PATH" git push origin master"""
+                        sh "git push origin master"
                     }
                 }
 
