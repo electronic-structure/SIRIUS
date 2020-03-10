@@ -112,8 +112,8 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: '**/sirius*.out', fingerprint: true
-            archiveArtifacts artifacts: '**/sirius*.err', fingerprint: true
+            //archiveArtifacts artifacts: '**/sirius*.out', fingerprint: true
+            //archiveArtifacts artifacts: '**/sirius*.err', fingerprint: true
             archiveArtifacts artifacts: '**/build*.out', fingerprint: true
             archiveArtifacts artifacts: '**/build*.err', fingerprint: true
 
