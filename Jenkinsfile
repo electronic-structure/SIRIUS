@@ -147,5 +147,8 @@ pipeline {
                 pullRequest.comment("See ${env.LOGS_TREE_URL}${pullRequest.head} for the build details and benchmarks of this PR (${pullRequest.head}).")
             }
         }
+        cleanup {
+            cleanWs()
+        }
     }
 }
