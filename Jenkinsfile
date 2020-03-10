@@ -106,31 +106,6 @@ pipeline {
                 }
             }
         }
-        stage ('Deploy logs') {
-            steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'github-logs', keyFileVariable: 'SSH_KEY_PATH')]) {
-                    dir('collect_logs') {
-                        deleteDir()
-                        // StrictHostKeyChecking=no seems to be required, otherwise the build hangs in an interactive mode
-                        sh """
-                            export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -i $SSH_KEY_PATH"
-                            git clone ${env.LOGS_REPO} .
-                            rm -rf ${pullRequest.head}
-                            mkdir ${pullRequest.head}
-                            cp ${env.WORKSPACE}/**/{sirius,build}*.{out,err} ${pullRequest.head}
-                            git add ${pullRequest.head}
-                            git commit -m "Logs for ${pullRequest.url}"
-                            git push origin master
-                        """
-                    }
-                }
-                script {
-                    pullRequest.comment("See ${env.LOGS_TREE_URL}${pullRequest.head} for the build details and benchmarks of (${pullRequest.head}).")
-                }
-            }
-
-            when { changeRequest() }
-        }
     }
 
     post {
@@ -146,6 +121,31 @@ pipeline {
             archiveArtifacts artifacts: '**/build*.out', fingerprint: true
             archiveArtifacts artifacts: '**/build*.err', fingerprint: true
 
+            script {
+                if (!changeRequest())
+                    return
+
+                dir('tmp') {
+                    deleteDir()
+                    withCredentials([sshUserPrivateKey(credentialsId: 'github-logs', keyFileVariable: 'SSH_KEY_PATH')]) {
+                        // Clone the logs repo
+                        sh """GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -i \$SSH_KEY_PATH" git clone --depth=1 ${env.LOGS_REPO} ."""
+
+                        // Unpack the artifacts plus a readme in a folder with the name of the SHA
+                        dir(pullRequest.head) {
+                            unarchive mapping: ['**/**' : '.']
+                            writeFile file: "readme.md", text: "Logs for ${pullRequest.url}"
+                        }
+
+                        // Push
+                        sh "git add ${pullRequest.head}"
+                        sh "git commit --allow-empty -m 'Add logs for ${pullRequest.url}'"
+                        sh """GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -i \$SSH_KEY_PATH" git push origin master"""
+                    }
+                }
+
+                pullRequest.comment("See ${env.LOGS_TREE_URL}${pullRequest.head} for the build details and benchmarks of this PR (${pullRequest.head}).")
+            }
         }
     }
 }
