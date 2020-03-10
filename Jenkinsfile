@@ -41,6 +41,8 @@ pipeline {
             }
         }
         stage('Test') {
+            // Disable the tests temporarily
+            when { expression { return false } }
             parallel {
                 stage('Test MC') {
                     steps {
