@@ -8,8 +8,8 @@ pipeline {
     }
     environment {
         EB_CUSTOM_REPOSITORY = '/users/simonpi/jenkins/production/easybuild'
-        LOGS_REPO = 'git@github.com:haampie/SIRIUS_logs.git'
-        LOGS_TREE_URL = 'https://github.com/haampie/SIRIUS_logs/tree/master/'
+        LOGS_REPO = 'git@github.com:electronic-structure/SIRIUS-ci-logs.git'
+        LOGS_TREE_URL = 'https://github.com/electronic-structure/SIRIUS-ci-logs/blob/master/'
     }
     stages {
         stage('Checkout') {
