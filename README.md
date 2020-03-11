@@ -307,15 +307,21 @@ SIRIUS library is usgin OpenMP for node-level parallelization. To run QE/SIRIUS 
  * by default, use one rank per node and many OMP threads; if the calculated system is really small, try to saturate 
    the GPU card using more MPI ranks (e.g.: on a 12-core node, use 2-3-4 ranks with 6-4-3 OMP threads)
 
-#### Example: ground state of Si511Ge
-In the following example we compare performace of native and SIRIUS-enabled versions of QE. Native QE was run on the
-dual-socket nodes containing two 18-core Intel Haswell CPUs.
+### Benchmarks
+In the following examples we compare performace of native and SIRIUS-enabled versions of QE. CPU-only runs were executed
+on the dual-socket multi-core nodes containing two 18-core Intel Broadwell CPUs. GPU rus were executed on the hybrid
+nodes containing 12-core Intel Haswell CPU and NVIDIA Tesla P100 card:
 
+|Hybrid partition (Cray XC50)                | Multicore partition (Cray XC40)                  |
+|--------------------------------------------|--------------------------------------------------|
+|Intel Xeon E5-2690 v3 @2.60GHz, 12 cores <br> NVIDIA Tesla P100 16GB | Two Intel Xeon E5-2695 v4 @2.10GHz (2 x 18 cores)|
+
+Ground state calculation of Si511Ge. Input files can be found
+[here](https://github.com/electronic-structure/benchmarks/tree/master/performance/Si511G)
 
 <p align="center">
 <img src="doc/images/Si511Ge_perf.png">
 </p>
-
 
 
 
