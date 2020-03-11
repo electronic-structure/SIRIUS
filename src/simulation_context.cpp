@@ -27,6 +27,7 @@
 #include "simulation_context.hpp"
 #include "symmetry/find_lat_sym.hpp"
 #include "utils/profiler.hpp"
+#include "utils/env.hpp"
 
 namespace sirius {
 
@@ -280,14 +281,17 @@ void Simulation_context::initialize()
     /* initialize MPI communicators */
     init_comm();
 
-    if (control().verbosity_ >= 3) {
+    auto print_mpi_layout = utils::get_env<int>("SIRIUS_PRINT_MPI_LAYOUT");
+
+    if (control().verbosity_ >= 3 || (print_mpi_layout && *print_mpi_layout)) {
         pstdout pout(comm());
         if (comm().rank() == 0) {
             pout.printf("MPI rank placement\n");
             pout.printf("------------------\n");
         }
-        pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s\n", comm().rank(),
-                    comm_band().rank(), comm_k().rank(), utils::hostname().c_str());
+        auto name = sddk::Communicator::processor_name();
+        pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s, mpi processor name: %s\n",
+            comm().rank(), comm_band().rank(), comm_k().rank(), utils::hostname().c_str(), name.c_str());
     }
 
     switch (processing_unit()) {

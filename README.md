@@ -21,6 +21,8 @@
 * [Accelerating DFT codes](#accelerating-dft-codes)
   * [Quantum ESPRESSO](#quantum-espresso)
 * [Examples](#examples)
+* [Contacts](#contacts)
+* [Acknowledgements](#acknowledgements)
 
 ## Introduction
 SIRIUS is a domain specific library for electronic structure calculations. It implements pseudopotential plane wave (PP-PW)
@@ -305,10 +307,17 @@ SIRIUS library is usgin OpenMP for node-level parallelization. To run QE/SIRIUS 
  * by default, use one rank per node and many OMP threads; if the calculated system is really small, try to saturate 
    the GPU card using more MPI ranks (e.g.: on a 12-core node, use 2-3-4 ranks with 6-4-3 OMP threads)
 
-#### Example: ground state of Si511Ge
-In the following example we compare performace of native and SIRIUS-enabled versions of QE. Native QE was run on the
-dual-socket nodes containing two 18-core Intel Haswell CPUs.
+### Benchmarks
+In the following examples we compare performace of native and SIRIUS-enabled versions of QE. CPU-only runs were executed
+on the dual-socket multi-core nodes containing two 18-core Intel Broadwell CPUs. GPU rus were executed on the hybrid
+nodes containing 12-core Intel Haswell CPU and NVIDIA Tesla P100 card:
 
+|Hybrid partition (Cray XC50)                | Multicore partition (Cray XC40)                  |
+|--------------------------------------------|--------------------------------------------------|
+|Intel Xeon E5-2690 v3 @2.60GHz, 12 cores <br> NVIDIA Tesla P100 16GB | Two Intel Xeon E5-2695 v4 @2.10GHz (2 x 18 cores)|
+
+Ground state calculation ([input](https://github.com/electronic-structure/benchmarks/tree/master/performance/Si511Ge))
+of Si511Ge.
 
 <p align="center">
 <img src="doc/images/Si511Ge_perf.png">
@@ -316,5 +325,39 @@ dual-socket nodes containing two 18-core Intel Haswell CPUs.
 
 
 
-
 ## Examples
+
+## Contacts
+Have you got any questions, feel free to contact us:
+  * Anton Kozhevnikov (anton.kozhevnikov@cscs.ch)
+  * Mathieu Taillefumier (mathieu.taillefumier@cscs.ch)
+  * Simon Pintarelli (simon.pintarelli@cscs.ch)
+
+## Acknowledgements
+The development of SIRIUS library would not be possible without support of the following organizations:
+
+|List of supporting organizations                  |
+|:------------------------------------------------:|
+|                                                  |
+| Swiss Federal Institute of Technology in Zürich  |                                                  |
+| ![ethz](doc/images/logo_ethz.png)                |
+| https://www.ethz.ch/                             |
+|                                                  |
+| Swiss National Supercomputing Centre             |
+| ![cscs](doc/images/logo_cscs.png)                |
+|  https://www.cscs.ch/                            |
+|                                                  |
+|  Platform for Advanced Scientific Computing      |
+|  ![pasc](doc/images/logo_pasc.png)               |
+|  https://www.pasc-ch.org/                        |
+|                                                  |
+|  MAX (MAterials design at the eXascale) <br> European Centre of Excellence |
+| ![pasc](doc/images/logo_max.png)                                           |
+|  http://www.max-centre.eu/                                                 |
+|                                                  |
+|  Partnership for Advanced Computing in Europe    |
+| ![pasc](doc/images/logo_prace.png)               |
+|  https://prace-ri.eu/                            |
+
+
+
