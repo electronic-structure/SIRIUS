@@ -316,7 +316,7 @@ nodes containing 12-core Intel Haswell CPU and NVIDIA Tesla P100 card:
 |--------------------------------------------|--------------------------------------------------|
 |Intel Xeon E5-2690 v3 @2.60GHz, 12 cores <br> NVIDIA Tesla P100 16GB | Two Intel Xeon E5-2695 v4 @2.10GHz (2 x 18 cores)|
 
-Ground state calculation ([input](https://github.com/electronic-structure/benchmarks/tree/master/performance/Si511G))
+Ground state calculation ([input](https://github.com/electronic-structure/benchmarks/tree/master/performance/Si511Ge))
 of Si511Ge.
 
 <p align="center">
