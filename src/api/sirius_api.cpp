@@ -416,6 +416,7 @@ void sirius_set_parameters(void*  const* handler__,
    @fortran argument out optional int    verbosity                Verbosity level.
    @fortran argument out optional bool   hubbard_correction       True if LDA+U correction is enabled.
    @fortran argument out optional double evp_work_count           Internal counter of total eigen-value problem work.
+   @fortran argument out optional int    num_loc_op_applied       Internal counter of the number of wave-functions to which Hamiltonian was applied.
    @fortran argument out optional int    error_code               Error code.
    @fortran end */
 void sirius_get_parameters(void* const* handler__,
@@ -437,6 +438,7 @@ void sirius_get_parameters(void* const* handler__,
                            int*         verbosity__,
                            bool*        hubbard_correction__,
                            double*      evp_work_count__,
+                           int*         num_loc_op_applied__,
                            int*         error_code__)
 {
     call_sirius([&]()
@@ -497,6 +499,9 @@ void sirius_get_parameters(void* const* handler__,
         }
         if (evp_work_count__ != nullptr) {
             *evp_work_count__ = sim_ctx.evp_work_count();
+        }
+        if (num_loc_op_applied__ != nullptr) {
+            *num_loc_op_applied__ = sim_ctx.num_loc_op_applied();
         }
     }, error_code__);
 }

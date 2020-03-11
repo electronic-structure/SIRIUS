@@ -412,6 +412,14 @@ class Communicator
         return (j__ * (j__ + 1) / 2 + i__ + 1) << 6;
     }
 
+    static std::string processor_name()
+    {
+        char name[MPI_MAX_PROCESSOR_NAME];
+        int len;
+        CALL_MPI(MPI_Get_processor_name, (name, &len));
+        return std::string(name, len);
+    }
+
     /// Rank of MPI process inside communicator.
     inline int rank() const
     {
