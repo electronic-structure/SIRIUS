@@ -88,8 +88,6 @@ RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/nul
 RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
 RUN apt-get update
 RUN apt-get install -y cmake
-RUN apt-get install -y kitware-archive-keyring
-RUN apt-key --keyring /etc/apt/trusted.gpg del C1F34CDD40CD72DA
 
 WORKDIR /root
 ENTRYPOINT ["bash", "-l"]
