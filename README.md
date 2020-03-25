@@ -88,8 +88,6 @@ RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/nul
 RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
 RUN apt-get update
 RUN apt-get install -y cmake
-RUN apt-get install -y kitware-archive-keyring
-RUN apt-key --keyring /etc/apt/trusted.gpg del C1F34CDD40CD72DA
 
 WORKDIR /root
 ENTRYPOINT ["bash", "-l"]
@@ -335,29 +333,11 @@ Have you got any questions, feel free to contact us:
 
 ## Acknowledgements
 The development of SIRIUS library would not be possible without support of the following organizations:
-
-|List of supporting organizations                  |
-|:------------------------------------------------:|
-|                                                  |
-| Swiss Federal Institute of Technology in Zürich  |                                                  |
-| ![ethz](doc/images/logo_ethz.png)                |
-| https://www.ethz.ch/                             |
-|                                                  |
-| Swiss National Supercomputing Centre             |
-| ![cscs](doc/images/logo_cscs.png)                |
-|  https://www.cscs.ch/                            |
-|                                                  |
-|  Platform for Advanced Scientific Computing      |
-|  ![pasc](doc/images/logo_pasc.png)               |
-|  https://www.pasc-ch.org/                        |
-|                                                  |
-|  MAX (MAterials design at the eXascale) <br> European Centre of Excellence |
-| ![pasc](doc/images/logo_max.png)                                           |
-|  http://www.max-centre.eu/                                                 |
-|                                                  |
-|  Partnership for Advanced Computing in Europe    |
-| ![pasc](doc/images/logo_prace.png)               |
-|  https://prace-ri.eu/                            |
-
-
+| Logo | Name | URL |
+|:----:|:----:|:---:|
+|![ethz](doc/images/logo_ethz.png) | Swiss Federal Institute of Technology in Zürich | https://www.ethz.ch/      |
+|![cscs](doc/images/logo_cscs.png) | Swiss National Supercomputing Centre            | https://www.cscs.ch/      |
+|![pasc](doc/images/logo_pasc.png) | Platform for Advanced Scientific Computing      | https://www.pasc-ch.org/  |
+|![pasc](doc/images/logo_max.png)  | MAX (MAterials design at the eXascale) <br> European Centre of Excellence | http://www.max-centre.eu/   |
+|![pasc](doc/images/logo_prace.png) | Partnership for Advanced Computing in Europe | https://prace-ri.eu/  |
 

@@ -277,7 +277,7 @@ void Augmentation_operator_gvec_deriv::prepare(Atom_type const& atom_type__,
 {
     PROFILE("sirius::Augmentation_operator_gvec_deriv::prepare");
 
-    int lmax_beta = atom_type__.indexr().lmax();
+    int lmax_beta = atom_type__.lmax_beta();
 
     /* number of beta- radial functions */
     int nbrf = atom_type__.mt_radial_basis_size();
@@ -394,7 +394,6 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
 
     switch (atom_type__.parameters().processing_unit()) {
         case device_t::CPU: {
-            auto gc = gaunt_coefs_->get_full_set_L3();
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 /* index of the G-vector shell */
@@ -428,7 +427,7 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
             aug_op_pw_coeffs_deriv_gpu(gvec_count, gvec_shell_.at(memory_t::device), gvec_cart_.at(memory_t::device),
                 idx_.at(memory_t::device), static_cast<int>(idx_.size(1)),
                 gc.at(memory_t::device), static_cast<int>(gc.size(0)), static_cast<int>(gc.size(1)),
-                rlm_g_.at(memory_t::device), rlm_dg_.at(memory_t::device), lmmax,
+                rlm_g_.at(memory_t::device), rlm_dg_.at(memory_t::device), static_cast<int>(rlm_g_.size(0)),
                 ri_values_.at(memory_t::device), ri_dg_values_.at(memory_t::device), static_cast<int>(ri_values_.size(0)),
                 static_cast<int>(ri_values_.size(1)), q_pw_.at(memory_t::device), static_cast<int>(q_pw_.size(0)),
                 fourpi, nu__, lmax_q);

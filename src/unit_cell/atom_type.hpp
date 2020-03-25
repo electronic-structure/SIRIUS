@@ -1485,7 +1485,9 @@ inline void Atom_type::print_info() const
     std::printf("number of aw basis functions     : %i\n", indexb().size_aw());
     std::printf("number of lo basis functions     : %i\n", indexb().size_lo());
     if (!parameters_.full_potential()) {
+        std::printf("lmax of beta-projectors          : %i\n", this->lmax_beta());
         std::printf("number of ps wavefunctions       : %i\n", this->indexr_wfs().size());
+        std::printf("charge augmentation              : %s\n", utils::boolstr(this->augment()).c_str());
     }
     std::printf("Hubbard correction               : %s\n", utils::boolstr(this->hubbard_correction()).c_str());
     if (parameters_.hubbard_correction() && this->hubbard_correction_) {

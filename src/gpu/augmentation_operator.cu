@@ -105,7 +105,7 @@ __global__ void aug_op_pw_coeffs_deriv_gpu_kernel(int ngvec__, int const* gvec_s
             z.x += d * phase.x;
             z.y -= d * phase.y;
             /* i^l */
-            phase = accCmul(phase, make_accDoubleComplex(0, -1));
+            phase = accCmul(phase, make_accDoubleComplex(0, 1));
         }
         q_pw__[array2D_offset(idx12, 2 * igloc,     ld5__)] = z.x * fourpi__;
         q_pw__[array2D_offset(idx12, 2 * igloc + 1, ld5__)] = z.y * fourpi__;
