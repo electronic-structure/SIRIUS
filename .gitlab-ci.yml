@@ -1,0 +1,50 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_DRIVER: overlay2
+
+stages:
+  - build
+  - post
+
+docker_build:
+  stage: build
+  image: docker:stable
+  tags:
+    - docker_in_docker
+  services:
+    - docker:19.03.1-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+  script:
+    - docker pull $CI_REGISTRY_IMAGE:latest || true
+    - docker build --network=host --cache-from $CI_REGISTRY_IMAGE:latest --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest docker/.
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE:latest
+
+#daint_build:
+#  stage: build
+#  tags:
+#    - daint
+#  script:
+#    - export ENVFILE=$(realpath ci/env-gnu-gpu)
+#    - sbatch --wait ci/build-daint-gpu.sh
+#    - echo "---------- build-daint-gpu.out ----------"
+#    - cat build-daint-gpu.out
+#    - echo "---------- build-daint-gpu.err ----------"
+#    - cat build-daint-gpu.err
+#  artifacts:
+#    paths:
+#      - build-daint-gpu.out
+#      - build-daint-gpu.err
+#
+#post_processing:
+#  stage: post
+#  tags:
+#    - docker_in_docker
+#  script:
+#    - ls
+#    - hostname
+#    - echo "test"
+#
