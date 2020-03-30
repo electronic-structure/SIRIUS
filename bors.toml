@@ -1,5 +1,5 @@
 status = [
-  "ci/gitlab/%"
+  "ci/gitlab/%",
   "continuous-integration/travis-ci/push"
 ]
 delete_merged_branches = true
