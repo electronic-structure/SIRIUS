@@ -70,7 +70,7 @@ RUN cd SpFFT-$SPFFT_VERSION/build && make -j$(nproc) install
 # install SIRIUS
 ADD . /build-sirius
 
-RUN mkdir /build-sirius/build && cd /build-sirius/build && CC=mpicc CXX=mpicxx FC=mpif90 FCCPP=cpp python3 prerequisite.py /usr/local xc spg && LIBXCROOT=/usr/local LIBSPGROOT=/usr/local \
+RUN mkdir /build-sirius/build && cd /build-sirius/build && CC=mpicc CXX=mpicxx FC=mpif90 FCCPP=cpp python3 ../prerequisite.py /usr/local xc spg && LIBXCROOT=/usr/local LIBSPGROOT=/usr/local \
     cmake .. -DSpFFT_DIR=/usr/local/lib/cmake/SpFFT -DUSE_SCALAPACK=1 -DUSE_MKL=1 -DBUILD_TESTS=1 \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DUSE_CUDA=On -DGPU_MODEL='P100' && make -j$(nproc) install
 
