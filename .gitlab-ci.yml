@@ -22,7 +22,7 @@ docker_build:
 
   script:
     - docker pull $CI_REGISTRY_IMAGE:latest || true
-    - docker build --network=host --cache-from $CI_REGISTRY_IMAGE:latest --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest docker/.
+    - docker build --network=host --cache-from $CI_REGISTRY_IMAGE:latest --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest -f docker/Dockerfile .
     - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
     - docker push $CI_REGISTRY_IMAGE:latest
 
