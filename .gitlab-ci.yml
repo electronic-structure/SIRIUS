@@ -23,28 +23,27 @@ docker_build:
     - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
     - docker push $CI_REGISTRY_IMAGE:latest
 
-#daint_build:
-#  stage: build
-#  tags:
-#    - daint
-#  script:
-#    - export ENVFILE=$(realpath ci/env-gnu-gpu)
-#    - sbatch --wait ci/build-daint-gpu.sh
-#    - echo "---------- build-daint-gpu.out ----------"
-#    - cat build-daint-gpu.out
-#    - echo "---------- build-daint-gpu.err ----------"
-#    - cat build-daint-gpu.err
-#  artifacts:
-#    paths:
-#      - build-daint-gpu.out
-#      - build-daint-gpu.err
-#
-#post_processing:
-#  stage: post
-#  tags:
-#    - docker_in_docker
-#  script:
-#    - ls
-#    - hostname
-#    - echo "test"
-#
+daint_build:
+  stage: build
+  tags:
+    - daint
+  script:
+    - export ENVFILE=$(realpath ci/env-gnu-gpu)
+    - sbatch --wait ci/build-daint-gpu.sh
+    - echo "---------- build-daint-gpu.out ----------"
+    - cat build-daint-gpu.out
+    - echo "---------- build-daint-gpu.err ----------"
+    - cat build-daint-gpu.err
+  artifacts:
+    paths:
+      - build-daint-gpu.out
+      - build-daint-gpu.err
+
+post:
+  stage: post
+  tags:
+    - docker_in_docker
+  script:
+    - ls
+    - hostname
+    - echo "test"
