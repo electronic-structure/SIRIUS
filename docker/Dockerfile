@@ -57,7 +57,6 @@ RUN ldconfig
 WORKDIR /root
 
 ARG SPFFT_VERSION=0.9.10
-ARG SIRIUS_VERSION=6.5.0
 
 # install SpFFT
 RUN wget https://github.com/eth-cscs/SpFFT/archive/v$SPFFT_VERSION.tar.gz && tar zxvf v$SPFFT_VERSION.tar.gz
@@ -69,15 +68,11 @@ RUN mkdir SpFFT-$SPFFT_VERSION/build && cd SpFFT-$SPFFT_VERSION/build && \
 RUN cd SpFFT-$SPFFT_VERSION/build && make -j$(nproc) install
 
 # install SIRIUS
-RUN wget https://github.com/electronic-structure/SIRIUS/archive/v$SIRIUS_VERSION.tar.gz && tar zxvf v$SIRIUS_VERSION.tar.gz
+ADD .. /build-sirius
 
-RUN cd SIRIUS-$SIRIUS_VERSION && CC=mpicc CXX=mpicxx FC=mpif90 FCCPP=cpp python3 prerequisite.py /usr/local xc spg
-
-RUN mkdir SIRIUS-$SIRIUS_VERSION/build && cd SIRIUS-$SIRIUS_VERSION/build && LIBXCROOT=/usr/local LIBSPGROOT=/usr/local \
+RUN mkdir /build-sirius/build && cd /build-sirius/build && CC=mpicc CXX=mpicxx FC=mpif90 FCCPP=cpp python3 prerequisite.py /usr/local xc spg && LIBXCROOT=/usr/local LIBSPGROOT=/usr/local \
     cmake .. -DSpFFT_DIR=/usr/local/lib/cmake/SpFFT -DUSE_SCALAPACK=1 -DUSE_MKL=1 -DBUILD_TESTS=1 \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DUSE_CUDA=On -DGPU_MODEL='P100'
-
-RUN cd SIRIUS-$SIRIUS_VERSION/build && make -j$(nproc) install
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DUSE_CUDA=On -DGPU_MODEL='P100' && make -j$(nproc) install
 
 ENV SIRIUS_BINARIES /usr/local/bin/
 
