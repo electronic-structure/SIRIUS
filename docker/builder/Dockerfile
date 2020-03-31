@@ -67,12 +67,20 @@ RUN mkdir SpFFT-$SPFFT_VERSION/build && cd SpFFT-$SPFFT_VERSION/build && \
 
 RUN cd SpFFT-$SPFFT_VERSION/build && make -j$(nproc) install
 
+# Add bundle tooling
+RUN wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+
+# Working with appimages requires fuse, which inside docker requires it to be mounted and --cap-add SYS_ADMIN
+# so instead just extract the appimage.
+RUN chmod +x linuxdeploy-x86_64.AppImage && ./linuxdeploy-x86_64.AppImage --appimage-extract
+
 # install SIRIUS
 ADD . /build-sirius
 
 RUN mkdir /build-sirius/build && cd /build-sirius/build && CC=mpicc CXX=mpicxx FC=mpif90 FCCPP=cpp python3 ../prerequisite.py /usr/local xc spg && LIBXCROOT=/usr/local LIBSPGROOT=/usr/local \
     cmake .. -DSpFFT_DIR=/usr/local/lib/cmake/SpFFT -DUSE_SCALAPACK=1 -DUSE_MKL=1 -DBUILD_TESTS=1 \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DUSE_CUDA=On -DGPU_MODEL='P100' && make -j$(nproc) install
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DUSE_CUDA=On -DGPU_MODEL='P100' && make -j$(nproc) DESTDIR=/root/SIRIUS.AppDir install
 
-ENV SIRIUS_BINARIES /usr/local/bin/
+# And run it like this.
+RUN /root/squashfs-root/AppRun --appdir SIRIUS.AppDir/ -e SIRIUS.AppDir/usr/bin/sirius.scf -i /build-sirius/deploy/SIRIUS.png -d /build-sirius/deploy/SIRIUS.desktop
 
