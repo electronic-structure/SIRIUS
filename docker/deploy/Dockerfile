@@ -14,9 +14,6 @@ RUN chmod +x linuxdeploy-x86_64.AppImage && ./linuxdeploy-x86_64.AppImage --appi
 # And run it like this.
 RUN /root/squashfs-root/AppRun --appdir SIRIUS.AppDir/ -e SIRIUS.AppDir/usr/bin/sirius.scf -i /build-sirius/deploy/SIRIUS.png -d /build-sirius/deploy/SIRIUS.desktop
 
-# Remove the cuda libs, they are in the base image already
-RUN rm -rf SIRIUS.AppDir/usr/lib/libcu*
-
 FROM ubuntu:18.04
 
 # This is the only thing necessary really from nvidia/cuda's ubuntu18.04 runtime image
