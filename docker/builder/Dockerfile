@@ -74,3 +74,4 @@ RUN mkdir /build-sirius/build && cd /build-sirius/build && CC=mpicc CXX=mpicxx F
     cmake .. -DSpFFT_DIR=/usr/local/lib/cmake/SpFFT -DUSE_SCALAPACK=1 -DUSE_MKL=1 -DBUILD_TESTS=1 \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DUSE_CUDA=On -DGPU_MODEL='P100' && make -j$(nproc) DESTDIR=/root/SIRIUS.AppDir install
 
+RUN ldconfig
