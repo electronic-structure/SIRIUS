@@ -17,15 +17,14 @@ RUN /root/squashfs-root/AppRun --appdir SIRIUS.AppDir/ -e SIRIUS.AppDir/usr/bin/
 # Remove the cuda libs, they are in the base image already
 RUN rm -rf SIRIUS.AppDir/usr/lib/libcu*
 
-FROM nvidia/cuda:10.1-devel-ubuntu18.04
+FROM nvidia/cuda:10.1-runtime-ubuntu18.04
 
 # We do multistage builds, but want to save the
 # previous container as well since it serves as
 # a nice build cache
 COPY --from=builder /root/SIRIUS.AppDir /root/SIRIUS.AppDir
 
-# NVIDIA messed up the LD_LIBRARY_PATH; it's set to /usr/local/nvidia/lib:/usr/local/nvidia/lib64 which don't exist :/.
-ENV LD_LIBRARY_PATH="/usr/local/cuda/lib64"
+ENV LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH"
 
 # Make it easy to call our binaries.
 ENV PATH="/root/SIRIUS.AppDir/usr/bin:$PATH"
