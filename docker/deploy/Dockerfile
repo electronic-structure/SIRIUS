@@ -4,6 +4,8 @@ ARG BUILD_TAG
 
 FROM $BUILD_IMAGE:$BUILD_TAG as builder
 
+COPY ./deploy /root/deploy
+
 # Add bundle tooling
 RUN wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
 
@@ -11,8 +13,30 @@ RUN wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous
 # so instead just extract the appimage.
 RUN chmod +x linuxdeploy-x86_64.AppImage && ./linuxdeploy-x86_64.AppImage --appimage-extract
 
-# And run it like this.
-RUN /root/squashfs-root/AppRun --appdir SIRIUS.AppDir/ -e SIRIUS.AppDir/usr/bin/sirius.scf -i /build-sirius/deploy/SIRIUS.png -d /build-sirius/deploy/SIRIUS.desktop
+# Run linuxdeploy, and add a bunch of libs that are dlopen'ed by mkl
+RUN /root/squashfs-root/AppRun --appdir SIRIUS.AppDir/ \
+        -e SIRIUS.AppDir/usr/bin/sirius.scf \
+        -i /root/deploy/SIRIUS.png \
+        -d /root/deploy/SIRIUS.desktop \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_tbb_thread.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_intel_thread.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_sequential.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_def.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_vml_def.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_vml_cmpt.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_mc.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_vml_mc.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_mc3.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_vml_mc3.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_avx.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_vml_avx.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_avx2.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_vml_avx2.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_avx512_mic.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_vml_avx512_mic.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_avx512.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_vml_avx512.so \
+        -l /opt/intel/compilers_and_libraries/linux/mkl/lib/intel64/libmkl_core.so 
 
 FROM ubuntu:18.04
 
