@@ -17,14 +17,16 @@ RUN /root/squashfs-root/AppRun --appdir SIRIUS.AppDir/ -e SIRIUS.AppDir/usr/bin/
 # Remove the cuda libs, they are in the base image already
 RUN rm -rf SIRIUS.AppDir/usr/lib/libcu*
 
-FROM nvidia/cuda:10.1-runtime-ubuntu18.04
+FROM ubuntu:18.04
 
-# We do multistage builds, but want to save the
-# previous container as well since it serves as
-# a nice build cache
+# This is the only thing necessary really from nvidia/cuda's ubuntu18.04 runtime image
+ENV NVIDIA_VISIBLE_DEVICES all
+
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+
+ENV NVIDIA_REQUIRE_CUDA "cuda>=10.1 brand=tesla,driver>=384,driver<385 brand=tesla,driver>=396,driver<397 brand=tesla,driver>=410,driver<411"
+
 COPY --from=builder /root/SIRIUS.AppDir /root/SIRIUS.AppDir
-
-ENV LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH"
 
 # Make it easy to call our binaries.
 ENV PATH="/root/SIRIUS.AppDir/usr/bin:$PATH"
