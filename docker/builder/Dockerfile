@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -qq -y --no-install-recommends apt-utils g
 RUN wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.0-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
 
 RUN wget -q https://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz && \
-    tar -xzvf mpich-${MPICH_VERSION}.tar.gz && \
+    tar -xzf mpich-${MPICH_VERSION}.tar.gz && \
     cd mpich-${MPICH_VERSION} && \
     ./configure && \
     make install -j$(nproc) && \
@@ -41,7 +41,7 @@ RUN ldconfig
 
 # install SpFFT
 RUN wget -q https://github.com/eth-cscs/SpFFT/archive/v$SPFFT_VERSION.tar.gz && \
-    tar zxvf v$SPFFT_VERSION.tar.gz && \ 
+    tar -xzf v$SPFFT_VERSION.tar.gz && \ 
     mkdir SpFFT-$SPFFT_VERSION/build && \
     cd SpFFT-$SPFFT_VERSION/build && \
     cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DSPFFT_GPU_BACKEND=CUDA -DSPFFT_SINGLE_PRECISION=ON \
