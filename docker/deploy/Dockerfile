@@ -1,10 +1,27 @@
-ARG BUILD_IMAGE
+ARG BUILD_ENV_IMAGE
 
-ARG BUILD_TAG
+ARG BUILD_ENV_TAG
 
-FROM $BUILD_IMAGE:$BUILD_TAG as builder
+FROM $BUILD_ENV_IMAGE:$BUILD_ENV_TAG as builder
+
+# Build SIRIUS
+COPY . /build-sirius
 
 COPY ./deploy /root/deploy
+
+RUN mkdir /build-sirius/build && cd /build-sirius/build && \
+    CC=mpicc CXX=mpicxx FC=mpif90 FCCPP=cpp python3 ../prerequisite.py /usr/local xc spg && \
+    LIBXCROOT=/usr/local LIBSPGROOT=/usr/local cmake .. \
+      -DSpFFT_DIR=/usr/local/lib/cmake/SpFFT \
+      -DUSE_SCALAPACK=1 \
+      -DUSE_MKL=1 \
+      -DBUILD_TESTS=1 \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/usr \
+      -DUSE_CUDA=On \
+      -DGPU_MODEL='P100' && \
+      make -j$(nproc) DESTDIR=/root/SIRIUS.AppDir install && \
+      rm -rf /build-sirius
 
 # Add bundle tooling
 RUN wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
