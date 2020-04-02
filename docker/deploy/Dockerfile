@@ -7,7 +7,7 @@ FROM $BUILD_IMAGE:$BUILD_TAG as builder
 COPY ./deploy /root/deploy
 
 # Add bundle tooling
-RUN wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+RUN wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
 
 # Working with appimages requires fuse, which inside docker requires it to be mounted and --cap-add SYS_ADMIN
 # so instead just extract the appimage.

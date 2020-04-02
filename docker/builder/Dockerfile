@@ -12,7 +12,7 @@ ARG SPFFT_VERSION=0.9.10
 ENV MPICH_VERSION ${MPICH_VERSION}
 
 # install basic tools
-RUN apt-get update && apt-get install -qq -y --no-install-recommends apt-utils gcc g++ gfortran git make unzip \
+RUN apt-get update -qq && apt-get install -qq -y --no-install-recommends apt-utils gcc g++ gfortran git make unzip \
   vim wget pkg-config python3-pip curl environment-modules tcl \
   apt-transport-https ca-certificates gnupg software-properties-common \
   libhdf5-dev libgsl-dev && rm -rf /var/lib/apt/lists/*
