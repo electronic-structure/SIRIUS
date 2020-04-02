@@ -12,14 +12,14 @@ ARG SPFFT_VERSION=0.9.10
 ENV MPICH_VERSION ${MPICH_VERSION}
 
 # install basic tools
-RUN apt-get update && apt-get install -y --no-install-recommends apt-utils gcc g++ gfortran git make unzip \
+RUN apt-get update && apt-get install -qq -y --no-install-recommends apt-utils gcc g++ gfortran git make unzip \
   vim wget pkg-config python3-pip curl environment-modules tcl \
   apt-transport-https ca-certificates gnupg software-properties-common \
   libhdf5-dev libgsl-dev && rm -rf /var/lib/apt/lists/*
 
 RUN wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.0-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
 
-RUN wget https://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz && \
+RUN wget -q https://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz && \
     tar -xzvf mpich-${MPICH_VERSION}.tar.gz && \
     cd mpich-${MPICH_VERSION} && \
     ./configure && \
@@ -27,11 +27,11 @@ RUN wget https://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_V
     rm -rf /root/mpich-${MPICH_VERSION}.tar.gz /root/mpich-${MPICH_VERSION}
 
 # install MKL
-RUN wget -O - https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB 2>/dev/null | apt-key add -
+RUN wget -qO - https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB 2>/dev/null | apt-key add -
 
 RUN apt-add-repository 'deb https://apt.repos.intel.com/mkl all main'
 
-RUN apt-get install -y --no-install-recommends intel-mkl-2020.0-088
+RUN apt-get install -y -qq --no-install-recommends intel-mkl-2020.0-088
 
 ENV MKLROOT=/opt/intel/compilers_and_libraries/linux/mkl
 
@@ -40,7 +40,7 @@ RUN echo "/opt/intel/lib/intel64 \n/opt/intel/compilers_and_libraries/linux/mkl/
 RUN ldconfig
 
 # install SpFFT
-RUN wget https://github.com/eth-cscs/SpFFT/archive/v$SPFFT_VERSION.tar.gz && \
+RUN wget -q https://github.com/eth-cscs/SpFFT/archive/v$SPFFT_VERSION.tar.gz && \
     tar zxvf v$SPFFT_VERSION.tar.gz && \ 
     mkdir SpFFT-$SPFFT_VERSION/build && \
     cd SpFFT-$SPFFT_VERSION/build && \
