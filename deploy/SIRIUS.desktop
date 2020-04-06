@@ -1,9 +1,6 @@
 [Desktop Entry]
 Name=SIRIUS
 Exec=sirius.scf %F
-Icon=SIRIUS.png
+Icon=SIRIUS
 Type=Application
 Categories=Science;
-Comment=Domain specific library for electronic structure calculations
-Terminal=true
-NoDisplay=true
