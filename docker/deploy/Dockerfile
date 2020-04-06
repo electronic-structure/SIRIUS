@@ -5,7 +5,7 @@ ARG BUILD_ENV_TAG
 FROM $BUILD_ENV_IMAGE:$BUILD_ENV_TAG as builder
 
 # Add bundle tooling
-RUN wget -q https://github.com/haampie/bundler/releases/download/v0.1.2/bundler_x86_64.tar.gz && \
+RUN wget -q https://github.com/haampie/bundler/releases/download/v0.1.3/bundler_x86_64.tar.gz && \
     tar -xzf bundler_x86_64.tar.gz && \
     rm bundler_x86_64.tar.gz
 
