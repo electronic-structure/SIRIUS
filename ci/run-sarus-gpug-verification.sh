@@ -17,7 +17,7 @@ set -e
     export MPICH_MAX_THREAD_SAFETY=multiple
     module list
     echo "run-gpup-verification: running on $(hostname)"
-    srun -n4 -c2 --unbuffered --hint=nomultithread --mpi=pmi2 sarus run --mount=type=bind,source=$REPO_FOLDER,destination=$REPO_FOLDER $SARUS_IMAGE bash -c 'cd $REPO_FOLDER/verification/test01 && sirius.scf --test_against=output_ref.json --control.std_evp_solver_name=scalapack --control.gen_evp_solver_name=scalapack --control.mpi_grid_dims=2:2 --control.processing_unit=gpu'
+    srun -n4 -c2 --unbuffered --hint=nomultithread --mpi sarus run --mount=type=bind,source=$REPO_FOLDER,destination=$REPO_FOLDER $SARUS_IMAGE bash -c 'cd $REPO_FOLDER/verification/test01 && sirius.scf --test_against=output_ref.json --control.std_evp_solver_name=scalapack --control.gen_evp_solver_name=scalapack --control.mpi_grid_dims=2:2 --control.processing_unit=gpu'
 
 )
 
