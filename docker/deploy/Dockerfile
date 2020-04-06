@@ -63,6 +63,6 @@ ENV PATH="/root/SIRIUS.bundle/usr/bin:$PATH"
 
 # Make sarus happy in locating libmpi.so (we have to make this path persistent because nvidia also calls ldconfig prior to running)
 # ENV LD_LIBRARY_PATH="/root/SIRIUS.bundle/usr/lib:$LD_LIBRARY_PATH"
-RUN echo "/root/SIRIUS.bundle/usr/lib/" > /etc/ld.conf.so.d/sirius.conf && ldconfig
+RUN echo "/root/SIRIUS.bundle/usr/lib/" > /etc/ld.so.conf.d/sirius.conf && ldconfig
 
 WORKDIR /root/SIRIUS.bundle/usr/bin
