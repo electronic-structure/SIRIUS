@@ -60,9 +60,9 @@ COPY --from=builder /root/SIRIUS.bundle /root/SIRIUS.bundle
 
 # Make it easy to call our binaries.
 ENV PATH="/root/SIRIUS.bundle/usr/bin:$PATH"
-ENV LD_LIBRARY_PATH="/root/SIRIUS.bundle/usr/lib:$LD_LIBRARY_PATH"
 
-# Make sarus happy in locating libmpi.so
-RUN ldconfig /root/SIRIUS.bundle/usr/lib
+# Make sarus happy in locating libmpi.so (we have to make this path persistent because nvidia also calls ldconfig prior to running)
+# ENV LD_LIBRARY_PATH="/root/SIRIUS.bundle/usr/lib:$LD_LIBRARY_PATH"
+RUN echo "/root/SIRIUS.bundle/usr/lib/" > /etc/ld.conf.so.d/sirius.conf && ldconfig
 
 WORKDIR /root/SIRIUS.bundle/usr/bin
