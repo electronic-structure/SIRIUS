@@ -62,4 +62,7 @@ COPY --from=builder /root/SIRIUS.bundle /root/SIRIUS.bundle
 ENV PATH="/root/SIRIUS.bundle/usr/bin:$PATH"
 ENV LD_LIBRARY_PATH="/root/SIRIUS.bundle/usr/lib:$LD_LIBRARY_PATH"
 
+# Make sarus happy in locating libmpi.so
+RUN ldconfig /root/SIRIUS.bundle/usr/lib
+
 WORKDIR /root/SIRIUS.bundle/usr/bin
