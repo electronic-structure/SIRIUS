@@ -514,7 +514,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 if (k == (itso.num_steps_ - 1) && n > itso.min_num_res_) {
                     std::stringstream s;
                     s << "[sirius::Band::diag_pseudo_potential_davidson] maximum number of iterations reached, but " <<
-                         n << " residuals are not converged";
+                         n << " residual(s) did not converge for k-point " << kp.vk();
                     WARNING(s);
                 }
 
