@@ -977,10 +977,9 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
         }
     }
 
+    PROFILE_START("sirius::K_point::generate_atomic_wave_functions|wft");
     #pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
-        /* global index of G+k vector */
-        //int igk = this->idxgk(igk_loc);
         /* vs = {r, theta, phi} */
         auto vs = geometry3d::spherical_coordinates(this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc));
 
@@ -1014,6 +1013,7 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
             }
         }
     }
+    PROFILE_STOP("sirius::K_point::generate_atomic_wave_functions|wft");
 
     for (int ia: atoms__) {
 
