@@ -1020,6 +1020,7 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
         double phase = twopi * dot(gkvec().vk(), unit_cell_.atom(ia).position());
         double_complex phase_k = std::exp(double_complex(0.0, phase));
 
+        PROFILE_START("sirius::K_point::generate_atomic_wave_functions|1");
         /* quickly compute phase factors without calling exp() function */
         std::vector<double_complex> phase_gk(num_gkvec_loc());
         #pragma omp parallel for schedule(static)
@@ -1030,6 +1031,9 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
             /* total phase e^{-i(G+k)r_{\alpha}} */
             phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
         }
+        PROFILE_STOP("sirius::K_point::generate_atomic_wave_functions|1");
+
+        PROFILE_START("sirius::K_point::generate_atomic_wave_functions|2");
         int iat = unit_cell_.atom(ia).type_id();
         #pragma omp parallel for
         for (int xi = 0; xi < indexb__(iat)->size(); xi++) {
@@ -1037,6 +1041,7 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
                 wf__.pw_coeffs(0).prime(igk_loc, offset[ia] + xi) = wf_t[iat](igk_loc, xi) * phase_gk[igk_loc];
             }
         }
+        PROFILE_STOP("sirius::K_point::generate_atomic_wave_functions|2");
     }
 }
 

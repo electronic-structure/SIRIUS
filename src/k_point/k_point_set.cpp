@@ -18,8 +18,10 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <limits>
+#include "dft/smearing.hpp"
 #include "k_point/k_point.hpp"
 #include "k_point/k_point_set.hpp"
+#include "symmetry/get_irreducible_reciprocal_mesh.hpp"
 
 namespace sirius {
 
@@ -58,7 +60,7 @@ void K_point_set::create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__,
     mdarray<double, 2> kp;
     std::vector<double> wk;
     if (use_symmetry__) {
-        auto result = get_irreducible_reciprocal_mesh(unit_cell_.symmetry(), k_grid__, k_shift__);
+        auto result = get_irreducible_reciprocal_mesh(ctx_.unit_cell().symmetry(), k_grid__, k_shift__);
         nk          = std::get<0>(result);
         wk          = std::get<1>(result);
         auto tmp    = std::get<2>(result);
@@ -174,7 +176,7 @@ void K_point_set::find_band_occupancies()
     double ne{0};
 
     /* target number of electrons */
-    double ne_target = unit_cell_.num_valence_electrons() - ctx_.parameters_input().extra_charge_;
+    double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.parameters_input().extra_charge_;
 
     if (std::abs(ctx_.num_fv_states() * double(ctx_.max_occupancy()) - ne_target) < 1e-10) {
         // this is an insulator, skip search for band occupancies
