@@ -511,6 +511,13 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     kp.message(2, __function_name__, "%s", "wave-functions are not recomputed\n");
                 }
 
+                if (k == (itso.num_steps_ - 1) && n > itso.min_num_res_) {
+                    std::stringstream s;
+                    s << "[sirius::Band::diag_pseudo_potential_davidson] maximum number of iterations reached, but " <<
+                         n << " residuals are not converged";
+                    WARNING(s);
+                }
+
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
                 if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                     kp.message(3, __function_name__, "end of iterative diagonalization; n=%i, k=%i\n", n, k);
