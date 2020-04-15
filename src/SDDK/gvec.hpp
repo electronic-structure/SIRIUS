@@ -34,7 +34,7 @@
 #include "geometry3d.hpp"
 #include "serializer.hpp"
 #include "splindex.hpp"
-#include "../utils/profiler.hpp"
+#include "utils/profiler.hpp"
 
 using namespace geometry3d;
 
