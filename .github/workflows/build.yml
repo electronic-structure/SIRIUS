@@ -20,3 +20,6 @@ jobs:
 
       - name: Build SIRIUS
         run: ./ci/github_build_sirius.sh
+
+      - name: Run unit tests
+        run: ./ci/github_run_unit_tests.sh
