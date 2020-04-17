@@ -16,4 +16,4 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y gfortran mpich libmpich-dev liblapack-dev libhdf5-dev libgsl-dev libfftw3-dev libxc-dev
 
       - name: Build dependencies
-        run: ./ci/travis_build_dependencies.sh
+        run: ./ci/github_build_dependencies.sh
