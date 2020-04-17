@@ -1035,8 +1035,9 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
 
         PROFILE_START("sirius::K_point::generate_atomic_wave_functions|2");
         int iat = unit_cell_.atom(ia).type_id();
-        #pragma omp parallel for
+        #pragma omp parallel
         for (int xi = 0; xi < indexb__(iat)->size(); xi++) {
+            #pragma omp for schedule(static) nowait
             for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
                 wf__.pw_coeffs(0).prime(igk_loc, offset[ia] + xi) = wf_t[iat](igk_loc, xi) * phase_gk[igk_loc];
             }

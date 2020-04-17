@@ -204,52 +204,48 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         phi.pw_coeffs(ispn).prime().zero();
     }
 
-    PROFILE_START("sirius::Band::initialize_subspace|kp|wf");
-
     /* generate the initial atomic wavefunctions */
     std::vector<int> atoms(ctx_.unit_cell().num_atoms());
     std::iota(atoms.begin(), atoms.end(), 0);
     Hk__.kp().generate_atomic_wave_functions(atoms, [&](int iat){return &ctx_.unit_cell().atom_type(iat).indexb_wfs();},
                                              ctx_.atomic_wf_ri(), phi);
 
-    PROFILE_START("sirius::Band::initialize_subspace|kp|wf|1");
-    /* fill remaining wave-functions with pseudo-random guess */
-    assert(Hk__.kp().num_gkvec() > num_phi + 10);
-    #pragma omp parallel for schedule(static)
-    for (int i = 0; i < num_phi - num_ao__; i++) {
-        for (int igk_loc = 0; igk_loc < Hk__.kp().num_gkvec_loc(); igk_loc++) {
-            /* global index of G+k vector */
-            int igk = Hk__.kp().idxgk(igk_loc);
-            if (igk == i + 1) {
-                phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 1.0;
-            }
-            if (igk == i + 2) {
-                phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 0.5;
-            }
-            if (igk == i + 3) {
-                phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 0.25;
-            }
-        }
-    }
-    PROFILE_STOP("sirius::Band::initialize_subspace|kp|wf|1");
-
-    PROFILE_START("sirius::Band::initialize_subspace|kp|wf|2");
+    /* generate some random noise */
     std::vector<double> tmp(4096);
     for (int i = 0; i < 4096; i++) {
-        tmp[i] = utils::random<double>();
+        tmp[i] = 1e-5 * utils::random<double>();
     }
-    PROFILE_STOP("sirius::Band::initialize_subspace|kp|wf|2");
-
-    PROFILE_START("sirius::Band::initialize_subspace|kp|wf|3");
-    #pragma omp parallel for schedule(static)
-    for (int i = 0; i < num_phi; i++) {
-        for (int igk_loc = Hk__.kp().gkvec().skip_g0(); igk_loc < Hk__.kp().num_gkvec_loc(); igk_loc++) {
-            /* global index of G+k vector */
-            int igk = Hk__.kp().idxgk(igk_loc);
-            phi.pw_coeffs(0).prime(igk_loc, i) += tmp[igk & 0xFFF] * 1e-5;
+    PROFILE_START("sirius::Band::initialize_subspace|kp|wf");
+    /* fill remaining wave-functions with pseudo-random guess */
+    assert(Hk__.kp().num_gkvec() > num_phi + 10);
+    #pragma omp parallel
+    {
+        for (int i = 0; i < num_phi - num_ao__; i++) {
+            #pragma omp for schedule(static) nowait
+            for (int igk_loc = 0; igk_loc < Hk__.kp().num_gkvec_loc(); igk_loc++) {
+                /* global index of G+k vector */
+                int igk = Hk__.kp().idxgk(igk_loc);
+                if (igk == i + 1) {
+                    phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 1.0;
+                }
+                if (igk == i + 2) {
+                    phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 0.5;
+                }
+                if (igk == i + 3) {
+                    phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 0.25;
+                }
+            }
+        }
+        /* add random noise */
+        for (int i = 0; i < num_phi; i++) {
+            #pragma omp for schedule(static) nowait
+            for (int igk_loc = Hk__.kp().gkvec().skip_g0(); igk_loc < Hk__.kp().num_gkvec_loc(); igk_loc++) {
+                /* global index of G+k vector */
+                int igk = Hk__.kp().idxgk(igk_loc);
+                phi.pw_coeffs(0).prime(igk_loc, i) += tmp[igk & 0xFFF];
+            }
         }
     }
-    PROFILE_STOP("sirius::Band::initialize_subspace|kp|wf|3");
 
     if (ctx_.num_mag_dims() == 3) {
         /* make pure spinor up- and dn- wave functions */
