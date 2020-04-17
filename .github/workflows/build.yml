@@ -23,3 +23,6 @@ jobs:
 
       - name: Run unit tests
         run: ./ci/github_run_unit_tests.sh
+
+      - name: Run verification with ReFrame
+        run: ./ci/github_run_verification.sh
