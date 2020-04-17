@@ -1,12 +1,15 @@
 name: Check source code format
 
-on: [push]
+on:
+  - push
+  - pull_request
 
 jobs:
-  build:
-    name: Check
+  check:
     runs-on: ubuntu-latest
     steps:
-      - name: check
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Check
         run: ./check_format.x
