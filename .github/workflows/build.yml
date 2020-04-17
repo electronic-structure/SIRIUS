@@ -17,3 +17,6 @@ jobs:
 
       - name: Build dependencies
         run: ./ci/github_build_dependencies.sh
+
+      - name: Build SIRIUS
+        run: ./ci/github_build_sirius.sh
