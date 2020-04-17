@@ -1,0 +1,12 @@
+name: Check source code format
+
+on: [push]
+
+jobs:
+  build:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: check
+        uses: actions/checkout@v2
+        run: ./check_format.x
