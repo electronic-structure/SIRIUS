@@ -11,7 +11,7 @@
 * [Introduction](#introduction)
 * [Installation](#installation)
   * [Minimal installation](#minimal-installation)
-  * [Installation using Spack](#installation-using-spack)
+  * [Install with Spack](#install-with-spack)
   * [Adding GPU support](#adding-gpu-support)
   * [Parallel eigensolvers](#parallel-eigensolvers)
   * [Python module](#python-module)
@@ -60,13 +60,13 @@ They must be available on your platfrom. Optionally, there is a dependency on:
  * [MAGMA](https://icl.cs.utk.edu/magma/)
  * CUDA/ROCm
 
-We use CMake as a building tool. If the libraries are installed in a standard location, cmake can find them
+We use CMake as a building tool. If the libraries are installed in a standard location, CMake can find them
 automatically.  Otherwise you need to provide a specific path of each library to cmake. We use Docker to create a
 reproducible work environment for the examples below.
 
 ### Minimal installation
-Suppose we have a minimal Linux installation described by the following Dockerfile:
-<details><summary>Simple Linux dockerfile</summary>
+Suppose we have a minimal Linux installation described by the following
+<details><summary>Dockerfile</summary>
 <p>
  
 ```dockerfile
@@ -124,7 +124,7 @@ the corresponding libraries:
 - `MKLROOT` (optional)
 - `ELPAROOT` (optional)
 
-### Installation using Spack
+### Install with Spack
 [Spack](https://spack.io) is a package manager for supercomputers, Linux and macOS. It is a great tool to manage
 complex scientifc software installations. Install Spack (if it is not already on your system):
 ```bash
