@@ -20,7 +20,6 @@
   * [Installation on Piz Daint](#installation-on-piz-daint)
 * [Accelerating DFT codes](#accelerating-dft-codes)
   * [Quantum ESPRESSO](#quantum-espresso)
-* [Examples](#examples)
 * [Contacts](#contacts)
 * [Acknowledgements](#acknowledgements)
 
@@ -66,7 +65,9 @@ automatically.  Otherwise you need to provide a specific path of each library to
 reproducible work environment for the examples below.
 
 ### Minimal installation
-Suppose we have a minimal Linux installation described by the following Dockerfile:
+Suppose we have a minimal Linux installation described by the following
+<details><summary>Dockerfile</summary>
+<p>
 ```dockerfile
 FROM ubuntu:bionic
 
@@ -92,6 +93,8 @@ RUN apt-get install -y cmake
 WORKDIR /root
 ENTRYPOINT ["bash", "-l"]
 ```
+</p>
+</details>
 We can then build SIRIUS with the following set of commands:
 ```bash
 git clone --recursive https://github.com/electronic-structure/SIRIUS.git
@@ -251,19 +254,14 @@ This version is frequently synchronised with the
 `develop` branch of the official [QE repository](https://gitlab.com/QEF/q-e). A typical example of using SIRIUS
 inside QE looks like this:
 ```Fortran
-IF (use_sirius.AND.use_sirius_vloc) THEN
-  ALLOCATE(tmp(ngm))
-  CALL sirius_get_pw_coeffs_real(sctx, atom_type(nt)%label, string("vloc"), tmp(1), ngm, mill(1, 1), intra_bgrp_comm)
-  DO i = 1, ngm
-    vloc(igtongl(i), nt) = tmp(i) * 2 ! convert to Ry
-  ENDDO
-  DEALLOCATE(tmp)
-ELSE
-CALL vloc_of_g( rgrid(nt)%mesh, msh(nt), rgrid(nt)%rab, rgrid(nt)%r, &
-                upf(nt)%vloc(1), upf(nt)%zp, tpiba2, ngl, gl, omega, &
-                vloc(1,nt) )
-ENDIF ! sirius
-
+!
+IF (use_sirius.AND.use_sirius_ks_solver.AND.use_sirius_forces) THEN
+  CALL sirius_get_forces(gs_handler, string("usnl"), forcenl(1, 1))
+  forcenl = forcenl * 2 ! convert to Ry
+  CALL symvector(nat, forcenl)
+  RETURN
+ENDIF
+!
 ```
 To compile QE+SIRIUS you need to go through this basic steps:
  * compile and install SIRIUS
@@ -321,9 +319,6 @@ of Si511Ge.
 <img src="doc/images/Si511Ge_perf.png">
 </p>
 
-
-
-## Examples
 
 ## Contacts
 Have you got any questions, feel free to contact us:
