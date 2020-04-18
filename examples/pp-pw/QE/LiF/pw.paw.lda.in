@@ -5,8 +5,8 @@
     outdir='./',
     prefix = 'LiF_',
     verbosity='high',
-    tstress = false
-    tprnfor = false
+    tstress = true
+    tprnfor = true
     nstep=2
  /
  &system
@@ -15,10 +15,10 @@
     occupations = 'smearing', smearing = 'gauss', degauss = 0.02
  /
  &electrons
-    conv_thr =  1.0d-8,
+    conv_thr =  1.0d-11,
     mixing_beta = 0.7,
-    diago_thr_init=1e-2
     electron_maxstep=100
+    diago_full_acc=.true.
  /
 &IONS
  ion_dynamics='bfgs',

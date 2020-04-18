@@ -43,8 +43,11 @@ class K_point
     /// Unit cell object.
     Unit_cell const& unit_cell_;
 
+    /// K-point id.
+    int id_{-1};
+
     /// Weight of k-point.
-    double weight_;
+    double weight_{1.0};
 
     /// Fractional k-point coordinates.
     vector3d<double> vk_;
@@ -195,9 +198,10 @@ class K_point
 
   public:
     /// Constructor
-    K_point(Simulation_context& ctx__, double const* vk__, double weight__)
+    K_point(Simulation_context& ctx__, double const* vk__, double weight__, int id__)
         : ctx_(ctx__)
         , unit_cell_(ctx_.unit_cell())
+        , id_(id__)
         , weight_(weight__)
         , comm_(ctx_.comm_band())
         , comm_row_(ctx_.blacs_grid().comm_row())

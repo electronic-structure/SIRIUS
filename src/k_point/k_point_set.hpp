@@ -26,20 +26,8 @@
 #define __K_POINT_SET_HPP__
 
 #include "k_point.hpp"
-#include "geometry3d.hpp"
-#include "dft/smearing.hpp"
-#include "symmetry/get_irreducible_reciprocal_mesh.hpp"
 
 namespace sirius {
-
-struct kq
-{
-    // index of reduced k+q vector
-    int jk;
-
-    // vector which reduces k+q to first BZ
-    vector3d<int> K;
-};
 
 /// Set of k-points.
 class K_point_set
@@ -54,48 +42,35 @@ class K_point_set
     /// Split index of k-points.
     splindex<splindex_t::chunk> spl_num_kpoints_;
 
+    /// Fermi energy which is searched in find_band_occupancies().
     double energy_fermi_{0};
 
+    /// Band gap found by find_band_occupancies().
     double band_gap_{0};
 
-    Unit_cell& unit_cell_;
-
+    /// Copy constuctor is not allowed.
     K_point_set(K_point_set& src) = delete;
 
-    void create_k_mesh(vector3d<int> k_grid__,
-                       vector3d<int> k_shift__,
-                       int           use_symmetry__);
+    /// Create regular grid of k-points.
+    void create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__);
 
   public:
+    /// Create empty k-point set.
     K_point_set(Simulation_context& ctx__)
         : ctx_(ctx__)
-        , unit_cell_(ctx__.unit_cell())
     {
     }
 
-    K_point_set(Simulation_context& ctx__,
-                std::vector<int>    k_grid__,
-                std::vector<int>    k_shift__,
-                int                 use_symmetry__)
+    /// Create a regular mesh of k-points.
+    K_point_set(Simulation_context& ctx__, vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__)
         : ctx_(ctx__)
-        , unit_cell_(ctx__.unit_cell())
     {
         create_k_mesh(k_grid__, k_shift__, use_symmetry__);
     }
 
-    K_point_set(Simulation_context& ctx__,
-                vector3d<int>       k_grid__,
-                vector3d<int>       k_shift__,
-                int                 use_symmetry__)
-        : ctx_(ctx__)
-        , unit_cell_(ctx__.unit_cell())
-    {
-        create_k_mesh(k_grid__, k_shift__, use_symmetry__);
-    }
-
+    /// Create k-point set from a list of vectors.
     K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> const& vec__)
         : ctx_(ctx__)
-        , unit_cell_(ctx__.unit_cell())
     {
         for (auto& v : vec__) {
             add_kpoint(&v[0], 1.0);
@@ -103,6 +78,7 @@ class K_point_set
         initialize();
     }
 
+    /// Create k-point set from a list of vectors.
     K_point_set(Simulation_context& ctx__, std::initializer_list<std::initializer_list<double>> vec__)
         : K_point_set(ctx__, std::vector<vector3d<double>>(vec__.begin(), vec__.end()))
     {
@@ -110,6 +86,23 @@ class K_point_set
 
     /// Initialize the k-point set
     void initialize(std::vector<int> const& counts = {});
+
+    /// Sync band occupations numbers between all MPI ranks.
+    void sync_band_occupancies();
+
+    /// Sync band energies between all MPI ranks.
+    void sync_band_energies();
+
+    /// Find Fermi energy and band occupation numbers.
+    void find_band_occupancies();
+
+    /// Print basic info to the standard output.
+    void print_info();
+
+    /// Save k-point set to HDF5 file.
+    void save(std::string const& name__) const;
+
+    void load();
 
     /// Update k-points after moving atoms or changing the lattice vectors.
     void update()
@@ -131,19 +124,13 @@ class K_point_set
         return bnd_e;
     }
 
-    /// Sync band occupations numbers
-    void sync_band_occupancies();
-
-    /// Find Fermi energy and band occupation numbers
-    void find_band_occupancies();
-
-    /// Return sum of valence eigen-values
+    /// Return sum of valence eigen-values.
     double valence_eval_sum() const
     {
         double eval_sum{0};
 
         for (int ik = 0; ik < num_kpoints(); ik++) {
-            const auto& kp = kpoints_[ik];
+            auto const& kp = kpoints_[ik];
             double wk = kp->weight();
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
@@ -154,15 +141,6 @@ class K_point_set
 
         return eval_sum;
     }
-
-    void print_info();
-
-    void sync_band_energies();
-
-    /// Save k-point set to HDF5 file.
-    void save(std::string const& name__) const;
-
-    void load();
 
     /// Return maximum number of G+k vectors among all k-points.
     int max_num_gkvec() const
@@ -176,15 +154,16 @@ class K_point_set
         return max_num_gkvec;
     }
 
+    /// Add k-point to the set.
     void add_kpoint(double const* vk__, double weight__)
     {
-        PROFILE("sirius::K_point_set::add_kpoint");
-        kpoints_.push_back(std::unique_ptr<K_point>(new K_point(ctx_, vk__, weight__)));
+        int id = static_cast<int>(kpoints_.size());
+        kpoints_.push_back(std::unique_ptr<K_point>(new K_point(ctx_, vk__, weight__, id)));
     }
 
-    void add_kpoints(mdarray<double, 2> const& kpoints__, double const* weights__)
+    /// Add multiple k-points to the set.
+    void add_kpoints(sddk::mdarray<double, 2> const& kpoints__, double const* weights__)
     {
-        PROFILE("sirius::K_point_set::add_kpoints");
         for (int ik = 0; ik < (int)kpoints__.size(1); ik++) {
             add_kpoint(&kpoints__(0, ik), weights__[ik]);
         }
@@ -203,6 +182,7 @@ class K_point_set
         return kpoints_[i].get();
     }
 
+    /// Return total number of k-points.
     inline int num_kpoints() const
     {
         return static_cast<int>(kpoints_.size());
@@ -239,21 +219,6 @@ class K_point_set
         return -1;
     }
 
-    //void generate_Gq_matrix_elements(vector3d<double> vq)
-    //{
-    //    std::vector<kq> kpq(num_kpoints());
-    //    for (int ik = 0; ik < num_kpoints(); ik++)
-    //    {
-    //        // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
-    //        std::pair< vector3d<double>, vector3d<int> > vkqr = reduce_coordinates(kpoints_[ik]->vk() + vq);
-    //
-    //        if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1)
-    //            TERMINATE("index of reduced k+q point is not found");
-
-    //        kpq[ik].K = vkqr.second;
-    //    }
-    //}
-
     inline Communicator const& comm() const
     {
         return ctx_.comm_k();
@@ -266,7 +231,7 @@ class K_point_set
 
     const Unit_cell& unit_cell()
     {
-        return unit_cell_;
+        return ctx_.unit_cell();
     }
 
     /// Send G+k vectors of k-point jk to a given rank.

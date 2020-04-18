@@ -977,10 +977,9 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
         }
     }
 
+    PROFILE_START("sirius::K_point::generate_atomic_wave_functions|wft");
     #pragma omp parallel for schedule(static)
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
-        /* global index of G+k vector */
-        //int igk = this->idxgk(igk_loc);
         /* vs = {r, theta, phi} */
         auto vs = geometry3d::spherical_coordinates(this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc));
 
@@ -1014,12 +1013,14 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
             }
         }
     }
+    PROFILE_STOP("sirius::K_point::generate_atomic_wave_functions|wft");
 
     for (int ia: atoms__) {
 
         double phase = twopi * dot(gkvec().vk(), unit_cell_.atom(ia).position());
         double_complex phase_k = std::exp(double_complex(0.0, phase));
 
+        PROFILE_START("sirius::K_point::generate_atomic_wave_functions|1");
         /* quickly compute phase factors without calling exp() function */
         std::vector<double_complex> phase_gk(num_gkvec_loc());
         #pragma omp parallel for schedule(static)
@@ -1030,13 +1031,18 @@ K_point::generate_atomic_wave_functions(std::vector<int> atoms__,
             /* total phase e^{-i(G+k)r_{\alpha}} */
             phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
         }
+        PROFILE_STOP("sirius::K_point::generate_atomic_wave_functions|1");
+
+        PROFILE_START("sirius::K_point::generate_atomic_wave_functions|2");
         int iat = unit_cell_.atom(ia).type_id();
-        #pragma omp parallel for
+        #pragma omp parallel
         for (int xi = 0; xi < indexb__(iat)->size(); xi++) {
+            #pragma omp for schedule(static) nowait
             for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
                 wf__.pw_coeffs(0).prime(igk_loc, offset[ia] + xi) = wf_t[iat](igk_loc, xi) * phase_gk[igk_loc];
             }
         }
+        PROFILE_STOP("sirius::K_point::generate_atomic_wave_functions|2");
     }
 }
 
