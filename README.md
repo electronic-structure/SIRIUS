@@ -65,7 +65,7 @@ automatically.  Otherwise you need to provide a specific path of each library to
 reproducible work environment for the examples below.
 
 ### Minimal installation
-Suppose we have a minimal Linux installation described by the following
+Suppose we have a minimal Linux installation described below
 <details><summary>Dockerfile</summary>
 <p>
  
@@ -257,14 +257,12 @@ This version is frequently synchronised with the
 `develop` branch of the official [QE repository](https://gitlab.com/QEF/q-e). A typical example of using SIRIUS
 inside QE looks like this:
 ```Fortran
-!
 IF (use_sirius.AND.use_sirius_ks_solver.AND.use_sirius_forces) THEN
   CALL sirius_get_forces(gs_handler, string("usnl"), forcenl(1, 1))
   forcenl = forcenl * 2 ! convert to Ry
   CALL symvector(nat, forcenl)
   RETURN
 ENDIF
-!
 ```
 To compile QE+SIRIUS you need to go through this basic steps:
  * compile and install SIRIUS
