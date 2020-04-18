@@ -65,9 +65,10 @@ automatically.  Otherwise you need to provide a specific path of each library to
 reproducible work environment for the examples below.
 
 ### Minimal installation
-Suppose we have a minimal Linux installation described by the following
-<details><summary>Dockerfile</summary>
+Suppose we have a minimal Linux installation described by the following Dockerfile:
+<details><summary>Simple Linux dockerfile</summary>
 <p>
+ 
 ```dockerfile
 FROM ubuntu:bionic
 
@@ -93,8 +94,10 @@ RUN apt-get install -y cmake
 WORKDIR /root
 ENTRYPOINT ["bash", "-l"]
 ```
+
 </p>
 </details>
+
 We can then build SIRIUS with the following set of commands:
 ```bash
 git clone --recursive https://github.com/electronic-structure/SIRIUS.git
