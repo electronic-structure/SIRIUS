@@ -133,6 +133,10 @@ git clone https://github.com/spack/spack.git
 ```
 
 In the following Dockerfile example most of the software is installed using Spack:
+
+<details><summary>Dockerfile</summary>
+<p>
+
 ```dockerfile
 FROM ubuntu:bionic
 
@@ -190,6 +194,9 @@ WORKDIR /root
 
 ENTRYPOINT ["bash", "-l"]
 ```
+
+</p>
+</details>
 
 SIRIUS can be built inside this docker container using the following command:
 ```bash
@@ -255,14 +262,49 @@ pseudopotentials. We maintain the GPU-accelerated version of
 [Quantum ESPRESSO with SIRIUS bindings](https://github.com/electronic-structure/q-e-sirius).
 This version is frequently synchronised with the
 `develop` branch of the official [QE repository](https://gitlab.com/QEF/q-e). A typical example of using SIRIUS
-inside QE looks like this:
+inside QE is listed below:
 ```Fortran
-IF (use_sirius.AND.use_sirius_ks_solver.AND.use_sirius_forces) THEN
-  CALL sirius_get_forces(gs_handler, string("usnl"), forcenl(1, 1))
-  forcenl = forcenl * 2 ! convert to Ry
-  CALL symvector(nat, forcenl)
-  RETURN
-ENDIF
+subroutine get_band_energies_from_sirius
+  !
+  use wvfct,    only : nbnd, et
+  use klist,    only : nkstot, nks
+  use lsda_mod, only : nspin
+  use sirius
+  !
+  implicit none
+  !
+  integer, external :: global_kpoint_index
+  !
+  real(8), allocatable :: band_e(:,:)
+  integer :: ik, nk, nb, nfv
+
+  allocate(band_e(nbnd, nkstot))
+
+  ! get band energies
+  if (nspin.ne.2) then
+    ! non-magnetic or non-collinear case
+    do ik = 1, nkstot
+      call sirius_get_band_energies(ks_handler, ik, 0, band_e(1, ik))
+    end do
+  else
+    ! collinear magnetic case
+    nk = nkstot / 2
+    ! get band energies
+    do ik = 1, nk
+      call sirius_get_band_energies(ks_handler, ik, 0, band_e(1, ik))
+      call sirius_get_band_energies(ks_handler, ik, 1, band_e(1, nk + ik))
+    end do
+
+  endif
+
+  ! convert to Ry
+  do ik = 1, nks
+    et(:, ik) = 2.d0 * band_e(:, global_kpoint_index(nkstot, ik))
+  enddo
+
+  deallocate(band_e)
+
+end subroutine get_band_energies_from_sirius
 ```
 To compile QE+SIRIUS you need to go through this basic steps:
  * compile and install SIRIUS
