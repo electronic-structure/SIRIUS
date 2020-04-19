@@ -330,7 +330,8 @@ This should hopefully produce the `pw.x` binary in `PW/src` folder. If this does
 usually do and then modify `make.inc` file by hand to add `-I/path/to/sirius/include` directory to the Fortran compiler
 options and `-L$/path/to/sirius/lib -Wl,-rpath,/path/to/sirius/lib -lsirius` to the linker flags.
 
-Here is a complete installation in Nvidia-based container:
+Here is a complete installation of SIRIUS-enabled Quantum ESPRESSO using `nvidia/cuda:10.1-devel-ubuntu18.04`
+Linux distribution:
 
 <details><summary>Dockerfile</summary>
 <p>
