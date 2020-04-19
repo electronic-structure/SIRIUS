@@ -1,4 +1,4 @@
-name: Check source code format
+name: Check formatting of modified files
 
 on:
   - push
@@ -11,5 +11,5 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      - name: Check
+      - name: Check .cpp, .h and .hpp files
         run: ./check_format.x
