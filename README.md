@@ -445,7 +445,26 @@ pw.x -i pw.in
 pw.x -i pw.in -sirius
 ```
 
-SIRIUS library is usgin OpenMP for node-level parallelization. To run QE/SIRIUS efficiently, follow these simple rules:
+SIRIUS is compiled to use both cuSolver and ELPA eigen-value solvers depending on the number of MPI ranks for band
+parallelization. Parallel (CPU only) ELPA eign-solver will be used if the number of MPI ranks for diagonalziation
+is a square number (for example, `-ndiag 4`), otherwise sequential cuSolver eigen-solver will be used:
+
+```bash
+# use cuSolver solver
+pw.x -i pw.in -sirius -ndiag 2
+pw.x -i pw.in -sirius -ndiag 3
+pw.x -i pw.in -sirius -ndiag 6
+...
+# use ELPA solver
+pw.x -i pw.in -sirius -ndiag 4
+pw.x -i pw.in -sirius -ndiag 9
+pw.x -i pw.in -sirius -ndiag 16
+...
+```
+In most cases it is more efficient to use sequential GPU eigen-solver, unless your system is sufficiently
+large (for example, containing >500 atoms).
+
+SIRIUS library is using OpenMP for node-level parallelization. To run QE/SIRIUS efficiently, follow these simple rules:
  * always prefer k-point pool parallelization over band parallelization
  * use as few MPI ranks as possible for band parallelization
  * by default, use one rank per node and many OMP threads; if the calculated system is really small, try to saturate 
