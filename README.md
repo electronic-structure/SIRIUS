@@ -486,6 +486,13 @@ of Si511Ge.
 <img src="doc/images/Si511Ge_perf.png">
 </p>
 
+Another example is the variable cell relaxation of B6Ni8 (([input](https://github.com/electronic-structure/benchmarks/tree/master/performance/B6Ni8)).
+Brillouin zone contains 204 irreduceble k-points and only k-pool parallelization is used.
+
+<p align="center">
+<img src="doc/images/B6Ni8_perf.png">
+</p>
+
 
 ## Contacts
 Have you got any questions, feel free to contact us:
