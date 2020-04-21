@@ -31,9 +31,9 @@ if(USE_CUDA AND USE_ROCM)
   message(FATAL_ERROR "USE_CUDA and USE_ROCM must not be enabled at the same time!")
 endif()
 
-if(USE_MKL AND NOT (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Intel"))
-  message(FATAL_ERROR "Unsupported compiler")
-endif()
+# if(USE_MKL AND NOT (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Intel"))
+#   message(FATAL_ERROR "Unsupported compiler")
+# endif()
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
 
@@ -63,7 +63,7 @@ if (NOT CMAKE_BUILD_TYPE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "debug" "release" "relwithdebinfo")
 endif()
 
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
   set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb -DDEBUG")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
@@ -81,7 +81,7 @@ endif()
 # preserve rpaths when installing and make the install folder relocatable
 # use `CMAKE_SKIP_INSTALL_RPATH` to skip this
 # https://spack.readthedocs.io/en/latest/workflows.html#write-the-cmake-build
-list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES 
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES
           "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" isSystemDir)
 # skip RPATH if SIRIUS is installed to system directories
 if(isSystemDir STREQUAL "-1")
