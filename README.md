@@ -5,7 +5,7 @@
 [![GitHub Releases](https://img.shields.io/github/release/electronic-structure/sirius.svg)](https://github.com/electronic-structure/SIRIUS/releases)
 [![Documentation](https://img.shields.io/badge/docs-doxygen-blue.svg)](https://electronic-structure.github.io/SIRIUS-doc)
 [![Licence](https://img.shields.io/badge/license-BSD-blue.svg)](https://raw.githubusercontent.com/electronic-structure/SIRIUS/master/LICENSE)
-[![Build Status](https://travis-ci.org/electronic-structure/SIRIUS.svg?branch=develop)](https://travis-ci.org/electronic-structure/SIRIUS)
+[![Build](https://github.com/electronic-structure/SIRIUS/workflows/Build/badge.svg?branch=master)](https://github.com/electronic-structure/SIRIUS/actions)
 
 ## Table of contents
 * [Introduction](#introduction)
