@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file cublas.hpp
@@ -165,18 +165,9 @@ inline cublasDiagType_t get_cublasDiagType_t(char c)
 #endif
 
 /// Store the default (null) stream handler.
-inline cublasHandle_t& null_stream_handle()
-{
-    static cublasHandle_t null_stream_handle_;
-    return null_stream_handle_;
-}
-
+cublasHandle_t& null_stream_handle();
 /// Store the cublas handlers associated with cuda streams.
-inline std::vector<cublasHandle_t>& stream_handles()
-{
-    static std::vector<cublasHandle_t> stream_handles_;
-    return stream_handles_;
-}
+std::vector<cublasHandle_t>& stream_handles();
 
 inline void create_stream_handles()
 {
@@ -205,15 +196,15 @@ inline cublasHandle_t stream_handle(int id__)
     return (id__ == -1) ? null_stream_handle() : stream_handles()[id__];
 }
 
-inline void zgemv(char transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda, 
+inline void zgemv(char transa, int32_t m, int32_t n, cuDoubleComplex* alpha, cuDoubleComplex* a, int32_t lda,
                   cuDoubleComplex* x, int32_t incx, cuDoubleComplex* beta, cuDoubleComplex* y, int32_t incy, int stream_id)
 {
     //acc::set_device();
     CALL_CUBLAS(cublasZgemv, (stream_handle(stream_id), get_cublasOperation_t(transa), m, n, alpha, a, lda, x, incx, beta, y, incy));
 }
 
-inline void zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, 
-                  cuDoubleComplex const* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
+inline void zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k,
+                  cuDoubleComplex const* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b,
                   int32_t ldb, cuDoubleComplex const* beta, cuDoubleComplex* c, int32_t ldc, int stream_id)
 {
     //acc::set_device();
@@ -221,12 +212,12 @@ inline void zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k,
                               m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
-inline void dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, 
-                  double const* alpha, double const* a, int32_t lda, double const* b, 
+inline void dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k,
+                  double const* alpha, double const* a, int32_t lda, double const* b,
                   int32_t ldb, double const* beta, double* c, int32_t ldc, int stream_id)
 {
     //acc::set_device();
-    CALL_CUBLAS(cublasDgemm, (stream_handle(stream_id), get_cublasOperation_t(transa), get_cublasOperation_t(transb), 
+    CALL_CUBLAS(cublasDgemm, (stream_handle(stream_id), get_cublasOperation_t(transa), get_cublasOperation_t(transb),
                               m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
@@ -276,7 +267,7 @@ inline void zgeru(int                    m,
                   cuDoubleComplex const* y,
                   int                    incy,
                   cuDoubleComplex*       A,
-                  int                    lda, 
+                  int                    lda,
                   int                    stream_id)
 {
     //acc::set_device();
@@ -296,11 +287,7 @@ inline void zaxpy(int                    n__,
 
 namespace xt {
 
-inline cublasXtHandle_t& cublasxt_handle()
-{
-    static cublasXtHandle_t handle;
-    return handle;
-}
+cublasXtHandle_t& cublasxt_handle();
 
 inline void create_handle()
 {
@@ -316,7 +303,7 @@ inline void destroy_handle()
     CALL_CUBLAS(cublasXtDestroy, (cublasxt_handle()));
 }
 
-inline void zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, 
+inline void zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k,
                   cuDoubleComplex const* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b,
                   int32_t ldb, cuDoubleComplex const* beta, cuDoubleComplex* c, int32_t ldc)
 {
@@ -325,8 +312,8 @@ inline void zgemm(char transa, char transb, int32_t m, int32_t n, int32_t k,
                                 m, n, k, alpha, a, lda, b, ldb, beta, c, ldc));
 }
 
-inline void dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k, 
-                  double const* alpha, double const* a, int32_t lda, double const* b, 
+inline void dgemm(char transa, char transb, int32_t m, int32_t n, int32_t k,
+                  double const* alpha, double const* a, int32_t lda, double const* b,
                   int32_t ldb, double const* beta, double* c, int32_t ldc)
 {
     //acc::set_device();

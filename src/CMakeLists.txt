@@ -66,6 +66,8 @@ set(_SOURSES
   "SDDK/gvec.cpp"
   "SDDK/matrix_storage.cpp"
   "gpu/acc.cpp"
+  "gpu/cusolver.cpp"
+  "gpu/cublas.cpp"
   "sht/sht.cpp"
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
