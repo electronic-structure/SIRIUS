@@ -23,7 +23,7 @@
  */
 
 #include "simulation_parameters.hpp"
-#include "SDDK/communicator.hpp"
+#include "mpi/communicator.hpp"
 
 namespace sirius {
 
@@ -172,10 +172,10 @@ void Simulation_parameters::print_options() const
     json const& dict = get_options_dictionary();
 
     if (Communicator::world().rank() == 0) {
-        std::cout << "the sirius library or the mini apps can be initialized through the interface" << std::endl;
-        std::cout << "using the api directly or through a json dictionary. The following contains " << std::endl;
-        std::cout << "a description of all the runtime options, that can be used directly to      " << std::endl;
-        std::cout << "initialize sirius.                                                          " << std::endl;
+        std::printf("The SIRIUS library or the mini apps can be initialized through the interface\n");
+        std::printf("using the API directly or through a json dictionary. The following contains\n");
+        std::printf("a description of all the runtime options, that can be used directly to\n");
+        std::printf("initialize SIRIUS.\n");
 
         for (auto& el : dict.items()) {
             std::cout << "============================================================================\n";

@@ -5,8 +5,8 @@
     outdir='./',
     prefix = 'LiF_',
     verbosity='high',
-    tstress = false
-    tprnfor = false
+    tstress = true
+    tprnfor = true
     nstep=2
  /
  &system

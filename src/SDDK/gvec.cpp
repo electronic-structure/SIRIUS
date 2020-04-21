@@ -22,7 +22,7 @@
  *  \brief Contains the implementation of Gvec class.
  *
  */
-#include "Symmetry/find_lat_sym.hpp"
+#include "symmetry/find_lat_sym.hpp"
 #include "gvec.hpp"
 
 namespace sddk {

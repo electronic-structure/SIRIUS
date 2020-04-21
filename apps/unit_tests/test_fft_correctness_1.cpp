@@ -1,4 +1,4 @@
-#include <sirius.h>
+#include <sirius.hpp>
 
 /* test FFT: transform single harmonic and compare with plane wave exp(iGr) */
 
@@ -6,7 +6,7 @@ using namespace sirius;
 
 int test_fft(cmd_args& args, device_t pu__)
 {
-    bool verbose{true};
+    bool verbose{false};
 
     double cutoff = args.value<double>("cutoff", 8);
 

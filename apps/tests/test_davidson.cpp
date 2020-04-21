@@ -1,4 +1,4 @@
-#include <sirius.h>
+#include <sirius.hpp>
 
 using namespace sirius;
 
@@ -171,7 +171,7 @@ void test_davidson(cmd_args const& args__)
 
     for (int r = 0; r < 2; r++) {
         double vk[] = {0.1, 0.1, 0.1};
-        K_point kp(ctx, vk, 1.0);
+        K_point kp(ctx, vk, 1.0, 0);
         kp.initialize();
         std::cout << "num_gkvec=" << kp.num_gkvec() << "\n";
         for (int i = 0; i < ctx.num_bands(); i++) {

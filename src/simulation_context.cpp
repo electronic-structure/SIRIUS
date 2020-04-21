@@ -1,8 +1,33 @@
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file simulation_context.cpp
+ *
+ *  \brief Implementation of Simulation_context class.
+ */
+
 #include <gsl/gsl_sf_bessel.h>
 #include "sirius_version.hpp"
 #include "simulation_context.hpp"
-#include "Symmetry/find_lat_sym.hpp"
+#include "symmetry/find_lat_sym.hpp"
 #include "utils/profiler.hpp"
+#include "utils/env.hpp"
 
 namespace sirius {
 
@@ -40,7 +65,7 @@ void Simulation_context::init_fft_grid()
         TERMINATE("wrong FFT mode");
     }
 
-    auto rlv = unit_cell_.reciprocal_lattice_vectors();
+    auto rlv = unit_cell().reciprocal_lattice_vectors();
 
     /* create FFT driver for dense mesh (density and potential) */
     auto fft_grid = settings().fft_grid_size_;
@@ -93,8 +118,8 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
     int ngv_loc = gvec().count();
 
     int na_max{0};
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        na_max = std::max(na_max, unit_cell_.atom_type(iat).num_atoms());
+    for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+        na_max = std::max(na_max, unit_cell().atom_type(iat).num_atoms());
     }
 
     int lmmax = utils::lmmax(lmax__);
@@ -131,8 +156,8 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
         zil[l] = std::pow(double_complex(0, 1), l);
     }
 
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        int na = unit_cell_.atom_type(iat).num_atoms();
+    for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+        int na = unit_cell().atom_type(iat).num_atoms();
         generate_phase_factors(iat, phase_factors);
         PROFILE_START("sirius::Simulation_context::sum_fg_fl_yg|zm");
         #pragma omp parallel for schedule(static)
@@ -167,7 +192,7 @@ Simulation_context::sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarra
         PROFILE_STOP("sirius::Simulation_context::sum_fg_fl_yg|mul");
 
         for (int i = 0; i < na; i++) {
-            int ia = unit_cell_.atom_type(iat).atom_id(i);
+            int ia = unit_cell().atom_type(iat).atom_id(i);
             std::copy(&tmp(0, i), &tmp(0, i) + lmmax, &flm(0, ia));
         }
     }
@@ -183,7 +208,7 @@ double Simulation_context::ewald_lambda() const
     double lambda{1};
     double gmax = pw_cutoff();
     double upper_bound{0};
-    double charge = unit_cell_.num_electrons();
+    double charge = unit_cell().num_electrons();
 
     /* iterate to find lambda */
     do {
@@ -206,9 +231,9 @@ splindex<splindex_t::block> Simulation_context::split_gvec_local() const
     int ngv_loc = gvec().count();
     /* estimate number of G-vectors in a block */
     int ld{-1};
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        int nat = unit_cell_.atom_type(iat).num_atoms();
-        int nbf = unit_cell_.atom_type(iat).mt_basis_size();
+    for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+        int nat = unit_cell().atom_type(iat).num_atoms();
+        int nbf = unit_cell().atom_type(iat).mt_basis_size();
 
         ld = std::max(ld, std::max(nbf * (nbf + 1) / 2, nat));
     }
@@ -256,14 +281,17 @@ void Simulation_context::initialize()
     /* initialize MPI communicators */
     init_comm();
 
-    if (control().verbosity_ >= 3) {
+    auto print_mpi_layout = utils::get_env<int>("SIRIUS_PRINT_MPI_LAYOUT");
+
+    if (control().verbosity_ >= 3 || (print_mpi_layout && *print_mpi_layout)) {
         pstdout pout(comm());
         if (comm().rank() == 0) {
             pout.printf("MPI rank placement\n");
             pout.printf("------------------\n");
         }
-        pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s\n", comm().rank(),
-                    comm_band().rank(), comm_k().rank(), utils::hostname().c_str());
+        auto name = sddk::Communicator::processor_name();
+        pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s, mpi processor name: %s\n",
+            comm().rank(), comm_band().rank(), comm_k().rank(), utils::hostname().c_str(), name.c_str());
     }
 
     switch (processing_unit()) {
@@ -347,19 +375,19 @@ void Simulation_context::initialize()
     }
 
     /* initialize variables related to the unit cell */
-    unit_cell_.initialize();
+    unit_cell().initialize();
     /* save the volume of the initial unit cell */
-    omega0_ = unit_cell_.omega();
+    omega0_ = unit_cell().omega();
 
     /* check the lattice symmetries */
     if (use_symmetry()) {
-        auto lv = matrix3d<double>(unit_cell_.lattice_vectors());
+        auto lv = matrix3d<double>(unit_cell().lattice_vectors());
 
         auto lat_sym = find_lat_sym(lv, 1e-6);
 
         #pragma omp parallel for
-        for (int i = 0; i < unit_cell_.symmetry().num_mag_sym(); i++) {
-            auto& spgR = unit_cell_.symmetry().magnetic_group_symmetry(i).spg_op.R;
+        for (int i = 0; i < unit_cell().symmetry().num_mag_sym(); i++) {
+            auto& spgR = unit_cell().symmetry().magnetic_group_symmetry(i).spg_op.R;
             bool found{false};
             for (size_t i = 0; i < lat_sym.size(); i++) {
                 auto latR = lat_sym[i];
@@ -383,7 +411,7 @@ void Simulation_context::initialize()
     if (full_potential()) {
         /* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and minimum MT radius) */
         if (aw_cutoff() > 0) {
-            gk_cutoff(aw_cutoff() / unit_cell_.min_mt_radius());
+            gk_cutoff(aw_cutoff() / unit_cell().min_mt_radius());
         }
         if (gk_cutoff() <= 0) {
             gk_cutoff(3);
@@ -405,22 +433,22 @@ void Simulation_context::initialize()
     }
 
     if (!full_potential()) {
-        set_lmax_rho(unit_cell_.lmax() * 2);
-        set_lmax_pot(unit_cell_.lmax() * 2);
+        set_lmax_rho(unit_cell().lmax() * 2);
+        set_lmax_pot(unit_cell().lmax() * 2);
         set_lmax_apw(-1);
     }
 
     /* initialize FFT grid dimensions */
     init_fft_grid();
 
-    int nbnd = static_cast<int>(unit_cell_.num_valence_electrons() / 2.0) +
-               std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons()));
+    int nbnd = static_cast<int>(unit_cell().num_valence_electrons() / 2.0) +
+               std::max(10, static_cast<int>(0.1 * unit_cell().num_valence_electrons()));
     if (full_potential()) {
         /* take 10% of empty non-magnetic states */
         if (num_fv_states() < 0) {
             num_fv_states(nbnd);
         }
-        if (num_fv_states() < static_cast<int>(unit_cell_.num_valence_electrons() / 2.0)) {
+        if (num_fv_states() < static_cast<int>(unit_cell().num_valence_electrons() / 2.0)) {
             std::stringstream s;
             s << "not enough first-variational states : " << num_fv_states();
             TERMINATE(s);
@@ -585,9 +613,9 @@ void Simulation_context::print_info() const
     }
     std::printf("number of local G-vector blocks: %i\n", split_gvec_local().num_ranks());
 
-    unit_cell_.print_info(control().verbosity_);
-    for (int i = 0; i < unit_cell_.num_atom_types(); i++) {
-        unit_cell_.atom_type(i).print_info();
+    unit_cell().print_info(control().verbosity_);
+    for (int i = 0; i < unit_cell().num_atom_types(); i++) {
+        unit_cell().atom_type(i).print_info();
     }
 
     std::printf("\n");
@@ -608,7 +636,7 @@ void Simulation_context::print_info() const
     std::printf("lmax_apw                           : %i\n", lmax_apw());
     std::printf("lmax_rho                           : %i\n", lmax_rho());
     std::printf("lmax_pot                           : %i\n", lmax_pot());
-    std::printf("lmax_rf                            : %i\n", unit_cell_.lmax());
+    std::printf("lmax_rf                            : %i\n", unit_cell().lmax());
     std::printf("smearing width                     : %f\n", smearing_width());
     std::printf("cyclic block size                  : %i\n", cyclic_block_size());
     std::printf("|G+k| cutoff                       : %f\n", gk_cutoff());
@@ -863,12 +891,12 @@ void Simulation_context::update()
         /* radial integrals with pw_cutoff */
         if (!aug_ri_ || aug_ri_->qmax() < new_pw_cutoff) {
             aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
-                new Radial_integrals_aug<false>(unit_cell(), new_pw_cutoff, settings().nprii_aug_));
+                new Radial_integrals_aug<false>(unit_cell(), new_pw_cutoff, settings().nprii_aug_, aug_ri_callback_));
         }
 
         if (!aug_ri_djl_ || aug_ri_djl_->qmax() < new_pw_cutoff) {
             aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
-                new Radial_integrals_aug<true>(unit_cell(), new_pw_cutoff, settings().nprii_aug_));
+                new Radial_integrals_aug<true>(unit_cell(), new_pw_cutoff, settings().nprii_aug_, aug_ri_djl_callback_));
         }
 
         if (!ps_core_ri_ || ps_core_ri_->qmax() < new_pw_cutoff) {
@@ -899,12 +927,12 @@ void Simulation_context::update()
         /* radial integrals with pw_cutoff */
         if (!beta_ri_ || beta_ri_->qmax() < new_gk_cutoff) {
             beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(
-                new Radial_integrals_beta<false>(unit_cell(), new_gk_cutoff, settings().nprii_beta_));
+                new Radial_integrals_beta<false>(unit_cell(), new_gk_cutoff, settings().nprii_beta_, beta_ri_callback_));
         }
 
         if (!beta_ri_djl_ || beta_ri_djl_->qmax() < new_gk_cutoff) {
             beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
-                new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, settings().nprii_beta_));
+                new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, settings().nprii_beta_, beta_ri_djl_callback_));
         }
 
         if (!atomic_wf_ri_ || atomic_wf_ri_->qmax() < new_gk_cutoff) {
@@ -929,7 +957,7 @@ void Simulation_context::update()
     }
 
     /* get new reciprocal vector */
-    auto rlv = unit_cell_.reciprocal_lattice_vectors();
+    auto rlv = unit_cell().reciprocal_lattice_vectors();
 
     auto spfft_pu = this->processing_unit() == device_t::CPU ? SPFFT_PU_HOST : SPFFT_PU_GPU;
 
@@ -1014,10 +1042,10 @@ void Simulation_context::update()
     }
 
     /* check symmetry of G-vectors */
-    if (unit_cell_.num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
-        check_gvec(gvec(), unit_cell_.symmetry());
+    if (unit_cell().num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
+        check_gvec(gvec(), unit_cell().symmetry());
         if (!full_potential()) {
-            check_gvec(gvec_coarse(), unit_cell_.symmetry());
+            check_gvec(gvec_coarse(), unit_cell().symmetry());
         }
         check_gvec(*remap_gvec_, unit_cell().symmetry());
     }
@@ -1060,8 +1088,8 @@ void Simulation_context::update()
     phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), memory_t::host, "phase_factors_");
     #pragma omp parallel for
     for (int i = limits.first; i <= limits.second; i++) {
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto pos = unit_cell_.atom(ia).position();
+        for (int ia = 0; ia < unit_cell().num_atoms(); ia++) {
+            auto pos = unit_cell().atom(ia).position();
             for (int x : {0, 1, 2}) {
                 phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
             }
@@ -1139,7 +1167,6 @@ void Simulation_context::update()
                 augmentation_op_[iat] = std::unique_ptr<Augmentation_operator>(
                     new Augmentation_operator(unit_cell().atom_type(iat), gvec()));
                 augmentation_op_[iat]->generate_pw_coeffs(aug_ri(), gvec_tp_, *mp, mpd);
-
             } else {
                 augmentation_op_[iat] = nullptr;
             }
@@ -1190,7 +1217,7 @@ void Simulation_context::create_storage_file() const
 void Simulation_context::generate_phase_factors(int iat__, mdarray<double_complex, 2> &phase_factors__) const 
 {
     PROFILE("sirius::Simulation_context::generate_phase_factors");
-    int na = unit_cell_.atom_type(iat__).num_atoms();
+    int na = unit_cell().atom_type(iat__).num_atoms();
     switch (processing_unit_) {
         case device_t::CPU: {
             #pragma omp parallel for
@@ -1242,7 +1269,7 @@ void Simulation_context::init_atoms_to_grid_idx(double R__)
 {
     PROFILE("sirius::Simulation_context::init_atoms_to_grid_idx");
 
-    atoms_to_grid_idx_.resize(unit_cell_.num_atoms());
+    atoms_to_grid_idx_.resize(unit_cell().num_atoms());
 
     vector3d<double> delta(1.0 / spfft().dim_x(), 1.0 / spfft().dim_y(), 1.0 / spfft().dim_z());
 
@@ -1258,7 +1285,7 @@ void Simulation_context::init_atoms_to_grid_idx(double R__)
 
         /* pos is a position of atom */
         for (auto v : verts_cart) {
-            verts.push_back(pos + unit_cell_.get_fractional_coordinates(v));
+            verts.push_back(pos + unit_cell().get_fractional_coordinates(v));
         }
 
         std::pair<vector3d<int>, vector3d<int>> bounds_ind;
@@ -1274,14 +1301,14 @@ void Simulation_context::init_atoms_to_grid_idx(double R__)
     };
 
     #pragma omp parallel for
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+    for (int ia = 0; ia < unit_cell().num_atoms(); ia++) {
 
         std::vector<std::pair<int, double>> atom_to_ind_map;
 
         for (int t0 = -1; t0 <= 1; t0++) {
             for (int t1 = -1; t1 <= 1; t1++) {
                 for (int t2 = -1; t2 <= 1; t2++) {
-                    auto pos = unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2);
+                    auto pos = unit_cell().atom(ia).position() + vector3d<double>(t0, t1, t2);
 
                     /* find the small box around this atom */
                     auto box = bounds_box(pos);
@@ -1290,7 +1317,7 @@ void Simulation_context::init_atoms_to_grid_idx(double R__)
                         for (int j1 = box.first[1]; j1 < box.second[1]; j1++) {
                             for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
                                 auto v = pos - vector3d<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
-                                auto r  = unit_cell_.get_cartesian_coordinates(v).length();
+                                auto r  = unit_cell().get_cartesian_coordinates(v).length();
                                 if (r < R__) {
                                     auto ir = fft_grid_.index_by_coord(j0, j1, j2 - z_off);
                                     atom_to_ind_map.push_back({ir, r});

@@ -1,6 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
-#include <sirius.h>
+#include <sirius.hpp>
 #include <pybind11/stl.h>
 #include <pybind11/operators.h>
 #include <pybind11/complex.h>
@@ -15,8 +15,8 @@
 #include <mpi.h>
 
 #include "utils/json.hpp"
-#include "Unit_cell/free_atom.hpp"
-#include "energy.hpp"
+#include "unit_cell/free_atom.hpp"
+#include "dft/energy.hpp"
 #include "magnetization.hpp"
 #include "unit_cell_accessors.hpp"
 #include "make_sirius_comm.hpp"

@@ -3,56 +3,56 @@
 # list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 
 if(CREATE_FORTRAN_BINDINGS)
-  set(_FSOURCES "sirius_api.cpp;sirius.f90")
+  set(_FSOURCES "api/sirius_api.cpp;api/sirius.f90")
 endif()
 
 if(USE_CUDA)
-  file(GLOB_RECURSE CUFILES_SDDK "SDDK/*.cu")
-  file(GLOB_RECURSE CUFILES_KERNELS "Kernels/*.cu")
-  set(_CUSOURCES "${CUFILES_KERNELS};${CUFILES_SDDK}")
+  file(GLOB_RECURSE CUFILES "gpu/*.cu")
+  set(_CUSOURCES "${CUFILES}")
 endif()
 
-set(_SOURSES "Hamiltonian/hamiltonian.cpp"
-  "Hamiltonian/hamiltonian_k.cpp"
-  "Band/band.cpp"
-  "Band/solve.cpp"
-  "Density/density.cpp"
-  "Density/augmentation_operator.cpp"
-  "dft_ground_state.cpp"
-  "Band/diag_pseudo_potential.cpp"
-  "Band/diag_full_potential.cpp"
-  "Band/residuals.cpp"
-  "Beta_projectors/beta_projectors_base.cpp"
-  "Hubbard/apply_hubbard_potential.cpp"
-  "Hubbard/hubbard.cpp"
-  "Hubbard/hubbard_occupancies_derivatives.cpp"
-  "Hubbard/hubbard_occupancy.cpp"
-  "Hubbard/hubbard_potential_energy.cpp"
-  "Potential/generate_d_operator_matrix.cpp"
-  "Potential/generate_pw_coeffs.cpp"
-  "Potential/paw_potential.cpp"
-  "Potential/poisson.cpp"
-  "Potential/xc.cpp"
-  "Unit_cell/unit_cell.cpp"
-  "Unit_cell/unit_cell_symmetry.cpp"
+set(_SOURSES
+  "hamiltonian/hamiltonian.cpp"
+  "hamiltonian/hamiltonian_k.cpp"
+  "hamiltonian/local_operator.cpp"
+  "hamiltonian/non_local_operator.cpp"
+  "band/band.cpp"
+  "band/solve.cpp"
+  "band/diag_pseudo_potential.cpp"
+  "band/diag_full_potential.cpp"
+  "band/residuals.cpp"
+  "density/density.cpp"
+  "density/augmentation_operator.cpp"
+  "dft/dft_ground_state.cpp"
+  "dft/energy.cpp"
+  "beta_projectors/beta_projectors_base.cpp"
+  "hubbard/apply_hubbard_potential.cpp"
+  "hubbard/hubbard.cpp"
+  "hubbard/hubbard_occupancies_derivatives.cpp"
+  "hubbard/hubbard_occupancy.cpp"
+  "hubbard/hubbard_potential_energy.cpp"
+  "potential/generate_d_operator_matrix.cpp"
+  "potential/generate_pw_coeffs.cpp"
+  "potential/paw_potential.cpp"
+  "potential/poisson.cpp"
+  "potential/xc.cpp"
+  "unit_cell/unit_cell.cpp"
+  "unit_cell/unit_cell_symmetry.cpp"
   "simulation_context.cpp"
   "simulation_parameters.cpp"
-  "Geometry/force.cpp"
-  "Geometry/stress.cpp"
-  "Geometry/non_local_functor.cpp"
-  "Hamiltonian/local_operator.cpp"
-  "Hamiltonian/non_local_operator.cpp"
-  "K_point/generate_atomic_wave_functions.cpp"
-  "K_point/generate_fv_states.cpp"
-  "K_point/generate_spinor_wave_functions.cpp"
-  "K_point/k_point.cpp"
-  "K_point/k_point_set.cpp"
-  "K_point/generate_gklo_basis.cpp"
-  "K_point/test_fv_states.cpp"
-  "energy.cpp"
-  "field4d.cpp"
-  "radial_integrals.cpp"
-  "sbessel.cpp"
+  "geometry/force.cpp"
+  "geometry/stress.cpp"
+  "geometry/non_local_functor.cpp"
+  "k_point/generate_atomic_wave_functions.cpp"
+  "k_point/generate_fv_states.cpp"
+  "k_point/generate_spinor_wave_functions.cpp"
+  "k_point/k_point.cpp"
+  "k_point/k_point_set.cpp"
+  "k_point/generate_gklo_basis.cpp"
+  "k_point/test_fv_states.cpp"
+  "function3d/field4d.cpp"
+  "radial/radial_integrals.cpp"
+  "specfunc/sbessel.cpp"
   "utils/cmd_args.cpp"
   "utils/utils.cpp"
   "utils/rt_graph.cpp"
@@ -61,18 +61,18 @@ set(_SOURSES "Hamiltonian/hamiltonian.cpp"
   "SDDK/wf_ortho.cpp"
   "SDDK/wf_trans.cpp"
   "SDDK/wave_functions.cpp"
-  "SDDK/communicator.cpp"
+  "mpi/communicator.cpp"
   "SDDK/dmatrix.cpp"
   "SDDK/gvec.cpp"
   "SDDK/matrix_storage.cpp"
-  "SDDK/GPU/acc.cpp"
-  "SHT/sht.cpp"
+  "gpu/acc.cpp"
+  "sht/sht.cpp"
   "sirius_version.cpp"
-  "Mixer/mixer_functions.cpp"
+  "mixer/mixer_functions.cpp"
   )
 
 if(USE_ROCM)
-  add_library(sirius_rocm_interface STATIC ./SDDK/GPU/rocfft_interface.cpp)
+  add_library(sirius_rocm_interface STATIC ./gpu/rocfft_interface.cpp)
   set_target_properties(sirius_rocm_interface PROPERTIES POSITION_INDEPENDENT_CODE ON)
   # don't install as it is STATIC and not meant to be used by external projects
   target_link_libraries(sirius_rocm_interface PUBLIC OpenMP::OpenMP_CXX)
@@ -84,7 +84,7 @@ if(USE_ROCM)
   set(INCLUDE_DIR_GENERATOR "$<$<BOOL:${INCLUDE_DIR_PROP}>:-I$<JOIN:${INCLUDE_DIR_PROP}, -I>>")
 
   # create gpu library compiled with hip
-  file(GLOB_RECURSE HIPFILES_KERNELS "Kernels/*.cu")
+  file(GLOB_RECURSE HIPFILES_KERNELS "gpu/*.cu")
   file(GLOB_RECURSE HIPFILES_SDDK "SDDK/*.cu")
   rocm_hip_add_library(sirius_rocm SHARED ${HIPFILES_SDDK} ${HIPFILES_KERNELS}
     FLAGS ${DEFINITIONS_GENERATOR} ${INCLUDE_DIR_GENERATOR} "-Wno-macro-redefined" OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
