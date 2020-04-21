@@ -51,8 +51,24 @@ inline void error_message(cublasStatus_t status)
             std::printf("the function failed to launch on the GPU\n");
             break;
         }
+        case CUBLAS_STATUS_INTERNAL_ERROR: {
+            std::printf("cublas internal error\n");
+            break;
+        }
+        case CUBLAS_STATUS_MAPPING_ERROR: {
+            std::printf("cublas mapping error\n");
+            break;
+        }
+        case CUBLAS_STATUS_ALLOC_FAILED: {
+            std::printf("cublas mapping error\n");
+            break;
+        }
+        case CUBLAS_STATUS_NOT_SUPPORTED: {
+            std::printf("cublas not supported error\n");
+            break;
+        }
         default: {
-            std::printf("cublas status unknown");
+            std::printf((std::string("cublas status unknown, error code = ") + std::to_string(status) + std::string("\n")).c_str());
         }
     }
 }
