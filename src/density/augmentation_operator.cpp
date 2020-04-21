@@ -96,7 +96,6 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     /* number of beta- radial functions */
     int nbrf = atom_type_.mt_radial_basis_size();
 
-    PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|1");
     sddk::mdarray<double, 3> ri_values(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1, gvec_.num_gvec_shells_local(), mp__);
     #pragma omp parallel for
     for (int j = 0; j < gvec_.num_gvec_shells_local(); j++) {
@@ -107,7 +106,6 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
             }
         }
     }
-    PROFILE_STOP("sirius::Augmentation_operator::generate_pw_coeffs|1");
 
     /* number of beta-projectors */
     int nbf = atom_type_.mt_basis_size();
@@ -138,7 +136,6 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     /* array of plane-wave coefficients */
     q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, mp__, "q_pw_");
 
-    PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|2");
     switch (atom_type_.parameters().processing_unit()) {
         case device_t::CPU: {
             #pragma omp parallel for schedule(static)
@@ -180,7 +177,6 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
 
             q_pw_.allocate(*mpd__);
 
-            PROFILE_START("sirius::Augmentation_operator::generate_pw_coeffs|gpu");
 #if defined(__GPU)
             int ld0 = static_cast<int>(gc.size(0));
             int ld1 = static_cast<int>(gc.size(1));
@@ -191,12 +187,10 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
                 q_pw_.at(memory_t::device), static_cast<int>(q_pw_.size(0)), fourpi_omega);
 #endif
             q_pw_.copy_to(memory_t::host);
-            PROFILE_STOP("sirius::Augmentation_operator::generate_pw_coeffs|gpu");
 
             q_pw_.deallocate(memory_t::device);
         }
     }
-    PROFILE_STOP("sirius::Augmentation_operator::generate_pw_coeffs|2");
 
     sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, mp__, "sym_weight_");
     for (int xi2 = 0; xi2 < nbf; xi2++) {

@@ -57,15 +57,15 @@ Hamiltonian_k::~Hamiltonian_k()
 }
 
 template <typename T, int what>
-std::pair<mdarray<double, 2>, mdarray<double, 2>>
+std::pair<sddk::mdarray<double, 2>, sddk::mdarray<double, 2>>
 Hamiltonian_k::get_h_o_diag_pw() const
 {
     PROFILE("sirius::Hamiltonian_k::get_h_o_diag");
 
     auto const& uc = H0_.ctx().unit_cell();
 
-    mdarray<double, 2> h_diag(kp_.num_gkvec_loc(), H0_.ctx().num_spins());
-    mdarray<double, 2> o_diag(kp_.num_gkvec_loc(), H0_.ctx().num_spins());
+    sddk::mdarray<double, 2> h_diag(kp_.num_gkvec_loc(), H0_.ctx().num_spins());
+    sddk::mdarray<double, 2> o_diag(kp_.num_gkvec_loc(), H0_.ctx().num_spins());
 
     h_diag.zero();
     o_diag.zero();
@@ -84,23 +84,24 @@ Hamiltonian_k::get_h_o_diag_pw() const
             }
         }
 
+        PROFILE_START("sirius::Hamiltonian_k::get_h_o_diag|1");
         /* non-local H contribution */
         auto beta_gk_t = kp_.beta_projectors().pw_coeffs_t(0);
-        matrix<double_complex> beta_gk_tmp(uc.max_mt_basis_size(), kp_.num_gkvec_loc());
+        matrix<double_complex> beta_gk_tmp(kp_.num_gkvec_loc(), uc.max_mt_basis_size());
 
         for (int iat = 0; iat < uc.num_atom_types(); iat++) {
             auto& atom_type = uc.atom_type(iat);
             int nbf = atom_type.mt_basis_size();
 
-            matrix<T> d_sum;
+            matrix<double_complex> d_sum;
             if (what & 1) {
-                d_sum = matrix<T>(nbf, nbf);
+                d_sum = matrix<double_complex>(nbf, nbf);
                 d_sum.zero();
             }
 
-            matrix<T> q_sum;
+            matrix<double_complex> q_sum;
             if (what & 2) {
-                q_sum = matrix<T>(nbf, nbf);
+                q_sum = matrix<double_complex>(nbf, nbf);
                 q_sum.zero();
             }
 
@@ -118,31 +119,43 @@ Hamiltonian_k::get_h_o_diag_pw() const
                     }
                 }
             }
+            PROFILE_STOP("sirius::Hamiltonian_k::get_h_o_diag|1");
 
             int offs = uc.atom_type(iat).offset_lo();
-            for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
-                for (int xi = 0; xi < nbf; xi++) {
-                    beta_gk_tmp(xi, ig_loc) = beta_gk_t(ig_loc, offs + xi);
-                }
-            }
 
-            #pragma omp parallel for schedule(static)
-            for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        if (what & 1) {
-                            /* compute <G+k|beta_xi1> D_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
-                            auto z = beta_gk_tmp(xi1, ig_loc) * d_sum(xi1, xi2) * std::conj(beta_gk_tmp(xi2, ig_loc));
-                            h_diag(ig_loc, ispn) += z.real();
-                        }
-                        if (what & 2) {
-                            /* compute <G+k|beta_xi1> Q_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
-                            auto z = beta_gk_tmp(xi1, ig_loc) * q_sum(xi1, xi2) * std::conj(beta_gk_tmp(xi2, ig_loc));
-                            o_diag(ig_loc, ispn) += z.real();
-                        }
+            PROFILE_START("sirius::Hamiltonian_k::get_h_o_diag|3");
+            if (what & 1) {
+                sddk::linalg(linalg_t::blas).gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf,
+                    &sddk::linalg_const<double_complex>::one(), &beta_gk_t(0, offs), beta_gk_t.ld(),
+                    &d_sum(0, 0), d_sum.ld(), &sddk::linalg_const<double_complex>::zero(),
+                    &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
+                #pragma omp parallel
+                for (int xi = 0; xi < nbf; xi++) {
+                    #pragma omp for schedule(static) nowait
+                    for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
+                        /* compute <G+k|beta_xi1> D_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
+                        h_diag(ig_loc, ispn) +=
+                            std::real(beta_gk_tmp(ig_loc, xi) * std::conj(beta_gk_t(ig_loc, offs + xi)));
                     }
                 }
             }
+
+            if (what & 2) {
+                sddk::linalg(linalg_t::blas).gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf,
+                    &sddk::linalg_const<double_complex>::one(), &beta_gk_t(0, offs), beta_gk_t.ld(),
+                    &q_sum(0, 0), d_sum.ld(), &sddk::linalg_const<double_complex>::zero(),
+                    &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
+                #pragma omp parallel
+                for (int xi = 0; xi < nbf; xi++) {
+                    #pragma omp for schedule(static) nowait
+                    for (int ig_loc = 0; ig_loc < kp_.num_gkvec_loc(); ig_loc++) {
+                        /* compute <G+k|beta_xi1> Q_{xi1, xi2} <beta_xi2|G+k> contribution from all atoms */
+                        o_diag(ig_loc, ispn) +=
+                            std::real(beta_gk_tmp(ig_loc, xi) * std::conj(beta_gk_t(ig_loc, offs + xi)));
+                    }
+                }
+            }
+            PROFILE_STOP("sirius::Hamiltonian_k::get_h_o_diag|3");
         }
     }
     if (H0_.ctx().processing_unit() == device_t::GPU) {
