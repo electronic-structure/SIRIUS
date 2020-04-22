@@ -5,7 +5,7 @@
 [![GitHub Releases](https://img.shields.io/github/release/electronic-structure/sirius.svg)](https://github.com/electronic-structure/SIRIUS/releases)
 [![Documentation](https://img.shields.io/badge/docs-doxygen-blue.svg)](https://electronic-structure.github.io/SIRIUS-doc)
 [![Licence](https://img.shields.io/badge/license-BSD-blue.svg)](https://raw.githubusercontent.com/electronic-structure/SIRIUS/master/LICENSE)
-[![Build Status](https://travis-ci.org/electronic-structure/SIRIUS.svg?branch=develop)](https://travis-ci.org/electronic-structure/SIRIUS)
+[![Build](https://github.com/electronic-structure/SIRIUS/workflows/Build/badge.svg?branch=master)](https://github.com/electronic-structure/SIRIUS/actions)
 
 ## Table of contents
 * [Introduction](#introduction)
@@ -504,9 +504,10 @@ Have you got any questions, feel free to contact us:
 The development of SIRIUS library would not be possible without support of the following organizations:
 | Logo | Name | URL |
 |:----:|:----:|:---:|
-|![ethz](doc/images/logo_ethz.png) | Swiss Federal Institute of Technology in Zürich | https://www.ethz.ch/      |
-|![cscs](doc/images/logo_cscs.png) | Swiss National Supercomputing Centre            | https://www.cscs.ch/      |
-|![pasc](doc/images/logo_pasc.png) | Platform for Advanced Scientific Computing      | https://www.pasc-ch.org/  |
-|![pasc](doc/images/logo_max.png)  | MAX (MAterials design at the eXascale) <br> European Centre of Excellence | http://www.max-centre.eu/   |
-|![pasc](doc/images/logo_prace.png) | Partnership for Advanced Computing in Europe | https://prace-ri.eu/  |
+|![ethz](doc/images/logo_ethz.png)   | Swiss Federal Institute of Technology in Zürich | https://www.ethz.ch/      |
+|![cscs](doc/images/logo_cscs.png)   | Swiss National Supercomputing Centre            | https://www.cscs.ch/      |
+|![pasc](doc/images/logo_pasc.png)   | Platform for Advanced Scientific Computing      | https://www.pasc-ch.org/  |
+|![pasc](doc/images/logo_marvel.png) | NCCR MARVEL <br> Centre on Computational Design and Discovery of Novel Materials | https://nccr-marvel.ch/ |
+|![pasc](doc/images/logo_max.png)    | MAX (MAterials design at the eXascale) <br> European Centre of Excellence | http://www.max-centre.eu/   |
+|![pasc](doc/images/logo_prace.png)  | Partnership for Advanced Computing in Europe | https://prace-ri.eu/  |
 
