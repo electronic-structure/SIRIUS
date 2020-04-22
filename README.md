@@ -504,9 +504,10 @@ Have you got any questions, feel free to contact us:
 The development of SIRIUS library would not be possible without support of the following organizations:
 | Logo | Name | URL |
 |:----:|:----:|:---:|
-|![ethz](doc/images/logo_ethz.png) | Swiss Federal Institute of Technology in Zürich | https://www.ethz.ch/      |
-|![cscs](doc/images/logo_cscs.png) | Swiss National Supercomputing Centre            | https://www.cscs.ch/      |
-|![pasc](doc/images/logo_pasc.png) | Platform for Advanced Scientific Computing      | https://www.pasc-ch.org/  |
-|![pasc](doc/images/logo_max.png)  | MAX (MAterials design at the eXascale) <br> European Centre of Excellence | http://www.max-centre.eu/   |
-|![pasc](doc/images/logo_prace.png) | Partnership for Advanced Computing in Europe | https://prace-ri.eu/  |
+|![ethz](doc/images/logo_ethz.png)   | Swiss Federal Institute of Technology in Zürich | https://www.ethz.ch/      |
+|![cscs](doc/images/logo_cscs.png)   | Swiss National Supercomputing Centre            | https://www.cscs.ch/      |
+|![pasc](doc/images/logo_pasc.png)   | Platform for Advanced Scientific Computing      | https://www.pasc-ch.org/  |
+|![pasc](doc/images/logo_marvel.png) | NCCR MARVEL <br> Centre on Computational Design and Discovery of Novel Materials | https://nccr-marvel.ch/ |
+|![pasc](doc/images/logo_max.png)    | MAX (MAterials design at the eXascale) <br> European Centre of Excellence | http://www.max-centre.eu/   |
+|![pasc](doc/images/logo_prace.png)  | Partnership for Advanced Computing in Europe | https://prace-ri.eu/  |
 
