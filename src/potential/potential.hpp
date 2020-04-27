@@ -486,6 +486,13 @@ class Potential : public Field4D
                 }
             }
         }
+
+        // VDWXC depends on unit cell, which might have changed.
+        for (auto& xc : xc_func_) {
+            if (xc.is_vdw()) {
+                xc.vdw_update_unit_cell(ctx_.spfft(), ctx_.unit_cell().lattice_vectors());
+            }
+        }
     }
 
     /// Solve Poisson equation for a single atom.
