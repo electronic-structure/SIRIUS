@@ -1242,7 +1242,8 @@ void Simulation_context::generate_phase_factors(int iat__, mdarray<double_comple
 
 void Simulation_context::print_memory_usage(const char *file__, int line__)
 {
-    if (comm().rank() == 0 && control().print_memory_usage_ && control().verbosity_ >= 1) {
+    auto pmu = utils::get_env<int>("SIRIUS_PRINT_MEMORY_USAGE");
+    if (comm().rank() == 0 && ((control().print_memory_usage_ && control().verbosity_ >= 1) || (pmu && *pmu))) {
         sirius::print_memory_usage(file__, line__);
 
         std::vector<std::string> labels = {"host"};

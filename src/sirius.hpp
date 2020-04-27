@@ -178,9 +178,20 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 
 /** \mainpage Welcome to SIRIUS
 
-SIRIUS is a domain-specific library for electronic structure calculations. It supports full-potential linearized
-augmented plane wave (FP-LAPW) and pseudopotential plane wave (PP-PW) methods with ultrasoft, norm-conserving and PAW
-flavors of pseudopotential and is designed to work with codes such as Exciting, Elk and Quantum ESPRESSO.
+  SIRIUS is a domain specific library for electronic structure calculations. It implements pseudopotential plane
+  wave (PP-PW) and full potential linearized augmented plane wave (FP-LAPW) methods and is designed for
+  GPU acceleration of popular community codes such as Exciting, Elk and Quantum ESPRESSO.
+  SIRIUS is written in C++11 with MPI, OpenMP and CUDA/ROCm programming models. SIRIUS is organised as a
+  collection of classes that abstract away the different building blocks of DFT self-consistency cycle.
+
+  For a quick start please refer to the main development page at
+  <a href="https://github.com/electronic-structure/SIRIUS">GitHub</a>.
+
+  The generated Fortran API is described here: generated.f90
+
+  The frequent variable names are listed on the page \ref stdvarname.
+
+  We use the following \ref coding.
 
 */
 
