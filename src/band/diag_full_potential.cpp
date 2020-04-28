@@ -40,12 +40,13 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
 
     auto& kp = Hk__.kp();
 
-    auto mem_type = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    auto& solver = ctx_.gen_evp_solver();
+
     int  ngklo    = kp.gklo_basis_size();
     int  bs       = ctx_.cyclic_block_size();
 
-    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
+    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, solver.host_memory_t());
+    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, solver.host_memory_t());
 
     if (ctx_.gen_evp_solver_type() == ev_solver_t::cusolver || ctx_.processing_unit() == device_t::GPU) {
         h.allocate(ctx_.mem_pool(memory_t::device));
@@ -91,13 +92,9 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
 
     std::vector<double> eval(ctx_.num_fv_states());
 
-    PROFILE_START("sirius::Band::diag_fv_exact|genevp");
-    auto& solver = ctx_.gen_evp_solver();
-
     if (solver.solve(kp.gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp.fv_eigen_vectors())) {
         TERMINATE("error in generalized eigen-value problem");
     }
-    PROFILE_STOP("sirius::Band::diag_fv_exact|genevp");
     kp.set_fv_eigen_values(&eval[0]);
 
     for (int i = 0; i < ctx_.num_fv_states(); i++) {
