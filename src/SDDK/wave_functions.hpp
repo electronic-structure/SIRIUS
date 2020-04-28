@@ -306,6 +306,22 @@ class Wave_functions
         return offset_mt_coeffs_[ialoc__];
     }
 
+    inline memory_t preferred_memory_t() const
+    {
+        return preferred_memory_t_;
+    }
+
+    inline double_complex checksum(device_t pu__, int ispn__, int i0__, int n__) const
+    {
+        return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
+    }
+
+    inline void zero(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
+    {
+        zero_pw(pu__, ispn__, i0__, n__);
+        zero_mt(pu__, ispn__, i0__, n__);
+    }
+
     /// Copy values from another wave-function.
     /** \param [in] pu   Type of processging unit which copies data.
      *  \param [in] n    Number of wave-functions to copy.
@@ -327,38 +343,24 @@ class Wave_functions
     /// Checksum of muffin-tin coefficients.
     double_complex checksum_mt(device_t pu__, int ispn__, int i0__, int n__) const;
 
-    inline double_complex checksum(device_t pu__, int ispn__, int i0__, int n__) const
-    {
-        return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
-    }
-
     void zero_pw(device_t pu__, int ispn__, int i0__, int n__);
 
     void zero_mt(device_t pu__, int ispn__, int i0__, int n__);
 
-    inline void zero(device_t pu__, int ispn__, int i0__, int n__) // TODO: pass memory_t
-    {
-        zero_pw(pu__, ispn__, i0__, n__);
-        zero_mt(pu__, ispn__, i0__, n__);
-    }
-
     void scale(memory_t mem__, int ispn__, int i0__, int n__, double beta__);
 
-    mdarray<double, 1> l2norm(device_t pu__, spin_range spins__, int n__) const;
+    sddk::mdarray<double, 1> l2norm(device_t pu__, spin_range spins__, int n__) const;
 
     /// Normalize the functions.
     void normalize(device_t pu__, spin_range spins__, int n__);
 
     void allocate(spin_range spins__, memory_t mem__);
 
+    void allocate(spin_range spins__, memory_pool& mp__);
+
     void deallocate(spin_range spins__, memory_t mem__);
 
     void copy_to(spin_range spins__, memory_t mem__, int i0__, int n__);
-
-    inline memory_t preferred_memory_t() const
-    {
-        return preferred_memory_t_;
-    }
 
     void print_checksum(device_t pu__, std::string label__, int N__, int n__) const;
 };
