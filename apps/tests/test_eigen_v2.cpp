@@ -12,18 +12,18 @@ double test_diag(BLACS_grid const& blacs_grid__,
                std::string name__,
                Eigensolver& solver)
 {
-    dmatrix<T> A = random_symmetric<T>(N__, bs__, blacs_grid__);
-    dmatrix<T> A_ref(N__, N__, blacs_grid__, bs__, bs__);
-    A >> A_ref;
+    auto A_ref = random_symmetric<T>(N__, bs__, blacs_grid__);
+    dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
+    A_ref >> A;
 
-    dmatrix<T> Z(N__, N__, blacs_grid__, bs__, bs__);
+    dmatrix<T> Z(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
 
     dmatrix<T> B;
     dmatrix<T> B_ref;
     if (test_gen__) {
-        B = random_positive_definite<T>(N__, bs__, blacs_grid__);
-        B_ref = dmatrix<T>(N__, N__, blacs_grid__, bs__, bs__);
-        B >> B_ref;
+        B_ref = random_positive_definite<T>(N__, bs__, blacs_grid__);
+        B = dmatrix<T>(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
+        B_ref >> B;
     }
 
     std::vector<double> eval(nev__);

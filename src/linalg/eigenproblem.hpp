@@ -178,15 +178,22 @@ class Eigensolver
         return -1;
     }
 
-    virtual bool is_parallel() = 0;
+    virtual bool is_parallel() const = 0;
+
+    virtual memory_t host_memory_t() const = 0;
 };
 
 class Eigensolver_lapack : public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    inline bool is_parallel() const
     {
         return false;
+    }
+
+    inline memory_t host_memory_t() const
+    {
+        return memory_t::host;
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
@@ -512,9 +519,14 @@ class Eigensolver_elpa : public Eigensolver
         }
     }
 
-    inline bool is_parallel()
+    inline bool is_parallel() const
     {
         return true;
+    }
+
+    inline memory_t host_memory_t() const
+    {
+        return memory_t::host;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
@@ -687,9 +699,14 @@ class Eigensolver_elpa : public Eigensolver
     {
     }
 
-    inline bool is_parallel()
+    inline bool is_parallel() const
     {
         return true;
+    }
+
+    inline memory_t host_memory_t() const
+    {
+        return memory_t::host;
     }
 };
 #endif
@@ -702,9 +719,14 @@ class Eigensolver_scalapack : public Eigensolver
     double const abstol_{1e-12};
 
   public:
-    inline bool is_parallel()
+    inline bool is_parallel() const
     {
         return true;
+    }
+
+    inline memory_t host_memory_t() const
+    {
+        return memory_t::host;
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
@@ -1134,9 +1156,14 @@ class Eigensolver_scalapack : public Eigensolver
 class Eigensolver_scalapack : public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    inline bool is_parallel() const
     {
         return true;
+    }
+
+    inline memory_t host_memory_t() const
+    {
+        return memory_t::host;
     }
 };
 #endif
@@ -1146,9 +1173,14 @@ class Eigensolver_magma: public Eigensolver
 {
   public:
 
-    inline bool is_parallel()
+    inline bool is_parallel() const
     {
         return false;
+    }
+
+    inline memory_t host_memory_t() const
+    {
+        return memory_t::host_pinned;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
@@ -1337,9 +1369,14 @@ class Eigensolver_magma_gpu: public Eigensolver
 {
   public:
 
-    inline bool is_parallel()
+    inline bool is_parallel() const
     {
         return false;
+    }
+
+    inline memory_t host_memory_t() const
+    {
+        return memory_t::none;
     }
 
     ///// Solve a generalized eigen-value problem for N lowest eigen-pairs.
@@ -1536,17 +1573,27 @@ class Eigensolver_magma_gpu: public Eigensolver
 class Eigensolver_magma: public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    inline bool is_parallel() const
     {
         return false;
+    }
+
+    inline memory_t host_memory_t() const
+    {
+        return memory_t::none;
     }
 };
 class Eigensolver_magma_gpu: public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    inline bool is_parallel() const
     {
         return false;
+    }
+
+    inline memory_t host_memory_t() const
+    {
+        return memory_t::none;
     }
 };
 #endif
@@ -1555,9 +1602,14 @@ class Eigensolver_magma_gpu: public Eigensolver
 class Eigensolver_cuda: public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    inline bool is_parallel() const
     {
         return false;
+    }
+
+    inline memory_t host_memory_t() const
+    {
+        return memory_t::host;
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, double* eval__,
@@ -1719,9 +1771,14 @@ class Eigensolver_cuda: public Eigensolver
 class Eigensolver_cuda: public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    inline bool is_parallel() const
     {
         return false;
+    }
+
+    inline memory_t host_memory_t() const
+    {
+        return memory_t::none;
     }
 };
 #endif
