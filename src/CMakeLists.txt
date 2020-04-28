@@ -6,7 +6,7 @@ if(CREATE_FORTRAN_BINDINGS)
   set(_FSOURCES "api/sirius_api.cpp;api/sirius.f90")
 endif()
 
-if(USE_CUDA)
+if(USE_CUDA OR USE_ROCM)
   file(GLOB_RECURSE CUFILES "gpu/*.cu")
   set(_CUSOURCES "${CUFILES}")
 endif()
@@ -71,27 +71,18 @@ set(_SOURSES
   "mixer/mixer_functions.cpp"
   )
 
-if(USE_ROCM)
-  add_library(sirius_rocm_interface STATIC ./gpu/rocfft_interface.cpp)
-  set_target_properties(sirius_rocm_interface PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  # don't install as it is STATIC and not meant to be used by external projects
-  target_link_libraries(sirius_rocm_interface PUBLIC OpenMP::OpenMP_CXX)
-
-  # use include directories and definitions of sirius_rocm_interface (using custom targets not possible with generators)
-  set(DEFINITIONS_PROP "$<TARGET_PROPERTY:sirius_rocm_interface,COMPILE_DEFINITIONS>")
-  set(DEFINITIONS_GENERATOR "$<$<BOOL:${DEFINITIONS_PROP}>:-D$<JOIN:${DEFINITIONS_PROP}, -D>>")
-  set(INCLUDE_DIR_PROP "$<TARGET_PROPERTY:sirius_rocm_interface,INCLUDE_DIRECTORIES>")
-  set(INCLUDE_DIR_GENERATOR "$<$<BOOL:${INCLUDE_DIR_PROP}>:-I$<JOIN:${INCLUDE_DIR_PROP}, -I>>")
-
-  # create gpu library compiled with hip
-  file(GLOB_RECURSE HIPFILES_KERNELS "gpu/*.cu")
-  file(GLOB_RECURSE HIPFILES_SDDK "SDDK/*.cu")
-  rocm_hip_add_library(sirius_rocm SHARED ${HIPFILES_SDDK} ${HIPFILES_KERNELS}
-    FLAGS ${DEFINITIONS_GENERATOR} ${INCLUDE_DIR_GENERATOR} "-Wno-macro-redefined" OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
-endif()
 
 # create library with .cpp, .cu and .f90 sources
-add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
+
+if(USE_ROCM)
+  set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} -fno-gpu-rdc) # required for linking with compiler other than hcc
+  # macro from FindHIP package, which compiles all .cu files with hcc and cpp files with the set c++ compiler
+  HIP_ADD_LIBRARY(sirius SHARED "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
+else()
+  add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
+endif()
+
+
 target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     SpFFT::spfft
                                     GSL::gsl
@@ -106,9 +97,9 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     $<TARGET_NAME_IF_EXISTS:sirius::cudalibs>
                                     $<TARGET_NAME_IF_EXISTS:sirius_rocm>
                                     $<TARGET_NAME_IF_EXISTS:sirius_rocm_interface>
-                                    $<TARGET_NAME_IF_EXISTS:hipblas_port>
-                                    $<$<BOOL:${USE_ROCM}>:${ROCM_LIBRARIES}>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
+                                    $<$<BOOL:${USE_ROCM}>:ROCBLAS::rocblas>
+                                    $<$<BOOL:${USE_ROCM}>:HIPLIBS::hiplibs>
                                     )
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
@@ -121,11 +112,13 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${DEBUG_MEMORY_POOL}>:__DEBUG_MEMORY_POOL>
   $<$<BOOL:${USE_ELPA}>:__ELPA>
   $<$<BOOL:${USE_CUDA}>:__GPU __CUDA>
+  $<$<BOOL:${USE_ROCM}>:__HIP_PLATFORM_HCC__>
   $<$<BOOL:${USE_NVTX}>:__CUDA_NVTX>
   $<$<BOOL:${USE_MAGMA}>:__MAGMA>
   $<$<BOOL:${USE_ROCM}>:__GPU __ROCM>
   $<$<BOOL:${USE_VDWXC}>:__USE_VDWXC>
   $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:__HAVE_VDWXC_MPI>
+  $<$<BOOL:${USE_MAGMA} AND ${USE_ROCM}>:HAVE_HIP> # Required for magma headers
 )
 
 set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
