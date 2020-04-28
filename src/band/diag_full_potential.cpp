@@ -57,6 +57,8 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     /* setup Hamiltonian and overlap */
     Hk__.set_fv_h_o(h, o);
 
+    ctx_.print_memory_usage(__FILE__, __LINE__);
+
     if (ctx_.control().verification_ >= 1) {
         double max_diff = check_hermitian(h, ngklo);
         if (max_diff > 1e-12) {
@@ -723,10 +725,10 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
     int bs  = ctx_.cyclic_block_size();
 
     if (ctx_.processing_unit() == device_t::GPU) {
-        kp.fv_states().allocate(spin_range(0), memory_t::device);
+        kp.fv_states().allocate(spin_range(0), ctx_.mem_pool(memory_t::device));
         kp.fv_states().copy_to(spin_range(0), memory_t::device, 0, nfv);
         for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-            hpsi[i].allocate(spin_range(0), memory_t::device);
+            hpsi[i].allocate(spin_range(0), ctx_.mem_pool(memory_t::device));
             hpsi[i].copy_to(spin_range(0), memory_t::device, 0, nfv);
         }
     }
@@ -754,7 +756,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
     if (ctx_.num_mag_dims() != 3) {
         dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == device_t::GPU) {
-            h.allocate(memory_t::device);
+            h.allocate(ctx_.mem_pool(memory_t::device));
         }
         /* perform one or two consecutive diagonalizations */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -776,7 +778,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
         int nb = ctx_.num_bands();
         dmatrix<double_complex> h(nb, nb, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == device_t::GPU) {
-            h.allocate(memory_t::device);
+            h.allocate(ctx_.mem_pool(memory_t::device));
         }
         /* compute <wf_i | h * wf_j> for up-up block */
         inner(mem, la, 0, kp.fv_states(), 0, nfv, hpsi[0], 0, nfv, h, 0, 0);
