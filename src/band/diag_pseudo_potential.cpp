@@ -464,14 +464,12 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* current subspace size */
         int N = num_bands;
 
-        PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|evp");
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
         }
-        PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|evp");
 
         ctx_.evp_work_count(1);
 

@@ -1187,6 +1187,8 @@ class Eigensolver_magma: public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
               dmatrix<double>& Z__)
     {
+        PROFILE("Eigensolver_magma|dsygvdx");
+
         int nt = omp_get_max_threads();
         int lda = A__.ld();
         int ldb = B__.ld();
@@ -1232,6 +1234,8 @@ class Eigensolver_magma: public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
               double* eval__, dmatrix<double_complex>& Z__)
     {
+        PROFILE("Eigensolver_magma|zhegvdx");
+
         int nt = omp_get_max_threads();
         int lda = A__.ld();
         int ldb = B__.ld();
