@@ -457,6 +457,7 @@ void Simulation_context::initialize()
         if (num_mag_dims() == 3) {
             nbnd *= 2;
         }
+        /* if number of bands was not set by the host code, set it here */
         if (num_bands() < 0) {
             num_bands(nbnd);
         }
@@ -497,12 +498,22 @@ void Simulation_context::initialize()
         if (evsn[i] == "") {
             /* conditions for sequential diagonalization */
             if (comm_band().size() == 1 || npc == 1 || npr == 1 || !is_scalapack) {
-                if (is_cuda) {
-                    evsn[i] = "cusolver";
-                } else if (is_magma && num_bands() > 200) {
-                    evsn[i] = "magma";
+                if (full_potential()) {
+                    if (is_cuda) {
+                        evsn[i] = "cusolver";
+                    } else if (is_magma) {
+                        evsn[i] = "magma";
+                    } else {
+                        evsn[i] = "lapack";
+                    }
                 } else {
-                    evsn[i] = "lapack";
+                    if (is_cuda) {
+                        evsn[i] = "cusolver";
+                    } else if (is_magma && num_bands() > 200) {
+                        evsn[i] = "magma";
+                    } else {
+                        evsn[i] = "lapack";
+                    }
                 }
             } else {
                 if (is_scalapack) {
