@@ -305,6 +305,8 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
     mdarray<double_complex, 3> alm_col;
     mdarray<double_complex, 3> halm_col;
 
+    H0_.ctx().print_memory_usage(__FILE__, __LINE__);
+
     h__.zero();
     o__.zero();
     switch (pu) { // TODO: replace with allocations from memory pool
@@ -312,11 +314,9 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 2, memory_t::host_pinned);
             alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned);
             halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned);
-            alm_row.allocate(memory_t::device);
-            alm_col.allocate(memory_t::device);
-            halm_col.allocate(memory_t::device);
-            //h__.allocate(memory_t::device).zero(memory_t::device);
-            //o__.allocate(memory_t::device).zero(memory_t::device);
+            alm_row.allocate(H0_.ctx().mem_pool(memory_t::device));
+            alm_col.allocate(H0_.ctx().mem_pool(memory_t::device));
+            halm_col.allocate(H0_.ctx().mem_pool(memory_t::device));
             h__.zero(memory_t::device);
             o__.zero(memory_t::device);
             break;
@@ -328,6 +328,8 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             break;
         }
     }
+
+    H0_.ctx().print_memory_usage(__FILE__, __LINE__);
 
     /* offsets for matching coefficients of individual atoms in the AW block */
     std::vector<int> offsets(uc.num_atoms());
@@ -463,16 +465,23 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
                          h__.at(mt), h__.ld());
     }
 
-    if (pu == device_t::GPU) { // TODO: if solver is cusolver, this is an additional copy, not necessary
-        acc::copyout(h__.at(memory_t::host), h__.ld(), h__.at(memory_t::device), h__.ld(), kp.num_gkvec_row(), kp.num_gkvec_col());
-        acc::copyout(o__.at(memory_t::host), o__.ld(), o__.at(memory_t::device), o__.ld(), kp.num_gkvec_row(), kp.num_gkvec_col());
-        //h__.deallocate(memory_t::device);
-        //o__.deallocate(memory_t::device);
+    // TODO: fix the logic of matrices setup
+    // problem: for magma we start on CPU, for cusoler - on GPU
+    // one solution: start from gpu for magma as well
+    // add starting pointer type in the Eigensolver() class
+
+    if (pu == device_t::GPU) {
+        acc::copyout(h__.at(memory_t::host), h__.ld(), h__.at(memory_t::device), h__.ld(), kp.num_gkvec_row(),
+            kp.num_gkvec_col());
+        acc::copyout(o__.at(memory_t::host), o__.ld(), o__.at(memory_t::device), o__.ld(), kp.num_gkvec_row(),
+            kp.num_gkvec_col());
     }
     PROFILE_STOP("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
     std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;
-    if (kp.comm().rank() == 0 && H0_.ctx().control().print_performance_) {
-        kp.message(1, __function_name__, "effective zgemm performance: %12.6f GFlops",
+    auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
+
+    if (kp.comm().rank() == 0 && (H0_.ctx().control().print_performance_ || (pp && *pp))) {
+        kp.message((pp && *pp) ? 0 : 1, __function_name__, "effective zgemm performance: %12.6f GFlops\n",
                2 * 8e-9 * kp.num_gkvec() * kp.num_gkvec() * uc.mt_aw_basis_size() / tval.count());
     }
 
@@ -481,6 +490,14 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
 
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(h__, o__);
+
+    /*  copy back to GPU */ // TODO: optimize the copys
+    if (pu == device_t::GPU) {
+        acc::copyin(h__.at(memory_t::device), h__.ld(), h__.at(memory_t::host), h__.ld(), kp.gklo_basis_size_row(),
+            kp.gklo_basis_size_col());
+        acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), kp.gklo_basis_size_row(),
+            kp.gklo_basis_size_col());
+    }
 }
 
 /* alm_row comes in already conjugated */

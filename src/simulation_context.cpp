@@ -499,13 +499,20 @@ void Simulation_context::initialize()
             /* conditions for sequential diagonalization */
             if (comm_band().size() == 1 || npc == 1 || npr == 1 || !is_scalapack) {
                 if (full_potential()) {
-                    if (is_cuda) {
-                        evsn[i] = "cusolver";
-                    } else if (is_magma) {
+                    if (is_magma) {
                         evsn[i] = "magma";
+                    } else if (is_cuda) {
+                        evsn[i] = "cusolver";
                     } else {
                         evsn[i] = "lapack";
                     }
+                    //if (is_cuda) {
+                    //    evsn[i] = "cusolver";
+                    //} else if (is_magma) {
+                    //    evsn[i] = "magma";
+                    //} else {
+                    //    evsn[i] = "lapack";
+                    //}
                 } else {
                     if (is_cuda) {
                         evsn[i] = "cusolver";

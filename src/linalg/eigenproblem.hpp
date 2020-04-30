@@ -522,7 +522,8 @@ class Eigensolver_elpa : public Eigensolver
     }
   public:
     Eigensolver_elpa(int stage__)
-        : stage_(stage__)
+        : Eigensolver(nullptr)
+        , stage_(stage__)
     {
         if (!(stage_ == 1 || stage_ == 2)) {
             TERMINATE("wrong type of ELPA solver");
@@ -1189,6 +1190,11 @@ class Eigensolver_magma: public Eigensolver
 {
   public:
 
+    Eigensolver_magma()
+        : Eigensolver(nullptr)
+    {
+    }
+
     inline bool is_parallel() const
     {
         return false;
@@ -1388,6 +1394,11 @@ class Eigensolver_magma: public Eigensolver
 class Eigensolver_magma_gpu: public Eigensolver
 {
   public:
+
+    Eigensolver_magma_gpu()
+        : Eigensolver(nullptr)
+    {
+    }
 
     inline bool is_parallel() const
     {
@@ -1632,6 +1643,11 @@ class Eigensolver_magma_gpu: public Eigensolver
 class Eigensolver_cuda: public Eigensolver
 {
   public:
+    Eigensolver_cuda(memory_pool* mpd__)
+        : Eigensolver(mpd__)
+    {
+    }
+
     inline bool is_parallel() const
     {
         return false;
@@ -1650,7 +1666,7 @@ class Eigensolver_cuda: public Eigensolver
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
 
-        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
@@ -1658,10 +1674,10 @@ class Eigensolver_cuda: public Eigensolver
                                                     reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
                                                     w.get(), &lwork));
 
-        auto work = mp_d_.get_unique_ptr<double_complex>(lwork);
+        auto work = mp_d_->get_unique_ptr<double_complex>(lwork);
 
         int info;
-        auto dinfo = mp_d_.get_unique_ptr<int>(1);
+        auto dinfo = mp_d_->get_unique_ptr<int>(1);
         CALL_CUSOLVER(cusolverDnZheevd, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
                                          reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
                                          w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, dinfo.get()));
@@ -1686,7 +1702,7 @@ class Eigensolver_cuda: public Eigensolver
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
 
-        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
@@ -1694,10 +1710,10 @@ class Eigensolver_cuda: public Eigensolver
                                                     A__.at(memory_t::device), A__.ld(),
                                                     w.get(), &lwork));
 
-        auto work = mp_d_.get_unique_ptr<double>(lwork);
+        auto work = mp_d_->get_unique_ptr<double>(lwork);
 
         int info;
-        auto dinfo = mp_d_.get_unique_ptr<int>(1);
+        auto dinfo = mp_d_->get_unique_ptr<int>(1);
         CALL_CUSOLVER(cusolverDnDsyevd, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
                                          A__.at(memory_t::device), A__.ld(),
                                          w.get(), work.get(), lwork, dinfo.get()));
@@ -1723,7 +1739,7 @@ class Eigensolver_cuda: public Eigensolver
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
 
-        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
 
@@ -1733,11 +1749,11 @@ class Eigensolver_cuda: public Eigensolver
                                                     reinterpret_cast<cuDoubleComplex*>(B__.at(memory_t::device)), B__.ld(),
                                                     w.get(), &lwork));
 
-        auto work = mp_d_.get_unique_ptr<double_complex>(lwork);
+        auto work = mp_d_->get_unique_ptr<double_complex>(lwork);
 
 
         int info;
-        auto dinfo = mp_d_.get_unique_ptr<int>(1);
+        auto dinfo = mp_d_->get_unique_ptr<int>(1);
         CALL_CUSOLVER(cusolverDnZhegvd, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
                                          reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
                                          reinterpret_cast<cuDoubleComplex*>(B__.at(memory_t::device)), B__.ld(),
@@ -1766,7 +1782,7 @@ class Eigensolver_cuda: public Eigensolver
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
 
-        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
 
@@ -1776,10 +1792,10 @@ class Eigensolver_cuda: public Eigensolver
                                                     B__.at(memory_t::device), B__.ld(),
                                                     w.get(), &lwork));
 
-        auto work = mp_d_.get_unique_ptr<double>(lwork);
+        auto work = mp_d_->get_unique_ptr<double>(lwork);
 
         int info;
-        auto dinfo = mp_d_.get_unique_ptr<int>(1);
+        auto dinfo = mp_d_->get_unique_ptr<int>(1);
         CALL_CUSOLVER(cusolverDnDsygvd, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
                                          A__.at(memory_t::device), A__.ld(),
                                          B__.at(memory_t::device), B__.ld(),

@@ -391,7 +391,8 @@ inline T* allocate(size_t size__) {
         acc_error_t error;
         error = GPU_PREFIX(Malloc)(&ptr, size__ * sizeof(T));
         if (error != GPU_PREFIX(Success)) {
-            std::printf("Device memory allocation of %li MB failed.\n", (size__ * sizeof(T)) >> 20);
+            std::printf("Device memory allocation of %li MB failed; available memory %li MB\n",
+                (size__ * sizeof(T)) >> 20, get_free_mem() >> 20);
             stack_backtrace();
         }
     }
