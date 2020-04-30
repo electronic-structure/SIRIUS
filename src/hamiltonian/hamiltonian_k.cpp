@@ -311,9 +311,9 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
     o__.zero();
     switch (pu) { // TODO: replace with allocations from memory pool
         case device_t::GPU: {
-            alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 2, memory_t::host_pinned);
-            alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned);
-            halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned);
+            alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
+            alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
+            halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
             alm_row.allocate(H0_.ctx().mem_pool(memory_t::device));
             alm_col.allocate(H0_.ctx().mem_pool(memory_t::device));
             halm_col.allocate(H0_.ctx().mem_pool(memory_t::device));
@@ -322,9 +322,9 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             break;
         }
         case device_t::CPU: {
-            alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 1);
-            alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1);
-            halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1);
+            alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
+            alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
+            halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
             break;
         }
     }
