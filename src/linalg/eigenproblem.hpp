@@ -94,24 +94,29 @@ inline ev_solver_t get_ev_solver_t(std::string name__)
     return map_to_type.at(name__);
 }
 
-const std::string error_msg_not_implemented = "solver is not implemented";
 
 class Eigensolver
 {
   protected:
+    /// Common error message.
+    const std::string error_msg_not_implemented = "solver is not implemented";
     /// Memory pool for CPU work buffers.
-    memory_pool mp_h_;
+    sddk::memory_pool mp_h_;
     /// Memory pool for CPU work buffers using pinned memory.
-    memory_pool mp_hp_;
+    sddk::memory_pool mp_hp_;
     /// Memory pool for GPU work buffers.
-    memory_pool mp_d_;
+    std::shared_ptr<sddk::memory_pool> mp_d_{nullptr};
 
   public:
-    Eigensolver()
+    Eigensolver(sddk::memory_pool* mpd__)
         : mp_h_(memory_pool(memory_t::host))
         , mp_hp_(memory_pool(memory_t::host_pinned))
-        , mp_d_(memory_pool(memory_t::device))
     {
+        if (mpd__) {
+            mp_d_ = std::shared_ptr<sddk::memory_pool>(mpd__, [](sddk::memory_pool*){});
+        } else {
+            mp_d_ = std::shared_ptr<sddk::memory_pool>(new memory_pool(memory_t::host));
+        }
     }
 
     virtual ~Eigensolver()
@@ -186,6 +191,11 @@ class Eigensolver
 class Eigensolver_lapack : public Eigensolver
 {
   public:
+    Eigensolver_lapack()
+        : Eigensolver(nullptr)
+    {
+    }
+
     inline bool is_parallel() const
     {
         return false;
@@ -696,6 +706,7 @@ class Eigensolver_elpa : public Eigensolver
 {
   public:
     Eigensolver_elpa(int stage__)
+        : Eigensolver(nullptr)
     {
     }
 
@@ -719,6 +730,11 @@ class Eigensolver_scalapack : public Eigensolver
     double const abstol_{1e-12};
 
   public:
+    Eigensolver_scalapack()
+        : Eigensolver(nullptr)
+    {
+    }
+
     inline bool is_parallel() const
     {
         return true;
@@ -1577,6 +1593,11 @@ class Eigensolver_magma_gpu: public Eigensolver
 class Eigensolver_magma: public Eigensolver
 {
   public:
+    Eigensolver_magma()
+        : Eigensolver(nullptr)
+    {
+    }
+
     inline bool is_parallel() const
     {
         return false;
@@ -1590,6 +1611,11 @@ class Eigensolver_magma: public Eigensolver
 class Eigensolver_magma_gpu: public Eigensolver
 {
   public:
+    Eigensolver_magma_gpu()
+        : Eigensolver(nullptr)
+    {
+    }
+
     inline bool is_parallel() const
     {
         return false;
@@ -1775,6 +1801,11 @@ class Eigensolver_cuda: public Eigensolver
 class Eigensolver_cuda: public Eigensolver
 {
   public:
+    Eigensolver_cuda(memory_pool* mpd__)
+        : Eigensolver(mpd__)
+    {
+    }
+
     inline bool is_parallel() const
     {
         return false;
@@ -1787,7 +1818,7 @@ class Eigensolver_cuda: public Eigensolver
 };
 #endif
 
-inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_type__)
+inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_type__, memory_pool* mpd__)
 {
     Eigensolver* ptr;
     switch (ev_solver_type__) {
@@ -1816,7 +1847,7 @@ inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_ty
             break;
         }
         case ev_solver_t::cusolver: {
-            ptr = new Eigensolver_cuda();
+            ptr = new Eigensolver_cuda(mpd__);
             break;
         }
         default: {

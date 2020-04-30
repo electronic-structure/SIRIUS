@@ -216,7 +216,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
         if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ ) {
             dmatrix<double_complex> Z(nwfu, nwfu);
 
-            auto ev_solver = Eigensolver_factory(ev_solver_t::lapack);
+            auto ev_solver = Eigensolver_factory(ev_solver_t::lapack, nullptr);
 
             std::vector<double> eigenvalues(nwfu, 0.0);
 

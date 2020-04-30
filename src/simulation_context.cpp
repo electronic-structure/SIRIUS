@@ -529,8 +529,8 @@ void Simulation_context::initialize()
     std_evp_solver_name(evsn[0]);
     gen_evp_solver_name(evsn[1]);
 
-    std_evp_solver_ = Eigensolver_factory(std_evp_solver_type());
-    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_type());
+    std_evp_solver_ = Eigensolver_factory(std_evp_solver_type(), &mem_pool(memory_t::device));
+    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_type(), &mem_pool(memory_t::device));
 
     auto& std_solver = std_evp_solver();
     auto& gen_solver = gen_evp_solver();

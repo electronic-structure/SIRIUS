@@ -193,6 +193,31 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 
   We use the following \ref coding.
 
+  The library files and directories are organised in the following way:
+    - \b apps -
+     - \b atoms - utility program to generate FP-LAPW atomic species files
+     - \b bands - band plotting
+     - \b cif_input - CIF parser
+     - \b dft_loop - DFT miniapp
+     - \b tests - tests of various functionality
+     - \b timers - scripts to analyze timer outputs
+     - \b unit_tests - unit tests
+     - \b upf - scripts to parse and convert UPF files
+     - \b utils - utilities to work with unit cell
+    - \b ci - directory with Jenkins, Travis CI and GitHub action scripts
+    - \b cmake - directory with CMake scripts
+    - \b doc - this directory contains configuration file for Doxygen documentation and PNG images
+    - \b examples - examples of input files for pseudopotential and full-potential calculations
+    - \b python_module - Python interface module
+    - \b reframe - ReFrame regression tests description
+    - \b src - main directory with the source code
+    - \b verification - verification tests
+    - .clang-format - source code formatting rules
+    - CMakeLists.txt - CMake file of the project
+    - check_format.py, check_format.x - scripts to check source code formatting
+    - clang_format.x - script to apply Clang format to a file
+    - prerequisite.py - script to install missing dependencies
+
 */
 
 /**
