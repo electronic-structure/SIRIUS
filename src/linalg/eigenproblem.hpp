@@ -1173,6 +1173,11 @@ class Eigensolver_scalapack : public Eigensolver
 class Eigensolver_scalapack : public Eigensolver
 {
   public:
+    Eigensolver_scalapack()
+        : Eigensolver(nullptr)
+    {
+    }
+
     inline bool is_parallel() const
     {
         return true;
