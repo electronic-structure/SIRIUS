@@ -45,18 +45,27 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     int  ngklo    = kp.gklo_basis_size();
     int  bs       = ctx_.cyclic_block_size();
 
-    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, solver.host_memory_t());
-    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, solver.host_memory_t());
+    sddk::dmatrix<double_complex> h(ctx_.mem_pool(solver.host_memory_t()), ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
+    sddk::dmatrix<double_complex> o(ctx_.mem_pool(solver.host_memory_t()), ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
 
     if (ctx_.gen_evp_solver_type() == ev_solver_t::cusolver || ctx_.processing_unit() == device_t::GPU) {
-        h.allocate(ctx_.mem_pool(memory_t::device));
-        o.allocate(ctx_.mem_pool(memory_t::device));
+        //h.allocate(ctx_.mem_pool(memory_t::device));
+        //o.allocate(ctx_.mem_pool(memory_t::device));
+        h.allocate(memory_t::device);
+        o.allocate(memory_t::device);
     }
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
     /* setup Hamiltonian and overlap */
     Hk__.set_fv_h_o(h, o);
+
+    if (ctx_.gen_evp_solver_type() == ev_solver_t::cusolver || ctx_.processing_unit() == device_t::GPU) {
+        //h.allocate(ctx_.mem_pool(memory_t::device));
+        //o.allocate(ctx_.mem_pool(memory_t::device));
+        h.deallocate(memory_t::device);
+        o.deallocate(memory_t::device);
+    }
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
