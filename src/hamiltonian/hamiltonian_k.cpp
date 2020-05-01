@@ -491,13 +491,13 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(h__, o__);
 
-    /*  copy back to GPU */ // TODO: optimize the copys
-    if (pu == device_t::GPU) {
-        acc::copyin(h__.at(memory_t::device), h__.ld(), h__.at(memory_t::host), h__.ld(), kp.gklo_basis_size_row(),
-            kp.gklo_basis_size_col());
-        acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), kp.gklo_basis_size_row(),
-            kp.gklo_basis_size_col());
-    }
+    ///*  copy back to GPU */ // TODO: optimize the copys
+    //if (pu == device_t::GPU) {
+    //    acc::copyin(h__.at(memory_t::device), h__.ld(), h__.at(memory_t::host), h__.ld(), kp.gklo_basis_size_row(),
+    //        kp.gklo_basis_size_col());
+    //    acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), kp.gklo_basis_size_row(),
+    //        kp.gklo_basis_size_col());
+    //}
 }
 
 /* alm_row comes in already conjugated */
