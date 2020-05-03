@@ -71,8 +71,8 @@ K_point::initialize()
      */
     int nst = ctx_.num_bands();
 
-    auto mem_type_evp  = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
-    auto mem_type_gevp = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type_evp  = ctx_.std_evp_solver().host_memory_t();
+    auto mem_type_gevp = ctx_.gen_evp_solver().host_memory_t();
 
     /* build a full list of G+k vectors for all MPI ranks */
     generate_gkvec(ctx_.gk_cutoff());
@@ -216,7 +216,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
         if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ ) {
             dmatrix<double_complex> Z(nwfu, nwfu);
 
-            auto ev_solver = Eigensolver_factory(ev_solver_t::lapack, nullptr);
+            auto ev_solver = Eigensolver_factory("lapack", nullptr);
 
             std::vector<double> eigenvalues(nwfu, 0.0);
 
