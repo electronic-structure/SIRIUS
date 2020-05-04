@@ -317,7 +317,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             la = linalg_t::cublasxt;
             mt = memory_t::host_pinned;
             mt1 = memory_t::device;
-            nb = 2;
+            nb = 1;
             break;
         }
     }
@@ -367,6 +367,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
         }
 
         int s = (pu == device_t::GPU) ? (iblk % 2) : 0;
+        s = 0;
 
         if (H0_.ctx().control().print_checksum_) {
             alm_row.zero();

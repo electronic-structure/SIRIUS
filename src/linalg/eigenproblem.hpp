@@ -628,6 +628,9 @@ class Eigensolver_elpa : public Eigensolver
         elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
         elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
         elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
+        elpa_set_integer(handle, "omp_threads", nt, &error);
+        elpa_set_integer(handle, "gpu", 1, &error);
+
         elpa_setup(handle);
         if (stage_ == 1) {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);

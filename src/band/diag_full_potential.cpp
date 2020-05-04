@@ -45,14 +45,11 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     /* total eigen-value problem size */
     int ngklo = kp.gklo_basis_size();
 
-    sddk::dmatrix<double_complex> h(ctx_.mem_pool(solver.host_memory_t()), ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
-    sddk::dmatrix<double_complex> o(ctx_.mem_pool(solver.host_memory_t()), ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
-
     /* block size of scalapack 2d block-cyclic distribution */
     int bs = ctx_.cyclic_block_size();
 
-    sddk::dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, solver.host_memory_t());
-    sddk::dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, solver.host_memory_t());
+    sddk::dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, ctx_.mem_pool(solver.host_memory_t()));
+    sddk::dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, ctx_.mem_pool(solver.host_memory_t()));
 
     /* setup Hamiltonian and overlap */
     Hk__.set_fv_h_o(h, o);
