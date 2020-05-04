@@ -69,6 +69,7 @@ set(_SOURSES
   "sht/sht.cpp"
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
+  "linalg/eigensolver.cpp"
   )
 
 if(USE_ROCM)

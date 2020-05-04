@@ -28,6 +28,7 @@
 #include "symmetry/find_lat_sym.hpp"
 #include "utils/profiler.hpp"
 #include "utils/env.hpp"
+#include "SDDK/omp.hpp"
 
 namespace sirius {
 

@@ -25,9 +25,9 @@
 #ifndef __SYMMETRIZE_HPP__
 #define __SYMMETRIZE_HPP__
 
-#include <omp.h>
 #include "unit_cell/unit_cell_symmetry.hpp"
 #include "SDDK/gvec.hpp"
+#include "SDDK/omp.hpp"
 #include "typedefs.hpp"
 #include "sht/sht.hpp"
 #include "utils/profiler.hpp"

@@ -29,6 +29,7 @@
 #include <apex_api.hpp>
 #endif
 
+#include "SDDK/omp.hpp"
 #include "utils/cmd_args.hpp"
 #include "utils/json.hpp"
 #include "utils/profiler.hpp"

@@ -19,11 +19,17 @@
 
 /** \file omp.hpp
  *
- *  \brief Substitution of OMP functions.
+ *  \brief Add or substitute OMP functions.
  */
 
 #ifndef __OMP_HPP__
 #define __OMP_HPP__
+
+#if defined(_OPENMP)
+
+#include <omp.h>
+
+#else
 
 inline int omp_get_max_threads()
 {
@@ -48,5 +54,7 @@ inline double omp_get_wtime()
 {
     return 0;
 }
+
+#endif
 
 #endif

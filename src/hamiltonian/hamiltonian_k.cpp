@@ -28,6 +28,7 @@
 #include "hamiltonian/non_local_operator.hpp"
 #include "potential/potential.hpp"
 #include "SDDK/wave_functions.hpp"
+#include "SDDK/omp.hpp"
 #include "k_point/k_point.hpp"
 #include "utils/profiler.hpp"
 #include <chrono>

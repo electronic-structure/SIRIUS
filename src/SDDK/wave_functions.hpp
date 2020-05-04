@@ -27,12 +27,10 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <omp.h>
 #include "linalg/linalg.hpp"
-#include "linalg/eigenproblem.hpp"
-#include "hdf5_tree.hpp"
+#include "sddk/hdf5_tree.hpp"
 #include "utils/env.hpp"
-#include "gvec.hpp"
+#include "sddk/gvec.hpp"
 #include "matrix_storage.hpp"
 #ifdef __GPU
 extern "C" void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, int reduced__,

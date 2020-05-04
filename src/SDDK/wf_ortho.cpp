@@ -27,6 +27,7 @@
 #include "wf_inner.hpp"
 #include "wf_trans.hpp"
 #include "utils/profiler.hpp"
+#include "linalg/eigensolver.hpp"
 
 namespace sddk {
 

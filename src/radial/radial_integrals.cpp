@@ -23,7 +23,6 @@
  */
 
 #include "radial_integrals.hpp"
-#include <omp.h>
 
 namespace sirius {
 
