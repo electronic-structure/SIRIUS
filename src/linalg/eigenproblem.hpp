@@ -57,11 +57,8 @@ enum class ev_solver_t
     /// ScaLAPACK
     scalapack,
 
-    /// ELPA 1-stage solver
-    elpa1,
-
-    /// ELPA 2-stage solver
-    elpa2,
+    /// ELPA solver
+    elpa,
 
     /// MAGMA with CPU pointers
     magma,
@@ -76,13 +73,14 @@ enum class ev_solver_t
     cusolver
 };
 
+/// Get type of an eigen solver by name (provided as a string).
 inline ev_solver_t get_ev_solver_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 
     static const std::map<std::string, ev_solver_t> map_to_type = {
-        {"lapack", ev_solver_t::lapack}, {"scalapack", ev_solver_t::scalapack}, {"elpa1", ev_solver_t::elpa1},
-        {"elpa2", ev_solver_t::elpa2},   {"magma", ev_solver_t::magma},         {"magma_gpu", ev_solver_t::magma_gpu},
+        {"lapack", ev_solver_t::lapack}, {"scalapack", ev_solver_t::scalapack}, {"elpa1", ev_solver_t::elpa},
+        {"elpa2", ev_solver_t::elpa},   {"magma", ev_solver_t::magma},         {"magma_gpu", ev_solver_t::magma_gpu},
         {"plasma", ev_solver_t::plasma}, {"cusolver", ev_solver_t::cusolver}};
 
     if (map_to_type.count(name__) == 0) {
@@ -94,10 +92,12 @@ inline ev_solver_t get_ev_solver_t(std::string name__)
     return map_to_type.at(name__);
 }
 
-
+/// Interface to different eigen-solvers.
 class Eigensolver
 {
   protected:
+    /// Type of the eigen-value solver.
+    ev_solver_t ev_solver_type_;
     /// Common error message.
     const std::string error_msg_not_implemented = "solver is not implemented";
     /// Memory pool for CPU work buffers.
@@ -106,11 +106,26 @@ class Eigensolver
     sddk::memory_pool mp_hp_;
     /// Memory pool for GPU work buffers.
     std::shared_ptr<sddk::memory_pool> mp_d_{nullptr};
+    /// True if solver is MPI parallel.
+    bool is_parallel_{false};
+    /// Type of host memory needed for the solver.
+    /** Some solvers, for example MAGMA, require host pilnned memory. */
+    memory_t host_memory_t_{memory_t::none};
+    /// Type of input data memory.
+    /** CPU solvers start from host memory, MAGMA can start from host or device memory, cuSolver starts from
+     *  devide memoryi. */
+    memory_t data_memory_t_{memory_t::none};
 
   public:
-    Eigensolver(sddk::memory_pool* mpd__)
-        : mp_h_(memory_pool(memory_t::host))
+    /// Constructor.
+    Eigensolver(ev_solver_t type__, sddk::memory_pool* mpd__, bool is_parallel__, memory_t host_memory_t__,
+                memory_t data_memory_t__)
+        : ev_solver_type_(type__)
+        , mp_h_(memory_pool(memory_t::host))
         , mp_hp_(memory_pool(memory_t::host_pinned))
+        , is_parallel_(is_parallel__)
+        , host_memory_t_(host_memory_t__)
+        , data_memory_t_(data_memory_t__)
     {
         if (mpd__) {
             mp_d_ = std::shared_ptr<sddk::memory_pool>(mpd__, [](sddk::memory_pool*){});
@@ -119,6 +134,7 @@ class Eigensolver
         }
     }
 
+    /// Destructor.
     virtual ~Eigensolver()
     {
     }
@@ -183,27 +199,37 @@ class Eigensolver
         return -1;
     }
 
-    virtual bool is_parallel() const = 0;
+    /// Parallel or sequential solver.
+    bool is_parallel() const
+    {
+        return is_parallel_;
+    }
 
-    virtual memory_t host_memory_t() const = 0;
+    /// Type of host memory, required by the solver.
+    inline memory_t host_memory_t() const
+    {
+        return host_memory_t_;
+    }
+
+    /// Type of input memory for the solver.
+    inline memory_t data_memory_t() const
+    {
+        return data_memory_t_;
+    }
+
+    /// Type of eigen-solver.
+    inline ev_solver_t type() const
+    {
+        return ev_solver_type_;
+    }
 };
 
 class Eigensolver_lapack : public Eigensolver
 {
   public:
     Eigensolver_lapack()
-        : Eigensolver(nullptr)
+        : Eigensolver(ev_solver_t::lapack, nullptr, false, memory_t::host, memory_t::host)
     {
-    }
-
-    inline bool is_parallel() const
-    {
-        return false;
-    }
-
-    inline memory_t host_memory_t() const
-    {
-        return memory_t::host;
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
@@ -522,22 +548,12 @@ class Eigensolver_elpa : public Eigensolver
     }
   public:
     Eigensolver_elpa(int stage__)
-        : Eigensolver(nullptr)
+        : Eigensolver(ev_solver_t::elpa, nullptr, true, memory_t::host, memory_t::host)
         , stage_(stage__)
     {
         if (!(stage_ == 1 || stage_ == 2)) {
             TERMINATE("wrong type of ELPA solver");
         }
-    }
-
-    inline bool is_parallel() const
-    {
-        return true;
-    }
-
-    inline memory_t host_memory_t() const
-    {
-        return memory_t::host;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
@@ -612,6 +628,9 @@ class Eigensolver_elpa : public Eigensolver
         elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
         elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
         elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
+        elpa_set_integer(handle, "omp_threads", nt, &error);
+        elpa_set_integer(handle, "gpu", 1, &error);
+
         elpa_setup(handle);
         if (stage_ == 1) {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
@@ -707,18 +726,8 @@ class Eigensolver_elpa : public Eigensolver
 {
   public:
     Eigensolver_elpa(int stage__)
-        : Eigensolver(nullptr)
+        : Eigensolver(ev_solver_t::elpa, nullptr, true, memory_t::host, memory_t::host)
     {
-    }
-
-    inline bool is_parallel() const
-    {
-        return true;
-    }
-
-    inline memory_t host_memory_t() const
-    {
-        return memory_t::host;
     }
 };
 #endif
@@ -732,18 +741,8 @@ class Eigensolver_scalapack : public Eigensolver
 
   public:
     Eigensolver_scalapack()
-        : Eigensolver(nullptr)
+        : Eigensolver(ev_solver_t::scalapack, nullptr, true, memory_t::host, memory_t::host)
     {
-    }
-
-    inline bool is_parallel() const
-    {
-        return true;
-    }
-
-    inline memory_t host_memory_t() const
-    {
-        return memory_t::host;
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
@@ -1174,18 +1173,8 @@ class Eigensolver_scalapack : public Eigensolver
 {
   public:
     Eigensolver_scalapack()
-        : Eigensolver(nullptr)
+        : Eigensolver(ev_solver_t::scalapack, nullptr, true, memory_t::host, memory_t::host)
     {
-    }
-
-    inline bool is_parallel() const
-    {
-        return true;
-    }
-
-    inline memory_t host_memory_t() const
-    {
-        return memory_t::host;
     }
 };
 #endif
@@ -1196,18 +1185,8 @@ class Eigensolver_magma: public Eigensolver
   public:
 
     Eigensolver_magma()
-        : Eigensolver(nullptr)
+        : Eigensolver(ev_solver_t::magma, nullptr, false, memory_t::host_pinned, memory_t::host)
     {
-    }
-
-    inline bool is_parallel() const
-    {
-        return false;
-    }
-
-    inline memory_t host_memory_t() const
-    {
-        return memory_t::host_pinned;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
@@ -1401,18 +1380,8 @@ class Eigensolver_magma_gpu: public Eigensolver
   public:
 
     Eigensolver_magma_gpu()
-        : Eigensolver(nullptr)
+        : Eigensolver(ev_solver_t::magma, nullptr, false, memory_t::host_pinned, memory_t::device)
     {
-    }
-
-    inline bool is_parallel() const
-    {
-        return false;
-    }
-
-    inline memory_t host_memory_t() const
-    {
-        return memory_t::none;
     }
 
     ///// Solve a generalized eigen-value problem for N lowest eigen-pairs.
@@ -1610,36 +1579,17 @@ class Eigensolver_magma: public Eigensolver
 {
   public:
     Eigensolver_magma()
-        : Eigensolver(nullptr)
+        : Eigensolver(ev_solver_t::magma, nullptr, false, memory_t::host_pinned, memory_t::host)
     {
-    }
-
-    inline bool is_parallel() const
-    {
-        return false;
-    }
-
-    inline memory_t host_memory_t() const
-    {
-        return memory_t::none;
     }
 };
+
 class Eigensolver_magma_gpu: public Eigensolver
 {
   public:
     Eigensolver_magma_gpu()
-        : Eigensolver(nullptr)
+        : Eigensolver(ev_solver_t::magma, nullptr, false, memory_t::host_pinned, memory_t::device)
     {
-    }
-
-    inline bool is_parallel() const
-    {
-        return false;
-    }
-
-    inline memory_t host_memory_t() const
-    {
-        return memory_t::none;
     }
 };
 #endif
@@ -1649,18 +1599,8 @@ class Eigensolver_cuda: public Eigensolver
 {
   public:
     Eigensolver_cuda(memory_pool* mpd__)
-        : Eigensolver(mpd__)
+        : Eigensolver(ev_solver_t::cusolver, mpd__, false, memory_t::host_pinned, memory_t::device)
     {
-    }
-
-    inline bool is_parallel() const
-    {
-        return false;
-    }
-
-    inline memory_t host_memory_t() const
-    {
-        return memory_t::host;
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, double* eval__,
@@ -1823,26 +1763,18 @@ class Eigensolver_cuda: public Eigensolver
 {
   public:
     Eigensolver_cuda(memory_pool* mpd__)
-        : Eigensolver(mpd__)
+        : Eigensolver(ev_solver_t::cusolver, mpd__, false, memory_t::host_pinned, memory_t::device)
     {
-    }
-
-    inline bool is_parallel() const
-    {
-        return false;
-    }
-
-    inline memory_t host_memory_t() const
-    {
-        return memory_t::none;
     }
 };
 #endif
 
-inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_type__, memory_pool* mpd__)
+inline std::unique_ptr<Eigensolver> Eigensolver_factory(std::string name__, memory_pool* mpd__)
 {
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+
     Eigensolver* ptr;
-    switch (ev_solver_type__) {
+    switch (get_ev_solver_t(name__)) {
         case ev_solver_t::lapack: {
             ptr = new Eigensolver_lapack();
             break;
@@ -1851,12 +1783,12 @@ inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_ty
             ptr = new Eigensolver_scalapack();
             break;
         }
-        case ev_solver_t::elpa1: {
-            ptr = new Eigensolver_elpa(1);
-            break;
-        }
-        case ev_solver_t::elpa2: {
-            ptr = new Eigensolver_elpa(2);
+        case ev_solver_t::elpa: {
+            if (name__ == "elpa1") {
+                ptr = new Eigensolver_elpa(1);
+            } else {
+                ptr = new Eigensolver_elpa(2);
+            }
             break;
         }
         case ev_solver_t::magma: {

@@ -57,6 +57,7 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t memA__
                        a.at(memA__), a.ld(), b.at(memB__), b.ld(),
                        &linalg_const<gemm_type>::zero(),
                        c.at(memC__), c.ld());
+    double t2 = t + utils::wtime();
     if (is_device_memory(memC__)) {
         c.copy_to(memory_t::host);
     }
@@ -65,6 +66,7 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t memA__
     double perf = nop_gemm * 1e-9 * M * N * K / t;
     printf("execution time (sec) : %12.6f\n", t);
     printf("performance (GFlops) : %12.6f\n", perf);
+    printf("blas time (sec)      : %12.6f\n", t2);
 
     return perf;
 }

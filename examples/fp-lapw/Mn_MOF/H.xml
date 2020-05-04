@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spdb xsi:noNamespaceSchemaLocation="../../xml/species.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <sp chemicalSymbol="H" name="hydrogen" z="-1.00000" mass="1837.362220">
+    <muffinTin rmin="0.100000E-05" radius="1.1000" rinf="19.5924" radialmeshPoints="200"/>
+    <atomicState n="1" l="0" kappa="1" occ="1.00000" core="false"/>
+    <basis>
+      <default type="lapw" trialEnergy="0.1500" searchE="false"/>
+      <custom l="0" type="apw+lo" trialEnergy="0.1500" searchE="false"/>
+    </basis>
+  </sp>
+</spdb>

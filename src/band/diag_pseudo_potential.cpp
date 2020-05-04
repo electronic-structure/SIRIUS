@@ -228,7 +228,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const
 
         std::vector<double> eo(kp.num_gkvec());
 
-        auto solver = Eigensolver_factory(ev_solver_t::scalapack, nullptr);
+        auto solver = Eigensolver_factory("scalapack", nullptr);
         solver->solve(kp.num_gkvec(), ovlp1, eo.data(), evec);
 
         for (int i = 0; i < kp.num_gkvec(); i++) {
@@ -314,11 +314,11 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
     const int bs = ctx_.cyclic_block_size();
 
-    dmatrix<T> hmlt(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> hmlt_old(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp_old(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
 
     if (is_device_memory(ctx_.aux_preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);
@@ -745,9 +745,9 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
 
     const int bs = ctx_.cyclic_block_size();
 
-    dmatrix<T> ovlp(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp_old(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
 
     if (is_device_memory(ctx_.aux_preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);

@@ -453,22 +453,22 @@ class Simulation_context : public Simulation_parameters
         return start_time_tag_;
     }
 
-    inline ev_solver_t std_evp_solver_type() const
-    {
-        return get_ev_solver_t(std_evp_solver_name());
-    }
-
-    inline ev_solver_t gen_evp_solver_type() const
-    {
-        return get_ev_solver_t(gen_evp_solver_name());
-    }
-
     inline Eigensolver& std_evp_solver()
     {
         return* std_evp_solver_;
     }
 
+    inline Eigensolver const& std_evp_solver() const
+    {
+        return* std_evp_solver_;
+    }
+
     inline Eigensolver& gen_evp_solver()
+    {
+        return* gen_evp_solver_;
+    }
+
+    inline Eigensolver const& gen_evp_solver() const
     {
         return* gen_evp_solver_;
     }

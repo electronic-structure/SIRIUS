@@ -536,8 +536,8 @@ void Simulation_context::initialize()
     std_evp_solver_name(evsn[0]);
     gen_evp_solver_name(evsn[1]);
 
-    std_evp_solver_ = Eigensolver_factory(std_evp_solver_type(), &mem_pool(memory_t::device));
-    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_type(), &mem_pool(memory_t::device));
+    std_evp_solver_ = Eigensolver_factory(std_evp_solver_name(), &mem_pool(memory_t::device));
+    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_name(), &mem_pool(memory_t::device));
 
     auto& std_solver = std_evp_solver();
     auto& gen_solver = gen_evp_solver();
@@ -690,7 +690,7 @@ void Simulation_context::print_info() const
 
     std::string evsn[] = {"standard eigen-value solver        : ", "generalized eigen-value solver     : "};
 
-    ev_solver_t evst[] = {std_evp_solver_type(), gen_evp_solver_type()};
+    ev_solver_t evst[] = {std_evp_solver().type(), gen_evp_solver().type()};
     for (int i = 0; i < 2; i++) {
         std::printf("%s", evsn[i].c_str());
         switch (evst[i]) {
@@ -705,12 +705,8 @@ void Simulation_context::print_info() const
             }
 #endif
 #if defined(__ELPA)
-            case ev_solver_t::elpa1: {
-                std::printf("ELPA1\n");
-                break;
-            }
-            case ev_solver_t::elpa2: {
-                std::printf("ELPA2\n");
+            case ev_solver_t::elpa: {
+                std::printf("ELPA\n");
                 break;
             }
 #endif

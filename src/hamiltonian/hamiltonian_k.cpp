@@ -301,35 +301,54 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
     /* current processing unit */
     auto pu = H0_.ctx().processing_unit();
 
-    mdarray<double_complex, 3> alm_row;
-    mdarray<double_complex, 3> alm_col;
-    mdarray<double_complex, 3> halm_col;
+    auto la = linalg_t::none;
+    auto mt = memory_t::none;
+    auto mt1 = memory_t::none;
+    int nb = 0;
+    switch (pu) {
+        case device_t::CPU: {
+            la = linalg_t::blas;
+            mt = memory_t::host;
+            mt1 = memory_t::host;
+            nb = 1;
+            break;
+        }
+        case device_t::GPU: {
+            la = linalg_t::cublasxt;
+            mt = memory_t::host_pinned;
+            mt1 = memory_t::device;
+            nb = 1;
+            break;
+        }
+    }
+
+    sddk::mdarray<double_complex, 3> alm_row(kp.num_gkvec_row(), max_mt_aw, nb, H0_.ctx().mem_pool(mt));
+    sddk::mdarray<double_complex, 3> alm_col(kp.num_gkvec_col(), max_mt_aw, nb, H0_.ctx().mem_pool(mt));
+    sddk::mdarray<double_complex, 3> halm_col(kp.num_gkvec_col(), max_mt_aw, nb, H0_.ctx().mem_pool(mt));
 
     H0_.ctx().print_memory_usage(__FILE__, __LINE__);
 
     h__.zero();
     o__.zero();
-    switch (pu) { // TODO: replace with allocations from memory pool
+    switch (pu) {
         case device_t::GPU: {
-            alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
-            alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
-            halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
+    //        alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
+    //        alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
+    //        halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
             alm_row.allocate(H0_.ctx().mem_pool(memory_t::device));
             alm_col.allocate(H0_.ctx().mem_pool(memory_t::device));
             halm_col.allocate(H0_.ctx().mem_pool(memory_t::device));
-            h__.zero(memory_t::device);
-            o__.zero(memory_t::device);
+    //        h__.zero(memory_t::device);
+    //        o__.zero(memory_t::device);
             break;
         }
         case device_t::CPU: {
-            alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
-            alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
-            halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
+    //        alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
+    //        alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
+    //        halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
             break;
         }
     }
-
-    H0_.ctx().print_memory_usage(__FILE__, __LINE__);
 
     /* offsets for matching coefficients of individual atoms in the AW block */
     std::vector<int> offsets(uc.num_atoms());
@@ -348,6 +367,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
         }
 
         int s = (pu == device_t::GPU) ? (iblk % 2) : 0;
+        s = 0;
 
         if (H0_.ctx().control().print_checksum_) {
             alm_row.zero();
@@ -364,9 +384,16 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
                 auto& type = atom.type();
                 int naw = type.mt_aw_basis_size();
 
-                mdarray<double_complex, 2> alm_row_atom;
-                mdarray<double_complex, 2> alm_col_atom;
-                mdarray<double_complex, 2> halm_col_atom;
+                //sddk::mdarray<double_complex, 2> alm_row_atom(alm_row.at(memory_t::host, 0, offsets[ia], s),
+                //                                              kp.num_gkvec_row(), naw);
+                //sddk::mdarray<double_complex, 2> alm_col_atom(alm_col.at(memory_t::host, 0, offsets[ia], s),
+                //                                              kp.num_gkvec_col(), naw);
+                //sddk::mdarray<double_complex, 2> halm_col_atom(halm_col.at(memory_t::host, 0, offsets[ia], s),
+                //                                               kp.num_gkvec_col(), naw);
+
+                sddk::mdarray<double_complex, 2> alm_row_atom;
+                sddk::mdarray<double_complex, 2> alm_col_atom;
+                sddk::mdarray<double_complex, 2> halm_col_atom;
 
                 switch (pu) {
                     case device_t::CPU: {
@@ -425,7 +452,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             }
             acc::sync_stream(stream_id(tid));
         }
-        acc::sync_stream(stream_id(omp_get_max_threads()));
+        //acc::sync_stream(stream_id(omp_get_max_threads()));
 
         if (H0_.ctx().control().print_checksum_) {
             double_complex z1 = alm_row.checksum();
@@ -435,32 +462,18 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             utils::print_checksum("alm_col", z2);
             utils::print_checksum("halm_col", z3);
         }
-        auto la = linalg_t::none;
-        auto mt = memory_t::none;
-        switch (pu) {
-            case device_t::CPU: {
-                la = linalg_t::blas;
-                mt = memory_t::host;
-                break;
-            }
-            case device_t::GPU: {
-                la = linalg_t::gpublas;
-                mt = memory_t::device;
-                break;
-            }
-        }
 
         linalg(la).gemm('N', 'T',kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
                          &linalg_const<double_complex>::one(),
-                         alm_row.at(mt, 0, 0, s), alm_row.ld(),
-                         alm_col.at(mt, 0, 0, s), alm_col.ld(),
+                         alm_row.at(mt1, 0, 0, s), alm_row.ld(),
+                         alm_col.at(mt1, 0, 0, s), alm_col.ld(),
                          &linalg_const<double_complex>::one(),
                          o__.at(mt), o__.ld());
 
         linalg(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
                          &linalg_const<double_complex>::one(),
-                         alm_row.at(mt, 0, 0, s), alm_row.ld(),
-                         halm_col.at(mt, 0, 0, s), halm_col.ld(),
+                         alm_row.at(mt1, 0, 0, s), alm_row.ld(),
+                         halm_col.at(mt1, 0, 0, s), halm_col.ld(),
                          &linalg_const<double_complex>::one(),
                          h__.at(mt), h__.ld());
     }
@@ -470,12 +483,12 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
     // one solution: start from gpu for magma as well
     // add starting pointer type in the Eigensolver() class
 
-    if (pu == device_t::GPU) {
-        acc::copyout(h__.at(memory_t::host), h__.ld(), h__.at(memory_t::device), h__.ld(), kp.num_gkvec_row(),
-            kp.num_gkvec_col());
-        acc::copyout(o__.at(memory_t::host), o__.ld(), o__.at(memory_t::device), o__.ld(), kp.num_gkvec_row(),
-            kp.num_gkvec_col());
-    }
+    //if (pu == device_t::GPU) {
+    //    acc::copyout(h__.at(memory_t::host), h__.ld(), h__.at(memory_t::device), h__.ld(), kp.num_gkvec_row(),
+    //        kp.num_gkvec_col());
+    //    acc::copyout(o__.at(memory_t::host), o__.ld(), o__.at(memory_t::device), o__.ld(), kp.num_gkvec_row(),
+    //        kp.num_gkvec_col());
+    //}
     PROFILE_STOP("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
     std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;
     auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");

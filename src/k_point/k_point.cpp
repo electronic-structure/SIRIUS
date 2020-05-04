@@ -71,8 +71,8 @@ K_point::initialize()
      */
     int nst = ctx_.num_bands();
 
-    auto mem_type_evp  = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
-    auto mem_type_gevp = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type_evp  = ctx_.std_evp_solver().host_memory_t();
+    auto mem_type_gevp = ctx_.gen_evp_solver().host_memory_t();
 
     /* build a full list of G+k vectors for all MPI ranks */
     generate_gkvec(ctx_.gk_cutoff());
@@ -113,8 +113,13 @@ K_point::initialize()
             }
             if (ctx_.iterative_solver_input().type_ == "exact") {
                 /* ELPA needs a full matrix of eigen-vectors as it uses it as a work space */
-                fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), gklo_basis_size(), ctx_.blacs_grid(), bs,
-                                                            bs, mem_type_gevp);
+                if (ctx_.gen_evp_solver().type() == ev_solver_t::elpa) {
+                    fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), gklo_basis_size(),
+                                                                ctx_.blacs_grid(), bs, bs, mem_type_gevp);
+                } else{
+                    fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), ctx_.num_fv_states(),
+                                                                ctx_.blacs_grid(), bs, bs, mem_type_gevp);
+                }
             } else {
                 int ncomp = ctx_.iterative_solver_input().num_singular_;
                 if (ncomp < 0) {
@@ -216,7 +221,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
         if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ ) {
             dmatrix<double_complex> Z(nwfu, nwfu);
 
-            auto ev_solver = Eigensolver_factory(ev_solver_t::lapack, nullptr);
+            auto ev_solver = Eigensolver_factory("lapack", nullptr);
 
             std::vector<double> eigenvalues(nwfu, 0.0);
 

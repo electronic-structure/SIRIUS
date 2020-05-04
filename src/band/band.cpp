@@ -263,9 +263,9 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 
     auto& gen_solver = ctx_.gen_evp_solver();
 
-    dmatrix<T> hmlt(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(mp, num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs);
+    sddk::dmatrix<T> hmlt(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mp);
+    sddk::dmatrix<T> ovlp(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mp);
+    sddk::dmatrix<T> evec(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mp);
 
     std::vector<double> eval(num_bands);
 
