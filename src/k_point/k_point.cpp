@@ -113,8 +113,13 @@ K_point::initialize()
             }
             if (ctx_.iterative_solver_input().type_ == "exact") {
                 /* ELPA needs a full matrix of eigen-vectors as it uses it as a work space */
-                fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), gklo_basis_size(), ctx_.blacs_grid(), bs,
-                                                            bs, mem_type_gevp);
+                if (ctx_.gen_evp_solver().type() == ev_solver_t::elpa) {
+                    fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), gklo_basis_size(),
+                                                                ctx_.blacs_grid(), bs, bs, mem_type_gevp);
+                } else{
+                    fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), ctx_.num_fv_states(),
+                                                                ctx_.blacs_grid(), bs, bs, mem_type_gevp);
+                }
             } else {
                 int ncomp = ctx_.iterative_solver_input().num_singular_;
                 if (ncomp < 0) {
