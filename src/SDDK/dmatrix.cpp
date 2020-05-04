@@ -30,12 +30,28 @@ template <typename T>
 dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
                     memory_t mem_type__)
     : matrix<T>(splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(),
-                                                   bs_row__)
-                    .local_size(),
+                                                   bs_row__).local_size(),
                 splindex<splindex_t::block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(),
-                                                   bs_col__)
-                    .local_size(),
-                mem_type__)
+                                                   bs_col__).local_size(), mem_type__)
+    , num_rows_(num_rows__)
+    , num_cols_(num_cols__)
+    , bs_row_(bs_row__)
+    , bs_col_(bs_col__)
+    , blacs_grid_(&blacs_grid__)
+    , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
+    , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
+{
+    init();
+}
+
+template <typename T>
+dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__,
+                    int bs_col__)
+    : matrix<T>(ptr__,
+                splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(),
+                                                   bs_row__).local_size(),
+                splindex<splindex_t::block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(),
+                                                   bs_col__).local_size())
     , num_rows_(num_rows__)
     , num_cols_(num_cols__)
     , bs_row_(bs_row__)
@@ -60,47 +76,6 @@ dmatrix<T>::dmatrix(int num_rows__, int num_cols__, memory_t mem_type__)
 }
 
 template <typename T>
-dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__,
-                    int bs_col__)
-    : matrix<T>(ptr__,
-                splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(),
-                                                   bs_row__)
-                    .local_size(),
-                splindex<splindex_t::block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(),
-                                                   bs_col__)
-                    .local_size())
-    , num_rows_(num_rows__)
-    , num_cols_(num_cols__)
-    , bs_row_(bs_row__)
-    , bs_col_(bs_col__)
-    , blacs_grid_(&blacs_grid__)
-    , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
-    , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
-{
-    init();
-}
-
-template <typename T>
-dmatrix<T>::dmatrix(memory_pool& mp__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__,
-                    int bs_col__)
-    : matrix<T>(splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(),
-                                                   bs_row__)
-                    .local_size(),
-                splindex<splindex_t::block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(),
-                                                   bs_col__)
-                    .local_size(), mp__)
-    , num_rows_(num_rows__)
-    , num_cols_(num_cols__)
-    , bs_row_(bs_row__)
-    , bs_col_(bs_col__)
-    , blacs_grid_(&blacs_grid__)
-    , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
-    , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
-{
-    init();
-}
-
-template <typename T>
 dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__)
     : matrix<T>(ptr__, num_rows__, num_cols__)
     , num_rows_(num_rows__)
@@ -109,6 +84,24 @@ dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__)
     , bs_col_(1)
     , spl_row_(num_rows_, 1, 0, bs_row_)
     , spl_col_(num_cols_, 1, 0, bs_col_)
+{
+    init();
+}
+
+template <typename T>
+dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
+                    memory_pool& mp__)
+    : matrix<T>(splindex<splindex_t::block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(),
+                                                   bs_row__).local_size(),
+                splindex<splindex_t::block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(),
+                                                   bs_col__).local_size(), mp__)
+    , num_rows_(num_rows__)
+    , num_cols_(num_cols__)
+    , bs_row_(bs_row__)
+    , bs_col_(bs_col__)
+    , blacs_grid_(&blacs_grid__)
+    , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
+    , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
 {
     init();
 }

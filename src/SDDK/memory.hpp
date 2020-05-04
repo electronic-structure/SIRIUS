@@ -907,6 +907,11 @@ class mdarray
         this->allocate(memory__);
     }
 
+    /*
+     * 1D array constructors
+     *
+     */
+
     /// 1D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
             memory_t memory__   = memory_t::host,
@@ -918,6 +923,50 @@ class mdarray
         this->init_dimensions({d0});
         this->allocate(memory__);
     }
+
+    /// 1D array with memory pool allocation.
+    mdarray(mdarray_index_descriptor const& d0, memory_pool& mp__, std::string label__ = "")
+    {
+        static_assert(N == 1, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0});
+        this->allocate(mp__);
+    }
+
+
+    /// 1D array with host pointer wrapper.
+    mdarray(T* ptr__,
+            mdarray_index_descriptor const& d0,
+            std::string label__ = "")
+    {
+        static_assert(N == 1, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0});
+        this->raw_ptr_ = ptr__;
+    }
+
+    /// 1D array with host and device pointer wrapper.
+    mdarray(T* ptr__,
+            T* ptr_device__,
+            mdarray_index_descriptor const& d0,
+            std::string label__ = "")
+    {
+        static_assert(N == 1, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0});
+        this->raw_ptr_ = ptr__;
+#ifdef __GPU
+        this->raw_ptr_device_ = ptr_device__;
+#endif
+    }
+
+    /*
+     * 2D array constructors
+     *
+     */
 
     /// 2D array with memory allocation.
     mdarray(mdarray_index_descriptor const& d0,
@@ -992,42 +1041,6 @@ class mdarray
         this->label_ = label__;
         this->init_dimensions({d0, d1, d2, d3, d4, d5});
         this->allocate(memory__);
-    }
-
-    mdarray(T* ptr__,
-            mdarray_index_descriptor const& d0,
-            std::string label__ = "")
-    {
-        static_assert(N == 1, "wrong number of dimensions");
-
-        this->label_ = label__;
-        this->init_dimensions({d0});
-        this->raw_ptr_ = ptr__;
-    }
-
-    mdarray(T* ptr__,
-            T* ptr_device__,
-            mdarray_index_descriptor const& d0,
-            std::string label__ = "")
-    {
-        static_assert(N == 1, "wrong number of dimensions");
-
-        this->label_ = label__;
-        this->init_dimensions({d0});
-        this->raw_ptr_ = ptr__;
-#ifdef __GPU
-        this->raw_ptr_device_ = ptr_device__;
-#endif
-    }
-
-    /// 1D array with memory pool allocation.
-    mdarray(mdarray_index_descriptor const& d0, memory_pool& mp__, std::string label__ = "")
-    {
-        static_assert(N == 1, "wrong number of dimensions");
-
-        this->label_ = label__;
-        this->init_dimensions({d0});
-        this->allocate(mp__);
     }
 
     /// Wrap a pointer into 2D array.

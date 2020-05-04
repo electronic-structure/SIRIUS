@@ -57,11 +57,8 @@ enum class ev_solver_t
     /// ScaLAPACK
     scalapack,
 
-    /// ELPA 1-stage solver
-    elpa1,
-
-    /// ELPA 2-stage solver
-    elpa2,
+    /// ELPA solver
+    elpa,
 
     /// MAGMA with CPU pointers
     magma,
@@ -82,8 +79,8 @@ inline ev_solver_t get_ev_solver_t(std::string name__)
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 
     static const std::map<std::string, ev_solver_t> map_to_type = {
-        {"lapack", ev_solver_t::lapack}, {"scalapack", ev_solver_t::scalapack}, {"elpa1", ev_solver_t::elpa1},
-        {"elpa2", ev_solver_t::elpa2},   {"magma", ev_solver_t::magma},         {"magma_gpu", ev_solver_t::magma_gpu},
+        {"lapack", ev_solver_t::lapack}, {"scalapack", ev_solver_t::scalapack}, {"elpa1", ev_solver_t::elpa},
+        {"elpa2", ev_solver_t::elpa},   {"magma", ev_solver_t::magma},         {"magma_gpu", ev_solver_t::magma_gpu},
         {"plasma", ev_solver_t::plasma}, {"cusolver", ev_solver_t::cusolver}};
 
     if (map_to_type.count(name__) == 0) {
@@ -551,14 +548,11 @@ class Eigensolver_elpa : public Eigensolver
     }
   public:
     Eigensolver_elpa(int stage__)
-        : Eigensolver(ev_solver_t::elpa1, nullptr, true, memory_t::host, memory_t::host)
+        : Eigensolver(ev_solver_t::elpa, nullptr, true, memory_t::host, memory_t::host)
         , stage_(stage__)
     {
         if (!(stage_ == 1 || stage_ == 2)) {
             TERMINATE("wrong type of ELPA solver");
-        }
-        if (stage_ == 2) {
-            this->ev_solver_type_ = ev_solver_t::elpa2;
         }
     }
 
@@ -729,7 +723,7 @@ class Eigensolver_elpa : public Eigensolver
 {
   public:
     Eigensolver_elpa(int stage__)
-        : Eigensolver(ev_solver_t::elpa1, nullptr, true, memory_t::host, memory_t::host)
+        : Eigensolver(ev_solver_t::elpa, nullptr, true, memory_t::host, memory_t::host)
     {
     }
 };
@@ -1774,6 +1768,8 @@ class Eigensolver_cuda: public Eigensolver
 
 inline std::unique_ptr<Eigensolver> Eigensolver_factory(std::string name__, memory_pool* mpd__)
 {
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+
     Eigensolver* ptr;
     switch (get_ev_solver_t(name__)) {
         case ev_solver_t::lapack: {
@@ -1784,12 +1780,12 @@ inline std::unique_ptr<Eigensolver> Eigensolver_factory(std::string name__, memo
             ptr = new Eigensolver_scalapack();
             break;
         }
-        case ev_solver_t::elpa1: {
-            ptr = new Eigensolver_elpa(1);
-            break;
-        }
-        case ev_solver_t::elpa2: {
-            ptr = new Eigensolver_elpa(2);
+        case ev_solver_t::elpa: {
+            if (name__ == "elpa1") {
+                ptr = new Eigensolver_elpa(1);
+            } else {
+                ptr = new Eigensolver_elpa(2);
+            }
             break;
         }
         case ev_solver_t::magma: {
