@@ -706,12 +706,8 @@ void Simulation_context::print_info() const
             }
 #endif
 #if defined(__ELPA)
-            case ev_solver_t::elpa1: {
-                std::printf("ELPA1\n");
-                break;
-            }
-            case ev_solver_t::elpa2: {
-                std::printf("ELPA2\n");
+            case ev_solver_t::elpa: {
+                std::printf("ELPA\n");
                 break;
             }
 #endif

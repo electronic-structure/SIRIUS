@@ -143,7 +143,7 @@
       <atom coord="    0.564600000000     0.708500000000     0.744600000000" bfcmt="0.0 0.0 0.0"/>
 </species>
   </structure>
-  <groundstate do="fromscratch" ngridk="2 2 2" rgkmax="4.0" gmaxvr="16" maxscl="2"  kptgroups="1">
+  <groundstate do="fromscratch" ngridk="6 6 6" rgkmax="5.8" gmaxvr="16" maxscl="2"  kptgroups="24">
     <libxc exchange="XC_LDA_X" correlation="XC_LDA_C_PZ"/>
     <sirius densityinit="true" density="true" vha="true" xc="true" eigenstates="true" sfacg="true" cfun="true"/>
     <spin/>
