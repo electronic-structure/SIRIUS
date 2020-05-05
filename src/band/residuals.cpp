@@ -52,19 +52,19 @@ compute_residuals(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_b
             }
         } else {
 #if defined(__GPU)
-            compute_residuals_gpu(hpsi__.pw_coeffs(ispn).prime().at(memory_t::device),
-                                  opsi__.pw_coeffs(ispn).prime().at(memory_t::device),
-                                  res__.pw_coeffs(ispn).prime().at(memory_t::device),
+            compute_residuals_gpu(hpsi__.pw_coeffs(ispn).prime().at(sddk::memory_t::device),
+                                  opsi__.pw_coeffs(ispn).prime().at(sddk::memory_t::device),
+                                  res__.pw_coeffs(ispn).prime().at(sddk::memory_t::device),
                                   res__.pw_coeffs(ispn).num_rows_loc(),
                                   num_bands__,
-                                  eval__.at(memory_t::device));
+                                  eval__.at(sddk::memory_t::device));
             if (res__.has_mt()) {
-                compute_residuals_gpu(hpsi__.mt_coeffs(ispn).prime().at(memory_t::device),
-                                      opsi__.mt_coeffs(ispn).prime().at(memory_t::device),
-                                      res__.mt_coeffs(ispn).prime().at(memory_t::device),
+                compute_residuals_gpu(hpsi__.mt_coeffs(ispn).prime().at(sddk::memory_t::device),
+                                      opsi__.mt_coeffs(ispn).prime().at(sddk::memory_t::device),
+                                      res__.mt_coeffs(ispn).prime().at(sddk::memory_t::device),
                                       res__.mt_coeffs(ispn).num_rows_loc(),
                                       num_bands__,
-                                      eval__.at(memory_t::device));
+                                      eval__.at(sddk::memory_t::device));
             }
 #endif
         }
@@ -97,19 +97,19 @@ apply_preconditioner(sddk::memory_t mem_type__, sddk::spin_range spins__, int nu
             }
         } else {
 #if defined(__GPU)
-            apply_preconditioner_gpu(res__.pw_coeffs(ispn).prime().at(memory_t::device),
+            apply_preconditioner_gpu(res__.pw_coeffs(ispn).prime().at(sddk::memory_t::device),
                                      res__.pw_coeffs(ispn).num_rows_loc(),
                                      num_bands__,
-                                     eval__.at(memory_t::device),
-                                     h_diag__.at(memory_t::device, 0, ispn),
-                                     o_diag__.at(memory_t::device, 0, ispn));
+                                     eval__.at(sddk::memory_t::device),
+                                     h_diag__.at(sddk::memory_t::device, 0, ispn),
+                                     o_diag__.at(sddk::memory_t::device, 0, ispn));
             if (res__.has_mt()) {
-                apply_preconditioner_gpu(res__.mt_coeffs(ispn).prime().at(memory_t::device),
+                apply_preconditioner_gpu(res__.mt_coeffs(ispn).prime().at(sddk::memory_t::device),
                                          res__.mt_coeffs(ispn).num_rows_loc(),
                                          num_bands__,
-                                         eval__.at(memory_t::device),
-                                         h_diag__.at(memory_t::device, res__.pw_coeffs(ispn).num_rows_loc(), ispn),
-                                         o_diag__.at(memory_t::device, res__.pw_coeffs(ispn).num_rows_loc(), ispn));
+                                         eval__.at(sddk::memory_t::device),
+                                         h_diag__.at(sddk::memory_t::device, res__.pw_coeffs(ispn).num_rows_loc(), ispn),
+                                         o_diag__.at(sddk::memory_t::device, res__.pw_coeffs(ispn).num_rows_loc(), ispn));
             }
 #endif
         }
@@ -162,7 +162,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
     if (std::is_same<T, double>::value && res__.comm().rank() == 0 && n != 0 && spins__() != 2) {
         if (is_device_memory(res__.preferred_memory_t())) {
 #if defined(__GPU)
-            make_real_g0_gpu(res__.pw_coeffs(spins__()).prime().at(memory_t::device), res__.pw_coeffs(spins__()).prime().ld(), n);
+            make_real_g0_gpu(res__.pw_coeffs(spins__()).prime().at(sddk::memory_t::device), res__.pw_coeffs(spins__()).prime().ld(), n);
 #endif
         } else {
             for (int i = 0; i < n; i++) {

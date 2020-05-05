@@ -27,6 +27,7 @@
 
 #include "utils/profiler.hpp"
 #include "linalg.hpp"
+#include "SDDK/omp.hpp"
 
 #if defined(__ELPA)
 #include <elpa_constants.h>
