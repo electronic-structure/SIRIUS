@@ -22,6 +22,7 @@
  *  \brief CUDA kernels to generate spherical harminics.
  */
 
+#include <cmath>
 #include "gpu/cuda_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
@@ -56,8 +57,8 @@ __global__ void spherical_harmonics_ylm_gpu_kernel(int lmax__, int ntp__, double
         }
         for (int m = 0; m <= lmax__ - 2; m++) {
             for (int l = m + 2; l <= lmax__; l++) {
-                double alm = std::sqrt(static_cast<double>((2 * l - 1) * (2 * l + 1)) / (l * l - m * m));
-                double blm = std::sqrt(static_cast<double>((l - 1 - m) * (l - 1 + m)) / ((2 * l - 3) * (2 * l - 1)));
+                double alm = sqrt(static_cast<double>((2 * l - 1) * (2 * l + 1)) / (l * l - m * m));
+                double blm = sqrt(static_cast<double>((l - 1 - m) * (l - 1 + m)) / ((2 * l - 3) * (2 * l - 1)));
                 ylm[lmidx(l, m)].x = alm * (cost * ylm[lmidx(l - 1, m)].x - blm * ylm[lmidx(l - 2, m)].x);
                 ylm[lmidx(l, m)].y = 0;
             }
@@ -111,19 +112,19 @@ __global__ void spherical_harmonics_rlm_gpu_kernel(int lmax__, int ntp__, double
         }
         for (int m = 0; m <= lmax__ - 2; m++) {
             for (int l = m + 2; l <= lmax__; l++) {
-                double alm = std::sqrt(static_cast<double>((2 * l - 1) * (2 * l + 1)) / (l * l - m * m));
-                double blm = std::sqrt(static_cast<double>((l - 1 - m) * (l - 1 + m)) / ((2 * l - 3) * (2 * l - 1)));
+                double alm = sqrt(static_cast<double>((2 * l - 1) * (2 * l + 1)) / (l * l - m * m));
+                double blm = sqrt(static_cast<double>((l - 1 - m) * (l - 1 + m)) / ((2 * l - 3) * (2 * l - 1)));
                 rlm[lmidx(l, m)] = alm * (cost * rlm[lmidx(l - 1, m)] - blm * rlm[lmidx(l - 2, m)]);
             }
         }
 
-        double c0 = std::cos(phi);
+        double c0 = cos(phi);
         double c1 = 1;
-        double s0 = -std::sin(phi);
+        double s0 = -sin(phi);
         double s1 = 0;
         double c2 = 2 * c0;
 
-        double const t = std::sqrt(2.0);
+        double const t = sqrt(2.0);
 
         for (int m = 1; m <= lmax__; m++) {
             double c = c2 * c1 - c0;

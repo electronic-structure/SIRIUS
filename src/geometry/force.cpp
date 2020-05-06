@@ -372,8 +372,14 @@ mdarray<double, 2> const& Force::calc_forces_us()
             break;
         }
         case device_t::GPU: {
+#ifdef __ROCM
+            // ROCm does not support cubblasxt functionality
+            mp = &ctx_.mem_pool(memory_t::host);
+            la = linalg_t::blas;
+#else
             mp = &ctx_.mem_pool(memory_t::host_pinned);
             la = linalg_t::cublasxt;
+#endif
             break;
         }
     }
