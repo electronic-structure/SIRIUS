@@ -24,7 +24,7 @@
 
 #include "gpu/cuda_common.hpp"
 #include "gpu/acc_runtime.hpp"
-#include "gpu/gpublas_interface.hpp"
+#include "gpu/acc_blas.hpp"
 
 __global__ void generate_phase_factors_conj_gpu_kernel
 (
@@ -86,7 +86,7 @@ extern "C" void generate_dm_pw_gpu(int num_atoms__,
     double alpha = 1;
     double beta = 0;
 
-    gpublas::dgemm('N', 'T', nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
+    accblas::dgemm('N', 'T', nbf__ * (nbf__ + 1) / 2, num_gvec_loc__ * 2, num_atoms__,
                   &alpha,
                   dm__, nbf__ * (nbf__ + 1) / 2,
                   phase_factors__, num_gvec_loc__ * 2,

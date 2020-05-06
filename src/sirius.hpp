@@ -106,10 +106,10 @@ inline void initialize(bool call_mpi_init__ = true)
            number of OMP threads */
         acc::create_streams(omp_get_max_threads() + 100);
 #if defined(__GPU)
-        gpublas::create_stream_handles();
+        accblas::create_stream_handles();
 #endif
 #if defined(__CUDA)
-        cublas::xt::create_handle();
+        accblas::xt::create_handle();
         cusolver::create_handle();
 #endif
     }
@@ -150,11 +150,11 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 
     if (acc::num_devices()) {
 #if defined(__GPU)
-        gpublas::destroy_stream_handles();
+        accblas::destroy_stream_handles();
 #endif
 #if defined(__CUDA)
         cusolver::destroy_handle();
-        cublas::xt::destroy_handle();
+        accblas::xt::destroy_handle();
 #endif
         acc::destroy_streams();
         if (reset_device__) {

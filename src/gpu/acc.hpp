@@ -214,7 +214,9 @@ inline void sync_stream(stream_id sid__)
 /// Reset device.
 inline void reset()
 {
+#ifdef __CUDA
     CALL_DEVICE_API(ProfilerStop, ());
+#endif
     CALL_DEVICE_API(DeviceReset, ());
 }
 
