@@ -34,7 +34,7 @@
 #include "gpu/cusolver.hpp"
 #endif
 #if defined(__ELPA)
-#include "linalg/elpa.h"
+#include "linalg/elpa.hpp"
 #endif
 #include "utils/cmd_args.hpp"
 #include "utils/json.hpp"

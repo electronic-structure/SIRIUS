@@ -227,6 +227,7 @@ if(BUILD_TESTS)
 endif(BUILD_TESTS)
 
 add_subdirectory(apps/atoms)
+add_subdirectory(apps/hydrogen)
 add_subdirectory(apps/dft_loop)
 add_subdirectory(apps/upf)
 add_subdirectory(apps/utils)

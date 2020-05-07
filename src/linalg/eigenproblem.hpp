@@ -30,7 +30,7 @@
 #include "SDDK/omp.hpp"
 
 #if defined(__ELPA)
-#include "elpa.h"
+#include "elpa.hpp"
 #endif
 
 #if defined(__GPU) && defined(__MAGMA)
@@ -507,6 +507,12 @@ class Eigensolver_elpa : public Eigensolver
         elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
         elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
         elpa_setup(handle);
+        elpa_set_integer(handle, "omp_threads", nt, &error);
+        if (error != ELPA_OK) {
+            TERMINATE("can't set elpa threads");
+        }
+        elpa_set_integer(handle, "gpu", 1, &error);
+
         if (stage_ == 1) {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
         } else {
@@ -516,8 +522,8 @@ class Eigensolver_elpa : public Eigensolver
 
         auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
 
-        elpa_eigenvectors_dc(handle, reinterpret_cast<double*>(A__.at(memory_t::host)), w.get(),
-                             reinterpret_cast<double*>(Z__.at(memory_t::host)), &error);
+        using CT = double _Complex;
+        elpa_eigenvectors_dc(handle, (CT*)A__.at(memory_t::host), w.get(), (CT*)Z__.at(memory_t::host), &error);
 
         elpa_deallocate(handle, &error);
 
