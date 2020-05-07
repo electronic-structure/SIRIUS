@@ -206,16 +206,16 @@ void call_test(std::vector<int> mpi_grid__,
 int main(int argn, char** argv)
 {
     cmd_args args(argn, argv, {
-        {"--mpi_grid_dims=", "{int int} dimensions of MPI grid"},
-        {"--N=", "{int} total size of the matrix"},
-        {"--n=", "{int} size of the sub-matrix to diagonalize"},
-        {"--nev=", "{int} number of eigen-vectors"},
-        {"--bs=", "{int} block size"},
-        {"--repeat=", "{int} number of repeats"},
-        {"--gen", "test generalized problem"},
-        {"--name=", "{string} name of the solver"},
-        {"--file=", "{string} input file name"},
-        {"--type=", "{int} data type: 0-real, 1-complex"}
+        {"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+        {"N=", "{int} total size of the matrix"},
+        {"n=", "{int} size of the sub-matrix to diagonalize"},
+        {"nev=", "{int} number of eigen-vectors"},
+        {"bs=", "{int} block size"},
+        {"repeat=", "{int} number of repeats"},
+        {"gen", "test generalized problem"},
+        {"name=", "{string} name of the solver"},
+        {"file=", "{string} input file name"},
+        {"type=", "{int} data type: 0-real, 1-complex"}
     });
 
     if (args.exist("help")) {
