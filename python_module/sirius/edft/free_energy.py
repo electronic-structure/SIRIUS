@@ -29,37 +29,6 @@ def s(x):
         return _s(x)
 
 
-class OldFreeEnergy:
-    def __init__(self, H, energy, T):
-        """
-
-        """
-        self.H = H
-        self.energy = energy
-        self.kw = energy.kpointset.w
-        self.T = T
-        self.kb = (physical_constants['Boltzmann constant in eV/K'][0] /
-                   physical_constants['Hartree energy in eV'][0])
-
-    def entropy(self, fn):
-        ns = 2 if self.energy.kpointset.ctx().num_mag_dims() == 0 else 1
-        S = s(np.sqrt(fn/ns))
-        return self.kb * self.T * np.real(np.sum(self.kw*S))
-
-    def __call__(self, X, fn):
-        """
-        Keyword Arguments:
-        X --
-        f --
-        """
-
-        self.energy.kpointset.fn = fn
-        ns = 2 if self.energy.kpointset.ctx().num_mag_dims() == 0 else 1
-        entropy = s(np.sqrt(fn/ns))
-        E, HX = self.energy.compute(X)
-        return E + self.kb * self.T * np.real(np.sum(self.kw*entropy)), HX
-
-
 class FreeEnergy:
     """
     copied from Baarman implementation

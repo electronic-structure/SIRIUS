@@ -548,9 +548,10 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
             if (!kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col().global_index_size()) {
                 continue;
             }
-
-            for (int i = 0; i < kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col().local_size(); i++) {
+            int ncols =kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col().local_size();
+            for (int ii = 0; ii < ncols; ii++) {
                 /* global index of the band */
+                int i = ncols-1-ii;
                 int j    = kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col()[i];
                 double w = kp__->band_occupancy(j, ispn) * kp__->weight() / omega;
 
@@ -1247,7 +1248,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         }
     }
 
-    // TODO: the GPU memory consumption here is huge, rewrite this; split gloc in blocks and 
+    // TODO: the GPU memory consumption here is huge, rewrite this; split gloc in blocks and
     //       overlap transfer of Q(G) for two consequtive blocks within one atom type
 
     if (ctx_.augmentation_op(0)) {

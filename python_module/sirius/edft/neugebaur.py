@@ -1,5 +1,4 @@
-"""
-Freysoldt, C., Boeck, S., & Neugebauer, J., Direct minimization technique
+"""Freysoldt, C., Boeck, S., & Neugebauer, J., Direct minimization technique
 for metals in density functional theory.
 http://dx.doi.org/10.1103/PhysRevB.79.241103
 """
@@ -249,10 +248,8 @@ class CG:
         self.M = free_energy
         self._save = False
 
-
     def step(self, X, f, eta, G_X, G_eta, xi_trial, F0, slope, kwargs):
         """
-
         Keyword Arguments:
         X         --
         f         -- occupation numbers (just for debugging, not needed)
@@ -382,7 +379,6 @@ class CG:
         is_converged -- bool
         """
 
-        use_g_eta=False
         if cgtype == 'PR':
             cg_update = polak_ribiere
         elif cgtype == 'FR':
@@ -401,10 +397,10 @@ class CG:
         kw = kset.w
         m = kset.ctx().max_occupancy()
         # set occupation numbers from band energies
-        fn, _ = self.M.smearing.fn(kset.e)
+        fn = kset.fn
         # ek = self.M.smearing.ek(fn)
 
-        eta = diag(kset.e)
+        eta = diag(self.M.smearing.ek(fn))
         w, U = eta.eigh()
         ek = w
         X = X@U

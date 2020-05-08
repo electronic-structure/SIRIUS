@@ -1046,7 +1046,7 @@ void Potential::xc(Density const& density__)
 {
     PROFILE("sirius::Potential::xc");
 
-    if (ctx_.xc_functionals().size() == 0) {
+    if (xc_func_.size() == 0) {
         xc_potential_->zero();
         xc_energy_density_->zero();
         for (int i = 0; i < ctx_.num_mag_dims(); i++) {

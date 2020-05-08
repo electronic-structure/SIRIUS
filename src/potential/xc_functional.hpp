@@ -39,7 +39,7 @@
 namespace sirius {
 
 /// Interface class to Libxc.
-    class XC_functional : public XC_functional_base
+class XC_functional : public XC_functional_base
 {
     private:
         // I can not use a generic void pointer because xc_func_type is a structure
@@ -55,12 +55,12 @@ namespace sirius {
         XC_functional& operator=(const XC_functional& src) = delete;
 
     public:
-    /* we need the context because libvdwxc asks for lattice vectors and fft parameters */
 
-    XC_functional(spfft::Transform const& fft__, const matrix3d<double>& lattice_vectors__,
-                  const std::string libxc_name__, int num_spins__)
-        :  XC_functional_base(libxc_name__, num_spins__)
-        {
+      /* we need the context because libvdwxc asks for lattice vectors and fft parameters */
+      XC_functional(spfft::Transform const& fft__, const matrix3d<double>& lattice_vectors__,
+                    const std::string libxc_name__, int num_spins__)
+          : XC_functional_base(libxc_name__, num_spins__)
+    {
 
 #if defined(__USE_VDWXC)
             /* return immediately if the functional_base class is initialized */
@@ -200,6 +200,21 @@ namespace sirius {
             return false;
 #endif
         }
+
+    void vdw_update_unit_cell(spfft::Transform const& fft__, const matrix3d<double>& lattice_vectors__)
+    {
+        #ifdef __USE_VDWXC
+        if(is_vdw()) {
+            double v1[3] = {lattice_vectors__(0, 0), lattice_vectors__(1, 0), lattice_vectors__(2, 0)};
+            double v2[3] = {lattice_vectors__(0, 1), lattice_vectors__(1, 1), lattice_vectors__(2, 1)};
+            double v3[3] = {lattice_vectors__(0, 2), lattice_vectors__(1, 2), lattice_vectors__(2, 2)};
+
+            vdwxc_set_unit_cell(handler_vdw_, fft__.dim_x(), fft__.dim_y(), fft__.dim_z(), v1[0], v1[1], v1[2], v2[0],
+                                v2[1], v2[2], v3[0], v3[1], v3[2]);
+        }
+        #endif
+    }
+
         int kind() const
         {
 
