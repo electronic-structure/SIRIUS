@@ -28,6 +28,10 @@
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
 #include "error_codes.hpp"
+#ifdef __NLCGLIB
+#include "nlcglib/adaptor.hpp"
+#include "nlcglib/nlcglib.hpp"
+#endif
 
 static inline void sirius_exit(int error_code__, std::string msg__ = "")
 {
@@ -516,6 +520,19 @@ void sirius_add_xc_functional(void* const* handler__,
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     sim_ctx.add_xc_functional(std::string(name__));
+}
+
+/* @fortran begin function void sirius_insert_xc_functional         Add one of the XC functionals.
+   @fortran argument in required void* gs_handler                Handler of the ground state
+   @fortran argument in required string name                     LibXC label of the functional.
+   @fortran end */
+void
+sirius_insert_xc_functional(void* const* gs_handler__,
+                            char const* name__)
+{
+    auto& gs = get_gs(gs_handler__);
+    auto& potential = gs.potential();
+    potential.insert_xc_functionals({name__});
 }
 
 /* @fortran begin function void sirius_set_mpi_grid_dims      Set dimensions of the MPI grid.
@@ -1344,6 +1361,23 @@ void sirius_set_band_occupancies(void*  const* ks_handler__,
     }
 }
 
+/* @fortran begin function void sirius_get_band_occupancies   Set band occupancies.
+   @fortran argument in  required void*   ks_handler          K-point set handler.
+   @fortran argument in  required int     ik                  Global index of k-point.
+   @fortran argument in  required int     ispn                Spin component.
+   @fortran argument out  required double  band_occupancies    Array of band occupancies.
+   @fortran end */
+void
+sirius_get_band_occupancies(void* const* ks_handler__, int const* ik__, int const* ispn__,
+                            double* band_occupancies__)
+{
+    auto& ks = get_ks(ks_handler__);
+    int ik   = *ik__ - 1;
+    for (int i = 0; i < ks.ctx().num_bands(); i++) {
+        band_occupancies__[i] = ks[ik]->band_occupancy(i, *ispn__);
+    }
+}
+
 /* @fortran begin function void sirius_get_band_energies         Get band energies.
    @fortran argument in  required void*   ks_handler             K-point set handler.
    @fortran argument in  required int     ik                     Global index of k-point.
@@ -1359,24 +1393,6 @@ void sirius_get_band_energies(void*  const* ks_handler__,
     int ik = *ik__ - 1;
     for (int i = 0; i < ks.ctx().num_bands(); i++) {
         band_energies__[i] = ks[ik]->band_energy(i, *ispn__);
-    }
-}
-
-/* @fortran begin function void sirius_get_band_occupancies      Get band occupancies.
-   @fortran argument in  required void*   ks_handler             K-point set handler.
-   @fortran argument in  required int     ik                     Global index of k-point.
-   @fortran argument in  required int     ispn                   Spin component.
-   @fortran argument out required double  band_occupancies       Array of band occupancies.
-   @fortran end */
-void sirius_get_band_occupancies(void*  const* ks_handler__,
-                                 int    const* ik__,
-                                 int    const* ispn__,
-                                 double*       band_occupancies__)
-{
-    auto& ks = get_ks(ks_handler__);
-    int ik = *ik__ - 1;
-    for (int i = 0; i < ks.ctx().num_bands(); i++) {
-        band_occupancies__[i] = ks[ik]->band_occupancy(i, *ispn__);
     }
 }
 
@@ -3594,6 +3610,54 @@ void sirius_set_callback_function(void* const* handler__, char const* label__, v
             throw std::runtime_error("wrong label of callback function");
         }
     }, error_code__);
+}
+
+/* @fortran begin function void sirius_nlcg                       Robust wave function optimizer
+   @fortran argument in  required void*    handler                Ground state handler
+   @fortran argument in  required void*    ks_handler             point set handler
+   @fortran end */
+
+void sirius_nlcg(void* const* handler__,
+                 void* const* ks_handler__)
+{
+#ifdef __NLCGLIB
+    // call nlcg solver
+    auto& gs = get_gs(handler__);
+    auto& potential = gs.potential();
+    auto& density = gs.density();
+
+    auto& kset = get_ks(ks_handler__);
+    auto& ctx = kset.ctx();
+
+    auto nlcg_params  = ctx.nlcg_input();
+    double temp       = nlcg_params.T_;
+    double tol        = nlcg_params.tol_;
+    double kappa      = nlcg_params.kappa_;
+    double tau        = nlcg_params.tau_;
+    int maxiter       = nlcg_params.maxiter_;
+    int restart       = nlcg_params.restart_;
+    std::string smear = nlcg_params.smearing_;
+
+    nlcglib::smearing_type smearing;
+    if (smear.compare("FD") == 0) {
+        smearing = nlcglib::smearing_type::FERMI_DIRAC;
+    } else if (smear.compare("GS") == 0) {
+        smearing = nlcglib::smearing_type::FERMI_DIRAC;
+    } else {
+        throw std::runtime_error("invalid smearing type given");
+    }
+
+    sirius::Energy energy(kset, density, potential);
+    if (is_device_memory(ctx.preferred_memory_t())) {
+        std::cout << "CUDA NLCG" << "\n";
+        nlcglib::nlcg_mvp2_cuda(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+    } else {
+        std::cout << "CPU NLCG" << "\n";
+        nlcglib::nlcg_mvp2(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+    }
+#else
+    throw std::runtime_error("SIRIUS was not compiled with NLCG option.");
+#endif
 }
 
 } // extern "C"

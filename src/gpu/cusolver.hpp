@@ -62,21 +62,9 @@ inline void error_message(cusolverStatus_t status)
     }                                                                               \
 }
 
-inline cusolverDnHandle_t& cusolver_handle()
-{
-    static cusolverDnHandle_t handle;
-    return handle;
-}
-
-inline void create_handle()
-{
-    CALL_CUSOLVER(cusolverDnCreate, (&cusolver_handle()));
-}
-
-inline void destroy_handle()
-{
-    CALL_CUSOLVER(cusolverDnDestroy, (cusolver_handle()));
-}
+cusolverDnHandle_t& cusolver_handle();
+void create_handle();
+void destroy_handle();
 
 } // namespace cusolver
 

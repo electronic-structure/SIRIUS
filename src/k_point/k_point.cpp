@@ -152,16 +152,16 @@ K_point::initialize()
                                    [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, ctx_.num_fv_states(),
                                    ctx_.preferred_memory_t()));
 
-            spinor_wave_functions_ = std::unique_ptr<Wave_functions>(
-                new Wave_functions(gkvec_partition(), unit_cell_.num_atoms(),
-                                   [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, nst,
-                                   ctx_.preferred_memory_t(), ctx_.num_spins()));
+            spinor_wave_functions_ = std::make_shared<Wave_functions>(
+                gkvec_partition(), unit_cell_.num_atoms(),
+                [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, nst, ctx_.preferred_memory_t(),
+                ctx_.num_spins());
         } else {
             throw std::runtime_error("not implemented");
         }
     } else {
-        spinor_wave_functions_ = std::unique_ptr<Wave_functions>(
-            new Wave_functions(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins()));
+        spinor_wave_functions_ =
+            std::make_shared<Wave_functions>(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins());
         if (ctx_.hubbard_correction()) {
             auto r = unit_cell_.num_wf_with_U();
             const int num_sc = ctx_.num_mag_dims() == 3 ? 2 : 1;
