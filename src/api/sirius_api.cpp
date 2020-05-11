@@ -3642,7 +3642,7 @@ void sirius_nlcg(void* const* handler__,
     if (smear.compare("FD") == 0) {
         smearing = nlcglib::smearing_type::FERMI_DIRAC;
     } else if (smear.compare("GS") == 0) {
-        smearing = nlcglib::smearing_type::FERMI_DIRAC;
+        smearing = nlcglib::smearing_type::GAUSSIAN_SPLINE;
     } else {
         throw std::runtime_error("invalid smearing type given");
     }
