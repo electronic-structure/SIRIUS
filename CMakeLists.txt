@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(SIRIUS VERSION 6.5.3)
+project(SIRIUS VERSION 6.5.4)
 
 # set language and standard
 enable_language(CXX Fortran)
@@ -232,6 +232,7 @@ if(BUILD_TESTS)
 endif(BUILD_TESTS)
 
 add_subdirectory(apps/atoms)
+add_subdirectory(apps/hydrogen)
 add_subdirectory(apps/dft_loop)
 if(USE_NLCGLIB)
 add_subdirectory(apps/nlcg)

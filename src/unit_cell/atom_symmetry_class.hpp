@@ -26,7 +26,7 @@
 #define __ATOM_SYMMETRY_CLASS_HPP__
 
 #include "atom_type.hpp"
-#include "linalg/eigenproblem.hpp"
+#include "linalg/eigensolver.hpp"
 
 namespace sirius {
 
@@ -569,12 +569,12 @@ inline std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double
     mdarray<double, 2> ovlp(num_lo_descriptors(), num_lo_descriptors());
     loprod >> ovlp;
 
-    Eigensolver_lapack stdevp;
+    auto stdevp = Eigensolver_factory("lapack", nullptr);
 
     std::vector<double> loprod_eval(num_lo_descriptors());
     dmatrix<double>     loprod_evec(num_lo_descriptors(), num_lo_descriptors());
 
-    stdevp.solve(num_lo_descriptors(), loprod, &loprod_eval[0], loprod_evec);
+    stdevp->solve(num_lo_descriptors(), loprod, &loprod_eval[0], loprod_evec);
 
     if (std::abs(loprod_eval[0]) < tol__) {
         std::printf("\n");
@@ -616,7 +616,7 @@ inline std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double
             }
         }
 
-        stdevp.solve(static_cast<int>(ilo.size()), tmp, &eval[0], evec);
+        stdevp->solve(static_cast<int>(ilo.size()), tmp, &eval[0], evec);
 
         if (eval[0] < tol__) {
             std::printf("local orbital %i can be removed\n", i);

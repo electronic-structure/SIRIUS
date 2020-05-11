@@ -40,22 +40,28 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
 
     auto& kp = Hk__.kp();
 
-    auto mem_type = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
-    int  ngklo    = kp.gklo_basis_size();
-    int  bs       = ctx_.cyclic_block_size();
+    auto& solver = ctx_.gen_evp_solver();
 
-    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
+    /* total eigen-value problem size */
+    int ngklo = kp.gklo_basis_size();
 
-    if (ctx_.gen_evp_solver_type() == ev_solver_t::cusolver || ctx_.processing_unit() == device_t::GPU) {
-        h.allocate(ctx_.mem_pool(memory_t::device));
-        o.allocate(ctx_.mem_pool(memory_t::device));
-    }
+    /* block size of scalapack 2d block-cyclic distribution */
+    int bs = ctx_.cyclic_block_size();
 
-    ctx_.print_memory_usage(__FILE__, __LINE__);
+    sddk::dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, ctx_.mem_pool(solver.host_memory_t()));
+    sddk::dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, ctx_.mem_pool(solver.host_memory_t()));
 
     /* setup Hamiltonian and overlap */
     Hk__.set_fv_h_o(h, o);
+
+    //if (ctx_.gen_evp_solver_type() == ev_solver_t::cusolver || ctx_.processing_unit() == device_t::GPU) {
+    //    //h.allocate(ctx_.mem_pool(memory_t::device));
+    //    //o.allocate(ctx_.mem_pool(memory_t::device));
+    //    h.deallocate(memory_t::device);
+    //    o.deallocate(memory_t::device);
+    //}
+
+    ctx_.print_memory_usage(__FILE__, __LINE__);
 
     if (ctx_.control().verification_ >= 1) {
         double max_diff = check_hermitian(h, ngklo);
@@ -89,13 +95,9 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
 
     std::vector<double> eval(ctx_.num_fv_states());
 
-    PROFILE_START("sirius::Band::diag_fv_exact|genevp");
-    auto& solver = ctx_.gen_evp_solver();
-
     if (solver.solve(kp.gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp.fv_eigen_vectors())) {
         TERMINATE("error in generalized eigen-value problem");
     }
-    PROFILE_STOP("sirius::Band::diag_fv_exact|genevp");
     kp.set_fv_eigen_values(&eval[0]);
 
     for (int i = 0; i < ctx_.num_fv_states(); i++) {
@@ -723,10 +725,10 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
     int bs  = ctx_.cyclic_block_size();
 
     if (ctx_.processing_unit() == device_t::GPU) {
-        kp.fv_states().allocate(spin_range(0), memory_t::device);
+        kp.fv_states().allocate(spin_range(0), ctx_.mem_pool(memory_t::device));
         kp.fv_states().copy_to(spin_range(0), memory_t::device, 0, nfv);
         for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-            hpsi[i].allocate(spin_range(0), memory_t::device);
+            hpsi[i].allocate(spin_range(0), ctx_.mem_pool(memory_t::device));
             hpsi[i].copy_to(spin_range(0), memory_t::device, 0, nfv);
         }
     }
@@ -754,7 +756,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
     if (ctx_.num_mag_dims() != 3) {
         dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == device_t::GPU) {
-            h.allocate(memory_t::device);
+            h.allocate(ctx_.mem_pool(memory_t::device));
         }
         /* perform one or two consecutive diagonalizations */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -776,7 +778,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
         int nb = ctx_.num_bands();
         dmatrix<double_complex> h(nb, nb, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == device_t::GPU) {
-            h.allocate(memory_t::device);
+            h.allocate(ctx_.mem_pool(memory_t::device));
         }
         /* compute <wf_i | h * wf_j> for up-up block */
         inner(mem, la, 0, kp.fv_states(), 0, nfv, hpsi[0], 0, nfv, h, 0, 0);

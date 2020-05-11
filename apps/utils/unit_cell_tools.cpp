@@ -219,6 +219,42 @@ void create_qe_input(cmd_args const& args__)
     fclose(fout);
 }
 
+void create_exciting_input(cmd_args const& args__)
+{
+    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), Communicator::self());
+
+    FILE* fout = fopen("input.xml", "w");
+
+    fprintf(fout, "<input>\n");
+    fprintf(fout, "  <title> converted from SIRIUS json input </title>\n");
+    fprintf(fout, "  <structure speciespath=\"./\" autormt=\"false\">\n");
+    fprintf(fout, "    <crystal scale=\"1\">\n");
+    for (int i = 0; i < 3; i++) {
+        auto v = ctx.unit_cell().lattice_vector(i);
+        fprintf(fout, "      <basevect> %18.12f %18.12f %18.12f </basevect>\n", v[0], v[1], v[2]);
+    }
+    fprintf(fout, "    </crystal>\n");
+    for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++) {
+        fprintf(fout, "    <species speciesfile=\"%s.xml\" rmt=\"2.0\">\n", ctx.unit_cell().atom_type(iat).label().c_str());
+        for (int ia = 0; ia < ctx.unit_cell().atom_type(iat).num_atoms(); ia++) {
+            int id = ctx.unit_cell().atom_type(iat).atom_id(ia);
+            auto v = ctx.unit_cell().atom(id).position();
+            fprintf(fout, "      <atom coord=\"%18.12f %18.12f %18.12f\" bfcmt=\"0.0 0.0 0.0\"/>\n", v[0], v[1], v[2]);
+        }
+        fprintf(fout, "</species>\n");
+    }
+
+    fprintf(fout, "  </structure>\n");
+    fprintf(fout, "  <groundstate do=\"fromscratch\" ngridk=\"2 2 2\" rgkmax=\"4.0\" gmaxvr=\"16\" maxscl=\"2\"  kptgroups=\"1\">\n");
+    fprintf(fout, "    <libxc exchange=\"XC_LDA_X\" correlation=\"XC_LDA_C_PZ\"/>\n");
+    fprintf(fout, "    <sirius densityinit=\"true\" density=\"true\" vha=\"true\" xc=\"true\" eigenstates=\"true\" sfacg=\"true\" cfun=\"true\"/>\n");
+    fprintf(fout, "    <spin/>\n");
+    fprintf(fout, "  </groundstate>\n");
+
+    fprintf(fout, "</input>\n");
+    fclose(fout);
+}
+
 void convert_to_mol(cmd_args& args__)
 {
     Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), Communicator::self());
@@ -274,6 +310,7 @@ int main(int argn, char** argv)
     args.register_key("--input=", "{string} input file name");
     args.register_key("--supercell=", "{string} transformation matrix (9 numbers)");
     args.register_key("--qe", "create input for QE");
+    args.register_key("--xml", "create Exciting XML input");
     args.register_key("--find_primitive", "find a primitive cell");
     args.register_key("--cif", "create CIF file");
     args.register_key("--mol", "convert to molecule input file");
@@ -295,6 +332,9 @@ int main(int argn, char** argv)
     }
     if (args.exist("qe")) {
         create_qe_input(args);
+    }
+    if (args.exist("xml")) {
+        create_exciting_input(args);
     }
     if (args.exist("cif")) {
         Simulation_context ctx(args.value<std::string>("input", "sirius.json"), Communicator::self());

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2019 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,40 +17,52 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file env.hpp
+/** \file eigensolver.cpp
  *
- *  \brief Get the environment variables
+ *  \brief Contains implementation of eigensolver factory.
  */
 
-#ifndef __ENV_HPP__
-#define __ENV_HPP__
+#include "eigensolver.hpp"
+#include "eigenproblem.hpp"
 
-#include <cstdlib>
-#include <string>
-#include <algorithm>
-#include <map>
-#include <sstream>
-
-namespace utils {
-
-/// Check for environment variable and return a pointer to a stored value if found or a null-pointer if not.
-template <typename T>
-inline T const* get_env(std::string const& name__)
+std::unique_ptr<Eigensolver> Eigensolver_factory(std::string name__, memory_pool* mpd__)
 {
-    static std::map<std::string, T*> map_name;
-    if (map_name.count(name__) == 0) {
-        /* first time the function is called */
-        const char* raw_str = std::getenv(name__.c_str());
-        if (raw_str == NULL) {
-            map_name[name__] = nullptr;
-        } else {
-            map_name[name__] = new T;
-            std::istringstream(std::string(raw_str)) >> (*map_name[name__]);
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+
+    Eigensolver* ptr;
+    switch (get_ev_solver_t(name__)) {
+        case ev_solver_t::lapack: {
+            ptr = new Eigensolver_lapack();
+            break;
+        }
+        case ev_solver_t::scalapack: {
+            ptr = new Eigensolver_scalapack();
+            break;
+        }
+        case ev_solver_t::elpa: {
+            if (name__ == "elpa1") {
+                ptr = new Eigensolver_elpa(1);
+            } else {
+                ptr = new Eigensolver_elpa(2);
+            }
+            break;
+        }
+        case ev_solver_t::magma: {
+            ptr = new Eigensolver_magma();
+            break;
+        }
+        case ev_solver_t::magma_gpu: {
+            ptr = new Eigensolver_magma_gpu();
+            break;
+        }
+        case ev_solver_t::cusolver: {
+            ptr = new Eigensolver_cuda(mpd__);
+            break;
+        }
+        default: {
+            TERMINATE("not implemented");
         }
     }
-    return map_name[name__];
+    return std::unique_ptr<Eigensolver>(ptr);
 }
 
-} // namespace utils
-
-#endif

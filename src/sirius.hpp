@@ -29,6 +29,13 @@
 #include <apex_api.hpp>
 #endif
 
+#include "SDDK/omp.hpp"
+#if defined(__GPU) && defined(__CUDA)
+#include "gpu/cusolver.hpp"
+#endif
+#if defined(__ELPA)
+#include "linalg/elpa.hpp"
+#endif
 #include "utils/cmd_args.hpp"
 #include "utils/json.hpp"
 #include "utils/profiler.hpp"
@@ -178,9 +185,45 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 
 /** \mainpage Welcome to SIRIUS
 
-SIRIUS is a domain-specific library for electronic structure calculations. It supports full-potential linearized
-augmented plane wave (FP-LAPW) and pseudopotential plane wave (PP-PW) methods with ultrasoft, norm-conserving and PAW
-flavors of pseudopotential and is designed to work with codes such as Exciting, Elk and Quantum ESPRESSO.
+  SIRIUS is a domain specific library for electronic structure calculations. It implements pseudopotential plane
+  wave (PP-PW) and full potential linearized augmented plane wave (FP-LAPW) methods and is designed for
+  GPU acceleration of popular community codes such as Exciting, Elk and Quantum ESPRESSO.
+  SIRIUS is written in C++11 with MPI, OpenMP and CUDA/ROCm programming models. SIRIUS is organised as a
+  collection of classes that abstract away the different building blocks of DFT self-consistency cycle.
+
+  For a quick start please refer to the main development page at
+  <a href="https://github.com/electronic-structure/SIRIUS">GitHub</a>.
+
+  The generated Fortran API is described here: generated.f90
+
+  The frequent variable names are listed on the page \ref stdvarname.
+
+  We use the following \ref coding.
+
+  The library files and directories are organised in the following way:
+    - \b apps -
+     - \b atoms - utility program to generate FP-LAPW atomic species files
+     - \b bands - band plotting
+     - \b cif_input - CIF parser
+     - \b dft_loop - DFT miniapp
+     - \b tests - tests of various functionality
+     - \b timers - scripts to analyze timer outputs
+     - \b unit_tests - unit tests
+     - \b upf - scripts to parse and convert UPF files
+     - \b utils - utilities to work with unit cell
+    - \b ci - directory with Jenkins, Travis CI and GitHub action scripts
+    - \b cmake - directory with CMake scripts
+    - \b doc - this directory contains configuration file for Doxygen documentation and PNG images
+    - \b examples - examples of input files for pseudopotential and full-potential calculations
+    - \b python_module - Python interface module
+    - \b reframe - ReFrame regression tests description
+    - \b src - main directory with the source code
+    - \b verification - verification tests
+    - .clang-format - source code formatting rules
+    - CMakeLists.txt - CMake file of the project
+    - check_format.py, check_format.x - scripts to check source code formatting
+    - clang_format.x - script to apply Clang format to a file
+    - prerequisite.py - script to install missing dependencies
 
 */
 

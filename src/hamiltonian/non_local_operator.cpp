@@ -22,6 +22,7 @@
  *  \brief Contains implementation of sirius::Non_local_operator class.
  */
 
+#include "SDDK/omp.hpp"
 #include "non_local_operator.hpp"
 #include "beta_projectors/beta_projectors.hpp"
 

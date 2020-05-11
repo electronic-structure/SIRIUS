@@ -28,6 +28,7 @@
 #include "symmetry/find_lat_sym.hpp"
 #include "utils/profiler.hpp"
 #include "utils/env.hpp"
+#include "SDDK/omp.hpp"
 
 namespace sirius {
 
@@ -457,6 +458,7 @@ void Simulation_context::initialize()
         if (num_mag_dims() == 3) {
             nbnd *= 2;
         }
+        /* if number of bands was not set by the host code, set it here */
         if (num_bands() < 0) {
             num_bands(nbnd);
         }
@@ -497,12 +499,29 @@ void Simulation_context::initialize()
         if (evsn[i] == "") {
             /* conditions for sequential diagonalization */
             if (comm_band().size() == 1 || npc == 1 || npr == 1 || !is_scalapack) {
-                if (is_cuda) {
-                    evsn[i] = "cusolver";
-                } else if (is_magma && num_bands() > 200) {
-                    evsn[i] = "magma";
+                if (full_potential()) {
+                    if (is_magma) {
+                        evsn[i] = "magma";
+                    } else if (is_cuda) {
+                        evsn[i] = "cusolver";
+                    } else {
+                        evsn[i] = "lapack";
+                    }
+                    //if (is_cuda) {
+                    //    evsn[i] = "cusolver";
+                    //} else if (is_magma) {
+                    //    evsn[i] = "magma";
+                    //} else {
+                    //    evsn[i] = "lapack";
+                    //}
                 } else {
-                    evsn[i] = "lapack";
+                    if (is_cuda) {
+                        evsn[i] = "cusolver";
+                    } else if (is_magma && num_bands() > 200) {
+                        evsn[i] = "magma";
+                    } else {
+                        evsn[i] = "lapack";
+                    }
                 }
             } else {
                 if (is_scalapack) {
@@ -518,8 +537,8 @@ void Simulation_context::initialize()
     std_evp_solver_name(evsn[0]);
     gen_evp_solver_name(evsn[1]);
 
-    std_evp_solver_ = Eigensolver_factory(std_evp_solver_type());
-    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_type());
+    std_evp_solver_ = Eigensolver_factory(std_evp_solver_name(), &mem_pool(memory_t::device));
+    gen_evp_solver_ = Eigensolver_factory(gen_evp_solver_name(), &mem_pool(memory_t::device));
 
     auto& std_solver = std_evp_solver();
     auto& gen_solver = gen_evp_solver();
@@ -672,7 +691,7 @@ void Simulation_context::print_info() const
 
     std::string evsn[] = {"standard eigen-value solver        : ", "generalized eigen-value solver     : "};
 
-    ev_solver_t evst[] = {std_evp_solver_type(), gen_evp_solver_type()};
+    ev_solver_t evst[] = {std_evp_solver().type(), gen_evp_solver().type()};
     for (int i = 0; i < 2; i++) {
         std::printf("%s", evsn[i].c_str());
         switch (evst[i]) {
@@ -687,12 +706,8 @@ void Simulation_context::print_info() const
             }
 #endif
 #if defined(__ELPA)
-            case ev_solver_t::elpa1: {
-                std::printf("ELPA1\n");
-                break;
-            }
-            case ev_solver_t::elpa2: {
-                std::printf("ELPA2\n");
+            case ev_solver_t::elpa: {
+                std::printf("ELPA\n");
                 break;
             }
 #endif
@@ -1242,7 +1257,8 @@ void Simulation_context::generate_phase_factors(int iat__, mdarray<double_comple
 
 void Simulation_context::print_memory_usage(const char *file__, int line__)
 {
-    if (comm().rank() == 0 && control().print_memory_usage_ && control().verbosity_ >= 1) {
+    auto pmu = utils::get_env<int>("SIRIUS_PRINT_MEMORY_USAGE");
+    if (comm().rank() == 0 && ((control().print_memory_usage_ && control().verbosity_ >= 1) || (pmu && *pmu))) {
         sirius::print_memory_usage(file__, line__);
 
         std::vector<std::string> labels = {"host"};

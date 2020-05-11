@@ -387,7 +387,18 @@ inline void zero(T* ptr__, int ld__, int nrow__, int ncol__)
 template <typename T>
 inline T* allocate(size_t size__) {
     T* ptr{nullptr};
-    CALL_DEVICE_API(Malloc, (&ptr, size__ * sizeof(T)));
+#if defined(__CUDA) || defined(__ROCM)
+    //CALL_DEVICE_API(Malloc, (&ptr, size__ * sizeof(T)));
+    if (acc::num_devices()) {
+        acc_error_t error;
+        error = GPU_PREFIX(Malloc)(&ptr, size__ * sizeof(T));
+        if (error != GPU_PREFIX(Success)) {
+            std::printf("Device memory allocation of %li MB failed; available memory %li MB\n",
+                (size__ * sizeof(T)) >> 20, get_free_mem() >> 20);
+            stack_backtrace();
+        }
+    }
+#endif
     return ptr;
 }
 

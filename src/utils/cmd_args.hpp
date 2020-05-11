@@ -54,6 +54,16 @@ class cmd_args
     /// Constructor.
     cmd_args();
 
+    /// Constructor with the list of keys.
+    /** The following example shows how to initialize arguments:
+        \code{.cpp}
+         cmd_args args(argn, argv, {
+             {"device=", "(string) CPU or GPU"},
+             {"pw_cutoff=", "(double) plane-wave cutoff for density and potential"},
+             {"N=", "(int) cell multiplicity"}
+        });
+        \endcode
+     */
     cmd_args(int argn__, char** argv__, std::initializer_list<std::pair<std::string, std::string>> keys__);
 
     void register_key(std::string const key__, std::string const description__);

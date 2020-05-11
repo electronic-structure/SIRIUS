@@ -12,18 +12,18 @@ double test_diag(BLACS_grid const& blacs_grid__,
                std::string name__,
                Eigensolver& solver)
 {
-    dmatrix<T> A = random_symmetric<T>(N__, bs__, blacs_grid__);
-    dmatrix<T> A_ref(N__, N__, blacs_grid__, bs__, bs__);
-    A >> A_ref;
+    auto A_ref = random_symmetric<T>(N__, bs__, blacs_grid__);
+    dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
+    A_ref >> A;
 
-    dmatrix<T> Z(N__, N__, blacs_grid__, bs__, bs__);
+    dmatrix<T> Z(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
 
     dmatrix<T> B;
     dmatrix<T> B_ref;
     if (test_gen__) {
-        B = random_positive_definite<T>(N__, bs__, blacs_grid__);
-        B_ref = dmatrix<T>(N__, N__, blacs_grid__, bs__, bs__);
-        B >> B_ref;
+        B_ref = random_positive_definite<T>(N__, bs__, blacs_grid__);
+        B = dmatrix<T>(N__, N__, blacs_grid__, bs__, bs__, solver.host_memory_t());
+        B_ref >> B;
     }
 
     std::vector<double> eval(nev__);
@@ -125,7 +125,7 @@ void test_diag2(BLACS_grid const& blacs_grid__,
                 std::string name__,
                 std::string fname__)
 {
-    auto solver = Eigensolver_factory(get_ev_solver_t(name__));
+    auto solver = Eigensolver_factory(name__, nullptr);
 
     matrix<double_complex> full_mtrx;
     int n;
@@ -179,7 +179,7 @@ void call_test(std::vector<int> mpi_grid__,
                int repeat__,
                int type__)
 {
-    auto solver = Eigensolver_factory(get_ev_solver_t(name__));
+    auto solver = Eigensolver_factory(name__, nullptr);
     BLACS_grid blacs_grid(Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
     if (fname__.length() == 0) {
         Measurement m;
@@ -205,19 +205,19 @@ void call_test(std::vector<int> mpi_grid__,
 
 int main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--mpi_grid_dims=", "{int int} dimensions of MPI grid");
-    args.register_key("--N=", "{int} total size of the matrix");
-    args.register_key("--n=", "{int} size of the sub-matrix to diagonalize");
-    args.register_key("--nev=", "{int} number of eigen-vectors");
-    args.register_key("--bs=", "{int} block size");
-    args.register_key("--repeat=", "{int} number of repeats");
-    args.register_key("--gen", "test generalized problem");
-    args.register_key("--name=", "{string} name of the solver");
-    args.register_key("--file=", "{string} input file name");
-    args.register_key("--type=", "{int} data type: 0-real, 1-complex");
+    cmd_args args(argn, argv, {
+        {"mpi_grid_dims=", "{int int} dimensions of MPI grid"},
+        {"N=", "{int} total size of the matrix"},
+        {"n=", "{int} size of the sub-matrix to diagonalize"},
+        {"nev=", "{int} number of eigen-vectors"},
+        {"bs=", "{int} block size"},
+        {"repeat=", "{int} number of repeats"},
+        {"gen", "test generalized problem"},
+        {"name=", "{string} name of the solver"},
+        {"file=", "{string} input file name"},
+        {"type=", "{int} data type: 0-real, 1-complex"}
+    });
 
-    args.parse_args(argn, argv);
     if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();

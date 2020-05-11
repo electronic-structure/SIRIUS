@@ -28,6 +28,7 @@
 #include "hamiltonian/non_local_operator.hpp"
 #include "potential/potential.hpp"
 #include "SDDK/wave_functions.hpp"
+#include "SDDK/omp.hpp"
 #include "k_point/k_point.hpp"
 #include "utils/profiler.hpp"
 #include <chrono>
@@ -301,30 +302,51 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
     /* current processing unit */
     auto pu = H0_.ctx().processing_unit();
 
-    mdarray<double_complex, 3> alm_row;
-    mdarray<double_complex, 3> alm_col;
-    mdarray<double_complex, 3> halm_col;
+    auto la = linalg_t::none;
+    auto mt = memory_t::none;
+    auto mt1 = memory_t::none;
+    int nb = 0;
+    switch (pu) {
+        case device_t::CPU: {
+            la = linalg_t::blas;
+            mt = memory_t::host;
+            mt1 = memory_t::host;
+            nb = 1;
+            break;
+        }
+        case device_t::GPU: {
+            la = linalg_t::cublasxt;
+            mt = memory_t::host_pinned;
+            mt1 = memory_t::device;
+            nb = 1;
+            break;
+        }
+    }
+
+    sddk::mdarray<double_complex, 3> alm_row(kp.num_gkvec_row(), max_mt_aw, nb, H0_.ctx().mem_pool(mt));
+    sddk::mdarray<double_complex, 3> alm_col(kp.num_gkvec_col(), max_mt_aw, nb, H0_.ctx().mem_pool(mt));
+    sddk::mdarray<double_complex, 3> halm_col(kp.num_gkvec_col(), max_mt_aw, nb, H0_.ctx().mem_pool(mt));
+
+    H0_.ctx().print_memory_usage(__FILE__, __LINE__);
 
     h__.zero();
     o__.zero();
-    switch (pu) { // TODO: replace with allocations from memory pool
+    switch (pu) {
         case device_t::GPU: {
-            alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 2, memory_t::host_pinned);
-            alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned);
-            halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned);
-            alm_row.allocate(memory_t::device);
-            alm_col.allocate(memory_t::device);
-            halm_col.allocate(memory_t::device);
-            //h__.allocate(memory_t::device).zero(memory_t::device);
-            //o__.allocate(memory_t::device).zero(memory_t::device);
-            h__.zero(memory_t::device);
-            o__.zero(memory_t::device);
+    //        alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
+    //        alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
+    //        halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 2, H0_.ctx().mem_pool(memory_t::host_pinned));
+            alm_row.allocate(H0_.ctx().mem_pool(memory_t::device));
+            alm_col.allocate(H0_.ctx().mem_pool(memory_t::device));
+            halm_col.allocate(H0_.ctx().mem_pool(memory_t::device));
+    //        h__.zero(memory_t::device);
+    //        o__.zero(memory_t::device);
             break;
         }
         case device_t::CPU: {
-            alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 1);
-            alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1);
-            halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1);
+    //        alm_row = mdarray<double_complex, 3>(kp.num_gkvec_row(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
+    //        alm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
+    //        halm_col = mdarray<double_complex, 3>(kp.num_gkvec_col(), max_mt_aw, 1, H0_.ctx().mem_pool(memory_t::host));
             break;
         }
     }
@@ -346,6 +368,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
         }
 
         int s = (pu == device_t::GPU) ? (iblk % 2) : 0;
+        s = 0;
 
         if (H0_.ctx().control().print_checksum_) {
             alm_row.zero();
@@ -362,9 +385,16 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
                 auto& type = atom.type();
                 int naw = type.mt_aw_basis_size();
 
-                mdarray<double_complex, 2> alm_row_atom;
-                mdarray<double_complex, 2> alm_col_atom;
-                mdarray<double_complex, 2> halm_col_atom;
+                //sddk::mdarray<double_complex, 2> alm_row_atom(alm_row.at(memory_t::host, 0, offsets[ia], s),
+                //                                              kp.num_gkvec_row(), naw);
+                //sddk::mdarray<double_complex, 2> alm_col_atom(alm_col.at(memory_t::host, 0, offsets[ia], s),
+                //                                              kp.num_gkvec_col(), naw);
+                //sddk::mdarray<double_complex, 2> halm_col_atom(halm_col.at(memory_t::host, 0, offsets[ia], s),
+                //                                               kp.num_gkvec_col(), naw);
+
+                sddk::mdarray<double_complex, 2> alm_row_atom;
+                sddk::mdarray<double_complex, 2> alm_col_atom;
+                sddk::mdarray<double_complex, 2> halm_col_atom;
 
                 switch (pu) {
                     case device_t::CPU: {
@@ -423,7 +453,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             }
             acc::sync_stream(stream_id(tid));
         }
-        acc::sync_stream(stream_id(omp_get_max_threads()));
+        //acc::sync_stream(stream_id(omp_get_max_threads()));
 
         if (H0_.ctx().control().print_checksum_) {
             double_complex z1 = alm_row.checksum();
@@ -433,46 +463,39 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             utils::print_checksum("alm_col", z2);
             utils::print_checksum("halm_col", z3);
         }
-        auto la = linalg_t::none;
-        auto mt = memory_t::none;
-        switch (pu) {
-            case device_t::CPU: {
-                la = linalg_t::blas;
-                mt = memory_t::host;
-                break;
-            }
-            case device_t::GPU: {
-                la = linalg_t::gpublas;
-                mt = memory_t::device;
-                break;
-            }
-        }
 
         linalg(la).gemm('N', 'T',kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
                          &linalg_const<double_complex>::one(),
-                         alm_row.at(mt, 0, 0, s), alm_row.ld(),
-                         alm_col.at(mt, 0, 0, s), alm_col.ld(),
+                         alm_row.at(mt1, 0, 0, s), alm_row.ld(),
+                         alm_col.at(mt1, 0, 0, s), alm_col.ld(),
                          &linalg_const<double_complex>::one(),
                          o__.at(mt), o__.ld());
 
         linalg(la).gemm('N', 'T', kp.num_gkvec_row(), kp.num_gkvec_col(), num_mt_aw,
                          &linalg_const<double_complex>::one(),
-                         alm_row.at(mt, 0, 0, s), alm_row.ld(),
-                         halm_col.at(mt, 0, 0, s), halm_col.ld(),
+                         alm_row.at(mt1, 0, 0, s), alm_row.ld(),
+                         halm_col.at(mt1, 0, 0, s), halm_col.ld(),
                          &linalg_const<double_complex>::one(),
                          h__.at(mt), h__.ld());
     }
 
-    if (pu == device_t::GPU) { // TODO: if solver is cusolver, this is an additional copy, not necessary
-        acc::copyout(h__.at(memory_t::host), h__.ld(), h__.at(memory_t::device), h__.ld(), kp.num_gkvec_row(), kp.num_gkvec_col());
-        acc::copyout(o__.at(memory_t::host), o__.ld(), o__.at(memory_t::device), o__.ld(), kp.num_gkvec_row(), kp.num_gkvec_col());
-        //h__.deallocate(memory_t::device);
-        //o__.deallocate(memory_t::device);
-    }
+    // TODO: fix the logic of matrices setup
+    // problem: for magma we start on CPU, for cusoler - on GPU
+    // one solution: start from gpu for magma as well
+    // add starting pointer type in the Eigensolver() class
+
+    //if (pu == device_t::GPU) {
+    //    acc::copyout(h__.at(memory_t::host), h__.ld(), h__.at(memory_t::device), h__.ld(), kp.num_gkvec_row(),
+    //        kp.num_gkvec_col());
+    //    acc::copyout(o__.at(memory_t::host), o__.ld(), o__.at(memory_t::device), o__.ld(), kp.num_gkvec_row(),
+    //        kp.num_gkvec_col());
+    //}
     PROFILE_STOP("sirius::Hamiltonian_k::set_fv_h_o|zgemm");
     std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;
-    if (kp.comm().rank() == 0 && H0_.ctx().control().print_performance_) {
-        kp.message(1, __function_name__, "effective zgemm performance: %12.6f GFlops",
+    auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
+
+    if (kp.comm().rank() == 0 && (H0_.ctx().control().print_performance_ || (pp && *pp))) {
+        kp.message((pp && *pp) ? 0 : 1, __function_name__, "effective zgemm performance: %12.6f GFlops\n",
                2 * 8e-9 * kp.num_gkvec() * kp.num_gkvec() * uc.mt_aw_basis_size() / tval.count());
     }
 
@@ -481,6 +504,14 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
 
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(h__, o__);
+
+    ///*  copy back to GPU */ // TODO: optimize the copys
+    //if (pu == device_t::GPU) {
+    //    acc::copyin(h__.at(memory_t::device), h__.ld(), h__.at(memory_t::host), h__.ld(), kp.gklo_basis_size_row(),
+    //        kp.gklo_basis_size_col());
+    //    acc::copyin(o__.at(memory_t::device), o__.ld(), o__.at(memory_t::host), o__.ld(), kp.gklo_basis_size_row(),
+    //        kp.gklo_basis_size_col());
+    //}
 }
 
 /* alm_row comes in already conjugated */

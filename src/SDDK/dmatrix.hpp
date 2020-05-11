@@ -83,34 +83,17 @@ class dmatrix : public matrix<T>
     {
     }
 
-    dmatrix(int num_rows__,
-            int num_cols__,
-            BLACS_grid const& blacs_grid__,
-            int bs_row__,
-            int bs_col__,
+    dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
             memory_t mem_type__ = memory_t::host);
 
-    dmatrix(int num_rows__,
-            int num_cols__,
-            memory_t mem_type__ = memory_t::host);
+    dmatrix(int num_rows__, int num_cols__, memory_t mem_type__ = memory_t::host);
 
-    dmatrix(T* ptr__,
-            int num_rows__,
-            int num_cols__,
-            BLACS_grid const& blacs_grid__,
-            int bs_row__,
-            int bs_col__);
+    dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__);
 
-    dmatrix(memory_pool& mp__,
-            int num_rows__,
-            int num_cols__,
-            BLACS_grid const& blacs_grid__,
-            int bs_row__,
-            int bs_col__);
+    dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
+            memory_pool& mp__);
 
-    dmatrix(T* ptr__,
-            int num_rows__,
-            int num_cols__);
+    dmatrix(T* ptr__, int num_rows__, int num_cols__);
 
     dmatrix(dmatrix<T>&& src) = default;
 

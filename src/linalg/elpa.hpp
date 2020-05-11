@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2020 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,40 +17,37 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file env.hpp
+#ifndef __ELPA_HPP__
+#define __ELPA_HPP__
+
+/** \file elpa.hpp
  *
- *  \brief Get the environment variables
+ *  \brief Interface to ELPA library.
  */
 
-#ifndef __ENV_HPP__
-#define __ENV_HPP__
+extern "C" {
 
-#include <cstdlib>
-#include <string>
-#include <algorithm>
-#include <map>
-#include <sstream>
+struct elpa_struct;
+typedef struct elpa_struct* elpa_t;
 
-namespace utils {
+struct elpa_autotune_struct;
+typedef struct elpa_autotune_struct* elpa_autotune_t;
 
-/// Check for environment variable and return a pointer to a stored value if found or a null-pointer if not.
-template <typename T>
-inline T const* get_env(std::string const& name__)
-{
-    static std::map<std::string, T*> map_name;
-    if (map_name.count(name__) == 0) {
-        /* first time the function is called */
-        const char* raw_str = std::getenv(name__.c_str());
-        if (raw_str == NULL) {
-            map_name[name__] = nullptr;
-        } else {
-            map_name[name__] = new T;
-            std::istringstream(std::string(raw_str)) >> (*map_name[name__]);
-        }
-    }
-    return map_name[name__];
+#include <elpa/elpa_constants.h>
+#define complex _Complex
+#include <elpa/elpa_generated.h>
+#undef complex
+
 }
 
-} // namespace utils
+
+//using elpa_t = void*;
+//using elpa_autotune_t = void*;
+//
+//extern "C" {
+//#define complex
+//#include <elpa/elpa_generated.h>
+//#undef complex
+//}
 
 #endif
