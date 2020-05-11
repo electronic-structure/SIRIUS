@@ -629,7 +629,7 @@ struct NLCG_input
     int restart_{20};
     /// backtracking search, step parameter
     double tau_{0.1};
-    /// temperature in Kelving
+    /// temperature in Kelvin
     double T_{300};
     /// scalar preconditioning of pseudo Hamiltonian
     double kappa_{0.3};
@@ -637,18 +637,21 @@ struct NLCG_input
     double tol_{1e-9};
     /// smearing
     std::string smearing_{"FD"};
+    /// Main processing unit to run on.
+    std::string processing_unit_{""};
 
     void read(json const& parser)
     {
         if (parser.count("nlcg")) {
-            auto section = parser["nlcg"];
-            maxiter_     = section.value("maxiter", maxiter_);
-            restart_     = section.value("restart", restart_);
-            tau_         = section.value("tau", tau_);
-            T_           = section.value("T", T_);
-            kappa_       = section.value("kappa", kappa_);
-            tol_         = section.value("tol", tol_);
-            smearing_    = section.value("smearing", smearing_);
+            auto section     = parser["nlcg"];
+            maxiter_         = section.value("maxiter", maxiter_);
+            restart_         = section.value("restart", restart_);
+            tau_             = section.value("tau", tau_);
+            T_               = section.value("T", T_);
+            kappa_           = section.value("kappa", kappa_);
+            tol_             = section.value("tol", tol_);
+            smearing_        = section.value("smearing", smearing_);
+            processing_unit_ = section.value("processing_unit", processing_unit_);
         }
     }
 };
