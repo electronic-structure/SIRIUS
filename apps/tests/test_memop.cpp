@@ -4,7 +4,9 @@ using namespace sirius;
 
 inline void memcpy_simple_1(char* dest__, char* src__, size_t n__)
 {
-    for (size_t i = 0; i < n__; i++) dest__[i] = src__[i];
+    for (size_t i = 0; i < n__; i++) {
+        dest__[i] = src__[i];
+    }
 }
 
 int main(int argn, char** argv)
@@ -12,8 +14,7 @@ int main(int argn, char** argv)
     cmd_args args;
 
     args.parse_args(argn, argv);
-    if (args.exist("help"))
-    {
+    if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         exit(0);

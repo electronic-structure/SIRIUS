@@ -206,6 +206,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
      - \b bands - band plotting
      - \b cif_input - CIF parser
      - \b dft_loop - DFT miniapp
+     - \b hydrogen - solve hydrogen-like atom using Schrödinger equation
      - \b tests - tests of various functionality
      - \b timers - scripts to analyze timer outputs
      - \b unit_tests - unit tests

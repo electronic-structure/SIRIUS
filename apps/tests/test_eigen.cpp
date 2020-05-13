@@ -1,4 +1,5 @@
-#include "test.hpp"
+#include "sirius.hpp"
+#include "testing.hpp"
 
 using namespace sirius;
 
