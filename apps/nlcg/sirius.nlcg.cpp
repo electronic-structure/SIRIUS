@@ -81,6 +81,7 @@ double ground_state(Simulation_context& ctx,
     int maxiter       = nlcg_params.maxiter_;
     int restart       = nlcg_params.restart_;
     std::string smear = nlcg_params.smearing_;
+    std::string pu = nlcg_params.processing_unit_;
     Energy energy(*kset, density, potential);
 
     nlcglib::smearing_type smearing;
@@ -93,9 +94,21 @@ double ground_state(Simulation_context& ctx,
     }
 
     if(is_device_memory(ctx.preferred_memory_t())) {
-        nlcglib::nlcg_mvp2_cuda(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        if(pu.empty() || pu.compare("gpu") == 0) {
+            nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else if (pu.compare("cpu") == 0){
+            nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else {
+            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+        }
     } else {
-        nlcglib::nlcg_mvp2(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        if (pu.empty() || pu.compare("gpu") == 0) {
+            nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else if (pu.compare("cpu") == 0){
+            nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else {
+            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+        }
     }
 
     if (ctx.control().verification_ >= 1) {
