@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2020 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -110,6 +110,11 @@ void cmd_args::parse_args(int argn__, char** argv__)
         }
 
         keys_[key] = val;
+    }
+    if (this->exist("help")) {
+        printf("Usage: %s [options]\n", argv__[0]);
+        this->print_help();
+        exit(0);
     }
 }
 

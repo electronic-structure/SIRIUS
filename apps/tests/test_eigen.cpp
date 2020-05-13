@@ -219,11 +219,6 @@ int main(int argn, char** argv)
         {"type=", "{int} data type: 0-real, 1-complex"}
     });
 
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
     auto mpi_grid_dims = args.value<std::vector<int>>("mpi_grid_dims", {1, 1});
     auto N        = args.value<int>("N", 200);
     auto n        = args.value<int>("n", 100);
