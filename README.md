@@ -496,7 +496,7 @@ Brillouin zone contains 204 irreduceble k-points and only k-pool parallelization
 
 ### CP2K
 CP2K code uses SIRIUS library to enable plane-wave functionality. The detailed description of the input parameters
-can be found [here](https://manual.cp2k.orgl) under the `/CP2K_INPUT/FORCE_EVAL/PW_DFT` section.
+can be found [here](https://manual.cp2k.org) under the `/CP2K_INPUT/FORCE_EVAL/PW_DFT` section.
 
 ## Contacts
 Have you got any questions, feel free to contact us:
