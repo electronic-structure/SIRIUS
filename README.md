@@ -20,7 +20,7 @@
   * [Installation on Piz Daint](#installation-on-piz-daint)
 * [Accelerating DFT codes](#accelerating-dft-codes)
   * [Quantum ESPRESSO](#quantum-espresso)
-  * [CP2K] (#cp2k)
+  * [CP2K](#cp2k)
 * [Contacts](#contacts)
 * [Acknowledgements](#acknowledgements)
 
