@@ -20,6 +20,7 @@
   * [Installation on Piz Daint](#installation-on-piz-daint)
 * [Accelerating DFT codes](#accelerating-dft-codes)
   * [Quantum ESPRESSO](#quantum-espresso)
+  * [CP2K] (#cp2k)
 * [Contacts](#contacts)
 * [Acknowledgements](#acknowledgements)
 
@@ -470,7 +471,7 @@ SIRIUS library is using OpenMP for node-level parallelization. To run QE/SIRIUS 
  * by default, use one rank per node and many OMP threads; if the calculated system is really small, try to saturate 
    the GPU card using more MPI ranks (e.g.: on a 12-core node, use 2-3-4 ranks with 6-4-3 OMP threads)
 
-### Benchmarks
+#### Benchmarks
 In the following examples we compare performace of native and SIRIUS-enabled versions of QE. CPU-only runs were executed
 on the dual-socket multi-core nodes containing two 18-core Intel Broadwell CPUs. GPU rus were executed on the hybrid
 nodes containing 12-core Intel Haswell CPU and NVIDIA Tesla P100 card:
@@ -493,6 +494,9 @@ Brillouin zone contains 204 irreduceble k-points and only k-pool parallelization
 <img src="doc/images/B6Ni8_perf.png">
 </p>
 
+### CP2K
+CP2K code uses SIRIUS library to enable plane-wave functionality. The detailed description of the input parameters
+can be found [here](https://manual.cp2k.orgl) under the `/CP2K_INPUT/FORCE_EVAL/PW_DFT` section.
 
 ## Contacts
 Have you got any questions, feel free to contact us:
