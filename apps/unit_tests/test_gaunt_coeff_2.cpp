@@ -35,7 +35,6 @@ int test1()
             }
         }
     }
-    std::cout << d << std::endl;
     if (d < 1e-10) {
         return 0;
     } else {
