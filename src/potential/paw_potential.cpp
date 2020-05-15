@@ -414,7 +414,7 @@ void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>
 
     auto l_by_lm = utils::l_by_lm(2 * lmax);
 
-    Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rlm);
+    Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rrr);
 
     /* store integrals here */
     mdarray<double, 3> integrals(
