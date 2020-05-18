@@ -1,40 +1,43 @@
-#include <sirius.h>
+#include <sirius.hpp>
 
 using namespace sirius;
 
 void test1()
 {
-    int N = 10000000;
+    int N = 30000000;
     std::vector<vector3d<double>> a(N);
 
     for (int i = 0; i < N; i++) {
-        double r = type_wrapper<double>::random();
+        double r = utils::random<double>();
         a[i] = {r, r, r};
     }
     std::vector<double_complex> phase(N, 0);
-    utils::timer t1("phase");
-    #pragma omp parallel for schedule(static)
-    for (int i = 0; i < N; i++) {
-        phase[i] = std::exp(double_complex(0, dot(a[i], a[i])));
+    double t1{0};
+    double t2{0};
+
+    for (int i = 0; i < 10; i++) {
+        double t = -omp_get_wtime();
+        #pragma omp parallel for
+        for (int i = 0; i < N; i++) {
+            phase[i] = std::exp(double_complex(0, dot(a[i], a[i])));
+        }
+        t1 += (t + omp_get_wtime());
+
+        t = -omp_get_wtime();
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < N; i++) {
+            phase[i] = std::exp(double_complex(0, dot(a[i], a[i])));
+        }
+        t2 += (t + omp_get_wtime());
     }
-    double tval = t1.stop();
-    printf("speed: %f million phase-factors / sec.\n", N / tval / 1000000);
+    printf("(default schedule) speed: %f million phase-factors / sec.\n", N * 10 / t1 / 1000000);
+    printf("(static schedule) speed: %f million phase-factors / sec.\n", N * 10 / t2 / 1000000);
 
 }
 
 int main(int argn, char** argv)
 {
-    cmd_args args;
+    cmd_args args(argn, argv, {{}});
 
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
-
-    sirius::initialize(1);
     test1();
-    utils::timer::print();
-    sirius::finalize();
 }
