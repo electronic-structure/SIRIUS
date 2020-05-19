@@ -103,9 +103,9 @@ double ground_state(Simulation_context& ctx,
         }
     } else {
         if (pu.empty() || pu.compare("gpu") == 0) {
-            nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else if (pu.compare("cpu") == 0){
             nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else if (pu.compare("cpu") == 0){
+            nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
         } else {
             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
         }
