@@ -140,19 +140,15 @@ sddk::dmatrix<T> random_positive_definite(int N__, int bs__, sddk::BLACS_grid co
     }
 
 #ifdef __SCALAPACK
-    sddk::linalg(sddk::linalg_t::scalapack).tranc(N__, N__, A, 0, 0, B, 0, 0);
-#else
-    for (int i = 0; i < N__; i++) {
-        for (int j = 0; j < N__; j++) {
-          B(i, j) = utils::conj(A(j, i));
-        }
-    }
-#endif
     sddk::linalg(sddk::linalg_t::scalapack).gemm('C', 'N', N__, N__, N__, &sddk::linalg_const<T>::one(), A, 0, 0, A, 0, 0,
         &sddk::linalg_const<T>::zero(), B, 0, 0);
+#else
+    sddk::linalg(sddk::linalg_t::blas).gemm('C', 'N', N__, N__, N__, &sddk::linalg_const<T>::one(), &A(0, 0), A.ld(),
+            &A(0, 0), A.ld(), &sddk::linalg_const<T>::zero(), &B(0, 0), B.ld());
+#endif
 
     for (int i = 0; i < N__; i++) {
-        B.set(i, i, N__);
+        B.set(i, i, 50.0);
     }
 
     return B;
