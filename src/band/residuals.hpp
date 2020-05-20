@@ -76,7 +76,7 @@ namespace sirius {
     \f]
  */
 template <typename T>
-int
+std::pair<int, double>
 residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N__, int num_bands__,
           sddk::mdarray<double, 1>& eval__, sddk::dmatrix<T>& evec__, sddk::Wave_functions& hphi__,
           sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__,
