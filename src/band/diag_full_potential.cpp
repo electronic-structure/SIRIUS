@@ -379,7 +379,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
         /* solve standard eigen-value problem with the size N */
         if (std_solver.solve(N, ncomp, ovlp, &eval[0], evec)) {
             std::stringstream s;
-            s << "[sirius::Band::get_singular_components] error in diagonalziation";
+            s << "[sirius::Band::get_singular_components] error in diagonalization";
             TERMINATE(s);
         }
 

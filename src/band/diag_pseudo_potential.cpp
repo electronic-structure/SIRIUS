@@ -428,8 +428,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             }
         }
 
-        /* fisrt phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
-         * this is done before the main itertive loop */
+        /* first phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
+         * this is done before the main iterative loop */
 
         /* apply Hamiltonian and S operators to the basis functions */
         Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands, phi, &hphi, &sphi);
@@ -452,7 +452,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             double max_diff = check_hermitian(hmlt, num_bands);
             if (max_diff > 1e-12) {
                 std::stringstream s;
-                s << "H matrix is not hermitian, max_err = " << max_diff;
+                s << "H matrix is not Hermitian, max_err = " << max_diff;
                 WARNING(s);
             }
         }
@@ -551,7 +551,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 }
             }
 
-            /* expand variational subspace with new basis vectors obtatined from residuals */
+            /* expand variational subspace with new basis vectors obtained from residuals */
             for (int ispn = 0; ispn < num_sc; ispn++) {
                 phi.copy_from(res, n, ispn, 0, ispn, N);
             }
@@ -572,7 +572,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 double max_diff = check_hermitian(hmlt, N + n);
                 if (max_diff > 1e-12) {
                     std::stringstream s;
-                    s << "H matrix is not hermitian, max_err = " << max_diff;
+                    s << "H matrix is not Hermitian, max_err = " << max_diff;
                     WARNING(s);
                 }
             }
@@ -585,7 +585,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     double max_diff = check_hermitian(ovlp, N + n);
                     if (max_diff > 1e-12) {
                         std::stringstream s;
-                        s << "S matrix is not hermitian, max_err = " << max_diff;
+                        s << "S matrix is not Hermitian, max_err = " << max_diff;
                         WARNING(s);
                     }
                 }
@@ -601,14 +601,14 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 /* solve standard eigen-value problem with the size N */
                 if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
                     std::stringstream s;
-                    s << "error in diagonalziation";
+                    s << "error in diagonalization";
                     TERMINATE(s);
                 }
             } else {
                 /* solve generalized eigen-value problem with the size N */
                 if (gen_solver.solve(N, num_bands, hmlt, ovlp, &eval[0], evec)) {
                     std::stringstream s;
-                    s << "error in diagonalziation";
+                    s << "error in diagonalization";
                     TERMINATE(s);
                 }
             }

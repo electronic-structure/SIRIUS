@@ -70,7 +70,7 @@ extern "C" void make_real_g0_gpu(double_complex* res__,
 namespace sirius {
 
 /// Compute preconditionined residuals.
-/** The residuals of wave-functions are difined as:
+/** The residuals of wave-functions are defined as:
     \f[
       R_{i} = \hat H \psi_{i} - \epsilon_{i} \hat S \psi_{i}
     \f]
