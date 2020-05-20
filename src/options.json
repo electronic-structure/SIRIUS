@@ -65,9 +65,15 @@
         },
         "residual_tolerance" :
         {
-            "description" : "Tolerance for the residual L2 norm." ,
-          "usage" :  "residual_tolerance (1e-6)" ,
-          "default_value" :  0.000001
+            "description" : "Absolute tolerance for the residual L2 norm." ,
+            "usage" :  "residual_tolerance (1e-6)" ,
+            "default_value" :  0.000001
+        },
+        "relative_tolerance" :
+        {
+            "description" : "Relative tolerance for the residual L2 norm." ,
+            "usage" : "relative_tolerance (0.1)" ,
+            "default_value" : 0.0
         },
         "empty_state_tolerance" :
         {
