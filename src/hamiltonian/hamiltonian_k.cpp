@@ -144,7 +144,7 @@ Hamiltonian_k::get_h_o_diag_pw() const
             if (what & 2) {
                 sddk::linalg(linalg_t::blas).gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf,
                     &sddk::linalg_const<double_complex>::one(), &beta_gk_t(0, offs), beta_gk_t.ld(),
-                    &q_sum(0, 0), d_sum.ld(), &sddk::linalg_const<double_complex>::zero(),
+                    &q_sum(0, 0), q_sum.ld(), &sddk::linalg_const<double_complex>::zero(),
                     &beta_gk_tmp(0, 0), beta_gk_tmp.ld());
                 #pragma omp parallel
                 for (int xi = 0; xi < nbf; xi++) {
