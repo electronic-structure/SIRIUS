@@ -460,7 +460,7 @@ sirius_set_parameters:
     sht_coverage:
       type: int
       atrr: in, optional
-      doc: Type of spherical coverage (0: Lebedev-Laikov, 1: uniform).
+      doc: Type of spherical coverage (0 for Lebedev-Laikov, 1 for uniform).
     min_occupancy:
       type: double
       atrr: in, optional
@@ -1694,11 +1694,11 @@ sirius_set_atom_type_paw:
     occupations:
       type: double
       atrr: in, required
-      doc: ?
+      doc: array of occupation numbers for each PAW wave-function
     num_occ:
       type: int
       atrr: in, required
-      doc: ?
+      doc: size of the occupations array
 @api end
 */
 void sirius_set_atom_type_paw(void*  const* handler__,
