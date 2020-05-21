@@ -7,7 +7,8 @@
 !> @param [in] call_mpi_init If .true. then MPI_Init must be called prior to initialization.
 subroutine sirius_initialize(call_mpi_init)
 implicit none
-logical(C_BOOL), intent(in) :: call_mpi_init
+logical, intent(in) :: call_mpi_init
+logical(C_BOOL), target :: call_mpi_init_c_type
 interface
 subroutine sirius_initialize_aux(call_mpi_init)&
 &bind(C, name="sirius_initialize")
@@ -16,7 +17,8 @@ logical(C_BOOL), intent(in) :: call_mpi_init
 end subroutine
 end interface
 
-call sirius_initialize_aux(call_mpi_init)
+call_mpi_init_c_type = bool(call_mpi_init)
+call sirius_initialize_aux(call_mpi_init_c_type)
 end subroutine sirius_initialize
 
 !> @brief Shut down the SIRIUS library
@@ -25,11 +27,14 @@ end subroutine sirius_initialize
 !> @param [in] call_fftw_fin If .true. then fft_cleanup must be called after the shutdown.
 subroutine sirius_finalize(call_mpi_fin,call_device_reset,call_fftw_fin)
 implicit none
-logical(C_BOOL), optional, target, intent(in) :: call_mpi_fin
-logical(C_BOOL), optional, target, intent(in) :: call_device_reset
-logical(C_BOOL), optional, target, intent(in) :: call_fftw_fin
+logical, optional, target, intent(in) :: call_mpi_fin
+logical, optional, target, intent(in) :: call_device_reset
+logical, optional, target, intent(in) :: call_fftw_fin
+logical(C_BOOL), target :: call_mpi_fin_c_type
 type(C_PTR) :: call_mpi_fin_ptr
+logical(C_BOOL), target :: call_device_reset_c_type
 type(C_PTR) :: call_device_reset_ptr
+logical(C_BOOL), target :: call_fftw_fin_c_type
 type(C_PTR) :: call_fftw_fin_ptr
 interface
 subroutine sirius_finalize_aux(call_mpi_fin,call_device_reset,call_fftw_fin)&
@@ -42,14 +47,20 @@ end subroutine
 end interface
 
 call_mpi_fin_ptr = C_NULL_PTR
-if (present(call_mpi_fin)) call_mpi_fin_ptr = C_LOC(call_mpi_fin)
-
+if (present(call_mpi_fin)) then
+  call_mpi_fin_c_type = bool(call_mpi_fin)
+  call_mpi_fin_ptr = C_LOC(call_mpi_fin_c_type)
+endif
 call_device_reset_ptr = C_NULL_PTR
-if (present(call_device_reset)) call_device_reset_ptr = C_LOC(call_device_reset)
-
+if (present(call_device_reset)) then
+  call_device_reset_c_type = bool(call_device_reset)
+  call_device_reset_ptr = C_LOC(call_device_reset_c_type)
+endif
 call_fftw_fin_ptr = C_NULL_PTR
-if (present(call_fftw_fin)) call_fftw_fin_ptr = C_LOC(call_fftw_fin)
-
+if (present(call_fftw_fin)) then
+  call_fftw_fin_c_type = bool(call_fftw_fin)
+  call_fftw_fin_ptr = C_LOC(call_fftw_fin_c_type)
+endif
 call sirius_finalize_aux(call_mpi_fin_ptr,call_device_reset_ptr,call_fftw_fin_ptr)
 end subroutine sirius_finalize
 
@@ -57,32 +68,46 @@ end subroutine sirius_finalize
 !> @param [in] name Timer label.
 subroutine sirius_start_timer(name)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: name
+character(*), intent(in) :: name
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
 interface
 subroutine sirius_start_timer_aux(name)&
 &bind(C, name="sirius_start_timer")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: name
 end subroutine
 end interface
 
-call sirius_start_timer_aux(name)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+call sirius_start_timer_aux(name_ptr)
+if (allocated(name_c_type)) deallocate(name_c_type)
 end subroutine sirius_start_timer
 
 !> @brief Stop the running timer.
 !> @param [in] name Timer label.
 subroutine sirius_stop_timer(name)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: name
+character(*), intent(in) :: name
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
 interface
 subroutine sirius_stop_timer_aux(name)&
 &bind(C, name="sirius_stop_timer")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: name
 end subroutine
 end interface
 
-call sirius_stop_timer_aux(name)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+call sirius_stop_timer_aux(name_ptr)
+if (allocated(name_c_type)) deallocate(name_c_type)
 end subroutine sirius_stop_timer
 
 !> @brief Print all timers.
@@ -102,16 +127,23 @@ end subroutine sirius_print_timers
 !> @param [in] fname Name of the output JSON file.
 subroutine sirius_serialize_timers(fname)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: fname
+character(*), intent(in) :: fname
+character(C_CHAR), target, allocatable :: fname_c_type(:)
+type(C_PTR) :: fname_ptr
 interface
 subroutine sirius_serialize_timers_aux(fname)&
 &bind(C, name="sirius_serialize_timers")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: fname
+type(C_PTR), value :: fname
 end subroutine
 end interface
 
-call sirius_serialize_timers_aux(fname)
+fname_ptr = C_NULL_PTR
+allocate(fname_c_type(len(fname)+1))
+fname_c_type = string(fname)
+fname_ptr = C_LOC(fname_c_type)
+call sirius_serialize_timers_aux(fname_ptr)
+if (allocated(fname_c_type)) deallocate(fname_c_type)
 end subroutine sirius_serialize_timers
 
 !> @brief Spline integration of f(x)*x^m.
@@ -122,11 +154,11 @@ end subroutine sirius_serialize_timers
 !> @param [out] result Resulting value.
 subroutine sirius_integrate(m,np,x,f,result)
 implicit none
-integer(C_INT), intent(in) :: m
-integer(C_INT), intent(in) :: np
-real(C_DOUBLE), intent(in) :: x
-real(C_DOUBLE), intent(in) :: f
-real(C_DOUBLE), intent(out) :: result
+integer, intent(in) :: m
+integer, intent(in) :: np
+real(8), intent(in) :: x
+real(8), intent(in) :: f
+real(8), intent(out) :: result
 interface
 subroutine sirius_integrate_aux(m,np,x,f,result)&
 &bind(C, name="sirius_integrate")
@@ -147,7 +179,7 @@ end subroutine sirius_integrate
 function sirius_context_initialized(handler) result(res)
 implicit none
 type(C_PTR), intent(in) :: handler
-logical(C_BOOL) :: res
+logical :: res
 interface
 function sirius_context_initialized_aux(handler) result(res)&
 &bind(C, name="sirius_context_initialized")
@@ -161,13 +193,14 @@ res = sirius_context_initialized_aux(handler)
 end function sirius_context_initialized
 
 !> @brief Create context of the simulation.
-!> @details Simulation context is the complex data structure that holds all the parameters of the individual simulation.
+!> @details
+!> Simulation context is the complex data structure that holds all the parameters of the individual simulation.
 !> The context must be created, populated with the correct parameters and initialized before using all subsequent
 !> SIRIUS functions.
 !> @param [in] fcomm Entire communicator of the simulation.
 function sirius_create_context(fcomm) result(res)
 implicit none
-integer(C_INT), intent(in) :: fcomm
+integer, intent(in) :: fcomm
 type(C_PTR) :: res
 interface
 function sirius_create_context_aux(fcomm) result(res)&
@@ -187,7 +220,8 @@ end function sirius_create_context
 subroutine sirius_import_parameters(handler,str)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), optional, target, dimension(*), intent(in) :: str
+character(*), optional, target, intent(in) :: str
+character(C_CHAR), target, allocatable :: str_c_type(:)
 type(C_PTR) :: str_ptr
 interface
 subroutine sirius_import_parameters_aux(handler,str)&
@@ -199,9 +233,13 @@ end subroutine
 end interface
 
 str_ptr = C_NULL_PTR
-if (present(str)) str_ptr = C_LOC(str)
-
+if (present(str)) then
+allocate(str_c_type(len(str)+1))
+str_c_type = string(str)
+str_ptr = C_LOC(str_c_type)
+endif
 call sirius_import_parameters_aux(handler,str_ptr)
+if (allocated(str_c_type)) deallocate(str_c_type)
 end subroutine sirius_import_parameters
 
 !> @brief Set parameters of the simulation.
@@ -238,31 +276,31 @@ subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_state
 &sht_coverage,min_occupancy)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), optional, target, intent(in) :: lmax_apw
-integer(C_INT), optional, target, intent(in) :: lmax_rho
-integer(C_INT), optional, target, intent(in) :: lmax_pot
-integer(C_INT), optional, target, intent(in) :: num_fv_states
-integer(C_INT), optional, target, intent(in) :: num_bands
-integer(C_INT), optional, target, intent(in) :: num_mag_dims
-real(C_DOUBLE), optional, target, intent(in) :: pw_cutoff
-real(C_DOUBLE), optional, target, intent(in) :: gk_cutoff
-integer(C_INT), optional, target, intent(in) :: fft_grid_size
-integer(C_INT), optional, target, intent(in) :: auto_rmt
-logical(C_BOOL), optional, target, intent(in) :: gamma_point
-logical(C_BOOL), optional, target, intent(in) :: use_symmetry
-logical(C_BOOL), optional, target, intent(in) :: so_correction
-character(C_CHAR), optional, target, dimension(*), intent(in) :: valence_rel
-character(C_CHAR), optional, target, dimension(*), intent(in) :: core_rel
-character(C_CHAR), optional, target, dimension(*), intent(in) :: esm_bc
-real(C_DOUBLE), optional, target, intent(in) :: iter_solver_tol
-real(C_DOUBLE), optional, target, intent(in) :: iter_solver_tol_empty
-character(C_CHAR), optional, target, dimension(*), intent(in) :: iter_solver_type
-integer(C_INT), optional, target, intent(in) :: verbosity
-logical(C_BOOL), optional, target, intent(in) :: hubbard_correction
-integer(C_INT), optional, target, intent(in) :: hubbard_correction_kind
-character(C_CHAR), optional, target, dimension(*), intent(in) :: hubbard_orbitals
-integer(C_INT), optional, target, intent(in) :: sht_coverage
-real(C_DOUBLE), optional, target, intent(in) :: min_occupancy
+integer, optional, target, intent(in) :: lmax_apw
+integer, optional, target, intent(in) :: lmax_rho
+integer, optional, target, intent(in) :: lmax_pot
+integer, optional, target, intent(in) :: num_fv_states
+integer, optional, target, intent(in) :: num_bands
+integer, optional, target, intent(in) :: num_mag_dims
+real(8), optional, target, intent(in) :: pw_cutoff
+real(8), optional, target, intent(in) :: gk_cutoff
+integer, optional, target, intent(in) :: fft_grid_size
+integer, optional, target, intent(in) :: auto_rmt
+logical, optional, target, intent(in) :: gamma_point
+logical, optional, target, intent(in) :: use_symmetry
+logical, optional, target, intent(in) :: so_correction
+character(*), optional, target, intent(in) :: valence_rel
+character(*), optional, target, intent(in) :: core_rel
+character(*), optional, target, intent(in) :: esm_bc
+real(8), optional, target, intent(in) :: iter_solver_tol
+real(8), optional, target, intent(in) :: iter_solver_tol_empty
+character(*), optional, target, intent(in) :: iter_solver_type
+integer, optional, target, intent(in) :: verbosity
+logical, optional, target, intent(in) :: hubbard_correction
+integer, optional, target, intent(in) :: hubbard_correction_kind
+character(*), optional, target, intent(in) :: hubbard_orbitals
+integer, optional, target, intent(in) :: sht_coverage
+real(8), optional, target, intent(in) :: min_occupancy
 type(C_PTR) :: lmax_apw_ptr
 type(C_PTR) :: lmax_rho_ptr
 type(C_PTR) :: lmax_pot_ptr
@@ -273,18 +311,27 @@ type(C_PTR) :: pw_cutoff_ptr
 type(C_PTR) :: gk_cutoff_ptr
 type(C_PTR) :: fft_grid_size_ptr
 type(C_PTR) :: auto_rmt_ptr
+logical(C_BOOL), target :: gamma_point_c_type
 type(C_PTR) :: gamma_point_ptr
+logical(C_BOOL), target :: use_symmetry_c_type
 type(C_PTR) :: use_symmetry_ptr
+logical(C_BOOL), target :: so_correction_c_type
 type(C_PTR) :: so_correction_ptr
+character(C_CHAR), target, allocatable :: valence_rel_c_type(:)
 type(C_PTR) :: valence_rel_ptr
+character(C_CHAR), target, allocatable :: core_rel_c_type(:)
 type(C_PTR) :: core_rel_ptr
+character(C_CHAR), target, allocatable :: esm_bc_c_type(:)
 type(C_PTR) :: esm_bc_ptr
 type(C_PTR) :: iter_solver_tol_ptr
 type(C_PTR) :: iter_solver_tol_empty_ptr
+character(C_CHAR), target, allocatable :: iter_solver_type_c_type(:)
 type(C_PTR) :: iter_solver_type_ptr
 type(C_PTR) :: verbosity_ptr
+logical(C_BOOL), target :: hubbard_correction_c_type
 type(C_PTR) :: hubbard_correction_ptr
 type(C_PTR) :: hubbard_correction_kind_ptr
+character(C_CHAR), target, allocatable :: hubbard_orbitals_c_type(:)
 type(C_PTR) :: hubbard_orbitals_ptr
 type(C_PTR) :: sht_coverage_ptr
 type(C_PTR) :: min_occupancy_ptr
@@ -356,23 +403,38 @@ auto_rmt_ptr = C_NULL_PTR
 if (present(auto_rmt)) auto_rmt_ptr = C_LOC(auto_rmt)
 
 gamma_point_ptr = C_NULL_PTR
-if (present(gamma_point)) gamma_point_ptr = C_LOC(gamma_point)
-
+if (present(gamma_point)) then
+  gamma_point_c_type = bool(gamma_point)
+  gamma_point_ptr = C_LOC(gamma_point_c_type)
+endif
 use_symmetry_ptr = C_NULL_PTR
-if (present(use_symmetry)) use_symmetry_ptr = C_LOC(use_symmetry)
-
+if (present(use_symmetry)) then
+  use_symmetry_c_type = bool(use_symmetry)
+  use_symmetry_ptr = C_LOC(use_symmetry_c_type)
+endif
 so_correction_ptr = C_NULL_PTR
-if (present(so_correction)) so_correction_ptr = C_LOC(so_correction)
-
+if (present(so_correction)) then
+  so_correction_c_type = bool(so_correction)
+  so_correction_ptr = C_LOC(so_correction_c_type)
+endif
 valence_rel_ptr = C_NULL_PTR
-if (present(valence_rel)) valence_rel_ptr = C_LOC(valence_rel)
-
+if (present(valence_rel)) then
+allocate(valence_rel_c_type(len(valence_rel)+1))
+valence_rel_c_type = string(valence_rel)
+valence_rel_ptr = C_LOC(valence_rel_c_type)
+endif
 core_rel_ptr = C_NULL_PTR
-if (present(core_rel)) core_rel_ptr = C_LOC(core_rel)
-
+if (present(core_rel)) then
+allocate(core_rel_c_type(len(core_rel)+1))
+core_rel_c_type = string(core_rel)
+core_rel_ptr = C_LOC(core_rel_c_type)
+endif
 esm_bc_ptr = C_NULL_PTR
-if (present(esm_bc)) esm_bc_ptr = C_LOC(esm_bc)
-
+if (present(esm_bc)) then
+allocate(esm_bc_c_type(len(esm_bc)+1))
+esm_bc_c_type = string(esm_bc)
+esm_bc_ptr = C_LOC(esm_bc_c_type)
+endif
 iter_solver_tol_ptr = C_NULL_PTR
 if (present(iter_solver_tol)) iter_solver_tol_ptr = C_LOC(iter_solver_tol)
 
@@ -380,20 +442,28 @@ iter_solver_tol_empty_ptr = C_NULL_PTR
 if (present(iter_solver_tol_empty)) iter_solver_tol_empty_ptr = C_LOC(iter_solver_tol_empty)
 
 iter_solver_type_ptr = C_NULL_PTR
-if (present(iter_solver_type)) iter_solver_type_ptr = C_LOC(iter_solver_type)
-
+if (present(iter_solver_type)) then
+allocate(iter_solver_type_c_type(len(iter_solver_type)+1))
+iter_solver_type_c_type = string(iter_solver_type)
+iter_solver_type_ptr = C_LOC(iter_solver_type_c_type)
+endif
 verbosity_ptr = C_NULL_PTR
 if (present(verbosity)) verbosity_ptr = C_LOC(verbosity)
 
 hubbard_correction_ptr = C_NULL_PTR
-if (present(hubbard_correction)) hubbard_correction_ptr = C_LOC(hubbard_correction)
-
+if (present(hubbard_correction)) then
+  hubbard_correction_c_type = bool(hubbard_correction)
+  hubbard_correction_ptr = C_LOC(hubbard_correction_c_type)
+endif
 hubbard_correction_kind_ptr = C_NULL_PTR
 if (present(hubbard_correction_kind)) hubbard_correction_kind_ptr = C_LOC(hubbard_correction_kind)
 
 hubbard_orbitals_ptr = C_NULL_PTR
-if (present(hubbard_orbitals)) hubbard_orbitals_ptr = C_LOC(hubbard_orbitals)
-
+if (present(hubbard_orbitals)) then
+allocate(hubbard_orbitals_c_type(len(hubbard_orbitals)+1))
+hubbard_orbitals_c_type = string(hubbard_orbitals)
+hubbard_orbitals_ptr = C_LOC(hubbard_orbitals_c_type)
+endif
 sht_coverage_ptr = C_NULL_PTR
 if (present(sht_coverage)) sht_coverage_ptr = C_LOC(sht_coverage)
 
@@ -406,6 +476,11 @@ call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,nu
 &esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,verbosity_ptr,&
 &hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,sht_coverage_ptr,&
 &min_occupancy_ptr)
+if (allocated(valence_rel_c_type)) deallocate(valence_rel_c_type)
+if (allocated(core_rel_c_type)) deallocate(core_rel_c_type)
+if (allocated(esm_bc_c_type)) deallocate(esm_bc_c_type)
+if (allocated(iter_solver_type_c_type)) deallocate(iter_solver_type_c_type)
+if (allocated(hubbard_orbitals_c_type)) deallocate(hubbard_orbitals_c_type)
 end subroutine sirius_set_parameters
 
 !> @brief Get parameters of the simulation.
@@ -436,26 +511,26 @@ subroutine sirius_get_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_state
 &evp_work_count,num_loc_op_applied,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), optional, target, intent(out) :: lmax_apw
-integer(C_INT), optional, target, intent(out) :: lmax_rho
-integer(C_INT), optional, target, intent(out) :: lmax_pot
-integer(C_INT), optional, target, intent(out) :: num_fv_states
-integer(C_INT), optional, target, intent(out) :: num_bands
-integer(C_INT), optional, target, intent(out) :: num_mag_dims
-real(C_DOUBLE), optional, target, intent(out) :: pw_cutoff
-real(C_DOUBLE), optional, target, intent(out) :: gk_cutoff
-integer(C_INT), optional, target, intent(out) :: fft_grid_size
-integer(C_INT), optional, target, intent(out) :: auto_rmt
-logical(C_BOOL), optional, target, intent(out) :: gamma_point
-logical(C_BOOL), optional, target, intent(out) :: use_symmetry
-logical(C_BOOL), optional, target, intent(out) :: so_correction
-real(C_DOUBLE), optional, target, intent(out) :: iter_solver_tol
-real(C_DOUBLE), optional, target, intent(out) :: iter_solver_tol_empty
-integer(C_INT), optional, target, intent(out) :: verbosity
-logical(C_BOOL), optional, target, intent(out) :: hubbard_correction
-real(C_DOUBLE), optional, target, intent(out) :: evp_work_count
-integer(C_INT), optional, target, intent(out) :: num_loc_op_applied
-integer(C_INT), optional, target, intent(out) :: error_code
+integer, optional, target, intent(out) :: lmax_apw
+integer, optional, target, intent(out) :: lmax_rho
+integer, optional, target, intent(out) :: lmax_pot
+integer, optional, target, intent(out) :: num_fv_states
+integer, optional, target, intent(out) :: num_bands
+integer, optional, target, intent(out) :: num_mag_dims
+real(8), optional, target, intent(out) :: pw_cutoff
+real(8), optional, target, intent(out) :: gk_cutoff
+integer, optional, target, intent(out) :: fft_grid_size
+integer, optional, target, intent(out) :: auto_rmt
+logical, optional, target, intent(out) :: gamma_point
+logical, optional, target, intent(out) :: use_symmetry
+logical, optional, target, intent(out) :: so_correction
+real(8), optional, target, intent(out) :: iter_solver_tol
+real(8), optional, target, intent(out) :: iter_solver_tol_empty
+integer, optional, target, intent(out) :: verbosity
+logical, optional, target, intent(out) :: hubbard_correction
+real(8), optional, target, intent(out) :: evp_work_count
+integer, optional, target, intent(out) :: num_loc_op_applied
+integer, optional, target, intent(out) :: error_code
 type(C_PTR) :: lmax_apw_ptr
 type(C_PTR) :: lmax_rho_ptr
 type(C_PTR) :: lmax_pot_ptr
@@ -466,12 +541,16 @@ type(C_PTR) :: pw_cutoff_ptr
 type(C_PTR) :: gk_cutoff_ptr
 type(C_PTR) :: fft_grid_size_ptr
 type(C_PTR) :: auto_rmt_ptr
+logical(C_BOOL), target :: gamma_point_c_type
 type(C_PTR) :: gamma_point_ptr
+logical(C_BOOL), target :: use_symmetry_c_type
 type(C_PTR) :: use_symmetry_ptr
+logical(C_BOOL), target :: so_correction_c_type
 type(C_PTR) :: so_correction_ptr
 type(C_PTR) :: iter_solver_tol_ptr
 type(C_PTR) :: iter_solver_tol_empty_ptr
 type(C_PTR) :: verbosity_ptr
+logical(C_BOOL), target :: hubbard_correction_c_type
 type(C_PTR) :: hubbard_correction_ptr
 type(C_PTR) :: evp_work_count_ptr
 type(C_PTR) :: num_loc_op_applied_ptr
@@ -538,14 +617,20 @@ auto_rmt_ptr = C_NULL_PTR
 if (present(auto_rmt)) auto_rmt_ptr = C_LOC(auto_rmt)
 
 gamma_point_ptr = C_NULL_PTR
-if (present(gamma_point)) gamma_point_ptr = C_LOC(gamma_point)
-
+if (present(gamma_point)) then
+  gamma_point_c_type = bool(gamma_point)
+  gamma_point_ptr = C_LOC(gamma_point_c_type)
+endif
 use_symmetry_ptr = C_NULL_PTR
-if (present(use_symmetry)) use_symmetry_ptr = C_LOC(use_symmetry)
-
+if (present(use_symmetry)) then
+  use_symmetry_c_type = bool(use_symmetry)
+  use_symmetry_ptr = C_LOC(use_symmetry_c_type)
+endif
 so_correction_ptr = C_NULL_PTR
-if (present(so_correction)) so_correction_ptr = C_LOC(so_correction)
-
+if (present(so_correction)) then
+  so_correction_c_type = bool(so_correction)
+  so_correction_ptr = C_LOC(so_correction_c_type)
+endif
 iter_solver_tol_ptr = C_NULL_PTR
 if (present(iter_solver_tol)) iter_solver_tol_ptr = C_LOC(iter_solver_tol)
 
@@ -556,8 +641,10 @@ verbosity_ptr = C_NULL_PTR
 if (present(verbosity)) verbosity_ptr = C_LOC(verbosity)
 
 hubbard_correction_ptr = C_NULL_PTR
-if (present(hubbard_correction)) hubbard_correction_ptr = C_LOC(hubbard_correction)
-
+if (present(hubbard_correction)) then
+  hubbard_correction_c_type = bool(hubbard_correction)
+  hubbard_correction_ptr = C_LOC(hubbard_correction_c_type)
+endif
 evp_work_count_ptr = C_NULL_PTR
 if (present(evp_work_count)) evp_work_count_ptr = C_LOC(evp_work_count)
 
@@ -579,17 +666,24 @@ end subroutine sirius_get_parameters
 subroutine sirius_add_xc_functional(handler,name)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: name
+character(*), intent(in) :: name
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
 interface
 subroutine sirius_add_xc_functional_aux(handler,name)&
 &bind(C, name="sirius_add_xc_functional")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: name
 end subroutine
 end interface
 
-call sirius_add_xc_functional_aux(handler,name)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+call sirius_add_xc_functional_aux(handler,name_ptr)
+if (allocated(name_c_type)) deallocate(name_c_type)
 end subroutine sirius_add_xc_functional
 
 !> @brief Add one of the XC functionals.
@@ -598,17 +692,24 @@ end subroutine sirius_add_xc_functional
 subroutine sirius_insert_xc_functional(gs_handler,name)
 implicit none
 type(C_PTR), intent(in) :: gs_handler
-character(C_CHAR), dimension(*), intent(in) :: name
+character(*), intent(in) :: name
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
 interface
 subroutine sirius_insert_xc_functional_aux(gs_handler,name)&
 &bind(C, name="sirius_insert_xc_functional")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: gs_handler
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: name
 end subroutine
 end interface
 
-call sirius_insert_xc_functional_aux(gs_handler,name)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+call sirius_insert_xc_functional_aux(gs_handler,name_ptr)
+if (allocated(name_c_type)) deallocate(name_c_type)
 end subroutine sirius_insert_xc_functional
 
 !> @brief Set dimensions of the MPI grid.
@@ -618,8 +719,8 @@ end subroutine sirius_insert_xc_functional
 subroutine sirius_set_mpi_grid_dims(handler,ndims,dims)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ndims
-integer(C_INT), intent(in) :: dims
+integer, intent(in) :: ndims
+integer, intent(in) :: dims
 interface
 subroutine sirius_set_mpi_grid_dims_aux(handler,ndims,dims)&
 &bind(C, name="sirius_set_mpi_grid_dims")
@@ -641,9 +742,9 @@ end subroutine sirius_set_mpi_grid_dims
 subroutine sirius_set_lattice_vectors(handler,a1,a2,a3)
 implicit none
 type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(in) :: a1
-real(C_DOUBLE), intent(in) :: a2
-real(C_DOUBLE), intent(in) :: a3
+real(8), intent(in) :: a1
+real(8), intent(in) :: a2
+real(8), intent(in) :: a3
 interface
 subroutine sirius_set_lattice_vectors_aux(handler,a1,a2,a3)&
 &bind(C, name="sirius_set_lattice_vectors")
@@ -730,9 +831,11 @@ end subroutine sirius_free_handler
 subroutine sirius_set_periodic_function_ptr(handler,label,f_mt,f_rg)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), optional, target, intent(in) :: f_mt
-real(C_DOUBLE), optional, target, intent(in) :: f_rg
+character(*), intent(in) :: label
+real(8), optional, target, intent(in) :: f_mt
+real(8), optional, target, intent(in) :: f_rg
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 type(C_PTR) :: f_mt_ptr
 type(C_PTR) :: f_rg_ptr
 interface
@@ -740,19 +843,24 @@ subroutine sirius_set_periodic_function_ptr_aux(handler,label,f_mt,f_rg)&
 &bind(C, name="sirius_set_periodic_function_ptr")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 type(C_PTR), value :: f_mt
 type(C_PTR), value :: f_rg
 end subroutine
 end interface
 
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
 f_mt_ptr = C_NULL_PTR
 if (present(f_mt)) f_mt_ptr = C_LOC(f_mt)
 
 f_rg_ptr = C_NULL_PTR
 if (present(f_rg)) f_rg_ptr = C_LOC(f_rg)
 
-call sirius_set_periodic_function_ptr_aux(handler,label,f_mt_ptr,f_rg_ptr)
+call sirius_set_periodic_function_ptr_aux(handler,label_ptr,f_mt_ptr,f_rg_ptr)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_set_periodic_function_ptr
 
 !> @brief Create k-point set from the list of k-points.
@@ -764,11 +872,12 @@ end subroutine sirius_set_periodic_function_ptr
 function sirius_create_kset(handler,num_kpoints,kpoints,kpoint_weights,init_kset) result(res)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: num_kpoints
-real(C_DOUBLE), intent(in) :: kpoints
-real(C_DOUBLE), intent(in) :: kpoint_weights
-logical(C_BOOL), intent(in) :: init_kset
+integer, intent(in) :: num_kpoints
+real(8), intent(in) :: kpoints
+real(8), intent(in) :: kpoint_weights
+logical, intent(in) :: init_kset
 type(C_PTR) :: res
+logical(C_BOOL), target :: init_kset_c_type
 interface
 function sirius_create_kset_aux(handler,num_kpoints,kpoints,kpoint_weights,init_kset) result(res)&
 &bind(C, name="sirius_create_kset")
@@ -782,7 +891,8 @@ type(C_PTR) :: res
 end function
 end interface
 
-res = sirius_create_kset_aux(handler,num_kpoints,kpoints,kpoint_weights,init_kset)
+init_kset_c_type = bool(init_kset)
+res = sirius_create_kset_aux(handler,num_kpoints,kpoints,kpoint_weights,init_kset_c_type)
 end function sirius_create_kset
 
 !> @brief Create k-point set from a grid.
@@ -793,10 +903,11 @@ end function sirius_create_kset
 function sirius_create_kset_from_grid(handler,k_grid,k_shift,use_symmetry) result(res)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: k_grid
-integer(C_INT), intent(in) :: k_shift
-logical(C_BOOL), intent(in) :: use_symmetry
+integer, intent(in) :: k_grid
+integer, intent(in) :: k_shift
+logical, intent(in) :: use_symmetry
 type(C_PTR) :: res
+logical(C_BOOL), target :: use_symmetry_c_type
 interface
 function sirius_create_kset_from_grid_aux(handler,k_grid,k_shift,use_symmetry) result(res)&
 &bind(C, name="sirius_create_kset_from_grid")
@@ -809,7 +920,8 @@ type(C_PTR) :: res
 end function
 end interface
 
-res = sirius_create_kset_from_grid_aux(handler,k_grid,k_shift,use_symmetry)
+use_symmetry_c_type = bool(use_symmetry)
+res = sirius_create_kset_from_grid_aux(handler,k_grid,k_shift,use_symmetry_c_type)
 end function sirius_create_kset_from_grid
 
 !> @brief Create a ground state object.
@@ -836,7 +948,7 @@ end function sirius_create_ground_state
 subroutine sirius_initialize_kset(ks_handler,error_code)
 implicit none
 type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), optional, target, intent(out) :: error_code
+integer, optional, target, intent(out) :: error_code
 type(C_PTR) :: error_code_ptr
 interface
 subroutine sirius_initialize_kset_aux(ks_handler,error_code)&
@@ -862,13 +974,14 @@ end subroutine sirius_initialize_kset
 subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,niter,save_state)
 implicit none
 type(C_PTR), intent(in) :: gs_handler
-real(C_DOUBLE), optional, target, intent(in) :: density_tol
-real(C_DOUBLE), optional, target, intent(in) :: energy_tol
-integer(C_INT), optional, target, intent(in) :: niter
-logical(C_BOOL), optional, target, intent(in) :: save_state
+real(8), optional, target, intent(in) :: density_tol
+real(8), optional, target, intent(in) :: energy_tol
+integer, optional, target, intent(in) :: niter
+logical, optional, target, intent(in) :: save_state
 type(C_PTR) :: density_tol_ptr
 type(C_PTR) :: energy_tol_ptr
 type(C_PTR) :: niter_ptr
+logical(C_BOOL), target :: save_state_c_type
 type(C_PTR) :: save_state_ptr
 interface
 subroutine sirius_find_ground_state_aux(gs_handler,density_tol,energy_tol,niter,&
@@ -893,11 +1006,84 @@ niter_ptr = C_NULL_PTR
 if (present(niter)) niter_ptr = C_LOC(niter)
 
 save_state_ptr = C_NULL_PTR
-if (present(save_state)) save_state_ptr = C_LOC(save_state)
-
+if (present(save_state)) then
+  save_state_c_type = bool(save_state)
+  save_state_ptr = C_LOC(save_state_c_type)
+endif
 call sirius_find_ground_state_aux(gs_handler,density_tol_ptr,energy_tol_ptr,niter_ptr,&
 &save_state_ptr)
 end subroutine sirius_find_ground_state
+
+!> @brief Find the ground state using the robust
+!> @param [in] gs_handler Handler of the ground state.
+!> @param [in] ks_handler Handler of the k-point set.
+!> @param [in] scf_density_tol Tolerance on RMS in density.
+!> @param [in] scf_energy_tol Tolerance in total energy difference.
+!> @param [in] scf_ninit__ Number of SCF iterations.
+!> @param [in] temp__ Temperature.
+!> @param [in] tol__ Tolerance.
+!> @param [in] cg_restart__ CG restart.
+!> @param [in] kappa__ Scalar preconditioner for pseudo Hamiltonian
+subroutine sirius_find_ground_state_robust(gs_handler,ks_handler,scf_density_tol,&
+&scf_energy_tol,scf_ninit__,temp__,tol__,cg_restart__,kappa__)
+implicit none
+type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), intent(in) :: ks_handler
+real(8), optional, target, intent(in) :: scf_density_tol
+real(8), optional, target, intent(in) :: scf_energy_tol
+integer, optional, target, intent(in) :: scf_ninit__
+real(8), optional, target, intent(in) :: temp__
+real(8), optional, target, intent(in) :: tol__
+integer, optional, target, intent(in) :: cg_restart__
+real(8), optional, target, intent(in) :: kappa__
+type(C_PTR) :: scf_density_tol_ptr
+type(C_PTR) :: scf_energy_tol_ptr
+type(C_PTR) :: scf_ninit___ptr
+type(C_PTR) :: temp___ptr
+type(C_PTR) :: tol___ptr
+type(C_PTR) :: cg_restart___ptr
+type(C_PTR) :: kappa___ptr
+interface
+subroutine sirius_find_ground_state_robust_aux(gs_handler,ks_handler,scf_density_tol,&
+&scf_energy_tol,scf_ninit__,temp__,tol__,cg_restart__,kappa__)&
+&bind(C, name="sirius_find_ground_state_robust")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), value :: scf_density_tol
+type(C_PTR), value :: scf_energy_tol
+type(C_PTR), value :: scf_ninit__
+type(C_PTR), value :: temp__
+type(C_PTR), value :: tol__
+type(C_PTR), value :: cg_restart__
+type(C_PTR), value :: kappa__
+end subroutine
+end interface
+
+scf_density_tol_ptr = C_NULL_PTR
+if (present(scf_density_tol)) scf_density_tol_ptr = C_LOC(scf_density_tol)
+
+scf_energy_tol_ptr = C_NULL_PTR
+if (present(scf_energy_tol)) scf_energy_tol_ptr = C_LOC(scf_energy_tol)
+
+scf_ninit___ptr = C_NULL_PTR
+if (present(scf_ninit__)) scf_ninit___ptr = C_LOC(scf_ninit__)
+
+temp___ptr = C_NULL_PTR
+if (present(temp__)) temp___ptr = C_LOC(temp__)
+
+tol___ptr = C_NULL_PTR
+if (present(tol__)) tol___ptr = C_LOC(tol__)
+
+cg_restart___ptr = C_NULL_PTR
+if (present(cg_restart__)) cg_restart___ptr = C_LOC(cg_restart__)
+
+kappa___ptr = C_NULL_PTR
+if (present(kappa__)) kappa___ptr = C_LOC(kappa__)
+
+call sirius_find_ground_state_robust_aux(gs_handler,ks_handler,scf_density_tol_ptr,&
+&scf_energy_tol_ptr,scf_ninit___ptr,temp___ptr,tol___ptr,cg_restart___ptr,kappa___ptr)
+end subroutine sirius_find_ground_state_robust
 
 !> @brief Update a ground state object after change of atomic coordinates or lattice vectors.
 !> @param [in] gs_handler Ground-state handler.
@@ -926,23 +1112,28 @@ end subroutine sirius_update_ground_state
 subroutine sirius_add_atom_type(handler,label,fname,zn,symbol,mass,spin_orbit)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-character(C_CHAR), optional, target, dimension(*), intent(in) :: fname
-integer(C_INT), optional, target, intent(in) :: zn
-character(C_CHAR), optional, target, dimension(*), intent(in) :: symbol
-real(C_DOUBLE), optional, target, intent(in) :: mass
-logical(C_BOOL), optional, target, intent(in) :: spin_orbit
+character(*), intent(in) :: label
+character(*), optional, target, intent(in) :: fname
+integer, optional, target, intent(in) :: zn
+character(*), optional, target, intent(in) :: symbol
+real(8), optional, target, intent(in) :: mass
+logical, optional, target, intent(in) :: spin_orbit
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: fname_c_type(:)
 type(C_PTR) :: fname_ptr
 type(C_PTR) :: zn_ptr
+character(C_CHAR), target, allocatable :: symbol_c_type(:)
 type(C_PTR) :: symbol_ptr
 type(C_PTR) :: mass_ptr
+logical(C_BOOL), target :: spin_orbit_c_type
 type(C_PTR) :: spin_orbit_ptr
 interface
 subroutine sirius_add_atom_type_aux(handler,label,fname,zn,symbol,mass,spin_orbit)&
 &bind(C, name="sirius_add_atom_type")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 type(C_PTR), value :: fname
 type(C_PTR), value :: zn
 type(C_PTR), value :: symbol
@@ -951,23 +1142,38 @@ type(C_PTR), value :: spin_orbit
 end subroutine
 end interface
 
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
 fname_ptr = C_NULL_PTR
-if (present(fname)) fname_ptr = C_LOC(fname)
-
+if (present(fname)) then
+allocate(fname_c_type(len(fname)+1))
+fname_c_type = string(fname)
+fname_ptr = C_LOC(fname_c_type)
+endif
 zn_ptr = C_NULL_PTR
 if (present(zn)) zn_ptr = C_LOC(zn)
 
 symbol_ptr = C_NULL_PTR
-if (present(symbol)) symbol_ptr = C_LOC(symbol)
-
+if (present(symbol)) then
+allocate(symbol_c_type(len(symbol)+1))
+symbol_c_type = string(symbol)
+symbol_ptr = C_LOC(symbol_c_type)
+endif
 mass_ptr = C_NULL_PTR
 if (present(mass)) mass_ptr = C_LOC(mass)
 
 spin_orbit_ptr = C_NULL_PTR
-if (present(spin_orbit)) spin_orbit_ptr = C_LOC(spin_orbit)
-
-call sirius_add_atom_type_aux(handler,label,fname_ptr,zn_ptr,symbol_ptr,mass_ptr,&
+if (present(spin_orbit)) then
+  spin_orbit_c_type = bool(spin_orbit)
+  spin_orbit_ptr = C_LOC(spin_orbit_c_type)
+endif
+call sirius_add_atom_type_aux(handler,label_ptr,fname_ptr,zn_ptr,symbol_ptr,mass_ptr,&
 &spin_orbit_ptr)
+if (allocated(label_c_type)) deallocate(label_c_type)
+if (allocated(fname_c_type)) deallocate(fname_c_type)
+if (allocated(symbol_c_type)) deallocate(symbol_c_type)
 end subroutine sirius_add_atom_type
 
 !> @brief Set radial grid of the atom type.
@@ -978,22 +1184,29 @@ end subroutine sirius_add_atom_type
 subroutine sirius_set_atom_type_radial_grid(handler,label,num_radial_points,radial_points)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(in) :: num_radial_points
-real(C_DOUBLE), intent(in) :: radial_points
+character(*), intent(in) :: label
+integer, intent(in) :: num_radial_points
+real(8), intent(in) :: radial_points
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 subroutine sirius_set_atom_type_radial_grid_aux(handler,label,num_radial_points,&
 &radial_points)&
 &bind(C, name="sirius_set_atom_type_radial_grid")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 integer(C_INT), intent(in) :: num_radial_points
 real(C_DOUBLE), intent(in) :: radial_points
 end subroutine
 end interface
 
-call sirius_set_atom_type_radial_grid_aux(handler,label,num_radial_points,radial_points)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+call sirius_set_atom_type_radial_grid_aux(handler,label_ptr,num_radial_points,radial_points)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_set_atom_type_radial_grid
 
 !> @brief Set radial grid of the free atom (up to effectice infinity).
@@ -1005,22 +1218,30 @@ subroutine sirius_set_atom_type_radial_grid_inf(handler,label,num_radial_points,
 &radial_points)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(in) :: num_radial_points
-real(C_DOUBLE), intent(in) :: radial_points
+character(*), intent(in) :: label
+integer, intent(in) :: num_radial_points
+real(8), intent(in) :: radial_points
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 subroutine sirius_set_atom_type_radial_grid_inf_aux(handler,label,num_radial_points,&
 &radial_points)&
 &bind(C, name="sirius_set_atom_type_radial_grid_inf")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 integer(C_INT), intent(in) :: num_radial_points
 real(C_DOUBLE), intent(in) :: radial_points
 end subroutine
 end interface
 
-call sirius_set_atom_type_radial_grid_inf_aux(handler,label,num_radial_points,radial_points)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+call sirius_set_atom_type_radial_grid_inf_aux(handler,label_ptr,num_radial_points,&
+&radial_points)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_set_atom_type_radial_grid_inf
 
 !> @brief Add one of the radial functions.
@@ -1038,15 +1259,19 @@ subroutine sirius_add_atom_type_radial_function(handler,atom_type,label,rf,num_p
 &n,l,idxrf1,idxrf2,occ)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: atom_type
-character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(in) :: rf
-integer(C_INT), intent(in) :: num_points
-integer(C_INT), optional, target, intent(in) :: n
-integer(C_INT), optional, target, intent(in) :: l
-integer(C_INT), optional, target, intent(in) :: idxrf1
-integer(C_INT), optional, target, intent(in) :: idxrf2
-real(C_DOUBLE), optional, target, intent(in) :: occ
+character(*), intent(in) :: atom_type
+character(*), intent(in) :: label
+real(8), intent(in) :: rf
+integer, intent(in) :: num_points
+integer, optional, target, intent(in) :: n
+integer, optional, target, intent(in) :: l
+integer, optional, target, intent(in) :: idxrf1
+integer, optional, target, intent(in) :: idxrf2
+real(8), optional, target, intent(in) :: occ
+character(C_CHAR), target, allocatable :: atom_type_c_type(:)
+type(C_PTR) :: atom_type_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 type(C_PTR) :: n_ptr
 type(C_PTR) :: l_ptr
 type(C_PTR) :: idxrf1_ptr
@@ -1058,8 +1283,8 @@ subroutine sirius_add_atom_type_radial_function_aux(handler,atom_type,label,rf,n
 &bind(C, name="sirius_add_atom_type_radial_function")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: atom_type
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: atom_type
+type(C_PTR), value :: label
 real(C_DOUBLE), intent(in) :: rf
 integer(C_INT), intent(in) :: num_points
 type(C_PTR), value :: n
@@ -1070,6 +1295,14 @@ type(C_PTR), value :: occ
 end subroutine
 end interface
 
+atom_type_ptr = C_NULL_PTR
+allocate(atom_type_c_type(len(atom_type)+1))
+atom_type_c_type = string(atom_type)
+atom_type_ptr = C_LOC(atom_type_c_type)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
 n_ptr = C_NULL_PTR
 if (present(n)) n_ptr = C_LOC(n)
 
@@ -1085,8 +1318,10 @@ if (present(idxrf2)) idxrf2_ptr = C_LOC(idxrf2)
 occ_ptr = C_NULL_PTR
 if (present(occ)) occ_ptr = C_LOC(occ)
 
-call sirius_add_atom_type_radial_function_aux(handler,atom_type,label,rf,num_points,&
-&n_ptr,l_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr)
+call sirius_add_atom_type_radial_function_aux(handler,atom_type_ptr,label_ptr,rf,&
+&num_points,n_ptr,l_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr)
+if (allocated(atom_type_c_type)) deallocate(atom_type_c_type)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_add_atom_type_radial_function
 
 !> @brief Set the hubbard correction for the atomic type.
@@ -1103,22 +1338,24 @@ end subroutine sirius_add_atom_type_radial_function
 subroutine sirius_set_atom_type_hubbard(handler,label,l,n,occ,U,J,alpha,beta,J0)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(in) :: l
-integer(C_INT), intent(in) :: n
-real(C_DOUBLE), intent(in) :: occ
-real(C_DOUBLE), intent(in) :: U
-real(C_DOUBLE), intent(in) :: J
-real(C_DOUBLE), intent(in) :: alpha
-real(C_DOUBLE), intent(in) :: beta
-real(C_DOUBLE), intent(in) :: J0
+character(*), intent(in) :: label
+integer, intent(in) :: l
+integer, intent(in) :: n
+real(8), intent(in) :: occ
+real(8), intent(in) :: U
+real(8), intent(in) :: J
+real(8), intent(in) :: alpha
+real(8), intent(in) :: beta
+real(8), intent(in) :: J0
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 subroutine sirius_set_atom_type_hubbard_aux(handler,label,l,n,occ,U,J,alpha,beta,&
 &J0)&
 &bind(C, name="sirius_set_atom_type_hubbard")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 integer(C_INT), intent(in) :: l
 integer(C_INT), intent(in) :: n
 real(C_DOUBLE), intent(in) :: occ
@@ -1130,7 +1367,12 @@ real(C_DOUBLE), intent(in) :: J0
 end subroutine
 end interface
 
-call sirius_set_atom_type_hubbard_aux(handler,label,l,n,occ,U,J,alpha,beta,J0)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+call sirius_set_atom_type_hubbard_aux(handler,label_ptr,l,n,occ,U,J,alpha,beta,J0)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_set_atom_type_hubbard
 
 !> @brief Set ionic part of D-operator matrix.
@@ -1141,21 +1383,28 @@ end subroutine sirius_set_atom_type_hubbard
 subroutine sirius_set_atom_type_dion(handler,label,num_beta,dion)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(in) :: num_beta
-real(C_DOUBLE), intent(in) :: dion
+character(*), intent(in) :: label
+integer, intent(in) :: num_beta
+real(8), intent(in) :: dion
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 subroutine sirius_set_atom_type_dion_aux(handler,label,num_beta,dion)&
 &bind(C, name="sirius_set_atom_type_dion")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 integer(C_INT), intent(in) :: num_beta
 real(C_DOUBLE), intent(in) :: dion
 end subroutine
 end interface
 
-call sirius_set_atom_type_dion_aux(handler,label,num_beta,dion)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+call sirius_set_atom_type_dion_aux(handler,label_ptr,num_beta,dion)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_set_atom_type_dion
 
 !> @brief Set PAW related data.
@@ -1167,23 +1416,30 @@ end subroutine sirius_set_atom_type_dion
 subroutine sirius_set_atom_type_paw(handler,label,core_energy,occupations,num_occ)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(in) :: core_energy
-real(C_DOUBLE), intent(in) :: occupations
-integer(C_INT), intent(in) :: num_occ
+character(*), intent(in) :: label
+real(8), intent(in) :: core_energy
+real(8), intent(in) :: occupations
+integer, intent(in) :: num_occ
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 subroutine sirius_set_atom_type_paw_aux(handler,label,core_energy,occupations,num_occ)&
 &bind(C, name="sirius_set_atom_type_paw")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 real(C_DOUBLE), intent(in) :: core_energy
 real(C_DOUBLE), intent(in) :: occupations
 integer(C_INT), intent(in) :: num_occ
 end subroutine
 end interface
 
-call sirius_set_atom_type_paw_aux(handler,label,core_energy,occupations,num_occ)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+call sirius_set_atom_type_paw_aux(handler,label_ptr,core_energy,occupations,num_occ)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_set_atom_type_paw
 
 !> @brief Add atom to the unit cell.
@@ -1194,25 +1450,32 @@ end subroutine sirius_set_atom_type_paw
 subroutine sirius_add_atom(handler,label,position,vector_field)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(in) :: position
-real(C_DOUBLE), optional, target, intent(in) :: vector_field
+character(*), intent(in) :: label
+real(8), intent(in) :: position
+real(8), optional, target, intent(in) :: vector_field
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 type(C_PTR) :: vector_field_ptr
 interface
 subroutine sirius_add_atom_aux(handler,label,position,vector_field)&
 &bind(C, name="sirius_add_atom")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 real(C_DOUBLE), intent(in) :: position
 type(C_PTR), value :: vector_field
 end subroutine
 end interface
 
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
 vector_field_ptr = C_NULL_PTR
 if (present(vector_field)) vector_field_ptr = C_LOC(vector_field)
 
-call sirius_add_atom_aux(handler,label,position,vector_field_ptr)
+call sirius_add_atom_aux(handler,label_ptr,position,vector_field_ptr)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_add_atom
 
 !> @brief Set new atomic position.
@@ -1222,8 +1485,8 @@ end subroutine sirius_add_atom
 subroutine sirius_set_atom_position(handler,ia,position)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-real(C_DOUBLE), intent(in) :: position
+integer, intent(in) :: ia
+real(8), intent(in) :: position
 interface
 subroutine sirius_set_atom_position_aux(handler,ia,position)&
 &bind(C, name="sirius_set_atom_position")
@@ -1249,12 +1512,15 @@ subroutine sirius_set_pw_coeffs(handler,label,pw_coeffs,transform_to_rg,ngv,gvl,
 &comm)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-complex(C_DOUBLE), intent(in) :: pw_coeffs
-logical(C_BOOL), optional, target, intent(in) :: transform_to_rg
-integer(C_INT), optional, target, intent(in) :: ngv
-integer(C_INT), optional, target, intent(in) :: gvl
-integer(C_INT), optional, target, intent(in) :: comm
+character(*), intent(in) :: label
+complex(8), intent(in) :: pw_coeffs
+logical, optional, target, intent(in) :: transform_to_rg
+integer, optional, target, intent(in) :: ngv
+integer, optional, target, intent(in) :: gvl
+integer, optional, target, intent(in) :: comm
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
+logical(C_BOOL), target :: transform_to_rg_c_type
 type(C_PTR) :: transform_to_rg_ptr
 type(C_PTR) :: ngv_ptr
 type(C_PTR) :: gvl_ptr
@@ -1265,7 +1531,7 @@ subroutine sirius_set_pw_coeffs_aux(handler,label,pw_coeffs,transform_to_rg,ngv,
 &bind(C, name="sirius_set_pw_coeffs")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 complex(C_DOUBLE), intent(in) :: pw_coeffs
 type(C_PTR), value :: transform_to_rg
 type(C_PTR), value :: ngv
@@ -1274,9 +1540,15 @@ type(C_PTR), value :: comm
 end subroutine
 end interface
 
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
 transform_to_rg_ptr = C_NULL_PTR
-if (present(transform_to_rg)) transform_to_rg_ptr = C_LOC(transform_to_rg)
-
+if (present(transform_to_rg)) then
+  transform_to_rg_c_type = bool(transform_to_rg)
+  transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
+endif
 ngv_ptr = C_NULL_PTR
 if (present(ngv)) ngv_ptr = C_LOC(ngv)
 
@@ -1286,8 +1558,9 @@ if (present(gvl)) gvl_ptr = C_LOC(gvl)
 comm_ptr = C_NULL_PTR
 if (present(comm)) comm_ptr = C_LOC(comm)
 
-call sirius_set_pw_coeffs_aux(handler,label,pw_coeffs,transform_to_rg_ptr,ngv_ptr,&
+call sirius_set_pw_coeffs_aux(handler,label_ptr,pw_coeffs,transform_to_rg_ptr,ngv_ptr,&
 &gvl_ptr,comm_ptr)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_set_pw_coeffs
 
 !> @brief Get plane-wave coefficients of a periodic function.
@@ -1300,11 +1573,13 @@ end subroutine sirius_set_pw_coeffs
 subroutine sirius_get_pw_coeffs(handler,label,pw_coeffs,ngv,gvl,comm)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-complex(C_DOUBLE), intent(in) :: pw_coeffs
-integer(C_INT), optional, target, intent(in) :: ngv
-integer(C_INT), optional, target, intent(in) :: gvl
-integer(C_INT), optional, target, intent(in) :: comm
+character(*), intent(in) :: label
+complex(8), intent(in) :: pw_coeffs
+integer, optional, target, intent(in) :: ngv
+integer, optional, target, intent(in) :: gvl
+integer, optional, target, intent(in) :: comm
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 type(C_PTR) :: ngv_ptr
 type(C_PTR) :: gvl_ptr
 type(C_PTR) :: comm_ptr
@@ -1313,7 +1588,7 @@ subroutine sirius_get_pw_coeffs_aux(handler,label,pw_coeffs,ngv,gvl,comm)&
 &bind(C, name="sirius_get_pw_coeffs")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 complex(C_DOUBLE), intent(in) :: pw_coeffs
 type(C_PTR), value :: ngv
 type(C_PTR), value :: gvl
@@ -1321,6 +1596,10 @@ type(C_PTR), value :: comm
 end subroutine
 end interface
 
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
 ngv_ptr = C_NULL_PTR
 if (present(ngv)) ngv_ptr = C_LOC(ngv)
 
@@ -1330,7 +1609,8 @@ if (present(gvl)) gvl_ptr = C_LOC(gvl)
 comm_ptr = C_NULL_PTR
 if (present(comm)) comm_ptr = C_LOC(comm)
 
-call sirius_get_pw_coeffs_aux(handler,label,pw_coeffs,ngv_ptr,gvl_ptr,comm_ptr)
+call sirius_get_pw_coeffs_aux(handler,label_ptr,pw_coeffs,ngv_ptr,gvl_ptr,comm_ptr)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_get_pw_coeffs
 
 !> @brief Get atom type contribution to plane-wave coefficients of a periodic function.
@@ -1344,12 +1624,16 @@ end subroutine sirius_get_pw_coeffs
 subroutine sirius_get_pw_coeffs_real(handler,atom_type,label,pw_coeffs,ngv,gvl,comm)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: atom_type
-character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(in) :: pw_coeffs
-integer(C_INT), optional, target, intent(in) :: ngv
-integer(C_INT), optional, target, intent(in) :: gvl
-integer(C_INT), optional, target, intent(in) :: comm
+character(*), intent(in) :: atom_type
+character(*), intent(in) :: label
+real(8), intent(in) :: pw_coeffs
+integer, optional, target, intent(in) :: ngv
+integer, optional, target, intent(in) :: gvl
+integer, optional, target, intent(in) :: comm
+character(C_CHAR), target, allocatable :: atom_type_c_type(:)
+type(C_PTR) :: atom_type_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 type(C_PTR) :: ngv_ptr
 type(C_PTR) :: gvl_ptr
 type(C_PTR) :: comm_ptr
@@ -1359,8 +1643,8 @@ subroutine sirius_get_pw_coeffs_real_aux(handler,atom_type,label,pw_coeffs,ngv,g
 &bind(C, name="sirius_get_pw_coeffs_real")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: atom_type
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: atom_type
+type(C_PTR), value :: label
 real(C_DOUBLE), intent(in) :: pw_coeffs
 type(C_PTR), value :: ngv
 type(C_PTR), value :: gvl
@@ -1368,6 +1652,14 @@ type(C_PTR), value :: comm
 end subroutine
 end interface
 
+atom_type_ptr = C_NULL_PTR
+allocate(atom_type_c_type(len(atom_type)+1))
+atom_type_c_type = string(atom_type)
+atom_type_ptr = C_LOC(atom_type_c_type)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
 ngv_ptr = C_NULL_PTR
 if (present(ngv)) ngv_ptr = C_LOC(ngv)
 
@@ -1377,8 +1669,10 @@ if (present(gvl)) gvl_ptr = C_LOC(gvl)
 comm_ptr = C_NULL_PTR
 if (present(comm)) comm_ptr = C_LOC(comm)
 
-call sirius_get_pw_coeffs_real_aux(handler,atom_type,label,pw_coeffs,ngv_ptr,gvl_ptr,&
-&comm_ptr)
+call sirius_get_pw_coeffs_real_aux(handler,atom_type_ptr,label_ptr,pw_coeffs,ngv_ptr,&
+&gvl_ptr,comm_ptr)
+if (allocated(atom_type_c_type)) deallocate(atom_type_c_type)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_get_pw_coeffs_real
 
 !> @brief Initialize the subspace of wave-functions.
@@ -1409,8 +1703,9 @@ subroutine sirius_find_eigen_states(gs_handler,ks_handler,precompute,iter_solver
 implicit none
 type(C_PTR), intent(in) :: gs_handler
 type(C_PTR), intent(in) :: ks_handler
-logical(C_BOOL), intent(in) :: precompute
-real(C_DOUBLE), optional, target, intent(in) :: iter_solver_tol
+logical, intent(in) :: precompute
+real(8), optional, target, intent(in) :: iter_solver_tol
+logical(C_BOOL), target :: precompute_c_type
 type(C_PTR) :: iter_solver_tol_ptr
 interface
 subroutine sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute,iter_solver_tol)&
@@ -1423,10 +1718,11 @@ type(C_PTR), value :: iter_solver_tol
 end subroutine
 end interface
 
+precompute_c_type = bool(precompute)
 iter_solver_tol_ptr = C_NULL_PTR
 if (present(iter_solver_tol)) iter_solver_tol_ptr = C_LOC(iter_solver_tol)
 
-call sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute,iter_solver_tol_ptr)
+call sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute_c_type,iter_solver_tol_ptr)
 end subroutine sirius_find_eigen_states
 
 !> @brief Generate D-operator matrix.
@@ -1484,9 +1780,11 @@ end subroutine sirius_generate_effective_potential
 subroutine sirius_generate_density(gs_handler,add_core,transform_to_rg)
 implicit none
 type(C_PTR), intent(in) :: gs_handler
-logical(C_BOOL), optional, target, intent(in) :: add_core
-logical(C_BOOL), optional, target, intent(in) :: transform_to_rg
+logical, optional, target, intent(in) :: add_core
+logical, optional, target, intent(in) :: transform_to_rg
+logical(C_BOOL), target :: add_core_c_type
 type(C_PTR) :: add_core_ptr
+logical(C_BOOL), target :: transform_to_rg_c_type
 type(C_PTR) :: transform_to_rg_ptr
 interface
 subroutine sirius_generate_density_aux(gs_handler,add_core,transform_to_rg)&
@@ -1499,11 +1797,15 @@ end subroutine
 end interface
 
 add_core_ptr = C_NULL_PTR
-if (present(add_core)) add_core_ptr = C_LOC(add_core)
-
+if (present(add_core)) then
+  add_core_c_type = bool(add_core)
+  add_core_ptr = C_LOC(add_core_c_type)
+endif
 transform_to_rg_ptr = C_NULL_PTR
-if (present(transform_to_rg)) transform_to_rg_ptr = C_LOC(transform_to_rg)
-
+if (present(transform_to_rg)) then
+  transform_to_rg_c_type = bool(transform_to_rg)
+  transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
+endif
 call sirius_generate_density_aux(gs_handler,add_core_ptr,transform_to_rg_ptr)
 end subroutine sirius_generate_density
 
@@ -1515,9 +1817,9 @@ end subroutine sirius_generate_density
 subroutine sirius_set_band_occupancies(ks_handler,ik,ispn,band_occupancies)
 implicit none
 type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(in) :: band_occupancies
+integer, intent(in) :: ik
+integer, intent(in) :: ispn
+real(8), intent(in) :: band_occupancies
 interface
 subroutine sirius_set_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)&
 &bind(C, name="sirius_set_band_occupancies")
@@ -1540,9 +1842,9 @@ end subroutine sirius_set_band_occupancies
 subroutine sirius_get_band_occupancies(ks_handler,ik,ispn,band_occupancies)
 implicit none
 type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(out) :: band_occupancies
+integer, intent(in) :: ik
+integer, intent(in) :: ispn
+real(8), intent(out) :: band_occupancies
 interface
 subroutine sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)&
 &bind(C, name="sirius_get_band_occupancies")
@@ -1565,9 +1867,9 @@ end subroutine sirius_get_band_occupancies
 subroutine sirius_get_band_energies(ks_handler,ik,ispn,band_energies)
 implicit none
 type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(out) :: band_energies
+integer, intent(in) :: ik
+integer, intent(in) :: ispn
+real(8), intent(out) :: band_energies
 interface
 subroutine sirius_get_band_energies_aux(ks_handler,ik,ispn,band_energies)&
 &bind(C, name="sirius_get_band_energies")
@@ -1591,10 +1893,10 @@ end subroutine sirius_get_band_energies
 subroutine sirius_get_d_operator_matrix(handler,ia,ispn,d_mtrx,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(out) :: d_mtrx
-integer(C_INT), intent(in) :: ld
+integer, intent(in) :: ia
+integer, intent(in) :: ispn
+real(8), intent(out) :: d_mtrx
+integer, intent(in) :: ld
 interface
 subroutine sirius_get_d_operator_matrix_aux(handler,ia,ispn,d_mtrx,ld)&
 &bind(C, name="sirius_get_d_operator_matrix")
@@ -1619,10 +1921,10 @@ end subroutine sirius_get_d_operator_matrix
 subroutine sirius_set_d_operator_matrix(handler,ia,ispn,d_mtrx,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(out) :: d_mtrx
-integer(C_INT), intent(in) :: ld
+integer, intent(in) :: ia
+integer, intent(in) :: ispn
+real(8), intent(out) :: d_mtrx
+integer, intent(in) :: ld
 interface
 subroutine sirius_set_d_operator_matrix_aux(handler,ia,ispn,d_mtrx,ld)&
 &bind(C, name="sirius_set_d_operator_matrix")
@@ -1646,21 +1948,28 @@ end subroutine sirius_set_d_operator_matrix
 subroutine sirius_set_q_operator_matrix(handler,label,q_mtrx,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(out) :: q_mtrx
-integer(C_INT), intent(in) :: ld
+character(*), intent(in) :: label
+real(8), intent(out) :: q_mtrx
+integer, intent(in) :: ld
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 subroutine sirius_set_q_operator_matrix_aux(handler,label,q_mtrx,ld)&
 &bind(C, name="sirius_set_q_operator_matrix")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 real(C_DOUBLE), intent(out) :: q_mtrx
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
 
-call sirius_set_q_operator_matrix_aux(handler,label,q_mtrx,ld)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+call sirius_set_q_operator_matrix_aux(handler,label_ptr,q_mtrx,ld)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_set_q_operator_matrix
 
 !> @brief Get Q-operator matrix
@@ -1671,21 +1980,28 @@ end subroutine sirius_set_q_operator_matrix
 subroutine sirius_get_q_operator_matrix(handler,label,q_mtrx,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(out) :: q_mtrx
-integer(C_INT), intent(in) :: ld
+character(*), intent(in) :: label
+real(8), intent(out) :: q_mtrx
+integer, intent(in) :: ld
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 subroutine sirius_get_q_operator_matrix_aux(handler,label,q_mtrx,ld)&
 &bind(C, name="sirius_get_q_operator_matrix")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 real(C_DOUBLE), intent(out) :: q_mtrx
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
 
-call sirius_get_q_operator_matrix_aux(handler,label,q_mtrx,ld)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+call sirius_get_q_operator_matrix_aux(handler,label_ptr,q_mtrx,ld)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_get_q_operator_matrix
 
 !> @brief Get all components of complex density matrix.
@@ -1696,9 +2012,9 @@ end subroutine sirius_get_q_operator_matrix
 subroutine sirius_get_density_matrix(handler,ia,dm,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-complex(C_DOUBLE), intent(out) :: dm
-integer(C_INT), intent(in) :: ld
+integer, intent(in) :: ia
+complex(8), intent(out) :: dm
+integer, intent(in) :: ld
 interface
 subroutine sirius_get_density_matrix_aux(handler,ia,dm,ld)&
 &bind(C, name="sirius_get_density_matrix")
@@ -1721,9 +2037,9 @@ end subroutine sirius_get_density_matrix
 subroutine sirius_set_density_matrix(handler,ia,dm,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-complex(C_DOUBLE), intent(out) :: dm
-integer(C_INT), intent(in) :: ld
+integer, intent(in) :: ia
+complex(8), intent(out) :: dm
+integer, intent(in) :: ld
 interface
 subroutine sirius_set_density_matrix_aux(handler,ia,dm,ld)&
 &bind(C, name="sirius_set_density_matrix")
@@ -1745,19 +2061,26 @@ end subroutine sirius_set_density_matrix
 subroutine sirius_get_energy(handler,label,energy)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(out) :: energy
+character(*), intent(in) :: label
+real(8), intent(out) :: energy
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 subroutine sirius_get_energy_aux(handler,label,energy)&
 &bind(C, name="sirius_get_energy")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 real(C_DOUBLE), intent(out) :: energy
 end subroutine
 end interface
 
-call sirius_get_energy_aux(handler,label,energy)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+call sirius_get_energy_aux(handler,label_ptr,energy)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_get_energy
 
 !> @brief Get one of the total force components.
@@ -1767,19 +2090,26 @@ end subroutine sirius_get_energy
 subroutine sirius_get_forces(handler,label,forces)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(out) :: forces
+character(*), intent(in) :: label
+real(8), intent(out) :: forces
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 subroutine sirius_get_forces_aux(handler,label,forces)&
 &bind(C, name="sirius_get_forces")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 real(C_DOUBLE), intent(out) :: forces
 end subroutine
 end interface
 
-call sirius_get_forces_aux(handler,label,forces)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+call sirius_get_forces_aux(handler,label_ptr,forces)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_get_forces
 
 !> @brief Get one of the stress tensor components.
@@ -1789,19 +2119,26 @@ end subroutine sirius_get_forces
 subroutine sirius_get_stress_tensor(handler,label,stress_tensor)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(out) :: stress_tensor
+character(*), intent(in) :: label
+real(8), intent(out) :: stress_tensor
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 subroutine sirius_get_stress_tensor_aux(handler,label,stress_tensor)&
 &bind(C, name="sirius_get_stress_tensor")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 real(C_DOUBLE), intent(out) :: stress_tensor
 end subroutine
 end interface
 
-call sirius_get_stress_tensor_aux(handler,label,stress_tensor)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+call sirius_get_stress_tensor_aux(handler,label_ptr,stress_tensor)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_get_stress_tensor
 
 !> @brief Get the number of beta-projectors for an atom type.
@@ -1810,19 +2147,26 @@ end subroutine sirius_get_stress_tensor
 function sirius_get_num_beta_projectors(handler,label) result(res)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT) :: res
+character(*), intent(in) :: label
+integer :: res
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 function sirius_get_num_beta_projectors_aux(handler,label) result(res)&
 &bind(C, name="sirius_get_num_beta_projectors")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 integer(C_INT) :: res
 end function
 end interface
 
-res = sirius_get_num_beta_projectors_aux(handler,label)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+res = sirius_get_num_beta_projectors_aux(handler,label_ptr)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end function sirius_get_num_beta_projectors
 
 !> @brief Get plane-wave coefficients of Q-operator
@@ -1836,18 +2180,20 @@ end function sirius_get_num_beta_projectors
 subroutine sirius_get_q_operator(handler,label,xi1,xi2,ngv,gvl,q_pw)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(in) :: xi1
-integer(C_INT), intent(in) :: xi2
-integer(C_INT), intent(in) :: ngv
-integer(C_INT), intent(in) :: gvl
-complex(C_DOUBLE), intent(out) :: q_pw
+character(*), intent(in) :: label
+integer, intent(in) :: xi1
+integer, intent(in) :: xi2
+integer, intent(in) :: ngv
+integer, intent(in) :: gvl
+complex(8), intent(out) :: q_pw
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 interface
 subroutine sirius_get_q_operator_aux(handler,label,xi1,xi2,ngv,gvl,q_pw)&
 &bind(C, name="sirius_get_q_operator")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 integer(C_INT), intent(in) :: xi1
 integer(C_INT), intent(in) :: xi2
 integer(C_INT), intent(in) :: ngv
@@ -1856,7 +2202,12 @@ complex(C_DOUBLE), intent(out) :: q_pw
 end subroutine
 end interface
 
-call sirius_get_q_operator_aux(handler,label,xi1,xi2,ngv,gvl,q_pw)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+call sirius_get_q_operator_aux(handler,label_ptr,xi1,xi2,ngv,gvl,q_pw)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_get_q_operator
 
 !> @brief Get wave-functions.
@@ -1871,13 +2222,13 @@ end subroutine sirius_get_q_operator
 subroutine sirius_get_wave_functions(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2)
 implicit none
 type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(in) :: ispn
-integer(C_INT), intent(in) :: npw
-integer(C_INT), intent(in) :: gvec_k
-complex(C_DOUBLE), intent(out) :: evc
-integer(C_INT), intent(in) :: ld1
-integer(C_INT), intent(in) :: ld2
+integer, intent(in) :: ik
+integer, intent(in) :: ispn
+integer, intent(in) :: npw
+integer, intent(in) :: gvec_k
+complex(8), intent(out) :: evc
+integer, intent(in) :: ld1
+integer, intent(in) :: ld2
 interface
 subroutine sirius_get_wave_functions_aux(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2)&
 &bind(C, name="sirius_get_wave_functions")
@@ -1906,20 +2257,24 @@ end subroutine sirius_get_wave_functions
 function sirius_get_radial_integral(handler,atom_type,label,q,idx,l) result(res)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: atom_type
-character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(in) :: q
-integer(C_INT), intent(in) :: idx
-integer(C_INT), optional, target, intent(in) :: l
-real(C_DOUBLE) :: res
+character(*), intent(in) :: atom_type
+character(*), intent(in) :: label
+real(8), intent(in) :: q
+integer, intent(in) :: idx
+integer, optional, target, intent(in) :: l
+real(8) :: res
+character(C_CHAR), target, allocatable :: atom_type_c_type(:)
+type(C_PTR) :: atom_type_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 type(C_PTR) :: l_ptr
 interface
 function sirius_get_radial_integral_aux(handler,atom_type,label,q,idx,l) result(res)&
 &bind(C, name="sirius_get_radial_integral")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: atom_type
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: atom_type
+type(C_PTR), value :: label
 real(C_DOUBLE), intent(in) :: q
 integer(C_INT), intent(in) :: idx
 type(C_PTR), value :: l
@@ -1927,10 +2282,20 @@ real(C_DOUBLE) :: res
 end function
 end interface
 
+atom_type_ptr = C_NULL_PTR
+allocate(atom_type_c_type(len(atom_type)+1))
+atom_type_c_type = string(atom_type)
+atom_type_ptr = C_LOC(atom_type_c_type)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
 l_ptr = C_NULL_PTR
 if (present(l)) l_ptr = C_LOC(l)
 
-res = sirius_get_radial_integral_aux(handler,atom_type,label,q,idx,l_ptr)
+res = sirius_get_radial_integral_aux(handler,atom_type_ptr,label_ptr,q,idx,l_ptr)
+if (allocated(atom_type_c_type)) deallocate(atom_type_c_type)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end function sirius_get_radial_integral
 
 !> @brief Compute occupation matrix.
@@ -1956,8 +2321,8 @@ end subroutine sirius_calculate_hubbard_occupancies
 subroutine sirius_set_hubbard_occupancies(handler,occ,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
-complex(C_DOUBLE), intent(inout) :: occ
-integer(C_INT), intent(in) :: ld
+complex(8), intent(inout) :: occ
+integer, intent(in) :: ld
 interface
 subroutine sirius_set_hubbard_occupancies_aux(handler,occ,ld)&
 &bind(C, name="sirius_set_hubbard_occupancies")
@@ -1978,8 +2343,8 @@ end subroutine sirius_set_hubbard_occupancies
 subroutine sirius_get_hubbard_occupancies(handler,occ,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
-complex(C_DOUBLE), intent(inout) :: occ
-integer(C_INT), intent(in) :: ld
+complex(8), intent(inout) :: occ
+integer, intent(in) :: ld
 interface
 subroutine sirius_get_hubbard_occupancies_aux(handler,occ,ld)&
 &bind(C, name="sirius_get_hubbard_occupancies")
@@ -2000,8 +2365,8 @@ end subroutine sirius_get_hubbard_occupancies
 subroutine sirius_set_hubbard_potential(handler,pot,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
-complex(C_DOUBLE), intent(inout) :: pot
-integer(C_INT), intent(in) :: ld
+complex(8), intent(inout) :: pot
+integer, intent(in) :: ld
 interface
 subroutine sirius_set_hubbard_potential_aux(handler,pot,ld)&
 &bind(C, name="sirius_set_hubbard_potential")
@@ -2022,8 +2387,8 @@ end subroutine sirius_set_hubbard_potential
 subroutine sirius_get_hubbard_potential(handler,pot,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
-complex(C_DOUBLE), intent(inout) :: pot
-integer(C_INT), intent(in) :: ld
+complex(8), intent(inout) :: pot
+integer, intent(in) :: ld
 interface
 subroutine sirius_get_hubbard_potential_aux(handler,pot,ld)&
 &bind(C, name="sirius_get_hubbard_potential")
@@ -2048,18 +2413,21 @@ end subroutine sirius_get_hubbard_potential
 subroutine sirius_add_atom_type_aw_descriptor(handler,label,n,l,enu,dme,auto_enu)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(in) :: n
-integer(C_INT), intent(in) :: l
-real(C_DOUBLE), intent(in) :: enu
-integer(C_INT), intent(in) :: dme
-logical(C_BOOL), intent(in) :: auto_enu
+character(*), intent(in) :: label
+integer, intent(in) :: n
+integer, intent(in) :: l
+real(8), intent(in) :: enu
+integer, intent(in) :: dme
+logical, intent(in) :: auto_enu
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
+logical(C_BOOL), target :: auto_enu_c_type
 interface
 subroutine sirius_add_atom_type_aw_descriptor_aux(handler,label,n,l,enu,dme,auto_enu)&
 &bind(C, name="sirius_add_atom_type_aw_descriptor")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 integer(C_INT), intent(in) :: n
 integer(C_INT), intent(in) :: l
 real(C_DOUBLE), intent(in) :: enu
@@ -2068,7 +2436,13 @@ logical(C_BOOL), intent(in) :: auto_enu
 end subroutine
 end interface
 
-call sirius_add_atom_type_aw_descriptor_aux(handler,label,n,l,enu,dme,auto_enu)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+auto_enu_c_type = bool(auto_enu)
+call sirius_add_atom_type_aw_descriptor_aux(handler,label_ptr,n,l,enu,dme,auto_enu_c_type)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_add_atom_type_aw_descriptor
 
 !> @brief Add descriptor of the local orbital radial function.
@@ -2083,20 +2457,23 @@ end subroutine sirius_add_atom_type_aw_descriptor
 subroutine sirius_add_atom_type_lo_descriptor(handler,label,ilo,n,l,enu,dme,auto_enu)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(in) :: ilo
-integer(C_INT), intent(in) :: n
-integer(C_INT), intent(in) :: l
-real(C_DOUBLE), intent(in) :: enu
-integer(C_INT), intent(in) :: dme
-logical(C_BOOL), intent(in) :: auto_enu
+character(*), intent(in) :: label
+integer, intent(in) :: ilo
+integer, intent(in) :: n
+integer, intent(in) :: l
+real(8), intent(in) :: enu
+integer, intent(in) :: dme
+logical, intent(in) :: auto_enu
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
+logical(C_BOOL), target :: auto_enu_c_type
 interface
 subroutine sirius_add_atom_type_lo_descriptor_aux(handler,label,ilo,n,l,enu,dme,&
 &auto_enu)&
 &bind(C, name="sirius_add_atom_type_lo_descriptor")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 integer(C_INT), intent(in) :: ilo
 integer(C_INT), intent(in) :: n
 integer(C_INT), intent(in) :: l
@@ -2106,7 +2483,13 @@ logical(C_BOOL), intent(in) :: auto_enu
 end subroutine
 end interface
 
-call sirius_add_atom_type_lo_descriptor_aux(handler,label,ilo,n,l,enu,dme,auto_enu)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+auto_enu_c_type = bool(auto_enu)
+call sirius_add_atom_type_lo_descriptor_aux(handler,label_ptr,ilo,n,l,enu,dme,auto_enu_c_type)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_add_atom_type_lo_descriptor
 
 !> @brief Set configuration of atomic levels.
@@ -2120,19 +2503,22 @@ end subroutine sirius_add_atom_type_lo_descriptor
 subroutine sirius_set_atom_type_configuration(handler,label,n,l,k,occupancy,core)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(in) :: n
-integer(C_INT), intent(in) :: l
-integer(C_INT), intent(in) :: k
-real(C_DOUBLE), intent(in) :: occupancy
-logical(C_BOOL), intent(in) :: core
+character(*), intent(in) :: label
+integer, intent(in) :: n
+integer, intent(in) :: l
+integer, intent(in) :: k
+real(8), intent(in) :: occupancy
+logical, intent(in) :: core
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
+logical(C_BOOL), target :: core_c_type
 interface
 subroutine sirius_set_atom_type_configuration_aux(handler,label,n,l,k,occupancy,&
 &core)&
 &bind(C, name="sirius_set_atom_type_configuration")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 integer(C_INT), intent(in) :: n
 integer(C_INT), intent(in) :: l
 integer(C_INT), intent(in) :: k
@@ -2141,7 +2527,13 @@ logical(C_BOOL), intent(in) :: core
 end subroutine
 end interface
 
-call sirius_set_atom_type_configuration_aux(handler,label,n,l,k,occupancy,core)
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
+core_c_type = bool(core)
+call sirius_set_atom_type_configuration_aux(handler,label_ptr,n,l,k,occupancy,core_c_type)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_set_atom_type_configuration
 
 !> @brief Generate Coulomb potential by solving Poisson equation
@@ -2152,9 +2544,10 @@ end subroutine sirius_set_atom_type_configuration
 subroutine sirius_generate_coulomb_potential(handler,is_local_rg,vclmt,vclrg)
 implicit none
 type(C_PTR), intent(in) :: handler
-logical(C_BOOL), intent(in) :: is_local_rg
-real(C_DOUBLE), intent(out) :: vclmt
-real(C_DOUBLE), intent(out) :: vclrg
+logical, intent(in) :: is_local_rg
+real(8), intent(out) :: vclmt
+real(8), intent(out) :: vclrg
+logical(C_BOOL), target :: is_local_rg_c_type
 interface
 subroutine sirius_generate_coulomb_potential_aux(handler,is_local_rg,vclmt,vclrg)&
 &bind(C, name="sirius_generate_coulomb_potential")
@@ -2166,7 +2559,8 @@ real(C_DOUBLE), intent(out) :: vclrg
 end subroutine
 end interface
 
-call sirius_generate_coulomb_potential_aux(handler,is_local_rg,vclmt,vclrg)
+is_local_rg_c_type = bool(is_local_rg)
+call sirius_generate_coulomb_potential_aux(handler,is_local_rg_c_type,vclmt,vclrg)
 end subroutine sirius_generate_coulomb_potential
 
 !> @brief Generate XC potential using LibXC
@@ -2184,15 +2578,16 @@ subroutine sirius_generate_xc_potential(handler,is_local_rg,vxcmt,vxcrg,bxcmt_x,
 &bxcmt_y,bxcmt_z,bxcrg_x,bxcrg_y,bxcrg_z)
 implicit none
 type(C_PTR), intent(in) :: handler
-logical(C_BOOL), intent(in) :: is_local_rg
-real(C_DOUBLE), intent(out) :: vxcmt
-real(C_DOUBLE), intent(out) :: vxcrg
-real(C_DOUBLE), optional, target, intent(out) :: bxcmt_x
-real(C_DOUBLE), optional, target, intent(out) :: bxcmt_y
-real(C_DOUBLE), optional, target, intent(out) :: bxcmt_z
-real(C_DOUBLE), optional, target, intent(out) :: bxcrg_x
-real(C_DOUBLE), optional, target, intent(out) :: bxcrg_y
-real(C_DOUBLE), optional, target, intent(out) :: bxcrg_z
+logical, intent(in) :: is_local_rg
+real(8), intent(out) :: vxcmt
+real(8), intent(out) :: vxcrg
+real(8), optional, target, intent(out) :: bxcmt_x
+real(8), optional, target, intent(out) :: bxcmt_y
+real(8), optional, target, intent(out) :: bxcmt_z
+real(8), optional, target, intent(out) :: bxcrg_x
+real(8), optional, target, intent(out) :: bxcrg_y
+real(8), optional, target, intent(out) :: bxcrg_z
+logical(C_BOOL), target :: is_local_rg_c_type
 type(C_PTR) :: bxcmt_x_ptr
 type(C_PTR) :: bxcmt_y_ptr
 type(C_PTR) :: bxcmt_z_ptr
@@ -2217,6 +2612,7 @@ type(C_PTR), value :: bxcrg_z
 end subroutine
 end interface
 
+is_local_rg_c_type = bool(is_local_rg)
 bxcmt_x_ptr = C_NULL_PTR
 if (present(bxcmt_x)) bxcmt_x_ptr = C_LOC(bxcmt_x)
 
@@ -2235,7 +2631,7 @@ if (present(bxcrg_y)) bxcrg_y_ptr = C_LOC(bxcrg_y)
 bxcrg_z_ptr = C_NULL_PTR
 if (present(bxcrg_z)) bxcrg_z_ptr = C_LOC(bxcrg_z)
 
-call sirius_generate_xc_potential_aux(handler,is_local_rg,vxcmt,vxcrg,bxcmt_x_ptr,&
+call sirius_generate_xc_potential_aux(handler,is_local_rg_c_type,vxcmt,vxcrg,bxcmt_x_ptr,&
 &bxcmt_y_ptr,bxcmt_z_ptr,bxcrg_x_ptr,bxcrg_y_ptr,bxcrg_z_ptr)
 end subroutine sirius_generate_xc_potential
 
@@ -2245,7 +2641,7 @@ end subroutine sirius_generate_xc_potential
 subroutine sirius_get_kpoint_inter_comm(handler,fcomm)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: fcomm
+integer, intent(out) :: fcomm
 interface
 subroutine sirius_get_kpoint_inter_comm_aux(handler,fcomm)&
 &bind(C, name="sirius_get_kpoint_inter_comm")
@@ -2264,7 +2660,7 @@ end subroutine sirius_get_kpoint_inter_comm
 subroutine sirius_get_kpoint_inner_comm(handler,fcomm)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: fcomm
+integer, intent(out) :: fcomm
 interface
 subroutine sirius_get_kpoint_inner_comm_aux(handler,fcomm)&
 &bind(C, name="sirius_get_kpoint_inner_comm")
@@ -2283,7 +2679,7 @@ end subroutine sirius_get_kpoint_inner_comm
 subroutine sirius_get_fft_comm(handler,fcomm)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: fcomm
+integer, intent(out) :: fcomm
 interface
 subroutine sirius_get_fft_comm_aux(handler,fcomm)&
 &bind(C, name="sirius_get_fft_comm")
@@ -2301,7 +2697,7 @@ end subroutine sirius_get_fft_comm
 function sirius_get_num_gvec(handler) result(res)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT) :: res
+integer :: res
 interface
 function sirius_get_num_gvec_aux(handler) result(res)&
 &bind(C, name="sirius_get_num_gvec")
@@ -2323,10 +2719,10 @@ end function sirius_get_num_gvec
 subroutine sirius_get_gvec_arrays(handler,gvec,gvec_cart,gvec_len,index_by_gvec)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), optional, target, intent(in) :: gvec
-real(C_DOUBLE), optional, target, intent(in) :: gvec_cart
-real(C_DOUBLE), optional, target, intent(in) :: gvec_len
-integer(C_INT), optional, target, intent(in) :: index_by_gvec
+integer, optional, target, intent(in) :: gvec
+real(8), optional, target, intent(in) :: gvec_cart
+real(8), optional, target, intent(in) :: gvec_len
+integer, optional, target, intent(in) :: index_by_gvec
 type(C_PTR) :: gvec_ptr
 type(C_PTR) :: gvec_cart_ptr
 type(C_PTR) :: gvec_len_ptr
@@ -2363,7 +2759,7 @@ end subroutine sirius_get_gvec_arrays
 function sirius_get_num_fft_grid_points(handler) result(res)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT) :: res
+integer :: res
 interface
 function sirius_get_num_fft_grid_points_aux(handler) result(res)&
 &bind(C, name="sirius_get_num_fft_grid_points")
@@ -2382,7 +2778,7 @@ end function sirius_get_num_fft_grid_points
 subroutine sirius_get_fft_index(handler,fft_index)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: fft_index
+integer, intent(out) :: fft_index
 interface
 subroutine sirius_get_fft_index_aux(handler,fft_index)&
 &bind(C, name="sirius_get_fft_index")
@@ -2400,7 +2796,7 @@ end subroutine sirius_get_fft_index
 function sirius_get_max_num_gkvec(ks_handler) result(res)
 implicit none
 type(C_PTR), intent(in) :: ks_handler
-integer(C_INT) :: res
+integer :: res
 interface
 function sirius_get_max_num_gkvec_aux(ks_handler) result(res)&
 &bind(C, name="sirius_get_max_num_gkvec")
@@ -2426,13 +2822,13 @@ subroutine sirius_get_gkvec_arrays(ks_handler,ik,num_gkvec,gvec_index,gkvec,gkve
 &gkvec_len,gkvec_tp)
 implicit none
 type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(out) :: num_gkvec
-integer(C_INT), intent(out) :: gvec_index
-real(C_DOUBLE), intent(out) :: gkvec
-real(C_DOUBLE), intent(out) :: gkvec_cart
-real(C_DOUBLE), intent(out) :: gkvec_len
-real(C_DOUBLE), intent(out) :: gkvec_tp
+integer, intent(in) :: ik
+integer, intent(out) :: num_gkvec
+integer, intent(out) :: gvec_index
+real(8), intent(out) :: gkvec
+real(8), intent(out) :: gkvec_cart
+real(8), intent(out) :: gkvec_len
+real(8), intent(out) :: gkvec_tp
 interface
 subroutine sirius_get_gkvec_arrays_aux(ks_handler,ik,num_gkvec,gvec_index,gkvec,&
 &gkvec_cart,gkvec_len,gkvec_tp)&
@@ -2460,8 +2856,8 @@ end subroutine sirius_get_gkvec_arrays
 subroutine sirius_get_step_function(handler,cfunig,cfunrg)
 implicit none
 type(C_PTR), intent(in) :: handler
-complex(C_DOUBLE), intent(out) :: cfunig
-real(C_DOUBLE), intent(out) :: cfunrg
+complex(8), intent(out) :: cfunig
+real(8), intent(out) :: cfunrg
 interface
 subroutine sirius_get_step_function_aux(handler,cfunig,cfunrg)&
 &bind(C, name="sirius_get_step_function")
@@ -2481,7 +2877,7 @@ end subroutine sirius_get_step_function
 subroutine sirius_get_vha_el(handler,vha_el)
 implicit none
 type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(out) :: vha_el
+real(8), intent(out) :: vha_el
 interface
 subroutine sirius_get_vha_el_aux(handler,vha_el)&
 &bind(C, name="sirius_get_vha_el")
@@ -2508,15 +2904,15 @@ end subroutine sirius_get_vha_el
 subroutine sirius_set_h_radial_integrals(handler,ia,lmmax,val,l1,o1,ilo1,l2,o2,ilo2)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-integer(C_INT), intent(in) :: lmmax
-real(C_DOUBLE), intent(in) :: val
-integer(C_INT), optional, target, intent(in) :: l1
-integer(C_INT), optional, target, intent(in) :: o1
-integer(C_INT), optional, target, intent(in) :: ilo1
-integer(C_INT), optional, target, intent(in) :: l2
-integer(C_INT), optional, target, intent(in) :: o2
-integer(C_INT), optional, target, intent(in) :: ilo2
+integer, intent(in) :: ia
+integer, intent(in) :: lmmax
+real(8), intent(in) :: val
+integer, optional, target, intent(in) :: l1
+integer, optional, target, intent(in) :: o1
+integer, optional, target, intent(in) :: ilo1
+integer, optional, target, intent(in) :: l2
+integer, optional, target, intent(in) :: o2
+integer, optional, target, intent(in) :: ilo2
 type(C_PTR) :: l1_ptr
 type(C_PTR) :: o1_ptr
 type(C_PTR) :: ilo1_ptr
@@ -2575,13 +2971,13 @@ end subroutine sirius_set_h_radial_integrals
 subroutine sirius_set_o_radial_integral(handler,ia,val,l,o1,ilo1,o2,ilo2)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-real(C_DOUBLE), intent(in) :: val
-integer(C_INT), intent(in) :: l
-integer(C_INT), optional, target, intent(in) :: o1
-integer(C_INT), optional, target, intent(in) :: ilo1
-integer(C_INT), optional, target, intent(in) :: o2
-integer(C_INT), optional, target, intent(in) :: ilo2
+integer, intent(in) :: ia
+real(8), intent(in) :: val
+integer, intent(in) :: l
+integer, optional, target, intent(in) :: o1
+integer, optional, target, intent(in) :: ilo1
+integer, optional, target, intent(in) :: o2
+integer, optional, target, intent(in) :: ilo2
 type(C_PTR) :: o1_ptr
 type(C_PTR) :: ilo1_ptr
 type(C_PTR) :: o2_ptr
@@ -2629,14 +3025,14 @@ end subroutine sirius_set_o_radial_integral
 subroutine sirius_set_o1_radial_integral(handler,ia,val,l1,o1,ilo1,l2,o2,ilo2)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-real(C_DOUBLE), intent(in) :: val
-integer(C_INT), optional, target, intent(in) :: l1
-integer(C_INT), optional, target, intent(in) :: o1
-integer(C_INT), optional, target, intent(in) :: ilo1
-integer(C_INT), optional, target, intent(in) :: l2
-integer(C_INT), optional, target, intent(in) :: o2
-integer(C_INT), optional, target, intent(in) :: ilo2
+integer, intent(in) :: ia
+real(8), intent(in) :: val
+integer, optional, target, intent(in) :: l1
+integer, optional, target, intent(in) :: o1
+integer, optional, target, intent(in) :: ilo1
+integer, optional, target, intent(in) :: l2
+integer, optional, target, intent(in) :: o2
+integer, optional, target, intent(in) :: ilo2
 type(C_PTR) :: l1_ptr
 type(C_PTR) :: o1_ptr
 type(C_PTR) :: ilo1_ptr
@@ -2692,12 +3088,12 @@ end subroutine sirius_set_o1_radial_integral
 subroutine sirius_set_radial_function(handler,ia,deriv_order,f,l,o,ilo)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-integer(C_INT), intent(in) :: deriv_order
-real(C_DOUBLE), intent(in) :: f
-integer(C_INT), optional, target, intent(in) :: l
-integer(C_INT), optional, target, intent(in) :: o
-integer(C_INT), optional, target, intent(in) :: ilo
+integer, intent(in) :: ia
+integer, intent(in) :: deriv_order
+real(8), intent(in) :: f
+integer, optional, target, intent(in) :: l
+integer, optional, target, intent(in) :: o
+integer, optional, target, intent(in) :: ilo
 type(C_PTR) :: l_ptr
 type(C_PTR) :: o_ptr
 type(C_PTR) :: ilo_ptr
@@ -2738,12 +3134,12 @@ end subroutine sirius_set_radial_function
 subroutine sirius_get_radial_function(handler,ia,deriv_order,f,l,o,ilo)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-integer(C_INT), intent(in) :: deriv_order
-real(C_DOUBLE), intent(out) :: f
-integer(C_INT), optional, target, intent(in) :: l
-integer(C_INT), optional, target, intent(in) :: o
-integer(C_INT), optional, target, intent(in) :: ilo
+integer, intent(in) :: ia
+integer, intent(in) :: deriv_order
+real(8), intent(out) :: f
+integer, optional, target, intent(in) :: l
+integer, optional, target, intent(in) :: o
+integer, optional, target, intent(in) :: ilo
 type(C_PTR) :: l_ptr
 type(C_PTR) :: o_ptr
 type(C_PTR) :: ilo_ptr
@@ -2779,7 +3175,7 @@ end subroutine sirius_get_radial_function
 subroutine sirius_set_equivalent_atoms(handler,equivalent_atoms)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: equivalent_atoms
+integer, intent(in) :: equivalent_atoms
 interface
 subroutine sirius_set_equivalent_atoms_aux(handler,equivalent_atoms)&
 &bind(C, name="sirius_set_equivalent_atoms")
@@ -2813,18 +3209,25 @@ end subroutine sirius_update_atomic_potential
 !> @param [out] length number of options contained in  the section
 subroutine sirius_option_get_length(section,length)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: section
-integer(C_INT), intent(out) :: length
+character(*), intent(in) :: section
+integer, intent(out) :: length
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
 interface
 subroutine sirius_option_get_length_aux(section,length)&
 &bind(C, name="sirius_option_get_length")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: section
+type(C_PTR), value :: section
 integer(C_INT), intent(out) :: length
 end subroutine
 end interface
 
-call sirius_option_get_length_aux(section,length)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+call sirius_option_get_length_aux(section_ptr,length)
+if (allocated(section_c_type)) deallocate(section_c_type)
 end subroutine sirius_option_get_length
 
 !> @brief Return the name and a type of an option from its index.
@@ -2834,22 +3237,36 @@ end subroutine sirius_option_get_length
 !> @param [out] type Type of the option (real, integer, boolean, string).
 subroutine sirius_option_get_name_and_type(section,elem,key_name,type)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: section
-integer(C_INT), intent(in) :: elem
-character(C_CHAR), dimension(*), intent(out) :: key_name
-integer(C_INT), intent(out) :: type
+character(*), intent(in) :: section
+integer, intent(in) :: elem
+character(*), intent(out) :: key_name
+integer, intent(out) :: type
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: key_name_c_type(:)
+type(C_PTR) :: key_name_ptr
 interface
 subroutine sirius_option_get_name_and_type_aux(section,elem,key_name,type)&
 &bind(C, name="sirius_option_get_name_and_type")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: section
+type(C_PTR), value :: section
 integer(C_INT), intent(in) :: elem
-character(C_CHAR), dimension(*), intent(out) :: key_name
+type(C_PTR), value :: key_name
 integer(C_INT), intent(out) :: type
 end subroutine
 end interface
 
-call sirius_option_get_name_and_type_aux(section,elem,key_name,type)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+key_name_ptr = C_NULL_PTR
+allocate(key_name_c_type(len(key_name)+1))
+key_name_c_type = string(key_name)
+key_name_ptr = C_LOC(key_name_c_type)
+call sirius_option_get_name_and_type_aux(section_ptr,elem,key_name_ptr,type)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(key_name_c_type)) deallocate(key_name_c_type)
 end subroutine sirius_option_get_name_and_type
 
 !> @brief return the description and usage of a given option
@@ -2859,22 +3276,50 @@ end subroutine sirius_option_get_name_and_type
 !> @param [out] usage how to use the option
 subroutine sirius_option_get_description_usage(section,name,desc,usage)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-character(C_CHAR), dimension(*), intent(out) :: desc
-character(C_CHAR), dimension(*), intent(out) :: usage
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+character(*), intent(out) :: desc
+character(*), intent(out) :: usage
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: desc_c_type(:)
+type(C_PTR) :: desc_ptr
+character(C_CHAR), target, allocatable :: usage_c_type(:)
+type(C_PTR) :: usage_ptr
 interface
 subroutine sirius_option_get_description_usage_aux(section,name,desc,usage)&
 &bind(C, name="sirius_option_get_description_usage")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-character(C_CHAR), dimension(*), intent(out) :: desc
-character(C_CHAR), dimension(*), intent(out) :: usage
+type(C_PTR), value :: section
+type(C_PTR), value :: name
+type(C_PTR), value :: desc
+type(C_PTR), value :: usage
 end subroutine
 end interface
 
-call sirius_option_get_description_usage_aux(section,name,desc,usage)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+desc_ptr = C_NULL_PTR
+allocate(desc_c_type(len(desc)+1))
+desc_c_type = string(desc)
+desc_ptr = C_LOC(desc_c_type)
+usage_ptr = C_NULL_PTR
+allocate(usage_c_type(len(usage)+1))
+usage_c_type = string(usage)
+usage_ptr = C_LOC(usage_c_type)
+call sirius_option_get_description_usage_aux(section_ptr,name_ptr,desc_ptr,usage_ptr)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
+if (allocated(desc_c_type)) deallocate(desc_c_type)
+if (allocated(usage_c_type)) deallocate(usage_c_type)
 end subroutine sirius_option_get_description_usage
 
 !> @brief return the default value of the option
@@ -2884,22 +3329,36 @@ end subroutine sirius_option_get_description_usage
 !> @param [out] length length of the table containing the default values
 subroutine sirius_option_get_int(section,name,default_value,length)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-integer(C_INT), intent(out) :: default_value
-integer(C_INT), intent(out) :: length
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+integer, intent(out) :: default_value
+integer, intent(out) :: length
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
 interface
 subroutine sirius_option_get_int_aux(section,name,default_value,length)&
 &bind(C, name="sirius_option_get_int")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: section
+type(C_PTR), value :: name
 integer(C_INT), intent(out) :: default_value
 integer(C_INT), intent(out) :: length
 end subroutine
 end interface
 
-call sirius_option_get_int_aux(section,name,default_value,length)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+call sirius_option_get_int_aux(section_ptr,name_ptr,default_value,length)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
 end subroutine sirius_option_get_int
 
 !> @brief return the default value of the option
@@ -2909,22 +3368,36 @@ end subroutine sirius_option_get_int
 !> @param [out] length length of the table containing the default values
 subroutine sirius_option_get_double(section,name,default_value,length)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-real(C_DOUBLE), intent(out) :: default_value
-integer(C_INT), intent(out) :: length
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+real(8), intent(out) :: default_value
+integer, intent(out) :: length
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
 interface
 subroutine sirius_option_get_double_aux(section,name,default_value,length)&
 &bind(C, name="sirius_option_get_double")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: section
+type(C_PTR), value :: name
 real(C_DOUBLE), intent(out) :: default_value
 integer(C_INT), intent(out) :: length
 end subroutine
 end interface
 
-call sirius_option_get_double_aux(section,name,default_value,length)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+call sirius_option_get_double_aux(section_ptr,name_ptr,default_value,length)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
 end subroutine sirius_option_get_double
 
 !> @brief return the default value of the option
@@ -2934,22 +3407,38 @@ end subroutine sirius_option_get_double
 !> @param [out] length length of the table containing the default values
 subroutine sirius_option_get_logical(section,name,default_value,length)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-logical(C_BOOL), intent(out) :: default_value
-integer(C_INT), intent(out) :: length
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+logical, intent(out) :: default_value
+integer, intent(out) :: length
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
+logical(C_BOOL), target :: default_value_c_type
 interface
 subroutine sirius_option_get_logical_aux(section,name,default_value,length)&
 &bind(C, name="sirius_option_get_logical")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: section
+type(C_PTR), value :: name
 logical(C_BOOL), intent(out) :: default_value
 integer(C_INT), intent(out) :: length
 end subroutine
 end interface
 
-call sirius_option_get_logical_aux(section,name,default_value,length)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+default_value_c_type = bool(default_value)
+call sirius_option_get_logical_aux(section_ptr,name_ptr,default_value_c_type,length)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
 end subroutine sirius_option_get_logical
 
 !> @brief return the default value of the option
@@ -2958,20 +3447,41 @@ end subroutine sirius_option_get_logical
 !> @param [out] default_value table containing the string
 subroutine sirius_option_get_string(section,name,default_value)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-character(C_CHAR), dimension(*), intent(out) :: default_value
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+character(*), intent(out) :: default_value
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: default_value_c_type(:)
+type(C_PTR) :: default_value_ptr
 interface
 subroutine sirius_option_get_string_aux(section,name,default_value)&
 &bind(C, name="sirius_option_get_string")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-character(C_CHAR), dimension(*), intent(out) :: default_value
+type(C_PTR), value :: section
+type(C_PTR), value :: name
+type(C_PTR), value :: default_value
 end subroutine
 end interface
 
-call sirius_option_get_string_aux(section,name,default_value)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+default_value_ptr = C_NULL_PTR
+allocate(default_value_c_type(len(default_value)+1))
+default_value_c_type = string(default_value)
+default_value_ptr = C_LOC(default_value_c_type)
+call sirius_option_get_string_aux(section_ptr,name_ptr,default_value_ptr)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
+if (allocated(default_value_c_type)) deallocate(default_value_c_type)
 end subroutine sirius_option_get_string
 
 !> @brief return the number of possible values for a string option
@@ -2980,20 +3490,34 @@ end subroutine sirius_option_get_string
 !> @param [out] num_ number of elements
 subroutine sirius_option_get_number_of_possible_values(section,name,num_)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-integer(C_INT), intent(out) :: num_
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+integer, intent(out) :: num_
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
 interface
 subroutine sirius_option_get_number_of_possible_values_aux(section,name,num_)&
 &bind(C, name="sirius_option_get_number_of_possible_values")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: section
+type(C_PTR), value :: name
 integer(C_INT), intent(out) :: num_
 end subroutine
 end interface
 
-call sirius_option_get_number_of_possible_values_aux(section,name,num_)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+call sirius_option_get_number_of_possible_values_aux(section_ptr,name_ptr,num_)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
 end subroutine sirius_option_get_number_of_possible_values
 
 !> @brief return the possible values for a string parameter
@@ -3003,22 +3527,43 @@ end subroutine sirius_option_get_number_of_possible_values
 !> @param [out] value_n string containing the value
 subroutine sirius_option_string_get_value(section,name,elem_,value_n)
 implicit none
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-integer(C_INT), intent(in) :: elem_
-character(C_CHAR), dimension(*), intent(out) :: value_n
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+integer, intent(in) :: elem_
+character(*), intent(out) :: value_n
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: value_n_c_type(:)
+type(C_PTR) :: value_n_ptr
 interface
 subroutine sirius_option_string_get_value_aux(section,name,elem_,value_n)&
 &bind(C, name="sirius_option_string_get_value")
 use, intrinsic :: ISO_C_BINDING
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: section
+type(C_PTR), value :: name
 integer(C_INT), intent(in) :: elem_
-character(C_CHAR), dimension(*), intent(out) :: value_n
+type(C_PTR), value :: value_n
 end subroutine
 end interface
 
-call sirius_option_string_get_value_aux(section,name,elem_,value_n)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+value_n_ptr = C_NULL_PTR
+allocate(value_n_c_type(len(value_n)+1))
+value_n_c_type = string(value_n)
+value_n_ptr = C_LOC(value_n_c_type)
+call sirius_option_string_get_value_aux(section_ptr,name_ptr,elem_,value_n_ptr)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
+if (allocated(value_n_c_type)) deallocate(value_n_c_type)
 end subroutine sirius_option_string_get_value
 
 !> @brief return the name of a given section
@@ -3026,25 +3571,32 @@ end subroutine sirius_option_string_get_value
 !> @param [out] section_name name of the section
 subroutine sirius_option_get_section_name(elem_,section_name)
 implicit none
-integer(C_INT), intent(in) :: elem_
-character(C_CHAR), dimension(*), intent(out) :: section_name
+integer, intent(in) :: elem_
+character(*), intent(out) :: section_name
+character(C_CHAR), target, allocatable :: section_name_c_type(:)
+type(C_PTR) :: section_name_ptr
 interface
 subroutine sirius_option_get_section_name_aux(elem_,section_name)&
 &bind(C, name="sirius_option_get_section_name")
 use, intrinsic :: ISO_C_BINDING
 integer(C_INT), intent(in) :: elem_
-character(C_CHAR), dimension(*), intent(out) :: section_name
+type(C_PTR), value :: section_name
 end subroutine
 end interface
 
-call sirius_option_get_section_name_aux(elem_,section_name)
+section_name_ptr = C_NULL_PTR
+allocate(section_name_c_type(len(section_name)+1))
+section_name_c_type = string(section_name)
+section_name_ptr = C_LOC(section_name_c_type)
+call sirius_option_get_section_name_aux(elem_,section_name_ptr)
+if (allocated(section_name_c_type)) deallocate(section_name_c_type)
 end subroutine sirius_option_get_section_name
 
 !> @brief return the number of sections
 !> @param [out] length number of sections
 subroutine sirius_option_get_number_of_sections(length)
 implicit none
-integer(C_INT), intent(out) :: length
+integer, intent(out) :: length
 interface
 subroutine sirius_option_get_number_of_sections_aux(length)&
 &bind(C, name="sirius_option_get_number_of_sections")
@@ -3065,23 +3617,37 @@ end subroutine sirius_option_get_number_of_sections
 subroutine sirius_option_set_int(handler,section,name,default_values,length)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-integer(C_INT), intent(in) :: default_values
-integer(C_INT), intent(in) :: length
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+integer, intent(in) :: default_values
+integer, intent(in) :: length
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
 interface
 subroutine sirius_option_set_int_aux(handler,section,name,default_values,length)&
 &bind(C, name="sirius_option_set_int")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: section
+type(C_PTR), value :: name
 integer(C_INT), intent(in) :: default_values
 integer(C_INT), intent(in) :: length
 end subroutine
 end interface
 
-call sirius_option_set_int_aux(handler,section,name,default_values,length)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+call sirius_option_set_int_aux(handler,section_ptr,name_ptr,default_values,length)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
 end subroutine sirius_option_set_int
 
 !> @brief set the value of the option name in a (internal) json dictionary
@@ -3093,23 +3659,37 @@ end subroutine sirius_option_set_int
 subroutine sirius_option_set_double(handler,section,name,default_values,length)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-real(C_DOUBLE), intent(in) :: default_values
-integer(C_INT), intent(in) :: length
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+real(8), intent(in) :: default_values
+integer, intent(in) :: length
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
 interface
 subroutine sirius_option_set_double_aux(handler,section,name,default_values,length)&
 &bind(C, name="sirius_option_set_double")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: section
+type(C_PTR), value :: name
 real(C_DOUBLE), intent(in) :: default_values
 integer(C_INT), intent(in) :: length
 end subroutine
 end interface
 
-call sirius_option_set_double_aux(handler,section,name,default_values,length)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+call sirius_option_set_double_aux(handler,section_ptr,name_ptr,default_values,length)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
 end subroutine sirius_option_set_double
 
 !> @brief set the value of the option name in a  (internal) json dictionary
@@ -3121,23 +3701,37 @@ end subroutine sirius_option_set_double
 subroutine sirius_option_set_logical(handler,section,name,default_values,length)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-integer(C_INT), intent(in) :: default_values
-integer(C_INT), intent(in) :: length
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+integer, intent(in) :: default_values
+integer, intent(in) :: length
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
 interface
 subroutine sirius_option_set_logical_aux(handler,section,name,default_values,length)&
 &bind(C, name="sirius_option_set_logical")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
+type(C_PTR), value :: section
+type(C_PTR), value :: name
 integer(C_INT), intent(in) :: default_values
 integer(C_INT), intent(in) :: length
 end subroutine
 end interface
 
-call sirius_option_set_logical_aux(handler,section,name,default_values,length)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+call sirius_option_set_logical_aux(handler,section_ptr,name_ptr,default_values,length)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
 end subroutine sirius_option_set_logical
 
 !> @brief set the value of the option name in a  (internal) json dictionary
@@ -3148,21 +3742,42 @@ end subroutine sirius_option_set_logical
 subroutine sirius_option_set_string(handler,section,name,default_values)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-character(C_CHAR), dimension(*), intent(in) :: default_values
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+character(*), intent(in) :: default_values
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: default_values_c_type(:)
+type(C_PTR) :: default_values_ptr
 interface
 subroutine sirius_option_set_string_aux(handler,section,name,default_values)&
 &bind(C, name="sirius_option_set_string")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-character(C_CHAR), dimension(*), intent(in) :: default_values
+type(C_PTR), value :: section
+type(C_PTR), value :: name
+type(C_PTR), value :: default_values
 end subroutine
 end interface
 
-call sirius_option_set_string_aux(handler,section,name,default_values)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+default_values_ptr = C_NULL_PTR
+allocate(default_values_c_type(len(default_values)+1))
+default_values_c_type = string(default_values)
+default_values_ptr = C_LOC(default_values_c_type)
+call sirius_option_set_string_aux(handler,section_ptr,name_ptr,default_values_ptr)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
+if (allocated(default_values_c_type)) deallocate(default_values_c_type)
 end subroutine sirius_option_set_string
 
 !> @brief add a string value to the option in the json dictionary
@@ -3173,21 +3788,42 @@ end subroutine sirius_option_set_string
 subroutine sirius_option_add_string_to(handler,section,name,default_values)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-character(C_CHAR), dimension(*), intent(in) :: default_values
+character(*), intent(in) :: section
+character(*), intent(in) :: name
+character(*), intent(in) :: default_values
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: default_values_c_type(:)
+type(C_PTR) :: default_values_ptr
 interface
 subroutine sirius_option_add_string_to_aux(handler,section,name,default_values)&
 &bind(C, name="sirius_option_add_string_to")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: section
-character(C_CHAR), dimension(*), intent(in) :: name
-character(C_CHAR), dimension(*), intent(in) :: default_values
+type(C_PTR), value :: section
+type(C_PTR), value :: name
+type(C_PTR), value :: default_values
 end subroutine
 end interface
 
-call sirius_option_add_string_to_aux(handler,section,name,default_values)
+section_ptr = C_NULL_PTR
+allocate(section_c_type(len(section)+1))
+section_c_type = string(section)
+section_ptr = C_LOC(section_c_type)
+name_ptr = C_NULL_PTR
+allocate(name_c_type(len(name)+1))
+name_c_type = string(name)
+name_ptr = C_LOC(name_c_type)
+default_values_ptr = C_NULL_PTR
+allocate(default_values_c_type(len(default_values)+1))
+default_values_c_type = string(default_values)
+default_values_ptr = C_LOC(default_values_c_type)
+call sirius_option_add_string_to_aux(handler,section_ptr,name_ptr,default_values_ptr)
+if (allocated(section_c_type)) deallocate(section_c_type)
+if (allocated(name_c_type)) deallocate(name_c_type)
+if (allocated(default_values_c_type)) deallocate(default_values_c_type)
 end subroutine sirius_option_add_string_to
 
 !> @brief Dump the runtime setup in a file.
@@ -3196,17 +3832,24 @@ end subroutine sirius_option_add_string_to
 subroutine sirius_dump_runtime_setup(handler,filename)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: filename
+character(*), intent(in) :: filename
+character(C_CHAR), target, allocatable :: filename_c_type(:)
+type(C_PTR) :: filename_ptr
 interface
 subroutine sirius_dump_runtime_setup_aux(handler,filename)&
 &bind(C, name="sirius_dump_runtime_setup")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: filename
+type(C_PTR), value :: filename
 end subroutine
 end interface
 
-call sirius_dump_runtime_setup_aux(handler,filename)
+filename_ptr = C_NULL_PTR
+allocate(filename_c_type(len(filename)+1))
+filename_c_type = string(filename)
+filename_ptr = C_LOC(filename_c_type)
+call sirius_dump_runtime_setup_aux(handler,filename_ptr)
+if (allocated(filename_c_type)) deallocate(filename_c_type)
 end subroutine sirius_dump_runtime_setup
 
 !> @brief Get the first-variational eigen vectors
@@ -3218,10 +3861,10 @@ end subroutine sirius_dump_runtime_setup
 subroutine sirius_get_fv_eigen_vectors(handler,ik,fv_evec,ld,num_fv_states)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ik
-complex(C_DOUBLE), intent(out) :: fv_evec
-integer(C_INT), intent(in) :: ld
-integer(C_INT), intent(in) :: num_fv_states
+integer, intent(in) :: ik
+complex(8), intent(out) :: fv_evec
+integer, intent(in) :: ld
+integer, intent(in) :: num_fv_states
 interface
 subroutine sirius_get_fv_eigen_vectors_aux(handler,ik,fv_evec,ld,num_fv_states)&
 &bind(C, name="sirius_get_fv_eigen_vectors")
@@ -3245,9 +3888,9 @@ end subroutine sirius_get_fv_eigen_vectors
 subroutine sirius_get_fv_eigen_values(handler,ik,fv_eval,num_fv_states)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ik
-real(C_DOUBLE), intent(out) :: fv_eval
-integer(C_INT), intent(in) :: num_fv_states
+integer, intent(in) :: ik
+real(8), intent(out) :: fv_eval
+integer, intent(in) :: num_fv_states
 interface
 subroutine sirius_get_fv_eigen_values_aux(handler,ik,fv_eval,num_fv_states)&
 &bind(C, name="sirius_get_fv_eigen_values")
@@ -3270,9 +3913,9 @@ end subroutine sirius_get_fv_eigen_values
 subroutine sirius_get_sv_eigen_vectors(handler,ik,sv_evec,num_bands)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ik
-complex(C_DOUBLE), intent(out) :: sv_evec
-integer(C_INT), intent(in) :: num_bands
+integer, intent(in) :: ik
+complex(8), intent(out) :: sv_evec
+integer, intent(in) :: num_bands
 interface
 subroutine sirius_get_sv_eigen_vectors_aux(handler,ik,sv_evec,num_bands)&
 &bind(C, name="sirius_get_sv_eigen_vectors")
@@ -3300,13 +3943,16 @@ subroutine sirius_set_rg_values(handler,label,grid_dims,local_box_origin,local_b
 &fcomm,values,transform_to_pw)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(in) :: grid_dims
-integer(C_INT), intent(in) :: local_box_origin
-integer(C_INT), intent(in) :: local_box_size
-integer(C_INT), intent(in) :: fcomm
-real(C_DOUBLE), intent(in) :: values
-logical(C_BOOL), optional, target, intent(in) :: transform_to_pw
+character(*), intent(in) :: label
+integer, intent(in) :: grid_dims
+integer, intent(in) :: local_box_origin
+integer, intent(in) :: local_box_size
+integer, intent(in) :: fcomm
+real(8), intent(in) :: values
+logical, optional, target, intent(in) :: transform_to_pw
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
+logical(C_BOOL), target :: transform_to_pw_c_type
 type(C_PTR) :: transform_to_pw_ptr
 interface
 subroutine sirius_set_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
@@ -3314,7 +3960,7 @@ subroutine sirius_set_rg_values_aux(handler,label,grid_dims,local_box_origin,loc
 &bind(C, name="sirius_set_rg_values")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 integer(C_INT), intent(in) :: grid_dims
 integer(C_INT), intent(in) :: local_box_origin
 integer(C_INT), intent(in) :: local_box_size
@@ -3324,11 +3970,18 @@ type(C_PTR), value :: transform_to_pw
 end subroutine
 end interface
 
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
 transform_to_pw_ptr = C_NULL_PTR
-if (present(transform_to_pw)) transform_to_pw_ptr = C_LOC(transform_to_pw)
-
-call sirius_set_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
+if (present(transform_to_pw)) then
+  transform_to_pw_c_type = bool(transform_to_pw)
+  transform_to_pw_ptr = C_LOC(transform_to_pw_c_type)
+endif
+call sirius_set_rg_values_aux(handler,label_ptr,grid_dims,local_box_origin,local_box_size,&
 &fcomm,values,transform_to_pw_ptr)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_set_rg_values
 
 !> @brief Get the values of the function on the regular grid.
@@ -3344,13 +3997,16 @@ subroutine sirius_get_rg_values(handler,label,grid_dims,local_box_origin,local_b
 &fcomm,values,transform_to_rg)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(in) :: grid_dims
-integer(C_INT), intent(in) :: local_box_origin
-integer(C_INT), intent(in) :: local_box_size
-integer(C_INT), intent(in) :: fcomm
-real(C_DOUBLE), intent(out) :: values
-logical(C_BOOL), optional, target, intent(in) :: transform_to_rg
+character(*), intent(in) :: label
+integer, intent(in) :: grid_dims
+integer, intent(in) :: local_box_origin
+integer, intent(in) :: local_box_size
+integer, intent(in) :: fcomm
+real(8), intent(out) :: values
+logical, optional, target, intent(in) :: transform_to_rg
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
+logical(C_BOOL), target :: transform_to_rg_c_type
 type(C_PTR) :: transform_to_rg_ptr
 interface
 subroutine sirius_get_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
@@ -3358,7 +4014,7 @@ subroutine sirius_get_rg_values_aux(handler,label,grid_dims,local_box_origin,loc
 &bind(C, name="sirius_get_rg_values")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 integer(C_INT), intent(in) :: grid_dims
 integer(C_INT), intent(in) :: local_box_origin
 integer(C_INT), intent(in) :: local_box_size
@@ -3368,11 +4024,18 @@ type(C_PTR), value :: transform_to_rg
 end subroutine
 end interface
 
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
 transform_to_rg_ptr = C_NULL_PTR
-if (present(transform_to_rg)) transform_to_rg_ptr = C_LOC(transform_to_rg)
-
-call sirius_get_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
+if (present(transform_to_rg)) then
+  transform_to_rg_c_type = bool(transform_to_rg)
+  transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
+endif
+call sirius_get_rg_values_aux(handler,label_ptr,grid_dims,local_box_origin,local_box_size,&
 &fcomm,values,transform_to_rg_ptr)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_get_rg_values
 
 !> @brief Get the total magnetization of the system.
@@ -3381,7 +4044,7 @@ end subroutine sirius_get_rg_values
 subroutine sirius_get_total_magnetization(handler,mag)
 implicit none
 type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(out) :: mag
+real(8), intent(out) :: mag
 interface
 subroutine sirius_get_total_magnetization_aux(handler,mag)&
 &bind(C, name="sirius_get_total_magnetization")
@@ -3401,8 +4064,8 @@ end subroutine sirius_get_total_magnetization
 subroutine sirius_get_num_kpoints(handler,num_kpoints,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: num_kpoints
-integer(C_INT), optional, target, intent(out) :: error_code
+integer, intent(out) :: num_kpoints
+integer, optional, target, intent(out) :: error_code
 type(C_PTR) :: error_code_ptr
 interface
 subroutine sirius_get_num_kpoints_aux(handler,num_kpoints,error_code)&
@@ -3427,8 +4090,8 @@ end subroutine sirius_get_num_kpoints
 subroutine sirius_get_num_bands(handler,num_kpoints,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: num_kpoints
-integer(C_INT), optional, target, intent(out) :: error_code
+integer, intent(out) :: num_kpoints
+integer, optional, target, intent(out) :: error_code
 type(C_PTR) :: error_code_ptr
 interface
 subroutine sirius_get_num_bands_aux(handler,num_kpoints,error_code)&
@@ -3453,8 +4116,8 @@ end subroutine sirius_get_num_bands
 subroutine sirius_get_num_spin_components(handler,num_spin_components,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: num_spin_components
-integer(C_INT), optional, target, intent(out) :: error_code
+integer, intent(out) :: num_spin_components
+integer, optional, target, intent(out) :: error_code
 type(C_PTR) :: error_code_ptr
 interface
 subroutine sirius_get_num_spin_components_aux(handler,num_spin_components,error_code)&
@@ -3481,10 +4144,10 @@ end subroutine sirius_get_num_spin_components
 subroutine sirius_get_kpoint_properties(handler,ik,weight,coordinates,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ik
-real(C_DOUBLE), intent(out) :: weight
-real(C_DOUBLE), optional, target, intent(out) :: coordinates
-integer(C_INT), optional, target, intent(out) :: error_code
+integer, intent(in) :: ik
+real(8), intent(out) :: weight
+real(8), optional, target, intent(out) :: coordinates
+integer, optional, target, intent(out) :: error_code
 type(C_PTR) :: coordinates_ptr
 type(C_PTR) :: error_code_ptr
 interface
@@ -3515,8 +4178,8 @@ end subroutine sirius_get_kpoint_properties
 subroutine sirius_get_max_mt_aw_basis_size(handler,max_mt_aw_basis_size,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: max_mt_aw_basis_size
-integer(C_INT), optional, target, intent(out) :: error_code
+integer, intent(out) :: max_mt_aw_basis_size
+integer, optional, target, intent(out) :: error_code
 type(C_PTR) :: error_code_ptr
 interface
 subroutine sirius_get_max_mt_aw_basis_size_aux(handler,max_mt_aw_basis_size,error_code)&
@@ -3535,7 +4198,8 @@ call sirius_get_max_mt_aw_basis_size_aux(handler,max_mt_aw_basis_size,error_code
 end subroutine sirius_get_max_mt_aw_basis_size
 
 !> @brief Get matching coefficients for all atoms.
-!> @details Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution.
+!> @details
+!> Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution.
 !> @param [in] handler K-point set handler.
 !> @param [in] ik Index of k-point.
 !> @param [out] alm Matching coefficients.
@@ -3543,9 +4207,9 @@ end subroutine sirius_get_max_mt_aw_basis_size
 subroutine sirius_get_matching_coefficients(handler,ik,alm,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ik
-complex(C_DOUBLE), intent(out) :: alm
-integer(C_INT), optional, target, intent(out) :: error_code
+integer, intent(in) :: ik
+complex(8), intent(out) :: alm
+integer, optional, target, intent(out) :: error_code
 type(C_PTR) :: error_code_ptr
 interface
 subroutine sirius_get_matching_coefficients_aux(handler,ik,alm,error_code)&
@@ -3572,25 +4236,32 @@ end subroutine sirius_get_matching_coefficients
 subroutine sirius_set_callback_function(handler,label,fptr,error_code)
 implicit none
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
-type(C_FUNPTR), value, intent(in) :: fptr
-integer(C_INT), optional, target, intent(out) :: error_code
+character(*), intent(in) :: label
+type(C_FUNPTR), intent(in) :: fptr
+integer, optional, target, intent(out) :: error_code
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: label_ptr
 type(C_PTR) :: error_code_ptr
 interface
 subroutine sirius_set_callback_function_aux(handler,label,fptr,error_code)&
 &bind(C, name="sirius_set_callback_function")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value :: label
 type(C_FUNPTR), value, intent(in) :: fptr
 type(C_PTR), value :: error_code
 end subroutine
 end interface
 
+label_ptr = C_NULL_PTR
+allocate(label_c_type(len(label)+1))
+label_c_type = string(label)
+label_ptr = C_LOC(label_c_type)
 error_code_ptr = C_NULL_PTR
 if (present(error_code)) error_code_ptr = C_LOC(error_code)
 
-call sirius_set_callback_function_aux(handler,label,fptr,error_code_ptr)
+call sirius_set_callback_function_aux(handler,label_ptr,fptr,error_code_ptr)
+if (allocated(label_c_type)) deallocate(label_c_type)
 end subroutine sirius_set_callback_function
 
 !> @brief Robust wave function optimizer
