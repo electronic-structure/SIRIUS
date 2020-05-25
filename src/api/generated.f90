@@ -204,24 +204,34 @@ end subroutine sirius_integrate
 !
 !> @brief Check if the simulation context is initialized.
 !> @param [in] handler Simulation context handler.
-function sirius_context_initialized(handler) result(res)
+!> @param [out] status Status of the library (true if initialized)
+!> @param [out] error_code Error code.
+subroutine sirius_context_initialized(handler,status,error_code)
 implicit none
 !
 type(C_PTR), intent(in) :: handler
-logical :: res
+logical, intent(out) :: status
+integer, optional, target, intent(out) :: error_code
 !
+logical(C_BOOL), target :: status_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
-function sirius_context_initialized_aux(handler) result(res)&
+subroutine sirius_context_initialized_aux(handler,status,error_code)&
 &bind(C, name="sirius_context_initialized")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
-logical(C_BOOL) :: res
-end function
+logical(C_BOOL), intent(out) :: status
+type(C_PTR), value :: error_code
+end subroutine
 end interface
 
-res = sirius_context_initialized_aux(handler)
-end function sirius_context_initialized
+status_c_type = bool(status)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
+call sirius_context_initialized_aux(handler,status_c_type,error_code_ptr)
+end subroutine sirius_context_initialized
 
 !
 !> @brief Create context of the simulation.
@@ -230,24 +240,32 @@ end function sirius_context_initialized
 !> The context must be created, populated with the correct parameters and initialized before using all subsequent
 !> SIRIUS functions.
 !> @param [in] fcomm Entire communicator of the simulation.
-function sirius_create_context(fcomm) result(res)
+!> @param [out] handler New empty simulation context.
+!> @param [out] error_code Error code.
+subroutine sirius_create_context(fcomm,handler,error_code)
 implicit none
 !
 integer, intent(in) :: fcomm
-type(C_PTR) :: res
+type(C_PTR), intent(out) :: handler
+integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: error_code_ptr
 !
 interface
-function sirius_create_context_aux(fcomm) result(res)&
+subroutine sirius_create_context_aux(fcomm,handler,error_code)&
 &bind(C, name="sirius_create_context")
 use, intrinsic :: ISO_C_BINDING
 integer(C_INT), intent(in) :: fcomm
-type(C_PTR) :: res
-end function
+type(C_PTR), intent(out) :: handler
+type(C_PTR), value :: error_code
+end subroutine
 end interface
 
-res = sirius_create_context_aux(fcomm)
-end function sirius_create_context
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
+call sirius_create_context_aux(fcomm,handler,error_code_ptr)
+end subroutine sirius_create_context
 
 !
 !> @brief Import parameters of simulation from a JSON string
@@ -885,21 +903,28 @@ end subroutine sirius_print_info
 !
 !> @brief Free any handler of object created by SIRIUS.
 !> @param [inout] handler Handler of the object.
-subroutine sirius_free_handler(handler)
+!> @param [out] error_code Error code
+subroutine sirius_free_handler(handler,error_code)
 implicit none
 !
 type(C_PTR), intent(inout) :: handler
+integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_free_handler_aux(handler)&
+subroutine sirius_free_handler_aux(handler,error_code)&
 &bind(C, name="sirius_free_handler")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(inout) :: handler
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 
-call sirius_free_handler_aux(handler)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) error_code_ptr = C_LOC(error_code)
+
+call sirius_free_handler_aux(handler,error_code_ptr)
 end subroutine sirius_free_handler
 
 !

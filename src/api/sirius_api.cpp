@@ -91,18 +91,25 @@ static void call_sirius(F&& f__, int* error_code__)
 
 sirius::Simulation_context& get_sim_ctx(void* const* h)
 {
-    assert(h != nullptr);
+    if (h == nullptr || *h == nullptr) {
+        throw std::runtime_error("Non-existing simulation context handler");
+    }
     return static_cast<utils::any_ptr*>(*h)->get<sirius::Simulation_context>();
 }
 
 sirius::DFT_ground_state& get_gs(void* const* h)
 {
-    assert(h != nullptr);
+    if (h == nullptr || *h == nullptr) {
+        throw std::runtime_error("Non-existing DFT ground state handler");
+    }
     return static_cast<utils::any_ptr*>(*h)->get<sirius::DFT_ground_state>();
 }
 
 sirius::K_point_set& get_ks(void* const* h)
 {
+    if (h == nullptr || *h == nullptr) {
+        throw std::runtime_error("Non-existing K-point set handler");
+    }
     return static_cast<utils::any_ptr*>(*h)->get<sirius::K_point_set>();
 }
 
@@ -168,10 +175,8 @@ sirius_finalize:
       doc: If .true. then fft_cleanup must be called after the shutdown.
 @api end
 */
-
 void sirius_finalize(bool const* call_mpi_fin__, bool const *call_device_reset__, bool const* call_fftw_fin__)
 {
-
     bool mpi_fin{true};
     bool device_reset{true};
     bool fftw_fin{true};
@@ -293,28 +298,34 @@ void sirius_integrate(int    const* m__,
 /*
 @api begin
 sirius_context_initialized:
-  return: bool
   doc: Check if the simulation context is initialized.
   arguments:
     handler:
       type: void*
       attr: in, required
       doc: Simulation context handler.
+    status:
+      type: bool
+      attr: out, required 
+      doc: Status of the library (true if initialized)
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
-bool sirius_context_initialized(void* const* handler__)
+void sirius_context_initialized(void* const* handler__, bool* status__, int* error_code__)
 {
-    if (*handler__ == nullptr) {
-        return false;
-    }
-    auto& sim_ctx = get_sim_ctx(handler__);
-    return sim_ctx.initialized();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        *status__ = sim_ctx.initialized();
+    }, error_code__);
 }
 
 /*
 @api begin
 sirius_create_context:
-  return: void*
   doc: Create context of the simulation.
   full_doc: ['Simulation context is the complex data structure that holds all the parameters of the individual simulation.', 'The context must be created, populated with the correct parameters and initialized before using all subsequent', 'SIRIUS functions.']
   arguments:
@@ -322,12 +333,23 @@ sirius_create_context:
       type: int
       attr: in, required
       doc: Entire communicator of the simulation.
+    handler:
+      type: void*
+      attr: out, required
+      doc: New empty simulation context.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
-void* sirius_create_context(int const* fcomm__)
+void sirius_create_context(int const* fcomm__, void** handler__, int* error_code__)
 {
-    auto& comm = Communicator::map_fcomm(*fcomm__);
-    return new utils::any_ptr(new sirius::Simulation_context(comm));
+    call_sirius([&]()
+    {
+        auto& comm = Communicator::map_fcomm(*fcomm__);
+        *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm));
+    }, error_code__);
 }
 
 /*
@@ -926,14 +948,21 @@ sirius_free_handler:
       type: void*
       attr: inout, required
       doc: Handler of the object.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
-void sirius_free_handler(void** handler__)
+void sirius_free_handler(void** handler__, int* error_code__)
 {
-    if (*handler__ != nullptr) {
-        delete static_cast<utils::any_ptr*>(*handler__);
-    }
-    *handler__ = nullptr;
+    call_sirius([&]()
+    {
+        if (*handler__ != nullptr) {
+            delete static_cast<utils::any_ptr*>(*handler__);
+        }
+        *handler__ = nullptr;
+    }, error_code__);
 }
 
 /*
