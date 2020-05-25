@@ -10,6 +10,9 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
                    memory_t mem__,
                    linalg_t la__)
 {
+    spla::Context spla_ctx(
+        la__ == linalg_t::blas || la__ == linalg_t::lapack || la__ == linalg_t::scalapack ? SPLA_PU_HOST : SPLA_PU_GPU);
+
     int nsp = (num_mag_dims__ == 0) ? 1 : 2;
     int num_spin_steps = (num_mag_dims__ == 3) ? 1 : nsp;
 
@@ -49,12 +52,12 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
     }
 
     for (int iss = 0; iss < num_spin_steps; iss++) {
-        orthogonalize<double_complex, 0, 0>(mem__, la__, num_mag_dims__ == 3 ? 2 : iss, {&phi}, 0,           num_bands__, ovlp, tmp);
-        orthogonalize<double_complex, 0, 0>(mem__, la__, num_mag_dims__ == 3 ? 2 : iss, {&phi}, num_bands__, num_bands__, ovlp, tmp);
+        orthogonalize<double_complex, 0, 0>(spla_ctx, mem__, la__, num_mag_dims__ == 3 ? 2 : iss, {&phi}, 0,           num_bands__, ovlp, tmp);
+        orthogonalize<double_complex, 0, 0>(spla_ctx, mem__, la__, num_mag_dims__ == 3 ? 2 : iss, {&phi}, num_bands__, num_bands__, ovlp, tmp);
     }
 
     for (int iss = 0; iss < num_spin_steps; iss++) {
-        inner(mem__, la__, num_mag_dims__ == 3 ? 2 : iss, phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
+        inner(spla_ctx, num_mag_dims__ == 3 ? 2 : iss, phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
         auto max_diff = check_identity(ovlp, 2 * num_bands__);
         if (Communicator::world().rank() == 0) {
             printf("maximum difference: %18.12f\n", max_diff);

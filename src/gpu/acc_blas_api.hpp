@@ -243,6 +243,15 @@ inline auto zaxpy(ARGS&&... args) -> status_t {
 #endif // __ROCM
 }
 
+template <typename... ARGS>
+inline auto dscal(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_dscal(std::forward<ARGS>(args)...);
+#else
+  return cublasDscal(std::forward<ARGS>(args)...);
+#endif // __ROCM
+}
+
 }  // namespace blas
 }  // namespace acc
 

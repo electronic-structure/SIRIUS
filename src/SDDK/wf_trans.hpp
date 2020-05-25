@@ -24,6 +24,7 @@
 #ifndef __WF_TRANS_HPP__
 #define __WF_TRANS_HPP__
 #include "wave_functions.hpp"
+#include <spla/spla.hpp>
 namespace sddk {
 
 
@@ -34,8 +35,7 @@ namespace sddk {
  *  \f]
  */
 template <typename T>
-void transform(memory_t                     mem__,
-               linalg_t                     la__,
+void transform(::spla::Context& spla_ctx__,
                int                          ispn__,
                double                       alpha__,
                std::vector<Wave_functions*> wf_in__,
@@ -50,8 +50,7 @@ void transform(memory_t                     mem__,
                int                          n__);
 
 template <typename T>
-inline void transform(memory_t                     mem__,
-                      linalg_t                     la__,
+inline void transform(::spla::Context& spla_ctx__,
                       int                          ispn__,
                       std::vector<Wave_functions*> wf_in__,
                       int                          i0__,
@@ -63,12 +62,11 @@ inline void transform(memory_t                     mem__,
                       int                          j0__,
                       int                          n__)
 {
-    transform<T>(mem__, la__, ispn__, 1.0, wf_in__, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, wf_out__, j0__, n__);
+    transform<T>(spla_ctx__ , ispn__, 1.0, wf_in__, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, wf_out__, j0__, n__);
 }
 
 template <typename T>
-inline void transform(memory_t        mem__,
-                      linalg_t        la__,
+inline void transform(::spla::Context& spla_ctx__,
                       int             ispn__,
                       Wave_functions& wf_in__,
                       int             i0__,
@@ -80,7 +78,7 @@ inline void transform(memory_t        mem__,
                       int             j0__,
                       int             n__)
 {
-    transform<T>(mem__, la__, ispn__, 1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, {&wf_out__}, j0__, n__);
+    transform<T>(spla_ctx__, ispn__, 1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, {&wf_out__}, j0__, n__);
 }
 
 }

@@ -144,12 +144,6 @@ void Energy::compute()
 
 
     /* compute H@X and new band energies */
-    memory_t mem{memory_t::host};
-    linalg_t la{linalg_t::blas};
-    if (ctx.processing_unit() == device_t::GPU) {
-        mem = memory_t::device;
-        la  = linalg_t::gpublas;
-    }
     auto H0 = Hamiltonian0(potential);
     // apply Hamiltonian
     for (int i = 0; i < nk; ++i) {
@@ -173,7 +167,7 @@ void Energy::compute()
             for (int jj = 0; jj < num_bands; ++jj) {
                 dmatrix<std::complex<double>> dmat(1, 1, memory_t::host);
                 dmat.allocate(memory_t::device);
-                sddk::inner(mem, la, ispn,
+                sddk::inner(ctx.spla_context(), ispn,
                             /* bra */ kp.spinor_wave_functions(), jj, 1,
                             /* ket */ *hphis[i], jj, 1,
                             /* out */ dmat, 0, 0);

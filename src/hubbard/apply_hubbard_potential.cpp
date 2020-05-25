@@ -43,8 +43,7 @@ void Hubbard::apply_hubbard_potential(Wave_functions& hub_wf, const int ispn__, 
 
     /* First calculate the local part of the projections
        dm(i, n) = <phi_i| S |psi_{nk}> */
-    inner(ctx_.preferred_memory_t(),
-          ctx_.blas_linalg_t(),
+    inner(ctx_.spla_context(),
           ispn__,
           hub_wf,
           0,
@@ -108,8 +107,7 @@ void Hubbard::apply_hubbard_potential(Wave_functions& hub_wf, const int ispn__, 
         Up.copy_to(memory_t::device);
     }
 
-    transform<double_complex>(ctx_.preferred_memory_t(),
-                              ctx_.blas_linalg_t(),
+    transform<double_complex>(ctx_.spla_context(),
                               ispn__,
                               1.0,
                               {&hub_wf},

@@ -11,6 +11,9 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
                    memory_t mem_ket__,
                    memory_t mem_o__)
 {
+    spla::Context spla_ctx(
+        la__ == linalg_t::blas || la__ == linalg_t::lapack || la__ == linalg_t::scalapack ? SPLA_PU_HOST : SPLA_PU_GPU);
+
     std::unique_ptr<BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
         blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
@@ -66,10 +69,10 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     }
     ovlp.zero();
 
-    inner(mem_o__, la__, 0, phi, 0,           num_bands__, phi1, 0,           num_bands__, ovlp, 0,           0);
-    inner(mem_o__, la__, 0, phi, 0,           num_bands__, phi1, num_bands__, num_bands__, ovlp, 0,           num_bands__);
-    inner(mem_o__, la__, 0, phi, num_bands__, num_bands__, phi1, 0,           num_bands__, ovlp, num_bands__, 0);
-    inner(mem_o__, la__, 0, phi, num_bands__, num_bands__, phi1, num_bands__, num_bands__, ovlp, num_bands__, num_bands__);
+    inner(spla_ctx, 0, phi, 0,           num_bands__, phi1, 0,           num_bands__, ovlp, 0,           0);
+    inner(spla_ctx, 0, phi, 0,           num_bands__, phi1, num_bands__, num_bands__, ovlp, 0,           num_bands__);
+    inner(spla_ctx, 0, phi, num_bands__, num_bands__, phi1, 0,           num_bands__, ovlp, num_bands__, 0);
+    inner(spla_ctx, 0, phi, num_bands__, num_bands__, phi1, num_bands__, num_bands__, ovlp, num_bands__, num_bands__);
 
     //ovlp.serialize("ovlp", 2 * num_bands__);
 

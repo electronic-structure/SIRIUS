@@ -308,6 +308,14 @@ zaxpy(int n__, acc_complex_double_t const* alpha__, acc_complex_double_t const* 
                    reinterpret_cast<::acc::blas::complex_double_t*>(y__), incy__));
 }
 
+inline void
+dscal(int n__, double const* alpha__, double * x__, int incx__)
+{
+    // acc::set_device();
+    CALL_GPU_BLAS(::acc::blas::dscal,
+                  (null_stream_handle(), n__, alpha__, x__, incx__));
+}
+
 #if defined(__CUDA)
 namespace xt {
 
