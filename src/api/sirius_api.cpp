@@ -87,8 +87,6 @@ static void call_sirius(F&& f__, int* error_code__)
     }
 }
 
-// TODO: try..catch in all calls to SIRIUS, return error codes to fortran as last optional argument
-
 sirius::Simulation_context& get_sim_ctx(void* const* h)
 {
     if (h == nullptr || *h == nullptr) {
@@ -818,9 +816,8 @@ sirius_insert_xc_functional:
       doc: LibXC label of the functional.
 @api end
 */
-void
-sirius_insert_xc_functional(void* const* gs_handler__,
-                            char const* name__)
+void sirius_insert_xc_functional(void* const* gs_handler__,
+                                 char const* name__)
 {
     auto& gs = get_gs(gs_handler__);
     auto& potential = gs.potential();
@@ -897,12 +894,19 @@ sirius_initialize_context:
       type: void*
       attr: in, required
       doc: Simulation context handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
-void sirius_initialize_context(void* const* handler__)
+void sirius_initialize_context(void* const* handler__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.initialize();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        sim_ctx.initialize();
+    }, error_code__);
 }
 
 /*
@@ -1028,7 +1032,6 @@ void sirius_set_periodic_function_ptr(void*  const* handler__,
 /*
 @api begin
 sirius_create_kset:
-  return: void*
   doc: Create k-point set from the list of k-points.
   arguments:
     handler:
@@ -1051,31 +1054,42 @@ sirius_create_kset:
       type: bool
       attr: in, required
       doc: If .true. k-set will be initialized.
+    kset_handler:
+      type: void*
+      attr: out, required
+      doc: Handler of the newly created k-point set.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
-void* sirius_create_kset(void*  const* handler__,
-                         int    const* num_kpoints__,
-                         double*       kpoints__,
-                         double const* kpoint_weights__,
-                         bool   const* init_kset__)
+void sirius_create_kset(void*  const* handler__,
+                        int    const* num_kpoints__,
+                        double*       kpoints__,
+                        double const* kpoint_weights__,
+                        bool   const* init_kset__,
+                        void**        kset_handler__,
+                        int*          error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
 
-    mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
+        mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
 
-    sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx);
-    new_kset->add_kpoints(kpoints, kpoint_weights__);
-    if (*init_kset__) {
-        new_kset->initialize();
-    }
-
-    return new utils::any_ptr(new_kset);
+        sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx);
+        new_kset->add_kpoints(kpoints, kpoint_weights__);
+        if (*init_kset__) {
+            new_kset->initialize();
+        }
+        *kset_handler__ = new utils::any_ptr(new_kset);
+    }, error_code__);
 }
 
 /*
 @api begin
 sirius_create_kset_from_grid:
-  return: void*
   doc: Create k-point set from a grid.
   arguments:
     handler:
@@ -1094,48 +1108,70 @@ sirius_create_kset_from_grid:
       type: bool
       attr: in, required
       doc: If .true. k-set will be generated using symmetries.
+    kset_handler:
+      type: void*
+      attr: out, required
+      doc: Handler of the newly created k-point set.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
-
-void *sirius_create_kset_from_grid(void* const* handler__,
-                                   int   const* k_grid__,
-                                   int   const* k_shift__,
-                                   bool  const* use_symmetry)
+void sirius_create_kset_from_grid(void* const* handler__,
+                                  int   const* k_grid__,
+                                  int   const* k_shift__,
+                                  bool  const* use_symmetry,
+                                  void** kset_handler__,
+                                  int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    std::vector<int> k_grid(3);
-    std::vector<int> k_shift(3);
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        std::vector<int> k_grid(3);
+        std::vector<int> k_shift(3);
 
-    k_grid[0] = k_grid__[0];
-    k_grid[1] = k_grid__[1];
-    k_grid[2] = k_grid__[2];
+        k_grid[0] = k_grid__[0];
+        k_grid[1] = k_grid__[1];
+        k_grid[2] = k_grid__[2];
 
-    k_shift[0] = k_shift__[0];
-    k_shift[1] = k_shift__[1];
-    k_shift[2] = k_shift__[2];
+        k_shift[0] = k_shift__[0];
+        k_shift[1] = k_shift__[1];
+        k_shift[2] = k_shift__[2];
 
-    sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx, k_grid, k_shift, *use_symmetry);
+        sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx, k_grid, k_shift, *use_symmetry);
 
-    return new utils::any_ptr(new_kset);
+        *kset_handler__ = new utils::any_ptr(new_kset);
+    }, error_code__);
 }
 
 /*
 @api begin
 sirius_create_ground_state:
-  return: void*
   doc: Create a ground state object.
   arguments:
     ks_handler:
       type: void*
       attr: in, required
       doc: Handler of the k-point set.
+    gs_handler:
+      type: void*
+      attr: out, required
+      doc: Handler of the newly created ground state object.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
-void* sirius_create_ground_state(void* const* ks_handler__)
+void sirius_create_ground_state(void* const* ks_handler__, void** gs_handler__, int* error_code__)
 {
-    auto& ks = get_ks(ks_handler__);
+    call_sirius([&]()
+    {
+        auto& ks = get_ks(ks_handler__);
 
-    return new utils::any_ptr(new sirius::DFT_ground_state(ks));
+        *gs_handler__ = new utils::any_ptr(new sirius::DFT_ground_state(ks));
+    }, error_code__);
 }
 
 /*
@@ -2857,7 +2893,6 @@ void sirius_get_stress_tensor(void* const* handler__,
 /*
 @api begin
 sirius_get_num_beta_projectors:
-  return: int
   doc: Get the number of beta-projectors for an atom type.
   arguments:
     handler:
@@ -2868,15 +2903,26 @@ sirius_get_num_beta_projectors:
       type: string
       attr: in, required
       doc: Atom type label.
+    num_bp:
+      type: int
+      attr: out, required
+      doc: Number of beta projectors for each atom type.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
-int sirius_get_num_beta_projectors(void* const* handler__,
-                                   char  const* label__)
+void sirius_get_num_beta_projectors(void* const* handler__, char  const* label__, int* num_bp__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
 
-    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
-    return type.mt_basis_size();
+        auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
+
+        *num_bp__ = type.mt_basis_size();
+    }, error_code__);
 }
 
 /*
@@ -3221,70 +3267,70 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
     }
 }
 
-/*
-@api begin
-sirius_get_radial_integral:
-  return: double
-  doc: Get value of the radial integral.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler.
-    atom_type:
-      type: string
-      attr: in, required
-      doc: Label of the atom type.
-    label:
-      type: string
-      attr: in, required
-      doc: Label of the radial integral.
-    q:
-      type: double
-      attr: in, required
-      doc: Length of the reciprocal wave-vector.
-    idx:
-      type: int
-      attr: in, required
-      doc: Index of the radial integral.
-    l:
-      type: int
-      attr: in, optional
-      doc: Orbital quantum number (for Q-radial integrals).
-@api end
-*/
-double sirius_get_radial_integral(void*  const* handler__,
-                                  char   const* atom_type__,
-                                  char   const* label__,
-                                  double const* q__,
-                                  int    const* idx__,
-                                  int    const* l__)
-{
-    auto& sim_ctx = get_sim_ctx(handler__);
-
-    auto& type = sim_ctx.unit_cell().atom_type(std::string(atom_type__));
-
-    std::string label(label__);
-
-    if (label == "aug") {
-        if (l__ == nullptr) {
-            TERMINATE("orbital quantum number must be provided for augmentation operator radial integrals");
-        }
-        return sim_ctx.aug_ri().value<int, int, int>(*idx__ - 1, *l__, type.id(), *q__);
-    } else if (label == "aug_dj") {
-        if (l__ == nullptr) {
-            TERMINATE("orbital quantum number must be provided for augmentation operator radial integrals");
-        }
-        return sim_ctx.aug_ri_djl().value<int, int, int>(*idx__ - 1, *l__, type.id(), *q__);
-    } else if (label == "beta") {
-        return sim_ctx.beta_ri().value<int, int>(*idx__ - 1, type.id(), *q__);
-    } else if (label == "beta_dj") {
-        return sim_ctx.beta_ri_djl().value<int, int>(*idx__ - 1, type.id(), *q__);
-    } else {
-        TERMINATE("wrong label of radial integral");
-        return 0.0; // make compiler happy
-    }
-}
+//==/*
+//==@apibegin
+//==sirius_get_radial_integral:
+//==  return: double
+//==  doc: Get value of the radial integral.
+//==  arguments:
+//==    handler:
+//==      type: void*
+//==      attr: in, required
+//==      doc: Simulation context handler.
+//==    atom_type:
+//==      type: string
+//==      attr: in, required
+//==      doc: Label of the atom type.
+//==    label:
+//==      type: string
+//==      attr: in, required
+//==      doc: Label of the radial integral.
+//==    q:
+//==      type: double
+//==      attr: in, required
+//==      doc: Length of the reciprocal wave-vector.
+//==    idx:
+//==      type: int
+//==      attr: in, required
+//==      doc: Index of the radial integral.
+//==    l:
+//==      type: int
+//==      attr: in, optional
+//==      doc: Orbital quantum number (for Q-radial integrals).
+//==@apiend
+//==*/
+//==double sirius_get_radial_integral(void*  const* handler__,
+//==                                  char   const* atom_type__,
+//==                                  char   const* label__,
+//==                                  double const* q__,
+//==                                  int    const* idx__,
+//==                                  int    const* l__)
+//=={
+//==    auto& sim_ctx = get_sim_ctx(handler__);
+//==
+//==    auto& type = sim_ctx.unit_cell().atom_type(std::string(atom_type__));
+//==
+//==    std::string label(label__);
+//==
+//==    if (label == "aug") {
+//==        if (l__ == nullptr) {
+//==            TERMINATE("orbital quantum number must be provided for augmentation operator radial integrals");
+//==        }
+//==        return sim_ctx.aug_ri().value<int, int, int>(*idx__ - 1, *l__, type.id(), *q__);
+//==    } else if (label == "aug_dj") {
+//==        if (l__ == nullptr) {
+//==            TERMINATE("orbital quantum number must be provided for augmentation operator radial integrals");
+//==        }
+//==        return sim_ctx.aug_ri_djl().value<int, int, int>(*idx__ - 1, *l__, type.id(), *q__);
+//==    } else if (label == "beta") {
+//==        return sim_ctx.beta_ri().value<int, int>(*idx__ - 1, type.id(), *q__);
+//==    } else if (label == "beta_dj") {
+//==        return sim_ctx.beta_ri_djl().value<int, int>(*idx__ - 1, type.id(), *q__);
+//==    } else {
+//==        TERMINATE("wrong label of radial integral");
+//==        return 0.0; // make compiler happy
+//==    }
+//==}
 
 /*
 @api begin
@@ -4567,7 +4613,7 @@ void sirius_option_get_name_and_type(char const* section__, int const* elem__, c
                     *type__ = 4;
                 }
             }
-            std::memcpy(key_name__, el.key().c_str(), el.key().size());
+            std::memcpy(key_name__, el.key().c_str(), el.key().size() + 1);
         }
         elem++;
     }
@@ -4838,7 +4884,7 @@ sirius_option_string_get_value:
 */
 void sirius_option_string_get_value(char* section, char * name, int *elem_, char *value_n)
 {
-    const json &parser =  sirius::get_options_dictionary();
+    const json &parser = sirius::get_options_dictionary();
 
     // ugly as hell but fortran is a piece of ....
     for ( char *p = section; *p; p++) *p = tolower(*p);
@@ -4848,10 +4894,7 @@ void sirius_option_string_get_value(char* section, char * name, int *elem_, char
     // need to specialize however the possible values that the string can have
     if (parser[section][name].count("possible_values")) {
         auto tmp = parser[section][name]["possible_values"].get<std::vector<std::string>>();
-        // BIG BIG BIG WARNINNG. THE STRING IS NOT null terminated because
-        // fortran does not understand the concept of null terminated string
-
-        std::memcpy(value_n, tmp[*elem_].c_str(), tmp[*elem_].size());
+        std::memcpy(value_n, tmp[*elem_].c_str(), tmp[*elem_].size() + 1);
     }
 }
 
@@ -4860,7 +4903,7 @@ void sirius_option_string_get_value(char* section, char * name, int *elem_, char
 sirius_option_get_section_name:
   doc: return the name of a given section
   arguments:
-    elem_:
+    elem:
       type: int
       attr: in, required
       doc: index of the section
@@ -4878,7 +4921,7 @@ void sirius_option_get_section_name(int *elem, char *section_name)
     for (auto& el : dict.items())
     {
         if (elem_ == *elem) {
-            std::memcpy(section_name, el.key().c_str(), el.key().size());
+            std::memcpy(section_name, el.key().c_str(), el.key().size() + 1);
             break;
         }
         elem_++;

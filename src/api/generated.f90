@@ -8,20 +8,23 @@
 subroutine sirius_initialize(call_mpi_init)
 implicit none
 !
-logical, intent(in) :: call_mpi_init
+logical, target, intent(in) :: call_mpi_init
 !
+type(C_PTR) :: call_mpi_init_ptr
 logical(C_BOOL), target :: call_mpi_init_c_type
 !
 interface
 subroutine sirius_initialize_aux(call_mpi_init)&
 &bind(C, name="sirius_initialize")
 use, intrinsic :: ISO_C_BINDING
-logical(C_BOOL), intent(in) :: call_mpi_init
+type(C_PTR), value :: call_mpi_init
 end subroutine
 end interface
-
-call_mpi_init_c_type = bool(call_mpi_init)
-call sirius_initialize_aux(call_mpi_init_c_type)
+!
+call_mpi_init_ptr = C_NULL_PTR
+call_mpi_init_c_type = call_mpi_init
+call_mpi_init_ptr = C_LOC(call_mpi_init_c_type)
+call sirius_initialize_aux(call_mpi_init_ptr)
 end subroutine sirius_initialize
 
 !
@@ -36,12 +39,12 @@ logical, optional, target, intent(in) :: call_mpi_fin
 logical, optional, target, intent(in) :: call_device_reset
 logical, optional, target, intent(in) :: call_fftw_fin
 !
-logical(C_BOOL), target :: call_mpi_fin_c_type
 type(C_PTR) :: call_mpi_fin_ptr
-logical(C_BOOL), target :: call_device_reset_c_type
+logical(C_BOOL), target :: call_mpi_fin_c_type
 type(C_PTR) :: call_device_reset_ptr
-logical(C_BOOL), target :: call_fftw_fin_c_type
+logical(C_BOOL), target :: call_device_reset_c_type
 type(C_PTR) :: call_fftw_fin_ptr
+logical(C_BOOL), target :: call_fftw_fin_c_type
 !
 interface
 subroutine sirius_finalize_aux(call_mpi_fin,call_device_reset,call_fftw_fin)&
@@ -52,23 +55,29 @@ type(C_PTR), value :: call_device_reset
 type(C_PTR), value :: call_fftw_fin
 end subroutine
 end interface
-
+!
 call_mpi_fin_ptr = C_NULL_PTR
 if (present(call_mpi_fin)) then
-  call_mpi_fin_c_type = bool(call_mpi_fin)
-  call_mpi_fin_ptr = C_LOC(call_mpi_fin_c_type)
+call_mpi_fin_c_type = call_mpi_fin
+call_mpi_fin_ptr = C_LOC(call_mpi_fin_c_type)
 endif
 call_device_reset_ptr = C_NULL_PTR
 if (present(call_device_reset)) then
-  call_device_reset_c_type = bool(call_device_reset)
-  call_device_reset_ptr = C_LOC(call_device_reset_c_type)
+call_device_reset_c_type = call_device_reset
+call_device_reset_ptr = C_LOC(call_device_reset_c_type)
 endif
 call_fftw_fin_ptr = C_NULL_PTR
 if (present(call_fftw_fin)) then
-  call_fftw_fin_c_type = bool(call_fftw_fin)
-  call_fftw_fin_ptr = C_LOC(call_fftw_fin_c_type)
+call_fftw_fin_c_type = call_fftw_fin
+call_fftw_fin_ptr = C_LOC(call_fftw_fin_c_type)
 endif
 call sirius_finalize_aux(call_mpi_fin_ptr,call_device_reset_ptr,call_fftw_fin_ptr)
+if (present(call_mpi_fin)) then
+endif
+if (present(call_device_reset)) then
+endif
+if (present(call_fftw_fin)) then
+endif
 end subroutine sirius_finalize
 
 !
@@ -77,10 +86,10 @@ end subroutine sirius_finalize
 subroutine sirius_start_timer(name)
 implicit none
 !
-character(*), intent(in) :: name
+character(*), target, intent(in) :: name
 !
-character(C_CHAR), target, allocatable :: name_c_type(:)
 type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
 !
 interface
 subroutine sirius_start_timer_aux(name)&
@@ -89,13 +98,13 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: name
 end subroutine
 end interface
-
+!
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
 call sirius_start_timer_aux(name_ptr)
-if (allocated(name_c_type)) deallocate(name_c_type)
+deallocate(name_c_type)
 end subroutine sirius_start_timer
 
 !
@@ -104,10 +113,10 @@ end subroutine sirius_start_timer
 subroutine sirius_stop_timer(name)
 implicit none
 !
-character(*), intent(in) :: name
+character(*), target, intent(in) :: name
 !
-character(C_CHAR), target, allocatable :: name_c_type(:)
 type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
 !
 interface
 subroutine sirius_stop_timer_aux(name)&
@@ -116,13 +125,13 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: name
 end subroutine
 end interface
-
+!
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
 call sirius_stop_timer_aux(name_ptr)
-if (allocated(name_c_type)) deallocate(name_c_type)
+deallocate(name_c_type)
 end subroutine sirius_stop_timer
 
 !
@@ -130,15 +139,13 @@ end subroutine sirius_stop_timer
 subroutine sirius_print_timers()
 implicit none
 !
-!
-!
 interface
 subroutine sirius_print_timers_aux()&
 &bind(C, name="sirius_print_timers")
 use, intrinsic :: ISO_C_BINDING
 end subroutine
 end interface
-
+!
 call sirius_print_timers_aux()
 end subroutine sirius_print_timers
 
@@ -148,10 +155,10 @@ end subroutine sirius_print_timers
 subroutine sirius_serialize_timers(fname)
 implicit none
 !
-character(*), intent(in) :: fname
+character(*), target, intent(in) :: fname
 !
-character(C_CHAR), target, allocatable :: fname_c_type(:)
 type(C_PTR) :: fname_ptr
+character(C_CHAR), target, allocatable :: fname_c_type(:)
 !
 interface
 subroutine sirius_serialize_timers_aux(fname)&
@@ -160,13 +167,13 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: fname
 end subroutine
 end interface
-
+!
 fname_ptr = C_NULL_PTR
 allocate(fname_c_type(len(fname)+1))
-fname_c_type = string(fname)
+fname_c_type = string_f2c(fname)
 fname_ptr = C_LOC(fname_c_type)
 call sirius_serialize_timers_aux(fname_ptr)
-if (allocated(fname_c_type)) deallocate(fname_c_type)
+deallocate(fname_c_type)
 end subroutine sirius_serialize_timers
 
 !
@@ -179,26 +186,41 @@ end subroutine sirius_serialize_timers
 subroutine sirius_integrate(m,np,x,f,result)
 implicit none
 !
-integer, intent(in) :: m
-integer, intent(in) :: np
-real(8), intent(in) :: x
-real(8), intent(in) :: f
-real(8), intent(out) :: result
+integer, target, intent(in) :: m
+integer, target, intent(in) :: np
+real(8), target, intent(in) :: x
+real(8), target, intent(in) :: f
+real(8), target, intent(out) :: result
 !
+type(C_PTR) :: m_ptr
+type(C_PTR) :: np_ptr
+type(C_PTR) :: x_ptr
+type(C_PTR) :: f_ptr
+type(C_PTR) :: result_ptr
 !
 interface
 subroutine sirius_integrate_aux(m,np,x,f,result)&
 &bind(C, name="sirius_integrate")
 use, intrinsic :: ISO_C_BINDING
-integer(C_INT), intent(in) :: m
-integer(C_INT), intent(in) :: np
-real(C_DOUBLE), intent(in) :: x
-real(C_DOUBLE), intent(in) :: f
-real(C_DOUBLE), intent(out) :: result
+type(C_PTR), value :: m
+type(C_PTR), value :: np
+type(C_PTR), value :: x
+type(C_PTR), value :: f
+type(C_PTR), value :: result
 end subroutine
 end interface
-
-call sirius_integrate_aux(m,np,x,f,result)
+!
+m_ptr = C_NULL_PTR
+m_ptr = C_LOC(m)
+np_ptr = C_NULL_PTR
+np_ptr = C_LOC(np)
+x_ptr = C_NULL_PTR
+x_ptr = C_LOC(x)
+f_ptr = C_NULL_PTR
+f_ptr = C_LOC(f)
+result_ptr = C_NULL_PTR
+result_ptr = C_LOC(result)
+call sirius_integrate_aux(m_ptr,np_ptr,x_ptr,f_ptr,result_ptr)
 end subroutine sirius_integrate
 
 !
@@ -209,10 +231,12 @@ end subroutine sirius_integrate
 subroutine sirius_context_initialized(handler,status,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-logical, intent(out) :: status
+type(C_PTR), target, intent(in) :: handler
+logical, target, intent(out) :: status
 integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: status_ptr
 logical(C_BOOL), target :: status_c_type
 type(C_PTR) :: error_code_ptr
 !
@@ -220,17 +244,22 @@ interface
 subroutine sirius_context_initialized_aux(handler,status,error_code)&
 &bind(C, name="sirius_context_initialized")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-logical(C_BOOL), intent(out) :: status
+type(C_PTR), value :: handler
+type(C_PTR), value :: status
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
-status_c_type = bool(status)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+status_ptr = C_NULL_PTR
+status_ptr = C_LOC(status_c_type)
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_context_initialized_aux(handler,status_c_type,error_code_ptr)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_context_initialized_aux(handler_ptr,status_ptr,error_code_ptr)
+status = status_c_type
 end subroutine sirius_context_initialized
 
 !
@@ -245,26 +274,33 @@ end subroutine sirius_context_initialized
 subroutine sirius_create_context(fcomm,handler,error_code)
 implicit none
 !
-integer, intent(in) :: fcomm
-type(C_PTR), intent(out) :: handler
+integer, target, intent(in) :: fcomm
+type(C_PTR), target, intent(out) :: handler
 integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: fcomm_ptr
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_create_context_aux(fcomm,handler,error_code)&
 &bind(C, name="sirius_create_context")
 use, intrinsic :: ISO_C_BINDING
-integer(C_INT), intent(in) :: fcomm
-type(C_PTR), intent(out) :: handler
+type(C_PTR), value :: fcomm
+type(C_PTR), value :: handler
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
+!
+fcomm_ptr = C_NULL_PTR
+fcomm_ptr = C_LOC(fcomm)
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_create_context_aux(fcomm,handler,error_code_ptr)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_create_context_aux(fcomm_ptr,handler_ptr,error_code_ptr)
 end subroutine sirius_create_context
 
 !
@@ -274,29 +310,34 @@ end subroutine sirius_create_context
 subroutine sirius_import_parameters(handler,str)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 character(*), optional, target, intent(in) :: str
 !
-character(C_CHAR), target, allocatable :: str_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: str_ptr
+character(C_CHAR), target, allocatable :: str_c_type(:)
 !
 interface
 subroutine sirius_import_parameters_aux(handler,str)&
 &bind(C, name="sirius_import_parameters")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: str
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 str_ptr = C_NULL_PTR
 if (present(str)) then
 allocate(str_c_type(len(str)+1))
-str_c_type = string(str)
+str_c_type = string_f2c(str)
 str_ptr = C_LOC(str_c_type)
 endif
-call sirius_import_parameters_aux(handler,str_ptr)
-if (allocated(str_c_type)) deallocate(str_c_type)
+call sirius_import_parameters_aux(handler_ptr,str_ptr)
+if (present(str)) then
+deallocate(str_c_type)
+endif
 end subroutine sirius_import_parameters
 
 !
@@ -334,7 +375,7 @@ subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_state
 &sht_coverage,min_occupancy)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 integer, optional, target, intent(in) :: lmax_apw
 integer, optional, target, intent(in) :: lmax_rho
 integer, optional, target, intent(in) :: lmax_pot
@@ -361,6 +402,7 @@ character(*), optional, target, intent(in) :: hubbard_orbitals
 integer, optional, target, intent(in) :: sht_coverage
 real(8), optional, target, intent(in) :: min_occupancy
 !
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: lmax_apw_ptr
 type(C_PTR) :: lmax_rho_ptr
 type(C_PTR) :: lmax_pot_ptr
@@ -371,28 +413,28 @@ type(C_PTR) :: pw_cutoff_ptr
 type(C_PTR) :: gk_cutoff_ptr
 type(C_PTR) :: fft_grid_size_ptr
 type(C_PTR) :: auto_rmt_ptr
-logical(C_BOOL), target :: gamma_point_c_type
 type(C_PTR) :: gamma_point_ptr
-logical(C_BOOL), target :: use_symmetry_c_type
+logical(C_BOOL), target :: gamma_point_c_type
 type(C_PTR) :: use_symmetry_ptr
-logical(C_BOOL), target :: so_correction_c_type
+logical(C_BOOL), target :: use_symmetry_c_type
 type(C_PTR) :: so_correction_ptr
-character(C_CHAR), target, allocatable :: valence_rel_c_type(:)
+logical(C_BOOL), target :: so_correction_c_type
 type(C_PTR) :: valence_rel_ptr
-character(C_CHAR), target, allocatable :: core_rel_c_type(:)
+character(C_CHAR), target, allocatable :: valence_rel_c_type(:)
 type(C_PTR) :: core_rel_ptr
-character(C_CHAR), target, allocatable :: esm_bc_c_type(:)
+character(C_CHAR), target, allocatable :: core_rel_c_type(:)
 type(C_PTR) :: esm_bc_ptr
+character(C_CHAR), target, allocatable :: esm_bc_c_type(:)
 type(C_PTR) :: iter_solver_tol_ptr
 type(C_PTR) :: iter_solver_tol_empty_ptr
-character(C_CHAR), target, allocatable :: iter_solver_type_c_type(:)
 type(C_PTR) :: iter_solver_type_ptr
+character(C_CHAR), target, allocatable :: iter_solver_type_c_type(:)
 type(C_PTR) :: verbosity_ptr
-logical(C_BOOL), target :: hubbard_correction_c_type
 type(C_PTR) :: hubbard_correction_ptr
+logical(C_BOOL), target :: hubbard_correction_c_type
 type(C_PTR) :: hubbard_correction_kind_ptr
-character(C_CHAR), target, allocatable :: hubbard_orbitals_c_type(:)
 type(C_PTR) :: hubbard_orbitals_ptr
+character(C_CHAR), target, allocatable :: hubbard_orbitals_c_type(:)
 type(C_PTR) :: sht_coverage_ptr
 type(C_PTR) :: min_occupancy_ptr
 !
@@ -404,7 +446,7 @@ subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_s
 &sht_coverage,min_occupancy)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: lmax_apw
 type(C_PTR), value :: lmax_rho
 type(C_PTR), value :: lmax_pot
@@ -432,116 +474,152 @@ type(C_PTR), value :: sht_coverage
 type(C_PTR), value :: min_occupancy
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 lmax_apw_ptr = C_NULL_PTR
-if (present(lmax_apw)) lmax_apw_ptr = C_LOC(lmax_apw)
-
+if (present(lmax_apw)) then
+lmax_apw_ptr = C_LOC(lmax_apw)
+endif
 lmax_rho_ptr = C_NULL_PTR
-if (present(lmax_rho)) lmax_rho_ptr = C_LOC(lmax_rho)
-
+if (present(lmax_rho)) then
+lmax_rho_ptr = C_LOC(lmax_rho)
+endif
 lmax_pot_ptr = C_NULL_PTR
-if (present(lmax_pot)) lmax_pot_ptr = C_LOC(lmax_pot)
-
+if (present(lmax_pot)) then
+lmax_pot_ptr = C_LOC(lmax_pot)
+endif
 num_fv_states_ptr = C_NULL_PTR
-if (present(num_fv_states)) num_fv_states_ptr = C_LOC(num_fv_states)
-
+if (present(num_fv_states)) then
+num_fv_states_ptr = C_LOC(num_fv_states)
+endif
 num_bands_ptr = C_NULL_PTR
-if (present(num_bands)) num_bands_ptr = C_LOC(num_bands)
-
+if (present(num_bands)) then
+num_bands_ptr = C_LOC(num_bands)
+endif
 num_mag_dims_ptr = C_NULL_PTR
-if (present(num_mag_dims)) num_mag_dims_ptr = C_LOC(num_mag_dims)
-
+if (present(num_mag_dims)) then
+num_mag_dims_ptr = C_LOC(num_mag_dims)
+endif
 pw_cutoff_ptr = C_NULL_PTR
-if (present(pw_cutoff)) pw_cutoff_ptr = C_LOC(pw_cutoff)
-
+if (present(pw_cutoff)) then
+pw_cutoff_ptr = C_LOC(pw_cutoff)
+endif
 gk_cutoff_ptr = C_NULL_PTR
-if (present(gk_cutoff)) gk_cutoff_ptr = C_LOC(gk_cutoff)
-
+if (present(gk_cutoff)) then
+gk_cutoff_ptr = C_LOC(gk_cutoff)
+endif
 fft_grid_size_ptr = C_NULL_PTR
-if (present(fft_grid_size)) fft_grid_size_ptr = C_LOC(fft_grid_size)
-
+if (present(fft_grid_size)) then
+fft_grid_size_ptr = C_LOC(fft_grid_size)
+endif
 auto_rmt_ptr = C_NULL_PTR
-if (present(auto_rmt)) auto_rmt_ptr = C_LOC(auto_rmt)
-
+if (present(auto_rmt)) then
+auto_rmt_ptr = C_LOC(auto_rmt)
+endif
 gamma_point_ptr = C_NULL_PTR
 if (present(gamma_point)) then
-  gamma_point_c_type = bool(gamma_point)
-  gamma_point_ptr = C_LOC(gamma_point_c_type)
+gamma_point_c_type = gamma_point
+gamma_point_ptr = C_LOC(gamma_point_c_type)
 endif
 use_symmetry_ptr = C_NULL_PTR
 if (present(use_symmetry)) then
-  use_symmetry_c_type = bool(use_symmetry)
-  use_symmetry_ptr = C_LOC(use_symmetry_c_type)
+use_symmetry_c_type = use_symmetry
+use_symmetry_ptr = C_LOC(use_symmetry_c_type)
 endif
 so_correction_ptr = C_NULL_PTR
 if (present(so_correction)) then
-  so_correction_c_type = bool(so_correction)
-  so_correction_ptr = C_LOC(so_correction_c_type)
+so_correction_c_type = so_correction
+so_correction_ptr = C_LOC(so_correction_c_type)
 endif
 valence_rel_ptr = C_NULL_PTR
 if (present(valence_rel)) then
 allocate(valence_rel_c_type(len(valence_rel)+1))
-valence_rel_c_type = string(valence_rel)
+valence_rel_c_type = string_f2c(valence_rel)
 valence_rel_ptr = C_LOC(valence_rel_c_type)
 endif
 core_rel_ptr = C_NULL_PTR
 if (present(core_rel)) then
 allocate(core_rel_c_type(len(core_rel)+1))
-core_rel_c_type = string(core_rel)
+core_rel_c_type = string_f2c(core_rel)
 core_rel_ptr = C_LOC(core_rel_c_type)
 endif
 esm_bc_ptr = C_NULL_PTR
 if (present(esm_bc)) then
 allocate(esm_bc_c_type(len(esm_bc)+1))
-esm_bc_c_type = string(esm_bc)
+esm_bc_c_type = string_f2c(esm_bc)
 esm_bc_ptr = C_LOC(esm_bc_c_type)
 endif
 iter_solver_tol_ptr = C_NULL_PTR
-if (present(iter_solver_tol)) iter_solver_tol_ptr = C_LOC(iter_solver_tol)
-
+if (present(iter_solver_tol)) then
+iter_solver_tol_ptr = C_LOC(iter_solver_tol)
+endif
 iter_solver_tol_empty_ptr = C_NULL_PTR
-if (present(iter_solver_tol_empty)) iter_solver_tol_empty_ptr = C_LOC(iter_solver_tol_empty)
-
+if (present(iter_solver_tol_empty)) then
+iter_solver_tol_empty_ptr = C_LOC(iter_solver_tol_empty)
+endif
 iter_solver_type_ptr = C_NULL_PTR
 if (present(iter_solver_type)) then
 allocate(iter_solver_type_c_type(len(iter_solver_type)+1))
-iter_solver_type_c_type = string(iter_solver_type)
+iter_solver_type_c_type = string_f2c(iter_solver_type)
 iter_solver_type_ptr = C_LOC(iter_solver_type_c_type)
 endif
 verbosity_ptr = C_NULL_PTR
-if (present(verbosity)) verbosity_ptr = C_LOC(verbosity)
-
+if (present(verbosity)) then
+verbosity_ptr = C_LOC(verbosity)
+endif
 hubbard_correction_ptr = C_NULL_PTR
 if (present(hubbard_correction)) then
-  hubbard_correction_c_type = bool(hubbard_correction)
-  hubbard_correction_ptr = C_LOC(hubbard_correction_c_type)
+hubbard_correction_c_type = hubbard_correction
+hubbard_correction_ptr = C_LOC(hubbard_correction_c_type)
 endif
 hubbard_correction_kind_ptr = C_NULL_PTR
-if (present(hubbard_correction_kind)) hubbard_correction_kind_ptr = C_LOC(hubbard_correction_kind)
-
+if (present(hubbard_correction_kind)) then
+hubbard_correction_kind_ptr = C_LOC(hubbard_correction_kind)
+endif
 hubbard_orbitals_ptr = C_NULL_PTR
 if (present(hubbard_orbitals)) then
 allocate(hubbard_orbitals_c_type(len(hubbard_orbitals)+1))
-hubbard_orbitals_c_type = string(hubbard_orbitals)
+hubbard_orbitals_c_type = string_f2c(hubbard_orbitals)
 hubbard_orbitals_ptr = C_LOC(hubbard_orbitals_c_type)
 endif
 sht_coverage_ptr = C_NULL_PTR
-if (present(sht_coverage)) sht_coverage_ptr = C_LOC(sht_coverage)
-
+if (present(sht_coverage)) then
+sht_coverage_ptr = C_LOC(sht_coverage)
+endif
 min_occupancy_ptr = C_NULL_PTR
-if (present(min_occupancy)) min_occupancy_ptr = C_LOC(min_occupancy)
-
-call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,num_fv_states_ptr,&
-&num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,auto_rmt_ptr,&
-&gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,core_rel_ptr,&
-&esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,verbosity_ptr,&
-&hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,sht_coverage_ptr,&
-&min_occupancy_ptr)
-if (allocated(valence_rel_c_type)) deallocate(valence_rel_c_type)
-if (allocated(core_rel_c_type)) deallocate(core_rel_c_type)
-if (allocated(esm_bc_c_type)) deallocate(esm_bc_c_type)
-if (allocated(iter_solver_type_c_type)) deallocate(iter_solver_type_c_type)
-if (allocated(hubbard_orbitals_c_type)) deallocate(hubbard_orbitals_c_type)
+if (present(min_occupancy)) then
+min_occupancy_ptr = C_LOC(min_occupancy)
+endif
+call sirius_set_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,&
+&num_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,&
+&auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,&
+&core_rel_ptr,esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,&
+&verbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,&
+&sht_coverage_ptr,min_occupancy_ptr)
+if (present(gamma_point)) then
+endif
+if (present(use_symmetry)) then
+endif
+if (present(so_correction)) then
+endif
+if (present(valence_rel)) then
+deallocate(valence_rel_c_type)
+endif
+if (present(core_rel)) then
+deallocate(core_rel_c_type)
+endif
+if (present(esm_bc)) then
+deallocate(esm_bc_c_type)
+endif
+if (present(iter_solver_type)) then
+deallocate(iter_solver_type_c_type)
+endif
+if (present(hubbard_correction)) then
+endif
+if (present(hubbard_orbitals)) then
+deallocate(hubbard_orbitals_c_type)
+endif
 end subroutine sirius_set_parameters
 
 !
@@ -573,7 +651,7 @@ subroutine sirius_get_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_state
 &evp_work_count,num_loc_op_applied,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 integer, optional, target, intent(out) :: lmax_apw
 integer, optional, target, intent(out) :: lmax_rho
 integer, optional, target, intent(out) :: lmax_pot
@@ -595,6 +673,7 @@ real(8), optional, target, intent(out) :: evp_work_count
 integer, optional, target, intent(out) :: num_loc_op_applied
 integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: lmax_apw_ptr
 type(C_PTR) :: lmax_rho_ptr
 type(C_PTR) :: lmax_pot_ptr
@@ -605,17 +684,17 @@ type(C_PTR) :: pw_cutoff_ptr
 type(C_PTR) :: gk_cutoff_ptr
 type(C_PTR) :: fft_grid_size_ptr
 type(C_PTR) :: auto_rmt_ptr
-logical(C_BOOL), target :: gamma_point_c_type
 type(C_PTR) :: gamma_point_ptr
-logical(C_BOOL), target :: use_symmetry_c_type
+logical(C_BOOL), target :: gamma_point_c_type
 type(C_PTR) :: use_symmetry_ptr
-logical(C_BOOL), target :: so_correction_c_type
+logical(C_BOOL), target :: use_symmetry_c_type
 type(C_PTR) :: so_correction_ptr
+logical(C_BOOL), target :: so_correction_c_type
 type(C_PTR) :: iter_solver_tol_ptr
 type(C_PTR) :: iter_solver_tol_empty_ptr
 type(C_PTR) :: verbosity_ptr
-logical(C_BOOL), target :: hubbard_correction_c_type
 type(C_PTR) :: hubbard_correction_ptr
+logical(C_BOOL), target :: hubbard_correction_c_type
 type(C_PTR) :: evp_work_count_ptr
 type(C_PTR) :: num_loc_op_applied_ptr
 type(C_PTR) :: error_code_ptr
@@ -627,7 +706,7 @@ subroutine sirius_get_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_s
 &evp_work_count,num_loc_op_applied,error_code)&
 &bind(C, name="sirius_get_parameters")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: lmax_apw
 type(C_PTR), value :: lmax_rho
 type(C_PTR), value :: lmax_pot
@@ -650,79 +729,106 @@ type(C_PTR), value :: num_loc_op_applied
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 lmax_apw_ptr = C_NULL_PTR
-if (present(lmax_apw)) lmax_apw_ptr = C_LOC(lmax_apw)
-
+if (present(lmax_apw)) then
+lmax_apw_ptr = C_LOC(lmax_apw)
+endif
 lmax_rho_ptr = C_NULL_PTR
-if (present(lmax_rho)) lmax_rho_ptr = C_LOC(lmax_rho)
-
+if (present(lmax_rho)) then
+lmax_rho_ptr = C_LOC(lmax_rho)
+endif
 lmax_pot_ptr = C_NULL_PTR
-if (present(lmax_pot)) lmax_pot_ptr = C_LOC(lmax_pot)
-
+if (present(lmax_pot)) then
+lmax_pot_ptr = C_LOC(lmax_pot)
+endif
 num_fv_states_ptr = C_NULL_PTR
-if (present(num_fv_states)) num_fv_states_ptr = C_LOC(num_fv_states)
-
+if (present(num_fv_states)) then
+num_fv_states_ptr = C_LOC(num_fv_states)
+endif
 num_bands_ptr = C_NULL_PTR
-if (present(num_bands)) num_bands_ptr = C_LOC(num_bands)
-
+if (present(num_bands)) then
+num_bands_ptr = C_LOC(num_bands)
+endif
 num_mag_dims_ptr = C_NULL_PTR
-if (present(num_mag_dims)) num_mag_dims_ptr = C_LOC(num_mag_dims)
-
+if (present(num_mag_dims)) then
+num_mag_dims_ptr = C_LOC(num_mag_dims)
+endif
 pw_cutoff_ptr = C_NULL_PTR
-if (present(pw_cutoff)) pw_cutoff_ptr = C_LOC(pw_cutoff)
-
+if (present(pw_cutoff)) then
+pw_cutoff_ptr = C_LOC(pw_cutoff)
+endif
 gk_cutoff_ptr = C_NULL_PTR
-if (present(gk_cutoff)) gk_cutoff_ptr = C_LOC(gk_cutoff)
-
+if (present(gk_cutoff)) then
+gk_cutoff_ptr = C_LOC(gk_cutoff)
+endif
 fft_grid_size_ptr = C_NULL_PTR
-if (present(fft_grid_size)) fft_grid_size_ptr = C_LOC(fft_grid_size)
-
+if (present(fft_grid_size)) then
+fft_grid_size_ptr = C_LOC(fft_grid_size)
+endif
 auto_rmt_ptr = C_NULL_PTR
-if (present(auto_rmt)) auto_rmt_ptr = C_LOC(auto_rmt)
-
+if (present(auto_rmt)) then
+auto_rmt_ptr = C_LOC(auto_rmt)
+endif
 gamma_point_ptr = C_NULL_PTR
 if (present(gamma_point)) then
-  gamma_point_c_type = bool(gamma_point)
-  gamma_point_ptr = C_LOC(gamma_point_c_type)
+gamma_point_ptr = C_LOC(gamma_point_c_type)
 endif
 use_symmetry_ptr = C_NULL_PTR
 if (present(use_symmetry)) then
-  use_symmetry_c_type = bool(use_symmetry)
-  use_symmetry_ptr = C_LOC(use_symmetry_c_type)
+use_symmetry_ptr = C_LOC(use_symmetry_c_type)
 endif
 so_correction_ptr = C_NULL_PTR
 if (present(so_correction)) then
-  so_correction_c_type = bool(so_correction)
-  so_correction_ptr = C_LOC(so_correction_c_type)
+so_correction_ptr = C_LOC(so_correction_c_type)
 endif
 iter_solver_tol_ptr = C_NULL_PTR
-if (present(iter_solver_tol)) iter_solver_tol_ptr = C_LOC(iter_solver_tol)
-
+if (present(iter_solver_tol)) then
+iter_solver_tol_ptr = C_LOC(iter_solver_tol)
+endif
 iter_solver_tol_empty_ptr = C_NULL_PTR
-if (present(iter_solver_tol_empty)) iter_solver_tol_empty_ptr = C_LOC(iter_solver_tol_empty)
-
+if (present(iter_solver_tol_empty)) then
+iter_solver_tol_empty_ptr = C_LOC(iter_solver_tol_empty)
+endif
 verbosity_ptr = C_NULL_PTR
-if (present(verbosity)) verbosity_ptr = C_LOC(verbosity)
-
+if (present(verbosity)) then
+verbosity_ptr = C_LOC(verbosity)
+endif
 hubbard_correction_ptr = C_NULL_PTR
 if (present(hubbard_correction)) then
-  hubbard_correction_c_type = bool(hubbard_correction)
-  hubbard_correction_ptr = C_LOC(hubbard_correction_c_type)
+hubbard_correction_ptr = C_LOC(hubbard_correction_c_type)
 endif
 evp_work_count_ptr = C_NULL_PTR
-if (present(evp_work_count)) evp_work_count_ptr = C_LOC(evp_work_count)
-
+if (present(evp_work_count)) then
+evp_work_count_ptr = C_LOC(evp_work_count)
+endif
 num_loc_op_applied_ptr = C_NULL_PTR
-if (present(num_loc_op_applied)) num_loc_op_applied_ptr = C_LOC(num_loc_op_applied)
-
+if (present(num_loc_op_applied)) then
+num_loc_op_applied_ptr = C_LOC(num_loc_op_applied)
+endif
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_get_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,num_fv_states_ptr,&
-&num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,auto_rmt_ptr,&
-&gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,&
-&verbosity_ptr,hubbard_correction_ptr,evp_work_count_ptr,num_loc_op_applied_ptr,error_code_ptr)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,&
+&num_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,&
+&auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,iter_solver_tol_ptr,&
+&iter_solver_tol_empty_ptr,verbosity_ptr,hubbard_correction_ptr,evp_work_count_ptr,&
+&num_loc_op_applied_ptr,error_code_ptr)
+if (present(gamma_point)) then
+gamma_point = gamma_point_c_type
+endif
+if (present(use_symmetry)) then
+use_symmetry = use_symmetry_c_type
+endif
+if (present(so_correction)) then
+so_correction = so_correction_c_type
+endif
+if (present(hubbard_correction)) then
+hubbard_correction = hubbard_correction_c_type
+endif
 end subroutine sirius_get_parameters
 
 !
@@ -732,27 +838,30 @@ end subroutine sirius_get_parameters
 subroutine sirius_add_xc_functional(handler,name)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: name
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: name
 !
-character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
 !
 interface
 subroutine sirius_add_xc_functional_aux(handler,name)&
 &bind(C, name="sirius_add_xc_functional")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: name
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-call sirius_add_xc_functional_aux(handler,name_ptr)
-if (allocated(name_c_type)) deallocate(name_c_type)
+call sirius_add_xc_functional_aux(handler_ptr,name_ptr)
+deallocate(name_c_type)
 end subroutine sirius_add_xc_functional
 
 !
@@ -762,27 +871,30 @@ end subroutine sirius_add_xc_functional
 subroutine sirius_insert_xc_functional(gs_handler,name)
 implicit none
 !
-type(C_PTR), intent(in) :: gs_handler
-character(*), intent(in) :: name
+type(C_PTR), target, intent(in) :: gs_handler
+character(*), target, intent(in) :: name
 !
-character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: gs_handler_ptr
 type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
 !
 interface
 subroutine sirius_insert_xc_functional_aux(gs_handler,name)&
 &bind(C, name="sirius_insert_xc_functional")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), value :: gs_handler
 type(C_PTR), value :: name
 end subroutine
 end interface
-
+!
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-call sirius_insert_xc_functional_aux(gs_handler,name_ptr)
-if (allocated(name_c_type)) deallocate(name_c_type)
+call sirius_insert_xc_functional_aux(gs_handler_ptr,name_ptr)
+deallocate(name_c_type)
 end subroutine sirius_insert_xc_functional
 
 !
@@ -793,22 +905,31 @@ end subroutine sirius_insert_xc_functional
 subroutine sirius_set_mpi_grid_dims(handler,ndims,dims)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ndims
-integer, intent(in) :: dims
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ndims
+integer, target, intent(in) :: dims
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ndims_ptr
+type(C_PTR) :: dims_ptr
 !
 interface
 subroutine sirius_set_mpi_grid_dims_aux(handler,ndims,dims)&
 &bind(C, name="sirius_set_mpi_grid_dims")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ndims
-integer(C_INT), intent(in) :: dims
+type(C_PTR), value :: handler
+type(C_PTR), value :: ndims
+type(C_PTR), value :: dims
 end subroutine
 end interface
-
-call sirius_set_mpi_grid_dims_aux(handler,ndims,dims)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ndims_ptr = C_NULL_PTR
+ndims_ptr = C_LOC(ndims)
+dims_ptr = C_NULL_PTR
+dims_ptr = C_LOC(dims)
+call sirius_set_mpi_grid_dims_aux(handler_ptr,ndims_ptr,dims_ptr)
 end subroutine sirius_set_mpi_grid_dims
 
 !
@@ -820,44 +941,67 @@ end subroutine sirius_set_mpi_grid_dims
 subroutine sirius_set_lattice_vectors(handler,a1,a2,a3)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-real(8), intent(in) :: a1
-real(8), intent(in) :: a2
-real(8), intent(in) :: a3
+type(C_PTR), target, intent(in) :: handler
+real(8), target, intent(in) :: a1
+real(8), target, intent(in) :: a2
+real(8), target, intent(in) :: a3
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: a1_ptr
+type(C_PTR) :: a2_ptr
+type(C_PTR) :: a3_ptr
 !
 interface
 subroutine sirius_set_lattice_vectors_aux(handler,a1,a2,a3)&
 &bind(C, name="sirius_set_lattice_vectors")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(in) :: a1
-real(C_DOUBLE), intent(in) :: a2
-real(C_DOUBLE), intent(in) :: a3
+type(C_PTR), value :: handler
+type(C_PTR), value :: a1
+type(C_PTR), value :: a2
+type(C_PTR), value :: a3
 end subroutine
 end interface
-
-call sirius_set_lattice_vectors_aux(handler,a1,a2,a3)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+a1_ptr = C_NULL_PTR
+a1_ptr = C_LOC(a1)
+a2_ptr = C_NULL_PTR
+a2_ptr = C_LOC(a2)
+a3_ptr = C_NULL_PTR
+a3_ptr = C_LOC(a3)
+call sirius_set_lattice_vectors_aux(handler_ptr,a1_ptr,a2_ptr,a3_ptr)
 end subroutine sirius_set_lattice_vectors
 
 !
 !> @brief Initialize simulation context.
 !> @param [in] handler Simulation context handler.
-subroutine sirius_initialize_context(handler)
+!> @param [out] error_code Error code.
+subroutine sirius_initialize_context(handler,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
+integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_initialize_context_aux(handler)&
+subroutine sirius_initialize_context_aux(handler,error_code)&
 &bind(C, name="sirius_initialize_context")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
+type(C_PTR), value :: error_code
 end subroutine
 end interface
-
-call sirius_initialize_context_aux(handler)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_initialize_context_aux(handler_ptr,error_code_ptr)
 end subroutine sirius_initialize_context
 
 !
@@ -866,18 +1010,21 @@ end subroutine sirius_initialize_context
 subroutine sirius_update_context(handler)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 !
+type(C_PTR) :: handler_ptr
 !
 interface
 subroutine sirius_update_context_aux(handler)&
 &bind(C, name="sirius_update_context")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 end subroutine
 end interface
-
-call sirius_update_context_aux(handler)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+call sirius_update_context_aux(handler_ptr)
 end subroutine sirius_update_context
 
 !
@@ -886,18 +1033,21 @@ end subroutine sirius_update_context
 subroutine sirius_print_info(handler)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 !
+type(C_PTR) :: handler_ptr
 !
 interface
 subroutine sirius_print_info_aux(handler)&
 &bind(C, name="sirius_print_info")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 end subroutine
 end interface
-
-call sirius_print_info_aux(handler)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+call sirius_print_info_aux(handler_ptr)
 end subroutine sirius_print_info
 
 !
@@ -907,24 +1057,28 @@ end subroutine sirius_print_info
 subroutine sirius_free_handler(handler,error_code)
 implicit none
 !
-type(C_PTR), intent(inout) :: handler
+type(C_PTR), target, intent(inout) :: handler
 integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_free_handler_aux(handler,error_code)&
 &bind(C, name="sirius_free_handler")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(inout) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_free_handler_aux(handler,error_code_ptr)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_free_handler_aux(handler_ptr,error_code_ptr)
 end subroutine sirius_free_handler
 
 !
@@ -936,13 +1090,14 @@ end subroutine sirius_free_handler
 subroutine sirius_set_periodic_function_ptr(handler,label,f_mt,f_rg)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
 real(8), optional, target, intent(in) :: f_mt
 real(8), optional, target, intent(in) :: f_rg
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: f_mt_ptr
 type(C_PTR) :: f_rg_ptr
 !
@@ -950,25 +1105,29 @@ interface
 subroutine sirius_set_periodic_function_ptr_aux(handler,label,f_mt,f_rg)&
 &bind(C, name="sirius_set_periodic_function_ptr")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
 type(C_PTR), value :: f_mt
 type(C_PTR), value :: f_rg
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
 f_mt_ptr = C_NULL_PTR
-if (present(f_mt)) f_mt_ptr = C_LOC(f_mt)
-
+if (present(f_mt)) then
+f_mt_ptr = C_LOC(f_mt)
+endif
 f_rg_ptr = C_NULL_PTR
-if (present(f_rg)) f_rg_ptr = C_LOC(f_rg)
-
-call sirius_set_periodic_function_ptr_aux(handler,label_ptr,f_mt_ptr,f_rg_ptr)
-if (allocated(label_c_type)) deallocate(label_c_type)
+if (present(f_rg)) then
+f_rg_ptr = C_LOC(f_rg)
+endif
+call sirius_set_periodic_function_ptr_aux(handler_ptr,label_ptr,f_mt_ptr,f_rg_ptr)
+deallocate(label_c_type)
 end subroutine sirius_set_periodic_function_ptr
 
 !
@@ -978,34 +1137,64 @@ end subroutine sirius_set_periodic_function_ptr
 !> @param [in] kpoints List of k-points in lattice coordinates.
 !> @param [in] kpoint_weights Weights of k-points.
 !> @param [in] init_kset If .true. k-set will be initialized.
-function sirius_create_kset(handler,num_kpoints,kpoints,kpoint_weights,init_kset) result(res)
+!> @param [out] kset_handler Handler of the newly created k-point set.
+!> @param [out] error_code Error code.
+subroutine sirius_create_kset(handler,num_kpoints,kpoints,kpoint_weights,init_kset,&
+&kset_handler,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: num_kpoints
-real(8), intent(in) :: kpoints
-real(8), intent(in) :: kpoint_weights
-logical, intent(in) :: init_kset
-type(C_PTR) :: res
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: num_kpoints
+real(8), target, intent(in) :: kpoints
+real(8), target, intent(in) :: kpoint_weights
+logical, target, intent(in) :: init_kset
+type(C_PTR), target, intent(out) :: kset_handler
+integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: num_kpoints_ptr
+type(C_PTR) :: kpoints_ptr
+type(C_PTR) :: kpoint_weights_ptr
+type(C_PTR) :: init_kset_ptr
 logical(C_BOOL), target :: init_kset_c_type
+type(C_PTR) :: kset_handler_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-function sirius_create_kset_aux(handler,num_kpoints,kpoints,kpoint_weights,init_kset) result(res)&
+subroutine sirius_create_kset_aux(handler,num_kpoints,kpoints,kpoint_weights,init_kset,&
+&kset_handler,error_code)&
 &bind(C, name="sirius_create_kset")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: num_kpoints
-real(C_DOUBLE), intent(in) :: kpoints
-real(C_DOUBLE), intent(in) :: kpoint_weights
-logical(C_BOOL), intent(in) :: init_kset
-type(C_PTR) :: res
-end function
+type(C_PTR), value :: handler
+type(C_PTR), value :: num_kpoints
+type(C_PTR), value :: kpoints
+type(C_PTR), value :: kpoint_weights
+type(C_PTR), value :: init_kset
+type(C_PTR), value :: kset_handler
+type(C_PTR), value :: error_code
+end subroutine
 end interface
-
-init_kset_c_type = bool(init_kset)
-res = sirius_create_kset_aux(handler,num_kpoints,kpoints,kpoint_weights,init_kset_c_type)
-end function sirius_create_kset
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+num_kpoints_ptr = C_NULL_PTR
+num_kpoints_ptr = C_LOC(num_kpoints)
+kpoints_ptr = C_NULL_PTR
+kpoints_ptr = C_LOC(kpoints)
+kpoint_weights_ptr = C_NULL_PTR
+kpoint_weights_ptr = C_LOC(kpoint_weights)
+init_kset_ptr = C_NULL_PTR
+init_kset_c_type = init_kset
+init_kset_ptr = C_LOC(init_kset_c_type)
+kset_handler_ptr = C_NULL_PTR
+kset_handler_ptr = C_LOC(kset_handler)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_create_kset_aux(handler_ptr,num_kpoints_ptr,kpoints_ptr,kpoint_weights_ptr,&
+&init_kset_ptr,kset_handler_ptr,error_code_ptr)
+end subroutine sirius_create_kset
 
 !
 !> @brief Create k-point set from a grid.
@@ -1013,54 +1202,96 @@ end function sirius_create_kset
 !> @param [in] k_grid dimensions of the k points grid.
 !> @param [in] k_shift k point shifts.
 !> @param [in] use_symmetry If .true. k-set will be generated using symmetries.
-function sirius_create_kset_from_grid(handler,k_grid,k_shift,use_symmetry) result(res)
+!> @param [out] kset_handler Handler of the newly created k-point set.
+!> @param [out] error_code Error code.
+subroutine sirius_create_kset_from_grid(handler,k_grid,k_shift,use_symmetry,kset_handler,&
+&error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: k_grid
-integer, intent(in) :: k_shift
-logical, intent(in) :: use_symmetry
-type(C_PTR) :: res
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: k_grid
+integer, target, intent(in) :: k_shift
+logical, target, intent(in) :: use_symmetry
+type(C_PTR), target, intent(out) :: kset_handler
+integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: k_grid_ptr
+type(C_PTR) :: k_shift_ptr
+type(C_PTR) :: use_symmetry_ptr
 logical(C_BOOL), target :: use_symmetry_c_type
+type(C_PTR) :: kset_handler_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-function sirius_create_kset_from_grid_aux(handler,k_grid,k_shift,use_symmetry) result(res)&
+subroutine sirius_create_kset_from_grid_aux(handler,k_grid,k_shift,use_symmetry,&
+&kset_handler,error_code)&
 &bind(C, name="sirius_create_kset_from_grid")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: k_grid
-integer(C_INT), intent(in) :: k_shift
-logical(C_BOOL), intent(in) :: use_symmetry
-type(C_PTR) :: res
-end function
+type(C_PTR), value :: handler
+type(C_PTR), value :: k_grid
+type(C_PTR), value :: k_shift
+type(C_PTR), value :: use_symmetry
+type(C_PTR), value :: kset_handler
+type(C_PTR), value :: error_code
+end subroutine
 end interface
-
-use_symmetry_c_type = bool(use_symmetry)
-res = sirius_create_kset_from_grid_aux(handler,k_grid,k_shift,use_symmetry_c_type)
-end function sirius_create_kset_from_grid
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+k_grid_ptr = C_NULL_PTR
+k_grid_ptr = C_LOC(k_grid)
+k_shift_ptr = C_NULL_PTR
+k_shift_ptr = C_LOC(k_shift)
+use_symmetry_ptr = C_NULL_PTR
+use_symmetry_c_type = use_symmetry
+use_symmetry_ptr = C_LOC(use_symmetry_c_type)
+kset_handler_ptr = C_NULL_PTR
+kset_handler_ptr = C_LOC(kset_handler)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_create_kset_from_grid_aux(handler_ptr,k_grid_ptr,k_shift_ptr,use_symmetry_ptr,&
+&kset_handler_ptr,error_code_ptr)
+end subroutine sirius_create_kset_from_grid
 
 !
 !> @brief Create a ground state object.
 !> @param [in] ks_handler Handler of the k-point set.
-function sirius_create_ground_state(ks_handler) result(res)
+!> @param [out] gs_handler Handler of the newly created ground state object.
+!> @param [out] error_code Error code.
+subroutine sirius_create_ground_state(ks_handler,gs_handler,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: ks_handler
-type(C_PTR) :: res
+type(C_PTR), target, intent(in) :: ks_handler
+type(C_PTR), target, intent(out) :: gs_handler
+integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-function sirius_create_ground_state_aux(ks_handler) result(res)&
+subroutine sirius_create_ground_state_aux(ks_handler,gs_handler,error_code)&
 &bind(C, name="sirius_create_ground_state")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: ks_handler
-type(C_PTR) :: res
-end function
+type(C_PTR), value :: ks_handler
+type(C_PTR), value :: gs_handler
+type(C_PTR), value :: error_code
+end subroutine
 end interface
-
-res = sirius_create_ground_state_aux(ks_handler)
-end function sirius_create_ground_state
+!
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_create_ground_state_aux(ks_handler_ptr,gs_handler_ptr,error_code_ptr)
+end subroutine sirius_create_ground_state
 
 !
 !> @brief Initialize k-point set.
@@ -1069,24 +1300,28 @@ end function sirius_create_ground_state
 subroutine sirius_initialize_kset(ks_handler,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), target, intent(in) :: ks_handler
 integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: ks_handler_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_initialize_kset_aux(ks_handler,error_code)&
 &bind(C, name="sirius_initialize_kset")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), value :: ks_handler
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
+!
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_initialize_kset_aux(ks_handler,error_code_ptr)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_initialize_kset_aux(ks_handler_ptr,error_code_ptr)
 end subroutine sirius_initialize_kset
 
 !
@@ -1099,47 +1334,55 @@ end subroutine sirius_initialize_kset
 subroutine sirius_find_ground_state(gs_handler,density_tol,energy_tol,niter,save_state)
 implicit none
 !
-type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), target, intent(in) :: gs_handler
 real(8), optional, target, intent(in) :: density_tol
 real(8), optional, target, intent(in) :: energy_tol
 integer, optional, target, intent(in) :: niter
 logical, optional, target, intent(in) :: save_state
 !
+type(C_PTR) :: gs_handler_ptr
 type(C_PTR) :: density_tol_ptr
 type(C_PTR) :: energy_tol_ptr
 type(C_PTR) :: niter_ptr
-logical(C_BOOL), target :: save_state_c_type
 type(C_PTR) :: save_state_ptr
+logical(C_BOOL), target :: save_state_c_type
 !
 interface
 subroutine sirius_find_ground_state_aux(gs_handler,density_tol,energy_tol,niter,&
 &save_state)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), value :: gs_handler
 type(C_PTR), value :: density_tol
 type(C_PTR), value :: energy_tol
 type(C_PTR), value :: niter
 type(C_PTR), value :: save_state
 end subroutine
 end interface
-
+!
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler)
 density_tol_ptr = C_NULL_PTR
-if (present(density_tol)) density_tol_ptr = C_LOC(density_tol)
-
+if (present(density_tol)) then
+density_tol_ptr = C_LOC(density_tol)
+endif
 energy_tol_ptr = C_NULL_PTR
-if (present(energy_tol)) energy_tol_ptr = C_LOC(energy_tol)
-
+if (present(energy_tol)) then
+energy_tol_ptr = C_LOC(energy_tol)
+endif
 niter_ptr = C_NULL_PTR
-if (present(niter)) niter_ptr = C_LOC(niter)
-
+if (present(niter)) then
+niter_ptr = C_LOC(niter)
+endif
 save_state_ptr = C_NULL_PTR
 if (present(save_state)) then
-  save_state_c_type = bool(save_state)
-  save_state_ptr = C_LOC(save_state_c_type)
+save_state_c_type = save_state
+save_state_ptr = C_LOC(save_state_c_type)
 endif
-call sirius_find_ground_state_aux(gs_handler,density_tol_ptr,energy_tol_ptr,niter_ptr,&
-&save_state_ptr)
+call sirius_find_ground_state_aux(gs_handler_ptr,density_tol_ptr,energy_tol_ptr,&
+&niter_ptr,save_state_ptr)
+if (present(save_state)) then
+endif
 end subroutine sirius_find_ground_state
 
 !
@@ -1157,8 +1400,8 @@ subroutine sirius_find_ground_state_robust(gs_handler,ks_handler,scf_density_tol
 &scf_energy_tol,scf_ninit__,temp__,tol__,cg_restart__,kappa__)
 implicit none
 !
-type(C_PTR), intent(in) :: gs_handler
-type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), target, intent(in) :: gs_handler
+type(C_PTR), target, intent(in) :: ks_handler
 real(8), optional, target, intent(in) :: scf_density_tol
 real(8), optional, target, intent(in) :: scf_energy_tol
 integer, optional, target, intent(in) :: scf_ninit__
@@ -1167,6 +1410,8 @@ real(8), optional, target, intent(in) :: tol__
 integer, optional, target, intent(in) :: cg_restart__
 real(8), optional, target, intent(in) :: kappa__
 !
+type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: ks_handler_ptr
 type(C_PTR) :: scf_density_tol_ptr
 type(C_PTR) :: scf_energy_tol_ptr
 type(C_PTR) :: scf_ninit___ptr
@@ -1180,8 +1425,8 @@ subroutine sirius_find_ground_state_robust_aux(gs_handler,ks_handler,scf_density
 &scf_energy_tol,scf_ninit__,temp__,tol__,cg_restart__,kappa__)&
 &bind(C, name="sirius_find_ground_state_robust")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: gs_handler
-type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), value :: gs_handler
+type(C_PTR), value :: ks_handler
 type(C_PTR), value :: scf_density_tol
 type(C_PTR), value :: scf_energy_tol
 type(C_PTR), value :: scf_ninit__
@@ -1191,29 +1436,40 @@ type(C_PTR), value :: cg_restart__
 type(C_PTR), value :: kappa__
 end subroutine
 end interface
-
+!
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler)
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
 scf_density_tol_ptr = C_NULL_PTR
-if (present(scf_density_tol)) scf_density_tol_ptr = C_LOC(scf_density_tol)
-
+if (present(scf_density_tol)) then
+scf_density_tol_ptr = C_LOC(scf_density_tol)
+endif
 scf_energy_tol_ptr = C_NULL_PTR
-if (present(scf_energy_tol)) scf_energy_tol_ptr = C_LOC(scf_energy_tol)
-
+if (present(scf_energy_tol)) then
+scf_energy_tol_ptr = C_LOC(scf_energy_tol)
+endif
 scf_ninit___ptr = C_NULL_PTR
-if (present(scf_ninit__)) scf_ninit___ptr = C_LOC(scf_ninit__)
-
+if (present(scf_ninit__)) then
+scf_ninit___ptr = C_LOC(scf_ninit__)
+endif
 temp___ptr = C_NULL_PTR
-if (present(temp__)) temp___ptr = C_LOC(temp__)
-
+if (present(temp__)) then
+temp___ptr = C_LOC(temp__)
+endif
 tol___ptr = C_NULL_PTR
-if (present(tol__)) tol___ptr = C_LOC(tol__)
-
+if (present(tol__)) then
+tol___ptr = C_LOC(tol__)
+endif
 cg_restart___ptr = C_NULL_PTR
-if (present(cg_restart__)) cg_restart___ptr = C_LOC(cg_restart__)
-
+if (present(cg_restart__)) then
+cg_restart___ptr = C_LOC(cg_restart__)
+endif
 kappa___ptr = C_NULL_PTR
-if (present(kappa__)) kappa___ptr = C_LOC(kappa__)
-
-call sirius_find_ground_state_robust_aux(gs_handler,ks_handler,scf_density_tol_ptr,&
+if (present(kappa__)) then
+kappa___ptr = C_LOC(kappa__)
+endif
+call sirius_find_ground_state_robust_aux(gs_handler_ptr,ks_handler_ptr,scf_density_tol_ptr,&
 &scf_energy_tol_ptr,scf_ninit___ptr,temp___ptr,tol___ptr,cg_restart___ptr,kappa___ptr)
 end subroutine sirius_find_ground_state_robust
 
@@ -1223,18 +1479,21 @@ end subroutine sirius_find_ground_state_robust
 subroutine sirius_update_ground_state(gs_handler)
 implicit none
 !
-type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), target, intent(in) :: gs_handler
 !
+type(C_PTR) :: gs_handler_ptr
 !
 interface
 subroutine sirius_update_ground_state_aux(gs_handler)&
 &bind(C, name="sirius_update_ground_state")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), value :: gs_handler
 end subroutine
 end interface
-
-call sirius_update_ground_state_aux(gs_handler)
+!
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler)
+call sirius_update_ground_state_aux(gs_handler_ptr)
 end subroutine sirius_update_ground_state
 
 !
@@ -1249,30 +1508,31 @@ end subroutine sirius_update_ground_state
 subroutine sirius_add_atom_type(handler,label,fname,zn,symbol,mass,spin_orbit)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
 character(*), optional, target, intent(in) :: fname
 integer, optional, target, intent(in) :: zn
 character(*), optional, target, intent(in) :: symbol
 real(8), optional, target, intent(in) :: mass
 logical, optional, target, intent(in) :: spin_orbit
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
-character(C_CHAR), target, allocatable :: fname_c_type(:)
+character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: fname_ptr
+character(C_CHAR), target, allocatable :: fname_c_type(:)
 type(C_PTR) :: zn_ptr
-character(C_CHAR), target, allocatable :: symbol_c_type(:)
 type(C_PTR) :: symbol_ptr
+character(C_CHAR), target, allocatable :: symbol_c_type(:)
 type(C_PTR) :: mass_ptr
-logical(C_BOOL), target :: spin_orbit_c_type
 type(C_PTR) :: spin_orbit_ptr
+logical(C_BOOL), target :: spin_orbit_c_type
 !
 interface
 subroutine sirius_add_atom_type_aux(handler,label,fname,zn,symbol,mass,spin_orbit)&
 &bind(C, name="sirius_add_atom_type")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
 type(C_PTR), value :: fname
 type(C_PTR), value :: zn
@@ -1281,39 +1541,49 @@ type(C_PTR), value :: mass
 type(C_PTR), value :: spin_orbit
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
 fname_ptr = C_NULL_PTR
 if (present(fname)) then
 allocate(fname_c_type(len(fname)+1))
-fname_c_type = string(fname)
+fname_c_type = string_f2c(fname)
 fname_ptr = C_LOC(fname_c_type)
 endif
 zn_ptr = C_NULL_PTR
-if (present(zn)) zn_ptr = C_LOC(zn)
-
+if (present(zn)) then
+zn_ptr = C_LOC(zn)
+endif
 symbol_ptr = C_NULL_PTR
 if (present(symbol)) then
 allocate(symbol_c_type(len(symbol)+1))
-symbol_c_type = string(symbol)
+symbol_c_type = string_f2c(symbol)
 symbol_ptr = C_LOC(symbol_c_type)
 endif
 mass_ptr = C_NULL_PTR
-if (present(mass)) mass_ptr = C_LOC(mass)
-
+if (present(mass)) then
+mass_ptr = C_LOC(mass)
+endif
 spin_orbit_ptr = C_NULL_PTR
 if (present(spin_orbit)) then
-  spin_orbit_c_type = bool(spin_orbit)
-  spin_orbit_ptr = C_LOC(spin_orbit_c_type)
+spin_orbit_c_type = spin_orbit
+spin_orbit_ptr = C_LOC(spin_orbit_c_type)
 endif
-call sirius_add_atom_type_aux(handler,label_ptr,fname_ptr,zn_ptr,symbol_ptr,mass_ptr,&
-&spin_orbit_ptr)
-if (allocated(label_c_type)) deallocate(label_c_type)
-if (allocated(fname_c_type)) deallocate(fname_c_type)
-if (allocated(symbol_c_type)) deallocate(symbol_c_type)
+call sirius_add_atom_type_aux(handler_ptr,label_ptr,fname_ptr,zn_ptr,symbol_ptr,&
+&mass_ptr,spin_orbit_ptr)
+deallocate(label_c_type)
+if (present(fname)) then
+deallocate(fname_c_type)
+endif
+if (present(symbol)) then
+deallocate(symbol_c_type)
+endif
+if (present(spin_orbit)) then
+endif
 end subroutine sirius_add_atom_type
 
 !
@@ -1325,32 +1595,42 @@ end subroutine sirius_add_atom_type
 subroutine sirius_set_atom_type_radial_grid(handler,label,num_radial_points,radial_points)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-integer, intent(in) :: num_radial_points
-real(8), intent(in) :: radial_points
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, target, intent(in) :: num_radial_points
+real(8), target, intent(in) :: radial_points
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: num_radial_points_ptr
+type(C_PTR) :: radial_points_ptr
 !
 interface
 subroutine sirius_set_atom_type_radial_grid_aux(handler,label,num_radial_points,&
 &radial_points)&
 &bind(C, name="sirius_set_atom_type_radial_grid")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-integer(C_INT), intent(in) :: num_radial_points
-real(C_DOUBLE), intent(in) :: radial_points
+type(C_PTR), value :: num_radial_points
+type(C_PTR), value :: radial_points
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-call sirius_set_atom_type_radial_grid_aux(handler,label_ptr,num_radial_points,radial_points)
-if (allocated(label_c_type)) deallocate(label_c_type)
+num_radial_points_ptr = C_NULL_PTR
+num_radial_points_ptr = C_LOC(num_radial_points)
+radial_points_ptr = C_NULL_PTR
+radial_points_ptr = C_LOC(radial_points)
+call sirius_set_atom_type_radial_grid_aux(handler_ptr,label_ptr,num_radial_points_ptr,&
+&radial_points_ptr)
+deallocate(label_c_type)
 end subroutine sirius_set_atom_type_radial_grid
 
 !
@@ -1363,33 +1643,42 @@ subroutine sirius_set_atom_type_radial_grid_inf(handler,label,num_radial_points,
 &radial_points)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-integer, intent(in) :: num_radial_points
-real(8), intent(in) :: radial_points
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, target, intent(in) :: num_radial_points
+real(8), target, intent(in) :: radial_points
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: num_radial_points_ptr
+type(C_PTR) :: radial_points_ptr
 !
 interface
 subroutine sirius_set_atom_type_radial_grid_inf_aux(handler,label,num_radial_points,&
 &radial_points)&
 &bind(C, name="sirius_set_atom_type_radial_grid_inf")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-integer(C_INT), intent(in) :: num_radial_points
-real(C_DOUBLE), intent(in) :: radial_points
+type(C_PTR), value :: num_radial_points
+type(C_PTR), value :: radial_points
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-call sirius_set_atom_type_radial_grid_inf_aux(handler,label_ptr,num_radial_points,&
-&radial_points)
-if (allocated(label_c_type)) deallocate(label_c_type)
+num_radial_points_ptr = C_NULL_PTR
+num_radial_points_ptr = C_LOC(num_radial_points)
+radial_points_ptr = C_NULL_PTR
+radial_points_ptr = C_LOC(radial_points)
+call sirius_set_atom_type_radial_grid_inf_aux(handler_ptr,label_ptr,num_radial_points_ptr,&
+&radial_points_ptr)
+deallocate(label_c_type)
 end subroutine sirius_set_atom_type_radial_grid_inf
 
 !
@@ -1408,21 +1697,24 @@ subroutine sirius_add_atom_type_radial_function(handler,atom_type,label,rf,num_p
 &n,l,idxrf1,idxrf2,occ)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: atom_type
-character(*), intent(in) :: label
-real(8), intent(in) :: rf
-integer, intent(in) :: num_points
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: atom_type
+character(*), target, intent(in) :: label
+real(8), target, intent(in) :: rf
+integer, target, intent(in) :: num_points
 integer, optional, target, intent(in) :: n
 integer, optional, target, intent(in) :: l
 integer, optional, target, intent(in) :: idxrf1
 integer, optional, target, intent(in) :: idxrf2
 real(8), optional, target, intent(in) :: occ
 !
-character(C_CHAR), target, allocatable :: atom_type_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: atom_type_ptr
-character(C_CHAR), target, allocatable :: label_c_type(:)
+character(C_CHAR), target, allocatable :: atom_type_c_type(:)
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: rf_ptr
+type(C_PTR) :: num_points_ptr
 type(C_PTR) :: n_ptr
 type(C_PTR) :: l_ptr
 type(C_PTR) :: idxrf1_ptr
@@ -1434,11 +1726,11 @@ subroutine sirius_add_atom_type_radial_function_aux(handler,atom_type,label,rf,n
 &n,l,idxrf1,idxrf2,occ)&
 &bind(C, name="sirius_add_atom_type_radial_function")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: atom_type
 type(C_PTR), value :: label
-real(C_DOUBLE), intent(in) :: rf
-integer(C_INT), intent(in) :: num_points
+type(C_PTR), value :: rf
+type(C_PTR), value :: num_points
 type(C_PTR), value :: n
 type(C_PTR), value :: l
 type(C_PTR), value :: idxrf1
@@ -1446,34 +1738,45 @@ type(C_PTR), value :: idxrf2
 type(C_PTR), value :: occ
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 atom_type_ptr = C_NULL_PTR
 allocate(atom_type_c_type(len(atom_type)+1))
-atom_type_c_type = string(atom_type)
+atom_type_c_type = string_f2c(atom_type)
 atom_type_ptr = C_LOC(atom_type_c_type)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
+rf_ptr = C_NULL_PTR
+rf_ptr = C_LOC(rf)
+num_points_ptr = C_NULL_PTR
+num_points_ptr = C_LOC(num_points)
 n_ptr = C_NULL_PTR
-if (present(n)) n_ptr = C_LOC(n)
-
+if (present(n)) then
+n_ptr = C_LOC(n)
+endif
 l_ptr = C_NULL_PTR
-if (present(l)) l_ptr = C_LOC(l)
-
+if (present(l)) then
+l_ptr = C_LOC(l)
+endif
 idxrf1_ptr = C_NULL_PTR
-if (present(idxrf1)) idxrf1_ptr = C_LOC(idxrf1)
-
+if (present(idxrf1)) then
+idxrf1_ptr = C_LOC(idxrf1)
+endif
 idxrf2_ptr = C_NULL_PTR
-if (present(idxrf2)) idxrf2_ptr = C_LOC(idxrf2)
-
+if (present(idxrf2)) then
+idxrf2_ptr = C_LOC(idxrf2)
+endif
 occ_ptr = C_NULL_PTR
-if (present(occ)) occ_ptr = C_LOC(occ)
-
-call sirius_add_atom_type_radial_function_aux(handler,atom_type_ptr,label_ptr,rf,&
-&num_points,n_ptr,l_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr)
-if (allocated(atom_type_c_type)) deallocate(atom_type_c_type)
-if (allocated(label_c_type)) deallocate(label_c_type)
+if (present(occ)) then
+occ_ptr = C_LOC(occ)
+endif
+call sirius_add_atom_type_radial_function_aux(handler_ptr,atom_type_ptr,label_ptr,&
+&rf_ptr,num_points_ptr,n_ptr,l_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr)
+deallocate(atom_type_c_type)
+deallocate(label_c_type)
 end subroutine sirius_add_atom_type_radial_function
 
 !
@@ -1491,44 +1794,72 @@ end subroutine sirius_add_atom_type_radial_function
 subroutine sirius_set_atom_type_hubbard(handler,label,l,n,occ,U,J,alpha,beta,J0)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-integer, intent(in) :: l
-integer, intent(in) :: n
-real(8), intent(in) :: occ
-real(8), intent(in) :: U
-real(8), intent(in) :: J
-real(8), intent(in) :: alpha
-real(8), intent(in) :: beta
-real(8), intent(in) :: J0
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, target, intent(in) :: l
+integer, target, intent(in) :: n
+real(8), target, intent(in) :: occ
+real(8), target, intent(in) :: U
+real(8), target, intent(in) :: J
+real(8), target, intent(in) :: alpha
+real(8), target, intent(in) :: beta
+real(8), target, intent(in) :: J0
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: l_ptr
+type(C_PTR) :: n_ptr
+type(C_PTR) :: occ_ptr
+type(C_PTR) :: U_ptr
+type(C_PTR) :: J_ptr
+type(C_PTR) :: alpha_ptr
+type(C_PTR) :: beta_ptr
+type(C_PTR) :: J0_ptr
 !
 interface
 subroutine sirius_set_atom_type_hubbard_aux(handler,label,l,n,occ,U,J,alpha,beta,&
 &J0)&
 &bind(C, name="sirius_set_atom_type_hubbard")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-integer(C_INT), intent(in) :: l
-integer(C_INT), intent(in) :: n
-real(C_DOUBLE), intent(in) :: occ
-real(C_DOUBLE), intent(in) :: U
-real(C_DOUBLE), intent(in) :: J
-real(C_DOUBLE), intent(in) :: alpha
-real(C_DOUBLE), intent(in) :: beta
-real(C_DOUBLE), intent(in) :: J0
+type(C_PTR), value :: l
+type(C_PTR), value :: n
+type(C_PTR), value :: occ
+type(C_PTR), value :: U
+type(C_PTR), value :: J
+type(C_PTR), value :: alpha
+type(C_PTR), value :: beta
+type(C_PTR), value :: J0
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-call sirius_set_atom_type_hubbard_aux(handler,label_ptr,l,n,occ,U,J,alpha,beta,J0)
-if (allocated(label_c_type)) deallocate(label_c_type)
+l_ptr = C_NULL_PTR
+l_ptr = C_LOC(l)
+n_ptr = C_NULL_PTR
+n_ptr = C_LOC(n)
+occ_ptr = C_NULL_PTR
+occ_ptr = C_LOC(occ)
+U_ptr = C_NULL_PTR
+U_ptr = C_LOC(U)
+J_ptr = C_NULL_PTR
+J_ptr = C_LOC(J)
+alpha_ptr = C_NULL_PTR
+alpha_ptr = C_LOC(alpha)
+beta_ptr = C_NULL_PTR
+beta_ptr = C_LOC(beta)
+J0_ptr = C_NULL_PTR
+J0_ptr = C_LOC(J0)
+call sirius_set_atom_type_hubbard_aux(handler_ptr,label_ptr,l_ptr,n_ptr,occ_ptr,&
+&U_ptr,J_ptr,alpha_ptr,beta_ptr,J0_ptr)
+deallocate(label_c_type)
 end subroutine sirius_set_atom_type_hubbard
 
 !
@@ -1540,31 +1871,40 @@ end subroutine sirius_set_atom_type_hubbard
 subroutine sirius_set_atom_type_dion(handler,label,num_beta,dion)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-integer, intent(in) :: num_beta
-real(8), intent(in) :: dion
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, target, intent(in) :: num_beta
+real(8), target, intent(in) :: dion
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: num_beta_ptr
+type(C_PTR) :: dion_ptr
 !
 interface
 subroutine sirius_set_atom_type_dion_aux(handler,label,num_beta,dion)&
 &bind(C, name="sirius_set_atom_type_dion")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-integer(C_INT), intent(in) :: num_beta
-real(C_DOUBLE), intent(in) :: dion
+type(C_PTR), value :: num_beta
+type(C_PTR), value :: dion
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-call sirius_set_atom_type_dion_aux(handler,label_ptr,num_beta,dion)
-if (allocated(label_c_type)) deallocate(label_c_type)
+num_beta_ptr = C_NULL_PTR
+num_beta_ptr = C_LOC(num_beta)
+dion_ptr = C_NULL_PTR
+dion_ptr = C_LOC(dion)
+call sirius_set_atom_type_dion_aux(handler_ptr,label_ptr,num_beta_ptr,dion_ptr)
+deallocate(label_c_type)
 end subroutine sirius_set_atom_type_dion
 
 !
@@ -1577,33 +1917,46 @@ end subroutine sirius_set_atom_type_dion
 subroutine sirius_set_atom_type_paw(handler,label,core_energy,occupations,num_occ)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-real(8), intent(in) :: core_energy
-real(8), intent(in) :: occupations
-integer, intent(in) :: num_occ
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+real(8), target, intent(in) :: core_energy
+real(8), target, intent(in) :: occupations
+integer, target, intent(in) :: num_occ
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: core_energy_ptr
+type(C_PTR) :: occupations_ptr
+type(C_PTR) :: num_occ_ptr
 !
 interface
 subroutine sirius_set_atom_type_paw_aux(handler,label,core_energy,occupations,num_occ)&
 &bind(C, name="sirius_set_atom_type_paw")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-real(C_DOUBLE), intent(in) :: core_energy
-real(C_DOUBLE), intent(in) :: occupations
-integer(C_INT), intent(in) :: num_occ
+type(C_PTR), value :: core_energy
+type(C_PTR), value :: occupations
+type(C_PTR), value :: num_occ
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-call sirius_set_atom_type_paw_aux(handler,label_ptr,core_energy,occupations,num_occ)
-if (allocated(label_c_type)) deallocate(label_c_type)
+core_energy_ptr = C_NULL_PTR
+core_energy_ptr = C_LOC(core_energy)
+occupations_ptr = C_NULL_PTR
+occupations_ptr = C_LOC(occupations)
+num_occ_ptr = C_NULL_PTR
+num_occ_ptr = C_LOC(num_occ)
+call sirius_set_atom_type_paw_aux(handler_ptr,label_ptr,core_energy_ptr,occupations_ptr,&
+&num_occ_ptr)
+deallocate(label_c_type)
 end subroutine sirius_set_atom_type_paw
 
 !
@@ -1615,35 +1968,42 @@ end subroutine sirius_set_atom_type_paw
 subroutine sirius_add_atom(handler,label,position,vector_field)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-real(8), intent(in) :: position
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+real(8), target, intent(in) :: position
 real(8), optional, target, intent(in) :: vector_field
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: position_ptr
 type(C_PTR) :: vector_field_ptr
 !
 interface
 subroutine sirius_add_atom_aux(handler,label,position,vector_field)&
 &bind(C, name="sirius_add_atom")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-real(C_DOUBLE), intent(in) :: position
+type(C_PTR), value :: position
 type(C_PTR), value :: vector_field
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
+position_ptr = C_NULL_PTR
+position_ptr = C_LOC(position)
 vector_field_ptr = C_NULL_PTR
-if (present(vector_field)) vector_field_ptr = C_LOC(vector_field)
-
-call sirius_add_atom_aux(handler,label_ptr,position,vector_field_ptr)
-if (allocated(label_c_type)) deallocate(label_c_type)
+if (present(vector_field)) then
+vector_field_ptr = C_LOC(vector_field)
+endif
+call sirius_add_atom_aux(handler_ptr,label_ptr,position_ptr,vector_field_ptr)
+deallocate(label_c_type)
 end subroutine sirius_add_atom
 
 !
@@ -1654,22 +2014,31 @@ end subroutine sirius_add_atom
 subroutine sirius_set_atom_position(handler,ia,position)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ia
-real(8), intent(in) :: position
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ia
+real(8), target, intent(in) :: position
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: position_ptr
 !
 interface
 subroutine sirius_set_atom_position_aux(handler,ia,position)&
 &bind(C, name="sirius_set_atom_position")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-real(C_DOUBLE), intent(in) :: position
+type(C_PTR), value :: handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: position
 end subroutine
 end interface
-
-call sirius_set_atom_position_aux(handler,ia,position)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+position_ptr = C_NULL_PTR
+position_ptr = C_LOC(position)
+call sirius_set_atom_position_aux(handler_ptr,ia_ptr,position_ptr)
 end subroutine sirius_set_atom_position
 
 !
@@ -1685,18 +2054,20 @@ subroutine sirius_set_pw_coeffs(handler,label,pw_coeffs,transform_to_rg,ngv,gvl,
 &comm)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-complex(8), intent(in) :: pw_coeffs
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+complex(8), target, intent(in) :: pw_coeffs
 logical, optional, target, intent(in) :: transform_to_rg
 integer, optional, target, intent(in) :: ngv
 integer, optional, target, intent(in) :: gvl
 integer, optional, target, intent(in) :: comm
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
-logical(C_BOOL), target :: transform_to_rg_c_type
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: pw_coeffs_ptr
 type(C_PTR) :: transform_to_rg_ptr
+logical(C_BOOL), target :: transform_to_rg_c_type
 type(C_PTR) :: ngv_ptr
 type(C_PTR) :: gvl_ptr
 type(C_PTR) :: comm_ptr
@@ -1706,37 +2077,46 @@ subroutine sirius_set_pw_coeffs_aux(handler,label,pw_coeffs,transform_to_rg,ngv,
 &gvl,comm)&
 &bind(C, name="sirius_set_pw_coeffs")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-complex(C_DOUBLE), intent(in) :: pw_coeffs
+type(C_PTR), value :: pw_coeffs
 type(C_PTR), value :: transform_to_rg
 type(C_PTR), value :: ngv
 type(C_PTR), value :: gvl
 type(C_PTR), value :: comm
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
+pw_coeffs_ptr = C_NULL_PTR
+pw_coeffs_ptr = C_LOC(pw_coeffs)
 transform_to_rg_ptr = C_NULL_PTR
 if (present(transform_to_rg)) then
-  transform_to_rg_c_type = bool(transform_to_rg)
-  transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
+transform_to_rg_c_type = transform_to_rg
+transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
 endif
 ngv_ptr = C_NULL_PTR
-if (present(ngv)) ngv_ptr = C_LOC(ngv)
-
+if (present(ngv)) then
+ngv_ptr = C_LOC(ngv)
+endif
 gvl_ptr = C_NULL_PTR
-if (present(gvl)) gvl_ptr = C_LOC(gvl)
-
+if (present(gvl)) then
+gvl_ptr = C_LOC(gvl)
+endif
 comm_ptr = C_NULL_PTR
-if (present(comm)) comm_ptr = C_LOC(comm)
-
-call sirius_set_pw_coeffs_aux(handler,label_ptr,pw_coeffs,transform_to_rg_ptr,ngv_ptr,&
-&gvl_ptr,comm_ptr)
-if (allocated(label_c_type)) deallocate(label_c_type)
+if (present(comm)) then
+comm_ptr = C_LOC(comm)
+endif
+call sirius_set_pw_coeffs_aux(handler_ptr,label_ptr,pw_coeffs_ptr,transform_to_rg_ptr,&
+&ngv_ptr,gvl_ptr,comm_ptr)
+deallocate(label_c_type)
+if (present(transform_to_rg)) then
+endif
 end subroutine sirius_set_pw_coeffs
 
 !
@@ -1750,15 +2130,17 @@ end subroutine sirius_set_pw_coeffs
 subroutine sirius_get_pw_coeffs(handler,label,pw_coeffs,ngv,gvl,comm)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-complex(8), intent(in) :: pw_coeffs
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+complex(8), target, intent(in) :: pw_coeffs
 integer, optional, target, intent(in) :: ngv
 integer, optional, target, intent(in) :: gvl
 integer, optional, target, intent(in) :: comm
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: pw_coeffs_ptr
 type(C_PTR) :: ngv_ptr
 type(C_PTR) :: gvl_ptr
 type(C_PTR) :: comm_ptr
@@ -1767,30 +2149,38 @@ interface
 subroutine sirius_get_pw_coeffs_aux(handler,label,pw_coeffs,ngv,gvl,comm)&
 &bind(C, name="sirius_get_pw_coeffs")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-complex(C_DOUBLE), intent(in) :: pw_coeffs
+type(C_PTR), value :: pw_coeffs
 type(C_PTR), value :: ngv
 type(C_PTR), value :: gvl
 type(C_PTR), value :: comm
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
+pw_coeffs_ptr = C_NULL_PTR
+pw_coeffs_ptr = C_LOC(pw_coeffs)
 ngv_ptr = C_NULL_PTR
-if (present(ngv)) ngv_ptr = C_LOC(ngv)
-
+if (present(ngv)) then
+ngv_ptr = C_LOC(ngv)
+endif
 gvl_ptr = C_NULL_PTR
-if (present(gvl)) gvl_ptr = C_LOC(gvl)
-
+if (present(gvl)) then
+gvl_ptr = C_LOC(gvl)
+endif
 comm_ptr = C_NULL_PTR
-if (present(comm)) comm_ptr = C_LOC(comm)
-
-call sirius_get_pw_coeffs_aux(handler,label_ptr,pw_coeffs,ngv_ptr,gvl_ptr,comm_ptr)
-if (allocated(label_c_type)) deallocate(label_c_type)
+if (present(comm)) then
+comm_ptr = C_LOC(comm)
+endif
+call sirius_get_pw_coeffs_aux(handler_ptr,label_ptr,pw_coeffs_ptr,ngv_ptr,gvl_ptr,&
+&comm_ptr)
+deallocate(label_c_type)
 end subroutine sirius_get_pw_coeffs
 
 !
@@ -1805,18 +2195,20 @@ end subroutine sirius_get_pw_coeffs
 subroutine sirius_get_pw_coeffs_real(handler,atom_type,label,pw_coeffs,ngv,gvl,comm)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: atom_type
-character(*), intent(in) :: label
-real(8), intent(in) :: pw_coeffs
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: atom_type
+character(*), target, intent(in) :: label
+real(8), target, intent(in) :: pw_coeffs
 integer, optional, target, intent(in) :: ngv
 integer, optional, target, intent(in) :: gvl
 integer, optional, target, intent(in) :: comm
 !
-character(C_CHAR), target, allocatable :: atom_type_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: atom_type_ptr
-character(C_CHAR), target, allocatable :: label_c_type(:)
+character(C_CHAR), target, allocatable :: atom_type_c_type(:)
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: pw_coeffs_ptr
 type(C_PTR) :: ngv_ptr
 type(C_PTR) :: gvl_ptr
 type(C_PTR) :: comm_ptr
@@ -1826,37 +2218,44 @@ subroutine sirius_get_pw_coeffs_real_aux(handler,atom_type,label,pw_coeffs,ngv,g
 &comm)&
 &bind(C, name="sirius_get_pw_coeffs_real")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: atom_type
 type(C_PTR), value :: label
-real(C_DOUBLE), intent(in) :: pw_coeffs
+type(C_PTR), value :: pw_coeffs
 type(C_PTR), value :: ngv
 type(C_PTR), value :: gvl
 type(C_PTR), value :: comm
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 atom_type_ptr = C_NULL_PTR
 allocate(atom_type_c_type(len(atom_type)+1))
-atom_type_c_type = string(atom_type)
+atom_type_c_type = string_f2c(atom_type)
 atom_type_ptr = C_LOC(atom_type_c_type)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
+pw_coeffs_ptr = C_NULL_PTR
+pw_coeffs_ptr = C_LOC(pw_coeffs)
 ngv_ptr = C_NULL_PTR
-if (present(ngv)) ngv_ptr = C_LOC(ngv)
-
+if (present(ngv)) then
+ngv_ptr = C_LOC(ngv)
+endif
 gvl_ptr = C_NULL_PTR
-if (present(gvl)) gvl_ptr = C_LOC(gvl)
-
+if (present(gvl)) then
+gvl_ptr = C_LOC(gvl)
+endif
 comm_ptr = C_NULL_PTR
-if (present(comm)) comm_ptr = C_LOC(comm)
-
-call sirius_get_pw_coeffs_real_aux(handler,atom_type_ptr,label_ptr,pw_coeffs,ngv_ptr,&
-&gvl_ptr,comm_ptr)
-if (allocated(atom_type_c_type)) deallocate(atom_type_c_type)
-if (allocated(label_c_type)) deallocate(label_c_type)
+if (present(comm)) then
+comm_ptr = C_LOC(comm)
+endif
+call sirius_get_pw_coeffs_real_aux(handler_ptr,atom_type_ptr,label_ptr,pw_coeffs_ptr,&
+&ngv_ptr,gvl_ptr,comm_ptr)
+deallocate(atom_type_c_type)
+deallocate(label_c_type)
 end subroutine sirius_get_pw_coeffs_real
 
 !
@@ -1866,20 +2265,26 @@ end subroutine sirius_get_pw_coeffs_real
 subroutine sirius_initialize_subspace(gs_handler,ks_handler)
 implicit none
 !
-type(C_PTR), intent(in) :: gs_handler
-type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), target, intent(in) :: gs_handler
+type(C_PTR), target, intent(in) :: ks_handler
 !
+type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: ks_handler_ptr
 !
 interface
 subroutine sirius_initialize_subspace_aux(gs_handler,ks_handler)&
 &bind(C, name="sirius_initialize_subspace")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: gs_handler
-type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), value :: gs_handler
+type(C_PTR), value :: ks_handler
 end subroutine
 end interface
-
-call sirius_initialize_subspace_aux(gs_handler,ks_handler)
+!
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler)
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+call sirius_initialize_subspace_aux(gs_handler_ptr,ks_handler_ptr)
 end subroutine sirius_initialize_subspace
 
 !
@@ -1891,11 +2296,14 @@ end subroutine sirius_initialize_subspace
 subroutine sirius_find_eigen_states(gs_handler,ks_handler,precompute,iter_solver_tol)
 implicit none
 !
-type(C_PTR), intent(in) :: gs_handler
-type(C_PTR), intent(in) :: ks_handler
-logical, intent(in) :: precompute
+type(C_PTR), target, intent(in) :: gs_handler
+type(C_PTR), target, intent(in) :: ks_handler
+logical, target, intent(in) :: precompute
 real(8), optional, target, intent(in) :: iter_solver_tol
 !
+type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: precompute_ptr
 logical(C_BOOL), target :: precompute_c_type
 type(C_PTR) :: iter_solver_tol_ptr
 !
@@ -1903,18 +2311,25 @@ interface
 subroutine sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute,iter_solver_tol)&
 &bind(C, name="sirius_find_eigen_states")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: gs_handler
-type(C_PTR), intent(in) :: ks_handler
-logical(C_BOOL), intent(in) :: precompute
+type(C_PTR), value :: gs_handler
+type(C_PTR), value :: ks_handler
+type(C_PTR), value :: precompute
 type(C_PTR), value :: iter_solver_tol
 end subroutine
 end interface
-
-precompute_c_type = bool(precompute)
+!
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler)
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+precompute_ptr = C_NULL_PTR
+precompute_c_type = precompute
+precompute_ptr = C_LOC(precompute_c_type)
 iter_solver_tol_ptr = C_NULL_PTR
-if (present(iter_solver_tol)) iter_solver_tol_ptr = C_LOC(iter_solver_tol)
-
-call sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute_c_type,iter_solver_tol_ptr)
+if (present(iter_solver_tol)) then
+iter_solver_tol_ptr = C_LOC(iter_solver_tol)
+endif
+call sirius_find_eigen_states_aux(gs_handler_ptr,ks_handler_ptr,precompute_ptr,iter_solver_tol_ptr)
 end subroutine sirius_find_eigen_states
 
 !
@@ -1923,18 +2338,21 @@ end subroutine sirius_find_eigen_states
 subroutine sirius_generate_d_operator_matrix(handler)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 !
+type(C_PTR) :: handler_ptr
 !
 interface
 subroutine sirius_generate_d_operator_matrix_aux(handler)&
 &bind(C, name="sirius_generate_d_operator_matrix")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 end subroutine
 end interface
-
-call sirius_generate_d_operator_matrix_aux(handler)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+call sirius_generate_d_operator_matrix_aux(handler_ptr)
 end subroutine sirius_generate_d_operator_matrix
 
 !
@@ -1943,18 +2361,21 @@ end subroutine sirius_generate_d_operator_matrix
 subroutine sirius_generate_initial_density(handler)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 !
+type(C_PTR) :: handler_ptr
 !
 interface
 subroutine sirius_generate_initial_density_aux(handler)&
 &bind(C, name="sirius_generate_initial_density")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 end subroutine
 end interface
-
-call sirius_generate_initial_density_aux(handler)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+call sirius_generate_initial_density_aux(handler_ptr)
 end subroutine sirius_generate_initial_density
 
 !
@@ -1963,18 +2384,21 @@ end subroutine sirius_generate_initial_density
 subroutine sirius_generate_effective_potential(handler)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 !
+type(C_PTR) :: handler_ptr
 !
 interface
 subroutine sirius_generate_effective_potential_aux(handler)&
 &bind(C, name="sirius_generate_effective_potential")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 end subroutine
 end interface
-
-call sirius_generate_effective_potential_aux(handler)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+call sirius_generate_effective_potential_aux(handler_ptr)
 end subroutine sirius_generate_effective_potential
 
 !
@@ -1985,36 +2409,43 @@ end subroutine sirius_generate_effective_potential
 subroutine sirius_generate_density(gs_handler,add_core,transform_to_rg)
 implicit none
 !
-type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), target, intent(in) :: gs_handler
 logical, optional, target, intent(in) :: add_core
 logical, optional, target, intent(in) :: transform_to_rg
 !
-logical(C_BOOL), target :: add_core_c_type
+type(C_PTR) :: gs_handler_ptr
 type(C_PTR) :: add_core_ptr
-logical(C_BOOL), target :: transform_to_rg_c_type
+logical(C_BOOL), target :: add_core_c_type
 type(C_PTR) :: transform_to_rg_ptr
+logical(C_BOOL), target :: transform_to_rg_c_type
 !
 interface
 subroutine sirius_generate_density_aux(gs_handler,add_core,transform_to_rg)&
 &bind(C, name="sirius_generate_density")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), value :: gs_handler
 type(C_PTR), value :: add_core
 type(C_PTR), value :: transform_to_rg
 end subroutine
 end interface
-
+!
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler)
 add_core_ptr = C_NULL_PTR
 if (present(add_core)) then
-  add_core_c_type = bool(add_core)
-  add_core_ptr = C_LOC(add_core_c_type)
+add_core_c_type = add_core
+add_core_ptr = C_LOC(add_core_c_type)
 endif
 transform_to_rg_ptr = C_NULL_PTR
 if (present(transform_to_rg)) then
-  transform_to_rg_c_type = bool(transform_to_rg)
-  transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
+transform_to_rg_c_type = transform_to_rg
+transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
 endif
-call sirius_generate_density_aux(gs_handler,add_core_ptr,transform_to_rg_ptr)
+call sirius_generate_density_aux(gs_handler_ptr,add_core_ptr,transform_to_rg_ptr)
+if (present(add_core)) then
+endif
+if (present(transform_to_rg)) then
+endif
 end subroutine sirius_generate_density
 
 !
@@ -2026,24 +2457,36 @@ end subroutine sirius_generate_density
 subroutine sirius_set_band_occupancies(ks_handler,ik,ispn,band_occupancies)
 implicit none
 !
-type(C_PTR), intent(in) :: ks_handler
-integer, intent(in) :: ik
-integer, intent(in) :: ispn
-real(8), intent(in) :: band_occupancies
+type(C_PTR), target, intent(in) :: ks_handler
+integer, target, intent(in) :: ik
+integer, target, intent(in) :: ispn
+real(8), target, intent(in) :: band_occupancies
 !
+type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: ik_ptr
+type(C_PTR) :: ispn_ptr
+type(C_PTR) :: band_occupancies_ptr
 !
 interface
 subroutine sirius_set_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)&
 &bind(C, name="sirius_set_band_occupancies")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(in) :: band_occupancies
+type(C_PTR), value :: ks_handler
+type(C_PTR), value :: ik
+type(C_PTR), value :: ispn
+type(C_PTR), value :: band_occupancies
 end subroutine
 end interface
-
-call sirius_set_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)
+!
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+ik_ptr = C_NULL_PTR
+ik_ptr = C_LOC(ik)
+ispn_ptr = C_NULL_PTR
+ispn_ptr = C_LOC(ispn)
+band_occupancies_ptr = C_NULL_PTR
+band_occupancies_ptr = C_LOC(band_occupancies)
+call sirius_set_band_occupancies_aux(ks_handler_ptr,ik_ptr,ispn_ptr,band_occupancies_ptr)
 end subroutine sirius_set_band_occupancies
 
 !
@@ -2055,24 +2498,36 @@ end subroutine sirius_set_band_occupancies
 subroutine sirius_get_band_occupancies(ks_handler,ik,ispn,band_occupancies)
 implicit none
 !
-type(C_PTR), intent(in) :: ks_handler
-integer, intent(in) :: ik
-integer, intent(in) :: ispn
-real(8), intent(out) :: band_occupancies
+type(C_PTR), target, intent(in) :: ks_handler
+integer, target, intent(in) :: ik
+integer, target, intent(in) :: ispn
+real(8), target, intent(out) :: band_occupancies
 !
+type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: ik_ptr
+type(C_PTR) :: ispn_ptr
+type(C_PTR) :: band_occupancies_ptr
 !
 interface
 subroutine sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)&
 &bind(C, name="sirius_get_band_occupancies")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(out) :: band_occupancies
+type(C_PTR), value :: ks_handler
+type(C_PTR), value :: ik
+type(C_PTR), value :: ispn
+type(C_PTR), value :: band_occupancies
 end subroutine
 end interface
-
-call sirius_get_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)
+!
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+ik_ptr = C_NULL_PTR
+ik_ptr = C_LOC(ik)
+ispn_ptr = C_NULL_PTR
+ispn_ptr = C_LOC(ispn)
+band_occupancies_ptr = C_NULL_PTR
+band_occupancies_ptr = C_LOC(band_occupancies)
+call sirius_get_band_occupancies_aux(ks_handler_ptr,ik_ptr,ispn_ptr,band_occupancies_ptr)
 end subroutine sirius_get_band_occupancies
 
 !
@@ -2084,24 +2539,36 @@ end subroutine sirius_get_band_occupancies
 subroutine sirius_get_band_energies(ks_handler,ik,ispn,band_energies)
 implicit none
 !
-type(C_PTR), intent(in) :: ks_handler
-integer, intent(in) :: ik
-integer, intent(in) :: ispn
-real(8), intent(out) :: band_energies
+type(C_PTR), target, intent(in) :: ks_handler
+integer, target, intent(in) :: ik
+integer, target, intent(in) :: ispn
+real(8), target, intent(out) :: band_energies
 !
+type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: ik_ptr
+type(C_PTR) :: ispn_ptr
+type(C_PTR) :: band_energies_ptr
 !
 interface
 subroutine sirius_get_band_energies_aux(ks_handler,ik,ispn,band_energies)&
 &bind(C, name="sirius_get_band_energies")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(out) :: band_energies
+type(C_PTR), value :: ks_handler
+type(C_PTR), value :: ik
+type(C_PTR), value :: ispn
+type(C_PTR), value :: band_energies
 end subroutine
 end interface
-
-call sirius_get_band_energies_aux(ks_handler,ik,ispn,band_energies)
+!
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+ik_ptr = C_NULL_PTR
+ik_ptr = C_LOC(ik)
+ispn_ptr = C_NULL_PTR
+ispn_ptr = C_LOC(ispn)
+band_energies_ptr = C_NULL_PTR
+band_energies_ptr = C_LOC(band_energies)
+call sirius_get_band_energies_aux(ks_handler_ptr,ik_ptr,ispn_ptr,band_energies_ptr)
 end subroutine sirius_get_band_energies
 
 !
@@ -2114,26 +2581,41 @@ end subroutine sirius_get_band_energies
 subroutine sirius_get_d_operator_matrix(handler,ia,ispn,d_mtrx,ld)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ia
-integer, intent(in) :: ispn
-real(8), intent(out) :: d_mtrx
-integer, intent(in) :: ld
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ia
+integer, target, intent(in) :: ispn
+real(8), target, intent(out) :: d_mtrx
+integer, target, intent(in) :: ld
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: ispn_ptr
+type(C_PTR) :: d_mtrx_ptr
+type(C_PTR) :: ld_ptr
 !
 interface
 subroutine sirius_get_d_operator_matrix_aux(handler,ia,ispn,d_mtrx,ld)&
 &bind(C, name="sirius_get_d_operator_matrix")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(out) :: d_mtrx
-integer(C_INT), intent(in) :: ld
+type(C_PTR), value :: handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: ispn
+type(C_PTR), value :: d_mtrx
+type(C_PTR), value :: ld
 end subroutine
 end interface
-
-call sirius_get_d_operator_matrix_aux(handler,ia,ispn,d_mtrx,ld)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+ispn_ptr = C_NULL_PTR
+ispn_ptr = C_LOC(ispn)
+d_mtrx_ptr = C_NULL_PTR
+d_mtrx_ptr = C_LOC(d_mtrx)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+call sirius_get_d_operator_matrix_aux(handler_ptr,ia_ptr,ispn_ptr,d_mtrx_ptr,ld_ptr)
 end subroutine sirius_get_d_operator_matrix
 
 !
@@ -2146,26 +2628,41 @@ end subroutine sirius_get_d_operator_matrix
 subroutine sirius_set_d_operator_matrix(handler,ia,ispn,d_mtrx,ld)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ia
-integer, intent(in) :: ispn
-real(8), intent(out) :: d_mtrx
-integer, intent(in) :: ld
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ia
+integer, target, intent(in) :: ispn
+real(8), target, intent(out) :: d_mtrx
+integer, target, intent(in) :: ld
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: ispn_ptr
+type(C_PTR) :: d_mtrx_ptr
+type(C_PTR) :: ld_ptr
 !
 interface
 subroutine sirius_set_d_operator_matrix_aux(handler,ia,ispn,d_mtrx,ld)&
 &bind(C, name="sirius_set_d_operator_matrix")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-integer(C_INT), intent(in) :: ispn
-real(C_DOUBLE), intent(out) :: d_mtrx
-integer(C_INT), intent(in) :: ld
+type(C_PTR), value :: handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: ispn
+type(C_PTR), value :: d_mtrx
+type(C_PTR), value :: ld
 end subroutine
 end interface
-
-call sirius_set_d_operator_matrix_aux(handler,ia,ispn,d_mtrx,ld)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+ispn_ptr = C_NULL_PTR
+ispn_ptr = C_LOC(ispn)
+d_mtrx_ptr = C_NULL_PTR
+d_mtrx_ptr = C_LOC(d_mtrx)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+call sirius_set_d_operator_matrix_aux(handler_ptr,ia_ptr,ispn_ptr,d_mtrx_ptr,ld_ptr)
 end subroutine sirius_set_d_operator_matrix
 
 !
@@ -2177,31 +2674,40 @@ end subroutine sirius_set_d_operator_matrix
 subroutine sirius_set_q_operator_matrix(handler,label,q_mtrx,ld)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-real(8), intent(out) :: q_mtrx
-integer, intent(in) :: ld
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+real(8), target, intent(out) :: q_mtrx
+integer, target, intent(in) :: ld
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: q_mtrx_ptr
+type(C_PTR) :: ld_ptr
 !
 interface
 subroutine sirius_set_q_operator_matrix_aux(handler,label,q_mtrx,ld)&
 &bind(C, name="sirius_set_q_operator_matrix")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-real(C_DOUBLE), intent(out) :: q_mtrx
-integer(C_INT), intent(in) :: ld
+type(C_PTR), value :: q_mtrx
+type(C_PTR), value :: ld
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-call sirius_set_q_operator_matrix_aux(handler,label_ptr,q_mtrx,ld)
-if (allocated(label_c_type)) deallocate(label_c_type)
+q_mtrx_ptr = C_NULL_PTR
+q_mtrx_ptr = C_LOC(q_mtrx)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+call sirius_set_q_operator_matrix_aux(handler_ptr,label_ptr,q_mtrx_ptr,ld_ptr)
+deallocate(label_c_type)
 end subroutine sirius_set_q_operator_matrix
 
 !
@@ -2213,31 +2719,40 @@ end subroutine sirius_set_q_operator_matrix
 subroutine sirius_get_q_operator_matrix(handler,label,q_mtrx,ld)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-real(8), intent(out) :: q_mtrx
-integer, intent(in) :: ld
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+real(8), target, intent(out) :: q_mtrx
+integer, target, intent(in) :: ld
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: q_mtrx_ptr
+type(C_PTR) :: ld_ptr
 !
 interface
 subroutine sirius_get_q_operator_matrix_aux(handler,label,q_mtrx,ld)&
 &bind(C, name="sirius_get_q_operator_matrix")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-real(C_DOUBLE), intent(out) :: q_mtrx
-integer(C_INT), intent(in) :: ld
+type(C_PTR), value :: q_mtrx
+type(C_PTR), value :: ld
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-call sirius_get_q_operator_matrix_aux(handler,label_ptr,q_mtrx,ld)
-if (allocated(label_c_type)) deallocate(label_c_type)
+q_mtrx_ptr = C_NULL_PTR
+q_mtrx_ptr = C_LOC(q_mtrx)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+call sirius_get_q_operator_matrix_aux(handler_ptr,label_ptr,q_mtrx_ptr,ld_ptr)
+deallocate(label_c_type)
 end subroutine sirius_get_q_operator_matrix
 
 !
@@ -2249,24 +2764,36 @@ end subroutine sirius_get_q_operator_matrix
 subroutine sirius_get_density_matrix(handler,ia,dm,ld)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ia
-complex(8), intent(out) :: dm
-integer, intent(in) :: ld
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ia
+complex(8), target, intent(out) :: dm
+integer, target, intent(in) :: ld
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: dm_ptr
+type(C_PTR) :: ld_ptr
 !
 interface
 subroutine sirius_get_density_matrix_aux(handler,ia,dm,ld)&
 &bind(C, name="sirius_get_density_matrix")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-complex(C_DOUBLE), intent(out) :: dm
-integer(C_INT), intent(in) :: ld
+type(C_PTR), value :: handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: dm
+type(C_PTR), value :: ld
 end subroutine
 end interface
-
-call sirius_get_density_matrix_aux(handler,ia,dm,ld)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+dm_ptr = C_NULL_PTR
+dm_ptr = C_LOC(dm)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+call sirius_get_density_matrix_aux(handler_ptr,ia_ptr,dm_ptr,ld_ptr)
 end subroutine sirius_get_density_matrix
 
 !
@@ -2278,24 +2805,36 @@ end subroutine sirius_get_density_matrix
 subroutine sirius_set_density_matrix(handler,ia,dm,ld)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ia
-complex(8), intent(out) :: dm
-integer, intent(in) :: ld
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ia
+complex(8), target, intent(out) :: dm
+integer, target, intent(in) :: ld
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: dm_ptr
+type(C_PTR) :: ld_ptr
 !
 interface
 subroutine sirius_set_density_matrix_aux(handler,ia,dm,ld)&
 &bind(C, name="sirius_set_density_matrix")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-complex(C_DOUBLE), intent(out) :: dm
-integer(C_INT), intent(in) :: ld
+type(C_PTR), value :: handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: dm
+type(C_PTR), value :: ld
 end subroutine
 end interface
-
-call sirius_set_density_matrix_aux(handler,ia,dm,ld)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+dm_ptr = C_NULL_PTR
+dm_ptr = C_LOC(dm)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+call sirius_set_density_matrix_aux(handler_ptr,ia_ptr,dm_ptr,ld_ptr)
 end subroutine sirius_set_density_matrix
 
 !
@@ -2306,29 +2845,35 @@ end subroutine sirius_set_density_matrix
 subroutine sirius_get_energy(handler,label,energy)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-real(8), intent(out) :: energy
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+real(8), target, intent(out) :: energy
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: energy_ptr
 !
 interface
 subroutine sirius_get_energy_aux(handler,label,energy)&
 &bind(C, name="sirius_get_energy")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-real(C_DOUBLE), intent(out) :: energy
+type(C_PTR), value :: energy
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-call sirius_get_energy_aux(handler,label_ptr,energy)
-if (allocated(label_c_type)) deallocate(label_c_type)
+energy_ptr = C_NULL_PTR
+energy_ptr = C_LOC(energy)
+call sirius_get_energy_aux(handler_ptr,label_ptr,energy_ptr)
+deallocate(label_c_type)
 end subroutine sirius_get_energy
 
 !
@@ -2339,29 +2884,35 @@ end subroutine sirius_get_energy
 subroutine sirius_get_forces(handler,label,forces)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-real(8), intent(out) :: forces
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+real(8), target, intent(out) :: forces
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: forces_ptr
 !
 interface
 subroutine sirius_get_forces_aux(handler,label,forces)&
 &bind(C, name="sirius_get_forces")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-real(C_DOUBLE), intent(out) :: forces
+type(C_PTR), value :: forces
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-call sirius_get_forces_aux(handler,label_ptr,forces)
-if (allocated(label_c_type)) deallocate(label_c_type)
+forces_ptr = C_NULL_PTR
+forces_ptr = C_LOC(forces)
+call sirius_get_forces_aux(handler_ptr,label_ptr,forces_ptr)
+deallocate(label_c_type)
 end subroutine sirius_get_forces
 
 !
@@ -2372,62 +2923,83 @@ end subroutine sirius_get_forces
 subroutine sirius_get_stress_tensor(handler,label,stress_tensor)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-real(8), intent(out) :: stress_tensor
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+real(8), target, intent(out) :: stress_tensor
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: stress_tensor_ptr
 !
 interface
 subroutine sirius_get_stress_tensor_aux(handler,label,stress_tensor)&
 &bind(C, name="sirius_get_stress_tensor")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-real(C_DOUBLE), intent(out) :: stress_tensor
+type(C_PTR), value :: stress_tensor
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-call sirius_get_stress_tensor_aux(handler,label_ptr,stress_tensor)
-if (allocated(label_c_type)) deallocate(label_c_type)
+stress_tensor_ptr = C_NULL_PTR
+stress_tensor_ptr = C_LOC(stress_tensor)
+call sirius_get_stress_tensor_aux(handler_ptr,label_ptr,stress_tensor_ptr)
+deallocate(label_c_type)
 end subroutine sirius_get_stress_tensor
 
 !
 !> @brief Get the number of beta-projectors for an atom type.
 !> @param [in] handler Simulation context handler.
 !> @param [in] label Atom type label.
-function sirius_get_num_beta_projectors(handler,label) result(res)
+!> @param [out] num_bp Number of beta projectors for each atom type.
+!> @param [out] error_code Error code.
+subroutine sirius_get_num_beta_projectors(handler,label,num_bp,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-integer :: res
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, target, intent(out) :: num_bp
+integer, optional, target, intent(out) :: error_code
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: num_bp_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-function sirius_get_num_beta_projectors_aux(handler,label) result(res)&
+subroutine sirius_get_num_beta_projectors_aux(handler,label,num_bp,error_code)&
 &bind(C, name="sirius_get_num_beta_projectors")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-integer(C_INT) :: res
-end function
+type(C_PTR), value :: num_bp
+type(C_PTR), value :: error_code
+end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-res = sirius_get_num_beta_projectors_aux(handler,label_ptr)
-if (allocated(label_c_type)) deallocate(label_c_type)
-end function sirius_get_num_beta_projectors
+num_bp_ptr = C_NULL_PTR
+num_bp_ptr = C_LOC(num_bp)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_num_beta_projectors_aux(handler_ptr,label_ptr,num_bp_ptr,error_code_ptr)
+deallocate(label_c_type)
+end subroutine sirius_get_num_beta_projectors
 
 !
 !> @brief Get plane-wave coefficients of Q-operator
@@ -2441,37 +3013,56 @@ end function sirius_get_num_beta_projectors
 subroutine sirius_get_q_operator(handler,label,xi1,xi2,ngv,gvl,q_pw)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-integer, intent(in) :: xi1
-integer, intent(in) :: xi2
-integer, intent(in) :: ngv
-integer, intent(in) :: gvl
-complex(8), intent(out) :: q_pw
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, target, intent(in) :: xi1
+integer, target, intent(in) :: xi2
+integer, target, intent(in) :: ngv
+integer, target, intent(in) :: gvl
+complex(8), target, intent(out) :: q_pw
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: xi1_ptr
+type(C_PTR) :: xi2_ptr
+type(C_PTR) :: ngv_ptr
+type(C_PTR) :: gvl_ptr
+type(C_PTR) :: q_pw_ptr
 !
 interface
 subroutine sirius_get_q_operator_aux(handler,label,xi1,xi2,ngv,gvl,q_pw)&
 &bind(C, name="sirius_get_q_operator")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-integer(C_INT), intent(in) :: xi1
-integer(C_INT), intent(in) :: xi2
-integer(C_INT), intent(in) :: ngv
-integer(C_INT), intent(in) :: gvl
-complex(C_DOUBLE), intent(out) :: q_pw
+type(C_PTR), value :: xi1
+type(C_PTR), value :: xi2
+type(C_PTR), value :: ngv
+type(C_PTR), value :: gvl
+type(C_PTR), value :: q_pw
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-call sirius_get_q_operator_aux(handler,label_ptr,xi1,xi2,ngv,gvl,q_pw)
-if (allocated(label_c_type)) deallocate(label_c_type)
+xi1_ptr = C_NULL_PTR
+xi1_ptr = C_LOC(xi1)
+xi2_ptr = C_NULL_PTR
+xi2_ptr = C_LOC(xi2)
+ngv_ptr = C_NULL_PTR
+ngv_ptr = C_LOC(ngv)
+gvl_ptr = C_NULL_PTR
+gvl_ptr = C_LOC(gvl)
+q_pw_ptr = C_NULL_PTR
+q_pw_ptr = C_LOC(q_pw)
+call sirius_get_q_operator_aux(handler_ptr,label_ptr,xi1_ptr,xi2_ptr,ngv_ptr,gvl_ptr,&
+&q_pw_ptr)
+deallocate(label_c_type)
 end subroutine sirius_get_q_operator
 
 !
@@ -2487,88 +3078,58 @@ end subroutine sirius_get_q_operator
 subroutine sirius_get_wave_functions(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2)
 implicit none
 !
-type(C_PTR), intent(in) :: ks_handler
-integer, intent(in) :: ik
-integer, intent(in) :: ispn
-integer, intent(in) :: npw
-integer, intent(in) :: gvec_k
-complex(8), intent(out) :: evc
-integer, intent(in) :: ld1
-integer, intent(in) :: ld2
+type(C_PTR), target, intent(in) :: ks_handler
+integer, target, intent(in) :: ik
+integer, target, intent(in) :: ispn
+integer, target, intent(in) :: npw
+integer, target, intent(in) :: gvec_k
+complex(8), target, intent(out) :: evc
+integer, target, intent(in) :: ld1
+integer, target, intent(in) :: ld2
 !
+type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: ik_ptr
+type(C_PTR) :: ispn_ptr
+type(C_PTR) :: npw_ptr
+type(C_PTR) :: gvec_k_ptr
+type(C_PTR) :: evc_ptr
+type(C_PTR) :: ld1_ptr
+type(C_PTR) :: ld2_ptr
 !
 interface
 subroutine sirius_get_wave_functions_aux(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2)&
 &bind(C, name="sirius_get_wave_functions")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(in) :: ispn
-integer(C_INT), intent(in) :: npw
-integer(C_INT), intent(in) :: gvec_k
-complex(C_DOUBLE), intent(out) :: evc
-integer(C_INT), intent(in) :: ld1
-integer(C_INT), intent(in) :: ld2
+type(C_PTR), value :: ks_handler
+type(C_PTR), value :: ik
+type(C_PTR), value :: ispn
+type(C_PTR), value :: npw
+type(C_PTR), value :: gvec_k
+type(C_PTR), value :: evc
+type(C_PTR), value :: ld1
+type(C_PTR), value :: ld2
 end subroutine
 end interface
-
-call sirius_get_wave_functions_aux(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2)
+!
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+ik_ptr = C_NULL_PTR
+ik_ptr = C_LOC(ik)
+ispn_ptr = C_NULL_PTR
+ispn_ptr = C_LOC(ispn)
+npw_ptr = C_NULL_PTR
+npw_ptr = C_LOC(npw)
+gvec_k_ptr = C_NULL_PTR
+gvec_k_ptr = C_LOC(gvec_k)
+evc_ptr = C_NULL_PTR
+evc_ptr = C_LOC(evc)
+ld1_ptr = C_NULL_PTR
+ld1_ptr = C_LOC(ld1)
+ld2_ptr = C_NULL_PTR
+ld2_ptr = C_LOC(ld2)
+call sirius_get_wave_functions_aux(ks_handler_ptr,ik_ptr,ispn_ptr,npw_ptr,gvec_k_ptr,&
+&evc_ptr,ld1_ptr,ld2_ptr)
 end subroutine sirius_get_wave_functions
-
-!
-!> @brief Get value of the radial integral.
-!> @param [in] handler Simulation context handler.
-!> @param [in] atom_type Label of the atom type.
-!> @param [in] label Label of the radial integral.
-!> @param [in] q Length of the reciprocal wave-vector.
-!> @param [in] idx Index of the radial integral.
-!> @param [in] l Orbital quantum number (for Q-radial integrals).
-function sirius_get_radial_integral(handler,atom_type,label,q,idx,l) result(res)
-implicit none
-!
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: atom_type
-character(*), intent(in) :: label
-real(8), intent(in) :: q
-integer, intent(in) :: idx
-integer, optional, target, intent(in) :: l
-real(8) :: res
-!
-character(C_CHAR), target, allocatable :: atom_type_c_type(:)
-type(C_PTR) :: atom_type_ptr
-character(C_CHAR), target, allocatable :: label_c_type(:)
-type(C_PTR) :: label_ptr
-type(C_PTR) :: l_ptr
-!
-interface
-function sirius_get_radial_integral_aux(handler,atom_type,label,q,idx,l) result(res)&
-&bind(C, name="sirius_get_radial_integral")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-type(C_PTR), value :: atom_type
-type(C_PTR), value :: label
-real(C_DOUBLE), intent(in) :: q
-integer(C_INT), intent(in) :: idx
-type(C_PTR), value :: l
-real(C_DOUBLE) :: res
-end function
-end interface
-
-atom_type_ptr = C_NULL_PTR
-allocate(atom_type_c_type(len(atom_type)+1))
-atom_type_c_type = string(atom_type)
-atom_type_ptr = C_LOC(atom_type_c_type)
-label_ptr = C_NULL_PTR
-allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
-label_ptr = C_LOC(label_c_type)
-l_ptr = C_NULL_PTR
-if (present(l)) l_ptr = C_LOC(l)
-
-res = sirius_get_radial_integral_aux(handler,atom_type_ptr,label_ptr,q,idx,l_ptr)
-if (allocated(atom_type_c_type)) deallocate(atom_type_c_type)
-if (allocated(label_c_type)) deallocate(label_c_type)
-end function sirius_get_radial_integral
 
 !
 !> @brief Compute occupation matrix.
@@ -2576,18 +3137,21 @@ end function sirius_get_radial_integral
 subroutine sirius_calculate_hubbard_occupancies(handler)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 !
+type(C_PTR) :: handler_ptr
 !
 interface
 subroutine sirius_calculate_hubbard_occupancies_aux(handler)&
 &bind(C, name="sirius_calculate_hubbard_occupancies")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 end subroutine
 end interface
-
-call sirius_calculate_hubbard_occupancies_aux(handler)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+call sirius_calculate_hubbard_occupancies_aux(handler_ptr)
 end subroutine sirius_calculate_hubbard_occupancies
 
 !
@@ -2598,22 +3162,31 @@ end subroutine sirius_calculate_hubbard_occupancies
 subroutine sirius_set_hubbard_occupancies(handler,occ,ld)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-complex(8), intent(inout) :: occ
-integer, intent(in) :: ld
+type(C_PTR), target, intent(in) :: handler
+complex(8), target, intent(inout) :: occ
+integer, target, intent(in) :: ld
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: occ_ptr
+type(C_PTR) :: ld_ptr
 !
 interface
 subroutine sirius_set_hubbard_occupancies_aux(handler,occ,ld)&
 &bind(C, name="sirius_set_hubbard_occupancies")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-complex(C_DOUBLE), intent(inout) :: occ
-integer(C_INT), intent(in) :: ld
+type(C_PTR), value :: handler
+type(C_PTR), value :: occ
+type(C_PTR), value :: ld
 end subroutine
 end interface
-
-call sirius_set_hubbard_occupancies_aux(handler,occ,ld)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+occ_ptr = C_NULL_PTR
+occ_ptr = C_LOC(occ)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+call sirius_set_hubbard_occupancies_aux(handler_ptr,occ_ptr,ld_ptr)
 end subroutine sirius_set_hubbard_occupancies
 
 !
@@ -2624,22 +3197,31 @@ end subroutine sirius_set_hubbard_occupancies
 subroutine sirius_get_hubbard_occupancies(handler,occ,ld)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-complex(8), intent(inout) :: occ
-integer, intent(in) :: ld
+type(C_PTR), target, intent(in) :: handler
+complex(8), target, intent(inout) :: occ
+integer, target, intent(in) :: ld
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: occ_ptr
+type(C_PTR) :: ld_ptr
 !
 interface
 subroutine sirius_get_hubbard_occupancies_aux(handler,occ,ld)&
 &bind(C, name="sirius_get_hubbard_occupancies")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-complex(C_DOUBLE), intent(inout) :: occ
-integer(C_INT), intent(in) :: ld
+type(C_PTR), value :: handler
+type(C_PTR), value :: occ
+type(C_PTR), value :: ld
 end subroutine
 end interface
-
-call sirius_get_hubbard_occupancies_aux(handler,occ,ld)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+occ_ptr = C_NULL_PTR
+occ_ptr = C_LOC(occ)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+call sirius_get_hubbard_occupancies_aux(handler_ptr,occ_ptr,ld_ptr)
 end subroutine sirius_get_hubbard_occupancies
 
 !
@@ -2650,22 +3232,31 @@ end subroutine sirius_get_hubbard_occupancies
 subroutine sirius_set_hubbard_potential(handler,pot,ld)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-complex(8), intent(inout) :: pot
-integer, intent(in) :: ld
+type(C_PTR), target, intent(in) :: handler
+complex(8), target, intent(inout) :: pot
+integer, target, intent(in) :: ld
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: pot_ptr
+type(C_PTR) :: ld_ptr
 !
 interface
 subroutine sirius_set_hubbard_potential_aux(handler,pot,ld)&
 &bind(C, name="sirius_set_hubbard_potential")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-complex(C_DOUBLE), intent(inout) :: pot
-integer(C_INT), intent(in) :: ld
+type(C_PTR), value :: handler
+type(C_PTR), value :: pot
+type(C_PTR), value :: ld
 end subroutine
 end interface
-
-call sirius_set_hubbard_potential_aux(handler,pot,ld)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+pot_ptr = C_NULL_PTR
+pot_ptr = C_LOC(pot)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+call sirius_set_hubbard_potential_aux(handler_ptr,pot_ptr,ld_ptr)
 end subroutine sirius_set_hubbard_potential
 
 !
@@ -2676,22 +3267,31 @@ end subroutine sirius_set_hubbard_potential
 subroutine sirius_get_hubbard_potential(handler,pot,ld)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-complex(8), intent(inout) :: pot
-integer, intent(in) :: ld
+type(C_PTR), target, intent(in) :: handler
+complex(8), target, intent(inout) :: pot
+integer, target, intent(in) :: ld
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: pot_ptr
+type(C_PTR) :: ld_ptr
 !
 interface
 subroutine sirius_get_hubbard_potential_aux(handler,pot,ld)&
 &bind(C, name="sirius_get_hubbard_potential")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-complex(C_DOUBLE), intent(inout) :: pot
-integer(C_INT), intent(in) :: ld
+type(C_PTR), value :: handler
+type(C_PTR), value :: pot
+type(C_PTR), value :: ld
 end subroutine
 end interface
-
-call sirius_get_hubbard_potential_aux(handler,pot,ld)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+pot_ptr = C_NULL_PTR
+pot_ptr = C_LOC(pot)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+call sirius_get_hubbard_potential_aux(handler_ptr,pot_ptr,ld_ptr)
 end subroutine sirius_get_hubbard_potential
 
 !
@@ -2706,39 +3306,58 @@ end subroutine sirius_get_hubbard_potential
 subroutine sirius_add_atom_type_aw_descriptor(handler,label,n,l,enu,dme,auto_enu)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-integer, intent(in) :: n
-integer, intent(in) :: l
-real(8), intent(in) :: enu
-integer, intent(in) :: dme
-logical, intent(in) :: auto_enu
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, target, intent(in) :: n
+integer, target, intent(in) :: l
+real(8), target, intent(in) :: enu
+integer, target, intent(in) :: dme
+logical, target, intent(in) :: auto_enu
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: n_ptr
+type(C_PTR) :: l_ptr
+type(C_PTR) :: enu_ptr
+type(C_PTR) :: dme_ptr
+type(C_PTR) :: auto_enu_ptr
 logical(C_BOOL), target :: auto_enu_c_type
 !
 interface
 subroutine sirius_add_atom_type_aw_descriptor_aux(handler,label,n,l,enu,dme,auto_enu)&
 &bind(C, name="sirius_add_atom_type_aw_descriptor")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-integer(C_INT), intent(in) :: n
-integer(C_INT), intent(in) :: l
-real(C_DOUBLE), intent(in) :: enu
-integer(C_INT), intent(in) :: dme
-logical(C_BOOL), intent(in) :: auto_enu
+type(C_PTR), value :: n
+type(C_PTR), value :: l
+type(C_PTR), value :: enu
+type(C_PTR), value :: dme
+type(C_PTR), value :: auto_enu
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-auto_enu_c_type = bool(auto_enu)
-call sirius_add_atom_type_aw_descriptor_aux(handler,label_ptr,n,l,enu,dme,auto_enu_c_type)
-if (allocated(label_c_type)) deallocate(label_c_type)
+n_ptr = C_NULL_PTR
+n_ptr = C_LOC(n)
+l_ptr = C_NULL_PTR
+l_ptr = C_LOC(l)
+enu_ptr = C_NULL_PTR
+enu_ptr = C_LOC(enu)
+dme_ptr = C_NULL_PTR
+dme_ptr = C_LOC(dme)
+auto_enu_ptr = C_NULL_PTR
+auto_enu_c_type = auto_enu
+auto_enu_ptr = C_LOC(auto_enu_c_type)
+call sirius_add_atom_type_aw_descriptor_aux(handler_ptr,label_ptr,n_ptr,l_ptr,enu_ptr,&
+&dme_ptr,auto_enu_ptr)
+deallocate(label_c_type)
 end subroutine sirius_add_atom_type_aw_descriptor
 
 !
@@ -2754,17 +3373,24 @@ end subroutine sirius_add_atom_type_aw_descriptor
 subroutine sirius_add_atom_type_lo_descriptor(handler,label,ilo,n,l,enu,dme,auto_enu)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-integer, intent(in) :: ilo
-integer, intent(in) :: n
-integer, intent(in) :: l
-real(8), intent(in) :: enu
-integer, intent(in) :: dme
-logical, intent(in) :: auto_enu
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, target, intent(in) :: ilo
+integer, target, intent(in) :: n
+integer, target, intent(in) :: l
+real(8), target, intent(in) :: enu
+integer, target, intent(in) :: dme
+logical, target, intent(in) :: auto_enu
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: ilo_ptr
+type(C_PTR) :: n_ptr
+type(C_PTR) :: l_ptr
+type(C_PTR) :: enu_ptr
+type(C_PTR) :: dme_ptr
+type(C_PTR) :: auto_enu_ptr
 logical(C_BOOL), target :: auto_enu_c_type
 !
 interface
@@ -2772,24 +3398,39 @@ subroutine sirius_add_atom_type_lo_descriptor_aux(handler,label,ilo,n,l,enu,dme,
 &auto_enu)&
 &bind(C, name="sirius_add_atom_type_lo_descriptor")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-integer(C_INT), intent(in) :: ilo
-integer(C_INT), intent(in) :: n
-integer(C_INT), intent(in) :: l
-real(C_DOUBLE), intent(in) :: enu
-integer(C_INT), intent(in) :: dme
-logical(C_BOOL), intent(in) :: auto_enu
+type(C_PTR), value :: ilo
+type(C_PTR), value :: n
+type(C_PTR), value :: l
+type(C_PTR), value :: enu
+type(C_PTR), value :: dme
+type(C_PTR), value :: auto_enu
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-auto_enu_c_type = bool(auto_enu)
-call sirius_add_atom_type_lo_descriptor_aux(handler,label_ptr,ilo,n,l,enu,dme,auto_enu_c_type)
-if (allocated(label_c_type)) deallocate(label_c_type)
+ilo_ptr = C_NULL_PTR
+ilo_ptr = C_LOC(ilo)
+n_ptr = C_NULL_PTR
+n_ptr = C_LOC(n)
+l_ptr = C_NULL_PTR
+l_ptr = C_LOC(l)
+enu_ptr = C_NULL_PTR
+enu_ptr = C_LOC(enu)
+dme_ptr = C_NULL_PTR
+dme_ptr = C_LOC(dme)
+auto_enu_ptr = C_NULL_PTR
+auto_enu_c_type = auto_enu
+auto_enu_ptr = C_LOC(auto_enu_c_type)
+call sirius_add_atom_type_lo_descriptor_aux(handler_ptr,label_ptr,ilo_ptr,n_ptr,&
+&l_ptr,enu_ptr,dme_ptr,auto_enu_ptr)
+deallocate(label_c_type)
 end subroutine sirius_add_atom_type_lo_descriptor
 
 !
@@ -2804,16 +3445,22 @@ end subroutine sirius_add_atom_type_lo_descriptor
 subroutine sirius_set_atom_type_configuration(handler,label,n,l,k,occupancy,core)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-integer, intent(in) :: n
-integer, intent(in) :: l
-integer, intent(in) :: k
-real(8), intent(in) :: occupancy
-logical, intent(in) :: core
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, target, intent(in) :: n
+integer, target, intent(in) :: l
+integer, target, intent(in) :: k
+real(8), target, intent(in) :: occupancy
+logical, target, intent(in) :: core
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: n_ptr
+type(C_PTR) :: l_ptr
+type(C_PTR) :: k_ptr
+type(C_PTR) :: occupancy_ptr
+type(C_PTR) :: core_ptr
 logical(C_BOOL), target :: core_c_type
 !
 interface
@@ -2821,23 +3468,36 @@ subroutine sirius_set_atom_type_configuration_aux(handler,label,n,l,k,occupancy,
 &core)&
 &bind(C, name="sirius_set_atom_type_configuration")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-integer(C_INT), intent(in) :: n
-integer(C_INT), intent(in) :: l
-integer(C_INT), intent(in) :: k
-real(C_DOUBLE), intent(in) :: occupancy
-logical(C_BOOL), intent(in) :: core
+type(C_PTR), value :: n
+type(C_PTR), value :: l
+type(C_PTR), value :: k
+type(C_PTR), value :: occupancy
+type(C_PTR), value :: core
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
-core_c_type = bool(core)
-call sirius_set_atom_type_configuration_aux(handler,label_ptr,n,l,k,occupancy,core_c_type)
-if (allocated(label_c_type)) deallocate(label_c_type)
+n_ptr = C_NULL_PTR
+n_ptr = C_LOC(n)
+l_ptr = C_NULL_PTR
+l_ptr = C_LOC(l)
+k_ptr = C_NULL_PTR
+k_ptr = C_LOC(k)
+occupancy_ptr = C_NULL_PTR
+occupancy_ptr = C_LOC(occupancy)
+core_ptr = C_NULL_PTR
+core_c_type = core
+core_ptr = C_LOC(core_c_type)
+call sirius_set_atom_type_configuration_aux(handler_ptr,label_ptr,n_ptr,l_ptr,k_ptr,&
+&occupancy_ptr,core_ptr)
+deallocate(label_c_type)
 end subroutine sirius_set_atom_type_configuration
 
 !
@@ -2849,26 +3509,39 @@ end subroutine sirius_set_atom_type_configuration
 subroutine sirius_generate_coulomb_potential(handler,is_local_rg,vclmt,vclrg)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-logical, intent(in) :: is_local_rg
-real(8), intent(out) :: vclmt
-real(8), intent(out) :: vclrg
+type(C_PTR), target, intent(in) :: handler
+logical, target, intent(in) :: is_local_rg
+real(8), target, intent(out) :: vclmt
+real(8), target, intent(out) :: vclrg
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: is_local_rg_ptr
 logical(C_BOOL), target :: is_local_rg_c_type
+type(C_PTR) :: vclmt_ptr
+type(C_PTR) :: vclrg_ptr
 !
 interface
 subroutine sirius_generate_coulomb_potential_aux(handler,is_local_rg,vclmt,vclrg)&
 &bind(C, name="sirius_generate_coulomb_potential")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-logical(C_BOOL), intent(in) :: is_local_rg
-real(C_DOUBLE), intent(out) :: vclmt
-real(C_DOUBLE), intent(out) :: vclrg
+type(C_PTR), value :: handler
+type(C_PTR), value :: is_local_rg
+type(C_PTR), value :: vclmt
+type(C_PTR), value :: vclrg
 end subroutine
 end interface
-
-is_local_rg_c_type = bool(is_local_rg)
-call sirius_generate_coulomb_potential_aux(handler,is_local_rg_c_type,vclmt,vclrg)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+is_local_rg_ptr = C_NULL_PTR
+is_local_rg_c_type = is_local_rg
+is_local_rg_ptr = C_LOC(is_local_rg_c_type)
+vclmt_ptr = C_NULL_PTR
+vclmt_ptr = C_LOC(vclmt)
+vclrg_ptr = C_NULL_PTR
+vclrg_ptr = C_LOC(vclrg)
+call sirius_generate_coulomb_potential_aux(handler_ptr,is_local_rg_ptr,vclmt_ptr,&
+&vclrg_ptr)
 end subroutine sirius_generate_coulomb_potential
 
 !
@@ -2887,10 +3560,10 @@ subroutine sirius_generate_xc_potential(handler,is_local_rg,vxcmt,vxcrg,bxcmt_x,
 &bxcmt_y,bxcmt_z,bxcrg_x,bxcrg_y,bxcrg_z)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-logical, intent(in) :: is_local_rg
-real(8), intent(out) :: vxcmt
-real(8), intent(out) :: vxcrg
+type(C_PTR), target, intent(in) :: handler
+logical, target, intent(in) :: is_local_rg
+real(8), target, intent(out) :: vxcmt
+real(8), target, intent(out) :: vxcrg
 real(8), optional, target, intent(out) :: bxcmt_x
 real(8), optional, target, intent(out) :: bxcmt_y
 real(8), optional, target, intent(out) :: bxcmt_z
@@ -2898,7 +3571,11 @@ real(8), optional, target, intent(out) :: bxcrg_x
 real(8), optional, target, intent(out) :: bxcrg_y
 real(8), optional, target, intent(out) :: bxcrg_z
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: is_local_rg_ptr
 logical(C_BOOL), target :: is_local_rg_c_type
+type(C_PTR) :: vxcmt_ptr
+type(C_PTR) :: vxcrg_ptr
 type(C_PTR) :: bxcmt_x_ptr
 type(C_PTR) :: bxcmt_y_ptr
 type(C_PTR) :: bxcmt_z_ptr
@@ -2911,10 +3588,10 @@ subroutine sirius_generate_xc_potential_aux(handler,is_local_rg,vxcmt,vxcrg,bxcm
 &bxcmt_y,bxcmt_z,bxcrg_x,bxcrg_y,bxcrg_z)&
 &bind(C, name="sirius_generate_xc_potential")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-logical(C_BOOL), intent(in) :: is_local_rg
-real(C_DOUBLE), intent(out) :: vxcmt
-real(C_DOUBLE), intent(out) :: vxcrg
+type(C_PTR), value :: handler
+type(C_PTR), value :: is_local_rg
+type(C_PTR), value :: vxcmt
+type(C_PTR), value :: vxcrg
 type(C_PTR), value :: bxcmt_x
 type(C_PTR), value :: bxcmt_y
 type(C_PTR), value :: bxcmt_z
@@ -2923,28 +3600,42 @@ type(C_PTR), value :: bxcrg_y
 type(C_PTR), value :: bxcrg_z
 end subroutine
 end interface
-
-is_local_rg_c_type = bool(is_local_rg)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+is_local_rg_ptr = C_NULL_PTR
+is_local_rg_c_type = is_local_rg
+is_local_rg_ptr = C_LOC(is_local_rg_c_type)
+vxcmt_ptr = C_NULL_PTR
+vxcmt_ptr = C_LOC(vxcmt)
+vxcrg_ptr = C_NULL_PTR
+vxcrg_ptr = C_LOC(vxcrg)
 bxcmt_x_ptr = C_NULL_PTR
-if (present(bxcmt_x)) bxcmt_x_ptr = C_LOC(bxcmt_x)
-
+if (present(bxcmt_x)) then
+bxcmt_x_ptr = C_LOC(bxcmt_x)
+endif
 bxcmt_y_ptr = C_NULL_PTR
-if (present(bxcmt_y)) bxcmt_y_ptr = C_LOC(bxcmt_y)
-
+if (present(bxcmt_y)) then
+bxcmt_y_ptr = C_LOC(bxcmt_y)
+endif
 bxcmt_z_ptr = C_NULL_PTR
-if (present(bxcmt_z)) bxcmt_z_ptr = C_LOC(bxcmt_z)
-
+if (present(bxcmt_z)) then
+bxcmt_z_ptr = C_LOC(bxcmt_z)
+endif
 bxcrg_x_ptr = C_NULL_PTR
-if (present(bxcrg_x)) bxcrg_x_ptr = C_LOC(bxcrg_x)
-
+if (present(bxcrg_x)) then
+bxcrg_x_ptr = C_LOC(bxcrg_x)
+endif
 bxcrg_y_ptr = C_NULL_PTR
-if (present(bxcrg_y)) bxcrg_y_ptr = C_LOC(bxcrg_y)
-
+if (present(bxcrg_y)) then
+bxcrg_y_ptr = C_LOC(bxcrg_y)
+endif
 bxcrg_z_ptr = C_NULL_PTR
-if (present(bxcrg_z)) bxcrg_z_ptr = C_LOC(bxcrg_z)
-
-call sirius_generate_xc_potential_aux(handler,is_local_rg_c_type,vxcmt,vxcrg,bxcmt_x_ptr,&
-&bxcmt_y_ptr,bxcmt_z_ptr,bxcrg_x_ptr,bxcrg_y_ptr,bxcrg_z_ptr)
+if (present(bxcrg_z)) then
+bxcrg_z_ptr = C_LOC(bxcrg_z)
+endif
+call sirius_generate_xc_potential_aux(handler_ptr,is_local_rg_ptr,vxcmt_ptr,vxcrg_ptr,&
+&bxcmt_x_ptr,bxcmt_y_ptr,bxcmt_z_ptr,bxcrg_x_ptr,bxcrg_y_ptr,bxcrg_z_ptr)
 end subroutine sirius_generate_xc_potential
 
 !
@@ -2954,20 +3645,26 @@ end subroutine sirius_generate_xc_potential
 subroutine sirius_get_kpoint_inter_comm(handler,fcomm)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(out) :: fcomm
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(out) :: fcomm
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: fcomm_ptr
 !
 interface
 subroutine sirius_get_kpoint_inter_comm_aux(handler,fcomm)&
 &bind(C, name="sirius_get_kpoint_inter_comm")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: fcomm
+type(C_PTR), value :: handler
+type(C_PTR), value :: fcomm
 end subroutine
 end interface
-
-call sirius_get_kpoint_inter_comm_aux(handler,fcomm)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+fcomm_ptr = C_NULL_PTR
+fcomm_ptr = C_LOC(fcomm)
+call sirius_get_kpoint_inter_comm_aux(handler_ptr,fcomm_ptr)
 end subroutine sirius_get_kpoint_inter_comm
 
 !
@@ -2977,20 +3674,26 @@ end subroutine sirius_get_kpoint_inter_comm
 subroutine sirius_get_kpoint_inner_comm(handler,fcomm)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(out) :: fcomm
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(out) :: fcomm
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: fcomm_ptr
 !
 interface
 subroutine sirius_get_kpoint_inner_comm_aux(handler,fcomm)&
 &bind(C, name="sirius_get_kpoint_inner_comm")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: fcomm
+type(C_PTR), value :: handler
+type(C_PTR), value :: fcomm
 end subroutine
 end interface
-
-call sirius_get_kpoint_inner_comm_aux(handler,fcomm)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+fcomm_ptr = C_NULL_PTR
+fcomm_ptr = C_LOC(fcomm)
+call sirius_get_kpoint_inner_comm_aux(handler_ptr,fcomm_ptr)
 end subroutine sirius_get_kpoint_inner_comm
 
 !
@@ -3000,20 +3703,26 @@ end subroutine sirius_get_kpoint_inner_comm
 subroutine sirius_get_fft_comm(handler,fcomm)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(out) :: fcomm
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(out) :: fcomm
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: fcomm_ptr
 !
 interface
 subroutine sirius_get_fft_comm_aux(handler,fcomm)&
 &bind(C, name="sirius_get_fft_comm")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: fcomm
+type(C_PTR), value :: handler
+type(C_PTR), value :: fcomm
 end subroutine
 end interface
-
-call sirius_get_fft_comm_aux(handler,fcomm)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+fcomm_ptr = C_NULL_PTR
+fcomm_ptr = C_LOC(fcomm)
+call sirius_get_fft_comm_aux(handler_ptr,fcomm_ptr)
 end subroutine sirius_get_fft_comm
 
 !
@@ -3022,20 +3731,23 @@ end subroutine sirius_get_fft_comm
 function sirius_get_num_gvec(handler) result(res)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 integer :: res
 !
+type(C_PTR) :: handler_ptr
 !
 interface
 function sirius_get_num_gvec_aux(handler) result(res)&
 &bind(C, name="sirius_get_num_gvec")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 integer(C_INT) :: res
 end function
 end interface
-
-res = sirius_get_num_gvec_aux(handler)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+res = sirius_get_num_gvec_aux(handler_ptr)
 end function sirius_get_num_gvec
 
 !
@@ -3048,12 +3760,13 @@ end function sirius_get_num_gvec
 subroutine sirius_get_gvec_arrays(handler,gvec,gvec_cart,gvec_len,index_by_gvec)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 integer, optional, target, intent(in) :: gvec
 real(8), optional, target, intent(in) :: gvec_cart
 real(8), optional, target, intent(in) :: gvec_len
 integer, optional, target, intent(in) :: index_by_gvec
 !
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: gvec_ptr
 type(C_PTR) :: gvec_cart_ptr
 type(C_PTR) :: gvec_len_ptr
@@ -3063,27 +3776,34 @@ interface
 subroutine sirius_get_gvec_arrays_aux(handler,gvec,gvec_cart,gvec_len,index_by_gvec)&
 &bind(C, name="sirius_get_gvec_arrays")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: gvec
 type(C_PTR), value :: gvec_cart
 type(C_PTR), value :: gvec_len
 type(C_PTR), value :: index_by_gvec
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 gvec_ptr = C_NULL_PTR
-if (present(gvec)) gvec_ptr = C_LOC(gvec)
-
+if (present(gvec)) then
+gvec_ptr = C_LOC(gvec)
+endif
 gvec_cart_ptr = C_NULL_PTR
-if (present(gvec_cart)) gvec_cart_ptr = C_LOC(gvec_cart)
-
+if (present(gvec_cart)) then
+gvec_cart_ptr = C_LOC(gvec_cart)
+endif
 gvec_len_ptr = C_NULL_PTR
-if (present(gvec_len)) gvec_len_ptr = C_LOC(gvec_len)
-
+if (present(gvec_len)) then
+gvec_len_ptr = C_LOC(gvec_len)
+endif
 index_by_gvec_ptr = C_NULL_PTR
-if (present(index_by_gvec)) index_by_gvec_ptr = C_LOC(index_by_gvec)
-
-call sirius_get_gvec_arrays_aux(handler,gvec_ptr,gvec_cart_ptr,gvec_len_ptr,index_by_gvec_ptr)
+if (present(index_by_gvec)) then
+index_by_gvec_ptr = C_LOC(index_by_gvec)
+endif
+call sirius_get_gvec_arrays_aux(handler_ptr,gvec_ptr,gvec_cart_ptr,gvec_len_ptr,&
+&index_by_gvec_ptr)
 end subroutine sirius_get_gvec_arrays
 
 !
@@ -3092,20 +3812,23 @@ end subroutine sirius_get_gvec_arrays
 function sirius_get_num_fft_grid_points(handler) result(res)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 integer :: res
 !
+type(C_PTR) :: handler_ptr
 !
 interface
 function sirius_get_num_fft_grid_points_aux(handler) result(res)&
 &bind(C, name="sirius_get_num_fft_grid_points")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 integer(C_INT) :: res
 end function
 end interface
-
-res = sirius_get_num_fft_grid_points_aux(handler)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+res = sirius_get_num_fft_grid_points_aux(handler_ptr)
 end function sirius_get_num_fft_grid_points
 
 !
@@ -3115,20 +3838,26 @@ end function sirius_get_num_fft_grid_points
 subroutine sirius_get_fft_index(handler,fft_index)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(out) :: fft_index
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(out) :: fft_index
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: fft_index_ptr
 !
 interface
 subroutine sirius_get_fft_index_aux(handler,fft_index)&
 &bind(C, name="sirius_get_fft_index")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: fft_index
+type(C_PTR), value :: handler
+type(C_PTR), value :: fft_index
 end subroutine
 end interface
-
-call sirius_get_fft_index_aux(handler,fft_index)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+fft_index_ptr = C_NULL_PTR
+fft_index_ptr = C_LOC(fft_index)
+call sirius_get_fft_index_aux(handler_ptr,fft_index_ptr)
 end subroutine sirius_get_fft_index
 
 !
@@ -3137,20 +3866,23 @@ end subroutine sirius_get_fft_index
 function sirius_get_max_num_gkvec(ks_handler) result(res)
 implicit none
 !
-type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), target, intent(in) :: ks_handler
 integer :: res
 !
+type(C_PTR) :: ks_handler_ptr
 !
 interface
 function sirius_get_max_num_gkvec_aux(ks_handler) result(res)&
 &bind(C, name="sirius_get_max_num_gkvec")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), value :: ks_handler
 integer(C_INT) :: res
 end function
 end interface
-
-res = sirius_get_max_num_gkvec_aux(ks_handler)
+!
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+res = sirius_get_max_num_gkvec_aux(ks_handler_ptr)
 end function sirius_get_max_num_gkvec
 
 !
@@ -3167,34 +3899,58 @@ subroutine sirius_get_gkvec_arrays(ks_handler,ik,num_gkvec,gvec_index,gkvec,gkve
 &gkvec_len,gkvec_tp)
 implicit none
 !
-type(C_PTR), intent(in) :: ks_handler
-integer, intent(in) :: ik
-integer, intent(out) :: num_gkvec
-integer, intent(out) :: gvec_index
-real(8), intent(out) :: gkvec
-real(8), intent(out) :: gkvec_cart
-real(8), intent(out) :: gkvec_len
-real(8), intent(out) :: gkvec_tp
+type(C_PTR), target, intent(in) :: ks_handler
+integer, target, intent(in) :: ik
+integer, target, intent(out) :: num_gkvec
+integer, target, intent(out) :: gvec_index
+real(8), target, intent(out) :: gkvec
+real(8), target, intent(out) :: gkvec_cart
+real(8), target, intent(out) :: gkvec_len
+real(8), target, intent(out) :: gkvec_tp
 !
+type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: ik_ptr
+type(C_PTR) :: num_gkvec_ptr
+type(C_PTR) :: gvec_index_ptr
+type(C_PTR) :: gkvec_ptr
+type(C_PTR) :: gkvec_cart_ptr
+type(C_PTR) :: gkvec_len_ptr
+type(C_PTR) :: gkvec_tp_ptr
 !
 interface
 subroutine sirius_get_gkvec_arrays_aux(ks_handler,ik,num_gkvec,gvec_index,gkvec,&
 &gkvec_cart,gkvec_len,gkvec_tp)&
 &bind(C, name="sirius_get_gkvec_arrays")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: ks_handler
-integer(C_INT), intent(in) :: ik
-integer(C_INT), intent(out) :: num_gkvec
-integer(C_INT), intent(out) :: gvec_index
-real(C_DOUBLE), intent(out) :: gkvec
-real(C_DOUBLE), intent(out) :: gkvec_cart
-real(C_DOUBLE), intent(out) :: gkvec_len
-real(C_DOUBLE), intent(out) :: gkvec_tp
+type(C_PTR), value :: ks_handler
+type(C_PTR), value :: ik
+type(C_PTR), value :: num_gkvec
+type(C_PTR), value :: gvec_index
+type(C_PTR), value :: gkvec
+type(C_PTR), value :: gkvec_cart
+type(C_PTR), value :: gkvec_len
+type(C_PTR), value :: gkvec_tp
 end subroutine
 end interface
-
-call sirius_get_gkvec_arrays_aux(ks_handler,ik,num_gkvec,gvec_index,gkvec,gkvec_cart,&
-&gkvec_len,gkvec_tp)
+!
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+ik_ptr = C_NULL_PTR
+ik_ptr = C_LOC(ik)
+num_gkvec_ptr = C_NULL_PTR
+num_gkvec_ptr = C_LOC(num_gkvec)
+gvec_index_ptr = C_NULL_PTR
+gvec_index_ptr = C_LOC(gvec_index)
+gkvec_ptr = C_NULL_PTR
+gkvec_ptr = C_LOC(gkvec)
+gkvec_cart_ptr = C_NULL_PTR
+gkvec_cart_ptr = C_LOC(gkvec_cart)
+gkvec_len_ptr = C_NULL_PTR
+gkvec_len_ptr = C_LOC(gkvec_len)
+gkvec_tp_ptr = C_NULL_PTR
+gkvec_tp_ptr = C_LOC(gkvec_tp)
+call sirius_get_gkvec_arrays_aux(ks_handler_ptr,ik_ptr,num_gkvec_ptr,gvec_index_ptr,&
+&gkvec_ptr,gkvec_cart_ptr,gkvec_len_ptr,gkvec_tp_ptr)
 end subroutine sirius_get_gkvec_arrays
 
 !
@@ -3205,22 +3961,31 @@ end subroutine sirius_get_gkvec_arrays
 subroutine sirius_get_step_function(handler,cfunig,cfunrg)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-complex(8), intent(out) :: cfunig
-real(8), intent(out) :: cfunrg
+type(C_PTR), target, intent(in) :: handler
+complex(8), target, intent(out) :: cfunig
+real(8), target, intent(out) :: cfunrg
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: cfunig_ptr
+type(C_PTR) :: cfunrg_ptr
 !
 interface
 subroutine sirius_get_step_function_aux(handler,cfunig,cfunrg)&
 &bind(C, name="sirius_get_step_function")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-complex(C_DOUBLE), intent(out) :: cfunig
-real(C_DOUBLE), intent(out) :: cfunrg
+type(C_PTR), value :: handler
+type(C_PTR), value :: cfunig
+type(C_PTR), value :: cfunrg
 end subroutine
 end interface
-
-call sirius_get_step_function_aux(handler,cfunig,cfunrg)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+cfunig_ptr = C_NULL_PTR
+cfunig_ptr = C_LOC(cfunig)
+cfunrg_ptr = C_NULL_PTR
+cfunrg_ptr = C_LOC(cfunrg)
+call sirius_get_step_function_aux(handler_ptr,cfunig_ptr,cfunrg_ptr)
 end subroutine sirius_get_step_function
 
 !
@@ -3230,20 +3995,26 @@ end subroutine sirius_get_step_function
 subroutine sirius_get_vha_el(handler,vha_el)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-real(8), intent(out) :: vha_el
+type(C_PTR), target, intent(in) :: handler
+real(8), target, intent(out) :: vha_el
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: vha_el_ptr
 !
 interface
 subroutine sirius_get_vha_el_aux(handler,vha_el)&
 &bind(C, name="sirius_get_vha_el")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(out) :: vha_el
+type(C_PTR), value :: handler
+type(C_PTR), value :: vha_el
 end subroutine
 end interface
-
-call sirius_get_vha_el_aux(handler,vha_el)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+vha_el_ptr = C_NULL_PTR
+vha_el_ptr = C_LOC(vha_el)
+call sirius_get_vha_el_aux(handler_ptr,vha_el_ptr)
 end subroutine sirius_get_vha_el
 
 !
@@ -3261,10 +4032,10 @@ end subroutine sirius_get_vha_el
 subroutine sirius_set_h_radial_integrals(handler,ia,lmmax,val,l1,o1,ilo1,l2,o2,ilo2)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ia
-integer, intent(in) :: lmmax
-real(8), intent(in) :: val
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ia
+integer, target, intent(in) :: lmmax
+real(8), target, intent(in) :: val
 integer, optional, target, intent(in) :: l1
 integer, optional, target, intent(in) :: o1
 integer, optional, target, intent(in) :: ilo1
@@ -3272,6 +4043,10 @@ integer, optional, target, intent(in) :: l2
 integer, optional, target, intent(in) :: o2
 integer, optional, target, intent(in) :: ilo2
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: lmmax_ptr
+type(C_PTR) :: val_ptr
 type(C_PTR) :: l1_ptr
 type(C_PTR) :: o1_ptr
 type(C_PTR) :: ilo1_ptr
@@ -3284,10 +4059,10 @@ subroutine sirius_set_h_radial_integrals_aux(handler,ia,lmmax,val,l1,o1,ilo1,l2,
 &o2,ilo2)&
 &bind(C, name="sirius_set_h_radial_integrals")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-integer(C_INT), intent(in) :: lmmax
-real(C_DOUBLE), intent(in) :: val
+type(C_PTR), value :: handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: lmmax
+type(C_PTR), value :: val
 type(C_PTR), value :: l1
 type(C_PTR), value :: o1
 type(C_PTR), value :: ilo1
@@ -3296,27 +4071,41 @@ type(C_PTR), value :: o2
 type(C_PTR), value :: ilo2
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+lmmax_ptr = C_NULL_PTR
+lmmax_ptr = C_LOC(lmmax)
+val_ptr = C_NULL_PTR
+val_ptr = C_LOC(val)
 l1_ptr = C_NULL_PTR
-if (present(l1)) l1_ptr = C_LOC(l1)
-
+if (present(l1)) then
+l1_ptr = C_LOC(l1)
+endif
 o1_ptr = C_NULL_PTR
-if (present(o1)) o1_ptr = C_LOC(o1)
-
+if (present(o1)) then
+o1_ptr = C_LOC(o1)
+endif
 ilo1_ptr = C_NULL_PTR
-if (present(ilo1)) ilo1_ptr = C_LOC(ilo1)
-
+if (present(ilo1)) then
+ilo1_ptr = C_LOC(ilo1)
+endif
 l2_ptr = C_NULL_PTR
-if (present(l2)) l2_ptr = C_LOC(l2)
-
+if (present(l2)) then
+l2_ptr = C_LOC(l2)
+endif
 o2_ptr = C_NULL_PTR
-if (present(o2)) o2_ptr = C_LOC(o2)
-
+if (present(o2)) then
+o2_ptr = C_LOC(o2)
+endif
 ilo2_ptr = C_NULL_PTR
-if (present(ilo2)) ilo2_ptr = C_LOC(ilo2)
-
-call sirius_set_h_radial_integrals_aux(handler,ia,lmmax,val,l1_ptr,o1_ptr,ilo1_ptr,&
-&l2_ptr,o2_ptr,ilo2_ptr)
+if (present(ilo2)) then
+ilo2_ptr = C_LOC(ilo2)
+endif
+call sirius_set_h_radial_integrals_aux(handler_ptr,ia_ptr,lmmax_ptr,val_ptr,l1_ptr,&
+&o1_ptr,ilo1_ptr,l2_ptr,o2_ptr,ilo2_ptr)
 end subroutine sirius_set_h_radial_integrals
 
 !
@@ -3332,15 +4121,19 @@ end subroutine sirius_set_h_radial_integrals
 subroutine sirius_set_o_radial_integral(handler,ia,val,l,o1,ilo1,o2,ilo2)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ia
-real(8), intent(in) :: val
-integer, intent(in) :: l
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ia
+real(8), target, intent(in) :: val
+integer, target, intent(in) :: l
 integer, optional, target, intent(in) :: o1
 integer, optional, target, intent(in) :: ilo1
 integer, optional, target, intent(in) :: o2
 integer, optional, target, intent(in) :: ilo2
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: val_ptr
+type(C_PTR) :: l_ptr
 type(C_PTR) :: o1_ptr
 type(C_PTR) :: ilo1_ptr
 type(C_PTR) :: o2_ptr
@@ -3350,30 +4143,43 @@ interface
 subroutine sirius_set_o_radial_integral_aux(handler,ia,val,l,o1,ilo1,o2,ilo2)&
 &bind(C, name="sirius_set_o_radial_integral")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-real(C_DOUBLE), intent(in) :: val
-integer(C_INT), intent(in) :: l
+type(C_PTR), value :: handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: val
+type(C_PTR), value :: l
 type(C_PTR), value :: o1
 type(C_PTR), value :: ilo1
 type(C_PTR), value :: o2
 type(C_PTR), value :: ilo2
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+val_ptr = C_NULL_PTR
+val_ptr = C_LOC(val)
+l_ptr = C_NULL_PTR
+l_ptr = C_LOC(l)
 o1_ptr = C_NULL_PTR
-if (present(o1)) o1_ptr = C_LOC(o1)
-
+if (present(o1)) then
+o1_ptr = C_LOC(o1)
+endif
 ilo1_ptr = C_NULL_PTR
-if (present(ilo1)) ilo1_ptr = C_LOC(ilo1)
-
+if (present(ilo1)) then
+ilo1_ptr = C_LOC(ilo1)
+endif
 o2_ptr = C_NULL_PTR
-if (present(o2)) o2_ptr = C_LOC(o2)
-
+if (present(o2)) then
+o2_ptr = C_LOC(o2)
+endif
 ilo2_ptr = C_NULL_PTR
-if (present(ilo2)) ilo2_ptr = C_LOC(ilo2)
-
-call sirius_set_o_radial_integral_aux(handler,ia,val,l,o1_ptr,ilo1_ptr,o2_ptr,ilo2_ptr)
+if (present(ilo2)) then
+ilo2_ptr = C_LOC(ilo2)
+endif
+call sirius_set_o_radial_integral_aux(handler_ptr,ia_ptr,val_ptr,l_ptr,o1_ptr,ilo1_ptr,&
+&o2_ptr,ilo2_ptr)
 end subroutine sirius_set_o_radial_integral
 
 !
@@ -3390,9 +4196,9 @@ end subroutine sirius_set_o_radial_integral
 subroutine sirius_set_o1_radial_integral(handler,ia,val,l1,o1,ilo1,l2,o2,ilo2)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ia
-real(8), intent(in) :: val
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ia
+real(8), target, intent(in) :: val
 integer, optional, target, intent(in) :: l1
 integer, optional, target, intent(in) :: o1
 integer, optional, target, intent(in) :: ilo1
@@ -3400,6 +4206,9 @@ integer, optional, target, intent(in) :: l2
 integer, optional, target, intent(in) :: o2
 integer, optional, target, intent(in) :: ilo2
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: val_ptr
 type(C_PTR) :: l1_ptr
 type(C_PTR) :: o1_ptr
 type(C_PTR) :: ilo1_ptr
@@ -3411,9 +4220,9 @@ interface
 subroutine sirius_set_o1_radial_integral_aux(handler,ia,val,l1,o1,ilo1,l2,o2,ilo2)&
 &bind(C, name="sirius_set_o1_radial_integral")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-real(C_DOUBLE), intent(in) :: val
+type(C_PTR), value :: handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: val
 type(C_PTR), value :: l1
 type(C_PTR), value :: o1
 type(C_PTR), value :: ilo1
@@ -3422,27 +4231,39 @@ type(C_PTR), value :: o2
 type(C_PTR), value :: ilo2
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+val_ptr = C_NULL_PTR
+val_ptr = C_LOC(val)
 l1_ptr = C_NULL_PTR
-if (present(l1)) l1_ptr = C_LOC(l1)
-
+if (present(l1)) then
+l1_ptr = C_LOC(l1)
+endif
 o1_ptr = C_NULL_PTR
-if (present(o1)) o1_ptr = C_LOC(o1)
-
+if (present(o1)) then
+o1_ptr = C_LOC(o1)
+endif
 ilo1_ptr = C_NULL_PTR
-if (present(ilo1)) ilo1_ptr = C_LOC(ilo1)
-
+if (present(ilo1)) then
+ilo1_ptr = C_LOC(ilo1)
+endif
 l2_ptr = C_NULL_PTR
-if (present(l2)) l2_ptr = C_LOC(l2)
-
+if (present(l2)) then
+l2_ptr = C_LOC(l2)
+endif
 o2_ptr = C_NULL_PTR
-if (present(o2)) o2_ptr = C_LOC(o2)
-
+if (present(o2)) then
+o2_ptr = C_LOC(o2)
+endif
 ilo2_ptr = C_NULL_PTR
-if (present(ilo2)) ilo2_ptr = C_LOC(ilo2)
-
-call sirius_set_o1_radial_integral_aux(handler,ia,val,l1_ptr,o1_ptr,ilo1_ptr,l2_ptr,&
-&o2_ptr,ilo2_ptr)
+if (present(ilo2)) then
+ilo2_ptr = C_LOC(ilo2)
+endif
+call sirius_set_o1_radial_integral_aux(handler_ptr,ia_ptr,val_ptr,l1_ptr,o1_ptr,&
+&ilo1_ptr,l2_ptr,o2_ptr,ilo2_ptr)
 end subroutine sirius_set_o1_radial_integral
 
 !
@@ -3457,14 +4278,18 @@ end subroutine sirius_set_o1_radial_integral
 subroutine sirius_set_radial_function(handler,ia,deriv_order,f,l,o,ilo)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ia
-integer, intent(in) :: deriv_order
-real(8), intent(in) :: f
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ia
+integer, target, intent(in) :: deriv_order
+real(8), target, intent(in) :: f
 integer, optional, target, intent(in) :: l
 integer, optional, target, intent(in) :: o
 integer, optional, target, intent(in) :: ilo
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: deriv_order_ptr
+type(C_PTR) :: f_ptr
 type(C_PTR) :: l_ptr
 type(C_PTR) :: o_ptr
 type(C_PTR) :: ilo_ptr
@@ -3473,26 +4298,38 @@ interface
 subroutine sirius_set_radial_function_aux(handler,ia,deriv_order,f,l,o,ilo)&
 &bind(C, name="sirius_set_radial_function")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-integer(C_INT), intent(in) :: deriv_order
-real(C_DOUBLE), intent(in) :: f
+type(C_PTR), value :: handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: deriv_order
+type(C_PTR), value :: f
 type(C_PTR), value :: l
 type(C_PTR), value :: o
 type(C_PTR), value :: ilo
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+deriv_order_ptr = C_NULL_PTR
+deriv_order_ptr = C_LOC(deriv_order)
+f_ptr = C_NULL_PTR
+f_ptr = C_LOC(f)
 l_ptr = C_NULL_PTR
-if (present(l)) l_ptr = C_LOC(l)
-
+if (present(l)) then
+l_ptr = C_LOC(l)
+endif
 o_ptr = C_NULL_PTR
-if (present(o)) o_ptr = C_LOC(o)
-
+if (present(o)) then
+o_ptr = C_LOC(o)
+endif
 ilo_ptr = C_NULL_PTR
-if (present(ilo)) ilo_ptr = C_LOC(ilo)
-
-call sirius_set_radial_function_aux(handler,ia,deriv_order,f,l_ptr,o_ptr,ilo_ptr)
+if (present(ilo)) then
+ilo_ptr = C_LOC(ilo)
+endif
+call sirius_set_radial_function_aux(handler_ptr,ia_ptr,deriv_order_ptr,f_ptr,l_ptr,&
+&o_ptr,ilo_ptr)
 end subroutine sirius_set_radial_function
 
 !
@@ -3507,14 +4344,18 @@ end subroutine sirius_set_radial_function
 subroutine sirius_get_radial_function(handler,ia,deriv_order,f,l,o,ilo)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ia
-integer, intent(in) :: deriv_order
-real(8), intent(out) :: f
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ia
+integer, target, intent(in) :: deriv_order
+real(8), target, intent(out) :: f
 integer, optional, target, intent(in) :: l
 integer, optional, target, intent(in) :: o
 integer, optional, target, intent(in) :: ilo
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: deriv_order_ptr
+type(C_PTR) :: f_ptr
 type(C_PTR) :: l_ptr
 type(C_PTR) :: o_ptr
 type(C_PTR) :: ilo_ptr
@@ -3523,26 +4364,38 @@ interface
 subroutine sirius_get_radial_function_aux(handler,ia,deriv_order,f,l,o,ilo)&
 &bind(C, name="sirius_get_radial_function")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ia
-integer(C_INT), intent(in) :: deriv_order
-real(C_DOUBLE), intent(out) :: f
+type(C_PTR), value :: handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: deriv_order
+type(C_PTR), value :: f
 type(C_PTR), value :: l
 type(C_PTR), value :: o
 type(C_PTR), value :: ilo
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+deriv_order_ptr = C_NULL_PTR
+deriv_order_ptr = C_LOC(deriv_order)
+f_ptr = C_NULL_PTR
+f_ptr = C_LOC(f)
 l_ptr = C_NULL_PTR
-if (present(l)) l_ptr = C_LOC(l)
-
+if (present(l)) then
+l_ptr = C_LOC(l)
+endif
 o_ptr = C_NULL_PTR
-if (present(o)) o_ptr = C_LOC(o)
-
+if (present(o)) then
+o_ptr = C_LOC(o)
+endif
 ilo_ptr = C_NULL_PTR
-if (present(ilo)) ilo_ptr = C_LOC(ilo)
-
-call sirius_get_radial_function_aux(handler,ia,deriv_order,f,l_ptr,o_ptr,ilo_ptr)
+if (present(ilo)) then
+ilo_ptr = C_LOC(ilo)
+endif
+call sirius_get_radial_function_aux(handler_ptr,ia_ptr,deriv_order_ptr,f_ptr,l_ptr,&
+&o_ptr,ilo_ptr)
 end subroutine sirius_get_radial_function
 
 !
@@ -3552,20 +4405,26 @@ end subroutine sirius_get_radial_function
 subroutine sirius_set_equivalent_atoms(handler,equivalent_atoms)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: equivalent_atoms
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: equivalent_atoms
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: equivalent_atoms_ptr
 !
 interface
 subroutine sirius_set_equivalent_atoms_aux(handler,equivalent_atoms)&
 &bind(C, name="sirius_set_equivalent_atoms")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: equivalent_atoms
+type(C_PTR), value :: handler
+type(C_PTR), value :: equivalent_atoms
 end subroutine
 end interface
-
-call sirius_set_equivalent_atoms_aux(handler,equivalent_atoms)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+equivalent_atoms_ptr = C_NULL_PTR
+equivalent_atoms_ptr = C_LOC(equivalent_atoms)
+call sirius_set_equivalent_atoms_aux(handler_ptr,equivalent_atoms_ptr)
 end subroutine sirius_set_equivalent_atoms
 
 !
@@ -3574,18 +4433,21 @@ end subroutine sirius_set_equivalent_atoms
 subroutine sirius_update_atomic_potential(handler)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
+type(C_PTR), target, intent(in) :: handler
 !
+type(C_PTR) :: handler_ptr
 !
 interface
 subroutine sirius_update_atomic_potential_aux(handler)&
 &bind(C, name="sirius_update_atomic_potential")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 end subroutine
 end interface
-
-call sirius_update_atomic_potential_aux(handler)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+call sirius_update_atomic_potential_aux(handler_ptr)
 end subroutine sirius_update_atomic_potential
 
 !
@@ -3595,27 +4457,30 @@ end subroutine sirius_update_atomic_potential
 subroutine sirius_option_get_length(section,length)
 implicit none
 !
-character(*), intent(in) :: section
-integer, intent(out) :: length
+character(*), target, intent(in) :: section
+integer, target, intent(out) :: length
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: section_ptr
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: length_ptr
 !
 interface
 subroutine sirius_option_get_length_aux(section,length)&
 &bind(C, name="sirius_option_get_length")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
-integer(C_INT), intent(out) :: length
+type(C_PTR), value :: length
 end subroutine
 end interface
-
+!
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
-call sirius_option_get_length_aux(section_ptr,length)
-if (allocated(section_c_type)) deallocate(section_c_type)
+length_ptr = C_NULL_PTR
+length_ptr = C_LOC(length)
+call sirius_option_get_length_aux(section_ptr,length_ptr)
+deallocate(section_c_type)
 end subroutine sirius_option_get_length
 
 !
@@ -3627,38 +4492,44 @@ end subroutine sirius_option_get_length
 subroutine sirius_option_get_name_and_type(section,elem,key_name,type)
 implicit none
 !
-character(*), intent(in) :: section
-integer, intent(in) :: elem
-character(*), intent(out) :: key_name
-integer, intent(out) :: type
+character(*), target, intent(in) :: section
+integer, target, intent(in) :: elem
+character(*), target, intent(out) :: key_name
+integer, target, intent(out) :: type
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: key_name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: elem_ptr
 type(C_PTR) :: key_name_ptr
+character(C_CHAR), target, allocatable :: key_name_c_type(:)
+type(C_PTR) :: type_ptr
 !
 interface
 subroutine sirius_option_get_name_and_type_aux(section,elem,key_name,type)&
 &bind(C, name="sirius_option_get_name_and_type")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
-integer(C_INT), intent(in) :: elem
+type(C_PTR), value :: elem
 type(C_PTR), value :: key_name
-integer(C_INT), intent(out) :: type
+type(C_PTR), value :: type
 end subroutine
 end interface
-
+!
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
+elem_ptr = C_NULL_PTR
+elem_ptr = C_LOC(elem)
 key_name_ptr = C_NULL_PTR
 allocate(key_name_c_type(len(key_name)+1))
-key_name_c_type = string(key_name)
 key_name_ptr = C_LOC(key_name_c_type)
-call sirius_option_get_name_and_type_aux(section_ptr,elem,key_name_ptr,type)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(key_name_c_type)) deallocate(key_name_c_type)
+type_ptr = C_NULL_PTR
+type_ptr = C_LOC(type)
+call sirius_option_get_name_and_type_aux(section_ptr,elem_ptr,key_name_ptr,type_ptr)
+deallocate(section_c_type)
+key_name = string_c2f(key_name_c_type)
+deallocate(key_name_c_type)
 end subroutine sirius_option_get_name_and_type
 
 !
@@ -3670,19 +4541,19 @@ end subroutine sirius_option_get_name_and_type
 subroutine sirius_option_get_description_usage(section,name,desc,usage)
 implicit none
 !
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-character(*), intent(out) :: desc
-character(*), intent(out) :: usage
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+character(*), target, intent(out) :: desc
+character(*), target, intent(out) :: usage
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
-character(C_CHAR), target, allocatable :: desc_c_type(:)
+character(C_CHAR), target, allocatable :: name_c_type(:)
 type(C_PTR) :: desc_ptr
-character(C_CHAR), target, allocatable :: usage_c_type(:)
+character(C_CHAR), target, allocatable :: desc_c_type(:)
 type(C_PTR) :: usage_ptr
+character(C_CHAR), target, allocatable :: usage_c_type(:)
 !
 interface
 subroutine sirius_option_get_description_usage_aux(section,name,desc,usage)&
@@ -3694,28 +4565,28 @@ type(C_PTR), value :: desc
 type(C_PTR), value :: usage
 end subroutine
 end interface
-
+!
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
 desc_ptr = C_NULL_PTR
 allocate(desc_c_type(len(desc)+1))
-desc_c_type = string(desc)
 desc_ptr = C_LOC(desc_c_type)
 usage_ptr = C_NULL_PTR
 allocate(usage_c_type(len(usage)+1))
-usage_c_type = string(usage)
 usage_ptr = C_LOC(usage_c_type)
 call sirius_option_get_description_usage_aux(section_ptr,name_ptr,desc_ptr,usage_ptr)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
-if (allocated(desc_c_type)) deallocate(desc_c_type)
-if (allocated(usage_c_type)) deallocate(usage_c_type)
+deallocate(section_c_type)
+deallocate(name_c_type)
+desc = string_c2f(desc_c_type)
+deallocate(desc_c_type)
+usage = string_c2f(usage_c_type)
+deallocate(usage_c_type)
 end subroutine sirius_option_get_description_usage
 
 !
@@ -3727,15 +4598,17 @@ end subroutine sirius_option_get_description_usage
 subroutine sirius_option_get_int(section,name,default_value,length)
 implicit none
 !
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-integer, intent(out) :: default_value
-integer, intent(out) :: length
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+integer, target, intent(out) :: default_value
+integer, target, intent(out) :: length
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: default_value_ptr
+type(C_PTR) :: length_ptr
 !
 interface
 subroutine sirius_option_get_int_aux(section,name,default_value,length)&
@@ -3743,22 +4616,26 @@ subroutine sirius_option_get_int_aux(section,name,default_value,length)&
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
 type(C_PTR), value :: name
-integer(C_INT), intent(out) :: default_value
-integer(C_INT), intent(out) :: length
+type(C_PTR), value :: default_value
+type(C_PTR), value :: length
 end subroutine
 end interface
-
+!
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-call sirius_option_get_int_aux(section_ptr,name_ptr,default_value,length)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
+default_value_ptr = C_NULL_PTR
+default_value_ptr = C_LOC(default_value)
+length_ptr = C_NULL_PTR
+length_ptr = C_LOC(length)
+call sirius_option_get_int_aux(section_ptr,name_ptr,default_value_ptr,length_ptr)
+deallocate(section_c_type)
+deallocate(name_c_type)
 end subroutine sirius_option_get_int
 
 !
@@ -3770,15 +4647,17 @@ end subroutine sirius_option_get_int
 subroutine sirius_option_get_double(section,name,default_value,length)
 implicit none
 !
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-real(8), intent(out) :: default_value
-integer, intent(out) :: length
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+real(8), target, intent(out) :: default_value
+integer, target, intent(out) :: length
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: default_value_ptr
+type(C_PTR) :: length_ptr
 !
 interface
 subroutine sirius_option_get_double_aux(section,name,default_value,length)&
@@ -3786,22 +4665,26 @@ subroutine sirius_option_get_double_aux(section,name,default_value,length)&
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
 type(C_PTR), value :: name
-real(C_DOUBLE), intent(out) :: default_value
-integer(C_INT), intent(out) :: length
+type(C_PTR), value :: default_value
+type(C_PTR), value :: length
 end subroutine
 end interface
-
+!
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-call sirius_option_get_double_aux(section_ptr,name_ptr,default_value,length)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
+default_value_ptr = C_NULL_PTR
+default_value_ptr = C_LOC(default_value)
+length_ptr = C_NULL_PTR
+length_ptr = C_LOC(length)
+call sirius_option_get_double_aux(section_ptr,name_ptr,default_value_ptr,length_ptr)
+deallocate(section_c_type)
+deallocate(name_c_type)
 end subroutine sirius_option_get_double
 
 !
@@ -3813,16 +4696,18 @@ end subroutine sirius_option_get_double
 subroutine sirius_option_get_logical(section,name,default_value,length)
 implicit none
 !
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-logical, intent(out) :: default_value
-integer, intent(out) :: length
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+logical, target, intent(out) :: default_value
+integer, target, intent(out) :: length
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: default_value_ptr
 logical(C_BOOL), target :: default_value_c_type
+type(C_PTR) :: length_ptr
 !
 interface
 subroutine sirius_option_get_logical_aux(section,name,default_value,length)&
@@ -3830,23 +4715,27 @@ subroutine sirius_option_get_logical_aux(section,name,default_value,length)&
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
 type(C_PTR), value :: name
-logical(C_BOOL), intent(out) :: default_value
-integer(C_INT), intent(out) :: length
+type(C_PTR), value :: default_value
+type(C_PTR), value :: length
 end subroutine
 end interface
-
+!
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-default_value_c_type = bool(default_value)
-call sirius_option_get_logical_aux(section_ptr,name_ptr,default_value_c_type,length)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
+default_value_ptr = C_NULL_PTR
+default_value_ptr = C_LOC(default_value_c_type)
+length_ptr = C_NULL_PTR
+length_ptr = C_LOC(length)
+call sirius_option_get_logical_aux(section_ptr,name_ptr,default_value_ptr,length_ptr)
+deallocate(section_c_type)
+deallocate(name_c_type)
+default_value = default_value_c_type
 end subroutine sirius_option_get_logical
 
 !
@@ -3857,16 +4746,16 @@ end subroutine sirius_option_get_logical
 subroutine sirius_option_get_string(section,name,default_value)
 implicit none
 !
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-character(*), intent(out) :: default_value
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+character(*), target, intent(out) :: default_value
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
-character(C_CHAR), target, allocatable :: default_value_c_type(:)
+character(C_CHAR), target, allocatable :: name_c_type(:)
 type(C_PTR) :: default_value_ptr
+character(C_CHAR), target, allocatable :: default_value_c_type(:)
 !
 interface
 subroutine sirius_option_get_string_aux(section,name,default_value)&
@@ -3877,23 +4766,23 @@ type(C_PTR), value :: name
 type(C_PTR), value :: default_value
 end subroutine
 end interface
-
+!
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
 default_value_ptr = C_NULL_PTR
 allocate(default_value_c_type(len(default_value)+1))
-default_value_c_type = string(default_value)
 default_value_ptr = C_LOC(default_value_c_type)
 call sirius_option_get_string_aux(section_ptr,name_ptr,default_value_ptr)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
-if (allocated(default_value_c_type)) deallocate(default_value_c_type)
+deallocate(section_c_type)
+deallocate(name_c_type)
+default_value = string_c2f(default_value_c_type)
+deallocate(default_value_c_type)
 end subroutine sirius_option_get_string
 
 !
@@ -3904,14 +4793,15 @@ end subroutine sirius_option_get_string
 subroutine sirius_option_get_number_of_possible_values(section,name,num_)
 implicit none
 !
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-integer, intent(out) :: num_
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+integer, target, intent(out) :: num_
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: num__ptr
 !
 interface
 subroutine sirius_option_get_number_of_possible_values_aux(section,name,num_)&
@@ -3919,21 +4809,23 @@ subroutine sirius_option_get_number_of_possible_values_aux(section,name,num_)&
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
 type(C_PTR), value :: name
-integer(C_INT), intent(out) :: num_
+type(C_PTR), value :: num_
 end subroutine
 end interface
-
+!
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-call sirius_option_get_number_of_possible_values_aux(section_ptr,name_ptr,num_)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
+num__ptr = C_NULL_PTR
+num__ptr = C_LOC(num_)
+call sirius_option_get_number_of_possible_values_aux(section_ptr,name_ptr,num__ptr)
+deallocate(section_c_type)
+deallocate(name_c_type)
 end subroutine sirius_option_get_number_of_possible_values
 
 !
@@ -3945,17 +4837,18 @@ end subroutine sirius_option_get_number_of_possible_values
 subroutine sirius_option_string_get_value(section,name,elem_,value_n)
 implicit none
 !
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-integer, intent(in) :: elem_
-character(*), intent(out) :: value_n
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+integer, target, intent(in) :: elem_
+character(*), target, intent(out) :: value_n
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
-character(C_CHAR), target, allocatable :: value_n_c_type(:)
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: elem__ptr
 type(C_PTR) :: value_n_ptr
+character(C_CHAR), target, allocatable :: value_n_c_type(:)
 !
 interface
 subroutine sirius_option_string_get_value_aux(section,name,elem_,value_n)&
@@ -3963,57 +4856,62 @@ subroutine sirius_option_string_get_value_aux(section,name,elem_,value_n)&
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: section
 type(C_PTR), value :: name
-integer(C_INT), intent(in) :: elem_
+type(C_PTR), value :: elem_
 type(C_PTR), value :: value_n
 end subroutine
 end interface
-
+!
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
+elem__ptr = C_NULL_PTR
+elem__ptr = C_LOC(elem_)
 value_n_ptr = C_NULL_PTR
 allocate(value_n_c_type(len(value_n)+1))
-value_n_c_type = string(value_n)
 value_n_ptr = C_LOC(value_n_c_type)
-call sirius_option_string_get_value_aux(section_ptr,name_ptr,elem_,value_n_ptr)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
-if (allocated(value_n_c_type)) deallocate(value_n_c_type)
+call sirius_option_string_get_value_aux(section_ptr,name_ptr,elem__ptr,value_n_ptr)
+deallocate(section_c_type)
+deallocate(name_c_type)
+value_n = string_c2f(value_n_c_type)
+deallocate(value_n_c_type)
 end subroutine sirius_option_string_get_value
 
 !
 !> @brief return the name of a given section
-!> @param [in] elem_ index of the section
+!> @param [in] elem index of the section
 !> @param [out] section_name name of the section
-subroutine sirius_option_get_section_name(elem_,section_name)
+subroutine sirius_option_get_section_name(elem,section_name)
 implicit none
 !
-integer, intent(in) :: elem_
-character(*), intent(out) :: section_name
+integer, target, intent(in) :: elem
+character(*), target, intent(out) :: section_name
 !
-character(C_CHAR), target, allocatable :: section_name_c_type(:)
+type(C_PTR) :: elem_ptr
 type(C_PTR) :: section_name_ptr
+character(C_CHAR), target, allocatable :: section_name_c_type(:)
 !
 interface
-subroutine sirius_option_get_section_name_aux(elem_,section_name)&
+subroutine sirius_option_get_section_name_aux(elem,section_name)&
 &bind(C, name="sirius_option_get_section_name")
 use, intrinsic :: ISO_C_BINDING
-integer(C_INT), intent(in) :: elem_
+type(C_PTR), value :: elem
 type(C_PTR), value :: section_name
 end subroutine
 end interface
-
+!
+elem_ptr = C_NULL_PTR
+elem_ptr = C_LOC(elem)
 section_name_ptr = C_NULL_PTR
 allocate(section_name_c_type(len(section_name)+1))
-section_name_c_type = string(section_name)
 section_name_ptr = C_LOC(section_name_c_type)
-call sirius_option_get_section_name_aux(elem_,section_name_ptr)
-if (allocated(section_name_c_type)) deallocate(section_name_c_type)
+call sirius_option_get_section_name_aux(elem_ptr,section_name_ptr)
+section_name = string_c2f(section_name_c_type)
+deallocate(section_name_c_type)
 end subroutine sirius_option_get_section_name
 
 !
@@ -4022,18 +4920,21 @@ end subroutine sirius_option_get_section_name
 subroutine sirius_option_get_number_of_sections(length)
 implicit none
 !
-integer, intent(out) :: length
+integer, target, intent(out) :: length
 !
+type(C_PTR) :: length_ptr
 !
 interface
 subroutine sirius_option_get_number_of_sections_aux(length)&
 &bind(C, name="sirius_option_get_number_of_sections")
 use, intrinsic :: ISO_C_BINDING
-integer(C_INT), intent(out) :: length
+type(C_PTR), value :: length
 end subroutine
 end interface
-
-call sirius_option_get_number_of_sections_aux(length)
+!
+length_ptr = C_NULL_PTR
+length_ptr = C_LOC(length)
+call sirius_option_get_number_of_sections_aux(length_ptr)
 end subroutine sirius_option_get_number_of_sections
 
 !
@@ -4046,40 +4947,50 @@ end subroutine sirius_option_get_number_of_sections
 subroutine sirius_option_set_int(handler,section,name,default_values,length)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-integer, intent(in) :: default_values
-integer, intent(in) :: length
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+integer, target, intent(in) :: default_values
+integer, target, intent(in) :: length
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: default_values_ptr
+type(C_PTR) :: length_ptr
 !
 interface
 subroutine sirius_option_set_int_aux(handler,section,name,default_values,length)&
 &bind(C, name="sirius_option_set_int")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: section
 type(C_PTR), value :: name
-integer(C_INT), intent(in) :: default_values
-integer(C_INT), intent(in) :: length
+type(C_PTR), value :: default_values
+type(C_PTR), value :: length
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-call sirius_option_set_int_aux(handler,section_ptr,name_ptr,default_values,length)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
+default_values_ptr = C_NULL_PTR
+default_values_ptr = C_LOC(default_values)
+length_ptr = C_NULL_PTR
+length_ptr = C_LOC(length)
+call sirius_option_set_int_aux(handler_ptr,section_ptr,name_ptr,default_values_ptr,&
+&length_ptr)
+deallocate(section_c_type)
+deallocate(name_c_type)
 end subroutine sirius_option_set_int
 
 !
@@ -4092,40 +5003,50 @@ end subroutine sirius_option_set_int
 subroutine sirius_option_set_double(handler,section,name,default_values,length)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-real(8), intent(in) :: default_values
-integer, intent(in) :: length
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+real(8), target, intent(in) :: default_values
+integer, target, intent(in) :: length
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: default_values_ptr
+type(C_PTR) :: length_ptr
 !
 interface
 subroutine sirius_option_set_double_aux(handler,section,name,default_values,length)&
 &bind(C, name="sirius_option_set_double")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: section
 type(C_PTR), value :: name
-real(C_DOUBLE), intent(in) :: default_values
-integer(C_INT), intent(in) :: length
+type(C_PTR), value :: default_values
+type(C_PTR), value :: length
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-call sirius_option_set_double_aux(handler,section_ptr,name_ptr,default_values,length)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
+default_values_ptr = C_NULL_PTR
+default_values_ptr = C_LOC(default_values)
+length_ptr = C_NULL_PTR
+length_ptr = C_LOC(length)
+call sirius_option_set_double_aux(handler_ptr,section_ptr,name_ptr,default_values_ptr,&
+&length_ptr)
+deallocate(section_c_type)
+deallocate(name_c_type)
 end subroutine sirius_option_set_double
 
 !
@@ -4138,40 +5059,50 @@ end subroutine sirius_option_set_double
 subroutine sirius_option_set_logical(handler,section,name,default_values,length)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-integer, intent(in) :: default_values
-integer, intent(in) :: length
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+integer, target, intent(in) :: default_values
+integer, target, intent(in) :: length
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
+character(C_CHAR), target, allocatable :: name_c_type(:)
+type(C_PTR) :: default_values_ptr
+type(C_PTR) :: length_ptr
 !
 interface
 subroutine sirius_option_set_logical_aux(handler,section,name,default_values,length)&
 &bind(C, name="sirius_option_set_logical")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: section
 type(C_PTR), value :: name
-integer(C_INT), intent(in) :: default_values
-integer(C_INT), intent(in) :: length
+type(C_PTR), value :: default_values
+type(C_PTR), value :: length
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
-call sirius_option_set_logical_aux(handler,section_ptr,name_ptr,default_values,length)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
+default_values_ptr = C_NULL_PTR
+default_values_ptr = C_LOC(default_values)
+length_ptr = C_NULL_PTR
+length_ptr = C_LOC(length)
+call sirius_option_set_logical_aux(handler_ptr,section_ptr,name_ptr,default_values_ptr,&
+&length_ptr)
+deallocate(section_c_type)
+deallocate(name_c_type)
 end subroutine sirius_option_set_logical
 
 !
@@ -4183,45 +5114,48 @@ end subroutine sirius_option_set_logical
 subroutine sirius_option_set_string(handler,section,name,default_values)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-character(*), intent(in) :: default_values
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+character(*), target, intent(in) :: default_values
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
-character(C_CHAR), target, allocatable :: default_values_c_type(:)
+character(C_CHAR), target, allocatable :: name_c_type(:)
 type(C_PTR) :: default_values_ptr
+character(C_CHAR), target, allocatable :: default_values_c_type(:)
 !
 interface
 subroutine sirius_option_set_string_aux(handler,section,name,default_values)&
 &bind(C, name="sirius_option_set_string")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: section
 type(C_PTR), value :: name
 type(C_PTR), value :: default_values
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
 default_values_ptr = C_NULL_PTR
 allocate(default_values_c_type(len(default_values)+1))
-default_values_c_type = string(default_values)
+default_values_c_type = string_f2c(default_values)
 default_values_ptr = C_LOC(default_values_c_type)
-call sirius_option_set_string_aux(handler,section_ptr,name_ptr,default_values_ptr)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
-if (allocated(default_values_c_type)) deallocate(default_values_c_type)
+call sirius_option_set_string_aux(handler_ptr,section_ptr,name_ptr,default_values_ptr)
+deallocate(section_c_type)
+deallocate(name_c_type)
+deallocate(default_values_c_type)
 end subroutine sirius_option_set_string
 
 !
@@ -4233,45 +5167,48 @@ end subroutine sirius_option_set_string
 subroutine sirius_option_add_string_to(handler,section,name,default_values)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: section
-character(*), intent(in) :: name
-character(*), intent(in) :: default_values
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: section
+character(*), target, intent(in) :: name
+character(*), target, intent(in) :: default_values
 !
-character(C_CHAR), target, allocatable :: section_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: section_ptr
-character(C_CHAR), target, allocatable :: name_c_type(:)
+character(C_CHAR), target, allocatable :: section_c_type(:)
 type(C_PTR) :: name_ptr
-character(C_CHAR), target, allocatable :: default_values_c_type(:)
+character(C_CHAR), target, allocatable :: name_c_type(:)
 type(C_PTR) :: default_values_ptr
+character(C_CHAR), target, allocatable :: default_values_c_type(:)
 !
 interface
 subroutine sirius_option_add_string_to_aux(handler,section,name,default_values)&
 &bind(C, name="sirius_option_add_string_to")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: section
 type(C_PTR), value :: name
 type(C_PTR), value :: default_values
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 section_ptr = C_NULL_PTR
 allocate(section_c_type(len(section)+1))
-section_c_type = string(section)
+section_c_type = string_f2c(section)
 section_ptr = C_LOC(section_c_type)
 name_ptr = C_NULL_PTR
 allocate(name_c_type(len(name)+1))
-name_c_type = string(name)
+name_c_type = string_f2c(name)
 name_ptr = C_LOC(name_c_type)
 default_values_ptr = C_NULL_PTR
 allocate(default_values_c_type(len(default_values)+1))
-default_values_c_type = string(default_values)
+default_values_c_type = string_f2c(default_values)
 default_values_ptr = C_LOC(default_values_c_type)
-call sirius_option_add_string_to_aux(handler,section_ptr,name_ptr,default_values_ptr)
-if (allocated(section_c_type)) deallocate(section_c_type)
-if (allocated(name_c_type)) deallocate(name_c_type)
-if (allocated(default_values_c_type)) deallocate(default_values_c_type)
+call sirius_option_add_string_to_aux(handler_ptr,section_ptr,name_ptr,default_values_ptr)
+deallocate(section_c_type)
+deallocate(name_c_type)
+deallocate(default_values_c_type)
 end subroutine sirius_option_add_string_to
 
 !
@@ -4281,27 +5218,30 @@ end subroutine sirius_option_add_string_to
 subroutine sirius_dump_runtime_setup(handler,filename)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: filename
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: filename
 !
-character(C_CHAR), target, allocatable :: filename_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: filename_ptr
+character(C_CHAR), target, allocatable :: filename_c_type(:)
 !
 interface
 subroutine sirius_dump_runtime_setup_aux(handler,filename)&
 &bind(C, name="sirius_dump_runtime_setup")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: filename
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 filename_ptr = C_NULL_PTR
 allocate(filename_c_type(len(filename)+1))
-filename_c_type = string(filename)
+filename_c_type = string_f2c(filename)
 filename_ptr = C_LOC(filename_c_type)
-call sirius_dump_runtime_setup_aux(handler,filename_ptr)
-if (allocated(filename_c_type)) deallocate(filename_c_type)
+call sirius_dump_runtime_setup_aux(handler_ptr,filename_ptr)
+deallocate(filename_c_type)
 end subroutine sirius_dump_runtime_setup
 
 !
@@ -4314,26 +5254,41 @@ end subroutine sirius_dump_runtime_setup
 subroutine sirius_get_fv_eigen_vectors(handler,ik,fv_evec,ld,num_fv_states)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ik
-complex(8), intent(out) :: fv_evec
-integer, intent(in) :: ld
-integer, intent(in) :: num_fv_states
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ik
+complex(8), target, intent(out) :: fv_evec
+integer, target, intent(in) :: ld
+integer, target, intent(in) :: num_fv_states
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ik_ptr
+type(C_PTR) :: fv_evec_ptr
+type(C_PTR) :: ld_ptr
+type(C_PTR) :: num_fv_states_ptr
 !
 interface
 subroutine sirius_get_fv_eigen_vectors_aux(handler,ik,fv_evec,ld,num_fv_states)&
 &bind(C, name="sirius_get_fv_eigen_vectors")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ik
-complex(C_DOUBLE), intent(out) :: fv_evec
-integer(C_INT), intent(in) :: ld
-integer(C_INT), intent(in) :: num_fv_states
+type(C_PTR), value :: handler
+type(C_PTR), value :: ik
+type(C_PTR), value :: fv_evec
+type(C_PTR), value :: ld
+type(C_PTR), value :: num_fv_states
 end subroutine
 end interface
-
-call sirius_get_fv_eigen_vectors_aux(handler,ik,fv_evec,ld,num_fv_states)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ik_ptr = C_NULL_PTR
+ik_ptr = C_LOC(ik)
+fv_evec_ptr = C_NULL_PTR
+fv_evec_ptr = C_LOC(fv_evec)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+num_fv_states_ptr = C_NULL_PTR
+num_fv_states_ptr = C_LOC(num_fv_states)
+call sirius_get_fv_eigen_vectors_aux(handler_ptr,ik_ptr,fv_evec_ptr,ld_ptr,num_fv_states_ptr)
 end subroutine sirius_get_fv_eigen_vectors
 
 !
@@ -4345,24 +5300,36 @@ end subroutine sirius_get_fv_eigen_vectors
 subroutine sirius_get_fv_eigen_values(handler,ik,fv_eval,num_fv_states)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ik
-real(8), intent(out) :: fv_eval
-integer, intent(in) :: num_fv_states
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ik
+real(8), target, intent(out) :: fv_eval
+integer, target, intent(in) :: num_fv_states
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ik_ptr
+type(C_PTR) :: fv_eval_ptr
+type(C_PTR) :: num_fv_states_ptr
 !
 interface
 subroutine sirius_get_fv_eigen_values_aux(handler,ik,fv_eval,num_fv_states)&
 &bind(C, name="sirius_get_fv_eigen_values")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ik
-real(C_DOUBLE), intent(out) :: fv_eval
-integer(C_INT), intent(in) :: num_fv_states
+type(C_PTR), value :: handler
+type(C_PTR), value :: ik
+type(C_PTR), value :: fv_eval
+type(C_PTR), value :: num_fv_states
 end subroutine
 end interface
-
-call sirius_get_fv_eigen_values_aux(handler,ik,fv_eval,num_fv_states)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ik_ptr = C_NULL_PTR
+ik_ptr = C_LOC(ik)
+fv_eval_ptr = C_NULL_PTR
+fv_eval_ptr = C_LOC(fv_eval)
+num_fv_states_ptr = C_NULL_PTR
+num_fv_states_ptr = C_LOC(num_fv_states)
+call sirius_get_fv_eigen_values_aux(handler_ptr,ik_ptr,fv_eval_ptr,num_fv_states_ptr)
 end subroutine sirius_get_fv_eigen_values
 
 !
@@ -4374,24 +5341,36 @@ end subroutine sirius_get_fv_eigen_values
 subroutine sirius_get_sv_eigen_vectors(handler,ik,sv_evec,num_bands)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ik
-complex(8), intent(out) :: sv_evec
-integer, intent(in) :: num_bands
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ik
+complex(8), target, intent(out) :: sv_evec
+integer, target, intent(in) :: num_bands
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ik_ptr
+type(C_PTR) :: sv_evec_ptr
+type(C_PTR) :: num_bands_ptr
 !
 interface
 subroutine sirius_get_sv_eigen_vectors_aux(handler,ik,sv_evec,num_bands)&
 &bind(C, name="sirius_get_sv_eigen_vectors")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ik
-complex(C_DOUBLE), intent(out) :: sv_evec
-integer(C_INT), intent(in) :: num_bands
+type(C_PTR), value :: handler
+type(C_PTR), value :: ik
+type(C_PTR), value :: sv_evec
+type(C_PTR), value :: num_bands
 end subroutine
 end interface
-
-call sirius_get_sv_eigen_vectors_aux(handler,ik,sv_evec,num_bands)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ik_ptr = C_NULL_PTR
+ik_ptr = C_LOC(ik)
+sv_evec_ptr = C_NULL_PTR
+sv_evec_ptr = C_LOC(sv_evec)
+num_bands_ptr = C_NULL_PTR
+num_bands_ptr = C_LOC(num_bands)
+call sirius_get_sv_eigen_vectors_aux(handler_ptr,ik_ptr,sv_evec_ptr,num_bands_ptr)
 end subroutine sirius_get_sv_eigen_vectors
 
 !
@@ -4408,48 +5387,68 @@ subroutine sirius_set_rg_values(handler,label,grid_dims,local_box_origin,local_b
 &fcomm,values,transform_to_pw)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-integer, intent(in) :: grid_dims
-integer, intent(in) :: local_box_origin
-integer, intent(in) :: local_box_size
-integer, intent(in) :: fcomm
-real(8), intent(in) :: values
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, target, intent(in) :: grid_dims
+integer, target, intent(in) :: local_box_origin
+integer, target, intent(in) :: local_box_size
+integer, target, intent(in) :: fcomm
+real(8), target, intent(in) :: values
 logical, optional, target, intent(in) :: transform_to_pw
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
-logical(C_BOOL), target :: transform_to_pw_c_type
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: grid_dims_ptr
+type(C_PTR) :: local_box_origin_ptr
+type(C_PTR) :: local_box_size_ptr
+type(C_PTR) :: fcomm_ptr
+type(C_PTR) :: values_ptr
 type(C_PTR) :: transform_to_pw_ptr
+logical(C_BOOL), target :: transform_to_pw_c_type
 !
 interface
 subroutine sirius_set_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
 &fcomm,values,transform_to_pw)&
 &bind(C, name="sirius_set_rg_values")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-integer(C_INT), intent(in) :: grid_dims
-integer(C_INT), intent(in) :: local_box_origin
-integer(C_INT), intent(in) :: local_box_size
-integer(C_INT), intent(in) :: fcomm
-real(C_DOUBLE), intent(in) :: values
+type(C_PTR), value :: grid_dims
+type(C_PTR), value :: local_box_origin
+type(C_PTR), value :: local_box_size
+type(C_PTR), value :: fcomm
+type(C_PTR), value :: values
 type(C_PTR), value :: transform_to_pw
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
+grid_dims_ptr = C_NULL_PTR
+grid_dims_ptr = C_LOC(grid_dims)
+local_box_origin_ptr = C_NULL_PTR
+local_box_origin_ptr = C_LOC(local_box_origin)
+local_box_size_ptr = C_NULL_PTR
+local_box_size_ptr = C_LOC(local_box_size)
+fcomm_ptr = C_NULL_PTR
+fcomm_ptr = C_LOC(fcomm)
+values_ptr = C_NULL_PTR
+values_ptr = C_LOC(values)
 transform_to_pw_ptr = C_NULL_PTR
 if (present(transform_to_pw)) then
-  transform_to_pw_c_type = bool(transform_to_pw)
-  transform_to_pw_ptr = C_LOC(transform_to_pw_c_type)
+transform_to_pw_c_type = transform_to_pw
+transform_to_pw_ptr = C_LOC(transform_to_pw_c_type)
 endif
-call sirius_set_rg_values_aux(handler,label_ptr,grid_dims,local_box_origin,local_box_size,&
-&fcomm,values,transform_to_pw_ptr)
-if (allocated(label_c_type)) deallocate(label_c_type)
+call sirius_set_rg_values_aux(handler_ptr,label_ptr,grid_dims_ptr,local_box_origin_ptr,&
+&local_box_size_ptr,fcomm_ptr,values_ptr,transform_to_pw_ptr)
+deallocate(label_c_type)
+if (present(transform_to_pw)) then
+endif
 end subroutine sirius_set_rg_values
 
 !
@@ -4466,48 +5465,68 @@ subroutine sirius_get_rg_values(handler,label,grid_dims,local_box_origin,local_b
 &fcomm,values,transform_to_rg)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-integer, intent(in) :: grid_dims
-integer, intent(in) :: local_box_origin
-integer, intent(in) :: local_box_size
-integer, intent(in) :: fcomm
-real(8), intent(out) :: values
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+integer, target, intent(in) :: grid_dims
+integer, target, intent(in) :: local_box_origin
+integer, target, intent(in) :: local_box_size
+integer, target, intent(in) :: fcomm
+real(8), target, intent(out) :: values
 logical, optional, target, intent(in) :: transform_to_rg
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
-logical(C_BOOL), target :: transform_to_rg_c_type
+character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: grid_dims_ptr
+type(C_PTR) :: local_box_origin_ptr
+type(C_PTR) :: local_box_size_ptr
+type(C_PTR) :: fcomm_ptr
+type(C_PTR) :: values_ptr
 type(C_PTR) :: transform_to_rg_ptr
+logical(C_BOOL), target :: transform_to_rg_c_type
 !
 interface
 subroutine sirius_get_rg_values_aux(handler,label,grid_dims,local_box_origin,local_box_size,&
 &fcomm,values,transform_to_rg)&
 &bind(C, name="sirius_get_rg_values")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-integer(C_INT), intent(in) :: grid_dims
-integer(C_INT), intent(in) :: local_box_origin
-integer(C_INT), intent(in) :: local_box_size
-integer(C_INT), intent(in) :: fcomm
-real(C_DOUBLE), intent(out) :: values
+type(C_PTR), value :: grid_dims
+type(C_PTR), value :: local_box_origin
+type(C_PTR), value :: local_box_size
+type(C_PTR), value :: fcomm
+type(C_PTR), value :: values
 type(C_PTR), value :: transform_to_rg
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
+grid_dims_ptr = C_NULL_PTR
+grid_dims_ptr = C_LOC(grid_dims)
+local_box_origin_ptr = C_NULL_PTR
+local_box_origin_ptr = C_LOC(local_box_origin)
+local_box_size_ptr = C_NULL_PTR
+local_box_size_ptr = C_LOC(local_box_size)
+fcomm_ptr = C_NULL_PTR
+fcomm_ptr = C_LOC(fcomm)
+values_ptr = C_NULL_PTR
+values_ptr = C_LOC(values)
 transform_to_rg_ptr = C_NULL_PTR
 if (present(transform_to_rg)) then
-  transform_to_rg_c_type = bool(transform_to_rg)
-  transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
+transform_to_rg_c_type = transform_to_rg
+transform_to_rg_ptr = C_LOC(transform_to_rg_c_type)
 endif
-call sirius_get_rg_values_aux(handler,label_ptr,grid_dims,local_box_origin,local_box_size,&
-&fcomm,values,transform_to_rg_ptr)
-if (allocated(label_c_type)) deallocate(label_c_type)
+call sirius_get_rg_values_aux(handler_ptr,label_ptr,grid_dims_ptr,local_box_origin_ptr,&
+&local_box_size_ptr,fcomm_ptr,values_ptr,transform_to_rg_ptr)
+deallocate(label_c_type)
+if (present(transform_to_rg)) then
+endif
 end subroutine sirius_get_rg_values
 
 !
@@ -4517,20 +5536,26 @@ end subroutine sirius_get_rg_values
 subroutine sirius_get_total_magnetization(handler,mag)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-real(8), intent(out) :: mag
+type(C_PTR), target, intent(in) :: handler
+real(8), target, intent(out) :: mag
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: mag_ptr
 !
 interface
 subroutine sirius_get_total_magnetization_aux(handler,mag)&
 &bind(C, name="sirius_get_total_magnetization")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(out) :: mag
+type(C_PTR), value :: handler
+type(C_PTR), value :: mag
 end subroutine
 end interface
-
-call sirius_get_total_magnetization_aux(handler,mag)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+mag_ptr = C_NULL_PTR
+mag_ptr = C_LOC(mag)
+call sirius_get_total_magnetization_aux(handler_ptr,mag_ptr)
 end subroutine sirius_get_total_magnetization
 
 !
@@ -4541,26 +5566,33 @@ end subroutine sirius_get_total_magnetization
 subroutine sirius_get_num_kpoints(handler,num_kpoints,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(out) :: num_kpoints
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(out) :: num_kpoints
 integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: num_kpoints_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_get_num_kpoints_aux(handler,num_kpoints,error_code)&
 &bind(C, name="sirius_get_num_kpoints")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: num_kpoints
+type(C_PTR), value :: handler
+type(C_PTR), value :: num_kpoints
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+num_kpoints_ptr = C_NULL_PTR
+num_kpoints_ptr = C_LOC(num_kpoints)
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_get_num_kpoints_aux(handler,num_kpoints,error_code_ptr)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_num_kpoints_aux(handler_ptr,num_kpoints_ptr,error_code_ptr)
 end subroutine sirius_get_num_kpoints
 
 !
@@ -4571,26 +5603,33 @@ end subroutine sirius_get_num_kpoints
 subroutine sirius_get_num_bands(handler,num_kpoints,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(out) :: num_kpoints
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(out) :: num_kpoints
 integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: num_kpoints_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_get_num_bands_aux(handler,num_kpoints,error_code)&
 &bind(C, name="sirius_get_num_bands")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: num_kpoints
+type(C_PTR), value :: handler
+type(C_PTR), value :: num_kpoints
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+num_kpoints_ptr = C_NULL_PTR
+num_kpoints_ptr = C_LOC(num_kpoints)
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_get_num_bands_aux(handler,num_kpoints,error_code_ptr)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_num_bands_aux(handler_ptr,num_kpoints_ptr,error_code_ptr)
 end subroutine sirius_get_num_bands
 
 !
@@ -4601,26 +5640,33 @@ end subroutine sirius_get_num_bands
 subroutine sirius_get_num_spin_components(handler,num_spin_components,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(out) :: num_spin_components
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(out) :: num_spin_components
 integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: num_spin_components_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_get_num_spin_components_aux(handler,num_spin_components,error_code)&
 &bind(C, name="sirius_get_num_spin_components")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: num_spin_components
+type(C_PTR), value :: handler
+type(C_PTR), value :: num_spin_components
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+num_spin_components_ptr = C_NULL_PTR
+num_spin_components_ptr = C_LOC(num_spin_components)
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_get_num_spin_components_aux(handler,num_spin_components,error_code_ptr)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_num_spin_components_aux(handler_ptr,num_spin_components_ptr,error_code_ptr)
 end subroutine sirius_get_num_spin_components
 
 !
@@ -4633,12 +5679,15 @@ end subroutine sirius_get_num_spin_components
 subroutine sirius_get_kpoint_properties(handler,ik,weight,coordinates,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ik
-real(8), intent(out) :: weight
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ik
+real(8), target, intent(out) :: weight
 real(8), optional, target, intent(out) :: coordinates
 integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ik_ptr
+type(C_PTR) :: weight_ptr
 type(C_PTR) :: coordinates_ptr
 type(C_PTR) :: error_code_ptr
 !
@@ -4646,21 +5695,30 @@ interface
 subroutine sirius_get_kpoint_properties_aux(handler,ik,weight,coordinates,error_code)&
 &bind(C, name="sirius_get_kpoint_properties")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ik
-real(C_DOUBLE), intent(out) :: weight
+type(C_PTR), value :: handler
+type(C_PTR), value :: ik
+type(C_PTR), value :: weight
 type(C_PTR), value :: coordinates
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ik_ptr = C_NULL_PTR
+ik_ptr = C_LOC(ik)
+weight_ptr = C_NULL_PTR
+weight_ptr = C_LOC(weight)
 coordinates_ptr = C_NULL_PTR
-if (present(coordinates)) coordinates_ptr = C_LOC(coordinates)
-
+if (present(coordinates)) then
+coordinates_ptr = C_LOC(coordinates)
+endif
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_get_kpoint_properties_aux(handler,ik,weight,coordinates_ptr,error_code_ptr)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_kpoint_properties_aux(handler_ptr,ik_ptr,weight_ptr,coordinates_ptr,&
+&error_code_ptr)
 end subroutine sirius_get_kpoint_properties
 
 !
@@ -4671,26 +5729,33 @@ end subroutine sirius_get_kpoint_properties
 subroutine sirius_get_max_mt_aw_basis_size(handler,max_mt_aw_basis_size,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(out) :: max_mt_aw_basis_size
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(out) :: max_mt_aw_basis_size
 integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: max_mt_aw_basis_size_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_get_max_mt_aw_basis_size_aux(handler,max_mt_aw_basis_size,error_code)&
 &bind(C, name="sirius_get_max_mt_aw_basis_size")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(out) :: max_mt_aw_basis_size
+type(C_PTR), value :: handler
+type(C_PTR), value :: max_mt_aw_basis_size
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+max_mt_aw_basis_size_ptr = C_NULL_PTR
+max_mt_aw_basis_size_ptr = C_LOC(max_mt_aw_basis_size)
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_get_max_mt_aw_basis_size_aux(handler,max_mt_aw_basis_size,error_code_ptr)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_max_mt_aw_basis_size_aux(handler_ptr,max_mt_aw_basis_size_ptr,error_code_ptr)
 end subroutine sirius_get_max_mt_aw_basis_size
 
 !
@@ -4704,28 +5769,38 @@ end subroutine sirius_get_max_mt_aw_basis_size
 subroutine sirius_get_matching_coefficients(handler,ik,alm,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-integer, intent(in) :: ik
-complex(8), intent(out) :: alm
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(in) :: ik
+complex(8), target, intent(out) :: alm
 integer, optional, target, intent(out) :: error_code
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ik_ptr
+type(C_PTR) :: alm_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_get_matching_coefficients_aux(handler,ik,alm,error_code)&
 &bind(C, name="sirius_get_matching_coefficients")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-integer(C_INT), intent(in) :: ik
-complex(C_DOUBLE), intent(out) :: alm
+type(C_PTR), value :: handler
+type(C_PTR), value :: ik
+type(C_PTR), value :: alm
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ik_ptr = C_NULL_PTR
+ik_ptr = C_LOC(ik)
+alm_ptr = C_NULL_PTR
+alm_ptr = C_LOC(alm)
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_get_matching_coefficients_aux(handler,ik,alm,error_code_ptr)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_matching_coefficients_aux(handler_ptr,ik_ptr,alm_ptr,error_code_ptr)
 end subroutine sirius_get_matching_coefficients
 
 !
@@ -4737,35 +5812,39 @@ end subroutine sirius_get_matching_coefficients
 subroutine sirius_set_callback_function(handler,label,fptr,error_code)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-character(*), intent(in) :: label
-type(C_FUNPTR), intent(in) :: fptr
+type(C_PTR), target, intent(in) :: handler
+character(*), target, intent(in) :: label
+type(C_FUNPTR), value, intent(in) :: fptr
 integer, optional, target, intent(out) :: error_code
 !
-character(C_CHAR), target, allocatable :: label_c_type(:)
+type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
+character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_set_callback_function_aux(handler,label,fptr,error_code)&
 &bind(C, name="sirius_set_callback_function")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
+type(C_PTR), value :: handler
 type(C_PTR), value :: label
-type(C_FUNPTR), value, intent(in) :: fptr
+type(C_FUNPTR), value :: fptr
 type(C_PTR), value :: error_code
 end subroutine
 end interface
-
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
 label_ptr = C_NULL_PTR
 allocate(label_c_type(len(label)+1))
-label_c_type = string(label)
+label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
 error_code_ptr = C_NULL_PTR
-if (present(error_code)) error_code_ptr = C_LOC(error_code)
-
-call sirius_set_callback_function_aux(handler,label_ptr,fptr,error_code_ptr)
-if (allocated(label_c_type)) deallocate(label_c_type)
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_callback_function_aux(handler_ptr,label_ptr,fptr,error_code_ptr)
+deallocate(label_c_type)
 end subroutine sirius_set_callback_function
 
 !
@@ -4775,19 +5854,25 @@ end subroutine sirius_set_callback_function
 subroutine sirius_nlcg(handler,ks_handler)
 implicit none
 !
-type(C_PTR), intent(in) :: handler
-type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), target, intent(in) :: handler
+type(C_PTR), target, intent(in) :: ks_handler
 !
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ks_handler_ptr
 !
 interface
 subroutine sirius_nlcg_aux(handler,ks_handler)&
 &bind(C, name="sirius_nlcg")
 use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), value :: handler
+type(C_PTR), value :: ks_handler
 end subroutine
 end interface
-
-call sirius_nlcg_aux(handler,ks_handler)
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+call sirius_nlcg_aux(handler_ptr,ks_handler_ptr)
 end subroutine sirius_nlcg
 

@@ -111,7 +111,8 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
-                                         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>)
+                                         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
+                                         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
 target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_PROFILER}>:__PROFILE>
   $<$<BOOL:${USE_SCALAPACK}>:__SCALAPACK>

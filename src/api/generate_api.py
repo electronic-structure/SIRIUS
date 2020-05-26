@@ -5,8 +5,7 @@ import yaml
 type_info = {
     'bool' : {
         'f_type' : 'logical',
-        'c_type' : 'logical(C_BOOL)',
-        'f2c'    : 'bool(%s)'
+        'c_type' : 'logical(C_BOOL)'
     },
     'void*' : {
         'f_type' : 'type(C_PTR)',
@@ -26,8 +25,7 @@ type_info = {
     },
     'string' : {
         'f_type' : 'character(*)',
-        'c_type' : 'character(C_CHAR)',
-        'f2c'    : 'string(%s)'
+        'c_type' : 'character(C_CHAR)'
     },
     'complex' : {
         'f_type' : 'complex(8)',
@@ -63,10 +61,14 @@ def write_str_to_f90(o, string):
 def get_arg_attr(arg):
     if 'attr' in arg:
         attr = arg['attr'].replace(' ', '').split(',', 2)
+        if len(attr) > 3:
+            raise Exception("too many attributes")
         if attr[0] not in ('in', 'out', 'inout'):
             raise Exception('wrong intent attribute')
         if attr[1] not in ('optional', 'required'):
             raise Exception('wrong requirement attribute')
+        if len(attr) == 2:
+            attr.append("scalar")
         return attr
     else:
         raise Exception('argment attributes are not provided')
@@ -107,17 +109,11 @@ def write_interface(o, func_name, func_type, args):
     o.write('use, intrinsic :: ISO_C_BINDING\n')
     # declare arguments of the interface (as seen by C code)
     for a in args:
-        t = a[i_arg_type]
-        # pass this argments explicitely by pointer
-        if a[i_arg_requirement] == 'optional' or t == 'string':
-            o.write("type(C_PTR), value :: %s"%a[i_arg_name])
+        if a[i_arg_type] == 'func':
+            o.write('type(C_FUNPTR)')
         else:
-            o.write(a[i_arg_c_type])
-            # function pointers are also passed by value
-            if t == 'func':
-                o.write(', value')
-            o.write(", intent(%s) :: %s"%(a[i_arg_intent], a[i_arg_name]))
-        o.write('\n')
+            o.write('type(C_PTR)')
+        o.write(", value :: %s\n"%a[i_arg_name])
 
     if func_type != 'void':
         o.write("%s :: res\n"%type_info[func_type]['c_type'])
@@ -126,7 +122,8 @@ def write_interface(o, func_name, func_type, args):
         o.write('end subroutine\n')
     else:
         o.write('end function\n')
-    o.write('end interface\n\n')
+
+    o.write('end interface\n!\n')
 
 
 def write_function(o, func_name, func_type, func_args, func_doc, details):
@@ -141,6 +138,9 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
             attr = get_arg_attr(func_args[a])
             is_optional = (attr[1] == 'optional')
             t = func_args[a]['type']
+            # check that function pointers are always in and required
+            if t == 'func' and not (attr[0] == 'in' and attr[1] == 'required'):
+                raise Exception("wroing attributes for function pointer")
             doc = func_args[a]['doc']
             args.append((a, t, attr[0], attr[1], doc, type_info[t]['f_type'], type_info[t]['c_type']))
 
@@ -161,84 +161,105 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
         # write delcartion of Fortran type
         o.write(a[i_arg_f_type])
         # attributes
-        if (a[i_arg_requirement] == 'optional'):
-            o.write(', optional, target')
-        o.write(", intent(%s) :: %s"%(a[i_arg_intent], a[i_arg_name]))
-        o.write("\n")
+        if a[i_arg_requirement] == 'optional':
+            o.write(', optional')
+        # pass function pointers by value
+        if a[i_arg_type] == 'func':
+            o.write(', value')
+        else:
+            o.write(', target')
+        o.write(", intent(%s) :: %s\n"%(a[i_arg_intent], a[i_arg_name]))
 
     # result type if this is a function
     if func_type != 'void':
         o.write(type_info[func_type]['f_type'] + ' :: res\n')
 
-    o.write('!\n')
+    if len(args) > 0:
+        o.write('!\n')
 
     # declare auxiliary vaiables
     #   for string type we need to allocate new sotrage space and add tailing null character
     #   for bool type we need to convert it to C-type
     for a in args:
         t = a[i_arg_type]
-        # if there is special tratement of the type
-        if 'f2c' in type_info[t]:
-            if t == 'string':
-                o.write("%s, target, allocatable :: %s_c_type(:)"%(a[i_arg_c_type], a[i_arg_name]))
-            else:
-                o.write("%s, target :: %s_c_type"%(a[i_arg_c_type], a[i_arg_name]))
-            o.write("\n")
-
-        # this arguments we pass by pointer
-        if a[i_arg_requirement] == 'optional' or t == 'string': 
+        if t != 'func':
             o.write("type(C_PTR) :: %s_ptr\n"%a[i_arg_name])
+        if t == 'string':
+            o.write("%s, target, allocatable :: %s_c_type(:)\n"%(a[i_arg_c_type], a[i_arg_name]))
+        if t == 'bool':
+            o.write("%s, target :: %s_c_type\n"%(a[i_arg_c_type], a[i_arg_name]))
 
-    o.write('!\n')
+    if len(args) > 0:
+        o.write('!\n')
 
     write_interface(o, func_name, func_type, args)
 
+    # build a list of names for the C-interface call
     c_arg_names = []
     for a in args:
         t = a[i_arg_type]
         n = a[i_arg_name]
-
-        # for string type we have to allocate N+1 characters and add a terminating NULL character
-        if t == 'string':
-            o.write("%s_ptr = C_NULL_PTR\n"%n)
-            if a[i_arg_requirement] == 'optional':
-                o.write("if (present(%s)) then\n"%n)
-            o.write("allocate(%s_c_type(len(%s)+1))\n"%(n, n))
-            o.write("%s_c_type = "%n + type_info[t]['f2c']%n + "\n")
-            o.write("%s_ptr = C_LOC(%s_c_type)\n"%(n, n))
-            if a[i_arg_requirement] == 'optional':
-                o.write("endif\n")
-            c_arg_names.append("%s_ptr"%n)
+        if t == 'func':
+            c_arg_names.append("%s"%n)
         else:
-            if a[i_arg_requirement] == 'required':
-                if 'f2c' in type_info[t]:
-                    o.write("%s_c_type = "%n + type_info[t]['f2c']%n + "\n")
-                    c_arg_names.append("%s_c_type"%n)
-                else:
-                    c_arg_names.append(n)
-            else:
-                o.write("%s_ptr = C_NULL_PTR\n"%n)
-                c_arg_names.append("%s_ptr"%n)
-                if 'f2c' in type_info[t]:
-                    o.write("if (present(%s)) then\n"%n)
-                    s = n + '_c_type = ' + type_info[t]['f2c']%n + "\n"
-                    o.write('  ' + s)
-                    o.write("  %s_ptr = C_LOC(%s_c_type)\n"%(n, n))
-                    o.write("endif\n")
-                else:
-                    o.write('if (present('+n+')) ' + n + '_ptr = C_LOC(' + n + ')\n\n')
+            c_arg_names.append("%s_ptr"%n)
+
+    # before the call
+    for a in args:
+        t = a[i_arg_type]
+        n = a[i_arg_name]
+
+        # do nothing for function pointers
+        if t == 'func':
+            continue
+
+        o.write("%s_ptr = C_NULL_PTR\n"%n)
+        if a[i_arg_requirement] == 'optional':
+            o.write("if (present(%s)) then\n"%n)
+
+        if t == 'string':
+            o.write("allocate(%s_c_type(len(%s)+1))\n"%(n, n))
+            if a[i_arg_intent] in ('in', 'inout'):
+                o.write("%s_c_type = string_f2c(%s)\n"%(n, n))
+            o.write("%s_ptr = C_LOC(%s_c_type)\n"%(n, n))
+        elif t == 'bool':
+            if a[i_arg_intent] in ('in', 'inout'):
+                o.write("%s_c_type = %s\n"%(n, n))
+            o.write("%s_ptr = C_LOC(%s_c_type)\n"%(n, n))
+        else:
+            o.write("%s_ptr = C_LOC(%s)\n"%(n, n))
+
+        if a[i_arg_requirement] == 'optional':
+            o.write("endif\n")
+
 
     # make a function call
     string = 'call ' if func_type == 'void' else 'res = '
     string = string + func_name + '_aux(' + ','.join(c_arg_names) + ')'
     write_str_to_f90(o, string)
 
+    # after the call
     for a in args:
         t = a[i_arg_type]
         n = a[i_arg_name]
+        if t in ('bool', 'string'):
 
-        if t == 'string':
-            o.write("if (allocated(%s_c_type)) deallocate(%s_c_type)\n"%(n, n))
+            if a[i_arg_requirement] == 'optional':
+                o.write("if (present(%s)) then\n"%n)
+
+            if t == 'string':
+                if a[i_arg_intent] in ('inout', 'out'):
+                    o.write("%s = string_c2f(%s_c_type)\n"%(n, n))
+                o.write("deallocate(%s_c_type)\n"%n)
+            elif t == 'bool':
+                if a[i_arg_intent] in ('inout', 'out'):
+                    o.write("%s = %s_c_type\n"%(n, n))
+            else:
+                pass
+
+            if a[i_arg_requirement] == 'optional':
+                o.write("endif\n")
+
 
     if func_type == 'void':
         o.write('end subroutine ')
