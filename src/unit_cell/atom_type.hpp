@@ -320,8 +320,8 @@ class Atom_type
         , zn_(zn__)
         , mass_(mass__)
         , atomic_levels_(levels__)
-        {
-        }
+    {
+    }
 
     /// Constructor.
     /** ID of atom type and label are passed as arguments. The rest of parameters are obtained from the
@@ -331,8 +331,8 @@ class Atom_type
         , id_(id__)
         , label_(label__)
         , file_name_(file_name__)
-        {
-        }
+    {
+    }
 
     /// Move constructor.
     Atom_type(Atom_type&& src) = default;

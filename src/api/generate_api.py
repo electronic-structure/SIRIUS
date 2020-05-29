@@ -41,6 +41,7 @@ i_arg_requirement = 3
 i_arg_doc = 4
 i_arg_f_type = 5
 i_arg_c_type = 6
+i_arg_dims = 7
 
 def write_str_to_f90(o, string):
     p = 0
@@ -142,7 +143,7 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
             if t == 'func' and not (attr[0] == 'in' and attr[1] == 'required'):
                 raise Exception("wroing attributes for function pointer")
             doc = func_args[a]['doc']
-            args.append((a, t, attr[0], attr[1], doc, type_info[t]['f_type'], type_info[t]['c_type']))
+            args.append((a, t, attr[0], attr[1], doc, type_info[t]['f_type'], type_info[t]['c_type'], attr[2]))
 
     # write documentation header
     write_function_doc(o, func_doc, details, args)
@@ -168,6 +169,9 @@ def write_function(o, func_name, func_type, func_args, func_doc, details):
             o.write(', value')
         else:
             o.write(', target')
+        if a[i_arg_dims] != 'scalar':
+            o.write(', %s'%a[i_arg_dims])
+
         o.write(", intent(%s) :: %s\n"%(a[i_arg_intent], a[i_arg_name]))
 
     # result type if this is a function

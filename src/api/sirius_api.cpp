@@ -282,11 +282,7 @@ sirius_integrate:
       doc: Resulting value.
 @api end
 */
-void sirius_integrate(int    const* m__,
-                      int    const* np__,
-                      double const* x__,
-                      double const* f__,
-                      double*       result__)
+void sirius_integrate(int const* m__, int const* np__, double const* x__, double const* f__, double* result__)
 {
     sirius::Radial_grid_ext<double> rgrid(*np__, x__);
     sirius::Spline<double> s(rgrid, std::vector<double>(f__, f__ + *np__));
@@ -363,17 +359,23 @@ sirius_import_parameters:
       type: string
       attr: in, optional
       doc: JSON string with parameters or a JSON file.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
 @api end
 */
-void sirius_import_parameters(void* const* handler__,
-                              char  const* str__)
+void sirius_import_parameters(void* const* handler__, char const* str__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    if (str__) {
-        sim_ctx.import(std::string(str__));
-    } else {
-        sim_ctx.import(sim_ctx.get_runtime_options_dictionary());
-    }
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        if (str__) {
+            sim_ctx.import(std::string(str__));
+        } else {
+            sim_ctx.import(sim_ctx.get_runtime_options_dictionary());
+        }
+    }, error_code__);
 }
 
 /*
@@ -419,7 +421,7 @@ sirius_set_parameters:
       doc: Cutoff for G+k-vectors.
     fft_grid_size:
       type: int
-      attr: in, optional
+      attr: in, optional, dimension(3)
       doc: Size of the fine-grain FFT grid.
     auto_rmt:
       type: int
@@ -485,6 +487,10 @@ sirius_set_parameters:
       type: double
       attr: in, optional
       doc: Minimum band occupancy to trat is as "occupied".
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void sirius_set_parameters(void*  const* handler__,
@@ -512,92 +518,96 @@ void sirius_set_parameters(void*  const* handler__,
                            int    const* hubbard_correction_kind__,
                            char   const* hubbard_orbitals__,
                            int    const* sht_coverage__,
-                           double const* min_occupancy__)
+                           double const* min_occupancy__,
+                           int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    if (lmax_apw__ != nullptr) {
-        sim_ctx.set_lmax_apw(*lmax_apw__);
-    }
-    if (lmax_rho__ != nullptr) {
-        sim_ctx.set_lmax_rho(*lmax_rho__);
-    }
-    if (lmax_pot__ != nullptr) {
-        sim_ctx.set_lmax_pot(*lmax_pot__);
-    }
-    if (num_fv_states__ != nullptr) {
-        sim_ctx.num_fv_states(*num_fv_states__);
-    }
-    if (num_bands__ != nullptr) {
-        sim_ctx.num_bands(*num_bands__);
-    }
-    if (num_mag_dims__ != nullptr) {
-        sim_ctx.set_num_mag_dims(*num_mag_dims__);
-    }
-    if (pw_cutoff__ != nullptr) {
-        sim_ctx.pw_cutoff(*pw_cutoff__);
-    }
-    if (gk_cutoff__ != nullptr) {
-        sim_ctx.gk_cutoff(*gk_cutoff__);
-    }
-    if (auto_rmt__ != nullptr) {
-        sim_ctx.set_auto_rmt(*auto_rmt__);
-    }
-    if (gamma_point__ != nullptr) {
-        sim_ctx.gamma_point(*gamma_point__);
-    }
-    if (use_symmetry__ != nullptr) {
-        sim_ctx.use_symmetry(*use_symmetry__);
-    }
-    if (so_correction__ != nullptr) {
-        sim_ctx.so_correction(*so_correction__);
-    }
-    if (valence_rel__ != nullptr) {
-        sim_ctx.set_valence_relativity(valence_rel__);
-    }
-    if (core_rel__ != nullptr) {
-        sim_ctx.set_core_relativity(core_rel__);
-    }
-    if (esm_bc__ != nullptr) {
-        sim_ctx.esm_bc(std::string(esm_bc__));
-    }
-    if (iter_solver_tol__ != nullptr) {
-        sim_ctx.iterative_solver_tolerance(*iter_solver_tol__);
-    }
-    if (iter_solver_tol_empty__ != nullptr) {
-        sim_ctx.empty_states_tolerance(*iter_solver_tol_empty__);
-    }
-    if (iter_solver_type__ != nullptr) {
-        sim_ctx.iterative_solver_type(std::string(iter_solver_type__));
-    }
-    if (verbosity__ != nullptr) {
-        sim_ctx.verbosity(*verbosity__);
-    }
-    if (hubbard_correction__ != nullptr) {
-        sim_ctx.set_hubbard_correction(*hubbard_correction__);
-    }
-    if (hubbard_correction_kind__ != nullptr) {
-        if (*hubbard_correction_kind__ == 0) {
-            sim_ctx.set_hubbard_simplified_version();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        if (lmax_apw__ != nullptr) {
+            sim_ctx.set_lmax_apw(*lmax_apw__);
         }
-    }
-    if (hubbard_orbitals__ != nullptr) {
-        std::string s(hubbard_orbitals__);
-        if (s == "ortho-atomic") {
-            sim_ctx.set_orthogonalize_hubbard_orbitals(true);
+        if (lmax_rho__ != nullptr) {
+            sim_ctx.set_lmax_rho(*lmax_rho__);
         }
-        if (s == "norm-atomic") {
-            sim_ctx.set_normalize_hubbard_orbitals(true);
+        if (lmax_pot__ != nullptr) {
+            sim_ctx.set_lmax_pot(*lmax_pot__);
         }
-    }
-    if (fft_grid_size__ != nullptr) {
-        sim_ctx.fft_grid_size({fft_grid_size__[0], fft_grid_size__[1], fft_grid_size__[2]});
-    }
-    if (sht_coverage__ != nullptr) {
-        sim_ctx.sht_coverage(*sht_coverage__);
-    }
-    if (min_occupancy__ != nullptr) {
-        sim_ctx.min_occupancy(*min_occupancy__);
-    }
+        if (num_fv_states__ != nullptr) {
+            sim_ctx.num_fv_states(*num_fv_states__);
+        }
+        if (num_bands__ != nullptr) {
+            sim_ctx.num_bands(*num_bands__);
+        }
+        if (num_mag_dims__ != nullptr) {
+            sim_ctx.set_num_mag_dims(*num_mag_dims__);
+        }
+        if (pw_cutoff__ != nullptr) {
+            sim_ctx.pw_cutoff(*pw_cutoff__);
+        }
+        if (gk_cutoff__ != nullptr) {
+            sim_ctx.gk_cutoff(*gk_cutoff__);
+        }
+        if (auto_rmt__ != nullptr) {
+            sim_ctx.set_auto_rmt(*auto_rmt__);
+        }
+        if (gamma_point__ != nullptr) {
+            sim_ctx.gamma_point(*gamma_point__);
+        }
+        if (use_symmetry__ != nullptr) {
+            sim_ctx.use_symmetry(*use_symmetry__);
+        }
+        if (so_correction__ != nullptr) {
+            sim_ctx.so_correction(*so_correction__);
+        }
+        if (valence_rel__ != nullptr) {
+            sim_ctx.set_valence_relativity(valence_rel__);
+        }
+        if (core_rel__ != nullptr) {
+            sim_ctx.set_core_relativity(core_rel__);
+        }
+        if (esm_bc__ != nullptr) {
+            sim_ctx.esm_bc(std::string(esm_bc__));
+        }
+        if (iter_solver_tol__ != nullptr) {
+            sim_ctx.iterative_solver_tolerance(*iter_solver_tol__);
+        }
+        if (iter_solver_tol_empty__ != nullptr) {
+            sim_ctx.empty_states_tolerance(*iter_solver_tol_empty__);
+        }
+        if (iter_solver_type__ != nullptr) {
+            sim_ctx.iterative_solver_type(std::string(iter_solver_type__));
+        }
+        if (verbosity__ != nullptr) {
+            sim_ctx.verbosity(*verbosity__);
+        }
+        if (hubbard_correction__ != nullptr) {
+            sim_ctx.set_hubbard_correction(*hubbard_correction__);
+        }
+        if (hubbard_correction_kind__ != nullptr) {
+            if (*hubbard_correction_kind__ == 0) {
+                sim_ctx.set_hubbard_simplified_version();
+            }
+        }
+        if (hubbard_orbitals__ != nullptr) {
+            std::string s(hubbard_orbitals__);
+            if (s == "ortho-atomic") {
+                sim_ctx.set_orthogonalize_hubbard_orbitals(true);
+            }
+            if (s == "norm-atomic") {
+                sim_ctx.set_normalize_hubbard_orbitals(true);
+            }
+        }
+        if (fft_grid_size__ != nullptr) {
+            sim_ctx.fft_grid_size({fft_grid_size__[0], fft_grid_size__[1], fft_grid_size__[2]});
+        }
+        if (sht_coverage__ != nullptr) {
+            sim_ctx.sht_coverage(*sht_coverage__);
+        }
+        if (min_occupancy__ != nullptr) {
+            sim_ctx.min_occupancy(*min_occupancy__);
+        }
+    }, error_code__);
 }
 
 /*
@@ -643,7 +653,7 @@ sirius_get_parameters:
       doc: Cutoff for G+k-vectors.
     fft_grid_size:
       type: int
-      attr: out, optional
+      attr: out, optional, dimension(3)
       doc: Size of the fine-grain FFT grid.
     auto_rmt:
       type: int
@@ -794,8 +804,7 @@ sirius_add_xc_functional:
       doc: LibXC label of the functional.
 @api end
 */
-void sirius_add_xc_functional(void* const* handler__,
-                              char  const* name__)
+void sirius_add_xc_functional(void* const* handler__, char const* name__)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     sim_ctx.add_xc_functional(std::string(name__));
@@ -839,18 +848,23 @@ sirius_set_mpi_grid_dims:
       doc: Number of dimensions.
     dims:
       type: int
-      attr: in, required
+      attr: in, required, dimension(ndims)
       doc: Size of each dimension.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
-void sirius_set_mpi_grid_dims(void* const* handler__,
-                              int   const* ndims__,
-                              int   const* dims__)
+void sirius_set_mpi_grid_dims(void* const* handler__, int const* ndims__, int const* dims__, int* error_code__)
 {
-    assert(*ndims__ > 0);
-    auto& sim_ctx = get_sim_ctx(handler__);
-    std::vector<int> dims(dims__, dims__ + *ndims__);
-    sim_ctx.mpi_grid_dims(dims);
+    call_sirius([&]()
+    {
+        assert(*ndims__ > 0);
+        auto& sim_ctx = get_sim_ctx(handler__);
+        std::vector<int> dims(dims__, dims__ + *ndims__);
+        sim_ctx.mpi_grid_dims(dims);
+    }, error_code__);
 }
 
 /*
@@ -864,15 +878,15 @@ sirius_set_lattice_vectors:
       doc: Simulation context handler
     a1:
       type: double
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: 1st vector
     a2:
       type: double
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: 2nd vector
     a3:
       type: double
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: 3rd vector
 @api end
 */
@@ -906,6 +920,7 @@ void sirius_initialize_context(void* const* handler__, int* error_code__)
     {
         auto& sim_ctx = get_sim_ctx(handler__);
         sim_ctx.initialize();
+        return 0;
     }, error_code__);
 }
 
@@ -918,12 +933,20 @@ sirius_update_context:
       type: void*
       attr: in, required
       doc: Simulation context handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
-void sirius_update_context(void* const* handler__)
+void sirius_update_context(void* const* handler__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.update();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        sim_ctx.update();
+        return 0;
+    }, error_code__);
 }
 
 /*
@@ -1044,11 +1067,11 @@ sirius_create_kset:
       doc: Total number of k-points in the set.
     kpoints:
       type: double
-      attr: in, required
+      attr: in, required, dimension(3,num_kpoints)
       doc: List of k-points in lattice coordinates.
     kpoint_weights:
       type: double
-      attr: in, required
+      attr: in, required, dimension(num_kpoints)
       doc: Weights of k-points.
     init_kset:
       type: bool
@@ -1064,13 +1087,9 @@ sirius_create_kset:
       doc: Error code.
 @api end
 */
-void sirius_create_kset(void*  const* handler__,
-                        int    const* num_kpoints__,
-                        double*       kpoints__,
-                        double const* kpoint_weights__,
-                        bool   const* init_kset__,
-                        void**        kset_handler__,
-                        int*          error_code__)
+void sirius_create_kset(void* const* handler__, int const* num_kpoints__, double* kpoints__,
+                        double const* kpoint_weights__, bool const* init_kset__, void** kset_handler__,
+                        int* error_code__)
 {
     call_sirius([&]()
     {
@@ -1098,11 +1117,11 @@ sirius_create_kset_from_grid:
       doc: Simulation context handler.
     k_grid:
       type: int
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: dimensions of the k points grid.
     k_shift:
       type: int
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: k point shifts.
     use_symmetry:
       type: bool
@@ -1118,12 +1137,8 @@ sirius_create_kset_from_grid:
       doc: Error code.
 @api end
 */
-void sirius_create_kset_from_grid(void* const* handler__,
-                                  int   const* k_grid__,
-                                  int   const* k_shift__,
-                                  bool  const* use_symmetry,
-                                  void** kset_handler__,
-                                  int* error_code__)
+void sirius_create_kset_from_grid(void* const* handler__, int const* k_grid__, int const* k_shift__,
+                                  bool const* use_symmetry, void** kset_handler__, int* error_code__)
 {
     call_sirius([&]()
     {
@@ -1437,35 +1452,38 @@ sirius_add_atom_type:
       type: bool
       attr: in, optional
       doc: True if spin-orbit correction is enabled for this atom type.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
-void sirius_add_atom_type(void*  const* handler__,
-                          char   const* label__,
-                          char   const* fname__,
-                          int    const* zn__,
-                          char   const* symbol__,
-                          double const* mass__,
-                          bool   const* spin_orbit__)
+void sirius_add_atom_type(void* const* handler__, char const* label__, char const* fname__, int const* zn__,
+                          char const* symbol__, double const* mass__, bool const* spin_orbit__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
 
-    std::string label = std::string(label__);
-    std::string fname = (fname__ == nullptr) ? std::string("") : std::string(fname__);
-    sim_ctx.unit_cell().add_atom_type(label, fname);
+        std::string label = std::string(label__);
+        std::string fname = (fname__ == nullptr) ? std::string("") : std::string(fname__);
+        sim_ctx.unit_cell().add_atom_type(label, fname);
 
-    auto& type = sim_ctx.unit_cell().atom_type(label);
-    if (zn__ != nullptr) {
-        type.set_zn(*zn__);
-    }
-    if (symbol__ != nullptr) {
-        type.set_symbol(std::string(symbol__));
-    }
-    if (mass__ != nullptr) {
-        type.set_mass(*mass__);
-    }
-    if (spin_orbit__ != nullptr) {
-        type.spin_orbit_coupling(*spin_orbit__);
-    }
+        auto& type = sim_ctx.unit_cell().atom_type(label);
+        if (zn__ != nullptr) {
+            type.set_zn(*zn__);
+        }
+        if (symbol__ != nullptr) {
+            type.set_symbol(std::string(symbol__));
+        }
+        if (mass__ != nullptr) {
+            type.set_mass(*mass__);
+        }
+        if (spin_orbit__ != nullptr) {
+            type.spin_orbit_coupling(*spin_orbit__);
+        }
+        return 0;
+    }, error_code__);
 }
 
 /*
@@ -1487,7 +1505,7 @@ sirius_set_atom_type_radial_grid:
       doc: Number of radial grid points.
     radial_points:
       type: double
-      attr: in, required
+      attr: in, required, dimension(num_radial_points)
       doc: List of radial grid points.
 @api end
 */
@@ -1521,7 +1539,7 @@ sirius_set_atom_type_radial_grid_inf:
       doc: Number of radial grid points.
     radial_points:
       type: double
-      attr: in, required
+      attr: in, required, dimension(num_radial_points)
       doc: List of radial grid points.
 @api end
 */
@@ -1555,7 +1573,7 @@ sirius_add_atom_type_radial_function:
       doc: Label of the radial function.
     rf:
       type: double
-      attr: in, required
+      attr: in, required, dimension(num_points)
       doc: Array with radial function values.
     num_points:
       type: int
@@ -1724,7 +1742,7 @@ sirius_set_atom_type_dion:
       doc: Number of beta-projectors.
     dion:
       type: double
-      attr: in, required
+      attr: in, required, dimension(num_beta, num_beta)
       doc: Ionic part of D-operator matrix.
 @api end
 */
@@ -1758,7 +1776,7 @@ sirius_set_atom_type_paw:
       doc: Core-electrons energy contribution.
     occupations:
       type: double
-      attr: in, required
+      attr: in, required, dimension(num_occ)
       doc: array of orbital occupancies
     num_occ:
       type: int
@@ -1803,11 +1821,11 @@ sirius_add_atom:
       doc: Atom type label.
     position:
       type: double
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: Atom position in lattice coordinates.
     vector_field:
       type: double
-      attr: in, optional
+      attr: in, optional, dimension(3)
       doc: Starting magnetization.
 @api end
 */
@@ -1836,10 +1854,10 @@ sirius_set_atom_position:
     ia:
       type: int
       attr: in, required
-      doc: Index of atom.
+      doc: Index of atom; index starts form 1
     position:
       type: double
-      attr: in, required
+      attr: in, required, dimension(3)
       doc: Atom position in lattice coordinates.
 @api end
 */
@@ -1866,7 +1884,7 @@ sirius_set_pw_coeffs:
       doc: Label of the function.
     pw_coeffs:
       type: complex
-      attr: in, required
+      attr: in, required, dimension(*)
       doc: Local array of plane-wave coefficients.
     transform_to_rg:
       type: bool
@@ -1878,7 +1896,7 @@ sirius_set_pw_coeffs:
       doc: Local number of G-vectors.
     gvl:
       type: int
-      attr: in, optional
+      attr: in, optional, dimension(3, *)
       doc: List of G-vectors in lattice coordinates (Miller indices).
     comm:
       type: int
@@ -1987,7 +2005,7 @@ sirius_get_pw_coeffs:
       doc: Label of the function.
     pw_coeffs:
       type: complex
-      attr: in, required
+      attr: in, required, dimension(*)
       doc: Local array of plane-wave coefficients.
     ngv:
       type: int
@@ -1995,7 +2013,7 @@ sirius_get_pw_coeffs:
       doc: Local number of G-vectors.
     gvl:
       type: int
-      attr: in, optional
+      attr: in, optional, dimension(3, *)
       doc: List of G-vectors in lattice coordinates (Miller indices).
     comm:
       type: int
@@ -2092,7 +2110,7 @@ sirius_get_pw_coeffs_real:
       doc: Label of the function.
     pw_coeffs:
       type: double
-      attr: in, required
+      attr: out, required, dimension(*)
       doc: Local array of plane-wave coefficients.
     ngv:
       type: int
@@ -2100,7 +2118,7 @@ sirius_get_pw_coeffs_real:
       doc: Local number of G-vectors.
     gvl:
       type: int
-      attr: in, optional
+      attr: in, optional, dimension(3, *)
       doc: List of G-vectors in lattice coordinates (Miller indices).
     comm:
       type: int
@@ -2440,7 +2458,7 @@ sirius_get_d_operator_matrix:
     ld:
       type: int
       attr: in, required
-      doc: Leading dimention of D-matrix.
+      doc: Leading dimension of D-matrix.
 @api end
 */
 void sirius_get_d_operator_matrix(void* const* handler__,
@@ -2492,7 +2510,7 @@ sirius_set_d_operator_matrix:
     ld:
       type: int
       attr: in, required
-      doc: Leading dimention of D-matrix.
+      doc: Leading dimension of D-matrix.
 @api end
 */
 void sirius_set_d_operator_matrix(void* const* handler__,
@@ -2533,12 +2551,12 @@ sirius_set_q_operator_matrix:
       doc: Atom type label.
     q_mtrx:
       type: double
-      attr: out, required
+      attr: out, required, dimension(ld,ld)
       doc: Q-matrix.
     ld:
       type: int
       attr: in, required
-      doc: Leading dimention of Q-matrix.
+      doc: Leading dimension of Q-matrix.
 @api end
 */
 void sirius_set_q_operator_matrix(void* const* handler__,
@@ -2580,12 +2598,12 @@ sirius_get_q_operator_matrix:
       doc: Atom type label.
     q_mtrx:
       type: double
-      attr: out, required
+      attr: out, required, dimension(ld, ld)
       doc: Q-matrix.
     ld:
       type: int
       attr: in, required
-      doc: Leading dimention of Q-matrix.
+      doc: Leading dimension of Q-matrix.
 @api end
 */
 void sirius_get_q_operator_matrix(void* const* handler__,
@@ -2630,7 +2648,7 @@ sirius_get_density_matrix:
     ld:
       type: int
       attr: in, required
-      doc: Leading dimention of the density matrix.
+      doc: Leading dimension of the density matrix.
 @api end
 */
 void sirius_get_density_matrix(void*          const* handler__,
@@ -2689,7 +2707,7 @@ sirius_set_density_matrix:
     ld:
       type: int
       attr: in, required
-      doc: Leading dimention of the density matrix.
+      doc: Leading dimension of the density matrix.
 @api end
 */
 void sirius_set_density_matrix(void*          const* handler__,
@@ -2786,7 +2804,7 @@ sirius_get_forces:
       doc: Label of the force component to get.
     forces:
       type: double
-      attr: out, required
+      attr: out, required, dimension(3, *)
       doc: Total force component for each atom.
 @api end
 */
@@ -2952,11 +2970,11 @@ sirius_get_q_operator:
       doc: Number of G-vectors.
     gvl:
       type: int
-      attr: in, required
+      attr: in, required, dimension(3, ngv)
       doc: G-vectors in lattice coordinats.
     q_pw:
       type: complex
-      attr: out, required
+      attr: out, required, dimension(ngv)
       doc: Plane-wave coefficients of Q augmentation operator.
 @api end
 */
@@ -3067,11 +3085,11 @@ sirius_get_wave_functions:
     ld1:
       type: int
       attr: in, required
-      doc: Leading dimention of evc array.
+      doc: Leading dimension of evc array.
     ld2:
       type: int
       attr: in, required
-      doc: Second dimention of evc array.
+      doc: Second dimension of evc array.
 @api end
 */
 void sirius_get_wave_functions(void*          const* ks_handler__,
@@ -3370,7 +3388,7 @@ sirius_set_hubbard_occupancies:
 @api end
 */
 void sirius_set_hubbard_occupancies(void* const* handler__,
-                                    std::complex<double>*      occ__,
+                                    std::complex<double>* occ__,
                                     int   const *ld__)
 {
     auto& gs = get_gs(handler__);
@@ -3786,23 +3804,23 @@ void sirius_get_fft_comm(void * const* handler__,
     *fcomm__ = MPI_Comm_c2f(sim_ctx.comm_fft().mpi_comm());
 }
 
-/*
-@api begin
-sirius_get_num_gvec:
-  return: int
-  doc: Get total number of G-vectors
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler
-@api end
-*/
-int sirius_get_num_gvec(void* const* handler__)
-{
-    auto& sim_ctx = get_sim_ctx(handler__);
-    return sim_ctx.gvec().num_gvec();
-}
+//==/*
+//==@apibegin
+//==sirius_get_num_gvec:
+//==  return: int
+//==  doc: Get total number of G-vectors
+//==  arguments:
+//==    handler:
+//==      type: void*
+//==      attr: in, required
+//==      doc: Simulation context handler
+//==@apiend
+//==*/
+//==int sirius_get_num_gvec(void* const* handler__)
+//=={
+//==    auto& sim_ctx = get_sim_ctx(handler__);
+//==    return sim_ctx.gvec().num_gvec();
+//==}
 
 /*
 @api begin
@@ -3877,66 +3895,66 @@ void sirius_get_gvec_arrays(void* const* handler__,
     }
 }
 
-/*
-@api begin
-sirius_get_num_fft_grid_points:
-  return: int
-  doc: Get local number of FFT grid points.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler
-@api end
-*/
-int sirius_get_num_fft_grid_points(void* const* handler__)
-{
-    auto& sim_ctx = get_sim_ctx(handler__);
-    return sim_ctx.spfft().local_slice_size();
-}
+//==/*
+//==@apibegin
+//==sirius_get_num_fft_grid_points:
+//==  return: int
+//==  doc: Get local number of FFT grid points.
+//==  arguments:
+//==    handler:
+//==      type: void*
+//==      attr: in, required
+//==      doc: Simulation context handler
+//==@apiend
+//==*/
+//==int sirius_get_num_fft_grid_points(void* const* handler__)
+//=={
+//==    auto& sim_ctx = get_sim_ctx(handler__);
+//==    return sim_ctx.spfft().local_slice_size();
+//==}
 
-/*
-@api begin
-sirius_get_fft_index:
-  doc: Get mapping between G-vector index and FFT index
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Simulation context handler
-    fft_index:
-      type: int
-      attr: out, required
-      doc: Index inside FFT buffer
-@api end
-*/
-void sirius_get_fft_index(void* const* handler__,
-                          int*         fft_index__)
-{
-    auto& sim_ctx = get_sim_ctx(handler__);
-    for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-        auto G = sim_ctx.gvec().gvec(ig);
-        fft_index__[ig] = sim_ctx.fft_grid().index_by_freq(G[0], G[1], G[2]) + 1;
-    }
-}
+//==/*
+//==@apibegin
+//==sirius_get_fft_index:
+//==  doc: Get mapping between G-vector index and FFT index
+//==  arguments:
+//==    handler:
+//==      type: void*
+//==      attr: in, required
+//==      doc: Simulation context handler
+//==    fft_index:
+//==      type: int
+//==      attr: out, required
+//==      doc: Index inside FFT buffer
+//==@apiend
+//==*/
+//==void sirius_get_fft_index(void* const* handler__,
+//==                          int*         fft_index__)
+//=={
+//==    auto& sim_ctx = get_sim_ctx(handler__);
+//==    for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+//==        auto G = sim_ctx.gvec().gvec(ig);
+//==        fft_index__[ig] = sim_ctx.fft_grid().index_by_freq(G[0], G[1], G[2]) + 1;
+//==    }
+//==}
 
-/*
-@api begin
-sirius_get_max_num_gkvec:
-  return: int
-  doc: Get maximum number of G+k vectors across all k-points in the set
-  arguments:
-    ks_handler:
-      type: void*
-      attr: in, required
-      doc: K-point set handler.
-@api end
-*/
-int sirius_get_max_num_gkvec(void* const* ks_handler__)
-{
-    auto& ks = get_ks(ks_handler__);
-    return ks.max_num_gkvec();
-}
+//==/*
+//==@apibegin
+//==sirius_get_max_num_gkvec:
+//==  return: int
+//==  doc: Get maximum number of G+k vectors across all k-points in the set
+//==  arguments:
+//==    ks_handler:
+//==      type: void*
+//==      attr: in, required
+//==      doc: K-point set handler.
+//==@apiend
+//==*/
+//==int sirius_get_max_num_gkvec(void* const* ks_handler__)
+//=={
+//==    auto& ks = get_ks(ks_handler__);
+//==    return ks.max_num_gkvec();
+//==}
 
 /*
 @api begin

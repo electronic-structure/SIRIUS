@@ -54,6 +54,8 @@ class K_point_set
     /// Create regular grid of k-points.
     void create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__);
 
+    bool initialized_{false};
+
   public:
     /// Create empty k-point set.
     K_point_set(Simulation_context& ctx__)

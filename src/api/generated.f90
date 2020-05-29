@@ -307,22 +307,26 @@ end subroutine sirius_create_context
 !> @brief Import parameters of simulation from a JSON string
 !> @param [in] handler Simulation context handler.
 !> @param [in] str JSON string with parameters or a JSON file.
-subroutine sirius_import_parameters(handler,str)
+!> @param [out] error_code Error code
+subroutine sirius_import_parameters(handler,str,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), optional, target, intent(in) :: str
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: str_ptr
 character(C_CHAR), target, allocatable :: str_c_type(:)
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_import_parameters_aux(handler,str)&
+subroutine sirius_import_parameters_aux(handler,str,error_code)&
 &bind(C, name="sirius_import_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: str
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -334,7 +338,11 @@ allocate(str_c_type(len(str)+1))
 str_c_type = string_f2c(str)
 str_ptr = C_LOC(str_c_type)
 endif
-call sirius_import_parameters_aux(handler_ptr,str_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_import_parameters_aux(handler_ptr,str_ptr,error_code_ptr)
 if (present(str)) then
 deallocate(str_c_type)
 endif
@@ -368,11 +376,12 @@ end subroutine sirius_import_parameters
 !> @param [in] hubbard_orbitals Type of localized orbitals.
 !> @param [in] sht_coverage Type of spherical coverage (0 for Lebedev-Laikov, 1 for uniform).
 !> @param [in] min_occupancy Minimum band occupancy to trat is as "occupied".
+!> @param [out] error_code Error code.
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,&
 &iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,&
-&sht_coverage,min_occupancy)
+&sht_coverage,min_occupancy,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -384,7 +393,7 @@ integer, optional, target, intent(in) :: num_bands
 integer, optional, target, intent(in) :: num_mag_dims
 real(8), optional, target, intent(in) :: pw_cutoff
 real(8), optional, target, intent(in) :: gk_cutoff
-integer, optional, target, intent(in) :: fft_grid_size
+integer, optional, target, dimension(3), intent(in) :: fft_grid_size
 integer, optional, target, intent(in) :: auto_rmt
 logical, optional, target, intent(in) :: gamma_point
 logical, optional, target, intent(in) :: use_symmetry
@@ -401,6 +410,7 @@ integer, optional, target, intent(in) :: hubbard_correction_kind
 character(*), optional, target, intent(in) :: hubbard_orbitals
 integer, optional, target, intent(in) :: sht_coverage
 real(8), optional, target, intent(in) :: min_occupancy
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: lmax_apw_ptr
@@ -437,13 +447,14 @@ type(C_PTR) :: hubbard_orbitals_ptr
 character(C_CHAR), target, allocatable :: hubbard_orbitals_c_type(:)
 type(C_PTR) :: sht_coverage_ptr
 type(C_PTR) :: min_occupancy_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
 &so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,&
 &iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,&
-&sht_coverage,min_occupancy)&
+&sht_coverage,min_occupancy,error_code)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -472,6 +483,7 @@ type(C_PTR), value :: hubbard_correction_kind
 type(C_PTR), value :: hubbard_orbitals
 type(C_PTR), value :: sht_coverage
 type(C_PTR), value :: min_occupancy
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -591,12 +603,16 @@ min_occupancy_ptr = C_NULL_PTR
 if (present(min_occupancy)) then
 min_occupancy_ptr = C_LOC(min_occupancy)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_set_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,&
 &num_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,&
 &auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,&
 &core_rel_ptr,esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,&
 &verbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,&
-&sht_coverage_ptr,min_occupancy_ptr)
+&sht_coverage_ptr,min_occupancy_ptr,error_code_ptr)
 if (present(gamma_point)) then
 endif
 if (present(use_symmetry)) then
@@ -660,7 +676,7 @@ integer, optional, target, intent(out) :: num_bands
 integer, optional, target, intent(out) :: num_mag_dims
 real(8), optional, target, intent(out) :: pw_cutoff
 real(8), optional, target, intent(out) :: gk_cutoff
-integer, optional, target, intent(out) :: fft_grid_size
+integer, optional, target, dimension(3), intent(out) :: fft_grid_size
 integer, optional, target, intent(out) :: auto_rmt
 logical, optional, target, intent(out) :: gamma_point
 logical, optional, target, intent(out) :: use_symmetry
@@ -902,24 +918,28 @@ end subroutine sirius_insert_xc_functional
 !> @param [in] handler Simulation context handler
 !> @param [in] ndims Number of dimensions.
 !> @param [in] dims Size of each dimension.
-subroutine sirius_set_mpi_grid_dims(handler,ndims,dims)
+!> @param [out] error_code Error code.
+subroutine sirius_set_mpi_grid_dims(handler,ndims,dims,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 integer, target, intent(in) :: ndims
-integer, target, intent(in) :: dims
+integer, target, dimension(ndims), intent(in) :: dims
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ndims_ptr
 type(C_PTR) :: dims_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_mpi_grid_dims_aux(handler,ndims,dims)&
+subroutine sirius_set_mpi_grid_dims_aux(handler,ndims,dims,error_code)&
 &bind(C, name="sirius_set_mpi_grid_dims")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: ndims
 type(C_PTR), value :: dims
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -929,7 +949,11 @@ ndims_ptr = C_NULL_PTR
 ndims_ptr = C_LOC(ndims)
 dims_ptr = C_NULL_PTR
 dims_ptr = C_LOC(dims)
-call sirius_set_mpi_grid_dims_aux(handler_ptr,ndims_ptr,dims_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_set_mpi_grid_dims_aux(handler_ptr,ndims_ptr,dims_ptr,error_code_ptr)
 end subroutine sirius_set_mpi_grid_dims
 
 !
@@ -942,9 +966,9 @@ subroutine sirius_set_lattice_vectors(handler,a1,a2,a3)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
-real(8), target, intent(in) :: a1
-real(8), target, intent(in) :: a2
-real(8), target, intent(in) :: a3
+real(8), target, dimension(3), intent(in) :: a1
+real(8), target, dimension(3), intent(in) :: a2
+real(8), target, dimension(3), intent(in) :: a3
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: a1_ptr
@@ -1007,24 +1031,32 @@ end subroutine sirius_initialize_context
 !
 !> @brief Update simulation context after changing lattice or atomic positions.
 !> @param [in] handler Simulation context handler.
-subroutine sirius_update_context(handler)
+!> @param [out] error_code Error code.
+subroutine sirius_update_context(handler,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_update_context_aux(handler)&
+subroutine sirius_update_context_aux(handler,error_code)&
 &bind(C, name="sirius_update_context")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler)
-call sirius_update_context_aux(handler_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_update_context_aux(handler_ptr,error_code_ptr)
 end subroutine sirius_update_context
 
 !
@@ -1145,8 +1177,8 @@ implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 integer, target, intent(in) :: num_kpoints
-real(8), target, intent(in) :: kpoints
-real(8), target, intent(in) :: kpoint_weights
+real(8), target, dimension(3,num_kpoints), intent(in) :: kpoints
+real(8), target, dimension(num_kpoints), intent(in) :: kpoint_weights
 logical, target, intent(in) :: init_kset
 type(C_PTR), target, intent(out) :: kset_handler
 integer, optional, target, intent(out) :: error_code
@@ -1209,8 +1241,8 @@ subroutine sirius_create_kset_from_grid(handler,k_grid,k_shift,use_symmetry,kset
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
-integer, target, intent(in) :: k_grid
-integer, target, intent(in) :: k_shift
+integer, target, dimension(3), intent(in) :: k_grid
+integer, target, dimension(3), intent(in) :: k_shift
 logical, target, intent(in) :: use_symmetry
 type(C_PTR), target, intent(out) :: kset_handler
 integer, optional, target, intent(out) :: error_code
@@ -1505,7 +1537,8 @@ end subroutine sirius_update_ground_state
 !> @param [in] symbol Atomic symbol.
 !> @param [in] mass Atomic mass.
 !> @param [in] spin_orbit True if spin-orbit correction is enabled for this atom type.
-subroutine sirius_add_atom_type(handler,label,fname,zn,symbol,mass,spin_orbit)
+!> @param [out] error_code Error code.
+subroutine sirius_add_atom_type(handler,label,fname,zn,symbol,mass,spin_orbit,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -1515,6 +1548,7 @@ integer, optional, target, intent(in) :: zn
 character(*), optional, target, intent(in) :: symbol
 real(8), optional, target, intent(in) :: mass
 logical, optional, target, intent(in) :: spin_orbit
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -1527,9 +1561,11 @@ character(C_CHAR), target, allocatable :: symbol_c_type(:)
 type(C_PTR) :: mass_ptr
 type(C_PTR) :: spin_orbit_ptr
 logical(C_BOOL), target :: spin_orbit_c_type
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_add_atom_type_aux(handler,label,fname,zn,symbol,mass,spin_orbit)&
+subroutine sirius_add_atom_type_aux(handler,label,fname,zn,symbol,mass,spin_orbit,&
+&error_code)&
 &bind(C, name="sirius_add_atom_type")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -1539,6 +1575,7 @@ type(C_PTR), value :: zn
 type(C_PTR), value :: symbol
 type(C_PTR), value :: mass
 type(C_PTR), value :: spin_orbit
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -1573,8 +1610,12 @@ if (present(spin_orbit)) then
 spin_orbit_c_type = spin_orbit
 spin_orbit_ptr = C_LOC(spin_orbit_c_type)
 endif
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
 call sirius_add_atom_type_aux(handler_ptr,label_ptr,fname_ptr,zn_ptr,symbol_ptr,&
-&mass_ptr,spin_orbit_ptr)
+&mass_ptr,spin_orbit_ptr,error_code_ptr)
 deallocate(label_c_type)
 if (present(fname)) then
 deallocate(fname_c_type)
@@ -1598,7 +1639,7 @@ implicit none
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_radial_points
-real(8), target, intent(in) :: radial_points
+real(8), target, dimension(num_radial_points), intent(in) :: radial_points
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -1646,7 +1687,7 @@ implicit none
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_radial_points
-real(8), target, intent(in) :: radial_points
+real(8), target, dimension(num_radial_points), intent(in) :: radial_points
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -1700,7 +1741,7 @@ implicit none
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: atom_type
 character(*), target, intent(in) :: label
-real(8), target, intent(in) :: rf
+real(8), target, dimension(num_points), intent(in) :: rf
 integer, target, intent(in) :: num_points
 integer, optional, target, intent(in) :: n
 integer, optional, target, intent(in) :: l
@@ -1874,7 +1915,7 @@ implicit none
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 integer, target, intent(in) :: num_beta
-real(8), target, intent(in) :: dion
+real(8), target, dimension(num_beta,num_beta), intent(in) :: dion
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -1920,7 +1961,7 @@ implicit none
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), target, intent(in) :: core_energy
-real(8), target, intent(in) :: occupations
+real(8), target, dimension(num_occ), intent(in) :: occupations
 integer, target, intent(in) :: num_occ
 !
 type(C_PTR) :: handler_ptr
@@ -1970,8 +2011,8 @@ implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), target, intent(in) :: position
-real(8), optional, target, intent(in) :: vector_field
+real(8), target, dimension(3), intent(in) :: position
+real(8), optional, target, dimension(3), intent(in) :: vector_field
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -2009,14 +2050,14 @@ end subroutine sirius_add_atom
 !
 !> @brief Set new atomic position.
 !> @param [in] handler Simulation context handler.
-!> @param [in] ia Index of atom.
+!> @param [in] ia Index of atom; index starts form 1
 !> @param [in] position Atom position in lattice coordinates.
 subroutine sirius_set_atom_position(handler,ia,position)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 integer, target, intent(in) :: ia
-real(8), target, intent(in) :: position
+real(8), target, dimension(3), intent(in) :: position
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: ia_ptr
@@ -2056,10 +2097,10 @@ implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-complex(8), target, intent(in) :: pw_coeffs
+complex(8), target, dimension(*), intent(in) :: pw_coeffs
 logical, optional, target, intent(in) :: transform_to_rg
 integer, optional, target, intent(in) :: ngv
-integer, optional, target, intent(in) :: gvl
+integer, optional, target, dimension(3,*), intent(in) :: gvl
 integer, optional, target, intent(in) :: comm
 !
 type(C_PTR) :: handler_ptr
@@ -2132,9 +2173,9 @@ implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-complex(8), target, intent(in) :: pw_coeffs
+complex(8), target, dimension(*), intent(in) :: pw_coeffs
 integer, optional, target, intent(in) :: ngv
-integer, optional, target, intent(in) :: gvl
+integer, optional, target, dimension(3,*), intent(in) :: gvl
 integer, optional, target, intent(in) :: comm
 !
 type(C_PTR) :: handler_ptr
@@ -2188,7 +2229,7 @@ end subroutine sirius_get_pw_coeffs
 !> @param [in] handler Simulation context handler.
 !> @param [in] atom_type Label of the atom type.
 !> @param [in] label Label of the function.
-!> @param [in] pw_coeffs Local array of plane-wave coefficients.
+!> @param [out] pw_coeffs Local array of plane-wave coefficients.
 !> @param [in] ngv Local number of G-vectors.
 !> @param [in] gvl List of G-vectors in lattice coordinates (Miller indices).
 !> @param [in] comm MPI communicator used in distribution of G-vectors
@@ -2198,9 +2239,9 @@ implicit none
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: atom_type
 character(*), target, intent(in) :: label
-real(8), target, intent(in) :: pw_coeffs
+real(8), target, dimension(*), intent(out) :: pw_coeffs
 integer, optional, target, intent(in) :: ngv
-integer, optional, target, intent(in) :: gvl
+integer, optional, target, dimension(3,*), intent(in) :: gvl
 integer, optional, target, intent(in) :: comm
 !
 type(C_PTR) :: handler_ptr
@@ -2577,7 +2618,7 @@ end subroutine sirius_get_band_energies
 !> @param [in] ia Global index of atom.
 !> @param [in] ispn Spin component.
 !> @param [out] d_mtrx D-matrix.
-!> @param [in] ld Leading dimention of D-matrix.
+!> @param [in] ld Leading dimension of D-matrix.
 subroutine sirius_get_d_operator_matrix(handler,ia,ispn,d_mtrx,ld)
 implicit none
 !
@@ -2624,7 +2665,7 @@ end subroutine sirius_get_d_operator_matrix
 !> @param [in] ia Global index of atom.
 !> @param [in] ispn Spin component.
 !> @param [out] d_mtrx D-matrix.
-!> @param [in] ld Leading dimention of D-matrix.
+!> @param [in] ld Leading dimension of D-matrix.
 subroutine sirius_set_d_operator_matrix(handler,ia,ispn,d_mtrx,ld)
 implicit none
 !
@@ -2670,13 +2711,13 @@ end subroutine sirius_set_d_operator_matrix
 !> @param [in] handler Simulation context handler.
 !> @param [in] label Atom type label.
 !> @param [out] q_mtrx Q-matrix.
-!> @param [in] ld Leading dimention of Q-matrix.
+!> @param [in] ld Leading dimension of Q-matrix.
 subroutine sirius_set_q_operator_matrix(handler,label,q_mtrx,ld)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), target, intent(out) :: q_mtrx
+real(8), target, dimension(ld,ld), intent(out) :: q_mtrx
 integer, target, intent(in) :: ld
 !
 type(C_PTR) :: handler_ptr
@@ -2715,13 +2756,13 @@ end subroutine sirius_set_q_operator_matrix
 !> @param [in] handler Simulation context handler.
 !> @param [in] label Atom type label.
 !> @param [out] q_mtrx Q-matrix.
-!> @param [in] ld Leading dimention of Q-matrix.
+!> @param [in] ld Leading dimension of Q-matrix.
 subroutine sirius_get_q_operator_matrix(handler,label,q_mtrx,ld)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), target, intent(out) :: q_mtrx
+real(8), target, dimension(ld,ld), intent(out) :: q_mtrx
 integer, target, intent(in) :: ld
 !
 type(C_PTR) :: handler_ptr
@@ -2760,7 +2801,7 @@ end subroutine sirius_get_q_operator_matrix
 !> @param [in] handler DFT ground state handler.
 !> @param [in] ia Global index of atom.
 !> @param [out] dm Complex density matrix.
-!> @param [in] ld Leading dimention of the density matrix.
+!> @param [in] ld Leading dimension of the density matrix.
 subroutine sirius_get_density_matrix(handler,ia,dm,ld)
 implicit none
 !
@@ -2801,7 +2842,7 @@ end subroutine sirius_get_density_matrix
 !> @param [in] handler DFT ground state handler.
 !> @param [in] ia Global index of atom.
 !> @param [out] dm Complex density matrix.
-!> @param [in] ld Leading dimention of the density matrix.
+!> @param [in] ld Leading dimension of the density matrix.
 subroutine sirius_set_density_matrix(handler,ia,dm,ld)
 implicit none
 !
@@ -2886,7 +2927,7 @@ implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), target, intent(out) :: forces
+real(8), target, dimension(3,*), intent(out) :: forces
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -3018,8 +3059,8 @@ character(*), target, intent(in) :: label
 integer, target, intent(in) :: xi1
 integer, target, intent(in) :: xi2
 integer, target, intent(in) :: ngv
-integer, target, intent(in) :: gvl
-complex(8), target, intent(out) :: q_pw
+integer, target, dimension(3,ngv), intent(in) :: gvl
+complex(8), target, dimension(ngv), intent(out) :: q_pw
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
@@ -3073,8 +3114,8 @@ end subroutine sirius_get_q_operator
 !> @param [in] npw Local number of G+k vectors.
 !> @param [in] gvec_k List of G-vectors.
 !> @param [out] evc Wave-functions.
-!> @param [in] ld1 Leading dimention of evc array.
-!> @param [in] ld2 Second dimention of evc array.
+!> @param [in] ld1 Leading dimension of evc array.
+!> @param [in] ld2 Second dimension of evc array.
 subroutine sirius_get_wave_functions(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2)
 implicit none
 !
@@ -3726,31 +3767,6 @@ call sirius_get_fft_comm_aux(handler_ptr,fcomm_ptr)
 end subroutine sirius_get_fft_comm
 
 !
-!> @brief Get total number of G-vectors
-!> @param [in] handler Simulation context handler
-function sirius_get_num_gvec(handler) result(res)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-integer :: res
-!
-type(C_PTR) :: handler_ptr
-!
-interface
-function sirius_get_num_gvec_aux(handler) result(res)&
-&bind(C, name="sirius_get_num_gvec")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-integer(C_INT) :: res
-end function
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-res = sirius_get_num_gvec_aux(handler_ptr)
-end function sirius_get_num_gvec
-
-!
 !> @brief Get G-vector arrays.
 !> @param [in] handler Simulation context handler
 !> @param [in] gvec G-vectors in lattice coordinates.
@@ -3805,85 +3821,6 @@ endif
 call sirius_get_gvec_arrays_aux(handler_ptr,gvec_ptr,gvec_cart_ptr,gvec_len_ptr,&
 &index_by_gvec_ptr)
 end subroutine sirius_get_gvec_arrays
-
-!
-!> @brief Get local number of FFT grid points.
-!> @param [in] handler Simulation context handler
-function sirius_get_num_fft_grid_points(handler) result(res)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-integer :: res
-!
-type(C_PTR) :: handler_ptr
-!
-interface
-function sirius_get_num_fft_grid_points_aux(handler) result(res)&
-&bind(C, name="sirius_get_num_fft_grid_points")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-integer(C_INT) :: res
-end function
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-res = sirius_get_num_fft_grid_points_aux(handler_ptr)
-end function sirius_get_num_fft_grid_points
-
-!
-!> @brief Get mapping between G-vector index and FFT index
-!> @param [in] handler Simulation context handler
-!> @param [out] fft_index Index inside FFT buffer
-subroutine sirius_get_fft_index(handler,fft_index)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-integer, target, intent(out) :: fft_index
-!
-type(C_PTR) :: handler_ptr
-type(C_PTR) :: fft_index_ptr
-!
-interface
-subroutine sirius_get_fft_index_aux(handler,fft_index)&
-&bind(C, name="sirius_get_fft_index")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-type(C_PTR), value :: fft_index
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-fft_index_ptr = C_NULL_PTR
-fft_index_ptr = C_LOC(fft_index)
-call sirius_get_fft_index_aux(handler_ptr,fft_index_ptr)
-end subroutine sirius_get_fft_index
-
-!
-!> @brief Get maximum number of G+k vectors across all k-points in the set
-!> @param [in] ks_handler K-point set handler.
-function sirius_get_max_num_gkvec(ks_handler) result(res)
-implicit none
-!
-type(C_PTR), target, intent(in) :: ks_handler
-integer :: res
-!
-type(C_PTR) :: ks_handler_ptr
-!
-interface
-function sirius_get_max_num_gkvec_aux(ks_handler) result(res)&
-&bind(C, name="sirius_get_max_num_gkvec")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: ks_handler
-integer(C_INT) :: res
-end function
-end interface
-!
-ks_handler_ptr = C_NULL_PTR
-ks_handler_ptr = C_LOC(ks_handler)
-res = sirius_get_max_num_gkvec_aux(ks_handler_ptr)
-end function sirius_get_max_num_gkvec
 
 !
 !> @brief Get all G+k vector related arrays
