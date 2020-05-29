@@ -97,7 +97,7 @@ endif()
 
 target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     SpFFT::spfft
-                                    GSL::gsl
+                                    ${GSL_LIBRARY}
                                     "${LINALG_LIB}"
                                     MPI::MPI_CXX
                                     sirius::libxc
