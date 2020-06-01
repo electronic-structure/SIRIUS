@@ -160,20 +160,11 @@ get_gpublasDiagonal_t(char c)
     }
 
 /// Store the default (null) stream handler.
-inline ::acc::blas::handle_t&
-null_stream_handle()
-{
-    static ::acc::blas::handle_t null_stream_handle_;
-    return null_stream_handle_;
-}
+::acc::blas::handle_t& null_stream_handle();
+
 
 /// Store the gpublas handlers associated with acc streams.
-inline std::vector<::acc::blas::handle_t>&
-stream_handles()
-{
-    static std::vector<::acc::blas::handle_t> stream_handles_;
-    return stream_handles_;
-}
+std::vector<::acc::blas::handle_t>& stream_handles();
 
 inline void
 create_stream_handles()
@@ -320,12 +311,7 @@ zaxpy(int n__, acc_complex_double_t const* alpha__, acc_complex_double_t const* 
 #if defined(__CUDA)
 namespace xt {
 
-inline cublasXtHandle_t&
-cublasxt_handle()
-{
-    static cublasXtHandle_t handle;
-    return handle;
-}
+cublasXtHandle_t& cublasxt_handle();
 
 inline void
 create_handle()
