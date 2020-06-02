@@ -328,6 +328,12 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
 
     auto& std_solver = ctx_.std_evp_solver();
 
+    /* tolerance for the norm of L2-norms of the residuals, used for
+     * relative convergence criterion. We can only compute this after
+     * we have the first residual norms available */
+    double relative_frobenius_tolerance{0};
+    double current_frobenius_norm{0};
+
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
@@ -379,7 +385,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
         /* solve standard eigen-value problem with the size N */
         if (std_solver.solve(N, ncomp, ovlp, &eval[0], evec)) {
             std::stringstream s;
-            s << "[sirius::Band::get_singular_components] error in diagonalziation";
+            s << "[sirius::Band::get_singular_components] error in diagonalization";
             TERMINATE(s);
         }
 
@@ -396,28 +402,45 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
             kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
         }
 
+        bool last_iteration = k == (itso.num_steps_ - 1);
+
         /* don't compute residuals on last iteration */
-        if (k != itso.num_steps_ - 1) {
+        if (!last_iteration) {
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
-            n = sirius::residuals(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0,
+            auto result = sirius::residuals(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0,
                                   N, ncomp, eval, evec, ophi, phi, opsi, psi, res, o_diag__, diag1,
                                   itso.converge_by_energy_, itso.residual_tolerance_,
                                   [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
+            n = result.first;
+            current_frobenius_norm = result.second;
+
+            /* set the relative tolerance convergence criterion */
+            if (k == 0) {
+                relative_frobenius_tolerance = current_frobenius_norm * itso.relative_tolerance_;
+            }
+
             kp.message(3, __function_name__, "number of added residuals: %i\n", n);
             if (ctx_.control().print_checksum_) {
                 res.print_checksum(ctx_.processing_unit(), "res", 0, n);
             }
         }
+        /* verify convergence criteria */
+        bool converged_by_relative_tol = k > 0 && current_frobenius_norm < relative_frobenius_tolerance ;
+        bool converged_by_absolute_tol = n <= itso.min_num_res_;
+        bool converged = converged_by_absolute_tol || converged_by_relative_tol;
+
+        /* check if running out of space */
+        bool should_restart = N + n > num_phi;
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-        if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
+        if (should_restart || converged || last_iteration) {
             PROFILE("sirius::Band::get_singular_components|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-            if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
+            if (converged || last_iteration) {
                 break;
             } else { /* otherwise, set Psi as a new trial basis */
                 kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
@@ -595,8 +618,17 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
 
     auto& std_solver = ctx_.std_evp_solver();
 
+    /* tolerance for the norm of L2-norms of the residuals, used for
+     * relative convergence criterion. We can only compute this after
+     * we have the first residual norms available */
+    double relative_frobenius_tolerance{0};
+    double current_frobenius_norm{0};
+
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
+
+        bool last_iteration = k == (itso.num_steps_ - 1);
+
         /* apply Hamiltonian and overlap operators to the new basis functions */
         if (k == 0) {
             Hk__.apply_fv_h_o(false, true, 0, nlo, phi, &hphi, &ophi);
@@ -629,23 +661,42 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
         }
 
         /* don't compute residuals on last iteration */
-        if (k != itso.num_steps_ - 1) {
+        if (!last_iteration) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            n = sirius::residuals(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0,
+            auto result = sirius::residuals(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0,
                                   N, num_bands, eval, evec, hphi, ophi, hpsi, opsi, res, h_o_diag.first, h_o_diag.second,
                                   itso.converge_by_energy_, itso.residual_tolerance_,
                                   [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
+            n = result.first;
+            current_frobenius_norm = result.second;
+
+            /* set the relative tolerance convergence criterion */
+            if (k == 0) {
+                relative_frobenius_tolerance = current_frobenius_norm * itso.relative_tolerance_;
+            }
+        }
+
+        /* verify convergence criteria */
+        bool converged_by_relative_tol = k > 0 && current_frobenius_norm < relative_frobenius_tolerance ;
+        bool converged_by_absolute_tol = n <= itso.min_num_res_;
+        bool converged = converged_by_absolute_tol || converged_by_relative_tol;
+
+        /* check if running out of space */
+        bool should_restart = N + n > num_phi;
+
+        if (converged) {
+            kp.message(3, __function_name__, "converged by %s tolerance\n", converged_by_relative_tol ? "relative" : "absolute");
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-        if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
+        if (should_restart || converged || last_iteration) {
             PROFILE("sirius::Band::diag_fv_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, 0, N, evec, 0, 0, psi, 0, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-            if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
+            if (converged || last_iteration) {
                 break;
             } else { /* otherwise, set Psi as a new trial basis */
                 kp.message(3, __function_name__, "%s", "subspace size limit reached\n");

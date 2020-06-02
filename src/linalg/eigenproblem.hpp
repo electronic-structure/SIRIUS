@@ -138,8 +138,8 @@ class Eigensolver_lapack : public Eigensolver
         if (m != nev__) {
             std::stringstream s;
             s << "not all eigen-values are found" << std::endl
-              << "target number of eign-values: " << nev__ << std::endl
-              << "number of eign-values found: " << m;
+              << "target number of eigen-values: " << nev__ << std::endl
+              << "number of eigen-values found: " << m;
             WARNING(s);
             return 1;
         }
@@ -192,8 +192,8 @@ class Eigensolver_lapack : public Eigensolver
         if (m != nev__) {
             std::stringstream s;
             s << "not all eigen-values are found" << std::endl
-              << "target number of eign-values: " << nev__ << std::endl
-              << "number of eign-values found: " << m;
+              << "target number of eigen-values: " << nev__ << std::endl
+              << "number of eigen-values found: " << m;
             WARNING(s);
             return 1;
         }
@@ -241,8 +241,8 @@ class Eigensolver_lapack : public Eigensolver
         if (m != nev__) {
             std::stringstream s;
             s << "not all eigen-values are found" << std::endl
-              << "target number of eign-values: " << nev__ << std::endl
-              << "number of eign-values found: " << m;
+              << "target number of eigen-values: " << nev__ << std::endl
+              << "number of eigen-values found: " << m;
             WARNING(s);
             return 1;
         }
@@ -292,8 +292,8 @@ class Eigensolver_lapack : public Eigensolver
         if (m != nev__) {
             std::stringstream s;
             s << "not all eigen-values are found" << std::endl
-              << "target number of eign-values: " << nev__ << std::endl
-              << "number of eign-values found: " << m;
+              << "target number of eigen-values: " << nev__ << std::endl
+              << "number of eigen-values found: " << m;
             WARNING(s);
             return 1;
         }

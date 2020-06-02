@@ -18,6 +18,7 @@ src/version.h
 .cproject
 .project
 .settings
+.vscode
 
 html/
 latex/
