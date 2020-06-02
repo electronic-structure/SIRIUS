@@ -14,8 +14,7 @@ from ..logger import Logger
 from ..py_sirius import magnetization
 from .ortho import loewdin
 from .preconditioner import IdentityPreconditioner
-# from .helpers import has_enough_bands
-# from ..utils.exceptions import NotEnoughBands
+import time
 
 logger = Logger()
 
@@ -426,6 +425,7 @@ class CG:
 
         cg_restart_inprogress = False
         for ii in range(1, 1+maxiter):
+            tcgstart = time.time()
             slope = np.real(2*inner(g_X, G_X) + inner(g_eta, G_eta))
 
             if np.abs(slope) < tol and ii > 1:
@@ -503,12 +503,7 @@ class CG:
             logger('gamma: ', gamma)
             G_X = delta_X + gamma * (GP_X - X@(X.H@GP_X))
             G_eta = delta_eta + gamma * GP_eta
-            # ready for the next iteration ...
-            # save_state({'G_X': G_X, 'gx': g_X, 'G_eta': G_eta,
-            #             'f': fn,
-            #             'g_eta': g_eta,
-            #             'gamma': gamma,
-            #             'slope': slope,
-            #             'X': X, 'eta': eta}, M.energy.kpointset, prefix='iter%04d_' % ii)
+            tcgstop = time.time()
+            logger('\tcg step took: ', tcgstop-tcgstart, ' seconds')
 
         return X, fn, FE, False
