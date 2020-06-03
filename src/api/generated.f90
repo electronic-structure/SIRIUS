@@ -2961,25 +2961,29 @@ end subroutine sirius_get_forces
 !> @param [in] handler DFT ground state handler.
 !> @param [in] label Label of the stress tensor component to get.
 !> @param [out] stress_tensor Component of the total stress tensor.
-subroutine sirius_get_stress_tensor(handler,label,stress_tensor)
+!> @param [out] error_code Error code..
+subroutine sirius_get_stress_tensor(handler,label,stress_tensor,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
-real(8), target, intent(out) :: stress_tensor
+real(8), target, dimension(3,3), intent(out) :: stress_tensor
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
 character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: stress_tensor_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_stress_tensor_aux(handler,label,stress_tensor)&
+subroutine sirius_get_stress_tensor_aux(handler,label,stress_tensor,error_code)&
 &bind(C, name="sirius_get_stress_tensor")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: label
 type(C_PTR), value :: stress_tensor
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2991,7 +2995,11 @@ label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
 stress_tensor_ptr = C_NULL_PTR
 stress_tensor_ptr = C_LOC(stress_tensor)
-call sirius_get_stress_tensor_aux(handler_ptr,label_ptr,stress_tensor_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_stress_tensor_aux(handler_ptr,label_ptr,stress_tensor_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_get_stress_tensor
 

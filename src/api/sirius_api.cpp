@@ -2864,48 +2864,53 @@ sirius_get_stress_tensor:
       doc: Label of the stress tensor component to get.
     stress_tensor:
       type: double
-      attr: out, required
+      attr: out, required, dimension(3, 3)
       doc: Component of the total stress tensor.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code..
 @api end
 */
-void sirius_get_stress_tensor(void* const* handler__,
-                              char  const* label__,
-                              double*      stress_tensor__)
+void sirius_get_stress_tensor(void* const* handler__, char const* label__, double* stress_tensor__, int* error_code__)
 {
-    std::string label(label__);
+    call_sirius([&]()
+    {
+        std::string label(label__);
 
-    auto& gs = get_gs(handler__);
+        auto& gs = get_gs(handler__);
 
-    auto& stress_tensor = gs.stress();
+        auto& stress_tensor = gs.stress();
 
-    std::map<std::string, matrix3d<double> (sirius::Stress::*)(void)> func = {
-        {"total",   &sirius::Stress::calc_stress_total},
-        {"vloc",    &sirius::Stress::calc_stress_vloc},
-        {"har",     &sirius::Stress::calc_stress_har},
-        {"ewald",   &sirius::Stress::calc_stress_ewald},
-        {"kin",     &sirius::Stress::calc_stress_kin},
-        {"nonloc",  &sirius::Stress::calc_stress_nonloc},
-        {"us",      &sirius::Stress::calc_stress_us},
-        {"xc",      &sirius::Stress::calc_stress_xc},
-        {"core",    &sirius::Stress::calc_stress_core},
-        {"hubbard", &sirius::Stress::calc_stress_hubbard},
-    };
+        std::map<std::string, matrix3d<double> (sirius::Stress::*)(void)> func = {
+            {"total",   &sirius::Stress::calc_stress_total},
+            {"vloc",    &sirius::Stress::calc_stress_vloc},
+            {"har",     &sirius::Stress::calc_stress_har},
+            {"ewald",   &sirius::Stress::calc_stress_ewald},
+            {"kin",     &sirius::Stress::calc_stress_kin},
+            {"nonloc",  &sirius::Stress::calc_stress_nonloc},
+            {"us",      &sirius::Stress::calc_stress_us},
+            {"xc",      &sirius::Stress::calc_stress_xc},
+            {"core",    &sirius::Stress::calc_stress_core},
+            {"hubbard", &sirius::Stress::calc_stress_hubbard},
+        };
 
-    matrix3d<double> s;
+        matrix3d<double> s;
 
-    try {
-        s = ((stress_tensor.*func.at(label))());
-    } catch(...) {
-        std::stringstream s;
-        s << "wrong label (" << label <<") for the component of stress tensor";
-        TERMINATE(s);
-    }
-
-    for (int mu = 0; mu < 3; mu++) {
-        for (int nu = 0; nu < 3; nu++) {
-            stress_tensor__[nu + mu * 3] = s(mu, nu);
+        try {
+            s = ((stress_tensor.*func.at(label))());
+        } catch(std::out_of_range const& e) {
+            std::stringstream s;
+            s << "wrong label (" << label <<") for the component of stress tensor";
+            throw std::runtime_error(s.str());
         }
-    }
+
+        for (int mu = 0; mu < 3; mu++) {
+            for (int nu = 0; nu < 3; nu++) {
+                stress_tensor__[nu + mu * 3] = s(mu, nu);
+            }
+        }
+    }, error_code__);
 }
 
 /*
