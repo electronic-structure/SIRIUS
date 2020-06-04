@@ -292,16 +292,16 @@ int main(int argn, char** argv)
 
     run_tasks(args);
 
-    // int my_rank = Communicator::world().rank();
+    int my_rank = Communicator::world().rank();
 
     sirius::finalize(1);
 
-    // if (my_rank == 0)  {
-    //     const auto timing_result = ::utils::global_rtgraph_timer.process();
-    //     std::cout<< timing_result.print();
-    //     std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
-    //     ofs << timing_result.json();
-    // }
+    if (my_rank == 0) {
+        const auto timing_result = ::utils::global_rtgraph_timer.process();
+        std::cout << timing_result.print();
+        std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
+        ofs << timing_result.json();
+    }
 
     return 0;
 }
