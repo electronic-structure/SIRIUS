@@ -637,9 +637,9 @@ struct Parameters_input
 struct NLCG_input
 {
     /// CG max iterations
-    int maxiter_{100};
+    int maxiter_{300};
     /// CG restart
-    int restart_{20};
+    int restart_{10};
     /// backtracking search, step parameter
     double tau_{0.1};
     /// temperature in Kelvin
