@@ -663,10 +663,10 @@ class Radial_solver
         int nn{0};
 
         for (int j = 0; j <= dme__; j++) {
-            p.push_back(std::move(std::vector<double>(nr)));
-            q.push_back(std::move(std::vector<double>(nr)));
-            dpdr.push_back(std::move(std::vector<double>(nr)));
-            dqdr.push_back(std::move(std::vector<double>(nr)));
+            p.push_back(std::vector<double>(nr));
+            q.push_back(std::vector<double>(nr));
+            dpdr.push_back(std::vector<double>(nr));
+            dqdr.push_back(std::vector<double>(nr));
 
             if (j) {
                 if (rel__ == relativity_t::none || rel__ == relativity_t::zora) {
