@@ -576,7 +576,7 @@ class Simulation_parameters
     memory_pool& mem_pool(memory_t M__) const
     {
         if (memory_pool_.count(M__) == 0) {
-            memory_pool_.emplace(M__, std::move(memory_pool(M__)));
+            memory_pool_.emplace(M__, memory_pool(M__));
         }
         return memory_pool_.at(M__);
     }

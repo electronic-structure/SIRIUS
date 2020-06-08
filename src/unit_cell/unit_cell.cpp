@@ -499,7 +499,7 @@ Atom_type& Unit_cell::add_atom_type(const std::string label__, const std::string
     }
 
     int id = next_atom_type_id(label__);
-    atom_types_.push_back(std::move(Atom_type(parameters_, id, label__, file_name__)));
+    atom_types_.push_back(Atom_type(parameters_, id, label__, file_name__));
     return atom_types_.back();
 }
 
@@ -517,7 +517,7 @@ void Unit_cell::add_atom(const std::string label, vector3d<double> position, vec
         TERMINATE(s);
     }
 
-    atoms_.push_back(std::move(Atom(atom_type(label), position, vector_field)));
+    atoms_.push_back(Atom(atom_type(label), position, vector_field));
     atom_type(label).add_atom_id(static_cast<int>(atoms_.size()) - 1);
 }
 
@@ -573,12 +573,12 @@ void Unit_cell::initialize()
     for (int iat = 0; iat < num_atom_types(); iat++) {
         int nat = atom_type(iat).num_atoms();
         if (nat > 0) {
-            atom_coord_.push_back(std::move(mdarray<double, 2>(nat, 3, memory_t::host)));
+            atom_coord_.push_back(mdarray<double, 2>(nat, 3, memory_t::host));
             if (parameters_.processing_unit() == device_t::GPU) {
                 atom_coord_.back().allocate(memory_t::device);
             }
         } else {
-            atom_coord_.push_back(std::move(mdarray<double, 2>()));
+            atom_coord_.push_back(mdarray<double, 2>());
         }
     }
     update();
@@ -630,7 +630,7 @@ void Unit_cell::get_symmetry()
         if (asc[i] == -1) {
             /* take next id */
             atom_class_id++;
-            atom_symmetry_classes_.push_back(std::move(Atom_symmetry_class(atom_class_id, atoms_[i].type())));
+            atom_symmetry_classes_.push_back(Atom_symmetry_class(atom_class_id, atoms_[i].type()));
 
             /* scan all atoms */
             for (int j = 0; j < num_atoms(); j++) {
