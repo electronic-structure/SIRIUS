@@ -3771,4 +3771,85 @@ void sirius_nlcg(void* const* handler__,
 #endif
 }
 
+/* @fortran begin function void sirius_nlcg_params          Robust wave function optimizer
+   @fortran argument in  required void*          handler          Ground state handler
+   @fortran argument in  required void*          ks_handler       point set handler
+   @fortran argument in  required double         temp             temperature in Kelvin
+   @fortran argument in  required string         smearing         smearing label
+   @fortran argument in  required double         kappa            pseudo-Hamiltonian scalar preconditioner
+   @fortran argument in  required double         tau              backtracking search reduction parameter
+   @fortran argument in  required double         tol              CG tolerance
+   @fortran argument in  required int            maxiter          CG maxiter
+   @fortran argument in  required int            restart          CG restart
+   @fortran argument in  required string         processing_unit  processing unit cpu|gpu|none
+   @fortran end */
+
+void sirius_nlcg_params(void* const* handler__,
+                        void* const* ks_handler__,
+                        double const* temp__,
+                        char const* smearing__,
+                        double const* kappa__,
+                        double const* tau__,
+                        double const* tol__,
+                        int const* maxiter__,
+                        int const* restart__,
+                        char const* processing_unit__)
+{
+#ifdef __NLCGLIB
+    // call nlcg solver
+    auto& gs = get_gs(handler__);
+    auto& potential = gs.potential();
+    auto& density = gs.density();
+
+    auto& kset = get_ks(ks_handler__);
+    auto& ctx = kset.ctx();
+
+    double temp = *temp__;
+    double kappa = *kappa__;
+    double tau = *tau__;
+    double tol = *tol__;
+    int maxiter = *maxiter__;
+    int restart = *restart__;
+
+    std::string smear(smearing__);
+    std::string pu(processing_unit__);
+
+    nlcglib::smearing_type smearing_t;
+    if (smear.compare("FD") == 0) {
+        smearing_t = nlcglib::smearing_type::FERMI_DIRAC;
+    } else if (smear.compare("GS") == 0) {
+        smearing_t = nlcglib::smearing_type::GAUSSIAN_SPLINE;
+    } else {
+        throw std::runtime_error("invalid smearing type given");
+    }
+
+    if(pu.compare("none") == 0) {
+      // use same processing unit as SIRIUS
+      pu = ctx.control().processing_unit_;
+    }
+
+    sirius::Energy energy(kset, density, potential);
+    if (is_device_memory(ctx.preferred_memory_t())) {
+        if (pu.empty() || pu.compare("gpu") == 0) {
+            nlcglib::nlcg_mvp2_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+        } else if (pu.compare("cpu") == 0) {
+            nlcglib::nlcg_mvp2_device_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+        } else {
+            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+        }
+    } else {
+        if (pu.empty() || pu.compare("gpu") == 0) {
+            nlcglib::nlcg_mvp2_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+        } else if (pu.compare("cpu") == 0) {
+            nlcglib::nlcg_mvp2_cpu_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+        } else {
+            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+        }
+    }
+
+#else
+    throw std::runtime_error("SIRIUS was not compiled with NLCG option.");
+#endif
+}
+
 } // extern "C"
