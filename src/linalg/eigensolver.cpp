@@ -29,7 +29,7 @@ std::unique_ptr<Eigensolver> Eigensolver_factory(std::string name__, memory_pool
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
 
-    Eigensolver* ptr;
+    Eigensolver* ptr = nullptr;
     switch (get_ev_solver_t(name__)) {
         case ev_solver_t::lapack: {
             ptr = new Eigensolver_lapack();
