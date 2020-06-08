@@ -307,6 +307,16 @@ void Wave_functions::allocate(spin_range spins__, memory_t mem__)
     }
 }
 
+void Wave_functions::allocate(spin_range spins__, memory_pool& mp__)
+{
+    for (int s : spins__) {
+        pw_coeffs(s).allocate(mp__);
+        if (has_mt()) {
+            mt_coeffs(s).allocate(mp__);
+        }
+    }
+}
+
 void Wave_functions::deallocate(spin_range spins__, memory_t mem__)
 {
     for (int s : spins__) {

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(SIRIUS VERSION 6.5.3)
+project(SIRIUS VERSION 6.5.4)
 
 # set language and standard
 enable_language(CXX Fortran)
@@ -12,6 +12,7 @@ set(CREATE_FORTRAN_BINDINGS ON CACHE BOOL "build Fortran bindings")
 set(BUILD_DOCS OFF CACHE BOOL "build doxygen doc")
 set(USE_ELPA OFF CACHE BOOL "use scalapack")
 set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
+set(USE_NLCGLIB OFF CACHE BOOL "enable nlcglib")
 set(USE_CUDA OFF CACHE BOOL "use CUDA")
 set(USE_ROCM OFF CACHE BOOL "use ROCM AMD GPU code")
 set(USE_NVTX OFF CACHE BOOL "use Nvidia profiling tools library")
@@ -27,17 +28,13 @@ set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
 set(USE_PROFILER ON CACHE BOOL "measure execution of functions with timer")
 set(USE_MEMORY_POOL ON CACHE BOOL "use memory pool")
 
-if(USE_MAGMA AND NOT USE_CUDA)
-  message(FATAL_ERROR "MAGMA depends on Cuda, must enable Cuda or disable MAGMA")
-endif()
-
 if(USE_CUDA AND USE_ROCM)
   message(FATAL_ERROR "USE_CUDA and USE_ROCM must not be enabled at the same time!")
 endif()
 
-if(USE_MKL AND NOT (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Intel"))
-  message(FATAL_ERROR "Unsupported compiler")
-endif()
+# if(USE_MKL AND NOT (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Intel"))
+#   message(FATAL_ERROR "Unsupported compiler")
+# endif()
 
 set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
 
@@ -67,7 +64,7 @@ if (NOT CMAKE_BUILD_TYPE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "debug" "release" "relwithdebinfo")
 endif()
 
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
   set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb -DDEBUG")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
@@ -85,7 +82,7 @@ endif()
 # preserve rpaths when installing and make the install folder relocatable
 # use `CMAKE_SKIP_INSTALL_RPATH` to skip this
 # https://spack.readthedocs.io/en/latest/workflows.html#write-the-cmake-build
-list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES 
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES
           "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" isSystemDir)
 # skip RPATH if SIRIUS is installed to system directories
 if(isSystemDir STREQUAL "-1")
@@ -106,7 +103,11 @@ option(BUILD_SHARED_LIBS "Build shared libraries." ON)
 # generate compile_commands.json with compile commands for each target
 set(CMAKE_EXPORT_COMPILE_COMMANDS "YES")
 
-# dependencies
+if(USE_NLCGLIB)
+  find_package(nlcglib REQUIRED)
+  find_package(Kokkos REQUIRED)
+endif()
+
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
 find_package(LibXC 3.0.0 REQUIRED)
@@ -167,15 +168,14 @@ if(USE_CUDA)
 endif(USE_CUDA)
 
 if(USE_ROCM)
-  message(STATUS "WARNING: ROCM enabled, prototype feature! Only limited functionality available.")
-  find_package(ROCM COMPONENTS rocfft hipblas)
-  if(NOT ${ROCM_HIP_PLATFORM} STREQUAL hcc)
-    message(FATAL_ERROR "Compilation on Nvidia platform not supported with ROCM enabled!")
+  if(NOT HIP_HCC_FLAGS)
+    message(STATUS "Using default AMD gpu targets: gfx803, gfx900, gfx906. Set HIP_HCC_FLAGS to override.")
+    set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} --amdgpu-target=gfx803 --amdgpu-target=gfx900 --amdgpu-target=gfx906)
   endif()
-  add_definitions(${ROCM_DEFINITIONS})
-  include_directories(${ROCM_INCLUDE_DIRS})
-  add_subdirectory(src/gpu/hipblas_port)
-  include_directories(src/gpu/hipblas_port)
+  find_package(HIP REQUIRED)
+  # rocblas and hip have cmake config files, but add incompatible flags for mixed compiler usage, so we use custom find modules
+  find_package(ROCBLAS REQUIRED)
+  find_package(HIPLIBS REQUIRED)
 endif()
 
 # check if git command exists
@@ -232,7 +232,11 @@ if(BUILD_TESTS)
 endif(BUILD_TESTS)
 
 add_subdirectory(apps/atoms)
+add_subdirectory(apps/hydrogen)
 add_subdirectory(apps/dft_loop)
+if(USE_NLCGLIB)
+add_subdirectory(apps/nlcg)
+endif()
 add_subdirectory(apps/upf)
 add_subdirectory(apps/utils)
 add_subdirectory(python_module)

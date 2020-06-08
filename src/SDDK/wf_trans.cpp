@@ -25,6 +25,7 @@
 
 #include "wf_trans.hpp"
 #include "utils/profiler.hpp"
+#include "SDDK/omp.hpp"
 
 namespace sddk {
 

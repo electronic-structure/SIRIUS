@@ -193,7 +193,7 @@ struct Unit_cell_input
     "mixer" : {
       "beta" : (float) beta,
       "beta0" : beta0,
-      "linear_mix_rms_tol" : 
+      "linear_mix_rms_tol" :
     }
     \endcode
  */
@@ -260,6 +260,9 @@ struct Iterative_solver_input
     /// Tolerance for the residual L2 norm.
     double residual_tolerance_{1e-6};
 
+    /// Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used)
+    double relative_tolerance_{0};
+
     /// Additional tolerance for empty states.
     /** Setting this variable to 0 will treat empty states with the same tolerance as occupied states. */
     double empty_states_tolerance_{0};
@@ -298,6 +301,7 @@ struct Iterative_solver_input
             subspace_size_          = section.value("subspace_size", subspace_size_);
             energy_tolerance_       = section.value("energy_tolerance", energy_tolerance_);
             residual_tolerance_     = section.value("residual_tolerance", residual_tolerance_);
+            relative_tolerance_     = section.value("relative_tolerance", relative_tolerance_);
             empty_states_tolerance_ = section.value("empty_states_tolerance", empty_states_tolerance_);
             converge_by_energy_     = section.value("converge_by_energy", converge_by_energy_);
             min_num_res_            = section.value("min_num_res", min_num_res_);
@@ -504,6 +508,9 @@ struct Parameters_input
     /// Shift in the k-point grid.
     std::vector<int> shiftk_{0, 0, 0};
 
+    /// optional k-point coordinates
+    std::vector<vector3d<double>> vk_;
+
     /// Number of SCF iterations.
     int num_dft_iter_{100};
 
@@ -586,6 +593,13 @@ struct Parameters_input
             ngridk_         = section.value("ngridk", ngridk_);
             shiftk_         = section.value("shiftk", shiftk_);
             num_dft_iter_   = section.value("num_dft_iter", num_dft_iter_);
+            auto vk         = section.value("vk", std::vector<std::vector<double>>{});
+            for (auto& vki : vk) {
+                if (vki.size() != 3) {
+                    throw std::runtime_error("parameters.vk expected to be of size 3");
+                }
+                vk_.emplace_back(vector3d<double>(vki));
+            }
             energy_tol_     = section.value("energy_tol", energy_tol_);
             /* potential_tol is obsolete */
             density_tol_    = section.value("potential_tol", density_tol_);
@@ -607,6 +621,41 @@ struct Parameters_input
             if (section.count("hubbard_correction")) {
                 hubbard_correction_ = section.value("hubbard_correction", hubbard_correction_);
             }
+        }
+    }
+};
+
+struct NLCG_input
+{
+    /// CG max iterations
+    int maxiter_{100};
+    /// CG restart
+    int restart_{20};
+    /// backtracking search, step parameter
+    double tau_{0.1};
+    /// temperature in Kelvin
+    double T_{300};
+    /// scalar preconditioning of pseudo Hamiltonian
+    double kappa_{0.3};
+    /// CG tolerance
+    double tol_{1e-9};
+    /// smearing
+    std::string smearing_{"FD"};
+    /// Main processing unit to run on.
+    std::string processing_unit_{""};
+
+    void read(json const& parser)
+    {
+        if (parser.count("nlcg")) {
+            auto section     = parser["nlcg"];
+            maxiter_         = section.value("maxiter", maxiter_);
+            restart_         = section.value("restart", restart_);
+            tau_             = section.value("tau", tau_);
+            T_               = section.value("T", T_);
+            kappa_           = section.value("kappa", kappa_);
+            tol_             = section.value("tol", tol_);
+            smearing_        = section.value("smearing", smearing_);
+            processing_unit_ = section.value("processing_unit", processing_unit_);
         }
     }
 };

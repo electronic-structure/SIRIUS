@@ -3,7 +3,13 @@
 include(FindPackageHandleStandardArgs)
 find_package(PkgConfig)
 
-pkg_search_module(_ELPA elpa elpa_openmp)
+pkg_search_module(_ELPA
+  elpa
+  elpa_openmp
+  elpa_openmp-2019.11.001
+  elpa-2019.05.001
+  elpa-2019.11.001
+  elpa-2019.05.001)
 
 find_library(ELPA_LIBRARIES
   NAMES elpa elpa_openmp
@@ -15,14 +21,16 @@ find_library(ELPA_LIBRARIES
   DOC "elpa libraries list")
 
 find_path(ELPA_INCLUDE_DIR
-  NAMES elpa.h elpa_constants.h
-  PATH_SUFFIXES include/elpa_openmp-$ENV{EBVERSIONELPA}/elpa include/elpa_openmp-$ENV{EBVERSIONELPA} elpa
+  NAMES elpa/elpa.h elpa/elpa_constants.h
+  PATH_SUFFIXES include/elpa_openmp-$ENV{EBVERSIONELPA}
   HINTS
   ${_ELPA_INCLUDE_DIRS}
   ENV ELPAROOT
   ENV EBROOTELPA)
 
 find_package_handle_standard_args(Elpa "DEFAULT_MSG" ELPA_LIBRARIES ELPA_INCLUDE_DIR)
+
+message("ELPA_INCLUDE_DIR: ${ELPA_INCLUDE_DIR}")
 
 if(Elpa_FOUND AND NOT TARGET sirius::elpa)
   add_library(sirius::elpa INTERFACE IMPORTED)

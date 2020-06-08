@@ -310,7 +310,6 @@ mdarray<double, 2> const& Force::calc_forces_ewald()
 
             /* cartesian form for getting cartesian force components */
             vector3d<double> gvec_cart = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
-            double_complex rho(0, 0);
 
             double scalar_part = prefac * (rho_tmp[igloc] * ctx_.gvec_phase_factor(ig, ja)).imag() *
                                  static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4 * alpha)) / g2;
@@ -372,8 +371,14 @@ mdarray<double, 2> const& Force::calc_forces_us()
             break;
         }
         case device_t::GPU: {
+#ifdef __ROCM
+            // ROCm does not support cubblasxt functionality
+            mp = &ctx_.mem_pool(memory_t::host);
+            la = linalg_t::blas;
+#else
             mp = &ctx_.mem_pool(memory_t::host_pinned);
             la = linalg_t::cublasxt;
+#endif
             break;
         }
     }

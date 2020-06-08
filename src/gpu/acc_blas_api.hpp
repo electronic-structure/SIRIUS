@@ -1,0 +1,249 @@
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file acc_blas_api.hpp
+ *
+ *  \brief Interface to cuBLAS / rocblas related functions.
+ */
+
+#ifndef __ACC_BLAS_API_HPP__
+#define __ACC_BLAS_API_HPP__
+
+#include <utility>
+
+#if defined(__CUDA)
+#include <cublas_v2.h>
+
+#elif defined(__ROCM)
+#include <rocblas.h>
+
+#else
+#error Either __CUDA or __ROCM must be defined!
+#endif
+
+namespace acc {
+namespace blas {
+
+#if defined(__CUDA)
+using handle_t = cublasHandle_t;
+using status_t = cublasStatus_t;
+using operation_t = cublasOperation_t;
+using side_mode_t = cublasSideMode_t;
+using diagonal_t = cublasDiagType_t;
+using fill_mode_t = cublasFillMode_t;
+using complex_float_t = cuComplex;
+using complex_double_t = cuDoubleComplex;
+#endif
+
+#if defined(__ROCM)
+using handle_t = rocblas_handle;
+using status_t = rocblas_status;
+using operation_t = rocblas_operation;
+using side_mode_t = rocblas_side;
+using diagonal_t = rocblas_diagonal;
+using fill_mode_t = rocblas_fill;
+using complex_float_t = rocblas_float_complex;
+using complex_double_t = rocblas_double_complex;
+#endif
+
+namespace operation {
+#if defined(__CUDA)
+constexpr auto None = CUBLAS_OP_N;
+constexpr auto Transpose = CUBLAS_OP_T;
+constexpr auto ConjugateTranspose = CUBLAS_OP_C;
+#endif
+
+#if defined(__ROCM)
+constexpr auto None = rocblas_operation_none;
+constexpr auto Transpose = rocblas_operation_transpose;
+constexpr auto ConjugateTranspose = rocblas_operation_conjugate_transpose;
+#endif
+}  // namespace operation
+
+namespace side {
+#if defined(__CUDA)
+constexpr auto Left = CUBLAS_SIDE_LEFT;
+constexpr auto Right = CUBLAS_SIDE_RIGHT;
+#endif
+
+#if defined(__ROCM)
+constexpr auto Left = rocblas_side_left;
+constexpr auto Right = rocblas_side_right;
+#endif
+}  // namespace side
+
+namespace diagonal {
+#if defined(__CUDA)
+constexpr auto NonUnit = CUBLAS_DIAG_NON_UNIT;
+constexpr auto Unit = CUBLAS_DIAG_UNIT;
+#endif
+
+#if defined(__ROCM)
+constexpr auto NonUnit = rocblas_diagonal_non_unit;
+constexpr auto Unit = rocblas_diagonal_unit;
+#endif
+}  // namespace diagonal
+
+namespace fill {
+#if defined(__CUDA)
+constexpr auto Upper = CUBLAS_FILL_MODE_UPPER;
+constexpr auto Lower = CUBLAS_FILL_MODE_LOWER;
+#endif
+
+#if defined(__ROCM)
+constexpr auto Upper = rocblas_fill_upper;
+constexpr auto Lower = rocblas_fill_lower;
+#endif
+}  // namespace fill
+
+namespace status {
+#if defined(__CUDA)
+constexpr auto Success = CUBLAS_STATUS_SUCCESS;
+#endif
+
+#if defined(__ROCM)
+constexpr auto Success = rocblas_status_success;
+#endif
+}  // namespace status
+
+// =======================================
+// Forwarding functions of to GPU BLAS API
+// =======================================
+template <typename... ARGS>
+inline auto create(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_create_handle(std::forward<ARGS>(args)...);
+#else
+  return cublasCreate(std::forward<ARGS>(args)...);
+#endif
+}
+
+template <typename... ARGS>
+inline auto destroy(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_destroy_handle(std::forward<ARGS>(args)...);
+#else
+  return cublasDestroy(std::forward<ARGS>(args)...);
+#endif
+}
+
+template <typename... ARGS>
+inline auto set_stream(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_set_stream(std::forward<ARGS>(args)...);
+#else
+  return cublasSetStream(std::forward<ARGS>(args)...);
+#endif
+}
+
+template <typename... ARGS>
+inline auto get_stream(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_get_stream(std::forward<ARGS>(args)...);
+#else
+  return cublasGetStream(std::forward<ARGS>(args)...);
+#endif
+}
+
+
+template <typename... ARGS>
+inline auto dgemm(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_dgemm(std::forward<ARGS>(args)...);
+#else
+  return cublasDgemm(std::forward<ARGS>(args)...);
+#endif // __ROCM
+}
+
+template <typename... ARGS>
+inline auto zgemm(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_zgemm(std::forward<ARGS>(args)...);
+#else
+  return cublasZgemm(std::forward<ARGS>(args)...);
+#endif // __ROCM
+}
+
+template <typename... ARGS>
+inline auto dgemv(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_dgemv(std::forward<ARGS>(args)...);
+#else
+  return cublasDgemv(std::forward<ARGS>(args)...);
+#endif // __ROCM
+}
+
+template <typename... ARGS>
+inline auto zgemv(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_zgemv(std::forward<ARGS>(args)...);
+#else
+  return cublasZgemv(std::forward<ARGS>(args)...);
+#endif // __ROCM
+}
+
+template <typename... ARGS>
+inline auto dtrmm(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_dtrmm(std::forward<ARGS>(args)...);
+#else
+  return cublasDtrmm(std::forward<ARGS>(args)...);
+#endif // __ROCM
+}
+
+template <typename... ARGS>
+inline auto ztrmm(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_ztrmm(std::forward<ARGS>(args)...);
+#else
+  return cublasZtrmm(std::forward<ARGS>(args)...);
+#endif // __ROCM
+}
+
+template <typename... ARGS>
+inline auto dger(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_dger(std::forward<ARGS>(args)...);
+#else
+  return cublasDger(std::forward<ARGS>(args)...);
+#endif // __ROCM
+}
+
+template <typename... ARGS>
+inline auto zgeru(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_zgeru(std::forward<ARGS>(args)...);
+#else
+  return cublasZgeru(std::forward<ARGS>(args)...);
+#endif // __ROCM
+}
+
+template <typename... ARGS>
+inline auto zaxpy(ARGS&&... args) -> status_t {
+#if defined(__ROCM)
+  return rocblas_zaxpy(std::forward<ARGS>(args)...);
+#else
+  return cublasZaxpy(std::forward<ARGS>(args)...);
+#endif // __ROCM
+}
+
+}  // namespace blas
+}  // namespace acc
+
+#endif

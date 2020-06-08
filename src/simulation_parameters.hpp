@@ -87,6 +87,9 @@ class Simulation_parameters
     /// LDA+U input parameters.
     Hubbard_input hubbard_input_;
 
+    /// NLCG input parameters
+    NLCG_input nlcg_input_;
+
     /// json dictionary containing all runtime options set up through the interface
     json runtime_options_dictionary_;
 
@@ -540,6 +543,11 @@ class Simulation_parameters
         return hubbard_input_;
     }
 
+    NLCG_input const& nlcg_input() const
+    {
+        return nlcg_input_;
+    }
+
     /// Get the options set at runtime.
     json& get_runtime_options_dictionary()
     {
@@ -568,7 +576,7 @@ class Simulation_parameters
     memory_pool& mem_pool(memory_t M__) const
     {
         if (memory_pool_.count(M__) == 0) {
-            memory_pool_.emplace(M__, std::move(memory_pool(M__)));
+            memory_pool_.emplace(M__, memory_pool(M__));
         }
         return memory_pool_.at(M__);
     }

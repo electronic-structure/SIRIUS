@@ -228,7 +228,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const
 
         std::vector<double> eo(kp.num_gkvec());
 
-        auto solver = Eigensolver_factory(ev_solver_t::scalapack);
+        auto solver = Eigensolver_factory("scalapack", nullptr);
         solver->solve(kp.num_gkvec(), ovlp1, eo.data(), evec);
 
         for (int i = 0; i < kp.num_gkvec(); i++) {
@@ -314,11 +314,11 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
     const int bs = ctx_.cyclic_block_size();
 
-    dmatrix<T> hmlt(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> hmlt_old(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp_old(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
 
     if (is_device_memory(ctx_.aux_preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);
@@ -402,11 +402,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             if (std::abs(kp.band_occupancy(j__, ispn__)) < ctx_.min_occupancy() * ctx_.max_occupancy()) {
                 tol += empy_tol;
             }
-            if (std::abs(eval[j__] - eval_old[j__]) > tol) {
-                return false;
-            } else {
-                return true;
-            }
+            return std::abs(eval[j__] - eval_old[j__]) <= tol;
         };
 
         if (itso.init_eval_old_) {
@@ -428,8 +424,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             }
         }
 
-        /* fisrt phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
-         * this is done before the main itertive loop */
+        /* first phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
+         * this is done before the main iterative loop */
 
         /* apply Hamiltonian and S operators to the basis functions */
         Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands, phi, &hphi, &sphi);
@@ -452,7 +448,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             double max_diff = check_hermitian(hmlt, num_bands);
             if (max_diff > 1e-12) {
                 std::stringstream s;
-                s << "H matrix is not hermitian, max_err = " << max_diff;
+                s << "H matrix is not Hermitian, max_err = " << max_diff;
                 WARNING(s);
             }
         }
@@ -464,14 +460,12 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* current subspace size */
         int N = num_bands;
 
-        PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|evp");
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
         }
-        PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|evp");
 
         ctx_.evp_work_count(1);
 
@@ -482,20 +476,47 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* number of newly added basis functions */
         int n{0};
 
+        /* tolerance for the norm of L2-norms of the residuals, used for
+         * relative convergence criterion. We can only compute this after
+         * we have the first residual norms available */
+        double relative_frobenius_tolerance{0};
+        double current_frobenius_norm{0};
+
         /* second phase: start iterative diagonalization */
         for (int k = 0; k < itso.num_steps_; k++) {
 
+            bool last_iteration = k == (itso.num_steps_ - 1);
+
             /* don't compute residuals on last iteration */
-            if (k != itso.num_steps_ - 1) {
-                /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-                n = sirius::residuals<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step,
+            if (!last_iteration) {
+                /* get new preconditioned residuals, and also hpsi and opsi as a by-product */
+                auto result = sirius::residuals<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step,
                                          N, num_bands, eval, evec, hphi, sphi, hpsi, spsi, res, h_o_diag.first,
                                          h_o_diag.second, itso.converge_by_energy_, itso.residual_tolerance_,
                                          is_converged);
+                n = result.first;
+                current_frobenius_norm = result.second;
+
+                /* set the relative tolerance convergence criterion */
+                if (k == 0) {
+                    relative_frobenius_tolerance = current_frobenius_norm * itso.relative_tolerance_;
+                }
+            }
+
+            /* verify convergence criteria */
+            bool converged_by_relative_tol = k > 0 && current_frobenius_norm < relative_frobenius_tolerance ;
+            bool converged_by_absolute_tol = n <= itso.min_num_res_;
+            bool converged = converged_by_absolute_tol || converged_by_relative_tol;
+
+            /* check if running out of space */
+            bool should_restart = N + n > num_phi;
+
+            if (converged) {
+                kp.message(3, __function_name__, "converged by %s tolerance\n", converged_by_relative_tol ? "relative" : "absolute");
             }
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-            if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
+            if (should_restart || converged || last_iteration) {
                 PROFILE("sirius::Band::diag_pseudo_potential_davidson|update_phi");
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
@@ -511,7 +532,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     kp.message(2, __function_name__, "%s", "wave-functions are not recomputed\n");
                 }
 
-                if (k == (itso.num_steps_ - 1) && n > itso.min_num_res_) {
+                if (last_iteration && !converged) {
                     std::stringstream s;
                     s << "[sirius::Band::diag_pseudo_potential_davidson] maximum number of iterations reached, but " <<
                          n << " residual(s) did not converge for k-point " << kp.vk();
@@ -519,7 +540,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 }
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-                if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
+                if (converged || last_iteration) {
                     kp.message(3, __function_name__, "end of iterative diagonalization; n=%i, k=%i\n", n, k);
                     break;
                 } else { /* otherwise, set Psi as a new trial basis */
@@ -553,7 +574,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 }
             }
 
-            /* expand variational subspace with new basis vectors obtatined from residuals */
+            /* expand variational subspace with new basis vectors obtained from residuals */
             for (int ispn = 0; ispn < num_sc; ispn++) {
                 phi.copy_from(res, n, ispn, 0, ispn, N);
             }
@@ -574,7 +595,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 double max_diff = check_hermitian(hmlt, N + n);
                 if (max_diff > 1e-12) {
                     std::stringstream s;
-                    s << "H matrix is not hermitian, max_err = " << max_diff;
+                    s << "H matrix is not Hermitian, max_err = " << max_diff;
                     WARNING(s);
                 }
             }
@@ -587,7 +608,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     double max_diff = check_hermitian(ovlp, N + n);
                     if (max_diff > 1e-12) {
                         std::stringstream s;
-                        s << "S matrix is not hermitian, max_err = " << max_diff;
+                        s << "S matrix is not Hermitian, max_err = " << max_diff;
                         WARNING(s);
                     }
                 }
@@ -603,14 +624,14 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 /* solve standard eigen-value problem with the size N */
                 if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
                     std::stringstream s;
-                    s << "error in diagonalziation";
+                    s << "error in diagonalization";
                     TERMINATE(s);
                 }
             } else {
                 /* solve generalized eigen-value problem with the size N */
                 if (gen_solver.solve(N, num_bands, hmlt, ovlp, &eval[0], evec)) {
                     std::stringstream s;
-                    s << "error in diagonalziation";
+                    s << "error in diagonalization";
                     TERMINATE(s);
                 }
             }
@@ -747,9 +768,9 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
 
     const int bs = ctx_.cyclic_block_size();
 
-    dmatrix<T> ovlp(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp_old(mp, num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
+    dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mp);
 
     if (is_device_memory(ctx_.aux_preferred_memory_t())) {
         auto& mpd = ctx_.mem_pool(memory_t::device);
@@ -809,6 +830,12 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
     mdarray<double, 1> eval_old(nevec);
     eval_old = [](){return 1e10;};
 
+    /* tolerance for the norm of L2-norms of the residuals, used for
+     * relative convergence criterion. We can only compute this after
+     * we have the first residual norms available */
+    double relative_frobenius_tolerance{0};
+    double current_frobenius_norm{0};
+
     for (int k = 0; k < itso.num_steps_; k++) {
 
         /* apply Hamiltonian and S operators to the basis functions */
@@ -849,20 +876,37 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
             }
 
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
-            n = sirius::residuals<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0,
+            auto result = sirius::residuals<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0,
                                      N, nevec, eval, evec, sphi, phi, spsi, psi, res, o_diag, o_diag1,
                                      itso.converge_by_energy_, itso.residual_tolerance_,
                                      [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < iterative_solver_tolerance;});
+            n = result.first;
+            current_frobenius_norm = result.second;
+
+            /* set the relative tolerance convergence criterion */
+            if (k == 0) {
+                relative_frobenius_tolerance = current_frobenius_norm * itso.relative_tolerance_;
+            }
         }
 
+        /* verify convergence criteria */
+        bool converged_by_relative_tol = k > 0 && current_frobenius_norm < relative_frobenius_tolerance ;
+        bool converged_by_absolute_tol = n <= itso.min_num_res_;
+        bool converged = converged_by_absolute_tol || converged_by_relative_tol;
+
+        /* check if running out of space */
+        bool should_restart = N + n > num_phi;
+
+        bool last_iteration = k == (itso.num_steps_ - 1);
+
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-        if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
+        if (should_restart || converged || last_iteration) {
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, 0, N, evec, 0, 0, psi, 0, nevec);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-            if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
+            if (converged || last_iteration) {
                 break;
             } else { /* otherwise, set Psi as a new trial basis */
                 kp.message(3, __function_name__, "%s", "subspace size limit reached\n");

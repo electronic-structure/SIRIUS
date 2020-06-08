@@ -63,13 +63,31 @@ class vector3d : public std::array<T, 3>
         }
     }
 
+    vector3d& operator=(std::initializer_list<T> v__)
+    {
+        assert(v__.size() == 3);
+        for (int x : {0, 1, 2}) {
+            (*this)[x] = v__.begin()[x];
+        }
+        return *this;
+    }
+
     /// Create from std::vector.
-    vector3d(std::vector<T> v__)
+    vector3d(const std::vector<T>& v__)
     {
         assert(v__.size() == 3);
         for (int x : {0, 1, 2}) {
             (*this)[x] = v__[x];
         }
+    }
+
+    vector3d& operator=(const std::vector<T>& v__)
+    {
+        assert(v__.size() == 3);
+        for (int x : {0, 1, 2}) {
+            (*this)[x] = v__[x];
+        }
+        return *this;
     }
 
     /// Create from raw pointer.

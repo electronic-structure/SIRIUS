@@ -71,8 +71,8 @@ K_point::initialize()
      */
     int nst = ctx_.num_bands();
 
-    auto mem_type_evp  = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
-    auto mem_type_gevp = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type_evp  = ctx_.std_evp_solver().host_memory_t();
+    auto mem_type_gevp = ctx_.gen_evp_solver().host_memory_t();
 
     /* build a full list of G+k vectors for all MPI ranks */
     generate_gkvec(ctx_.gk_cutoff());
@@ -113,8 +113,13 @@ K_point::initialize()
             }
             if (ctx_.iterative_solver_input().type_ == "exact") {
                 /* ELPA needs a full matrix of eigen-vectors as it uses it as a work space */
-                fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), gklo_basis_size(), ctx_.blacs_grid(), bs,
-                                                            bs, mem_type_gevp);
+                if (ctx_.gen_evp_solver().type() == ev_solver_t::elpa) {
+                    fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), gklo_basis_size(),
+                                                                ctx_.blacs_grid(), bs, bs, mem_type_gevp);
+                } else{
+                    fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), ctx_.num_fv_states(),
+                                                                ctx_.blacs_grid(), bs, bs, mem_type_gevp);
+                }
             } else {
                 int ncomp = ctx_.iterative_solver_input().num_singular_;
                 if (ncomp < 0) {
@@ -152,16 +157,16 @@ K_point::initialize()
                                    [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, ctx_.num_fv_states(),
                                    ctx_.preferred_memory_t()));
 
-            spinor_wave_functions_ = std::unique_ptr<Wave_functions>(
-                new Wave_functions(gkvec_partition(), unit_cell_.num_atoms(),
-                                   [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, nst,
-                                   ctx_.preferred_memory_t(), ctx_.num_spins()));
+            spinor_wave_functions_ = std::make_shared<Wave_functions>(
+                gkvec_partition(), unit_cell_.num_atoms(),
+                [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); }, nst, ctx_.preferred_memory_t(),
+                ctx_.num_spins());
         } else {
             throw std::runtime_error("not implemented");
         }
     } else {
-        spinor_wave_functions_ = std::unique_ptr<Wave_functions>(
-            new Wave_functions(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins()));
+        spinor_wave_functions_ =
+            std::make_shared<Wave_functions>(gkvec_partition(), nst, ctx_.preferred_memory_t(), ctx_.num_spins());
         if (ctx_.hubbard_correction()) {
             auto r = unit_cell_.num_wf_with_U();
             const int num_sc = ctx_.num_mag_dims() == 3 ? 2 : 1;
@@ -216,7 +221,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
         if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ ) {
             dmatrix<double_complex> Z(nwfu, nwfu);
 
-            auto ev_solver = Eigensolver_factory(ev_solver_t::lapack);
+            auto ev_solver = Eigensolver_factory("lapack", nullptr);
 
             std::vector<double> eigenvalues(nwfu, 0.0);
 

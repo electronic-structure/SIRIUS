@@ -8,7 +8,6 @@ import reframe.utility.sanity as sn
 test_folders = ['test01', 'test02', 'test03', 'test04', 'test05', 'test06', 'test07', 'test08',
     'test09', 'test10', 'test11', 'test12', 'test13', 'test14', 'test15', 'test16', 'test17', 'test18']
 
-
 @sn.sanity_function
 def load_json(filename):
     '''This will load a json data from a file.'''

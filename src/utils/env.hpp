@@ -37,23 +37,18 @@ namespace utils {
 template <typename T>
 inline T const* get_env(std::string const& name__)
 {
-    static std::map<std::string, std::pair<bool, T>> map_name;
+    static std::map<std::string, T*> map_name;
     if (map_name.count(name__) == 0) {
         /* first time the function is called */
         const char* raw_str = std::getenv(name__.c_str());
         if (raw_str == NULL) {
-            map_name[name__] = std::make_pair(false, T());
+            map_name[name__] = nullptr;
         } else {
-            T var;
-            std::istringstream(std::string(raw_str)) >> var;
-            map_name[name__] = std::make_pair(true, var);
+            map_name[name__] = new T;
+            std::istringstream(std::string(raw_str)) >> (*map_name[name__]);
         }
     }
-    if (map_name[name__].first == false) {
-        return nullptr;
-    } else {
-        return &map_name[name__].second;
-    }
+    return map_name[name__];
 }
 
 } // namespace utils

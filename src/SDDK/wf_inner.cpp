@@ -24,6 +24,7 @@
  */
 #include "wf_inner.hpp"
 #include "utils/profiler.hpp"
+#include "SDDK/omp.hpp"
 #include <chrono>
 
 namespace sddk {

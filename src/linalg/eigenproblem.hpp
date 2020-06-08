@@ -25,15 +25,12 @@
 #ifndef __EIGENPROBLEM_HPP__
 #define __EIGENPROBLEM_HPP__
 
-#include <omp.h>
 #include "utils/profiler.hpp"
 #include "linalg.hpp"
+#include "SDDK/omp.hpp"
 
 #if defined(__ELPA)
-#include <elpa_constants.h>
-extern "C" {
-#include "elpa.h"
-}
+#include "elpa.hpp"
 #endif
 
 #if defined(__GPU) && defined(__MAGMA)
@@ -48,145 +45,12 @@ using namespace sddk;
 
 //TODO use ELPA functions to transform to standard eigen-problem
 
-/// Type of eigen-value solver.
-enum class ev_solver_t
-{
-    /// LAPACK
-    lapack,
-
-    /// ScaLAPACK
-    scalapack,
-
-    /// ELPA 1-stage solver
-    elpa1,
-
-    /// ELPA 2-stage solver
-    elpa2,
-
-    /// MAGMA with CPU pointers
-    magma,
-
-    /// MAGMA with GPU pointers
-    magma_gpu,
-
-    /// PLASMA
-    plasma,
-
-    /// CUDA eigen-solver
-    cusolver
-};
-
-inline ev_solver_t get_ev_solver_t(std::string name__)
-{
-    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-
-    static const std::map<std::string, ev_solver_t> map_to_type = {
-        {"lapack", ev_solver_t::lapack}, {"scalapack", ev_solver_t::scalapack}, {"elpa1", ev_solver_t::elpa1},
-        {"elpa2", ev_solver_t::elpa2},   {"magma", ev_solver_t::magma},         {"magma_gpu", ev_solver_t::magma_gpu},
-        {"plasma", ev_solver_t::plasma}, {"cusolver", ev_solver_t::cusolver}};
-
-    if (map_to_type.count(name__) == 0) {
-        std::stringstream s;
-        s << "wrong label of eigen-solver : " << name__;
-        TERMINATE(s);
-    }
-
-    return map_to_type.at(name__);
-}
-
-const std::string error_msg_not_implemented = "solver is not implemented";
-
-class Eigensolver
-{
-  protected:
-    /// Memory pool for CPU work buffers.
-    memory_pool mp_h_;
-    /// Memory pool for CPU work buffers using pinned memory.
-    memory_pool mp_hp_;
-    /// Memory pool for GPU work buffers.
-    memory_pool mp_d_;
-
-  public:
-    Eigensolver()
-        : mp_h_(memory_pool(memory_t::host))
-        , mp_hp_(memory_pool(memory_t::host_pinned))
-        , mp_d_(memory_pool(memory_t::device))
-    {
-    }
-
-    virtual ~Eigensolver()
-    {
-    }
-
-    /// Solve a standard eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
-    {
-        TERMINATE(error_msg_not_implemented);
-        return -1;
-    }
-    /// Solve a standard eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
-    {
-        TERMINATE(error_msg_not_implemented);
-        return -1;
-    }
-
-    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
-    {
-        TERMINATE(error_msg_not_implemented);
-        return -1;
-    }
-
-    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
-                      dmatrix<double_complex>& Z__)
-    {
-        TERMINATE(error_msg_not_implemented);
-        return -1;
-    }
-
-    /// Solve a generalized eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
-                      dmatrix<double>& Z__)
-    {
-        TERMINATE(error_msg_not_implemented);
-        return -1;
-    }
-
-    /// Solve a generalized eigen-value problem for all eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__, double* eval__,
-                      dmatrix<double_complex>& Z__)
-    {
-        TERMINATE(error_msg_not_implemented);
-        return -1;
-    }
-
-    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
-                      dmatrix<double>& Z__)
-    {
-        TERMINATE(error_msg_not_implemented);
-        return -1;
-    }
-
-    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
-                      double* eval__, dmatrix<double_complex>& Z__)
-    {
-        TERMINATE(error_msg_not_implemented);
-        return -1;
-    }
-
-    virtual bool is_parallel() = 0;
-};
-
 class Eigensolver_lapack : public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    Eigensolver_lapack()
+        : Eigensolver(ev_solver_t::lapack, nullptr, false, memory_t::host, memory_t::host)
     {
-        return false;
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
@@ -274,8 +138,8 @@ class Eigensolver_lapack : public Eigensolver
         if (m != nev__) {
             std::stringstream s;
             s << "not all eigen-values are found" << std::endl
-              << "target number of eign-values: " << nev__ << std::endl
-              << "number of eign-values found: " << m;
+              << "target number of eigen-values: " << nev__ << std::endl
+              << "number of eigen-values found: " << m;
             WARNING(s);
             return 1;
         }
@@ -328,8 +192,8 @@ class Eigensolver_lapack : public Eigensolver
         if (m != nev__) {
             std::stringstream s;
             s << "not all eigen-values are found" << std::endl
-              << "target number of eign-values: " << nev__ << std::endl
-              << "number of eign-values found: " << m;
+              << "target number of eigen-values: " << nev__ << std::endl
+              << "number of eigen-values found: " << m;
             WARNING(s);
             return 1;
         }
@@ -377,8 +241,8 @@ class Eigensolver_lapack : public Eigensolver
         if (m != nev__) {
             std::stringstream s;
             s << "not all eigen-values are found" << std::endl
-              << "target number of eign-values: " << nev__ << std::endl
-              << "number of eign-values found: " << m;
+              << "target number of eigen-values: " << nev__ << std::endl
+              << "number of eigen-values found: " << m;
             WARNING(s);
             return 1;
         }
@@ -428,8 +292,8 @@ class Eigensolver_lapack : public Eigensolver
         if (m != nev__) {
             std::stringstream s;
             s << "not all eigen-values are found" << std::endl
-              << "target number of eign-values: " << nev__ << std::endl
-              << "number of eign-values found: " << m;
+              << "target number of eigen-values: " << nev__ << std::endl
+              << "number of eigen-values found: " << m;
             WARNING(s);
             return 1;
         }
@@ -505,16 +369,12 @@ class Eigensolver_elpa : public Eigensolver
     }
   public:
     Eigensolver_elpa(int stage__)
-        : stage_(stage__)
+        : Eigensolver(ev_solver_t::elpa, nullptr, true, memory_t::host, memory_t::host)
+        , stage_(stage__)
     {
         if (!(stage_ == 1 || stage_ == 2)) {
             TERMINATE("wrong type of ELPA solver");
         }
-    }
-
-    inline bool is_parallel()
-    {
-        return true;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
@@ -590,6 +450,12 @@ class Eigensolver_elpa : public Eigensolver
         elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
         elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
         elpa_setup(handle);
+        elpa_set_integer(handle, "omp_threads", nt, &error);
+        if (error != ELPA_OK) {
+            TERMINATE("can't set elpa threads");
+        }
+        elpa_set_integer(handle, "gpu", 1, &error);
+
         if (stage_ == 1) {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
         } else {
@@ -641,6 +507,12 @@ class Eigensolver_elpa : public Eigensolver
         elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
         elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
         elpa_setup(handle);
+        elpa_set_integer(handle, "omp_threads", nt, &error);
+        if (error != ELPA_OK) {
+            TERMINATE("can't set elpa threads");
+        }
+        elpa_set_integer(handle, "gpu", 1, &error);
+
         if (stage_ == 1) {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
         } else {
@@ -650,7 +522,8 @@ class Eigensolver_elpa : public Eigensolver
 
         auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
 
-        elpa_eigenvectors_dc(handle, A__.at(memory_t::host), w.get(), Z__.at(memory_t::host), &error);
+        using CT = double _Complex;
+        elpa_eigenvectors_dc(handle, (CT*)A__.at(memory_t::host), w.get(), (CT*)Z__.at(memory_t::host), &error);
 
         elpa_deallocate(handle, &error);
 
@@ -684,12 +557,8 @@ class Eigensolver_elpa : public Eigensolver
 {
   public:
     Eigensolver_elpa(int stage__)
+        : Eigensolver(ev_solver_t::elpa, nullptr, true, memory_t::host, memory_t::host)
     {
-    }
-
-    inline bool is_parallel()
-    {
-        return true;
     }
 };
 #endif
@@ -702,9 +571,9 @@ class Eigensolver_scalapack : public Eigensolver
     double const abstol_{1e-12};
 
   public:
-    inline bool is_parallel()
+    Eigensolver_scalapack()
+        : Eigensolver(ev_solver_t::scalapack, nullptr, true, memory_t::host, memory_t::host)
     {
-        return true;
     }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
@@ -1134,9 +1003,9 @@ class Eigensolver_scalapack : public Eigensolver
 class Eigensolver_scalapack : public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    Eigensolver_scalapack()
+        : Eigensolver(ev_solver_t::scalapack, nullptr, true, memory_t::host, memory_t::host)
     {
-        return true;
     }
 };
 #endif
@@ -1146,15 +1015,17 @@ class Eigensolver_magma: public Eigensolver
 {
   public:
 
-    inline bool is_parallel()
+    Eigensolver_magma()
+        : Eigensolver(ev_solver_t::magma, nullptr, false, memory_t::host_pinned, memory_t::host)
     {
-        return false;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
               dmatrix<double>& Z__)
     {
+        PROFILE("Eigensolver_magma|dsygvdx");
+
         int nt = omp_get_max_threads();
         int lda = A__.ld();
         int ldb = B__.ld();
@@ -1200,6 +1071,8 @@ class Eigensolver_magma: public Eigensolver
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
               double* eval__, dmatrix<double_complex>& Z__)
     {
+        PROFILE("Eigensolver_magma|zhegvdx");
+
         int nt = omp_get_max_threads();
         int lda = A__.ld();
         int ldb = B__.ld();
@@ -1337,9 +1210,9 @@ class Eigensolver_magma_gpu: public Eigensolver
 {
   public:
 
-    inline bool is_parallel()
+    Eigensolver_magma_gpu()
+        : Eigensolver(ev_solver_t::magma, nullptr, false, memory_t::host_pinned, memory_t::device)
     {
-        return false;
     }
 
     ///// Solve a generalized eigen-value problem for N lowest eigen-pairs.
@@ -1536,17 +1409,18 @@ class Eigensolver_magma_gpu: public Eigensolver
 class Eigensolver_magma: public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    Eigensolver_magma()
+        : Eigensolver(ev_solver_t::magma, nullptr, false, memory_t::host_pinned, memory_t::host)
     {
-        return false;
     }
 };
+
 class Eigensolver_magma_gpu: public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    Eigensolver_magma_gpu()
+        : Eigensolver(ev_solver_t::magma, nullptr, false, memory_t::host_pinned, memory_t::device)
     {
-        return false;
     }
 };
 #endif
@@ -1555,34 +1429,41 @@ class Eigensolver_magma_gpu: public Eigensolver
 class Eigensolver_cuda: public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    Eigensolver_cuda(memory_pool* mpd__)
+        : Eigensolver(ev_solver_t::cusolver, mpd__, false, memory_t::host_pinned, memory_t::device)
     {
-        return false;
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        PROFILE("Eigensolver_cuda|zheevd");
+        PROFILE("Eigensolver_cuda|zheevdx");
 
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+        cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
-        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
-        CALL_CUSOLVER(cusolverDnZheevd_bufferSize, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
-                                                    reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
-                                                    w.get(), &lwork));
+        int h_meig;
+        auto vl = -std::numeric_limits<double>::infinity();
+        auto vu = std::numeric_limits<double>::infinity();
 
-        auto work = mp_d_.get_unique_ptr<double_complex>(lwork);
+        CALL_CUSOLVER(cusolverDnZheevdx_bufferSize, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+                                                    reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
+                                                    vl, vu, 1, nev__, &h_meig, w.get(), &lwork));
+
+        auto work = mp_d_->get_unique_ptr<double_complex>(lwork);
 
         int info;
-        auto dinfo = mp_d_.get_unique_ptr<int>(1);
-        CALL_CUSOLVER(cusolverDnZheevd, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
+        auto dinfo = mp_d_->get_unique_ptr<int>(1);
+        CALL_CUSOLVER(cusolverDnZheevdx, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                          reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
-                                         w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, dinfo.get()));
+                                         vl, vu, 1, nev__, &h_meig, w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork,
+                                         dinfo.get()));
+
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
@@ -1599,25 +1480,30 @@ class Eigensolver_cuda: public Eigensolver
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__,
               dmatrix<double>& Z__)
     {
-        PROFILE("Eigensolver_cuda|dsyevd");
+        PROFILE("Eigensolver_cuda|dsyevdx");
 
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+        cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
-        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
-        CALL_CUSOLVER(cusolverDnDsyevd_bufferSize, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
-                                                    A__.at(memory_t::device), A__.ld(),
+        int h_meig;
+        auto vl = -std::numeric_limits<double>::infinity();
+        auto vu = std::numeric_limits<double>::infinity();
+
+        CALL_CUSOLVER(cusolverDnDsyevdx_bufferSize, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+                                                    A__.at(memory_t::device), A__.ld(), vl, vu, 1, nev__, &h_meig,
                                                     w.get(), &lwork));
 
-        auto work = mp_d_.get_unique_ptr<double>(lwork);
+        auto work = mp_d_->get_unique_ptr<double>(lwork);
 
         int info;
-        auto dinfo = mp_d_.get_unique_ptr<int>(1);
-        CALL_CUSOLVER(cusolverDnDsyevd, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
-                                         A__.at(memory_t::device), A__.ld(),
+        auto dinfo = mp_d_->get_unique_ptr<int>(1);
+        CALL_CUSOLVER(cusolverDnDsyevdx, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+                                         A__.at(memory_t::device), A__.ld(), vl, vu, 1, nev__, &h_meig,
                                          w.get(), work.get(), lwork, dinfo.get()));
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
@@ -1635,31 +1521,36 @@ class Eigensolver_cuda: public Eigensolver
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        PROFILE("Eigensolver_cuda|zhegvd");
+        PROFILE("Eigensolver_cuda|zhegvdx");
 
         cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+        cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
-        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
-        CALL_CUSOLVER(cusolverDnZhegvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+        int h_meig;
+        auto vl = -std::numeric_limits<double>::infinity();
+        auto vu = std::numeric_limits<double>::infinity();
+
+        CALL_CUSOLVER(cusolverDnZhegvdx_bufferSize, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                                     reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
                                                     reinterpret_cast<cuDoubleComplex*>(B__.at(memory_t::device)), B__.ld(),
-                                                    w.get(), &lwork));
+                                                    vl, vu, 1, nev__, &h_meig, w.get(), &lwork));
 
-        auto work = mp_d_.get_unique_ptr<double_complex>(lwork);
-
+        auto work = mp_d_->get_unique_ptr<double_complex>(lwork);
 
         int info;
-        auto dinfo = mp_d_.get_unique_ptr<int>(1);
-        CALL_CUSOLVER(cusolverDnZhegvd, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+        auto dinfo = mp_d_->get_unique_ptr<int>(1);
+        CALL_CUSOLVER(cusolverDnZhegvdx, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                          reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
                                          reinterpret_cast<cuDoubleComplex*>(B__.at(memory_t::device)), B__.ld(),
-                                         w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, dinfo.get()));
+                                         vl, vu, 1, nev__, &h_meig, w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), 
+                                         lwork, dinfo.get()));
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
@@ -1678,30 +1569,35 @@ class Eigensolver_cuda: public Eigensolver
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
               dmatrix<double>& Z__)
     {
-        PROFILE("Eigensolver_cuda|dsygvd");
+        PROFILE("Eigensolver_cuda|dsygvdx");
 
         cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+        cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
-        auto w = mp_d_.get_unique_ptr<double>(matrix_size__);
+        auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
-        CALL_CUSOLVER(cusolverDnDsygvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+        int h_meig;
+        auto vl = -std::numeric_limits<double>::infinity();
+        auto vu = std::numeric_limits<double>::infinity();
+
+        CALL_CUSOLVER(cusolverDnDsygvdx_bufferSize, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                                     A__.at(memory_t::device), A__.ld(),
                                                     B__.at(memory_t::device), B__.ld(),
-                                                    w.get(), &lwork));
+                                                    vl, vu, 1, nev__, &h_meig, w.get(), &lwork));
 
-        auto work = mp_d_.get_unique_ptr<double>(lwork);
+        auto work = mp_d_->get_unique_ptr<double>(lwork);
 
         int info;
-        auto dinfo = mp_d_.get_unique_ptr<int>(1);
-        CALL_CUSOLVER(cusolverDnDsygvd, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+        auto dinfo = mp_d_->get_unique_ptr<int>(1);
+        CALL_CUSOLVER(cusolverDnDsygvdx, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                          A__.at(memory_t::device), A__.ld(),
                                          B__.at(memory_t::device), B__.ld(),
-                                         w.get(), work.get(), lwork, dinfo.get()));
+                                         vl, vu, 1, nev__, &h_meig, w.get(), work.get(), lwork, dinfo.get()));
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
@@ -1719,51 +1615,53 @@ class Eigensolver_cuda: public Eigensolver
 class Eigensolver_cuda: public Eigensolver
 {
   public:
-    inline bool is_parallel()
+    Eigensolver_cuda(memory_pool* mpd__)
+        : Eigensolver(ev_solver_t::cusolver, mpd__, false, memory_t::host_pinned, memory_t::device)
     {
-        return false;
     }
 };
 #endif
 
-inline std::unique_ptr<Eigensolver> Eigensolver_factory(ev_solver_t ev_solver_type__)
-{
-    Eigensolver* ptr;
-    switch (ev_solver_type__) {
-        case ev_solver_t::lapack: {
-            ptr = new Eigensolver_lapack();
-            break;
-        }
-        case ev_solver_t::scalapack: {
-            ptr = new Eigensolver_scalapack();
-            break;
-        }
-        case ev_solver_t::elpa1: {
-            ptr = new Eigensolver_elpa(1);
-            break;
-        }
-        case ev_solver_t::elpa2: {
-            ptr = new Eigensolver_elpa(2);
-            break;
-        }
-        case ev_solver_t::magma: {
-            ptr = new Eigensolver_magma();
-            break;
-        }
-        case ev_solver_t::magma_gpu: {
-            ptr = new Eigensolver_magma_gpu();
-            break;
-        }
-        case ev_solver_t::cusolver: {
-            ptr = new Eigensolver_cuda();
-            break;
-        }
-        default: {
-            TERMINATE("not implemented");
-        }
-    }
-    return std::unique_ptr<Eigensolver>(ptr);
-}
+//inline std::unique_ptr<Eigensolver> Eigensolver_factory(std::string name__, memory_pool* mpd__)
+//{
+//    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+//
+//    Eigensolver* ptr;
+//    switch (get_ev_solver_t(name__)) {
+//        case ev_solver_t::lapack: {
+//            ptr = new Eigensolver_lapack();
+//            break;
+//        }
+//        case ev_solver_t::scalapack: {
+//            ptr = new Eigensolver_scalapack();
+//            break;
+//        }
+//        case ev_solver_t::elpa: {
+//            if (name__ == "elpa1") {
+//                ptr = new Eigensolver_elpa(1);
+//            } else {
+//                ptr = new Eigensolver_elpa(2);
+//            }
+//            break;
+//        }
+//        case ev_solver_t::magma: {
+//            ptr = new Eigensolver_magma();
+//            break;
+//        }
+//        case ev_solver_t::magma_gpu: {
+//            ptr = new Eigensolver_magma_gpu();
+//            break;
+//        }
+//        case ev_solver_t::cusolver: {
+//            ptr = new Eigensolver_cuda(mpd__);
+//            break;
+//        }
+//        default: {
+//            TERMINATE("not implemented");
+//        }
+//    }
+//    return std::unique_ptr<Eigensolver>(ptr);
+//}
 
 //== #ifdef __PLASMA
 //== extern "C" void plasma_zheevd_wrapper(int32_t matrix_size, void* a, int32_t lda, void* z,

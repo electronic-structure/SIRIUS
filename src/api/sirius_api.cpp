@@ -28,6 +28,10 @@
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
 #include "error_codes.hpp"
+#ifdef __NLCGLIB
+#include "nlcglib/adaptor.hpp"
+#include "nlcglib/nlcglib.hpp"
+#endif
 
 static inline void sirius_exit(int error_code__, std::string msg__ = "")
 {
@@ -518,6 +522,19 @@ void sirius_add_xc_functional(void* const* handler__,
     sim_ctx.add_xc_functional(std::string(name__));
 }
 
+/* @fortran begin function void sirius_insert_xc_functional         Add one of the XC functionals.
+   @fortran argument in required void* gs_handler                Handler of the ground state
+   @fortran argument in required string name                     LibXC label of the functional.
+   @fortran end */
+void
+sirius_insert_xc_functional(void* const* gs_handler__,
+                            char const* name__)
+{
+    auto& gs = get_gs(gs_handler__);
+    auto& potential = gs.potential();
+    potential.insert_xc_functionals({name__});
+}
+
 /* @fortran begin function void sirius_set_mpi_grid_dims      Set dimensions of the MPI grid.
    @fortran argument in required void*  handler               Simulation context handler
    @fortran argument in required int    ndims                 Number of dimensions.
@@ -747,6 +764,105 @@ void sirius_find_ground_state(void*  const* gs_handler__,
 
     auto result = gs.find(rho_tol, etol, ctx.iterative_solver_tolerance(), niter, save);
 }
+
+/* @fortran begin function void sirius_find_ground_state_robust     Find the ground state using the robust
+   wave-function optimization.
+   @fortran argument in required void*  gs_handler                  Handler of the ground state.
+   @fortran argument in required void*  ks_handler                  Handler of the k-point set.
+   @fortran argument in optional double scf_density_tol             Tolerance on RMS in density.
+   @fortran argument in optional double scf_energy_tol              Tolerance in total energy difference.
+   @fortran argument in optional int    scf_ninit__                 Number of SCF iterations.
+   @fortran argument in optional double temp__                      Temperature.
+   @fortran argument in optional double tol__                       Tolerance.
+   @fortran argument in optional int    cg_restart__                CG restart.
+   @fortran argument in optional char[] smearing__                  Smearing "FD" for Fermi-Dirac or "GS" for Gaussian-Spline.
+   @fortran argument in optional double kappa__                     Scalar preconditioner for pseudo Hamiltonian
+   ground state.
+   @fortran end */
+void sirius_find_ground_state_robust(void*  const* gs_handler__,
+                                     void*  const* ks_handler__,
+                                     double const* scf_density_tol__,
+                                     double const* scf_energy_tol__,
+                                     int    const* scf_ninit__,
+                                     double const* temp__,
+                                     double const* tol__
+                                    )
+{
+#ifdef __NLCGLIB
+    auto& gs = get_gs(gs_handler__);
+    auto& ctx = gs.ctx();
+    auto& inp = ctx.parameters_input();
+    gs.initial_state();
+
+    double rho_tol = inp.density_tol_;
+    if (scf_density_tol__) {
+        rho_tol = *scf_density_tol__;
+    }
+
+    double etol = inp.energy_tol_;
+    if (scf_energy_tol__) {
+        etol = *scf_energy_tol__;
+    }
+
+    int niter = inp.num_dft_iter_;
+    if (scf_ninit__) {
+        niter = *scf_ninit__;
+    }
+
+    // do a couple of SCF iterations to obtain a good initial guess
+    bool save_state = false;
+    auto result = gs.find(rho_tol, etol, ctx.iterative_solver_tolerance(), niter, save_state);
+
+    // now call the direct solver
+    // call nlcg solver
+    auto& potential = gs.potential();
+    auto& density = gs.density();
+
+    auto& kset = get_ks(ks_handler__);
+
+    auto nlcg_params  = ctx.nlcg_input();
+    double temp       = nlcg_params.T_;
+    double tol        = nlcg_params.tol_;
+    double kappa      = nlcg_params.kappa_;
+    double tau        = nlcg_params.tau_;
+    int maxiter       = nlcg_params.maxiter_;
+    int restart       = nlcg_params.restart_;
+    std::string smear = nlcg_params.smearing_;
+    std::string pu = nlcg_params.processing_unit_;
+
+    nlcglib::smearing_type smearing;
+    if (smear.compare("FD") == 0) {
+        smearing = nlcglib::smearing_type::FERMI_DIRAC;
+    } else if (smear.compare("GS") == 0) {
+        smearing = nlcglib::smearing_type::GAUSSIAN_SPLINE;
+    } else {
+        throw std::runtime_error("invalid smearing type given");
+    }
+
+    sirius::Energy energy(kset, density, potential);
+    if (is_device_memory(ctx.preferred_memory_t())) {
+        if (pu.empty() || pu.compare("gpu") == 0) {
+            nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else if (pu.compare("cpu") == 0) {
+            nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else {
+            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+        }
+    } else {
+        if (pu.empty() || pu.compare("gpu") == 0) {
+            nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else if (pu.compare("cpu") == 0) {
+            nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else {
+            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+        }
+    }
+#else
+    throw std::runtime_error("SIRIUS was not compiled with NLCG option.");
+#endif
+
+}
+
 
 /* @fortran begin function void sirius_update_ground_state   Update a ground state object after change of atomic coordinates or lattice vectors.
    @fortran argument in  required void*  gs_handler          Ground-state handler.
@@ -1344,6 +1460,23 @@ void sirius_set_band_occupancies(void*  const* ks_handler__,
     }
 }
 
+/* @fortran begin function void sirius_get_band_occupancies   Set band occupancies.
+   @fortran argument in  required void*   ks_handler          K-point set handler.
+   @fortran argument in  required int     ik                  Global index of k-point.
+   @fortran argument in  required int     ispn                Spin component.
+   @fortran argument out  required double  band_occupancies    Array of band occupancies.
+   @fortran end */
+void
+sirius_get_band_occupancies(void* const* ks_handler__, int const* ik__, int const* ispn__,
+                            double* band_occupancies__)
+{
+    auto& ks = get_ks(ks_handler__);
+    int ik   = *ik__ - 1;
+    for (int i = 0; i < ks.ctx().num_bands(); i++) {
+        band_occupancies__[i] = ks[ik]->band_occupancy(i, *ispn__);
+    }
+}
+
 /* @fortran begin function void sirius_get_band_energies         Get band energies.
    @fortran argument in  required void*   ks_handler             K-point set handler.
    @fortran argument in  required int     ik                     Global index of k-point.
@@ -1359,24 +1492,6 @@ void sirius_get_band_energies(void*  const* ks_handler__,
     int ik = *ik__ - 1;
     for (int i = 0; i < ks.ctx().num_bands(); i++) {
         band_energies__[i] = ks[ik]->band_energy(i, *ispn__);
-    }
-}
-
-/* @fortran begin function void sirius_get_band_occupancies      Get band occupancies.
-   @fortran argument in  required void*   ks_handler             K-point set handler.
-   @fortran argument in  required int     ik                     Global index of k-point.
-   @fortran argument in  required int     ispn                   Spin component.
-   @fortran argument out required double  band_occupancies       Array of band occupancies.
-   @fortran end */
-void sirius_get_band_occupancies(void*  const* ks_handler__,
-                                 int    const* ik__,
-                                 int    const* ispn__,
-                                 double*       band_occupancies__)
-{
-    auto& ks = get_ks(ks_handler__);
-    int ik = *ik__ - 1;
-    for (int i = 0; i < ks.ctx().num_bands(); i++) {
-        band_occupancies__[i] = ks[ik]->band_occupancy(i, *ispn__);
     }
 }
 
@@ -3594,6 +3709,66 @@ void sirius_set_callback_function(void* const* handler__, char const* label__, v
             throw std::runtime_error("wrong label of callback function");
         }
     }, error_code__);
+}
+
+/* @fortran begin function void sirius_nlcg                       Robust wave function optimizer
+   @fortran argument in  required void*    handler                Ground state handler
+   @fortran argument in  required void*    ks_handler             point set handler
+   @fortran end */
+
+void sirius_nlcg(void* const* handler__,
+                 void* const* ks_handler__)
+{
+#ifdef __NLCGLIB
+    // call nlcg solver
+    auto& gs = get_gs(handler__);
+    auto& potential = gs.potential();
+    auto& density = gs.density();
+
+    auto& kset = get_ks(ks_handler__);
+    auto& ctx = kset.ctx();
+
+    auto nlcg_params  = ctx.nlcg_input();
+    double temp       = nlcg_params.T_;
+    double tol        = nlcg_params.tol_;
+    double kappa      = nlcg_params.kappa_;
+    double tau        = nlcg_params.tau_;
+    int maxiter       = nlcg_params.maxiter_;
+    int restart       = nlcg_params.restart_;
+    std::string smear = nlcg_params.smearing_;
+    std::string pu = nlcg_params.processing_unit_;
+
+    nlcglib::smearing_type smearing;
+    if (smear.compare("FD") == 0) {
+        smearing = nlcglib::smearing_type::FERMI_DIRAC;
+    } else if (smear.compare("GS") == 0) {
+        smearing = nlcglib::smearing_type::GAUSSIAN_SPLINE;
+    } else {
+        throw std::runtime_error("invalid smearing type given");
+    }
+
+    sirius::Energy energy(kset, density, potential);
+    if (is_device_memory(ctx.preferred_memory_t())) {
+        if (pu.empty() || pu.compare("gpu") == 0) {
+            nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else if (pu.compare("cpu") == 0) {
+            nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else {
+            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+        }
+    } else {
+        if (pu.empty() || pu.compare("gpu") == 0) {
+            nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else if (pu.compare("cpu") == 0) {
+            nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else {
+            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+        }
+    }
+
+#else
+    throw std::runtime_error("SIRIUS was not compiled with NLCG option.");
+#endif
 }
 
 } // extern "C"

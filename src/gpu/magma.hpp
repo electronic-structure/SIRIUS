@@ -27,7 +27,6 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include <cuda.h>
 #include <magma.h>
 #include <magma_z.h>
 #include <magma_d.h>
