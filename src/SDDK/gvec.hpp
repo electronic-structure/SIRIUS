@@ -201,7 +201,7 @@ class Gvec
     /* copy constructor is forbidden */
     Gvec(Gvec const& src__) = delete;
 
-    /* copy assigment operator is forbidden */
+    /* copy assignment operator is forbidden */
     Gvec& operator=(Gvec const& src__) = delete;
 
     /// Return corresponding G-vector for an index in the range [0, num_gvec).
@@ -304,7 +304,7 @@ class Gvec
     {
     }
 
-    /// Move assigment operator.
+    /// Move assignment operator.
     Gvec& operator=(Gvec&& src__);
 
     /// Move constructor.
@@ -628,7 +628,7 @@ class Gvec_partition
     /// Mapping of MPI ranks used to split G-vectors to a 2D grid.
     mdarray<int, 2> rank_map_;
 
-    /// Global index of z-column in new (fat-slab) distrubution.
+    /// Global index of z-column in new (fat-slab) distribution.
     /** This is a mapping between new and original ordering of z-columns. */
     mdarray<int, 1> idx_zcol_;
 
@@ -662,7 +662,7 @@ class Gvec_partition
         return gvec_distr_fft_.counts[rank__];
     }
 
-    /// Local number of G-vectors for FFT-friendly distibution.
+    /// Local number of G-vectors for FFT-friendly distribution.
     inline int gvec_count_fft() const
     {
         return gvec_count_fft(fft_comm().rank());

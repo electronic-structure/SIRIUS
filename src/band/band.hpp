@@ -117,7 +117,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
     void initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const;
 
     /// Initialize the wave-functions subspace at a given k-point.
-    /** If the number of atomic orbitals is smaller than the number of bands, the rest of the inital wave-functions
+    /** If the number of atomic orbitals is smaller than the number of bands, the rest of the initial wave-functions
      *  are created from the random numbers. */
     template <typename T>
     void initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const;

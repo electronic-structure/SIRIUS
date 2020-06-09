@@ -776,7 +776,7 @@ void Local_operator::apply_b(spfft::Transform& spfftk__, int N__, int n__, Wave_
 {
     PROFILE("sirius::Local_operator::apply_b");
 
-    // TODO: bphi[1] is not used here (it will compied from bphi[0] wih a negative sign later;
+    // TODO: bphi[1] is not used here (it will compied from bphi[0] with a negative sign later;
     //       so it's remapping here is useless
 
     /* components of H|psi> to which H is applied */

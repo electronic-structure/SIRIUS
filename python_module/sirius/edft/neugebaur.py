@@ -406,7 +406,7 @@ class CG:
         X = X@U
         # compute initial free energy
         FE, Hx = M(X, fn)
-        logger('intial F: %.10g' % FE)
+        logger('initial F: %.10g' % FE)
 
         HX = Hx * kw
         Hij = X.H @ HX

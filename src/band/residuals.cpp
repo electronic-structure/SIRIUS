@@ -226,7 +226,7 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
                 } else {
                     auto pos_src  = evec__.spl_col().location(ev_idx[j]);
                     auto pos_dest = evec_tmp.spl_col().location(j);
-                    /* do MPI send / recieve */
+                    /* do MPI send / receive */
                     if (pos_src.rank == evec__.blacs_grid().comm_col().rank()) {
                         evec__.blacs_grid().comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
                     }

@@ -183,7 +183,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
             phi.copy_from(psi__, num_bands, nc_mag ? ispn : ispin_step, 0, ispn, 0);
         }
 
-        /* fisrt phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
+        /* first phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
          * this is done before the main itertive loop */
 
         /* apply Hamiltonian and S operators to the basis functions */

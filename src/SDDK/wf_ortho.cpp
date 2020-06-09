@@ -78,7 +78,7 @@ void orthogonalize(memory_t mem__, linalg_t la__, int ispn__, std::vector<Wave_f
 
         if (sddk_pp) {
             gflops += static_cast<int>(1 + wfs__.size()) * ngop * N__ * n__ *
-                      K; // inner and transfrom have the same number of flops
+                      K; // inner and transform have the same number of flops
         }
     }
 

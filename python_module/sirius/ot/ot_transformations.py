@@ -56,7 +56,7 @@ def c(x, c0):
         w = np.sqrt(w)
         R = matview(R)
         err = np.linalg.norm(R.H * R - np.eye(*R.shape), 'fro')
-        # TODO: remove: check that we are not loosing accuracy for small x
+        # TODO: remove: check that we are not losing accuracy for small x
         assert np.isclose(R * np.diag(w**2) * R.H, XX).all()
         assert err < 1e-11
 

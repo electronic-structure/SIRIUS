@@ -45,7 +45,7 @@ class BLACS_grid
 
     /* forbid copy constructor */
     BLACS_grid(BLACS_grid const& src) = delete;
-    /* forbid assigment operator */
+    /* forbid assignment operator */
     BLACS_grid& operator=(BLACS_grid const& src) = delete;
 
   public:

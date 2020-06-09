@@ -19,7 +19,7 @@
 
 /** \file force.hpp
  *
- *  \brief Contains defintion of sirius::Force class.
+ *  \brief Contains definition of sirius::Force class.
  */
 
 #ifndef __FORCE_HPP__

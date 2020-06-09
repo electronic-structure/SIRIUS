@@ -94,7 +94,7 @@ def DFT_ground_state_find(num_dft_iter=1, config='sirius.json'):
     run DFT_ground_state
 
     Keyword Arguments:
-    num_dft_iter -- (Default 1) number of SCF interations
+    num_dft_iter -- (Default 1) number of SCF iterations
     config       -- json configuration / or dictionary (from json)
 
     Returns:

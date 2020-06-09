@@ -51,7 +51,7 @@ class XC_functional : public XC_functional_base
         /* forbid copy constructor */
         XC_functional(const XC_functional& src) = delete;
 
-        /* forbid assigment operator */
+        /* forbid assignment operator */
         XC_functional& operator=(const XC_functional& src) = delete;
 
     public:

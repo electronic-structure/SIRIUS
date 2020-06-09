@@ -1403,7 +1403,7 @@ end subroutine sirius_initialize_subspace
 !> @brief Find eigen-states of the Hamiltonian/
 !> @param [in] gs_handler Ground state handler.
 !> @param [in] ks_handler K-point set handler.
-!> @param [in] precompute True if neccessary data to setup eigen-value problem must be automatically precomputed.
+!> @param [in] precompute True if necessary data to setup eigen-value problem must be automatically precomputed.
 !> @param [in] iter_solver_tol Iterative solver tolerance.
 subroutine sirius_find_eigen_states(gs_handler,ks_handler,precompute,iter_solver_tol)
 implicit none
@@ -1587,7 +1587,7 @@ end subroutine sirius_get_band_energies
 !> @param [in] ia Global index of atom.
 !> @param [in] ispn Spin component.
 !> @param [out] d_mtrx D-matrix.
-!> @param [in] ld Leading dimention of D-matrix.
+!> @param [in] ld Leading dimension of D-matrix.
 subroutine sirius_get_d_operator_matrix(handler,ia,ispn,d_mtrx,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -1615,7 +1615,7 @@ end subroutine sirius_get_d_operator_matrix
 !> @param [in] ia Global index of atom.
 !> @param [in] ispn Spin component.
 !> @param [out] d_mtrx D-matrix.
-!> @param [in] ld Leading dimention of D-matrix.
+!> @param [in] ld Leading dimension of D-matrix.
 subroutine sirius_set_d_operator_matrix(handler,ia,ispn,d_mtrx,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -1642,7 +1642,7 @@ end subroutine sirius_set_d_operator_matrix
 !> @param [in] handler Simulation context handler.
 !> @param [in] label Atom type label.
 !> @param [out] q_mtrx Q-matrix.
-!> @param [in] ld Leading dimention of Q-matrix.
+!> @param [in] ld Leading dimension of Q-matrix.
 subroutine sirius_set_q_operator_matrix(handler,label,q_mtrx,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -1667,7 +1667,7 @@ end subroutine sirius_set_q_operator_matrix
 !> @param [in] handler Simulation context handler.
 !> @param [in] label Atom type label.
 !> @param [out] q_mtrx Q-matrix.
-!> @param [in] ld Leading dimention of Q-matrix.
+!> @param [in] ld Leading dimension of Q-matrix.
 subroutine sirius_get_q_operator_matrix(handler,label,q_mtrx,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -1692,7 +1692,7 @@ end subroutine sirius_get_q_operator_matrix
 !> @param [in] handler DFT ground state handler.
 !> @param [in] ia Global index of atom.
 !> @param [out] dm Complex density matrix.
-!> @param [in] ld Leading dimention of the density matrix.
+!> @param [in] ld Leading dimension of the density matrix.
 subroutine sirius_get_density_matrix(handler,ia,dm,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -1717,7 +1717,7 @@ end subroutine sirius_get_density_matrix
 !> @param [in] handler DFT ground state handler.
 !> @param [in] ia Global index of atom.
 !> @param [out] dm Complex density matrix.
-!> @param [in] ld Leading dimention of the density matrix.
+!> @param [in] ld Leading dimension of the density matrix.
 subroutine sirius_set_density_matrix(handler,ia,dm,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
@@ -1866,8 +1866,8 @@ end subroutine sirius_get_q_operator
 !> @param [in] npw Local number of G+k vectors.
 !> @param [in] gvec_k List of G-vectors.
 !> @param [out] evc Wave-functions.
-!> @param [in] ld1 Leading dimention of evc array.
-!> @param [in] ld2 Second dimention of evc array.
+!> @param [in] ld1 Leading dimension of evc array.
+!> @param [in] ld2 Second dimension of evc array.
 subroutine sirius_get_wave_functions(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2)
 implicit none
 type(C_PTR), intent(in) :: ks_handler
@@ -2809,7 +2809,7 @@ call sirius_update_atomic_potential_aux(handler)
 end subroutine sirius_update_atomic_potential
 
 !> @brief return the number of options in a given section
-!> @param [in] section name of the seciton
+!> @param [in] section name of the section
 !> @param [out] length number of options contained in  the section
 subroutine sirius_option_get_length(section,length)
 implicit none
