@@ -179,7 +179,7 @@ inline matrix3d<double> rot_mtrx_cart(vector3d<double> euler_angles__)
     return rm;
 }
 
-/// Compute Euler angles corresponding to the proper rotation martix.
+/// Compute Euler angles corresponding to the proper rotation matrix.
 inline vector3d<double> euler_angles(matrix3d<double> const& rot__)
 {
     vector3d<double> angles(0, 0, 0);

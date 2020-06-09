@@ -273,7 +273,7 @@ void Density::initial_density_full_pot()
         zil[l] = std::pow(double_complex(0, 1), l);
     }
 
-    /* compute boundary value at MT sphere from the plane-wave exapansion */
+    /* compute boundary value at MT sphere from the plane-wave expansion */
     auto gvec_ylm = ctx_.generate_gvec_ylm(lmax);
 
     auto sbessel_mt = ctx_.generate_sbessel_mt(lmax);
@@ -1180,7 +1180,7 @@ void Density::generate_valence(K_point_set const& ks__)
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         /* reduce arrays; assume that each rank did its own fraction of the density */
-        /* comm_ortho_fft is idential to a product of column communicator inside k-point with k-point communicator */
+        /* comm_ortho_fft is identical to a product of column communicator inside k-point with k-point communicator */
         comm.allreduce(&rho_mag_coarse_[j]->f_rg(0), ctx_.spfft_coarse().local_slice_size());
         /* print checksum if needed */
         if (ctx_.control().print_checksum_) {

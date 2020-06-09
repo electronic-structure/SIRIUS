@@ -121,7 +121,7 @@ class MPI_grid
 
     /* forbid copy constructor */
     MPI_grid(MPI_grid const& src) = delete;
-    /* forbid assigment operator */
+    /* forbid assignment operator */
     MPI_grid& operator=(MPI_grid const& src) = delete;
 
   public:

@@ -19,7 +19,7 @@
 
 /** \file scale_matrix.cu
  *
- *  \brief Contains implementaiton of CUDA kernels to scale matrix elements (rows or columns).
+ *  \brief Contains implementation of CUDA kernels to scale matrix elements (rows or columns).
  */
 #include "cuda_common.hpp"
 #include "acc_runtime.hpp"

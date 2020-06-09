@@ -90,7 +90,7 @@ class Hamiltonian0
 
     /* copy constructor is forbidden */
     Hamiltonian0(Hamiltonian0 const& src) = delete;
-    /* copy assigment operator is forbidden */
+    /* copy assignment operator is forbidden */
     Hamiltonian0& operator=(Hamiltonian0 const& src) = delete;
 
   public:

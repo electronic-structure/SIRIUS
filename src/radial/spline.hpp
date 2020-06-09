@@ -19,7 +19,7 @@
 
 /** \file spline.hpp
  *
- *  \brief Contains definition and partial implementaiton of sirius::Spline class.
+ *  \brief Contains definition and partial implementation of sirius::Spline class.
  */
 
 #ifndef __SPLINE_HPP__
@@ -79,7 +79,7 @@ class Spline : public Radial_grid<U>
     sddk::mdarray<T, 2> coeffs_;
     /* forbid copy constructor */
     Spline(Spline<T, U> const& src__) = delete;
-    /* forbid assigment operator */
+    /* forbid assignment operator */
     Spline<T, U>& operator=(Spline<T, U> const& src__) = delete;
     /// Solver tridiagonal system of linear equaitons.
     int solve(T* dl, T* d, T* du, T* b, int n)

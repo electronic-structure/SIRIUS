@@ -69,7 +69,7 @@ for itg in range(len(timer_groups)):
                 t = t * 100
                 # show average time in legend
                 timer_names.append(tname + " (%6.2f%%, %6.2f sec./call)"%(t, jin["timers"][timer_name][3]))
-            # show total time for intialization routines
+            # show total time for initialization routines
             elif itg == 3:
                 t = jin["timers"][timer_name][0]
                 timer_names.append(tname + " (%6.2f sec.)"%t)

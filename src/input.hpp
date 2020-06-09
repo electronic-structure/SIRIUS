@@ -199,7 +199,7 @@ struct Unit_cell_input
  */
 struct Mixer_input
 {
-    /// Mixing paramter.
+    /// Mixing parameter.
     double beta_{0.7};
 
     /// Mixing ratio in case of initial linear mixing.

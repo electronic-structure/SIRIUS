@@ -425,7 +425,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         }
 
         /* first phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
-         * this is done before the main iterative loop */
+         * this is done before the main itertive loop */
 
         /* apply Hamiltonian and S operators to the basis functions */
         Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands, phi, &hphi, &sphi);

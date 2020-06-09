@@ -307,7 +307,7 @@ class Atom_type
 
   public:
     /// Constructor.
-    /** Basic parameters of atom type are passed as contructor arguments. */
+    /** Basic parameters of atom type are passed as constructor arguments. */
     Atom_type(Simulation_parameters const&                parameters__,
               std::string                                 symbol__,
               std::string                                 name__,
@@ -1071,7 +1071,7 @@ class Atom_type
         return static_cast<int>(atom_id_.size());
     }
 
-    /// Return atom ID (global index) by the index of atom withing a given type.
+    /// Return atom ID (global index) by the index of atom within a given type.
     inline int atom_id(int idx) const
     {
         return atom_id_[idx];

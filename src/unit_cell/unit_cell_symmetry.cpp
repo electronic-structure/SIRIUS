@@ -202,7 +202,7 @@ Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double> const& lattice_vectors__
             auto Rspin = space_group_symmetry(jsym).rotation;
 
             int n{0};
-            /* check if all atoms transfrom under spatial and spin symmetries */
+            /* check if all atoms transform under spatial and spin symmetries */
             for (int ia = 0; ia < num_atoms_; ia++) {
                 int ja = sym_table_(ia, isym);
 

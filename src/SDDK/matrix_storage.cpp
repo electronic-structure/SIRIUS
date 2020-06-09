@@ -197,7 +197,7 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_backward(int n__, int idx0
         }
     }
 
-    /* send and recieve dimensions */
+    /* send and receive dimensions */
     block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
     for (int j = 0; j < comm_col.size(); j++) {
         sd.counts[j] = spl_num_col_.local_size(comm_col.rank()) * row_distr.counts[j];
@@ -239,7 +239,7 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_forward(int n__, int idx0_
     /* local number of columns */
     int n_loc = spl_num_col_.local_size();
 
-    /* send and recieve dimensions */
+    /* send and receive dimensions */
     block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
     for (int j = 0; j < comm_col.size(); j++) {
         sd.counts[j] = spl_num_col_.local_size(j) * row_distr.counts[comm_col.rank()];
@@ -256,7 +256,7 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_forward(int n__, int idx0_
                           rd.counts.data(), rd.offsets.data());
     }
 
-    /* reorder recieved blocks */
+    /* reorder received blocks */
     #pragma omp parallel for
     for (int i = 0; i < n_loc; i++) {
         for (int j = 0; j < comm_col.size(); j++) {

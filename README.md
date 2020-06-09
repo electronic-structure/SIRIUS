@@ -36,7 +36,7 @@ The following functionality is currently implemented in SIRIUS:
  * (PP-PW) Stress tensor
  * (PP-PW, FP-LAPW) Atomic forces
  * (PP-PW, FP-LAPW) Collinear and non-collinear magnetism
- * (FP-LAPW) APW and LAPW basis sets with arbitray number of local orbitals
+ * (FP-LAPW) APW and LAPW basis sets with arbitrary number of local orbitals
  * (FP-LAPW) ZORA and IORA approximations for valence states; full relativistic Dirac equation for core states
  * Python frontend
  * Symmetrization of lattice-periodic functions and on-site matrices
@@ -49,13 +49,13 @@ SIRIUS has a hard dependency on the following tools and libraries:
  * C++ compiler with C++11 support
  * MPI
  * BLAS/LAPACK
- * [GSL](https://www.gnu.org/software/gsl/) - GNU scientifc library
+ * [GSL](https://www.gnu.org/software/gsl/) - GNU scientific library
  * [LibXC](https://www.tddft.org/programs/libxc/) - library of exchange-correlation potentials
  * [HDF5](https://www.hdfgroup.org/solutions/hdf5/)
  * [spglib](https://atztogo.github.io/spglib/) - library for finding and handling crystal symmetries
  * [SpFFT](https://github.com/eth-cscs/SpFFT) - domain-specific FFT library
 
-They must be available on your platfrom. Optionally, there is a dependency on:
+They must be available on your platform. Optionally, there is a dependency on:
  * ScaLAPACK
  * [ELPA](https://elpa.mpcdf.mpg.de/software)
  * [MAGMA](https://icl.cs.utk.edu/magma/)
@@ -112,7 +112,7 @@ CXX=mpicxx CC=mpicc FC=mpif90 GSL_ROOT_DIR=$HOME/local LIBXCROOT=$HOME/local LIB
 make -j install
 ```
 This will clone SIRIUS repository, install the compulsory dependencies (LibXC, GSL, spglib, SpFFT, HDF5) with the
-provided Python script ``prerequisite.py`` and then configure, make and install SIRIUS libray itself in a most simple
+provided Python script ``prerequisite.py`` and then configure, make and install SIRIUS library itself in a most simple
 configuration with CPU-only mode without parallel linear algebra routines.
 
 Unless the dependencies are installed system wide, set the following environment variables to the installation path of
@@ -127,7 +127,7 @@ the corresponding libraries:
 
 ### Install with Spack
 [Spack](https://spack.io) is a package manager for supercomputers, Linux and macOS. It is a great tool to manage
-complex scientifc software installations. Install Spack (if it is not already on your system):
+complex scientific software installations. Install Spack (if it is not already on your system):
 ```bash
 git clone https://github.com/spack/spack.git
 . spack/share/spack/setup-env.sh
@@ -235,7 +235,7 @@ was installed in a non-standard directory you need to export additional environm
 ### Parallel eigensolvers
 To compile with ScaLAPACK use the following option: `-DUSE_SCALAPACK=On`. Additional environment variable `SCALAPACKROOT`
 might be required to specify the location of ScaLAPACK library. To compile with ELPA use `-DUSE_SCALAPACK=On -DUSE_ELPA=On` options.
-In this case additional environment variable `ELPAROOT` might be required. In the current implentation we need
+In this case additional environment variable `ELPAROOT` might be required. In the current implementation we need
 ScaLAPACK functionality to transform generalized eigenvalue problem to a standard form bofore using ELPA.
 
 ### Python module
@@ -488,7 +488,7 @@ of Si511Ge.
 </p>
 
 Another example is the variable cell relaxation of B6Ni8 ([input](https://github.com/electronic-structure/benchmarks/tree/master/performance/B6Ni8)).
-Brillouin zone contains 204 irreduceble k-points and only k-pool parallelization is used.
+Brillouin zone contains 204 irreducible k-points and only k-pool parallelization is used.
 
 <p align="center">
 <img src="doc/images/B6Ni8_perf.png">

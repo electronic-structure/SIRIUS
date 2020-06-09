@@ -94,7 +94,7 @@ struct FunctionProperties
     std::function<void(double, const FUNC&, FUNC&)> axpy;
 };
 
-// Implemenation of templated recursive calls through tuples
+// Implementation of templated recursive calls through tuples
 namespace mixer_impl {
 
 /// Compute inner product <x|y> between pairs of functions in tuples and accumulate in the result.
