@@ -1,4 +1,4 @@
-#if defined __CUDA || __ROCM
+#if defined(__CUDA) || defined(__ROCM)
 #include "acc_blas.hpp"
 
 namespace accblas {
@@ -17,6 +17,7 @@ stream_handles()
     return stream_handles_;
 }
 
+#if defined(__CUDA)
 namespace xt {
 cublasXtHandle_t&
 cublasxt_handle()
@@ -25,6 +26,7 @@ cublasxt_handle()
     return handle;
 }
 } // namespace xt
-}  // xt
+#endif
+}
 
 #endif

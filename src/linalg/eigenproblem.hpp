@@ -1437,26 +1437,33 @@ class Eigensolver_cuda: public Eigensolver
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        PROFILE("Eigensolver_cuda|zheevd");
+        PROFILE("Eigensolver_cuda|zheevdx");
 
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+        cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
         auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
-        CALL_CUSOLVER(cusolverDnZheevd_bufferSize, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
+        int h_meig;
+        auto vl = -std::numeric_limits<double>::infinity();
+        auto vu = std::numeric_limits<double>::infinity();
+
+        CALL_CUSOLVER(cusolverDnZheevdx_bufferSize, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                                     reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
-                                                    w.get(), &lwork));
+                                                    vl, vu, 1, nev__, &h_meig, w.get(), &lwork));
 
         auto work = mp_d_->get_unique_ptr<double_complex>(lwork);
 
         int info;
         auto dinfo = mp_d_->get_unique_ptr<int>(1);
-        CALL_CUSOLVER(cusolverDnZheevd, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
+        CALL_CUSOLVER(cusolverDnZheevdx, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
                                          reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
-                                         w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, dinfo.get()));
+                                         vl, vu, 1, nev__, &h_meig, w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork,
+                                         dinfo.get()));
+
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
@@ -1473,25 +1480,30 @@ class Eigensolver_cuda: public Eigensolver
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__,
               dmatrix<double>& Z__)
     {
-        PROFILE("Eigensolver_cuda|dsyevd");
+        PROFILE("Eigensolver_cuda|dsyevdx");
 
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+        cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
         auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
-        CALL_CUSOLVER(cusolverDnDsyevd_bufferSize, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
-                                                    A__.at(memory_t::device), A__.ld(),
+        int h_meig;
+        auto vl = -std::numeric_limits<double>::infinity();
+        auto vu = std::numeric_limits<double>::infinity();
+
+        CALL_CUSOLVER(cusolverDnDsyevdx_bufferSize, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+                                                    A__.at(memory_t::device), A__.ld(), vl, vu, 1, nev__, &h_meig,
                                                     w.get(), &lwork));
 
         auto work = mp_d_->get_unique_ptr<double>(lwork);
 
         int info;
         auto dinfo = mp_d_->get_unique_ptr<int>(1);
-        CALL_CUSOLVER(cusolverDnDsyevd, (cusolver::cusolver_handle(), jobz, uplo, matrix_size__,
-                                         A__.at(memory_t::device), A__.ld(),
+        CALL_CUSOLVER(cusolverDnDsyevdx, (cusolver::cusolver_handle(), jobz, range, uplo, matrix_size__,
+                                         A__.at(memory_t::device), A__.ld(), vl, vu, 1, nev__, &h_meig,
                                          w.get(), work.get(), lwork, dinfo.get()));
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
@@ -1509,31 +1521,36 @@ class Eigensolver_cuda: public Eigensolver
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__, double* eval__,
               dmatrix<double_complex>& Z__)
     {
-        PROFILE("Eigensolver_cuda|zhegvd");
+        PROFILE("Eigensolver_cuda|zhegvdx");
 
         cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+        cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
         auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
-        CALL_CUSOLVER(cusolverDnZhegvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+        int h_meig;
+        auto vl = -std::numeric_limits<double>::infinity();
+        auto vu = std::numeric_limits<double>::infinity();
+
+        CALL_CUSOLVER(cusolverDnZhegvdx_bufferSize, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                                     reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
                                                     reinterpret_cast<cuDoubleComplex*>(B__.at(memory_t::device)), B__.ld(),
-                                                    w.get(), &lwork));
+                                                    vl, vu, 1, nev__, &h_meig, w.get(), &lwork));
 
         auto work = mp_d_->get_unique_ptr<double_complex>(lwork);
 
-
         int info;
         auto dinfo = mp_d_->get_unique_ptr<int>(1);
-        CALL_CUSOLVER(cusolverDnZhegvd, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+        CALL_CUSOLVER(cusolverDnZhegvdx, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                          reinterpret_cast<cuDoubleComplex*>(A__.at(memory_t::device)), A__.ld(),
                                          reinterpret_cast<cuDoubleComplex*>(B__.at(memory_t::device)), B__.ld(),
-                                         w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), lwork, dinfo.get()));
+                                         vl, vu, 1, nev__, &h_meig, w.get(), reinterpret_cast<cuDoubleComplex*>(work.get()), 
+                                         lwork, dinfo.get()));
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);
@@ -1552,30 +1569,35 @@ class Eigensolver_cuda: public Eigensolver
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
               dmatrix<double>& Z__)
     {
-        PROFILE("Eigensolver_cuda|dsygvd");
+        PROFILE("Eigensolver_cuda|dsygvdx");
 
         cusolverEigType_t itype = CUSOLVER_EIG_TYPE_1; // A*x = (lambda)*B*x
         cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
         cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+        cusolverEigRange_t range = CUSOLVER_EIG_RANGE_I;
 
         auto w = mp_d_->get_unique_ptr<double>(matrix_size__);
         acc::copyin(A__.at(memory_t::device), A__.ld(), A__.at(memory_t::host), A__.ld(), matrix_size__, matrix_size__);
         acc::copyin(B__.at(memory_t::device), B__.ld(), B__.at(memory_t::host), B__.ld(), matrix_size__, matrix_size__);
 
         int lwork;
-        CALL_CUSOLVER(cusolverDnDsygvd_bufferSize, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+        int h_meig;
+        auto vl = -std::numeric_limits<double>::infinity();
+        auto vu = std::numeric_limits<double>::infinity();
+
+        CALL_CUSOLVER(cusolverDnDsygvdx_bufferSize, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                                     A__.at(memory_t::device), A__.ld(),
                                                     B__.at(memory_t::device), B__.ld(),
-                                                    w.get(), &lwork));
+                                                    vl, vu, 1, nev__, &h_meig, w.get(), &lwork));
 
         auto work = mp_d_->get_unique_ptr<double>(lwork);
 
         int info;
         auto dinfo = mp_d_->get_unique_ptr<int>(1);
-        CALL_CUSOLVER(cusolverDnDsygvd, (cusolver::cusolver_handle(), itype, jobz, uplo, matrix_size__,
+        CALL_CUSOLVER(cusolverDnDsygvdx, (cusolver::cusolver_handle(), itype, jobz, range, uplo, matrix_size__,
                                          A__.at(memory_t::device), A__.ld(),
                                          B__.at(memory_t::device), B__.ld(),
-                                         w.get(), work.get(), lwork, dinfo.get()));
+                                         vl, vu, 1, nev__, &h_meig, w.get(), work.get(), lwork, dinfo.get()));
         acc::copyout(&info, dinfo.get(), 1);
         if (!info) {
             acc::copyout(eval__, w.get(), nev__);

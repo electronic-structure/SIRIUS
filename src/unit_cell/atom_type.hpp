@@ -454,7 +454,7 @@ class Atom_type
         local_orbital_descriptor lod;
 
         Spline<double> s(radial_grid_, f__);
-        ps_atomic_wfs_.push_back(std::move(std::make_tuple(n__, l__, occ__, std::move(s))));
+        ps_atomic_wfs_.push_back(std::make_tuple(n__, l__, occ__, std::move(s)));
     }
 
     /// Return a tuple describing a given atomic radial function
@@ -483,7 +483,7 @@ class Atom_type
             TERMINATE("can't add more beta projectors");
         }
         Spline<double> s(radial_grid_, beta__);
-        beta_radial_functions_.push_back(std::move(std::make_pair(l__, std::move(s))));
+        beta_radial_functions_.push_back(std::make_pair(l__, std::move(s)));
 
         local_orbital_descriptor lod;
         lod.l = std::abs(l__);

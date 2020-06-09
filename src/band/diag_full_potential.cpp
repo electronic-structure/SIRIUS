@@ -738,13 +738,9 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<Wave_functions> hpsi;
     for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-        hpsi.push_back(std::move(Wave_functions(kp.gkvec_partition(),
-                                                unit_cell_.num_atoms(),
-                                                [this](int ia) {
-                                                    return unit_cell_.atom(ia).mt_basis_size();
-                                                },
-                                                ctx_.num_fv_states(),
-                                                ctx_.preferred_memory_t())));
+        hpsi.push_back(Wave_functions(kp.gkvec_partition(), unit_cell_.num_atoms(),
+                                      [this](int ia) { return unit_cell_.atom(ia).mt_basis_size(); },
+                                      ctx_.num_fv_states(), ctx_.preferred_memory_t()));
     }
 
     /* compute product of magnetic field and wave-function */

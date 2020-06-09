@@ -104,13 +104,11 @@ namespace fill {
 #if defined(__CUDA)
 constexpr auto Upper = CUBLAS_FILL_MODE_UPPER;
 constexpr auto Lower = CUBLAS_FILL_MODE_LOWER;
-constexpr auto Full =  CUBLAS_FILL_MODE_FULL;
 #endif
 
 #if defined(__ROCM)
 constexpr auto Upper = rocblas_fill_upper;
 constexpr auto Lower = rocblas_fill_lower;
-constexpr auto Full = rocblas_fill_full;
 #endif
 }  // namespace fill
 
