@@ -322,7 +322,7 @@ class Atom
         //}
     }
 
-    /// Return const reference to corresponding atom type obeject.
+    /// Return const reference to corresponding atom type object.
     inline Atom_type const& type() const
     {
         return type_;

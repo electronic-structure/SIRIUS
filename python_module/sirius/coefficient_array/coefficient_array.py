@@ -410,7 +410,7 @@ class CoefficientArray:
     @property
     def T(self):
         """
-        Tranpose
+        Transpose
         """
         out = type(self)(dtype=self.dtype, ctype=self.ctype)
         for key, val in self._data.items():

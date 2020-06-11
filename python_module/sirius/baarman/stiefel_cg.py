@@ -223,7 +223,7 @@ class CG:
     def run(self, X0, f0, A, maxiter=100, tol=1e-8):
         """
         Keyword Arguments:
-        X0      -- intial guess PW
+        X0      -- initial guess PW
         f0      -- initial guess occupancy
         A       -- free energy
         maxiter -- (default 100)

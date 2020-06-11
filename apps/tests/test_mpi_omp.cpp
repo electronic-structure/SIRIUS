@@ -291,7 +291,7 @@ int main(int argn, char** argv)
     cmd_args args;
     args.register_key("--size=", "{int} kernel size (length of FFT buffer or matrix size of a zgemm kernel(");
     args.register_key("--num_tasks=", "{int} number of kernels inside one measurment");
-    args.register_key("--repeat=", "{int} number of measurments");
+    args.register_key("--repeat=", "{int} number of measurements");
     args.register_key("--kernel=", "{int} 0: fftw, 1: kiss_fft, 2: custom_fft, 3: memcpy, 4: fractal progression, 5: zgemm");
 
     args.parse_args(argn, argv);

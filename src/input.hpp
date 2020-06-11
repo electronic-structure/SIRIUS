@@ -199,7 +199,7 @@ struct Unit_cell_input
  */
 struct Mixer_input
 {
-    /// Mixing paramter.
+    /// Mixing parameter.
     double beta_{0.7};
 
     /// Mixing ratio in case of initial linear mixing.
@@ -260,6 +260,9 @@ struct Iterative_solver_input
     /// Tolerance for the residual L2 norm.
     double residual_tolerance_{1e-6};
 
+    /// Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used)
+    double relative_tolerance_{0};
+
     /// Additional tolerance for empty states.
     /** Setting this variable to 0 will treat empty states with the same tolerance as occupied states. */
     double empty_states_tolerance_{0};
@@ -298,6 +301,7 @@ struct Iterative_solver_input
             subspace_size_          = section.value("subspace_size", subspace_size_);
             energy_tolerance_       = section.value("energy_tolerance", energy_tolerance_);
             residual_tolerance_     = section.value("residual_tolerance", residual_tolerance_);
+            relative_tolerance_     = section.value("relative_tolerance", relative_tolerance_);
             empty_states_tolerance_ = section.value("empty_states_tolerance", empty_states_tolerance_);
             converge_by_energy_     = section.value("converge_by_energy", converge_by_energy_);
             min_num_res_            = section.value("min_num_res", min_num_res_);

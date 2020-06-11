@@ -73,7 +73,7 @@ namespace sirius {
  *    q'(r) &=& \big(V(r) - E + \frac{\ell(\ell+1)}{2Mr^2}\big) p(r) - \frac{q(r)}{r}
  *  \f}
  *  where \f$ M = 1 + \frac{\alpha^2}{2}\big(E-V(r)\big) \f$. Because M depends on energy, the m-th energy
- *  derivatives of the scalar-relativistic solution take a slighly different form. For m=1 we have:
+ *  derivatives of the scalar-relativistic solution take a slightly different form. For m=1 we have:
  *  \f{eqnarray*}{
  *    \dot{p}'(r) &=& 2M\dot{q}(r) + \frac{\dot{p}(r)}{r} + \alpha^2 q(r) \\
  *    \dot{q}'(r) &=& \big(V(r) - E + \frac{\ell(\ell+1)}{2Mr^2}\big) \dot{p}(r) - \frac{\dot{q}(r)}{r} -
@@ -94,7 +94,7 @@ namespace sirius {
  *    \frac{1}{M} = \frac{1}{1-\frac{\alpha^2}{2} V(r)} - \frac{\alpha^2 E}{2 (1-\frac{\alpha^2}{2} V(r))^2} + O(E^2) =
  *     \frac{1}{M_0} - \frac{\alpha^2}{2} \frac{1}{M_0^2} E
  *  \f]
- *  From this expansion we can derive the exression for \f$ M \f$:
+ *  From this expansion we can derive the expression for \f$ M \f$:
  *  \f[
  *    M = \Big(\frac{1}{M}\Big)^{-1} = \frac{M_0}{1 - \frac{\alpha^2}{2}\frac{E}{M_0}}
  *  \f]
@@ -362,7 +362,7 @@ class Radial_solver
             /* check overflow */
             // if (std::abs(p2) > 1e10 || std::abs(q2) > 1e10) {
             if (std::abs(p2) > 1e4) {
-                /* if we didn't expect the overflow and it happended, or it happended before the
+                /* if we didn't expect the overflow and it happened, or it happened before the
                  * classical turning point, it's bad */
                 if (!prevent_overflow || (prevent_overflow && i < idx_ctp)) {
                     std::stringstream s;
@@ -663,10 +663,10 @@ class Radial_solver
         int nn{0};
 
         for (int j = 0; j <= dme__; j++) {
-            p.push_back(std::move(std::vector<double>(nr)));
-            q.push_back(std::move(std::vector<double>(nr)));
-            dpdr.push_back(std::move(std::vector<double>(nr)));
-            dqdr.push_back(std::move(std::vector<double>(nr)));
+            p.push_back(std::vector<double>(nr));
+            q.push_back(std::vector<double>(nr));
+            dpdr.push_back(std::vector<double>(nr));
+            dqdr.push_back(std::vector<double>(nr));
 
             if (j) {
                 if (rel__ == relativity_t::none || rel__ == relativity_t::zora) {
@@ -1131,7 +1131,7 @@ class Enu_finder : public Radial_solver
 
         double sd = surface_deriv();
 
-        /* Now we go down in energy and serach for enu such that the wave-function derivative is zero
+        /* Now we go down in energy and search for enu such that the wave-function derivative is zero
          * at the muffin-tin boundary. This will be the bottom of the band. */
         de = 1e-4;
         for (int i = 0; i < 100; i++) {

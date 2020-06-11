@@ -58,7 +58,7 @@ class Non_local_operator
     /// True if the operator is diagonal in spin.
     bool is_diag_{true};
 
-    /* copy assigment operrator is forbidden */
+    /* copy assignment operrator is forbidden */
     Non_local_operator& operator=(Non_local_operator const& src) = delete;
     /* copy constructor is forbidden */
     Non_local_operator(Non_local_operator const& src) = delete;

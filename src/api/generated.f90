@@ -2329,33 +2329,39 @@ call sirius_initialize_subspace_aux(gs_handler_ptr,ks_handler_ptr)
 end subroutine sirius_initialize_subspace
 
 !
-!> @brief Find eigen-states of the Hamiltonian/
+!> @brief Find eigen-states of the Hamiltonian
 !> @param [in] gs_handler Ground state handler.
 !> @param [in] ks_handler K-point set handler.
 !> @param [in] precompute True if neccessary data to setup eigen-value problem must be automatically precomputed.
 !> @param [in] iter_solver_tol Iterative solver tolerance.
-subroutine sirius_find_eigen_states(gs_handler,ks_handler,precompute,iter_solver_tol)
+!> @param [out] error_code Error code.
+subroutine sirius_find_eigen_states(gs_handler,ks_handler,precompute,iter_solver_tol,&
+&error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: gs_handler
 type(C_PTR), target, intent(in) :: ks_handler
 logical, target, intent(in) :: precompute
 real(8), optional, target, intent(in) :: iter_solver_tol
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
 type(C_PTR) :: ks_handler_ptr
 type(C_PTR) :: precompute_ptr
 logical(C_BOOL), target :: precompute_c_type
 type(C_PTR) :: iter_solver_tol_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute,iter_solver_tol)&
+subroutine sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute,iter_solver_tol,&
+&error_code)&
 &bind(C, name="sirius_find_eigen_states")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
 type(C_PTR), value :: ks_handler
 type(C_PTR), value :: precompute
 type(C_PTR), value :: iter_solver_tol
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2370,7 +2376,12 @@ iter_solver_tol_ptr = C_NULL_PTR
 if (present(iter_solver_tol)) then
 iter_solver_tol_ptr = C_LOC(iter_solver_tol)
 endif
-call sirius_find_eigen_states_aux(gs_handler_ptr,ks_handler_ptr,precompute_ptr,iter_solver_tol_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_find_eigen_states_aux(gs_handler_ptr,ks_handler_ptr,precompute_ptr,iter_solver_tol_ptr,&
+&error_code_ptr)
 end subroutine sirius_find_eigen_states
 
 !
@@ -2625,7 +2636,7 @@ implicit none
 type(C_PTR), target, intent(in) :: handler
 integer, target, intent(in) :: ia
 integer, target, intent(in) :: ispn
-real(8), target, intent(out) :: d_mtrx
+real(8), target, dimension(ld,ld), intent(out) :: d_mtrx
 integer, target, intent(in) :: ld
 !
 type(C_PTR) :: handler_ptr

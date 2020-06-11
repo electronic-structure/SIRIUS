@@ -1391,7 +1391,7 @@ class XC_functional_base
         /* forbid copy constructor */
         XC_functional_base(const XC_functional_base& src) = delete;
 
-        /* forbid assigment operator */
+        /* forbid assignment operator */
         XC_functional_base& operator=(const XC_functional_base& src) = delete;
 
     public:

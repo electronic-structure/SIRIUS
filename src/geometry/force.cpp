@@ -310,7 +310,6 @@ mdarray<double, 2> const& Force::calc_forces_ewald()
 
             /* cartesian form for getting cartesian force components */
             vector3d<double> gvec_cart = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
-            double_complex rho(0, 0);
 
             double scalar_part = prefac * (rho_tmp[igloc] * ctx_.gvec_phase_factor(ig, ja)).imag() *
                                  static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4 * alpha)) / g2;

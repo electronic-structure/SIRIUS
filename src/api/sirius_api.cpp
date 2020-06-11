@@ -2209,7 +2209,7 @@ void sirius_initialize_subspace(void* const* gs_handler__,
 /*
 @api begin
 sirius_find_eigen_states:
-  doc: Find eigen-states of the Hamiltonian/
+  doc: Find eigen-states of the Hamiltonian
   arguments:
     gs_handler:
       type: void*
@@ -2227,20 +2227,28 @@ sirius_find_eigen_states:
       type: double
       attr: in, optional
       doc: Iterative solver tolerance.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
 void sirius_find_eigen_states(void* const* gs_handler__,
                               void* const* ks_handler__,
                               bool  const* precompute__,
-                              double const* iter_solver_tol__)
+                              double const* iter_solver_tol__,
+                              int* error_code__)
 {
-    auto& gs = get_gs(gs_handler__);
-    auto& ks = get_ks(ks_handler__);
-    if (iter_solver_tol__ != nullptr) {
-        ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
-    }
-    sirius::Hamiltonian0 H0(gs.potential());
-    sirius::Band(ks.ctx()).solve(ks, H0, *precompute__);
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(gs_handler__);
+        auto& ks = get_ks(ks_handler__);
+        if (iter_solver_tol__ != nullptr) {
+            ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
+        }
+        sirius::Hamiltonian0 H0(gs.potential());
+        sirius::Band(ks.ctx()).solve(ks, H0, *precompute__);
+    }, error_code__);
 }
 
 /*
@@ -2453,7 +2461,7 @@ sirius_get_d_operator_matrix:
       doc: Spin component.
     d_mtrx:
       type: double
-      attr: out, required
+      attr: out, required, dimension(ld, ld)
       doc: D-matrix.
     ld:
       type: int
@@ -3199,7 +3207,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
         if (this_jk >= 0) {
             auto gkvec = kset.send_recv_gkvec(this_jk, r);
 
-            /* if this is a rank wich need jk or a rank which stores jk */
+            /* if this is a rank witch needs jk or a rank which stores jk */
             if (my_rank == r || my_rank == rank_with_jk[r]) {
 
                 /* build G-vector mapping */
@@ -3236,7 +3244,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                     int tag = Communicator::get_tag(r, rank_with_jk[r]) + s;
                     Request req;
 
-                    /* make a check of send-recieve sizes */
+                    /* make a check of send-receive sizes */
                     if (true) {
                         int send_size;
                         if (my_rank == rank_with_jk[r]) {
@@ -3250,9 +3258,9 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                             kset.comm().recv(&send_size, 1, rank_with_jk[r], tag);
                             if (send_size != gkvec_count * sim_ctx.num_bands()) {
                                 std::stringstream s;
-                                s << "wrong send-recieve buffer sizes\n"
+                                s << "wrong send-receive buffer sizes\n"
                                   << "     send size   : " << send_size << "\n"
-                                  << "  recieve size   : " << gkvec_count * sim_ctx.num_bands() << "\n"
+                                  << "  receive size   : " << gkvec_count * sim_ctx.num_bands() << "\n"
                                   << " number of bands : " << sim_ctx.num_bands();
                                 TERMINATE(s);
                             }
@@ -3271,7 +3279,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                     if (my_rank == r) {
                         int gkvec_count = gkvec.count();
                         int gkvec_offset = gkvec.offset();
-                        /* recieve the array with wave-functions */
+                        /* receive the array with wave-functions */
                         kset.comm().recv(&wf->pw_coeffs(0).prime(0, 0), gkvec_count * sim_ctx.num_bands(), rank_with_jk[r], tag);
                         std::vector<double_complex> wf_tmp(gkvec.num_gvec());
                         /* store wave-functions */
@@ -4558,7 +4566,6 @@ sirius_option_get_length:
       doc: number of options contained in  the section
 @api end
 */
-
 void sirius_option_get_length(char const* section__, int *length__)
 {
     auto const& parser = sirius::get_options_dictionary();
@@ -5118,8 +5125,9 @@ void sirius_option_set_logical(void* const* handler__, char*section, char *name,
         if (*length > 1) {
             // we are dealing with a vector
             std::vector<bool> v(*length);
-            for (int s = 0; s < *length; s++)
+            for (int s = 0; s < *length; s++) {
                 v[s] = (default_values[s] == 1);
+            }
             conf_dict[section][name] = v;
         } else {
             conf_dict[section][name] = (*default_values == 1);
@@ -5166,7 +5174,9 @@ void sirius_option_set_string(void* const* handler__, char * section, char * nam
             return;
         }
         // ugly as hell but fortran is a piece of ....
-        for ( char *p = default_values; *p; p++) *p = tolower(*p);
+        for ( char *p = default_values; *p; p++) {
+            *p = tolower(*p);
+        }
         std::string st = default_values;
         conf_dict[section][name] = st;
     }

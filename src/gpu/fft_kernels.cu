@@ -19,7 +19,7 @@
 
 /** \file fft_kernels.cu
  *
- *  \brief Contains implementaiton of CUDA and ROCM kernels necessary for a FFT driver.
+ *  \brief Contains implementation of CUDA and ROCM kernels necessary for a FFT driver.
  */
 
 #include <stdio.h>

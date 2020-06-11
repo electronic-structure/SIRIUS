@@ -19,7 +19,7 @@
 
 /** \file matrix_storage.hpp
  *
- *  \brief Contains definition and implementaiton of sddk::matrix_storage class.
+ *  \brief Contains definition and implementation of sddk::matrix_storage class.
  */
 
 #ifndef __MATRIX_STORAGE_HPP__
@@ -73,7 +73,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     /// Raw buffer for the extra storage.
     mdarray<T, 1> extra_buf_;
 
-    /// Raw send-recieve buffer.
+    /// Raw send-receive buffer.
     mdarray<T, 1> send_recv_buf_;
 
     /// Column distribution in auxiliary matrix.

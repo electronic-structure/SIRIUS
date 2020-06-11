@@ -1,5 +1,5 @@
 # find libvdwxc
-# if in non-standard location set environment variabled `VDWCXC_DIR` to the root directory
+# if in non-standard location set environment variabled `VDWXC_DIR` to the root directory
 
 include(FindPackageHandleStandardArgs)
 include(CheckSymbolExists)

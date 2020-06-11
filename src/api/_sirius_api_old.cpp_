@@ -101,7 +101,7 @@
 //==     }
 //== }
 //==
-//== /// Get lengh of G-vectors
+//== /// Get length of G-vectors
 //== void sirius_get_gvec_len(double* gvec_len__)
 //== {
 //==     for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++) {
@@ -171,7 +171,7 @@
 //== {
 //==     dft_ground_state->density().generate_valence(*kset_list[*kset_id__]);
 //==     if (sim_ctx->full_potential()) {
-//==         /* only PW coeffs have been generated; transfrom them to real space */
+//==         /* only PW coeffs have been generated; transform them to real space */
 //==         dft_ground_state->density().fft_transform(1);
 //==         /* MT part was calculated for local number of atoms; synchronize to global array */
 //==         dft_ground_state->density().rho().sync_mt();
