@@ -487,7 +487,7 @@ class memory_pool
     {
 #if defined(__USE_MEMORY_POOL)
         /* memory block descriptor returns an unaligned memory; here we compute the the aligment value */
-        size_t align_size = std::max(size_t(64), alignof(T));
+        size_t align_size = std::max(size_t(__GPU_MEMORY_ALIGMENT), alignof(T));
         /* size of the memory block in bytes */
         size_t size = num_elements__ * sizeof(T) + align_size;
 
