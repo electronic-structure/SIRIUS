@@ -125,7 +125,7 @@ class Augmentation_operator
 };
 
 // TODO:
-// can't cache it in the simulation context becuase each time the lattice is updated, PW coefficients must be
+// can't cache it in the simulation context because each time the lattice is updated, PW coefficients must be
 // recomputed; so, the only way to accelerate it is to move to GPUs..
 
 /// Derivative of augmentation operator PW coefficients with respect to the Cartesian component of G-vector.

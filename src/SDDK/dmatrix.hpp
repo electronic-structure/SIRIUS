@@ -19,7 +19,7 @@
 
 /** \file dmatrix.hpp
  *
- *  \brief Contains definition and implementaiton of sddk::dmatrix class.
+ *  \brief Contains definition and implementation of sddk::dmatrix class.
  */
 
 #ifndef __DMATRIX_HPP__
@@ -74,7 +74,7 @@ class dmatrix : public matrix<T>
 
     /* forbid copy constructor */
     dmatrix(dmatrix<T> const& src) = delete;
-    /* forbid assigment operator */
+    /* forbid assignment operator */
     dmatrix<T>& operator=(dmatrix<T> const& src) = delete;
 
   public:

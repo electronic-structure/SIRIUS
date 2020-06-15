@@ -1376,7 +1376,7 @@ void sirius_initialize_subspace(void* const* gs_handler__,
 /* @fortran begin function void sirius_find_eigen_states     Find eigen-states of the Hamiltonian/
    @fortran argument in  required void*   gs_handler         Ground state handler.
    @fortran argument in  required void*   ks_handler         K-point set handler.
-   @fortran argument in  required bool    precompute         True if neccessary data to setup eigen-value problem must be automatically precomputed.
+   @fortran argument in  required bool    precompute         True if necessary data to setup eigen-value problem must be automatically precomputed.
    @fortran argument in  optional double  iter_solver_tol    Iterative solver tolerance.
    @fortran end */
 void sirius_find_eigen_states(void* const* gs_handler__,
@@ -1500,7 +1500,7 @@ void sirius_get_band_energies(void*  const* ks_handler__,
    @fortran argument in  required int     ia                       Global index of atom.
    @fortran argument in  required int     ispn                     Spin component.
    @fortran argument out required double  d_mtrx                   D-matrix.
-   @fortran argument in  required int     ld                       Leading dimention of D-matrix.
+   @fortran argument in  required int     ld                       Leading dimension of D-matrix.
    @fortran end */
 void sirius_get_d_operator_matrix(void* const* handler__,
                                   int   const* ia__,
@@ -1532,7 +1532,7 @@ void sirius_get_d_operator_matrix(void* const* handler__,
    @fortran argument in  required int     ia                       Global index of atom.
    @fortran argument in  required int     ispn                     Spin component.
    @fortran argument out required double  d_mtrx                   D-matrix.
-   @fortran argument in  required int     ld                       Leading dimention of D-matrix.
+   @fortran argument in  required int     ld                       Leading dimension of D-matrix.
    @fortran end */
 void sirius_set_d_operator_matrix(void* const* handler__,
                                   int   const* ia__,
@@ -1561,7 +1561,7 @@ void sirius_set_d_operator_matrix(void* const* handler__,
    @fortran argument in  required void*   handler               Simulation context handler.
    @fortran argument in  required string  label                 Atom type label.
    @fortran argument out required double  q_mtrx                Q-matrix.
-   @fortran argument in  required int     ld                    Leading dimention of Q-matrix.
+   @fortran argument in  required int     ld                    Leading dimension of Q-matrix.
    @fortran end */
 void sirius_set_q_operator_matrix(void* const* handler__,
                                   char  const* label__,
@@ -1591,7 +1591,7 @@ void sirius_set_q_operator_matrix(void* const* handler__,
    @fortran argument in  required void*   handler               Simulation context handler.
    @fortran argument in  required string  label                 Atom type label.
    @fortran argument out required double  q_mtrx                Q-matrix.
-   @fortran argument in  required int     ld                    Leading dimention of Q-matrix.
+   @fortran argument in  required int     ld                    Leading dimension of Q-matrix.
    @fortran end */
 void sirius_get_q_operator_matrix(void* const* handler__,
                                   char  const* label__,
@@ -1619,7 +1619,7 @@ void sirius_get_q_operator_matrix(void* const* handler__,
    @fortran argument in  required void*   handler               DFT ground state handler.
    @fortran argument in  required int     ia                    Global index of atom.
    @fortran argument out required complex dm                    Complex density matrix.
-   @fortran argument in  required int     ld                    Leading dimention of the density matrix.
+   @fortran argument in  required int     ld                    Leading dimension of the density matrix.
    @fortran end */
 void sirius_get_density_matrix(void*          const* handler__,
                                int            const* ia__,
@@ -1661,7 +1661,7 @@ void sirius_get_density_matrix(void*          const* handler__,
    @fortran argument in  required void*   handler               DFT ground state handler.
    @fortran argument in  required int     ia                    Global index of atom.
    @fortran argument out required complex dm                    Complex density matrix.
-   @fortran argument in  required int     ld                    Leading dimention of the density matrix.
+   @fortran argument in  required int     ld                    Leading dimension of the density matrix.
    @fortran end */
 void sirius_set_density_matrix(void*          const* handler__,
                                int            const* ia__,
@@ -1923,8 +1923,8 @@ void sirius_get_q_operator(void*          const* handler__,
    @fortran argument in   required int     npw                Local number of G+k vectors.
    @fortran argument in   required int     gvec_k             List of G-vectors.
    @fortran argument out  required complex evc                Wave-functions.
-   @fortran argument in   required int     ld1                Leading dimention of evc array.
-   @fortran argument in   required int     ld2                Second dimention of evc array.
+   @fortran argument in   required int     ld1                Leading dimension of evc array.
+   @fortran argument in   required int     ld2                Second dimension of evc array.
    @fortran end */
 void sirius_get_wave_functions(void*          const* ks_handler__,
                                int            const* ik__,
@@ -2028,7 +2028,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
         if (this_jk >= 0) {
             auto gkvec = kset.send_recv_gkvec(this_jk, r);
 
-            /* if this is a rank wich need jk or a rank which stores jk */
+            /* if this is a rank witch needs jk or a rank which stores jk */
             if (my_rank == r || my_rank == rank_with_jk[r]) {
 
                 /* build G-vector mapping */
@@ -2065,7 +2065,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                     int tag = Communicator::get_tag(r, rank_with_jk[r]) + s;
                     Request req;
 
-                    /* make a check of send-recieve sizes */
+                    /* make a check of send-receive sizes */
                     if (true) {
                         int send_size;
                         if (my_rank == rank_with_jk[r]) {
@@ -2079,9 +2079,9 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                             kset.comm().recv(&send_size, 1, rank_with_jk[r], tag);
                             if (send_size != gkvec_count * sim_ctx.num_bands()) {
                                 std::stringstream s;
-                                s << "wrong send-recieve buffer sizes\n"
+                                s << "wrong send-receive buffer sizes\n"
                                   << "     send size   : " << send_size << "\n"
-                                  << "  recieve size   : " << gkvec_count * sim_ctx.num_bands() << "\n"
+                                  << "  receive size   : " << gkvec_count * sim_ctx.num_bands() << "\n"
                                   << " number of bands : " << sim_ctx.num_bands();
                                 TERMINATE(s);
                             }
@@ -2100,7 +2100,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                     if (my_rank == r) {
                         int gkvec_count = gkvec.count();
                         int gkvec_offset = gkvec.offset();
-                        /* recieve the array with wave-functions */
+                        /* receive the array with wave-functions */
                         kset.comm().recv(&wf->pw_coeffs(0).prime(0, 0), gkvec_count * sim_ctx.num_bands(), rank_with_jk[r], tag);
                         std::vector<double_complex> wf_tmp(gkvec.num_gvec());
                         /* store wave-functions */
@@ -2840,7 +2840,7 @@ void sirius_update_atomic_potential(void* const* handler__)
 
 
 /* @fortran begin function void sirius_option_get_length     return the number of options in a given section
-   @fortran argument in  required string  section            name of the seciton
+   @fortran argument in  required string  section            name of the section
    @fortran argument out required int     length             number of options contained in  the section
    @fortran end */
 

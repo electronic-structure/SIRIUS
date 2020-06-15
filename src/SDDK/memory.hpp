@@ -456,7 +456,7 @@ struct memory_subblock_descriptor
 };
 
 //// Memory pool.
-/** This class stores list of allocated memory blocks. Each of the blocks can be devided into subblocks. When subblock
+/** This class stores list of allocated memory blocks. Each of the blocks can be divided into subblocks. When subblock
  *  is deallocated it is merged with previous or next free subblock in the memory block. If this was the last subblock
  *  in the block of memory, the (now) free block of memory is merged with the neighbours (if any are available).
  */
@@ -487,7 +487,7 @@ class memory_pool
     {
 #if defined(__USE_MEMORY_POOL)
         /* memory block descriptor returns an unaligned memory; here we compute the the aligment value */
-        size_t align_size = std::max(size_t(64), alignof(T));
+        size_t align_size = std::max(size_t(__GPU_MEMORY_ALIGMENT), alignof(T));
         /* size of the memory block in bytes */
         size_t size = num_elements__ * sizeof(T) + align_size;
 
@@ -1189,7 +1189,7 @@ class mdarray
 #endif
     }
 
-    /// Move assigment operator
+    /// Move assignment operator
     inline mdarray<T, N>& operator=(mdarray<T, N>&& src)
     {
         if (this != &src) {

@@ -67,7 +67,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     }
 
     /* Gaunt coefficients of three real spherical harmonics */
-    Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta, SHT::gaunt_rlm);
+    Gaunt_coefficients<double> gaunt_coefs(lmax_beta, 2 * lmax_beta, lmax_beta, SHT::gaunt_rrr);
 
     /* split G-vectors between ranks */
     int gvec_count  = gvec_.count();
@@ -237,7 +237,7 @@ Augmentation_operator_gvec_deriv::Augmentation_operator_gvec_deriv(Simulation_pa
 
     /* Gaunt coefficients of three real spherical harmonics */
     gaunt_coefs_ = std::unique_ptr<Gaunt_coefficients<double>>(
-        new Gaunt_coefficients<double>(lmax__, 2 * lmax__, lmax__, SHT::gaunt_rlm));
+        new Gaunt_coefficients<double>(lmax__, 2 * lmax__, lmax__, SHT::gaunt_rrr));
 
     /* split G-vectors between ranks */
     int gvec_count = gvec__.count();

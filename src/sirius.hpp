@@ -206,6 +206,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
      - \b bands - band plotting
      - \b cif_input - CIF parser
      - \b dft_loop - DFT miniapp
+     - \b hydrogen - solve hydrogen-like atom using Schrödinger equation
      - \b tests - tests of various functionality
      - \b timers - scripts to analyze timer outputs
      - \b unit_tests - unit tests
@@ -254,7 +255,7 @@ assigned to a given MPI rank.
 \page coding Coding style
 
 Below are some basic style rules that we follow:
-  - Page width is approximately 120 characters. Screens are wide nowdays and 80 characters is an
+  - Page width is approximately 120 characters. Screens are wide nowadays and 80 characters is an
     obsolete restriction. Going slightly over 120 characters is allowed if it is requird for the line continuity.
   - Indentation: 4 spaces (no tabs)
 
@@ -488,7 +489,7 @@ Some other examples:
     - class Interface_XC (composed of a word and abbreviation)
     - class Spline (single word)
 
-Exceptions are allowed if it makes sense. For example, low level utility classes like 'mdarray' (multi-dimentional
+Exceptions are allowed if it makes sense. For example, low level utility classes like 'mdarray' (multi-dimensional
 array) or 'pstdout' (parallel standard output) are named with small letters.
 */
 

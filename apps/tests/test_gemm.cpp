@@ -1,4 +1,5 @@
-#include "test.hpp"
+#include "sirius.hpp"
+#include "testing.hpp"
 
 #ifdef __TEST_REAL
 typedef double gemm_type;
@@ -195,22 +196,19 @@ int main(int argn, char **argv)
 
     sirius::initialize(true);
 
-    if (nrow * ncol == 1)
-    {
-        Measurement perf;
+    if (nrow * ncol == 1) {
+        sirius::Measurement perf;
         for (int i = 0; i < repeat; i++) {
             perf.push_back(test_gemm(M, N, K, transa));
         }
         printf("average performance: %12.6f GFlops / rank,  sigma: %12.6f\n", perf.average(), perf.sigma());
     }
-    else
-    {
-        #ifdef __SCALAPACK
+    else {
+#ifdef __SCALAPACK
         int n = args.value<int>("n", 0);
         int bs = args.value<int>("bs");
         double perf = 0;
-        for (int i = 0; i < repeat; i++) 
-        {
+        for (int i = 0; i < repeat; i++) {
             perf += test_pgemm(M, N, K, nrow, ncol, transa, n, bs);
             //if (M != N)
             //{
@@ -225,9 +223,9 @@ int main(int argn, char **argv)
             printf("\n");
             printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);
         }
-        #else
+#else
         throw std::runtime_error("not compiled with ScaLAPACK");
-        #endif
+#endif
     }
 
     sirius::finalize();

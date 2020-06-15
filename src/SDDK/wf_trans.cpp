@@ -45,7 +45,7 @@ void transform_local<double>(linalg_t la__, int ispn__, double* alpha__, Wave_fu
     for (int s : spins) {
         /* input wave-functions may be scalar (this is the case of transformation of first-variational states
            into spinor wave-functions or transforamtion of scalar auxiliary wave-functions into spin-dependent
-           wave-fucntions; in this case we set spin index of input wave-function to 0 */
+           wave-functions; in this case we set spin index of input wave-function to 0 */
         int in_s = (wf_in__->num_sc() == 1) ? 0 : s;
         /* transform plane-wave part */
         linalg(la__).gemm(
@@ -72,7 +72,7 @@ void transform_local<double_complex>(linalg_t la__, int ispn__, double_complex* 
     for (int s : spins) {
         /* input wave-functions may be scalar (this is the case of transformation of first-variational states
            into spinor wave-functions or transforamtion of scalar auxiliary wave-functions into spin-dependent
-           wave-fucntions; in this case we set spin index of input wave-function to 0 */
+           wave-functions; in this case we set spin index of input wave-function to 0 */
         int in_s = (wf_in__->num_sc() == 1) ? 0 : s;
         /* transform plane-wave part */
         linalg(la__).gemm('N', 'N', wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__, alpha__,

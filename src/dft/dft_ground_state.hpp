@@ -129,7 +129,7 @@ class DFT_ground_state
 
     double total_energy() const;
 
-    /// Generate initial densty, potential and a subspace of wave-functions.
+    /// Generate initial density, potential and a subspace of wave-functions.
     void initial_state();
 
     /// Update the parameters after the change of lattice vectors or atomic positions.

@@ -98,7 +98,7 @@ double SHT::ClebschGordan(const int l, const double j, const double mj, const in
     double CG = 0.0; // Clebsch Gordan coeeficient cf PRB 71, 115106 page 3 first column
 
     if ((spin != 0) && (spin != 1)) {
-        std::printf("Error : unkown spin direction\n");
+        std::printf("Error : unknown spin direction\n");
     }
 
     const double denom = sqrt(1.0 / (2.0 * l + 1.0));
@@ -144,7 +144,7 @@ double_complex
 SHT::calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma) {
 
     if ((sigma != 0) && (sigma != 1)) {
-        std::printf("SphericalIndex function : unkown spin direction\n");
+        std::printf("SphericalIndex function : unknown spin direction\n");
         return 0;
     }
 

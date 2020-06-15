@@ -76,7 +76,7 @@ void Stress::calc_stress_nonloc_aux()
 
     #pragma omp parallel
     {
-        matrix3d<double> tmp_stress; // TODO: test pragma omp paralell for reduction(+:stress)
+        matrix3d<double> tmp_stress; // TODO: test pragma omp parallel for reduction(+:stress)
 
         #pragma omp for
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {

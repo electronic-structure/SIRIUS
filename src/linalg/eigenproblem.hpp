@@ -19,7 +19,7 @@
 
 /** \file eigenproblem.hpp
  *
- *  \brief Contains definition and implementaiton of various eigenvalue solver interfaces.
+ *  \brief Contains definition and implementation of various eigenvalue solver interfaces.
  */
 
 #ifndef __EIGENPROBLEM_HPP__

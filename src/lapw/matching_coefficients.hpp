@@ -198,8 +198,8 @@ class Matching_coefficients // TODO: compute on GPU
         }
     }
 
-    /// Generate plane-wave matching coefficents for the radial solutions of a given atom.
-    /** \param [in]  atom      Atom, for which matching coefficents are generated.
+    /// Generate plane-wave matching coefficients for the radial solutions of a given atom.
+    /** \param [in]  atom      Atom, for which matching coefficients are generated.
         \param [out] alm       Array of matching coefficients with dimension indices \f$ ({\bf G+k}, \xi) \f$.
      */
     template <bool conjugate>

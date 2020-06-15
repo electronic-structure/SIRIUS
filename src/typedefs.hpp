@@ -117,7 +117,7 @@ struct local_orbital_descriptor
     int l;
 
     /// Total angular momentum used in pseudopotential SO code.
-    double total_angular_momentum; // TODO: is this neccessary?
+    double total_angular_momentum; // TODO: is this necessary?
 
     /// Set of radial solution descriptors.
     /** Local orbital is constructed from at least two radial functions in order to make it zero at the
@@ -125,7 +125,7 @@ struct local_orbital_descriptor
     radial_solution_descriptor_set rsd_set;
 };
 
-/// Descriptor of an atom in a list of nearest neigbours for each atom.
+/// Descriptor of an atom in a list of nearest neighbours for each atom.
 /** See sirius::Unit_cell::find_nearest_neighbours() for the details of usage. */
 struct nearest_neighbour_descriptor
 {

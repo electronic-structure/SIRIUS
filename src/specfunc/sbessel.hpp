@@ -19,7 +19,7 @@
 
 /** \file sbessel.hpp
  *
- *  \brief Contains implementation of sirius::Spherical_Bessel_functions classe.
+ *  \brief Contains implementation of sirius::Spherical_Bessel_functions class.
  */
 
 #ifndef __SBESSEL_HPP__
