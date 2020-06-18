@@ -184,6 +184,7 @@ class Energy : public nlcglib::EnergyBase
     std::shared_ptr<nlcglib::VectorBaseZ> get_ek() override;
     std::shared_ptr<nlcglib::VectorBaseZ> get_gkvec_ekin() override;
     std::shared_ptr<nlcglib::ScalarBaseZ> get_kpoint_weights() override;
+    void print_info() const override;
 
   private:
     K_point_set& kset;

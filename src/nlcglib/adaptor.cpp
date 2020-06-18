@@ -362,6 +362,34 @@ void Energy::set_wfct(nlcglib::MatrixBaseZ& vector)
     throw std::runtime_error("not implemented.");
 }
 
+void Energy::print_info() const
+{
+    auto& ctx = kset.ctx();
+    auto& unit_cell = kset.unit_cell();
+
+    auto result_mag = density.get_magnetisation();
+    // auto total_mag  = std::get<0>(result_mag);
+    // auto it_mag     = std::get<1>(result_mag);
+    auto mt_mag     = std::get<2>(result_mag);
+
+    if (ctx.num_mag_dims()) {
+        std::printf("atom              moment                |moment|");
+        std::printf("\n");
+        for (int i = 0; i < 80; i++) {
+            std::printf("-");
+        }
+        std::printf("\n");
+
+        for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
+            vector3d<double> v(mt_mag[ia]);
+            std::printf("%4i  [%8.4f, %8.4f, %8.4f]  %10.6f", ia, v[0], v[1], v[2], v.length());
+            std::printf("\n");
+        }
+
+        std::printf("\n");
+    }
+}
+
 Array1d::buffer_t Array1d::get(int i)
 {
     // call 1d constructor
