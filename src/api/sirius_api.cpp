@@ -532,6 +532,10 @@ sirius_insert_xc_functional(void* const* gs_handler__,
 {
     auto& gs = get_gs(gs_handler__);
     auto& potential = gs.potential();
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank==0)
+        std::cout << "insert functional: " << name__ << "\n";
     potential.insert_xc_functionals({name__});
 }
 
