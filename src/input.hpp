@@ -251,7 +251,10 @@ struct Iterative_solver_input
     int num_steps_{20};
 
     /// Size of the variational subspace is this number times the number of bands.
-    int subspace_size_{4};
+    int subspace_size_{2};
+
+    /// Lock eigenvectors of the smallest eigenvalues when they have converged at restart
+    bool use_locking_{false};
 
     /// Tolerance for the eigen-energy difference \f$ |\epsilon_i^{old} - \epsilon_i^{new} | \f$.
     /** This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions. */
@@ -271,7 +274,7 @@ struct Iterative_solver_input
     /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
         is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
         unconverged residuals and then compute only the unconverged ones. */
-    int converge_by_energy_{1}; // TODO: rename, this is meaningless
+    int converge_by_energy_{0}; // TODO: rename, this is meaningless
 
     /// Minimum number of residuals to continue iterative diagonalization process.
     int min_num_res_{0};
@@ -299,6 +302,7 @@ struct Iterative_solver_input
             type_                   = section.value("type", type_);
             num_steps_              = section.value("num_steps", num_steps_);
             subspace_size_          = section.value("subspace_size", subspace_size_);
+            use_locking_            = section.value("locking", use_locking_);
             energy_tolerance_       = section.value("energy_tolerance", energy_tolerance_);
             residual_tolerance_     = section.value("residual_tolerance", residual_tolerance_);
             relative_tolerance_     = section.value("relative_tolerance", relative_tolerance_);
@@ -310,6 +314,11 @@ struct Iterative_solver_input
             init_eval_old_          = section.value("init_eval_old", init_eval_old_);
             init_subspace_          = section.value("init_subspace", init_subspace_);
             std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
+
+            // locking implies orthogonalization, so let's just enforce it.
+            if (use_locking_) {
+                orthogonalize_ = true;
+            }
         }
     }
 };

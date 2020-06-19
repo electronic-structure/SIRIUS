@@ -194,10 +194,10 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
         }
 
         /* setup eigen-value problem */
-        Band(ctx).set_subspace_mtrx<T>(0, num_bands, phi, hphi, hmlt, &hmlt_old);
+        Band(ctx).set_subspace_mtrx<T>(0, num_bands, 0, phi, hphi, hmlt, &hmlt_old);
         if (!keep_phi_orthogonal__) {
             /* setup overlap matrix */
-            Band(ctx).set_subspace_mtrx<T>(0, num_bands, phi, sphi, ovlp, &ovlp_old);
+            Band(ctx).set_subspace_mtrx<T>(0, num_bands, 0, phi, sphi, ovlp, &ovlp_old);
         }
 
         /* current subspace size */
@@ -318,7 +318,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
             /* setup eigen-value problem
              * N is the number of previous basis functions
              * n is the number of new basis functions */
-            Band(ctx).set_subspace_mtrx<T>(N, n, phi, hphi, hmlt, &hmlt_old);
+            Band(ctx).set_subspace_mtrx<T>(N, n, 0, phi, hphi, hmlt, &hmlt_old);
 
             //if (ctx_.control().verification_ >= 1) {
             //    double max_diff = check_hermitian(hmlt, N + n);
@@ -331,7 +331,7 @@ davidson(Hamiltonian_k& Hk__, Wave_functions& psi__, int num_mag_dims__, int sub
 
             if (!keep_phi_orthogonal__) {
                 /* setup overlap matrix */
-                Band(ctx).set_subspace_mtrx<T>(N, n, phi, sphi, ovlp, &ovlp_old);
+                Band(ctx).set_subspace_mtrx<T>(N, n, 0, phi, sphi, ovlp, &ovlp_old);
 
                 //if (ctx_.control().verification_ >= 1) {
                 //    double max_diff = check_hermitian(ovlp, N + n);

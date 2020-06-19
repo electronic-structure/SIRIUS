@@ -152,8 +152,7 @@ class Eigensolver_lapack : public Eigensolver
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
-              dmatrix<double_complex>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
     {
         PROFILE("Eigensolver_lapack|zheevx");
 
@@ -730,8 +729,7 @@ class Eigensolver_scalapack : public Eigensolver
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
-              dmatrix<double_complex>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
     {
         PROFILE("Eigensolver_scalapack|pzheevx");
 
@@ -1160,8 +1158,7 @@ class Eigensolver_magma: public Eigensolver
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
-              dmatrix<double_complex>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
     {
         PROFILE("Eigensolver_magma|zheevdx");
 
@@ -1353,8 +1350,7 @@ class Eigensolver_magma_gpu: public Eigensolver
     //}
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__,
-              dmatrix<double_complex>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
     {
         PROFILE("Eigensolver_magma_gpu|zheevdx");
 
@@ -1398,7 +1394,7 @@ class Eigensolver_magma_gpu: public Eigensolver
             //    std::copy(A__.at(memory_t::host, 0, i), A__.at(memory_t::host, 0, i) + matrix_size__,
             //              Z__.at(memory_t::host, 0, i));
             //}
-            acc::copyout(Z__.at(memory_t::host, 0, 0), Z__.ld(), A__.at(memory_t::device, 0, 0), A__.ld(),
+            acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(),
                          matrix_size__, nev__);
         }
 
@@ -1434,8 +1430,7 @@ class Eigensolver_cuda: public Eigensolver
     {
     }
 
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, double* eval__,
-              dmatrix<double_complex>& Z__)
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
     {
         PROFILE("Eigensolver_cuda|zheevdx");
 
@@ -1472,13 +1467,7 @@ class Eigensolver_cuda: public Eigensolver
         return info;
     }
 
-    int solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
-    {
-        return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
-    }
-
-    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__,
-              dmatrix<double>& Z__)
+    int solve(ftn_int matrix_size__, int nev__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
     {
         PROFILE("Eigensolver_cuda|dsyevdx");
 
@@ -1511,11 +1500,6 @@ class Eigensolver_cuda: public Eigensolver
             acc::copyout(Z__.at(memory_t::host), Z__.ld(), A__.at(memory_t::device), A__.ld(), matrix_size__, nev__);
         }
         return info;
-    }
-
-    int solve(ftn_int matrix_size__, dmatrix<double>& A__, double* eval__, dmatrix<double>& Z__)
-    {
-        return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
     }
 
     int solve(ftn_int matrix_size__, int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__, double* eval__,
