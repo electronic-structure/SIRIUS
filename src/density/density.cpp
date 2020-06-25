@@ -433,7 +433,7 @@ void Density::generate_paw_atom_density(int idx__)
 
     /* get gaunt coefficients */
     Gaunt_coefficients<double> GC(atom_type.indexr().lmax_lo(), 2 * atom_type.indexr().lmax_lo(),
-                                  atom_type.indexr().lmax_lo(), SHT::gaunt_rlm);
+                                  atom_type.indexr().lmax_lo(), SHT::gaunt_rrr);
 
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         paw_density_.ae_density(i, idx__).zero();

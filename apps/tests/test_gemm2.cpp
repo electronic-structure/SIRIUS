@@ -1,17 +1,19 @@
-#include "test.hpp"
+#include "sirius.hpp"
+#include "testing.hpp"
 
 #ifdef __TEST_REAL
 typedef double gemm_type;
 int const nop_gemm = 2;
 #else
-typedef double_complex gemm_type;
+typedef std::complex<double> gemm_type;
 int const nop_gemm = 8;
 #endif
 
 
-double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t memA__, memory_t memB__, memory_t memC__)
+double test_gemm(int M, int N, int K, int transa, sddk::linalg_t la__, sddk::memory_t memA__, sddk::memory_t memB__,
+                 sddk::memory_t memC__)
 {
-    mdarray<gemm_type, 2> a, b, c;
+    sddk::mdarray<gemm_type, 2> a, b, c;
     int imax, jmax;
     if (transa == 0) {
         imax = M;
@@ -21,29 +23,29 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t memA__
         jmax = M;
     }
 
-    a = matrix<gemm_type>(imax, jmax, memA__);
-    b = matrix<gemm_type>(K, N, memB__);
-    c = matrix<gemm_type>(M, N, memC__);
+    a = sddk::matrix<gemm_type>(imax, jmax, memA__);
+    b = sddk::matrix<gemm_type>(K, N, memB__);
+    c = sddk::matrix<gemm_type>(M, N, memC__);
 
     if (!is_host_memory(memA__)) {
-        a.allocate(memory_t::host);
+        a.allocate(sddk::memory_t::host);
     }
     a = [](int64_t i, int64_t j){return utils::random<gemm_type>();};
     if (!is_host_memory(memA__)) {
-        a.copy_to(memory_t::device);
+        a.copy_to(sddk::memory_t::device);
     }
 
     if (!is_host_memory(memB__)) {
-        b.allocate(memory_t::host);
+        b.allocate(sddk::memory_t::host);
     }
     b = [](int64_t i, int64_t j){return utils::random<gemm_type>();};
     if (!is_host_memory(memB__)) {
-        b.copy_to(memory_t::device);
+        b.copy_to(sddk::memory_t::device);
     }
 
     c.zero(memC__);
     if (!is_host_memory(memC__)) {
-        c.allocate(memory_t::host);
+        c.allocate(sddk::memory_t::host);
     }
 
     char TA[] = {'N', 'T', 'C'};
@@ -53,13 +55,13 @@ double test_gemm(int M, int N, int K, int transa, linalg_t la__, memory_t memA__
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
     double t = -utils::wtime();
-    linalg(la__).gemm(TA[transa], 'N', M, N, K, &linalg_const<gemm_type>::one(),
+    sddk::linalg(la__).gemm(TA[transa], 'N', M, N, K, &sddk::linalg_const<gemm_type>::one(),
                        a.at(memA__), a.ld(), b.at(memB__), b.ld(),
-                       &linalg_const<gemm_type>::zero(),
+                       &sddk::linalg_const<gemm_type>::zero(),
                        c.at(memC__), c.ld());
     double t2 = t + utils::wtime();
     if (is_device_memory(memC__)) {
-        c.copy_to(memory_t::host);
+        c.copy_to(sddk::memory_t::host);
     }
 
     t += utils::wtime();
@@ -100,13 +102,13 @@ int main(int argn, char **argv)
     int repeat = args.value<int>("repeat", 5);
 
     std::string linalg_t_str = args.value<std::string>("linalg_t", "blas");
-    auto memA = get_memory_t(args.value<std::string>("memA", "host"));
-    auto memB = get_memory_t(args.value<std::string>("memB", "host"));
-    auto memC = get_memory_t(args.value<std::string>("memC", "host"));
+    auto memA = sddk::get_memory_t(args.value<std::string>("memA", "host"));
+    auto memB = sddk::get_memory_t(args.value<std::string>("memB", "host"));
+    auto memC = sddk::get_memory_t(args.value<std::string>("memC", "host"));
 
     sirius::initialize(true);
 
-    Measurement perf;
+    sirius::Measurement perf;
     for (int i = 0; i < repeat; i++) {
         perf.push_back(test_gemm(M, N, K, transa, get_linalg_t(linalg_t_str), memA, memB, memC));
     }

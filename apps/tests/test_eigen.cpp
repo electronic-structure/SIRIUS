@@ -1,4 +1,5 @@
-#include "test.hpp"
+#include "sirius.hpp"
+#include "testing.hpp"
 
 using namespace sirius;
 
@@ -89,15 +90,24 @@ double test_diag(BLACS_grid const& blacs_grid__,
     }
     if (test_gen__) {
         /* lambda * B * Z */
+#if defined(__SCALAPACK)
         linalg(linalg_t::scalapack).gemm('N', 'N', n__, nev__, n__, &linalg_const<T>::one(), B_ref, 0, 0, A, 0, 0,
             &linalg_const<T>::zero(), B, 0, 0);
+#else
+        linalg(linalg_t::blas).gemm('N', 'N', n__, nev__, n__, &linalg_const<T>::one(), &B_ref(0, 0), B_ref.ld(),
+            &A(0, 0), A.ld(), &linalg_const<T>::zero(), &B(0, 0), B.ld());
+#endif
         B >> A;
     }
 
     /* A * Z - lambda * B * Z */
+#if defined(__SCALAPACK)
     linalg(linalg_t::scalapack).gemm('N', 'N', n__, nev__, n__, &linalg_const<T>::one(), A_ref, 0, 0, Z, 0, 0,
         &linalg_const<T>::m_one(), A, 0, 0);
-
+#else
+    linalg(linalg_t::blas).gemm('N', 'N', n__, nev__, n__, &linalg_const<T>::one(), &A_ref(0, 0), A_ref.ld(),
+            &Z(0, 0), Z.ld(), &linalg_const<T>::m_one(), &A(0, 0), A.ld());
+#endif
     double diff{0};
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
@@ -218,11 +228,6 @@ int main(int argn, char** argv)
         {"type=", "{int} data type: 0-real, 1-complex"}
     });
 
-    if (args.exist("help")) {
-        printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
     auto mpi_grid_dims = args.value<std::vector<int>>("mpi_grid_dims", {1, 1});
     auto N        = args.value<int>("N", 200);
     auto n        = args.value<int>("n", 100);

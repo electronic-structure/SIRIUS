@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(SIRIUS VERSION 6.5.4)
+project(SIRIUS VERSION 6.5.5)
 
 # set language and standard
 enable_language(CXX Fortran)
@@ -27,10 +27,13 @@ set(USE_OPENMP ON CACHE BOOL "use OpenMP")
 set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
 set(USE_PROFILER ON CACHE BOOL "measure execution of functions with timer")
 set(USE_MEMORY_POOL ON CACHE BOOL "use memory pool")
+set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory aligment of the GPU") 
 
 if(USE_CUDA AND USE_ROCM)
   message(FATAL_ERROR "USE_CUDA and USE_ROCM must not be enabled at the same time!")
 endif()
+
+add_compile_definitions(__GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
 
 # if(USE_MKL AND NOT (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Intel"))
 #   message(FATAL_ERROR "Unsupported compiler")

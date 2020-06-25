@@ -395,7 +395,7 @@ class SHT // TODO: better name
      *    \langle Y_{\ell_1 m_1} | Y_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
      *  \f]
      */
-    static double gaunt_ylm(int l1, int l2, int l3, int m1, int m2, int m3)
+    static double gaunt_yyy(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         assert(l1 >= 0);
         assert(l2 >= 0);
@@ -415,7 +415,7 @@ class SHT // TODO: better name
      *    \langle R_{\ell_1 m_1} | R_{\ell_2 m_2} | R_{\ell_3 m_3} \rangle
      *  \f]
      */
-    static double gaunt_rlm(int l1, int l2, int l3, int m1, int m2, int m3)
+    static double gaunt_rrr(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         assert(l1 >= 0);
         assert(l2 >= 0);
@@ -431,7 +431,7 @@ class SHT // TODO: better name
                     d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) *
                                    SHT::ylm_dot_rlm(l2, k2, m2) *
                                    SHT::ylm_dot_rlm(l3, k3, m3)) *
-                         SHT::gaunt_ylm(l1, l2, l3, k1, k2, k3);
+                         SHT::gaunt_yyy(l1, l2, l3, k1, k2, k3);
                 }
             }
         }
@@ -458,7 +458,7 @@ class SHT // TODO: better name
             for (int k3 = -l3; k3 <= l3; k3++) {
                 d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) *
                                SHT::ylm_dot_rlm(l3, k3, m3)) *
-                     SHT::gaunt_ylm(l1, l2, l3, k1, m2, k3);
+                     SHT::gaunt_yyy(l1, l2, l3, k1, m2, k3);
             }
         }
         return d;
@@ -480,10 +480,10 @@ class SHT // TODO: better name
         assert(m3 >= -l3 && m3 <= l3);
 
         if (m2 == 0) {
-            return double_complex(gaunt_ylm(l1, l2, l3, m1, m2, m3), 0.0);
+            return double_complex(gaunt_yyy(l1, l2, l3, m1, m2, m3), 0.0);
         } else {
-            return (ylm_dot_rlm(l2, m2, m2) * gaunt_ylm(l1, l2, l3, m1, m2, m3) +
-                    ylm_dot_rlm(l2, -m2, m2) * gaunt_ylm(l1, l2, l3, m1, -m2, m3));
+            return (ylm_dot_rlm(l2, m2, m2) * gaunt_yyy(l1, l2, l3, m1, m2, m3) +
+                    ylm_dot_rlm(l2, -m2, m2) * gaunt_yyy(l1, l2, l3, m1, -m2, m3));
         }
     }
 

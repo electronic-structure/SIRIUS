@@ -619,7 +619,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             eval >> eval_old;
 
-            PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|evp");
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N */
                 if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
@@ -635,7 +634,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     TERMINATE(s);
                 }
             }
-            PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|evp");
 
             ctx_.evp_work_count(std::pow(static_cast<double>(N) / num_bands, 3));
 
