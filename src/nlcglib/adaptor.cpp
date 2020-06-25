@@ -191,25 +191,6 @@ void Energy::compute()
 }
 
 
-void Energy::set_occupation_numbers(const std::vector<std::vector<double>>& fn)
-{
-    auto nk      = kset.spl_num_kpoints().local_size();
-    const int ns = kset.ctx().num_spins();
-    if (nk * ns != int(fn.size())) {
-        throw std::runtime_error("set_occupation_numbers: wrong number of k-points");
-    }
-
-    for (auto i = 0u; i < fn.size(); ++i) {
-        int ik   = i / ns;
-        int ispn = i % ns;
-        auto& kp = *kset[kset.spl_num_kpoints(ik)];
-        // BEWARE: nothing is allocated, it must be done outside.
-        for (auto j = 0u; j < fn[i].size(); ++j) {
-            kp.band_occupancy(j, ispn, fn[i][j]);
-        }
-    }
-}
-
 int Energy::occupancy()
 {
     return kset.ctx().max_occupancy();
@@ -258,28 +239,26 @@ std::shared_ptr<nlcglib::VectorBaseZ> Energy::get_fn()
     return std::make_shared<Array1d>(fn, kindices, kset.comm().mpi_comm());
 }
 
-void Energy::set_fn(const std::vector<std::vector<double>>& fn)
+void Energy::set_fn(const std::vector<std::pair<int, int>>& keys, const std::vector<std::vector<double>>& fn)
 {
-    auto nk      = kset.spl_num_kpoints().local_size();
-    const int ns = kset.ctx().num_spins();
     const int nbands   = kset.ctx().num_bands();
     #ifdef DEBUG
+    const int ns        = kset.ctx().num_spins();
+    auto nk             = kset.spl_num_kpoints().local_size();
     const double max_occ = ns == 1 ? 2.0 : 1.0;
     #endif
 
     assert(static_cast<int>(fn.size()) == nk*ns);
-    for (int ik = 0; ik < nk; ++ik) {
+    for (int iloc = 0; iloc < fn.size(); ++iloc) {
         // global k-point index
-        auto gidk = kset.spl_num_kpoints(ik);
+        int gidk= keys[iloc].first;
+        int ispn = keys[iloc].second;
         auto& kp  = *kset[gidk];
-        for (int ispn = 0; ispn < ns; ++ispn) {
-            const auto& fn_loc = fn[ik * ns + ispn];
-            assert(static_cast<int>(fn_loc.size()) == nbands);
-            for (int i = 0; i < nbands; ++i)
-            {
-                assert(fn_loc[i] >= 0 && fn_loc[i] <= max_occ);
-                kp.band_occupancy(i, ispn, fn_loc[i]);
-            }
+        const auto& fn_loc = fn[iloc];
+        assert(static_cast<int>(fn_loc.size()) == nbands);
+        for (int i = 0; i < nbands; ++i) {
+            assert(fn_loc[i] >= 0 && fn_loc[i] <= max_occ);
+            kp.band_occupancy(i, ispn, fn_loc[i]);
         }
     }
     kset.sync_band_occupancies();
@@ -355,11 +334,6 @@ std::shared_ptr<nlcglib::ScalarBaseZ> Energy::get_kpoint_weights()
 double Energy::get_total_energy()
 {
     return etot;
-}
-
-void Energy::set_wfct(nlcglib::MatrixBaseZ& vector)
-{
-    throw std::runtime_error("not implemented.");
 }
 
 void Energy::print_info() const

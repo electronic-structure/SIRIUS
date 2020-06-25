@@ -169,9 +169,6 @@ class Energy : public nlcglib::EnergyBase
 {
   public:
     Energy(K_point_set& kset, Density& density, Potential& potential);
-
-    void set_occupation_numbers(const std::vector<std::vector<double>>& fn) override;
-    void set_wfct(nlcglib::MatrixBaseZ& vector) override;
     int nelectrons() override;
     int occupancy() override;
     void compute() override;
@@ -180,7 +177,7 @@ class Energy : public nlcglib::EnergyBase
     std::shared_ptr<nlcglib::MatrixBaseZ> get_sphi() override;
     std::shared_ptr<nlcglib::MatrixBaseZ> get_C(nlcglib::memory_type) override;
     std::shared_ptr<nlcglib::VectorBaseZ> get_fn() override;
-    void set_fn(const std::vector<std::vector<double>>& fn) override;
+    void set_fn(const std::vector<std::pair<int, int>>& keys, const std::vector<std::vector<double>>& fn) override;
     std::shared_ptr<nlcglib::VectorBaseZ> get_ek() override;
     std::shared_ptr<nlcglib::VectorBaseZ> get_gkvec_ekin() override;
     std::shared_ptr<nlcglib::ScalarBaseZ> get_kpoint_weights() override;

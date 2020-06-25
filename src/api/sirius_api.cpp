@@ -3832,20 +3832,22 @@ void sirius_nlcg_params(void* const* handler__,
       pu = ctx.control().processing_unit_;
     }
 
+    nlcglib::nlcg_info info;
+
     sirius::Energy energy(kset, density, potential);
     if (is_device_memory(ctx.preferred_memory_t())) {
         if (pu.empty() || pu.compare("gpu") == 0) {
-            nlcglib::nlcg_mvp2_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+            info = nlcglib::nlcg_mvp2_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
         } else if (pu.compare("cpu") == 0) {
-            nlcglib::nlcg_mvp2_device_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+            info = nlcglib::nlcg_mvp2_device_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
         } else {
             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
         }
     } else {
         if (pu.empty() || pu.compare("gpu") == 0) {
-            nlcglib::nlcg_mvp2_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+            info = nlcglib::nlcg_mvp2_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
         } else if (pu.compare("cpu") == 0) {
-            nlcglib::nlcg_mvp2_cpu_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+            info = nlcglib::nlcg_mvp2_cpu_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
         } else {
             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
         }
