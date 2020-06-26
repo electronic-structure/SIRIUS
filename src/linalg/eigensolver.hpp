@@ -112,7 +112,7 @@ class Eigensolver
         if (mpd__) {
             mp_d_ = std::shared_ptr<sddk::memory_pool>(mpd__, [](sddk::memory_pool*){});
         } else {
-            mp_d_ = std::shared_ptr<sddk::memory_pool>(new sddk::memory_pool(sddk::memory_t::host));
+            mp_d_ = std::shared_ptr<sddk::memory_pool>(new sddk::memory_pool(sddk::memory_t::device));
         }
     }
 
