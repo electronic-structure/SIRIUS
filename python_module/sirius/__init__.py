@@ -96,14 +96,6 @@ class DensityDescriptor(object):
         instance.f_pw_local(self.i)[:] = value
 
 
-class DensityMatrixDescriptor(object):
-    def __get__(self, instance, owner):
-        return np.array(instance.density_matrix())
-
-    def __set__(self, instance, value):
-        instance.density_matrix()[:] = value
-
-
 K_point_set.fn = OccupancyDescriptor()
 K_point_set.C = PWDescriptor()
 K_point_set.w = KPointWeightDescriptor()
@@ -113,4 +105,3 @@ Density.rho = DensityDescriptor(0)
 Density.mx = DensityDescriptor(1)
 Density.my = DensityDescriptor(2)
 Density.mz = DensityDescriptor(3)
-Density.dm = DensityMatrixDescriptor()

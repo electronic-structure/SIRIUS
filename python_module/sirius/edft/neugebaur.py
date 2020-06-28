@@ -11,7 +11,7 @@ from ..coefficient_array import diag, einsum, inner
 
 from ..helpers import save_state
 from ..logger import Logger
-from ..py_sirius import magnetization
+from ..py_sirius import magnetization, sprint_magnetization
 from .ortho import loewdin
 from .preconditioner import IdentityPreconditioner
 import time
@@ -307,9 +307,9 @@ class CG:
         if not FE < F0:
             logger('==== failed step ====')
             logger('F0:', F0)
-            logger('Fpred:', Fpred, ' xi_min: ', xi_min, 'xi_trial: ', xi_trial)
-            logger('F1: ', F1, ' a: ', a)
-            logger('slope: ', slope)
+            logger('Fpred:', Fpred, ' xi_min: ', format(xi_min, '.4g'), 'xi_trial: ', format(xi_trial, '.4g'))
+            logger('F1: ', F1, ' a: ', format(a, '.4g'))
+            logger('slope: ', format(slope, '.5f'))
             # save_state({'X': X, 'f': f,
             #             'F0': F0, 'F1': F1,
             #             'a': a, 'b': b, 'c': c,
@@ -369,7 +369,8 @@ class CG:
             tau=0.5,
             cgtype='FR',
             K=IdentityPreconditioner(),
-            callback=lambda *args, **kwargs: None):
+            callback=lambda *args, **kwargs: None,
+            error_callback=lambda *args, **kwargs: None):
         """
         Returns:
         X            -- pw coefficients
@@ -453,15 +454,18 @@ class CG:
                     except StepError:
                         # not even golden section search works
                         # restart CG and reduce kappa
-                        cg_restart_inprogress = True
-                        kappa = kappa/3
+                        if cg_restart_inprogress and kappa > 0:
+                            error_callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, FE=FE, it=ii)
+                            raise Exception('giving up, invalid search direction after restart')
+                        kappa = 0
                         logger('kappa: ', kappa)
                         tmin = 0
             callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, FE=FE, it=ii)
             logger('step %5d' % ii, 'F: %.11f res: X,eta %+10.5e, %+10.5e' %
                    (FE, np.real(inner(g_X, G_X)), np.real(inner(g_eta, G_eta))))
-            mag = magnetization(self.M.energy.density)
-            logger('magnetization: %.5f %.5f %.5f, total: %.5f' % (mag[0], mag[1], mag[2], np.linalg.norm(mag)))
+            mag_str = sprint_magnetization(self.M.energy.kpointset, self.M.energy.density)
+            logger(mag_str)
+            # logger('magnetization: %.5f %.5f %.5f, total: %.5f' % (mag[0], mag[1], mag[2], np.linalg.norm(mag)))
             eta = diag(ek)
             # keep previous search directions
             GP_X = G_X@U
