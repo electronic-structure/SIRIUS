@@ -474,7 +474,8 @@ const std::map<std::string, int> libxc_functionals = {
     {"XC_GGA_C_PBE_JRGX", XC_GGA_C_PBE_JRGX}, /* JRGX reparametrization by Pedroza, Silva & Capelle */
 #endif
 #if defined(XC_GGA_X_OPTB88_VDW)
-    {"XC_GGA_X_OPTB88_VDW", XC_GGA_X_OPTB88_VDW}, /* Becke 88 reoptimized to be used with vdW functional of Dion et al */
+    {"XC_GGA_X_OPTB88_VDW",
+     XC_GGA_X_OPTB88_VDW}, /* Becke 88 reoptimized to be used with vdW functional of Dion et al */
 #endif
 #if defined(XC_GGA_X_PBEK1_VDW)
     {"XC_GGA_X_PBEK1_VDW", XC_GGA_X_PBEK1_VDW}, /* PBE reparametrization for vdW */
@@ -1029,7 +1030,8 @@ const std::map<std::string, int> libxc_functionals = {
     {"XC_HYB_GGA_XC_HSE_SOL", XC_HYB_GGA_XC_HSE_SOL}, /* HSEsol functional by Schimka, Harl, and Kresse */
 #endif
 #if defined(XC_HYB_GGA_XC_CAM_QTP_01)
-    {"XC_HYB_GGA_XC_CAM_QTP_01", XC_HYB_GGA_XC_CAM_QTP_01}, /* CAM-QTP(01): CAM-B3LYP retuned using ionization potentials of water */
+    {"XC_HYB_GGA_XC_CAM_QTP_01",
+     XC_HYB_GGA_XC_CAM_QTP_01}, /* CAM-QTP(01): CAM-B3LYP retuned using ionization potentials of water */
 #endif
 #if defined(XC_HYB_GGA_XC_MPW1LYP)
     {"XC_HYB_GGA_XC_MPW1LYP", XC_HYB_GGA_XC_MPW1LYP}, /* Becke 1-parameter mixture of mPW91 and LYP */
@@ -1359,7 +1361,8 @@ const std::map<std::string, int> libxc_functionals = {
     {"XC_HYB_MGGA_XC_MPW1KCIS", XC_HYB_MGGA_XC_MPW1KCIS}, /*Modified Perdew-Wang + KCIS hybrid */
 #endif
 #if defined(XC_HYB_MGGA_XC_MPWKCIS1K)
-    {"XC_HYB_MGGA_XC_MPWKCIS1K", XC_HYB_MGGA_XC_MPWKCIS1K}, /* Modified Perdew-Wang + KCIS hybrid with more exact exchange */
+    {"XC_HYB_MGGA_XC_MPWKCIS1K",
+     XC_HYB_MGGA_XC_MPWKCIS1K}, /* Modified Perdew-Wang + KCIS hybrid with more exact exchange */
 #endif
 #if defined(XC_HYB_MGGA_XC_PBE1KCIS)
     {"XC_HYB_MGGA_XC_PBE1KCIS", XC_HYB_MGGA_XC_PBE1KCIS}, /* Perdew-Burke-Ernzerhof + KCIS hybrid */
@@ -1378,309 +1381,288 @@ const std::map<std::string, int> libxc_functionals = {
 /// Interface class to Libxc.
 class XC_functional_base
 {
-    protected:
+  protected:
+    std::string libxc_name_;
 
-        std::string libxc_name_;
+    int num_spins_;
 
-        int num_spins_;
+    std::unique_ptr<xc_func_type> handler_{nullptr};
 
-        std::unique_ptr<xc_func_type> handler_{nullptr};
+    bool libxc_initialized_{false};
 
-        bool libxc_initialized_{false};
-    private:
-        /* forbid copy constructor */
-        XC_functional_base(const XC_functional_base& src) = delete;
+  private:
+    /* forbid copy constructor */
+    XC_functional_base(const XC_functional_base& src) = delete;
 
         /* forbid assignment operator */
         XC_functional_base& operator=(const XC_functional_base& src) = delete;
 
-    public:
+  public:
+    XC_functional_base(const std::string libxc_name__, int num_spins__)
+        : libxc_name_(libxc_name__)
+        , num_spins_(num_spins__)
+    {
+        /* check if functional name is in list */
+        if (libxc_functionals.count(libxc_name_) == 0 && libxc_name_ != "XC_GGA_DEBUG" &&
+            libxc_name_ != "XC_LDA_DEBUG") {
+            /* if not just return since van der walls functionals can be
+             * used */
+            libxc_initialized_ = false;
+            return;
+        }
 
-        XC_functional_base(const std::string libxc_name__, int num_spins__)
-            : libxc_name_(libxc_name__),
-              num_spins_(num_spins__)
-        {
-            /* check if functional name is in list */
-            if (libxc_functionals.count(libxc_name_) == 0 && libxc_name_ != "XC_GGA_DEBUG" && libxc_name_ != "XC_LDA_DEBUG") {
-                /* if not just return since van der walls functionals can be
-                 * used */
-                libxc_initialized_ = false;
-                return;
+        auto ns = (num_spins__ == 1) ? XC_UNPOLARIZED : XC_POLARIZED;
+
+        if (libxc_name_ != "XC_GGA_DEBUG" && libxc_name_ != "XC_LDA_DEBUG") {
+            handler_ = std::unique_ptr<xc_func_type>(new xc_func_type);
+
+            /* init xc functional handler */
+            if (xc_func_init(handler_.get(), libxc_functionals.at(libxc_name_), ns) != 0) {
+                TERMINATE("xc_func_init() failed");
             }
+        }
 
-            auto ns = (num_spins__ == 1) ? XC_UNPOLARIZED : XC_POLARIZED;
+        libxc_initialized_ = true;
+    }
 
-            if (libxc_name_ != "XC_GGA_DEBUG" && libxc_name_ != "XC_LDA_DEBUG") {
-                handler_ = std::unique_ptr<xc_func_type>(new xc_func_type);
+    XC_functional_base(XC_functional_base&& src__)
+    {
+        this->libxc_name_        = src__.libxc_name_;
+        this->num_spins_         = src__.num_spins_;
+        this->handler_           = std::move(src__.handler_);
+        this->libxc_initialized_ = src__.libxc_initialized_;
+        src__.libxc_initialized_ = false;
+    }
 
-                /* init xc functional handler */
-                if (xc_func_init(handler_.get(), libxc_functionals.at(libxc_name_), ns) != 0) {
-                    TERMINATE("xc_func_init() failed");
+    ~XC_functional_base()
+    {
+        if (handler_) {
+            xc_func_end(handler_.get());
+        }
+    }
+
+    const std::string name() const
+    {
+        if (handler_) {
+            return std::string(handler_->info->name);
+        } else {
+            return libxc_name_;
+        }
+    }
+
+    const std::string refs() const
+    {
+        if (handler_) {
+            std::stringstream s;
+            for (int i = 0; handler_->info->refs[i] != NULL; i++) {
+                s << std::string(handler_->info->refs[i]->ref);
+                if (strlen(handler_->info->refs[i]->doi) > 0) {
+                    s << " (" << std::string(handler_->info->refs[i]->doi) << ")";
                 }
+                s << std::endl;
             }
-
-            libxc_initialized_ = true;
+            return s.str();
+        } else {
+            return "";
         }
+    }
 
-        XC_functional_base(XC_functional_base&& src__)
-        {
-            this->libxc_name_  = src__.libxc_name_;
-            this->num_spins_   = src__.num_spins_;
-            this->handler_     = std::move(src__.handler_);
-            this->libxc_initialized_ = src__.libxc_initialized_;
-            src__.libxc_initialized_ = false;
-        }
-
-        ~XC_functional_base()
-        {
-            if (handler_) {
-                xc_func_end(handler_.get());
-            }
-        }
-
-        const std::string name() const
-        {
-            if (handler_) {
-                return std::string(handler_->info->name);
+    int family() const
+    {
+        if (handler_) {
+            return handler_->info->family;
+        } else {
+            if (libxc_name_ == "XC_GGA_DEBUG") {
+                return XC_FAMILY_GGA;
             } else {
-                return libxc_name_;
+                return XC_FAMILY_LDA;
             }
         }
+    }
 
-        const std::string refs() const
-        {
-            if (handler_) {
+    bool is_lda() const
+    {
+        return family() == XC_FAMILY_LDA;
+    }
+
+    bool is_gga() const
+    {
+        return family() == XC_FAMILY_GGA;
+    }
+
+    int kind() const
+    {
+        if (handler_) {
+            return handler_->info->kind;
+        } else {
+            return XC_EXCHANGE_CORRELATION;
+        }
+    }
+
+    bool is_exchange() const
+    {
+        return kind() == XC_EXCHANGE;
+    }
+
+    bool is_correlation() const
+    {
+        return kind() == XC_CORRELATION;
+    }
+
+    bool is_exchange_correlation() const
+    {
+        return kind() == XC_EXCHANGE_CORRELATION;
+    }
+
+    /// Get LDA contribution.
+    void get_lda(const int size, const double* rho, double* v, double* e)
+    {
+        if (family() != XC_FAMILY_LDA) {
+            TERMINATE("wrong XC");
+        }
+
+        /* check density */
+        for (int i = 0; i < size; i++) {
+            if (rho[i] < 0) {
                 std::stringstream s;
-                for (int i = 0; handler_->info->refs[i] != NULL; i++) {
-                    s << std::string(handler_->info->refs[i]->ref);
-                    if (strlen(handler_->info->refs[i]->doi) > 0) {
-                        s << " (" << std::string(handler_->info->refs[i]->doi) << ")";
-                    }
-                    s << std::endl;
-                }
-                return s.str();
-            } else {
-                return "";
+                s << "rho is negative : " << utils::double_to_string(rho[i]);
+                TERMINATE(s);
             }
         }
 
-        int family() const
-        {
-            if (handler_) {
-                return handler_->info->family;
-            } else {
-                if (libxc_name_ == "XC_GGA_DEBUG") {
-                    return XC_FAMILY_GGA;
-                } else {
-                    return XC_FAMILY_LDA;
-                }
-            }
-        }
-
-        bool is_lda() const
-        {
-            return family() == XC_FAMILY_LDA;
-        }
-
-        bool is_gga() const
-        {
-            return family() == XC_FAMILY_GGA;
-        }
-
-        int kind() const
-        {
-            if (handler_) {
-                return handler_->info->kind;
-            } else {
-                return XC_EXCHANGE_CORRELATION;
-            }
-        }
-
-        bool is_exchange() const
-        {
-            return kind() == XC_EXCHANGE;
-        }
-
-        bool is_correlation() const
-        {
-            return kind() == XC_CORRELATION;
-        }
-
-        bool is_exchange_correlation() const
-        {
-            return kind() == XC_EXCHANGE_CORRELATION;
-        }
-
-        /// Get LDA contribution.
-        void get_lda(const int size,
-                     const double* rho,
-                     double* v,
-                     double* e)
-        {
-            if (family() != XC_FAMILY_LDA) {
-                TERMINATE("wrong XC");
-            }
-
-            /* check density */
+        if (handler_) {
+            xc_lda_exc_vxc(handler_.get(), size, rho, e, v);
+        } else {
             for (int i = 0; i < size; i++) {
-                if (rho[i] < 0) {
-                    std::stringstream s;
-                    s << "rho is negative : " << utils::double_to_string(rho[i]);
-                    TERMINATE(s);
-                }
-            }
-
-            if (handler_) {
-                xc_lda_exc_vxc(handler_.get(), size, rho, e, v);
-            } else {
-                for (int i = 0; i < size; i++) {
-                    /* E = \int e * rho * dr */
-                    e[i] = -0.001 * (rho[i] * rho[i]);
-                    /* var E / var rho = (de/drho) rho + e */
-                    v[i] = -0.002 * rho[i] * rho[i] + e[i];
-                }
+                /* E = \int e * rho * dr */
+                e[i] = -0.001 * (rho[i] * rho[i]);
+                /* var E / var rho = (de/drho) rho + e */
+                v[i] = -0.002 * rho[i] * rho[i] + e[i];
             }
         }
+    }
 
-        /// Get LSDA contribution.
-        void get_lda(const int size,
-                     const double* rho_up,
-                     const double* rho_dn,
-                     double* v_up,
-                     double* v_dn,
-                     double* e)
-        {
-            if (family() != XC_FAMILY_LDA) {
-                TERMINATE("wrong XC");
+    /// Get LSDA contribution.
+    void get_lda(const int size, const double* rho_up, const double* rho_dn, double* v_up, double* v_dn, double* e)
+    {
+        if (family() != XC_FAMILY_LDA) {
+            TERMINATE("wrong XC");
+        }
+
+        std::vector<double> rho_ud(size * 2);
+        /* check and rearrange density */
+        for (int i = 0; i < size; i++) {
+            if (rho_up[i] < 0 || rho_dn[i] < 0) {
+                std::stringstream s;
+                s << "rho is negative : " << utils::double_to_string(rho_up[i]) << " "
+                  << utils::double_to_string(rho_dn[i]);
+                TERMINATE(s);
             }
 
-            std::vector<double> rho_ud(size * 2);
-            /* check and rearrange density */
+            rho_ud[2 * i]     = rho_up[i];
+            rho_ud[2 * i + 1] = rho_dn[i];
+        }
+
+        if (handler_) {
+            std::vector<double> v_ud(size * 2);
+
+            xc_lda_exc_vxc(handler_.get(), size, &rho_ud[0], &e[0], &v_ud[0]);
+
+            /* extract potential */
             for (int i = 0; i < size; i++) {
-                if (rho_up[i] < 0 || rho_dn[i] < 0) {
-                    std::stringstream s;
-                    s << "rho is negative : " << utils::double_to_string(rho_up[i])
-                      << " " << utils::double_to_string(rho_dn[i]);
-                    TERMINATE(s);
-                }
-
-                rho_ud[2 * i]     = rho_up[i];
-                rho_ud[2 * i + 1] = rho_dn[i];
+                v_up[i] = v_ud[2 * i];
+                v_dn[i] = v_ud[2 * i + 1];
             }
-
-            if (handler_) {
-                std::vector<double> v_ud(size * 2);
-
-                xc_lda_exc_vxc(handler_.get(), size, &rho_ud[0], &e[0], &v_ud[0]);
-
-                /* extract potential */
-                for (int i = 0; i < size; i++) {
-                    v_up[i] = v_ud[2 * i];
-                    v_dn[i] = v_ud[2 * i + 1];
-                }
-            } else {
-                for (int i = 0; i < size; i++) {
-                    e[i] = -0.001 * (rho_up[i] * rho_up[i] + rho_dn[i] * rho_dn[i]);
-                    v_up[i] = -0.002 * rho_up[i] * (rho_up[i] + rho_dn[i]) + e[i];
-                    v_dn[i] = -0.002 * rho_dn[i] * (rho_up[i] + rho_dn[i]) + e[i];
-                }
-            }
-        }
-
-        /// Get GGA contribution.
-        void get_gga(const int size,
-                     const double* rho,
-                     const double* sigma,
-                     double* vrho,
-                     double* vsigma,
-                     double* e)
-        {
-            if (family() != XC_FAMILY_GGA) TERMINATE("wrong XC");
-
-            /* check density */
+        } else {
             for (int i = 0; i < size; i++) {
-                if (rho[i] < 0.0) {
-                    std::stringstream s;
-                    s << "rho is negative : " << utils::double_to_string(rho[i]);
-                    TERMINATE(s);
-                }
+                e[i]    = -0.001 * (rho_up[i] * rho_up[i] + rho_dn[i] * rho_dn[i]);
+                v_up[i] = -0.002 * rho_up[i] * (rho_up[i] + rho_dn[i]) + e[i];
+                v_dn[i] = -0.002 * rho_dn[i] * (rho_up[i] + rho_dn[i]) + e[i];
             }
+        }
+    }
 
-            if (handler_) {
-                xc_gga_exc_vxc(handler_.get(), size, rho, sigma, e, vrho, vsigma);
-            } else {
-                for (int i = 0; i < size; i++) {
-                    e[i] = -0.001 * (rho[i] * sigma[i]);
-                    vrho[i] = -0.001 * sigma[i];
-                    vsigma[i] = -0.001 * rho[i];
-                }
+    /// Get GGA contribution.
+    void get_gga(const int size, const double* rho, const double* sigma, double* vrho, double* vsigma, double* e)
+    {
+        if (family() != XC_FAMILY_GGA)
+            TERMINATE("wrong XC");
+
+        /* check density */
+        for (int i = 0; i < size; i++) {
+            if (rho[i] < 0.0) {
+                std::stringstream s;
+                s << "rho is negative : " << utils::double_to_string(rho[i]);
+                TERMINATE(s);
             }
         }
 
-        /// Get spin-resolved GGA contribution.
-        void get_gga(const int size,
-                     const double* rho_up,
-                     const double* rho_dn,
-                     const double* sigma_uu,
-                     const double* sigma_ud,
-                     const double* sigma_dd,
-                     double* vrho_up,
-                     double* vrho_dn,
-                     double* vsigma_uu,
-                     double* vsigma_ud,
-                     double* vsigma_dd,
-                     double* e)
-        {
-            if (family() != XC_FAMILY_GGA) {
-                TERMINATE("wrong XC");
-            }
-
-            std::vector<double> rho(2 * size);
-            std::vector<double> sigma(3 * size);
-            /* check and rearrange density */
-            /* rearrange sigma as well */
+        if (handler_) {
+            xc_gga_exc_vxc(handler_.get(), size, rho, sigma, e, vrho, vsigma);
+        } else {
             for (int i = 0; i < size; i++) {
-                if (rho_up[i] < 0 || rho_dn[i] < 0) {
-                    std::stringstream s;
-                    s << "rho is negative : " << utils::double_to_string(rho_up[i])
-                      << " " << utils::double_to_string(rho_dn[i]);
-                    TERMINATE(s);
-                }
-
-                rho[2 * i] = rho_up[i];
-                rho[2 * i + 1] = rho_dn[i];
-
-                sigma[3 * i] = sigma_uu[i];
-                sigma[3 * i + 1] = sigma_ud[i];
-                sigma[3 * i + 2] = sigma_dd[i];
-            }
-
-            std::vector<double> vrho(2 * size);
-            std::vector<double> vsigma(3 * size);
-
-            if (handler_) {
-                xc_gga_exc_vxc(handler_.get(), size, &rho[0], &sigma[0], e, &vrho[0], &vsigma[0]);
-
-                /* extract vrho and vsigma */
-                for (int i = 0; i < size; i++) {
-                    vrho_up[i] = vrho[2 * i];
-                    vrho_dn[i] = vrho[2 * i + 1];
-
-                    vsigma_uu[i] = vsigma[3 * i];
-                    vsigma_ud[i] = vsigma[3 * i + 1];
-                    vsigma_dd[i] = vsigma[3 * i + 2];
-                }
-            } else {
-                for (int i = 0; i < size; i++) {
-                    e[i] = -0.001 * ((rho_up[i] + rho_dn[i]) * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]));
-                    vrho_up[i] = -0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
-                    vrho_dn[i] = -0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
-                    vsigma_uu[i] = -0.001 * (rho_up[i] + rho_dn[i]);
-                    vsigma_ud[i] = -0.001 * (rho_up[i] + rho_dn[i]);
-                    vsigma_dd[i] = -0.001 * (rho_up[i] + rho_dn[i]);
-                }
+                e[i]      = -0.001 * (rho[i] * sigma[i]);
+                vrho[i]   = -0.001 * sigma[i];
+                vsigma[i] = -0.001 * rho[i];
             }
         }
+    }
+
+    /// Get spin-resolved GGA contribution.
+    void get_gga(const int size, const double* rho_up, const double* rho_dn, const double* sigma_uu,
+                 const double* sigma_ud, const double* sigma_dd, double* vrho_up, double* vrho_dn, double* vsigma_uu,
+                 double* vsigma_ud, double* vsigma_dd, double* e)
+    {
+        if (family() != XC_FAMILY_GGA) {
+            TERMINATE("wrong XC");
+        }
+
+        std::vector<double> rho(2 * size);
+        std::vector<double> sigma(3 * size);
+        /* check and rearrange density */
+        /* rearrange sigma as well */
+        for (int i = 0; i < size; i++) {
+            if (rho_up[i] < 0 || rho_dn[i] < 0) {
+                std::stringstream s;
+                s << "rho is negative : " << utils::double_to_string(rho_up[i]) << " "
+                  << utils::double_to_string(rho_dn[i]);
+                TERMINATE(s);
+            }
+
+            rho[2 * i]     = rho_up[i];
+            rho[2 * i + 1] = rho_dn[i];
+
+            sigma[3 * i]     = sigma_uu[i];
+            sigma[3 * i + 1] = sigma_ud[i];
+            sigma[3 * i + 2] = sigma_dd[i];
+        }
+
+        std::vector<double> vrho(2 * size);
+        std::vector<double> vsigma(3 * size);
+
+        if (handler_) {
+            xc_gga_exc_vxc(handler_.get(), size, &rho[0], &sigma[0], e, &vrho[0], &vsigma[0]);
+
+            /* extract vrho and vsigma */
+            for (int i = 0; i < size; i++) {
+                vrho_up[i] = vrho[2 * i];
+                vrho_dn[i] = vrho[2 * i + 1];
+
+                vsigma_uu[i] = vsigma[3 * i];
+                vsigma_ud[i] = vsigma[3 * i + 1];
+                vsigma_dd[i] = vsigma[3 * i + 2];
+            }
+        } else {
+            for (int i = 0; i < size; i++) {
+                e[i]         = -0.001 * ((rho_up[i] + rho_dn[i]) * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]));
+                vrho_up[i]   = -0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
+                vrho_dn[i]   = -0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
+                vsigma_uu[i] = -0.001 * (rho_up[i] + rho_dn[i]);
+                vsigma_ud[i] = -0.001 * (rho_up[i] + rho_dn[i]);
+                vsigma_dd[i] = -0.001 * (rho_up[i] + rho_dn[i]);
+            }
+        }
+    }
 };
-}
+} // namespace sirius
 #endif // __XC_FUNCTIONAL_BASE_H__
