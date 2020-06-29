@@ -77,13 +77,15 @@ def make_precond(cg_config, kset):
     """
     preconditioner factory
     """
-    from sirius.edft.preconditioner import make_kinetic_precond, make_kinetic_precond2
+    from sirius.edft.preconditioner import make_kinetic_precond, make_kinetic_precond2, IdentityPreconditioner
     if cg_config['precond']['type'].lower() == 'teter':
         print('teter precond')
         return make_kinetic_precond2(kset)
     elif cg_config['precond']['type'].lower() == 'kinetic':
         print('kinetic precond')
         return make_kinetic_precond(kset, eps=cg_config['precond']['eps'])
+    elif cg_config['precond']['type'].lower() == 'identity':
+        return IdentityPreconditioner()
     else:
         raise NotImplementedError('this preconditioner does not exist:', str(cg_config['precond']))
 
