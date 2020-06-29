@@ -89,7 +89,7 @@ def btsearch(f, b, f0, maxiter=20, tau=0.5):
 
     for i in range(maxiter):
         fx = f(x)
-        if fx[0] > f0:
+        if fx[0] >= f0:
             x *= tau
             logger('btsearch::F %.10f, x=%.4e' % (fx[0], x))
         else:
@@ -454,6 +454,8 @@ class CG:
                     except StepError:
                         # not even golden section search works
                         # restart CG and reduce kappa
+
+                        error_callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, FE=FE, it=ii)
                         if cg_restart_inprogress and kappa > 0:
                             error_callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, FE=FE, it=ii)
                             raise Exception('giving up, invalid search direction after restart')

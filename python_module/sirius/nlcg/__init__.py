@@ -122,7 +122,7 @@ def run_marzari(config, sirius_config, callback=None, final_callback=None):
     return X, fn, FE
 
 
-def run_neugebaur(config, sirius_config, callback=None, final_callback=None):
+def run_neugebaur(config, sirius_config, callback, final_callback, error_callback):
     """
     Keyword Arguments:
     config        -- dictionary
@@ -147,7 +147,8 @@ def run_neugebaur(config, sirius_config, callback=None, final_callback=None):
                                 restart=cg_config['restart'],
                                 cgtype=cg_config['type'],
                                 tau=cg_config['tau'],
-                                callback=callback(kset, E=E))
+                                callback=callback(kset, E=E),
+                                error_callback=error_callback(kset, E=E))
     assert success
     tstop = time.time()
     logger('cg.run took: ', tstop-tstart, ' seconds')
@@ -156,8 +157,7 @@ def run_neugebaur(config, sirius_config, callback=None, final_callback=None):
     return X, fn, FE
 
 
-
-def run(ycfg, sirius_input, callback=None, final_callback=None):
+def run(ycfg, sirius_input, callback=None, final_callback=None, error_callback=None):
     """
     Keyword Arguments:
     ycfg         -- EDFT config (dict)
@@ -165,13 +165,15 @@ def run(ycfg, sirius_input, callback=None, final_callback=None):
     """
     method = ycfg['CG']['method']['type'].lower()
     if method == 'marzari':
+        if error_callback is not None:
+            raise Exception('error callback not yet implemented')
         X, fn, FE = run_marzari(ycfg,
                                 sirius_input,
                                 callback, final_callback)
     elif method == 'neugebaur':
         X, fn, FE = run_neugebaur(ycfg,
                                   sirius_input,
-                                  callback, final_callback)
+                                  callback, final_callback, error_callback=error_callback)
     logger('Final free energy: %.10f' % FE)
     return X, fn, FE
 
