@@ -28,6 +28,10 @@
 #include <xc.h>
 #include <string.h>
 #include <memory>
+#include <map>
+#include <stdexcept>
+#include <iostream>
+#include "utils/utils.hpp"
 
 namespace sirius {
 
@@ -1478,6 +1482,15 @@ class XC_functional_base
                 return XC_FAMILY_LDA;
             }
         }
+    }
+
+    xc_func_type* handler()
+    {
+        if(handler_) {
+            return handler_.get();
+        }
+
+        throw std::runtime_error("attempt to access nullptr in xc_functional_base::handler");
     }
 
     bool is_lda() const
