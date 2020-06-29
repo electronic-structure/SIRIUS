@@ -347,6 +347,9 @@ class Potential : public Field4D
         /* create list of XC functionals */
         for (auto& xc_label : ctx_.xc_functionals()) {
             xc_func_.emplace_back(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins());
+            if (ctx_.parameters_input().xc_dens_tre_ > 0) {
+                xc_func_.back().set_dens_threshold(ctx_.parameters_input().xc_dens_tre_);
+            }
         }
 
         using pf = Periodic_function<double>;

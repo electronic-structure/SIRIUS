@@ -560,6 +560,9 @@ struct Parameters_input
     /// Introduce extra charge to the system. Positive charge means extra holes, negative charge - extra electrons.
     double extra_charge_{0.0};
 
+    /// xc density threshold (debug purposes)
+    double xc_dens_tre_{-1.0};
+
     void read(json const& parser)
     {
         if (parser.count("parameters")) {
@@ -617,6 +620,7 @@ struct Parameters_input
             nn_radius_      = section.value("nn_radius", nn_radius_);
             reduce_aux_bf_  = section.value("reduce_aux_bf", reduce_aux_bf_);
             extra_charge_   = section.value("extra_charge", extra_charge_);
+            xc_dens_tre_    = section.value("xc_density_threshold", xc_dens_tre_);
 
             if (section.count("spin_orbit")) {
                 so_correction_ = section.value("spin_orbit", so_correction_);
