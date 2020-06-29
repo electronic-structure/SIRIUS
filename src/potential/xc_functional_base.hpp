@@ -1676,6 +1676,13 @@ class XC_functional_base
             }
         }
     }
+
+
+    /// set density threshold of libxc, if density is below tre, all xc output will be set to 0.
+    void set_dens_threshold(double tre)
+    {
+        xc_func_set_dens_threshold(this->handler(), tre);
+    }
 };
 } // namespace sirius
 #endif // __XC_FUNCTIONAL_BASE_H__
