@@ -26,3 +26,32 @@ jobs:
 
       - name: Run verification with ReFrame
         run: ./ci/github_run_verification.sh
+
+  build_rocm:
+    runs-on: ubuntu-latest
+    container: adhocman/master:ubuntu18.04_rocm
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install tools
+        run: |
+          apt-get update
+          apt-get install -y gfortran liblapack-dev libhdf5-dev libgsl-dev libxc-dev pkg-config
+          cd ${HOME}
+          wget https://github.com/Kitware/CMake/releases/download/v3.14.6/cmake-3.14.6-Linux-x86_64.tar.gz
+          tar -xzvf cmake-3.14.6-Linux-x86_64.tar.gz
+
+      - name: Build dependencies
+        run: |
+          export PATH=${PATH}:${HOME}/cmake-3.14.6-Linux-x86_64/bin
+          cd ${GITHUB_WORKSPACE}
+          ./ci/github_build_dependencies.sh
+
+      - name: Build SIRIUS
+        run: |
+          export PATH=${PATH}:${HOME}/cmake-3.14.6-Linux-x86_64/bin
+          mkdir -p build
+          cd build
+          cmake ../ -DCMAKE_BUILD_TYPE=DEBUG -DSpFFT_DIR=$HOME/local/lib/cmake/SpFFT -DCMAKE_INSTALL_PREFIX=$HOME/local -DBUILD_TESTS=1 -DUSE_ROCM=1
+          make -j 2 install
+

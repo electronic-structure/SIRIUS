@@ -15,7 +15,7 @@ packages = {
         "options" : []
     },
     "spfft" : {
-        "url"     : "https://github.com/eth-cscs/SpFFT/archive/v0.9.10.tar.gz",
+        "url"     : "https://github.com/eth-cscs/SpFFT/archive/v0.9.11.tar.gz",
         "options" : ["-DCMAKE_BUILD_TYPE=RELEASE",
                      #"-DSPFFT_GPU_BACKEND=CUDA",
                      "-DSPFFT_SINGLE_PRECISION=OFF",

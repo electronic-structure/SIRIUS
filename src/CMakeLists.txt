@@ -80,7 +80,14 @@ set(_SOURSES
 # create library with .cpp, .cu and .f90 sources
 
 if(USE_ROCM)
-  set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} -fno-gpu-rdc) # required for linking with compiler other than hcc
+  # required for linking with compiler other than hcc
+  set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} -fno-gpu-rdc)
+  # Dependency generation of FindHIP module creates a lot of warnings - disable for release mode
+  set(HIP_HCC_FLAGS_RELEASE ${HIP_HCC_FLAGS_RELEASE} -Wno-everything)
+  # FindHIP does not account for C++ standard
+  if(CMAKE_CXX_STANDARD)
+    set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} -std=gnu++${CMAKE_CXX_STANDARD})
+  endif()
   # macro from FindHIP package, which compiles all .cu files with hcc and cpp files with the set c++ compiler
   HIP_ADD_LIBRARY(sirius SHARED "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
 else()
