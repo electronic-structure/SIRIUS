@@ -401,8 +401,8 @@ macro(HIP_PREPARE_TARGET_COMMANDS _target _format _generated_files _source_files
     set(HIP_HIPCC_INCLUDE_ARGS ${HIP_HIPCC_INCLUDE_ARGS_USER})
 
     # Add the include directories
-    set(include_directories_generator "$<TARGET_PROPERTY:${_target},INCLUDE_DIRECTORIES>")
-    list(APPEND HIP_HIPCC_INCLUDE_ARGS "$<$<BOOL:${include_directories_generator}>:-I$<JOIN:${include_directories_generator}, -I>>")
+    set(include_directories_generator $<TARGET_PROPERTY:${_target},INCLUDE_DIRECTORIES>)
+    list(APPEND HIP_HIPCC_INCLUDE_ARGS $<$<BOOL:${include_directories_generator}>:-I$<JOIN:${include_directories_generator}, -I>>)
 
     get_directory_property(_hip_include_directories INCLUDE_DIRECTORIES)
     list(REMOVE_DUPLICATES _hip_include_directories)
@@ -418,8 +418,8 @@ macro(HIP_PREPARE_TARGET_COMMANDS _target _format _generated_files _source_files
     HIP_PARSE_HIPCC_OPTIONS(HIP_NVCC_FLAGS ${_nvcc_options})
 
     # Add the compile definitions
-    set(compile_definition_generator "$<TARGET_PROPERTY:${_target},COMPILE_DEFINITIONS>")
-    list(APPEND HIP_HIPCC_FLAGS "$<$<BOOL:${compile_definition_generator}>:-D$<JOIN:${compile_definition_generator}, -D>>")
+    set(compile_definition_generator $<TARGET_PROPERTY:${_target},COMPILE_DEFINITIONS>)
+    list(APPEND HIP_HIPCC_FLAGS $<$<BOOL:${compile_definition_generator}>:-D$<JOIN:${compile_definition_generator}, -D>>)
 
     # Check if we are building shared library.
     set(_hip_build_shared_libs FALSE)
