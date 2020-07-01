@@ -343,7 +343,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
         }
 
         if (ctx_.control().verification_ >= 1) {
-            set_subspace_mtrx(0, N + n, phi, ophi, ovlp);
+            set_subspace_mtrx(0, N + n, 0, phi, ophi, ovlp);
 
             if (ctx_.control().verification_ >= 2) {
                 ovlp.serialize("overlap", N + n);
@@ -362,7 +362,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, phi, ophi, ovlp, &ovlp_old);
+        set_subspace_mtrx(N, n, 0, phi, ophi, ovlp, &ovlp_old);
 
         if (ctx_.control().verification_ >= 1) {
             if (ctx_.control().verification_ >= 2) {
@@ -408,11 +408,11 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
         if (!last_iteration) {
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
             auto result = sirius::residuals(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0,
-                                  N, ncomp, eval, evec, ophi, phi, opsi, psi, res, o_diag__, diag1,
+                                  N, ncomp, 0, eval, evec, ophi, phi, opsi, psi, res, o_diag__, diag1,
                                   itso.converge_by_energy_, itso.residual_tolerance_,
                                   [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
-            n = result.first;
-            current_frobenius_norm = result.second;
+            n = result.unconverged_residuals;
+            current_frobenius_norm = result.frobenius_norm;
 
             /* set the relative tolerance convergence criterion */
             if (k == 0) {
@@ -642,7 +642,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, phi, hphi, hmlt, &hmlt_old);
+        set_subspace_mtrx(N, n, 0, phi, hphi, hmlt, &hmlt_old);
 
         /* increase size of the variation space */
         N += n;
@@ -664,11 +664,11 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
         if (!last_iteration) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
             auto result = sirius::residuals(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0,
-                                  N, num_bands, eval, evec, hphi, ophi, hpsi, opsi, res, h_o_diag.first, h_o_diag.second,
+                                  N, num_bands, 0, eval, evec, hphi, ophi, hpsi, opsi, res, h_o_diag.first, h_o_diag.second,
                                   itso.converge_by_energy_, itso.residual_tolerance_,
                                   [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
-            n = result.first;
-            current_frobenius_norm = result.second;
+            n = result.unconverged_residuals;
+            current_frobenius_norm = result.frobenius_norm;
 
             /* set the relative tolerance convergence criterion */
             if (k == 0) {

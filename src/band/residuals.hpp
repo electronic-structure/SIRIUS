@@ -32,6 +32,12 @@ class dmatrix;
 class Wave_functions;
 };
 
+struct residual_result {
+  int num_consecutive_smallest_converged;
+  int unconverged_residuals;
+  double frobenius_norm;
+};
+
 
 #if defined(__GPU)
 extern "C" void residuals_aux_gpu(int num_gvec_loc__,
@@ -76,8 +82,9 @@ namespace sirius {
     \f]
  */
 template <typename T>
-std::pair<int, double>
+residual_result
 residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N__, int num_bands__,
+          int num_locked,
           sddk::mdarray<double, 1>& eval__, sddk::dmatrix<T>& evec__, sddk::Wave_functions& hphi__,
           sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__,
           sddk::Wave_functions& opsi__, sddk::Wave_functions& res__, sddk::mdarray<double, 2> const& h_diag__,
