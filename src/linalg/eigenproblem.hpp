@@ -43,8 +43,6 @@
 
 using namespace sddk;
 
-//TODO use ELPA functions to transform to standard eigen-problem
-
 class Eigensolver_lapack : public Eigensolver
 {
   public:
@@ -1739,47 +1737,6 @@ class Eigensolver_cuda: public Eigensolver
     }
 };
 #endif
-
-//inline std::unique_ptr<Eigensolver> Eigensolver_factory(std::string name__, memory_pool* mpd__)
-//{
-//    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-//
-//    Eigensolver* ptr;
-//    switch (get_ev_solver_t(name__)) {
-//        case ev_solver_t::lapack: {
-//            ptr = new Eigensolver_lapack();
-//            break;
-//        }
-//        case ev_solver_t::scalapack: {
-//            ptr = new Eigensolver_scalapack();
-//            break;
-//        }
-//        case ev_solver_t::elpa: {
-//            if (name__ == "elpa1") {
-//                ptr = new Eigensolver_elpa(1);
-//            } else {
-//                ptr = new Eigensolver_elpa(2);
-//            }
-//            break;
-//        }
-//        case ev_solver_t::magma: {
-//            ptr = new Eigensolver_magma();
-//            break;
-//        }
-//        case ev_solver_t::magma_gpu: {
-//            ptr = new Eigensolver_magma_gpu();
-//            break;
-//        }
-//        case ev_solver_t::cusolver: {
-//            ptr = new Eigensolver_cuda(mpd__);
-//            break;
-//        }
-//        default: {
-//            TERMINATE("not implemented");
-//        }
-//    }
-//    return std::unique_ptr<Eigensolver>(ptr);
-//}
 
 //== #ifdef __PLASMA
 //== extern "C" void plasma_zheevd_wrapper(int32_t matrix_size, void* a, int32_t lda, void* z,
