@@ -224,6 +224,8 @@ class Simulation_context : public Simulation_parameters
 
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
+    /// Total number of iterative solver steps.
+    mutable int num_itsol_steps_{0};
 
     /// True if the context is already initialized.
     bool initialized_{false};
@@ -731,6 +733,12 @@ class Simulation_context : public Simulation_parameters
     {
         num_loc_op_applied_ += n;
         return num_loc_op_applied_;
+    }
+
+    inline int num_itsol_steps(int n = 0) const
+    {
+        num_itsol_steps_ += n;
+        return num_itsol_steps_;
     }
 
     /// Set the callback function.
