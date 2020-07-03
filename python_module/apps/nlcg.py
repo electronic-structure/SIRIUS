@@ -33,16 +33,15 @@ if __name__ == '__main__':
 
     def error_callback(kset, **kwargs):
         E = kwargs['E']
+
         if args.dump_on_error:
-            def _callback(fn, it, **kwargs):
+            def _callback(prefix='nlcg_dump', **kwargs):
                 # kset.ctx().create_storage_file()
                 # store_density_potential(E.density, E.potential)
                 mag_mom = E.density.compute_atomic_mag_mom()
-                save_state({'f': fn, 'ek': kset.e, 'mag_mom': mag_mom,
-                            'X': kwargs['X'], 'eta': kwargs['eta'],
-                            'g_X': kwargs['g_X'], 'g_eta': kwargs['g_eta'],
-                            'G_X': kwargs['G_X'], 'G_eta': kwargs['G_eta']},
-                           kset=kset, prefix='nlcg_dump_%05d_' % it)
+                dump_dict = {**kwargs, 'mag_mom': mag_mom}
+                save_state(dump_dict,
+                           kset=kset, prefix=prefix)
         else:
             def _callback(*args, **kwargs):
                 return None
