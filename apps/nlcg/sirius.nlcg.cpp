@@ -104,15 +104,16 @@ double ground_state(Simulation_context& ctx,
             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
         }
     } else {
-        if (pu.empty() || pu.compare("gpu") == 0) {
-            std::cout << "nlcg executing on cpu-gpu" << "\n";
-            nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else if (pu.compare("cpu") == 0){
+         if (pu.empty() || pu.compare("cpu") == 0){
             std::cout << "nlcg executing on cpu-cpu" << "\n";
             nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else {
-            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
-        }
+         } else if (pu.compare("gpu") == 0) {
+             std::cout << "nlcg executing on cpu-gpu"
+                       << "\n";
+             nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+         } else {
+             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+         }
     }
 
     if (ctx.control().verification_ >= 1) {

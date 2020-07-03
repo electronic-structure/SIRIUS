@@ -3844,9 +3844,9 @@ void sirius_nlcg_params(void* const* handler__,
             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
         }
     } else {
-        if (pu.empty() || pu.compare("gpu") == 0) {
+        if (pu.empty() || pu.compare("cpu") == 0) {
             info = nlcglib::nlcg_mvp2_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
-        } else if (pu.compare("cpu") == 0) {
+        } else if (pu.compare("gpu") == 0) {
             info = nlcglib::nlcg_mvp2_cpu_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
         } else {
             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
