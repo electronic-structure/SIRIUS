@@ -91,6 +91,8 @@ def btsearch(f, b, f0, maxiter=20, tau=0.5, error_callback=None):
 
     for i in range(maxiter):
         fx = f(x)
+        if x < 1e-8:
+            raise StepError('backtracking search could not find a new minimum')
         if fx[0] >= f0:
             x *= tau
             logger('btsearch::F %.10f, x=%.4e' % (fx[0], x))
