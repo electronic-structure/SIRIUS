@@ -423,9 +423,9 @@ class CG:
         delta_X = -K * (HX - X @ LL) / kw
 
         g_X = (HX*fn - X@LL)
-
         G_X = delta_X
-        G_eta = -g_eta
+
+        G_eta = -kappa*g_eta
         delta_eta = G_eta
 
         cg_restart_inprogress = False
