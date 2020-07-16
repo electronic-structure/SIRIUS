@@ -514,6 +514,6 @@ class CG:
             G_X = delta_X + gamma * (GP_X - X@(X.H@GP_X))
             G_eta = delta_eta + gamma * GP_eta
             tcgstop = time.time()
-            logger('\tcg step took: ', tcgstop-tcgstart, ' seconds')
+            logger('\tcg step took: ', format(tcgstop-tcgstart, '.3f'), ' seconds')
 
         return X, fn, FE, False
