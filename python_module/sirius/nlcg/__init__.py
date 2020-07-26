@@ -168,7 +168,7 @@ def run(ycfg, sirius_input, callback=None, final_callback=None, error_callback=N
     method = ycfg['CG']['method']['type'].lower()
     if method == 'marzari':
         if error_callback is not None:
-            raise Exception('error callback not yet implemented')
+            Logger()('WARNING: error callback is ignored in this method.')
         X, fn, FE = run_marzari(ycfg,
                                 sirius_input,
                                 callback, final_callback)
