@@ -129,6 +129,11 @@ void Density::initial_density_pseudo()
     }
     std::copy(v.begin(), v.end(), &rho().f_pw_local(0));
 
+    if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+        auto h = sddk::mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).hash();
+        utils::print_hash("rho_pw_init", h);
+    }
+
     double charge = rho().f_0().real() * unit_cell_.omega();
 
     if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6) {
@@ -141,6 +146,10 @@ void Density::initial_density_pseudo()
         }
     }
     rho().fft_transform(1);
+    if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+        auto h = rho().f_rg().hash();
+        utils::print_hash("rho_rg_init", h);
+    }
 
     /* remove possible negative noise */
     for (int ir = 0; ir < ctx_.spfft().local_slice_size(); ir++) {

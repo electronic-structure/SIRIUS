@@ -194,12 +194,12 @@ class Periodic_function : public Smooth_periodic_function<T>
         T it_val = 0;
 
         if (!ctx_.full_potential()) {
-            #pragma omp parallel for schedule(static) reduction(+:it_val)
+            //#pragma omp parallel for schedule(static) reduction(+:it_val)
             for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
                 it_val += this->f_rg_(irloc);
             }
         } else {
-            #pragma omp parallel for schedule(static) reduction(+:it_val)
+            //#pragma omp parallel for schedule(static) reduction(+:it_val)
             for (int irloc = 0; irloc < this->spfft_->local_slice_size(); irloc++) {
                 it_val += this->f_rg_(irloc) * ctx_.theta(irloc);
             }
