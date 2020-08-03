@@ -1,0 +1,126 @@
+include:
+  - remote: 'https://gitlab.com/cscs-ci/recipes/-/raw/master/templates/v2/.cscs.yml'
+
+stages:
+  - allocate
+  - test
+  - deallocate
+
+default:
+  image: $IMAGE
+
+variables:
+  GIT_STRATEGY: none
+  DISABLE_AFTER_SCRIPT: 'YES'
+
+allocate:
+  stage: allocate
+  extends: .daint_alloc
+  variables:
+    PULL_IMAGE: 'YES'
+
+.run_common:
+  extends: .daint
+  stage: test
+  script: |
+    cd $TEST_FOLDER
+    echo "SIRIUS flags are: $SIRIUS_FLAGS"
+    sirius.scf --test_against=output_ref.json $SIRIUS_FLAGS || cp core* ${CI_PROJECT_DIR}/
+  artifacts:
+    paths:
+      - core*
+    when: on_failure
+
+test 01:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test01
+
+test 02:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test02
+
+test 03:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test03
+
+test 04:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test04
+
+test 05:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test05
+
+test 06:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test06
+
+test 07:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test07
+
+test 08:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test08
+
+test 09:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test09
+
+test 10:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test10
+
+test 11:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test11
+
+test 12:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test12
+
+test 13:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test13
+
+test 14:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test14
+
+test 15:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test15
+
+test 16:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test16
+
+test 17:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test17
+
+test 18:
+  extends: .run_common
+  variables:
+    TEST_FOLDER: /sources/verification/test18
+
+deallocate:
+  stage: deallocate
+  extends: .daint_dealloc
