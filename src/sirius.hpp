@@ -104,7 +104,7 @@ inline void initialize(bool call_mpi_init__ = true)
         /* create extensive amount of streams */
         /* some parts of the code rely on the number of streams not related to the
            number of OMP threads */
-        acc::create_streams(omp_get_max_threads() + 100);
+        acc::create_streams(std::max(omp_get_max_threads(), 6));
 #if defined(__GPU)
         accblas::create_stream_handles();
 #endif
