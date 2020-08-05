@@ -92,7 +92,7 @@ class Band // TODO: Band class is lightweight and in principle can be converted 
      *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
      *  in the CPU pointer because most of the standard math libraries start from the CPU. */
     template <typename T>
-    void set_subspace_mtrx(int N__, int n__, sddk::Wave_functions& phi__, sddk::Wave_functions& op_phi__,
+    void set_subspace_mtrx(int N__, int n__, int num_locked, sddk::Wave_functions& phi__, sddk::Wave_functions& op_phi__,
                            sddk::dmatrix<T>& mtrx__, sddk::dmatrix<T>* mtrx_old__ = nullptr) const;
 
     /// Solve the band eigen-problem for pseudopotential case.

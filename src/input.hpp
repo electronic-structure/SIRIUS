@@ -251,7 +251,10 @@ struct Iterative_solver_input
     int num_steps_{20};
 
     /// Size of the variational subspace is this number times the number of bands.
-    int subspace_size_{4};
+    int subspace_size_{2};
+
+    /// Lock eigenvectors of the smallest eigenvalues when they have converged at restart
+    bool locking_{true};
 
     /// Tolerance for the eigen-energy difference \f$ |\epsilon_i^{old} - \epsilon_i^{new} | \f$.
     /** This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions. */
@@ -271,18 +274,13 @@ struct Iterative_solver_input
     /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
         is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
         unconverged residuals and then compute only the unconverged ones. */
-    int converge_by_energy_{1}; // TODO: rename, this is meaningless
+    int converge_by_energy_{0}; // TODO: rename, this is meaningless
 
     /// Minimum number of residuals to continue iterative diagonalization process.
     int min_num_res_{0};
 
     /// Number of singular components for the LAPW Davidson solver.
     int num_singular_{-1};
-
-    /// Control the subspace expansion.
-    /** If true, keep basis orthogonal and solve standard eigen-value problem. If false, add preconditioned residuals
-        as they are and solve generalized eigen-value problem. */
-    bool orthogonalize_{true};
 
     /// Initialize eigen-values with previous (old) values.
     bool init_eval_old_{true};
@@ -299,6 +297,7 @@ struct Iterative_solver_input
             type_                   = section.value("type", type_);
             num_steps_              = section.value("num_steps", num_steps_);
             subspace_size_          = section.value("subspace_size", subspace_size_);
+            locking_                = section.value("locking", locking_);
             energy_tolerance_       = section.value("energy_tolerance", energy_tolerance_);
             residual_tolerance_     = section.value("residual_tolerance", residual_tolerance_);
             relative_tolerance_     = section.value("relative_tolerance", relative_tolerance_);
@@ -306,7 +305,6 @@ struct Iterative_solver_input
             converge_by_energy_     = section.value("converge_by_energy", converge_by_energy_);
             min_num_res_            = section.value("min_num_res", min_num_res_);
             num_singular_           = section.value("num_singular", num_singular_);
-            orthogonalize_          = section.value("orthogonalize", orthogonalize_);
             init_eval_old_          = section.value("init_eval_old", init_eval_old_);
             init_subspace_          = section.value("init_subspace", init_subspace_);
             std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
