@@ -371,7 +371,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     }
 
     auto& std_solver = ctx_.std_evp_solver();
-    auto& gen_solver = ctx_.gen_evp_solver();
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -435,13 +434,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* setup eigen-value problem */
         set_subspace_mtrx(0, num_bands, 0, phi, hphi, hmlt, &hmlt_old);
 
-        if (!itso.orthogonalize_) {
-            ovlp_old.zero();
-            for (int i = 0; i < num_bands; i++) {
-                ovlp_old.set(i, i, 1.0);
-            }
-        }
-
         if (ctx_.control().verification_ >= 1) {
             double max_diff = check_hermitian(hmlt, num_bands);
             if (max_diff > 1e-12) {
@@ -466,7 +458,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
            a number of vectors significantly small than num_bands,
            such that we converge quickly to the first so many
            vectors, which can then be locked at restart. */
-        int block_size = std::max(1, itso.use_locking_ ? num_bands / 2 : num_bands);
+        int block_size = std::max(1, itso.locking_ ? num_bands / 2 : num_bands);
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
@@ -593,7 +585,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                     }
 
                     // Remove the lockable Ritz values from the vector
-                    if (itso.use_locking_ && num_lockable > 0) {
+                    if (itso.locking_ && num_lockable > 0) {
                         for (int i = num_lockable; i < num_ritz; ++i) {
                             eval[i - num_lockable] = eval[i];
                         }
@@ -604,19 +596,11 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         hmlt_old.set(i, i, eval[i]);
                     }
 
-                    // No orthogonalization implies no locking
-                    if (!itso.orthogonalize_) {
-                        ovlp_old.zero();
-                        for (int i = 0; i < keep; i++) {
-                            ovlp_old.set(i, i, 1);
-                        }
-                    }
-
                     /* number of basis functions that we already have */
                     N = keep;
 
                     // Only when we do orthogonalization we can lock vecs
-                    if (itso.use_locking_) {
+                    if (itso.locking_) {
                         num_locked += num_lockable;
                     }
                 }
@@ -632,9 +616,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             kp.message(3, __function_name__, "Orthogonalize %d to %d\n", N, N + expand_with);
 
-            if (itso.orthogonalize_) {
-                orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, N, expand_with, ovlp, res);
-            }
+            orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, N, expand_with, ovlp, res);
 
             /* setup eigen-value problem. 
              * N is the number of previous basis functions
@@ -650,41 +632,18 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 }
             }
 
-            if (!itso.orthogonalize_) {
-                /* setup overlap matrix */
-                set_subspace_mtrx(N, expand_with, num_locked, phi, sphi, ovlp, &ovlp_old);
-
-                if (ctx_.control().verification_ >= 1) {
-                    double max_diff = check_hermitian(ovlp, N + expand_with);
-                    if (max_diff > 1e-12) {
-                        std::stringstream s;
-                        s << "S matrix is not Hermitian, max_err = " << max_diff;
-                        WARNING(s);
-                    }
-                }
-            }
-
             /* increase size of the variation space */
             N += expand_with;
 
             // Copy the Ritz values
             eval_old >> eval;
 
-            if (itso.orthogonalize_) {
-                /* solve standard eigen-value problem with the size N - num_locked. */
-                kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_bands - num_locked);
-                if (std_solver.solve(N - num_locked, num_bands - num_locked, hmlt, &eval[0], evec)) {
-                    std::stringstream s;
-                    s << "error in diagonalization";
-                    TERMINATE(s);
-                }
-            } else {
-                /* solve generalized eigen-value problem with the size N */
-                if (gen_solver.solve(N, num_bands, hmlt, ovlp, &eval[0], evec)) {
-                    std::stringstream s;
-                    s << "error in diagonalization";
-                    TERMINATE(s);
-                }
+            /* solve standard eigen-value problem with the size N - num_locked. */
+            kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_bands - num_locked);
+            if (std_solver.solve(N - num_locked, num_bands - num_locked, hmlt, &eval[0], evec)) {
+                std::stringstream s;
+                s << "error in diagonalization";
+                TERMINATE(s);
             }
 
             ctx_.evp_work_count(std::pow(static_cast<double>(N - num_locked) / num_bands, 3));
