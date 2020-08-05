@@ -43,8 +43,6 @@
 
 using namespace sddk;
 
-//TODO use ELPA functions to transform to standard eigen-problem
-
 class Eigensolver_lapack : public Eigensolver
 {
   public:
@@ -311,61 +309,61 @@ class Eigensolver_elpa : public Eigensolver
   private:
     int stage_;
 
-    template <typename T>
-    void to_std(ftn_int matrix_size__, dmatrix<T>& A__, dmatrix<T>& B__, dmatrix<T>& Z__) const
-    {
-        PROFILE("Eigensolver_elpa|to_std");
+    //template <typename T>
+    //void to_std(ftn_int matrix_size__, dmatrix<T>& A__, dmatrix<T>& B__, dmatrix<T>& Z__) const
+    //{
+    //    PROFILE("Eigensolver_elpa|to_std");
 
-        if (A__.num_cols_local() != Z__.num_cols_local()) {
-            std::stringstream s;
-            s << "number of columns in A and Z doesn't match" << std::endl
-              << "  number of cols in A (local and global): " << A__.num_cols_local() << " " << A__.num_cols()
-              << std::endl
-              << "  number of cols in B (local and global): " << B__.num_cols_local() << " " << B__.num_cols()
-              << std::endl
-              << "  number of cols in Z (local and global): " << Z__.num_cols_local() << " " << Z__.num_cols()
-              << std::endl
-              << "  number of rows in A (local and global): " << A__.num_rows_local() << " " << A__.num_rows()
-              << std::endl
-              << "  number of rows in B (local and global): " << B__.num_rows_local() << " " << B__.num_rows()
-              << std::endl
-              << "  number of rows in Z (local and global): " << Z__.num_rows_local() << " " << Z__.num_rows()
-              << std::endl;
-            TERMINATE(s);
-        }
-        if (A__.bs_row() != A__.bs_col()) {
-            TERMINATE("wrong block size");
-        }
+    //    if (A__.num_cols_local() != Z__.num_cols_local()) {
+    //        std::stringstream s;
+    //        s << "number of columns in A and Z doesn't match" << std::endl
+    //          << "  number of cols in A (local and global): " << A__.num_cols_local() << " " << A__.num_cols()
+    //          << std::endl
+    //          << "  number of cols in B (local and global): " << B__.num_cols_local() << " " << B__.num_cols()
+    //          << std::endl
+    //          << "  number of cols in Z (local and global): " << Z__.num_cols_local() << " " << Z__.num_cols()
+    //          << std::endl
+    //          << "  number of rows in A (local and global): " << A__.num_rows_local() << " " << A__.num_rows()
+    //          << std::endl
+    //          << "  number of rows in B (local and global): " << B__.num_rows_local() << " " << B__.num_rows()
+    //          << std::endl
+    //          << "  number of rows in Z (local and global): " << Z__.num_rows_local() << " " << Z__.num_rows()
+    //          << std::endl;
+    //        TERMINATE(s);
+    //    }
+    //    if (A__.bs_row() != A__.bs_col()) {
+    //        TERMINATE("wrong block size");
+    //    }
 
-        /* Cholesky factorization B = U^{H}*U */
-        linalg(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
-        /* inversion of the triangular matrix */
-        linalg(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
-        /* U^{-1} is upper triangular matrix */
-        for (int i = 0; i < matrix_size__; i++) {
-            for (int j = i + 1; j < matrix_size__; j++) {
-                B__.set(j, i, 0);
-            }
-        }
-        /* transform to standard eigen-problem */
-        /* A * U{-1} -> Z */
-        linalg(linalg_t::scalapack).gemm('N', 'N', matrix_size__, matrix_size__, matrix_size__,
-            &linalg_const<T>::one(), A__, 0, 0, B__, 0, 0, &linalg_const<T>::zero(), Z__, 0, 0);
-        /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
-        linalg(linalg_t::scalapack).gemm('C', 'N', matrix_size__, matrix_size__, matrix_size__,
-            &linalg_const<T>::one(), B__, 0, 0, Z__, 0, 0,  &linalg_const<T>::zero(), A__, 0, 0);
-    }
+    //    /* Cholesky factorization B = U^{H}*U */
+    //    linalg(linalg_t::scalapack).potrf(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
+    //    /* inversion of the triangular matrix */
+    //    linalg(linalg_t::scalapack).trtri(matrix_size__, B__.at(memory_t::host), B__.ld(), B__.descriptor());
+    //    /* U^{-1} is upper triangular matrix */
+    //    for (int i = 0; i < matrix_size__; i++) {
+    //        for (int j = i + 1; j < matrix_size__; j++) {
+    //            B__.set(j, i, 0);
+    //        }
+    //    }
+    //    /* transform to standard eigen-problem */
+    //    /* A * U{-1} -> Z */
+    //    linalg(linalg_t::scalapack).gemm('N', 'N', matrix_size__, matrix_size__, matrix_size__,
+    //        &linalg_const<T>::one(), A__, 0, 0, B__, 0, 0, &linalg_const<T>::zero(), Z__, 0, 0);
+    //    /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
+    //    linalg(linalg_t::scalapack).gemm('C', 'N', matrix_size__, matrix_size__, matrix_size__,
+    //        &linalg_const<T>::one(), B__, 0, 0, Z__, 0, 0,  &linalg_const<T>::zero(), A__, 0, 0);
+    //}
 
-    template <typename T>
-    void bt(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, dmatrix<T>& Z__) const
-    {
-        PROFILE("Eigensolver_elpa|bt");
-        /* back-transform of eigen-vectors */
-        linalg(linalg_t::scalapack).gemm('N', 'N', matrix_size__, nev__, matrix_size__, &linalg_const<T>::one(),
-                  B__, 0, 0, Z__, 0, 0, &linalg_const<T>::zero(), A__, 0, 0);
-        A__ >> Z__;
+    //template <typename T>
+    //void bt(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, dmatrix<T>& Z__) const
+    //{
+    //    PROFILE("Eigensolver_elpa|bt");
+    //    /* back-transform of eigen-vectors */
+    //    linalg(linalg_t::scalapack).gemm('N', 'N', matrix_size__, nev__, matrix_size__, &linalg_const<T>::one(),
+    //              B__, 0, 0, Z__, 0, 0, &linalg_const<T>::zero(), A__, 0, 0);
+    //    A__ >> Z__;
 
-    }
+    //}
   public:
     Eigensolver_elpa(int stage__)
         : Eigensolver(ev_solver_t::elpa, nullptr, true, memory_t::host, memory_t::host)
@@ -377,35 +375,167 @@ class Eigensolver_elpa : public Eigensolver
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double>& A__, dmatrix<double>& B__, double* eval__,
-              dmatrix<double>& Z__)
+    int solve(ftn_int matrix_size__, ftn_int nev__, sddk::dmatrix<double>& A__, sddk::dmatrix<double>& B__,
+              double* eval__, sddk::dmatrix<double>& Z__)
     {
-        to_std(matrix_size__, A__, B__, Z__);
+        PROFILE("Eigensolver_elpa|solve_gen");
 
-        /* solve a standard problem */
-        int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
-        if (result) {
-            return result;
+        int nt = omp_get_max_threads();
+
+        if (A__.num_cols_local() != Z__.num_cols_local()) {
+            TERMINATE("number of columns in A and Z don't match");
         }
 
-        bt(matrix_size__, nev__, A__, B__, Z__);
+        PROFILE_START("Eigensolver_elpa|solve_gen|setup");
+
+        int bs = A__.bs_row();
+
+        int error;
+        elpa_t handle;
+
+        handle = elpa_allocate(&error);
+        if (error != ELPA_OK) {
+            return 1;
+        }
+        elpa_set_integer(handle, "na", matrix_size__, &error);
+        elpa_set_integer(handle, "nev", nev__, &error);
+        elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
+        elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
+        elpa_set_integer(handle, "nblk", bs, &error);
+        elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
+        elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
+        elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
+        elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
+        elpa_setup(handle);
+        elpa_set_integer(handle, "omp_threads", nt, &error);
+        //if (error != ELPA_OK) {
+        //    TERMINATE("can't set elpa threads");
+        //}
+        elpa_set_integer(handle, "gpu", 1, &error);
+
+        if (stage_ == 1) {
+            elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
+        } else {
+            elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
+        }
+        PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
+
+        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+
+        elpa_generalized_eigenvectors_d(handle, A__.at(memory_t::host), B__.at(memory_t::host),
+            w.get(), Z__.at(memory_t::host), 0, &error);
+
+        if (error != ELPA_OK) {
+            elpa_deallocate(handle, &error);
+            return 1;
+        }
+
+        elpa_deallocate(handle, &error);
+
+        std::copy(w.get(), w.get() + nev__, eval__);
+
+        if (nt != omp_get_max_threads()) {
+            std::stringstream s;
+            s << "number of OMP threads was changed by elpa" << std::endl
+              << "  initial number of threads : " << nt << std::endl
+              << "  new number of threads : " <<  omp_get_max_threads();
+            TERMINATE(s);
+        }
+
         return 0;
+
+        //to_std(matrix_size__, A__, B__, Z__);
+
+        ///* solve a standard problem */
+        //int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
+        //if (result) {
+        //    return result;
+        //}
+
+        //bt(matrix_size__, nev__, A__, B__, Z__);
+        //return 0;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<double_complex>& A__, dmatrix<double_complex>& B__,
               double* eval__, dmatrix<double_complex>& Z__)
     {
-        to_std(matrix_size__, A__, B__, Z__);
+        PROFILE("Eigensolver_elpa|solve_gen");
 
-        /* solve a standard problem */
-        int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
-        if (result) {
-            return result;
+        int nt = omp_get_max_threads();
+
+        if (A__.num_cols_local() != Z__.num_cols_local()) {
+            TERMINATE("number of columns in A and Z don't match");
         }
 
-        bt(matrix_size__, nev__, A__, B__, Z__);
+        PROFILE_START("Eigensolver_elpa|solve_gen|setup");
+
+        int bs = A__.bs_row();
+
+        int error;
+        elpa_t handle;
+
+        handle = elpa_allocate(&error);
+        if (error != ELPA_OK) {
+            return 1;
+        }
+        elpa_set_integer(handle, "na", matrix_size__, &error);
+        elpa_set_integer(handle, "nev", nev__, &error);
+        elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
+        elpa_set_integer(handle, "local_ncols", A__.num_cols_local(), &error);
+        elpa_set_integer(handle, "nblk", bs, &error);
+        elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
+        elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
+        elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
+        elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
+        elpa_setup(handle);
+        elpa_set_integer(handle, "omp_threads", nt, &error);
+        //if (error != ELPA_OK) {
+        //    TERMINATE("can't set elpa threads");
+        //}
+        elpa_set_integer(handle, "gpu", 1, &error);
+
+        if (stage_ == 1) {
+            elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
+        } else {
+            elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
+        }
+        PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
+
+        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+
+        using CT = double _Complex;
+        elpa_generalized_eigenvectors_dc(handle, (CT*)A__.at(memory_t::host), (CT*)B__.at(memory_t::host),
+            w.get(), (CT*)Z__.at(memory_t::host), 0, &error);
+
+        if (error != ELPA_OK) {
+            elpa_deallocate(handle, &error);
+            return 1;
+        }
+
+        elpa_deallocate(handle, &error);
+
+        std::copy(w.get(), w.get() + nev__, eval__);
+
+        if (nt != omp_get_max_threads()) {
+            std::stringstream s;
+            s << "number of OMP threads was changed by elpa" << std::endl
+              << "  initial number of threads : " << nt << std::endl
+              << "  new number of threads : " <<  omp_get_max_threads();
+            TERMINATE(s);
+        }
+
         return 0;
+        //to_std(matrix_size__, A__, B__, Z__);
+
+        ///* solve a standard problem */
+        //int result = this->solve(matrix_size__, nev__, A__, eval__, Z__);
+        //if (result) {
+        //    return result;
+        //}
+
+        //bt(matrix_size__, nev__, A__, B__, Z__);
+        //return 0;
     }
 
     /// Solve a generalized eigen-value problem for all eigen-pairs.
@@ -450,9 +580,9 @@ class Eigensolver_elpa : public Eigensolver
         elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
         elpa_setup(handle);
         elpa_set_integer(handle, "omp_threads", nt, &error);
-        if (error != ELPA_OK) {
-            TERMINATE("can't set elpa threads");
-        }
+        //if (error != ELPA_OK) {
+        //    TERMINATE("can't set elpa threads");
+        //}
         elpa_set_integer(handle, "gpu", 1, &error);
 
         if (stage_ == 1) {
@@ -491,6 +621,8 @@ class Eigensolver_elpa : public Eigensolver
             TERMINATE("number of columns in A and Z don't match");
         }
 
+        PROFILE_START("Eigensolver_elpa|solve_std|setup");
+
         int bs = A__.bs_row();
 
         int error;
@@ -507,9 +639,9 @@ class Eigensolver_elpa : public Eigensolver
         elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
         elpa_setup(handle);
         elpa_set_integer(handle, "omp_threads", nt, &error);
-        if (error != ELPA_OK) {
-            TERMINATE("can't set elpa threads");
-        }
+        //if (error != ELPA_OK) {
+        //    TERMINATE("can't set elpa threads");
+        //}
         elpa_set_integer(handle, "gpu", 1, &error);
 
         if (stage_ == 1) {
@@ -1605,47 +1737,6 @@ class Eigensolver_cuda: public Eigensolver
     }
 };
 #endif
-
-//inline std::unique_ptr<Eigensolver> Eigensolver_factory(std::string name__, memory_pool* mpd__)
-//{
-//    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-//
-//    Eigensolver* ptr;
-//    switch (get_ev_solver_t(name__)) {
-//        case ev_solver_t::lapack: {
-//            ptr = new Eigensolver_lapack();
-//            break;
-//        }
-//        case ev_solver_t::scalapack: {
-//            ptr = new Eigensolver_scalapack();
-//            break;
-//        }
-//        case ev_solver_t::elpa: {
-//            if (name__ == "elpa1") {
-//                ptr = new Eigensolver_elpa(1);
-//            } else {
-//                ptr = new Eigensolver_elpa(2);
-//            }
-//            break;
-//        }
-//        case ev_solver_t::magma: {
-//            ptr = new Eigensolver_magma();
-//            break;
-//        }
-//        case ev_solver_t::magma_gpu: {
-//            ptr = new Eigensolver_magma_gpu();
-//            break;
-//        }
-//        case ev_solver_t::cusolver: {
-//            ptr = new Eigensolver_cuda(mpd__);
-//            break;
-//        }
-//        default: {
-//            TERMINATE("not implemented");
-//        }
-//    }
-//    return std::unique_ptr<Eigensolver>(ptr);
-//}
 
 //== #ifdef __PLASMA
 //== extern "C" void plasma_zheevd_wrapper(int32_t matrix_size, void* a, int32_t lda, void* z,
