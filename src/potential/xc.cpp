@@ -411,7 +411,7 @@ void Potential::xc_mt(Density const& density__)
                 for (int itp = 0; itp < sht_->num_points(); itp++) {
                     /* align magnetic filed parallel to magnetization */
                     /* use vecmagtp as temporary vector */
-                    double mag =  rho_up_tp(itp, ir) - rho_dn_tp(itp, ir);
+                    double mag =  std::abs(rho_up_tp(itp, ir) - rho_dn_tp(itp, ir));
                     if (mag > 1e-8) {
                         /* |Bxc| = 0.5 * (V_up - V_dn) */
                         double b = 0.5 * (vxc_up_tp(itp, ir) - vxc_dn_tp(itp, ir));
@@ -1008,7 +1008,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
     for (int irloc = 0; irloc < num_points; irloc++) {
         xc_energy_density_->f_rg(irloc) = exc_tmp(irloc);
         xc_potential_->f_rg(irloc) = 0.5 * (vxc_up_tmp(irloc) + vxc_dn_tmp(irloc));
-        double m = rho_up.f_rg(irloc) - rho_dn.f_rg(irloc);
+        double m = std::abs(rho_up.f_rg(irloc) - rho_dn.f_rg(irloc));
 
         if (m > 1e-8) {
             double b = 0.5 * (vxc_up_tmp(irloc) - vxc_dn_tmp(irloc));
