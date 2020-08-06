@@ -375,28 +375,19 @@ void Potential::xc_mt(Density const& density__)
                 }
             }
         } else {
+            /* loop over radial grid points */
             for (int ir = 0; ir < nmtp; ir++) {
+                /* loop over points on the sphere */
                 for (int itp = 0; itp < sht_->num_points(); itp++) {
-                    /* compute magnitude of the magnetization vector */
-                    double mag = 0.0;
+                    std::array<double, 3> m;
                     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                        mag += std::pow(vecmagtp[j](itp, ir), 2);
+                        m[j] = vecmagtp[j](itp, ir);
                     }
-                    mag = std::sqrt(mag);
+                    auto rud = density__.get_rho_up_dn(rho_tp(itp, ir), m);
 
-                    /* in magnetic case fix both density and magnetization */
-                    for (int itp = 0; itp < sht_->num_points(); itp++) {
-                        if (rho_tp(itp, ir) < 0.0) {
-                            rho_tp(itp, ir) = 0.0;
-                            mag = 0.0;
-                        }
-                        /* fix numerical noise at high values of magnetization */
-                        mag = std::min(mag, rho_tp(itp, ir));
-
-                        /* compute "up" and "dn" components */
-                        rho_up_tp(itp, ir) = 0.5 * (rho_tp(itp, ir) + mag);
-                        rho_dn_tp(itp, ir) = 0.5 * (rho_tp(itp, ir) - mag);
-                    }
+                    /* compute "up" and "dn" components */
+                    rho_up_tp(itp, ir) = rud.first;
+                    rho_dn_tp(itp, ir) = rud.second;
                 }
             }
 
@@ -761,31 +752,22 @@ void Potential::xc_rg_magnetic(Density const& density__)
     PROFILE_START("sirius::Potential::xc_rg_magnetic|up_dn");
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin{0};
+    #pragma omp parallel for reduction(min:rhomin)
     for (int ir = 0; ir < num_points; ir++) {
-        double mag{0};
+        std::array<double, 3> m;
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            mag += std::pow(density__.magnetization(j).f_rg(ir), 2);
+            m[j] = density__.magnetization(j).f_rg(ir);
         }
-        mag = std::sqrt(mag);
 
         double rho = density__.rho().f_rg(ir);
         if (add_pseudo_core__) {
             rho += density__.rho_pseudo_core().f_rg(ir);
         }
-        rho *= scale_rho_xc_;
-        mag *= scale_rho_xc_;
-
-        /* remove numerical noise at high values of magnetization */
-        mag = std::min(mag, rho);
-
         rhomin = std::min(rhomin, rho);
-        if (rho < 0.0) {
-            rho = 0.0;
-            mag = 0.0;
-        }
+        auto rud = density__.get_rho_up_dn(rho, m);
 
-        rho_up.f_rg(ir) = 0.5 * (rho + mag);
-        rho_dn.f_rg(ir) = 0.5 * (rho - mag);
+        rho_up.f_rg(ir) = rud.first * scale_rho_xc_;
+        rho_dn.f_rg(ir) = rud.second * scale_rho_xc_;
     }
     PROFILE_STOP("sirius::Potential::xc_rg_magnetic|up_dn");
 
