@@ -411,12 +411,12 @@ void Potential::xc_mt(Density const& density__)
                 for (int itp = 0; itp < sht_->num_points(); itp++) {
                     /* align magnetic filed parallel to magnetization */
                     /* use vecmagtp as temporary vector */
-                    double mag =  std::abs(rho_up_tp(itp, ir) - rho_dn_tp(itp, ir));
+                    double mag = std::abs(rho_up_tp(itp, ir) - rho_dn_tp(itp, ir));
                     if (mag > 1e-8) {
                         /* |Bxc| = 0.5 * (V_up - V_dn) */
-                        double b = 0.5 * (vxc_up_tp(itp, ir) - vxc_dn_tp(itp, ir));
+                        double b = 0.5 * std::abs(vxc_up_tp(itp, ir) - vxc_dn_tp(itp, ir));
                         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                            vecmagtp[j](itp, ir) = b * vecmagtp[j](itp, ir) / mag;
+                            vecmagtp[j](itp, ir) = -b * vecmagtp[j](itp, ir) / mag;
                         }
                     } else {
                         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
@@ -1011,9 +1011,9 @@ void Potential::xc_rg_magnetic(Density const& density__)
         double m = std::abs(rho_up.f_rg(irloc) - rho_dn.f_rg(irloc));
 
         if (m > 1e-8) {
-            double b = 0.5 * (vxc_up_tmp(irloc) - vxc_dn_tmp(irloc));
+            double b = 0.5 * std::abs(vxc_up_tmp(irloc) - vxc_dn_tmp(irloc));
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-               effective_magnetic_field(j).f_rg(irloc) = b * density__.magnetization(j).f_rg(irloc) / m;
+               effective_magnetic_field(j).f_rg(irloc) = -b * density__.magnetization(j).f_rg(irloc) / m;
             }
         } else {
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
