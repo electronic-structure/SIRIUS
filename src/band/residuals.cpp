@@ -157,7 +157,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
     }
 
     int n{0};
-   
+
     for (int i = 0; i < num_bands__; i++) {
         /* take the residual if it's norm is above the threshold */
         if (res_norm[i] > norm_tolerance__) {
@@ -220,6 +220,7 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
             }
         }
 
+        /* number of unconverged bands */
         n = static_cast<int>(ev_idx.size());
 
         if (n) {
@@ -238,11 +239,11 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
                     auto pos_src  = evec__.spl_col().location(ev_idx[j]);
                     auto pos_dest = evec_tmp.spl_col().location(j);
                     /* do MPI send / receive */
-                    if (pos_src.rank == evec__.blacs_grid().comm_col().rank()) {
+                    if (pos_src.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
                         evec__.blacs_grid().comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
                     }
-                    if (pos_dest.rank == evec__.blacs_grid().comm_col().rank()) {
-                       evec__.blacs_grid().comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
+                    if (pos_dest.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
+                        evec__.blacs_grid().comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
                     }
                 }
             }
