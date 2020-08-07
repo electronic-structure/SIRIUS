@@ -1208,12 +1208,6 @@ class Potential : public Field4D
         return vh_el_(ia__);
     }
 
-    void symmetrize()
-    {
-        Field4D::symmetrize(&effective_potential(), &effective_magnetic_field(0),
-                            &effective_magnetic_field(1), &effective_magnetic_field(2));
-    }
-
     /// Set the scale_rho_xc variable.
     inline void scale_rho_xc(double d__)
     {

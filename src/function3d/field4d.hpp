@@ -111,6 +111,12 @@ class Field4D
     {
         return ctx_;
     }
+
+    /// Symmetrize the scalar and vector components of the filed with crystall symmetries.
+    inline void symmetrize()
+    {
+        this->symmetrize(&this->scalar(), &this->vector(0), &this->vector(1), &this->vector(2));
+    }
 };
 
 } // namespace sirius
