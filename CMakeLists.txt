@@ -212,6 +212,13 @@ configure_file("${PROJECT_SOURCE_DIR}/src/runtime_options_json.hpp.in"
                "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
                @ONLY)
 
+# generate atomic configurations
+file(STRINGS "${PROJECT_SOURCE_DIR}/apps/atoms/atoms.json"
+              SIRIUS_ATOMIC_CONF NEWLINE_CONSUME)
+configure_file("${PROJECT_SOURCE_DIR}/apps/atoms/atomic_conf.hpp.in"
+               "${PROJECT_BINARY_DIR}/src/unit_cell/atomic_conf.hpp"
+               @ONLY)
+
 # install targets and modules
 include(cmake/env_vars_map.cmake)
 configure_file("${PROJECT_SOURCE_DIR}/cmake/siriusConfig.cmake.in"
