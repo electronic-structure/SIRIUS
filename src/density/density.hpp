@@ -702,11 +702,6 @@ class Density : public Field4D
      *  \f]
      */
     void symmetrize_density_matrix();
-
-    void symmetrize()
-    {
-        Field4D::symmetrize(&rho(), &magnetization(0), &magnetization(1), &magnetization(2));
-    }
 };
 
 } // namespace sirius
