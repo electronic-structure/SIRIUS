@@ -228,6 +228,9 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/modules"
 # sirius library
 add_subdirectory(src)
 
+# Python module
+add_subdirectory(python_module)
+
 # applications
 if(BUILD_TESTS)
   add_subdirectory(apps/tests)
@@ -242,5 +245,4 @@ add_subdirectory(apps/nlcg)
 endif()
 add_subdirectory(apps/upf)
 add_subdirectory(apps/utils)
-add_subdirectory(python_module)
 add_subdirectory(doc)
