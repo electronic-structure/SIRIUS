@@ -20,7 +20,7 @@
 #include <algorithm>
 #include <sirius.hpp>
 #include "mixer/broyden1_mixer.hpp"
-#include "atomic_conf.hpp"
+#include "unit_cell/atomic_conf.hpp"
 
 double const rmin{1e-5};
 
