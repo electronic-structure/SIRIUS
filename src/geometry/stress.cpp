@@ -346,7 +346,9 @@ matrix3d<double> Stress::calc_stress_us()
         q_deriv.prepare(atom_type, ri, ri_dq);
 #ifdef __ROCM
         // ROCm does not support cubblasxt functionality - data required on host
-        q_deriv.q_pw().allocate(memory_t::host);
+        if (ctx_.processing_unit() == device_t::GPU) {
+            q_deriv.q_pw().allocate(memory_t::host);
+        }
 #endif
 
 
@@ -376,7 +378,9 @@ matrix3d<double> Stress::calc_stress_us()
                 q_deriv.generate_pw_coeffs(atom_type, nu);
 #ifdef __ROCM
                 // ROCm does not support cubblasxt functionality - data required on host
-                q_deriv.q_pw().copy_to(memory_t::host);
+                if (ctx_.processing_unit() == device_t::GPU) {
+                    q_deriv.q_pw().copy_to(memory_t::host);
+                }
 #endif
 
                 for (int mu = 0; mu < 3; mu++) {
