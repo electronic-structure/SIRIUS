@@ -257,14 +257,21 @@ class Potential : public Field4D
     {
         PROFILE("sirius::Potential::generate_local_potential");
 
-        auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
-        {
-            if (this->ctx_.unit_cell().atom_type(iat).local_potential().empty()) {
-                return 0.0;
-            } else {
-                return ctx_.vloc_ri().value(iat, g);
-            }
-        });
+        std::vector<double> q(ctx_.gvec().num_shells());
+        for (int i = 0; i < ctx_.gvec().num_shells(); i++) {
+            q[i] = ctx_.gvec().shell_len(i);
+        }
+        auto ff = ctx_.vloc_ri().values(q);
+        auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
+
+        //auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
+        //{
+        //    if (this->ctx_.unit_cell().atom_type(iat).local_potential().empty()) {
+        //        return 0.0;
+        //    } else {
+        //        return ctx_.vloc_ri().value(iat, g);
+        //    }
+        //});
         std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
         local_potential_->fft_transform(1);
 

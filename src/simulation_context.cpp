@@ -931,7 +931,7 @@ void Simulation_context::update()
 
         if (!vloc_ri_ || vloc_ri_->qmax() < new_pw_cutoff) {
             vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(
-                new Radial_integrals_vloc<false>(unit_cell(), new_pw_cutoff, settings().nprii_vloc_));
+                new Radial_integrals_vloc<false>(unit_cell(), new_pw_cutoff, settings().nprii_vloc_, vloc_ri_callback_));
         }
 
         if (!vloc_ri_djl_ || vloc_ri_djl_->qmax() < new_pw_cutoff) {

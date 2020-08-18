@@ -5913,6 +5913,8 @@ void sirius_set_callback_function(void* const* handler__, char const* label__, v
             sim_ctx.aug_ri_callback(reinterpret_cast<void(*)(int, double, double*, int, int)>(fptr__));
         } else if (label == "aug_ri_djl") {
             sim_ctx.aug_ri_djl_callback(reinterpret_cast<void(*)(int, double, double*, int, int)>(fptr__));
+        } else if (label == "vloc_ri") {
+            sim_ctx.vloc_ri_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
         } else {
             throw std::runtime_error("wrong label of callback function");
         }

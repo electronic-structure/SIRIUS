@@ -452,16 +452,19 @@ class Gvec
         return lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
     }
 
+    /// Return index of the G-vector shell by the G-vector index.
     inline int shell(int ig__) const
     {
         return gvec_shell_(ig__);
     }
 
+    /// Return length of the G-vector shell.
     inline double shell_len(int igs__) const
     {
         return gvec_shell_len_(igs__);
     }
 
+    /// Return length of the G-vector.
     inline double gvec_len(int ig__) const
     {
         return gvec_shell_len_(gvec_shell_(ig__));

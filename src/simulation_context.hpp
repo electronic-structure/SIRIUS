@@ -188,6 +188,9 @@ class Simulation_context : public Simulation_parameters
     /// Radial integrals of the local part of pseudopotential.
     std::unique_ptr<Radial_integrals_vloc<false>> vloc_ri_;
 
+    /// Callback function to compute radial integrals of local potential.
+    std::function<void(int, int, double*, double*)> vloc_ri_callback_{nullptr};
+
     /// Radial integrals of the local part of pseudopotential with derivatives of spherical Bessel functions.
     std::unique_ptr<Radial_integrals_vloc<true>> vloc_ri_djl_;
 
@@ -503,7 +506,8 @@ class Simulation_context : public Simulation_parameters
     /// Make periodic function out of form factors.
     /** Return vector of plane-wave coefficients */ // TODO: return mdarray
     template <index_domain_t index_domain, typename F>
-    inline std::vector<double_complex> make_periodic_function(F&& form_factors__) const
+    inline std::vector<double_complex>
+    make_periodic_function(F&& form_factors__) const
     {
         PROFILE("sirius::Simulation_context::make_periodic_function");
 
@@ -521,6 +525,37 @@ class Simulation_context : public Simulation_parameters
             int j = (index_domain == index_domain_t::local) ? igloc : ig;
             for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
                 f_pw[j] += fourpi_omega * std::conj(phase_factors_t_(igloc, iat)) * form_factors__(iat, g);
+            }
+        }
+
+        if (index_domain == index_domain_t::global) {
+            comm_.allgather(&f_pw[0], gvec().offset(), gvec().count());
+        }
+
+        return f_pw;
+    }
+
+    /// Make periodic out of form factors computed for G-shells.
+    template <index_domain_t index_domain>
+    inline std::vector<double_complex>
+    make_periodic_function(sddk::mdarray<double, 2>& form_factors__) const
+    {
+        PROFILE("sirius::Simulation_context::make_periodic_function");
+
+        double fourpi_omega = fourpi / unit_cell().omega();
+
+        int ngv = (index_domain == index_domain_t::local) ? gvec().count() : gvec().num_gvec();
+        std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
+
+        #pragma omp parallel for schedule(static)
+        for (int igloc = 0; igloc < gvec().count(); igloc++) {
+            /* global index of G-vector */
+            int ig   = gvec().offset() + igloc;
+            int igsh = gvec().shell(ig);
+
+            int j = (index_domain == index_domain_t::local) ? igloc : ig;
+            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+                f_pw[j] += fourpi_omega * std::conj(phase_factors_t_(igloc, iat)) * form_factors__(igsh, iat);
             }
         }
 
@@ -762,6 +797,11 @@ class Simulation_context : public Simulation_parameters
     inline void aug_ri_djl_callback(void (*fptr__)(int, double, double*, int, int))
     {
         aug_ri_djl_callback_ = fptr__;
+    }
+
+    inline void vloc_ri_callback(void (*fptr__)(int, int, double*, double*))
+    {
+        vloc_ri_callback_ = fptr__;
     }
 };
 
