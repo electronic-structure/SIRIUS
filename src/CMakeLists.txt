@@ -95,8 +95,7 @@ else()
 endif()
 
 
-target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
-                                    SpFFT::spfft
+target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     ${GSL_LIBRARY}
                                     "${LINALG_LIB}"
                                     MPI::MPI_CXX
