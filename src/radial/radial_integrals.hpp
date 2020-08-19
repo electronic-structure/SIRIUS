@@ -329,6 +329,9 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
     /// Special implementation to recover the true radial integral value.
     inline double value(int iat__, double q__) const
     {
+        if (unit_cell_.atom_type(iat__).local_potential().empty()) {
+            return 0;
+        }
         auto idx = iqdq(q__);
         if (std::abs(q__) < 1e-12) {
             if (jl_deriv) {

@@ -225,6 +225,9 @@ class Simulation_context : public Simulation_parameters
     /// Type of BLAS linear algebra library.
     linalg_t blas_linalg_t_{linalg_t::none};
 
+    /// Callback function to compute band occupancies.
+    std::function<void(void)> band_occ_callback_{nullptr};
+
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
     /// Total number of iterative solver steps.
@@ -802,6 +805,17 @@ class Simulation_context : public Simulation_parameters
     inline void vloc_ri_callback(void (*fptr__)(int, int, double*, double*))
     {
         vloc_ri_callback_ = fptr__;
+    }
+
+    /// Set callback function to compute band occupations
+    inline void band_occ_callback(void (*fptr__)(void))
+    {
+        band_occ_callback_ = fptr__;
+    }
+
+    inline std::function<void(void)> band_occ_callback() const
+    {
+        return band_occ_callback_;
     }
 };
 

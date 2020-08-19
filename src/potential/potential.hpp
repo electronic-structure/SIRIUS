@@ -257,11 +257,23 @@ class Potential : public Field4D
     {
         PROFILE("sirius::Potential::generate_local_potential");
 
+        // bool is_empty{true};
+        // for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        //     is_empty &= unit_cell_.atom_type(iat).local_potential().empty();
+        // }
+        // if (!is_empty) {
+        //     generate_local_potential();
+        // }
+
+        /* get lenghts of all G shells */
         std::vector<double> q(ctx_.gvec().num_shells());
         for (int i = 0; i < ctx_.gvec().num_shells(); i++) {
             q[i] = ctx_.gvec().shell_len(i);
         }
+        /* get form-factors for all G shells */
+        // TODO: MPI parallelise over G-shells 
         auto ff = ctx_.vloc_ri().values(q);
+        /* make Vloc(G) */
         auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
 
         //auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
@@ -424,17 +436,8 @@ class Potential : public Field4D
 
         if (!ctx_.full_potential()) {
             local_potential_->zero();
-
-            bool is_empty{true};
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                is_empty &= unit_cell_.atom_type(iat).local_potential().empty();
-            }
-            if (!is_empty) {
-                generate_local_potential();
-            }
-        }
-
-        if (ctx_.full_potential()) {
+            generate_local_potential();
+        } else {
             gvec_ylm_ = ctx_.generate_gvec_ylm(ctx_.lmax_pot());
             sbessel_mt_ = ctx_.generate_sbessel_mt(lmax_ + pseudo_density_order_ + 1);
 
