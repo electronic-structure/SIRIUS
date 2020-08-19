@@ -110,7 +110,7 @@ json DFT_ground_state::serialize()
     dict["energy"]["vha"]           = energy_vha(potential_);
     dict["energy"]["vxc"]           = energy_vxc(density_, potential_);
     dict["energy"]["exc"]           = energy_exc(density_, potential_);
-    dict["energy"]["bxc"]           = energy_bxc(density_, potential_, ctx_.num_mag_dims());
+    dict["energy"]["bxc"]           = energy_bxc(density_, potential_);
     dict["energy"]["veff"]          = energy_veff(density_, potential_);
     dict["energy"]["eval_sum"]      = eval_sum(ctx_.unit_cell(), kset_);
     dict["energy"]["kin"]           = energy_kin(ctx_, kset_, density_, potential_);
@@ -244,7 +244,7 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
                 p1.scale_rho_xc(1 + eps);
                 p1.generate(density_);
 
-                double evxc = potential_.energy_vxc(density_) + potential_.energy_vxc_core(density_) + energy_bxc(density_, potential_, ctx_.num_mag_dims());
+                double evxc = potential_.energy_vxc(density_) + potential_.energy_vxc_core(density_) + energy_bxc(density_, potential_);
                 double deriv = (p1.energy_exc(density_) - potential_.energy_exc(density_)) / eps;
 
                 std::printf("eps              : %18.12f\n", eps);
@@ -339,7 +339,7 @@ void DFT_ground_state::print_info()
     double ekin     = energy_kin(ctx_, kset_, density_, potential_);
     double evxc     = energy_vxc(density_, potential_);
     double eexc     = energy_exc(density_, potential_);
-    double ebxc     = energy_bxc(density_, potential_, ctx_.num_mag_dims());
+    double ebxc     = energy_bxc(density_, potential_);
     double evha     = energy_vha(potential_);
     double etot     = sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_);
     double gap      = kset_.band_gap() * ha2ev;

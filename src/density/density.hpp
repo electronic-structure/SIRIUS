@@ -635,21 +635,21 @@ class Density : public Field4D
     /// Mix new density.
     double mix();
 
-    mdarray<double_complex, 4> const& density_matrix() const
+    sddk::mdarray<double_complex, 4> const& density_matrix() const
     {
         return density_matrix_;
     }
 
-    mdarray<double_complex, 4>& density_matrix()
+    sddk::mdarray<double_complex, 4>& density_matrix()
     {
         return density_matrix_;
     }
 
     /// Return density matrix in auxiliary form.
-    mdarray<double, 3> density_matrix_aux(int iat__);
+    sddk::mdarray<double, 3> density_matrix_aux(int iat__);
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
-    mdarray<double, 2>
+    sddk::mdarray<double, 2>
     compute_atomic_mag_mom() const;
 
     /// Get total magnetization and also contributions from interstitial and muffin-tin parts.
@@ -702,6 +702,11 @@ class Density : public Field4D
      *  \f]
      */
     void symmetrize_density_matrix();
+
+    Simulation_context const& ctx() const
+    {
+        return ctx_;
+    }
 };
 
 } // namespace sirius

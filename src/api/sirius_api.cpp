@@ -2781,12 +2781,13 @@ void sirius_get_energy(void* const* handler__,
         {"evalsum", [&](){ return sirius::eval_sum(unit_cell, kset); }},
         {"exc",     [&](){ return sirius::energy_exc(density, potential); }},
         {"vxc",     [&](){ return sirius::energy_vxc(density, potential); }},
-        {"bxc",     [&](){ return sirius::energy_bxc(density, potential, ctx.num_mag_dims()); }},
+        {"bxc",     [&](){ return sirius::energy_bxc(density, potential); }},
         {"veff",    [&](){ return sirius::energy_veff(density, potential); }},
         {"vloc",    [&](){ return sirius::energy_vloc(density, potential); }},
         {"vha",     [&](){ return sirius::energy_vha(potential); }},
         {"enuc",    [&](){ return sirius::energy_enuc(ctx, potential); }},
-        {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }}};
+        {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }},
+        {"one-el",  [&](){ return sirius::one_electron_energy(density, potential); }}};
 
     try {
         *energy__ = func.at(label)();

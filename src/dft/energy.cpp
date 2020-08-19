@@ -65,10 +65,10 @@ double energy_vha(Potential const& potential)
     return potential.energy_vha();
 }
 
-double energy_bxc(const Density& density, const Potential& potential, int num_mag_dims)
+double energy_bxc(const Density& density, const Potential& potential)
 {
     double ebxc{0};
-    for (int j = 0; j < num_mag_dims; j++) {
+    for (int j = 0; j < density.ctx().num_mag_dims(); j++) {
         ebxc += sirius::inner(density.magnetization(j), potential.effective_magnetic_field(j));
     }
     return ebxc;
@@ -117,7 +117,7 @@ double energy_kin(Simulation_context const& ctx, K_point_set const& kset, Densit
                   Potential const& potential)
 {
     return eval_sum(ctx.unit_cell(), kset) - energy_veff(density, potential) -
-           energy_bxc(density, potential, ctx.num_mag_dims());
+           energy_bxc(density, potential);
 }
 
 double total_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density,
@@ -134,7 +134,7 @@ double total_energy(Simulation_context const& ctx, K_point_set const& kset, Dens
 
         case electronic_structure_method_t::pseudopotential: {
             tot_en = (kset.valence_eval_sum() - energy_vxc(density, potential) -
-                      energy_bxc(density, potential, ctx.num_mag_dims()) - potential.PAW_one_elec_energy()) -
+                      energy_bxc(density, potential) - potential.PAW_one_elec_energy()) -
                       0.5 * energy_vha(potential) + energy_exc(density, potential) + potential.PAW_total_energy() +
                       ewald_energy;
             break;
@@ -146,6 +146,12 @@ double total_energy(Simulation_context const& ctx, K_point_set const& kset, Dens
     }
 
     return tot_en;
+}
+
+double one_electron_energy(Density const& density, Potential const& potential)
+{
+    return energy_vha(potential) + energy_vxc(density, potential) + energy_bxc(density, potential) +
+        potential.PAW_one_elec_energy();
 }
 
 } // namespace sirius
