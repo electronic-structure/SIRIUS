@@ -1,0 +1,17 @@
+spack:
+  specs:
+    - sirius@develop %gcc@9.3.0 +rocm ^spfft +rocm ^openmpi ^openblas threads=openmp
+  view: false
+
+  packages:
+    all:
+      target: [x86_64]
+      variants:
+        - 'build_type=Release'
+        - '+release'
+        - 'amdgpu_target=gfx906'
+    cmake:
+      buildable: False
+      externals:
+      - spec: 'cmake'
+        prefix: /usr/local/cmake
