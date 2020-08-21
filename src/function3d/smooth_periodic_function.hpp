@@ -209,17 +209,19 @@ class Smooth_periodic_function
 
         assert(gvecp_ != nullptr);
 
+        auto frg_ptr = (spfft_->local_slice_size() == 0) ? nullptr : &f_rg_[0];
+
         switch (direction__) {
             case 1: {
                 if (gvecp_->comm_ortho_fft().size() != 1) {
                     gather_f_pw_fft();
                 }
                 spfft_->backward(reinterpret_cast<double const*>(f_pw_fft_.at(sddk::memory_t::host)), SPFFT_PU_HOST);
-                spfft_output(*spfft_, &f_rg_[0]);
+                spfft_output(*spfft_, frg_ptr);
                 break;
             }
             case -1: {
-                spfft_input(*spfft_, &f_rg_[0]);
+                spfft_input(*spfft_, frg_ptr);
                 spfft_->forward(SPFFT_PU_HOST, reinterpret_cast<double*>(f_pw_fft_.at(sddk::memory_t::host)),
                                 SPFFT_FULL_SCALING);
                 if (gvecp_->comm_ortho_fft().size() != 1) {
