@@ -35,6 +35,7 @@ notify_github_start:
   script: ./ci/set_github_status.sh pending
 
 gpu single:
+  only: ['master', 'develop', 'staging', 'trying']
   trigger:
     include: ci/run.yml
     strategy: depend
@@ -54,6 +55,7 @@ gpu single:
     SLURM_TIMELIMIT: "20:00"
 
 gpu band parallel:
+  only: ['master', 'develop', 'staging', 'trying']
   trigger:
     include: ci/run.yml
     strategy: depend
@@ -74,6 +76,7 @@ gpu band parallel:
     USE_MPI: 'YES'
 
 gpu k-point parallel:
+  only: ['master', 'develop', 'staging', 'trying']
   trigger:
     include: ci/run.yml
     strategy: depend
@@ -94,6 +97,7 @@ gpu k-point parallel:
     USE_MPI: 'YES'
 
 cpu single:
+  only: ['master', 'develop', 'staging', 'trying']
   trigger:
     include: ci/run.yml
     strategy: depend
@@ -114,6 +118,7 @@ cpu single:
     SLURM_TIMELIMIT: "20:00"
 
 cpu band parallel:
+  only: ['master', 'develop', 'staging', 'trying']
   trigger:
     include: ci/run.yml
     strategy: depend
