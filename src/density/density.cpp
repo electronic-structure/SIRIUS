@@ -1190,13 +1190,13 @@ void Density::generate_valence(K_point_set const& ks__)
 
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+        auto ptr = (ctx_.spfft_coarse().local_slice_size() == 0) ? nullptr : &rho_mag_coarse_[j]->f_rg(0);
         /* reduce arrays; assume that each rank did its own fraction of the density */
         /* comm_ortho_fft is identical to a product of column communicator inside k-point with k-point communicator */
-        comm.allreduce(&rho_mag_coarse_[j]->f_rg(0), ctx_.spfft_coarse().local_slice_size());
+        comm.allreduce(ptr, ctx_.spfft_coarse().local_slice_size());
         /* print checksum if needed */
         if (ctx_.control().print_checksum_) {
-            auto cs =
-                mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.spfft_coarse().local_slice_size()).checksum();
+            auto cs = mdarray<double, 1>(ptr, ctx_.spfft_coarse().local_slice_size()).checksum();
             Communicator(ctx_.spfft_coarse().communicator()).allreduce(&cs, 1);
             if (ctx_.comm().rank() == 0) {
                 utils::print_checksum("rho_mag_coarse_rg", cs);

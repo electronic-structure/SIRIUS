@@ -2,10 +2,13 @@
 <img src="doc/images/sirius_logo.png" width="500">
 </p>
 
-[![GitHub Releases](https://img.shields.io/github/release/electronic-structure/sirius.svg)](https://github.com/electronic-structure/SIRIUS/releases)
+[![GitHub Releases](https://img.shields.io/github/release/electronic-structure/sirius.svg)](https://github.com/electronic-structure/SIRIUS/releases) 
 [![Documentation](https://img.shields.io/badge/docs-doxygen-blue.svg)](https://electronic-structure.github.io/SIRIUS-doc)
 [![Licence](https://img.shields.io/badge/license-BSD-blue.svg)](https://raw.githubusercontent.com/electronic-structure/SIRIUS/master/LICENSE)
 [![Build](https://github.com/electronic-structure/SIRIUS/workflows/Build/badge.svg?branch=master)](https://github.com/electronic-structure/SIRIUS/actions)
+[![Verification tests master](https://gitlab.com/cscs-ci/electronic-structure/SIRIUS/badges/master/pipeline.svg?key_text=master)](https://gitlab.com/cscs-ci/electronic-structure/SIRIUS/-/commits/master)
+[![Verification tests develop](https://gitlab.com/cscs-ci/electronic-structure/SIRIUS/badges/develop/pipeline.svg?key_text=develop)](https://gitlab.com/cscs-ci/electronic-structure/SIRIUS/-/commits/develop)
+
 
 ## Table of contents
 * [Introduction](#introduction)

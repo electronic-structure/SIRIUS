@@ -1,0 +1,131 @@
+include:
+  - remote: 'https://gitlab.com/cscs-ci/recipes/-/raw/master/templates/v2/.cscs.yml'
+
+stages:
+  - build
+  - test
+  - afterwards
+
+.build_common:
+  extends: .dind
+  stage: build
+  only: ['master', 'develop', 'staging', 'trying']
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t "$IMAGE" --build-arg BUILD_BASE="$BUILD_BASE" --build-arg DEPLOY_BASE="$DEPLOY_BASE" --build-arg SPEC="$SPEC" -f ci/spack/deploy.Dockerfile --network=host .
+    - docker push $IMAGE
+
+cuda_10.1:
+  extends: .build_common
+  variables:
+    SPEC: 'sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda ^cuda@10.1.243 ^openblas threads=openmp ^mpich'
+    DEPLOY_BASE: ubuntu:18.04
+    BUILD_BASE: stabbles/sirius-cuda-10
+    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
+
+notify_github_start:
+  stage: build
+  allow_failure: true
+  only: ['master', 'develop', 'staging', 'trying']
+  tags: ['kubernetes']
+  image: stabbles/git-curl
+  script: ./ci/set_github_status.sh pending
+
+gpu single:
+  trigger:
+    include: ci/run.yml
+    strategy: depend
+  variables:
+    ALLOCATION_NAME: sirius-gpu-single-$CI_PIPELINE_ID
+    CRAY_CUDA_MPS: 1
+    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
+    MPICH_MAX_THREAD_SAFETY: multiple
+    OMP_NUM_THREADS: 12
+    SIRIUS_FLAGS: "--control.processing_unit=gpu --control.std_evp_solver_name=cusolver --control.gen_evp_solver_name=cusolver"
+    SLURM_CONSTRAINT: gpu
+    SLURM_CPUS_PER_TASK: 12
+    SLURM_EXCLUSIVE: ''
+    SLURM_HINT: nomultithread
+    SLURM_JOB_NUM_NODES: 1
+    SLURM_NTASKS: 1
+    SLURM_TIMELIMIT: "20:00"
+
+gpu multi:
+  trigger:
+    include: ci/run.yml
+    strategy: depend
+  variables:
+    ALLOCATION_NAME: sirius-gpu-multi-$CI_PIPELINE_ID
+    CRAY_CUDA_MPS: 1
+    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
+    MPICH_MAX_THREAD_SAFETY: multiple
+    OMP_NUM_THREADS: 3
+    SIRIUS_FLAGS: "--control.processing_unit=gpu --control.mpi_grid_dims=2:2 --control.std_evp_solver_name=scalapack --control.gen_evp_solver_name=scalapack"
+    SLURM_CONSTRAINT: gpu
+    SLURM_CPUS_PER_TASK: 3
+    SLURM_EXCLUSIVE: ''
+    SLURM_HINT: nomultithread
+    SLURM_JOB_NUM_NODES: 1
+    SLURM_NTASKS: 4
+    SLURM_TIMELIMIT: "20:00"
+    USE_MPI: 'YES'
+
+cpu single:
+  trigger:
+    include: ci/run.yml
+    strategy: depend
+  variables:
+    ALLOCATION_NAME: sirius-cpu-single-$CI_PIPELINE_ID
+    CRAY_CUDA_MPS: 1
+    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
+    MPICH_MAX_THREAD_SAFETY: multiple
+    OMP_NUM_THREADS: 12
+    SIRIUS_FLAGS: "--control.processing_unit=cpu"
+    SLURM_CONSTRAINT: gpu
+    SLURM_CPU_BIND: sockets
+    SLURM_CPUS_PER_TASK: 12
+    SLURM_EXCLUSIVE: ''
+    SLURM_HINT: nomultithread
+    SLURM_JOB_NUM_NODES: 1
+    SLURM_NTASKS: 1
+    SLURM_TIMELIMIT: "20:00"
+
+cpu multi:
+  trigger:
+    include: ci/run.yml
+    strategy: depend
+  variables:
+    ALLOCATION_NAME: sirius-cpu-multi-$CI_PIPELINE_ID
+    CRAY_CUDA_MPS: 1
+    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
+    MPICH_MAX_THREAD_SAFETY: multiple
+    OMP_NUM_THREADS: 3
+    SIRIUS_FLAGS: "--control.processing_unit=cpu --control.mpi_grid_dims=2:2 --control.std_evp_solver_name=scalapack --control.gen_evp_solver_name=scalapack"
+    SLURM_CONSTRAINT: gpu
+    SLURM_CPU_BIND: sockets
+    SLURM_CPUS_PER_TASK: 3
+    SLURM_EXCLUSIVE: ''
+    SLURM_HINT: nomultithread
+    SLURM_JOB_NUM_NODES: 1
+    SLURM_NTASKS: 4
+    SLURM_TIMELIMIT: "20:00"
+    USE_MPI: 'YES'
+
+notify_github_success:
+  stage: afterwards
+  when: on_success
+  only: ['master', 'develop', 'staging', 'trying']
+  tags: ['kubernetes']
+  image: stabbles/git-curl
+  script: ./ci/set_github_status.sh success
+
+notify_github_failure:
+  stage: afterwards
+  when: on_failure
+  only: ['master', 'develop', 'staging', 'trying']
+  tags: ['kubernetes']
+  image: stabbles/git-curl
+  script: ./ci/set_github_status.sh failure
