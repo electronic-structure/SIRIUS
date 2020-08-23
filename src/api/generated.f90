@@ -1417,10 +1417,7 @@ if (present(save_state)) then
 endif
 end subroutine sirius_find_ground_state
 
-<<<<<<< variant A
->>>>>>> variant B
 !
-======= end
 !> @brief Find the ground state using the robust
 !> @param [in] gs_handler Handler of the ground state.
 !> @param [in] ks_handler Handler of the k-point set.
@@ -5834,49 +5831,3 @@ ks_handler_ptr = C_NULL_PTR
 ks_handler_ptr = C_LOC(ks_handler)
 call sirius_nlcg_aux(handler_ptr,ks_handler_ptr)
 end subroutine sirius_nlcg
-
-!> @brief Robust wave function optimizer
-!> @param [in] handler Ground state handler
-!> @param [in] ks_handler point set handler
-!> @param [in] temp temperature in Kelvin
-!> @param [in] smearing smearing label
-!> @param [in] kappa pseudo-Hamiltonian scalar preconditioner
-!> @param [in] tau backtracking search reduction parameter
-!> @param [in] tol CG tolerance
-!> @param [in] maxiter CG maxiter
-!> @param [in] restart CG restart
-!> @param [in] processing_unit processing unit cpu|gpu|none
-subroutine sirius_nlcg_params(handler,ks_handler,temp,smearing,kappa,tau,tol,maxiter,&
-&restart,processing_unit)
-implicit none
-type(C_PTR), intent(in) :: handler
-type(C_PTR), intent(in) :: ks_handler
-real(C_DOUBLE), intent(in) :: temp
-character(C_CHAR), dimension(*), intent(in) :: smearing
-real(C_DOUBLE), intent(in) :: kappa
-real(C_DOUBLE), intent(in) :: tau
-real(C_DOUBLE), intent(in) :: tol
-integer(C_INT), intent(in) :: maxiter
-integer(C_INT), intent(in) :: restart
-character(C_CHAR), dimension(*), intent(in) :: processing_unit
-interface
-subroutine sirius_nlcg_params_aux(handler,ks_handler,temp,smearing,kappa,tau,tol,&
-&maxiter,restart,processing_unit)&
-&bind(C, name="sirius_nlcg_params")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-type(C_PTR), intent(in) :: ks_handler
-real(C_DOUBLE), intent(in) :: temp
-character(C_CHAR), dimension(*), intent(in) :: smearing
-real(C_DOUBLE), intent(in) :: kappa
-real(C_DOUBLE), intent(in) :: tau
-real(C_DOUBLE), intent(in) :: tol
-integer(C_INT), intent(in) :: maxiter
-integer(C_INT), intent(in) :: restart
-character(C_CHAR), dimension(*), intent(in) :: processing_unit
-end subroutine
-end interface
-
-call sirius_nlcg_params_aux(handler,ks_handler,temp,smearing,kappa,tau,tol,maxiter,&
-&restart,processing_unit)
-end subroutine sirius_nlcg_params
