@@ -1,8 +1,14 @@
 name: Build
 
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+    - master
+    - develop
+  pull_request:
+    branches:
+    - master
+    - develop
 
 jobs:
   build:
@@ -29,29 +35,50 @@ jobs:
 
   build_rocm:
     runs-on: ubuntu-latest
-    container: adhocman/master:ubuntu18.04_rocm
+    container: stabbles/sirius-rocm
     steps:
       - uses: actions/checkout@v2
-
-      - name: Install tools
-        run: |
-          apt-get update
-          apt-get install -y gfortran liblapack-dev libhdf5-dev libgsl-dev libxc-dev pkg-config
-          cd ${HOME}
-          wget https://github.com/Kitware/CMake/releases/download/v3.14.6/cmake-3.14.6-Linux-x86_64.tar.gz
-          tar -xzvf cmake-3.14.6-Linux-x86_64.tar.gz
-
-      - name: Build dependencies
-        run: |
-          export PATH=${PATH}:${HOME}/cmake-3.14.6-Linux-x86_64/bin
-          cd ${GITHUB_WORKSPACE}
-          ./ci/github_build_dependencies.sh
-
+      - name: Setup Spack
+        run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
       - name: Build SIRIUS
-        run: |
-          export PATH=${PATH}:${HOME}/cmake-3.14.6-Linux-x86_64/bin
-          mkdir -p build
-          cd build
-          cmake ../ -DCMAKE_BUILD_TYPE=DEBUG -DSpFFT_DIR=$HOME/local/lib/cmake/SpFFT -DCMAKE_INSTALL_PREFIX=$HOME/local -DBUILD_TESTS=1 -DUSE_ROCM=1
-          make -j 2 install
+        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +rocm ^spfft +rocm ^openblas threads=openmp ^openmpi
 
+  build_cuda_10:
+    runs-on: ubuntu-latest
+    container: stabbles/sirius-cuda-10
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Spack
+        run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
+      - name: Build SIRIUS
+        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda ^cuda@10.1.243 ^openblas threads=openmp ^mpich
+
+  build_cuda_11:
+    runs-on: ubuntu-latest
+    container: stabbles/sirius-cuda-11
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Spack
+        run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
+      - name: Build SIRIUS
+        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +cuda ^cuda@:11 ^openblas threads=openmp ^mpich
+
+  build_elpa_mpich:
+    runs-on: ubuntu-latest
+    container: stabbles/sirius-cpu
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Spack
+        run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
+      - name: Build SIRIUS
+        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas threads=openmp ^mpich
+
+  build_elpa_openmpi:
+    runs-on: ubuntu-latest
+    container: stabbles/sirius-cpu
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Spack
+        run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
+      - name: Build SIRIUS
+        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas threads=openmp ^openmpi

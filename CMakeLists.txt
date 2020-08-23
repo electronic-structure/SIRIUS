@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(SIRIUS VERSION 6.5.6)
+project(SIRIUS VERSION 7.0.0)
 
 # set language and standard
 enable_language(CXX Fortran)
@@ -213,6 +213,13 @@ configure_file("${PROJECT_SOURCE_DIR}/src/runtime_options_json.hpp.in"
                "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
                @ONLY)
 
+# generate atomic configurations
+file(STRINGS "${PROJECT_SOURCE_DIR}/apps/atoms/atoms.json"
+              SIRIUS_ATOMIC_CONF NEWLINE_CONSUME)
+configure_file("${PROJECT_SOURCE_DIR}/apps/atoms/atomic_conf.hpp.in"
+               "${PROJECT_BINARY_DIR}/src/unit_cell/atomic_conf.hpp"
+               @ONLY)
+
 # install targets and modules
 include(cmake/env_vars_map.cmake)
 configure_file("${PROJECT_SOURCE_DIR}/cmake/siriusConfig.cmake.in"
@@ -229,6 +236,9 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/modules"
 # sirius library
 add_subdirectory(src)
 
+# Python module
+add_subdirectory(python_module)
+
 # applications
 if(BUILD_TESTS)
   add_subdirectory(apps/tests)
@@ -243,5 +253,4 @@ add_subdirectory(apps/nlcg)
 endif()
 add_subdirectory(apps/upf)
 add_subdirectory(apps/utils)
-add_subdirectory(python_module)
 add_subdirectory(doc)

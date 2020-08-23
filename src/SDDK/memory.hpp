@@ -657,18 +657,17 @@ void memory_pool_deleter::memory_pool_deleter_impl::free(void* ptr__)
 #ifdef NDEBUG
 #define mdarray_assert(condition__)
 #else
-#define mdarray_assert(condition__)                             \
-{                                                               \
-    if (!(condition__)) {                                       \
+#define mdarray_assert(condition__)                                  \
+{                                                                    \
+    if (!(condition__)) {                                            \
         std::printf("Assertion (%s) failed ", #condition__);         \
         std::printf("at line %i of file %s\n", __LINE__, __FILE__);  \
         std::printf("array label: %s\n", label_.c_str());            \
-        for (int i = 0; i < N; i++) {                           \
+        for (int i = 0; i < N; i++) {                                \
             std::printf("dim[%i].size = %li\n", i, dims_[i].size()); \
-        }                                                       \
-        raise(SIGTERM);                                         \
-        exit(-13);                                              \
-    }                                                           \
+        }                                                            \
+        raise(SIGABRT);                                              \
+    }                                                                \
 }
 #endif
 
@@ -807,7 +806,7 @@ class mdarray
         }
     }
 
-    /// Return linear index in the range [0, size) by the N-dimensional indices.(i0, i1, ...)
+    /// Return linear index in the range [0, size) by the N-dimensional indices (i0, i1, ...)
     template <typename... Args>
     inline index_type idx(Args... args) const
     {

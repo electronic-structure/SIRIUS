@@ -369,12 +369,14 @@ PYBIND11_MODULE(py_sirius, m)
                  return py::array_t<double>({nrows}, {1 * sizeof(double)},
                                             matrix_storage.at(memory_t::host), obj);
              })
-        .def("component", py::overload_cast<int>(&Field4D::component), py::return_value_policy::reference_internal);
+        .def("component", py::overload_cast<int>(&Field4D::component), py::return_value_policy::reference_internal)
+        .def(py::init<Simulation_context&, int>())
+        .def("symmetrize", py::overload_cast<>(&Field4D::symmetrize));
 
     py::class_<Potential, Field4D>(m, "Potential")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>(), "ctx"_a)
         .def("generate", &Potential::generate)
-        .def("symmetrize", &Potential::symmetrize)
+        .def("symmetrize", py::overload_cast<>(&Potential::symmetrize))
         .def("fft_transform", &Potential::fft_transform)
         .def("save", &Potential::save)
         .def("load", &Potential::load)
@@ -399,7 +401,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("fft_transform", &Density::fft_transform)
         .def("mix", &Density::mix)
-        .def("symmetrize", &Density::symmetrize)
+        .def("symmetrize", py::overload_cast<>(&Density::symmetrize))
         .def("symmetrize_density_matrix", &Density::symmetrize_density_matrix)
         .def("generate", py::overload_cast<K_point_set const&, bool, bool>(&Density::generate), "kpointset"_a,
              "add_core"_a = true, "transform_to_rg"_a = false)

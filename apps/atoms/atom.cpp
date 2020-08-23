@@ -20,14 +20,15 @@
 #include <algorithm>
 #include <sirius.hpp>
 #include "mixer/broyden1_mixer.hpp"
+#include "unit_cell/atomic_conf.hpp"
 
 double const rmin{1e-5};
 
 class Free_atom : public sirius::Atom_type
 {
   private:
-    mdarray<double, 2>     free_atom_orbital_density_;
-    mdarray<double, 2>     free_atom_wave_functions_;
+    sddk::mdarray<double, 2> free_atom_orbital_density_;
+    sddk::mdarray<double, 2> free_atom_wave_functions_;
     sirius::Spline<double> free_atom_potential_;
 
   public:
@@ -308,30 +309,27 @@ class Free_atom : public sirius::Atom_type
 
 Free_atom init_atom_configuration(const std::string& label, sirius::Simulation_parameters const& param__)
 {
-    json jin;
-    std::ifstream("atoms.json") >> jin;
-
     atomic_level_descriptor              nlk;
     std::vector<atomic_level_descriptor> levels_nlk;
 
-    for (size_t i = 0; i < jin[label]["levels"].size(); i++) {
-        nlk.n         = jin[label]["levels"][i][0];
-        nlk.l         = jin[label]["levels"][i][1];
-        nlk.k         = jin[label]["levels"][i][2];
-        nlk.occupancy = jin[label]["levels"][i][3];
+    for (size_t i = 0; i < atomic_conf_dictionary_[label]["levels"].size(); i++) {
+        nlk.n         = atomic_conf_dictionary_[label]["levels"][i][0];
+        nlk.l         = atomic_conf_dictionary_[label]["levels"][i][1];
+        nlk.k         = atomic_conf_dictionary_[label]["levels"][i][2];
+        nlk.occupancy = atomic_conf_dictionary_[label]["levels"][i][3];
         levels_nlk.push_back(nlk);
     }
 
     int zn;
-    zn = jin[label]["zn"];
+    zn = atomic_conf_dictionary_[label]["zn"];
     double mass;
-    mass = jin[label]["mass"];
+    mass = atomic_conf_dictionary_[label]["mass"];
     std::string name;
-    name                    = jin[label]["name"];
+    name                    = atomic_conf_dictionary_[label]["name"];
     double NIST_LDA_Etot    = 0.0;
-    NIST_LDA_Etot           = jin[label].value("NIST_LDA_Etot", NIST_LDA_Etot);
+    NIST_LDA_Etot           = atomic_conf_dictionary_[label].value("NIST_LDA_Etot", NIST_LDA_Etot);
     double NIST_ScRLDA_Etot = 0.0;
-    NIST_ScRLDA_Etot        = jin[label].value("NIST_ScRLDA_Etot", NIST_ScRLDA_Etot);
+    NIST_ScRLDA_Etot        = atomic_conf_dictionary_[label].value("NIST_ScRLDA_Etot", NIST_ScRLDA_Etot);
 
     Free_atom a(param__, label, name, zn, mass, levels_nlk);
     a.NIST_LDA_Etot    = NIST_LDA_Etot;

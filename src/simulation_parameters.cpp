@@ -92,9 +92,6 @@ void Simulation_parameters::import(cmd_args const& args__)
     parameters_input_.ngridk_      = args__.value("parameters.ngridk", parameters_input_.ngridk_);
     parameters_input_.gamma_point_ = args__.value("parameters.gamma_point", parameters_input_.gamma_point_);
     parameters_input_.pw_cutoff_   = args__.value("parameters.pw_cutoff", parameters_input_.pw_cutoff_);
-
-    iterative_solver_input_.orthogonalize_ =
-        args__.value("iterative_solver.orthogonalize", iterative_solver_input_.orthogonalize_);
 }
 
 void Simulation_parameters::set_core_relativity(std::string name__)

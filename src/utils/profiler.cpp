@@ -26,4 +26,8 @@
 
 namespace utils {
 ::rt_graph::Timer global_rtgraph_timer;
+
+#if defined(__CUDA_NVTX)
+::nvtxprofiler::Timer global_nvtx_timer;
+#endif
 }

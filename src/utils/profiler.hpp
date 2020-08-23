@@ -32,25 +32,42 @@
 #endif
 #include "rt_graph.hpp"
 #if defined(__GPU) && defined(__CUDA_NVTX)
-#include "GPU/acc.hpp"
+#include "nvtx_profiler.hpp"
 #endif
 
 namespace utils {
 
 extern ::rt_graph::Timer global_rtgraph_timer;
 
+#if defined(__CUDA_NVTX)
+extern ::nvtxprofiler::Timer global_nvtx_timer;
+#endif
+
 // TODO: add calls to apex and cudaNvtx
 
 #if defined(__PROFILE)
-    #define PROFILER_CONCAT_IMPL(x, y) x##y
-    #define PROFILER_CONCAT(x, y) PROFILER_CONCAT_IMPL(x, y)
+#define PROFILER_CONCAT_IMPL(x, y) x##y
+#define PROFILER_CONCAT(x, y) PROFILER_CONCAT_IMPL(x, y)
 
-    #define PROFILE(identifier)                                                                                            \
-        ::rt_graph::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier,                            \
-                                                                                    ::utils::global_rtgraph_timer);
+#if defined(__CUDA_NVTX)
+    #define PROFILE(identifier) \
+        ::nvtxprofiler::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier, ::utils::global_nvtx_timer); \
+        ::rt_graph::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier, ::utils::global_rtgraph_timer);
+    #define PROFILE_START(identifier) \
+        ::utils::global_nvtx_timer.start(identifier); \
+        ::utils::global_rtgraph_timer.start(identifier);
+    #define PROFILE_STOP(identifier) \
+        ::utils::global_rtgraph_timer.stop(identifier); \
+        ::utils::global_nvtx_timer.stop(identifier);
+#else
+    #define PROFILE(identifier) \
+        ::rt_graph::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier, ::utils::global_rtgraph_timer);
+    #define PROFILE_START(identifier) \
+        ::utils::global_rtgraph_timer.start(identifier);
+    #define PROFILE_STOP(identifier) \
+        ::utils::global_rtgraph_timer.stop(identifier);
+#endif
 
-    #define PROFILE_START(identifier) ::utils::global_rtgraph_timer.start(identifier);
-    #define PROFILE_STOP(identifier) ::utils::global_rtgraph_timer.stop(identifier);
 #else
     #define PROFILE(...)
     #define PROFILE_START(...)

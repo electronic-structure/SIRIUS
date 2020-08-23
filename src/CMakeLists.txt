@@ -119,7 +119,8 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
                                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/SDDK>
-                                         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>)
+                                         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
+                                         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src/mod_files>)
 target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_PROFILER}>:__PROFILE>
   $<$<BOOL:${USE_SCALAPACK}>:__SCALAPACK>
@@ -134,7 +135,7 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_ROCM}>:__GPU __ROCM>
   $<$<BOOL:${USE_VDWXC}>:__USE_VDWXC>
   $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:__HAVE_VDWXC_MPI>
-  $<$<BOOL:${USE_MAGMA} AND ${USE_ROCM}>:HAVE_HIP> # Required for magma headers
+  $<$<AND:$<BOOL:${USE_MAGMA}>,$<BOOL:${USE_ROCM}>>:HAVE_HIP> # Required for magma headers
 )
 
 set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)

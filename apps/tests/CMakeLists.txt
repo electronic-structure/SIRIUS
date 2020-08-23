@@ -10,6 +10,10 @@ foreach(_test ${_tests})
   install(TARGETS ${_test} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 endforeach()
 
+add_executable(test_fortran_api test_fortran_api.f90)
+target_link_libraries(test_fortran_api PRIVATE sirius)
+install(TARGETS test_fortran_api RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+
 #set(_test test_gemm)
 #add_executable("${_test}_real" "${_test}.cpp")
 #target_link_libraries(${_test} PRIVATE sirius)
