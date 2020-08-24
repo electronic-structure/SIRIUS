@@ -254,12 +254,15 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
     {
         int nq = static_cast<int>(q__.size());
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
+        result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            if (ri_callback_) {
-                ri_callback_(iat + 1, nq, &q__[0], &result(0, iat));
-            } else {
-                for (int iq = 0; iq < nq; iq++) {
-                    result(iq, iat) = this->value<int>(iat, q__[iq]);
+            if (!unit_cell_.atom_type(iat).ps_core_charge_density().empty()) {
+                if (ri_callback_) {
+                    ri_callback_(iat + 1, nq, &q__[0], &result(0, iat));
+                } else {
+                    for (int iq = 0; iq < nq; iq++) {
+                        result(iq, iat) = this->value<int>(iat, q__[iq]);
+                    }
                 }
             }
         }
@@ -389,12 +392,15 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
     {
         int nq = static_cast<int>(q__.size());
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
+        result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            if (ri_callback_) {
-                ri_callback_(iat + 1, nq, &q__[0], &result(0, iat));
-            } else {
-                for (int iq = 0; iq < nq; iq++) {
-                    result(iq, iat) = this->value(iat, q__[iq]);
+            if (!unit_cell_.atom_type(iat).local_potential().empty()) {
+                if (ri_callback_) {
+                    ri_callback_(iat + 1, nq, &q__[0], &result(0, iat));
+                } else {
+                    for (int iq = 0; iq < nq; iq++) {
+                        result(iq, iat) = this->value(iat, q__[iq]);
+                    }
                 }
             }
         }
