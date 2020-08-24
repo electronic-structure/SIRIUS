@@ -35,6 +35,7 @@ notify_github_start:
   script: ./ci/set_github_status.sh pending
 
 gpu single:
+  only: ['master', 'develop', 'staging', 'trying']
   trigger:
     include: ci/run.yml
     strategy: depend
@@ -53,12 +54,13 @@ gpu single:
     SLURM_NTASKS: 1
     SLURM_TIMELIMIT: "20:00"
 
-gpu multi:
+gpu band parallel:
+  only: ['master', 'develop', 'staging', 'trying']
   trigger:
     include: ci/run.yml
     strategy: depend
   variables:
-    ALLOCATION_NAME: sirius-gpu-multi-$CI_PIPELINE_ID
+    ALLOCATION_NAME: sirius-gpu-band-parallel-$CI_PIPELINE_ID
     CRAY_CUDA_MPS: 1
     IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
@@ -73,7 +75,29 @@ gpu multi:
     SLURM_TIMELIMIT: "20:00"
     USE_MPI: 'YES'
 
+gpu k-point parallel:
+  only: ['master', 'develop', 'staging', 'trying']
+  trigger:
+    include: ci/run.yml
+    strategy: depend
+  variables:
+    ALLOCATION_NAME: sirius-gpu-k-point-parallel-$CI_PIPELINE_ID
+    CRAY_CUDA_MPS: 1
+    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
+    MPICH_MAX_THREAD_SAFETY: multiple
+    OMP_NUM_THREADS: 3
+    SIRIUS_FLAGS: "--control.processing_unit=gpu --control.std_evp_solver_name=cusolver --control.gen_evp_solver_name=cusolver"
+    SLURM_CONSTRAINT: gpu
+    SLURM_CPUS_PER_TASK: 3
+    SLURM_EXCLUSIVE: ''
+    SLURM_HINT: nomultithread
+    SLURM_JOB_NUM_NODES: 1
+    SLURM_NTASKS: 4
+    SLURM_TIMELIMIT: "20:00"
+    USE_MPI: 'YES'
+
 cpu single:
+  only: ['master', 'develop', 'staging', 'trying']
   trigger:
     include: ci/run.yml
     strategy: depend
@@ -93,12 +117,13 @@ cpu single:
     SLURM_NTASKS: 1
     SLURM_TIMELIMIT: "20:00"
 
-cpu multi:
+cpu band parallel:
+  only: ['master', 'develop', 'staging', 'trying']
   trigger:
     include: ci/run.yml
     strategy: depend
   variables:
-    ALLOCATION_NAME: sirius-cpu-multi-$CI_PIPELINE_ID
+    ALLOCATION_NAME: sirius-cpu-band-parallel-$CI_PIPELINE_ID
     CRAY_CUDA_MPS: 1
     IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
