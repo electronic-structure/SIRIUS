@@ -916,12 +916,14 @@ void Simulation_context::update()
 
         if (!ps_core_ri_ || ps_core_ri_->qmax() < new_pw_cutoff) {
             ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
-                new Radial_integrals_rho_core_pseudo<false>(unit_cell(), new_pw_cutoff, settings().nprii_rho_core_));
+                new Radial_integrals_rho_core_pseudo<false>(unit_cell(), new_pw_cutoff, settings().nprii_rho_core_,
+                    rhoc_ri_callback_));
         }
 
         if (!ps_core_ri_djl_ || ps_core_ri_djl_->qmax() < new_pw_cutoff) {
             ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
-                new Radial_integrals_rho_core_pseudo<true>(unit_cell(), new_pw_cutoff, settings().nprii_rho_core_));
+                new Radial_integrals_rho_core_pseudo<true>(unit_cell(), new_pw_cutoff, settings().nprii_rho_core_,
+                    nullptr));
         }
 
         if (!ps_rho_ri_ || ps_rho_ri_->qmax() < new_pw_cutoff) {
