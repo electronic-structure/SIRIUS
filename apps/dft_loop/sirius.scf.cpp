@@ -1,5 +1,6 @@
 #include "utils/profiler.hpp"
 #include <sirius.hpp>
+#include "utils/filesystem.hpp"
 #include <utils/json.hpp>
 #include <cfenv>
 #include <fenv.h>
@@ -24,10 +25,10 @@ void json_output_common(json& dict__)
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
-std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
+std::unique_ptr<Simulation_context> create_sim_ctx(std::string fname__,
                                                    cmd_args const& args__)
 {
-    auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, Communicator::world()));
+    auto ctx_ptr = std::make_unique<Simulation_context>(fname__, Communicator::world());
     Simulation_context& ctx = *ctx_ptr;
 
     auto& inp = ctx.parameters_input();
@@ -209,14 +210,22 @@ void run_tasks(cmd_args const& args)
 {
     /* get the task id */
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
+
     /* get the input file name */
-    std::string fname = args.value<std::string>("input", "sirius.json");
-    if (!utils::file_exists(fname)) {
+    auto fpath = args.value<fs::path>("input", "sirius.json");
+
+    if (fs::is_directory(fpath)) {
+        fpath /= "sirius.json";
+    }
+
+    if (!fs::exists(fpath)) {
         if (Communicator::world().rank() == 0) {
             std::printf("input file does not exist\n");
         }
         return;
     }
+
+    auto fname = fpath.string();
 
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
         auto ctx = create_sim_ctx(fname, args);

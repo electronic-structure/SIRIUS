@@ -106,6 +106,7 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     sirius::libxc
                                     sirius::libspg
                                     sirius::hdf5
+                                    sirius::filesystem
                                     $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
                                     $<TARGET_NAME_IF_EXISTS:sirius::elpa>
                                     $<TARGET_NAME_IF_EXISTS:sirius::magma>
@@ -139,6 +140,9 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_VDWXC}>:__USE_VDWXC>
   $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:__HAVE_VDWXC_MPI>
   $<$<AND:$<BOOL:${USE_MAGMA}>,$<BOOL:${USE_ROCM}>>:HAVE_HIP> # Required for magma headers
+  $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:__STD_FILESYSTEM_EXPERIMENTAL>
+  $<$<BOOL:${Filesystem_FOUND}>:__STD_FILESYSTEM>
+  $<$<BOOL:${Boost_FOUND}>:__BOOST_FILESYSTEM>
 )
 
 set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)

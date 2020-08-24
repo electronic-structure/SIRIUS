@@ -29,6 +29,7 @@
 #define __INPUT_HPP__
 
 #include <list>
+#include "utils/filesystem.hpp"
 #include "constants.hpp"
 #include "SDDK/geometry3d.hpp"
 #include "utils/json.hpp"
@@ -105,7 +106,7 @@ struct Unit_cell_input
     bool exist_{false};
 
     /// Read the \b unit_cell input section.
-    void read(json const& parser)
+    void read(json const& parser, fs::path const &working_directory)
     {
         if (parser.count("unit_cell")) {
             exist_ = true;
@@ -150,7 +151,8 @@ struct Unit_cell_input
 
             if (section.count("atom_files")) {
                 for (auto& label : labels_) {
-                    atom_files_[label] = section["atom_files"].value(label, "");
+                    fs::path p = section["atom_files"].value(label, "");
+                    atom_files_[label] = (working_directory / p).string();
                 }
             }
 

@@ -105,10 +105,10 @@ class Simulation_parameters
     }
 
     /// Import parameters from a file or a serialized json string.
-    void import(std::string const& str__);
+    void import(std::string const &str);
 
     /// Import parameters from a json dictionary.
-    void import(json const& dict);
+    void import(json const& dict, fs::path const &working_directory = fs::current_path());
 
     /// Import from command line arguments.
     void import(cmd_args const& args__);

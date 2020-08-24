@@ -120,6 +120,16 @@ find_package(HDF5 REQUIRED C)
 include(cmake/hdf5_target.cmake)
 find_package(SpFFT 0.9.6 CONFIG REQUIRED)
 
+# Either find std::filesystem or boost::filesystem
+find_package(Filesystem COMPONENTS Final Experimental)
+
+if(TARGET std::filesystem)
+  add_library(sirius::filesystem ALIAS std::filesystem)
+else()
+  find_package(Boost 1.65 REQUIRED COMPONENTS filesystem)
+  add_library(sirius::filesystem ALIAS Boost::filesystem)
+endif()
+
 if (USE_OPENMP)
   find_package(OpenMP REQUIRED)
 endif()
