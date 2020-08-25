@@ -11,7 +11,7 @@ on:
     - develop
 
 jobs:
-  build:
+  build_and_test_cpu:
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     steps:
