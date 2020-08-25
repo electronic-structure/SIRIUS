@@ -94,13 +94,13 @@ $ cd SIRIUS
 $ spack dev-build sirius@develop build_type=Debug +cuda
 ```
 
-Use `spack build-env` when you need more control over the build process:
+When you need more control over the build commands, use `spack build-env [spec] -- [command]`:
 
 ```bash
-$ mkdir SIRIUS/build
-$ cd SIRIUS/build
-$ spack build-env 'sirius@develop build_type=Debug ^intel-mkl' cmake ..
-$ spack build-env 'siruis@develop build_type=Debug ^intel-mkl' make -j$(nproc)
+$ mkdir SIRIUS/build && cd SIRIUS/build
+$ spack install --only=dependencies sirius@develop build_type=Debug +cuda
+$ spack build-env sirius@develop build_type=Debug +cuda -- cmake ..
+$ spack build-env sirius@develop build_type=Debug +cuda -- make -j$(nproc)
 ```
 
 ### Manual installation
