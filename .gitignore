@@ -32,3 +32,6 @@ latex/
 output*.json
 
 *.h5
+
+build/
+spack-build/
