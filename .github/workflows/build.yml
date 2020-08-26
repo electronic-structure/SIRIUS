@@ -41,9 +41,9 @@ jobs:
       - name: Setup Spack
         run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
       - name: Show the spec
-        run: spack --color always -e ci spec -I sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +rocm ^spfft +rocm ^openblas ^openmpi
+        run: spack --color always -e ci spec -I sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +rocm ^spfft +rocm ^openblas threads=openmp ^openmpi
       - name: Build SIRIUS
-        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +rocm ^spfft +rocm ^openblas ^openmpi
+        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +rocm ^spfft +rocm ^openblas threads=openmp ^openmpi
 
   build_cuda_10:
     runs-on: ubuntu-latest
@@ -53,9 +53,9 @@ jobs:
       - name: Setup Spack
         run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
       - name: Show the spec
-        run: spack --color always -e ci spec -I sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda ^cuda@10.1.243 ^openblas ^mpich
+        run: spack --color always -e ci spec -I sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda ^cuda@10.1.243 ^openblas threads=openmp ^mpich
       - name: Build SIRIUS
-        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda ^cuda@10.1.243 ^openblas ^mpich
+        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda ^cuda@10.1.243 ^openblas threads=openmp ^mpich
 
   build_cuda_11:
     runs-on: ubuntu-latest
@@ -65,9 +65,9 @@ jobs:
       - name: Setup Spack
         run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
       - name: Show the spec
-        run: spack --color always -e ci spec -I sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +cuda ^cuda@:11 ^openblas ^mpich
+        run: spack --color always -e ci spec -I sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +cuda ^cuda@:11 ^openblas threads=openmp ^mpich
       - name: Build SIRIUS
-        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +cuda ^cuda@:11 ^openblas ^mpich
+        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +cuda ^cuda@:11 ^openblas threads=openmp ^mpich
 
   build_elpa_mpich:
     runs-on: ubuntu-latest
@@ -77,9 +77,9 @@ jobs:
       - name: Setup Spack
         run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
       - name: Show the spec
-        run: spack --color always -e ci spec -I sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas ^mpich
+        run: spack --color always -e ci spec -I sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas threads=openmp ^mpich
       - name: Build SIRIUS
-        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas ^mpich
+        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas threads=openmp ^mpich
 
   build_elpa_openmpi:
     runs-on: ubuntu-latest
@@ -89,6 +89,6 @@ jobs:
       - name: Setup Spack
         run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
       - name: Show the spec
-        run: spack --color always -e ci spec -I sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas ^openmpi
+        run: spack --color always -e ci spec -I sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas threads=openmp ^openmpi
       - name: Build SIRIUS
-        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas ^openmpi
+        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas threads=openmp ^openmpi
