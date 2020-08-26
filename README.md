@@ -38,9 +38,9 @@ The following functionality is currently implemented in SIRIUS:
  * (PP-PW, FP-LAPW) Collinear and non-collinear magnetism
  * (FP-LAPW) APW and LAPW basis sets with arbitrary number of local orbitals
  * (FP-LAPW) ZORA and IORA approximations for valence states; full relativistic Dirac equation for core states
- * Python frontend
  * Symmetrization of lattice-periodic functions and on-site matrices
  * Generation of irreducible k-meshes
+ * Python frontend
 
 ## Installation
 It is recommended to install SIRIUS through [Spack](https://spack.readthedocs.io/en/latest/getting_started.html). To set it up, use
@@ -53,7 +53,7 @@ spack install sirius
 
 ### Configuring SIRIUS
 
-SIRIUS has many different configurations to enable specific hardware and library support. Some common configurations include:
+SIRIUS has many different configurations to enable specific hardware and library support. Some common setups include:
 
 ```bash
 # Use default BLAS, LAPACK, MPI and FFTW3 implementations, without GPU support, using the latest GCC 9.x
@@ -80,7 +80,7 @@ $ spack install sirius +scalapack +elpa
 
 Language interop with Fortran and Python can be enabled with `+fortran` and `+python` respectively.
 
-Check out `spack info sirius` for the full list of support variants.
+See `spack info sirius` for the full list of support variants.
 
 ### Developing and debugging SIRIUS
 
@@ -94,18 +94,19 @@ $ cd SIRIUS
 $ spack dev-build sirius@develop build_type=Debug +cuda
 ```
 
-When you need more control over the build commands, use `spack build-env [spec] -- [command]`:
+When more control over the build commands is necessary, use `spack build-env [spec] -- [command]`:
 
 ```bash
 $ mkdir SIRIUS/build && cd SIRIUS/build
-$ spack install --only=dependencies sirius@develop build_type=Debug +cuda
-$ spack build-env sirius@develop build_type=Debug +cuda -- cmake ..
-$ spack build-env sirius@develop build_type=Debug +cuda -- make -j$(nproc)
+$ export SPEC="sirius@develop build_type=Debug +cuda"
+$ spack install --only=dependencies $SPEC
+$ spack build-env $SPEC -- cmake ..
+$ spack build-env $SPEC -- make -j$(nproc)
 ```
 
 ### Manual installation
 
-When installing SIRIUS without spack, make sure to install the required dependencies first:
+When installing SIRIUS without Spack, make sure to install the required dependencies first:
 
  * CMake ≥ 3.12
  * C++ compiler with C++14 support
@@ -117,13 +118,13 @@ When installing SIRIUS without spack, make sure to install the required dependen
  * [spglib](https://atztogo.github.io/spglib/) - library for finding and handling crystal symmetries
  * [SpFFT](https://github.com/eth-cscs/SpFFT) - domain-specific FFT library
 
-and optionally the following libraries:
+and optionally any of the additional libraries:
  * ScaLAPACK (Intel MKL or netlib scalapack)
  * [ELPA](https://elpa.mpcdf.mpg.de/software)
  * [MAGMA](https://icl.cs.utk.edu/magma/)
  * CUDA/ROCm
 
-When libraries are installed in non-standard locations, set `CMAKE_PREFIX_PATH` to a list of installation paths.
+Clone the repository and build as follows:
 
 ```bash
 git clone --recursive https://github.com/electronic-structure/SIRIUS.git
@@ -134,32 +135,32 @@ export CMAKE_PREFIX_PATH="path/to/BLAS;path/to/GSL;path/to/LibXC;path/to/HDF5;..
 cmake -DCMAKE_INSTALL_PREFIX=$PWD/sirius
 make -j install
 ```
+where `CMAKE_PREFIX_PATH` is a list of installation paths of dependencies installed in non-standard locations.
 
 #### Adding GPU support
 To enable CUDA you need to pass the following options to CMake: `-DUSE_CUDA=On -DGPU_MODEL='P100'`. The currently
-supported GPU models are `P100`, `V100` and `G10x0` but other architectures can be added easily. If CUDA is installed in a
+supported GPU models are `P100`, `V100` and `G100`, but other architectures can be added easily. If CUDA is installed in a
 non-standard directory, you have to pass additional parameter to CMake `-DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda`.
 
-To enable MAGMA (GPU implementation of Lapack) use `-DUSE_MAGMA=On`. Append MAGMA's installation directory to `CMAKE_PREFIX_PATH` if necessary.
+To enable MAGMA (GPU implementation of LAPACK) use `-DUSE_MAGMA=On`. Append MAGMA's installation directory to `CMAKE_PREFIX_PATH` if necessary.
 
 #### Parallel eigensolvers
 To compile with ScaLAPACK use `-DUSE_SCALAPACK=On`. To use ELPA, both `-DUSE_SCALAPACK=On` and `-DUSE_ELPA=On` are
-required, as we need we need ScaLAPACK functionality to transform the generalized eigenvalue problem to standard form,
+required, as we need ScaLAPACK functionality to transform the generalized eigenvalue problem to standard form,
 which can then be solved by ELPA. Append ScaLAPACK's and ELPA's install directory to `CMAKE_PREFIX_PATH` if necessary.
 
 #### Python module
-To create Python module you need to specify `-DCREATE_PYTHON_MODULE=On`. SIRIUS Python module depends on `mpi4py` and
-`pybind11` packages. They must be installed on your platform.
+Use `-DCREATE_PYTHON_MODULE=On` to build the Python module. The SIRIUS Python module depends on `mpi4py` and
+`pybind11`, which need to be installed on your system.
 
 #### Additional options
-To link against MKL you need to specify `-DUSE_MKL=On` parameter. For Cray libsci use `-DUSE_CRAY_LIBSCI=On`. To build
-tests you need to specify `-DBUILD_TESTS=On`.
+To link against Intel MKL use `-DUSE_MKL=On`. For Cray libsci use `-DUSE_CRAY_LIBSCI=On`. Building tests requires `-DBUILD_TESTS=On`.
 
-### Archlinux
-Archlinux users can find SIRIUS in the [AUR](https://aur.archlinux.org/packages/sirius-git/).
+### Arch Linux
+Arch Linux users can find SIRIUS in the [AUR](https://aur.archlinux.org/packages/sirius-git/).
 
 ### Installation on Piz Daint
-Please refer to [SIRIUS wiki page](https://github.com/electronic-structure/SIRIUS/wiki/Build-on-Piz-Daint) and 
+Please refer to the [SIRIUS wiki page](https://github.com/electronic-structure/SIRIUS/wiki/Build-on-Piz-Daint) and 
 [CSCS User portal](https://user.cscs.ch/computing/applications/sirius/) for detailed instructions.
 
 ## Accelerating DFT codes
@@ -237,16 +238,16 @@ pw.x -i pw.in
 pw.x -i pw.in -sirius
 ```
 
-SIRIUS library is using OpenMP for node-level parallelization. To run QE/SIRIUS efficiently, follow these simple rules:
+The SIRIUS library is using OpenMP for node-level parallelization. To run QE/SIRIUS efficiently, follow these simple rules:
  * always prefer k-point pool parallelization over band parallelization
  * use as few MPI ranks as possible for band parallelization
  * by default, use one rank per node and many OMP threads; if the calculated system is really small, try to saturate 
-   the GPU card using more MPI ranks (e.g.: on a 12-core node, use 2-3-4 ranks with 6-4-3 OMP threads)
+   the GPU card by using more MPI ranks (e.g.: on a 12-core node, use 2-3-4 ranks with 6-4-3 OMP threads)
 
 #### Benchmarks
-In the following examples we compare performace of native and SIRIUS-enabled versions of QE. CPU-only runs were executed
-on the dual-socket multi-core nodes containing two 18-core Intel Broadwell CPUs. GPU rus were executed on the hybrid
-nodes containing 12-core Intel Haswell CPU and NVIDIA Tesla P100 card:
+In the following examples we compare the performance of native and SIRIUS-enabled versions of QE. CPU-only runs are executed
+on dual-socket multi-core nodes containing two 18-core Intel Broadwell CPUs. GPU runs are executed on hybrid
+nodes containing a 12-core Intel Haswell CPU and an NVIDIA Tesla P100 card:
 
 |Hybrid partition (Cray XC50)                | Multicore partition (Cray XC40)                  |
 |--------------------------------------------|--------------------------------------------------|
@@ -260,24 +261,24 @@ of Si511Ge.
 </p>
 
 Another example is the variable cell relaxation of B6Ni8 ([input](https://github.com/electronic-structure/benchmarks/tree/master/performance/B6Ni8)).
-Brillouin zone contains 204 irreducible k-points and only k-pool parallelization is used.
+The Brillouin zone contains 204 irreducible k-points and only k-pool parallelization is used.
 
 <p align="center">
 <img src="doc/images/B6Ni8_perf.png">
 </p>
 
 ### CP2K
-CP2K code uses SIRIUS library to enable plane-wave functionality. The detailed description of the input parameters
+[CP2K](https://www.cp2k.org/) uses the SIRIUS library to enable plane-wave functionality. The detailed description of the input parameters
 can be found [here](https://manual.cp2k.org) under the `/CP2K_INPUT/FORCE_EVAL/PW_DFT` section.
 
 ## Contacts
-Have you got any questions, feel free to contact us:
+If you have any questions, feel free to contact us:
   * Anton Kozhevnikov (anton.kozhevnikov@cscs.ch)
   * Mathieu Taillefumier (mathieu.taillefumier@cscs.ch)
   * Simon Pintarelli (simon.pintarelli@cscs.ch)
 
 ## Acknowledgements
-The development of SIRIUS library would not be possible without support of the following organizations:
+The development of the SIRIUS library would not be possible without support of the following organizations:
 | Logo | Name | URL |
 |:----:|:----:|:---:|
 |![ethz](doc/images/logo_ethz.png)   | Swiss Federal Institute of Technology in Zürich | https://www.ethz.ch/      |
