@@ -1,7 +1,7 @@
 spack:
   specs:
-    - sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas threads=openmp ^mpich
-    - sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas threads=openmp ^openmpi
+    - sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas ^mpich
+    - sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas ^openmpi
   view: false
 
   packages:
@@ -11,7 +11,8 @@ spack:
         - 'build_type=Release'
         - '+release'
     cmake:
-      buildable: False
-      externals:
-      - spec: 'cmake'
-        prefix: /usr/local/cmake
+      version: [':3.12']
+    openblas:
+      variants:
+        - threads=openmp
+
