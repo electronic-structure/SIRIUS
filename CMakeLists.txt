@@ -123,11 +123,12 @@ find_package(SpFFT 0.9.6 CONFIG REQUIRED)
 # Either find std::filesystem or boost::filesystem
 find_package(Filesystem COMPONENTS Final Experimental)
 
+add_library(sirius::filesystem INTERFACE IMPORTED)
 if(TARGET std::filesystem)
-  add_library(sirius::filesystem ALIAS std::filesystem)
+  target_link_libraries(sirius::filesystem INTERFACE std::filesystem)
 else()
   find_package(Boost 1.65 REQUIRED COMPONENTS filesystem)
-  add_library(sirius::filesystem ALIAS Boost::filesystem)
+  target_link_libraries(sirius::filesystem INTERFACE Boost::filesystem)
 endif()
 
 if (USE_OPENMP)
