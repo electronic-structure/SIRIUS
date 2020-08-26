@@ -357,7 +357,7 @@ void Potential::xc_mt(Density const& density__)
             }
         }
 
-        if (rhomin < 0.0 && std::abs(rhomin) > 1e-9) {
+        if (rhomin < 0.0) {
             std::stringstream s;
             s << "Charge density for atom " << ia << " has negative values" << std::endl
               << "most negatve value : " << rhomin << std::endl

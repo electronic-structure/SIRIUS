@@ -353,6 +353,12 @@
             "description" :  "set the parameters for hubbard correction.",
             "usage" : "hubbard_correction (false, true)",
             "default_value" : false
+        },
+        "xc_density_threshold" :
+        {
+            "description": "set the density threhsold below which libxc will set all output quantities to zero.",
+            "usage": "xc_density_threshold (-1.0)",
+            "default_value": -1.0
         }
     },
     "hubbard" : {

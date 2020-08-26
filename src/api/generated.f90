@@ -5831,4 +5831,3 @@ ks_handler_ptr = C_NULL_PTR
 ks_handler_ptr = C_LOC(ks_handler)
 call sirius_nlcg_aux(handler_ptr,ks_handler_ptr)
 end subroutine sirius_nlcg
-

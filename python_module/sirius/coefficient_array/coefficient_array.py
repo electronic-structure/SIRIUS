@@ -39,6 +39,11 @@ def trace(x):
     return np.trace(x)
 
 
+@threaded
+def identity_like(x):
+    return np.eye(*x.shape)
+
+
 def diag(x):
     """
     TODO: make a check not to flatten a 2d matrix

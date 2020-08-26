@@ -13,7 +13,7 @@ kb = (
 )
 
 
-def find_chemical_potential(fun, mu0, tol=1e-10):
+def find_chemical_potential(fun, mu0, tol=1e-11):
     """
     fun        -- ne - fn(mu)
     mu0        -- initial gues energies
@@ -35,7 +35,7 @@ def find_chemical_potential(fun, mu0, tol=1e-10):
             de *= 0.25
         mu += s * de
         counter += 1
-    assert np.abs(fun(mu)) < 1e-10
+    assert np.abs(fun(mu)) < 1e-11
     return mu
 
 
