@@ -107,7 +107,7 @@ $ spack build-env sirius@develop build_type=Debug +cuda -- make -j$(nproc)
 
 When installing SIRIUS without spack, make sure to install the required dependencies first:
 
- * CMake ≥ 3.14
+ * CMake ≥ 3.12
  * C++ compiler with C++14 support
  * MPI (OpenMPI or MPICH)
  * BLAS/LAPACK (OpenBLAS or Intel MKL)
