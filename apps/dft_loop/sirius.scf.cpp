@@ -25,10 +25,49 @@ void json_output_common(json& dict__)
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
+void rewrite_relative_paths(json& dict__, fs::path const &working_directory = fs::current_path())
+{
+    // the json.unit_cell.atom_files[] dict might contain relative paths,
+    // which should be relative to the json file. So better make them
+    // absolute such that the simulation context does not have to be
+    // aware of paths.
+    if (!dict__.count("unit_cell"))
+        return;
+
+    auto &section = dict__["unit_cell"];
+
+    if (!section.count("atom_files"))
+        return;
+
+    auto &atom_files = section["atom_files"];
+
+    for (auto& label : atom_files.items()) {
+        label.value() = working_directory / label.value();
+    }
+}
+
+nlohmann::json preprocess_json_input(std::string fname__)
+{
+    if (fname__.find("{") == std::string::npos) {
+        // If it's a file, set the working directory to that file.
+        auto json = utils::read_json_from_file(fname__);
+        rewrite_relative_paths(json, fs::path{fname__}.parent_path());
+        return json;
+    } else {
+        // Raw JSON input
+        auto json = utils::read_json_from_string(fname__);
+        rewrite_relative_paths(json);
+        return json;
+    }
+}
+
 std::unique_ptr<Simulation_context> create_sim_ctx(std::string fname__,
                                                    cmd_args const& args__)
 {
-    auto ctx_ptr = std::make_unique<Simulation_context>(fname__, Communicator::world());
+
+    auto json = preprocess_json_input(fname__);
+
+    auto ctx_ptr = std::make_unique<Simulation_context>(json, Communicator::world());
     Simulation_context& ctx = *ctx_ptr;
 
     auto& inp = ctx.parameters_input();

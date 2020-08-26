@@ -106,7 +106,6 @@ target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     sirius::libxc
                                     sirius::libspg
                                     sirius::hdf5
-                                    sirius::filesystem
                                     $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
                                     $<TARGET_NAME_IF_EXISTS:sirius::elpa>
                                     $<TARGET_NAME_IF_EXISTS:sirius::magma>

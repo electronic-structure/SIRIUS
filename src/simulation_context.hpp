@@ -288,12 +288,12 @@ class Simulation_context : public Simulation_parameters
 
   public:
     /// Create a simulation context with an explicit communicator and load parameters from JSON.
-    Simulation_context(std::string const &str__, Communicator const &comm__)
+    Simulation_context(nlohmann::json const &json, Communicator const &comm__)
         : comm_(comm__)
     {
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
-        import(str__);
+        import(json);
         unit_cell_->import(unit_cell_input_);
     }
 

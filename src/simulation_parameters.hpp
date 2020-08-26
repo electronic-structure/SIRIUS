@@ -108,7 +108,7 @@ class Simulation_parameters
     void import(std::string const &str);
 
     /// Import parameters from a json dictionary.
-    void import(json const& dict, fs::path const &working_directory = fs::current_path());
+    void import(json const& dict);
 
     /// Import from command line arguments.
     void import(cmd_args const& args__);

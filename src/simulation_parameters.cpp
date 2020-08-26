@@ -29,25 +29,17 @@ namespace sirius {
 
 void Simulation_parameters::import(std::string const& str__)
 {
-    if (str__.find("{") == std::string::npos) {
-        // If it's a file, set the working directory to that file.
-        auto json = utils::read_json_from_file(str__);
-        auto working_directory = fs::path{str__}.parent_path();
-        import(json, working_directory);
-    } else {
-        // Raw JSON input
-        auto json = utils::read_json_from_string(str__);
-        import(json);
-    }
+    auto json = utils::read_json_from_file_or_string(str__);
+    import(json);
 }
 
-void Simulation_parameters::import(json const& dict, fs::path const &working_directory)
+void Simulation_parameters::import(json const& dict)
 {
     if (dict.size() == 0) {
         return;
     }
     /* read unit cell */
-    unit_cell_input_.read(dict, working_directory);
+    unit_cell_input_.read(dict);
     /* read parameters of mixer */
     mixer_input_.read(dict);
     /* read parameters of iterative solver */
