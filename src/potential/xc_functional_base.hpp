@@ -1681,7 +1681,11 @@ class XC_functional_base
     /// set density threshold of libxc, if density is below tre, all xc output will be set to 0.
     void set_dens_threshold(double tre)
     {
+        #if XC_MAJOR_VERSION >= 4
         xc_func_set_dens_threshold(this->handler(), tre);
+        #else
+        std::cout << "set_dens_threshold not available in old libxc versions, install at least 4.2.3" << "\n";
+        #endif
     }
 };
 } // namespace sirius
