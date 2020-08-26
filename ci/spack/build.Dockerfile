@@ -42,10 +42,6 @@ RUN apt-get -yqq update \
  && pip3 install boto3 \
  && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /usr/local/cmake && \
-    curl -Ls https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.18.0-Linux-x86_64.tar.gz | tar --strip-components=1 -xz -C /usr/local/cmake
-
-
 # This is the spack version we want to have
 ARG SPACK_SHA
 ENV SPACK_SHA=$SPACK_SHA

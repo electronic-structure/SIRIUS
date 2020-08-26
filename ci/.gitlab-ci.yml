@@ -21,7 +21,7 @@ stages:
 cuda_10.1:
   extends: .build_common
   variables:
-    SPEC: 'sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda ^cuda@10.1.243 ^openblas threads=openmp ^mpich'
+    SPEC: 'sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda ^cuda@10.1.243 ^openblas ^mpich'
     DEPLOY_BASE: ubuntu:18.04
     BUILD_BASE: stabbles/sirius-cuda-10
     IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
