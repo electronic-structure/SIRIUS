@@ -46,6 +46,7 @@ class Sirius(CMakePackage, CudaPackage):
 
     variant('shared', default=False, description="Build shared libraries")
     variant('openmp', default=True, description="Build with OpenMP support")
+    variant('boost_filesystem', default=False, description="Use boost filesystem")
     variant('fortran', default=False, description="Build Fortran bindings")
     variant('python', default=False, description="Build Python bindings")
     variant('memory_pool', default=True, description="Build with memory pool")
@@ -59,6 +60,8 @@ class Sirius(CMakePackage, CudaPackage):
     variant('build_type', default='Release',
             description='CMake build type',
             values=('Debug', 'Release', 'RelWithDebInfo'))
+    variant('apps', default=True, description="Build applications")
+    variant('tests', default=False, description="Build tests")
 
     depends_on('python', type=('build', 'run'))
     depends_on('mpi')
@@ -78,6 +81,11 @@ class Sirius(CMakePackage, CudaPackage):
     depends_on('py-voluptuous', when='+python', type=('build', 'run'))
     depends_on('py-pybind11', when='+python', type=('build', 'run'))
     depends_on('magma', when='+magma')
+    depends_on('boost cxxstd=14 +filesystem \
+                ~atomic ~chrono ~date_time ~exception \
+                ~graph ~iostreams ~locale ~log ~math ~program_options \
+                ~random ~regex ~serialization ~signals ~system ~test \
+                ~thread ~timer ~wave', when='+boost_filesystem')
 
     depends_on('spfft', when='@6.4.0:')
     depends_on('spfft', when='@master')
@@ -158,7 +166,9 @@ class Sirius(CMakePackage, CudaPackage):
             _def('+fortran', 'CREATE_FORTRAN_BINDINGS'),
             _def('+python', 'CREATE_PYTHON_MODULE'),
             _def('+cuda'),
-            _def('+rocm')
+            _def('+rocm'),
+            _def('+tests', 'BUILD_TESTING'),
+            _def('+apps', 'BUILD_APPS'),
         ]
 
         if '@:6.2.999' in self.spec:
