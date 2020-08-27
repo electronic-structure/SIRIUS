@@ -703,11 +703,6 @@ class Density : public Field4D
      */
     void symmetrize_density_matrix();
 
-    void symmetrize()
-    {
-        Field4D::symmetrize(&rho(), &magnetization(0), &magnetization(1), &magnetization(2));
-    }
-
     /// Use Kuebler's trick to get rho_up and rho_dn from density and magnetisation.
     inline std::pair<double, double> get_rho_up_dn(double rho__, std::array<double, 3> mag__) const
     {
@@ -733,7 +728,6 @@ class Density : public Field4D
 
         return std::make_pair<double, double>(0.5 * (rho__ + mag), 0.5 * (rho__ - mag));
     }
-
 };
 
 } // namespace sirius

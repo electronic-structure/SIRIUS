@@ -87,38 +87,50 @@ double confined_polynomial(double r, double R, int p1, int p2, int dm)
     }
 }
 
-nlohmann::json read_json_from_file_or_string(std::string const& str__)
-{
-    nlohmann::json dict = {};
-    if (str__.size() == 0) {
-        return dict;
-    }
+nlohmann::json try_parse(std::istream &is) {
+    nlohmann::json dict;
 
-    if (str__.find("{") == std::string::npos) { /* this is a file */
-        if (file_exists(str__)) {
-            try {
-                std::ifstream(str__) >> dict;
-            } catch (std::exception& e) {
-                std::stringstream s;
-                s << "wrong input json file" << std::endl << e.what();
-                TERMINATE(s);
-            }
-        } else {
-            std::stringstream s;
-            s << "file " << str__ << " doesn't exist";
-            TERMINATE(s);
-        }
-    } else { /* this is a json string */
-        try {
-            std::istringstream(str__) >> dict;
-        } catch (std::exception& e) {
-            std::stringstream s;
-            s << "wrong input json string" << std::endl << e.what();
-            TERMINATE(s);
-        }
+    try {
+        is >> dict;
+    } catch (std::exception& e) {
+        std::stringstream s;
+        s << "cannot parse input JSON" << std::endl << e.what();
+        TERMINATE(s);
     }
 
     return dict;
+}
+
+nlohmann::json read_json_from_file(std::string const &filename) {
+    std::ifstream file{filename};
+    if (!file.is_open()) {
+        std::stringstream s;
+        s << "file " << filename << " can't be opened";
+        TERMINATE(s);
+    }
+
+    return try_parse(file);
+}
+
+nlohmann::json read_json_from_string(std::string const &str) {
+    if (str.empty()) {
+        return {};
+    }
+    std::istringstream input{str};
+    return try_parse(input);
+}
+
+nlohmann::json read_json_from_file_or_string(std::string const& str__)
+{
+    if (str__.empty()) {
+        return {};
+    }
+    // Detect JSON
+    if (str__.find("{") == std::string::npos) {
+        return read_json_from_file(str__);
+    } else {
+        return read_json_from_string(str__);
+    }
 }
 
 void get_proc_status(size_t* VmHWM__, size_t* VmRSS__)

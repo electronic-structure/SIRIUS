@@ -94,10 +94,12 @@ else()
   add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
 endif()
 
+if(USE_CUDA AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
+  set_property(TARGET sirius PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCH})
+endif()
 
-target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
-                                    SpFFT::spfft
-                                    GSL::gsl
+target_link_libraries(sirius PUBLIC SpFFT::spfft
+                                    ${GSL_LIBRARY}
                                     "${LINALG_LIB}"
                                     MPI::MPI_CXX
                                     sirius::libxc
@@ -135,7 +137,10 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_ROCM}>:__GPU __ROCM>
   $<$<BOOL:${USE_VDWXC}>:__USE_VDWXC>
   $<$<BOOL:${HAVE_LIBVDW_WITH_MPI}>:__HAVE_VDWXC_MPI>
-  $<$<BOOL:${USE_MAGMA} AND ${USE_ROCM}>:HAVE_HIP> # Required for magma headers
+  $<$<AND:$<BOOL:${USE_MAGMA}>,$<BOOL:${USE_ROCM}>>:HAVE_HIP> # Required for magma headers
+  $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:__STD_FILESYSTEM_EXPERIMENTAL>
+  $<$<BOOL:${Filesystem_FOUND}>:__STD_FILESYSTEM>
+  $<$<BOOL:${Boost_FOUND}>:__BOOST_FILESYSTEM>
 )
 
 set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)

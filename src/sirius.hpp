@@ -224,7 +224,6 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     - CMakeLists.txt - CMake file of the project
     - check_format.py, check_format.x - scripts to check source code formatting
     - clang_format.x - script to apply Clang format to a file
-    - prerequisite.py - script to install missing dependencies
 
 */
 

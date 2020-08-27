@@ -1,8 +1,14 @@
 name: Check formatting of modified files
 
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+    - master
+    - develop
+  pull_request:
+    branches:
+    - master
+    - develop
 
 jobs:
   check:

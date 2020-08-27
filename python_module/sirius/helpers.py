@@ -46,7 +46,8 @@ def load_state(filename, kset, name, dtype):
         files = glob.glob(filename)
     else:
         files = [filename]
-
+    if not len(files) > 0:
+        raise Exception('no files found: ', filename)
     for fi in files:
         with h5py.File(fi, 'r') as fh5:
             for key in fh5[name].keys():

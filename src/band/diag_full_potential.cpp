@@ -54,12 +54,12 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     /* setup Hamiltonian and overlap */
     Hk__.set_fv_h_o(h, o);
 
-    //if (ctx_.gen_evp_solver_type() == ev_solver_t::cusolver || ctx_.processing_unit() == device_t::GPU) {
-    //    //h.allocate(ctx_.mem_pool(memory_t::device));
-    //    //o.allocate(ctx_.mem_pool(memory_t::device));
-    //    h.deallocate(memory_t::device);
-    //    o.deallocate(memory_t::device);
-    //}
+    if (ctx_.gen_evp_solver().type() == ev_solver_t::cusolver) {
+        auto& mpd = ctx_.mem_pool(memory_t::device);
+        h.allocate(mpd);
+        o.allocate(mpd);
+        kp.fv_eigen_vectors().allocate(mpd);
+    }
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
@@ -97,6 +97,12 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
 
     if (solver.solve(kp.gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp.fv_eigen_vectors())) {
         TERMINATE("error in generalized eigen-value problem");
+    }
+
+    if (ctx_.gen_evp_solver().type() == ev_solver_t::cusolver) {
+        h.deallocate(memory_t::device);
+        o.deallocate(memory_t::device);
+        kp.fv_eigen_vectors().deallocate(memory_t::device);
     }
     kp.set_fv_eigen_values(&eval[0]);
 

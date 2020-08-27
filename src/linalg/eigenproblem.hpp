@@ -406,18 +406,19 @@ class Eigensolver_elpa : public Eigensolver
         elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
         elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
         elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
-        elpa_setup(handle);
         elpa_set_integer(handle, "omp_threads", nt, &error);
         //if (error != ELPA_OK) {
         //    TERMINATE("can't set elpa threads");
         //}
-        elpa_set_integer(handle, "gpu", 1, &error);
-
+        if (acc::num_devices() != 0) {
+            elpa_set_integer(handle, "gpu", 1, &error);
+        }
         if (stage_ == 1) {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
         } else {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
         }
+        elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
         auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
@@ -488,18 +489,19 @@ class Eigensolver_elpa : public Eigensolver
         elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
         elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
         elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
-        elpa_setup(handle);
         elpa_set_integer(handle, "omp_threads", nt, &error);
         //if (error != ELPA_OK) {
         //    TERMINATE("can't set elpa threads");
         //}
-        elpa_set_integer(handle, "gpu", 1, &error);
-
+        if (acc::num_devices() != 0) {
+            elpa_set_integer(handle, "gpu", 1, &error);
+        }
         if (stage_ == 1) {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
         } else {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
         }
+        elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_gen|setup");
 
         auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
@@ -570,6 +572,9 @@ class Eigensolver_elpa : public Eigensolver
         elpa_t handle;
 
         handle = elpa_allocate(&error);
+        if (error != ELPA_OK) {
+            return 1;
+        }
         elpa_set_integer(handle, "na", matrix_size__, &error);
         elpa_set_integer(handle, "nev", nev__, &error);
         elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
@@ -578,18 +583,20 @@ class Eigensolver_elpa : public Eigensolver
         elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
         elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
         elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
-        elpa_setup(handle);
+        elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
         elpa_set_integer(handle, "omp_threads", nt, &error);
         //if (error != ELPA_OK) {
         //    TERMINATE("can't set elpa threads");
         //}
-        elpa_set_integer(handle, "gpu", 1, &error);
-
+        if (acc::num_devices() != 0) {
+            elpa_set_integer(handle, "gpu", 1, &error);
+        }
         if (stage_ == 1) {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
         } else {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
         }
+        elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
         auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
@@ -629,6 +636,9 @@ class Eigensolver_elpa : public Eigensolver
         elpa_t handle;
 
         handle = elpa_allocate(&error);
+        if (error != ELPA_OK) {
+            return 1;
+        }
         elpa_set_integer(handle, "na", matrix_size__, &error);
         elpa_set_integer(handle, "nev", nev__, &error);
         elpa_set_integer(handle, "local_nrows", A__.num_rows_local(), &error);
@@ -637,18 +647,20 @@ class Eigensolver_elpa : public Eigensolver
         elpa_set_integer(handle, "mpi_comm_parent", MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm()), &error);
         elpa_set_integer(handle, "process_row", A__.blacs_grid().comm_row().rank(), &error);
         elpa_set_integer(handle, "process_col", A__.blacs_grid().comm_col().rank(), &error);
-        elpa_setup(handle);
+        elpa_set_integer(handle, "blacs_context", A__.blacs_grid().context(), &error);
         elpa_set_integer(handle, "omp_threads", nt, &error);
         //if (error != ELPA_OK) {
         //    TERMINATE("can't set elpa threads");
         //}
-        elpa_set_integer(handle, "gpu", 1, &error);
-
+        if (acc::num_devices() != 0) {
+            elpa_set_integer(handle, "gpu", 1, &error);
+        }
         if (stage_ == 1) {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_1STAGE, &error);
         } else {
             elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &error);
         }
+        elpa_setup(handle);
         PROFILE_STOP("Eigensolver_elpa|solve_std|setup");
 
         auto w = mp_h_.get_unique_ptr<double>(matrix_size__);

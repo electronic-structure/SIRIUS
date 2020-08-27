@@ -95,20 +95,25 @@ double ground_state(Simulation_context& ctx,
 
     if(is_device_memory(ctx.preferred_memory_t())) {
         if(pu.empty() || pu.compare("gpu") == 0) {
+            std::cout << "nlcg executing on gpu-gpu" << "\n";
             nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
         } else if (pu.compare("cpu") == 0){
+            std::cout << "nlcg executing on gpu-cpu" << "\n";
             nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
         } else {
             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
         }
     } else {
-        if (pu.empty() || pu.compare("gpu") == 0) {
+         if (pu.empty() || pu.compare("cpu") == 0){
+            std::cout << "nlcg executing on cpu-cpu" << "\n";
             nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else if (pu.compare("cpu") == 0){
-            nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else {
-            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
-        }
+         } else if (pu.compare("gpu") == 0) {
+             std::cout << "nlcg executing on cpu-gpu"
+                       << "\n";
+             nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+         } else {
+             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+         }
     }
 
     if (ctx.control().verification_ >= 1) {
@@ -288,13 +293,13 @@ int main(int argn, char** argv)
 
     run_tasks(args);
 
-    // int my_rank = Communicator::world().rank();
+    int my_rank = Communicator::world().rank();
 
     sirius::finalize(1);
 
-    // if (my_rank == 0)  {
+    // if (my_rank == 0) {
     //     const auto timing_result = ::utils::global_rtgraph_timer.process();
-    //     std::cout<< timing_result.print();
+    //     std::cout << timing_result.print();
     //     std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
     //     ofs << timing_result.json();
     // }

@@ -8,6 +8,8 @@ foreach(name ${unit_tests})
   add_executable(${name} "${name}.cpp")
   target_link_libraries(${name} PRIVATE sirius)
   install(TARGETS ${name} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+  add_test(NAME ${name} COMMAND ${name})
 endforeach()
+
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/unit_tests.x" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 install(FILES "unit_tests.x" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")

@@ -272,6 +272,9 @@ double confined_polynomial(double r, double R, int p1, int p2, int dm);
 
 /// Read json dictionary from file or string.
 /** Terminate if file doesn't exist. */
+nlohmann::json try_parse(std::istream &is);
+nlohmann::json read_json_from_file(std::string const &filename);
+nlohmann::json read_json_from_string(std::string const &str);
 nlohmann::json read_json_from_file_or_string(std::string const& str__);
 
 /// Get high water mark and resident space size values of a given process.

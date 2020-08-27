@@ -357,7 +357,7 @@ void Potential::xc_mt(Density const& density__)
             }
         }
 
-        if (rhomin < 0.0 && std::abs(rhomin) > 1e-9) {
+        if (rhomin < 0.0) {
             std::stringstream s;
             s << "Charge density for atom " << ia << " has negative values" << std::endl
               << "most negatve value : " << rhomin << std::endl
@@ -573,97 +573,98 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         vsigma_tmp.zero();
     }
 
-    /* loop over XC functionals */
-    for (auto& ixc: xc_func_) {
-
-        /*
-          I need to split vdw from the parallel section since it involves a fft
-          for each grid point
-        */
-        if (ixc.is_vdw()) {
+    if (num_points) {
+        /* loop over XC functionals */
+        for (auto& ixc: xc_func_) {
+            /*
+              I need to split vdw from the parallel section since it involves a fft
+              for each grid point
+            */
+            if (ixc.is_vdw()) {
 #if defined(__USE_VDWXC)
-            /* Van der Walls correction */
-            std::vector<double> exc_t(num_points, 0.0);
-            std::vector<double> vrho_t(num_points, 0.0);
-            std::vector<double> vsigma_t(num_points, 0.0);
+                /* Van der Walls correction */
+                std::vector<double> exc_t(num_points, 0.0);
+                std::vector<double> vrho_t(num_points, 0.0);
+                std::vector<double> vsigma_t(num_points, 0.0);
 
-            ixc.get_vdw(&rho.f_rg(0),
-                        &grad_rho_grad_rho.f_rg(0),
-                        &vrho_t[0],
-                        &vsigma_t[0],
-                        &exc_t[0]);
-            #pragma omp parallel for
-            for (int i = 0; i < num_points; i++) {
-                /* add Exc contribution */
-                exc_tmp(i) += exc_t[i];
+                ixc.get_vdw(&rho.f_rg(0),
+                            &grad_rho_grad_rho.f_rg(0),
+                            &vrho_t[0],
+                            &vsigma_t[0],
+                            &exc_t[0]);
+                #pragma omp parallel for
+                for (int i = 0; i < num_points; i++) {
+                    /* add Exc contribution */
+                    exc_tmp(i) += exc_t[i];
 
-                /* directly add to Vxc available contributions */
-                //if (use_2nd_deriv) {
-                //    vxc_tmp(spl_np_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho.f_rg(spl_np_t[i]));
-                //} else {
-                //    vxc_tmp(spl_np_t[i]) += vrho_t[i];
-                //}
-                vxc_tmp(i) += vrho_t[i];
+                    /* directly add to Vxc available contributions */
+                    //if (use_2nd_deriv) {
+                    //    vxc_tmp(spl_np_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho.f_rg(spl_np_t[i]));
+                    //} else {
+                    //    vxc_tmp(spl_np_t[i]) += vrho_t[i];
+                    //}
+                    vxc_tmp(i) += vrho_t[i];
 
-                /* save the sigma derivative */
-                vsigma_tmp(i) += vsigma_t[i];
-            }
-#else
-            TERMINATE("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
-#endif
-        } else {
-            #pragma omp parallel
-            {
-                /* split local size between threads */
-                splindex<splindex_t::block> spl_np_t(num_points, omp_get_num_threads(), omp_get_thread_num());
-
-                std::vector<double> exc_t(spl_np_t.local_size());
-
-                /* if this is an LDA functional */
-                if (ixc.is_lda()) {
-                    std::vector<double> vxc_t(spl_np_t.local_size());
-
-                    ixc.get_lda(spl_np_t.local_size(),
-                                &rho.f_rg(spl_np_t.global_offset()),
-                                &vxc_t[0],
-                                &exc_t[0]);
-
-                    for (int i = 0; i < spl_np_t.local_size(); i++) {
-                        /* add Exc contribution */
-                        exc_tmp(spl_np_t[i]) += exc_t[i];
-
-                        /* directly add to Vxc */
-                        vxc_tmp(spl_np_t[i]) += vxc_t[i];
-                    }
+                    /* save the sigma derivative */
+                    vsigma_tmp(i) += vsigma_t[i];
                 }
+#else
+                TERMINATE("You should not be there since SIRIUS is not compiled with libVDWXC support\n");
+#endif
+            } else {
+                #pragma omp parallel
+                {
+                    /* split local size between threads */
+                    splindex<splindex_t::block> spl_np_t(num_points, omp_get_num_threads(), omp_get_thread_num());
 
-                if (ixc.is_gga()) {
-                    std::vector<double> vrho_t(spl_np_t.local_size());
-                    std::vector<double> vsigma_t(spl_np_t.local_size());
+                    std::vector<double> exc_t(spl_np_t.local_size());
 
-                    ixc.get_gga(spl_np_t.local_size(),
-                                &rho.f_rg(spl_np_t.global_offset()),
-                                &grad_rho_grad_rho.f_rg(spl_np_t.global_offset()),
-                                &vrho_t[0],
-                                &vsigma_t[0],
-                                &exc_t[0]);
+                    /* if this is an LDA functional */
+                    if (ixc.is_lda()) {
+                        std::vector<double> vxc_t(spl_np_t.local_size());
 
-                    /* this is the same expression between gga and vdw corrections.
-                     * The functionals are different that's all */
-                    for (int i = 0; i < spl_np_t.local_size(); i++) {
-                        /* add Exc contribution */
-                        exc_tmp(spl_np_t[i]) += exc_t[i];
+                        ixc.get_lda(spl_np_t.local_size(),
+                                    &rho.f_rg(spl_np_t.global_offset()),
+                                    &vxc_t[0],
+                                    &exc_t[0]);
 
-                        /* directly add to Vxc available contributions */
-                        //if (use_2nd_deriv) {
-                        //    vxc_tmp(spl_np_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho.f_rg(spl_np_t[i]));
-                        //} else {
-                        //    vxc_tmp(spl_np_t[i]) += vrho_t[i];
-                        //}
-                        vxc_tmp(spl_np_t[i]) += vrho_t[i];
+                        for (int i = 0; i < spl_np_t.local_size(); i++) {
+                            /* add Exc contribution */
+                            exc_tmp(spl_np_t[i]) += exc_t[i];
 
-                        /* save the sigma derivative */
-                        vsigma_tmp(spl_np_t[i]) += vsigma_t[i];
+                            /* directly add to Vxc */
+                            vxc_tmp(spl_np_t[i]) += vxc_t[i];
+                        }
+                    }
+
+                    if (ixc.is_gga()) {
+                        std::vector<double> vrho_t(spl_np_t.local_size());
+                        std::vector<double> vsigma_t(spl_np_t.local_size());
+
+                        ixc.get_gga(spl_np_t.local_size(),
+                                    &rho.f_rg(spl_np_t.global_offset()),
+                                    &grad_rho_grad_rho.f_rg(spl_np_t.global_offset()),
+                                    &vrho_t[0],
+                                    &vsigma_t[0],
+                                    &exc_t[0]);
+
+                        /* this is the same expression between gga and vdw corrections.
+                         * The functionals are different that's all */
+                        for (int i = 0; i < spl_np_t.local_size(); i++) {
+                            /* add Exc contribution */
+                            exc_tmp(spl_np_t[i]) += exc_t[i];
+
+                            /* directly add to Vxc available contributions */
+                            //if (use_2nd_deriv) {
+                            //    vxc_tmp(spl_np_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho.f_rg(spl_np_t[i]));
+                            //} else {
+                            //    vxc_tmp(spl_np_t[i]) += vrho_t[i];
+                            //}
+                            vxc_tmp(spl_np_t[i]) += vrho_t[i];
+
+                            /* save the sigma derivative */
+                            vsigma_tmp(spl_np_t[i]) += vsigma_t[i];
+                        }
                     }
                 }
             }
@@ -853,110 +854,112 @@ void Potential::xc_rg_magnetic(Density const& density__)
     }
 
     PROFILE_START("sirius::Potential::xc_rg_magnetic|libxc");
-    /* loop over XC functionals */
-    for (auto& ixc: xc_func_) {
-        /* treat vdw correction outside the parallel region because it uses fft
-         * internaly */
+    if (num_points) {
+        /* loop over XC functionals */
+        for (auto& ixc: xc_func_) {
+            /* treat vdw correction outside the parallel region because it uses fft
+             * internaly */
 
-        if (ixc.is_vdw()) {
+            if (ixc.is_vdw()) {
 #if defined(__USE_VDWXC)
-            std::vector<double> vrho_up_t(num_points, 0.0);
-            std::vector<double> vrho_dn_t(num_points, 0.0);
-            std::vector<double> vsigma_uu_t(num_points, 0.0);
-//            std::vector<double> vsigma_ud_t(num_points, 0.0);
-            std::vector<double> vsigma_dd_t(num_points, 0.0);
-            std::vector<double> exc_t(num_points, 0.0);
+                std::vector<double> vrho_up_t(num_points, 0.0);
+                std::vector<double> vrho_dn_t(num_points, 0.0);
+                std::vector<double> vsigma_uu_t(num_points, 0.0);
+    //            std::vector<double> vsigma_ud_t(num_points, 0.0);
+                std::vector<double> vsigma_dd_t(num_points, 0.0);
+                std::vector<double> exc_t(num_points, 0.0);
 
-            ixc.get_vdw(&rho_up.f_rg(0),
-                        &rho_dn.f_rg(0),
-                        &grad_rho_up_grad_rho_up.f_rg(0),
-                        &grad_rho_dn_grad_rho_dn.f_rg(0),
-                        &vrho_up_t[0],
-                        &vrho_dn_t[0],
-                        &vsigma_uu_t[0],
-                        &vsigma_dd_t[0],
-                        &exc_t[0]);
+                ixc.get_vdw(&rho_up.f_rg(0),
+                            &rho_dn.f_rg(0),
+                            &grad_rho_up_grad_rho_up.f_rg(0),
+                            &grad_rho_dn_grad_rho_dn.f_rg(0),
+                            &vrho_up_t[0],
+                            &vrho_dn_t[0],
+                            &vsigma_uu_t[0],
+                            &vsigma_dd_t[0],
+                            &exc_t[0]);
 
-            #pragma omp parallel for
-            for (int i = 0; i < num_points; i++) {
-                /* add Exc contribution */
-                exc_tmp(i) += exc_t[i];
+                #pragma omp parallel for
+                for (int i = 0; i < num_points; i++) {
+                    /* add Exc contribution */
+                    exc_tmp(i) += exc_t[i];
 
-                /* directly add to Vxc available contributions */
-                vxc_up_tmp(i) += vrho_up_t[i];
-                vxc_dn_tmp(i) += vrho_dn_t[i];
+                    /* directly add to Vxc available contributions */
+                    vxc_up_tmp(i) += vrho_up_t[i];
+                    vxc_dn_tmp(i) += vrho_dn_t[i];
 
-                /* save the sigma derivative */
-                vsigma_uu_tmp(i) += vsigma_uu_t[i];
-                //              vsigma_ud_tmp(i) += vsigma_ud_t[i];
-                vsigma_dd_tmp(i) += vsigma_dd_t[i];
-            }
-#else
-            TERMINATE("You should not be there since sirius is not compiled with libVDWXC\n");
-#endif
-        } else {
-#pragma omp parallel
-            {
-                /* split local size between threads */
-                splindex<splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
-
-                std::vector<double> exc_t(spl_t.local_size());
-
-                /* if this is an LDA functional */
-                if (ixc.is_lda()) {
-                    std::vector<double> vxc_up_t(spl_t.local_size());
-                    std::vector<double> vxc_dn_t(spl_t.local_size());
-
-
-                    ixc.get_lda(spl_t.local_size(),
-                                &rho_up.f_rg(spl_t.global_offset()),
-                                &rho_dn.f_rg(spl_t.global_offset()),
-                                &vxc_up_t[0],
-                                &vxc_dn_t[0],
-                                &exc_t[0]);
-
-                    for (int i = 0; i < spl_t.local_size(); i++) {
-                        /* add Exc contribution */
-                        exc_tmp(spl_t[i]) += exc_t[i];
-
-                        /* directly add to Vxc */
-                        vxc_up_tmp(spl_t[i]) += vxc_up_t[i];
-                        vxc_dn_tmp(spl_t[i]) += vxc_dn_t[i];
-                    }
+                    /* save the sigma derivative */
+                    vsigma_uu_tmp(i) += vsigma_uu_t[i];
+                    //              vsigma_ud_tmp(i) += vsigma_ud_t[i];
+                    vsigma_dd_tmp(i) += vsigma_dd_t[i];
                 }
+#else
+                TERMINATE("You should not be there since sirius is not compiled with libVDWXC\n");
+#endif
+            } else {
+                #pragma omp parallel
+                {
+                    /* split local size between threads */
+                    splindex<splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
 
-                if (ixc.is_gga()) {
-                    std::vector<double> vrho_up_t(spl_t.local_size());
-                    std::vector<double> vrho_dn_t(spl_t.local_size());
-                    std::vector<double> vsigma_uu_t(spl_t.local_size());
-                    std::vector<double> vsigma_ud_t(spl_t.local_size());
-                    std::vector<double> vsigma_dd_t(spl_t.local_size());
+                    std::vector<double> exc_t(spl_t.local_size());
 
-                    ixc.get_gga(spl_t.local_size(),
-                                &rho_up.f_rg(spl_t.global_offset()),
-                                &rho_dn.f_rg(spl_t.global_offset()),
-                                &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()),
-                                &grad_rho_up_grad_rho_dn.f_rg(spl_t.global_offset()),
-                                &grad_rho_dn_grad_rho_dn.f_rg(spl_t.global_offset()),
-                                &vrho_up_t[0],
-                                &vrho_dn_t[0],
-                                &vsigma_uu_t[0],
-                                &vsigma_ud_t[0],
-                                &vsigma_dd_t[0],
-                                &exc_t[0]);
+                    /* if this is an LDA functional */
+                    if (ixc.is_lda()) {
+                        std::vector<double> vxc_up_t(spl_t.local_size());
+                        std::vector<double> vxc_dn_t(spl_t.local_size());
 
-                    #pragma omp parallel for
-                    for (int i = 0; i < spl_t.local_size(); i++) {
-                        /* add Exc contribution */
-                        exc_tmp(spl_t[i]) += exc_t[i];
-                        /* directly add to Vxc available contributions */
-                        vxc_up_tmp(spl_t[i]) += vrho_up_t[i];
-                        vxc_dn_tmp(spl_t[i]) += vrho_dn_t[i];
 
-                        /* save the sigma derivative */
-                        vsigma_uu_tmp(spl_t[i]) += vsigma_uu_t[i];
-                        vsigma_ud_tmp(spl_t[i]) += vsigma_ud_t[i];
-                        vsigma_dd_tmp(spl_t[i]) += vsigma_dd_t[i];
+                        ixc.get_lda(spl_t.local_size(),
+                                    &rho_up.f_rg(spl_t.global_offset()),
+                                    &rho_dn.f_rg(spl_t.global_offset()),
+                                    &vxc_up_t[0],
+                                    &vxc_dn_t[0],
+                                    &exc_t[0]);
+
+                        for (int i = 0; i < spl_t.local_size(); i++) {
+                            /* add Exc contribution */
+                            exc_tmp(spl_t[i]) += exc_t[i];
+
+                            /* directly add to Vxc */
+                            vxc_up_tmp(spl_t[i]) += vxc_up_t[i];
+                            vxc_dn_tmp(spl_t[i]) += vxc_dn_t[i];
+                        }
+                    }
+
+                    if (ixc.is_gga()) {
+                        std::vector<double> vrho_up_t(spl_t.local_size());
+                        std::vector<double> vrho_dn_t(spl_t.local_size());
+                        std::vector<double> vsigma_uu_t(spl_t.local_size());
+                        std::vector<double> vsigma_ud_t(spl_t.local_size());
+                        std::vector<double> vsigma_dd_t(spl_t.local_size());
+
+                        ixc.get_gga(spl_t.local_size(),
+                                    &rho_up.f_rg(spl_t.global_offset()),
+                                    &rho_dn.f_rg(spl_t.global_offset()),
+                                    &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()),
+                                    &grad_rho_up_grad_rho_dn.f_rg(spl_t.global_offset()),
+                                    &grad_rho_dn_grad_rho_dn.f_rg(spl_t.global_offset()),
+                                    &vrho_up_t[0],
+                                    &vrho_dn_t[0],
+                                    &vsigma_uu_t[0],
+                                    &vsigma_ud_t[0],
+                                    &vsigma_dd_t[0],
+                                    &exc_t[0]);
+
+                        #pragma omp parallel for
+                        for (int i = 0; i < spl_t.local_size(); i++) {
+                            /* add Exc contribution */
+                            exc_tmp(spl_t[i]) += exc_t[i];
+                            /* directly add to Vxc available contributions */
+                            vxc_up_tmp(spl_t[i]) += vrho_up_t[i];
+                            vxc_dn_tmp(spl_t[i]) += vrho_dn_t[i];
+
+                            /* save the sigma derivative */
+                            vsigma_uu_tmp(spl_t[i]) += vsigma_uu_t[i];
+                            vsigma_ud_tmp(spl_t[i]) += vsigma_ud_t[i];
+                            vsigma_dd_tmp(spl_t[i]) += vsigma_dd_t[i];
+                        }
                     }
                 }
             }

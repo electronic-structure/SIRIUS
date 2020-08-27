@@ -1,0 +1,21 @@
+spack:
+  specs:
+    - sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda ^cuda@10.1.243 ^openblas ^mpich
+  view: false
+
+  packages:
+    all:
+      target: [x86_64]
+      variants:
+        - 'build_type=Release'
+        - '+release'
+    cuda:
+      buildable: False
+      externals:
+      - spec: 'cuda@10.1.243'
+        prefix: /usr/local/cuda
+    cmake:
+      version: [':3.12']
+    openblas:
+      variants:
+        - threads=openmp

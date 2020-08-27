@@ -29,28 +29,8 @@ namespace sirius {
 
 void Simulation_parameters::import(std::string const& str__)
 {
-    if (str__.size() == 0) {
-        return;
-    }
-
-    json dict = utils::read_json_from_file_or_string(str__);
-
-    /* read unit cell */
-    unit_cell_input_.read(dict);
-    /* read parameters of mixer */
-    mixer_input_.read(dict);
-    /* read parameters of iterative solver */
-    iterative_solver_input_.read(dict);
-    /* read controls */
-    control_input_.read(dict);
-    /* read parameters */
-    parameters_input_.read(dict);
-    /* read settings */
-    settings_input_.read(dict);
-    /* read hubbard parameters */
-    hubbard_input_.read(dict);
-    /* read nlcg parameters */
-    nlcg_input_.read(dict);
+    auto json = utils::read_json_from_file_or_string(str__);
+    import(json);
 }
 
 void Simulation_parameters::import(json const& dict)
