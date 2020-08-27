@@ -60,6 +60,8 @@ class Sirius(CMakePackage, CudaPackage):
     variant('build_type', default='Release',
             description='CMake build type',
             values=('Debug', 'Release', 'RelWithDebInfo'))
+    variant('apps', default=True, description="Build applications")
+    variant('tests', default=False, description="Build tests")
 
     depends_on('python', type=('build', 'run'))
     depends_on('mpi')
@@ -164,7 +166,9 @@ class Sirius(CMakePackage, CudaPackage):
             _def('+fortran', 'CREATE_FORTRAN_BINDINGS'),
             _def('+python', 'CREATE_PYTHON_MODULE'),
             _def('+cuda'),
-            _def('+rocm')
+            _def('+rocm'),
+            _def('tests', 'BUILD_TESTING'),
+            _def('apps', 'BUILD_APPS'),
         ]
 
         if '@:6.2.999' in self.spec:
