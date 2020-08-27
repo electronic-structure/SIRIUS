@@ -6,20 +6,20 @@ ARG DEPLOY_BASE=ubuntu:18.04
 
 FROM $BUILD_BASE as builder
 
-# This is the version of sirius we want to install
+# Spack setup: $SPEC is the version of SIRIUS we want to build
+#              $ENVIRONMENT is the path to the environment file
 ARG SPEC
+ARG ENVIRONMENT
 
-# This is the sources of sirius we copy into build container
-ARG SOURCES=.
-
-COPY "${SOURCES}" /sources
-
-COPY "${SOURCES}/spack" /user_repo
+COPY . /sources
 
 SHELL ["/bin/bash", "-c"]
 
-# Install sirius
-RUN spack --color=always -e ci dev-build --source-path /sources $SPEC
+# Setup spack and install SIRIUS
+RUN spack --color always repo add /sources/spack && \
+    spack --color always env create --without-view ci_run "/sources/$ENVIRONMENT" && \
+    spack --color always -e ci_run spec $SPEC && \
+    spack --color always -e ci_run dev-build --source-path /sources $SPEC
 
 # Bundle everything
 RUN rm -rf /sources/.git /sources/examples && \
