@@ -138,9 +138,9 @@ make -j install
 where `CMAKE_PREFIX_PATH` is a list of installation paths of dependencies installed in non-standard locations.
 
 #### Adding GPU support
-To enable CUDA you need to pass the following options to CMake: `-DUSE_CUDA=On -DGPU_MODEL='P100'`. The currently
-supported GPU models are `P100`, `V100` and `G100`, but other architectures can be added easily. If CUDA is installed in a
-non-standard directory, you have to pass additional parameter to CMake `-DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda`.
+To enable CUDA you need to pass the following options to CMake: `-DUSE_CUDA=On -DCUDA_ARCH='60;70'`, where `CUDA_ARCH` is
+a list of NVIDIA architectures. Use `60`, `61`, `62` for Pascal; `70`, `72` for Volta; `75` for Turing; and `80` for Ampere.
+If CUDA is installed in a non-standard directory, you have to pass additional parameter to cmake `-DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda`.
 
 To enable MAGMA (GPU implementation of LAPACK) use `-DUSE_MAGMA=On`. Append MAGMA's installation directory to `CMAKE_PREFIX_PATH` if necessary.
 
