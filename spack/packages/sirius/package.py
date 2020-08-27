@@ -167,8 +167,8 @@ class Sirius(CMakePackage, CudaPackage):
             _def('+python', 'CREATE_PYTHON_MODULE'),
             _def('+cuda'),
             _def('+rocm'),
-            _def('tests', 'BUILD_TESTING'),
-            _def('apps', 'BUILD_APPS'),
+            _def('+tests', 'BUILD_TESTING'),
+            _def('+apps', 'BUILD_APPS'),
         ]
 
         if '@:6.2.999' in self.spec:
