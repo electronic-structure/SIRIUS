@@ -57,7 +57,7 @@ RUN spack repo add --scope system /user_repo
 
 # Set up the binary cache and trust the public part of our signing key
 COPY ./ci/spack/public_key.asc ./public_key.asc
-RUN spack mirror add --scope system minio https://spack.harmenstoppels.nl:9000/spack && \
+RUN spack mirror add --scope system minio https://spack.dev:9000/spack && \
     spack gpg trust ./public_key.asc
 
 # Copy over the environment file
