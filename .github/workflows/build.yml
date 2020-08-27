@@ -11,25 +11,15 @@ on:
     - develop
 
 jobs:
-  build:
+  build_and_test_cpu:
     runs-on: ubuntu-latest
+    container: stabbles/sirius-cpu
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y gfortran mpich libmpich-dev liblapack-dev libhdf5-dev libgsl-dev libfftw3-dev libxc-dev
-
-      - name: Build dependencies
-        run: ./ci/github_build_dependencies.sh
-
       - name: Build SIRIUS
         run: ./ci/github_build_sirius.sh
-
       - name: Run unit tests
         run: ./ci/github_run_unit_tests.sh
-
       - name: Run verification with ReFrame
         run: ./ci/github_run_verification.sh
 

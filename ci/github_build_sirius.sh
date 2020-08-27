@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/bash -e
 
+export SPEC="sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo ^openblas threads=openmp ^mpich"
 mkdir build
 cd build
-cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSpFFT_DIR=$HOME/local/lib/cmake/SpFFT -DCMAKE_INSTALL_PREFIX=$HOME/local -DBUILD_TESTS=1
-make -j 2 install
-
+spack --color always -e ci build-env $SPEC -- cmake -DCMAKE_INSTALL_PREFIX=$HOME/local -DBUILD_TESTS=1 ..
+spack --color always -e ci build-env $SPEC -- make -j 2 install
