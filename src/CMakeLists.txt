@@ -94,6 +94,9 @@ else()
   add_library(sirius "${_SOURSES};${_CUSOURCES};${_FSOURCES}")
 endif()
 
+if(USE_CUDA AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
+  set_property(TARGET sirius PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCH})
+endif()
 
 target_link_libraries(sirius PUBLIC OpenMP::OpenMP_CXX
                                     SpFFT::spfft
