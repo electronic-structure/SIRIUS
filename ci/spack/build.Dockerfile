@@ -55,7 +55,7 @@ RUN mkdir -p /opt/spack && \
     curl -Ls "https://api.github.com/repos/spack/spack/tarball/$SPACK_SHA" | tar --strip-components=1 -xz -C /opt/spack
 
 # "Install" compilers
-COPY "$COMPILER_CONFIG" /opt/spack/etc/linux/compilers.yaml
+COPY "$COMPILER_CONFIG" /opt/spack/etc/spack/compilers.yaml
 
 # Add our custom spack repo from here
 COPY ./spack /user_repo
