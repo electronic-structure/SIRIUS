@@ -21,7 +21,7 @@ set(USE_MKL OFF CACHE BOOL "use Intel MKL")
 set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
 set(USE_SCALAPACK OFF CACHE BOOL "use scalapack")
 set(BUILD_TESTS OFF CACHE BOOL "build tests")
-set(CUDA_ARCH "none" CACHE STRING "The target GPU architecture; 60 (Pascal), 70 (Volta), etc.")
+set(CUDA_ARCH "none" CACHE STRING "The target GPU architectures; 60 (Pascal), 70 (Volta), etc. Multiple archs are supported too.")
 set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
 set(USE_OPENMP ON CACHE BOOL "use OpenMP")
 set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
@@ -40,7 +40,7 @@ add_compile_definitions(__GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
 # endif()
 
 set_property(CACHE CUDA_ARCH PROPERTY STRINGS "none" "30" "32" "35" "37"
-  "50" "52" "53" "60" "61" "62" "70" "72" "75")
+  "50" "52" "53" "60" "61" "62" "70" "72" "75" "80")
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
@@ -157,11 +157,14 @@ if(USE_CUDA)
   enable_language(CUDA)
   find_package(CUDA)
   include(cmake/cudalibs_target.cmake)
-
-  if(CUDA_ARCH MATCHES "none")
-    # pass
-  else()
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_${CUDA_ARCH}")
+  # In CMake 3.18+ we should be using the CUDA_ARCHITECTURES target property
+  # instead of setting compiler by hand
+  if(${CMAKE_VERSION} VERSION_LESS "3.18.0")
+    foreach(arch ${CUDA_ARCH})
+      if (NOT ${arch} STREQUAL "none")
+        set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_${arch},code=compute_${arch}")
+      endif()
+    endforeach()
   endif()
 endif(USE_CUDA)
 
