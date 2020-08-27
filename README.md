@@ -123,6 +123,9 @@ and optionally any of the additional libraries:
  * [ELPA](https://elpa.mpcdf.mpg.de/software)
  * [MAGMA](https://icl.cs.utk.edu/magma/)
  * CUDA/ROCm
+ * [Boost Filesystem](https://www.boost.org/doc/libs/1_73_0/libs/filesystem/doc/index.htm)*
+
+\* Only required when `BUILD_APPS=On` and your compiler does not support `std::filesystem` or `std::experimental::filesystem`.
 
 Clone the repository and build as follows:
 
@@ -154,7 +157,9 @@ Use `-DCREATE_PYTHON_MODULE=On` to build the Python module. The SIRIUS Python mo
 `pybind11`, which need to be installed on your system.
 
 #### Additional options
-To link against Intel MKL use `-DUSE_MKL=On`. For Cray libsci use `-DUSE_CRAY_LIBSCI=On`. Building tests requires `-DBUILD_TESTS=On`.
+To link against Intel MKL use `-DUSE_MKL=On`. For Cray libsci use `-DUSE_CRAY_LIBSCI=On`. Building tests requires `-DBUILD_TESTING=On`.
+
+By default example applications are built. This can be turned off via `-DBUILD_APPS=Off`, which is recommended when just building Fortran bindings.
 
 ### Arch Linux
 Arch Linux users can find SIRIUS in the [AUR](https://aur.archlinux.org/packages/sirius-git/).
