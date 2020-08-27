@@ -5918,6 +5918,8 @@ void sirius_set_callback_function(void* const* handler__, char const* label__, v
             sim_ctx.vloc_ri_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
         } else if (label == "rhoc_ri") {
             sim_ctx.rhoc_ri_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
+        } else if (label == "rhoc_ri_djl") {
+            sim_ctx.rhoc_ri_djl_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
         } else if (label == "band_occ") {
             sim_ctx.band_occ_callback(reinterpret_cast<void(*)(void)>(fptr__));
         } else {

@@ -464,6 +464,16 @@ class Gvec
         return gvec_shell_len_(igs__);
     }
 
+    /// Get lengths of all G-vector shells.
+    std::vector<double> shells_len() const
+    {
+        std::vector<double> q(this->num_shells());
+        for (int i = 0; i < this->num_shells(); i++) {
+            q[i] = this->shell_len(i);
+        }
+        return q;
+    }
+
     /// Return length of the G-vector.
     inline double gvec_len(int ig__) const
     {
@@ -547,6 +557,7 @@ class Gvec
     void unpack(serializer& s__, Gvec& gv__) const;
 
     void send_recv(Communicator const& comm__, int source__, int dest__, Gvec& gv__) const;
+
 
     //friend std::unique_ptr<Gvec> send_recv(Gvec const& gv__, Communicator const& comm__, int source__, int dest__);
 };

@@ -270,10 +270,7 @@ class Density : public Field4D
         PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
         /* get lenghts of all G shells */
-        std::vector<double> q(ctx_.gvec().num_shells());
-        for (int i = 0; i < ctx_.gvec().num_shells(); i++) {
-            q[i] = ctx_.gvec().shell_len(i);
-        }
+        auto q = ctx_.gvec().shells_len();
         /* get form-factors for all G shells */
         // TODO: MPI parallelise over G-shells 
         auto ff = ctx_.ps_core_ri().values(q);

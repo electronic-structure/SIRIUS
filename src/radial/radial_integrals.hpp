@@ -252,6 +252,8 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
     /// Compute all values of the raial integrals.
     inline sddk::mdarray<double, 2> values(std::vector<double>& q__) const
     {
+        PROFILE("sirius::rho_core_ri_pseudo|values");
+
         int nq = static_cast<int>(q__.size());
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
         result.zero();

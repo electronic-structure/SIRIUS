@@ -923,7 +923,7 @@ void Simulation_context::update()
         if (!ps_core_ri_djl_ || ps_core_ri_djl_->qmax() < new_pw_cutoff) {
             ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
                 new Radial_integrals_rho_core_pseudo<true>(unit_cell(), new_pw_cutoff, settings().nprii_rho_core_,
-                    nullptr));
+                    rhoc_ri_djl_callback_));
         }
 
         if (!ps_rho_ri_ || ps_rho_ri_->qmax() < new_pw_cutoff) {

@@ -183,6 +183,7 @@ class Simulation_context : public Simulation_parameters
     std::unique_ptr<Radial_integrals_rho_core_pseudo<true>> ps_core_ri_djl_;
 
     std::function<void(int, int, double*, double*)> rhoc_ri_callback_{nullptr};
+    std::function<void(int, int, double*, double*)> rhoc_ri_djl_callback_{nullptr};
 
     /// Radial integrals of total pseudo-charge density.
     std::unique_ptr<Radial_integrals_rho_pseudo> ps_rho_ri_;
@@ -812,6 +813,11 @@ class Simulation_context : public Simulation_parameters
     inline void rhoc_ri_callback(void (*fptr__)(int, int, double*, double*))
     {
         rhoc_ri_callback_ = fptr__;
+    }
+
+    inline void rhoc_ri_djl_callback(void (*fptr__)(int, int, double*, double*))
+    {
+        rhoc_ri_djl_callback_ = fptr__;
     }
 
     /// Set callback function to compute band occupations
