@@ -15,18 +15,25 @@ jobs:
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     env:
-      SPEC: sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo ^openblas threads=openmp ^mpich
+      SPEC: sirius@develop +tests +apps %gcc@7.5.0 build_type=RelWithDebInfo ^openblas threads=openmp ^mpich
     steps:
       - uses: actions/checkout@v2
+      - name: Setup Spack
+        run: |
+          spack --color always repo add ${GITHUB_WORKSPACE}/spack
+          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cpu.yaml
+      - name: Show the spec
+        run: spack --color always -e ci_run spec -I $SPEC
       - name: Build SIRIUS
         run: |
+          # todo, just use spack dev-build here.
           mkdir build && cd build
-          spack --color always -e ci build-env $SPEC -- cmake -DCMAKE_INSTALL_PREFIX=$HOME/local -DBUILD_TESTING=1 ..
-          spack --color always -e ci build-env $SPEC -- make -j 2 install
+          spack --color always -e ci_run build-env $SPEC -- cmake -DCMAKE_INSTALL_PREFIX=$HOME/local -DBUILD_TESTING=1 ..
+          spack --color always -e ci_run build-env $SPEC -- make -j 2 install
       - name: Run unit tests
         run: |
           cd build
-          spack --color always -e ci build-env $SPEC -- ctest
+          spack --color always -e ci_run build-env $SPEC -- ctest
       - name: Run verification with ReFrame
         run: ./ci/github_run_verification.sh
 
@@ -38,11 +45,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
-        run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
+        run: |
+          spack --color always repo add ${GITHUB_WORKSPACE}/spack
+          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/rocm.yaml
       - name: Show the spec
-        run: spack --color always -e ci spec -I $SPEC
+        run: spack --color always -e ci_run spec -I $SPEC
       - name: Build SIRIUS
-        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
 
   build_cuda_10:
     runs-on: ubuntu-latest
@@ -52,11 +61,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
-        run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
+        run: |
+          spack --color always repo add ${GITHUB_WORKSPACE}/spack
+          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cuda-10.yaml
       - name: Show the spec
-        run: spack --color always -e ci spec -I $SPEC
+        run: spack --color always -e ci_run spec -I $SPEC
       - name: Build SIRIUS
-        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
 
   build_cuda_11:
     runs-on: ubuntu-latest
@@ -66,11 +77,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
-        run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
+        run: |
+          spack --color always repo add ${GITHUB_WORKSPACE}/spack
+          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cuda-11.yaml
       - name: Show the spec
-        run: spack --color always -e ci spec -I $SPEC
+        run: spack --color always -e ci_run spec -I $SPEC
       - name: Build SIRIUS
-        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
 
   build_elpa_mpich:
     runs-on: ubuntu-latest
@@ -80,11 +93,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
-        run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
+        run: |
+          spack --color always repo add ${GITHUB_WORKSPACE}/spack
+          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cpu.yaml
       - name: Show the spec
-        run: spack --color always -e ci spec -I $SPEC
+        run: spack --color always -e ci_run spec -I $SPEC
       - name: Build SIRIUS
-        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
 
   build_elpa_openmpi:
     runs-on: ubuntu-latest
@@ -94,8 +109,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
-        run: rm -rf /user_repo/spack && cp -r ${GITHUB_WORKSPACE}/spack /user_repo/
+        run: |
+          spack --color always repo add ${GITHUB_WORKSPACE}/spack
+          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cpu.yaml
       - name: Show the spec
-        run: spack --color always -e ci spec -I $SPEC
+        run: spack --color always -e ci_run spec -I $SPEC
       - name: Build SIRIUS
-        run: spack --color always -e ci dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
