@@ -1,7 +1,8 @@
 spack:
   specs:
-    - sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas ^mpich
-    - sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +elpa ^openblas ^openmpi
+    - sirius@develop %gcc@:7 +tests +apps build_type=RelWithDebInfo +elpa ^openblas ^mpich
+    - sirius@develop %gcc@:7 +tests +apps build_type=RelWithDebInfo +elpa ^openblas ^openmpi
+    - sirius@develop %clang@:6 +tests +apps build_type=RelWithDebInfo ^openblas ^openmpi
   view: false
 
   packages:

@@ -11,6 +11,9 @@ FROM $BASE_IMAGE
 # e.g. --build-arg SPACK_ENVIRONMENT=ci/spack/my-env.yaml
 ARG SPACK_ENVIRONMENT
 
+# Compiler.yaml file for spack
+ARG COMPILER_CONFIG
+
 ENV DEBIAN_FRONTEND=noninteractive \
     PATH="$PATH:/opt/spack/bin"
 
@@ -20,6 +23,7 @@ RUN apt-get -yqq update \
  && apt-get -yqq install --no-install-recommends \
         build-essential \
         ca-certificates \
+        clang \
         curl \
         file \
         g++ \
@@ -50,14 +54,17 @@ ENV SPACK_SHA=$SPACK_SHA
 RUN mkdir -p /opt/spack && \
     curl -Ls "https://api.github.com/repos/spack/spack/tarball/$SPACK_SHA" | tar --strip-components=1 -xz -C /opt/spack
 
+# "Install" compilers
+COPY "$COMPILER_CONFIG" /opt/spack/etc/linux/compilers.yaml
+
 # Add our custom spack repo from here
 COPY ./spack /user_repo
 
-RUN spack repo add --scope system /user_repo
+RUN spack repo add --scope site /user_repo
 
 # Set up the binary cache and trust the public part of our signing key
 COPY ./ci/spack/public_key.asc ./public_key.asc
-RUN spack mirror add --scope system minio https://spack.dev:9000/spack && \
+RUN spack mirror add --scope site minio https://spack.dev:9000/spack && \
     spack gpg trust ./public_key.asc
 
 # Copy over the environment file
