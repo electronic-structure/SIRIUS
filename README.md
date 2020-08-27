@@ -219,7 +219,7 @@ end subroutine get_band_energies_from_sirius
 To compile Quantum ESPRESSO with SIRIUS it is easiest to use Spack. The following installs a CUDA enabled version:
 
 ```bash
-spack install q-e-sirius ^sirius +shared +scalapack +cuda ^intel-mkl ^mpich
+spack install q-e-sirius ^sirius +shared +scalapack +cuda ~apps ^intel-mkl ^mpich
 ```
 
 Now you can load `pw.x` and MPI related executables:
