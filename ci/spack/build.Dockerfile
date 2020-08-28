@@ -32,6 +32,7 @@ RUN apt-get -yqq update \
         git \
         gnupg2 \
         iproute2 \
+        libomp-dev \
         lmod \
         locales \
         lua-posix \
