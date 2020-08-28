@@ -116,3 +116,19 @@ jobs:
         run: spack --color always -e ci_run spec -I $SPEC
       - name: Build SIRIUS
         run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+
+  build_basic_clang:
+    runs-on: ubuntu-latest
+    container: stabbles/sirius-cpu
+    env:
+      SPEC: sirius@develop %clang@:6 +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Spack
+        run: |
+          spack --color always repo add ${GITHUB_WORKSPACE}/spack
+          spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cpu.yaml
+      - name: Show the spec
+        run: spack --color always -e ci_run spec -I $SPEC
+      - name: Build SIRIUS
+        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
