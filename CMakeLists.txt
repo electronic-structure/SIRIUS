@@ -2,10 +2,6 @@ cmake_minimum_required(VERSION 3.12)
 
 project(SIRIUS VERSION 7.0.0)
 
-# set language and standard
-enable_language(CXX Fortran)
-set(CMAKE_CXX_STANDARD 14)
-
 # user variables
 set(CREATE_PYTHON_MODULE OFF CACHE BOOL "create sirius Python module")
 set(CREATE_FORTRAN_BINDINGS ON CACHE BOOL "build Fortran bindings")
@@ -29,6 +25,16 @@ set(USE_PROFILER ON CACHE BOOL "measure execution of functions with timer")
 set(USE_MEMORY_POOL ON CACHE BOOL "use memory pool")
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
 set(BUILD_TESTING OFF CACHE BOOL "Build test executables") # override default setting in CTest module
+
+# set language and standard
+
+if(CREATE_FORTRAN_BINDINGS)
+  enable_language(CXX Fortran)
+else()
+  enable_language(CXX)
+endif()
+
+set(CMAKE_CXX_STANDARD 14)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
@@ -131,9 +137,14 @@ find_package(Filesystem COMPONENTS Final Experimental)
 add_library(sirius::filesystem INTERFACE IMPORTED)
 if(TARGET std::filesystem)
   target_link_libraries(sirius::filesystem INTERFACE std::filesystem)
+  target_compile_definitions(sirius::filesystem INTERFACE
+    $<$<BOOL:${Filesystem_FOUND}>:__STD_FILESYSTEM>
+    $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:__STD_FILESYSTEM_EXPERIMENTAL>
+  )
 else()
   find_package(Boost 1.65 REQUIRED COMPONENTS filesystem)
   target_link_libraries(sirius::filesystem INTERFACE Boost::filesystem)
+  target_compile_definitions(sirius::filesystem INTERFACE __BOOST_FILESYSTEM)
 endif()
 
 if (USE_OPENMP)
