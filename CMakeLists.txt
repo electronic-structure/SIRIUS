@@ -137,9 +137,14 @@ find_package(Filesystem COMPONENTS Final Experimental)
 add_library(sirius::filesystem INTERFACE IMPORTED)
 if(TARGET std::filesystem)
   target_link_libraries(sirius::filesystem INTERFACE std::filesystem)
+  target_compile_definitions(sirius::filesystem INTERFACE
+    $<$<BOOL:${Filesystem_FOUND}>:__STD_FILESYSTEM>
+    $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:__STD_FILESYSTEM_EXPERIMENTAL>
+  )
 else()
   find_package(Boost 1.65 REQUIRED COMPONENTS filesystem)
   target_link_libraries(sirius::filesystem INTERFACE Boost::filesystem)
+  target_compile_definitions(sirius::filesystem INTERFACE __BOOST_FILESYSTEM)
 endif()
 
 if (USE_OPENMP)
