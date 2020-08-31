@@ -26,7 +26,6 @@ jobs:
         run: spack --color always -e ci_run spec -I $SPEC
       - name: Build SIRIUS
         run: |
-          # todo, just use spack dev-build here.
           mkdir build && cd build
           spack --color always -e ci_run build-env $SPEC -- cmake -DCMAKE_INSTALL_PREFIX=$HOME/local -DBUILD_TESTING=1 ..
           spack --color always -e ci_run build-env $SPEC -- make -j 2 install
