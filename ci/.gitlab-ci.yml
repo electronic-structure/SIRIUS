@@ -40,6 +40,7 @@ notify_github_start:
   stage: test
   only: ['master', 'develop', 'staging', 'trying']
   script: cd /sources/spack-build && $TEST_COMMAND
+  image: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
   variables:
     CRAY_CUDA_MPS: 1
     GIT_STRATEGY: none
@@ -53,7 +54,6 @@ notify_github_start:
 gpu serial:
   extends: .run_tests
   variables:
-    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 12
     SLURM_CONSTRAINT: gpu
@@ -65,7 +65,6 @@ gpu serial:
 gpu band parallel:
   extends: .run_tests
   variables:
-    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 3
     SLURM_CONSTRAINT: gpu
@@ -78,7 +77,6 @@ gpu band parallel:
 gpu k-point parallel:
   extends: .run_tests
   variables:
-    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 3
     SLURM_CONSTRAINT: gpu
@@ -91,7 +89,6 @@ gpu k-point parallel:
 cpu single:
   extends: .run_tests
   variables:
-    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 12
     SLURM_CONSTRAINT: gpu
@@ -104,7 +101,6 @@ cpu single:
 cpu band parallel:
   extends: .run_tests
   variables:
-    IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 3
     SLURM_CONSTRAINT: gpu
