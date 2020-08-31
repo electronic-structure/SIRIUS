@@ -33,7 +33,7 @@ jobs:
       - name: Run unit tests
         run: |
           cd build
-          spack --color always -e ci_run build-env $SPEC -- ctest
+          spack --color always -e ci_run build-env $SPEC -- ctest --label-exclude integration_test
       - name: Run verification with ReFrame
         run: ./ci/github_run_verification.sh
 
