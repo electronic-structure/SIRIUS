@@ -19,4 +19,6 @@ jobs:
           submodules: recursive
           fetch-depth: 2
       - name: Check .cpp, .h and .hpp files
-        run: ./check_format.x
+        run: |
+            git log -2
+            ./check_format.x

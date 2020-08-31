@@ -72,7 +72,7 @@ class Potential : public Field4D
     /** This function is set by PW code and is not computed here. */
     std::unique_ptr<Smooth_periodic_function<double>> dveff_;
 
-    mdarray<double, 3> sbessel_mom_;
+    sddk::mdarray<double, 3> sbessel_mom_;
 
     mdarray<double, 3> sbessel_mt_;
 
