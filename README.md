@@ -108,7 +108,7 @@ $ spack build-env $SPEC -- make -j$(nproc)
 
 When installing SIRIUS without Spack, make sure to install the required dependencies first:
 
- * CMake ≥ 3.12
+ * CMake ≥ 3.14
  * C++ compiler with C++14 support
  * MPI (OpenMPI or MPICH)
  * BLAS/LAPACK (OpenBLAS or Intel MKL)

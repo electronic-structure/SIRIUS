@@ -21,32 +21,36 @@ RUN spack --color always repo add /sources/spack && \
     spack --color always -e ci_run spec $SPEC && \
     spack --color always -e ci_run dev-build --source-path /sources $SPEC
 
-# Bundle everything
-RUN rm -rf /sources/.git /sources/examples && \
-    . /opt/spack/share/spack/setup-env.sh && \
-    apt-get update -qq && \
-    apt-get install -qq wget tar && \
-    cd /root && \
-    wget -q https://github.com/haampie/libtree/releases/download/v1.2.0/libtree_x86_64.tar.gz && \
-    tar -xzf libtree_x86_64.tar.gz && \
-    rm libtree_x86_64.tar.gz && \
-    ln -s /root/libtree/libtree /usr/local/bin/libtree && \
-    spack load sirius && \
-    libtree -d /root/sirius.bundle --chrpath `which sirius.scf`
+# Bundling: this is a bit more complicated than it should unfortunately :(
+# We want to run `ctest`, but ctest does not work well after running `make install`
+# So instead we don't install, but prune the build folder as much as possible.
+# We move the libs to `/root/sirius.bundle/lib` and copy `ctest` to `/root/sirius.bundle/bin`.
+RUN cd /sources/spack-build && \
+    export TEST_BINARIES=`spack -e ci build-env $SPEC -- ctest --show-only=json-v1 | jq '.tests | map(.command[0]) | .[]' | tr -d \" | uniq` && \
+    export CTEST=`spack -e ci build-env $SPEC -- which ctest` && \
+    libtree -d /root/sirius.bundle ${TEST_BINARIES} && \
+    rm -rf /root/sirius.bundle/bin && \
+    libtree -d /root/sirius.bundle ${CTEST} && \
+    mkdir /sources/spack-build-tmp && \
+    echo "$TEST_BINARIES" | xargs -I{file} find -samefile {file} -exec cp --parents '{}' /sources/spack-build-tmp ';' && \
+    find -name CTestTestfile.cmake -exec cp --parent '{}' /sources/spack-build-tmp ';' && \
+    rm -rf /sources/spack-build && \
+    mv /sources/spack-build-tmp /sources/spack-build
 
 # Create a stripped down image
 FROM $DEPLOY_BASE
-
-COPY --from=builder /root/sirius.bundle /root/sirius.bundle
-COPY --from=builder /sources /sources
 
 # Make nvidia happy
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 ENV NVIDIA_REQUIRE_CUDA "cuda>=7.5"
 
-# Make sirius.scf available in the path
+# Make some things available in the path
 ENV PATH="/root/sirius.bundle/usr/bin:$PATH"
+
+COPY --from=builder /root/sirius.bundle /root/sirius.bundle
+COPY --from=builder /sources/verification /sources/verification
+COPY --from=builder /sources/spack-build /sources/spack-build
 
 # Make sarus happy
 RUN echo "/root/sirius.bundle/usr/lib/" > /etc/ld.so.conf.d/sirius.conf && ldconfig

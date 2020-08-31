@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.12)
+# We could be fine with 3.12, but 3.14 has ctest --show-only=json-v1 used in CI.
+cmake_minimum_required(VERSION 3.14)
 
 project(SIRIUS VERSION 7.0.0)
 

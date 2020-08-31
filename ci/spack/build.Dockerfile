@@ -15,7 +15,7 @@ ARG SPACK_ENVIRONMENT
 ARG COMPILER_CONFIG
 
 ENV DEBIAN_FRONTEND=noninteractive \
-    PATH="$PATH:/opt/spack/bin"
+    PATH="$PATH:/opt/spack/bin:/opt/libtree"
 
 SHELL ["/bin/bash", "-c"]
 
@@ -32,6 +32,7 @@ RUN apt-get -yqq update \
         git \
         gnupg2 \
         iproute2 \
+        jq \
         libomp-dev \
         lmod \
         locales \
@@ -41,11 +42,16 @@ RUN apt-get -yqq update \
         python3 \
         python3-pip \
         python3-setuptools \
+        tar \
         tcl \
         unzip \
  && locale-gen en_US.UTF-8 \
  && pip3 install boto3 \
  && rm -rf /var/lib/apt/lists/*
+
+# Install libtree for packaging
+RUN mkdir -p /opt/libtree && \
+    curl -Ls https://github.com/haampie/libtree/releases/download/v1.2.0/libtree_x86_64.tar.gz | tar --strip-components=1 -xz -C /opt/libtree
 
 # This is the spack version we want to have
 ARG SPACK_SHA

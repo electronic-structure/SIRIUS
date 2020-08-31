@@ -35,109 +35,84 @@ notify_github_start:
   image: stabbles/git-curl
   script: ./ci/set_github_status.sh pending
 
-gpu single:
+.run_tests:
+  extends: .daint
+  stage: test
   only: ['master', 'develop', 'staging', 'trying']
-  trigger:
-    include: ci/run.yml
-    strategy: depend
+  script: cd /sources/spack-build && $TEST_COMMAND
   variables:
-    ALLOCATION_NAME: sirius-gpu-single-$CI_PIPELINE_ID
     CRAY_CUDA_MPS: 1
+    GIT_STRATEGY: none
+    MPICH_MAX_THREAD_SAFETY: multiple
+    PULL_IMAGE: 'YES'
+    SLURM_EXCLUSIVE: ''
+    SLURM_HINT: nomultithread
+    SLURM_JOB_NUM_NODES: 1
+    SLURM_STDOUTMODE: 0 # only get output from 1 rank
+
+gpu serial:
+  extends: .run_tests
+  variables:
     IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 12
-    SIRIUS_FLAGS: "--control.processing_unit=gpu --control.std_evp_solver_name=cusolver --control.gen_evp_solver_name=cusolver"
     SLURM_CONSTRAINT: gpu
     SLURM_CPUS_PER_TASK: 12
-    SLURM_EXCLUSIVE: ''
-    SLURM_HINT: nomultithread
-    SLURM_JOB_NUM_NODES: 1
     SLURM_NTASKS: 1
     SLURM_TIMELIMIT: "20:00"
+    TEST_COMMAND: ctest -L gpu_serial -V
 
 gpu band parallel:
-  only: ['master', 'develop', 'staging', 'trying']
-  trigger:
-    include: ci/run.yml
-    strategy: depend
+  extends: .run_tests
   variables:
-    ALLOCATION_NAME: sirius-gpu-band-parallel-$CI_PIPELINE_ID
-    CRAY_CUDA_MPS: 1
     IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 3
-    SIRIUS_FLAGS: "--control.processing_unit=gpu --control.mpi_grid_dims=2:2 --control.std_evp_solver_name=scalapack --control.gen_evp_solver_name=scalapack"
     SLURM_CONSTRAINT: gpu
     SLURM_CPUS_PER_TASK: 3
-    SLURM_EXCLUSIVE: ''
-    SLURM_HINT: nomultithread
-    SLURM_JOB_NUM_NODES: 1
     SLURM_NTASKS: 4
     SLURM_TIMELIMIT: "20:00"
+    TEST_COMMAND: ctest -L gpu_band_parallel -V
     USE_MPI: 'YES'
 
 gpu k-point parallel:
-  only: ['master', 'develop', 'staging', 'trying']
-  trigger:
-    include: ci/run.yml
-    strategy: depend
+  extends: .run_tests
   variables:
-    ALLOCATION_NAME: sirius-gpu-k-point-parallel-$CI_PIPELINE_ID
-    CRAY_CUDA_MPS: 1
     IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 3
-    SIRIUS_FLAGS: "--control.processing_unit=gpu --control.std_evp_solver_name=cusolver --control.gen_evp_solver_name=cusolver"
     SLURM_CONSTRAINT: gpu
     SLURM_CPUS_PER_TASK: 3
-    SLURM_EXCLUSIVE: ''
-    SLURM_HINT: nomultithread
-    SLURM_JOB_NUM_NODES: 1
     SLURM_NTASKS: 4
     SLURM_TIMELIMIT: "20:00"
+    TEST_COMMAND: ctest -L gpu_k_point_parallel -V
     USE_MPI: 'YES'
 
 cpu single:
-  only: ['master', 'develop', 'staging', 'trying']
-  trigger:
-    include: ci/run.yml
-    strategy: depend
+  extends: .run_tests
   variables:
-    ALLOCATION_NAME: sirius-cpu-single-$CI_PIPELINE_ID
-    CRAY_CUDA_MPS: 1
     IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 12
-    SIRIUS_FLAGS: "--control.processing_unit=cpu"
     SLURM_CONSTRAINT: gpu
     SLURM_CPU_BIND: sockets
     SLURM_CPUS_PER_TASK: 12
-    SLURM_EXCLUSIVE: ''
-    SLURM_HINT: nomultithread
-    SLURM_JOB_NUM_NODES: 1
     SLURM_NTASKS: 1
     SLURM_TIMELIMIT: "20:00"
+    TEST_COMMAND: ctest -L cpu_serial -V
 
 cpu band parallel:
-  only: ['master', 'develop', 'staging', 'trying']
-  trigger:
-    include: ci/run.yml
-    strategy: depend
+  extends: .run_tests
   variables:
-    ALLOCATION_NAME: sirius-cpu-band-parallel-$CI_PIPELINE_ID
-    CRAY_CUDA_MPS: 1
     IMAGE: $CI_REGISTRY_IMAGE/cuda_10.1:$CI_COMMIT_SHA
     MPICH_MAX_THREAD_SAFETY: multiple
     OMP_NUM_THREADS: 3
-    SIRIUS_FLAGS: "--control.processing_unit=cpu --control.mpi_grid_dims=2:2 --control.std_evp_solver_name=scalapack --control.gen_evp_solver_name=scalapack"
     SLURM_CONSTRAINT: gpu
     SLURM_CPU_BIND: sockets
     SLURM_CPUS_PER_TASK: 3
-    SLURM_EXCLUSIVE: ''
-    SLURM_HINT: nomultithread
-    SLURM_JOB_NUM_NODES: 1
     SLURM_NTASKS: 4
     SLURM_TIMELIMIT: "20:00"
+    TEST_COMMAND: ctest -L cpu_band_parallel -V
     USE_MPI: 'YES'
 
 notify_github_success:
