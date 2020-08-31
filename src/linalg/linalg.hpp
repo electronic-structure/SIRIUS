@@ -1074,12 +1074,39 @@ inline double check_identity(dmatrix<T>& mtrx__, int n__)
     double max_diff{0};
     for (int i = 0; i < mtrx__.num_cols_local(); i++) {
         int icol = mtrx__.icol(i);
-        for (int j = 0; j < mtrx__.num_rows_local(); j++) {
-            int jrow = mtrx__.irow(j);
-            if (icol == jrow) {
-                max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - 1.0));
-            } else {
-                max_diff = std::max(max_diff, std::abs(mtrx__(j, i)));
+        if (icol < n__) {
+            for (int j = 0; j < mtrx__.num_rows_local(); j++) {
+                int jrow = mtrx__.irow(j);
+                if (jrow < n__) {
+                    if (icol == jrow) {
+                        max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - 1.0));
+                    } else {
+                        max_diff = std::max(max_diff, std::abs(mtrx__(j, i)));
+                    }
+                }
+            }
+        }
+    }
+    mtrx__.comm().template allreduce<double, mpi_op_t::max>(&max_diff, 1);
+    return max_diff;
+}
+
+template <typename T>
+inline double check_diagonal(dmatrix<T>& mtrx__, int n__, sddk::mdarray<double, 1> const& diag__)
+{
+    double max_diff{0};
+    for (int i = 0; i < mtrx__.num_cols_local(); i++) {
+        int icol = mtrx__.icol(i);
+        if (icol < n__) {
+            for (int j = 0; j < mtrx__.num_rows_local(); j++) {
+                int jrow = mtrx__.irow(j);
+                if (jrow < n__) {
+                    if (icol == jrow) {
+                        max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - diag__[icol]));
+                    } else {
+                        max_diff = std::max(max_diff, std::abs(mtrx__(j, i)));
+                    }
+                }
             }
         }
     }

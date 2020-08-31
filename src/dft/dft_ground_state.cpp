@@ -172,12 +172,10 @@ json DFT_ground_state::check_scf_density()
     dict["rms"]   = std::sqrt(rms / ctx_.gvec().num_gvec());
     dict["detot"] = total_energy() - etot;
 
-    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-        std::printf("[sirius::DFT_ground_state::check_scf_density] RSS: %18.12E\n", dict["rss"].get<double>());
-        std::printf("[sirius::DFT_ground_state::check_scf_density] RMS: %18.12E\n", dict["rms"].get<double>());
-        std::printf("[sirius::DFT_ground_state::check_scf_density] dEtot: %18.12E\n", dict["detot"].get<double>());
-        std::printf("[sirius::DFT_ground_state::check_scf_density] Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
-    }
+    ctx_.message(1, __function_name__, "RSS: %18.12E\n", dict["rss"].get<double>());
+    ctx_.message(1, __function_name__, "RMS: %18.12E\n", dict["rms"].get<double>());
+    ctx_.message(1, __function_name__, "dEtot: %18.12E\n", dict["detot"].get<double>());
+    ctx_.message(1, __function_name__, "Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
 
     return dict;
 }

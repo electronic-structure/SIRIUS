@@ -197,6 +197,8 @@ class Simulation_context : public Simulation_parameters
     /// Radial integrals of the local part of pseudopotential with derivatives of spherical Bessel functions.
     std::unique_ptr<Radial_integrals_vloc<true>> vloc_ri_djl_;
 
+    std::function<void(int, int, double*, double*)> vloc_ri_djl_callback_{nullptr};
+
     /// List of real-space point indices for each of the atoms.
     std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
@@ -808,6 +810,11 @@ class Simulation_context : public Simulation_parameters
     inline void vloc_ri_callback(void (*fptr__)(int, int, double*, double*))
     {
         vloc_ri_callback_ = fptr__;
+    }
+
+    inline void vloc_ri_djl_callback(void (*fptr__)(int, int, double*, double*))
+    {
+        vloc_ri_djl_callback_ = fptr__;
     }
 
     inline void rhoc_ri_callback(void (*fptr__)(int, int, double*, double*))
