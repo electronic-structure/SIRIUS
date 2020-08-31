@@ -42,8 +42,10 @@ class Potential : public Field4D
     /* Alias for spherical functions */
     using sf = Spheric_function<function_domain_t::spectral, double>;
 
+    /// Unit cell.
     Unit_cell& unit_cell_;
 
+    /// Entire communicator of the simulation.
     Communicator const& comm_;
 
     /// Hartree potential.
