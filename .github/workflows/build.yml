@@ -12,6 +12,7 @@ on:
 
 jobs:
   build_and_test_cpu:
+    needs: check
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     env:
