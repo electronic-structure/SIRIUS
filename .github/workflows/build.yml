@@ -52,6 +52,7 @@ jobs:
         run: ./ci/github_run_verification.sh
 
   build_rocm:
+    needs: check
     runs-on: ubuntu-latest
     container: stabbles/sirius-rocm
     env:
@@ -68,6 +69,7 @@ jobs:
         run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
 
   build_cuda_10:
+    needs: check
     runs-on: ubuntu-latest
     container: stabbles/sirius-cuda-10
     env:
@@ -84,6 +86,7 @@ jobs:
         run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
 
   build_cuda_11:
+    needs: check
     runs-on: ubuntu-latest
     container: stabbles/sirius-cuda-11
     env:
@@ -100,6 +103,7 @@ jobs:
         run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
 
   build_elpa_mpich:
+    needs: check
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     env:
@@ -116,6 +120,7 @@ jobs:
         run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
 
   build_elpa_openmpi:
+    needs: check
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     env:
@@ -132,6 +137,7 @@ jobs:
         run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
 
   build_basic_clang:
+    needs: check
     runs-on: ubuntu-latest
     container: stabbles/sirius-cpu
     env:
