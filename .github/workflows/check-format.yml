@@ -18,7 +18,10 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 2
+      - uses: lots0logs/gh-action-get-changed-files@2.1.4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check .cpp, .h and .hpp files
         run: |
-            git log -2
-            ./check_format.x
+            cat ${HOME}/files_modified.json
+            cat $HOME/files_modified.json
