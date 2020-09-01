@@ -24,6 +24,7 @@ jobs:
       - name: Check .cpp, .h and .hpp files
         run: |
             python3 check_format.py $HOME/files_modified.json
+
   build_and_test_cpu:
     needs: check
     runs-on: ubuntu-latest
