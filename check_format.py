@@ -3,10 +3,15 @@ import subprocess
 import os
 from subprocess import Popen, PIPE
 import difflib
+import json
 
 env_copy = os.environ.copy()
 
-all_files = [name.strip() for name in sys.stdin.readlines()]
+with open(sys.argv[1]) as json_file:
+    all_files = json.load(json_file)
+
+
+#all_files = [name.strip() for name in sys.stdin.readlines()]
 files = []
 for f in all_files:
     extension = os.path.splitext(f)[1][1:]

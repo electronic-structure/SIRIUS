@@ -23,5 +23,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check .cpp, .h and .hpp files
         run: |
-            cat ${HOME}/files_modified.json
-            cat $HOME/files_modified.json
+            python3 check_format.py $HOME/files_modified.json
