@@ -2,10 +2,10 @@ compilers:
 - compiler:
     spec: gcc@9.3.0
     paths:
-      cc: /bin/gcc
-      cxx: /bin/g++
-      f77: /bin/gfortran
-      fc: /bin/gfortran
+      cc: /usr/bin/gcc
+      cxx: /usr/bin/g++
+      f77: /usr/bin/gfortran
+      fc: /usr/bin/gfortran
     flags: {}
     operating_system: ubuntu20.04
     target: x86_64
@@ -15,10 +15,10 @@ compilers:
 - compiler:
     spec: clang@10.0.0
     paths:
-      cc: /bin/clang
-      cxx: /bin/clang++
-      f77: /bin/gfortran
-      fc: /bin/gfortran
+      cc: /usr/bin/clang
+      cxx: /usr/bin/clang++
+      f77: /usr/bin/gfortran
+      fc: /usr/bin/gfortran
     flags: {}
     operating_system: ubuntu20.04
     target: x86_64
