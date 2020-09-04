@@ -169,6 +169,12 @@ void K_point_set::find_band_occupancies()
 {
     PROFILE("sirius::K_point_set::find_band_occupancies");
 
+    auto band_occ_callback = ctx_.band_occ_callback();
+    if (band_occ_callback) {
+        band_occ_callback();
+        return;
+    }
+
     double ef{0};
     double de{0.1};
 

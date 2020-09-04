@@ -257,14 +257,30 @@ class Potential : public Field4D
     {
         PROFILE("sirius::Potential::generate_local_potential");
 
-        auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
-        {
-            if (this->ctx_.unit_cell().atom_type(iat).local_potential().empty()) {
-                return 0.0;
-            } else {
-                return ctx_.vloc_ri().value(iat, g);
-            }
-        });
+        // bool is_empty{true};
+        // for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        //     is_empty &= unit_cell_.atom_type(iat).local_potential().empty();
+        // }
+        // if (!is_empty) {
+        //     generate_local_potential();
+        // }
+
+        /* get lenghts of all G shells */
+        auto q = ctx_.gvec().shells_len();
+        /* get form-factors for all G shells */
+        // TODO: MPI parallelise over G-shells 
+        auto ff = ctx_.vloc_ri().values(q);
+        /* make Vloc(G) */
+        auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
+
+        //auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
+        //{
+        //    if (this->ctx_.unit_cell().atom_type(iat).local_potential().empty()) {
+        //        return 0.0;
+        //    } else {
+        //        return ctx_.vloc_ri().value(iat, g);
+        //    }
+        //});
         std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
         local_potential_->fft_transform(1);
 
@@ -420,17 +436,8 @@ class Potential : public Field4D
 
         if (!ctx_.full_potential()) {
             local_potential_->zero();
-
-            bool is_empty{true};
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                is_empty &= unit_cell_.atom_type(iat).local_potential().empty();
-            }
-            if (!is_empty) {
-                generate_local_potential();
-            }
-        }
-
-        if (ctx_.full_potential()) {
+            generate_local_potential();
+        } else {
             gvec_ylm_ = ctx_.generate_gvec_ylm(ctx_.lmax_pot());
             sbessel_mt_ = ctx_.generate_sbessel_mt(lmax_ + pseudo_density_order_ + 1);
 

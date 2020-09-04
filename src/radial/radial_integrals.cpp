@@ -301,6 +301,8 @@ void Radial_integrals_vloc<jl_deriv>::generate()
         //    s << "Wrong asymptotics of local potential for atom type " << iat << std::endl
         //      << "hack with 10 a.u. cutoff is activated";
         //    WARNING(s);
+        /* This is a hack implemented in QE. For many pseudopotentials the tail doesn't decay as -z/r
+         * but rather diverges. Instead of issuing an error, the code trunkates the integraition at ~10 a.u. */
         if (true) {
             int np1 = atom_type.radial_grid().index_of(10);
             if (np1 != -1) {

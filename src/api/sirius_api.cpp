@@ -1280,6 +1280,30 @@ void sirius_find_ground_state(void*  const* gs_handler__,
 
 /*
 @api begin
+sirius_check_scf_density:
+  doc: Check the self-consistent density
+  arguments:
+    gs_handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the ground state.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void sirius_check_scf_density(void*  const* gs_handler__, int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(gs_handler__);
+        gs.check_scf_density();
+    }, error_code__);
+}
+
+/*
+@api begin
 sirius_find_ground_state_robust:
   doc: Find the ground state using the robust
   arguments:
@@ -2785,12 +2809,13 @@ void sirius_get_energy(void* const* handler__,
         {"evalsum", [&](){ return sirius::eval_sum(unit_cell, kset); }},
         {"exc",     [&](){ return sirius::energy_exc(density, potential); }},
         {"vxc",     [&](){ return sirius::energy_vxc(density, potential); }},
-        {"bxc",     [&](){ return sirius::energy_bxc(density, potential, ctx.num_mag_dims()); }},
+        {"bxc",     [&](){ return sirius::energy_bxc(density, potential); }},
         {"veff",    [&](){ return sirius::energy_veff(density, potential); }},
         {"vloc",    [&](){ return sirius::energy_vloc(density, potential); }},
         {"vha",     [&](){ return sirius::energy_vha(potential); }},
         {"enuc",    [&](){ return sirius::energy_enuc(ctx, potential); }},
-        {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }}};
+        {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }},
+        {"one-el",  [&](){ return sirius::one_electron_energy(density, potential); }}};
 
     try {
         *energy__ = func.at(label)();
@@ -3821,23 +3846,33 @@ void sirius_get_fft_comm(void * const* handler__,
     *fcomm__ = MPI_Comm_c2f(sim_ctx.comm_fft().mpi_comm());
 }
 
-//==/*
-//==@apibegin
-//==sirius_get_num_gvec:
-//==  return: int
-//==  doc: Get total number of G-vectors
-//==  arguments:
-//==    handler:
-//==      type: void*
-//==      attr: in, required
-//==      doc: Simulation context handler
-//==@apiend
-//==*/
-//==int sirius_get_num_gvec(void* const* handler__)
-//=={
-//==    auto& sim_ctx = get_sim_ctx(handler__);
-//==    return sim_ctx.gvec().num_gvec();
-//==}
+/*
+@api begin
+sirius_get_num_gvec:
+  doc: Get total number of G-vectors
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    num_gvec:
+      type: int
+      attr: out, required
+      doc: Total number of G-vectors
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void sirius_get_num_gvec(void* const* handler__, int* num_gvec__, int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        *num_gvec__ = sim_ctx.gvec().num_gvec();
+    }, error_code__);
+}
 
 /*
 @api begin
@@ -5917,8 +5952,20 @@ void sirius_set_callback_function(void* const* handler__, char const* label__, v
             sim_ctx.aug_ri_callback(reinterpret_cast<void(*)(int, double, double*, int, int)>(fptr__));
         } else if (label == "aug_ri_djl") {
             sim_ctx.aug_ri_djl_callback(reinterpret_cast<void(*)(int, double, double*, int, int)>(fptr__));
+        } else if (label == "vloc_ri") {
+            sim_ctx.vloc_ri_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
+        } else if (label == "vloc_ri_djl") {
+            sim_ctx.vloc_ri_djl_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
+        } else if (label == "rhoc_ri") {
+            sim_ctx.rhoc_ri_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
+        } else if (label == "rhoc_ri_djl") {
+            sim_ctx.rhoc_ri_djl_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
+        } else if (label == "band_occ") {
+            sim_ctx.band_occ_callback(reinterpret_cast<void(*)(void)>(fptr__));
         } else {
-            throw std::runtime_error("wrong label of callback function");
+            std::stringstream s;
+            s << "Wrong label of the callback function: " << label;
+            throw std::runtime_error(s.str());
         }
     }, error_code__);
 }

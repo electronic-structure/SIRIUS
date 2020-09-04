@@ -659,6 +659,7 @@ void Simulation_context::print_info() const
     std::printf("smearing width                     : %f\n", smearing_width());
     std::printf("cyclic block size                  : %i\n", cyclic_block_size());
     std::printf("|G+k| cutoff                       : %f\n", gk_cutoff());
+    std::printf("symmetry                           : %s\n", utils::boolstr(use_symmetry()).c_str());
 
     std::string reln[] = {"valence relativity                 : ", "core relativity                    : "};
 
@@ -916,12 +917,14 @@ void Simulation_context::update()
 
         if (!ps_core_ri_ || ps_core_ri_->qmax() < new_pw_cutoff) {
             ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
-                new Radial_integrals_rho_core_pseudo<false>(unit_cell(), new_pw_cutoff, settings().nprii_rho_core_));
+                new Radial_integrals_rho_core_pseudo<false>(unit_cell(), new_pw_cutoff, settings().nprii_rho_core_,
+                    rhoc_ri_callback_));
         }
 
         if (!ps_core_ri_djl_ || ps_core_ri_djl_->qmax() < new_pw_cutoff) {
             ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
-                new Radial_integrals_rho_core_pseudo<true>(unit_cell(), new_pw_cutoff, settings().nprii_rho_core_));
+                new Radial_integrals_rho_core_pseudo<true>(unit_cell(), new_pw_cutoff, settings().nprii_rho_core_,
+                    rhoc_ri_djl_callback_));
         }
 
         if (!ps_rho_ri_ || ps_rho_ri_->qmax() < new_pw_cutoff) {
@@ -931,12 +934,14 @@ void Simulation_context::update()
 
         if (!vloc_ri_ || vloc_ri_->qmax() < new_pw_cutoff) {
             vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(
-                new Radial_integrals_vloc<false>(unit_cell(), new_pw_cutoff, settings().nprii_vloc_));
+                new Radial_integrals_vloc<false>(unit_cell(), new_pw_cutoff, settings().nprii_vloc_,
+                    vloc_ri_callback_));
         }
 
         if (!vloc_ri_djl_ || vloc_ri_djl_->qmax() < new_pw_cutoff) {
             vloc_ri_djl_ = std::unique_ptr<Radial_integrals_vloc<true>>(
-                new Radial_integrals_vloc<true>(unit_cell(), new_pw_cutoff, settings().nprii_vloc_));
+                new Radial_integrals_vloc<true>(unit_cell(), new_pw_cutoff, settings().nprii_vloc_,
+                    vloc_ri_djl_callback_));
         }
 
         /* radial integrals with pw_cutoff */
