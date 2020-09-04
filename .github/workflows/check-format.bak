@@ -17,5 +17,10 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
+          fetch-depth: 2
+      - uses: lots0logs/gh-action-get-changed-files@2.1.4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check .cpp, .h and .hpp files
-        run: ./check_format.x
+        run: |
+            python3 check_format.py $HOME/files_modified.json
