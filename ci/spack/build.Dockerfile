@@ -11,8 +11,11 @@ FROM $BASE_IMAGE
 # e.g. --build-arg SPACK_ENVIRONMENT=ci/spack/my-env.yaml
 ARG SPACK_ENVIRONMENT
 
+# Compiler.yaml file for spack
+ARG COMPILER_CONFIG
+
 ENV DEBIAN_FRONTEND=noninteractive \
-    PATH="$PATH:/opt/spack/bin"
+    PATH="$PATH:/opt/spack/bin:/opt/libtree"
 
 SHELL ["/bin/bash", "-c"]
 
@@ -20,6 +23,7 @@ RUN apt-get -yqq update \
  && apt-get -yqq install --no-install-recommends \
         build-essential \
         ca-certificates \
+        clang \
         curl \
         file \
         g++ \
@@ -28,6 +32,8 @@ RUN apt-get -yqq update \
         git \
         gnupg2 \
         iproute2 \
+        jq \
+        libomp-dev \
         lmod \
         locales \
         lua-posix \
@@ -36,11 +42,16 @@ RUN apt-get -yqq update \
         python3 \
         python3-pip \
         python3-setuptools \
+        tar \
         tcl \
         unzip \
  && locale-gen en_US.UTF-8 \
  && pip3 install boto3 \
  && rm -rf /var/lib/apt/lists/*
+
+# Install libtree for packaging
+RUN mkdir -p /opt/libtree && \
+    curl -Ls https://github.com/haampie/libtree/releases/download/v1.2.0/libtree_x86_64.tar.gz | tar --strip-components=1 -xz -C /opt/libtree
 
 # This is the spack version we want to have
 ARG SPACK_SHA
@@ -50,14 +61,17 @@ ENV SPACK_SHA=$SPACK_SHA
 RUN mkdir -p /opt/spack && \
     curl -Ls "https://api.github.com/repos/spack/spack/tarball/$SPACK_SHA" | tar --strip-components=1 -xz -C /opt/spack
 
+# "Install" compilers
+COPY "$COMPILER_CONFIG" /opt/spack/etc/spack/compilers.yaml
+
 # Add our custom spack repo from here
 COPY ./spack /user_repo
 
-RUN spack repo add --scope system /user_repo
+RUN spack repo add --scope site /user_repo
 
 # Set up the binary cache and trust the public part of our signing key
 COPY ./ci/spack/public_key.asc ./public_key.asc
-RUN spack mirror add --scope system minio https://spack.harmenstoppels.nl:9000/spack && \
+RUN spack mirror add --scope site minio https://spack.dev:9000/spack && \
     spack gpg trust ./public_key.asc
 
 # Copy over the environment file

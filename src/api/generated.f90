@@ -1418,6 +1418,37 @@ endif
 end subroutine sirius_find_ground_state
 
 !
+!> @brief Check the self-consistent density
+!> @param [in] gs_handler Handler of the ground state.
+!> @param [out] error_code Error code
+subroutine sirius_check_scf_density(gs_handler,error_code)
+implicit none
+!
+type(C_PTR), target, intent(in) :: gs_handler
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_check_scf_density_aux(gs_handler,error_code)&
+&bind(C, name="sirius_check_scf_density")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: gs_handler
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_check_scf_density_aux(gs_handler_ptr,error_code_ptr)
+end subroutine sirius_check_scf_density
+
+!
 !> @brief Find the ground state using the robust
 !> @param [in] gs_handler Handler of the ground state.
 !> @param [in] ks_handler Handler of the k-point set.
@@ -3784,6 +3815,43 @@ fcomm_ptr = C_NULL_PTR
 fcomm_ptr = C_LOC(fcomm)
 call sirius_get_fft_comm_aux(handler_ptr,fcomm_ptr)
 end subroutine sirius_get_fft_comm
+
+!
+!> @brief Get total number of G-vectors
+!> @param [in] handler Simulation context handler
+!> @param [out] num_gvec Total number of G-vectors
+!> @param [out] error_code Error code
+subroutine sirius_get_num_gvec(handler,num_gvec,error_code)
+implicit none
+!
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(out) :: num_gvec
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: num_gvec_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_get_num_gvec_aux(handler,num_gvec,error_code)&
+&bind(C, name="sirius_get_num_gvec")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: num_gvec
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+num_gvec_ptr = C_NULL_PTR
+num_gvec_ptr = C_LOC(num_gvec)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_num_gvec_aux(handler_ptr,num_gvec_ptr,error_code_ptr)
+end subroutine sirius_get_num_gvec
 
 !
 !> @brief Get G-vector arrays.

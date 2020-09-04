@@ -1,6 +1,6 @@
 spack:
   specs:
-    - sirius@develop %gcc@9.3.0 +rocm ^spfft +rocm ^openmpi ^openblas
+    - sirius@develop %gcc@:9 +tests +apps +rocm ^spfft +rocm ^openmpi ^openblas
   view: false
 
   packages:
@@ -11,7 +11,7 @@ spack:
         - '+release'
         - 'amdgpu_target=gfx906'
     cmake:
-      version: [':3.12']
+      version: [':3.14']
     openblas:
       variants:
         - threads=openmp

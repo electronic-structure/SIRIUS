@@ -269,14 +269,22 @@ class Density : public Field4D
     {
         PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
-        auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
-        {
-            if (this->ctx_.unit_cell().atom_type(iat).ps_core_charge_density().empty()) {
-                return 0.0;
-            } else {
-                return ctx_.ps_core_ri().value<int>(iat, g);
-            }
-        });
+        /* get lenghts of all G shells */
+        auto q = ctx_.gvec().shells_len();
+        /* get form-factors for all G shells */
+        // TODO: MPI parallelise over G-shells 
+        auto ff = ctx_.ps_core_ri().values(q);
+        /* make rho_core(G) */
+        auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
+
+        //auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
+        //{
+        //    if (this->ctx_.unit_cell().atom_type(iat).ps_core_charge_density().empty()) {
+        //        return 0.0;
+        //    } else {
+        //        return ctx_.ps_core_ri().value<int>(iat, g);
+        //    }
+        //});
         std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
         rho_pseudo_core_->fft_transform(1);
     }
@@ -635,21 +643,21 @@ class Density : public Field4D
     /// Mix new density.
     double mix();
 
-    mdarray<double_complex, 4> const& density_matrix() const
+    sddk::mdarray<double_complex, 4> const& density_matrix() const
     {
         return density_matrix_;
     }
 
-    mdarray<double_complex, 4>& density_matrix()
+    sddk::mdarray<double_complex, 4>& density_matrix()
     {
         return density_matrix_;
     }
 
     /// Return density matrix in auxiliary form.
-    mdarray<double, 3> density_matrix_aux(int iat__);
+    sddk::mdarray<double, 3> density_matrix_aux(int iat__);
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
-    mdarray<double, 2>
+    sddk::mdarray<double, 2>
     compute_atomic_mag_mom() const;
 
     /// Get total magnetization and also contributions from interstitial and muffin-tin parts.
@@ -727,6 +735,11 @@ class Density : public Field4D
         }
 
         return std::make_pair<double, double>(0.5 * (rho__ + mag), 0.5 * (rho__ - mag));
+    }
+
+    Simulation_context const& ctx() const
+    {
+        return ctx_;
     }
 };
 

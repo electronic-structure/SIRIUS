@@ -204,10 +204,14 @@ matrix3d<double> Stress::calc_stress_core()
 
     potential_.xc_potential().fft_transform(-1);
 
-    auto& ri_dg = ctx_.ps_core_ri_djl();
+    auto q = ctx_.gvec().shells_len();
+    auto ff = ctx_.ps_core_ri_djl().values(q);
+    auto drhoc = ctx_.make_periodic_function<index_domain_t::local>(ff);
 
-    auto drhoc = ctx_.make_periodic_function<index_domain_t::local>(
-        [&ri_dg](int iat, double g) { return ri_dg.value<int>(iat, g); });
+    //auto& ri_dg = ctx_.ps_core_ri_djl();
+
+    //auto drhoc = ctx_.make_periodic_function<index_domain_t::local>(
+    //    [&ri_dg](int iat, double g) { return ri_dg.value<int>(iat, g); });
     double sdiag{0};
     int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
 
@@ -679,14 +683,21 @@ matrix3d<double> Stress::calc_stress_vloc()
 
     stress_vloc_.zero();
 
-    auto& ri_vloc    = ctx_.vloc_ri();
-    auto& ri_vloc_dg = ctx_.vloc_ri_djl();
+    auto q = ctx_.gvec().shells_len();
+    auto ri_vloc = ctx_.vloc_ri().values(q);
+    auto ri_vloc_dg = ctx_.vloc_ri_djl().values(q);
 
-    auto v =
-        ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g) { return ri_vloc.value(iat, g); });
+    //auto& ri_vloc    = ctx_.vloc_ri();
+    //auto& ri_vloc_dg = ctx_.vloc_ri_djl();
 
-    auto dv =
-        ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g) { return ri_vloc_dg.value(iat, g); });
+    //auto v =
+    //    ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g) { return ri_vloc.value(iat, g); });
+
+    //auto dv =
+    //    ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g) { return ri_vloc_dg.value(iat, g); });
+    
+    auto v = ctx_.make_periodic_function<index_domain_t::local>(ri_vloc);
+    auto dv = ctx_.make_periodic_function<index_domain_t::local>(ri_vloc_dg);
 
     double sdiag{0};
 

@@ -1,10 +1,7 @@
-cmake_minimum_required(VERSION 3.12)
+# We could be fine with 3.12, but 3.14 has ctest --show-only=json-v1 used in CI.
+cmake_minimum_required(VERSION 3.14)
 
 project(SIRIUS VERSION 7.0.0)
-
-# set language and standard
-enable_language(CXX Fortran)
-set(CMAKE_CXX_STANDARD 14)
 
 # user variables
 set(CREATE_PYTHON_MODULE OFF CACHE BOOL "create sirius Python module")
@@ -20,7 +17,6 @@ set(USE_VDWXC OFF CACHE BOOL "use libvdwxc for van der Walls corrections")
 set(USE_MKL OFF CACHE BOOL "use Intel MKL")
 set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
 set(USE_SCALAPACK OFF CACHE BOOL "use scalapack")
-set(BUILD_TESTS OFF CACHE BOOL "build tests")
 set(CUDA_ARCH "none" CACHE STRING "The target GPU architectures; 60 (Pascal), 70 (Volta), etc. Multiple archs are supported too.")
 set(BUILD_APPS ON CACHE BOOL "build apps")
 set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
@@ -29,6 +25,17 @@ set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
 set(USE_PROFILER ON CACHE BOOL "measure execution of functions with timer")
 set(USE_MEMORY_POOL ON CACHE BOOL "use memory pool")
 set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
+set(BUILD_TESTING OFF CACHE BOOL "Build test executables") # override default setting in CTest module
+
+# set language and standard
+
+if(CREATE_FORTRAN_BINDINGS)
+  enable_language(CXX Fortran)
+else()
+  enable_language(CXX)
+endif()
+
+set(CMAKE_CXX_STANDARD 14)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
@@ -131,9 +138,14 @@ find_package(Filesystem COMPONENTS Final Experimental)
 add_library(sirius::filesystem INTERFACE IMPORTED)
 if(TARGET std::filesystem)
   target_link_libraries(sirius::filesystem INTERFACE std::filesystem)
+  target_compile_definitions(sirius::filesystem INTERFACE
+    $<$<BOOL:${Filesystem_FOUND}>:__STD_FILESYSTEM>
+    $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:__STD_FILESYSTEM_EXPERIMENTAL>
+  )
 else()
   find_package(Boost 1.65 REQUIRED COMPONENTS filesystem)
   target_link_libraries(sirius::filesystem INTERFACE Boost::filesystem)
+  target_compile_definitions(sirius::filesystem INTERFACE __BOOST_FILESYSTEM)
 endif()
 
 if (USE_OPENMP)
@@ -211,6 +223,7 @@ if(DEFINED GIT_EXE AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
                   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
                   ERROR_QUIET
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
+  message(STATUS "git hash ${SIRIUS_SHA}")
 else()
   set(SIRIUS_GIT_BRANCH "release v${SIRIUS_VERSION}")
   set(SIRIUS_SHA "https://api.github.com/repos/electronic-structure/SIRIUS/git/ref/tags/v${SIRIUS_VERSION}")

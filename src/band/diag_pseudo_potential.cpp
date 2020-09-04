@@ -522,8 +522,9 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             int expand_with = std::min(num_unconverged, block_size);
             bool should_restart = N + expand_with > num_phi;
 
-            kp.message(3, __function_name__, "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d. Num ritz = %d. Expansion size = %d\n", 
-                       should_restart ? "yes" : "no", num_locked, num_converged, num_bands, num_lockable, num_ritz, expand_with);
+            kp.message(3, __function_name__, "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d.i "
+                       "Num ritz = %d. Expansion size = %d\n", should_restart ? "yes" : "no", num_locked,
+                       num_converged, num_bands, num_lockable, num_ritz, expand_with);
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
             if (should_restart || converged || last_iteration) {
@@ -531,7 +532,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
 
-                // No need to recompute the wave functions when converged in the first iteration
+                /* No need to recompute the wave functions when converged in the first iteration */
                 if (k != 0 || num_unconverged != 0 || ctx_.settings().always_update_wf_) {
                     /* in case of non-collinear magnetism transform two components */
                     transform<T>(
@@ -551,10 +552,9 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 }
 
                 if (last_iteration && !converged) {
-                    std::stringstream s;
-                    s << "[sirius::Band::diag_pseudo_potential_davidson] maximum number of iterations reached, but " <<
-                         num_unconverged << " residual(s) did not converge for k-point " << kp.vk();
-                    WARNING(s);
+                    kp.message(2, __function_name__, "Warning: maximum number of iterations reached, but %i "
+                               "residual(s) did not converge for k-point %f %f %f, eigen-solver tolerance: %18.12f\n",
+                               num_unconverged, kp.vk()[0], kp.vk()[1], kp.vk()[2], ctx_.iterative_solver_tolerance());
                 }
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
