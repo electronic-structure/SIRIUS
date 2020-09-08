@@ -37,15 +37,19 @@ static inline void sirius_exit(int error_code__, std::string msg__ = "")
 {
     switch (error_code__) {
         case SIRIUS_ERROR_UNKNOWN: {
-            printf("Unknown error\n");
+            printf("SIRIUS: unknown error\n");
             break;
         }
         case SIRIUS_ERROR_RUNTIME: {
-            printf("Run-time error\n");
+            printf("SIRIUS: run-time error\n");
+            break;
+        }
+        case SIRIUS_ERROR_EXCEPTION: {
+            printf("SIRIUS: exception\n");
             break;
         }
         default: {
-            printf("Unknown error code: %i\n", error_code__);
+            printf("SIRIUS: unknown error code: %i\n", error_code__);
             break;
         }
     }
@@ -75,6 +79,14 @@ static void call_sirius(F&& f__, int* error_code__)
             return;
        } else {
            sirius_exit(SIRIUS_ERROR_RUNTIME, e.what());
+       }
+    }
+    catch (std::exception const&  e) {
+        if (error_code__) {
+            *error_code__ = SIRIUS_ERROR_EXCEPTION;
+            return;
+       } else {
+           sirius_exit(SIRIUS_ERROR_EXCEPTION, e.what());
        }
     }
     catch (...) {

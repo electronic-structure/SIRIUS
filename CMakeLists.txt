@@ -223,6 +223,7 @@ if(DEFINED GIT_EXE AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
                   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
                   ERROR_QUIET
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
+  message(STATUS "git hash ${SIRIUS_SHA}")
 else()
   set(SIRIUS_GIT_BRANCH "release v${SIRIUS_VERSION}")
   set(SIRIUS_SHA "https://api.github.com/repos/electronic-structure/SIRIUS/git/ref/tags/v${SIRIUS_VERSION}")

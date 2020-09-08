@@ -50,6 +50,11 @@ namespace mixer {
 template <typename... FUNCS>
 class Broyden1 : public Mixer<FUNCS...>
 {
+  private:
+    double beta_;
+    double beta0_;
+    double beta_scaling_factor_;
+    mdarray<double, 2> S_old_;
   public:
     Broyden1(std::size_t max_history, double beta, double beta0, double beta_scaling_factor)
         : Mixer<FUNCS...>(max_history)
@@ -57,6 +62,7 @@ class Broyden1 : public Mixer<FUNCS...>
         , beta0_(beta0)
         , beta_scaling_factor_(beta_scaling_factor)
     {
+        S_old_ = mdarray<double, 2>(max_history, max_history);
     }
 
     void mix_impl() override
@@ -64,7 +70,7 @@ class Broyden1 : public Mixer<FUNCS...>
         const auto idx_step      = this->idx_hist(this->step_);
         const auto idx_next_step = this->idx_hist(this->step_ + 1);
 
-        const auto history_size = std::min(this->step_, this->max_history_);
+        const int history_size = static_cast<int>(std::min(this->step_, this->max_history_ - 1));
 
         const bool normalize = false;
 
@@ -83,25 +89,39 @@ class Broyden1 : public Mixer<FUNCS...>
         if (history_size > 0) {
             sddk::mdarray<double, 2> S(history_size, history_size);
             S.zero();
-            for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
+            /* restore S from the previous step */
+            for (int j1 = 0; j1 < history_size - 1; j1++) {
+                for (int j2 = 0; j2 < history_size - 1; j2++) {
+                    S(j1 + 1, j2 + 1) = this->S_old_(j1, j2);
+                }
+            }
+
+            for (int j1 = 0; j1 < history_size; j1++) {
                 int i1 = this->idx_hist(this->step_ - j1);
                 int i2 = this->idx_hist(this->step_ - j1 - 1);
                 this->copy(this->residual_history_[i1], this->tmp1_);
                 this->axpy(-1.0, this->residual_history_[i2], this->tmp1_);
-                for (int j2 = 0; j2 <= j1; j2++) {
+                int j2 = 0;;
+                //for (int j2 = 0; j2 <= j1; j2++) {
                     int i3 = this->idx_hist(this->step_ - j2);
                     int i4 = this->idx_hist(this->step_ - j2 - 1);
                     this->copy(this->residual_history_[i3], this->tmp2_);
                     this->axpy(-1.0, this->residual_history_[i4], this->tmp2_);
 
                     S(j2, j1) = S(j1, j2) = this->template inner_product<normalize>(this->tmp1_, this->tmp2_);
+                //}
+            }
+
+            for (int j1 = 0; j1 < history_size; j1++) {
+                for (int j2 = 0; j2 < history_size; j2++) {
+                    S_old_(j1, j2) = S(j1, j2);
                 }
             }
 
             /* invert matrix */
             sddk::linalg(sddk::linalg_t::lapack).syinv(history_size, S);
             /* restore lower triangular part */
-            for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
+            for (int j1 = 0; j1 < history_size; j1++) {
                 for (int j2 = 0; j2 < j1; j2++) {
                     S(j1, j2) = S(j2, j1);
                 }
@@ -109,7 +129,7 @@ class Broyden1 : public Mixer<FUNCS...>
 
             sddk::mdarray<double, 1> c(history_size);
             c.zero();
-            for (int j = 0; j < static_cast<int>(history_size); j++) {
+            for (int j = 0; j < history_size; j++) {
                 int i1 = this->idx_hist(this->step_ - j);
                 int i2 = this->idx_hist(this->step_ - j - 1);
 
@@ -119,9 +139,9 @@ class Broyden1 : public Mixer<FUNCS...>
                 c(j) = this->template inner_product<normalize>(this->tmp1_, this->residual_history_[idx_step]);
             }
 
-            for (int j = 0; j < static_cast<int>(history_size); j++) {
+            for (int j = 0; j < history_size; j++) {
                 double gamma = 0;
-                for (int i = 0; i < static_cast<int>(history_size); i++) {
+                for (int i = 0; i < history_size; i++) {
                     gamma += c(i) * S(i, j);
                 }
 
@@ -142,11 +162,6 @@ class Broyden1 : public Mixer<FUNCS...>
         this->axpy(this->beta_, this->residual_history_[idx_step], this->output_history_[idx_next_step]);
         this->axpy(1.0, this->input_, this->output_history_[idx_next_step]);
     }
-
-  private:
-    double beta_;
-    double beta0_;
-    double beta_scaling_factor_;
 };
 } // namespace mixer
 } // namespace sirius
