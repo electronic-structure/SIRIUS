@@ -82,7 +82,7 @@ class DFT_ground_state
 
     {
         if (!ctx_.full_potential()) {
-            ewald_energy_ = sirius::ewald_energy(ctx_, ctx_.gvec(), ctx_.unit_cell());
+            ewald_energy_ = sirius::energy::ewald(ctx_, ctx_.gvec(), ctx_.unit_cell());
         }
     }
     ~DFT_ground_state()

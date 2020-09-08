@@ -2817,18 +2817,18 @@ void sirius_get_energy(void* const* handler__,
     std::string label(label__);
 
     std::map<std::string, std::function<double()>> func = {
-        {"total",   [&](){ return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
-        {"evalsum", [&](){ return sirius::eval_sum(unit_cell, kset); }},
-        {"exc",     [&](){ return sirius::energy_exc(density, potential); }},
-        {"vxc",     [&](){ return sirius::energy_vxc(density, potential); }},
-        {"bxc",     [&](){ return sirius::energy_bxc(density, potential); }},
-        {"veff",    [&](){ return sirius::energy_veff(density, potential); }},
-        {"vloc",    [&](){ return sirius::energy_vloc(density, potential); }},
-        {"vha",     [&](){ return sirius::energy_vha(potential); }},
-        {"enuc",    [&](){ return sirius::energy_enuc(ctx, potential); }},
-        {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }},
-        {"one-el",  [&](){ return sirius::one_electron_energy(density, potential); }}};
-
+        {"total",   [&](){ return sirius::energy::total(ctx, kset, density, potential, gs.ewald_energy()); }},
+        {"evalsum", [&](){ return sirius::energy::ecore_sum(unit_cell) + kset.valence_eval_sum(); }},
+        {"exc",     [&](){ return sirius::energy::exc(density, potential); }},
+        {"vxc",     [&](){ return sirius::energy::vxc(density, potential); }},
+        {"bxc",     [&](){ return sirius::energy::bxc(density, potential); }},
+        {"veff",    [&](){ return sirius::energy::veff(density, potential); }},
+        {"vloc",    [&](){ return sirius::energy::vloc(density, potential); }},
+        {"vha",     [&](){ return sirius::energy::vha(potential); }},
+        {"enuc",    [&](){ return sirius::energy::nuc(ctx, potential); }},
+        {"kin",     [&](){ return sirius::energy::kin(ctx, kset, density, potential); }},
+        {"one-el",  [&](){ return sirius::energy::one_electron(density, potential); }},
+        {"paw",     [&](){ return sirius::energy::paw(potential); }}};
     try {
         *energy__ = func.at(label)();
     } catch(...) {

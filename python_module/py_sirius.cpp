@@ -753,10 +753,10 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<Periodic_function<double>, Smooth_periodic_function<double>>(m, "RPeriodic_function");
 
-    m.def("ewald_energy", &ewald_energy);
+    m.def("ewald_energy", &sirius::energy::ewald);
     m.def("set_atom_positions", &set_atom_positions);
     m.def("atom_positions", &atom_positions);
-    m.def("energy_bxc", &energy_bxc);
+    m.def("energy_bxc", &sirius::energy::bxc);
     m.def("omp_set_num_threads", &omp_set_num_threads);
     m.def("omp_get_num_threads", &omp_get_num_threads);
     m.def("make_sirius_comm", &make_sirius_comm);
