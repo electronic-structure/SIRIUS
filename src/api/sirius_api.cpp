@@ -25,6 +25,7 @@
 #include <ctype.h>
 #include <iostream>
 #include "sirius.hpp"
+#include "dft/energy.hpp"
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
 #include "error_codes.hpp"
@@ -2817,7 +2818,7 @@ void sirius_get_energy(void* const* handler__,
     std::string label(label__);
 
     std::map<std::string, std::function<double()>> func = {
-        {"total",   [&](){ return sirius::energy::total(ctx, kset, density, potential, gs.ewald_energy()); }},
+        {"total",   [&](){ return sirius::energy::total(gs); }},
         {"evalsum", [&](){ return sirius::energy::ecore_sum(unit_cell) + kset.valence_eval_sum(); }},
         {"exc",     [&](){ return sirius::energy::exc(density, potential); }},
         {"vxc",     [&](){ return sirius::energy::vxc(density, potential); }},
@@ -2826,7 +2827,7 @@ void sirius_get_energy(void* const* handler__,
         {"vloc",    [&](){ return sirius::energy::vloc(density, potential); }},
         {"vha",     [&](){ return sirius::energy::vha(potential); }},
         {"enuc",    [&](){ return sirius::energy::nuc(ctx, potential); }},
-        {"kin",     [&](){ return sirius::energy::kin(ctx, kset, density, potential); }},
+        {"kin",     [&](){ return sirius::energy::kin(gs); }},
         {"one-el",  [&](){ return sirius::energy::one_electron(density, potential); }},
         {"paw",     [&](){ return sirius::energy::paw(potential); }}};
     try {

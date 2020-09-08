@@ -447,7 +447,7 @@ PYBIND11_MODULE(py_sirius, m)
             auto json = dft.serialize();
             return pj_convert(json);
         })
-        .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
+        .def("density", py::overload_cast<>(&DFT_ground_state::density, py::const_), py::return_value_policy::reference)
         .def(
             "find",
             [](DFT_ground_state& dft, double potential_tol, double energy_tol, double initial_tol, int num_dft_iter,
@@ -461,8 +461,8 @@ PYBIND11_MODULE(py_sirius, m)
                  json js = dft.check_scf_density();
                  return pj_convert(js);
              })
-        .def("k_point_set", &DFT_ground_state::k_point_set, py::return_value_policy::reference_internal)
-        .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference_internal)
+        .def("k_point_set", py::overload_cast<>(&DFT_ground_state::k_point_set, py::const_), py::return_value_policy::reference_internal)
+        .def("potential", py::overload_cast<>(&DFT_ground_state::potential, py::const_), py::return_value_policy::reference_internal)
         .def("forces", &DFT_ground_state::forces, py::return_value_policy::reference_internal)
         .def("stress", &DFT_ground_state::stress, py::return_value_policy::reference_internal)
         .def("update", &DFT_ground_state::update)

@@ -7,6 +7,9 @@
 
 namespace sirius {
 
+/* forward declaration */
+class DFT_ground_state;
+
 /// Compute various contributions to total energy.
 namespace energy {
 
@@ -89,7 +92,7 @@ namespace energy {
  *      \frac{N_{el}^2}{4 \lambda}
  *  \f]
  */
-double ewald(const Simulation_context& ctx, const Gvec& gvec, const Unit_cell& unit_cell);
+double ewald(const Simulation_context& ctx);
 
 /// Returns integral of exchange-correlation potential with density.
 /** The following quantity is computed
@@ -157,8 +160,7 @@ double ecore_sum(Unit_cell const& unit_cell);
 double veff(Density const& density, Potential const& potential);
 
 /// Return kinetic energy.
-double kin(Simulation_context const& ctx, K_point_set const& kset, Density const& density,
-           Potential const& potential);
+double kin(DFT_ground_state const &dft);
 
 /// Total energy of the electronic subsystem.
 /** <b> Full potential total energy </b>
@@ -259,8 +261,7 @@ double kin(Simulation_context const& ctx, K_point_set const& kset, Density const
  *     E^{XC}[\rho + \rho_{core}, |{\bf m}|]
  *  \f]
  */
-double total(Simulation_context const& ctx, K_point_set const& kset, Density const& density,
-             Potential const& potential, double ewald_energy);
+double total(DFT_ground_state const& dft);
 
 double one_electron(Density const& density, Potential const& potential);
 

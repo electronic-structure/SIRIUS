@@ -1,12 +1,16 @@
 #include "energy.hpp"
+#include "DFT_ground_state.hpp"
 
 namespace sirius {
 namespace energy {
 
-double ewald(const Simulation_context& ctx, const Gvec& gvec, const Unit_cell& unit_cell)
+double ewald(const Simulation_context& ctx)
 {
     double alpha{ctx.ewald_lambda()};
     double ewald_g{0};
+
+    auto const& gvec = ctx.gvec();
+    auto const& unit_cell = ctx.unit_cell();
 
     #pragma omp parallel for reduction(+ : ewald_g)
     for (int igloc = 0; igloc < gvec.count(); igloc++) {
@@ -110,10 +114,10 @@ double veff(Density const& density, Potential const& potential)
     return sirius::inner(density.rho(), potential.effective_potential());
 }
 
-double kin(Simulation_context const& ctx, K_point_set const& kset, Density const& density,
-           Potential const& potential)
+double kin(DFT_ground_state const& dft)
 {
-    return ecore_sum(ctx.unit_cell()) + kset.valence_eval_sum() - veff(density, potential) - bxc(density, potential);
+    return ecore_sum(dft.ctx().unit_cell()) + dft.k_point_set().valence_eval_sum() -
+        veff(dft.density(), dft.potential()) - bxc(dft.density(), dft.potential());
 }
 
 double one_electron(Density const& density, Potential const& potential)
@@ -127,29 +131,28 @@ double paw(Potential const& potential__)
     return potential__.PAW_total_energy();
 }
 
-double total(Simulation_context const& ctx, K_point_set const& kset, Density const& density,
-             Potential const& potential, double ewald_energy)
+double total(DFT_ground_state const &dft)
 {
     double tot_en{0};
 
-    switch (ctx.electronic_structure_method()) {
+    switch (dft.ctx().electronic_structure_method()) {
         case electronic_structure_method_t::full_potential_lapwlo: {
-            tot_en = (kin(ctx, kset, density, potential) + exc(density, potential) +
-                      0.5 * vha(potential) + nuc(ctx, potential));
+            tot_en = (kin(dft) + exc(dft.density(), dft.potential()) +
+                      0.5 * vha(dft.potential()) + nuc(dft.ctx(), dft.potential()));
             break;
         }
 
         case electronic_structure_method_t::pseudopotential: {
-            tot_en = (kset.valence_eval_sum() - vxc(density, potential) -
-                      bxc(density, potential) - potential.PAW_one_elec_energy()) -
-                      0.5 * vha(potential) + exc(density, potential) + potential.PAW_total_energy() +
-                      ewald_energy;
+            tot_en = (dft.k_point_set().valence_eval_sum() - vxc(dft.density(), dft.potential()) -
+                      bxc(dft.density(), dft.potential()) - dft.potential().PAW_one_elec_energy()) -
+                      0.5 * vha(dft.potential()) + exc(dft.density(), dft.potential()) +
+                      dft.potential().PAW_total_energy() + dft.ewald_energy();
             break;
         }
     }
 
-    if (ctx.hubbard_correction()) {
-        tot_en += potential.U().hubbard_energy();
+    if (dft.ctx().hubbard_correction()) {
+        tot_en += dft.potential().U().hubbard_energy();
     }
 
     return tot_en;

@@ -31,7 +31,6 @@
 #include "geometry/stress.hpp"
 #include "geometry/force.hpp"
 #include "band/band.hpp"
-#include "energy.hpp"
 
 using json = nlohmann::json;
 
@@ -71,20 +70,8 @@ class DFT_ground_state
 
   public:
     /// Constructor.
-    DFT_ground_state(K_point_set& kset__)
-        : ctx_(kset__.ctx())
-        , kset_(kset__)
-        , unit_cell_(ctx_.unit_cell())
-        , potential_(ctx_)
-        , density_(ctx_)
-        , stress_(ctx_, density_, potential_, kset__)
-        , forces_(ctx_, density_, potential_, kset__)
+    DFT_ground_state(K_point_set& kset__);
 
-    {
-        if (!ctx_.full_potential()) {
-            ewald_energy_ = sirius::energy::ewald(ctx_, ctx_.gvec(), ctx_.unit_cell());
-        }
-    }
     ~DFT_ground_state()
     {
         ctx_.message(2, __function_name__, "local op. applied: %i\n", ctx_.num_loc_op_applied());
@@ -103,12 +90,27 @@ class DFT_ground_state
         return density_;
     }
 
+    inline Density const& density() const
+    {
+        return density_;
+    }
+
     inline Potential& potential()
     {
         return potential_;
     }
 
+    inline Potential const& potential() const
+    {
+        return potential_;
+    }
+
     inline K_point_set& k_point_set()
+    {
+        return kset_;
+    }
+
+    inline K_point_set const& k_point_set() const
     {
         return kset_;
     }

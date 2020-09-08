@@ -23,9 +23,25 @@
  */
 
 #include "dft_ground_state.hpp"
+#include "energy.hpp"
 #include "utils/profiler.hpp"
 
 namespace sirius {
+
+DFT_ground_state::DFT_ground_state(K_point_set& kset__)
+    : ctx_(kset__.ctx())
+    , kset_(kset__)
+    , unit_cell_(ctx_.unit_cell())
+    , potential_(ctx_)
+    , density_(ctx_)
+    , stress_(ctx_, density_, potential_, kset__)
+    , forces_(ctx_, density_, potential_, kset__)
+
+{
+    if (!ctx_.full_potential()) {
+        ewald_energy_ = sirius::energy::ewald(ctx_);
+    }
+}
 
 void DFT_ground_state::initial_state()
 {
@@ -47,7 +63,7 @@ void DFT_ground_state::update()
     density_.update();
 
     if (!ctx_.full_potential()) {
-        ewald_energy_ = sirius::energy::ewald(ctx_, ctx_.gvec(), ctx_.unit_cell());
+        ewald_energy_ = sirius::energy::ewald(ctx_);
     }
 }
 
@@ -83,7 +99,7 @@ double DFT_ground_state::energy_kin_sum_pw() const
 
 double DFT_ground_state::total_energy() const
 {
-    return sirius::energy::total(ctx_, kset_, density_, potential_, ewald_energy_);
+    return sirius::energy::total(*this);
 }
 
 json DFT_ground_state::serialize()
@@ -113,7 +129,7 @@ json DFT_ground_state::serialize()
     dict["energy"]["bxc"]           = sirius::energy::bxc(density_, potential_);
     dict["energy"]["veff"]          = sirius::energy::veff(density_, potential_);
     dict["energy"]["eval_sum"]      = sirius::energy::ecore_sum(ctx_.unit_cell()) + kset_.valence_eval_sum();
-    dict["energy"]["kin"]           = sirius::energy::kin(ctx_, kset_, density_, potential_);
+    dict["energy"]["kin"]           = sirius::energy::kin(*this);
     dict["energy"]["ewald"]         = ewald_energy_;
     if (!ctx_.full_potential()) {
         dict["energy"]["vloc"]      = sirius::energy::vloc(density_, potential_);
@@ -334,12 +350,12 @@ void DFT_ground_state::print_info()
 {
     double evalsum1 = kset_.valence_eval_sum();
     double evalsum2 = sirius::energy::ecore_sum(ctx_.unit_cell());
-    double ekin     = sirius::energy::kin(ctx_, kset_, density_, potential_);
+    double ekin     = sirius::energy::kin(*this);
     double evxc     = sirius::energy::vxc(density_, potential_);
     double eexc     = sirius::energy::exc(density_, potential_);
     double ebxc     = sirius::energy::bxc(density_, potential_);
     double evha     = sirius::energy::vha(potential_);
-    double etot     = sirius::energy::total(ctx_, kset_, density_, potential_, ewald_energy_);
+    double etot     = sirius::energy::total(*this);
     double gap      = kset_.band_gap() * ha2ev;
     double ef       = kset_.energy_fermi();
     double enuc     = sirius::energy::nuc(ctx_, potential_);
