@@ -1,5 +1,5 @@
 #include "energy.hpp"
-#include "DFT_ground_state.hpp"
+#include "dft_ground_state.hpp"
 
 namespace sirius {
 namespace energy {
