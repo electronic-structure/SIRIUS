@@ -21,7 +21,7 @@ stages:
 cuda_10.1:
   extends: .build_common
   variables:
-    SPEC: 'sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda +tests +apps ^cuda@10.1.243 ^openblas ^mpich'
+    SPEC: 'sirius@develop+nlcglib %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda +tests +apps ^cuda@10.1.243 ^openblas ^mpich ^kokkos+wrapper cuda_arch=60'
     ENVIRONMENT: ci/spack/cuda-10.yaml
     DEPLOY_BASE: ubuntu:18.04
     BUILD_BASE: stabbles/sirius-cuda-10
