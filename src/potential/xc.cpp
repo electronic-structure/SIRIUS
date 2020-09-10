@@ -28,11 +28,12 @@
 #include "typedefs.hpp"
 #include "utils/profiler.hpp"
 #include "SDDK/omp.hpp"
+#include "xc_functional.hpp"
 
 namespace sirius {
 
 void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
-                                  std::vector<XC_functional>& xc_func,
+                                  std::vector<XC_functional*>& xc_func,
                                   Spheric_function<function_domain_t::spectral, double> const& rho_lm,
                                   Spheric_function<function_domain_t::spatial, double>& rho_tp,
                                   Spheric_function<function_domain_t::spatial, double>& vxc_tp,
@@ -81,11 +82,11 @@ void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
     /* loop over XC functionals */
     for (auto& ixc: xc_func) {
         /* if this is an LDA functional */
-        if (ixc.is_lda()) {
+        if (ixc->is_lda()) {
             std::vector<double> exc_t(sht_->num_points());
             std::vector<double> vxc_t(sht_->num_points());
             for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                ixc.get_lda(sht_->num_points(), &rho_tp(0, ir), &vxc_t[0], &exc_t[0]);
+                ixc->get_lda(sht_->num_points(), &rho_tp(0, ir), &vxc_t[0], &exc_t[0]);
                 for (int itp = 0; itp < sht_->num_points(); itp++) {
                     /* add Exc contribution */
                     exc_tp(itp, ir) += exc_t[itp];
@@ -95,12 +96,12 @@ void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
                 }
             }
         }
-        if (ixc.is_gga()) {
+        if (ixc->is_gga()) {
             std::vector<double> exc_t(sht_->num_points());
             std::vector<double> vrho_t(sht_->num_points());
             std::vector<double> vsigma_t(sht_->num_points());
             for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                ixc.get_gga(sht_->num_points(), &rho_tp(0, ir), &grad_rho_grad_rho_tp(0, ir), &vrho_t[0], &vsigma_t[0], &exc_t[0]);
+                ixc->get_gga(sht_->num_points(), &rho_tp(0, ir), &grad_rho_grad_rho_tp(0, ir), &vrho_t[0], &vsigma_t[0], &exc_t[0]);
                 for (int itp = 0; itp < sht_->num_points(); itp++) {
                     /* add Exc contribution */
                     exc_tp(itp, ir) += exc_t[itp];
@@ -162,7 +163,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
 }
 
 void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
-                               std::vector<XC_functional>& xc_func,
+                               std::vector<XC_functional*>& xc_func,
                                Spheric_function<function_domain_t::spectral, double>& rho_up_lm,
                                Spheric_function<function_domain_t::spatial, double>& rho_up_tp,
                                Spheric_function<function_domain_t::spectral, double>& rho_dn_lm,
@@ -231,12 +232,12 @@ void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
     /* loop over XC functionals */
     for (auto& ixc: xc_func) {
         /* if this is an LDA functional */
-        if (ixc.is_lda()) {
+        if (ixc->is_lda()) {
             std::vector<double> exc_t(sht_->num_points());
             std::vector<double> vxc_up_t(sht_->num_points());
             std::vector<double> vxc_dn_t(sht_->num_points());
             for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                ixc.get_lda(sht_->num_points(), &rho_up_tp(0, ir), &rho_dn_tp(0, ir), &vxc_up_t[0], &vxc_dn_t[0], &exc_t[0]);
+                ixc->get_lda(sht_->num_points(), &rho_up_tp(0, ir), &rho_dn_tp(0, ir), &vxc_up_t[0], &vxc_dn_t[0], &exc_t[0]);
                 for (int itp = 0; itp < sht_->num_points(); itp++) {
                     /* add Exc contribution */
                     exc_tp(itp, ir) += exc_t[itp];
@@ -247,7 +248,7 @@ void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
                 }
             }
         }
-        if (ixc.is_gga()) {
+        if (ixc->is_gga()) {
             std::vector<double> exc_t(sht_->num_points());
             std::vector<double> vrho_up_t(sht_->num_points());
             std::vector<double> vrho_dn_t(sht_->num_points());
@@ -255,7 +256,7 @@ void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
             std::vector<double> vsigma_ud_t(sht_->num_points());
             std::vector<double> vsigma_dd_t(sht_->num_points());
             for (int ir = 0; ir < rgrid.num_points(); ir++) {
-                ixc.get_gga(sht_->num_points(),
+                ixc->get_gga(sht_->num_points(),
                             &rho_up_tp(0, ir),
                             &rho_dn_tp(0, ir),
                             &grad_rho_up_grad_rho_up_tp(0, ir),
@@ -580,14 +581,14 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
               I need to split vdw from the parallel section since it involves a fft
               for each grid point
             */
-            if (ixc.is_vdw()) {
+            if (ixc->is_vdw()) {
 #if defined(__USE_VDWXC)
                 /* Van der Walls correction */
                 std::vector<double> exc_t(num_points, 0.0);
                 std::vector<double> vrho_t(num_points, 0.0);
                 std::vector<double> vsigma_t(num_points, 0.0);
 
-                ixc.get_vdw(&rho.f_rg(0),
+                ixc->get_vdw(&rho.f_rg(0),
                             &grad_rho_grad_rho.f_rg(0),
                             &vrho_t[0],
                             &vsigma_t[0],
@@ -620,10 +621,10 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
                     std::vector<double> exc_t(spl_np_t.local_size());
 
                     /* if this is an LDA functional */
-                    if (ixc.is_lda()) {
+                    if (ixc->is_lda()) {
                         std::vector<double> vxc_t(spl_np_t.local_size());
 
-                        ixc.get_lda(spl_np_t.local_size(),
+                        ixc->get_lda(spl_np_t.local_size(),
                                     &rho.f_rg(spl_np_t.global_offset()),
                                     &vxc_t[0],
                                     &exc_t[0]);
@@ -637,11 +638,11 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
                         }
                     }
 
-                    if (ixc.is_gga()) {
+                    if (ixc->is_gga()) {
                         std::vector<double> vrho_t(spl_np_t.local_size());
                         std::vector<double> vsigma_t(spl_np_t.local_size());
 
-                        ixc.get_gga(spl_np_t.local_size(),
+                        ixc->get_gga(spl_np_t.local_size(),
                                     &rho.f_rg(spl_np_t.global_offset()),
                                     &grad_rho_grad_rho.f_rg(spl_np_t.global_offset()),
                                     &vrho_t[0],
@@ -860,7 +861,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
             /* treat vdw correction outside the parallel region because it uses fft
              * internaly */
 
-            if (ixc.is_vdw()) {
+            if (ixc->is_vdw()) {
 #if defined(__USE_VDWXC)
                 std::vector<double> vrho_up_t(num_points, 0.0);
                 std::vector<double> vrho_dn_t(num_points, 0.0);
@@ -869,7 +870,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
                 std::vector<double> vsigma_dd_t(num_points, 0.0);
                 std::vector<double> exc_t(num_points, 0.0);
 
-                ixc.get_vdw(&rho_up.f_rg(0),
+                ixc->get_vdw(&rho_up.f_rg(0),
                             &rho_dn.f_rg(0),
                             &grad_rho_up_grad_rho_up.f_rg(0),
                             &grad_rho_dn_grad_rho_dn.f_rg(0),
@@ -905,12 +906,12 @@ void Potential::xc_rg_magnetic(Density const& density__)
                     std::vector<double> exc_t(spl_t.local_size());
 
                     /* if this is an LDA functional */
-                    if (ixc.is_lda()) {
+                    if (ixc->is_lda()) {
                         std::vector<double> vxc_up_t(spl_t.local_size());
                         std::vector<double> vxc_dn_t(spl_t.local_size());
 
 
-                        ixc.get_lda(spl_t.local_size(),
+                        ixc->get_lda(spl_t.local_size(),
                                     &rho_up.f_rg(spl_t.global_offset()),
                                     &rho_dn.f_rg(spl_t.global_offset()),
                                     &vxc_up_t[0],
@@ -927,14 +928,14 @@ void Potential::xc_rg_magnetic(Density const& density__)
                         }
                     }
 
-                    if (ixc.is_gga()) {
+                    if (ixc->is_gga()) {
                         std::vector<double> vrho_up_t(spl_t.local_size());
                         std::vector<double> vrho_dn_t(spl_t.local_size());
                         std::vector<double> vsigma_uu_t(spl_t.local_size());
                         std::vector<double> vsigma_ud_t(spl_t.local_size());
                         std::vector<double> vsigma_dd_t(spl_t.local_size());
 
-                        ixc.get_gga(spl_t.local_size(),
+                        ixc->get_gga(spl_t.local_size(),
                                     &rho_up.f_rg(spl_t.global_offset()),
                                     &rho_dn.f_rg(spl_t.global_offset()),
                                     &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()),

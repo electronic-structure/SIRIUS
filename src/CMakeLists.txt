@@ -36,6 +36,7 @@ set(_SOURSES
   "potential/paw_potential.cpp"
   "potential/poisson.cpp"
   "potential/xc.cpp"
+  "potential/potential.cpp"
   "unit_cell/unit_cell.cpp"
   "unit_cell/unit_cell_symmetry.cpp"
   "simulation_context.cpp"

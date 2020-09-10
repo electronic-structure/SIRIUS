@@ -29,6 +29,7 @@
 #include "utils/profiler.hpp"
 #include "utils/env.hpp"
 #include "SDDK/omp.hpp"
+#include "potential/xc_functional.hpp"
 
 namespace sirius {
 
