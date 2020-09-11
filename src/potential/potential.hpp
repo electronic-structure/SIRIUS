@@ -30,6 +30,8 @@
 
 namespace sirius {
 
+void check_xc_potential(Density const& rho__);
+
 /* forward declaration */
 class XC_functional;
 

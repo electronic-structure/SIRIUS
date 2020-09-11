@@ -242,7 +242,7 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
                 p1.scale_rho_xc(1 + eps);
                 p1.generate(density_);
 
-                double evxc = potential_.energy_vxc(density_) + potential_.energy_vxc_core(density_) + energy_bxc(density_, potential_);
+                double evxc = potential_.energy_vxc(density_) + potential_.energy_vxc_core(density_) - energy_bxc(density_, potential_);
                 double deriv = (p1.energy_exc(density_) - potential_.energy_exc(density_)) / eps;
 
                 std::printf("eps              : %18.12f\n", eps);

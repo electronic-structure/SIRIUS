@@ -741,6 +741,84 @@ class Density : public Field4D
     {
         return ctx_;
     }
+
+    void print_info() const
+    {
+        auto result = this->rho().integrate();
+
+        auto total_charge = std::get<0>(result);
+        auto it_charge    = std::get<1>(result);
+        auto mt_charge    = std::get<2>(result);
+
+        auto result_mag = this->get_magnetisation();
+        auto total_mag  = std::get<0>(result_mag);
+        auto it_mag     = std::get<1>(result_mag);
+        auto mt_mag     = std::get<2>(result_mag);
+
+        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+            std::printf("\n");
+            std::printf("Charges and magnetic moments\n");
+            for (int i = 0; i < 80; i++) {
+                std::printf("-");
+            }
+            std::printf("\n");
+            if (ctx_.full_potential()) {
+                double total_core_leakage{0.0};
+                std::printf("atom      charge    core leakage");
+                if (ctx_.num_mag_dims()) {
+                    std::printf("              moment                |moment|");
+                }
+                std::printf("\n");
+                for (int i = 0; i < 80; i++) {
+                    std::printf("-");
+                }
+                std::printf("\n");
+
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                    double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
+                    total_core_leakage += core_leakage;
+                    std::printf("%4i  %10.6f  %10.8e", ia, mt_charge[ia], core_leakage);
+                    if (ctx_.num_mag_dims()) {
+                        vector3d<double> v(mt_mag[ia]);
+                        std::printf("  [%8.4f, %8.4f, %8.4f]  %10.6f", v[0], v[1], v[2], v.length());
+                    }
+                    std::printf("\n");
+                }
+
+                std::printf("\n");
+                std::printf("total core leakage    : %10.8e\n", total_core_leakage);
+                std::printf("interstitial charge   : %10.6f\n", it_charge);
+                if (ctx_.num_mag_dims()) {
+                    vector3d<double> v(it_mag);
+                    std::printf("interstitial moment   : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", v[0], v[1], v[2],
+                           v.length());
+                }
+            } else {
+                if (ctx_.num_mag_dims()) {
+                    std::printf("atom              moment                |moment|");
+                    std::printf("\n");
+                    for (int i = 0; i < 80; i++) {
+                        std::printf("-");
+                    }
+                    std::printf("\n");
+
+                    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                        vector3d<double> v(mt_mag[ia]);
+                        std::printf("%4i  [%8.4f, %8.4f, %8.4f]  %10.6f", ia, v[0], v[1], v[2], v.length());
+                        std::printf("\n");
+                    }
+
+                    std::printf("\n");
+                }
+            }
+            std::printf("total charge          : %10.6f\n", total_charge);
+
+            if (ctx_.num_mag_dims()) {
+                vector3d<double> v(total_mag);
+                std::printf("total moment          : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", v[0], v[1], v[2], v.length());
+            }
+        }
+    }
 };
 
 } // namespace sirius

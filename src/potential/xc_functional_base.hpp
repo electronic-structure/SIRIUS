@@ -1686,9 +1686,9 @@ class XC_functional_base
 
             for (int i = 0; i < size; i++) {
                 e[i]         += 0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
-                vsigma_uu[i] = 0.001;
-                vsigma_ud[i] = 0.001;
-                vsigma_dd[i] = 0.001;
+                vsigma_uu[i] = -0.001;
+                vsigma_ud[i] = -0.001;
+                vsigma_dd[i] = -0.001;
             }
         }
     }
