@@ -1264,9 +1264,14 @@ class Eigensolver_magma: public Eigensolver
     {
         PROFILE("Eigensolver_magma|dsygvdx");
 
-        int nt = omp_get_max_threads();
+        // Bug in magma for small matrix sizes -> call lapack instead as workaround
+        if (matrix_size__ <= 128) {
+            return Eigensolver_lapack().solve(matrix_size__, nev__, A__, eval__, Z__);
+        }
+
+        int nt  = omp_get_max_threads();
         int lda = A__.ld();
-        auto w = mp_h_.get_unique_ptr<double>(matrix_size__);
+        auto w  = mp_h_.get_unique_ptr<double>(matrix_size__);
 
         int lwork;
         int liwork;
