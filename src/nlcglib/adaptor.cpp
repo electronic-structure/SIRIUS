@@ -242,7 +242,7 @@ std::shared_ptr<nlcglib::VectorBaseZ> Energy::get_fn()
 void Energy::set_fn(const std::vector<std::pair<int, int>>& keys, const std::vector<std::vector<double>>& fn)
 {
     const int nbands   = kset.ctx().num_bands();
-    #ifdef DEBUG
+    #ifndef NDEBUG
     const int ns        = kset.ctx().num_spins();
     auto nk             = kset.spl_num_kpoints().local_size();
     const double max_occ = ns == 1 ? 2.0 : 1.0;
