@@ -27,7 +27,7 @@
 
 #include <xc.h>
 #include <string.h>
-#include "sddk/geometry3d.hpp"
+#include "SDDK/geometry3d.hpp"
 #include "xc_functional_base.hpp"
 #include "SDDK/fft.hpp"
 #if defined(__USE_VDWXC)
