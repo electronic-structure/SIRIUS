@@ -63,17 +63,17 @@ void check_xc_potential(Density const& rho__)
 
         double deriv_rho = (p1.energy_exc(rho__) - p0.energy_exc(rho__)) / eps;
 
-        std::printf("eps: %18.12f, drho: %18.12f, dmag: %18.12f, dE/dmag: %18.12f\n", eps, std::abs(evxc - deriv_rho),
-                    std::abs(ebxc - deriv_mag), deriv_mag);
+        std::printf("eps: %18.12f, drho: %18.12f, dmag: %18.12f\n", eps, std::abs(evxc - deriv_rho),
+                    std::abs(ebxc - deriv_mag));
 
-        if (std::abs(evxc - deriv_rho) < best_result) {
-            best_result = std::abs(evxc - deriv_rho);
+        if (std::abs(evxc - deriv_rho) + std::abs(ebxc - deriv_mag) < best_result) {
+            best_result = std::abs(evxc - deriv_rho) + std::abs(ebxc - deriv_mag);
             best_eps = eps;
         }
 
         eps /= 10;
     }
-    std::printf("best result : %18.12f for epsilon %18.12f\n", best_result, best_eps);
+    std::printf("best total result : %18.12f for epsilon %18.12f\n", best_result, best_eps);
 }
 
 }
