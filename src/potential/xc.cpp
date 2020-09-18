@@ -831,201 +831,121 @@ void Potential::xc_rg_magnetic(Density const& density__)
         }
     }
 
-    mdarray<double, 1> exc_tmp(num_points, memory_t::host, "exc_tmp");
-    exc_tmp.zero();
-
-    mdarray<double, 1> vxc_up_tmp(num_points, memory_t::host, "vxc_up_tmp");
-    vxc_up_tmp.zero();
-
-    mdarray<double, 1> vxc_dn_tmp(num_points, memory_t::host, "vxc_dn_dmp");
-    vxc_dn_tmp.zero();
-
-    mdarray<double, 1> vsigma_uu_tmp;
-    mdarray<double, 1> vsigma_ud_tmp;
-    mdarray<double, 1> vsigma_dd_tmp;
+    /* vsigma_uu: dϵ/dσ↑↑ */
+    Smooth_periodic_function<double> vsigma_uu;
+    /* vsigma_ud: dϵ/dσ↑↓ */
+    Smooth_periodic_function<double> vsigma_ud;
+    /* vsigma_dd: dϵ/dσ↓↓ */
+    Smooth_periodic_function<double> vsigma_dd;
 
     if (is_gga) {
-        vsigma_uu_tmp = mdarray<double, 1>(num_points, memory_t::host, "vsigma_uu_tmp");
-        vsigma_uu_tmp.zero();
-
-        vsigma_ud_tmp = mdarray<double, 1>(num_points, memory_t::host, "vsigma_ud_tmp");
-        vsigma_ud_tmp.zero();
-
-        vsigma_dd_tmp = mdarray<double, 1>(num_points, memory_t::host, "vsigma_dd_tmp");
-        vsigma_dd_tmp.zero();
+        vsigma_uu = Smooth_periodic_function<double>(ctx_.spfft(), ctx_.gvec_partition());
+        vsigma_ud = Smooth_periodic_function<double>(ctx_.spfft(), ctx_.gvec_partition());
+        vsigma_dd = Smooth_periodic_function<double>(ctx_.spfft(), ctx_.gvec_partition());
     }
 
-    PROFILE_START("sirius::Potential::xc_rg_magnetic|libxc");
-    if (num_points) {
-        /* loop over XC functionals */
-        for (auto& ixc: xc_func_) {
-            /* treat vdw correction outside the parallel region because it uses fft
-             * internaly */
+    sddk::mdarray<double, 1> exc(num_points, memory_t::host, "exc_tmp");
+    sddk::mdarray<double, 1> vxc_up(num_points, memory_t::host, "vxc_up_tmp");
+    sddk::mdarray<double, 1> vxc_dn(num_points, memory_t::host, "vxc_dn_dmp");
 
-            if (ixc->is_vdw()) {
+    /* loop over XC functionals */
+    for (auto& ixc: xc_func_) {
+        PROFILE_START("sirius::Potential::xc_rg_magnetic|libxc");
+        if (ixc->is_vdw()) {
 #if defined(__USE_VDWXC)
-                std::vector<double> vrho_up_t(num_points, 0.0);
-                std::vector<double> vrho_dn_t(num_points, 0.0);
-                std::vector<double> vsigma_uu_t(num_points, 0.0);
-    //            std::vector<double> vsigma_ud_t(num_points, 0.0);
-                std::vector<double> vsigma_dd_t(num_points, 0.0);
-                std::vector<double> exc_t(num_points, 0.0);
-
-                ixc->get_vdw(&rho_up.f_rg(0),
-                            &rho_dn.f_rg(0),
-                            &grad_rho_up_grad_rho_up.f_rg(0),
-                            &grad_rho_dn_grad_rho_dn.f_rg(0),
-                            &vrho_up_t[0],
-                            &vrho_dn_t[0],
-                            &vsigma_uu_t[0],
-                            &vsigma_dd_t[0],
-                            &exc_t[0]);
-
-                #pragma omp parallel for
-                for (int i = 0; i < num_points; i++) {
-                    /* add Exc contribution */
-                    exc_tmp(i) += exc_t[i];
-
-                    /* directly add to Vxc available contributions */
-                    vxc_up_tmp(i) += vrho_up_t[i];
-                    vxc_dn_tmp(i) += vrho_dn_t[i];
-
-                    /* save the sigma derivative */
-                    vsigma_uu_tmp(i) += vsigma_uu_t[i];
-                    //              vsigma_ud_tmp(i) += vsigma_ud_t[i];
-                    vsigma_dd_tmp(i) += vsigma_dd_t[i];
-                }
-#else
-                TERMINATE("You should not be there since sirius is not compiled with libVDWXC\n");
-#endif
+            /* all ranks should make a call because VdW uses FFT internaly */
+            if (num_points) {
+                ixc->get_vdw(&rho_up.f_rg(0), &rho_dn.f_rg(0), &grad_rho_up_grad_rho_up.f_rg(0),
+                             &grad_rho_dn_grad_rho_dn.f_rg(0), vxc_up.at(memory_t::host), vxc_dn.at(memory_t::host),
+                             &vsigma_uu.f_rg(0), &vsigma_dd.f_rg(0), exc.at(memory_t::host));
             } else {
-                #pragma omp parallel
-                {
-                    /* split local size between threads */
-                    splindex<splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
-
-                    std::vector<double> exc_t(spl_t.local_size());
-
-                    /* if this is an LDA functional */
-                    if (ixc->is_lda()) {
-                        std::vector<double> vxc_up_t(spl_t.local_size());
-                        std::vector<double> vxc_dn_t(spl_t.local_size());
-
-
-                        ixc->get_lda(spl_t.local_size(),
-                                    &rho_up.f_rg(spl_t.global_offset()),
-                                    &rho_dn.f_rg(spl_t.global_offset()),
-                                    &vxc_up_t[0],
-                                    &vxc_dn_t[0],
-                                    &exc_t[0]);
-
-                        for (int i = 0; i < spl_t.local_size(); i++) {
-                            /* add Exc contribution */
-                            exc_tmp(spl_t[i]) += exc_t[i];
-
-                            /* directly add to Vxc */
-                            vxc_up_tmp(spl_t[i]) += vxc_up_t[i];
-                            vxc_dn_tmp(spl_t[i]) += vxc_dn_t[i];
-                        }
-                    }
-
-                    if (ixc->is_gga()) {
-                        std::vector<double> vrho_up_t(spl_t.local_size());
-                        std::vector<double> vrho_dn_t(spl_t.local_size());
-                        std::vector<double> vsigma_uu_t(spl_t.local_size());
-                        std::vector<double> vsigma_ud_t(spl_t.local_size());
-                        std::vector<double> vsigma_dd_t(spl_t.local_size());
-
-                        ixc->get_gga(spl_t.local_size(),
-                                    &rho_up.f_rg(spl_t.global_offset()),
-                                    &rho_dn.f_rg(spl_t.global_offset()),
-                                    &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()),
-                                    &grad_rho_up_grad_rho_dn.f_rg(spl_t.global_offset()),
-                                    &grad_rho_dn_grad_rho_dn.f_rg(spl_t.global_offset()),
-                                    &vrho_up_t[0],
-                                    &vrho_dn_t[0],
-                                    &vsigma_uu_t[0],
-                                    &vsigma_ud_t[0],
-                                    &vsigma_dd_t[0],
-                                    &exc_t[0]);
-
-                        #pragma omp parallel for
-                        for (int i = 0; i < spl_t.local_size(); i++) {
-                            /* add Exc contribution */
-                            exc_tmp(spl_t[i]) += exc_t[i];
-                            /* directly add to Vxc available contributions */
-                            vxc_up_tmp(spl_t[i]) += vrho_up_t[i];
-                            vxc_dn_tmp(spl_t[i]) += vrho_dn_t[i];
-
-                            /* save the sigma derivative */
-                            vsigma_uu_tmp(spl_t[i]) += vsigma_uu_t[i];
-                            vsigma_ud_tmp(spl_t[i]) += vsigma_ud_t[i];
-                            vsigma_dd_tmp(spl_t[i]) += vsigma_dd_t[i];
-                        }
-                    }
-                }
+                ixc->get_vdw(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
             }
-        }
-    }
-    PROFILE_STOP("sirius::Potential::xc_rg_magnetic|libxc");
-
-    if (is_gga) {
-        PROFILE("sirius::Potential::xc_rg_magnetic|grad2");
-        /* gather vsigma */
-        // vsigma_uu: dϵ/dσ↑↑
-        Smooth_periodic_function<double> vsigma_uu(ctx_.spfft(), ctx_.gvec_partition());
-        // vsigma_ud: dϵ/dσ↑↓
-        Smooth_periodic_function<double> vsigma_ud(ctx_.spfft(), ctx_.gvec_partition());
-        // vsigma_dd: dϵ/dσ↓↓
-        Smooth_periodic_function<double> vsigma_dd(ctx_.spfft(), ctx_.gvec_partition());
-        for (int ir = 0; ir < num_points; ir++) {
-            vsigma_uu.f_rg(ir) = vsigma_uu_tmp[ir];
-            vsigma_ud.f_rg(ir) = vsigma_ud_tmp[ir];
-            vsigma_dd.f_rg(ir) = vsigma_dd_tmp[ir];
-        }
-
-        Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.spfft(), ctx_.gvec_partition());
-        Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.spfft(), ctx_.gvec_partition());
-        for (int x: {0, 1, 2}) {
-            for(int ir = 0; ir < num_points; ++ir) {
-              up_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_up[x].f_rg(ir) * vsigma_uu.f_rg(ir) + grad_rho_dn[x].f_rg(ir) * vsigma_ud.f_rg(ir);
-              dn_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_dn[x].f_rg(ir) * vsigma_dd.f_rg(ir) + grad_rho_up[x].f_rg(ir) * vsigma_ud.f_rg(ir);
-            }
-            /* transform to plane wave domain */
-            up_gradrho_vsigma[x].fft_transform(-1);
-            dn_gradrho_vsigma[x].fft_transform(-1);
-        }
-
-        auto div_up_gradrho_vsigma = divergence(up_gradrho_vsigma);
-        div_up_gradrho_vsigma.fft_transform(1);
-        auto div_dn_gradrho_vsigma = divergence(dn_gradrho_vsigma);
-        div_dn_gradrho_vsigma.fft_transform(1);
-
-        /* add remaining term to Vxc */
-        #pragma omp parallel for
-        for (int ir = 0; ir < num_points; ir++) {
-            vxc_up_tmp(ir) -= div_up_gradrho_vsigma.f_rg(ir);
-            vxc_dn_tmp(ir) -= div_dn_gradrho_vsigma.f_rg(ir);
-        }
-    }
-
-    #pragma omp parallel for
-    for (int irloc = 0; irloc < num_points; irloc++) {
-        xc_energy_density_->f_rg(irloc) = exc_tmp(irloc);
-        xc_potential_->f_rg(irloc) = 0.5 * (vxc_up_tmp(irloc) + vxc_dn_tmp(irloc));
-        double m = std::abs(rho_up.f_rg(irloc) - rho_dn.f_rg(irloc));
-
-        if (m > 1e-8) {
-            double b = 0.5 * std::abs(vxc_up_tmp(irloc) - vxc_dn_tmp(irloc));
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-               effective_magnetic_field(j).f_rg(irloc) = -b * density__.magnetization(j).f_rg(irloc) / m;
-            }
+#else
+            TERMINATE("You should not be there since sirius is not compiled with libVDWXC\n");
+#endif
         } else {
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                effective_magnetic_field(j).f_rg(irloc) = 0.0;
+            if (num_points) {
+            #pragma omp parallel
+            {
+                /* split local size between threads */
+                splindex<splindex_t::block> spl_t(num_points, omp_get_num_threads(), omp_get_thread_num());
+                /* if this is an LDA functional */
+                if (ixc->is_lda()) {
+                    ixc->get_lda(spl_t.local_size(), &rho_up.f_rg(spl_t.global_offset()),
+                                 &rho_dn.f_rg(spl_t.global_offset()),
+                                 vxc_up.at(memory_t::host, spl_t.global_offset()),
+                                 vxc_dn.at(memory_t::host, spl_t.global_offset()),
+                                 exc.at(memory_t::host, spl_t.global_offset()));
+                }
+                /* if this is a GGA functional */
+                if (ixc->is_gga()) {
+                    ixc->get_gga(spl_t.local_size(), &rho_up.f_rg(spl_t.global_offset()),
+                                 &rho_dn.f_rg(spl_t.global_offset()),
+                                 &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()),
+                                 &grad_rho_up_grad_rho_dn.f_rg(spl_t.global_offset()),
+                                 &grad_rho_dn_grad_rho_dn.f_rg(spl_t.global_offset()),
+                                 vxc_up.at(memory_t::host, spl_t.global_offset()),
+                                 vxc_dn.at(memory_t::host, spl_t.global_offset()),
+                                 &vsigma_uu.f_rg(spl_t.global_offset()),
+                                 &vsigma_ud.f_rg(spl_t.global_offset()),
+                                 &vsigma_dd.f_rg(spl_t.global_offset()),
+                                 exc.at(memory_t::host, spl_t.global_offset()));
+                }
+            } // omp parallel region
+            } // num_points != 0
+        }
+        PROFILE_STOP("sirius::Potential::xc_rg_magnetic|libxc");
+        if (is_gga) {
+            Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.spfft(), ctx_.gvec_partition());
+            Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.spfft(), ctx_.gvec_partition());
+            for (int x: {0, 1, 2}) {
+                for(int ir = 0; ir < num_points; ++ir) {
+                  up_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_up[x].f_rg(ir) * vsigma_uu.f_rg(ir) + grad_rho_dn[x].f_rg(ir) * vsigma_ud.f_rg(ir);
+                  dn_gradrho_vsigma[x].f_rg(ir) = 2 * grad_rho_dn[x].f_rg(ir) * vsigma_dd.f_rg(ir) + grad_rho_up[x].f_rg(ir) * vsigma_ud.f_rg(ir);
+                }
+                /* transform to plane wave domain */
+                up_gradrho_vsigma[x].fft_transform(-1);
+                dn_gradrho_vsigma[x].fft_transform(-1);
+            }
+
+            auto div_up_gradrho_vsigma = divergence(up_gradrho_vsigma);
+            div_up_gradrho_vsigma.fft_transform(1);
+            auto div_dn_gradrho_vsigma = divergence(dn_gradrho_vsigma);
+            div_dn_gradrho_vsigma.fft_transform(1);
+
+            /* add remaining term to Vxc */
+            #pragma omp parallel for
+            for (int ir = 0; ir < num_points; ir++) {
+                vxc_up(ir) -= div_up_gradrho_vsigma.f_rg(ir);
+                vxc_dn(ir) -= div_dn_gradrho_vsigma.f_rg(ir);
             }
         }
-    }
+
+        #pragma omp parallel for
+        for (int irloc = 0; irloc < num_points; irloc++) {
+            /* add XC energy density */
+            xc_energy_density_->f_rg(irloc) += exc(irloc);
+            /* add XC potential */
+            xc_potential_->f_rg(irloc) += 0.5 * (vxc_up(irloc) + vxc_dn(irloc));
+
+            /* get the sign between mag and B */
+            auto s = utils::sign((rho_up.f_rg(irloc) - rho_dn.f_rg(irloc)) * (vxc_up(irloc) - vxc_dn(irloc)));
+
+            vector3d<double> m;
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                m[j] = density__.magnetization(j).f_rg(irloc);
+            }
+            auto m_len = m.length();
+
+            if (m_len > 1e-8) {
+                double b = 0.5 * std::abs(vxc_up(irloc) - vxc_dn(irloc));
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                   effective_magnetic_field(j).f_rg(irloc) += b * s * m[j] / m_len;
+                }
+            } 
+        }
+    } // for loop over XC functionals
 }
 
 template <bool add_pseudo_core__>
@@ -1033,12 +953,14 @@ void Potential::xc(Density const& density__)
 {
     PROFILE("sirius::Potential::xc");
 
+    /* zero all fields */
+    xc_potential_->zero();
+    xc_energy_density_->zero();
+    for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+        effective_magnetic_field(i).zero();
+    }
+    /* quick return */
     if (xc_func_.size() == 0) {
-        xc_potential_->zero();
-        xc_energy_density_->zero();
-        for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-            effective_magnetic_field(i).zero();
-        }
         return;
     }
 
