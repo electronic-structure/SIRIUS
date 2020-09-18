@@ -151,7 +151,15 @@ class Potential : public Field4D
 
     /// A debug variable to scale the density when computing the XC potential.
     /** This is used to verify the variational derivative of Exc */
-    double scale_rho_xc_{1};
+    //double scale_rho_xc_{1};
+
+    /// Add extra charge to the density.
+    /** This is used to verify the variational derivative of Exc w.r.t. density rho */
+    double add_delta_rho_xc_{0};
+
+    /// Add extra charge to the density.
+    /** This is used to verify the variational derivative of Exc w.r.t. magnetisation mag */
+    double add_delta_mag_xc_{0};
 
     void init_PAW();
 
@@ -1016,12 +1024,21 @@ class Potential : public Field4D
     /// Integral of \f$ \rho({\bf r}) \epsilon^{XC}({\bf r}) \f$.
     double energy_exc(Density const& density__) const
     {
-        double exc = scale_rho_xc_ * inner(density__.rho(), xc_energy_density());
+        double exc = (1 + add_delta_rho_xc_) * inner(density__.rho(), xc_energy_density());
         if (!ctx_.full_potential()) {
-            exc += scale_rho_xc_ * inner(density__.rho_pseudo_core(), xc_energy_density());
+            exc += (1 + add_delta_rho_xc_) * inner(density__.rho_pseudo_core(), xc_energy_density());
         }
         return exc;
     }
+
+    //double energy_bxc(Density const& density__) const
+    //{
+    //    double bxc{0};
+    //    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+    //        bxc += (1 + add_delta_mag_xc_) * inner(density__.magnetization(j), this->effective_magnetic_field(j));
+    //    }
+    //    return bxc;
+    //}
 
     bool is_gradient_correction() const;
 
@@ -1035,10 +1052,14 @@ class Potential : public Field4D
         return vh_el_(ia__);
     }
 
-    /// Set the scale_rho_xc variable.
-    inline void scale_rho_xc(double d__)
+    inline void add_delta_rho_xc(double d__)
     {
-        scale_rho_xc_ = d__;
+        add_delta_rho_xc_ = d__;
+    }
+
+    inline void add_delta_mag_xc(double d__)
+    {
+        add_delta_mag_xc_ = d__;
     }
 
     Hubbard& U() const

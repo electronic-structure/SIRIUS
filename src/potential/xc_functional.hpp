@@ -27,6 +27,7 @@
 
 #include <xc.h>
 #include <string.h>
+#include "sddk/geometry3d.hpp"
 #include "xc_functional_base.hpp"
 #include "SDDK/fft.hpp"
 #if defined(__USE_VDWXC)
@@ -57,7 +58,7 @@ class XC_functional : public XC_functional_base
     public:
 
       /* we need the context because libvdwxc asks for lattice vectors and fft parameters */
-      XC_functional(spfft::Transform const& fft__, const matrix3d<double>& lattice_vectors__,
+      XC_functional(spfft::Transform const& fft__, geometry3d::matrix3d<double> const& lattice_vectors__,
                     const std::string libxc_name__, int num_spins__)
           : XC_functional_base(libxc_name__, num_spins__)
     {
@@ -201,7 +202,7 @@ class XC_functional : public XC_functional_base
 #endif
         }
 
-    void vdw_update_unit_cell(spfft::Transform const& fft__, const matrix3d<double>& lattice_vectors__)
+    void vdw_update_unit_cell(spfft::Transform const& fft__, geometry3d::matrix3d<double> const& lattice_vectors__)
     {
         #ifdef __USE_VDWXC
         if(is_vdw()) {

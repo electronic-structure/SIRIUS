@@ -497,7 +497,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         if (add_pseudo_core__) {
             d += density__.rho_pseudo_core().f_rg(ir);
         }
-        d *= scale_rho_xc_;
+        d *= (1 + add_delta_rho_xc_);
 
         rhomin = std::min(rhomin, d);
         rho.f_rg(ir) = std::max(d, 0.0);
@@ -758,18 +758,19 @@ void Potential::xc_rg_magnetic(Density const& density__)
     for (int ir = 0; ir < num_points; ir++) {
         std::array<double, 3> m;
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            m[j] = density__.magnetization(j).f_rg(ir);
+            m[j] = density__.magnetization(j).f_rg(ir) * (1 + add_delta_mag_xc_);
         }
 
         double rho = density__.rho().f_rg(ir);
         if (add_pseudo_core__) {
             rho += density__.rho_pseudo_core().f_rg(ir);
         }
+        rho *= (1 + add_delta_rho_xc_);
         rhomin = std::min(rhomin, rho);
         auto rud = density__.get_rho_up_dn(rho, m);
 
-        rho_up.f_rg(ir) = rud.first * scale_rho_xc_;
-        rho_dn.f_rg(ir) = rud.second * scale_rho_xc_;
+        rho_up.f_rg(ir) = rud.first;
+        rho_dn.f_rg(ir) = rud.second;
     }
     PROFILE_STOP("sirius::Potential::xc_rg_magnetic|up_dn");
 

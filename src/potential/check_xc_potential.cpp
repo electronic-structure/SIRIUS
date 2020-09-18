@@ -32,31 +32,42 @@ void check_xc_potential(Density const& rho__)
     Potential p0(const_cast<Simulation_context&>(rho__.ctx()));
     p0.generate(rho__);
 
+    double evxc{0}, ebxc{0};
+    if (rho__.ctx().full_potential()) {
+    } else {
+        evxc = p0.energy_vxc(rho__) + p0.energy_vxc_core(rho__);
+        ebxc = energy_bxc(rho__, p0);
+    }
+    std::printf("<vxc|rho>        : %18.12f\n", evxc);
+    std::printf("<bxc|mag>        : %18.12f\n", ebxc);
+
     double eps{0.1};
     double best_result{1e10};
     double best_eps{0};
     for (int i = 0; i < 10; i++) {
         Potential p1(const_cast<Simulation_context&>(rho__.ctx()));
-        p1.scale_rho_xc(1 + eps);
+        /* compute Exc, Vxc at  rho + delta * rho = (1+delta)rho */
+        p1.add_delta_rho_xc(eps);
         p1.generate(rho__);
 
-        double evxc{0}, ebxc{0};
-        if (rho__.ctx().full_potential()) {
-        } else {
-            evxc = p0.energy_vxc(rho__) + p0.energy_vxc_core(rho__);
-            ebxc = energy_bxc(rho__, p0);
+        double deriv_mag{0};
+
+        if (rho__.ctx().num_mag_dims() > 0) {
+            Potential p2(const_cast<Simulation_context&>(rho__.ctx()));
+            /* compute Exc, Vxc at mag + delta * mag = (1+delta)mag */
+            p2.add_delta_mag_xc(eps);
+            p2.generate(rho__);
+
+            deriv_mag = (p2.energy_exc(rho__) - p0.energy_exc(rho__)) / eps;
         }
 
-        double deriv = (p1.energy_exc(rho__) - p0.energy_exc(rho__)) / eps;
+        double deriv_rho = (p1.energy_exc(rho__) - p0.energy_exc(rho__)) / eps;
 
-        std::printf("eps                : %18.12f\n", eps);
-        std::printf("  Evxc             : %18.12f\n", evxc);
-        std::printf("  Ebxc             : %18.12f\n", ebxc);
-        std::printf("  Exc deriv v1     : %18.12f\n", evxc + ebxc);
-        std::printf("  Exc deriv v2     : %18.12f\n", deriv);
-        std::printf("  difference       : %18.12f\n", std::abs(evxc + ebxc - deriv));
-        if (std::abs(evxc + ebxc - deriv) < best_result) {
-            best_result = std::abs(evxc + ebxc - deriv);
+        std::printf("eps: %18.12f, drho: %18.12f, dmag: %18.12f, dE/dmag: %18.12f\n", eps, std::abs(evxc - deriv_rho),
+                    std::abs(ebxc - deriv_mag), deriv_mag);
+
+        if (std::abs(evxc - deriv_rho) < best_result) {
+            best_result = std::abs(evxc - deriv_rho);
             best_eps = eps;
         }
 
