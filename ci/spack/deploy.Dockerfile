@@ -20,8 +20,7 @@ RUN spack --color always repo add /sources/spack && \
     spack --color always env create --without-view ci_run "/sources/$ENVIRONMENT" && \
     spack --color always -e ci_run spec $SPEC && \
     spack --color always -e ci_run dev-build --source-path /sources $SPEC && \
-    mv "`find /sources -type d -name 'spack-build*'`" "/sources/spack-build"
-# ref https://github.com/spack/spack/pull/18574#issuecomment-695989757
+    mv /sources/spack-build* /sources/spack-build
 
 # Bundling: this is a bit more complicated than it should unfortunately :(
 # We want to run `ctest`, but ctest does not work well after running `make install`
