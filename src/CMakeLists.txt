@@ -95,7 +95,9 @@ else()
 endif()
 
 if(USE_CUDA AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
-  set_property(TARGET sirius PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCH})
+  if(${CUDA_ARCH})
+    set_property(TARGET sirius PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCH})
+  endif()
 endif()
 
 target_link_libraries(sirius PUBLIC SpFFT::spfft
