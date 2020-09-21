@@ -44,7 +44,7 @@ Band::Band(Simulation_context& ctx__)
 
 template <typename T>
 void
-Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__, Wave_functions& op_phi__, dmatrix<T>& mtrx__,
+Band::set_subspace_mtrx(int N__, int n__, Wave_functions& phi__, Wave_functions& op_phi__, dmatrix<T>& mtrx__,
                         dmatrix<T>* mtrx_old__) const
 {
     PROFILE("sirius::Band::set_subspace_mtrx");
@@ -54,11 +54,11 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__,
         assert(&mtrx__.blacs_grid() == &mtrx_old__->blacs_grid());
     }
 
-    /* copy old N - num_locked x N - num_locked distributed matrix */
+    /* copy old N x N distributed matrix */
     if (N__ > 0) {
-        splindex<splindex_t::block_cyclic> spl_row(N__ - num_locked, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(),
+        splindex<splindex_t::block_cyclic> spl_row(N__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(),
                                        mtrx__.bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(N__ - num_locked, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(),
+        splindex<splindex_t::block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(),
                                        mtrx__.bs_col());
 
         if (mtrx_old__) {
@@ -83,27 +83,27 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__,
     }
 
     /* <{phi,phi_new}|Op|phi_new> */
-    inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, num_locked, N__ + n__ - num_locked,
-          op_phi__, N__, n__, mtrx__, 0, N__ - num_locked);
+    inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, 0, N__ + n__,
+          op_phi__, N__, n__, mtrx__, 0, N__);
 
     /* restore lower part */
     if (N__ > 0) {
         if (mtrx__.blacs_grid().comm().size() == 1) {
             #pragma omp parallel for
-            for (int i = 0; i < N__ - num_locked; i++) {
-                for (int j = N__ - num_locked; j < N__ + n__ - num_locked; j++) {
+            for (int i = 0; i < N__; i++) {
+                for (int j = N__; j < N__ + n__; j++) {
                     mtrx__(j, i) = utils::conj(mtrx__(i, j));
                 }
             }
         } else {
-            linalg(linalg_t::scalapack).tranc(n__, N__ - num_locked, mtrx__, 0, N__ - num_locked, mtrx__, N__ - num_locked, 0);
+            linalg(linalg_t::scalapack).tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
         }
     }
 
     if (ctx_.control().print_checksum_) {
-        splindex<splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
+        splindex<splindex_t::block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(),
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
+        splindex<splindex_t::block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
         double_complex cs(0, 0);
         for (int i = 0; i < spl_col.local_size(); i++) {
@@ -118,13 +118,13 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__,
     }
 
     /* kill any numerical noise */
-    mtrx__.make_real_diag(N__ + n__ - num_locked);
+    mtrx__.make_real_diag(N__ + n__);
 
     /* save new matrix */
     if (mtrx_old__) {
-        splindex<splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
+        splindex<splindex_t::block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(),
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-        splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
+        splindex<splindex_t::block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(),
                                                    mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
         #pragma omp parallel for schedule(static)
@@ -315,7 +315,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
 
-            set_subspace_mtrx<T>(0, num_phi_tot, 0, phi, ophi, ovlp);
+            set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp);
             if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
                 ovlp.serialize("overlap", num_phi_tot);
             }
@@ -340,8 +340,8 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         }
 
         /* setup eigen-value problem */
-        set_subspace_mtrx<T>(0, num_phi_tot, 0, phi, hphi, hmlt);
-        set_subspace_mtrx<T>(0, num_phi_tot, 0, phi, ophi, ovlp);
+        set_subspace_mtrx<T>(0, num_phi_tot, phi, hphi, hmlt);
+        set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp);
 
         if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
             hmlt.serialize("hmlt", num_phi_tot);
@@ -542,12 +542,12 @@ void Band::check_wave_functions(Hamiltonian_k& Hk__) const
 
 template
 void
-Band::set_subspace_mtrx<double>(int N__, int n__, int num_locked, Wave_functions& phi__, Wave_functions& op_phi__,
+Band::set_subspace_mtrx<double>(int N__, int n__, Wave_functions& phi__, Wave_functions& op_phi__,
                                 dmatrix<double>& mtrx__, dmatrix<double>* mtrx_old__) const;
 
 template
 void
-Band::set_subspace_mtrx<double_complex>(int N__, int n__, int num_locked, Wave_functions& phi__, Wave_functions& op_phi__,
+Band::set_subspace_mtrx<double_complex>(int N__, int n__, Wave_functions& phi__, Wave_functions& op_phi__,
                                         dmatrix<double_complex>& mtrx__, dmatrix<double_complex>* mtrx_old__) const;
 
 }
