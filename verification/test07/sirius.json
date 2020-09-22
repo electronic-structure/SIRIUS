@@ -13,7 +13,7 @@
 
     "electronic_structure_method" : "pseudopotential",
 
-    "xc_functionals" : ["XC_GGA_X_PBE_SOL", "XC_GGA_C_PBE_SOL"],
+    "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
 
     "smearing_width" : 0.02,
 
@@ -58,7 +58,7 @@
         ]
     },
     "mixer" : {
-        "beta" : 0.9,
-        "max_history" : 10
+        "beta" : 0.5,
+        "max_history" : 8
     }
 }

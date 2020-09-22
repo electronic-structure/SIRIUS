@@ -307,23 +307,21 @@ class Potential : public Field4D
     }
 
     /// Generate non-spin polarized XC potential in the muffin-tins.
-    void xc_mt_nonmagnetic(Radial_grid<double> const&                rgrid,
-                                  std::vector<XC_functional*>&               xc_func,
-                                  Spheric_function<function_domain_t::spectral, double> const& rho_lm,
-                                  Spheric_function<function_domain_t::spatial, double>&        rho_tp,
-                                  Spheric_function<function_domain_t::spatial, double>&        vxc_tp,
-                                  Spheric_function<function_domain_t::spatial, double>&        exc_tp);
+    void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid, XC_functional* xc_func,
+                           Spheric_function<function_domain_t::spectral, double> const& rho_lm,
+                           Spheric_function<function_domain_t::spatial, double>&        rho_tp,
+                           Spheric_function<function_domain_t::spatial, double>&        vxc_tp,
+                           Spheric_function<function_domain_t::spatial, double>&        exc_tp);
 
     /// Generate spin-polarized XC potential in the muffin-tins.
-    void xc_mt_magnetic(Radial_grid<double> const&          rgrid,
-                               std::vector<XC_functional*>&         xc_func,
-                               Spheric_function<function_domain_t::spectral, double>& rho_up_lm,
-                               Spheric_function<function_domain_t::spatial, double>&  rho_up_tp,
-                               Spheric_function<function_domain_t::spectral, double>& rho_dn_lm,
-                               Spheric_function<function_domain_t::spatial, double>&  rho_dn_tp,
-                               Spheric_function<function_domain_t::spatial, double>&  vxc_up_tp,
-                               Spheric_function<function_domain_t::spatial, double>&  vxc_dn_tp,
-                               Spheric_function<function_domain_t::spatial, double>&  exc_tp);
+    void xc_mt_magnetic(Radial_grid<double> const& rgrid, XC_functional* xc_func,
+                        Spheric_function<function_domain_t::spectral, double>& rho_up_lm,
+                        Spheric_function<function_domain_t::spatial, double>&  rho_up_tp,
+                        Spheric_function<function_domain_t::spectral, double>& rho_dn_lm,
+                        Spheric_function<function_domain_t::spatial, double>&  rho_dn_tp,
+                        Spheric_function<function_domain_t::spatial, double>&  vxc_up_tp,
+                        Spheric_function<function_domain_t::spatial, double>&  vxc_dn_tp,
+                        Spheric_function<function_domain_t::spatial, double>&  exc_tp);
 
     /// Generate XC potential in the muffin-tins.
     void xc_mt(Density const& density__);
