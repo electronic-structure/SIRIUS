@@ -312,7 +312,7 @@ sirius_context_initialized:
       doc: Simulation context handler.
     status:
       type: bool
-      attr: out, required 
+      attr: out, required
       doc: Status of the library (true if initialized)
     error_code:
       type: int
@@ -6053,18 +6053,53 @@ void sirius_nlcg(void* const* handler__,
 #endif
 }
 
-/* @fortran begin function void sirius_nlcg_params          Robust wave function optimizer
-   @fortran argument in  required void*          handler          Ground state handler
-   @fortran argument in  required void*          ks_handler       point set handler
-   @fortran argument in  required double         temp             temperature in Kelvin
-   @fortran argument in  required string         smearing         smearing label
-   @fortran argument in  required double         kappa            pseudo-Hamiltonian scalar preconditioner
-   @fortran argument in  required double         tau              backtracking search reduction parameter
-   @fortran argument in  required double         tol              CG tolerance
-   @fortran argument in  required int            maxiter          CG maxiter
-   @fortran argument in  required int            restart          CG restart
-   @fortran argument in  required string         processing_unit  processing unit cpu|gpu|none
-   @fortran end */
+/*
+@api begin
+sirius_nlcg_params:
+  doc: Robust wave function optimizer
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: point set handler
+    temp:
+      type: double
+      attr: in, required
+      doc: Temperature in Kelvin
+    smearing:
+      type: string
+      attr: in, required
+      doc: smearing label
+    kappa:
+      type: double
+      attr: in, required
+      doc: pseudo-Hamiltonian scalar preconditioner
+    tau:
+      type: double
+      attr: in, required
+      doc: backtracking search reduction parameter
+    tol:
+      type: double
+      attr: in, required
+      doc: CG tolerance
+    maxiter:
+      type: int
+      attr: in, required
+      doc: CG maxiter
+    restart:
+      type: int
+      attr: in, required
+      doc: CG restart
+    processing_unit:
+      type: string
+      attr: in, required
+      doc: processing_unit = ["cpu"|"gpu"|"none"]
+@api end
+*/
 
 void sirius_nlcg_params(void* const* handler__,
                         void* const* ks_handler__,
