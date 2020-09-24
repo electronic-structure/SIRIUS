@@ -30,11 +30,17 @@
 
 namespace sirius {
 
-void check_xc_potential(Density const& rho__);
-
 /* forward declaration */
 class XC_functional;
 
+using Flm = Spheric_function<function_domain_t::spectral, double>;
+using Ftp = Spheric_function<function_domain_t::spatial, double>;
+
+void check_xc_potential(Density const& rho__);
+
+void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional*> xc_func__,
+        int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__);
+//
 /// Generate effective potential from charge density and magnetization.
 /** \note At some point we need to update the atomic potential with the new MT potential. This is simple if the
           effective potential is a global function. Otherwise we need to pass the effective potential between MPI ranks.

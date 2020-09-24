@@ -73,6 +73,28 @@ extern "C" void sum_q_pw_dm_pw_gpu(int             num_gvec_loc__,
 
 namespace sirius {
 
+/// Use Kuebler's trick to get rho_up and rho_dn from density and magnetisation.
+inline std::pair<double, double> get_rho_up_dn(int num_mag_dims__, double rho__, vector3d<double> mag__)
+{
+    if (rho__ < 0.0) {
+        return std::make_pair<double, double>(0, 0);
+    }
+
+    double mag{0};
+    if (num_mag_dims__ == 1) { /* collinear case */
+        mag = mag__[0];
+        /* fix numerical noise at high values of magnetization */
+        if (std::abs(mag) > rho__) {
+            mag = utils::sign(mag) * rho__;
+        }
+    } else { /* non-collinear case */
+        /* fix numerical noise at high values of magnetization */
+        mag = std::min(mag__.length(), rho__);
+    }
+
+    return std::make_pair<double, double>(0.5 * (rho__ + mag), 0.5 * (rho__ - mag));
+}
+
 /// Generate charge density and magnetization from occupied spinor wave-functions.
 /** Let's start from the definition of the complex density matrix:
     \f[
