@@ -240,6 +240,13 @@ void Potential::xc_mt(Density const& density__)
             vecmagtp[j] = transform(*sht_, density__.magnetization(j).f_mt(ialoc));
         }
 
+        std::vector<Spheric_function<function_domain_t::spatial, double> > bxctp(ctx_.num_mag_dims());
+        if (ctx_.num_mag_dims() > 0) {
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                bxctp[j] = Spheric_function<function_domain_t::spatial, double>(sht_->num_points(), rgrid);
+            }
+        }
+
         /* check if density has negative values */
         double rhomin{0};
         for (int ir = 0; ir < nmtp; ir++) {
@@ -315,14 +322,13 @@ void Potential::xc_mt(Density const& density__)
                             m[j] = vecmagtp[j](itp, ir);
                         }
                         auto m_len = m.length();
-                        /* use vecmagtp as temporary vector */
                         if (m_len > 1e-8) {
                             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                                vecmagtp[j](itp, ir) = std::abs(bxc) * s * vecmagtp[j](itp, ir) / m_len;
+                                bxctp[j](itp, ir) = std::abs(bxc) * s * vecmagtp[j](itp, ir) / m_len;
                             }
                         } else {
                             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                                vecmagtp[j](itp, ir) = 0.0;
+                                bxctp[j](itp, ir) = 0.0;
                             }
                         }
                     }
@@ -331,7 +337,7 @@ void Potential::xc_mt(Density const& density__)
                 std::array<int, 3> comp_map = {2, 0, 1};
                 /* convert magnetic field back to Rlm */
                 for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                    auto bxcrlm = transform(*sht_, vecmagtp[j]);
+                    auto bxcrlm = transform(*sht_, bxctp[j]);
                     for (int ir = 0; ir < nmtp; ir++) {
                         /* add auxiliary magnetic field antiparallel to starting magnetization */
                         bxcrlm(0, ir) -= aux_bf_(j, ia) * ctx_.unit_cell().atom(ia).vector_field()[comp_map[j]];
