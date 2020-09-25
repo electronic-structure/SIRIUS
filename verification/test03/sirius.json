@@ -1,67 +1,45 @@
 {
-  "control" : {
-      "processing_unit" : "cpu",
-      "std_evp_solver_type" : "lapack",
-      "gen_evp_solver_type" : "lapack",
-      "print_forces" : true,
-      "print_stress" : true,
-      "verbosity" : 1
-  },
-
-  "parameters" : {
-      "electronic_structure_method" : "pseudopotential",
-
-      "!num_fv_states" : 40,
-
-      "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
-
-      "smearing_width" : 0.025,
-
-      "use_symmetry" : true,
-
-      "num_mag_dims" : 0,
-
-      "gk_cutoff" : 6.0,
-      "pw_cutoff" : 20.00,
-
-      "energy_tol" : 1e-8,
-      "density_tol" : 1e-8,
-
-      "num_dft_iter" : 100,
-
-      "ngridk" : [4,4,4]
-  },
-
-    "iterative_solver" : {
-        "energy_tolerance" : 1e-2,
-        "residual_tolerance" : 1e-6,
-        "num_steps" : 20,
-        "subspace_size" : 4,
-        "type" : "davidson",
-        "converge_by_energy" : 1
+    "control" : {
+        "processing_unit" : "cpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack",
+        "verbosity" : 1,
+        "verification" : 0,
+        "rmt_max": 2.0
+    },
+    "parameters" : {
+        "electronic_structure_method" : "pseudopotential",
+        "smearing_width" : 0.001,
+        "xc_functionals": ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
+        "num_fv_states" : 10,
+        "num_mag_dims": 1,
+        "pw_cutoff" : 30.00,
+        "gk_cutoff":  8.00,
+        "use_symmetry": true,
+        "ngridk" : [4,4,4],
+        "potential_tol" : 1e-10,
+        "energy_tol" : 1e-10,
+        "num_dft_iter" : 100
     },
 
 
     "unit_cell" : {
 
-        "lattice_vectors" : [ [0, 3.80402, 3.80402],
-                              [3.80402, 0, 3.80402],
-                              [3.80402, 3.80402, 0]
+        "lattice_vectors" : [ [-1, 1, 1],
+                              [1, -1, 1],
+                              [1, 1, -1]
                             ],
+        "lattice_vectors_scale" : 2.708,
 
-        "atom_types" : ["Li", "F"],
+        "atom_types" : ["Fe"],
 
         "atom_files" : {
-            "Li" : "Li.pz-s-kjpaw_psl.0.2.1.UPF.json",
-            "F"  : "F.pz-n-kjpaw_psl.0.1.UPF.json"
+            "Fe" : "Fe.json"
         },
 
         "atoms" : {
-            "F" : [
-                [0.5, 0.5, 0.5]
-            ],
-            "Li" : [
-                [0, 0, 0]
+            "Fe" : [
+                [0, 0, 0, 0, 0, 1]
             ]
         }
     },
