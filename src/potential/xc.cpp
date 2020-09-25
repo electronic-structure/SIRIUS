@@ -979,7 +979,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
         }
         rho *= (1 + add_delta_rho_xc_);
         rhomin = std::min(rhomin, rho);
-        auto rud = density__.get_rho_up_dn(rho, m);
+        auto rud = get_rho_up_dn(ctx_.num_mag_dims(), rho, m);
 
         rho_up.f_rg(ir) = rud.first;
         rho_dn.f_rg(ir) = rud.second;
