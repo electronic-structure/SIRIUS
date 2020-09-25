@@ -1666,13 +1666,29 @@ class XC_functional_base
                 vsigma_dd[i] = vsigma[3 * i + 2];
             }
         } else {
+            auto h1 = std::unique_ptr<xc_func_type>(new xc_func_type);
+
+            /* init xc functional handler */
+            if (xc_func_init(h1.get(), XC_LDA_C_PZ, 2) != 0) {
+                TERMINATE("xc_func_init() failed");
+            }
+
+            xc_lda_exc_vxc(h1.get(), size, &rho[0], e, &vrho[0]);
+            /* extract vrho and vsigma */
             for (int i = 0; i < size; i++) {
-                e[i]         = -0.001 * ((rho_up[i] + rho_dn[i]) * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]));
-                vrho_up[i]   = -0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
-                vrho_dn[i]   = -0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
-                vsigma_uu[i] = -0.001 * (rho_up[i] + rho_dn[i]);
-                vsigma_ud[i] = -0.001 * (rho_up[i] + rho_dn[i]);
-                vsigma_dd[i] = -0.001 * (rho_up[i] + rho_dn[i]);
+                vrho_up[i] = vrho[2 * i];
+                vrho_dn[i] = vrho[2 * i + 1];
+
+                vsigma_uu[i] = 0;
+                vsigma_ud[i] = 0;
+                vsigma_dd[i] = 0;
+            }
+
+            for (int i = 0; i < size; i++) {
+                e[i]         += 0.001 * (sigma_uu[i] + sigma_ud[i] + sigma_dd[i]);
+                vsigma_uu[i] = -0.001;
+                vsigma_ud[i] = -0.001;
+                vsigma_dd[i] = -0.001;
             }
         }
     }
@@ -1681,11 +1697,11 @@ class XC_functional_base
     /// set density threshold of libxc, if density is below tre, all xc output will be set to 0.
     void set_dens_threshold(double tre)
     {
-        #if XC_MAJOR_VERSION >= 4
+#if XC_MAJOR_VERSION >= 4
         xc_func_set_dens_threshold(this->handler(), tre);
-        #else
+#else
         std::cout << "set_dens_threshold not available in old libxc versions, install at least 4.2.3" << "\n";
-        #endif
+#endif
     }
 };
 } // namespace sirius

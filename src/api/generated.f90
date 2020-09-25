@@ -5899,3 +5899,92 @@ ks_handler_ptr = C_NULL_PTR
 ks_handler_ptr = C_LOC(ks_handler)
 call sirius_nlcg_aux(handler_ptr,ks_handler_ptr)
 end subroutine sirius_nlcg
+
+!
+!> @brief Robust wave function optimizer
+!> @param [in] handler Ground state handler
+!> @param [in] ks_handler point set handler
+!> @param [in] temp Temperature in Kelvin
+!> @param [in] smearing smearing label
+!> @param [in] kappa pseudo-Hamiltonian scalar preconditioner
+!> @param [in] tau backtracking search reduction parameter
+!> @param [in] tol CG tolerance
+!> @param [in] maxiter CG maxiter
+!> @param [in] restart CG restart
+!> @param [in] processing_unit processing_unit = ["cpu"|"gpu"|"none"]
+subroutine sirius_nlcg_params(handler,ks_handler,temp,smearing,kappa,tau,tol,maxiter,&
+&restart,processing_unit)
+implicit none
+!
+type(C_PTR), target, intent(in) :: handler
+type(C_PTR), target, intent(in) :: ks_handler
+real(8), target, intent(in) :: temp
+character(*), target, intent(in) :: smearing
+real(8), target, intent(in) :: kappa
+real(8), target, intent(in) :: tau
+real(8), target, intent(in) :: tol
+integer, target, intent(in) :: maxiter
+integer, target, intent(in) :: restart
+character(*), target, intent(in) :: processing_unit
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: temp_ptr
+type(C_PTR) :: smearing_ptr
+character(C_CHAR), target, allocatable :: smearing_c_type(:)
+type(C_PTR) :: kappa_ptr
+type(C_PTR) :: tau_ptr
+type(C_PTR) :: tol_ptr
+type(C_PTR) :: maxiter_ptr
+type(C_PTR) :: restart_ptr
+type(C_PTR) :: processing_unit_ptr
+character(C_CHAR), target, allocatable :: processing_unit_c_type(:)
+!
+interface
+subroutine sirius_nlcg_params_aux(handler,ks_handler,temp,smearing,kappa,tau,tol,&
+&maxiter,restart,processing_unit)&
+&bind(C, name="sirius_nlcg_params")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: ks_handler
+type(C_PTR), value :: temp
+type(C_PTR), value :: smearing
+type(C_PTR), value :: kappa
+type(C_PTR), value :: tau
+type(C_PTR), value :: tol
+type(C_PTR), value :: maxiter
+type(C_PTR), value :: restart
+type(C_PTR), value :: processing_unit
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+temp_ptr = C_NULL_PTR
+temp_ptr = C_LOC(temp)
+smearing_ptr = C_NULL_PTR
+allocate(smearing_c_type(len(smearing)+1))
+smearing_c_type = string_f2c(smearing)
+smearing_ptr = C_LOC(smearing_c_type)
+kappa_ptr = C_NULL_PTR
+kappa_ptr = C_LOC(kappa)
+tau_ptr = C_NULL_PTR
+tau_ptr = C_LOC(tau)
+tol_ptr = C_NULL_PTR
+tol_ptr = C_LOC(tol)
+maxiter_ptr = C_NULL_PTR
+maxiter_ptr = C_LOC(maxiter)
+restart_ptr = C_NULL_PTR
+restart_ptr = C_LOC(restart)
+processing_unit_ptr = C_NULL_PTR
+allocate(processing_unit_c_type(len(processing_unit)+1))
+processing_unit_c_type = string_f2c(processing_unit)
+processing_unit_ptr = C_LOC(processing_unit_c_type)
+call sirius_nlcg_params_aux(handler_ptr,ks_handler_ptr,temp_ptr,smearing_ptr,kappa_ptr,&
+&tau_ptr,tol_ptr,maxiter_ptr,restart_ptr,processing_unit_ptr)
+deallocate(smearing_c_type)
+deallocate(processing_unit_c_type)
+end subroutine sirius_nlcg_params
+

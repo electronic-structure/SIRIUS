@@ -20,8 +20,6 @@
 
       "use_symmetry" : true,
       
-      "gamma_point" : true,
-
       "num_mag_dims" : 0,
 
       "gk_cutoff" : 6.0,
@@ -32,7 +30,7 @@
 
       "num_dft_iter" : 100,
 
-      "ngridk" : [1,1,1]
+      "ngridk" : [4,4,4]
   },
 
     "iterative_solver" : {

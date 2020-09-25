@@ -8,13 +8,13 @@
         "rmt_max": 2.0
     },
     "parameters" : {
-        "electronic_structure_method" : "pseudopotential",
+        "electronic_structure_method" : "full_potential_lapwlo",
         "smearing_width" : 0.001,
-        "xc_functionals": ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
+        "xc_functionals": ["XC_LDA_X", "XC_LDA_C_PW"],
         "num_fv_states" : 10,
         "num_mag_dims": 1,
-        "pw_cutoff" : 30.00,
-        "gk_cutoff":  8.00,
+        "pw_cutoff" : 12.00,
+        "aw_cutoff":  7.00,
         "use_symmetry": true,
         "ngridk" : [4,4,4],
         "potential_tol" : 1e-10,
@@ -45,7 +45,7 @@
     },
 
     "mixer" : {
-        "beta" : 0.8,
+        "beta" : 0.5,
         "type" : "broyden1",
         "max_history" : 8
     }

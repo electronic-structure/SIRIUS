@@ -27,10 +27,20 @@
 
 #include "density/density.hpp"
 #include "hubbard/hubbard.hpp"
-#include "xc_functional.hpp"
 
 namespace sirius {
 
+/* forward declaration */
+class XC_functional;
+
+using Flm = Spheric_function<function_domain_t::spectral, double>;
+using Ftp = Spheric_function<function_domain_t::spatial, double>;
+
+void check_xc_potential(Density const& rho__);
+
+void xc_mt(Radial_grid<double> const& rgrid__, SHT const& sht__, std::vector<XC_functional*> xc_func__,
+        int num_mag_dims__, std::vector<Flm const*> rho__, std::vector<Flm*> vxc__, Flm* exc__);
+//
 /// Generate effective potential from charge density and magnetization.
 /** \note At some point we need to update the atomic potential with the new MT potential. This is simple if the
           effective potential is a global function. Otherwise we need to pass the effective potential between MPI ranks.
@@ -96,7 +106,7 @@ class Potential : public Field4D
     /** Used to compute electron-nuclear contribution to the total energy */
     mdarray<double, 1> vh_el_;
 
-    std::vector<XC_functional> xc_func_;
+    std::vector<XC_functional*> xc_func_;
 
     /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
     mdarray<double_complex, 1> veff_pw_;
@@ -145,19 +155,15 @@ class Potential : public Field4D
     /// Hubbard potential correction.
     std::unique_ptr<Hubbard> U_;
 
-    /// A debug variable to scale the density when computing the XC potential.
-    /** This is used to verify the variational derivative of Exc */
-    double scale_rho_xc_{1};
+    /// Add extra charge to the density.
+    /** This is used to verify the variational derivative of Exc w.r.t. density rho */
+    double add_delta_rho_xc_{0};
+
+    /// Add extra charge to the density.
+    /** This is used to verify the variational derivative of Exc w.r.t. magnetisation mag */
+    double add_delta_mag_xc_{0};
 
     void init_PAW();
-
-    double xc_mt_PAW_nonmagnetic(sf& full_potential, sf const& full_density, std::vector<double> const& rho_core);
-
-    double xc_mt_PAW_collinear(std::vector<sf>& potential, std::vector<sf const*> density,
-                               std::vector<double> const& rho_core);
-
-    double xc_mt_PAW_noncollinear(std::vector<sf>& potential, std::vector<sf const*> density,
-                                  std::vector<double> const& rho_core);
 
     void calc_PAW_local_potential(paw_potential_data_t& pdd, std::vector<sf const*> ae_density,
                                   std::vector<sf const*> ps_density);
@@ -273,15 +279,8 @@ class Potential : public Field4D
         /* make Vloc(G) */
         auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
 
-        //auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
-        //{
-        //    if (this->ctx_.unit_cell().atom_type(iat).local_potential().empty()) {
-        //        return 0.0;
-        //    } else {
-        //        return ctx_.vloc_ri().value(iat, g);
-        //    }
-        //});
         std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
+
         local_potential_->fft_transform(1);
 
         if (ctx_.control().print_checksum_) {
@@ -293,25 +292,6 @@ class Potential : public Field4D
             }
         }
     }
-
-    /// Generate non-spin polarized XC potential in the muffin-tins.
-    void xc_mt_nonmagnetic(Radial_grid<double> const&                rgrid,
-                                  std::vector<XC_functional>&               xc_func,
-                                  Spheric_function<function_domain_t::spectral, double> const& rho_lm,
-                                  Spheric_function<function_domain_t::spatial, double>&        rho_tp,
-                                  Spheric_function<function_domain_t::spatial, double>&        vxc_tp,
-                                  Spheric_function<function_domain_t::spatial, double>&        exc_tp);
-
-    /// Generate spin-polarized XC potential in the muffin-tins.
-    void xc_mt_magnetic(Radial_grid<double> const&          rgrid,
-                               std::vector<XC_functional>&         xc_func,
-                               Spheric_function<function_domain_t::spectral, double>& rho_up_lm,
-                               Spheric_function<function_domain_t::spatial, double>&  rho_up_tp,
-                               Spheric_function<function_domain_t::spectral, double>& rho_dn_lm,
-                               Spheric_function<function_domain_t::spatial, double>&  rho_dn_tp,
-                               Spheric_function<function_domain_t::spatial, double>&  vxc_up_tp,
-                               Spheric_function<function_domain_t::spatial, double>&  vxc_dn_tp,
-                               Spheric_function<function_domain_t::spatial, double>&  exc_tp);
 
     /// Generate XC potential in the muffin-tins.
     void xc_mt(Density const& density__);
@@ -326,184 +306,12 @@ class Potential : public Field4D
 
   public:
     /// Constructor
-    Potential(Simulation_context& ctx__)
-        : Field4D(ctx__, ctx__.lmmax_pot())
-        , unit_cell_(ctx__.unit_cell())
-        , comm_(ctx__.comm())
-    {
-        PROFILE("sirius::Potential");
+    Potential(Simulation_context& ctx__);
 
-        if (!ctx_.initialized()) {
-            TERMINATE("Simulation_context is not initialized");
-        }
-
-        lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
-
-        if (lmax_ >= 0) {
-            sht_  = std::unique_ptr<SHT>(new SHT(ctx_.processing_unit(), lmax_, ctx_.settings().sht_coverage_));
-            if (ctx_.control().verification_ >= 1)  {
-                sht_->check();
-            }
-            l_by_lm_ = utils::l_by_lm(lmax_);
-
-            /* precompute i^l */
-            zil_.resize(lmax_ + 1);
-            for (int l = 0; l <= lmax_; l++) {
-                zil_[l] = std::pow(double_complex(0, 1), l);
-            }
-
-            zilm_.resize(utils::lmmax(lmax_));
-            for (int l = 0, lm = 0; l <= lmax_; l++) {
-                for (int m = -l; m <= l; m++, lm++) {
-                    zilm_[lm] = zil_[l];
-                }
-            }
-        }
-
-        /* create list of XC functionals */
-        for (auto& xc_label : ctx_.xc_functionals()) {
-            xc_func_.emplace_back(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins());
-            if (ctx_.parameters_input().xc_dens_tre_ > 0) {
-                xc_func_.back().set_dens_threshold(ctx_.parameters_input().xc_dens_tre_);
-            }
-        }
-
-        using pf = Periodic_function<double>;
-        using spf = Smooth_periodic_function<double>;
-
-        hartree_potential_ = std::unique_ptr<pf>(new pf(ctx_, ctx_.lmmax_pot()));
-        hartree_potential_->allocate_mt(false);
-
-        xc_potential_ = std::unique_ptr<pf>(new pf(ctx_, ctx_.lmmax_pot()));
-        xc_potential_->allocate_mt(false);
-
-        xc_energy_density_ = std::unique_ptr<pf>(new pf(ctx_, ctx_.lmmax_pot()));
-        xc_energy_density_->allocate_mt(false);
-
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            vsigma_[ispn] = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
-        }
-
-        if (!ctx_.full_potential()) {
-            local_potential_ = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
-            dveff_ = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
-            dveff_->zero();
-        }
-
-        vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
-
-        if (ctx_.full_potential()) {
-            gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec().count(), memory_t::host, "gvec_ylm_");
-
-            switch (ctx_.valence_relativity()) {
-                case relativity_t::iora: {
-                    rm2_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
-                }
-                case relativity_t::zora: {
-                    rm_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
-                }
-                default: {
-                    veff_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
-                }
-            }
-        }
-
-        aux_bf_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
-        aux_bf_.zero();
-
-        if (ctx_.parameters_input().reduce_aux_bf_ > 0 && ctx_.parameters_input().reduce_aux_bf_ < 1) {
-            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                for (int x : {0, 1, 2}) {
-                    aux_bf_(x, ia) = 1;
-                }
-            }
-        }
-
-        /* in case of PAW */
-        init_PAW();
-
-        if (ctx_.hubbard_correction()) {
-            U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
-        }
-
-        update();
-    }
+    ~Potential();
 
     /// Recompute some variables that depend on atomic positions or the muffin-tin radius.
-    void update()
-    {
-        PROFILE("sirius::Potential::update");
-
-        if (!ctx_.full_potential()) {
-            local_potential_->zero();
-            generate_local_potential();
-        } else {
-            gvec_ylm_ = ctx_.generate_gvec_ylm(ctx_.lmax_pot());
-            sbessel_mt_ = ctx_.generate_sbessel_mt(lmax_ + pseudo_density_order_ + 1);
-
-            /* compute moments of spherical Bessel functions
-             *
-             * In[]:= Integrate[SphericalBesselJ[l,G*x]*x^(2+l),{x,0,R},Assumptions->{R>0,G>0,l>=0}]
-             * Out[]= (Sqrt[\[Pi]/2] R^(3/2+l) BesselJ[3/2+l,G R])/G^(3/2)
-             *
-             * and use relation between Bessel and spherical Bessel functions:
-             * Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) */
-            sbessel_mom_ = mdarray<double, 3>(ctx_.lmax_rho() + 1,
-                                              ctx_.gvec().count(),
-                                              unit_cell_.num_atom_types(),
-                                              memory_t::host, "sbessel_mom_");
-            sbessel_mom_.zero();
-            int ig0{0};
-            if (ctx_.comm().rank() == 0) {
-                /* for |G| = 0 */
-                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                    sbessel_mom_(0, 0, iat) = std::pow(unit_cell_.atom_type(iat).mt_radius(), 3) / 3.0;
-                }
-                ig0 = 1;
-            }
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                #pragma omp parallel for schedule(static)
-                for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-                    auto len = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc).length();
-                    for (int l = 0; l <= ctx_.lmax_rho(); l++) {
-                        sbessel_mom_(l, igloc, iat) = std::pow(unit_cell_.atom_type(iat).mt_radius(), l + 2) *
-                                                      sbessel_mt_(l + 1, igloc, iat) / len;
-                    }
-                }
-            }
-
-            /* compute Gamma[5/2 + n + l] / Gamma[3/2 + l] / R^l
-             *
-             * use Gamma[1/2 + p] = (2p - 1)!!/2^p Sqrt[Pi] */
-            gamma_factors_R_ = mdarray<double, 2>(ctx_.lmax_rho() + 1, unit_cell_.num_atom_types(), memory_t::host, "gamma_factors_R_");
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                for (int l = 0; l <= ctx_.lmax_rho(); l++) {
-                    long double Rl = std::pow(unit_cell_.atom_type(iat).mt_radius(), l);
-
-                    int n_min = (2 * l + 3);
-                    int n_max = (2 * l + 1) + (2 * pseudo_density_order_ + 2);
-                    /* split factorial product into two parts to avoid overflow */
-                    long double f1 = 1.0;
-                    long double f2 = 1.0;
-                    for (int n = n_min; n <= n_max; n += 2) {
-                        if (f1 < Rl) {
-                            f1 *= (n / 2.0);
-                        } else {
-                            f2 *= (n / 2.0);
-                        }
-                    }
-                    gamma_factors_R_(l, iat) = static_cast<double>((f1 / Rl) * f2);
-                }
-            }
-        }
-
-        // VDWXC depends on unit cell, which might have changed.
-        for (auto& xc : xc_func_) {
-            if (xc.is_vdw()) {
-                xc.vdw_update_unit_cell(ctx_.spfft(), ctx_.unit_cell().lattice_vectors());
-            }
-        }
-    }
+    void update();
 
     /// Solve Poisson equation for a single atom.
     template <bool free_atom, typename T>
@@ -975,13 +783,7 @@ class Potential : public Field4D
     /// Generate plane-wave coefficients of the potential in the interstitial region.
     void generate_pw_coefs();
 
-    void insert_xc_functionals(const std::vector<std::string>& labels__)
-    {
-        /* create list of XC functionals */
-        for (auto& xc_label : labels__) {
-            xc_func_.emplace_back(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins());
-        }
-    }
+    void insert_xc_functionals(const std::vector<std::string>& labels__);
 
     /// Calculate D operator from potential and augmentation charge.
     /** The following real symmetric matrix is computed:
@@ -1190,23 +992,14 @@ class Potential : public Field4D
     /// Integral of \f$ \rho({\bf r}) \epsilon^{XC}({\bf r}) \f$.
     double energy_exc(Density const& density__) const
     {
-        double exc = scale_rho_xc_ * inner(density__.rho(), xc_energy_density());
+        double exc = (1 + add_delta_rho_xc_) * inner(density__.rho(), xc_energy_density());
         if (!ctx_.full_potential()) {
-            exc += scale_rho_xc_ * inner(density__.rho_pseudo_core(), xc_energy_density());
+            exc += (1 + add_delta_rho_xc_) * inner(density__.rho_pseudo_core(), xc_energy_density());
         }
         return exc;
     }
 
-    bool is_gradient_correction() const
-    {
-        bool is_gga{false};
-        for (auto& ixc : xc_func_) {
-            if (ixc.is_gga() || ixc.is_vdw()) {
-                is_gga = true;
-            }
-        }
-        return is_gga;
-    }
+    bool is_gradient_correction() const;
 
     Smooth_periodic_function<double>& vsigma(int ispn__)
     {
@@ -1218,10 +1011,14 @@ class Potential : public Field4D
         return vh_el_(ia__);
     }
 
-    /// Set the scale_rho_xc variable.
-    inline void scale_rho_xc(double d__)
+    inline void add_delta_rho_xc(double d__)
     {
-        scale_rho_xc_ = d__;
+        add_delta_rho_xc_ = d__;
+    }
+
+    inline void add_delta_mag_xc(double d__)
+    {
+        add_delta_mag_xc_ = d__;
     }
 
     Hubbard& U() const

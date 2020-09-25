@@ -9,17 +9,17 @@
 - LDA (VWN)
 - iterative Davidson solver
 
-## test03: LiF
+## test03: Fe
 - PAW pseudopotential
-- non-magnetic
-- LDA (PZ)
+- magnetic
+- GGA (PBE)
 - 4x4x4 k-point mesh
 
 ## test04: LiF
 - PAW pseudopotential
 - non-magnetic
 - LDA (PZ)
-- Gamma-point case
+- 4x4x4 k-point mesh
 
 ## test05: NiO
 - ultrasoft pseudopotential
