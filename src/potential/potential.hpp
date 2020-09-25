@@ -165,14 +165,6 @@ class Potential : public Field4D
 
     void init_PAW();
 
-//    double xc_mt_PAW_nonmagnetic(sf& full_potential, sf const& full_density, std::vector<double> const& rho_core);
-//
-//    double xc_mt_PAW_collinear(std::vector<sf>& potential, std::vector<sf const*> density,
-//                               std::vector<double> const& rho_core);
-//
-//    double xc_mt_PAW_noncollinear(std::vector<sf>& potential, std::vector<sf const*> density,
-//                                  std::vector<double> const& rho_core);
-//
     void calc_PAW_local_potential(paw_potential_data_t& pdd, std::vector<sf const*> ae_density,
                                   std::vector<sf const*> ps_density);
 
@@ -287,15 +279,8 @@ class Potential : public Field4D
         /* make Vloc(G) */
         auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
 
-        //auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
-        //{
-        //    if (this->ctx_.unit_cell().atom_type(iat).local_potential().empty()) {
-        //        return 0.0;
-        //    } else {
-        //        return ctx_.vloc_ri().value(iat, g);
-        //    }
-        //});
         std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
+
         local_potential_->fft_transform(1);
 
         if (ctx_.control().print_checksum_) {
@@ -307,23 +292,6 @@ class Potential : public Field4D
             }
         }
     }
-
-    ///// Generate non-spin polarized XC potential in the muffin-tins.
-    //void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid, XC_functional* xc_func,
-    //                       Spheric_function<function_domain_t::spectral, double> const& rho_lm,
-    //                       Spheric_function<function_domain_t::spatial, double>&        rho_tp,
-    //                       Spheric_function<function_domain_t::spatial, double>&        vxc_tp,
-    //                       Spheric_function<function_domain_t::spatial, double>&        exc_tp);
-
-    ///// Generate spin-polarized XC potential in the muffin-tins.
-    //void xc_mt_magnetic(Radial_grid<double> const& rgrid, XC_functional* xc_func,
-    //                    Spheric_function<function_domain_t::spectral, double>& rho_up_lm,
-    //                    Spheric_function<function_domain_t::spatial, double>&  rho_up_tp,
-    //                    Spheric_function<function_domain_t::spectral, double>& rho_dn_lm,
-    //                    Spheric_function<function_domain_t::spatial, double>&  rho_dn_tp,
-    //                    Spheric_function<function_domain_t::spatial, double>&  vxc_up_tp,
-    //                    Spheric_function<function_domain_t::spatial, double>&  vxc_dn_tp,
-    //                    Spheric_function<function_domain_t::spatial, double>&  exc_tp);
 
     /// Generate XC potential in the muffin-tins.
     void xc_mt(Density const& density__);
@@ -1030,15 +998,6 @@ class Potential : public Field4D
         }
         return exc;
     }
-
-    //double energy_bxc(Density const& density__) const
-    //{
-    //    double bxc{0};
-    //    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-    //        bxc += (1 + add_delta_mag_xc_) * inner(density__.magnetization(j), this->effective_magnetic_field(j));
-    //    }
-    //    return bxc;
-    //}
 
     bool is_gradient_correction() const;
 
