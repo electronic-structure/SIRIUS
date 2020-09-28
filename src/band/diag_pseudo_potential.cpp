@@ -388,6 +388,9 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
 
+        /* converged vectors */
+        int num_locked = 0;
+
         sddk::mdarray<double, 1> eval(num_bands);
         sddk::mdarray<double, 1> eval_old(num_bands);
         eval_old = [](){return 1e10;};
@@ -398,7 +401,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             double tol = ctx_.iterative_solver_tolerance();
             double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
             /* if band is empty, decrease the tolerance */
-            if (std::abs(kp.band_occupancy(j__, ispn__)) < ctx_.min_occupancy() * ctx_.max_occupancy()) {
+            // note: j__ indexes the unconverged eigenpairs -- excluding locked ones.
+            if (std::abs(kp.band_occupancy(j__ + num_locked, ispn__)) < ctx_.min_occupancy() * ctx_.max_occupancy()) {
                 tol += empy_tol;
             }
             return std::abs(eval[j__] - eval_old[j__]) <= tol;
@@ -450,15 +454,16 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* current subspace size */
         int N = num_bands;
 
-        /* converged vectors */
-        int num_locked = 0;
-
         /* number of residuals to add to the search subspace.
            the idea here is to expand the search subspace with
            a number of vectors significantly small than num_bands,
            such that we converge quickly to the first so many
            vectors, which can then be locked at restart. */
-        int block_size = std::max(1, itso.locking_ ? num_bands / 2 : num_bands);
+        //int block_size = std::max(1, itso.locking_ ? num_bands / 2 : num_bands);
+
+        // Seems like a smaller block size is not always improving time to solution much,
+        // so keep it num_bands.
+        int block_size = num_bands;
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (std_solver.solve(N, num_bands, hmlt, &eval[0], evec)) {
@@ -584,13 +589,14 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                         sphi.copy_from(spsi, keep - num_locked, ispn, 0, ispn, num_locked);
                     }
 
-                    // Remove the lockable Ritz values from the vector
+                    // Remove locked Ritz values so indexing starts at unconverged eigenpairs
                     if (itso.locking_ && num_lockable > 0) {
                         for (int i = num_lockable; i < num_ritz; ++i) {
                             eval[i - num_lockable] = eval[i];
                         }
                     }
 
+                    // Remove the locked block from the projected matrix too.
                     hmlt_old.zero();
                     for (int i = 0; i < keep - num_locked; i++) {
                         hmlt_old.set(i, i, eval[i]);
@@ -636,7 +642,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             N += expand_with;
 
             // Copy the Ritz values
-            eval_old >> eval;
+            eval >> eval_old;
 
             /* solve standard eigen-value problem with the size N - num_locked. */
             kp.message(3, __function_name__, "Computing %d pre-Ritz pairs\n", num_bands - num_locked);

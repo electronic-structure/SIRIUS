@@ -119,12 +119,12 @@ apply_preconditioner(sddk::memory_t mem_type__, sddk::spin_range spins__, int nu
 }
 
 template <typename T>
-static residual_result
+static int
 normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_bands__,
                                     sddk::mdarray<double,1>& eval__, sddk::Wave_functions& hpsi__,
                                     sddk::Wave_functions& opsi__, sddk::Wave_functions& res__,
                                     sddk::mdarray<double, 2> const& h_diag__, sddk::mdarray<double, 2> const& o_diag__,
-                                    double norm_tolerance__)
+                                    double norm_tolerance__, sddk::mdarray<double, 1> &residual_norms__)
 {
     PROFILE("sirius::normalized_preconditioned_residuals");
 
@@ -136,12 +136,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
     compute_residuals(mem_type__, spins__, num_bands__, eval__, hpsi__, opsi__, res__);
 
     /* compute norm of the "raw" residuals */
-    auto res_norm = res__.l2norm(pu, spins__, num_bands__);
-
-    auto frobenius_norm = 0.0;
-    for (int i = 0; i < num_bands__; i++)
-        frobenius_norm += res_norm[i] * res_norm[i];
-    frobenius_norm = std::sqrt(frobenius_norm);
+    residual_norms__ = res__.l2norm(pu, spins__, num_bands__);
 
     /* apply preconditioner */
     apply_preconditioner(mem_type__, spins__, num_bands__, res__, h_diag__, o_diag__, eval__);
@@ -150,43 +145,37 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
        however, normalization of residuals is harmless and gives a better numerical stability */
     res__.normalize(pu, spins__, num_bands__);
 
-    // Move forwards to the first eigenvec that has not yet converged
-    int consecutive_smallest_converged{0};
-    while (consecutive_smallest_converged < num_bands__ && res_norm[consecutive_smallest_converged] <= norm_tolerance__) {
-        ++consecutive_smallest_converged;
-    }
-
-    int n{0};
-
+    int num_unconverged{0};
+   
     for (int i = 0; i < num_bands__; i++) {
         /* take the residual if it's norm is above the threshold */
-        if (res_norm[i] > norm_tolerance__) {
+        if (residual_norms__[i] > norm_tolerance__) {
             /* shift unconverged residuals to the beginning of array */
             /* note: we can just keep them where they were  */
-            if (n != i) {
+            if (num_unconverged != i) {
                 for (int ispn: spins__) {
-                    res__.copy_from(res__, 1, ispn, i, ispn, n);
+                    res__.copy_from(res__, 1, ispn, i, ispn, num_unconverged);
                 }
             }
-            n++;
+            num_unconverged++;
         }
     }
 
     /* prevent numerical noise */
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
-    if (std::is_same<T, double>::value && res__.comm().rank() == 0 && n != 0 && spins__() != 2) {
+    if (std::is_same<T, double>::value && res__.comm().rank() == 0 && num_unconverged != 0 && spins__() != 2) {
         if (is_device_memory(res__.preferred_memory_t())) {
 #if defined(__GPU)
-            make_real_g0_gpu(res__.pw_coeffs(spins__()).prime().at(sddk::memory_t::device), res__.pw_coeffs(spins__()).prime().ld(), n);
+            make_real_g0_gpu(res__.pw_coeffs(spins__()).prime().at(sddk::memory_t::device), res__.pw_coeffs(spins__()).prime().ld(), num_unconverged);
 #endif
         } else {
-            for (int i = 0; i < n; i++) {
+            for (int i = 0; i < num_unconverged; i++) {
                 res__.pw_coeffs(spins__()).prime(0, i) = res__.pw_coeffs(spins__()).prime(0, i).real();
             }
         }
     }
 
-    return {consecutive_smallest_converged, n, frobenius_norm};
+    return num_unconverged;
 }
 
 /// Compute residuals from eigen-vectors.
@@ -211,8 +200,26 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
     sddk::dmatrix<T>* evec_ptr{nullptr};
     sddk::mdarray<double, 1>* eval_ptr{nullptr};
 
-    int n{0};
+    // Total number of residuals to be computed.
+    int num_residuals{0};
+
+    // Number of lockable eigenvectors
+    int num_consecutive_converged{0};
+
+    // Number of residuals that do not meet any convergence criterion
+    int num_unconverged{0};
+
+    // When estimate_eval__ is set we only compute true residuals of unconverged eigenpairs
+    // where convergence is determined just on the change in the eigenvalues.
     if (estimate_eval__) {
+        // Locking is only based on the is_converged__ criterion, not on the actual
+        // residual norms. We could lock more by considering the residual norm criterion
+        // later, but since we're reordering eigenvectors too, this becomes messy.
+        while (num_consecutive_converged < num_bands__ && is_converged__(num_consecutive_converged, ispn__)) {
+            ++num_consecutive_converged;
+        }
+
+        // Collect indices of unconverged eigenpairs.
         std::vector<int> ev_idx;
         for (int j = 0; j < num_bands__; j++) {
             if (!is_converged__(j, ispn__)) {
@@ -220,57 +227,79 @@ residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N
             }
         }
 
-        /* number of unconverged bands */
-        n = static_cast<int>(ev_idx.size());
+        // If everything is converged, return early.
+        if (ev_idx.empty()) {
+            return residual_result{num_bands__, 0, 0};
+        }
 
-        if (n) {
-            eval_tmp = sddk::mdarray<double, 1>(n);
-            eval_ptr = &eval_tmp;
-            evec_tmp = sddk::dmatrix<T>(N__ - num_locked, n, evec__.blacs_grid(), evec__.bs_row(), evec__.bs_col());
-            evec_ptr = &evec_tmp;
+        // Otherwise copy / reorder the unconverged eigenpairs
+        num_residuals = static_cast<int>(ev_idx.size());
 
-            int num_rows_local = evec_tmp.num_rows_local();
-            for (int j = 0; j < n; j++) {
-                eval_tmp[j] = eval__[ev_idx[j]];
-                if (evec__.blacs_grid().comm().size() == 1) {
-                    /* do a local copy */
-                    std::copy(&evec__(0, ev_idx[j]), &evec__(0, ev_idx[j]) + num_rows_local, &evec_tmp(0, j));
-                } else {
-                    auto pos_src  = evec__.spl_col().location(ev_idx[j]);
-                    auto pos_dest = evec_tmp.spl_col().location(j);
-                    /* do MPI send / receive */
-                    if (pos_src.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
-                        evec__.blacs_grid().comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
-                    }
-                    if (pos_dest.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
-                        evec__.blacs_grid().comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
-                    }
+        eval_tmp = sddk::mdarray<double, 1>(num_residuals);
+        eval_ptr = &eval_tmp;
+        evec_tmp = sddk::dmatrix<T>(N__, num_residuals, evec__.blacs_grid(), evec__.bs_row(), evec__.bs_col());
+        evec_ptr = &evec_tmp;
+
+        int num_rows_local = evec_tmp.num_rows_local();
+        for (int j = 0; j < num_residuals; j++) {
+            eval_tmp[j] = eval__[ev_idx[j]];
+            if (evec__.blacs_grid().comm().size() == 1) {
+                /* do a local copy */
+                std::copy(&evec__(0, ev_idx[j]), &evec__(0, ev_idx[j]) + num_rows_local, &evec_tmp(0, j));
+            } else {
+                auto pos_src  = evec__.spl_col().location(ev_idx[j]);
+                auto pos_dest = evec_tmp.spl_col().location(j);
+                /* do MPI send / receive */
+                if (pos_src.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
+                    evec__.blacs_grid().comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
+                }
+                if (pos_dest.rank == evec__.blacs_grid().comm_col().rank() && num_rows_local) {
+                    evec__.blacs_grid().comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
                 }
             }
-            if (is_device_memory(mem_type__) && evec_tmp.blacs_grid().comm().size() == 1) {
-                evec_tmp.allocate(sddk::memory_t::device);
-            }
-            if (is_device_memory(mem_type__)) {
-                eval_tmp.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
-            }
         }
-    } else { /* compute all residuals first */
+        if (is_device_memory(mem_type__) && evec_tmp.blacs_grid().comm().size() == 1) {
+            evec_tmp.allocate(sddk::memory_t::device);
+        }
+        if (is_device_memory(mem_type__)) {
+            eval_tmp.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
+        }
+    } else {
         if (is_device_memory(mem_type__)) {
             eval__.allocate(sddk::memory_t::device).copy_to(sddk::memory_t::device);
         }
         evec_ptr = &evec__;
         eval_ptr = &eval__;
-        n = num_bands__;
-    }
-    if (!n) {
-        return residual_result{num_bands__, 0, 0};
+        num_residuals = num_bands__;
     }
 
     /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-    sddk::transform<T>(mem_type__, la_type__, ispn__, {&hphi__, &ophi__}, num_locked, N__ - num_locked, *evec_ptr, 0, 0, {&hpsi__, &opsi__}, 0, n);
+    sddk::transform<T>(mem_type__, la_type__, ispn__, 
+                    {&hphi__, &ophi__}, num_locked, N__ - num_locked, 
+                    *evec_ptr, 0, 0, 
+                    {&hpsi__, &opsi__}, 0, num_residuals);
 
-    return normalized_preconditioned_residuals<T>(mem_type__, sddk::spin_range(ispn__), n, *eval_ptr, hpsi__, opsi__, res__,
-                                               h_diag__, o_diag__, norm_tolerance__);
+    num_unconverged = normalized_preconditioned_residuals<T>(mem_type__, sddk::spin_range(ispn__), num_residuals, *eval_ptr, hpsi__, opsi__, res__,
+                                                                h_diag__, o_diag__, norm_tolerance__, res_norm);
+
+    // In case we're not using the delta in eigenvalues as a convergence criterion,
+    // we lock eigenpairs using residual norms.
+    if (!estimate_eval__) {
+        while (num_consecutive_converged < num_residuals && res_norm[num_consecutive_converged] <= norm_tolerance__) {
+            ++num_consecutive_converged;
+        }
+    }
+
+    auto frobenius_norm = 0.0;
+    for (int i = 0; i < num_residuals; i++)
+        frobenius_norm += res_norm[i] * res_norm[i];
+    frobenius_norm = std::sqrt(frobenius_norm);
+
+    return {
+        num_consecutive_converged,
+        num_unconverged,
+        frobenius_norm
+    };
 }
 
 template residual_result
