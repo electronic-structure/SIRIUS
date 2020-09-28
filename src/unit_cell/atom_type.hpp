@@ -692,12 +692,20 @@ class Atom_type
         }
         if (idx_rf.size() == 0) {
             std::stringstream s;
-            s << "[sirius::Atom_type::add_hubbard_orbital] atomic radial function is not found";
+            s << "[add_hubbard_orbital] atomic radial function is not found for atom type " << label_ << std::endl
+              << "  the following atomic wave-functions are set: " << std::endl;
+            for (int k = 0; k < (int)ps_atomic_wfs_.size(); k++) {
+                auto& e = ps_atomic_wfs_[k];
+                int n = std::get<0>(e);
+                int l = std::get<1>(e);
+                s << "  n=" << n << " l=" << l << std::endl;
+            }
+            s << "  the following atomic orbital is requested for U-correction: n=" << n__ << " l=" << l__;
             TERMINATE(s);
         }
         if (idx_rf.size() > 2) {
             std::stringstream s;
-            s << "[sirius::Atom_type::add_hubbard_orbital] number of atomic functions > 2";
+            s << "[add_hubbard_orbital] number of atomic functions > 2";
             TERMINATE(s);
         }
 
