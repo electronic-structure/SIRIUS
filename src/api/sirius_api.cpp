@@ -3418,7 +3418,7 @@ sirius_calculate_hubbard_occupancies:
 void sirius_calculate_hubbard_occupancies(void* const* handler__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().hubbard_compute_occupation_numbers(gs.k_point_set());
+    gs.potential().U().compute_occupation_matrix(gs.k_point_set());
 }
 
 
@@ -3441,12 +3441,10 @@ sirius_set_hubbard_occupancies:
       doc: Leading dimensions of the occupation matrix.
 @api end
 */
-void sirius_set_hubbard_occupancies(void* const* handler__,
-                                    std::complex<double>* occ__,
-                                    int   const *ld__)
+void sirius_set_hubbard_occupancies(void* const* handler__, std::complex<double>* occ__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_occupancies("set", occ__, ld__);
+    gs.potential().U().access_hubbard_occupancies("set", occ__, *ld__);
 }
 
 /*
@@ -3468,12 +3466,10 @@ sirius_get_hubbard_occupancies:
       doc: Leading dimensions of the occupation matrix.
 @api end
 */
-void sirius_get_hubbard_occupancies(void* const* handler__,
-                                    std::complex<double>*      occ__,
-                                    int   const *ld__)
+void sirius_get_hubbard_occupancies(void* const* handler__, std::complex<double>* occ__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_occupancies("get", occ__, ld__);
+    gs.potential().U().access_hubbard_occupancies("get", occ__, *ld__);
 }
 
 /*
@@ -3495,12 +3491,10 @@ sirius_set_hubbard_potential:
       doc: Leading dimensions of the matrix.
 @api end
 */
-void sirius_set_hubbard_potential(void* const* handler__,
-                                  std::complex<double>*      pot__,
-                                  int   const *ld__)
+void sirius_set_hubbard_potential(void* const* handler__, std::complex<double>* pot__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_potential("set", pot__, ld__);
+    gs.potential().U().access_hubbard_potential("set", pot__, *ld__);
 }
 
 
@@ -3523,12 +3517,10 @@ sirius_get_hubbard_potential:
       doc: Leading dimensions of the matrix.
 @api end
 */
-void sirius_get_hubbard_potential(void* const* handler__,
-                                  std::complex<double>*      pot__,
-                                  int   const *ld__)
+void sirius_get_hubbard_potential(void* const* handler__, std::complex<double>* pot__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_potential("get", pot__, ld__);
+    gs.potential().U().access_hubbard_potential("get", pot__, *ld__);
 }
 
 /*

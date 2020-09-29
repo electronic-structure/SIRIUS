@@ -54,7 +54,7 @@ class Hubbard
 
     int number_of_hubbard_orbitals_{0};
 
-    mdarray<double_complex, 4> occupancy_number_;
+    sddk::mdarray<double_complex, 4> occupation_matrix_;
 
     double hubbard_energy_{0.0};
     double hubbard_energy_u_{0.0};
@@ -166,14 +166,9 @@ class Hubbard
                                  Wave_functions& phi,
                                  Wave_functions& ophi);
 
-    /// Generate the atomic orbitals.
-    //void generate_atomic_orbitals(K_point& kp, Q_operator& q_op);
+    void compute_occupation_matrix(K_point_set& kset_);
 
-    void hubbard_compute_occupation_numbers(K_point_set& kset_);
-
-    void compute_occupancies_derivatives(K_point&                    kp,
-                                         Q_operator& q_op,
-                                         mdarray<double_complex, 6>& dn);
+    void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 6>& dn);
 
     /// Compute derivatives of the occupancy matrix w.r.t.atomic displacement.
     /** \param [in]  kp   K-point.
@@ -216,7 +211,7 @@ class Hubbard
 
     mdarray<double_complex, 4>& occupation_matrix()
     {
-        return occupancy_number_;
+        return occupation_matrix_;
     }
 
     mdarray<double_complex, 4>& potential_matrix()
@@ -224,14 +219,9 @@ class Hubbard
         return hubbard_potential_;
     }
 
-    void access_hubbard_potential(char const*     what,
-                                  double_complex* occ,
-                                  int const*      ld);
+    void access_hubbard_potential(std::string const& what, double_complex* occ, int ld);
 
-    void access_hubbard_occupancies(char const*     what,
-                                    double_complex* occ,
-                                    int const*      ld);
-
+    void access_hubbard_occupancies(std::string const& what, double_complex* occ, int ld);
 };
 
 } // namespace sirius

@@ -415,7 +415,7 @@ class K_point
     }
 
     /// Get band occupancy.
-    inline double band_occupancy(int j__, int ispn__) const
+    inline double band_occupancy(int j__, int ispn__ = -1) const
     {
         if (ctx_.num_mag_dims() == 3) {
             ispn__ = 0;
