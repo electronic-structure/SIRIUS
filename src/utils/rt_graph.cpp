@@ -538,6 +538,21 @@ auto TimingResult::print(std::vector<Stat> statistic) const -> std::string {
   // End table
   stream << std::string(totalSpace, '=') << std::endl;
 
+  double sum_node_time{0};
+  double sum_root_time{0};
+  for (const auto& node : rootNodes_) {
+    double sum, mean, median, min, max, lowerQuartile, upperQuartile;
+    std::tie(sum, mean, median, min, max, lowerQuartile, upperQuartile) = internal::calculate_statistic(node.timings);
+    sum_root_time += sum;
+    for (const auto& n1 : node.subNodes) {
+        double sum, mean, median, min, max, lowerQuartile, upperQuartile;
+        std::tie(sum, mean, median, min, max, lowerQuartile, upperQuartile) = internal::calculate_statistic(n1.timings);
+        sum_node_time += sum;
+    }
+  }
+  stream << "total time : " << sum_root_time << " (measured : " << sum_node_time <<
+    ", lost : " << sum_root_time - sum_node_time << ")" << std::endl;
+
   return stream.str();
 }
 
