@@ -62,6 +62,22 @@ void Hubbard::compute_occupation_matrix(K_point_set& kset_)
         int  ik = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
 
+        if (is_device_memory(kp->spinor_wave_functions().preferred_memory_t())) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                /* allocate GPU memory */
+                kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, kp->num_occupied_bands(ispn));
+            }
+        }
+        if (is_device_memory(kp->hubbard_wave_functions().preferred_memory_t())) {
+            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
+                if (!kp->hubbard_wave_functions().pw_coeffs(ispn).prime().on_device()) {
+                    kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
+                }
+                kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, this->number_of_hubbard_orbitals());
+            }
+        }
+
         /* full non colinear magnetism */
         if (ctx_.num_mag_dims() == 3) {
             dmatrix<double_complex> dm(kp->num_occupied_bands(), this->number_of_hubbard_orbitals(),
@@ -165,6 +181,17 @@ void Hubbard::compute_occupation_matrix(K_point_set& kset_)
                     }
                 }
             } // ispn
+        }
+
+        if (is_device_memory(kp->spinor_wave_functions().preferred_memory_t())) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                kp->spinor_wave_functions().pw_coeffs(ispn).prime().deallocate(memory_t::device);
+            }
+        }
+        if (is_device_memory(kp->hubbard_wave_functions().preferred_memory_t())) {
+            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
+                kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+            }
         }
     } // ikloc
 
