@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <list>
 #include <numeric>
 #include <ostream>
 #include <ratio>
@@ -45,15 +46,19 @@ namespace rt_graph {
 namespace internal {
 namespace {
 
-struct Format {
-  Format(Stat stat_) : stat(stat_) {
+struct StatFormat {
+  StatFormat(Stat stat_) : stat(stat_) {
     switch (stat_) {
       case Stat::Count:
         header = "#";
-        space = 6;
+        space = 9;
         break;
       case Stat::Total:
         header = "Total";
+        space = 14;
+        break;
+      case Stat::Self:
+        header = "Self";
         space = 14;
         break;
       case Stat::Mean:
@@ -88,6 +93,10 @@ struct Format {
         header = "Parent %";
         space = 11;
         break;
+      case Stat::SelfPercentage:
+        header = "Self %";
+        space = 11;
+        break;
     }
   }
 
@@ -96,73 +105,88 @@ struct Format {
   std::size_t space;
 };
 
-// format time input in seconds into string with appropriate unit
-auto format_time(const double time_seconds) -> std::string {
-  if (time_seconds <= 0.0) return std::string("0 s");
+auto unit_prefix(const double value) -> std::pair<double, char> {
+  if (value == 0.0 || value == -0.0) {
+    return {value, '\0'};
+  }
 
-  // time is always greater than 0 here
-  const double exponent = std::log10(std::abs(time_seconds));
-  const int siExponent = static_cast<int>(std::floor(exponent / 3.0) * 3);
+  const double exponent = std::log10(std::abs(value));
+  const int siExponent = static_cast<int>(std::floor(exponent / 3.0)) * 3;
 
-  std::stringstream result;
-  result << std::fixed << std::setprecision(2);
-  result << time_seconds * std::pow(10.0, static_cast<double>(-siExponent));
-  result << " ";
+  char prefix = '\0';
   switch (siExponent) {
     case 24:
-      result << "Y";
+      prefix = 'Y';
       break;
     case 21:
-      result << "Z";
+      prefix = 'Z';
       break;
     case 18:
-      result << "E";
+      prefix = 'E';
       break;
     case 15:
-      result << "P";
+      prefix = 'P';
       break;
     case 12:
-      result << "T";
+      prefix = 'T';
       break;
     case 9:
-      result << "G";
+      prefix = 'G';
       break;
     case 6:
-      result << "M";
+      prefix = 'M';
       break;
     case 3:
-      result << "k";
+      prefix = 'k';
       break;
     case 0:
       break;
     case -3:
-      result << "m";
+      prefix = 'm';
       break;
     case -6:
-      result << "u";
+      prefix = 'u';
       break;
     case -9:
-      result << "n";
+      prefix = 'n';
       break;
     case -12:
-      result << "p";
+      prefix = 'p';
       break;
     case -15:
-      result << "f";
+      prefix = 'f';
       break;
     case -18:
-      result << "a";
+      prefix = 'a';
       break;
     case -21:
-      result << "z";
+      prefix = 'z';
       break;
     case -24:
-      result << "y";
+      prefix = 'y';
       break;
     default:
-      result << "?";
+      prefix = '?';
   }
+
+  return {value * std::pow(10.0, static_cast<double>(-siExponent)), prefix};
+}
+
+// format time input in seconds into string with appropriate unit
+auto format_time(const double time_seconds) -> std::string {
+  if (time_seconds <= 0.0) return std::string("0.00 s ");
+
+  double value;
+  char prefix;
+  std::tie(value, prefix) = unit_prefix(time_seconds);
+
+  std::stringstream result;
+  result << std::fixed << std::setprecision(2);
+  result << value;
+  result << " ";
+  if (prefix) result << prefix;
   result << "s";
+  if (!prefix) result << " ";
   return result.str();
 }
 
@@ -177,14 +201,27 @@ auto calc_median(const std::vector<double>::const_iterator& begin,
   }
 }
 
-auto print_stat(std::ostream& out, const Format& format, const std::vector<double>& sortedTimings,
-                double totalSum, double parentSum, double currentSum) -> void {
+auto print_stat(std::ostream& out, const StatFormat& format,
+                const std::vector<double>& sortedTimings, double totalSum, double parentSum,
+                double currentSum, double subSum) -> void {
   switch (format.stat) {
     case Stat::Count:
-      out << std::right << std::setw(format.space) << sortedTimings.size();
+      if (sortedTimings.size() >= 100000) {
+        double value;
+        char prefix;
+        std::tie(value, prefix) = unit_prefix(sortedTimings.size());
+        out << std::right << std::setw(format.space)
+            << std::to_string(static_cast<int>(value)) + prefix;
+      } else {
+        out << std::right << std::setw(format.space) << sortedTimings.size();
+      }
       break;
     case Stat::Total:
       out << std::right << std::setw(format.space) << format_time(currentSum);
+      break;
+    case Stat::Self:
+      out << std::right << std::setw(format.space)
+          << format_time(std::max<double>(currentSum - subSum, 0.0));
       break;
     case Stat::Mean:
       out << std::right << std::setw(format.space)
@@ -222,6 +259,12 @@ auto print_stat(std::ostream& out, const Format& format, const std::vector<doubl
           (parentSum < currentSum || parentSum == 0) ? 100.0 : currentSum / parentSum * 100.0;
       out << std::right << std::fixed << std::setprecision(2) << std::setw(format.space) << p;
     } break;
+    case Stat::SelfPercentage: {
+      const double p = (currentSum == 0)
+                           ? 100.0
+                           : std::max<double>(currentSum - subSum, 0.0) / currentSum * 100.0;
+      out << std::right << std::fixed << std::setprecision(2) << std::setw(format.space) << p;
+    } break;
   }
 }
 
@@ -234,72 +277,52 @@ struct TimeStampPair {
   internal::TimingNode* nodePtr = nullptr;
 };
 
-auto calculate_statistic(std::vector<double> values)
-    -> std::tuple<double, double, double, double, double, double, double> {
-  if (values.empty()) return std::make_tuple(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-  std::sort(values.begin(), values.end());
-
-  const double min = values.front();
-  const double max = values.back();
-
-  const double median = calc_median(values.begin(), values.end());
-  const double sum = std::accumulate(values.begin(), values.end(), 0.0);
-  const double mean = sum / values.size();
-
-  const double lowerQuartile = calc_median(values.begin(), values.begin() + values.size() / 2);
-  const double upperQuartile = calc_median(
-      values.begin() + values.size() / 2 + (values.size() % 2) * (values.size() > 1), values.end());
-
-  return std::make_tuple(sum, mean, median, min, max, lowerQuartile, upperQuartile);
-}
-
-// print rt_graph nodes in tree recursively
-auto print_node(std::ostream& out, const std::vector<internal::Format> formats,
-                const std::size_t identifierSpace, const std::string& nodePrefix,
-                const internal::TimingNode& node, const bool isSubNode, const bool isLastSubnode,
+// print nodes recursively
+auto print_node(const std::size_t level, std::ostream& out,
+                const std::vector<internal::StatFormat> formats, std::size_t const identifierSpace,
+                std::string nodePrefix, const internal::TimingNode& node, bool isLastSubnode,
                 double parentTime, double totalTime) -> void {
-  double sum, mean, median, min, max, lowerQuartile, upperQuartile;
-  std::tie(sum, mean, median, min, max, lowerQuartile, upperQuartile) =
-      calculate_statistic(node.timings);
-
-  if (!isSubNode) {
-    totalTime = sum;
-    parentTime = sum;
+  // print label
+  out << std::left;
+  std::string identifier = nodePrefix;
+  if (level > 0) {
+    // std::setw counts the special characters as 1 instead of 3 -> add missing 2
+    out << std::setw(identifierSpace + 2);
+    if (isLastSubnode)
+      identifier += "\u2514 ";  // "up and right"
+    else
+      identifier += "\u251c ";  // "vertical and right"
+  } else {
+    out << std::setw(identifierSpace);
   }
-
-  const double totalPercentage =
-      (totalTime < sum || totalTime == 0) ? 100.0 : sum / totalTime * 100.0;
-
-  const double parentPercentage =
-      (parentTime < sum || parentTime == 0) ? 100.0 : sum / parentTime * 100.0;
-
-  std::stringstream totalPercentageStream;
-  totalPercentageStream << std::fixed << std::setprecision(2) << totalPercentage;
-  std::stringstream parentPercentageStream;
-  parentPercentageStream << std::fixed << std::setprecision(2) << parentPercentage;
-
-  out << std::left << std::setw(identifierSpace);
-  if (isSubNode)
-    out << nodePrefix + "- " + node.identifier;
-  else
-    out << nodePrefix + node.identifier;
+  identifier += node.identifier;
+  out << identifier;
 
   auto sortedTimings = node.timings;
   std::sort(sortedTimings.begin(), sortedTimings.end());
 
-  const double currentTime = std::accumulate(sortedTimings.begin(), sortedTimings.end(), 0.0);
-  for (const auto& format : formats) {
-    print_stat(out, format, sortedTimings, totalTime, parentTime, currentTime);
-  }
-
-  out << std::endl;
-
+  double subTime = 0.0;
   for (const auto& subNode : node.subNodes) {
-    print_node(out, formats, identifierSpace, nodePrefix + std::string(" |"), subNode, true,
-               &subNode == &node.subNodes.back(), sum, totalTime);
-    if (!isLastSubnode && &subNode == &node.subNodes.back()) {
-      out << nodePrefix << std::endl;
+    subTime += subNode.totalTime;
+  }
+  for (const auto& format : formats) {
+    print_stat(out, format, sortedTimings, totalTime, parentTime, node.totalTime, subTime);
+  }
+  out << std::endl;
+  for (const auto& subNode : node.subNodes) {
+    std::string newNodePrefix = nodePrefix;
+    std::size_t newIdentifierSpace = identifierSpace;
+    if (level > 0) {
+      if (isLastSubnode) {
+        newNodePrefix += "  ";
+      } else {
+        newNodePrefix += "\u2502 ";  // "vertical"
+        // std::setw counts the special characters as 1 instead of 3 -> add missing 2
+        newIdentifierSpace += 2;
+      }
     }
+    print_node(level + 1, out, formats, newIdentifierSpace, newNodePrefix, subNode,
+               &subNode == &node.subNodes.back(), node.totalTime, totalTime);
   }
 }
 
@@ -347,6 +370,52 @@ auto extract_timings(const std::string& identifier, const std::list<TimingNode>&
       timings.insert(timings.end(), node.timings.begin(), node.timings.end());
     }
     extract_timings(identifier, node.subNodes, timings);
+  }
+}
+
+auto sort_timings_nodes(std::list<TimingNode>& nodes) -> void {
+  // sort large to small
+  nodes.sort([](const TimingNode& n1, const TimingNode& n2) -> bool {
+    return n1.totalTime > n2.totalTime;
+  });
+  for (auto& n : nodes) {
+    sort_timings_nodes(n.subNodes);
+  }
+}
+
+auto flatten_timings_nodes(std::list<TimingNode>& rootNodes, std::list<TimingNode>& nodes) -> void {
+  // call recursively first, since nodes will be invalidated next
+  for (auto& n : nodes) {
+    flatten_timings_nodes(rootNodes, n.subNodes);
+  }
+
+  for (auto& n : nodes) {
+    auto it = std::find_if(
+        rootNodes.begin(), rootNodes.end(),
+        [&n](const TimingNode& element) -> bool { return element.identifier == n.identifier; });
+    if (it == rootNodes.end()) {
+      // identifier not in rootNodes -> append full TimingNode
+      rootNodes.emplace_back(std::move(n));
+    } else {
+      // identifier already in rootNodes -> only append timings
+      it->timings.insert(it->timings.end(), n.timings.begin(), n.timings.end());
+    }
+  }
+
+  // drop all nodes
+  nodes.clear();
+}
+
+auto flatten_timings_nodes_from_level(std::list<TimingNode>& nodes, std::size_t targetLevel,
+                                      std::size_t currentLevel) -> void {
+  if (targetLevel > currentLevel) {
+    for (auto& n : nodes) {
+      flatten_timings_nodes_from_level(n.subNodes, targetLevel, currentLevel + 1);
+    }
+  } else {
+    for (auto& n : nodes) {
+      flatten_timings_nodes(nodes, n.subNodes);
+    }
   }
 }
 
@@ -421,7 +490,7 @@ auto Timer::process() const -> TimingResult {
           for (auto& subNode : parentNode.subNodes) {
             if (subNode.identifier == pair.identifier) {
               nodeFound = true;
-              subNode.timings.push_back(pair.time);
+              subNode.add_time(pair.time);
               // mark node position in pair for finding sub-nodes
               pair.nodePtr = &(subNode);
               break;
@@ -431,7 +500,7 @@ auto Timer::process() const -> TimingResult {
             // create new sub-node
             internal::TimingNode newNode;
             newNode.identifier = pair.identifier;
-            newNode.timings.push_back(pair.time);
+            newNode.add_time(pair.time);
             parentNode.subNodes.push_back(std::move(newNode));
             // mark node position in pair for finding sub-nodes
             pair.nodePtr = &(parentNode.subNodes.back());
@@ -445,7 +514,7 @@ auto Timer::process() const -> TimingResult {
         // Check if top level node with same name exists
         for (auto& topNode : results) {
           if (topNode.identifier == pair.identifier) {
-            topNode.timings.push_back(pair.time);
+            topNode.add_time(pair.time);
             pair.nodePtr = &(topNode);
             break;
           }
@@ -456,7 +525,7 @@ auto Timer::process() const -> TimingResult {
       if (pair.nodePtr == nullptr) {
         internal::TimingNode newNode;
         newNode.identifier = pair.identifier;
-        newNode.timings.push_back(pair.time);
+        newNode.add_time(pair.time);
         // newNode.parent = nullptr;
         results.push_back(std::move(newNode));
 
@@ -472,10 +541,6 @@ auto Timer::process() const -> TimingResult {
 
   return TimingResult(std::move(results), warnings.str());
 }
-
-// ======================
-//
-// ======================
 
 auto TimingResult::json() const -> std::string {
   std::stringstream jsonStream;
@@ -502,11 +567,10 @@ auto TimingResult::print(std::vector<Stat> statistic) const -> std::string {
     const auto nodeMax = internal::max_node_identifier_length(node, 0, 2, identifierSpace);
     if (nodeMax > identifierSpace) identifierSpace = nodeMax;
   }
-  identifierSpace += 3;
 
   auto totalSpace = identifierSpace;
 
-  std::vector<internal::Format> formats;
+  std::vector<internal::StatFormat> formats;
   formats.reserve(statistic.size());
   for (const auto& stat : statistic) {
     formats.emplace_back(stat);
@@ -530,8 +594,8 @@ auto TimingResult::print(std::vector<Stat> statistic) const -> std::string {
 
   // print all timings
   for (const auto& node : rootNodes_) {
-    internal::print_node(stream, formats, identifierSpace, std::string(), node, false, true, 0.0,
-                         0.0);
+    internal::print_node(0, stream, formats, identifierSpace, "", node, true, node.totalTime,
+                         node.totalTime);
     stream << std::endl;
   }
 
@@ -539,6 +603,16 @@ auto TimingResult::print(std::vector<Stat> statistic) const -> std::string {
   stream << std::string(totalSpace, '=') << std::endl;
 
   return stream.str();
+}
+
+auto TimingResult::flatten(std::size_t level) -> TimingResult& {
+  internal::flatten_timings_nodes_from_level(rootNodes_, level, 0);
+  return *this;
+}
+
+auto TimingResult::sort_nodes() -> TimingResult& {
+  internal::sort_timings_nodes(rootNodes_);
+  return *this;
 }
 
 }  // namespace rt_graph

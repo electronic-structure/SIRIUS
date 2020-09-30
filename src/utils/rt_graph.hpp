@@ -43,16 +43,18 @@ using ClockType = std::chrono::high_resolution_clock;
 
 // Selection of available statistics
 enum class Stat {
-  Count,            // Number of measurements
-  Total,            // Total accumulated time
-  Mean,             // Mean time
-  Median,           // Median time
-  QuartileHigh,     // Third quartile time
-  QuartileLow,      // First quartile time
-  Min,              // Mininum time
-  Max,              // Maximum time
-  Percentage,       // Percentage of accumulated time with respect to the top-level node in graph
-  ParentPercentage  // Percentage of accumulated time with respect to the parent node in graph
+  Count,             // Number of measurements
+  Total,             // Total accumulated time
+  Self,              // Total accumulated time minus total time of sub-timings
+  Mean,              // Mean time
+  Median,            // Median time
+  QuartileHigh,      // Third quartile time
+  QuartileLow,       // First quartile time
+  Min,               // Mininum time
+  Max,               // Maximum time
+  Percentage,        // Percentage of accumulated time with respect to the top-level node in graph
+  ParentPercentage,  // Percentage of accumulated time with respect to the parent node in graph
+  SelfPercentage     // Percentage of accumulated time not spend in sub-timings
 };
 
 // internal helper functionality
@@ -76,6 +78,12 @@ struct TimingNode {
   std::string identifier;
   std::vector<double> timings;
   std::list<TimingNode> subNodes;
+  double totalTime = 0.0;
+
+  inline void add_time(double t) {
+    timings.push_back(t);
+    totalTime += t;
+  }
 };
 }  // namespace internal
 
@@ -95,6 +103,13 @@ public:
   auto print(std::vector<Stat> statistic = {Stat::Count, Stat::Total, Stat::Percentage,
                                             Stat::ParentPercentage, Stat::Median, Stat::Min,
                                             Stat::Max}) const -> std::string;
+
+  // Flatten graph up to given level (level 0 equals root nodes), where Timings with the same string
+  // identifier are added together.
+  auto flatten(std::size_t level) -> TimingResult&;
+
+  // Sort nodes by total time.
+  auto sort_nodes() -> TimingResult&;
 
 private:
   std::list<internal::TimingNode> rootNodes_;
