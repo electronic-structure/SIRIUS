@@ -337,7 +337,7 @@ void run_tasks(cmd_args const& args)
             band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
                 TERMINATE("fix me");
-                potential.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
+                potential.U().compute_occupation_matrix(ks); // TODO: this is wrong; U matrix should come form the saved file
                 potential.U().calculate_hubbard_potential_and_energy();
             }
         }

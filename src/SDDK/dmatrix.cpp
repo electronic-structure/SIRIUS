@@ -76,6 +76,19 @@ dmatrix<T>::dmatrix(int num_rows__, int num_cols__, memory_t mem_type__)
 }
 
 template <typename T>
+dmatrix<T>::dmatrix(int num_rows__, int num_cols__, memory_pool& mp__, std::string const& label__)
+    : matrix<T>(num_rows__, num_cols__, mp__, label__)
+    , num_rows_(num_rows__)
+    , num_cols_(num_cols__)
+    , bs_row_(1)
+    , bs_col_(1)
+    , spl_row_(num_rows_, 1, 0, bs_row_)
+    , spl_col_(num_cols_, 1, 0, bs_col_)
+{
+}
+
+
+template <typename T>
 dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__)
     : matrix<T>(ptr__, num_rows__, num_cols__)
     , num_rows_(num_rows__)

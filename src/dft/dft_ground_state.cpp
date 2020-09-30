@@ -195,7 +195,7 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
     std::vector<double> etot_hist;
 
     if (ctx_.hubbard_correction()) { // TODO: move to inititialization functions
-        potential_.U().hubbard_compute_occupation_numbers(kset_);
+        potential_.U().compute_occupation_matrix(kset_);
         potential_.U().calculate_hubbard_potential_and_energy();
     }
 
@@ -285,7 +285,7 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
         /* Compute the hubbard correction */
         if (ctx_.hubbard_correction()) {
-            potential_.U().hubbard_compute_occupation_numbers(kset_);
+            potential_.U().compute_occupation_matrix(kset_);
             potential_.U().calculate_hubbard_potential_and_energy();
         }
 

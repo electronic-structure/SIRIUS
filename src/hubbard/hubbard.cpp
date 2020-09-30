@@ -41,10 +41,12 @@ Hubbard::Hubbard(Simulation_context& ctx__)
         approximation_ = false;
     }
 
-    occupancy_number_  = mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms());
-    hubbard_potential_ = mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms());
+    occupation_matrix_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
+            memory_t::host, "occupation_matrix_");
+    hubbard_potential_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
+            memory_t::host, "hubbard_potential_");
 
-    auto r  = ctx_.unit_cell().num_wf_with_U();
+    auto r = ctx_.unit_cell().num_wf_with_U();
 
     number_of_hubbard_orbitals_ = r.first;
     offset_ = r.second;
