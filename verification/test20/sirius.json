@@ -1,0 +1,64 @@
+{
+    "control" : {
+        "processing_unit" : "cpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack",
+        "verbosity" : 1,
+        "print_forces" : true,
+        "print_stress" : true
+    },
+    "parameters" : {
+        "electronic_structure_method" : "pseudopotential",
+        "smearing_width" : 0.001,
+        "xc_functionals": ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
+        "num_mag_dims": 1,
+        "pw_cutoff" : 30.00,
+        "gk_cutoff":  8.00,
+        "use_symmetry": true,
+        "ngridk" : [4,4,4],
+        "potential_tol" : 1e-10,
+        "energy_tol" : 1e-10,
+        "num_dft_iter" : 100,
+        "hubbard_correction" : true
+    },
+
+    "unit_cell" : {
+
+        "lattice_vectors" : [ [-1, 1, 1],
+                              [1, -1, 1],
+                              [1, 1, -1]
+                            ],
+        "lattice_vectors_scale" : 2.708,
+
+        "atom_types" : ["Fe"],
+
+        "atom_files" : {
+            "Fe" : "Fe.json"
+        },
+
+        "atoms" : {
+            "Fe" : [
+                [0, 0, 0, 0, 0, 1]
+            ]
+        }
+    },
+
+    "hubbard" : {
+        "orthogonalize_hubbard_wave_functions": true,
+        "Fe" : {
+            "U": 4.4,
+            "J": 0.0,
+            "l": 2,
+            "n" : 3,
+            "hubbard_orbital": "3d",
+            "occupancy" : 5
+        }
+    },
+
+    "mixer" : {
+        "beta" : 0.85,
+        "type" : "broyden1",
+        "max_history" : 8
+    }
+
+}
