@@ -77,10 +77,12 @@ struct TimeStamp {
 struct TimingNode {
   std::string identifier;
   std::vector<double> timings;
+  std::vector<double> startTimes;
   std::list<TimingNode> subNodes;
   double totalTime = 0.0;
 
-  inline void add_time(double t) {
+  inline void add_time(double startTime, double t) {
+    startTimes.push_back(startTime);
     timings.push_back(t);
     totalTime += t;
   }
