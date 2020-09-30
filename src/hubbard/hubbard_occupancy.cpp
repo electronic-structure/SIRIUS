@@ -47,8 +47,6 @@ void Hubbard::compute_occupation_matrix(K_point_set& kset_)
 
     this->occupation_matrix_.zero();
 
-    std::cout << "num_hubbard_orbitals : " << this->number_of_hubbard_orbitals() << std::endl;
-
     memory_t mem{memory_t::host};
     linalg_t la{linalg_t::blas};
     if (ctx_.processing_unit() == device_t::GPU) {
