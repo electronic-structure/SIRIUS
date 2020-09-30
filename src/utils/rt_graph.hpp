@@ -77,17 +77,14 @@ struct TimeStamp {
 struct TimingNode {
   std::string identifier;
   std::vector<double> timings;
-  std::vector<double> start_stop;
+  std::vector<double> startTimes;
   std::list<TimingNode> subNodes;
   double totalTime = 0.0;
 
-  inline void add_time(double t) {
+  inline void add_time(double startTime, double t) {
+    startTimes.push_back(startTime);
     timings.push_back(t);
     totalTime += t;
-  }
-  inline void add_start_stop(double t0, double t1) {
-    start_stop.push_back(t0);
-    start_stop.push_back(t1);
   }
 };
 }  // namespace internal

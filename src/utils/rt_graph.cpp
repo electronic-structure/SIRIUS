@@ -272,8 +272,7 @@ auto print_stat(std::ostream& out, const StatFormat& format,
 struct TimeStampPair {
   std::string identifier;
   double time = 0.0;
-  double time_start = 0.0;
-  double time_stop = 0.0;
+  double startTime = 0.0;
   std::size_t startIdx = 0;
   std::size_t stopIdx = 0;
   internal::TimingNode* nodePtr = nullptr;
@@ -356,10 +355,10 @@ auto export_node_json(const std::string& padding, const std::list<internal::Timi
       if (&value != &(node.timings.back())) stream << ", ";
     }
     stream << "]," << std::endl;
-    stream << subNodePadding << "\"start_stop\" : [";
-    for (const auto& value : node.start_stop) {
+    stream << subNodePadding << "\"start-times\" : [";
+    for (const auto& value : node.startTimes) {
       stream << value;
-      if (&value != &(node.start_stop.back())) stream << ", ";
+      if (&value != &(node.startTimes.back())) stream << ", ";
     }
     stream << "]," << std::endl;
     stream << subNodePadding << "\"sub-timings\" : ";
@@ -407,6 +406,7 @@ auto flatten_timings_nodes(std::list<TimingNode>& rootNodes, std::list<TimingNod
     } else {
       // identifier already in rootNodes -> only append timings
       it->timings.insert(it->timings.end(), n.timings.begin(), n.timings.end());
+      it->startTimes.insert(it->startTimes.end(), n.startTimes.begin(), n.startTimes.end());
     }
   }
 
@@ -458,13 +458,11 @@ auto Timer::process() const -> TimingResult {
               // Matching stop found
               std::chrono::duration<double> duration = timeStamps_[j].time - timeStamps_[i].time;
               pair.time = duration.count();
-              duration = timeStamps_[j].time - timeStamps_[0].time;
-              pair.time_stop = duration.count();
               duration = timeStamps_[i].time - timeStamps_[0].time;
-              pair.time_start = duration.count();
+              pair.startTime = duration.count();
               pair.stopIdx = j;
               timePairs.push_back(pair);
-              if (pair.time < 0) {
+              if (pair.time < 0 || pair.startTime < 0) {
                 warnings << "rt_graph WARNING:Measured time is negative. Non-steady system-clock?!"
                          << std::endl;
               }
@@ -487,7 +485,7 @@ auto Timer::process() const -> TimingResult {
     }
 
     // create tree of timings where sub-nodes represent timings fully enclosed by another start /
-    // stop pair Use the fact that timePairs is sorted by startIdx
+    // stop pair. Use the fact that timePairs is sorted by startIdx
     for (std::size_t i = 0; i < timePairs.size(); ++i) {
       auto& pair = timePairs[i];
 
@@ -502,8 +500,7 @@ auto Timer::process() const -> TimingResult {
           for (auto& subNode : parentNode.subNodes) {
             if (subNode.identifier == pair.identifier) {
               nodeFound = true;
-              subNode.add_time(pair.time);
-              subNode.add_start_stop(pair.time_start, pair.time_stop);
+              subNode.add_time(pair.startTime, pair.time);
               // mark node position in pair for finding sub-nodes
               pair.nodePtr = &(subNode);
               break;
@@ -513,8 +510,7 @@ auto Timer::process() const -> TimingResult {
             // create new sub-node
             internal::TimingNode newNode;
             newNode.identifier = pair.identifier;
-            newNode.add_time(pair.time);
-            newNode.add_start_stop(pair.time_start, pair.time_stop);
+            newNode.add_time(pair.startTime, pair.time);
             parentNode.subNodes.push_back(std::move(newNode));
             // mark node position in pair for finding sub-nodes
             pair.nodePtr = &(parentNode.subNodes.back());
@@ -528,8 +524,7 @@ auto Timer::process() const -> TimingResult {
         // Check if top level node with same name exists
         for (auto& topNode : results) {
           if (topNode.identifier == pair.identifier) {
-            topNode.add_time(pair.time);
-            topNode.add_start_stop(pair.time_start, pair.time_stop);
+            topNode.add_time(pair.startTime, pair.time);
             pair.nodePtr = &(topNode);
             break;
           }
@@ -540,8 +535,7 @@ auto Timer::process() const -> TimingResult {
       if (pair.nodePtr == nullptr) {
         internal::TimingNode newNode;
         newNode.identifier = pair.identifier;
-        newNode.add_time(pair.time);
-        newNode.add_start_stop(pair.time_start, pair.time_stop);
+        newNode.add_time(pair.startTime, pair.time);
         // newNode.parent = nullptr;
         results.push_back(std::move(newNode));
 
