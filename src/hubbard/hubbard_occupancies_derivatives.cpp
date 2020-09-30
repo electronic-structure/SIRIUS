@@ -55,9 +55,9 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
         }
     }
 
-    Beta_projectors_gradient bp_grad_(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
-    //kp.beta_projectors().prepare();
-    bp_grad_.prepare();
+    Beta_projectors_gradient bp_grad(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
+    kp.beta_projectors().prepare();
+    bp_grad.prepare();
 
     bool augment = false;
 
@@ -179,20 +179,20 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
                         // need to find the right atom in the chunks.
                         if (kp.beta_projectors().chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i) == atom_id) {
                             kp.beta_projectors().generate(chunk__);
-                            bp_grad_.generate(chunk__, dir);
+                            bp_grad.generate(chunk__, dir);
 
                             // compute Q_ij <\beta_i|\phi> |d \beta_j> and add it to d\phi
                             {
                                 /* <beta | phi> for this chunk */
                                 auto beta_phi = kp.beta_projectors().inner<double_complex>(chunk__, phi, 0, 0,
                                                                                            this->number_of_hubbard_orbitals());
-                                q_op.apply(chunk__, i, 0, dphi, 0, this->number_of_hubbard_orbitals(), bp_grad_, beta_phi);
+                                q_op.apply(chunk__, i, 0, dphi, 0, this->number_of_hubbard_orbitals(), bp_grad, beta_phi);
                             }
 
                             // compute Q_ij <d \beta_i|\phi> |\beta_j> and add it to d\phi
                             {
                                 /* <dbeta | phi> for this chunk */
-                                auto dbeta_phi = bp_grad_.inner<double_complex>(chunk__, phi, 0, 0,
+                                auto dbeta_phi = bp_grad.inner<double_complex>(chunk__, phi, 0, 0,
                                                                                 this->number_of_hubbard_orbitals());
 
                                 /* apply Q operator (diagonal in spin) */
@@ -224,8 +224,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
         kp.spinor_wave_functions().deallocate(spin_range(ctx_.num_spins()), memory_t::device);
     }
 
-    //kp.beta_projectors().dismiss();
-    //bp_grad_.dismiss();
+    kp.beta_projectors().dismiss();
 }
 
 void
