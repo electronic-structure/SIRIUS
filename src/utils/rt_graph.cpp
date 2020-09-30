@@ -272,6 +272,8 @@ auto print_stat(std::ostream& out, const StatFormat& format,
 struct TimeStampPair {
   std::string identifier;
   double time = 0.0;
+  double time_start = 0.0;
+  double time_stop = 0.0;
   std::size_t startIdx = 0;
   std::size_t stopIdx = 0;
   internal::TimingNode* nodePtr = nullptr;
@@ -352,6 +354,12 @@ auto export_node_json(const std::string& padding, const std::list<internal::Timi
     for (const auto& value : node.timings) {
       stream << value;
       if (&value != &(node.timings.back())) stream << ", ";
+    }
+    stream << "]," << std::endl;
+    stream << subNodePadding << "\"start_stop\" : [";
+    for (const auto& value : node.start_stop) {
+      stream << value;
+      if (&value != &(node.start_stop.back())) stream << ", ";
     }
     stream << "]," << std::endl;
     stream << subNodePadding << "\"sub-timings\" : ";
@@ -450,6 +458,10 @@ auto Timer::process() const -> TimingResult {
               // Matching stop found
               std::chrono::duration<double> duration = timeStamps_[j].time - timeStamps_[i].time;
               pair.time = duration.count();
+              duration = timeStamps_[j].time - timeStamps_[0].time;
+              pair.time_stop = duration.count();
+              duration = timeStamps_[i].time - timeStamps_[0].time;
+              pair.time_start = duration.count();
               pair.stopIdx = j;
               timePairs.push_back(pair);
               if (pair.time < 0) {
@@ -491,6 +503,7 @@ auto Timer::process() const -> TimingResult {
             if (subNode.identifier == pair.identifier) {
               nodeFound = true;
               subNode.add_time(pair.time);
+              subNode.add_start_stop(pair.time_start, pair.time_stop);
               // mark node position in pair for finding sub-nodes
               pair.nodePtr = &(subNode);
               break;
@@ -501,6 +514,7 @@ auto Timer::process() const -> TimingResult {
             internal::TimingNode newNode;
             newNode.identifier = pair.identifier;
             newNode.add_time(pair.time);
+            newNode.add_start_stop(pair.time_start, pair.time_stop);
             parentNode.subNodes.push_back(std::move(newNode));
             // mark node position in pair for finding sub-nodes
             pair.nodePtr = &(parentNode.subNodes.back());
@@ -515,6 +529,7 @@ auto Timer::process() const -> TimingResult {
         for (auto& topNode : results) {
           if (topNode.identifier == pair.identifier) {
             topNode.add_time(pair.time);
+            topNode.add_start_stop(pair.time_start, pair.time_stop);
             pair.nodePtr = &(topNode);
             break;
           }
@@ -526,6 +541,7 @@ auto Timer::process() const -> TimingResult {
         internal::TimingNode newNode;
         newNode.identifier = pair.identifier;
         newNode.add_time(pair.time);
+        newNode.add_start_stop(pair.time_start, pair.time_stop);
         // newNode.parent = nullptr;
         results.push_back(std::move(newNode));
 
