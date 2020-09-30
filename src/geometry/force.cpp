@@ -255,10 +255,12 @@ mdarray<double, 2> const& Force::calc_forces_hubbard()
 
             int ik  = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
-            if (ctx_.num_mag_dims() == 3)
+            kp->beta_projectors().prepare();
+            if (ctx_.num_mag_dims() == 3) {
                 TERMINATE("Hubbard forces are only implemented for the simple hubbard correction.");
-
+            }
             hubbard_force_add_k_contribution_colinear(*kp, q_op, forces_hubbard_);
+            kp->beta_projectors().dismiss();
         }
 
         /* global reduction */

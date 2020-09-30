@@ -158,6 +158,11 @@ class Beta_projectors : public Beta_projectors_base
             }
         }
     }
+
+    inline bool prepared() const
+    {
+        return prepared_;
+    }
 };
 
 } // namespace sirius

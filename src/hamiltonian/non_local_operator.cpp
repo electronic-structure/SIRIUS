@@ -644,9 +644,7 @@ apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_proje
     }
 
     if (q_op__) {
-        beta__.prepare();
         apply_non_local_d_q<T>(spins__, N__, n__, beta__, phi__, nullptr, nullptr, q_op__, &sphi__);
-        beta__.dismiss();
     }
 }
 
