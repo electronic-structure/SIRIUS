@@ -247,7 +247,10 @@ sirius_print_timers:
 */
 void sirius_print_timers(void)
 {
-    std::cout << ::utils::global_rtgraph_timer.process().print();
+    auto timing_result = ::utils::global_rtgraph_timer.process();
+    std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
+                                      rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
+                                      rt_graph::Stat::Max});
 }
 
 /*
@@ -263,8 +266,8 @@ sirius_serialize_timers:
 */
 void sirius_serialize_timers(char const* fname__)
 {
-    std::ofstream ofs(fname__, std::ofstream::out | std::ofstream::trunc);
-    ofs << ::utils::global_rtgraph_timer.process().json();
+    auto timing_result = ::utils::global_rtgraph_timer.process();
+    ofs << timing_result.json();
 }
 
 /*
