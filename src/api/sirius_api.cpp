@@ -267,6 +267,7 @@ sirius_serialize_timers:
 void sirius_serialize_timers(char const* fname__)
 {
     auto timing_result = ::utils::global_rtgraph_timer.process();
+    std::ofstream ofs(fname__, std::ofstream::out | std::ofstream::trunc);
     ofs << timing_result.json();
 }
 
