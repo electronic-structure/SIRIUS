@@ -188,6 +188,9 @@ class Density : public Field4D
     /// Local fraction of atoms with PAW correction.
     paw_density paw_density_;
 
+    /// Occupation matrix of the LDA+U method.
+    sddk::mdarray<double_complex, 4> occupation_matrix_;
+
     /// Density and magnetization on the coarse FFT mesh.
     /** Coarse FFT grid is enough to generate density and magnetization from the wave-functions. The components
         of the <tt>rho_mag_coarse</tt> vector have the following order:
@@ -209,7 +212,6 @@ class Density : public Field4D
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 
-    // TODO: add mixing of LDA+U occupancy matrix.
     /// Density mixer.
     /** Mix the following objects: density, x-,y-,z-components of magnetisation, density matrix and
         PAW density of atoms. */
@@ -231,11 +233,9 @@ class Density : public Field4D
         \f]
      */
     template <int num_mag_dims>
-    void reduce_density_matrix(Atom_type const&                          atom_type__,
-                               int                                       ia__,
-                               mdarray<double_complex, 4> const&         zdens__,
+    void reduce_density_matrix(Atom_type const& atom_type__, int ia__, sddk::mdarray<double_complex, 4> const& zdens__,
                                Gaunt_coefficients<double_complex> const& gaunt_coeffs__,
-                               mdarray<double, 3>&                       mt_density_matrix__);
+                               sddk::mdarray<double, 3>& mt_density_matrix__);
 
     /// Add k-point contribution to the density matrix in the canonical form.
     /** In case of full-potential LAPW complex density matrix has the following expression:
@@ -263,10 +263,13 @@ class Density : public Field4D
         the occupancy operator written in spectral representation.
      */
     template <typename T>
-    void add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex, 4>& density_matrix__);
+    void add_k_point_contribution_dm(K_point* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
 
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     void add_k_point_contribution_rg(K_point* kp__);
+
+    /// Add k-point contribution to LDA+U occupation matrix.
+    void add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_complex, 4>& occupation_matrix__);
 
     /// Generate valence density in the muffin-tins
     void generate_valence_mt();

@@ -65,6 +65,27 @@ Density::Density(Simulation_context& ctx__)
                                                  ctx_.num_mag_comp(), unit_cell_.num_atoms());
     density_matrix_.zero();
 
+    if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
+
+        int indexb_max = -1;
+
+        // TODO: move detection of indexb_max to unit_cell
+        // Don't forget that Hubbard class has the same code
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
+                if (ctx__.unit_cell().atom(ia).type().spin_orbit_coupling()) {
+                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size() / 2);
+                } else {
+                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size());
+                }
+            }
+        }
+
+        occupation_matrix_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
+                memory_t::host, "occupation_matrix_");
+        occupation_matrix_.zero();
+    }
+
     update();
 }
 
@@ -706,8 +727,14 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
     }
 }
 
+void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_complex, 4>& occupation_matrix__)
+{
+
+
+}
+
 template <typename T>
-void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex, 4>& density_matrix__)
+void Density::add_k_point_contribution_dm(K_point* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_dm");
 
@@ -1138,6 +1165,10 @@ void Density::generate_valence(K_point_set const& ks__)
 
     density_matrix_.zero();
 
+    if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
+        occupation_matrix_.zero();
+    }
+
     /* zero density and magnetization */
     zero();
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
@@ -1151,14 +1182,31 @@ void Density::generate_valence(K_point_set const& ks__)
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
-            if (is_device_memory(ctx_.preferred_memory_t())) {
-                /* allocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
-                // TODO: copy for next k-point
-                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
-            }
             /* swap wave functions for the FFT transformation */
             kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(nbnd, 0, &ctx_.mem_pool(memory_t::host));
+        }
+
+        /*
+         * GPU memory allocation
+         */
+        if (is_device_memory(ctx_.preferred_memory_t())) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                int nbnd = kp->num_occupied_bands(ispn);
+                /* allocate GPU memory */
+                kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
+                /* copy to GPU */
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
+            }
+        }
+        if (!ctx_.full_potential() && ctx_.hubbard_correction() &&
+            is_device_memory(kp->hubbard_wave_functions().preferred_memory_t())) {
+            int nwfu = kp->hubbard_wave_functions().num_wf();
+            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
+                /* allocate GPU memory */
+                kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
+                /* copy to GPU */
+                kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nwfu);
+            }
         }
 
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::full_potential_lapwlo) {
@@ -1170,6 +1218,9 @@ void Density::generate_valence(K_point_set const& ks__)
                 add_k_point_contribution_dm<double>(kp, density_matrix_);
             } else {
                 add_k_point_contribution_dm<double_complex>(kp, density_matrix_);
+            }
+            if (ctx_.hubbard_correction()) {
+                add_k_point_contribution_om(kp, occupation_matrix_);
             }
         }
 
