@@ -657,18 +657,19 @@ void memory_pool_deleter::memory_pool_deleter_impl::free(void* ptr__)
 #ifdef NDEBUG
 #define mdarray_assert(condition__)
 #else
-#define mdarray_assert(condition__)                                  \
-{                                                                    \
-    if (!(condition__)) {                                            \
-        std::printf("Assertion (%s) failed ", #condition__);         \
-        std::printf("at line %i of file %s\n", __LINE__, __FILE__);  \
-        std::printf("array label: %s\n", label_.c_str());            \
-        for (int i = 0; i < N; i++) {                                \
-            std::printf("dim[%i].size = %li\n", i, dims_[i].size()); \
-        }                                                            \
-        raise(SIGABRT);                                              \
-    }                                                                \
-}
+#define mdarray_assert(condition__)                                                                                    \
+    {                                                                                                                  \
+        if (!(condition__)) {                                                                                          \
+            std::fprintf(stderr, "Assertion (%s) failed ", #condition__);                                              \
+            std::fprintf(stderr, "at line %i of file %s\n", __LINE__, __FILE__);                                       \
+            std::fprintf(stderr, "array label: %s\n", label_.c_str());                                                 \
+            for (int i = 0; i < N; i++) {                                                                              \
+                std::fprintf(stderr, "dim[%i].size = %li\n", i, dims_[i].size());                                      \
+            }                                                                                                          \
+            std::fflush(stderr);                                                                                       \
+            raise(SIGABRT);                                                                                            \
+        }                                                                                                              \
+    }
 #endif
 
 /// Index descriptor of mdarray.
