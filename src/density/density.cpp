@@ -28,6 +28,7 @@
 #include "mixer/mixer_functions.hpp"
 #include "mixer/mixer_factory.hpp"
 #include "utils/profiler.hpp"
+#include "SDDK/wf_inner.hpp"
 
 namespace sirius {
 
@@ -729,8 +730,131 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
 
 void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_complex, 4>& occupation_matrix__)
 {
+    PROFILE("sirius::Density::add_k_point_contribution_om");
 
+    if (!ctx_.hubbard_correction()) {
+        return;
+    }
 
+    memory_t mem{memory_t::host};
+    linalg_t la{linalg_t::blas};
+    if (ctx_.processing_unit() == device_t::GPU) {
+        la = linalg_t::cublasxt;
+    }
+
+    int nwfu = kp__->hubbard_wave_functions().num_wf();
+
+    sddk::matrix<double_complex> occ_mtrx(nwfu, nwfu, ctx_.mem_pool(memory_t::host), "occ_mtrx");
+
+    auto r = ctx_.unit_cell().num_wf_with_U();
+
+    /* full non colinear magnetism */
+    if (ctx_.num_mag_dims() == 3) {
+        dmatrix<double_complex> dm(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(memory_t::host), "dm");
+        sddk::inner(mem, la, 2, kp__->spinor_wave_functions(), 0,
+            kp__->num_occupied_bands(), kp__->hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
+
+        dmatrix<double_complex> dm1(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(memory_t::host), "dm1");
+        #pragma omp parallel for
+        for (int m = 0; m < nwfu; m++) {
+            for (int j = 0; j < kp__->num_occupied_bands(); j++) {
+                dm1(j, m) = dm(j, m) * kp__->band_occupancy(j);
+            }
+        }
+
+        /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
+        auto alpha = double_complex(kp__->weight(), 0.0);
+        linalg(la).gemm('C', 'N', nwfu, nwfu, kp__->num_occupied_bands(), &alpha, dm.at(memory_t::host), dm.ld(),
+            dm1.at(memory_t::host), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(memory_t::host),
+            occ_mtrx.ld());
+
+        #pragma omp parallel for schedule(static)
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            const auto& atom = unit_cell_.atom(ia);
+            if (atom.type().hubbard_correction()) {
+
+                /* loop over the different channels */
+                /* note that for atom with SO interactions, we need to jump
+                   by 2 instead of 1. This is due to the fact that the
+                   relativistic wave functions have different total angular
+                   momentum for the same n */
+
+                for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb += (atom.type().spin_orbit_coupling() ? 2 : 1)) {
+                    /*
+                       I know that the index of the hubbard wave functions (indexb_....) is
+                       consistent with the index of the hubbard orbitals
+                    */
+                    const int lmmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
+                    for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
+                        for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
+                            int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
+                            for (int mp = 0; mp < lmmax_at; mp++) {
+                                for (int m = 0; m < lmmax_at; m++) {
+                                    occupation_matrix__(m, mp, s, ia) +=
+                                        occ_mtrx(r.second[ia] + m + s1 * lmmax_at, r.second[ia] + mp + s2 * lmmax_at);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        /* SLDA + U, we need to do the explicit calculation. The hubbard
+           orbitals only have one component while the bloch wave functions
+           have two. The inner product takes care of this case internally. */
+
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|1");
+            dmatrix<double_complex> dm(kp__->num_occupied_bands(ispn), nwfu, ctx_.mem_pool(memory_t::host_pinned), "dm");
+
+            sddk::inner(mem, la, ispn, kp__->spinor_wave_functions(), 0, kp__->num_occupied_bands(ispn),
+                  kp__->hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
+
+            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|1");
+
+            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|2");
+            dmatrix<double_complex> dm1(kp__->num_occupied_bands(ispn), nwfu, ctx_.mem_pool(memory_t::host_pinned), "dm1");
+            #pragma omp parallel for
+            for (int m = 0; m < nwfu; m++) {
+                for (int j = 0; j < kp__->num_occupied_bands(ispn); j++) {
+                    dm1(j, m) = dm(j, m) * kp__->band_occupancy(j, ispn);
+                }
+            }
+            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|2");
+            /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
+            /* We need to apply a factor 1/2 when we compute the occupancies for the LDA+U. It is because the 
+             * calculations of E and U consider occupancies <= 1.  Sirius for the LDA+U has a factor 2 in the 
+             * band occupancies. We need to compensate for it because it is taken into account in the
+             * calculation of the hubbard potential */
+            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|3");
+            auto alpha = double_complex(kp__->weight() / ctx_.max_occupancy(), 0.0);
+            linalg(la).gemm('C', 'N', nwfu, nwfu, kp__->num_occupied_bands(ispn), &alpha, dm.at(memory_t::host), dm.ld(),
+                dm1.at(memory_t::host), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(memory_t::host),
+                occ_mtrx.ld());
+            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|3");
+            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|4");
+            #pragma omp parallel for schedule(static)
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                const auto& atom = unit_cell_.atom(ia);
+                if (atom.type().hubbard_correction()) {
+                    for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb++) {
+                        const int lmmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
+                        for (int mp = 0; mp < lmmax_at; mp++) {
+                            const int mmp = r.second[ia] + mp;
+                            for (int m = 0; m < lmmax_at; m++) {
+                                const int mm = r.second[ia] + m;
+                                occupation_matrix__(m, mp, ispn, ia) += occ_mtrx(mm, mmp);
+                            }
+                        }
+                    }
+                }
+            }
+            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|4");
+        } // ispn
+    }
+
+    //print_occupancies();
 }
 
 template <typename T>
@@ -1227,16 +1351,30 @@ void Density::generate_valence(K_point_set const& ks__)
         /* add contribution from regular space grid */
         add_k_point_contribution_rg(kp);
 
+        /*
+         * GPU memory deallocation
+         */
         if (is_device_memory(ctx_.preferred_memory_t())) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
             }
         }
+        if (!ctx_.full_potential() && ctx_.hubbard_correction() &&
+            is_device_memory(kp->hubbard_wave_functions().preferred_memory_t())) {
+            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
+                kp->hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+            }
+        }
     }
 
     if (density_matrix_.size()) {
         ctx_.comm().allreduce(density_matrix_.at(memory_t::host), static_cast<int>(density_matrix_.size()));
+    }
+    if (occupation_matrix_.size()) {
+        /* global reduction over k points */
+        ctx_.comm_k().allreduce(occupation_matrix_.at(memory_t::host),
+                static_cast<int>(occupation_matrix_.size()));
     }
 
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();

@@ -130,13 +130,11 @@ void Hubbard::compute_occupation_matrix(K_point_set& kset_)
                 }
             }
         } else {
-            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|1");
             /* SLDA + U, we need to do the explicit calculation. The hubbard
                orbitals only have one component while the bloch wave functions
                have two. The inner product takes care of this case internally. */
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                PROFILE_START("sirius::Hubbard::compute_occupation_matrix|2");
                 dmatrix<double_complex> dm(kp->num_occupied_bands(ispn), this->number_of_hubbard_orbitals(),
                                            ctx_.mem_pool(memory_t::host), "dm");
 
@@ -151,13 +149,11 @@ void Hubbard::compute_occupation_matrix(K_point_set& kset_)
                         dm1(j, m) = dm(j, m) * kp->band_occupancy(j, ispn);
                     }
                 }
-                PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|2");
                 /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
                 /* We need to apply a factor 1/2 when we compute the occupancies for the LDA+U. It is because the 
                  * calculations of E and U consider occupancies <= 1.  Sirius for the LDA+U has a factor 2 in the 
                  * band occupancies. We need to compensate for it because it is taken into account in the
                  * calculation of the hubbard potential */
-                PROFILE_START("sirius::Hubbard::compute_occupation_matrix|3");
                 auto alpha = double_complex(kp->weight() / ctx_.max_occupancy(), 0.0);
                 linalg(la).gemm('C', 'N', this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals(),
                     kp->num_occupied_bands(ispn), &alpha, dm.at(memory_t::host), dm.ld(), dm1.at(memory_t::host),
@@ -178,10 +174,8 @@ void Hubbard::compute_occupation_matrix(K_point_set& kset_)
                         }
                     }
                 }
-                PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|3");
             } // ispn
         }
-        PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|1");
 
         if (is_device_memory(kp->spinor_wave_functions().preferred_memory_t())) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
