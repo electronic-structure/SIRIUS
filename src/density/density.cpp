@@ -738,35 +738,55 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
 
     memory_t mem{memory_t::host};
     linalg_t la{linalg_t::blas};
+    /* find the appropriate linear algebra provider */
     if (ctx_.processing_unit() == device_t::GPU) {
-        la = linalg_t::cublasxt;
+        mem = memory_t::device;
+        if (is_device_memory(ctx_.preferred_memory_t())) {
+            la = linalg_t::gpublas;
+        } else {
+            la = linalg_t::cublasxt;
+        }
     }
 
     int nwfu = kp__->hubbard_wave_functions().num_wf();
 
     sddk::matrix<double_complex> occ_mtrx(nwfu, nwfu, ctx_.mem_pool(memory_t::host), "occ_mtrx");
+    if (is_device_memory(mem)) {
+        occ_mtrx.allocate(ctx_.mem_pool(mem));
+    }
 
     auto r = ctx_.unit_cell().num_wf_with_U();
 
     /* full non colinear magnetism */
     if (ctx_.num_mag_dims() == 3) {
-        dmatrix<double_complex> dm(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(memory_t::host), "dm");
+        dmatrix<double_complex> dm(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(memory_t::host_pinned), "dm");
+        if (is_device_memory(mem)) {
+            dm.allocate(ctx_.mem_pool(mem));
+        }
         sddk::inner(mem, la, 2, kp__->spinor_wave_functions(), 0,
             kp__->num_occupied_bands(), kp__->hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
 
-        dmatrix<double_complex> dm1(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(memory_t::host), "dm1");
+        if (is_device_memory(mem)) {
+            dm.copy_to(memory_t::host);
+        }
+        dmatrix<double_complex> dm1(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(memory_t::host_pinned), "dm1");
         #pragma omp parallel for
         for (int m = 0; m < nwfu; m++) {
             for (int j = 0; j < kp__->num_occupied_bands(); j++) {
                 dm1(j, m) = dm(j, m) * kp__->band_occupancy(j);
             }
         }
+        if (is_device_memory(mem)) {
+            dm1.allocate(ctx_.mem_pool(mem)).copy_to(memory_t::host);
+        }
 
         /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
         auto alpha = double_complex(kp__->weight(), 0.0);
-        linalg(la).gemm('C', 'N', nwfu, nwfu, kp__->num_occupied_bands(), &alpha, dm.at(memory_t::host), dm.ld(),
-            dm1.at(memory_t::host), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(memory_t::host),
-            occ_mtrx.ld());
+        linalg(la).gemm('C', 'N', nwfu, nwfu, kp__->num_occupied_bands(), &alpha, dm.at(mem), dm.ld(),
+            dm1.at(mem), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
+        if (is_device_memory(mem)) {
+            occ_mtrx.copy_to(memory_t::host);
+        }
 
         #pragma omp parallel for schedule(static)
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -807,10 +827,14 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             PROFILE_START("sirius::Hubbard::compute_occupation_matrix|1");
             dmatrix<double_complex> dm(kp__->num_occupied_bands(ispn), nwfu, ctx_.mem_pool(memory_t::host_pinned), "dm");
-
+            if (is_device_memory(mem)) {
+                dm.allocate(ctx_.mem_pool(mem));
+            }
             sddk::inner(mem, la, ispn, kp__->spinor_wave_functions(), 0, kp__->num_occupied_bands(ispn),
                   kp__->hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
-
+            if (is_device_memory(mem)) {
+                dm.copy_to(memory_t::host);
+            }
             PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|1");
 
             PROFILE_START("sirius::Hubbard::compute_occupation_matrix|2");
@@ -821,6 +845,9 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
                     dm1(j, m) = dm(j, m) * kp__->band_occupancy(j, ispn);
                 }
             }
+            if (is_device_memory(mem)) {
+                dm1.allocate(ctx_.mem_pool(mem)).copy_to(memory_t::host);
+            }
             PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|2");
             /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
             /* We need to apply a factor 1/2 when we compute the occupancies for the LDA+U. It is because the 
@@ -829,9 +856,11 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
              * calculation of the hubbard potential */
             PROFILE_START("sirius::Hubbard::compute_occupation_matrix|3");
             auto alpha = double_complex(kp__->weight() / ctx_.max_occupancy(), 0.0);
-            linalg(la).gemm('C', 'N', nwfu, nwfu, kp__->num_occupied_bands(ispn), &alpha, dm.at(memory_t::host), dm.ld(),
-                dm1.at(memory_t::host), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(memory_t::host),
-                occ_mtrx.ld());
+            linalg(la).gemm('C', 'N', nwfu, nwfu, kp__->num_occupied_bands(ispn), &alpha, dm.at(mem), dm.ld(),
+                dm1.at(mem), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
+            if (is_device_memory(mem)) {
+                occ_mtrx.copy_to(memory_t::host);
+            }
             PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|3");
             PROFILE_START("sirius::Hubbard::compute_occupation_matrix|4");
             #pragma omp parallel for schedule(static)
