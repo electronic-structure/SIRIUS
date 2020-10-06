@@ -81,7 +81,7 @@ class Hubbard
     /// provided by the pseudo potentials.
     int projection_method_{0};
 
-    /// Hubbard with multi channels (not implemented yet)
+    /// Hubbard with multi channels (not implemented yet) TODO: generalize in LDA+U+V case
     bool multi_channels_{false};
 
     /// file containing the hubbard wave functions

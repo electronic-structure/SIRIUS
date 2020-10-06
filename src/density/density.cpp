@@ -757,6 +757,8 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
 
     auto r = ctx_.unit_cell().num_wf_with_U();
 
+    // TODO collnear and non-collinear cases have a lot of similar code; there should be a way to combine it
+
     /* full non colinear magnetism */
     if (ctx_.num_mag_dims() == 3) {
         dmatrix<double_complex> dm(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(memory_t::host_pinned), "dm");
