@@ -297,15 +297,15 @@ class Simulation_context : public Simulation_parameters
     Simulation_context(Simulation_context const&) = delete;
 
   public:
-    /// Create a simulation context with an explicit communicator and load parameters from JSON.
-    Simulation_context(nlohmann::json const &json, Communicator const &comm__)
-        : comm_(comm__)
-    {
-        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
-        start();
-        import(json);
-        unit_cell_->import(unit_cell_input_);
-    }
+    // /// Create a simulation context with an explicit communicator and load parameters from JSON.
+    // Simulation_context(nlohmann::json const &json, Communicator const &comm__)
+    //     : comm_(comm__)
+    // {
+    //     unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
+    //     start();
+    //     import(json);
+    //     unit_cell_->import(unit_cell_input_);
+    // }
 
     /// Create an empty simulation context with an explicit communicator.
     Simulation_context(Communicator const& comm__ = Communicator::world())
@@ -326,14 +326,14 @@ class Simulation_context : public Simulation_parameters
     }
 
     // /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
-    // Simulation_context(std::string const& str__, Communicator const &comm__)
-    //     : comm_(comm__)
-    // {
-    //     unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
-    //     start();
-    //     import(str__);
-    //     unit_cell_->import(unit_cell_input_);
-    // }
+    Simulation_context(std::string const& str__, Communicator const &comm__)
+        : comm_(comm__)
+    {
+        unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
+        start();
+        import(str__);
+        unit_cell_->import(unit_cell_input_);
+    }
 
     /// Destructor.
     ~Simulation_context()
