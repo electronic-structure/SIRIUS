@@ -67,7 +67,7 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string fname__,
 
     auto json = preprocess_json_input(fname__);
 
-    auto ctx_ptr = std::make_unique<Simulation_context>(json, Communicator::world());
+    auto ctx_ptr = std::make_unique<Simulation_context>(json.dump(), Communicator::world());
     Simulation_context& ctx = *ctx_ptr;
 
     auto& inp = ctx.parameters_input();
