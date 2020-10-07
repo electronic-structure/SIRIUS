@@ -765,10 +765,10 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
         if (is_device_memory(mem)) {
             dm.allocate(ctx_.mem_pool(mem));
         }
-        sddk::inner(mem, la, 2, kp__->spinor_wave_functions(), 0,
+        sddk::inner(ctx_.spla_context(), 2, kp__->spinor_wave_functions(), 0,
             kp__->num_occupied_bands(), kp__->hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
 
-        if (is_device_memory(mem)) {
+        if (is_device_memory(mem)) { // TODO: check if inner() already moved data to CPU
             dm.copy_to(memory_t::host);
         }
         dmatrix<double_complex> dm1(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(memory_t::host_pinned), "dm1");
@@ -832,9 +832,9 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
             if (is_device_memory(mem)) {
                 dm.allocate(ctx_.mem_pool(mem));
             }
-            sddk::inner(mem, la, ispn, kp__->spinor_wave_functions(), 0, kp__->num_occupied_bands(ispn),
+            sddk::inner(ctx_.spla_context(), ispn, kp__->spinor_wave_functions(), 0, kp__->num_occupied_bands(ispn),
                   kp__->hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
-            if (is_device_memory(mem)) {
+            if (is_device_memory(mem)) { // TODO: check if inner() already moved data to CPU
                 dm.copy_to(memory_t::host);
             }
             PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|1");
