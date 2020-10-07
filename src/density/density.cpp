@@ -736,11 +736,13 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
         return;
     }
 
+    memory_t mem_host{memory_t::host};
     memory_t mem{memory_t::host};
     linalg_t la{linalg_t::blas};
     /* find the appropriate linear algebra provider */
     if (ctx_.processing_unit() == device_t::GPU) {
         mem = memory_t::device;
+        mem_host = memory_t::host_pinned;
         if (is_device_memory(ctx_.preferred_memory_t())) {
             la = linalg_t::gpublas;
         } else {
@@ -761,7 +763,7 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
 
     /* full non colinear magnetism */
     if (ctx_.num_mag_dims() == 3) {
-        dmatrix<double_complex> dm(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(memory_t::host_pinned), "dm");
+        dmatrix<double_complex> dm(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm");
         if (is_device_memory(mem)) {
             dm.allocate(ctx_.mem_pool(mem));
         }
@@ -771,7 +773,7 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
         if (is_device_memory(mem)) { // TODO: check if inner() already moved data to CPU
             dm.copy_to(memory_t::host);
         }
-        dmatrix<double_complex> dm1(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(memory_t::host_pinned), "dm1");
+        dmatrix<double_complex> dm1(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm1");
         #pragma omp parallel for
         for (int m = 0; m < nwfu; m++) {
             for (int j = 0; j < kp__->num_occupied_bands(); j++) {
@@ -828,7 +830,7 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             PROFILE_START("sirius::Hubbard::compute_occupation_matrix|1");
-            dmatrix<double_complex> dm(kp__->num_occupied_bands(ispn), nwfu, ctx_.mem_pool(memory_t::host_pinned), "dm");
+            dmatrix<double_complex> dm(kp__->num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm");
             if (is_device_memory(mem)) {
                 dm.allocate(ctx_.mem_pool(mem));
             }
@@ -840,7 +842,7 @@ void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_co
             PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|1");
 
             PROFILE_START("sirius::Hubbard::compute_occupation_matrix|2");
-            dmatrix<double_complex> dm1(kp__->num_occupied_bands(ispn), nwfu, ctx_.mem_pool(memory_t::host_pinned), "dm1");
+            dmatrix<double_complex> dm1(kp__->num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm1");
             #pragma omp parallel for
             for (int m = 0; m < nwfu; m++) {
                 for (int j = 0; j < kp__->num_occupied_bands(ispn); j++) {
