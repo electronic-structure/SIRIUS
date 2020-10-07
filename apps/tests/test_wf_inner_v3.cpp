@@ -9,6 +9,9 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
                    linalg_t la__,
                    memory_t mem__)
 {
+    spla::Context spla_ctx(
+        la__ == linalg_t::blas || la__ == linalg_t::lapack || la__ == linalg_t::scalapack ? SPLA_PU_HOST : SPLA_PU_GPU);
+
     std::unique_ptr<BLACS_grid> blacs_grid;
     if (mpi_grid_dims__[0] * mpi_grid_dims__[1] == 1) {
         blacs_grid = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), mpi_grid_dims__[0], mpi_grid_dims__[1]));
@@ -54,11 +57,11 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     }
 
     /* warmup call */
-    inner(mem__, la__, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
+    inner(spla_ctx, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
     Communicator::world().barrier();
 
     double t = -utils::wtime();
-    inner(mem__, la__, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
+    inner(spla_ctx, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
     Communicator::world().barrier();
     t += utils::wtime();
 

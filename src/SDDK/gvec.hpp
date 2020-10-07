@@ -28,6 +28,7 @@
 #include <numeric>
 #include <map>
 #include <iostream>
+#include <type_traits>
 #include <assert.h>
 #include "memory.hpp"
 #include "fft3d_grid.hpp"

@@ -433,7 +433,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* apply Hamiltonian and S operators to the basis functions */
         Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, num_bands, phi, &hphi, &sphi);
 
-        orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, 0, num_bands, ovlp, res);
+        orthogonalize<T>(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi,
+                         hphi, sphi, 0, num_bands, ovlp, res);
 
         /* setup eigen-value problem */
         set_subspace_mtrx(0, num_bands, 0, phi, hphi, hmlt, &hmlt_old);
@@ -498,12 +499,10 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             /* don't compute residuals on last iteration */
             if (!last_iteration) {
                 /* get new preconditioned residuals, and also hpsi and opsi as a by-product */
-                auto result = sirius::residuals<T>(
-                    ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step,
-                    N, num_ritz, num_locked, eval, evec, hphi, sphi, hpsi, spsi, res, h_o_diag.first,
-                    h_o_diag.second, itso.converge_by_energy_, itso.residual_tolerance_,
-                    is_converged
-                );
+                auto result = sirius::residuals<T>(ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(),
+                                                   nc_mag ? 2 : ispin_step, N, num_ritz, num_locked, eval, evec, hphi,
+                                                   sphi, hpsi, spsi, res, h_o_diag.first, h_o_diag.second,
+                                                   itso.converge_by_energy_, itso.residual_tolerance_, is_converged);
 
                 num_unconverged = result.unconverged_residuals;
                 num_lockable = result.num_consecutive_smallest_converged;
@@ -540,13 +539,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 /* No need to recompute the wave functions when converged in the first iteration */
                 if (k != 0 || num_unconverged != 0 || ctx_.settings().always_update_wf_) {
                     /* in case of non-collinear magnetism transform two components */
-                    transform<T>(
-                        ctx_.preferred_memory_t(), 
-                        ctx_.blas_linalg_t(), 
-                        nc_mag ? 2 : ispin_step, 
-                        {&phi}, num_locked, N - num_locked, 
-                        evec, 0, 0, 
-                        {&psi}, num_locked, num_ritz);
+                    transform<T>(ctx_.spla_context(), nc_mag ? 2 : ispin_step, {&phi}, num_locked, N - num_locked, evec,
+                                 0, 0, {&psi}, num_locked, num_ritz);
 
                     /* update eigen-values */
                     for (int j = num_locked; j < num_bands; j++) {
@@ -574,12 +568,9 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (converge_by_energy) {
-                        transform<T>(
-                            ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, 1.0,
-                            std::vector<Wave_functions*>({&hphi, &sphi}), num_locked, N - num_locked,
-                            evec, 0, 0, 0.0,
-                            {&hpsi, &spsi}, 0, num_ritz
-                        );
+                        transform<T>(ctx_.spla_context(), nc_mag ? 2 : ispin_step, 1.0,
+                                     std::vector<Wave_functions*>({&hphi, &sphi}), num_locked, N - num_locked, evec, 0,
+                                     0, 0.0, {&hpsi, &spsi}, 0, num_ritz);
                     }
 
                     /* update basis functions, hphi and ophi */
@@ -622,7 +613,8 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
             kp.message(3, __function_name__, "Orthogonalize %d to %d\n", N, N + expand_with);
 
-            orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, hphi, sphi, N, expand_with, ovlp, res);
+            orthogonalize<T>(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi,
+                             hphi, sphi, N, expand_with, ovlp, res);
 
             /* setup eigen-value problem. 
              * N is the number of previous basis functions
@@ -856,7 +848,8 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
         /* apply Hamiltonian and S operators to the basis functions */
         Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : 0), N, n, phi, nullptr, &sphi);
 
-        orthogonalize<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, sphi, N, n, ovlp, res);
+        orthogonalize<T>(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi,
+                         sphi, N, n, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -891,7 +884,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
             }
 
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
-            auto result = sirius::residuals<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0,
+            auto result = sirius::residuals<T>(ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0,
                                      N, nevec, 0, eval, evec, sphi, phi, spsi, psi, res, o_diag, o_diag1,
                                      itso.converge_by_energy_, itso.residual_tolerance_,
                                      [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < iterative_solver_tolerance;});
@@ -918,7 +911,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
         if (should_restart || converged || last_iteration) {
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, phi, 0, N, evec, 0, 0, psi, 0, nevec);
+            transform(ctx_.spla_context(), nc_mag ? 2 : 0, phi, 0, N, evec, 0, 0, psi, 0, nevec);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (converged || last_iteration) {
@@ -927,7 +920,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
                 kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
 
                 if (itso.converge_by_energy_) {
-                    transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0, sphi, 0, N, evec, 0, 0, spsi, 0, nevec);
+                    transform(ctx_.spla_context(), nc_mag ? 2 : 0, sphi, 0, N, evec, 0, 0, spsi, 0, nevec);
                 }
 
                 ovlp_old.zero();

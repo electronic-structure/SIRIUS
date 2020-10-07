@@ -25,16 +25,15 @@ jobs:
       - name: Show the spec
         run: spack --color always -e ci_run spec -I $SPEC
       - name: Build SIRIUS
-        run: |
-          mkdir build && cd build
-          spack --color always -e ci_run build-env $SPEC -- cmake -DCMAKE_INSTALL_PREFIX=$HOME/local -DBUILD_TESTING=1 ..
-          spack --color always -e ci_run build-env $SPEC -- make -j 2 install
+        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
       - name: Run unit tests
         run: |
-          cd build
+          cd ${GITHUB_WORKSPACE}/spack-build
           spack --color always -e ci_run build-env $SPEC -- ctest --label-exclude integration_test
-      - name: Run verification with ReFrame
-        run: ./ci/github_run_verification.sh
+      - name: Run verification tests
+        run: |
+          cd ${GITHUB_WORKSPACE}/spack-build
+          spack --color always -e ci_run build-env $SPEC -- ctest -L cpu_serial
 
   build_rocm:
     runs-on: ubuntu-latest

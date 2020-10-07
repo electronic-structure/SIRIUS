@@ -49,9 +49,11 @@ void Hubbard::compute_occupation_matrix(K_point_set& kset_)
 
     memory_t mem{memory_t::host};
     linalg_t la{linalg_t::blas};
+#ifdef __CUDA
     if (ctx_.processing_unit() == device_t::GPU) {
         la = linalg_t::cublasxt;
     }
+#endif
 
     sddk::matrix<double_complex> occ_mtrx(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals(),
                                           ctx_.mem_pool(memory_t::host), "occ_mtrx");
@@ -80,8 +82,8 @@ void Hubbard::compute_occupation_matrix(K_point_set& kset_)
         if (ctx_.num_mag_dims() == 3) {
             dmatrix<double_complex> dm(kp->num_occupied_bands(), this->number_of_hubbard_orbitals(),
                                        ctx_.mem_pool(memory_t::host), "dm");
-            inner(mem, la, 2, kp->spinor_wave_functions(), 0, kp->num_occupied_bands(), kp->hubbard_wave_functions(), 0,
-                  this->number_of_hubbard_orbitals(), dm, 0, 0);
+            inner(ctx_.spla_context(), 2, kp->spinor_wave_functions(), 0, kp->num_occupied_bands(),
+                  kp->hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), dm, 0, 0);
 
             dmatrix<double_complex> dm1(kp->num_occupied_bands(), this->number_of_hubbard_orbitals(),
                                         ctx_.mem_pool(memory_t::host), "dm1");
@@ -138,7 +140,7 @@ void Hubbard::compute_occupation_matrix(K_point_set& kset_)
                 dmatrix<double_complex> dm(kp->num_occupied_bands(ispn), this->number_of_hubbard_orbitals(),
                                            ctx_.mem_pool(memory_t::host), "dm");
 
-                inner(mem, la, ispn, kp->spinor_wave_functions(), 0, kp->num_occupied_bands(ispn),
+                inner(ctx_.spla_context(), ispn, kp->spinor_wave_functions(), 0, kp->num_occupied_bands(ispn),
                       kp->hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), dm, 0, 0);
 
                 dmatrix<double_complex> dm1(kp->num_occupied_bands(ispn), this->number_of_hubbard_orbitals(),
