@@ -1963,7 +1963,8 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
     /* create mixer */
     this->mixer_ = mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>,
                                         Periodic_function<double>, Periodic_function<double>,
-                                        mdarray<double_complex, 4>, paw_density>(mixer_cfg__);
+                                        mdarray<double_complex, 4>, paw_density,
+                                        mdarray<double_complex, 4>>(mixer_cfg__);
 
     const bool init_mt = ctx_.full_potential();
 
@@ -1987,6 +1988,10 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
     if (ctx_.unit_cell().num_paw_atoms()) {
         this->mixer_->initialize_function<5>(paw_prop, paw_density_, ctx_);
     }
+    if (occupation_matrix_.size()) {
+        this->mixer_->initialize_function<6>(density_prop, occupation_matrix_, static_cast<int>(occupation_matrix_.size(0)),
+            static_cast<int>(occupation_matrix_.size(1)), 4, unit_cell_.num_atoms());
+    }
 }
 
 void Density::mixer_input()
@@ -2007,6 +2012,10 @@ void Density::mixer_input()
     if (ctx_.unit_cell().num_paw_atoms()) {
         mixer_->set_input<5>(paw_density_);
     }
+
+    if (occupation_matrix_.size()) {
+        mixer_->set_input<6>(occupation_matrix_);
+    }
 }
 
 void Density::mixer_output()
@@ -2026,6 +2035,10 @@ void Density::mixer_output()
 
     if (ctx_.unit_cell().num_paw_atoms()) {
         mixer_->get_output<5>(paw_density_);
+    }
+
+    if (occupation_matrix_.size()) {
+        mixer_->get_output<6>(occupation_matrix_);
     }
 
     /* transform mixed density to plane-wave domain */

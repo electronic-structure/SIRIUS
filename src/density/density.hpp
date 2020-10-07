@@ -216,7 +216,8 @@ class Density : public Field4D
     /** Mix the following objects: density, x-,y-,z-components of magnetisation, density matrix and
         PAW density of atoms. */
     std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, sddk::mdarray<double_complex, 4>, paw_density>> mixer_;
+                                 Periodic_function<double>, sddk::mdarray<double_complex, 4>, paw_density,
+                                 sddk::mdarray<double_complex, 4>>> mixer_;
 
     /// Generate atomic densities in the case of PAW.
     void generate_paw_atom_density(int iapaw__);
