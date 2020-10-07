@@ -1,4 +1,5 @@
 #include <sirius.h>
+#include <spla/spla.hpp>
 
 using namespace sirius;
 
@@ -9,6 +10,7 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
                    int bs__)
 {
     device_t pu = static_cast<device_t>(use_gpu__);
+    spla::Context spla_ctx(use_gpu__ ? SPLA_PU_GPU : SPLA_PU_HOST);
 
     BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
 
@@ -61,8 +63,8 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
 
     mpi_comm_world().barrier();
     sddk::timer t1("ortho");
-    orthogonalize<double_complex>(0, num_bands__, phi, hphi, ophi, ovlp, tmp);
-    orthogonalize<double_complex>(num_bands__, num_bands__, phi, hphi, ophi, ovlp, tmp);
+    orthogonalize<double_complex>(spla_ctx, 0, num_bands__, phi, hphi, ophi, ovlp, tmp);
+    orthogonalize<double_complex>(spla_ctx, num_bands__, num_bands__, phi, hphi, ophi, ovlp, tmp);
     mpi_comm_world().barrier();
     double tval = t1.stop();
 

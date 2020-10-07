@@ -83,8 +83,8 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__,
     }
 
     /* <{phi,phi_new}|Op|phi_new> */
-    inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, num_locked, N__ + n__ - num_locked,
-          op_phi__, N__, n__, mtrx__, 0, N__ - num_locked);
+    inner(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, num_locked, N__ + n__ - num_locked, op_phi__,
+          N__, n__, mtrx__, 0, N__ - num_locked);
 
     /* restore lower part */
     if (N__ > 0) {
@@ -373,8 +373,8 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-        transform<T>(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step,
-                     {&phi}, 0, num_phi_tot, evec, 0, 0, {&Hk__.kp().spinor_wave_functions()}, 0, num_bands);
+        transform<T>(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, {&phi}, 0, num_phi_tot, evec, 0,
+                     0, {&Hk__.kp().spinor_wave_functions()}, 0, num_bands);
 
         for (int j = 0; j < num_bands; j++) {
             Hk__.kp().band_energy(j, ispn_step, eval[j]);
@@ -519,8 +519,8 @@ void Band::check_wave_functions(Hamiltonian_k& Hk__) const
         for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
             /* apply Hamiltonian and S operators to the wave-functions */
             Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, nullptr, &spsi);
-            inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : ispin_step, psi, 0, ctx_.num_bands(),
-                  spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
+            inner(ctx_.spla_context(), nc_mag ? 2 : ispin_step, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(),
+                  ovlp, 0, 0);
 
             double diff = check_identity(ovlp, ctx_.num_bands());
 

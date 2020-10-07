@@ -120,16 +120,9 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
     sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), spin_range(0), 0, this->number_of_hubbard_orbitals(),
                              kp.beta_projectors(), phi, &q_op, dphi);
 
-    memory_t mem{memory_t::host};
-    linalg_t la{linalg_t::blas};
-    if (ctx_.processing_unit() == device_t::GPU) {
-        mem = memory_t::device;
-        la = linalg_t::gpublas;
-    }
-
     /* compute <phi^I_m| S | psi_{nk}> */
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        inner(mem, la, ispn, kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn), dphi, 0,
+        inner(ctx_.spla_context(), ispn, kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn), dphi, 0,
               this->number_of_hubbard_orbitals(), phi_s_psi, 0, ispn * this->number_of_hubbard_orbitals());
     }
 
@@ -301,16 +294,9 @@ Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__
     phi_s_psi.zero(memory_t::host);
     phi_s_psi.zero(memory_t::device);
 
-    memory_t mem{memory_t::host};
-    linalg_t la{linalg_t::blas};
-    if (ctx_.processing_unit() == device_t::GPU) {
-        mem = memory_t::device;
-        la = linalg_t::gpublas;
-    }
-
     /* compute <phi^I_m| S | psi_{nk}> */
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        inner(mem, la, ispn, kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn), dphi, 0,
+        inner(ctx_.spla_context(), ispn, kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn), dphi, 0,
               this->number_of_hubbard_orbitals(), phi_s_psi, 0, ispn * this->number_of_hubbard_orbitals());
     }
 
@@ -502,7 +488,7 @@ Hubbard::compute_occupancies(K_point&                    kp,
     }
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        inner(mt, la, ispn, kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn),
+        inner(ctx_.spla_context(), ispn, kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn),
               dphi, //   S d |phi>
               0, this->number_of_hubbard_orbitals(), dphi_s_psi, 0, ispn * this->number_of_hubbard_orbitals());
     }

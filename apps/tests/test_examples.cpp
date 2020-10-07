@@ -1,4 +1,5 @@
 #include <sirius.hpp>
+#include <spla/spla.hpp>
 
 using namespace sirius;
 
@@ -88,6 +89,7 @@ void test2()
 
 void test3()
 {
+spla::Context spla_ctx(SPLA_PU_HOST);
 
 /* reciprocal lattice vectors in 
     inverse atomic units */
@@ -124,10 +126,9 @@ dmatrix<double_complex> o(N, N, grid, bs, bs);
 /* create temporary wave-functions */
 Wave_functions tmp(gvp, N, memory_t::host);
 /* orthogonalize wave-functions */
-orthogonalize<double_complex, 0, 0>(memory_t::host, linalg_t::blas, ispn, {&wf},
-                                    0, N, o, tmp);
+orthogonalize<double_complex, 0, 0>(spla_ctx, memory_t::host, linalg_t::blas, ispn, {&wf}, 0, N, o, tmp);
 /* compute overlap */
-inner(memory_t::host, linalg_t::blas, ispn, wf, 0, N, wf, 0, N, o, 0, 0);
+inner(spla_ctx, ispn, wf, 0, N, wf, 0, N, o, 0, 0);
 /* get the diagonal of the matrix */
 auto d = o.get_diag(N);
 /* check diagonal */

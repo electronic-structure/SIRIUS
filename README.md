@@ -117,6 +117,7 @@ When installing SIRIUS without Spack, make sure to install the required dependen
  * [HDF5](https://www.hdfgroup.org/solutions/hdf5/)
  * [spglib](https://atztogo.github.io/spglib/) - library for finding and handling crystal symmetries
  * [SpFFT](https://github.com/eth-cscs/SpFFT) - domain-specific FFT library
+ * [SPLA](https://github.com/eth-cscs/spla) - domain-specific distributed GEMM library
 
 and optionally any of the additional libraries:
  * ScaLAPACK (Intel MKL or netlib scalapack)

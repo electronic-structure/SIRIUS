@@ -201,16 +201,9 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
             S.allocate(memory_t::device);
         }
 
-        memory_t mem{memory_t::host};
-        linalg_t la{linalg_t::blas};
-        if (ctx_.processing_unit() == device_t::GPU) {
-            mem = memory_t::device;
-            la = linalg_t::gpublas;
-        }
-
         /* we do not need to treat both up and down spins for the
            colinear case because the up and down components are identical */
-        inner<double_complex>(mem, la, (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, 0, nwfu, this->hubbard_wave_functions(), 0, nwfu, S, 0, 0);
+        inner<double_complex>(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, 0, nwfu, this->hubbard_wave_functions(), 0, nwfu, S, 0, 0);
 
         if (ctx_.processing_unit() == device_t::GPU) {
             S.copy_to(memory_t::host);
@@ -266,8 +259,8 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__)
 
         // now apply the overlap matrix
         // Apply the transform on the wave functions
-        transform<double_complex>(mem, la, (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, 0, nwfu,
-                                  S, 0, 0, hubbard_wave_functions(), 0, nwfu);
+        transform<double_complex>(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, 0, nwfu, S, 0, 0,
+                                  hubbard_wave_functions(), 0, nwfu);
     }
 }
 

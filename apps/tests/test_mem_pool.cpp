@@ -1,4 +1,6 @@
 #include <sirius.hpp>
+#include <algorithm>
+#include <random>
 
 using namespace sirius;
 
@@ -30,10 +32,10 @@ void test(int nGb, int gran, memory_t M__)
         auto t = -utils::wtime();
         v.clear();
         for (auto s: sizes) {
-            v.push_back(std::move(mdarray<char, 1>(s, mpool)));
+            v.push_back(mdarray<char, 1>(s, mpool));
             v.back().zero(M__);
         }
-        std::random_shuffle(v.begin(), v.end());
+        std::shuffle(v.begin(), v.end(), std::mt19937());
         for (auto& e: v) {
             e.deallocate(M__);
         }

@@ -70,7 +70,6 @@ set(_SOURSES
   "gpu/acc.cpp"
   "gpu/acc_blas.cpp"
   "gpu/cusolver.cpp"
-  "gpu/cublas.cpp"
   "sht/sht.cpp"
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
@@ -103,6 +102,7 @@ if(USE_CUDA AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
 endif()
 
 target_link_libraries(sirius PUBLIC SpFFT::spfft
+                                    SPLA::spla
                                     ${GSL_LIBRARY}
                                     "${LINALG_LIB}"
                                     MPI::MPI_CXX
