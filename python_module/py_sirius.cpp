@@ -37,25 +37,19 @@ py::object pj_convert(json& node)
             return py::reinterpret_borrow<py::object>(Py_None);
         }
         case json::value_t::boolean: {
-            bool b(node);
-            return py::bool_(b);
+            return py::bool_(node.get<bool>());
         }
         case json::value_t::string: {
-            std::string s;
-            s = static_cast<std::string const&>(node);
-            return py::str(s);
+            return py::str(node.get<std::string>());
         }
         case json::value_t::number_integer: {
-            int i(node);
-            return py::int_(i);
+            return py::int_(node.get<int>());
         }
         case json::value_t::number_unsigned: {
-            unsigned int u(node);
-            return py::int_(u);
+            return py::int_(node.get<unsigned int>());
         }
         case json::value_t::number_float: {
-            double f(node);
-            return py::float_(f);
+            return py::float_(node.get<double>());
         }
         case json::value_t::object: {
             py::dict result;
