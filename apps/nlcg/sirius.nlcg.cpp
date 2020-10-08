@@ -149,8 +149,8 @@ double ground_state(Simulation_context& ctx,
         json dict_ref;
         std::ifstream(ref_file) >> dict_ref;
 
-        double e1 = result["energy"]["total"];
-        double e2 = dict_ref["ground_state"]["energy"]["total"];
+        double e1 = result["energy"]["total"].get<double>();
+        double e2 = dict_ref["ground_state"]["energy"]["total"].get<double>();
 
         if (std::abs(e1 - e2) > 1e-5) {
             std::printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);

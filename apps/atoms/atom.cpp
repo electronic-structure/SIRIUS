@@ -314,19 +314,19 @@ Free_atom init_atom_configuration(const std::string& label, sirius::Simulation_p
     std::vector<atomic_level_descriptor> levels_nlk;
 
     for (size_t i = 0; i < atomic_conf_dictionary_[label]["levels"].size(); i++) {
-        nlk.n         = atomic_conf_dictionary_[label]["levels"][i][0];
-        nlk.l         = atomic_conf_dictionary_[label]["levels"][i][1];
-        nlk.k         = atomic_conf_dictionary_[label]["levels"][i][2];
-        nlk.occupancy = atomic_conf_dictionary_[label]["levels"][i][3];
+        nlk.n         = atomic_conf_dictionary_[label]["levels"][i][0].get<int>();
+        nlk.l         = atomic_conf_dictionary_[label]["levels"][i][1].get<int>();
+        nlk.k         = atomic_conf_dictionary_[label]["levels"][i][2].get<int>();
+        nlk.occupancy = atomic_conf_dictionary_[label]["levels"][i][3].get<double>();
         levels_nlk.push_back(nlk);
     }
 
     int zn;
-    zn = atomic_conf_dictionary_[label]["zn"];
+    zn = atomic_conf_dictionary_[label]["zn"].get<int>();
     double mass;
-    mass = atomic_conf_dictionary_[label]["mass"];
+    mass = atomic_conf_dictionary_[label]["mass"].get<double>();
     std::string name;
-    name                    = atomic_conf_dictionary_[label]["name"];
+    name                    = atomic_conf_dictionary_[label]["name"].get<std::string>();
     double NIST_LDA_Etot    = 0.0;
     NIST_LDA_Etot           = atomic_conf_dictionary_[label].value("NIST_LDA_Etot", NIST_LDA_Etot);
     double NIST_ScRLDA_Etot = 0.0;

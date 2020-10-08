@@ -1510,7 +1510,7 @@ inline void Atom_type::print_info() const
 
 inline void Atom_type::read_input_core(json const& parser)
 {
-    std::string core_str = parser["core"];
+    std::string core_str = std::string(parser["core"]);
     if (int size = (int)core_str.size()) {
         if (size % 2) {
             std::stringstream s;
@@ -1578,20 +1578,20 @@ inline void Atom_type::read_input_aw(json const& parser)
     rsd.n = -1;
     rsd.l = -1;
     for (size_t order = 0; order < parser["valence"][0]["basis"].size(); order++) {
-        rsd.enu      = parser["valence"][0]["basis"][order]["enu"];
-        rsd.dme      = parser["valence"][0]["basis"][order]["dme"];
-        rsd.auto_enu = parser["valence"][0]["basis"][order]["auto"];
+        rsd.enu      = parser["valence"][0]["basis"][order]["enu"].get<double>();
+        rsd.dme      = parser["valence"][0]["basis"][order]["dme"].get<int>();
+        rsd.auto_enu = parser["valence"][0]["basis"][order]["auto"].get<int>();
         aw_default_l_.push_back(rsd);
     }
 
     for (size_t j = 1; j < parser["valence"].size(); j++) {
-        rsd.l = parser["valence"][j]["l"];
-        rsd.n = parser["valence"][j]["n"];
+        rsd.l = parser["valence"][j]["l"].get<int>();
+        rsd.n = parser["valence"][j]["n"].get<int>();
         rsd_set.clear();
         for (size_t order = 0; order < parser["valence"][j]["basis"].size(); order++) {
-            rsd.enu      = parser["valence"][j]["basis"][order]["enu"];
-            rsd.dme      = parser["valence"][j]["basis"][order]["dme"];
-            rsd.auto_enu = parser["valence"][j]["basis"][order]["auto"];
+            rsd.enu      = parser["valence"][j]["basis"][order]["enu"].get<double>();
+            rsd.dme      = parser["valence"][j]["basis"][order]["dme"].get<int>();
+            rsd.auto_enu = parser["valence"][j]["basis"][order]["auto"].get<int>();
             rsd_set.push_back(rsd);
         }
         aw_specific_l_.push_back(rsd_set);
@@ -1609,17 +1609,17 @@ inline void Atom_type::read_input_lo(json const& parser)
 
     int l;
     for (size_t j = 0; j < parser["lo"].size(); j++) {
-        l = parser["lo"][j]["l"];
+        l = parser["lo"][j]["l"].get<int>();
 
         local_orbital_descriptor lod;
         lod.l = l;
         rsd.l = l;
         rsd_set.clear();
         for (size_t order = 0; order < parser["lo"][j]["basis"].size(); order++) {
-            rsd.n        = parser["lo"][j]["basis"][order]["n"];
-            rsd.enu      = parser["lo"][j]["basis"][order]["enu"];
-            rsd.dme      = parser["lo"][j]["basis"][order]["dme"];
-            rsd.auto_enu = parser["lo"][j]["basis"][order]["auto"];
+            rsd.n        = parser["lo"][j]["basis"][order]["n"].get<int>();
+            rsd.enu      = parser["lo"][j]["basis"][order]["enu"].get<double>();
+            rsd.dme      = parser["lo"][j]["basis"][order]["dme"].get<int>();
+            rsd.auto_enu = parser["lo"][j]["basis"][order]["auto"].get<int>();
             rsd_set.push_back(rsd);
         }
         lod.rsd_set = rsd_set;
@@ -1630,13 +1630,13 @@ inline void Atom_type::read_input_lo(json const& parser)
 
 inline void Atom_type::read_pseudo_uspp(json const& parser)
 {
-    symbol_ = parser["pseudo_potential"]["header"]["element"];
+    symbol_ = parser["pseudo_potential"]["header"]["element"].get<std::string>();
 
     double zp;
-    zp  = parser["pseudo_potential"]["header"]["z_valence"];
+    zp  = parser["pseudo_potential"]["header"]["z_valence"].get<double>();
     zn_ = int(zp + 1e-10);
 
-    int nmtp = parser["pseudo_potential"]["header"]["mesh_size"];
+    int nmtp = parser["pseudo_potential"]["header"]["mesh_size"].get<int>();
 
     auto rgrid = parser["pseudo_potential"]["radial_grid"].get<std::vector<double>>();
     if (static_cast<int>(rgrid.size()) != nmtp) {
@@ -1662,7 +1662,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
         spin_orbit_coupling_ = parser["pseudo_potential"]["header"].value("spin_orbit", spin_orbit_coupling_);
     }
 
-    int nbf = parser["pseudo_potential"]["header"]["number_of_proj"];
+    int nbf = parser["pseudo_potential"]["header"]["number_of_proj"].get<int>();
 
     for (int i = 0; i < nbf; i++) {
         auto beta = parser["pseudo_potential"]["beta_projectors"][i]["radial_function"].get<std::vector<double>>();
@@ -1673,12 +1673,12 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
               << "radial grid size: " << num_mt_points();
             TERMINATE(s);
         }
-        int l = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"];
+        int l = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"].get<int>();
         if (spin_orbit_coupling_) {
             // we encode the fact that the total angular momentum j = l
             // -1/2 or l + 1/2 by changing the sign of l
 
-            double j = parser["pseudo_potential"]["beta_projectors"][i]["total_angular_momentum"];
+            double j = parser["pseudo_potential"]["beta_projectors"][i]["total_angular_momentum"].get<double>();
             if (j < (double)l) {
                 l *= -1;
             }
@@ -1699,10 +1699,10 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
 
     if (parser["pseudo_potential"].count("augmentation")) {
         for (size_t k = 0; k < parser["pseudo_potential"]["augmentation"].size(); k++) {
-            int i    = parser["pseudo_potential"]["augmentation"][k]["i"];
-            int j    = parser["pseudo_potential"]["augmentation"][k]["j"];
+            int i    = parser["pseudo_potential"]["augmentation"][k]["i"].get<int>();
+            int j    = parser["pseudo_potential"]["augmentation"][k]["j"].get<int>();
             //int idx  = j * (j + 1) / 2 + i;
-            int l    = parser["pseudo_potential"]["augmentation"][k]["angular_momentum"];
+            int l    = parser["pseudo_potential"]["augmentation"][k]["angular_momentum"].get<int>();
             auto qij = parser["pseudo_potential"]["augmentation"][k]["radial_function"].get<std::vector<double>>();
             if ((int)qij.size() != num_mt_points()) {
                 TERMINATE("wrong size of qij");
@@ -1727,15 +1727,15 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
                 TERMINATE(s);
             }
 
-            int l = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
+            int l = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"].get<int>();
             int n = -1;
             double occ{0};
             if (parser["pseudo_potential"]["atomic_wave_functions"][k].count("occupation")) {
-                occ = parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"];
+                occ = parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"].get<double>();
             }
 
             if (parser["pseudo_potential"]["atomic_wave_functions"][k].count("label")) {
-                std::string c1 = parser["pseudo_potential"]["atomic_wave_functions"][k]["label"];
+                std::string c1 = parser["pseudo_potential"]["atomic_wave_functions"][k]["label"].get<std::string>();
                 std::istringstream iss(std::string(1, c1[0]));
                 iss >> n;
             }
@@ -1743,7 +1743,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
             if (spin_orbit_coupling() &&
                 parser["pseudo_potential"]["atomic_wave_functions"][k].count("total_angular_momentum")) {
                 // check if j = l +- 1/2
-                if (parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"] < l) {
+                if (parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"].get<int>() < l) {
                     l = -l;
                 }
             }
@@ -1759,13 +1759,13 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
     auto& header = parser["pseudo_potential"]["header"];
     /* read core energy */
     if (header.count("paw_core_energy")) {
-        paw_core_energy(header["paw_core_energy"]);
+        paw_core_energy(header["paw_core_energy"].get<double>());
     } else {
         paw_core_energy(0);
     }
 
     /* cutoff index */
-    int cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"];
+    int cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"].get<int>();
 
     /* read core density and potential */
     paw_ae_core_charge_density(parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>());
@@ -1822,13 +1822,13 @@ inline void Atom_type::read_input(std::string const& str__)
     }
 
     if (parameters_.full_potential()) {
-        name_     = parser["name"];
-        symbol_   = parser["symbol"];
-        mass_     = parser["mass"];
-        zn_       = parser["number"];
-        double r0 = parser["rmin"];
-        double R  = parser["rmt"];
-        int nmtp  = parser["nrmt"];
+        name_     = parser["name"].get<std::string>();
+        symbol_   = parser["symbol"].get<std::string>();
+        mass_     = parser["mass"].get<double>();
+        zn_       = parser["number"].get<int>();
+        double r0 = parser["rmin"].get<double>();
+        double R  = parser["rmt"].get<double>();
+        int nmtp  = parser["nrmt"].get<int>();
 
         auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
 

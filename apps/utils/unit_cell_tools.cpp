@@ -10,7 +10,7 @@ void create_supercell(cmd_args const& args__)
     {
         for (int j = 0; j < 3; j++) s >> scell(j, i);
     }
-    
+
     std::cout << std::endl;
     std::cout << "supercell vectors (lattice coordinates) : " << std::endl;
     for (int i = 0; i < 3; i++)
@@ -50,7 +50,7 @@ void create_supercell(cmd_args const& args__)
         auto label = ctx.unit_cell().atom_type(iat).label();
         ctx_sc.unit_cell().add_atom_type(label, "");
     }
-   
+
     for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++)
     {
         auto label = ctx.unit_cell().atom_type(iat).label();
@@ -142,7 +142,7 @@ void find_primitive()
         auto label = ctx.unit_cell().atom_type(iat).label();
         ctx_new.unit_cell().add_atom_type(label, "");
     }
-   
+
     for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++) {
         auto label = ctx.unit_cell().atom_type(iat).label();
 
@@ -154,7 +154,7 @@ void find_primitive()
             }
         }
     }
-    
+
     json dict;
     dict["unit_cell"] = ctx_new.unit_cell().serialize();
     if (Communicator::world().rank() == 0) {
@@ -181,7 +181,7 @@ void create_qe_input(cmd_args const& args__)
     "disk_io = \'none\',\n"
     "wf_collect = false\n"
     "/\n");
-    
+
     fprintf(fout, "&system\nibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,\noccupations = \'smearing\', smearing = \'gauss\', degauss = 0.001,\n");
     fprintf(fout, "nat=%i, ntyp=%i\n/\n", ctx.unit_cell().num_atoms(), ctx.unit_cell().num_atom_types());
     fprintf(fout, "&electrons\nconv_thr =  1.0d-11,\nmixing_beta = 0.7,\nelectron_maxstep = 100\n/\n");
@@ -281,7 +281,7 @@ void scale_lattice(cmd_args& args__)
     dict["unit_cell"] = ctx.unit_cell().serialize();
     for (auto& x: dict["unit_cell"]["lattice_vectors"]) {
         for (auto& y: x) {
-            double v = y;
+            double v = y.get<double>();
             v *= scale;
             y = v;
         }
@@ -289,7 +289,7 @@ void scale_lattice(cmd_args& args__)
     for (auto& coord: dict["unit_cell"]["atoms"]) {
         for (size_t i = 0; i < coord.size(); i++) {
             for (int x: {0, 1, 2}) {
-                double v = coord[i][x];
+                double v = coord[i][x].get<double>();
                 if (v > 0.5) {
                     v -= 1;
                 }

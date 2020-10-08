@@ -42,7 +42,7 @@ void rewrite_relative_paths(json& dict__, fs::path const &working_directory = fs
     auto &atom_files = section["atom_files"];
 
     for (auto& label : atom_files.items()) {
-        label.value() = working_directory / label.value();
+        label.value() = working_directory / std::string(label.value());
     }
 }
 
@@ -67,7 +67,7 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string fname__,
 
     auto json = preprocess_json_input(fname__);
 
-    auto ctx_ptr = std::make_unique<Simulation_context>(json, Communicator::world());
+    auto ctx_ptr = std::make_unique<Simulation_context>(json.dump(), Communicator::world());
     Simulation_context& ctx = *ctx_ptr;
 
     auto& inp = ctx.parameters_input();
@@ -158,8 +158,8 @@ double ground_state(Simulation_context& ctx,
         json dict_ref;
         std::ifstream(ref_file) >> dict_ref;
 
-        double e1 = result["energy"]["total"];
-        double e2 = dict_ref["ground_state"]["energy"]["total"];
+        double e1 = result["energy"]["total"].get<double>();
+        double e2 = dict_ref["ground_state"]["energy"]["total"].get<double>();
 
         if (std::abs(e1 - e2) > 1e-5) {
             std::printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
