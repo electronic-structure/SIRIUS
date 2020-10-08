@@ -145,7 +145,7 @@ struct Unit_cell_input
                 if (std::find(std::begin(labels_), std::end(labels_), label) != std::end(labels_)) {
                     throw std::runtime_error("duplicate atom type label");
                 }
-                labels_.push_back(label);
+                labels_.push_back(std::string(label));
             }
 
             if (section.count("atom_files")) {
@@ -564,7 +564,7 @@ struct Parameters_input
             if (section.count("xc_functionals")) {
                 xc_functionals_.clear();
                 for (auto& label : section["xc_functionals"]) {
-                    xc_functionals_.push_back(label);
+                    xc_functionals_.push_back(std::string(label));
                 }
             }
 
@@ -798,7 +798,7 @@ struct Hubbard_input
             if (std::find(std::begin(labels_), std::end(labels_), label) != std::end(labels_)) {
                 throw std::runtime_error("duplicate atom type label");
             }
-            labels_.push_back(label);
+            labels_.push_back(std::string(label));
         }
 
         // by default we use the atomic orbitals given in the pseudo potentials
