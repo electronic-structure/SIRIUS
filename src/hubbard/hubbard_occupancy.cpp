@@ -292,7 +292,7 @@ Hubbard::calculate_initial_occupation_numbers()
 
 void Hubbard::print_occupancies()
 {
-    if (ctx_.control().verbosity_ > 1 && ctx_.comm().rank() == 0) {
+    if (ctx_.control().verbosity_ >= 2 && ctx_.comm().rank() == 0) {
         std::printf("\n");
         for (int ci = 0; ci < 10; ci++) {
             std::printf("--------");
