@@ -85,9 +85,9 @@ Density::Density(Simulation_context& ctx__)
         occupation_matrix_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
                 memory_t::host, "occupation_matrix_");
         occupation_matrix_.zero();
-
-        occupation_matrix1_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
     }
+
+    occupation_matrix1_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
 
     update();
 }
