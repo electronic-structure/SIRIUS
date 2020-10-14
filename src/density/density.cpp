@@ -85,6 +85,8 @@ Density::Density(Simulation_context& ctx__)
         occupation_matrix_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
                 memory_t::host, "occupation_matrix_");
         occupation_matrix_.zero();
+
+        occupation_matrix1_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
     }
 
     update();
@@ -134,6 +136,8 @@ void Density::initial_density()
         init_density_matrix_for_paw();
 
         generate_paw_loc_density();
+
+        occupation_matrix1_->init();
     }
 }
 
@@ -1324,6 +1328,7 @@ void Density::generate_valence(K_point_set const& ks__)
 
     if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
         occupation_matrix_.zero();
+        occupation_matrix1_->zero();
     }
 
     /* zero density and magnetization */
@@ -1378,6 +1383,7 @@ void Density::generate_valence(K_point_set const& ks__)
             }
             if (ctx_.hubbard_correction()) {
                 add_k_point_contribution_om(kp, occupation_matrix_);
+                occupation_matrix1_->add_k_point_contribution(*kp);
             }
         }
 
@@ -1403,6 +1409,7 @@ void Density::generate_valence(K_point_set const& ks__)
 
     if (density_matrix_.size()) {
         ctx_.comm().allreduce(density_matrix_.at(memory_t::host), static_cast<int>(density_matrix_.size()));
+        occupation_matrix1_->reduce();
     }
     if (occupation_matrix_.size()) {
         /* global reduction over k points */

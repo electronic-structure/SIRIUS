@@ -31,6 +31,7 @@
 #include "k_point/k_point_set.hpp"
 #include "mixer/mixer.hpp"
 #include "paw_density.hpp"
+#include "occupation_matrix.hpp"
 
 #if defined(__GPU)
 extern "C" void update_density_rg_1_real_gpu(int size__,
@@ -190,6 +191,8 @@ class Density : public Field4D
 
     /// Occupation matrix of the LDA+U method.
     sddk::mdarray<double_complex, 4> occupation_matrix_;
+
+    std::unique_ptr<Occupation_matrix> occupation_matrix1_;
 
     /// Density and magnetization on the coarse FFT mesh.
     /** Coarse FFT grid is enough to generate density and magnetization from the wave-functions. The components
