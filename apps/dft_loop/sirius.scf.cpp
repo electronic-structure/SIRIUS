@@ -338,7 +338,7 @@ void run_tasks(cmd_args const& args)
             if (ctx->hubbard_correction()) {
                 TERMINATE("fix me");
                 potential.U().compute_occupation_matrix(ks); // TODO: this is wrong; U matrix should come form the saved file
-                potential.U().calculate_hubbard_potential_and_energy();
+                potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
             }
         }
         band.solve(ks, H0, true);

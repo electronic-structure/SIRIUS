@@ -822,6 +822,16 @@ class Density : public Field4D
             }
         }
     }
+
+    Occupation_matrix const& occupation_matrix() const
+    {
+        return *occupation_matrix1_;
+    }
+
+    Occupation_matrix& occupation_matrix()
+    {
+        return *occupation_matrix1_;
+    }
 };
 
 } // namespace sirius

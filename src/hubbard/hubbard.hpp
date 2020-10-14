@@ -175,13 +175,12 @@ class Hubbard
      *  \param [in]  q_op Overlap operator.
      *  \param [out] dn   Derivative of the occupation number compared to displacement of each atom.
      */
-    void compute_occupancies_stress_derivatives(K_point&                    kp,
-                                                Q_operator& q_op,
-                                                mdarray<double_complex, 5>& dn);
+    void compute_occupancies_stress_derivatives(K_point& kp, Q_operator& q_op, sddk::mdarray<double_complex, 5>& dn);
 
-    void calculate_hubbard_potential_and_energy_colinear_case();
-    void calculate_hubbard_potential_and_energy_non_colinear_case();
-    void calculate_hubbard_potential_and_energy()
+    void calculate_hubbard_potential_and_energy_colinear_case(sddk::mdarray<double_complex, 4> const& om__);
+    void calculate_hubbard_potential_and_energy_non_colinear_case(sddk::mdarray<double_complex, 4> const& om__);
+
+    void calculate_hubbard_potential_and_energy(sddk::mdarray<double_complex, 4> const& om__)
     {
         this->hubbard_energy_                 = 0.0;
         this->hubbard_energy_u_               = 0.0;
@@ -193,9 +192,9 @@ class Hubbard
         this->hubbard_potential_.zero();
 
         if (ctx_.num_mag_dims() != 3) {
-            calculate_hubbard_potential_and_energy_colinear_case();
+            calculate_hubbard_potential_and_energy_colinear_case(om__);
         } else {
-            calculate_hubbard_potential_and_energy_non_colinear_case();
+            calculate_hubbard_potential_and_energy_non_colinear_case(om__);
         }
     }
 

@@ -52,7 +52,7 @@ Hubbard::Hubbard(Simulation_context& ctx__)
     offset_ = r.second;
 
     calculate_initial_occupation_numbers();
-    calculate_hubbard_potential_and_energy();
+    calculate_hubbard_potential_and_energy(this->occupation_matrix_);
 }
 
 } // namespace sirius
