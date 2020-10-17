@@ -7,19 +7,31 @@
       "print_forces" : true,
       "print_stress" : true
   },
+
+  "settings" : {
+    "itsol_tol_scale" : [0.01, 0.99]
+  },
+
   "parameters" : {
       "electronic_structure_method" : "pseudopotential",
-      "smearing_width" : 0.01,
+      "smearing_width" : 0.025,
       "xc_functionals": ["XC_LDA_X", "XC_LDA_C_PZ"],
       "num_mag_dims": 0,
-      "pw_cutoff" : 17.33,
-      "gk_cutoff":  6.33,
+      "pw_cutoff" : 14.14,
+      "gk_cutoff":  5.0,
       "use_symmetry": true,
       "ngridk" : [2,2,1],
-      "potential_tol" : 1e-10,
-      "energy_tol" : 1e-10,
-      "num_dft_iter" : 100,
+      "shiftk" : [1,1,0],
+      "density_tol" : 1e-9,
+      "energy_tol" : 1e-8,
+      "num_dft_iter" : 100
   },
+
+  "mixer" : {
+      "beta" : 0.5,
+      "type" : "broyden1",
+      "max_history" : 8
+   },
 
     "unit_cell" : {
         "lattice_vectors" : [
