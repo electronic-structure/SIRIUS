@@ -38,18 +38,17 @@ jobs:
   build_rocm:
     runs-on: ubuntu-latest
     container: stabbles/sirius-rocm
-    env:
-      SPEC: sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +rocm ^spfft +rocm ^openblas threads=openmp ^openmpi
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
         run: |
           spack --color always repo add ${GITHUB_WORKSPACE}/spack
           spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/rocm.yaml
+          spack --color always -e ci_run develop --path ${GITHUB_WORKSPACE} sirius@develop
       - name: Show the spec
-        run: spack --color always -e ci_run spec -I $SPEC
+        run: spack --color always -e ci_run concretize
       - name: Build SIRIUS
-        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+        run: spack --color always -e ci_run install -v
 
   build_cuda_10:
     runs-on: ubuntu-latest
