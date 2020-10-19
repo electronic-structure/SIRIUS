@@ -54,34 +54,32 @@ jobs:
   build_cuda_10:
     runs-on: ubuntu-latest
     container: stabbles/sirius-cuda-10
-    env:
-      SPEC: sirius@develop %gcc@7.5.0 build_type=RelWithDebInfo +scalapack +cuda ^cuda@10.1.243 ^openblas threads=openmp ^mpich
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
         run: |
           spack --color always repo add ${GITHUB_WORKSPACE}/spack
           spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cuda-10.yaml
+          spack --color always -e ci_run develop --path ${GITHUB_WORKSPACE} sirius@develop
       - name: Show the spec
-        run: spack --color always -e ci_run spec -I $SPEC
+        run: spack --color always -e ci_run concretize
       - name: Build SIRIUS
-        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+        run: spack --color always -e ci_run install -v
 
   build_cuda_11:
     runs-on: ubuntu-latest
     container: stabbles/sirius-cuda-11
-    env:
-      SPEC: sirius@develop %gcc@9.3.0 build_type=RelWithDebInfo +cuda ^cuda@:11 ^openblas threads=openmp ^mpich
     steps:
       - uses: actions/checkout@v2
       - name: Setup Spack
         run: |
           spack --color always repo add ${GITHUB_WORKSPACE}/spack
           spack --color always env create --without-view ci_run ${GITHUB_WORKSPACE}/ci/spack/cuda-11.yaml
+          spack --color always -e ci_run develop --path ${GITHUB_WORKSPACE} sirius@develop
       - name: Show the spec
-        run: spack --color always -e ci_run spec -I $SPEC
+        run: spack --color always -e ci_run concretize
       - name: Build SIRIUS
-        run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+        run: spack --color always -e ci_run install -v
 
   build_elpa_mpich:
     runs-on: ubuntu-latest
