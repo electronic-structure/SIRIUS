@@ -168,6 +168,8 @@ class hubbard_orbital_descriptor
 
     int total_angular_momentum{-1};
 
+    std::vector<double> initial_occupancy;
+
     // Constructor.
     hubbard_orbital_descriptor()
     {
@@ -176,7 +178,7 @@ class hubbard_orbital_descriptor
     /// Constructor.
     hubbard_orbital_descriptor(const int n__, const int l__, const int orbital_index__, const double occ__,
                                const double J__, const double U__, const double* hub_coef__, const double alpha__,
-                               const double beta__, const double J0__)
+                               const double beta__, const double J0__, std::vector<double> initial_occupancy__)
         : n_(n__)
         , occupancy_(occ__)
         , radial_orbital_index_(orbital_index__)
@@ -186,6 +188,7 @@ class hubbard_orbital_descriptor
         , hubbard_beta_(beta__)
         , hubbard_J0_(J0__)
         , l(l__)
+        , initial_occupancy(initial_occupancy__)
     {
         if (hub_coef__) {
             for (int s = 0; s < 4; s++) {
@@ -209,6 +212,7 @@ class hubbard_orbital_descriptor
         , hubbard_alpha_(src.hubbard_alpha_)
         , hubbard_beta_(src.hubbard_beta_)
         , l(src.l)
+        , initial_occupancy(src.initial_occupancy)
     {
         hubbard_matrix_ = std::move(src.hubbard_matrix_);
         for (int s = 0; s < 4; s++) {
