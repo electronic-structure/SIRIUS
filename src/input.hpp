@@ -32,6 +32,7 @@
 #include "constants.hpp"
 #include "SDDK/geometry3d.hpp"
 #include "utils/json.hpp"
+#include <iostream>
 
 using namespace geometry3d;
 using namespace nlohmann;
@@ -611,18 +612,14 @@ struct Parameters_input
             extra_charge_   = section.value("extra_charge", extra_charge_);
             xc_dens_tre_    = section.value("xc_density_threshold", xc_dens_tre_);
 
-            if (section.count("spin_orbit")) {
-                so_correction_ = section.value("spin_orbit", so_correction_);
+            so_correction_ = section.value("spin_orbit", so_correction_);
 
-                /* spin-orbit correction requires non-collinear magnetism */
-                if (so_correction_) {
-                    num_mag_dims_ = 3;
-                }
+            /* spin-orbit correction requires non-collinear magnetism */
+            if (so_correction_) {
+                num_mag_dims_ = 3;
             }
 
-            if (section.count("hubbard_correction")) {
-                hubbard_correction_ = section.value("hubbard_correction", hubbard_correction_);
-            }
+            hubbard_correction_ = section.value("hubbard_correction", hubbard_correction_);
         }
     }
 };
@@ -746,167 +743,35 @@ struct Settings_input
 
 struct Hubbard_input
 {
-    int number_of_species{1};
+    int number_of_species{0};
     bool hubbard_correction_{false};
     bool simplified_hubbard_correction_{false};
     bool orthogonalize_hubbard_orbitals_{false};
     bool normalize_hubbard_orbitals_{false};
     bool hubbard_U_plus_V_{false};
+
+    /** by default we use the atomic orbitals given in the pseudo potentials */
     int projection_method_{0};
-    struct hubbard_orbital_
+
+    struct hubbard_orbital_t
     {
         int l{-1};
         int n{-1};
         std::string level;
-        std::vector<double> coeff_;
-        double occupancy_{0};
+        std::array<double, 6> coeff{0, 0, 0, 0, 0, 0};
+        double occupancy{0};
+        std::vector<double> initial_occupancy;
     };
 
     std::string wave_function_file_;
-    std::vector<std::pair<std::string, struct hubbard_orbital_>> species;
+    std::map<std::string, hubbard_orbital_t> species_with_U;
 
     bool hubbard_correction() const
     {
         return hubbard_correction_;
     }
 
-    void read(json const& parser)
-    {
-        if (!parser.count("hubbard")) {
-            return;
-        }
-
-        if (parser["hubbard"].count("orthogonalize_hubbard_wave_functions")) {
-            orthogonalize_hubbard_orbitals_ =
-                parser["hubbard"].value("orthogonalize_hubbard_wave_functions", orthogonalize_hubbard_orbitals_);
-        }
-
-        if (parser["hubbard"].count("normalize_hubbard_wave_functions")) {
-            normalize_hubbard_orbitals_ =
-                parser["hubbard"].value("normalize_hubbard_wave_functions", normalize_hubbard_orbitals_);
-        }
-
-        if (parser["hubbard"].count("simplified_hubbard_correction")) {
-            simplified_hubbard_correction_ =
-                parser["hubbard"].value("simplified_hubbard_correction", simplified_hubbard_correction_);
-        }
-        std::vector<std::string> labels_;
-        species.clear();
-        labels_.clear();
-
-        for (auto& label : parser["unit_cell"]["atom_types"]) {
-            if (std::find(std::begin(labels_), std::end(labels_), label) != std::end(labels_)) {
-                throw std::runtime_error("duplicate atom type label");
-            }
-            labels_.push_back(std::string(label));
-        }
-
-        // by default we use the atomic orbitals given in the pseudo potentials
-        this->projection_method_ = 0;
-
-        if (parser["hubbard"].count("projection_method")) {
-            std::string projection_method__ = parser["hubbard"]["projection_method"].get<std::string>();
-            if (projection_method__ == "file") {
-                // they are provided by a external file
-                if (parser["hubbard"].count("wave_function_file")) {
-                    this->wave_function_file_ = parser["hubbard"]["wave_function_file"].get<std::string>();
-                    this->projection_method_  = 1;
-                } else {
-                    throw std::runtime_error(
-                        "The hubbard projection method 'file' requires the option 'wave_function_file' to be defined");
-                }
-            }
-
-            if (projection_method__ == "pseudo") {
-                this->projection_method_ = 2;
-            }
-        }
-
-        if (parser["hubbard"].count("hubbard_u_plus_v")) {
-            hubbard_U_plus_V_ = true;
-        }
-
-        for (auto& label : labels_) {
-
-            if (!parser["hubbard"].count(label)) {
-                continue;
-            }
-
-            struct hubbard_orbital_ coef__;
-
-            coef__.coeff_.clear();
-            coef__.coeff_.resize(6, 0.0);
-
-            if (parser["hubbard"][label].count("U")) {
-                coef__.coeff_[0]    = parser["hubbard"][label]["U"].get<double>();
-                hubbard_correction_ = true;
-            }
-
-            if (parser["hubbard"][label].count("J")) {
-                coef__.coeff_[1]    = parser["hubbard"][label]["J"].get<double>();
-                hubbard_correction_ = true;
-            }
-
-            if (parser["hubbard"][label].count("B")) {
-                coef__.coeff_[2]    = parser["hubbard"][label]["B"].get<double>();
-                hubbard_correction_ = true;
-            }
-
-            if (parser["hubbard"][label].count("E2")) {
-                coef__.coeff_[2]    = parser["hubbard"][label]["E2"].get<double>();
-                hubbard_correction_ = true;
-            }
-
-            if (parser["hubbard"][label].count("E3")) {
-                coef__.coeff_[3]    = parser["hubbard"][label]["E3"].get<double>();
-                hubbard_correction_ = true;
-            }
-
-            if (parser["hubbard"][label].count("alpha")) {
-                coef__.coeff_[4]    = parser["hubbard"][label]["alpha"].get<double>();
-                hubbard_correction_ = true;
-            }
-
-            if (parser["hubbard"][label].count("beta")) {
-                coef__.coeff_[5]    = parser["hubbard"][label]["beta"].get<double>();
-                hubbard_correction_ = true;
-            }
-
-            // now convert eV in Ha
-            for (int s = 0; s < static_cast<int>(coef__.coeff_.size()); s++) {
-                coef__.coeff_[s] /= ha2ev;
-            }
-
-            if (parser["hubbard"][label].count("l") && parser["hubbard"][label].count("n")) {
-                coef__.l = parser["hubbard"][label]["l"].get<int>();
-                coef__.n = parser["hubbard"][label]["n"].get<int>();
-            } else {
-                if (parser["hubbard"][label].count("hubbard_orbital")) {
-                    coef__.level = parser["hubbard"][label]["hubbard_orbital"].get<std::string>();
-                } else {
-                    if (hubbard_correction_) {
-                        throw std::runtime_error(
-                            "you selected the hubbard correction for this atom but did not specify the atomic level");
-                    }
-                }
-            }
-
-            if (parser["hubbard"][label].count("occupancy")) {
-                coef__.occupancy_ = parser["hubbard"][label]["occupancy"].get<double>();
-            } else {
-                throw std::runtime_error(
-                    "This atom has hubbard correction but the occupancy is not set up. Please check your input file");
-            }
-
-            if (hubbard_correction_) {
-                species.push_back(std::make_pair(label, coef__));
-            }
-        }
-
-        if (!hubbard_correction_) {
-            throw std::runtime_error("The hubbard section is empty");
-        }
-    }
+    void read(json const& parser);
 };
 
 }; // namespace sirius

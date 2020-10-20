@@ -28,7 +28,6 @@
 #include "atomic_data.hpp"
 #include "geometry3d.hpp"
 #include "radial/radial_solver.hpp"
-//#include "potential/xc_functional_base.hpp"
 #include "simulation_parameters.hpp"
 #include "radial_functions_index.hpp"
 #include "basis_functions_index.hpp"
@@ -673,7 +672,7 @@ class Atom_type
         Full treatment of spin is not considered. In case of spinor wave-functions the are averaged between
         l+1/2 and l-1/2 states. */
     void add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, const double *hub_coef__,
-                             double alpha__, double beta__, double J0__)
+                             double alpha__, double beta__, double J0__, std::vector<double> initial_occupancy__)
     {
         /* we have to find one (or two in case of spin-orbit) atomic functions and construct hubbard orbital */
         std::vector<int> idx_rf;
@@ -722,7 +721,7 @@ class Atom_type
         /* add orbital to a list */
         hubbard_radial_functions_.push_back(std::move(s));
 
-        hubbard_orbital_descriptor hub(n__, l__, -1, occ__, J, U, hub_coef__, alpha__, beta__, J0__);
+        hubbard_orbital_descriptor hub(n__, l__, -1, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__);
         /* add descriptor to a list */
         lo_descriptors_hub_.push_back(std::move(hub));
 
@@ -732,7 +731,7 @@ class Atom_type
             int l = std::get<1>(e);
             if (n >= 0) {
                 if (n == n__ && std::abs(l) == l__) {
-                    hubbard_orbital_descriptor hub(n__, l__, s, occ__, J, U, hub_coef__, alpha__, beta__, J0__);
+                    hubbard_orbital_descriptor hub(n__, l__, s, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__);
                     hubbard_orbitals_.push_back(std::move(hub));
                     local_orbital_descriptor lod;
                     lod.l = std::abs(l);
@@ -758,7 +757,7 @@ class Atom_type
                 // codes that do not store all info about wave
                 // functions.
                 if (std::abs(l) == l__) {
-                    hubbard_orbital_descriptor hub(n__, l__, s, occ__, J, U, hub_coef__, alpha__, beta__, J0__);
+                    hubbard_orbital_descriptor hub(n__, l__, s, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__);
                     hubbard_orbitals_.push_back(std::move(hub));
                     local_orbital_descriptor lod;
                     lod.l = std::abs(l);
@@ -1907,65 +1906,22 @@ inline void Atom_type::generate_f_coefficients()
 
 inline void Atom_type::read_hubbard_input()
 {
-    if(!parameters_.hubbard_input().hubbard_correction_) {
+    if (!parameters_.hubbard_input().hubbard_correction_) {
         return;
     }
 
     this->hubbard_correction_ = false;
 
-    for(auto &d: parameters_.hubbard_input().species) {
-        if (d.first == symbol_) {
-            int hubbard_l_ = d.second.l;
-            int hubbard_n_ = d.second.n;
-            if (hubbard_l_ < 0) {
-                std::istringstream iss(std::string(1, d.second.level[0]));
-                iss >> hubbard_n_;
+    if (parameters_.hubbard_input().species_with_U.count(symbol_)) {
+        auto const& ho = parameters_.hubbard_input().species_with_U.at(symbol_);
 
-                if (hubbard_n_ <= 0 || iss.fail()) {
-                    std::stringstream s;
-                    s << "wrong principal quantum number : " << std::string(1, d.second.level[0]);
-                    TERMINATE(s);
-                }
+        add_hubbard_orbital(ho.n, ho.l, ho.occupancy, ho.coeff[0], ho.coeff[1], &ho.coeff[0], ho.coeff[4],
+                ho.coeff[5], 0.0, ho.initial_occupancy);
 
-                switch (d.second.level[1]) {
-                    case 's': {
-                        hubbard_l_ = 0;
-                        break;
-                    }
-                    case 'p': {
-                        hubbard_l_ = 1;
-                        break;
-                    }
-                    case 'd': {
-                        hubbard_l_ = 2;
-                        break;
-                    }
-                    case 'f': {
-                        hubbard_l_ = 3;
-                        break;
-                    }
-                    default: {
-                        std::stringstream s;
-                        s << "wrong angular momentum label : " << std::string(1, d.second.level[1]);
-                        TERMINATE(s);
-                    }
-                }
-            }
-
-            add_hubbard_orbital(hubbard_n_,
-                                hubbard_l_,
-                                d.second.occupancy_,
-                                d.second.coeff_[0],
-                                d.second.coeff_[1],
-                                &d.second.coeff_[0],
-                                d.second.coeff_[4],
-                                d.second.coeff_[5],
-                                0.0);
-
-            this->hubbard_correction_ = true;
-        }
+        this->hubbard_correction_ = true;
     }
 }
+
 } // namespace
 
 #endif // __ATOM_TYPE_HPP__

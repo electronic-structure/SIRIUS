@@ -195,8 +195,9 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
     std::vector<double> etot_hist;
 
     if (ctx_.hubbard_correction()) { // TODO: move to inititialization functions
-        potential_.U().compute_occupation_matrix(kset_);
-        potential_.U().calculate_hubbard_potential_and_energy(potential_.U().occupation_matrix());
+        //potential_.U().compute_occupation_matrix(kset_);
+        //potential_.U().calculate_hubbard_potential_and_energy(potential_.U().occupation_matrix());
+        potential_.U().calculate_hubbard_potential_and_energy(density_.occupation_matrix().data());
     }
 
     ctx_.iterative_solver_tolerance(initial_tolerance);
@@ -267,7 +268,7 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
         /* Compute the hubbard correction */
         if (ctx_.hubbard_correction()) {
-            potential_.U().compute_occupation_matrix(kset_);
+            //potential_.U().compute_occupation_matrix(kset_);
             //potential_.U().calculate_hubbard_potential_and_energy(potential_.U().occupation_matrix());
             potential_.U().calculate_hubbard_potential_and_energy(density_.occupation_matrix().data());
         }

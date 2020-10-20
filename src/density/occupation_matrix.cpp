@@ -266,72 +266,80 @@ void Occupation_matrix::init()
         const auto& atom = ctx_.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
             const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
-            // compute the total charge for the hubbard orbitals
-            double charge = atom.type().hubbard_orbital(0).occupancy();
-            bool   nm     = true; // true if the atom is non magnetic
-            int    majs, mins;
-            if (ctx_.num_spins() != 1) {
-                if (atom.vector_field()[2] > 0.0) {
-                    nm   = false;
-                    majs = 0;
-                    mins = 1;
-                } else if (atom.vector_field()[2] < 0.0) {
-                    nm   = false;
-                    majs = 1;
-                    mins = 0;
-                }
-            }
-
-            if (!nm) {
-                if (ctx_.num_mag_dims() != 3) {
-                    // colinear case
-                    if (charge > (lmax_at)) {
-                        for (int m = 0; m < lmax_at; m++) {
-                            this->data_(m, m, majs, ia) = 1.0;
-                            this->data_(m, m, mins, ia) =
-                                (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
-                        }
-                    } else {
-                        for (int m = 0; m < lmax_at; m++) {
-                            data_(m, m, majs, ia) = charge / static_cast<double>(lmax_at);
-                        }
-                    }
-                } else {
-                    // double c1, s1;
-                    // sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
-                    double         c1 = atom.vector_field()[2];
-                    double_complex cs = double_complex(atom.vector_field()[0], atom.vector_field()[1]) / sqrt(1.0 - c1 * c1);
-                    double_complex ns[4];
-
-                    if (charge > (lmax_at)) {
-                        ns[majs] = 1.0;
-                        ns[mins] = (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
-                    } else {
-                        ns[majs] = charge / static_cast<double>(lmax_at);
-                        ns[mins] = 0.0;
-                    }
-
-                    // charge and moment
-                    double nc  = ns[majs].real() + ns[mins].real();
-                    double mag = ns[majs].real() - ns[mins].real();
-
-                    // rotate the occ matrix
-                    ns[0] = (nc + mag * c1) * 0.5;
-                    ns[1] = (nc - mag * c1) * 0.5;
-                    ns[2] = mag * std::conj(cs) * 0.5;
-                    ns[3] = mag * cs * 0.5;
-
+            if (atom.type().hubbard_orbital(0).initial_occupancy.size()) {
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < lmax_at; m++) {
-                        this->data_(m, m, 0, ia) = ns[0];
-                        this->data_(m, m, 1, ia) = ns[1];
-                        this->data_(m, m, 2, ia) = ns[2];
-                        this->data_(m, m, 3, ia) = ns[3];
+                        this->data_(m, m, ispn, ia) = atom.type().hubbard_orbital(0).initial_occupancy[m + ispn * lmax_at];
                     }
                 }
             } else {
-                for (int s = 0; s < ctx_.num_spins(); s++) {
-                    for (int m = 0; m < lmax_at; m++) {
-                        this->data_(m, m, s, ia) = charge * 0.5 / static_cast<double>(lmax_at);
+                // compute the total charge for the hubbard orbitals
+                double charge = atom.type().hubbard_orbital(0).occupancy();
+                bool   nm     = true; // true if the atom is non magnetic
+                int    majs, mins;
+                if (ctx_.num_spins() != 1) {
+                    if (atom.vector_field()[2] > 0.0) {
+                        nm   = false;
+                        majs = 0;
+                        mins = 1;
+                    } else if (atom.vector_field()[2] < 0.0) {
+                        nm   = false;
+                        majs = 1;
+                        mins = 0;
+                    }
+                }
+
+                if (!nm) {
+                    if (ctx_.num_mag_dims() != 3) {
+                        // colinear case
+                        if (charge > (lmax_at)) {
+                            for (int m = 0; m < lmax_at; m++) {
+                                this->data_(m, m, majs, ia) = 1.0;
+                                this->data_(m, m, mins, ia) =
+                                    (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
+                            }
+                        } else {
+                            for (int m = 0; m < lmax_at; m++) {
+                                data_(m, m, majs, ia) = charge / static_cast<double>(lmax_at);
+                            }
+                        }
+                    } else {
+                        // double c1, s1;
+                        // sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
+                        double         c1 = atom.vector_field()[2];
+                        double_complex cs = double_complex(atom.vector_field()[0], atom.vector_field()[1]) / sqrt(1.0 - c1 * c1);
+                        double_complex ns[4];
+
+                        if (charge > (lmax_at)) {
+                            ns[majs] = 1.0;
+                            ns[mins] = (charge - static_cast<double>(lmax_at)) / static_cast<double>(lmax_at);
+                        } else {
+                            ns[majs] = charge / static_cast<double>(lmax_at);
+                            ns[mins] = 0.0;
+                        }
+
+                        // charge and moment
+                        double nc  = ns[majs].real() + ns[mins].real();
+                        double mag = ns[majs].real() - ns[mins].real();
+
+                        // rotate the occ matrix
+                        ns[0] = (nc + mag * c1) * 0.5;
+                        ns[1] = (nc - mag * c1) * 0.5;
+                        ns[2] = mag * std::conj(cs) * 0.5;
+                        ns[3] = mag * cs * 0.5;
+
+                        for (int m = 0; m < lmax_at; m++) {
+                            this->data_(m, m, 0, ia) = ns[0];
+                            this->data_(m, m, 1, ia) = ns[1];
+                            this->data_(m, m, 2, ia) = ns[2];
+                            this->data_(m, m, 3, ia) = ns[3];
+                        }
+                    }
+                } else {
+                    for (int s = 0; s < ctx_.num_spins(); s++) {
+                        for (int m = 0; m < lmax_at; m++) {
+                            this->data_(m, m, s, ia) = charge * 0.5 / static_cast<double>(lmax_at);
+                        }
                     }
                 }
             }

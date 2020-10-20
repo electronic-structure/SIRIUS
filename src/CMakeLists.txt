@@ -76,6 +76,7 @@ set(_SOURSES
   "mixer/mixer_functions.cpp"
   "linalg/eigensolver.cpp"
   "nlcglib/adaptor.cpp"
+  "input.cpp"
   )
 
 
