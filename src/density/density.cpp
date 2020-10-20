@@ -81,13 +81,9 @@ Density::Density(Simulation_context& ctx__)
                 }
             }
         }
-
-        occupation_matrix_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
-                memory_t::host, "occupation_matrix_");
-        occupation_matrix_.zero();
     }
 
-    occupation_matrix1_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
+    occupation_matrix_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
 
     update();
 }
@@ -137,7 +133,7 @@ void Density::initial_density()
 
         generate_paw_loc_density();
 
-        occupation_matrix1_->init();
+        occupation_matrix_->init();
     }
 }
 
@@ -732,168 +728,6 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
     }
 }
 
-void Density::add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_complex, 4>& occupation_matrix__)
-{
-    PROFILE("sirius::Density::add_k_point_contribution_om");
-
-    if (!ctx_.hubbard_correction()) {
-        return;
-    }
-
-    memory_t mem_host{memory_t::host};
-    memory_t mem{memory_t::host};
-    linalg_t la{linalg_t::blas};
-    /* find the appropriate linear algebra provider */
-    if (ctx_.processing_unit() == device_t::GPU) {
-        mem = memory_t::device;
-        mem_host = memory_t::host_pinned;
-        if (is_device_memory(ctx_.preferred_memory_t())) {
-            la = linalg_t::gpublas;
-        } else {
-            la = linalg_t::cublasxt;
-        }
-    }
-
-    int nwfu = kp__->hubbard_wave_functions().num_wf();
-
-    sddk::matrix<double_complex> occ_mtrx(nwfu, nwfu, ctx_.mem_pool(memory_t::host), "occ_mtrx");
-    if (is_device_memory(mem)) {
-        occ_mtrx.allocate(ctx_.mem_pool(mem));
-    }
-
-    auto r = ctx_.unit_cell().num_wf_with_U();
-
-    // TODO collnear and non-collinear cases have a lot of similar code; there should be a way to combine it
-
-    /* full non colinear magnetism */
-    if (ctx_.num_mag_dims() == 3) {
-        dmatrix<double_complex> dm(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm");
-        if (is_device_memory(mem)) {
-            dm.allocate(ctx_.mem_pool(mem));
-        }
-        sddk::inner(ctx_.spla_context(), 2, kp__->spinor_wave_functions(), 0,
-            kp__->num_occupied_bands(), kp__->hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
-
-        if (is_device_memory(mem)) { // TODO: check if inner() already moved data to CPU
-            dm.copy_to(memory_t::host);
-        }
-        dmatrix<double_complex> dm1(kp__->num_occupied_bands(), nwfu, ctx_.mem_pool(mem_host), "dm1");
-        #pragma omp parallel for
-        for (int m = 0; m < nwfu; m++) {
-            for (int j = 0; j < kp__->num_occupied_bands(); j++) {
-                dm1(j, m) = dm(j, m) * kp__->band_occupancy(j);
-            }
-        }
-        if (is_device_memory(mem)) {
-            dm1.allocate(ctx_.mem_pool(mem)).copy_to(memory_t::host);
-        }
-
-        /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
-        auto alpha = double_complex(kp__->weight(), 0.0);
-        linalg(la).gemm('C', 'N', nwfu, nwfu, kp__->num_occupied_bands(), &alpha, dm.at(mem), dm.ld(),
-            dm1.at(mem), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
-        if (is_device_memory(mem)) {
-            occ_mtrx.copy_to(memory_t::host);
-        }
-
-        #pragma omp parallel for schedule(static)
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            const auto& atom = unit_cell_.atom(ia);
-            if (atom.type().hubbard_correction()) {
-
-                /* loop over the different channels */
-                /* note that for atom with SO interactions, we need to jump
-                   by 2 instead of 1. This is due to the fact that the
-                   relativistic wave functions have different total angular
-                   momentum for the same n */
-
-                for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb += (atom.type().spin_orbit_coupling() ? 2 : 1)) {
-                    /*
-                       I know that the index of the hubbard wave functions (indexb_....) is
-                       consistent with the index of the hubbard orbitals
-                    */
-                    const int lmmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
-                    for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
-                        for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
-                            int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
-                            for (int mp = 0; mp < lmmax_at; mp++) {
-                                for (int m = 0; m < lmmax_at; m++) {
-                                    occupation_matrix__(m, mp, s, ia) +=
-                                        occ_mtrx(r.second[ia] + m + s1 * lmmax_at, r.second[ia] + mp + s2 * lmmax_at);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        /* SLDA + U, we need to do the explicit calculation. The hubbard
-           orbitals only have one component while the bloch wave functions
-           have two. The inner product takes care of this case internally. */
-
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|1");
-            dmatrix<double_complex> dm(kp__->num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm");
-            if (is_device_memory(mem)) {
-                dm.allocate(ctx_.mem_pool(mem));
-            }
-            sddk::inner(ctx_.spla_context(), ispn, kp__->spinor_wave_functions(), 0, kp__->num_occupied_bands(ispn),
-                  kp__->hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
-            if (is_device_memory(mem)) { // TODO: check if inner() already moved data to CPU
-                dm.copy_to(memory_t::host);
-            }
-            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|1");
-
-            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|2");
-            dmatrix<double_complex> dm1(kp__->num_occupied_bands(ispn), nwfu, ctx_.mem_pool(mem_host), "dm1");
-            #pragma omp parallel for
-            for (int m = 0; m < nwfu; m++) {
-                for (int j = 0; j < kp__->num_occupied_bands(ispn); j++) {
-                    dm1(j, m) = dm(j, m) * kp__->band_occupancy(j, ispn);
-                }
-            }
-            if (is_device_memory(mem)) {
-                dm1.allocate(ctx_.mem_pool(mem)).copy_to(memory_t::host);
-            }
-            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|2");
-            /* now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk} */
-            /* We need to apply a factor 1/2 when we compute the occupancies for the LDA+U. It is because the 
-             * calculations of E and U consider occupancies <= 1.  Sirius for the LDA+U has a factor 2 in the 
-             * band occupancies. We need to compensate for it because it is taken into account in the
-             * calculation of the hubbard potential */
-            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|3");
-            auto alpha = double_complex(kp__->weight() / ctx_.max_occupancy(), 0.0);
-            linalg(la).gemm('C', 'N', nwfu, nwfu, kp__->num_occupied_bands(ispn), &alpha, dm.at(mem), dm.ld(),
-                dm1.at(mem), dm1.ld(), &linalg_const<double_complex>::zero(), occ_mtrx.at(mem), occ_mtrx.ld());
-            if (is_device_memory(mem)) {
-                occ_mtrx.copy_to(memory_t::host);
-            }
-            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|3");
-            PROFILE_START("sirius::Hubbard::compute_occupation_matrix|4");
-            #pragma omp parallel for schedule(static)
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                const auto& atom = unit_cell_.atom(ia);
-                if (atom.type().hubbard_correction()) {
-                    for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb++) {
-                        const int lmmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
-                        for (int mp = 0; mp < lmmax_at; mp++) {
-                            const int mmp = r.second[ia] + mp;
-                            for (int m = 0; m < lmmax_at; m++) {
-                                const int mm = r.second[ia] + m;
-                                occupation_matrix__(m, mp, ispn, ia) += occ_mtrx(mm, mmp);
-                            }
-                        }
-                    }
-                }
-            }
-            PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|4");
-        } // ispn
-    }
-
-    //print_occupancies();
-}
-
 template <typename T>
 void Density::add_k_point_contribution_dm(K_point* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
 {
@@ -1327,8 +1161,7 @@ void Density::generate_valence(K_point_set const& ks__)
     density_matrix_.zero();
 
     if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
-        occupation_matrix_.zero();
-        occupation_matrix1_->zero();
+        occupation_matrix_->zero();
     }
 
     /* zero density and magnetization */
@@ -1382,8 +1215,7 @@ void Density::generate_valence(K_point_set const& ks__)
                 add_k_point_contribution_dm<double_complex>(kp, density_matrix_);
             }
             if (ctx_.hubbard_correction()) {
-                add_k_point_contribution_om(kp, occupation_matrix_);
-                occupation_matrix1_->add_k_point_contribution(*kp);
+                occupation_matrix_->add_k_point_contribution(*kp);
             }
         }
 
@@ -1409,12 +1241,7 @@ void Density::generate_valence(K_point_set const& ks__)
 
     if (density_matrix_.size()) {
         ctx_.comm().allreduce(density_matrix_.at(memory_t::host), static_cast<int>(density_matrix_.size()));
-        occupation_matrix1_->reduce();
-    }
-    if (occupation_matrix_.size()) {
-        /* global reduction over k points */
-        ctx_.comm_k().allreduce(occupation_matrix_.at(memory_t::host),
-                static_cast<int>(occupation_matrix_.size()));
+        occupation_matrix_->reduce();
     }
 
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
@@ -1995,9 +1822,10 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
     if (ctx_.unit_cell().num_paw_atoms()) {
         this->mixer_->initialize_function<5>(paw_prop, paw_density_, ctx_);
     }
-    if (occupation_matrix_.size()) {
-        this->mixer_->initialize_function<6>(density_prop, occupation_matrix_, static_cast<int>(occupation_matrix_.size(0)),
-            static_cast<int>(occupation_matrix_.size(1)), 4, unit_cell_.num_atoms());
+    if (occupation_matrix_->data().size()) {
+        this->mixer_->initialize_function<6>(density_prop, occupation_matrix_->data(),
+            static_cast<int>(occupation_matrix_->data().size(0)),
+            static_cast<int>(occupation_matrix_->data().size(1)), 4, unit_cell_.num_atoms());
     }
 }
 
@@ -2020,8 +1848,8 @@ void Density::mixer_input()
         mixer_->set_input<5>(paw_density_);
     }
 
-    if (occupation_matrix_.size()) {
-        mixer_->set_input<6>(occupation_matrix_);
+    if (occupation_matrix_->data().size()) {
+        mixer_->set_input<6>(occupation_matrix_->data());
     }
 }
 
@@ -2044,8 +1872,8 @@ void Density::mixer_output()
         mixer_->get_output<5>(paw_density_);
     }
 
-    if (occupation_matrix_.size()) {
-        mixer_->get_output<6>(occupation_matrix_);
+    if (occupation_matrix_->data().size()) {
+        mixer_->get_output<6>(occupation_matrix_->data());
     }
 
     /* transform mixed density to plane-wave domain */

@@ -190,9 +190,7 @@ class Density : public Field4D
     paw_density paw_density_;
 
     /// Occupation matrix of the LDA+U method.
-    sddk::mdarray<double_complex, 4> occupation_matrix_;
-
-    std::unique_ptr<Occupation_matrix> occupation_matrix1_;
+    std::unique_ptr<Occupation_matrix> occupation_matrix_;
 
     /// Density and magnetization on the coarse FFT mesh.
     /** Coarse FFT grid is enough to generate density and magnetization from the wave-functions. The components
@@ -271,9 +269,6 @@ class Density : public Field4D
 
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     void add_k_point_contribution_rg(K_point* kp__);
-
-    /// Add k-point contribution to LDA+U occupation matrix.
-    void add_k_point_contribution_om(K_point* kp__, sddk::mdarray<double_complex, 4>& occupation_matrix__);
 
     /// Generate valence density in the muffin-tins
     void generate_valence_mt();
@@ -825,12 +820,12 @@ class Density : public Field4D
 
     Occupation_matrix const& occupation_matrix() const
     {
-        return *occupation_matrix1_;
+        return *occupation_matrix_;
     }
 
     Occupation_matrix& occupation_matrix()
     {
-        return *occupation_matrix1_;
+        return *occupation_matrix_;
     }
 };
 
