@@ -54,7 +54,7 @@ class Hubbard
 
     int number_of_hubbard_orbitals_{0};
 
-    sddk::mdarray<double_complex, 4> occupation_matrix_;
+    //sddk::mdarray<double_complex, 4> occupation_matrix_;
 
     double hubbard_energy_{0.0};
     double hubbard_energy_u_{0.0};
@@ -87,7 +87,7 @@ class Hubbard
     /// file containing the hubbard wave functions
     std::string wave_function_file_;
 
-    void calculate_initial_occupation_numbers();
+    //void calculate_initial_occupation_numbers();
 
     void compute_occupancies(K_point&                    kp,
                              dmatrix<double_complex>&    phi_s_psi,
@@ -98,8 +98,8 @@ class Hubbard
                              const int                   index);
 
     void symmetrize_occupancy_matrix_noncolinear_case();
-    void symmetrize_occupancy_matrix();
-    void print_occupancies();
+    void symmetrize_occupancy_matrix(sddk::mdarray<double_complex, 4>& om__);
+    //void print_occupancies();
 
     void calculate_wavefunction_with_U_offset();
 
@@ -166,7 +166,7 @@ class Hubbard
                                  Wave_functions& phi,
                                  Wave_functions& ophi);
 
-    void compute_occupation_matrix(K_point_set& kset_);
+    //void compute_occupation_matrix(K_point_set& kset_);
 
     void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 6>& dn);
 
@@ -208,10 +208,10 @@ class Hubbard
         return number_of_hubbard_orbitals_;
     }
 
-    mdarray<double_complex, 4>& occupation_matrix()
-    {
-        return occupation_matrix_;
-    }
+    //mdarray<double_complex, 4>& occupation_matrix()
+    //{
+    //    return occupation_matrix_;
+    //}
 
     mdarray<double_complex, 4>& potential_matrix()
     {
@@ -220,7 +220,7 @@ class Hubbard
 
     void access_hubbard_potential(std::string const& what, double_complex* occ, int ld);
 
-    void access_hubbard_occupancies(std::string const& what, double_complex* occ, int ld);
+    //void access_hubbard_occupancies(std::string const& what, double_complex* occ, int ld);
 };
 
 } // namespace sirius

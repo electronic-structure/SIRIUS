@@ -694,6 +694,10 @@ class Potential : public Field4D
             generate_PAW_effective_potential(density__);
         }
 
+        if (ctx_.hubbard_correction()) {
+            this->U().calculate_hubbard_potential_and_energy(density__.occupation_matrix().data());
+        }
+
         if (ctx_.parameters_input().reduce_aux_bf_ > 0 && ctx_.parameters_input().reduce_aux_bf_ < 1) {
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 for (int x : {0, 1, 2}) {

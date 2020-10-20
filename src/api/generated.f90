@@ -3231,29 +3231,6 @@ call sirius_get_wave_functions_aux(ks_handler_ptr,ik_ptr,ispn_ptr,npw_ptr,gvec_k
 end subroutine sirius_get_wave_functions
 
 !
-!> @brief Compute occupation matrix.
-!> @param [in] handler Ground state handler.
-subroutine sirius_calculate_hubbard_occupancies(handler)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-!
-type(C_PTR) :: handler_ptr
-!
-interface
-subroutine sirius_calculate_hubbard_occupancies_aux(handler)&
-&bind(C, name="sirius_calculate_hubbard_occupancies")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-call sirius_calculate_hubbard_occupancies_aux(handler_ptr)
-end subroutine sirius_calculate_hubbard_occupancies
-
-!
 !> @brief Set occupation matrix for LDA+U.
 !> @param [in] handler Ground state handler.
 !> @param [inout] occ Occupation matrix.

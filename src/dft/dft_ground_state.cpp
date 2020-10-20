@@ -194,12 +194,6 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
     std::vector<double> rms_hist;
     std::vector<double> etot_hist;
 
-    if (ctx_.hubbard_correction()) { // TODO: move to inititialization functions
-        //potential_.U().compute_occupation_matrix(kset_);
-        //potential_.U().calculate_hubbard_potential_and_energy(potential_.U().occupation_matrix());
-        potential_.U().calculate_hubbard_potential_and_energy(density_.occupation_matrix().data());
-    }
-
     ctx_.iterative_solver_tolerance(initial_tolerance);
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
@@ -264,13 +258,6 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
             ctx_.message(1, __function_name__,"\nconverged after %i SCF iterations!\n", iter + 1); 
             num_iter = iter;
             break;
-        }
-
-        /* Compute the hubbard correction */
-        if (ctx_.hubbard_correction()) {
-            //potential_.U().compute_occupation_matrix(kset_);
-            //potential_.U().calculate_hubbard_potential_and_energy(potential_.U().occupation_matrix());
-            potential_.U().calculate_hubbard_potential_and_energy(density_.occupation_matrix().data());
         }
 
         eold = etot;

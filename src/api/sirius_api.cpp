@@ -3411,24 +3411,6 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
 
 /*
 @api begin
-sirius_calculate_hubbard_occupancies:
-  doc: Compute occupation matrix.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Ground state handler.
-@api end
-*/
-void sirius_calculate_hubbard_occupancies(void* const* handler__)
-{
-    auto& gs = get_gs(handler__);
-    gs.potential().U().compute_occupation_matrix(gs.k_point_set());
-}
-
-
-/*
-@api begin
 sirius_set_hubbard_occupancies:
   doc: Set occupation matrix for LDA+U.
   arguments:
@@ -3449,7 +3431,7 @@ sirius_set_hubbard_occupancies:
 void sirius_set_hubbard_occupancies(void* const* handler__, std::complex<double>* occ__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_occupancies("set", occ__, *ld__);
+    gs.density().occupation_matrix().access("set", occ__, *ld__);
 }
 
 /*
@@ -3474,7 +3456,7 @@ sirius_get_hubbard_occupancies:
 void sirius_get_hubbard_occupancies(void* const* handler__, std::complex<double>* occ__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_occupancies("get", occ__, *ld__);
+    gs.density().occupation_matrix().access("get", occ__, *ld__);
 }
 
 /*
