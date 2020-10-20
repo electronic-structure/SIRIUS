@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2020 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2020 Mathieu Taillefumier, Mthieu Taillefumier, Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -38,6 +38,22 @@ class Occupation_matrix {
 
     void add_k_point_contribution(K_point& kp__);
 
+    /// Retrieve or set the Hubbard occupancies.
+    /** This functions helps retrieving or setting up the hubbard occupancy
+     *  tensors from an external tensor. Retrieving it is done by specifying
+     *  "get" in the first argument of the method while setting it is done
+     *  with the parameter set up to "set". The second parameter is the
+     *  output pointer and the last parameter is the leading dimension of the
+     *  tensor.
+     *
+     *  The returned result has the same layout than SIRIUS layout, * i.e.,
+     *  the harmonic orbitals are stored from m_z = -l..l. The occupancy
+     *  matrix can also be accessed through the method occupation_matrix()
+     *
+     * \param [in]    what String to set to "set" for initializing sirius ccupancy tensor and "get" for retrieving it.
+     * \param [inout] occ  Pointer to external occupancy tensor.
+     * \param [in]    ld   Leading dimension of the outside tensor.
+     * \return return the occupancy matrix if the first parameter is set to "get". */
     void access(std::string const& what__, double_complex* occ__, int ld__);
 
     /** The initial occupancy is calculated following Hund rules. We first
