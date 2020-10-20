@@ -1,6 +1,6 @@
 spack:
   specs:
-    - sirius@develop %gcc@:7 build_type=RelWithDebInfo +tests +apps +nlcglib +scalapack +cuda cuda_arch=60 ^cuda@10.1.243 ^openblas ^mpich ^nlcglib +cuda +wrapper cuda_arch=60 ^kokkos +wrapper cuda_arch=60 ^spla
+    - sirius@develop %gcc@:7 build_type=RelWithDebInfo +tests +apps +nlcglib +scalapack +cuda cuda_arch=60 ^cuda@10.1.243 ^openblas ^mpich ^nlcglib +cuda +wrapper cuda_arch=60 ^kokkos +wrapper cuda_arch=60
   view: false
 
   packages:
@@ -14,9 +14,6 @@ spack:
       externals:
       - spec: 'cuda@10.1.243'
         prefix: /usr/local/cuda
-    # TODO: nlcglib currently requires a newer cmake
-    # cmake:
-      # version: [':3.14']
     openblas:
       variants:
         - threads=openmp
