@@ -256,6 +256,12 @@ struct Iterative_solver_input
     /// Lock eigenvectors of the smallest eigenvalues when they have converged at restart
     bool locking_{true};
 
+    /// Restart early when the ratio unconverged vs lockable vectors drops below this threshold
+    /** When there's just a few vectors left unconverged, it can be more efficient to lock the converged
+        ones, such that the dense eigenproblem solved in each Davidson iteration has lower dimension.
+        Restarting has some overhead in that it requires updating wave functions **/
+    double early_restart_{0.5};
+
     /// Tolerance for the eigen-energy difference \f$ |\epsilon_i^{old} - \epsilon_i^{new} | \f$.
     /** This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions. */
     double energy_tolerance_{1e-2};
@@ -307,6 +313,7 @@ struct Iterative_solver_input
             num_singular_           = section.value("num_singular", num_singular_);
             init_eval_old_          = section.value("init_eval_old", init_eval_old_);
             init_subspace_          = section.value("init_subspace", init_subspace_);
+            early_restart_          = section.value("early_restart", early_restart_);
             std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
         }
     }

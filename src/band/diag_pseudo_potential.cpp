@@ -524,7 +524,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             /* Todo: num_unconverged might be very small at some point slowing down convergence
                      can we add more? */
             int expand_with = std::min(num_unconverged, block_size);
-            bool should_restart = N + expand_with > num_phi;
+            bool should_restart = N + expand_with > num_phi || (num_lockable > 5 && num_unconverged < itso.early_restart_ * num_lockable);
 
             kp.message(3, __function_name__, "Restart = %s. Locked = %d. Converged = %d. Wanted = %d. Lockable = %d.i "
                        "Num ritz = %d. Expansion size = %d\n", should_restart ? "yes" : "no", num_locked,

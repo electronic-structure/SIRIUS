@@ -762,6 +762,7 @@ void Simulation_context::print_info() const
     std::printf("iterative solver                   : %s\n", iterative_solver_input_.type_.c_str());
     std::printf("number of steps                    : %i\n", iterative_solver_input_.num_steps_);
     std::printf("subspace size                      : %i\n", iterative_solver_input_.subspace_size_);
+    std::printf("early restart ratio                : %.2f\n", iterative_solver_input_.early_restart_);
 
     std::printf("\n");
     std::printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(), spg_get_micro_version());

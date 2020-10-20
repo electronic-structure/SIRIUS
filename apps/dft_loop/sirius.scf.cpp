@@ -405,6 +405,7 @@ int main(int argn, char** argv)
     args.register_key("--parameters.gamma_point=", "");
     args.register_key("--parameters.pw_cutoff=", "");
     args.register_key("--iterative_solver.orthogonalize=", "");
+    args.register_key("--iterative_solver.early_restart=", "{double} value between 0 and 1 to control the early restart ratio in Davidson");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
