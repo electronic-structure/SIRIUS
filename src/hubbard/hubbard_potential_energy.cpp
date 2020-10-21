@@ -25,7 +25,7 @@
 #include "hubbard.hpp"
 namespace sirius {
 void
-Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
+Hubbard::calculate_hubbard_potential_and_energy_colinear_case(sddk::mdarray<double_complex, 4> const& om__)
 {
     this->hubbard_energy_u_               = 0.0;
     this->hubbard_energy_dc_contribution_ = 0.0;
@@ -50,17 +50,17 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
 
                         for (int m1 = 0; m1 < lmax_at; m1++) {
                             this->hubbard_energy_ +=
-                                (atom.type().hubbard_orbital(0).Hubbard_alpha() + 0.5 * U_effective) * this->occupation_matrix_(m1, m1, is, ia).real();
+                                (atom.type().hubbard_orbital(0).Hubbard_alpha() + 0.5 * U_effective) * om__(m1, m1, is, ia).real();
                             this->hubbard_potential_(m1, m1, is, ia) += (atom.type().hubbard_orbital(0).Hubbard_alpha() + 0.5 * U_effective);
 
                             for (int m2 = 0; m2 < lmax_at; m2++) {
 
                                 this->hubbard_energy_ -=
                                     0.5 * U_effective *
-                                    (this->occupation_matrix_(m1, m2, is, ia) * this->occupation_matrix_(m2, m1, is, ia)).real();
+                                    (om__(m1, m2, is, ia) * om__(m2, m1, is, ia)).real();
 
                                 // POTENTIAL
-                                this->hubbard_potential_(m1, m2, is, ia) -= U_effective * this->occupation_matrix_(m2, m1, is, ia);
+                                this->hubbard_potential_(m1, m2, is, ia) -= U_effective * om__(m2, m1, is, ia);
                             }
                         }
                     }
@@ -79,18 +79,18 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
                         for (int m1 = 0; m1 < lmax_at; m1++) {
 
                             this->hubbard_energy_ += sign * atom.type().hubbard_orbital(0).Hubbard_beta() *
-                                                     this->occupation_matrix_(m1, m1, is, ia).real();
+                                                     om__(m1, m1, is, ia).real();
 
                             this->U(m1, m1, is, ia) += sign * atom.type().hubbard_orbital(0).Hubbard_beta();
 
                             for (int m2 = 0; m2 < 2 * atom.type().hubbard_orbital(0).l + 1; m2++) {
                                 this->hubbard_energy_ +=
                                     0.5 * atom.type().hubbard_orbital(0).Hubbard_J0() *
-                                    (this->occupation_matrix_(m2, m1, is, ia) *
-                                     this->occupation_matrix_(m1, m2, s_opposite, ia)).real();
+                                    (om__(m2, m1, is, ia) *
+                                     om__(m1, m2, s_opposite, ia)).real();
 
                                 this->U(m1, m2, is, ia) += atom.type().hubbard_orbital(0).Hubbard_J0() *
-                                    this->occupation_matrix_(m2, m1, s_opposite, ia);
+                                    om__(m2, m1, s_opposite, ia);
                             }
                         }
                     }
@@ -122,11 +122,11 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
 
             for (int s = 0; s < ctx_.num_spins(); s++) {
                 for (int m = 0; m < lmax_at; m++) {
-                    n_total += this->occupation_matrix_(m, m, s, ia).real();
+                    n_total += om__(m, m, s, ia).real();
                 }
 
                 for (int m = 0; m < lmax_at; m++) {
-                    n_updown[s] += this->occupation_matrix_(m, m, s, ia).real();
+                    n_updown[s] += om__(m, m, s, ia).real();
                 }
             }
             double magnetization = 0.0;
@@ -135,7 +135,7 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
                 n_total *= 2.0; // factor two here because the occupations are <= 1
             } else {
                 for (int m = 0; m < lmax_at; m++) {
-                    magnetization += (this->occupation_matrix_(m, m, 0, ia) - this->occupation_matrix_(m, m, 1, ia)).real();
+                    magnetization += (om__(m, m, 0, ia) - om__(m, m, 1, ia)).real();
                 }
                 magnetization *= magnetization;
             }
@@ -164,24 +164,24 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
                                 if (ctx_.num_mag_dims() == 0) {
                                     this->U(m1, m2, is, ia) +=
                                         2.0 * atom.type().hubbard_orbital(0).hubbard_matrix(m1, m3, m2, m4) *
-                                        this->occupation_matrix_(m3, m4, is, ia);
+                                        om__(m3, m4, is, ia);
                                 } else {
                                     // colinear case
                                     for (int is2 = 0; is2 < 2; is2++) {
                                         this->U(m1, m2, is, ia) +=
                                             atom.type().hubbard_orbital(0).hubbard_matrix(m1, m3, m2, m4) *
-                                            this->occupation_matrix_(m3, m4, is2, ia);
+                                            om__(m3, m4, is2, ia);
                                     }
                                 }
 
                                 this->U(m1, m2, is, ia) -=
-                                    atom.type().hubbard_orbital(0).hubbard_matrix(m1, m3, m4, m2) * this->occupation_matrix_(m3, m4, is, ia);
+                                    atom.type().hubbard_orbital(0).hubbard_matrix(m1, m3, m4, m2) * om__(m3, m4, is, ia);
 
                                 this->hubbard_energy_u_ +=
                                     0.5 * ((atom.type().hubbard_orbital(0).hubbard_matrix(m1, m2, m3, m4) - atom.type().hubbard_orbital(0).hubbard_matrix(m1, m2, m4, m3)) *
-                                               this->occupation_matrix_(m1, m3, is, ia) * this->occupation_matrix_(m2, m4, is, ia) +
-                                           atom.type().hubbard_orbital(0).hubbard_matrix(m1, m2, m3, m4) * this->occupation_matrix_(m1, m3, is, ia) *
-                                               this->occupation_matrix_(m2, m4, (ctx_.num_mag_dims() == 1) ? ((is + 1) % 2) : (0), ia))
+                                               om__(m1, m3, is, ia) * om__(m2, m4, is, ia) +
+                                           atom.type().hubbard_orbital(0).hubbard_matrix(m1, m2, m3, m4) * om__(m1, m3, is, ia) *
+                                               om__(m2, m4, (ctx_.num_mag_dims() == 1) ? ((is + 1) % 2) : (0), ia))
                                               .real();
                             }
                         }
@@ -203,7 +203,7 @@ Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
 }
 
 void
-Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
+Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case(sddk::mdarray<double_complex, 4> const& om__)
 {
     this->hubbard_potential_.zero();
     this->hubbard_energy_dc_contribution_ = 0.0;
@@ -224,16 +224,16 @@ Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
             double         my;
             double         mz;
 
-            n_total = this->occupation_matrix_(0, 0, 0, ia) + this->occupation_matrix_(0, 0, 1, ia);
-            mz      = (this->occupation_matrix_(0, 0, 0, ia) - this->occupation_matrix_(0, 0, 1, ia)).real();
-            mx      = (this->occupation_matrix_(0, 0, 2, ia) + this->occupation_matrix_(0, 0, 3, ia)).real();
-            my      = (this->occupation_matrix_(0, 0, 2, ia) - this->occupation_matrix_(0, 0, 3, ia)).imag();
+            n_total = om__(0, 0, 0, ia) + om__(0, 0, 1, ia);
+            mz      = (om__(0, 0, 0, ia) - om__(0, 0, 1, ia)).real();
+            mx      = (om__(0, 0, 2, ia) + om__(0, 0, 3, ia)).real();
+            my      = (om__(0, 0, 2, ia) - om__(0, 0, 3, ia)).imag();
 
             for (int m = 1; m < lmax_at; m++) {
-                n_total += this->occupation_matrix_(m, m, 0, ia) + this->occupation_matrix_(m, m, 1, ia);
-                mz += (this->occupation_matrix_(m, m, 0, ia) - this->occupation_matrix_(m, m, 1, ia)).real();
-                mx += (this->occupation_matrix_(m, m, 2, ia) + this->occupation_matrix_(m, m, 3, ia)).real();
-                my += (this->occupation_matrix_(m, m, 2, ia) - this->occupation_matrix_(m, m, 3, ia)).imag();
+                n_total += om__(m, m, 0, ia) + om__(m, m, 1, ia);
+                mz += (om__(m, m, 0, ia) - om__(m, m, 1, ia)).real();
+                mx += (om__(m, m, 2, ia) + om__(m, m, 3, ia)).real();
+                my += (om__(m, m, 2, ia) - om__(m, m, 3, ia)).imag();
             }
 
             double magnetization = mz * mz + mx * mx + my * my;
@@ -272,9 +272,9 @@ Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
 
                                     this->hubbard_energy_noflip_ +=
                                         0.5 * ((atom.type().hubbard_orbital(0).hubbard_matrix(m1, m2, m3, m4) - atom.type().hubbard_orbital(0).hubbard_matrix(m1, m2, m4, m3)) *
-                                                   this->occupation_matrix_(m1, m3, is, ia) * this->occupation_matrix_(m2, m4, is, ia) +
-                                               atom.type().hubbard_orbital(0).hubbard_matrix(m1, m2, m3, m4) * this->occupation_matrix_(m1, m3, is, ia) *
-                                                   this->occupation_matrix_(m2, m4, (is + 1) % 2, ia))
+                                                   om__(m1, m3, is, ia) * om__(m2, m4, is, ia) +
+                                               atom.type().hubbard_orbital(0).hubbard_matrix(m1, m2, m3, m4) * om__(m1, m3, is, ia) *
+                                                   om__(m2, m4, (is + 1) % 2, ia))
                                                   .real();
                                 }
                             }
@@ -287,8 +287,8 @@ Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
                             for (int m3 = 0; m3 < lmax_at; ++m3) {
                                 for (int m4 = 0; m4 < lmax_at; ++m4) {
                                     this->hubbard_energy_flip_ -=
-                                        0.5 * (atom.type().hubbard_orbital(0).hubbard_matrix(m1, m2, m4, m3) * this->occupation_matrix_(m1, m3, is, ia) *
-                                               this->occupation_matrix_(m2, m4, is1, ia))
+                                        0.5 * (atom.type().hubbard_orbital(0).hubbard_matrix(m1, m2, m4, m3) * om__(m1, m3, is, ia) *
+                                               om__(m2, m4, is1, ia))
                                                   .real();
                                 }
                             }
@@ -305,7 +305,7 @@ Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
                                 for (int m4 = 0; m4 < lmax_at; ++m4) {
                                     this->U(m1, m2, is, ia) +=
                                         atom.type().hubbard_orbital(0).hubbard_matrix(m1, m3, m2, m4) *
-                                        (this->occupation_matrix_(m3, m4, 0, ia) + this->occupation_matrix_(m3, m4, 1, ia));
+                                        (om__(m3, m4, 0, ia) + om__(m3, m4, 1, ia));
                                 }
                             }
                         }
@@ -316,7 +316,7 @@ Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
 
                 double_complex n_aux = 0.0;
                 for (int m1 = 0; m1 < lmax_at; m1++) {
-                    n_aux += this->occupation_matrix_(m1, m1, is1, ia);
+                    n_aux += om__(m1, m1, is1, ia);
                 }
 
                 for (int m1 = 0; m1 < lmax_at; m1++) {
@@ -335,7 +335,7 @@ Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
                         for (int m3 = 0; m3 < lmax_at; m3++) {
                             for (int m4 = 0; m4 < lmax_at; m4++) {
                                 this->U(m1, m2, is, ia) -=
-                                    atom.type().hubbard_orbital(0).hubbard_matrix(m1, m3, m4, m2) * this->occupation_matrix_(m3, m4, is1, ia);
+                                    atom.type().hubbard_orbital(0).hubbard_matrix(m1, m3, m4, m2) * om__(m3, m4, is1, ia);
                             }
                         }
                     }

@@ -55,9 +55,8 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
         }
     }
 
-    Beta_projectors_gradient bp_grad_(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
-    //kp.beta_projectors().prepare();
-    bp_grad_.prepare();
+    Beta_projectors_gradient bp_grad(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
+    bp_grad.prepare();
 
     bool augment = false;
 
@@ -155,9 +154,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
                     phitmp.copy_to(spin_range(0), memory_t::device, 0, this->number_of_hubbard_orbitals());
                 }
 
-                // For norm conserving pp, it is enough to have the derivatives
-                // of |phi^J_m> (J = atom_id)
-                //apply_S_operator(kp, q_op, phitmp, dphi, this->offset_[atom_id], lmax_at);
+                /* for norm conserving pp, it is enough to have the derivatives of |phi^J_m> (J = atom_id) */
                 sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), spin_range(0), 0,
                                                          this->number_of_hubbard_orbitals(), kp.beta_projectors(),
                                                          phitmp, &q_op, dphi);
@@ -172,20 +169,20 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
                         // need to find the right atom in the chunks.
                         if (kp.beta_projectors().chunk(chunk__).desc_(static_cast<int>(beta_desc_idx::ia), i) == atom_id) {
                             kp.beta_projectors().generate(chunk__);
-                            bp_grad_.generate(chunk__, dir);
+                            bp_grad.generate(chunk__, dir);
 
                             // compute Q_ij <\beta_i|\phi> |d \beta_j> and add it to d\phi
                             {
                                 /* <beta | phi> for this chunk */
                                 auto beta_phi = kp.beta_projectors().inner<double_complex>(chunk__, phi, 0, 0,
                                                                                            this->number_of_hubbard_orbitals());
-                                q_op.apply(chunk__, i, 0, dphi, 0, this->number_of_hubbard_orbitals(), bp_grad_, beta_phi);
+                                q_op.apply(chunk__, i, 0, dphi, 0, this->number_of_hubbard_orbitals(), bp_grad, beta_phi);
                             }
 
                             // compute Q_ij <d \beta_i|\phi> |\beta_j> and add it to d\phi
                             {
                                 /* <dbeta | phi> for this chunk */
-                                auto dbeta_phi = bp_grad_.inner<double_complex>(chunk__, phi, 0, 0,
+                                auto dbeta_phi = bp_grad.inner<double_complex>(chunk__, phi, 0, 0,
                                                                                 this->number_of_hubbard_orbitals());
 
                                 /* apply Q operator (diagonal in spin) */
@@ -216,9 +213,6 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
         phi.deallocate(spin_range(0), memory_t::device);
         kp.spinor_wave_functions().deallocate(spin_range(ctx_.num_spins()), memory_t::device);
     }
-
-    //kp.beta_projectors().dismiss();
-    //bp_grad_.dismiss();
 }
 
 void
@@ -261,7 +255,6 @@ Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__
     }
 
     /* initialize the beta projectors and derivatives */
-    //kp__.beta_projectors().prepare();
     bp_strain_deriv.prepare();
 
     /* compute the hubbard orbitals */
@@ -295,7 +288,6 @@ Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__
         phitmp.allocate(spin_range(0), memory_t::device);
     }
     /* compute the S|phi^I_ia> */
-    //apply_S_operator(kp__, q_op__, phi, dphi, 0, this->number_of_hubbard_orbitals());
     sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), spin_range(0), 0, this->number_of_hubbard_orbitals(),
                              kp__.beta_projectors(), phi, &q_op__, dphi);
 
@@ -400,9 +392,6 @@ Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__
             kp__.spinor_wave_functions().deallocate(spin_range(ispn), memory_t::device);
         }
     }
-
-    //kp__.beta_projectors().dismiss();
-    //bp_strain_deriv.dismiss();
 }
 
 void

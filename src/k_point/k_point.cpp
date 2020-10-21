@@ -926,8 +926,10 @@ void K_point::generate_hubbard_orbitals()
             hubbard_wave_functions_->pw_coeffs(ispn).prime().allocate(memory_t::device);
         }
     }
+    beta_projectors().prepare();
     sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), spin_range(num_sc), 0, r.first, beta_projectors(),
                                              phi, q_op.get(), *hubbard_wave_functions_);
+    beta_projectors().dismiss();
 
     orthogonalize_hubbard_orbitals(phi);
 

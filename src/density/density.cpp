@@ -28,6 +28,7 @@
 #include "mixer/mixer_functions.hpp"
 #include "mixer/mixer_factory.hpp"
 #include "utils/profiler.hpp"
+#include "SDDK/wf_inner.hpp"
 
 namespace sirius {
 
@@ -64,6 +65,25 @@ Density::Density(Simulation_context& ctx__)
     density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
                                                  ctx_.num_mag_comp(), unit_cell_.num_atoms());
     density_matrix_.zero();
+
+    if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
+
+        int indexb_max = -1;
+
+        // TODO: move detection of indexb_max to unit_cell
+        // Don't forget that Hubbard class has the same code
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
+                if (ctx__.unit_cell().atom(ia).type().spin_orbit_coupling()) {
+                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size() / 2);
+                } else {
+                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size());
+                }
+            }
+        }
+    }
+
+    occupation_matrix_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
 
     update();
 }
@@ -112,6 +132,8 @@ void Density::initial_density()
         init_density_matrix_for_paw();
 
         generate_paw_loc_density();
+
+        occupation_matrix_->init();
     }
 }
 
@@ -707,7 +729,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
 }
 
 template <typename T>
-void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex, 4>& density_matrix__)
+void Density::add_k_point_contribution_dm(K_point* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_dm");
 
@@ -1138,6 +1160,10 @@ void Density::generate_valence(K_point_set const& ks__)
 
     density_matrix_.zero();
 
+    if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
+        occupation_matrix_->zero();
+    }
+
     /* zero density and magnetization */
     zero();
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
@@ -1151,14 +1177,31 @@ void Density::generate_valence(K_point_set const& ks__)
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
-            if (is_device_memory(ctx_.preferred_memory_t())) {
-                /* allocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
-                // TODO: copy for next k-point
-                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
-            }
             /* swap wave functions for the FFT transformation */
             kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(nbnd, 0, &ctx_.mem_pool(memory_t::host));
+        }
+
+        /*
+         * GPU memory allocation
+         */
+        if (is_device_memory(ctx_.preferred_memory_t())) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                int nbnd = kp->num_occupied_bands(ispn);
+                /* allocate GPU memory */
+                kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
+                /* copy to GPU */
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
+            }
+        }
+        if (!ctx_.full_potential() && ctx_.hubbard_correction() &&
+            is_device_memory(kp->hubbard_wave_functions().preferred_memory_t())) {
+            int nwfu = kp->hubbard_wave_functions().num_wf();
+            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
+                /* allocate GPU memory */
+                kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
+                /* copy to GPU */
+                kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nwfu);
+            }
         }
 
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::full_potential_lapwlo) {
@@ -1171,21 +1214,34 @@ void Density::generate_valence(K_point_set const& ks__)
             } else {
                 add_k_point_contribution_dm<double_complex>(kp, density_matrix_);
             }
+            if (ctx_.hubbard_correction()) {
+                occupation_matrix_->add_k_point_contribution(*kp);
+            }
         }
 
         /* add contribution from regular space grid */
         add_k_point_contribution_rg(kp);
 
+        /*
+         * GPU memory deallocation
+         */
         if (is_device_memory(ctx_.preferred_memory_t())) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
             }
         }
+        if (!ctx_.full_potential() && ctx_.hubbard_correction() &&
+            is_device_memory(kp->hubbard_wave_functions().preferred_memory_t())) {
+            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
+                kp->hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+            }
+        }
     }
 
     if (density_matrix_.size()) {
         ctx_.comm().allreduce(density_matrix_.at(memory_t::host), static_cast<int>(density_matrix_.size()));
+        occupation_matrix_->reduce();
     }
 
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
@@ -1741,7 +1797,8 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
     /* create mixer */
     this->mixer_ = mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>,
                                         Periodic_function<double>, Periodic_function<double>,
-                                        mdarray<double_complex, 4>, paw_density>(mixer_cfg__);
+                                        mdarray<double_complex, 4>, paw_density,
+                                        mdarray<double_complex, 4>>(mixer_cfg__);
 
     const bool init_mt = ctx_.full_potential();
 
@@ -1765,6 +1822,11 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
     if (ctx_.unit_cell().num_paw_atoms()) {
         this->mixer_->initialize_function<5>(paw_prop, paw_density_, ctx_);
     }
+    if (occupation_matrix_->data().size()) {
+        this->mixer_->initialize_function<6>(density_prop, occupation_matrix_->data(),
+            static_cast<int>(occupation_matrix_->data().size(0)),
+            static_cast<int>(occupation_matrix_->data().size(1)), 4, unit_cell_.num_atoms());
+    }
 }
 
 void Density::mixer_input()
@@ -1785,6 +1847,10 @@ void Density::mixer_input()
     if (ctx_.unit_cell().num_paw_atoms()) {
         mixer_->set_input<5>(paw_density_);
     }
+
+    if (occupation_matrix_->data().size()) {
+        mixer_->set_input<6>(occupation_matrix_->data());
+    }
 }
 
 void Density::mixer_output()
@@ -1804,6 +1870,10 @@ void Density::mixer_output()
 
     if (ctx_.unit_cell().num_paw_atoms()) {
         mixer_->get_output<5>(paw_density_);
+    }
+
+    if (occupation_matrix_->data().size()) {
+        mixer_->get_output<6>(occupation_matrix_->data());
     }
 
     /* transform mixed density to plane-wave domain */

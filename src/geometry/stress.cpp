@@ -147,13 +147,17 @@ matrix3d<double> Stress::calc_stress_hubbard()
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         dn.zero();
-        int ik    = kset_.spl_num_kpoints(ikloc);
-        auto kp__ = kset_[ik];
-        if (ctx_.num_mag_dims() == 3)
+        int ik = kset_.spl_num_kpoints(ikloc);
+        auto kp = kset_[ik];
+
+        kp->beta_projectors().prepare();
+
+        if (ctx_.num_mag_dims() == 3) {
             TERMINATE("Hubbard stress correction is only implemented for the simple hubbard correction.");
+        }
 
         /* compute the derivative of the occupancies numbers */
-        potential_.U().compute_occupancies_stress_derivatives(*kp__, q_op, dn);
+        potential_.U().compute_occupancies_stress_derivatives(*kp, q_op, dn);
         for (int dir1 = 0; dir1 < 3; dir1++) {
             for (int dir2 = 0; dir2 < 3; dir2++) {
                 for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
@@ -173,10 +177,11 @@ matrix3d<double> Stress::calc_stress_hubbard()
                 }
             }
         }
+        kp->beta_projectors().dismiss();
     }
 
     /* global reduction */
-    kset_.comm().allreduce<double, mpi_op_t::sum>(&stress_hubbard_(0, 0), 9);
+    kset_.comm().allreduce(&stress_hubbard_(0, 0), 9);
     symmetrize(stress_hubbard_);
 
     return stress_hubbard_;

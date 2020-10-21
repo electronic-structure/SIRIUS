@@ -23,6 +23,7 @@ set(_SOURSES
   "band/residuals.cpp"
   "density/density.cpp"
   "density/augmentation_operator.cpp"
+  "density/occupation_matrix.cpp"
   "dft/dft_ground_state.cpp"
   "dft/energy.cpp"
   "beta_projectors/beta_projectors_base.cpp"
@@ -75,6 +76,7 @@ set(_SOURSES
   "mixer/mixer_functions.cpp"
   "linalg/eigensolver.cpp"
   "nlcglib/adaptor.cpp"
+  "input.cpp"
   )
 
 

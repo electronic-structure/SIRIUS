@@ -2964,25 +2964,29 @@ end subroutine sirius_get_energy
 !> @param [in] handler DFT ground state handler.
 !> @param [in] label Label of the force component to get.
 !> @param [out] forces Total force component for each atom.
-subroutine sirius_get_forces(handler,label,forces)
+!> @param [out] error_code Error code.
+subroutine sirius_get_forces(handler,label,forces,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
 character(*), target, intent(in) :: label
 real(8), target, dimension(3,*), intent(out) :: forces
+integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: label_ptr
 character(C_CHAR), target, allocatable :: label_c_type(:)
 type(C_PTR) :: forces_ptr
+type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_get_forces_aux(handler,label,forces)&
+subroutine sirius_get_forces_aux(handler,label,forces,error_code)&
 &bind(C, name="sirius_get_forces")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
 type(C_PTR), value :: label
 type(C_PTR), value :: forces
+type(C_PTR), value :: error_code
 end subroutine
 end interface
 !
@@ -2994,7 +2998,11 @@ label_c_type = string_f2c(label)
 label_ptr = C_LOC(label_c_type)
 forces_ptr = C_NULL_PTR
 forces_ptr = C_LOC(forces)
-call sirius_get_forces_aux(handler_ptr,label_ptr,forces_ptr)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_forces_aux(handler_ptr,label_ptr,forces_ptr,error_code_ptr)
 deallocate(label_c_type)
 end subroutine sirius_get_forces
 
@@ -3221,29 +3229,6 @@ ld2_ptr = C_LOC(ld2)
 call sirius_get_wave_functions_aux(ks_handler_ptr,ik_ptr,ispn_ptr,npw_ptr,gvec_k_ptr,&
 &evc_ptr,ld1_ptr,ld2_ptr)
 end subroutine sirius_get_wave_functions
-
-!
-!> @brief Compute occupation matrix.
-!> @param [in] handler Ground state handler.
-subroutine sirius_calculate_hubbard_occupancies(handler)
-implicit none
-!
-type(C_PTR), target, intent(in) :: handler
-!
-type(C_PTR) :: handler_ptr
-!
-interface
-subroutine sirius_calculate_hubbard_occupancies_aux(handler)&
-&bind(C, name="sirius_calculate_hubbard_occupancies")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), value :: handler
-end subroutine
-end interface
-!
-handler_ptr = C_NULL_PTR
-handler_ptr = C_LOC(handler)
-call sirius_calculate_hubbard_occupancies_aux(handler_ptr)
-end subroutine sirius_calculate_hubbard_occupancies
 
 !
 !> @brief Set occupation matrix for LDA+U.

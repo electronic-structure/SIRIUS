@@ -1764,7 +1764,7 @@ void sirius_set_atom_type_hubbard(void*  const* handler__,
     auto& sim_ctx = get_sim_ctx(handler__);
     auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
     type.hubbard_correction(true);
-    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__);
+    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__, std::vector<double>());
 }
 
 /*
@@ -2859,47 +2859,50 @@ sirius_get_forces:
       type: double
       attr: out, required, dimension(3, *)
       doc: Total force component for each atom.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
 @api end
 */
-void sirius_get_forces(void* const* handler__,
-                       char  const* label__,
-                       double*      forces__)
+void sirius_get_forces(void* const* handler__, char const* label__, double* forces__, int* error_code__)
 {
-    std::string label(label__);
-
-    auto& gs = get_gs(handler__);
-
-    auto get_forces = [&](mdarray<double, 2> const& sirius_forces__)
+    call_sirius([&]()
     {
-        for (size_t i = 0; i < sirius_forces__.size(); i++){
-            forces__[i] = sirius_forces__[i];
+        std::string label(label__);
+
+        auto& gs = get_gs(handler__);
+
+        auto get_forces = [&](mdarray<double, 2> const& sirius_forces__)
+        {
+            for (size_t i = 0; i < sirius_forces__.size(); i++){
+                forces__[i] = sirius_forces__[i];
+            }
+        };
+
+        auto& forces = gs.forces();
+
+        std::map<std::string, mdarray<double, 2> const& (sirius::Force::*)(void)> func = {
+            {"total",    &sirius::Force::calc_forces_total},
+            {"vloc",     &sirius::Force::calc_forces_vloc},
+            {"core",     &sirius::Force::calc_forces_core},
+            {"ewald",    &sirius::Force::calc_forces_ewald},
+            {"nonloc",   &sirius::Force::calc_forces_nonloc},
+            {"us",       &sirius::Force::calc_forces_us},
+            {"usnl",     &sirius::Force::calc_forces_usnl},
+            {"scf_corr", &sirius::Force::calc_forces_scf_corr},
+            {"hubbard",  &sirius::Force::calc_forces_hubbard},
+            {"ibs",      &sirius::Force::calc_forces_ibs},
+            {"hf",       &sirius::Force::calc_forces_hf},
+            {"rho",      &sirius::Force::calc_forces_rho}
+        };
+
+        if (func.count(label) == 0) {
+            throw std::runtime_error("wrong label (" + label + ") for the component of forces");
         }
-    };
 
-    auto& forces = gs.forces();
-
-    std::map<std::string, mdarray<double, 2> const& (sirius::Force::*)(void)> func = {
-        {"total",    &sirius::Force::calc_forces_total},
-        {"vloc",     &sirius::Force::calc_forces_vloc},
-        {"core",     &sirius::Force::calc_forces_core},
-        {"ewald",    &sirius::Force::calc_forces_ewald},
-        {"nonloc",   &sirius::Force::calc_forces_nonloc},
-        {"us",       &sirius::Force::calc_forces_us},
-        {"usnl",     &sirius::Force::calc_forces_usnl},
-        {"scf_corr", &sirius::Force::calc_forces_scf_corr},
-        {"hubbard",  &sirius::Force::calc_forces_hubbard},
-        {"ibs",      &sirius::Force::calc_forces_ibs},
-        {"hf",       &sirius::Force::calc_forces_hf},
-        {"rho",      &sirius::Force::calc_forces_rho}
-    };
-
-    try {
         get_forces((forces.*func.at(label))());
-    } catch(...) {
-        std::stringstream s;
-        s << "wrong label (" << label <<") for the component of forces";
-        TERMINATE(s);
-    }
+    }, error_code__);
 }
 
 /*
@@ -2948,15 +2951,13 @@ void sirius_get_stress_tensor(void* const* handler__, char const* label__, doubl
             {"hubbard", &sirius::Stress::calc_stress_hubbard},
         };
 
+        if (func.count(label) == 0) {
+            throw std::runtime_error("wrong label (" + label + ") for the component of stress tensor");
+        }
+
         matrix3d<double> s;
 
-        try {
-            s = ((stress_tensor.*func.at(label))());
-        } catch(std::out_of_range const& e) {
-            std::stringstream s;
-            s << "wrong label (" << label <<") for the component of stress tensor";
-            throw std::runtime_error(s.str());
-        }
+        s = ((stress_tensor.*func.at(label))());
 
         for (int mu = 0; mu < 3; mu++) {
             for (int nu = 0; nu < 3; nu++) {
@@ -3410,24 +3411,6 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
 
 /*
 @api begin
-sirius_calculate_hubbard_occupancies:
-  doc: Compute occupation matrix.
-  arguments:
-    handler:
-      type: void*
-      attr: in, required
-      doc: Ground state handler.
-@api end
-*/
-void sirius_calculate_hubbard_occupancies(void* const* handler__)
-{
-    auto& gs = get_gs(handler__);
-    gs.potential().U().compute_occupation_matrix(gs.k_point_set());
-}
-
-
-/*
-@api begin
 sirius_set_hubbard_occupancies:
   doc: Set occupation matrix for LDA+U.
   arguments:
@@ -3448,7 +3431,7 @@ sirius_set_hubbard_occupancies:
 void sirius_set_hubbard_occupancies(void* const* handler__, std::complex<double>* occ__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_occupancies("set", occ__, *ld__);
+    gs.density().occupation_matrix().access("set", occ__, *ld__);
 }
 
 /*
@@ -3473,7 +3456,7 @@ sirius_get_hubbard_occupancies:
 void sirius_get_hubbard_occupancies(void* const* handler__, std::complex<double>* occ__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_occupancies("get", occ__, *ld__);
+    gs.density().occupation_matrix().access("get", occ__, *ld__);
 }
 
 /*

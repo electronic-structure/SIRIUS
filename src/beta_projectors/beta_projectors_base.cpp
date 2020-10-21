@@ -249,13 +249,17 @@ void Beta_projectors_base::prepare()
 
     switch (ctx_.processing_unit()) {
         case device_t::CPU: {
-            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(ctx_.host_memory_t()));
-            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host));
+            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(ctx_.host_memory_t()),
+                "pw_coeffs_a_");
+            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host),
+                "pw_coeffs_a_g0_");
             break;
         }
         case device_t::GPU: {
-            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(memory_t::device));
-            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host));
+            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(memory_t::device),
+                "pw_coeffs_a_");
+            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host),
+                "pw_coeffs_a_g0_");
             pw_coeffs_a_g0_.allocate(ctx_.mem_pool(memory_t::device));
             break;
         }
