@@ -332,16 +332,9 @@ matrix3d<double> Stress::calc_stress_us()
             break;
         }
         case device_t::GPU: {
-#ifdef __ROCM
-            // ROCm does not support cubblasxt functionality
             mp = &ctx_.mem_pool(memory_t::host_pinned);
-            la = linalg_t::blas;
-            qmem = memory_t::host;
-#else
-            mp = &ctx_.mem_pool(memory_t::host_pinned);
-            la = linalg_t::cublasxt;
+            la = linalg_t::spla;
             qmem = memory_t::device;
-#endif
             break;
         }
     }
@@ -353,13 +346,6 @@ matrix3d<double> Stress::calc_stress_us()
         }
 
         q_deriv.prepare(atom_type, ri, ri_dq);
-#ifdef __ROCM
-        // ROCm does not support cubblasxt functionality - data required on host
-        if (ctx_.processing_unit() == device_t::GPU) {
-            q_deriv.q_pw().allocate(memory_t::host);
-        }
-#endif
-
 
         int nbf = atom_type.mt_basis_size();
 
@@ -385,12 +371,6 @@ matrix3d<double> Stress::calc_stress_us()
         for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++) {
             for (int nu = 0; nu < 3; nu++) {
                 q_deriv.generate_pw_coeffs(atom_type, nu);
-#ifdef __ROCM
-                // ROCm does not support cubblasxt functionality - data required on host
-                if (ctx_.processing_unit() == device_t::GPU) {
-                    q_deriv.q_pw().copy_to(memory_t::host);
-                }
-#endif
 
                 for (int mu = 0; mu < 3; mu++) {
                     PROFILE_START("sirius::Stress|us|prepare");

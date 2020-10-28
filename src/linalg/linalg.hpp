@@ -36,6 +36,7 @@
 #include "memory.hpp"
 #include "dmatrix.hpp"
 #include "gpu/acc.hpp"
+#include "linalg_spla.hpp"
 
 namespace sddk {
 
@@ -240,6 +241,10 @@ inline void linalg::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_in
             break;
 
         }
+        case linalg_t::spla: {
+            splablas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+            break;
+        }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
             break;
@@ -290,6 +295,10 @@ inline void linalg::gemm<ftn_double_complex>(char transa, char transb, ftn_int m
 #endif
             break;
 
+        }
+        case linalg_t::spla: {
+            splablas::zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+            break;
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);

@@ -74,7 +74,9 @@ enum class linalg_t
     /// cuBlasXt (cuBlas with CPU pointers and large matrices support)
     cublasxt,
     /// MAGMA with CPU pointers
-    magma
+    magma,
+    /// SPLA library. Can take CPU and device pointers
+    spla
 };
 
 inline linalg_t get_linalg_t(std::string name__)
@@ -129,6 +131,10 @@ inline std::string to_string(linalg_t la__)
         }
         case linalg_t::magma: {
             return "magma";
+            break;
+        }
+        case linalg_t::spla: {
+            return "spla";
             break;
         }
     }
