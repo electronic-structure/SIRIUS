@@ -54,23 +54,24 @@ class Broyden1 : public Mixer<FUNCS...>
     double beta_;
     double beta0_;
     double beta_scaling_factor_;
-    mdarray<double, 2> S_old_;
+    sddk::mdarray<double, 2> S_old_;
   public:
     Broyden1(std::size_t max_history, double beta, double beta0, double beta_scaling_factor)
         : Mixer<FUNCS...>(max_history)
         , beta_(beta)
         , beta0_(beta0)
         , beta_scaling_factor_(beta_scaling_factor)
+        , S_old_(max_history, max_history)
     {
-        S_old_ = mdarray<double, 2>(max_history, max_history);
     }
 
     void mix_impl() override
     {
         const auto idx_step      = this->idx_hist(this->step_);
         const auto idx_next_step = this->idx_hist(this->step_ + 1);
+        const auto idx_step_prev = this->idx_hist(this->step_ - 1);
 
-        const int history_size = static_cast<int>(std::min(this->step_, this->max_history_ - 1));
+        const auto history_size = static_cast<int>(std::min(this->step_, this->max_history_ - 1));
 
         const bool normalize = false;
 
@@ -96,20 +97,15 @@ class Broyden1 : public Mixer<FUNCS...>
                 }
             }
 
+            this->copy(this->residual_history_[idx_step], this->tmp2_);
+            this->axpy(-1.0, this->residual_history_[idx_step_prev], this->tmp2_);
+
             for (int j1 = 0; j1 < history_size; j1++) {
                 int i1 = this->idx_hist(this->step_ - j1);
                 int i2 = this->idx_hist(this->step_ - j1 - 1);
                 this->copy(this->residual_history_[i1], this->tmp1_);
                 this->axpy(-1.0, this->residual_history_[i2], this->tmp1_);
-                int j2 = 0;;
-                //for (int j2 = 0; j2 <= j1; j2++) {
-                    int i3 = this->idx_hist(this->step_ - j2);
-                    int i4 = this->idx_hist(this->step_ - j2 - 1);
-                    this->copy(this->residual_history_[i3], this->tmp2_);
-                    this->axpy(-1.0, this->residual_history_[i4], this->tmp2_);
-
-                    S(j2, j1) = S(j1, j2) = this->template inner_product<normalize>(this->tmp1_, this->tmp2_);
-                //}
+                S(0, j1) = S(j1, 0) = this->template inner_product<normalize>(this->tmp1_, this->tmp2_);
             }
 
             for (int j1 = 0; j1 < history_size; j1++) {

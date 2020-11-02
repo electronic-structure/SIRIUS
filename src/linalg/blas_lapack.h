@@ -1056,6 +1056,8 @@ void FORTRAN(dscal)(const ftn_int* N, const ftn_double* ALPHA, ftn_double* X, co
 void FORTRAN(cscal)(const ftn_int* N, const ftn_complex* ALPHA, ftn_complex* X, const ftn_int* INCX);
 
 void FORTRAN(zscal)(const ftn_int* N, const ftn_double_complex* ALPHA, ftn_double_complex* X, const ftn_int* INCX);
+
+void FORTRAN(dlartg)(ftn_double * f, ftn_double * g, ftn_double * cs, ftn_double * sn, ftn_double * r);
 }
 
 #endif

@@ -29,6 +29,7 @@
 #include "mixer/broyden1_mixer.hpp"
 #include "mixer/broyden2_mixer.hpp"
 #include "mixer/linear_mixer.hpp"
+#include "mixer/broyden1_mixer_stable.hpp"
 #include "input.hpp"
 
 namespace sirius {
@@ -51,6 +52,8 @@ inline std::unique_ptr<Mixer<FUNCS...>> Mixer_factory(Mixer_input mix_cfg)
     } else if (mix_cfg.type_ == "broyden2") {
         mixer.reset(new Broyden2<FUNCS...>(mix_cfg.max_history_, mix_cfg.beta_, mix_cfg.beta0_,
                                            mix_cfg.beta_scaling_factor_, mix_cfg.linear_mix_rms_tol_));
+    } else if (mix_cfg.type_ == "stable_anderson") {
+        mixer.reset(new Broyden1Stable<FUNCS...>(mix_cfg.max_history_, mix_cfg.beta_));
     } else {
         TERMINATE("wrong type of mixer");
     }

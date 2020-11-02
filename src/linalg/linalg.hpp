@@ -205,6 +205,10 @@ class linalg
     template <typename T>
     inline void tranu(ftn_int m, ftn_int n, sddk::dmatrix<T>& A, ftn_int ia, ftn_int ja, sddk::dmatrix<T>& C,
         ftn_int ic, ftn_int jc) const;
+
+    // Constructing a Given's rotation
+    template <typename T>
+    inline std::tuple<ftn_double, ftn_double, ftn_double> lartg(T f, T g) const;
 };
 
 template <>
@@ -1019,6 +1023,22 @@ inline int linalg::sytri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, f
         }
     }
     return -1;
+}
+
+template<>
+inline std::tuple<ftn_double, ftn_double, ftn_double> linalg::lartg(ftn_double f, ftn_double g) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_double cs, sn, r;
+            FORTRAN(dlartg)(&f, &g, &cs, &sn, &r);
+            return std::make_tuple(cs, sn, r);
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
 }
 
 template <typename T>

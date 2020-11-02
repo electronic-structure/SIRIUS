@@ -102,6 +102,14 @@ class Free_atom : public sirius::Atom_type
             [](double alpha, const std::vector<double>& x, std::vector<double>& y) -> void {
                 for (std::size_t i = 0; i < x.size(); ++i)
                     y[i] += alpha * x[i];
+            },
+            [](double c, double s, std::vector<double>& x, std::vector<double>& y) -> void {
+                for (std::size_t i = 0; i < x.size(); ++i) {
+                    auto xi = x[i];
+                    auto yi = y[i];
+                    x[i] = xi * c + yi * s;
+                    y[i] = xi * -s + yi * c;
+                }
             });
 
         // initialize with value of vrho
