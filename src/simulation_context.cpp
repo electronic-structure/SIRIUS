@@ -30,6 +30,7 @@
 #include "utils/env.hpp"
 #include "SDDK/omp.hpp"
 #include "potential/xc_functional.hpp"
+#include "linalg/linalg_spla.hpp"
 
 namespace sirius {
 
@@ -360,8 +361,12 @@ void Simulation_context::initialize()
     }
 
     if (processing_unit() == device_t::GPU) {
-        spla_ctx_ = spla::Context(SPLA_PU_GPU);
+        spla_ctx_.reset(new spla::Context{SPLA_PU_GPU});
+        spla_ctx_->set_tile_size_gpu(1688); // limit GPU memory usage to around 500MB
     }
+    // share context for blas operations to reduce memory consumption
+    splablas::get_handle_ptr() = spla_ctx_;
+
 
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {

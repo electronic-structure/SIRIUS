@@ -75,6 +75,7 @@ set(_SOURSES
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
   "linalg/eigensolver.cpp"
+  "linalg/linalg_spla.cpp"
   "nlcglib/adaptor.cpp"
   "input.cpp"
   )
