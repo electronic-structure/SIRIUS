@@ -124,7 +124,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     {
         for (int iat = 0; iat < unit_cell__.num_atom_types(); iat++) {
             if (hubbard_) {
-                nrf_max_ = std::max(nrf_max_, unit_cell__.atom_type(iat).indexr_hub().size());
+                nrf_max_ = std::max(nrf_max_, static_cast<int>(unit_cell__.atom_type(iat).indexr_hub().size())); // TODO: pass radial index
             } else {
                 nrf_max_ = std::max(nrf_max_, unit_cell__.atom_type(iat).indexr_wfs().size());
             }

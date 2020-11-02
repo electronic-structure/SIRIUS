@@ -27,7 +27,7 @@
 namespace sirius {
 
 template <bool jl_deriv>
-void Radial_integrals_atomic_wf<jl_deriv>::generate()
+void Radial_integrals_atomic_wf<jl_deriv>::generate() // TODO: pass radial index and wave-functions
 {
     PROFILE("sirius::Radial_integrals|atomic_wfs");
 
@@ -53,7 +53,7 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate()
         for (int i = 0; i < nwf; i++) {
             values_(i, iat) = Spline<double>(grid_q_);
 
-            int l = (hubbard_) ? atom_type.indexr_hub(i).l : atom_type.indexr_wfs(i).l;
+            int l = (hubbard_) ? atom_type.indexr_hub()[i].l() : atom_type.indexr_wfs(i).l;
             auto& rwf = (hubbard_) ? atom_type.hubbard_radial_function(i) : std::get<3>(atom_type.ps_atomic_wf(i));
 
             #pragma omp parallel for

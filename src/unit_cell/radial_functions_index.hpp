@@ -27,6 +27,309 @@
 
 namespace sirius {
 
+namespace experimental {
+
+/// Angular (aka azimuthal) quantum number.
+class aqn
+{
+  private:
+    /// Angual quantum number l.
+    int l_;
+    /// Spin quantum number in the units of 1/2.
+    /** This variable can have only three values: -1,0,1. It is used to consruct the total angular
+     *  momentum j = l + s/2. In case s = 0 total agular momentum j = l (no level splitting). */
+    int s_{0};
+  public:
+    /// Constructor.
+    explicit aqn(int l__)
+      : l_(l__)
+    {
+        if (l__ < 0) {
+            throw std::runtime_error("l can't be negative");
+        }
+    }
+    /// Constructor.
+    explicit aqn(int l__, int s__)
+      : l_(l__)
+      , s_(s__)
+    {
+        if (l__ < 0) {
+            throw std::runtime_error("l can't be negative");
+        }
+        if (s__ != -1 && s__ != 0 && s__ != 1) {
+            throw std::runtime_error("wrong index of s");
+        }
+        if (l__ == 0 && s__ == -1) {
+            throw std::runtime_error("incompatible combination of l and s quantum numbers");
+        }
+    }
+    aqn()
+    {
+    }
+    /// Get l.
+    inline int operator()() const
+    {
+        return l_;
+    }
+    /// Get total angular momentum j = l +/- 1/2
+    inline double j() const
+    {
+        return l_ + s_ / 2.0;
+    }
+    /// Get s.
+    inline int s() const
+    {
+        return s_;
+    }
+};
+
+struct radial_function_index_descriptor
+{
+    /// Orbital quantum number \f$ \ell \f$.
+    aqn l;
+
+    /// Order of a function for a given \f$ \ell \f$.
+    int order{-1};
+
+    /// If this is a local orbital radial function, idxlo is it's index in the list of local orbital descriptors.
+    int idxlo{-1};
+
+    /// Constructor.
+    radial_function_index_descriptor(aqn l__, int order__, int idxlo__)
+        : l(l__)
+        , order(order__)
+        , idxlo(idxlo__)
+    {
+        if (l() < 0) {
+            throw std::runtime_error("wrong l");
+        }
+        if (order < 0) {
+            throw std::runtime_error("wrong order");
+        }
+    }
+};
+
+class radial_functions_index : public std::vector<radial_function_index_descriptor>
+{
+  private:
+    std::vector<std::vector<int>> index_by_l_order_;
+    std::vector<int> index_by_idxlo_;
+  public:
+
+    void add(aqn l__, bool is_lo__ = false)
+    {
+        /* current l */
+        int l = l__();
+        /* make sure that the space is available */
+        if (static_cast<int>(index_by_l_order_.size()) < l + 1) {
+            index_by_l_order_.resize(l + 1);
+        }
+        /* current size of the index */
+        auto i = static_cast<int>(this->size());
+        /* current order of the radial function for l */
+        int o = static_cast<int>(index_by_l_order_[l].size());
+        /* check for j = l +/- 1/2 */
+        if (l__.s() == -1) {
+            if (o == 0) {
+                throw std::runtime_error("add j = l + 1/2 first");
+            }
+            int j = index_by_l_order_[l][o - 1];
+            auto ri = (*this)[j];
+            if (ri.l() != l || ri.l.s() != 1) {
+                throw std::runtime_error("j = l + 1/2 index is not in the list");
+            }
+            if (j != i - 1) {
+                std::stringstream s;
+                s << "j = l + 1/2 index is not the last; l=" << l << " s=" << l__.s();
+                throw std::runtime_error(s.str());
+            }
+        }
+
+        int idxlo = is_lo__ ? static_cast<int>(index_by_idxlo_.size()) : -1;
+
+        /* add radial function descriptor */
+        this->push_back(radial_function_index_descriptor(l__, o, idxlo));
+
+        /* add reverse index */
+        index_by_l_order_[l__()].push_back(i);
+        if (is_lo__) {
+            index_by_idxlo_.push_back(i);
+        }
+    }
+
+    inline int index_by_l_order(aqn l, int order) const
+    {
+        return index_by_l_order_[l()][order];
+    }
+};
+
+struct basis_function_index_descriptor
+{
+    //radial_function_index_descriptor ri;
+
+    /// Projection of the angular momentum.
+    int m;
+    /// Composite index.
+    int lm;
+    /// Index of the radial function or beta projector in the case of pseudo potential.
+    int idxrf;
+
+    //basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf)
+    //    : l(l)
+    //    , m(m)
+    //    , lm(utils::lm(l, m))
+    //    , order(order)
+    //    , idxlo(idxlo)
+    //    , idxrf(idxrf)
+    //{
+    //    assert(l >= 0);
+    //    assert(m >= -l && m <= l);
+    //    assert(order >= 0);
+    //    assert(idxrf >= 0);
+    //}
+
+    //basis_function_index_descriptor(int l, int m, double j, int order, int idxlo, int idxrf)
+    //    : l(l)
+    //    , m(m)
+    //    , lm(utils::lm(l, m))
+    //    , j(j)
+    //    , order(order)
+    //    , idxlo(idxlo)
+    //    , idxrf(idxrf)
+    //{
+    //    assert(l >= 0);
+    //    assert(m >= -l && m <= l);
+    //    assert(order >= 0);
+    //    assert(idxrf >= 0);
+    //}
+};
+
+
+/// A helper class to establish various index mappings for the atomic basis functions.
+/** Atomic basis function is a radial function multiplied by a spherical harmonic:
+    \f[
+      \phi_{\ell m \nu}({\bf r}) = f_{\ell \nu}(r) Y_{\ell m}(\hat {\bf r})
+    \f]
+    Multiple radial functions for each \f$ \ell \f$ channel are allowed. This is reflected by
+    the \f$ \nu \f$ index and called "order".
+  */
+class basis_functions_index : public std::vector<basis_function_index_descriptor>
+{
+  private:
+    radial_functions_index indexr_;
+
+    //mdarray<int, 2> index_by_lm_order_;
+
+    //mdarray<int, 1> index_by_idxrf_; // TODO: rename to first_lm_index_by_idxrf_ or similar
+
+    ///// Number of augmented wave basis functions.
+    //int size_aw_{0};
+
+    ///// Number of local orbital basis functions.
+    //int size_lo_{0};
+
+    ///// Maximum l of the radial basis functions.
+    //int lmax_{-1};
+
+  public:
+    basis_functions_index()
+    {
+    }
+    basis_functions_index(radial_functions_index const& indexr__)
+        : indexr_(indexr__)
+    {
+        int idxrf{0};
+        for (auto& e: indexr__) {
+            int l = e.l();
+            for (int m = -l; m <= l; m++) {
+                sirius::experimental::basis_function_index_descriptor b;
+                b.idxrf = idxrf;
+                b.m = m;
+                b.lm = utils::lm(l, m);
+                this->push_back(b);
+            }
+        }
+    }
+
+    //void init(radial_functions_index& indexr__)
+    //{
+    //    basis_function_index_descriptors_.clear();
+
+    //    index_by_idxrf_ = mdarray<int, 1>(indexr__.size());
+
+    //    for (int idxrf = 0; idxrf < indexr__.size(); idxrf++) {
+    //        int l     = indexr__[idxrf].l;
+    //        int order = indexr__[idxrf].order;
+    //        int idxlo = indexr__[idxrf].idxlo;
+
+    //        index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
+
+    //        for (int m = -l; m <= l; m++) {
+    //            basis_function_index_descriptors_.push_back(
+    //                basis_function_index_descriptor(l, m, indexr__[idxrf].j, order, idxlo, idxrf));
+    //        }
+    //    }
+    //    index_by_lm_order_ = mdarray<int, 2>(utils::lmmax(indexr__.lmax()), indexr__.max_num_rf());
+
+    //    for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++) {
+    //        int lm    = basis_function_index_descriptors_[i].lm;
+    //        int order = basis_function_index_descriptors_[i].order;
+    //        index_by_lm_order_(lm, order) = i;
+
+    //        /* get number of aw basis functions */
+    //        if (basis_function_index_descriptors_[i].idxlo < 0) {
+    //            size_aw_ = i + 1;
+    //        }
+    //    }
+
+    //    size_lo_ = (int)basis_function_index_descriptors_.size() - size_aw_;
+
+    //    lmax_ = indexr__.lmax();
+
+    //    assert(size_aw_ >= 0);
+    //    assert(size_lo_ >= 0);
+    //}
+
+    ///// Return total number of MT basis functions.
+    //inline int size() const
+    //{
+    //    return static_cast<int>(basis_function_index_descriptors_.size());
+    //}
+
+    //inline int size_aw() const
+    //{
+    //    return size_aw_;
+    //}
+
+    //inline int size_lo() const
+    //{
+    //    return size_lo_;
+    //}
+
+    //inline int index_by_l_m_order(int l, int m, int order) const
+    //{
+    //    return index_by_lm_order_(utils::lm(l, m), order);
+    //}
+
+    //inline int index_by_lm_order(int lm, int order) const
+    //{
+    //    return index_by_lm_order_(lm, order);
+    //}
+
+    //inline int index_by_idxrf(int idxrf) const
+    //{
+    //    return index_by_idxrf_(idxrf);
+    //}
+
+    ///// Return descriptor of the given basis function.
+    //inline basis_function_index_descriptor const& operator[](int i) const
+    //{
+    //    assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());
+    //    return basis_function_index_descriptors_[i];
+    //}
+};
+}
+
 /// Descriptor for the atomic radial functions.
 /** The radial functions \f$ f_{\ell \nu}(r) \f$ are labeled by two indices: orbital quantum number \f$ \ell \f$ and
  *  an order \f$ \nu \f$ for a given \f$ \ell \f$. Radial functions can be any of augmented waves of local orbitals

@@ -306,8 +306,9 @@ class hubbard_orbital_descriptor
             for (int m2 = 0; m2 < 2 * l + 1; m2++) {
                 for (int m3 = 0; m3 < 2 * l + 1; m3++) {
                     for (int m4 = 0; m4 < 2 * l + 1; m4++) {
-                        for (int k = 0; k < l; k++)
+                        for (int k = 0; k < l; k++) {
                             this->hubbard_matrix(m1, m2, m3, m4) += ak(k, m1, m3, m2, m4) * F[k];
+                        }
                     }
                 }
             }

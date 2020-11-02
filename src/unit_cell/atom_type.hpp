@@ -112,7 +112,7 @@ class Atom_type
     /// List of Hubbard orbital descriptors.
     /** List of sirius::hubbard_orbital_descriptor for each orbital. The corresponding radial functions are stored in
         Atom_type::hubbard_radial_functions_ */
-    std::vector<hubbard_orbital_descriptor> lo_descriptors_hub_; // TODO: to be removed
+    std::vector<hubbard_orbital_descriptor> lo_descriptors_hub_;
 
     /// Index for the radial hubbard basis functions
     radial_functions_index hubbard_indexr_; // TODO: to be removed
@@ -121,10 +121,10 @@ class Atom_type
     basis_functions_index hubbard_indexb_; // TODO: to be removed
 
     /// Index of radial functions for hubbard orbitals.
-    radial_functions_index indexr_hub_;
+    sirius::experimental::radial_functions_index indexr_hub_;
 
     /// Index of basis functions for hubbard orbitals.
-    basis_functions_index indexb_hub_;
+    sirius::experimental::basis_functions_index indexb_hub_;
 
     /// Radial functions of beta-projectors.
     /** This are the beta-function in the USPP file. Pairs of [l, beta_l(r)] are stored. In case of spin-orbit
@@ -154,7 +154,7 @@ class Atom_type
 
     /// List of radial functions for hubbard orbitals.
     /** Hubbard orbitals are copied from atomic wave-functions and are independent of spin. This list is compatible
-        with Atom_type::lo_descriptors_hub_ */
+        with Atom_type::lo_descriptors_hub and with indexr_hub_ */
     std::vector<Spline<double>> hubbard_radial_functions_;
 
     /// Radial functions of the Q-operator.
@@ -211,7 +211,7 @@ class Atom_type
     std::vector<hubbard_orbital_descriptor> hubbard_orbitals_;
 
     /// List of radial descriptor sets used to construct hubbard orbitals.
-    std::vector<local_orbital_descriptor> hubbard_lo_descriptors_;
+    std::vector<local_orbital_descriptor> hubbard_lo_descriptors_; // TODO: removed
 
     /// Hubbard correction.
     bool hubbard_correction_{false};
@@ -674,6 +674,8 @@ class Atom_type
     void add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, const double *hub_coef__,
                              double alpha__, double beta__, double J0__, std::vector<double> initial_occupancy__)
     {
+        // TODO: pass radial function for l or for j=l+1/2 j=l-1/2
+
         /* we have to find one (or two in case of spin-orbit) atomic functions and construct hubbard orbital */
         std::vector<int> idx_rf;
         for (int s = 0; s < (int)ps_atomic_wfs_.size(); s++) {
@@ -718,12 +720,18 @@ class Atom_type
             }
         }
 
-        /* add orbital to a list */
+        /* add a record in radial function index */
+        indexr_hub_.add(sirius::experimental::aqn(l__));
+
+        /* add radial function of Hubbard orbital to a list */
         hubbard_radial_functions_.push_back(std::move(s));
 
-        hubbard_orbital_descriptor hub(n__, l__, -1, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__);
-        /* add descriptor to a list */
-        lo_descriptors_hub_.push_back(std::move(hub));
+        /* add Hubbard orbital descriptor to a list */
+        lo_descriptors_hub_.emplace_back(n__, l__, -1, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__);
+
+
+
+
 
         for (int s = 0; s < (int)ps_atomic_wfs_.size(); s++) {
             auto& e = ps_atomic_wfs_[s];
@@ -945,7 +953,7 @@ class Atom_type
         return indexr_wfs_;
     }
 
-    inline radial_functions_index const& indexr_hub() const
+    inline sirius::experimental::radial_functions_index const& indexr_hub() const
     {
         return indexr_hub_;
     }
@@ -1014,7 +1022,7 @@ class Atom_type
     }
 
     /// Return whole index of hubbard basis functions.
-    inline basis_functions_index const& indexb_hub() const
+    inline sirius::experimental::basis_functions_index const& indexb_hub() const
     {
         return indexb_hub_;
     }
@@ -1029,11 +1037,11 @@ class Atom_type
         return hubbard_indexr_;
     }
 
-    inline radial_function_index_descriptor const& indexr_hub(int i) const
-    {
-        assert(i >= 0 && i < (int)indexr_hub_.size());
-        return indexr_[i];
-    }
+    //inline radial_function_index_descriptor const& indexr_hub(int i) const
+    //{
+    //    assert(i >= 0 && i < (int)indexr_hub_.size());
+    //    return indexr_[i];
+    //}
 
     inline Spline<double> const& hubbard_radial_function(int i) const
     {
@@ -1310,8 +1318,7 @@ inline void Atom_type::init(int offset_lo__)
         hubbard_indexr_.init(hubbard_lo_descriptors_);
         hubbard_indexb_.init(hubbard_indexr_);
 
-        indexr_hub_.init(lo_descriptors_hub_);
-        indexb_hub_.init(indexr_hub_);
+        indexb_hub_ = sirius::experimental::basis_functions_index(indexr_hub_);
     }
 
     if (!parameters_.full_potential()) {
@@ -1501,8 +1508,8 @@ inline void Atom_type::print_info() const
         std::printf("  angular momentum                   : %i\n", hubbard_orbital(0).l);
         std::printf("  principal quantum number           : %i\n", hubbard_orbital(0).n());
         std::printf("  occupancy                          : %f\n", hubbard_orbital(0).occupancy());
-        std::printf("  number of hubbard radial functions : %i\n", indexr_hub_.size());
-        std::printf("  number of hubbard basis functions  : %i\n", indexb_hub_.size());
+        std::printf("  number of hubbard radial functions : %i\n", static_cast<int>(indexr_hub_.size()));
+        std::printf("  number of hubbard basis functions  : %i\n", static_cast<int>(indexb_hub_.size()));
     }
     std::printf("spin-orbit coupling              : %s\n", utils::boolstr(this->spin_orbit_coupling()).c_str());
 }
