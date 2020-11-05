@@ -89,11 +89,8 @@ class K_point_set
     /// Initialize the k-point set
     void initialize(std::vector<int> const& counts = {});
 
-    /// Sync band occupations numbers between all MPI ranks.
-    void sync_band_occupancies();
-
-    /// Sync band energies between all MPI ranks.
-    void sync_band_energies();
+    /// Sync band energies or occupancies between all MPI ranks.
+    void sync_band(std::string const& what__);
 
     /// Find Fermi energy and band occupation numbers.
     void find_band_occupancies();
@@ -135,7 +132,7 @@ class K_point_set
             auto const& kp = kpoints_[ik];
             double wk = kp->weight();
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+                for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                     eval_sum += wk * kp->band_energy(j, ispn) * kp->band_occupancy(j, ispn);
                 }
             }

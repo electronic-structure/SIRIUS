@@ -739,7 +739,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
         return;
     }
 
-    mdarray<double, 2> band_energies(ctx_.num_bands(), ctx_.num_spin_dims());
+    sddk::mdarray<double, 2> band_energies(ctx_.num_bands(), ctx_.num_spinors());
 
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<Wave_functions> hpsi;
@@ -861,7 +861,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
             hpsi[i].deallocate(spin_range(0), memory_t::device);
         }
     }
-    for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+    for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
         for (int j = 0; j < ctx_.num_bands(); j++) {
             kp.band_energy(j, ispn, band_energies(j, ispn));
         }

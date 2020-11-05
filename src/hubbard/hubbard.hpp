@@ -154,12 +154,8 @@ class Hubbard
     }
 
     /// Apply the hubbard potential on wave functions
-    void apply_hubbard_potential(Wave_functions& hub_wf,
-                                 const int       ispn,
-                                 const int       idx,
-                                 const int       n,
-                                 Wave_functions& phi,
-                                 Wave_functions& ophi);
+    void apply_hubbard_potential(Wave_functions& hub_wf, spin_range spins__, const int idx, const int n,
+                                 Wave_functions& phi, Wave_functions& ophi);
 
     void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 6>& dn);
 

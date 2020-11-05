@@ -114,10 +114,26 @@ class radial_functions_index : public std::vector<radial_function_index_descript
   private:
     std::vector<std::vector<int>> index_by_l_order_;
     std::vector<int> index_by_idxlo_;
+    int full_j_{-1};
   public:
 
     void add(aqn l__, bool is_lo__ = false)
     {
+        if (is_lo__ && l__.s()) {
+            throw std::runtime_error("local orbitals can only be of pure l character");
+        }
+        /* perform immediate check of j */
+        if (full_j_ == -1) { /* checking first time */
+            full_j_ = std::abs(l__.s()); /* set if this will be an index for the full j orbitals or for pure l */
+        } else {
+            /* this is not the first time */
+            if (full_j_ == 0 && l__.s()) {
+                throw std::runtime_error("radial orbital index is set to count pure-l radial functions");
+            }
+            if (full_j_ && l__.s() == 0) {
+                throw std::runtime_error("radial orbital index is set to count full-j radial functions");
+            }
+        }
         /* current l */
         int l = l__();
         /* make sure that the space is available */
@@ -128,22 +144,27 @@ class radial_functions_index : public std::vector<radial_function_index_descript
         auto i = static_cast<int>(this->size());
         /* current order of the radial function for l */
         int o = static_cast<int>(index_by_l_order_[l].size());
+
         /* check for j = l +/- 1/2 */
-        if (l__.s() == -1) {
-            if (o == 0) {
-                throw std::runtime_error("add j = l + 1/2 first");
-            }
-            int j = index_by_l_order_[l][o - 1];
-            auto ri = (*this)[j];
-            if (ri.l() != l || ri.l.s() != 1) {
-                throw std::runtime_error("j = l + 1/2 index is not in the list");
-            }
-            if (j != i - 1) {
-                std::stringstream s;
-                s << "j = l + 1/2 index is not the last; l=" << l << " s=" << l__.s();
-                throw std::runtime_error(s.str());
-            }
-        }
+        /* 
+         * Right now this check is impossible because UPF files impose no odrder on the angular quantum number
+         * It can be, for example {3/2 5/2} or {5/2, 3/2} in different pseudos.
+         */
+        //if (l__.s() == 1 && l__() !=0) { /* this is not s-state for which there is no l-1/2 */
+        //    if (o == 0) {
+        //        throw std::runtime_error("add j = l - 1/2 first");
+        //    }
+        //    int j = index_by_l_order_[l][o - 1];
+        //    auto ri = (*this)[j];
+        //    if (ri.l() != l || ri.l.s() != -1) {
+        //        throw std::runtime_error("j = l - 1/2 index is not in the list");
+        //    }
+        //    if (j != i - 1) {
+        //        std::stringstream s;
+        //        s << "j = l - 1/2 index is not the last; l=" << l << " s=" << l__.s();
+        //        throw std::runtime_error(s.str());
+        //    }
+        //}
 
         int idxlo = is_lo__ ? static_cast<int>(index_by_idxlo_.size()) : -1;
 
@@ -157,16 +178,34 @@ class radial_functions_index : public std::vector<radial_function_index_descript
         }
     }
 
-    inline int index_by_l_order(aqn l, int order) const
+    inline int index_by_l_order(aqn l__, int order__) const
     {
-        return index_by_l_order_[l()][order];
+        return index_by_l_order_[l__()][order__];
+    }
+
+    inline int index_by_l_order(int l__, int order__) const
+    {
+        return index_by_l_order_[l__][order__];
+    }
+
+    inline bool full_j() const
+    {
+        return (full_j_ == 1);
+    }
+
+    inline int lmax() const
+    {
+        return static_cast<int>(index_by_l_order_.size()) - 1;
+    }
+
+    inline int order(int l__) const
+    {
+        return static_cast<int>(index_by_l_order_[l__].size());
     }
 };
 
 struct basis_function_index_descriptor
 {
-    //radial_function_index_descriptor ri;
-
     /// Projection of the angular momentum.
     int m;
     /// Composite index.
@@ -235,20 +274,48 @@ class basis_functions_index : public std::vector<basis_function_index_descriptor
     basis_functions_index()
     {
     }
-    basis_functions_index(radial_functions_index const& indexr__)
+    basis_functions_index(radial_functions_index const& indexr__, bool expand_full_j__)
         : indexr_(indexr__)
     {
-        int idxrf{0};
-        for (auto& e: indexr__) {
-            int l = e.l();
-            for (int m = -l; m <= l; m++) {
-                sirius::experimental::basis_function_index_descriptor b;
-                b.idxrf = idxrf;
-                b.m = m;
-                b.lm = utils::lm(l, m);
-                this->push_back(b);
+        if (expand_full_j__) {
+            throw std::runtime_error("j,mj expansion of the full angular momentum index is not implemented");
+        }
+        /* check radial index here */
+        if (indexr_.full_j()) {
+            for (int l = 1; l <= indexr_.lmax(); l++) { /* skip s-states, they don't have +/- 1/2 splitting */
+                if (indexr_.order(l) % 2) {
+                    throw std::runtime_error("number of radial functions should be even");
+                }
+                for (int o = 0; o < indexr_.order(l); o += 2) {
+                    auto i1 = indexr_.index_by_l_order(l, o);
+                    auto i2 = indexr_.index_by_l_order(l, o + 1);
+                    if (i2 != i1 + 1) {
+                        throw std::runtime_error("wrong order of radial functions");
+                    }
+                    if (indexr_[i1].l.s() * indexr_[i2].l.s() != -1) {
+                        throw std::runtime_error("wrong j of radial functions");
+                    }
+                }
             }
         }
+
+        if (!expand_full_j__) {
+            for (int idxrf = 0; idxrf < static_cast<int>(indexr_.size()); idxrf++) {
+                int l = indexr_[idxrf].l();
+                for (int m = -l; m <= l; m++) {
+                    sirius::experimental::basis_function_index_descriptor b;
+                    b.idxrf = idxrf;
+                    b.m = m;
+                    b.lm = utils::lm(l, m);
+                    this->push_back(b);
+                }
+            }
+        }
+    }
+
+    inline int l(int xi__) const
+    {
+        return indexr_[(*this)[xi__].idxrf].l();
     }
 
     //void init(radial_functions_index& indexr__)

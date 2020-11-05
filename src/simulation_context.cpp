@@ -413,6 +413,13 @@ void Simulation_context::initialize()
         }
     }
 
+    /* force global spin-orbit correction flag if one of the species has spin-orbit */
+    for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+        if (unit_cell().atom_type(iat).spin_orbit_coupling()) {
+            this->so_correction(true);
+        }
+    }
+
     /* set default values for the G+k-vector cutoff */
     if (full_potential()) {
         /* find the cutoff for G+k vectors (derived from rgkmax (aw_cutoff here) and minimum MT radius) */
@@ -657,6 +664,8 @@ void Simulation_context::print_info() const
     std::printf("number of bands                    : %i\n", num_bands());
     std::printf("number of spins                    : %i\n", num_spins());
     std::printf("number of magnetic dimensions      : %i\n", num_mag_dims());
+    std::printf("number of spinor components        : %i\n", num_spinor_comp());
+    std::printf("number of spinors per band index   : %i\n", num_spinors());
     std::printf("lmax_apw                           : %i\n", lmax_apw());
     std::printf("lmax_rho                           : %i\n", lmax_rho());
     std::printf("lmax_pot                           : %i\n", lmax_pot());
@@ -665,6 +674,7 @@ void Simulation_context::print_info() const
     std::printf("cyclic block size                  : %i\n", cyclic_block_size());
     std::printf("|G+k| cutoff                       : %f\n", gk_cutoff());
     std::printf("symmetry                           : %s\n", utils::boolstr(use_symmetry()).c_str());
+    std::printf("so_correction                      : %s\n", utils::boolstr(so_correction()).c_str());
 
     std::string reln[] = {"valence relativity                 : ", "core relativity                    : "};
 
@@ -961,24 +971,44 @@ void Simulation_context::update()
                 new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, settings().nprii_beta_, beta_ri_djl_callback_));
         }
 
+        auto idxr_wf = [&](int iat)->sirius::experimental::radial_functions_index const&
+        {
+            return unit_cell().atom_type(iat).indexr_wfs();
+        };
+
+        auto ps_wf = [&](int iat, int i)->Spline<double> const&
+        {
+            return unit_cell().atom_type(iat).ps_atomic_wf(i).f;
+        };
+
         if (!atomic_wf_ri_ || atomic_wf_ri_->qmax() < new_gk_cutoff) {
             atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-                new Radial_integrals_atomic_wf<false>(unit_cell(), new_gk_cutoff, 20, false));
+                new Radial_integrals_atomic_wf<false>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf));
         }
 
         if (!atomic_wf_ri_djl_ || atomic_wf_ri_djl_->qmax() < new_gk_cutoff) {
             atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, false));
+                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf, ps_wf));
         }
+
+        auto idxr_wf_hub = [&](int iat)->sirius::experimental::radial_functions_index const&
+        {
+            return unit_cell().atom_type(iat).indexr_hub();
+        };
+
+        auto ps_wf_hub = [&](int iat, int i)->Spline<double> const&
+        {
+            return unit_cell().atom_type(iat).hubbard_radial_function(i);
+        };
 
         if (!hubbard_wf_ri_ || hubbard_wf_ri_->qmax() < new_gk_cutoff) {
             hubbard_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(
-                new Radial_integrals_atomic_wf<false>(unit_cell(), new_gk_cutoff, 20, true));
+                new Radial_integrals_atomic_wf<false>(unit_cell(), new_gk_cutoff, 20, idxr_wf_hub, ps_wf_hub));
         }
 
         if (!hubbard_wf_ri_djl_ || hubbard_wf_ri_djl_->qmax() < new_gk_cutoff) {
             hubbard_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(
-                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, true));
+                new Radial_integrals_atomic_wf<true>(unit_cell(), new_gk_cutoff, 20, idxr_wf_hub, ps_wf_hub));
         }
     }
 

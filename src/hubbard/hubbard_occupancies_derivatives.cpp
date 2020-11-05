@@ -46,12 +46,13 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto& atom_type   = unit_cell_.atom(ia).type();
         if (atom_type.hubbard_correction()) {
+            STOP(); // rethink it
 
-            kp.generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(),
-                                              ia,
-                                              this->offset_[ia],
-                                              true,
-                                              phi);
+            //kp.generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(),
+            //                                  ia,
+            //                                  this->offset_[ia],
+            //                                  true,
+            //                                  phi);
         }
     }
 
@@ -262,11 +263,13 @@ Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__
         auto& atom_type   = unit_cell_.atom(ia).type();
         if (atom_type.hubbard_correction()) {
 
-            kp__.generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(),
-                                                ia,
-                                                this->offset_[ia],
-                                                true,
-                                                phi);
+            STOP(); // rethink it
+
+            //kp__.generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(),
+            //                                    ia,
+            //                                    this->offset_[ia],
+            //                                    true,
+            //                                    phi);
         }
     }
 

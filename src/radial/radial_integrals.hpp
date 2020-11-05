@@ -110,29 +110,26 @@ template<bool jl_deriv>
 class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 {
   private:
+    /// Return radial basis index for a given atom type.
+    std::function<sirius::experimental::radial_functions_index const&(int)> indexr_;
     /// Generate radial integrals.
-    void generate();
-    /// Maximum number of radial functions.
-    int nrf_max_{0};
-    /// True if whis is a list of hubbard orbitals, otherwise it's atomic radial functions.
-    bool hubbard_{false};
+    void generate(std::function<Spline<double> const&(int, int)> fl__);
 
   public:
-    Radial_integrals_atomic_wf(Unit_cell const& unit_cell__, double qmax__, int np__, bool hubbard__)
+    Radial_integrals_atomic_wf(Unit_cell const& unit_cell__, double qmax__, int np__,
+        std::function<sirius::experimental::radial_functions_index const&(int)> indexr__,
+        std::function<Spline<double> const&(int, int)> fl__)
         : Radial_integrals_base<2>(unit_cell__, qmax__, np__)
-        , hubbard_(hubbard__)
+        , indexr_(indexr__)
     {
+        int nrf_max{0};
         for (int iat = 0; iat < unit_cell__.num_atom_types(); iat++) {
-            if (hubbard_) {
-                nrf_max_ = std::max(nrf_max_, static_cast<int>(unit_cell__.atom_type(iat).indexr_hub().size())); // TODO: pass radial index
-            } else {
-                nrf_max_ = std::max(nrf_max_, unit_cell__.atom_type(iat).indexr_wfs().size());
-            }
+            nrf_max = std::max(nrf_max, static_cast<int>(indexr_(iat).size()));
         }
 
-        values_ = sddk::mdarray<Spline<double>, 2>(nrf_max_, unit_cell_.num_atom_types());
+        values_ = sddk::mdarray<Spline<double>, 2>(nrf_max, unit_cell_.num_atom_types());
 
-        generate();
+        generate(fl__);
     }
 
     /// retrieve a given orbital from an atom type
@@ -146,7 +143,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     {
         auto idx        = iqdq(q__);
         auto& atom_type = unit_cell_.atom_type(iat__);
-        int nrf         = (hubbard_) ? atom_type.indexr_hub().size() : atom_type.indexr_wfs().size();
+        int nrf         = indexr_(atom_type.id()).size();
 
         sddk::mdarray<double, 1> val(nrf);
         for (int i = 0; i < nrf; i++) {

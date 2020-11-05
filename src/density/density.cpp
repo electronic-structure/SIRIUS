@@ -1134,7 +1134,7 @@ void Density::generate_valence(K_point_set const& ks__)
     double occ_val{0};
     for (int ik = 0; ik < ks__.num_kpoints(); ik++) {
         wt += ks__[ik]->weight();
-        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 occ_val += ks__[ik]->weight() * ks__[ik]->band_occupancy(j, ispn);
             }
@@ -1242,6 +1242,7 @@ void Density::generate_valence(K_point_set const& ks__)
     if (density_matrix_.size()) {
         ctx_.comm().allreduce(density_matrix_.at(memory_t::host), static_cast<int>(density_matrix_.size()));
         occupation_matrix_->reduce();
+        occupation_matrix_->print_occupancies();
     }
 
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();

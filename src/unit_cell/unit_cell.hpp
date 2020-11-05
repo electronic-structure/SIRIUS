@@ -286,9 +286,6 @@ class Unit_cell
     /** This is useful to check the sanity of the crystal structure. */
     double min_bond_length() const;
 
-    /// Calculate total number of Hubbard wave-functions and offset for each atom in the global index.
-    std::pair<int, std::vector<int>> num_wf_with_U() const;
-
     /// Return number of Hubbard wave-functions.
     std::pair<int, std::vector<int>> num_hubbard_wf() const;
 

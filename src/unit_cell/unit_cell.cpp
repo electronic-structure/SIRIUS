@@ -867,38 +867,13 @@ void Unit_cell::init_paw()
     spl_num_paw_atoms_ = splindex<splindex_t::block>(num_paw_atoms(), comm_.size(), comm_.rank());
 }
 
-std::pair<int, std::vector<int>> Unit_cell::num_wf_with_U() const // TODO: remove in future
-{
-    std::vector<int> offs(this->num_atoms(), -1);
-    int counter{0};
-
-    /* we loop over atoms to check which atom has hubbard orbitals and then
-       compute the number of hubbard orbitals associated to it */
-    for (auto ia = 0; ia < this->num_atoms(); ia++) {
-        auto& atom = this->atom(ia);
-        if (atom.type().hubbard_correction()) {
-            offs[ia] = counter;
-            int fact{1};
-            /* there is a factor two when the pseudo-potential has no SO but
-               we do full non colinear magnetism. Note that we can consider
-               now multiple orbitals calculations. The API still does not
-               support it */
-            if ((this->parameters().num_mag_dims() == 3) && (!atom.type().spin_orbit_coupling())) {
-                fact = 2;
-            }
-            counter += fact * atom.type().hubbard_indexb_wfc().size();
-        }
-    }
-    return std::make_pair(counter, offs);
-}
-
 std::pair<int, std::vector<int>> Unit_cell::num_hubbard_wf() const
 {
     std::vector<int> offs(this->num_atoms(), -1);
     int counter{0};
 
     /* we loop over atoms to check which atom has hubbard orbitals and then
-       compute the number of hubbard orbitals associated to it */
+       compute the number of Hubbard orbitals associated to it */
     for (auto ia = 0; ia < this->num_atoms(); ia++) {
         auto& atom = this->atom(ia);
         if (atom.type().hubbard_correction()) {
@@ -911,16 +886,9 @@ std::pair<int, std::vector<int>> Unit_cell::num_hubbard_wf() const
 
 int Unit_cell::num_ps_atomic_wf() const
 {
-    /* TODO: in spinorbit case this function will work only when pairs of spinor components are present. */
     int N{0};
-    /* get the total number of atomic-centered orbitals */
     for (int iat = 0; iat < this->num_atom_types(); iat++) {
-        int n{0};
-        for (int i = 0; i < this->atom_type(iat).indexr_wfs().size(); i++) {
-            /* number of m-components is 2l + 1 */
-            n += (2 * std::abs(std::get<1>(atom_type(iat).ps_atomic_wf(i))) + 1);
-        }
-        N += atom_type(iat).num_atoms() * n;
+        N += atom_type(iat).num_atoms() * static_cast<int>(this->atom_type(iat).indexb_wfs().size());
     }
     return N;
 }

@@ -23,12 +23,8 @@ Hubbard::Hubbard(Simulation_context& ctx__)
     int indexb_max = -1;
 
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
-            if (ctx__.unit_cell().atom(ia).type().spin_orbit_coupling()) {
-                indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size() / 2);
-            } else {
-                indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size());
-            }
+        if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
+            indexb_max = std::max(indexb_max, static_cast<int>(ctx_.unit_cell().atom(ia).type().indexb_hub().size()));
         }
     }
 
@@ -41,18 +37,13 @@ Hubbard::Hubbard(Simulation_context& ctx__)
         approximation_ = false;
     }
 
-    //occupation_matrix_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
-    //        memory_t::host, "occupation_matrix_");
     hubbard_potential_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
             memory_t::host, "hubbard_potential_");
 
-    auto r = ctx_.unit_cell().num_wf_with_U();
+    auto r = ctx_.unit_cell().num_hubbard_wf();
 
     number_of_hubbard_orbitals_ = r.first;
     offset_ = r.second;
-
-    //calculate_initial_occupation_numbers();
-    //calculate_hubbard_potential_and_energy(this->occupation_matrix_);
 }
 
 } // namespace sirius
