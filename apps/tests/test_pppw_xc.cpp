@@ -12,7 +12,6 @@ void test_davidson(cmd_args const& args__)
     auto solver       = args__.value<std::string>("solver", "lapack");
     auto xc_name      = args__.value<std::string>("xc_name", "XC_LDA_X");
     auto num_mag_dims = args__.value<int>("num_mag_dims", 0);
-    auto bxc_sign     = args__.value<int>("bxc_sign", 1);
 
     bool add_dion{false};
     bool add_vloc{false};
@@ -60,7 +59,7 @@ void test_davidson(cmd_args const& args__)
             ps_wf[i] = std::exp(-x) * std::pow(x, l);
         }
         /* add radial function for l */
-        atype.add_ps_atomic_wf(3, l, ps_wf);
+        atype.add_ps_atomic_wf(3, sirius::experimental::aqn(l), ps_wf);
     }
 
     /* set local part of potential */
@@ -138,8 +137,7 @@ int main(int argn, char** argv)
                                {"mpi_grid=", "(int[2]) dimensions of the MPI grid for band diagonalization"},
                                {"solver=", "eigen-value solver"},
                                {"xc_name=", "name of XC potential"},
-                               {"num_mag_dims=", "number of magnetic dimensions"},
-                               {"bxc_sign=", "(temporaty hack)"}
+                               {"num_mag_dims=", "number of magnetic dimensions"}
                               });
 
     if (args.exist("help")) {
