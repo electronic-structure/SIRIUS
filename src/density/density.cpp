@@ -1242,6 +1242,7 @@ void Density::generate_valence(K_point_set const& ks__)
     if (density_matrix_.size()) {
         ctx_.comm().allreduce(density_matrix_.at(memory_t::host), static_cast<int>(density_matrix_.size()));
         occupation_matrix_->reduce();
+        occupation_matrix_->print_occupancies();
     }
 
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
