@@ -182,6 +182,9 @@ K_point::initialize()
 void
 K_point::generate_hubbard_orbitals()
 {
+    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+        hubbard_wave_functions_->pw_coeffs(ispn).prime().zero();
+    }
     /* total number of Hubbard orbitals */
     auto r = unit_cell_.num_hubbard_wf();
 
@@ -280,14 +283,14 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
 
         /* compute inner product between full spinors or between indpendent components */
         inner<double_complex>(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : istep, phi__, 0, nwfu,
-                sphi__, 0, nwfu, S, 0, 0);
+                              sphi__, 0, nwfu, S, 0, 0);
 
         // SPLA should return on CPU as well
         //if (ctx_.processing_unit() == device_t::GPU) {
         //    S.copy_to(memory_t::host);
         //}
 
-        /* diagonalize the all stuff */
+        /* create transformation matrix */
 
         if (ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ ) {
             dmatrix<double_complex> Z(nwfu, nwfu);
@@ -330,8 +333,12 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
 
         /* only need to do that when in the ultra soft case */
         if (unit_cell_.augment()) {
-            for (int s = 0; s < phi__.num_sc(); s++) {
-                phi__.copy_from(ctx_.processing_unit(), nwfu, sphi__, s, 0, s, 0);
+            if (ctx_.num_mag_dims() == 3) {
+                for (int s = 0; s < 2; s++) {
+                    phi__.copy_from(ctx_.processing_unit(), nwfu, sphi__, s, 0, s, 0);
+                }
+            } else {
+                phi__.copy_from(ctx_.processing_unit(), nwfu, sphi__, istep, 0, istep, 0);
             }
         }
 
