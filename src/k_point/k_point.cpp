@@ -145,10 +145,7 @@ K_point::initialize()
                     }
                 }
                 if (ctx_.control().print_checksum_) {
-                    auto cs = singular_components_->checksum_pw(device_t::CPU, 0, 0, ncomp);
-                    if (comm().rank() == 0) {
-                        utils::print_checksum("singular_components", cs);
-                    }
+                    singular_components_->print_checksum(device_t::CPU, "singular_components", 0, ncomp);
                 }
             }
 
@@ -207,6 +204,10 @@ K_point::generate_hubbard_orbitals()
     this->generate_atomic_wave_functions(atoms, [&](int iat){return &ctx_.unit_cell().atom_type(iat).indexb_hub();},
                                          ctx_.hubbard_wf_ri(), phi);
 
+    if (ctx_.control().print_checksum_) {
+        phi.print_checksum(device_t::CPU, "phi_hub_init", 0, phi.num_wf());
+    }
+
     if (ctx_.num_spins() == 2) {
         /* copy up component to dn component in collinear case
          * +-------------------------------+
@@ -252,6 +253,10 @@ K_point::generate_hubbard_orbitals()
     }
     beta_projectors().dismiss();
 
+    if (ctx_.control().print_checksum_) {
+        hubbard_wave_functions_->print_checksum(device_t::CPU, "sphi_hub_init", 0, hubbard_wave_functions_->num_wf());
+    }
+
     orthogonalize_hubbard_orbitals(phi, *hubbard_wave_functions_);
 
     /* all calculations on GPU then we need to copy the final result back to the CPUs */
@@ -261,6 +266,10 @@ K_point::generate_hubbard_orbitals()
             hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, hubbard_wave_functions_->num_wf());
             hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
         }
+    }
+
+    if (ctx_.control().print_checksum_) {
+        hubbard_wave_functions_->print_checksum(device_t::CPU, "phi_hub", 0, hubbard_wave_functions_->num_wf());
     }
 }
 
