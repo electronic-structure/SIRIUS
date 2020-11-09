@@ -160,7 +160,7 @@ install(TARGETS sirius
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
-                             "${CMAKE_INSTALL_INCLUDEDIR}/sirius/SDDK")
+                             "${CMAKE_INSTALL_INCLUDEDIR}/sirius/src/SDDK")
 install(EXPORT sirius_targets
         FILE siriusTargets.cmake
         NAMESPACE sirius::
