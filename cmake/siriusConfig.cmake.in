@@ -30,7 +30,7 @@ if(NOT TARGET sirius::sirius)
     set(mode QUIET)
   endif()
 
-  find_package(MPI ${mode})
+  find_package(MPI ${mode} COMPONENTS CXX)
   find_package(GSL ${mode})
   find_package(LibXC 3.0.0 ${mode})
   find_package(LibSPG ${mode})
