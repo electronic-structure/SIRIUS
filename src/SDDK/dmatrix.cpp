@@ -265,7 +265,9 @@ void dmatrix<double_complex>::serialize(std::string name__, int n__) const
             full_mtrx(irow(i), icol(j)) = (*this)(i, j);
         }
     }
-    blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
+    if (blacs_grid_) {
+        blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
+    }
 
     // json dict;
     // dict["mtrx_re"] = json::array();
@@ -276,7 +278,7 @@ void dmatrix<double_complex>::serialize(std::string name__, int n__) const
     //    }
     //}
 
-    if (blacs_grid_->comm().rank() == 0) {
+    if (!blacs_grid_ || blacs_grid_->comm().rank() == 0) {
         // std::cout << "mtrx: " << name__ << std::endl;
         // std::cout << dict.dump(4);
 
