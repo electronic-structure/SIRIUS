@@ -914,6 +914,10 @@ void K_point::generate_hubbard_orbitals()
         }
     }
 
+    if (ctx_.control().print_checksum_) {
+        phi.print_checksum(device_t::CPU, "phi_hub_init", 0, phi.num_wf());
+    }
+
     /* check if we have a norm conserving pseudo potential only */
     auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator>(new Q_operator(ctx_)) : nullptr;
 
@@ -931,6 +935,10 @@ void K_point::generate_hubbard_orbitals()
                                              phi, q_op.get(), *hubbard_wave_functions_);
     beta_projectors().dismiss();
 
+    if (ctx_.control().print_checksum_) {
+        hubbard_wave_functions_->print_checksum(device_t::CPU, "sphi_hub_init", 0, hubbard_wave_functions_->num_wf());
+    }
+
     orthogonalize_hubbard_orbitals(phi);
 
     // All calculations on GPU then we need to copy the final result back to the cpus
@@ -940,6 +948,10 @@ void K_point::generate_hubbard_orbitals()
             hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, r.first);
             hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
         }
+    }
+
+    if (ctx_.control().print_checksum_) {
+        hubbard_wave_functions_->print_checksum(device_t::CPU, "phi_hub", 0, hubbard_wave_functions_->num_wf());
     }
 }
 
