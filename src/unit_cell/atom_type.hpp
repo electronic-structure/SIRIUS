@@ -724,11 +724,10 @@ class Atom_type
         indexr_hub_.add(sirius::experimental::aqn(l__));
 
         /* add radial function of Hubbard orbital to a list */
-        hubbard_radial_functions_.push_back(std::move(s));
+        hubbard_radial_functions_.push_back(std::move(s.interpolate()));
 
         /* add Hubbard orbital descriptor to a list */
         lo_descriptors_hub_.emplace_back(n__, l__, -1, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__);
-
 
 
 
