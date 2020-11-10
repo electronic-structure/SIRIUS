@@ -57,7 +57,7 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
     }
 
     for (int iss = 0; iss < num_spin_steps; iss++) {
-        inner(spla_ctx, num_mag_dims__ == 3 ? 2 : iss, phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
+        inner(spla_ctx, spin_range(num_mag_dims__ == 3 ? 2 : iss), phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
         auto max_diff = check_identity(ovlp, 2 * num_bands__);
         if (Communicator::world().rank() == 0) {
             printf("maximum difference: %18.12f\n", max_diff);

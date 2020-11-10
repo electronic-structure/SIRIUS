@@ -57,11 +57,11 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     }
 
     /* warmup call */
-    inner(spla_ctx, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
+    inner(spla_ctx, spin_range(0), phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
     Communicator::world().barrier();
 
     double t = -utils::wtime();
-    inner(spla_ctx, 0, phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
+    inner(spla_ctx, spin_range(0), phi, 0, num_bands__, phi, 0, num_bands__, ovlp, 0, 0);
     Communicator::world().barrier();
     t += utils::wtime();
 

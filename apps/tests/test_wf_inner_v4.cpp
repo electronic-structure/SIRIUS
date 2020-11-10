@@ -69,10 +69,10 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     }
     ovlp.zero();
 
-    inner(spla_ctx, 0, phi, 0,           num_bands__, phi1, 0,           num_bands__, ovlp, 0,           0);
-    inner(spla_ctx, 0, phi, 0,           num_bands__, phi1, num_bands__, num_bands__, ovlp, 0,           num_bands__);
-    inner(spla_ctx, 0, phi, num_bands__, num_bands__, phi1, 0,           num_bands__, ovlp, num_bands__, 0);
-    inner(spla_ctx, 0, phi, num_bands__, num_bands__, phi1, num_bands__, num_bands__, ovlp, num_bands__, num_bands__);
+    inner(spla_ctx, spin_range(0), phi, 0,           num_bands__, phi1, 0,           num_bands__, ovlp, 0,           0);
+    inner(spla_ctx, spin_range(0), phi, 0,           num_bands__, phi1, num_bands__, num_bands__, ovlp, 0,           num_bands__);
+    inner(spla_ctx, spin_range(0), phi, num_bands__, num_bands__, phi1, 0,           num_bands__, ovlp, num_bands__, 0);
+    inner(spla_ctx, spin_range(0), phi, num_bands__, num_bands__, phi1, num_bands__, num_bands__, ovlp, num_bands__, num_bands__);
 
     //ovlp.serialize("ovlp", 2 * num_bands__);
 
