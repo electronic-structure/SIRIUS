@@ -291,7 +291,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
         S.zero();
 
         /* compute inner product between full spinors or between indpendent components */
-        inner<double_complex>(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : istep, phi__, 0, nwfu,
+        inner<double_complex>(ctx_.spla_context(), spin_range((ctx_.num_mag_dims() == 3) ? 2 : istep), phi__, 0, nwfu,
                               sphi__, 0, nwfu, S, 0, 0);
 
         // SPLA should return on CPU as well

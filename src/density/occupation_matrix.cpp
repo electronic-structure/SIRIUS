@@ -86,7 +86,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
         if (is_device_memory(mem)) {
             dm.allocate(ctx_.mem_pool(mem));
         }
-        sddk::inner(ctx_.spla_context(), 2, kp__.spinor_wave_functions(), 0,
+        sddk::inner(ctx_.spla_context(), spin_range(2), kp__.spinor_wave_functions(), 0,
             kp__.num_occupied_bands(), kp__.hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
 
         // TODO: check if inner() already moved data to CPU
@@ -156,7 +156,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
             if (is_device_memory(mem)) {
                 dm.allocate(ctx_.mem_pool(mem));
             }
-            sddk::inner(ctx_.spla_context(), ispn, kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn),
+            sddk::inner(ctx_.spla_context(), spin_range(ispn), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn),
                   kp__.hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
             // TODO: check if inner() already moved data to CPU
 

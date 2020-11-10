@@ -83,7 +83,7 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__,
     }
 
     /* <{phi,phi_new}|Op|phi_new> */
-    inner(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, num_locked, N__ + n__ - num_locked, op_phi__,
+    inner(ctx_.spla_context(), spin_range((ctx_.num_mag_dims() == 3) ? 2 : 0), phi__, num_locked, N__ + n__ - num_locked, op_phi__,
           N__, n__, mtrx__, 0, N__ - num_locked);
 
     /* restore lower part */
@@ -517,10 +517,10 @@ void Band::check_wave_functions(Hamiltonian_k& Hk__) const
 
         /* compute residuals */
         for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
+            auto sr = spin_range(nc_mag ? 2 : ispin_step);
             /* apply Hamiltonian and S operators to the wave-functions */
-            Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, nullptr, &spsi);
-            inner(ctx_.spla_context(), nc_mag ? 2 : ispin_step, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(),
-                  ovlp, 0, 0);
+            Hk__.apply_h_s<T>(sr, 0, ctx_.num_bands(), psi, nullptr, &spsi);
+            inner(ctx_.spla_context(), sr, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
 
             double diff = check_identity(ovlp, ctx_.num_bands());
 

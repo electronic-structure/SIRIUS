@@ -40,7 +40,7 @@ void Hubbard::apply_hubbard_potential(Wave_functions& hub_wf, spin_range spins__
 
     /* First calculate the local part of the projections
        dm(i, n) = <phi_i| S |psi_{nk}> */
-    inner(ctx_.spla_context(), spins__(), hub_wf, 0, hub_wf.num_wf(), phi, idx__, n__, dm, 0, 0);
+    inner(ctx_.spla_context(), spins__, hub_wf, 0, hub_wf.num_wf(), phi, idx__, n__, dm, 0, 0);
 
     dmatrix<double_complex> Up(hub_wf.num_wf(), n__);
     Up.zero();

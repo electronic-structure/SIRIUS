@@ -37,12 +37,11 @@ namespace sddk {
 
 namespace {
 template <typename T>
-void scale_gamma_wf(int ispn, int m, int i0, double alpha, Wave_functions& bra);
+void scale_gamma_wf(spin_range spins, int m, int i0, double alpha, Wave_functions& bra);
 
 // If scalar type, g-vector 0 contribution must be scaled before / after inner product to aboid counting twice
 template <>
-void scale_gamma_wf<double>(int ispn, int m, int i0, double alpha, Wave_functions& bra) {
-    auto spins         = spin_range(ispn);
+void scale_gamma_wf<double>(spin_range spins, int m, int i0, double alpha, Wave_functions& bra) {
     for (auto s : spins) {
         const int incx = bra.pw_coeffs(s).prime().ld() * 2; // complex matrix is read as scalar
         if (bra.preferred_memory_t() == memory_t::device) {
@@ -63,23 +62,27 @@ void scale_gamma_wf<double>(int ispn, int m, int i0, double alpha, Wave_function
 
 // If complex type, no scaling required
 template <>
-void scale_gamma_wf<double_complex>(int ispn, int m, int i0, double alpha, Wave_functions& bra) {}
+void scale_gamma_wf<double_complex>(spin_range spins, int m, int i0, double alpha, Wave_functions& bra) {}
 
 template <typename T>
-void inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, int ispn__,
+void inner_mt(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
               Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__, int j0__, int n__, dmatrix<T>& result__,
               int irow0__, int jcol0__);
 
 template <>
 void
-inner_mt<double>(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__,int ispn__, Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
-      int j0__, int n__, dmatrix<double>& result__, int irow0__, int jcol0__) {
+inner_mt<double>(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
+      Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
+      int j0__, int n__, dmatrix<double>& result__, int irow0__, int jcol0__)
+{
 }
 
 template <>
 void
-inner_mt<double_complex>(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, int ispn__, Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
-      int j0__, int n__, dmatrix<double_complex>& result__, int irow0__, int jcol0__) {
+inner_mt<double_complex>(::spla::Context& spla_ctx__, ::spla::MatrixDistribution& spla_mat_dist__, spin_range ispn__,
+    Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
+    int j0__, int n__, dmatrix<double_complex>& result__, int irow0__, int jcol0__)
+{
     bool local_has_mt  = bra__.has_mt();
     bool global_has_mt = false;
 
@@ -109,7 +112,7 @@ inner_mt<double_complex>(::spla::Context& spla_ctx__, ::spla::MatrixDistribution
 
 template <typename T>
 void
-inner(::spla::Context& spla_ctx__, int ispn__, Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
+inner(::spla::Context& spla_ctx__, ::sddk::spin_range spins__, Wave_functions& bra__, int i0__, int m__, Wave_functions& ket__,
       int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__)
 {
     PROFILE("sddk::wf_inner");
@@ -125,19 +128,17 @@ inner(::spla::Context& spla_ctx__, int ispn__, Wave_functions& bra__, int i0__, 
         size_factor = 2;
     }
 
-    auto spins = spin_range(ispn__);
-
     // For gamma case, contribution of g = 0 vector must not be counted double -> multiply by 0.5
     if (bra__.comm().rank() == 0) {
         PROFILE("sddk::wf_inner|scale");
-        scale_gamma_wf<T>(ispn__, m__, i0__, 0.5, bra__);
+        scale_gamma_wf<T>(spins__, m__, i0__, 0.5, bra__);
     }
 
     double beta = 0.0;
 
     T* result_ptr = reinterpret_cast<T*>(result__.size_local() ? result__.at(memory_t::host, 0, 0) : nullptr);
 
-    for (auto s : spins) {
+    for (auto s : spins__) {
         PROFILE("sddk::wf_inner|pw");
         spla::pgemm_ssb(m__, n__, size_factor * bra__.pw_coeffs(s).num_rows_loc(), SPLA_OP_CONJ_TRANSPOSE, alpha,
                         reinterpret_cast<const T*>(bra__.pw_coeffs(s).prime().at(bra__.preferred_memory_t(), 0, i0__)),
@@ -151,11 +152,11 @@ inner(::spla::Context& spla_ctx__, int ispn__, Wave_functions& bra__, int i0__, 
     // For gamma case, g = 0 vector is rescaled back
     if (bra__.comm().rank() == 0) {
         PROFILE("sddk::wf_inner|scale_back");
-        scale_gamma_wf<T>(ispn__, m__, i0__, 2.0, bra__);
+        scale_gamma_wf<T>(spins__, m__, i0__, 2.0, bra__);
     }
 
     // add mt contribution
-    inner_mt(spla_ctx__, spla_mat_dist, ispn__, bra__, i0__, m__, ket__, j0__, n__, result__, irow0__, jcol0__);
+    inner_mt(spla_ctx__, spla_mat_dist, spins__, bra__, i0__, m__, ket__, j0__, n__, result__, irow0__, jcol0__);
 
     // make sure result is updated on device as well
     if(result__.on_device()) {
@@ -164,11 +165,11 @@ inner(::spla::Context& spla_ctx__, int ispn__, Wave_functions& bra__, int i0__, 
 }
 
 // instantiate for required types
-template void inner<double>(::spla::Context& ctx, int ispn__, Wave_functions& bra__,
+template void inner<double>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions& bra__,
                             int i0__, int m__, Wave_functions& ket__, int j0__, int n__, dmatrix<double>& result__,
                             int irow0__, int jcol0__);
 
-template void inner<double_complex>(::spla::Context& ctx, int ispn__, Wave_functions& bra__, int i0__, int m__,
+template void inner<double_complex>(::spla::Context& ctx, ::sddk::spin_range ispn__, Wave_functions& bra__, int i0__, int m__,
                                     Wave_functions& ket__, int j0__, int n__, dmatrix<double_complex>& result__,
                                     int irow0__, int jcol0__);
 } // namespace sddk

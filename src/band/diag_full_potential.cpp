@@ -220,9 +220,9 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
         dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
                                      ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
 
-        inner(ctx_.spla_context(), 0, kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
+        inner(ctx_.spla_context(), spin_range(0), kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
               hphi, 0, ctx_.num_fv_states(), hmlt, 0, 0);
-        inner(ctx_.spla_context(), 0, kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
+        inner(ctx_.spla_context(), spin_range(0), kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
               ophi, 0, ctx_.num_fv_states(), ovlp, 0, 0);
 
         double max_diff{0};
@@ -808,7 +808,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
 
             /* compute <wf_i | h * wf_j> */
-            inner(ctx_.spla_context(), 0, kp.fv_states(), 0, nfv, hpsi[ispn], 0, nfv, h, 0, 0);
+            inner(ctx_.spla_context(), spin_range(0), kp.fv_states(), 0, nfv, hpsi[ispn], 0, nfv, h, 0, 0);
 
             for (int i = 0; i < nfv; i++) {
                 h.add(i, i, kp.fv_eigen_value(i));
@@ -827,11 +827,11 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
             h.allocate(ctx_.mem_pool(memory_t::device));
         }
         /* compute <wf_i | h * wf_j> for up-up block */
-        inner(ctx_.spla_context(), 0, kp.fv_states(), 0, nfv, hpsi[0], 0, nfv, h, 0, 0);
+        inner(ctx_.spla_context(), spin_range(0), kp.fv_states(), 0, nfv, hpsi[0], 0, nfv, h, 0, 0);
         /* compute <wf_i | h * wf_j> for dn-dn block */
-        inner(ctx_.spla_context(), 0, kp.fv_states(), 0, nfv, hpsi[1], 0, nfv, h, nfv, nfv);
+        inner(ctx_.spla_context(), spin_range(0), kp.fv_states(), 0, nfv, hpsi[1], 0, nfv, h, nfv, nfv);
         /* compute <wf_i | h * wf_j> for up-dn block */
-        inner(ctx_.spla_context(), 0, kp.fv_states(), 0, nfv, hpsi[2], 0, nfv, h, 0, nfv);
+        inner(ctx_.spla_context(), spin_range(0), kp.fv_states(), 0, nfv, hpsi[2], 0, nfv, h, 0, nfv);
 
         if (kp.comm().size() == 1) {
             for (int i = 0; i < nfv; i++) {

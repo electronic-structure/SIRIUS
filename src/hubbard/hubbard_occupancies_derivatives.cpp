@@ -123,7 +123,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
 
     /* compute <phi^I_m| S | psi_{nk}> */
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        inner(ctx_.spla_context(), ispn, kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn), dphi, 0,
+        inner(ctx_.spla_context(), spin_range(ispn), kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn), dphi, 0,
               this->number_of_hubbard_orbitals(), phi_s_psi, 0, ispn * this->number_of_hubbard_orbitals());
     }
 
@@ -299,7 +299,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp__
 
     /* compute <phi^I_m| S | psi_{nk}> */
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        inner(ctx_.spla_context(), ispn, kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn), dphi, 0,
+        inner(ctx_.spla_context(), spin_range(ispn), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn), dphi, 0,
               this->number_of_hubbard_orbitals(), phi_s_psi, 0, ispn * this->number_of_hubbard_orbitals());
     }
 
@@ -491,7 +491,7 @@ Hubbard::compute_occupancies(K_point&                    kp,
     }
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        inner(ctx_.spla_context(), ispn, kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn),
+        inner(ctx_.spla_context(), spin_range(ispn), kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn),
               dphi, //   S d |phi>
               0, this->number_of_hubbard_orbitals(), dphi_s_psi, 0, ispn * this->number_of_hubbard_orbitals());
     }
