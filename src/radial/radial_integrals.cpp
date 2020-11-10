@@ -46,7 +46,7 @@ void Radial_integrals_atomic_wf<jl_deriv>::generate(std::function<Spline<double>
         /* create jl(qx) */
         #pragma omp parallel for
         for (int iq = 0; iq < nq(); iq++) {
-            jl(iq) = Spherical_Bessel_functions(index_(iat).lmax(), atom_type.radial_grid(), grid_q_[iq]);
+            jl(iq) = Spherical_Bessel_functions(indexr_(iat).lmax(), atom_type.radial_grid(), grid_q_[iq]);
         }
 
         /* loop over all pseudo wave-functions */

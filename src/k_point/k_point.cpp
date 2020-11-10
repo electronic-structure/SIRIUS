@@ -343,7 +343,7 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
         /* only need to do that when in the ultra soft case */
         if (unit_cell_.augment()) {
             if (ctx_.num_mag_dims() == 3) {
-                for (int s = 0; s < 2; s++) {
+                for (int s = 0; s < phi__.num_sc(); s++) {
                     phi__.copy_from(ctx_.processing_unit(), nwfu, sphi__, s, 0, s, 0);
                 }
             } else {
