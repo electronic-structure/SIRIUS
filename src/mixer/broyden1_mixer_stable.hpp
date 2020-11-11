@@ -53,12 +53,14 @@ class Broyden1Stable : public Mixer<FUNCS...>
   private:
     double beta_;
     sddk::mdarray<double, 2> R_;
+    std::size_t history_size_;
 
   public:
     Broyden1Stable(std::size_t max_history, double beta)
         : Mixer<FUNCS...>(max_history)
         , beta_(beta)
-        , R_(max_history - 1, max_history - 1)
+        , R_(max_history - 1, max_history - 1),
+        history_size_(0)
     {
         this->R_.zero();
     }
@@ -69,13 +71,15 @@ class Broyden1Stable : public Mixer<FUNCS...>
         const auto idx_next_step = this->idx_hist(this->step_ + 1);
         const auto idx_step_prev = this->idx_hist(this->step_ - 1);
 
-        const int history_size = static_cast<int>(std::min(this->step_, this->max_history_ - 1));
-
         const bool normalize = false;
+
+        const auto history_size = static_cast<int>(this->history_size_);
 
         // TODO: beta scaling?
 
-        // Set up the next x_{n+1} = x_n
+        // Set up the next x_{n+1} = x_n.
+        // Can't use this->output_history_[idx_step + 1] directly here,
+        // as it's still used when history is full.
         this->copy(this->output_history_[idx_step], this->tmp1_);
 
         // + beta * f_n
@@ -115,42 +119,54 @@ class Broyden1Stable : public Mixer<FUNCS...>
             }
 
             // normalize the new residual difference vec itself
-            auto sz = std::sqrt(this->template inner_product<normalize>(this->residual_history_[idx_step_prev], this->residual_history_[idx_step_prev]));
-            this->R_(history_size - 1, history_size - 1) = sz;
-            this->scale(1.0 / sz, this->residual_history_[idx_step_prev]);
+            auto nrm2 = this->template inner_product<normalize>(
+                this->residual_history_[idx_step_prev],
+                this->residual_history_[idx_step_prev]
+            );
 
-            // Now do the Anderson iteration bit
+            if (nrm2 > 0) {
+                auto sz = std::sqrt(nrm2);
+                this->R_(history_size - 1, history_size - 1) = sz;
+                this->scale(1.0 / sz, this->residual_history_[idx_step_prev]);
 
-            // Compute h = Q' * f_n
-            sddk::mdarray<double, 1> h(history_size);
-            for (int i = 1; i <= history_size; ++i) {
-                auto j = this->idx_hist(this->step_ - i);
-                h(history_size - i) = this->template inner_product<normalize>(this->residual_history_[j], this->residual_history_[idx_step]);
-            }
+                // Now do the Anderson iteration bit
 
-            // next compute k = R⁻¹ * h... just do that by hand for now, can dispatch to blas later.
-            sddk::mdarray<double, 1> k(history_size);
-            for (int i = 0; i < history_size; ++i) {
-                k[i] = h[i];
-            }
-
-            for (int j = history_size - 1; j >= 0; --j) {
-                k(j) /= this->R_(j, j);
-                for (int i = j - 1; i >= 0; --i) {
-                    k(i) -= this->R_(i, j) * k(j);
+                // Compute h = Q' * f_n
+                sddk::mdarray<double, 1> h(history_size);
+                for (int i = 1; i <= history_size; ++i) {
+                    auto j = this->idx_hist(this->step_ - i);
+                    h(history_size - i) = this->template inner_product<normalize>(this->residual_history_[j], this->residual_history_[idx_step]);
                 }
-            }
 
-            // - beta * Q * h
-            for (int i = 1; i <= history_size; ++i) {
-                auto j = this->idx_hist(this->step_ - i);
-                this->axpy(-this->beta_ * h(history_size - i), this->residual_history_[j], this->tmp1_);
-            }
+                // next compute k = R⁻¹ * h... just do that by hand for now, can dispatch to blas later.
+                sddk::mdarray<double, 1> k(history_size);
+                for (int i = 0; i < history_size; ++i) {
+                    k[i] = h[i];
+                }
 
-            // - (delta X) k
-            for (int i = 1; i <= history_size; ++i) {
-                auto j = this->idx_hist(this->step_ - i);
-                this->axpy(-k(history_size - i), this->output_history_[j], this->tmp1_);
+                for (int j = history_size - 1; j >= 0; --j) {
+                    k(j) /= this->R_(j, j);
+                    for (int i = j - 1; i >= 0; --i) {
+                        k(i) -= this->R_(i, j) * k(j);
+                    }
+                }
+
+                // - beta * Q * h
+                for (int i = 1; i <= history_size; ++i) {
+                    auto j = this->idx_hist(this->step_ - i);
+                    this->axpy(-this->beta_ * h(history_size - i), this->residual_history_[j], this->tmp1_);
+                }
+
+                // - (delta X) k
+                for (int i = 1; i <= history_size; ++i) {
+                    auto j = this->idx_hist(this->step_ - i);
+                    this->axpy(-k(history_size - i), this->output_history_[j], this->tmp1_);
+                }
+            } else {
+                // In the unlikely event of a breakdown when exactly
+                // converged or an inner product that is broken, simply
+                // reset the history size to 0 to restart the mixer.
+                this->history_size_ = 0;
             }
         }
 
@@ -161,7 +177,8 @@ class Broyden1Stable : public Mixer<FUNCS...>
         // afterwards we drop the first column and last row of the new R, the new
         // Q currently ends up in the first so many columns of delta F, so we have
         // to do some swapping to restore the circular buffer for residual_history_
-        if (history_size == this->max_history_ - 1) {
+        if (this->history_size_ == this->max_history_ - 1) {
+            // Restore [R12; R22] to upper triangular
             for (int row = 1; row <= history_size - 1; ++row) {
                 auto rotation = sddk::linalg(sddk::linalg_t::lapack).lartg(this->R_(row - 1, row), this->R_(row, row));
                 auto c = std::get<0>(rotation);
@@ -187,7 +204,7 @@ class Broyden1Stable : public Mixer<FUNCS...>
                 this->rotate(c, s, this->residual_history_[i1], this->residual_history_[i2]);
             }
 
-            // Move all the guys one to the right -- maybe circular buffers aren't that great here...
+            // Move the columns one place to the right
             for (int i = 1; i <= history_size - 1; ++i) {
                 int i1 = this->idx_hist(this->step_ - i - 1);
                 int i2 = this->idx_hist(this->step_ - i);
@@ -203,6 +220,7 @@ class Broyden1Stable : public Mixer<FUNCS...>
         }
 
         this->copy(this->tmp1_, this->output_history_[idx_next_step]);
+        this->history_size_ = std::min(this->history_size_ + 1, this->max_history_ - 1);
     }
 };
 } // namespace mixer
