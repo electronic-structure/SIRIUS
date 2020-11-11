@@ -55,6 +55,9 @@ Wave_functions::Wave_functions(memory_pool& mp__, const Gvec_partition& gkvecp__
     if (!(num_sc__ == 1 || num_sc__ == 2)) {
         TERMINATE("wrong number of spin components");
     }
+    if (!is_host_memory(mp__.memory_type())) {
+        TERMINATE("this is not a host memory pool");
+    }
 
     for (int ispn = 0; ispn < num_sc_; ispn++) {
         pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(

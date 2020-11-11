@@ -362,6 +362,25 @@ class Wave_functions
     void copy_to(spin_range spins__, memory_t mem__, int i0__, int n__);
 
     void print_checksum(device_t pu__, std::string label__, int N__, int n__) const;
+
+    /// Prepare wave-functions on the device.
+    void prepare(spin_range spins__, bool with_copy__, memory_pool* mp__ = nullptr)
+    {
+        /* if operations on wave-functions are done on GPUs */
+        if (is_device_memory(preferred_memory_t_)) {
+            if (mp__) {
+                if (!is_device_memory(mp__->memory_type())) {
+                    TERMINATE("not a device memory pool");
+                }
+                this->allocate(spins__, *mp__);
+            } else {
+                this->allocate(spins__, preferred_memory_t_);
+            }
+            if (with_copy__) {
+                this->copy_to(spins__, preferred_memory_t_, 0, this->num_wf());
+            }
+        }
+    }
 };
 
 
