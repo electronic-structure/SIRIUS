@@ -381,6 +381,16 @@ class Wave_functions
             }
         }
     }
+
+    void dismiss(spin_range spins__, bool with_copy__)
+    {
+        if (is_device_memory(preferred_memory_t_)) {
+            if (with_copy__) {
+                this->copy_to(spins__, memory_t::host, 0, this->num_wf());
+            }
+            this->deallocate(spins__, preferred_memory_t_);
+        }
+    }
 };
 
 
