@@ -170,6 +170,9 @@ K_point::initialize()
             hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(
                    new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
+            hubbard_atomic_wave_functions_ = std::unique_ptr<Wave_functions>(
+                   new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
+                       ctx_.preferred_memory_t(), ctx_.num_spins()));
         }
     }
 
@@ -179,8 +182,11 @@ K_point::initialize()
 void
 K_point::generate_hubbard_orbitals()
 {
+    PROFILE("sirius::K_point::generate_hubbard_orbitals");
+
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         hubbard_wave_functions_->pw_coeffs(ispn).prime().zero();
+        hubbard_atomic_wave_functions_->pw_coeffs(ispn).prime().zero();
     }
     /* total number of Hubbard orbitals */
     auto r = unit_cell_.num_hubbard_wf();
@@ -236,6 +242,7 @@ K_point::generate_hubbard_orbitals()
             phi.pw_coeffs(ispn).prime().allocate(memory_t::device);
             phi.pw_coeffs(ispn).copy_to(memory_t::device, 0, phi.num_wf());
             hubbard_wave_functions_->pw_coeffs(ispn).prime().allocate(memory_t::device);
+            hubbard_atomic_wave_functions_->pw_coeffs(ispn).prime().allocate(memory_t::device);
         }
     }
 
@@ -243,21 +250,21 @@ K_point::generate_hubbard_orbitals()
     beta_projectors().prepare();
     for (int is = 0; is < ctx_.num_spinors(); is++ ) {
         /* spin range to apply S-operator.
-         * if WFs are non-magnetic, sping range is [0] - apply to one and only component
-         * if WFs have two componens, S will be aplpied to both of them; in case of spin-orbit coupling two components
-         * are mixed by SO interaction */
+         * if WFs are non-magnetic, sping range is [is] - apply to single component
+         * if WFs have two componens, S will be aplpied to both of them */
         auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
 
         sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), sr, 0, phi.num_wf(),
-            beta_projectors(), phi, q_op.get(), *hubbard_wave_functions_);
+            beta_projectors(), phi, q_op.get(), *hubbard_atomic_wave_functions_);
     }
     beta_projectors().dismiss();
 
     if (ctx_.control().print_checksum_) {
-        hubbard_wave_functions_->print_checksum(device_t::CPU, "sphi_hub_init", 0, hubbard_wave_functions_->num_wf());
+        hubbard_atomic_wave_functions_->print_checksum(device_t::CPU, "sphi_hub_init", 0,
+            hubbard_atomic_wave_functions_->num_wf());
     }
 
-    orthogonalize_hubbard_orbitals(phi, *hubbard_wave_functions_);
+    orthogonalize_hubbard_orbitals(phi, *hubbard_atomic_wave_functions_, *hubbard_wave_functions_);
 
     /* all calculations on GPU then we need to copy the final result back to the CPUs */
     if (ctx_.processing_unit() == device_t::GPU) {
@@ -265,6 +272,8 @@ K_point::generate_hubbard_orbitals()
             /* copy the hubbard wave functions on the host and then deallocate on GPU */
             hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, hubbard_wave_functions_->num_wf());
             hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+            hubbard_atomic_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, hubbard_atomic_wave_functions_->num_wf());
+            hubbard_atomic_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
         }
     }
 
@@ -274,13 +283,16 @@ K_point::generate_hubbard_orbitals()
 }
 
 void
-K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& sphi__)
+K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& sphi__, Wave_functions& sphi_hub__)
 {
+    int nwfu = phi__.num_wf();
+
     if (!(ctx_.hubbard_input().orthogonalize_hubbard_orbitals_ || ctx_.hubbard_input().normalize_hubbard_orbitals_)) {
+        for (int s = 0; s < ctx_.num_spins(); s++) {
+            sphi_hub__.copy_from(ctx_.processing_unit(), nwfu, sphi__, s, 0, s, 0);
+        }
         return;
     }
-
-    int nwfu = phi__.num_wf();
 
     dmatrix<double_complex> S(nwfu, nwfu);
     if (ctx_.processing_unit() == device_t::GPU) {
@@ -288,11 +300,11 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
     }
 
     for (int istep = 0; istep < ctx_.num_spinors(); istep++) {
-        S.zero();
+
+        auto sr = spin_range(ctx_.num_mag_dims() == 3 ? 2 : istep);
 
         /* compute inner product between full spinors or between indpendent components */
-        inner<double_complex>(ctx_.spla_context(), spin_range((ctx_.num_mag_dims() == 3) ? 2 : istep), phi__, 0, nwfu,
-                              sphi__, 0, nwfu, S, 0, 0);
+        inner<double_complex>(ctx_.spla_context(), sr, phi__, 0, nwfu, sphi__, 0, nwfu, S, 0, 0);
 
         // SPLA should return on CPU as well
         //if (ctx_.processing_unit() == device_t::GPU) {
@@ -340,21 +352,8 @@ K_point::orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& s
             S.copy_to(memory_t::device);
         }
 
-        /* only need to do that when in the ultra soft case */
-        if (unit_cell_.augment()) {
-            if (ctx_.num_mag_dims() == 3) {
-                for (int s = 0; s < phi__.num_sc(); s++) {
-                    phi__.copy_from(ctx_.processing_unit(), nwfu, sphi__, s, 0, s, 0);
-                }
-            } else {
-                phi__.copy_from(ctx_.processing_unit(), nwfu, sphi__, istep, 0, istep, 0);
-            }
-        }
-
-        /* now apply the overlap matrix */
-        /* apply the transform on the wave functions */
-        transform<double_complex>(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : istep, phi__, 0, nwfu,
-            S, 0, 0, sphi__, 0, nwfu);
+        /* transform on the wave functions */
+        transform<double_complex>(ctx_.spla_context(), sr(), sphi__, 0, nwfu, S, 0, 0, sphi_hub__, 0, nwfu);
     }
 }
 

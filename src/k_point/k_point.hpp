@@ -90,6 +90,9 @@ class K_point
     /// Two-component (spinor) hubbard wave functions where the S matrix is applied (if ppus).
     std::unique_ptr<Wave_functions> hubbard_wave_functions_{nullptr};
 
+    /// Two-component (spinor) hubbard wave functions constructed from atomic orbitals, where the S matrix is applied (if ppus).
+    std::unique_ptr<Wave_functions> hubbard_atomic_wave_functions_{nullptr};
+
     /// Band occupation numbers.
     sddk::mdarray<double, 2> band_occupancies_;
 
@@ -327,7 +330,7 @@ class K_point
         }
     }
 
-    void orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& sphi__);
+    void orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& sphi__, Wave_functions& sphi_hub__);
 
     /// Save data to HDF5 file.
     void save(std::string const& name__, int id__) const;
@@ -471,6 +474,18 @@ class K_point
     {
         assert(hubbard_wave_functions_ != nullptr);
         return *hubbard_wave_functions_;
+    }
+
+    inline Wave_functions& hubbard_atomic_wave_functions()
+    {
+        assert(hubbard_atomic_wave_functions_ != nullptr);
+        return *hubbard_atomic_wave_functions_;
+    }
+
+    inline Wave_functions const& hubbard_atomic_wave_functions() const
+    {
+        assert(hubbard_atomic_wave_functions_ != nullptr);
+        return *hubbard_atomic_wave_functions_;
     }
 
     inline Wave_functions& singular_components()
