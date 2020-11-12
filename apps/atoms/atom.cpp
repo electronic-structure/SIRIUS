@@ -19,7 +19,7 @@
 
 #include <algorithm>
 #include <sirius.hpp>
-#include "mixer/broyden1_mixer.hpp"
+#include "mixer/anderson_mixer.hpp"
 #include "unit_cell/atomic_conf.hpp"
 #include "potential/xc_functional.hpp"
 
@@ -77,7 +77,7 @@ class Free_atom : public sirius::Atom_type
             vrho[i] = 0;
         }
 
-        auto mixer = std::make_shared<sirius::mixer::Broyden1<std::vector<double>>>(12,  // max history
+        auto mixer = std::make_shared<sirius::mixer::Anderson<std::vector<double>>>(12,  // max history
                                                                                     0.8, // beta
                                                                                     0.1, // beta0
                                                                                     1.0  // beta scaling factor

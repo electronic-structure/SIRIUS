@@ -59,7 +59,7 @@
     },
     "mixer" : {
         "beta" : 0.5,
-        "type" : "broyden1",
+        "type" : "anderson",
         "!beta_scaling_factor" : 0.9
     }
 }

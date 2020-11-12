@@ -1,4 +1,4 @@
-#include "mixer/broyden1_mixer_stable.hpp"
+#include "mixer/anderson_stable_mixer.hpp"
 #include "mixer/mixer_factory.hpp"
 #include "utils/cmd_args.hpp"
 #include "input.hpp"
@@ -58,7 +58,7 @@ int main(int argn, char** argv)
     args.register_key("--beta=", "{double} first jacobian approximation as diagonal matrix");
     args.register_key("--dim=", "{size_t} problem dimension");
     args.register_key("--max_iter=", "{int} maximum number of iterations");
-    args.register_key("--mixer=", "{string} name of the mixer (broyden1, stable_anderson}");
+    args.register_key("--mixer=", "{string} name of the mixer (anderson, anderson_stable}");
     args.register_key("--tol=", "{double} tolerance");
     args.parse_args(argn, argv);
 
@@ -66,7 +66,7 @@ int main(int argn, char** argv)
     const auto max_history = args.value<int>("max_history", 8);
     const auto beta = args.value<double>("beta", 0.25);
     const auto n = args.value<size_t>("dim", 100);
-    const auto mixer_name = args.value<std::string>("mixer", "stable_anderson");
+    const auto mixer_name = args.value<std::string>("mixer", "anderson_stable");
     const auto tol = args.value<double>("tol", 1e-8);
 
     std::cout << "max history = " << max_history 

@@ -67,8 +67,8 @@ int main(int argn, char** argv)
     auto mixer = Mixer_factory<double>(N, 0, mix_cfg, Communicator::world());
     test1_mixer(N, *mixer);
 
-    printf("testing broyden1 mixer\n");
-    mix_cfg.type_ = "broyden1";
+    printf("testing anderson mixer\n");
+    mix_cfg.type_ = "anderson";
     mix_cfg.beta_ = 0.0;
     mixer = Mixer_factory<double>(N, 0, mix_cfg, Communicator::world());
     test1_mixer(N, *mixer);

@@ -210,8 +210,8 @@ struct Mixer_input
     double linear_mix_rms_tol_{1e6};
 
     /// Type of the mixer.
-    /** Available types are: "broyden1", "broyden2", "linear" */
-    std::string type_{"broyden1"};
+    /** Available types are: "anderson", "broyden2", "linear" */
+    std::string type_{"anderson"};
 
     /// Number of history steps for Broyden-type mixers.
     int max_history_{8};

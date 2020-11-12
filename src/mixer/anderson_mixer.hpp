@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file broyden1_mixer.hpp
+/** \file anderson_mixer.hpp
  *
- *   \brief Contains definition and implementation sirius::Broyden1.
+ *   \brief Contains definition and implementation sirius::Anderson.
  */
 
-#ifndef __BROYDEN1_MIXER_HPP__
-#define __BROYDEN1_MIXER_HPP__
+#ifndef __Anderson_MIXER_HPP__
+#define __Anderson_MIXER_HPP__
 
 #include <tuple>
 #include <functional>
@@ -42,13 +42,25 @@
 namespace sirius {
 namespace mixer {
 
-/// Broyden mixer.
-/** First version of the Broyden mixer, which requires inversion of the Jacobian matrix.
- *  Reference paper: "Robust acceleration of self consistent field calculations for
- *  density functional theory", Baarman K, Eirola T, Havu V., J Chem Phys. 134, 134109 (2011)
+/// Anderson mixer.
+/** 
+ * Quasi-Newton limited-memory method which updates xₙ₊₁ = xₙ - Gₙfₙ
+ * where Gₙ is an approximate inverse Jacobian. Anderson is derived
+ * by taking the low-rank update to the inverse Jacobian
+ * 
+ * Gₙ₊₁ = (Gₙ + ΔXₙ - GₙΔFₙ)(ΔFₙᵀΔFₙ)⁻¹ΔFₙᵀ
+ * 
+ * such that the secant equations Gₙ₊₁ΔFₙ = ΔXₙ are satisfied for previous
+ * iterations. Then Gₙ is taken -βI. The Anderson class explicilty constructs
+ * the Gram matrix ΔFₙᵀΔFₙ to solve the least-squares problem. For more stability
+ * use AndersonStable, which comes at the cost of orthogonalizing ΔFₙ.
+ * 
+ * Reference paper: Fang, Haw‐ren, and Yousef Saad. "Two classes of multisecant
+ * methods for nonlinear acceleration." Numerical Linear Algebra with Applications
+ * 16.3 (2009): 197-221.
  */
 template <typename... FUNCS>
-class Broyden1 : public Mixer<FUNCS...>
+class Anderson : public Mixer<FUNCS...>
 {
   private:
     double beta_;
@@ -58,7 +70,7 @@ class Broyden1 : public Mixer<FUNCS...>
     sddk::mdarray<double, 2> S_factorized_;
     std::size_t history_size_;
   public:
-    Broyden1(std::size_t max_history, double beta, double beta0, double beta_scaling_factor)
+    Anderson(std::size_t max_history, double beta, double beta0, double beta_scaling_factor)
         : Mixer<FUNCS...>(max_history)
         , beta_(beta)
         , beta0_(beta0)

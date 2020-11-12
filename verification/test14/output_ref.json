@@ -416,7 +416,7 @@
             "min": 0.00524,
             "total": 0.021732
         },
-        "sirius::Broyden1::mix": {
+        "sirius::Anderson::mix": {
             "avg": 0.002379642857142857,
             "count": 14,
             "max": 0.005083,

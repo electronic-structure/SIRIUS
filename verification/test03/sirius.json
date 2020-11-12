@@ -46,7 +46,7 @@
 
     "mixer" : {
         "beta" : 0.8,
-        "type" : "broyden1",
+        "type" : "anderson",
         "max_history" : 8
     }
 
