@@ -339,6 +339,17 @@ void FORTRAN(dsytrf)(ftn_char            UPLO,
                      ftn_int*            INFO,
                      ftn_len             UPLO_len);
 
+void FORTRAN(dsytrs)(ftn_char            UPLO,
+                     ftn_int*            N,
+                     ftn_int*            NRHS,
+                     ftn_double*         A,
+                     ftn_int*            LDA,
+                     ftn_int*            IPIV,
+                     ftn_double*         B,
+                     ftn_int*            LDB,
+                     ftn_int*            INFO,
+                     ftn_len             UPLO_len);
+
 void FORTRAN(chetrf)(ftn_char            UPLO,
                      ftn_int*            N,
                      ftn_complex*        A,

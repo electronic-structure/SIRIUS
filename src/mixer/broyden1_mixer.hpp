@@ -54,14 +54,18 @@ class Broyden1 : public Mixer<FUNCS...>
     double beta_;
     double beta0_;
     double beta_scaling_factor_;
-    sddk::mdarray<double, 2> S_old_;
+    sddk::mdarray<double, 2> S_;
+    sddk::mdarray<double, 2> S_factorized_;
+    std::size_t history_size_;
   public:
     Broyden1(std::size_t max_history, double beta, double beta0, double beta_scaling_factor)
         : Mixer<FUNCS...>(max_history)
         , beta_(beta)
         , beta0_(beta0)
         , beta_scaling_factor_(beta_scaling_factor)
-        , S_old_(max_history, max_history)
+        , S_(max_history - 1, max_history - 1)
+        , S_factorized_(max_history - 1, max_history - 1)
+        , history_size_(0)
     {
     }
 
@@ -69,9 +73,9 @@ class Broyden1 : public Mixer<FUNCS...>
     {
         const auto idx_step      = this->idx_hist(this->step_);
         const auto idx_next_step = this->idx_hist(this->step_ + 1);
-        const auto idx_step_prev = this->idx_hist(this->step_ - 1);
+        const auto idx_prev_step = this->idx_hist(this->step_ - 1);
 
-        const auto history_size = static_cast<int>(std::min(this->step_, this->max_history_ - 1));
+        const auto history_size = static_cast<int>(this->history_size_);
 
         const bool normalize = false;
 
@@ -84,79 +88,78 @@ class Broyden1 : public Mixer<FUNCS...>
             }
         }
 
-        // set input to 0, to use as buffer
-        this->scale(0.0, this->input_);
+        // Set up the next x_{n+1} = x_n.
+        // Can't use this->output_history_[idx_step + 1] directly here,
+        // as it's still used when history is full.
+        this->copy(this->output_history_[idx_step], this->tmp1_);
+
+        // + beta * f_n
+        this->axpy(this->beta_, this->residual_history_[idx_step], this->tmp1_);
 
         if (history_size > 0) {
-            sddk::mdarray<double, 2> S(history_size, history_size);
-            S.zero();
-            /* restore S from the previous step */
-            for (int j1 = 0; j1 < history_size - 1; j1++) {
-                for (int j2 = 0; j2 < history_size - 1; j2++) {
-                    S(j1 + 1, j2 + 1) = this->S_old_(j1, j2);
-                }
+            // Compute the difference residual[step] - residual[step - 1]
+            // and store it in residual[step - 1], but don't destroy
+            // residual[step]
+            this->scale(-1.0, this->residual_history_[idx_prev_step]);
+            this->axpy(1.0, this->residual_history_[idx_step], this->residual_history_[idx_prev_step]);
+
+            // Do the same for difference x
+            this->scale(-1.0, this->output_history_[idx_prev_step]);
+            this->axpy(1.0, this->output_history_[idx_step], this->output_history_[idx_prev_step]);
+
+            // Compute the new Gram matrix for the least-squares problem
+            for (int i = 0; i <= history_size - 1; ++i) {
+                auto j = this->idx_hist(this->step_ - i - 1);
+                this->S_(history_size - 1, history_size - i - 1) = this->S_(history_size - i - 1, history_size - 1) = this->template inner_product<normalize>(
+                    this->residual_history_[j],
+                    this->residual_history_[idx_prev_step]
+                );
             }
 
-            this->copy(this->residual_history_[idx_step], this->tmp2_);
-            this->axpy(-1.0, this->residual_history_[idx_step_prev], this->tmp2_);
+            // Make a copy because factorizing destroys the matrix.
+            for (int i = 0; i < history_size; ++i)
+                for (int j = 0; j < history_size; ++j)
+                    this->S_factorized_(j, i) = this->S_(j, i);
 
-            for (int j1 = 0; j1 < history_size; j1++) {
-                int i1 = this->idx_hist(this->step_ - j1);
-                int i2 = this->idx_hist(this->step_ - j1 - 1);
-                this->copy(this->residual_history_[i1], this->tmp1_);
-                this->axpy(-1.0, this->residual_history_[i2], this->tmp1_);
-                S(0, j1) = S(j1, 0) = this->template inner_product<normalize>(this->tmp1_, this->tmp2_);
+            sddk::mdarray<double, 1> h(history_size);
+            for (int i = 1; i <= history_size; ++i) {
+                auto j = this->idx_hist(this->step_ - i);
+                h(history_size - i) = this->template inner_product<normalize>(
+                    this->residual_history_[j],
+                    this->residual_history_[idx_step]
+                );
             }
 
-            for (int j1 = 0; j1 < history_size; j1++) {
-                for (int j2 = 0; j2 < history_size; j2++) {
-                    S_old_(j1, j2) = S(j1, j2);
-                }
-            }
+            bool invertible = sddk::linalg(sddk::linalg_t::lapack).sysolve(history_size, this->S_factorized_, h);
 
-            /* invert matrix */
-            sddk::linalg(sddk::linalg_t::lapack).syinv(history_size, S);
-            /* restore lower triangular part */
-            for (int j1 = 0; j1 < history_size; j1++) {
-                for (int j2 = 0; j2 < j1; j2++) {
-                    S(j1, j2) = S(j2, j1);
-                }
-            }
-
-            sddk::mdarray<double, 1> c(history_size);
-            c.zero();
-            for (int j = 0; j < history_size; j++) {
-                int i1 = this->idx_hist(this->step_ - j);
-                int i2 = this->idx_hist(this->step_ - j - 1);
-
-                this->copy(this->residual_history_[i1], this->tmp1_);
-                this->axpy(-1.0, this->residual_history_[i2], this->tmp1_);
-
-                c(j) = this->template inner_product<normalize>(this->tmp1_, this->residual_history_[idx_step]);
-            }
-
-            for (int j = 0; j < history_size; j++) {
-                double gamma = 0;
-                for (int i = 0; i < history_size; i++) {
-                    gamma += c(i) * S(i, j);
+            if (invertible) {
+                // - beta * (delta F) * h
+                for (int i = 1; i <= history_size; ++i) {
+                    auto j = this->idx_hist(this->step_ - i);
+                    this->axpy(-this->beta_ * h(history_size - i), this->residual_history_[j], this->tmp1_);
                 }
 
-                int i1 = this->idx_hist(this->step_ - j);
-                int i2 = this->idx_hist(this->step_ - j - 1);
-
-                this->copy(this->residual_history_[i1], this->tmp1_);
-                this->axpy(-1.0, this->residual_history_[i2], this->tmp1_);
-
-                this->copy(this->output_history_[i1], this->tmp2_);
-                this->axpy(-1.0, this->output_history_[i2], this->tmp2_);
-
-                this->axpy(this->beta_, this->tmp1_, this->tmp2_);
-                this->axpy(-gamma, this->tmp2_, this->input_);
+                // - (delta X) * h
+                for (int i = 1; i <= history_size; ++i) {
+                    auto j = this->idx_hist(this->step_ - i);
+                    this->axpy(-h(history_size - i), this->output_history_[j], this->tmp1_);
+                }
+            } else {
+                this->history_size_ = 0;
             }
         }
-        this->copy(this->output_history_[idx_step], this->output_history_[idx_next_step]);
-        this->axpy(this->beta_, this->residual_history_[idx_step], this->output_history_[idx_next_step]);
-        this->axpy(1.0, this->input_, this->output_history_[idx_next_step]);
+
+        // In case history is full, set S_[1:end-1,1:end-1] .= S_[2:end,2:end]
+        if (this->history_size_ == this->max_history_ - 1) {
+            for (int col = 0; col <= history_size - 2; ++col) {
+                for (int row = 0; row <= history_size - 2; ++row) {
+                    this->S_(row, col) = this->S_(row + 1, col + 1);
+                }
+            }
+        }
+
+        this->copy(this->tmp1_, this->output_history_[idx_next_step]);
+        this->history_size_ = std::min(this->history_size_ + 1, this->max_history_ - 1);
     }
 };
 } // namespace mixer
