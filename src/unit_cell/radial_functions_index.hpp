@@ -145,27 +145,6 @@ class radial_functions_index : public std::vector<radial_function_index_descript
         /* current order of the radial function for l */
         int o = static_cast<int>(index_by_l_order_[l].size());
 
-        /* check for j = l +/- 1/2 */
-        /* 
-         * Right now this check is impossible because UPF files impose no odrder on the angular quantum number
-         * It can be, for example {3/2 5/2} or {5/2, 3/2} in different pseudos.
-         */
-        //if (l__.s() == 1 && l__() !=0) { /* this is not s-state for which there is no l-1/2 */
-        //    if (o == 0) {
-        //        throw std::runtime_error("add j = l - 1/2 first");
-        //    }
-        //    int j = index_by_l_order_[l][o - 1];
-        //    auto ri = (*this)[j];
-        //    if (ri.l() != l || ri.l.s() != -1) {
-        //        throw std::runtime_error("j = l - 1/2 index is not in the list");
-        //    }
-        //    if (j != i - 1) {
-        //        std::stringstream s;
-        //        s << "j = l - 1/2 index is not the last; l=" << l << " s=" << l__.s();
-        //        throw std::runtime_error(s.str());
-        //    }
-        //}
-
         int idxlo = is_lo__ ? static_cast<int>(index_by_idxlo_.size()) : -1;
 
         /* add radial function descriptor */
@@ -180,12 +159,23 @@ class radial_functions_index : public std::vector<radial_function_index_descript
 
     inline int index_by_l_order(aqn l__, int order__) const
     {
-        return index_by_l_order_[l__()][order__];
+        int idx = index_by_l_order_[l__()][order__];
+        if ((*this)[idx].l.s() != l__.s()) {
+            throw std::runtime_error("wrong value of spin");
+        }
+        if ((*this)[idx].order != order__) {
+            throw std::runtime_error("wrong order");
+        }
+        return idx;
     }
 
     inline int index_by_l_order(int l__, int order__) const
     {
-        return index_by_l_order_[l__][order__];
+        int idx = index_by_l_order_[l__][order__];
+        if ((*this)[idx].order != order__) {
+            throw std::runtime_error("wrong order");
+        }
+        return idx;
     }
 
     inline bool full_j() const
@@ -198,7 +188,7 @@ class radial_functions_index : public std::vector<radial_function_index_descript
         return static_cast<int>(index_by_l_order_.size()) - 1;
     }
 
-    inline int order(int l__) const
+    inline int max_order(int l__) const
     {
         return static_cast<int>(index_by_l_order_[l__].size());
     }
@@ -269,6 +259,8 @@ class basis_functions_index : public std::vector<basis_function_index_descriptor
 
     ///// Maximum l of the radial basis functions.
     //int lmax_{-1};
+    //
+    std::vector<std::vector<int>> index_by_lm_order_; // TODO: subject to change to index_by_lm_idxrf
 
   public:
     basis_functions_index()
@@ -283,10 +275,10 @@ class basis_functions_index : public std::vector<basis_function_index_descriptor
         /* check radial index here */
         if (indexr_.full_j()) {
             for (int l = 1; l <= indexr_.lmax(); l++) { /* skip s-states, they don't have +/- 1/2 splitting */
-                if (indexr_.order(l) % 2) {
+                if (indexr_.max_order(l) % 2) {
                     throw std::runtime_error("number of radial functions should be even");
                 }
-                for (int o = 0; o < indexr_.order(l); o += 2) {
+                for (int o = 0; o < indexr_.max_order(l); o += 2) {
                     auto i1 = indexr_.index_by_l_order(l, o);
                     auto i2 = indexr_.index_by_l_order(l, o + 1);
                     if (i2 != i1 + 1) {
@@ -300,14 +292,22 @@ class basis_functions_index : public std::vector<basis_function_index_descriptor
         }
 
         if (!expand_full_j__) {
+            int lmmax = utils::lmmax(indexr_.lmax());
+            index_by_lm_order_.resize(lmmax);
             for (int idxrf = 0; idxrf < static_cast<int>(indexr_.size()); idxrf++) {
                 int l = indexr_[idxrf].l();
+                int o = indexr_[idxrf].order;
                 for (int m = -l; m <= l; m++) {
                     sirius::experimental::basis_function_index_descriptor b;
                     b.idxrf = idxrf;
                     b.m = m;
                     b.lm = utils::lm(l, m);
+                    if (static_cast<int>(index_by_lm_order_[b.lm].size()) < indexr_.max_order(l)) {
+                        index_by_lm_order_[b.lm].resize(indexr_.max_order(l));
+                    }
+                    int idx = static_cast<int>(this->size());
                     this->push_back(b);
+                    index_by_lm_order_[b.lm][o] = idx;
                 }
             }
         }
@@ -317,6 +317,22 @@ class basis_functions_index : public std::vector<basis_function_index_descriptor
     {
         return indexr_[(*this)[xi__].idxrf].l();
     }
+
+    inline int lm(int xi__) const
+    {
+        return (*this)[xi__].lm;
+    }
+
+    inline int order(int xi__) const
+    {
+        return indexr_[(*this)[xi__].idxrf].order;
+    }
+
+    inline int index_by_lm_order(int lm__, int order__) const // TODO: subject to change
+    {
+        return index_by_lm_order_[lm__][order__];
+    }
+
 
     //void init(radial_functions_index& indexr__)
     //{

@@ -66,22 +66,22 @@ Density::Density(Simulation_context& ctx__)
                                                  ctx_.num_mag_comp(), unit_cell_.num_atoms());
     density_matrix_.zero();
 
-    if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
+    //if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
 
-        int indexb_max = -1;
+    //    int indexb_max = -1;
 
-        // TODO: move detection of indexb_max to unit_cell
-        // Don't forget that Hubbard class has the same code
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
-                if (ctx__.unit_cell().atom(ia).type().spin_orbit_coupling()) {
-                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size() / 2);
-                } else {
-                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size());
-                }
-            }
-        }
-    }
+    //    // TODO: move detection of indexb_max to unit_cell
+    //    // Don't forget that Hubbard class has the same code
+    //    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+    //        if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
+    //            if (ctx__.unit_cell().atom(ia).type().spin_orbit_coupling()) {
+    //                indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size() / 2);
+    //            } else {
+    //                indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size());
+    //            }
+    //        }
+    //    }
+    //}
 
     occupation_matrix_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
 

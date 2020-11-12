@@ -142,7 +142,7 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
 
                 // compute the derivative of |phi> corresponding to the
                 // atom atom_id
-                const int lmax_at = 2 * ctx_.unit_cell().atom(atom_id).type().hubbard_orbital(0).l + 1;
+                const int lmax_at = 2 * ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(0).l + 1;
 
                 // compute the derivatives of the hubbard wave functions
                 // |phi_m^J> (J = atom_id) compared to a displacement of atom J.
@@ -569,7 +569,7 @@ Hubbard::compute_occupancies(K_point&                    kp,
     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ++ia1) {
         const auto& atom = ctx_.unit_cell().atom(ia1);
         if (atom.type().hubbard_correction()) {
-            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
+            const int lmax_at = 2 * atom.type().lo_descriptor_hub(0).l + 1;
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 const int ispn_offset = ispn * this->number_of_hubbard_orbitals() + this->offset_[ia1];
                 for (int m2 = 0; m2 < lmax_at; m2++) {

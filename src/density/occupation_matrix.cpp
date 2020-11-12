@@ -195,8 +195,8 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 const auto& atom = ctx_.unit_cell().atom(ia);
                 if (atom.type().hubbard_correction()) {
-                    for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb++) {
-                        const int lmmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
+                    //for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb++) {
+                        const int lmmax_at = 2 * atom.type().indexr_hub()[0].l() + 1;
                         for (int mp = 0; mp < lmmax_at; mp++) {
                             const int mmp = r.second[ia] + mp;
                             for (int m = 0; m < lmmax_at; m++) {
@@ -204,7 +204,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                                 data_(m, mp, ispn, ia) += occ_mtrx(mm, mmp);
                             }
                         }
-                    }
+                    //}
                 }
             }
             PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|4");
@@ -233,7 +233,7 @@ void Occupation_matrix::access(std::string const& what__, double_complex* occ__,
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         auto& atom = ctx_.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
-            const int l = ctx_.unit_cell().atom(ia).type().hubbard_orbital(0).l;
+            const int l = ctx_.unit_cell().atom(ia).type().indexr_hub()[0].l();
             for (int m1 = -l; m1 <= l; m1++) {
                 for (int m2 = -l; m2 <= l; m2++) {
                     if (what__ == "get") {
@@ -262,16 +262,16 @@ void Occupation_matrix::init()
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         const auto& atom = ctx_.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
-            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
-            if (atom.type().hubbard_orbital(0).initial_occupancy.size()) {
+            const int lmax_at = 2 * atom.type().indexr_hub()[0].l() + 1;
+            if (atom.type().lo_descriptor_hub(0).initial_occupancy.size()) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < lmax_at; m++) {
-                        this->data_(m, m, ispn, ia) = atom.type().hubbard_orbital(0).initial_occupancy[m + ispn * lmax_at];
+                        this->data_(m, m, ispn, ia) = atom.type().lo_descriptor_hub(0).initial_occupancy[m + ispn * lmax_at];
                     }
                 }
             } else {
                 // compute the total charge for the hubbard orbitals
-                double charge = atom.type().hubbard_orbital(0).occupancy();
+                double charge = atom.type().lo_descriptor_hub(0).occupancy();
                 bool   nm     = true; // true if the atom is non magnetic
                 int    majs, mins;
                 if (ctx_.num_spins() != 1) {
@@ -361,7 +361,7 @@ void Occupation_matrix::print_occupancies() const
             const auto& atom = ctx_.unit_cell().atom(ia);
 
             if (atom.type().hubbard_correction()) {
-                const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
+                const int lmax_at = 2 * atom.type().lo_descriptor_hub(0).l + 1;
                 for (int m1 = 0; m1 < lmax_at; m1++) {
                     for (int m2 = 0; m2 < lmax_at; m2++) {
                         std::printf("%.3lf ", std::abs(this->data_(m1, m2, 0, ia)));
