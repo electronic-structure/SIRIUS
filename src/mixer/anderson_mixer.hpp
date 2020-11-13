@@ -105,10 +105,10 @@ class Anderson : public Mixer<FUNCS...>
         // Set up the next x_{n+1} = x_n.
         // Can't use this->output_history_[idx_step + 1] directly here,
         // as it's still used when history is full.
-        this->copy(this->output_history_[idx_step], this->tmp1_);
+        this->copy(this->output_history_[idx_step], this->input_);
 
         // + beta * f_n
-        this->axpy(this->beta_, this->residual_history_[idx_step], this->tmp1_);
+        this->axpy(this->beta_, this->residual_history_[idx_step], this->input_);
 
         if (history_size > 0) {
             // Compute the difference residual[step] - residual[step - 1]
@@ -150,13 +150,13 @@ class Anderson : public Mixer<FUNCS...>
                 // - beta * (delta F) * h
                 for (int i = 1; i <= history_size; ++i) {
                     auto j = this->idx_hist(this->step_ - i);
-                    this->axpy(-this->beta_ * h(history_size - i), this->residual_history_[j], this->tmp1_);
+                    this->axpy(-this->beta_ * h(history_size - i), this->residual_history_[j], this->input_);
                 }
 
                 // - (delta X) * h
                 for (int i = 1; i <= history_size; ++i) {
                     auto j = this->idx_hist(this->step_ - i);
-                    this->axpy(-h(history_size - i), this->output_history_[j], this->tmp1_);
+                    this->axpy(-h(history_size - i), this->output_history_[j], this->input_);
                 }
             } else {
                 this->history_size_ = 0;
@@ -172,7 +172,7 @@ class Anderson : public Mixer<FUNCS...>
             }
         }
 
-        this->copy(this->tmp1_, this->output_history_[idx_next_step]);
+        this->copy(this->input_, this->output_history_[idx_next_step]);
         this->history_size_ = std::min(this->history_size_ + 1, this->max_history_ - 1);
     }
 };

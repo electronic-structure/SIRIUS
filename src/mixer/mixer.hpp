@@ -310,10 +310,6 @@ class Mixer
         // create function object placeholders with arguments provided
         std::get<FUNC_INDEX>(input_).reset(
             new typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
-        std::get<FUNC_INDEX>(tmp1_).reset(new
-                                          typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
-        std::get<FUNC_INDEX>(tmp2_).reset(new
-                                          typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
 
         for (std::size_t i = 0; i < max_history_; ++i) {
             std::get<FUNC_INDEX>(output_history_[i])
@@ -448,10 +444,6 @@ class Mixer
 
     // The residual history between input and output
     std::vector<std::tuple<std::unique_ptr<FUNCS>...>> residual_history_;
-
-    // Tempory storage for compuations
-    std::tuple<std::unique_ptr<FUNCS>...> tmp1_;
-    std::tuple<std::unique_ptr<FUNCS>...> tmp2_;
 };
 } // namespace mixer
 } // namespace sirius
