@@ -406,6 +406,8 @@ int main(int argn, char** argv)
     args.register_key("--parameters.pw_cutoff=", "");
     args.register_key("--iterative_solver.orthogonalize=", "");
     args.register_key("--iterative_solver.early_restart=", "{double} value between 0 and 1 to control the early restart ratio in Davidson");
+    args.register_key("--mixer.type=", "{string} mixer name (anderson, anderson_stable, broyden2, linear)");
+    args.register_key("--mixer.beta=", "{double} mixing parameter");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
