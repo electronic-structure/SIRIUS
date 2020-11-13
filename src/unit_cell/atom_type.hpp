@@ -620,33 +620,33 @@ class Atom_type
         return static_cast<int>(ps_paw_wfs_.size());
     }
 
-    inline mdarray<double, 2> const& ae_paw_wfs_array() const
+    inline auto const& ae_paw_wfs_array() const
     {
         return ae_paw_wfs_array_;
     }
 
-    inline mdarray<double, 2> const& ps_paw_wfs_array() const
+    inline auto const& ps_paw_wfs_array() const
     {
         return ps_paw_wfs_array_;
     }
 
-    inline std::vector<double> const& paw_ae_core_charge_density() const
+    inline auto const& paw_ae_core_charge_density() const
     {
         return paw_ae_core_charge_density_;
     }
 
-    inline std::vector<double>& paw_ae_core_charge_density(std::vector<double> inp__)
+    inline auto & paw_ae_core_charge_density(std::vector<double> inp__)
     {
         paw_ae_core_charge_density_ = inp__;
         return paw_ae_core_charge_density_;
     }
 
-    inline std::vector<double> const& paw_wf_occ() const
+    inline auto const& paw_wf_occ() const
     {
         return paw_wf_occ_;
     }
 
-    inline std::vector<double>& paw_wf_occ(std::vector<double> inp__)
+    inline auto& paw_wf_occ(std::vector<double> inp__)
     {
         paw_wf_occ_ = inp__;
         return paw_wf_occ_;
@@ -780,7 +780,7 @@ class Atom_type
         return static_cast<int>(aw_descriptors_.size());
     }
 
-    inline radial_solution_descriptor_set const& aw_descriptor(int l) const
+    inline auto const& aw_descriptor(int l) const
     {
         assert(l < (int)aw_descriptors_.size());
         return aw_descriptors_[l];
@@ -791,7 +791,7 @@ class Atom_type
         return (int)lo_descriptors_.size();
     }
 
-    inline local_orbital_descriptor const& lo_descriptor(int idx) const
+    inline auto const& lo_descriptor(int idx) const
     {
         return lo_descriptors_[idx];
     }
