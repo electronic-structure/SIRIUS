@@ -19,7 +19,7 @@
 
 /** \file anderson_stable_mixer.hpp
  *
- *   \brief Contains definition and implementation sirius::AndersonStable.
+ *   \brief Contains definition and implementation sirius::Anderson_stable.
  */
 
 #ifndef __ANDERSON_STABLE_MIXER_HPP__
@@ -44,15 +44,17 @@ namespace mixer {
 
 /// Anderson mixer.
 /** 
- * Quasi-Newton limited-memory method which updates xₙ₊₁ = xₙ - Gₙfₙ
- * where Gₙ is an approximate inverse Jacobian. Anderson is derived
+ * Quasi-Newton limited-memory method which updates \f$ x_{n+1} = x_n - G_nf_n \f$
+ * where \f$ G_n \f$ is an approximate inverse Jacobian. Anderson is derived
  * by taking the low-rank update to the inverse Jacobian
  * 
- * Gₙ₊₁ = (Gₙ + ΔXₙ - GₙΔFₙ)(ΔFₙᵀΔFₙ)⁻¹ΔFₙᵀ
+ * \f[
+ * G_{n+1} = (G_n + \Delta X_n - G_n \Delta F_n)(\Delta F_n^T \Delta F_n)^{-1}\Delta F_n^T
+ * \f]
  * 
- * such that the secant equations Gₙ₊₁ΔFₙ = ΔXₙ are satisfied for previous
- * iterations. Then Gₙ is taken -βI. This implementation uses Gram-Schmidt
- * to orthogonalize ΔFₙ to solve the least-squares problem. If stability is
+ * such that the secant equations \f$ G_{n+1} \Delta F_n = \Delta X_n \f$ are satisfied for previous
+ * iterations. Then \f$ G_n \f$ is taken \f$ -\beta I \f$. This implementation uses Gram-Schmidt
+ * to orthogonalize \f$ \Delta F_n \f$ to solve the least-squares problem. If stability is
  * not an issue, use Anderson instead.
  * 
  * Reference paper: Fang, Haw‐ren, and Yousef Saad. "Two classes of multisecant
@@ -60,7 +62,7 @@ namespace mixer {
  * 16.3 (2009): 197-221.
  */
 template <typename... FUNCS>
-class AndersonStable : public Mixer<FUNCS...>
+class Anderson_stable : public Mixer<FUNCS...>
 {
   private:
     double beta_;
@@ -68,7 +70,7 @@ class AndersonStable : public Mixer<FUNCS...>
     std::size_t history_size_;
 
   public:
-    AndersonStable(std::size_t max_history, double beta)
+    Anderson_stable(std::size_t max_history, double beta)
         : Mixer<FUNCS...>(max_history)
         , beta_(beta)
         , R_(max_history - 1, max_history - 1),
@@ -238,4 +240,4 @@ class AndersonStable : public Mixer<FUNCS...>
 } // namespace mixer
 } // namespace sirius
 
-#endif // __ANDERSON_MIXER_HPP__
+#endif // __ANDERSON_STABLE_MIXER_HPP__

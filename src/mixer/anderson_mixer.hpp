@@ -22,8 +22,8 @@
  *   \brief Contains definition and implementation sirius::Anderson.
  */
 
-#ifndef __Anderson_MIXER_HPP__
-#define __Anderson_MIXER_HPP__
+#ifndef __ANDERSON_MIXER_HPP__
+#define __ANDERSON_MIXER_HPP__
 
 #include <tuple>
 #include <functional>
@@ -44,16 +44,18 @@ namespace mixer {
 
 /// Anderson mixer.
 /** 
- * Quasi-Newton limited-memory method which updates xₙ₊₁ = xₙ - Gₙfₙ
- * where Gₙ is an approximate inverse Jacobian. Anderson is derived
+ * Quasi-Newton limited-memory method which updates \f$ x_{n+1} = x_n - G_nf_n \f$
+ * where \f$ G_n \f$ is an approximate inverse Jacobian. Anderson is derived
  * by taking the low-rank update to the inverse Jacobian
  * 
- * Gₙ₊₁ = (Gₙ + ΔXₙ - GₙΔFₙ)(ΔFₙᵀΔFₙ)⁻¹ΔFₙᵀ
+ * \f[
+ * G_{n+1} = (G_n + \Delta X_n - G_n \Delta F_n)(\Delta F_n^T \Delta F_n)^{-1}\Delta F_n^T
+ * \f]
  * 
- * such that the secant equations Gₙ₊₁ΔFₙ = ΔXₙ are satisfied for previous
- * iterations. Then Gₙ is taken -βI. The Anderson class explicilty constructs
- * the Gram matrix ΔFₙᵀΔFₙ to solve the least-squares problem. For more stability
- * use AndersonStable, which comes at the cost of orthogonalizing ΔFₙ.
+ * such that the secant equations \f$ G_{n+1} \Delta F_n = \Delta X_n \f$ are satisfied for previous
+ * iterations. Then \f$ G_n \f$ is taken \f$ -\beta I \f$. The Anderson class explicilty constructs
+ * the Gram matrix \f$ \Delta F_n^T \Delta F_n \f$ to solve the least-squares problem. For more stability
+ * use Anderson_stable, which comes at the cost of orthogonalizing \f$ \Delta F_n \f$.
  * 
  * Reference paper: Fang, Haw‐ren, and Yousef Saad. "Two classes of multisecant
  * methods for nonlinear acceleration." Numerical Linear Algebra with Applications
