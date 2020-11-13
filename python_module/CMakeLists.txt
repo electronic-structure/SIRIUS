@@ -1,4 +1,5 @@
 if(CREATE_PYTHON_MODULE)
+  find_package(Python3 COMPONENTS Development REQUIRED)
   set(CMAKE_CXX_STANDARD 14)
   find_package(mpi4py REQUIRED)
 

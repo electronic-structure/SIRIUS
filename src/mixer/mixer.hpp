@@ -60,12 +60,14 @@ struct FunctionProperties
                        std::function<double(const FUNC&, const FUNC&)> inner_,
                        std::function<void(double, FUNC&)> scal_,
                        std::function<void(const FUNC&, FUNC&)> copy_,
-                       std::function<void(double, const FUNC&, FUNC&)> axpy_)
+                       std::function<void(double, const FUNC&, FUNC&)> axpy_,
+                       std::function<void(double, double, FUNC&, FUNC&)> rotate_)
         : size(size_)
         , inner(inner_)
         , scal(scal_)
         , copy(copy_)
         , axpy(axpy_)
+        , rotate(rotate_)
     {
     }
 
@@ -75,6 +77,7 @@ struct FunctionProperties
         , scal([](double, FUNC&) -> void {})
         , copy([](const FUNC&, FUNC&) -> void {})
         , axpy([](double, const FUNC&, FUNC&) -> void {})
+        , rotate([](double, double, FUNC&, FUNC&) -> void {})
     {
     }
 
@@ -92,6 +95,9 @@ struct FunctionProperties
 
     // axpy function. y = alpha * x + y
     std::function<void(double, const FUNC&, FUNC&)> axpy;
+
+    // rotate function [x y] * [c -s; s c]
+    std::function<void(double, double, FUNC&, FUNC&)> rotate;
 };
 
 // Implementation of templated recursive calls through tuples
@@ -226,6 +232,32 @@ struct Axpy<0, FUNCS...>
     }
 };
 
+template <std::size_t FUNC_REVERSE_INDEX, typename... FUNCS>
+struct Rotate
+{
+    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double c, double s,
+                      std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    {
+        if (std::get<FUNC_REVERSE_INDEX>(x) && std::get<FUNC_REVERSE_INDEX>(y)) {
+            std::get<FUNC_REVERSE_INDEX>(function_prop)
+                .rotate(c, s, *std::get<FUNC_REVERSE_INDEX>(x), *std::get<FUNC_REVERSE_INDEX>(y));
+        }
+        Rotate<FUNC_REVERSE_INDEX - 1, FUNCS...>::apply(function_prop, c, s, x, y);
+    }
+};
+
+template <typename... FUNCS>
+struct Rotate<0, FUNCS...>
+{
+    static void apply(const std::tuple<FunctionProperties<FUNCS>...>& function_prop, double c, double s,
+                      std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    {
+        if (std::get<0>(x) && std::get<0>(y)) {
+            std::get<0>(function_prop).rotate(c, s, *std::get<0>(x), *std::get<0>(y));
+        }
+    }
+};
+
 } // namespace mixer_impl
 
 /// Abstract mixer for variadic number of Function objects, which are described by FunctionProperties.
@@ -278,10 +310,6 @@ class Mixer
         // create function object placeholders with arguments provided
         std::get<FUNC_INDEX>(input_).reset(
             new typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
-        std::get<FUNC_INDEX>(tmp1_).reset(new
-                                          typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
-        std::get<FUNC_INDEX>(tmp2_).reset(new
-                                          typename std::tuple_element<FUNC_INDEX, std::tuple<FUNCS...>>::type(args...));
 
         for (std::size_t i = 0; i < max_history_; ++i) {
             std::get<FUNC_INDEX>(output_history_[i])
@@ -345,7 +373,7 @@ class Mixer
     // Mixing implementation
     virtual void mix_impl() = 0;
 
-    // update residual histroy for current step
+    // update residual history for current step
     void update_residual()
     {
         this->copy(input_, residual_history_[idx_hist(step_)]);
@@ -391,6 +419,11 @@ class Mixer
         mixer_impl::Axpy<sizeof...(FUNCS) - 1, FUNCS...>::apply(functions_, alpha, x, y);
     }
 
+    void rotate(double c, double s, std::tuple<std::unique_ptr<FUNCS>...>& x, std::tuple<std::unique_ptr<FUNCS>...>& y)
+    {
+        mixer_impl::Rotate<sizeof...(FUNCS) - 1, FUNCS...>::apply(functions_, c, s, x, y);
+    }
+
     // Strictly increasing counter, indicating the number of mixing steps
     std::size_t step_;
 
@@ -411,10 +444,6 @@ class Mixer
 
     // The residual history between input and output
     std::vector<std::tuple<std::unique_ptr<FUNCS>...>> residual_history_;
-
-    // Tempory storage for compuations
-    std::tuple<std::unique_ptr<FUNCS>...> tmp1_;
-    std::tuple<std::unique_ptr<FUNCS>...> tmp2_;
 };
 } // namespace mixer
 } // namespace sirius
