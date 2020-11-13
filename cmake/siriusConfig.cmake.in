@@ -4,6 +4,12 @@ if(NOT TARGET sirius::sirius)
   # Find bundled modules first  
   set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/modules" ${CMAKE_MODULE_PATH})
 
+  # store CXX compiler id. Used in MKL package.
+  set(SIRIUS_CXX_COMPILER_ID @CMAKE_CXX_COMPILER_ID@)
+  if(NOT ${CMAKE_CXX_COMPILER_ID})
+    set(CMAKE_CXX_COMPILER_ID ${SIRIUS_CXX_COMPILER_ID})
+  endif()
+
   # if not relocatable
   if (NOT @CMAKE_SKIP_INSTALL_RPATH@) 
     set(MPI_ROOT @MPI_ROOT@)
@@ -24,13 +30,14 @@ if(NOT TARGET sirius::sirius)
     set(mode QUIET)
   endif()
 
-  find_package(MPI ${mode})
+  find_package(MPI ${mode} COMPONENTS CXX)
   find_package(GSL ${mode})
   find_package(LibXC 3.0.0 ${mode})
   find_package(LibSPG ${mode})
   find_package(HDF5 ${mode} C)
   include("${CMAKE_CURRENT_LIST_DIR}/hdf5_target.cmake")
   find_package(SpFFT 0.9.6 CONFIG ${mode})
+  find_package(SPLA 1.1.0 CONFIG ${mode})
 
   if(@USE_OPENMP@)
     find_package(OpenMP ${mode})

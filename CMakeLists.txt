@@ -1,7 +1,7 @@
 # We could be fine with 3.12, but 3.14 has ctest --show-only=json-v1 used in CI.
 cmake_minimum_required(VERSION 3.14)
 
-project(SIRIUS VERSION 7.0.1)
+project(SIRIUS VERSION 7.0.2)
 
 # user variables
 set(CREATE_PYTHON_MODULE OFF CACHE BOOL "create sirius Python module")
@@ -68,7 +68,7 @@ if (CREATE_PYTHON_MODULE)
     find_package(Python2 REQUIRED)
     set(PYTHON_EXECUTABLE ${Python2_EXECUTABLE})
   else()
-    find_package(Python3 REQUIRED)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
     set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
   endif()
 endif()

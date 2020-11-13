@@ -6,10 +6,11 @@ find_package(PkgConfig)
 pkg_search_module(_ELPA
   elpa
   elpa_openmp
+  elpa-openmp-2019.05.001
   elpa_openmp-2019.11.001
+  elpa_openmp-2020.05.001
   elpa-2019.05.001
   elpa-2019.11.001
-  elpa-2019.05.001
   elpa-2020.05.001)
 
 find_library(ELPA_LIBRARIES

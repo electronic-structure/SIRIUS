@@ -3,9 +3,9 @@
         "type" :
         {
             "description": "type of mixer",
-            "possible_values" : ["linear", "broyden1", "broyden2"],
-            "usage" : "type broyden1",
-            "default_value" : "broyden1",
+            "possible_values" : ["linear", "anderson", "broyden2"],
+            "usage" : "type anderson",
+            "default_value" : "anderson",
             "variable_type" : "string"
         },
         "max_history" :{

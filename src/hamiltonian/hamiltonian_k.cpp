@@ -300,12 +300,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
     /* maximum number of apw coefficients in the block of atoms */
     int max_mt_aw = num_atoms_in_block * uc.max_mt_aw_basis_size();
     /* current processing unit */
-#if defined(__ROCM)
-    // ROCm does not support cublasxt
-    auto pu = device_t::CPU;
-#else
     auto pu = H0_.ctx().processing_unit();
-#endif
 
     auto la = linalg_t::none;
     auto mt = memory_t::none;
@@ -320,7 +315,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             break;
         }
         case device_t::GPU: {
-            la = linalg_t::cublasxt;
+            la = linalg_t::spla;
             mt = memory_t::host_pinned;
             mt1 = memory_t::device;
             nb = 1;

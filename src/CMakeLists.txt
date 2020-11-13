@@ -76,6 +76,7 @@ set(_SOURSES
   "sirius_version.cpp"
   "mixer/mixer_functions.cpp"
   "linalg/eigensolver.cpp"
+  "linalg/linalg_spla.cpp"
   "nlcglib/adaptor.cpp"
   "input.cpp"
   )
@@ -160,7 +161,7 @@ install(TARGETS sirius
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
-                             "${CMAKE_INSTALL_INCLUDEDIR}/sirius/SDDK")
+                             "${CMAKE_INSTALL_INCLUDEDIR}/sirius/src/SDDK")
 install(EXPORT sirius_targets
         FILE siriusTargets.cmake
         NAMESPACE sirius::

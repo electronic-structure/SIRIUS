@@ -36,6 +36,7 @@
 #include "memory.hpp"
 #include "dmatrix.hpp"
 #include "gpu/acc.hpp"
+#include "linalg_spla.hpp"
 
 namespace sddk {
 
@@ -120,6 +121,10 @@ class linalg
     template <typename T>
     inline int sytrf(ftn_int n, T* A, ftn_int lda, ftn_int* ipiv) const;
 
+    /// solve Ax=b in place of b where A is factorized with sytrf.
+    template <typename T>
+    inline int sytrs(ftn_int n, ftn_int nrhs, T* A, ftn_int lda, ftn_int* ipiv, T* b, ftn_int ldb) const;
+
     /*
         matrix inversion
     */
@@ -170,6 +175,18 @@ class linalg
         }
     }
 
+    template <typename T>
+    inline bool sysolve(ftn_int n, matrix<T> &A, mdarray<T, 1> &b) const
+    {
+        std::vector<int> ipiv(n);
+        int info = this->sytrf(n, A.at(memory_t::host), A.ld(), ipiv.data());
+        if (info) return false;
+
+        info = this->sytrs(n, 1, A.at(memory_t::host), A.ld(), ipiv.data(), b.at(memory_t::host), b.ld());
+
+        return !info;
+    }
+
     /*
         solution of a linear system
     */
@@ -204,6 +221,10 @@ class linalg
     template <typename T>
     inline void tranu(ftn_int m, ftn_int n, sddk::dmatrix<T>& A, ftn_int ia, ftn_int ja, sddk::dmatrix<T>& C,
         ftn_int ic, ftn_int jc) const;
+
+    // Constructing a Given's rotation
+    template <typename T>
+    inline std::tuple<ftn_double, ftn_double, ftn_double> lartg(T f, T g) const;
 };
 
 template <>
@@ -239,6 +260,10 @@ inline void linalg::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_in
 #endif
             break;
 
+        }
+        case linalg_t::spla: {
+            splablas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+            break;
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -290,6 +315,10 @@ inline void linalg::gemm<ftn_double_complex>(char transa, char transb, ftn_int m
 #endif
             break;
 
+        }
+        case linalg_t::spla: {
+            splablas::zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+            break;
         }
         default: {
             throw std::runtime_error(linalg_msg_wrong_type);
@@ -995,6 +1024,24 @@ inline int linalg::sytri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_
 }
 
 template<>
+inline int linalg::sytrs<ftn_double>(ftn_int n, ftn_int nrhs, ftn_double* A, ftn_int lda, ftn_int* ipiv, ftn_double* b, ftn_int ldb) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_int info;
+            FORTRAN(dsytrs)("U", &n, &nrhs, A, &lda, ipiv, b, &ldb, &info, (ftn_len)1);
+            return info;
+            break;
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
+    return -1;
+}
+
+template<>
 inline int linalg::sytri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, ftn_int lda, ftn_int* ipiv) const
 {
     switch (la_) {
@@ -1010,6 +1057,22 @@ inline int linalg::sytri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, f
         }
     }
     return -1;
+}
+
+template<>
+inline std::tuple<ftn_double, ftn_double, ftn_double> linalg::lartg(ftn_double f, ftn_double g) const
+{
+    switch (la_) {
+        case linalg_t::lapack: {
+            ftn_double cs, sn, r;
+            FORTRAN(dlartg)(&f, &g, &cs, &sn, &r);
+            return std::make_tuple(cs, sn, r);
+        }
+        default: {
+            throw std::runtime_error(linalg_msg_wrong_type);
+            break;
+        }
+    }
 }
 
 template <typename T>

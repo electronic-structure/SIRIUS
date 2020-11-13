@@ -33,6 +33,7 @@
 #if defined(__GPU) && defined(__CUDA)
 #include "gpu/cusolver.hpp"
 #endif
+#include "linalg/linalg_spla.hpp"
 #if defined(__ELPA)
 #include "linalg/elpa.hpp"
 #endif
@@ -113,6 +114,8 @@ inline void initialize(bool call_mpi_init__ = true)
         cusolver::create_handle();
 #endif
     }
+    splablas::reset_handle();
+
 #if defined(__MAGMA)
     magma::init();
 #endif
@@ -147,6 +150,9 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 #if defined(__LIBSCI_ACC)
     libsci_acc_finalize();
 #endif
+
+    // must be called before device is reset
+    splablas::reset_handle();
 
     if (acc::num_devices()) {
 #if defined(__GPU)

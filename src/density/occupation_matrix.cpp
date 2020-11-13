@@ -65,7 +65,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
         if (is_device_memory(ctx_.preferred_memory_t())) {
             la = linalg_t::gpublas;
         } else {
-            la = linalg_t::cublasxt;
+            la = linalg_t::spla;
         }
     }
 

@@ -74,6 +74,8 @@ void Simulation_parameters::import(cmd_args const& args__)
     parameters_input_.pw_cutoff_   = args__.value("parameters.pw_cutoff", parameters_input_.pw_cutoff_);
 
     iterative_solver_input_.early_restart_ = args__.value("iterative_solver.early_restart", iterative_solver_input_.early_restart_);
+    mixer_input_.beta_ = args__.value("mixer.beta", mixer_input_.beta_);
+    mixer_input_.type_ = args__.value("mixer.type", mixer_input_.type_);
 }
 
 void Simulation_parameters::set_core_relativity(std::string name__)
