@@ -56,6 +56,8 @@ class Broyden2 : public Mixer<FUNCS...>
         , beta0_(beta0)
         , beta_scaling_factor_(beta_scaling_factor)
         , linear_mix_rmse_tol_(linear_mix_rmse_tol)
+        , S_(max_history, max_history)
+        , gamma_(max_history)
     {
     }
 
@@ -64,88 +66,73 @@ class Broyden2 : public Mixer<FUNCS...>
         const auto idx_step      = this->idx_hist(this->step_);
         const auto idx_next_step = this->idx_hist(this->step_ + 1);
 
-        const auto history_size = std::min(this->step_, this->max_history_);
-
-        // beta scaling
-        if (this->step_ > this->max_history_) {
-            const double rmse_avg = std::accumulate(this->rmse_history_.begin(), this->rmse_history_.end(), 0.0) /
-                                    this->rmse_history_.size();
-            if (this->rmse_history_[idx_step] > rmse_avg) {
-                this->beta_ = std::max(beta0_, this->beta_ * beta_scaling_factor_);
-            }
-        }
-
-        const double rmse = this->rmse_history_[idx_step];
+        const auto n = static_cast<int>(std::min(this->step_, this->max_history_ - 1));
 
         const bool normalize = false;
 
-        if ((history_size > 1 && rmse < this->linear_mix_rmse_tol_ && this->linear_mix_rmse_tol_ > 0) ||
-            (this->linear_mix_rmse_tol_ <= 0 && this->step_ > this->max_history_)) {
-            sddk::mdarray<double, 2> S(history_size, history_size);
-            S.zero();
-            for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
-                int i1 = this->idx_hist(this->step_ - history_size + j1);
-                for (int j2 = 0; j2 <= j1; j2++) {
-                    int i2 = this->idx_hist(this->step_ - history_size + j2);
+        for (int i = 0; i <= n; ++i) {
+            int j = this->idx_hist(this->step_ - i);
+            this->S_(n - i, n) = this->S_(n, n - i) = this->template inner_product<normalize>(
+                this->residual_history_[j],
+                this->residual_history_[idx_step]
+            );
+        }
 
-                    S(j2, j1) = S(j1, j2) =
-                        this->template inner_product<normalize>(this->residual_history_[i1], this->residual_history_[i2]);
-                }
+        // Expand (I - Δf₁Δf₁ᵀ/Δf₁ᵀΔf₁)...(I - Δfₙ₋₁Δfₙ₋₁ᵀ/Δfₙ₋₁ᵀΔfₙ₋₁)fₙ
+        // to γ₁Δf₁ + ... + γₙ₋₁Δfₙ₋₁ + fₙ
+        // the denominator ΔfᵢᵀΔfᵢ is constant, so apply only at the end
+        for (int i = 1; i <= n; ++i) {
+            // compute -Δfᵢᵀfₙ
+            // = -(fᵢ₊₁ᵀfₙ - fᵢᵀfₙ)
+            this->gamma_(n - i) = this->S_(n - i, n) - this->S_(n - i + 1, n);
+
+            for (int j = 1; j < i; ++j) {
+                // compute -ΔfᵢᵀΔfⱼ
+                // = -(fᵢ₊₁ - fᵢ)(fⱼ₊₁ - fⱼ) 
+                // = -fᵢ₊₁ᵀfⱼ₊₁ + fᵢᵀfⱼ₊₁ + fᵢ₊₁ᵀfⱼ - fᵢᵀfⱼ 
+                this->gamma_(n - i) += (-this->S_(n - i + 1, n - j + 1) + this->S_(n - i + 1, n - j) + this->S_(n - i, n - j + 1) - this->S_(n - i, n - j)) * this->gamma_(n - j);
             }
 
-            sddk::mdarray<long double, 2> gamma_k(2 * history_size, history_size);
-            gamma_k.zero();
-            /* initial gamma_0 */
-            for (int i = 0; i < static_cast<int>(history_size); i++) {
-                gamma_k(i, i) = 0.25;
+            this->gamma_(n - i) /= this->S_(n - i + 1, n - i + 1) - this->S_(n - i + 1, n - i) - this->S_(n - i, n - i + 1) + this->S_(n - i, n - i);
+        }
+
+        this->copy(this->output_history_[idx_step], this->input_);
+
+        if (n > 0) {
+            // first vec is special
+            {
+                int j = this->idx_hist(this->step_ - n);
+                this->axpy(-this->beta_ * this->gamma_(0), this->residual_history_[j], this->input_);
+                this->axpy(-this->gamma_(0), this->output_history_[j], this->input_);
             }
 
-            std::vector<long double> v1(history_size);
-            std::vector<long double> v2(2 * history_size);
-
-            /* update gamma_k by recursion */
-            for (int k = 0; k < static_cast<int>(history_size) - 1; k++) {
-                /* denominator df_k^{T} S df_k */
-                long double d = S(k, k) + S(k + 1, k + 1) - S(k, k + 1) - S(k + 1, k);
-                /* nominator */
-                std::memset(&v1[0], 0, history_size * sizeof(long double));
-                for (int j = 0; j < static_cast<int>(history_size); j++) {
-                    v1[j] = S(k + 1, j) - S(k, j);
-                }
-
-                std::memset(&v2[0], 0, 2 * history_size * sizeof(long double));
-                for (int j = 0; j < static_cast<int>(2 * history_size); j++) {
-                    v2[j] = -(gamma_k(j, k + 1) - gamma_k(j, k));
-                }
-                v2[history_size + k] -= 1;
-                v2[history_size + k + 1] += 1;
-
-                for (int j1 = 0; j1 < static_cast<int>(history_size); j1++) {
-                    for (int j2 = 0; j2 < static_cast<int>(2 * history_size); j2++) {
-                        gamma_k(j2, j1) += v2[j2] * v1[j1] / d;
-                    }
-                }
+            for (int i = 1; i < n; ++i) {
+                auto coeff = this->gamma_(n - i - 1) - this->gamma_(n - i);
+                int j = this->idx_hist(this->step_ - i);
+                this->axpy(this->beta_ * coeff, this->residual_history_[j], this->input_);
+                this->axpy(coeff, this->output_history_[j], this->input_);
             }
 
-            std::memset(&v2[0], 0, 2 * history_size * sizeof(long double));
-            for (int j = 0; j < static_cast<int>(2 * history_size); j++) {
-                v2[j] = -gamma_k(j, static_cast<int>(history_size - 1));
+            // last vec is special.
+            {
+                int j = this->idx_hist(this->step_);
+                this->axpy(this->beta_ * (this->gamma_(n - 1) + 1), this->residual_history_[j], this->input_);
+                this->axpy(this->gamma_(n - 1), this->output_history_[j], this->input_);
             }
-            v2[2 * history_size - 1] += 1;
+        } else {
+            // Linear mixing step.
+            this->axpy(this->beta_, this->residual_history_[idx_step], this->input_);
+        }
 
-            // set input to 0, to use as buffer
-            this->scale(0.0, this->input_);
+        this->copy(this->input_, this->output_history_[idx_next_step]);
 
-            /* make linear combination of vectors and residuals; this is the update vector \tilda x */
-            for (int j = 0; j < static_cast<int>(history_size); j++) {
-                int i1 = this->idx_hist(this->step_ - history_size + j);
-                this->axpy(v2[j], this->residual_history_[i1], this->input_);
-                this->axpy(v2[j + history_size], this->output_history_[i1], this->input_);
+        if (n == static_cast<int>(this->max_history_) - 1) {
+            for (int col = 0; col < n; ++col) {
+                for (int row = 0; row < n; ++row) {
+                    this->S_(row, col) = this->S_(row + 1, col + 1);
+                }
             }
         }
-        this->copy(this->input_, this->output_history_[idx_next_step]);
-        this->scale(beta_, this->output_history_[idx_next_step]);
-        this->axpy(1.0 - beta_, this->output_history_[idx_step], this->output_history_[idx_next_step]);
     }
 
   private:
@@ -153,6 +140,8 @@ class Broyden2 : public Mixer<FUNCS...>
     double beta0_;
     double beta_scaling_factor_;
     double linear_mix_rmse_tol_;
+    sddk::mdarray<double, 2> S_;
+    sddk::mdarray<double, 1> gamma_;
 };
 } // namespace mixer
 } // namespace sirius
