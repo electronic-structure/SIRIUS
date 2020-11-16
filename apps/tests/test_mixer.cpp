@@ -118,7 +118,7 @@ int main(int argn, char** argv)
         false // exists
     };
 
-    for (auto const mixer_name : {"anderson", "anderson_stable", "linear", "broyden2"}) {
+    for (auto const mixer_name : {"anderson", "anderson_stable", "broyden2", "linear"}) {
         input.type_ = mixer_name;
 
         std::cout << "max history = " << input.max_history_
