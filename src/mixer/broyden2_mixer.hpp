@@ -42,9 +42,58 @@ namespace sirius {
 namespace mixer {
 
 /// Broyden mixer.
-/** Second version of the Broyden mixer, which doesn't require inversion of the Jacobian matrix.
- *  Reference paper: "Robust acceleration of self consistent field calculations for
- *  density functional theory", Baarman K, Eirola T, Havu V., J Chem Phys. 134, 134109 (2011)
+/**
+ * Quasi-Newton, limited-memory method which updates \f$ x_{n+1} = x_n - G_nf_n \f$
+ * where \f$ G_n \f$ is an approximate inverse Jacobian. Broyden 2 is derived
+ * by recursively taking rank-1 updates to the inverse Jacobian.
+ * It requires the secant equation \f$ G_{n+1}\Delta f_n = \Delta x_n\f$ to hold for the next approximate Jacobian
+ * \f$ G_{n+1}\f$, leading to the update:
+ * \f[
+ *     G_{n+1} := G_n + (\Delta x_n - G_n \Delta f_n)(\Delta f_n^*\Delta f_n)^{-1}\Delta f_n^*.
+ * \f]
+ * By induction we can show that \f$ G_n \f$ satisfies
+ * \f[
+ * G_n = G_1\prod_{i=1}^{n-1}\left(I - \frac{\Delta f_i \Delta f_i^*}{\Delta f_i^*\Delta f_i}\right)
+ *       + \sum_{i=1}^{n-1}\frac{\Delta x_i \Delta f_i^*}{\Delta f_i^*\Delta f_i}\prod_{j=i+1}^{n-1}
+ *         \left(I - \frac{\Delta f_j \Delta f_j^*}{\Delta f_j^*\Delta f_j}\right)
+ * \f]
+ * which shows orthogonalization with respect to the \f$ \Delta f_i \f$ vectors. A practical
+ * implementation can be derived from the identity
+ * \f[
+ *     G_n = G_1 + \sum_{i=1}^{n-1}\left(\Delta x_i - G_1\Delta f_i\right)\gamma_{i,n}^*
+ * \f]
+ * where
+ * \f[
+ *     \gamma_{i,n}^* = \frac{\Delta f_i^*}{\Delta f_i^*\Delta f_i}\prod_{j=i+1}^{n-1}
+ *     \left(I - \frac{\Delta f_j\Delta f_j^*}{\Delta f_j^*\Delta f_j}\right).
+ * \f]
+ * The \f$ \gamma_{i,n}\f$ vector satisfies the following recursion relation:
+ * \f[
+ *     \gamma_{i,n}^* = \frac{\Delta f_i^*}{\Delta f_i^*\Delta f_i}\left(I - \sum_{j=i+1}^{n-1}
+ *     \Delta f_j \gamma_{j,n}^*\right)
+ * \f]
+ * When updating \f$ x_{n+1} = x_n - G_nf_n\f$ we only have to compute:
+ * \f[
+ *     \alpha_i := \gamma_i^*f_n = \frac{1}{\Delta f_i^*\Delta f_i}\left[\Delta f_i^*f_n
+ *     - \sum_{j=i+1}^{n-1}\alpha_j\Delta f_i^* \Delta f_j \right]
+ * \f]
+ * for \f$ i \f$  from \f$ n-1\f$ down to \f$ 1 \f$ so that
+ * \f[\begin{aligned}
+ *     x_{n+1} &= x_n - G_nf_n \\
+ *             &= x_n - G_1f_n + \sum_{i=1}^{n-1}\alpha_iG_1\Delta f_i
+ *                - \sum_{i=1}^{n-1}\alpha_i\Delta x_i.
+ * \end{aligned}\f]
+ * In particular when \f$ G_1 = -\beta I\f$ we get the following update:
+ * \f[
+ *     x_{n+1} = x_n + \beta f_n - \sum_{i=1}^{n-1}\alpha_i \beta \Delta f_i - \sum_{i=1}^{n-1}\alpha_i\Delta x_i.
+ * \f]
+ * Finally, we store the vectors \f$ f_1, \cdots, f_n \f$ and \f$ x_1, \dots, x_n \f$ and update the Gram-matrix
+ * \f$ S_{ij} = f_i^*f_j \f$ in every iteration. The \f$ \alpha_i \f$ coefficients can be easily computed from
+ * \f$ S \f$.
+ *
+ * \note
+ * This class does not do anything to improve the stability of the Gram-Schmidt procedure (clearly visible in the
+ * first explicit expression for \f$ G_n \f$) and can therefore be very unstable for larger history sizes.
  */
 template <typename... FUNCS>
 class Broyden2 : public Mixer<FUNCS...>

@@ -53,7 +53,7 @@ namespace mixer {
  * \f]
  * 
  * such that the secant equations \f$ G_{n+1} \Delta F_n = \Delta X_n \f$ are satisfied for previous
- * iterations. Then \f$ G_n \f$ is taken \f$ -\beta I \f$. The Anderson class explicilty constructs
+ * iterations. Then \f$ G_n \f$ is taken \f$ -\beta I \f$. The Anderson class explicitly constructs
  * the Gram matrix \f$ \Delta F_n^T \Delta F_n \f$ to solve the least-squares problem. For more stability
  * use Anderson_stable, which comes at the cost of orthogonalizing \f$ \Delta F_n \f$.
  * 
