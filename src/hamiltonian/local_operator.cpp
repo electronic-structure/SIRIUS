@@ -246,7 +246,7 @@ static inline void mul_by_veff(spfft::Transform& spfftk__, double* buff__,
             break;
         }
         case SPFFT_PU_GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             if (idx_veff__ <= 1 || idx_veff__ >= 4) { /* up-up or dn-dn block or Theta(r) */
                 switch (spfftk__.type()) {
                     case SPFFT_TRANS_R2C: {
@@ -292,7 +292,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& g
     /* this memory pool will be used to allocate extra storage in the host memory */
     auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(ctx_.host_memory_t());
     /* this memory pool will be used to allocate extra storage in the device memory */
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
     memory_pool* mpd = &const_cast<Simulation_context&>(ctx_).mem_pool(memory_t::device);
 #else
     memory_pool* mpd{nullptr};
@@ -461,7 +461,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& g
                 break;
             }
             case SPFFT_PU_GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
                 double alpha = static_cast<double>(ekin);
                 add_pw_ekin_gpu(gkvec_p__.gvec_count_fft(), alpha, pw_ekin_.at(memory_t::device),
                                 phi1[ispn].at(memory_t::device), vphi_.at(memory_t::device),

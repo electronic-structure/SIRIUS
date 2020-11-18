@@ -1,4 +1,4 @@
-#ifdef __CUDA
+#ifdef SIRIUS_CUDA
 #include "cusolver.hpp"
 
 namespace cusolver {

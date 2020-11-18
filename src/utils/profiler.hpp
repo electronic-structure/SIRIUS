@@ -31,7 +31,7 @@
 #include <apex_api.hpp>
 #endif
 #include "rt_graph.hpp"
-#if defined(__GPU) && defined(__CUDA_NVTX)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA_NVTX)
 #include "nvtx_profiler.hpp"
 #endif
 
@@ -39,17 +39,17 @@ namespace utils {
 
 extern ::rt_graph::Timer global_rtgraph_timer;
 
-#if defined(__CUDA_NVTX)
+#if defined(SIRIUS_CUDA_NVTX)
 extern ::nvtxprofiler::Timer global_nvtx_timer;
 #endif
 
 // TODO: add calls to apex and cudaNvtx
 
-#if defined(__PROFILE)
+#if defined(SIRIUS_PROFILE)
 #define PROFILER_CONCAT_IMPL(x, y) x##y
 #define PROFILER_CONCAT(x, y) PROFILER_CONCAT_IMPL(x, y)
 
-#if defined(__CUDA_NVTX)
+#if defined(SIRIUS_CUDA_NVTX)
     #define PROFILE(identifier) \
         ::nvtxprofiler::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier, ::utils::global_nvtx_timer); \
         ::rt_graph::ScopedTiming PROFILER_CONCAT(GeneratedScopedTimer, __COUNTER__)(identifier, ::utils::global_rtgraph_timer);

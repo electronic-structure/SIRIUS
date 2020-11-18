@@ -30,9 +30,9 @@
 #include "SDDK/geometry3d.hpp"
 #include "xc_functional_base.hpp"
 #include "SDDK/fft.hpp"
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
 #include <vdwxc.h>
-#if __HAVE_VDWXC_MPI
+#if SIRIUS_HAVE_VDWXC_MPI
 #include <vdwxc_mpi.h>
 #endif
 #endif
@@ -45,7 +45,7 @@ class XC_functional : public XC_functional_base
     private:
         // I can not use a generic void pointer because xc_func_type is a structure
         // while wdv_functional_ is a pointer over structure.
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
         vdwxc_data handler_vdw_{nullptr};
         bool vdw_functional_{false};
 #endif
@@ -63,7 +63,7 @@ class XC_functional : public XC_functional_base
           : XC_functional_base(libxc_name__, num_spins__)
     {
 
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
             /* return immediately if the functional_base class is initialized */
             if (this->libxc_initialized_) {
                 return;
@@ -117,7 +117,7 @@ class XC_functional : public XC_functional_base
                 if (sddk::Communicator(fft__.communicator()).size() == 1) {
                     vdwxc_init_serial(handler_vdw_);
                 } else {
-#if __HAVE_VDWXC_MPI
+#if SIRIUS_HAVE_VDWXC_MPI
                     vdwxc_init_mpi(handler_vdw_, fft__.communicator());
 #else
                     vdwxc_init_serial(handler_vdw_);
@@ -140,13 +140,13 @@ class XC_functional : public XC_functional_base
                 s << "XC functional " << libxc_name__ << " is unknown";
                 TERMINATE(s);
             }
-#endif /* __USE_VDWXC */
+#endif /* SIRIUS_USE_VDWXC */
         }
 
     XC_functional(XC_functional&& src__)
         :XC_functional_base(std::move(src__))
         {
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
             this->handler_vdw_ = src__.handler_vdw_;
             this->vdw_functional_ = src__.vdw_functional_;
             src__.vdw_functional_ = false;
@@ -155,7 +155,7 @@ class XC_functional : public XC_functional_base
 
     ~XC_functional()
         {
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
             if (this->vdw_functional_) {
                 vdwxc_finalize(&this->handler_vdw_);
                 this->vdw_functional_ = false;
@@ -166,7 +166,7 @@ class XC_functional : public XC_functional_base
 
         const std::string refs() const
         {
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
             std::stringstream s;
             if (vdw_functional_) {
                 s << "==============================================================================\n";
@@ -185,7 +185,7 @@ class XC_functional : public XC_functional_base
 
         int family() const
         {
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
             if (this->vdw_functional_ == true) {
                 return XC_FAMILY_UNKNOWN;
             }
@@ -195,7 +195,7 @@ class XC_functional : public XC_functional_base
 
         bool is_vdw() const
         {
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
             return this->vdw_functional_;
 #else
             return false;
@@ -204,7 +204,7 @@ class XC_functional : public XC_functional_base
 
     void vdw_update_unit_cell(spfft::Transform const& fft__, geometry3d::matrix3d<double> const& lattice_vectors__)
     {
-        #ifdef __USE_VDWXC
+        #ifdef SIRIUS_USE_VDWXC
         if(is_vdw()) {
             double v1[3] = {lattice_vectors__(0, 0), lattice_vectors__(1, 0), lattice_vectors__(2, 0)};
             double v2[3] = {lattice_vectors__(0, 1), lattice_vectors__(1, 1), lattice_vectors__(2, 1)};
@@ -219,7 +219,7 @@ class XC_functional : public XC_functional_base
         int kind() const
         {
 
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
             if (this->vdw_functional_ == true) {
                 return -1;
             }
@@ -227,7 +227,7 @@ class XC_functional : public XC_functional_base
             return XC_functional_base::kind();
         }
 
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
     /// get van der walls contribution for the exchange term
     void get_vdw(double* rho,
                  double* sigma,

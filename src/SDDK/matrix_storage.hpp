@@ -28,7 +28,7 @@
 #include "gvec.hpp"
 #include "dmatrix.hpp"
 
-#ifdef __GPU
+#ifdef SIRIUS_GPU
 extern "C" void add_checksum_gpu(std::complex<double> const* wf__,
                                  int                   num_rows_loc__,
                                  int                   nwf__,

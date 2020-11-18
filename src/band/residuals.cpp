@@ -53,7 +53,7 @@ compute_residuals(sddk::memory_t mem_type__, sddk::spin_range spins__, int num_b
                 }
             }
         } else {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             compute_residuals_gpu(hpsi__.pw_coeffs(ispn).prime().at(sddk::memory_t::device),
                                   opsi__.pw_coeffs(ispn).prime().at(sddk::memory_t::device),
                                   res__.pw_coeffs(ispn).prime().at(sddk::memory_t::device),
@@ -98,7 +98,7 @@ apply_preconditioner(sddk::memory_t mem_type__, sddk::spin_range spins__, int nu
                 }
             }
         } else {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             apply_preconditioner_gpu(res__.pw_coeffs(ispn).prime().at(sddk::memory_t::device),
                                      res__.pw_coeffs(ispn).num_rows_loc(),
                                      num_bands__,
@@ -165,7 +165,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
     if (std::is_same<T, double>::value && res__.comm().rank() == 0 && num_unconverged != 0 && spins__() != 2) {
         if (is_device_memory(res__.preferred_memory_t())) {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             make_real_g0_gpu(res__.pw_coeffs(spins__()).prime().at(sddk::memory_t::device), res__.pw_coeffs(spins__()).prime().ld(), num_unconverged);
 #endif
         } else {

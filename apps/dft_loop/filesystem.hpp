@@ -1,13 +1,13 @@
 #ifndef __FILESYSTEM_HPP__
 #define __FILESYSTEM_HPP__
 
-#if defined(__BOOST_FILESYSTEM)
+#if defined(SIRIUS_BOOST_FILESYSTEM)
 
 #include <boost/filesystem.hpp>
 
 namespace fs = boost::filesystem;
 
-#elif defined(__STD_FILESYSTEM_EXPERIMENTAL)
+#elif defined(SIRIUS_STD_FILESYSTEM_EXPERIMENTAL)
 
 #include <experimental/filesystem>
 

@@ -231,7 +231,7 @@ void generate_radial_integrals(int lmax__,
 
     runtime::Timer t2("generate_radial_integrals|2");
     mdarray<double, 2> buf(196, omp_get_max_threads());
-    #ifdef __GPU
+    #ifdef SIRIUS_GPU
     buf.allocate_on_device();
     #endif
     for (int ispn: {0, 1})
@@ -247,7 +247,7 @@ void generate_radial_integrals(int lmax__,
             for (int ir = 0; ir < rgrid__.num_points(); ir++)
                 srf[i][ir] = radial_functions__(ir, i, 0, ispn);
             srf[i].interpolate();
-            #ifdef __GPU
+            #ifdef SIRIUS_GPU
             srf[i].copy_to_device();
             #endif
             
@@ -273,7 +273,7 @@ void generate_radial_integrals(int lmax__,
                     for (int ir = 0; ir < rgrid__.num_points(); ir++)
                         svrf[ir] = radial_functions__(ir, i1, 0, ispn) * vtmp[ir];
                     svrf.interpolate();
-                    #ifdef __GPU
+                    #ifdef SIRIUS_GPU
                     svrf.async_copy_to_device(thread_id);
                     #endif
 
@@ -450,7 +450,7 @@ void scf(int zn, int mag_mom, int niter, double alpha, int lmax, int nmax)
 
     //sirius::Radial_grid rgrid(pow2_grid, 25000, 1e-7, 100.0);
     sirius::Radial_grid rgrid(sirius::exponential_grid, 20000, 1e-7, 150.0);
-    #ifdef __GPU
+    #ifdef SIRIUS_GPU
     rgrid.copy_to_device();
     #endif
     //sirius::Radial_solver rsolver(relativity_t::none, zn, rgrid);
@@ -626,7 +626,7 @@ int main(int argn, char **argv)
     int lmax = args.value<int>("lmax", 6);
 
     sirius::initialize(true);
-    #ifdef __GPU
+    #ifdef SIRIUS_GPU
     cuda_device_info();
     #endif
 

@@ -165,7 +165,7 @@ class Augmentation_operator_gvec_deriv
 
     //void prepare(int stream_id__) const
     //{
-    //    #ifdef __GPU
+    //    #ifdef SIRIUS_GPU
     //    if (atom_type_.parameters().processing_unit() == GPU && atom_type_.pp_desc().augment) {
     //        sym_weight_.allocate(memory_t::device);
     //        sym_weight_.async_copy_to_device(stream_id__);
@@ -178,7 +178,7 @@ class Augmentation_operator_gvec_deriv
 
     //void dismiss() const
     //{
-    //    #ifdef __GPU
+    //    #ifdef SIRIUS_GPU
     //    if (atom_type_.parameters().processing_unit() == GPU && atom_type_.pp_desc().augment) {
     //        q_pw_.deallocate_on_device();
     //        sym_weight_.deallocate_on_device();

@@ -10,7 +10,7 @@ namespace acc {
 
 int num_devices()
 {
-#if defined(__CUDA) || defined(__ROCM)
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
     static std::atomic<int> count(-1);
     if (count.load(std::memory_order_relaxed) == -1) {
         int c;

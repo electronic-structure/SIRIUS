@@ -32,7 +32,7 @@
 #include "utils/env.hpp"
 #include "SDDK/gvec.hpp"
 #include "matrix_storage.hpp"
-#ifdef __GPU
+#ifdef SIRIUS_GPU
 using double_complex = std::complex<double>;
 extern "C" void add_square_sum_gpu(double_complex const* wf__, int num_rows_loc__, int nwf__, int reduced__,
                                    int mpi_rank__, double* result__);

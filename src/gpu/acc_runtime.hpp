@@ -27,18 +27,18 @@
 
 #include "acc.hpp"
 
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
 #include <cuda_runtime.h>
 #endif
 
-#if defined(__ROCM)
+#if defined(SIRIUS_ROCM)
 #include <hip/hip_runtime.h>
 #endif
 
 /*
  * CUDA runtime calls and definitions
  */
-#ifdef __CUDA
+#ifdef SIRIUS_CUDA
 #define accLaunchKernel(kernelName, numblocks, numthreads, memperblock, streamId, ...)                                 \
     do {                                                                                                               \
         kernelName<<<numblocks, numthreads, memperblock, streamId>>>(__VA_ARGS__);                                     \
@@ -64,7 +64,7 @@
 /*
  * ROCM runtime calls and definitions
  */
-#ifdef __ROCM
+#ifdef SIRIUS_ROCM
 #define accLaunchKernel(...)                                                                                           \
     do {                                                                                                               \
         hipLaunchKernelGGL(__VA_ARGS__);                                                                               \

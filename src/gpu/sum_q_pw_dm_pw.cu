@@ -25,7 +25,7 @@
 #include "gpu/cuda_common.hpp"
 #include "gpu/acc_runtime.hpp"
 
-#ifdef __CUDA
+#ifdef SIRIUS_CUDA
 #include "gpu/cuda_timer.hpp"
 #endif
 
@@ -85,7 +85,7 @@ extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
                                    acc_complex_double_t* rho_pw__,
                                    int stream_id__)
 {
-#ifdef __CUDA
+#ifdef SIRIUS_CUDA
     CUDA_timer t("sum_q_pw_dm_pw_gpu");
 #endif
 

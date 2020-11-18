@@ -40,7 +40,7 @@ struct residual_result {
 };
 
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
 extern "C" void residuals_aux_gpu(int num_gvec_loc__,
                                   int num_res_local__,
                                   int* res_idx__,

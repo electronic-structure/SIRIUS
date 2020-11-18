@@ -74,7 +74,7 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
         }
     }
 
-    #ifdef __GPU
+    #ifdef SIRIUS_GPU
     if (pu == GPU) {
         phi.allocate_on_device();
         phi.copy_to_device(0, 2 * num_bands__);
