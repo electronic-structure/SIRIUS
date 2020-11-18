@@ -276,7 +276,7 @@ void Simulation_context::initialize()
 
     /* check if we can use a GPU device */
     if (processing_unit() == device_t::GPU) {
-#if !defined(__GPU)
+#if !defined(SIRIUS_GPU)
         throw std::runtime_error("not compiled with GPU support!");
 #endif
     }
@@ -350,7 +350,7 @@ void Simulation_context::initialize()
                 blas_linalg_t_ = linalg_t::gpublas;
             }
             if (control_input_.memory_usage_ == "low" || control_input_.memory_usage_ == "medium") {
-#ifdef __ROCM
+#ifdef SIRIUS_ROCM
                 blas_linalg_t_ = linalg_t::gpublas;
 #else
                 blas_linalg_t_ = linalg_t::cublasxt;
@@ -482,22 +482,22 @@ void Simulation_context::initialize()
     }
 
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
     bool is_cuda{true};
 #else
     bool is_cuda{false};
 #endif
-#if defined(__MAGMA)
+#if defined(SIRIUS_MAGMA)
     bool is_magma{true};
 #else
     bool is_magma{false};
 #endif
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
     bool is_scalapack{true};
 #else
     bool is_scalapack{false};
 #endif
-#if defined(__ELPA)
+#if defined(SIRIUS_ELPA)
     bool is_elpa{true};
 #else
     bool is_elpa{false};
@@ -720,19 +720,19 @@ void Simulation_context::print_info() const
                 std::printf("LAPACK\n");
                 break;
             }
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             case ev_solver_t::scalapack: {
                 std::printf("ScaLAPACK\n");
                 break;
             }
 #endif
-#if defined(__ELPA)
+#if defined(SIRIUS_ELPA)
             case ev_solver_t::elpa: {
                 std::printf("ELPA\n");
                 break;
             }
 #endif
-#if defined(__MAGMA)
+#if defined(SIRIUS_MAGMA)
             case ev_solver_t::magma: {
                 std::printf("MAGMA\n");
                 break;
@@ -746,7 +746,7 @@ void Simulation_context::print_info() const
                 std::printf("PLASMA\n");
                 break;
             }
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
             case ev_solver_t::cusolver: {
                 std::printf("cuSOLVER\n");
                 break;
@@ -798,7 +798,7 @@ void Simulation_context::print_info() const
     std::printf("==============\n");
     for (auto& xc_label : xc_functionals()) {
         XC_functional xc(spfft(), unit_cell().lattice_vectors(), xc_label, num_spins());
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
         if (xc.is_vdw()) {
             std::printf("Van der Walls functional\n");
             std::printf("%s\n", xc.refs().c_str());
@@ -1292,7 +1292,7 @@ void Simulation_context::generate_phase_factors(int iat__, mdarray<double_comple
             break;
         }
         case device_t::GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at(memory_t::device),
                                        unit_cell().atom_coord(iat__).at(memory_t::device), phase_factors__.at(memory_t::device));
 #endif

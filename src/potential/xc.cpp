@@ -473,7 +473,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
               for each grid point
             */
             if (ixc->is_vdw()) {
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
                 /* Van der Walls correction */
                 std::vector<double> exc_t(num_points, 0.0);
                 std::vector<double> vrho_t(num_points, 0.0);
@@ -743,7 +743,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
     for (auto& ixc: xc_func_) {
         PROFILE_START("sirius::Potential::xc_rg_magnetic|libxc");
         if (ixc->is_vdw()) {
-#if defined(__USE_VDWXC)
+#if defined(SIRIUS_USE_VDWXC)
             /* all ranks should make a call because VdW uses FFT internaly */
             if (num_points) {
                 ixc->get_vdw(&rho_up.f_rg(0), &rho_dn.f_rg(0), &grad_rho_up_grad_rho_up.f_rg(0),

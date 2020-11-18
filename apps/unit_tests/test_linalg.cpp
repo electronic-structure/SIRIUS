@@ -95,7 +95,7 @@ void test2()
         printf("test2 passed!\n");
     }
 }
-//#ifdef __SCALAPACK
+//#ifdef SIRIUS_SCALAPACK
 //template <typename T>
 //void test3()
 //{
@@ -157,7 +157,7 @@ int main(int argn, char** argv)
     test1();
     test2<double>();
     test2<double_complex>();
-    //#ifdef __SCALAPACK
+    //#ifdef SIRIUS_SCALAPACK
     //test3<double_complex>();
     //#endif
     sirius::finalize();

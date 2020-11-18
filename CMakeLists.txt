@@ -45,7 +45,7 @@ if(USE_CUDA AND USE_ROCM)
   message(FATAL_ERROR "USE_CUDA and USE_ROCM must not be enabled at the same time!")
 endif()
 
-add_compile_definitions(__GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
+add_compile_definitions(SIRIUS_GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
 
 # if(USE_MKL AND NOT (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Intel"))
 #   message(FATAL_ERROR "Unsupported compiler")
@@ -140,13 +140,13 @@ add_library(sirius::filesystem INTERFACE IMPORTED)
 if(TARGET std::filesystem)
   target_link_libraries(sirius::filesystem INTERFACE std::filesystem)
   target_compile_definitions(sirius::filesystem INTERFACE
-    $<$<BOOL:${Filesystem_FOUND}>:__STD_FILESYSTEM>
-    $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:__STD_FILESYSTEM_EXPERIMENTAL>
+    $<$<BOOL:${Filesystem_FOUND}>:SIRIUS_STD_FILESYSTEM>
+    $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:SIRIUS_STD_FILESYSTEM_EXPERIMENTAL>
   )
 else()
   find_package(Boost 1.65 REQUIRED COMPONENTS filesystem)
   target_link_libraries(sirius::filesystem INTERFACE Boost::filesystem)
-  target_compile_definitions(sirius::filesystem INTERFACE __BOOST_FILESYSTEM)
+  target_compile_definitions(sirius::filesystem INTERFACE SIRIUS_BOOST_FILESYSTEM)
 endif()
 
 if (USE_OPENMP)

@@ -1,4 +1,4 @@
-#if defined(__CUDA) || defined(__ROCM)
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
 #include "acc_blas.hpp"
 
 namespace accblas {
@@ -17,7 +17,7 @@ stream_handles()
     return stream_handles_;
 }
 
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
 namespace xt {
 cublasXtHandle_t&
 cublasxt_handle()

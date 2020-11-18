@@ -27,7 +27,7 @@
 #include "potential/potential.hpp"
 #include "utils/profiler.hpp"
 
-#if defined(__GPU) && defined(__CUDA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
 #include "gpu/acc.hpp"
 extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  int n,
@@ -1016,7 +1016,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
 ////==
 ////==     //== if (parameters_.processing_unit() == GPU)
 ////==     //== {
-////==     //==     #ifdef __GPU
+////==     //==     #ifdef SIRIUS_GPU
 ////==     //==     mdarray<double, 1> e0_loc(kp__->spl_fv_states().local_size());
 ////==     //==     e0_loc.allocate_on_device();
 ////==     //==     e0_loc.zero_on_device();
@@ -1073,7 +1073,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
 ////==     }
 ////== //==     //if (parameters_.processing_unit() == GPU)
 ////== //==     //{
-////== //==     //    #ifdef __GPU
+////== //==     //    #ifdef SIRIUS_GPU
 ////== //==     //    compute_chebyshev_polynomial_gpu(kp__->num_gkvec_row(), (int)kp__->spl_fv_states().local_size(), c, r,
 ////== //==     //                                     phi[0].at<GPU>(), phi[1].at<GPU>(), NULL);
 ////== //==     //    phi[1].panel().copy_to_host();
@@ -1098,7 +1098,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
 ////==         }
 ////==         //== if (parameters_.processing_unit() == GPU)
 ////==         //== {
-////==         //==     #ifdef __GPU
+////==         //==     #ifdef SIRIUS_GPU
 ////==         //==     compute_chebyshev_polynomial_gpu(kp__->num_gkvec(), num_bands, c, r,
 ////==         //==                                      phi[k - 2].at<GPU>(), phi[k - 1].at<GPU>(), phi[k].at<GPU>());
 ////==         //==     phi[k].copy_to_host();

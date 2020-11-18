@@ -1,4 +1,4 @@
-#ifdef __NLCGLIB
+#ifdef SIRIUS_NLCGLIB
 #include <stdexcept>
 
 #include "adaptor.hpp"

@@ -156,7 +156,7 @@ orthogonalize(::spla::Context& spla_ctx__, memory_t mem__, linalg_t la__, int is
         bool use_magma{false};
 
         // MAGMA performance for Cholesky and inversion is not good enough; use lapack for the moment
-        //#if defined(__GPU) && defined(__MAGMA)
+        //#if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
         //        if (pu__ == GPU) {
         //            use_magma = true;
         //        }

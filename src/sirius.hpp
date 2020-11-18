@@ -30,11 +30,11 @@
 #endif
 
 #include "SDDK/omp.hpp"
-#if defined(__GPU) && defined(__CUDA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
 #include "gpu/cusolver.hpp"
 #endif
 #include "linalg/linalg_spla.hpp"
-#if defined(__ELPA)
+#if defined(SIRIUS_ELPA)
 #include "linalg/elpa.hpp"
 #endif
 #include "utils/cmd_args.hpp"
@@ -106,17 +106,17 @@ inline void initialize(bool call_mpi_init__ = true)
         /* some parts of the code rely on the number of streams not related to the
            number of OMP threads */
         acc::create_streams(std::max(omp_get_max_threads(), 6));
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
         accblas::create_stream_handles();
 #endif
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
         accblas::xt::create_handle();
         cusolver::create_handle();
 #endif
     }
     splablas::reset_handle();
 
-#if defined(__MAGMA)
+#if defined(SIRIUS_MAGMA)
     magma::init();
 #endif
 #if defined(__PLASMA)
@@ -125,7 +125,7 @@ inline void initialize(bool call_mpi_init__ = true)
 #if defined(__LIBSCI_ACC)
     libsci_acc_init();
 #endif
-#if defined(__ELPA)
+#if defined(SIRIUS_ELPA)
     if (elpa_init(20170403) != ELPA_OK) {
         TERMINATE("ELPA API version not supported");
     }
@@ -144,7 +144,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     if (!is_initialized()) {
         TERMINATE("SIRIUS library was not initialized");
     }
-#if defined(__MAGMA)
+#if defined(SIRIUS_MAGMA)
     magma::finalize();
 #endif
 #if defined(__LIBSCI_ACC)
@@ -155,10 +155,10 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     splablas::reset_handle();
 
     if (acc::num_devices()) {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
         accblas::destroy_stream_handles();
 #endif
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
         cusolver::destroy_handle();
         accblas::xt::destroy_handle();
 #endif
@@ -175,7 +175,7 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     if (call_mpi_fin__) {
         Communicator::finalize();
     }
-#if defined(__ELPA)
+#if defined(SIRIUS_ELPA)
     int ierr;
     elpa_uninit(&ierr);
 #endif

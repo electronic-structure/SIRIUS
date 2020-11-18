@@ -2,7 +2,7 @@
 
 using namespace sirius;
 
-#ifdef __GPU
+#ifdef SIRIUS_GPU
 void test_gpu(int N)
 {
     mdarray<char, 1> buf(N * 1024);
@@ -46,7 +46,7 @@ int main(int argn, char** argv)
     sirius::initialize(1);
     cuda_device_info();
 
-    #ifdef __GPU
+    #ifdef SIRIUS_GPU
     test_gpu(N);
     #endif
 

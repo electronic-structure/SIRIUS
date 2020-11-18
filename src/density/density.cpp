@@ -610,7 +610,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
                         break;
                     }
                     case SPFFT_PU_GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
                         if (ctx_.gamma_point()) {
                             update_density_rg_1_real_gpu(nr, data_ptr, w, density_rg.at(memory_t::device, 0, ispn));
                         } else {
@@ -681,7 +681,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
                     break;
                 }
                 case SPFFT_PU_GPU: {
-#ifdef __GPU
+#ifdef SIRIUS_GPU
                     /* add up-up contribution */
                     update_density_rg_1_complex_gpu(nr, psi_r_up.at(memory_t::device), w,
                                                     density_rg.at(memory_t::device, 0, 0));
@@ -1411,7 +1411,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                     break;
                 }
                 case device_t::GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         generate_dm_pw_gpu(atom_type.num_atoms(), spl_ngv_loc.local_size(ib), nbf,
                                            ctx_.unit_cell().atom_coord(iat).at(memory_t::device),

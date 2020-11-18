@@ -284,7 +284,7 @@ void Wave_functions::normalize(device_t pu__, spin_range spins__, int n__)
                 break;
             }
             case device_t::GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
                 scale_matrix_columns_gpu(this->pw_coeffs(ispn).num_rows_loc(), n__,
                                          (acc_complex_double_t*)this->pw_coeffs(ispn).prime().at(memory_t::device),
                                          norm.at(memory_t::device));
@@ -375,7 +375,7 @@ Wave_functions::sumsqr(device_t pu__, spin_range spins__, int n__) const
                 break;
             }
             case device_t::GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
                 add_square_sum_gpu(pw_coeffs(is).prime().at(memory_t::device), pw_coeffs(is).num_rows_loc(), n__,
                                    gkvecp_.gvec().reduced(), comm_.rank(), s.at(memory_t::device));
                 if (has_mt()) {

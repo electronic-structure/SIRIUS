@@ -26,7 +26,7 @@
 
 namespace sirius {
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
 extern "C" void aug_op_pw_coeffs_gpu(int ngvec__, int const* gvec_shell__, int const* idx__, int idxmax__,
                                      double_complex const* zilm__, int const* l_by_lm__, int lmmax__,
                                      double const* gc__, int ld0__, int ld1__,
@@ -85,7 +85,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
         }
         case device_t::GPU: {
             gvec_rlm = sddk::mdarray<double, 2>(lmmax, gvec_count, *mpd__);
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             spherical_harmonics_rlm_gpu(2 * lmax_beta, gvec_count, tp__.at(memory_t::device),
                 gvec_rlm.at(memory_t::device), gvec_rlm.ld());
 #endif
@@ -177,7 +177,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
 
             q_pw_.allocate(*mpd__);
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             int ld0 = static_cast<int>(gc.size(0));
             int ld1 = static_cast<int>(gc.size(1));
             aug_op_pw_coeffs_gpu(gvec_count, gvec_shell.at(memory_t::device), idx.at(memory_t::device),
@@ -417,7 +417,7 @@ void Augmentation_operator_gvec_deriv::generate_pw_coeffs(Atom_type const& atom_
             auto gc = gaunt_coefs_->get_full_set_L3();
             gc.allocate(mpd).copy_to(memory_t::device);
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             aug_op_pw_coeffs_deriv_gpu(gvec_count, gvec_shell_.at(memory_t::device), gvec_cart_.at(memory_t::device),
                 idx_.at(memory_t::device), static_cast<int>(idx_.size(1)),
                 gc.at(memory_t::device), static_cast<int>(gc.size(0)), static_cast<int>(gc.size(1)),

@@ -39,7 +39,7 @@
 #include "symmetry/rotation.hpp"
 #include "spfft/spfft.hpp"
 
-#ifdef __GPU
+#ifdef SIRIUS_GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__, int num_atoms__, int const* gvec__,
                                            double const* atom_pos__, double_complex* phase_factors__);
 #endif

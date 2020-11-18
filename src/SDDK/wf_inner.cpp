@@ -28,7 +28,7 @@
 #include <chrono>
 #include <spla/spla.hpp>
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
 #include "gpu/acc_blas.hpp"
 #include "gpu/acc.hpp"
 #endif
@@ -45,7 +45,7 @@ void scale_gamma_wf<double>(spin_range spins, int m, int i0, double alpha, Wave_
     for (auto s : spins) {
         const int incx = bra.pw_coeffs(s).prime().ld() * 2; // complex matrix is read as scalar
         if (bra.preferred_memory_t() == memory_t::device) {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             accblas::dscal(
                 m, &alpha,
                 reinterpret_cast<double*>(bra.pw_coeffs(s).prime().at(bra.preferred_memory_t(), 0, i0)), incx);
