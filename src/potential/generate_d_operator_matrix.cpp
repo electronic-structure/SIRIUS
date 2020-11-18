@@ -26,7 +26,7 @@
 
 namespace sirius {
 
-#ifdef __GPU
+#ifdef SIRIUS_GPU
 extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
                                                 int num_gvec_loc__,
                                                 double_complex const* veff__,
@@ -124,7 +124,7 @@ void Potential::generate_D_operator_matrix()
                         /* copy plane wave coefficients of effective potential to GPU */
                         mdarray<double_complex, 1> veff(&component(iv).f_pw_local(g_begin), spl_ngv_loc.local_size(ib));
                         veff.allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
                         mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), spl_ngv_loc.local_size(ib),
                                                         veff.at(memory_t::device),
                                                         ctx_.gvec_coord().at(memory_t::device, g_begin, 0),

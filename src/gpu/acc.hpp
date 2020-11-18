@@ -26,7 +26,7 @@
 #ifndef __ACC_HPP__
 #define __ACC_HPP__
 
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
 #include <cuda_runtime.h>
 #include <cuda.h>
 #include <cublas_v2.h>
@@ -36,7 +36,7 @@
 #include <cuComplex.h>
 #endif
 
-#if defined(__ROCM)
+#if defined(SIRIUS_ROCM)
 #include <hip/hip_runtime_api.h>
 #include <hip/hip_complex.h>
 #endif
@@ -50,29 +50,29 @@
 #include <vector>
 #include <stdio.h>
 
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
 #define GPU_PREFIX(x) cuda##x
-#elif defined(__ROCM)
+#elif defined(SIRIUS_ROCM)
 #define GPU_PREFIX(x) hip##x
 #endif
 
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
 using acc_stream_t = cudaStream_t;
-#elif defined(__ROCM)
+#elif defined(SIRIUS_ROCM)
 using acc_stream_t = hipStream_t;
 #else
 using acc_stream_t = void*;
 #endif
 
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
 using acc_error_t = cudaError_t;
-#elif defined(__ROCM)
+#elif defined(SIRIUS_ROCM)
 using acc_error_t = hipError_t;
 #else
 using acc_error_t = void;
 #endif
 
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
 using acc_complex_float_t = cuFloatComplex;
 using acc_complex_double_t = cuDoubleComplex;
 #define make_accDoubleComplex make_cuDoubleComplex
@@ -84,7 +84,7 @@ using acc_complex_double_t = cuDoubleComplex;
 #define accConj cuConj
 #define ACC_DYNAMIC_SHARED(type, var) extern __shared__ type var[];
 
-#elif defined(__ROCM)
+#elif defined(SIRIUS_ROCM)
 using acc_complex_float_t = hipFloatComplex;
 using acc_complex_double_t = hipDoubleComplex;
 #define make_accDoubleComplex make_hipDoubleComplex
@@ -132,7 +132,7 @@ namespace acc {
 int num_devices();
 }
 
-#if defined(__CUDA) || defined(__ROCM)
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
 #define CALL_DEVICE_API(func__, args__)                                                                                \
 {                                                                                                                      \
     if (acc::num_devices()) {                                                                                          \
@@ -214,7 +214,7 @@ inline void sync_stream(stream_id sid__)
 /// Reset device.
 inline void reset()
 {
-#ifdef __CUDA
+#ifdef SIRIUS_CUDA
     CALL_DEVICE_API(ProfilerStop, ());
 #endif
     CALL_DEVICE_API(DeviceReset, ());
@@ -230,7 +230,7 @@ inline void sync()
 inline size_t get_free_mem()
 {
     size_t free{0};
-#if defined(__CUDA) || defined(__ROCM)
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
     size_t total{0};
     CALL_DEVICE_API(MemGetInfo, (&free, &total));
 #endif
@@ -239,15 +239,15 @@ inline size_t get_free_mem()
 
 inline void print_device_info(int device_id__)
 {
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
     cudaDeviceProp devprop;
-#elif defined(__ROCM)
+#elif defined(SIRIUS_ROCM)
     hipDeviceProp_t devprop;
 #endif
 
     CALL_DEVICE_API(GetDeviceProperties, (&devprop, device_id__));
 
-#if defined(__CUDA) || defined(__ROCM)
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
     std::printf("  name                             : %s\n",       devprop.name);
     std::printf("  major                            : %i\n",       devprop.major);
     std::printf("  minor                            : %i\n",       devprop.minor);
@@ -271,7 +271,7 @@ inline void print_device_info(int device_id__)
     std::printf("  pciBusID                         : %i\n",       devprop.pciBusID);
     std::printf("  pciDeviceID                      : %i\n",       devprop.pciDeviceID);
     std::printf("  pciDomainID                      : %i\n",       devprop.pciDomainID);
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
     std::printf("  regsPerMultiprocessor            : %i\n",       devprop.regsPerMultiprocessor);
     std::printf("  asyncEngineCount                 : %i\n" ,      devprop.asyncEngineCount);
     std::printf("  ECCEnabled                       : %i\n",       devprop.ECCEnabled);
@@ -387,7 +387,7 @@ inline void zero(T* ptr__, int ld__, int nrow__, int ncol__)
 template <typename T>
 inline T* allocate(size_t size__) {
     T* ptr{nullptr};
-#if defined(__CUDA) || defined(__ROCM)
+#if defined(SIRIUS_CUDA) || defined(SIRIUS_ROCM)
     //CALL_DEVICE_API(Malloc, (&ptr, size__ * sizeof(T)));
     if (acc::num_devices()) {
         acc_error_t error;
@@ -412,10 +412,10 @@ inline void deallocate(void* ptr__)
 template <typename T>
 inline T* allocate_host(size_t size__) {
     T* ptr{nullptr};
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
     CALL_DEVICE_API(MallocHost, (&ptr, size__ * sizeof(T)));
 #endif
-#if defined(__ROCM)
+#if defined(SIRIUS_ROCM)
     CALL_DEVICE_API(HostMalloc, (&ptr, size__ * sizeof(T)));
 #endif
     return ptr;
@@ -424,15 +424,15 @@ inline T* allocate_host(size_t size__) {
 /// Deallocate host memory.
 inline void deallocate_host(void* ptr__)
 {
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
     CALL_DEVICE_API(FreeHost, (ptr__));
 #endif
-#if defined(__ROCM)
+#if defined(SIRIUS_ROCM)
     CALL_DEVICE_API(HostFree, (ptr__));
 #endif
 }
 
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
 inline void begin_range_marker(const char* label__)
 {
     nvtxRangePushA(label__);
@@ -483,7 +483,7 @@ inline bool check_device_ptr(void const* ptr__)
 
 } // namespace acc
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
 extern "C" void scale_matrix_columns_gpu(int nrow, int ncol, acc_complex_double_t* mtrx, double* a);
 
 extern "C" void scale_matrix_rows_gpu(int nrow, int ncol, acc_complex_double_t* mtrx, double const* v);

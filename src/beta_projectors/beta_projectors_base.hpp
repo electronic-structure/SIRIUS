@@ -30,7 +30,7 @@
 
 namespace sirius {
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
 extern "C" void create_beta_gk_gpu(int                   num_atoms,
                                    int                   num_gkvec,
                                    int const*            beta_desc,

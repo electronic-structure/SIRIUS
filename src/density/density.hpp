@@ -33,7 +33,7 @@
 #include "paw_density.hpp"
 #include "occupation_matrix.hpp"
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
 extern "C" void update_density_rg_1_real_gpu(int size__,
                                              double const* psi_rg__,
                                              double wt__,

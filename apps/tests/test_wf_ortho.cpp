@@ -42,7 +42,7 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     }
     dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
 
-    #ifdef __GPU
+    #ifdef SIRIUS_GPU
     if (pu == GPU) {
         phi.allocate_on_device();
         phi.copy_to_device(0, 2 * num_bands__);

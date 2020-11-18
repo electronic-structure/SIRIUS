@@ -213,7 +213,7 @@ void Beta_projectors_base::generate(int ichunk__, int j__)
             break;
         }
         case device_t::GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             auto& desc = chunk(ichunk__).desc_;
             create_beta_gk_gpu(chunk(ichunk__).num_atoms_,
                                num_gkvec_loc(),
@@ -302,7 +302,7 @@ void Beta_projectors_base::local_inner_aux<double_complex>(double_complex* beta_
                                        beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
 
     if (pp && gkvec_.comm().rank() == 0) {
-#ifdef __GPU
+#ifdef SIRIUS_GPU
         if (ctx_.blas_linalg_t() == linalg_t::gpublas) {
             acc::sync_stream(stream_id(-1));
         }

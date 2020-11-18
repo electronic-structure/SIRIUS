@@ -26,10 +26,10 @@
 #define __LINALG_HPP__
 
 #include <stdint.h>
-#ifdef __GPU
+#ifdef SIRIUS_GPU
 #include "gpu/acc_blas.hpp"
 #endif
-#ifdef __MAGMA
+#ifdef SIRIUS_MAGMA
 #include "gpu/magma.hpp"
 #endif
 #include "blas_lapack.h"
@@ -245,7 +245,7 @@ inline void linalg::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_in
             break;
         }
         case linalg_t::gpublas: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             accblas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
@@ -253,7 +253,7 @@ inline void linalg::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_in
             break;
         }
         case linalg_t::cublasxt: {
-#if defined(__GPU) && defined(__CUDA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             accblas::xt::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 #else
             throw std::runtime_error("not compiled with cublasxt");
@@ -292,7 +292,7 @@ inline void linalg::gemm<ftn_double_complex>(char transa, char transb, ftn_int m
             break;
         }
         case linalg_t::gpublas: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             accblas::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
                           reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t const*>(B),
                           ldb, reinterpret_cast<acc_complex_double_t const*>(beta),
@@ -304,7 +304,7 @@ inline void linalg::gemm<ftn_double_complex>(char transa, char transb, ftn_int m
 
         }
         case linalg_t::cublasxt: {
-#if defined(__GPU) && defined(__CUDA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             accblas::xt::zgemm(transa, transb, m, n, k, reinterpret_cast<acc_complex_double_t const*>(alpha),
                               reinterpret_cast<acc_complex_double_t const*>(A), lda,
                               reinterpret_cast<acc_complex_double_t const*>(B), ldb,
@@ -335,7 +335,7 @@ linalg::gemm<ftn_double>(char transa, char transb, ftn_int m, ftn_int n, ftn_int
 {
     switch (la_) {
         case linalg_t::scalapack: {
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             assert(A.ld() != 0);
             assert(B.ld() != 0);
             assert(C.ld() != 0);
@@ -368,7 +368,7 @@ linalg::gemm<ftn_double_complex>(char transa, char transb, ftn_int m, ftn_int n,
 {
     switch (la_) {
         case linalg_t::scalapack: {
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             assert(A.ld() != 0);
             assert(B.ld() != 0);
             assert(C.ld() != 0);
@@ -427,7 +427,7 @@ inline void linalg::ger<ftn_double>(ftn_int m, ftn_int n, ftn_double const* alph
             break;
         }
         case linalg_t::gpublas: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             accblas::dger(m, n, alpha, x, incx, y, incy, A, lda, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
@@ -456,7 +456,7 @@ inline void linalg::trmm<ftn_double>(char side, char uplo, char transa, ftn_int 
             break;
         }
         case  linalg_t::gpublas: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             accblas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb, sid());
 #else
             throw std::runtime_error("not compiled with GPU blas support!");
@@ -464,7 +464,7 @@ inline void linalg::trmm<ftn_double>(char side, char uplo, char transa, ftn_int 
             break;
         }
         case linalg_t::cublasxt: {
-#if defined(__GPU) && defined(__CUDA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             accblas::xt::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
 #else
             throw std::runtime_error("not compiled with cublasxt");
@@ -491,7 +491,7 @@ inline void linalg::trmm<ftn_double_complex>(char side, char uplo, char transa, 
             break;
         }
         case  linalg_t::gpublas: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             accblas::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
                           reinterpret_cast<acc_complex_double_t const*>(A), lda,
                           reinterpret_cast<acc_complex_double_t*>(B), ldb, sid());
@@ -501,7 +501,7 @@ inline void linalg::trmm<ftn_double_complex>(char side, char uplo, char transa, 
             break;
         }
         case linalg_t::cublasxt: {
-#if defined(__GPU) && defined(__CUDA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
             accblas::xt::ztrmm(side, uplo, transa, 'N', m, n, reinterpret_cast<acc_complex_double_t const*>(alpha),
                               reinterpret_cast<acc_complex_double_t const*>(A), lda, reinterpret_cast<acc_complex_double_t*>(B), ldb);
 #else
@@ -527,7 +527,7 @@ inline int linalg::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_
             break;
         }
         case linalg_t::magma: {
-#if defined(__GPU) && defined(__MAGMA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::dpotrf('U', n, A, lda);
 #else
             throw std::runtime_error("not compiled with magma");
@@ -535,7 +535,7 @@ inline int linalg::potrf<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_
             break;
         }
         case linalg_t::scalapack: {
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             assert(desca != nullptr);
             ftn_int ia{1};
             ftn_int ja{1};
@@ -566,7 +566,7 @@ inline int linalg::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, f
             break;
         }
         case linalg_t::scalapack: {
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             assert(desca != nullptr);
             ftn_int ia{1};
             ftn_int ja{1};
@@ -579,7 +579,7 @@ inline int linalg::potrf<ftn_double_complex>(ftn_int n, ftn_double_complex* A, f
             break;
         }
         case linalg_t::magma: {
-#if defined(__GPU) && defined(__MAGMA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::zpotrf('U', n, reinterpret_cast<magmaDoubleComplex*>(A), lda);
 #else
             throw std::runtime_error("not compiled with magma");
@@ -605,7 +605,7 @@ inline int linalg::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_
             break;
         }
         case linalg_t::scalapack: {
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             assert(desca != nullptr);
             ftn_int ia{1};
             ftn_int ja{1};
@@ -618,7 +618,7 @@ inline int linalg::trtri<ftn_double>(ftn_int n, ftn_double* A, ftn_int lda, ftn_
             break;
         }
         case linalg_t::magma: {
-#if defined(__GPU) && defined(__MAGMA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::dtrtri('U', n, A, lda);
 #else
             throw std::runtime_error("not compiled with magma");
@@ -644,7 +644,7 @@ inline int linalg::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, f
             break;
         }
         case linalg_t::scalapack: {
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             assert(desca != nullptr);
             ftn_int ia{1};
             ftn_int ja{1};
@@ -657,7 +657,7 @@ inline int linalg::trtri<ftn_double_complex>(ftn_int n, ftn_double_complex* A, f
             break;
         }
         case linalg_t::magma: {
-#if defined(__GPU) && defined(__MAGMA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
             return magma::ztrtri('U', n, reinterpret_cast<magmaDoubleComplex*>(A), lda);
 #else
             throw std::runtime_error("not compiled with magma");
@@ -793,7 +793,7 @@ inline int linalg::getrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_d
 {
     switch (la_) {
         case linalg_t::scalapack: {
-#if defined (__SCALAPACK)
+#if defined (SIRIUS_SCALAPACK)
             ftn_int info;
             ia++;
             ja++;
@@ -818,7 +818,7 @@ inline void linalg::tranu<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatri
 {
     switch (la_) {
         case linalg_t::scalapack: {
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             ia++; ja++;
             ic++; jc++;
 
@@ -844,7 +844,7 @@ inline void linalg::tranc<ftn_double_complex>(ftn_int m, ftn_int n, sddk::dmatri
 {
     switch (la_) {
         case linalg_t::scalapack: {
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             ia++; ja++;
             ic++; jc++;
 
@@ -870,7 +870,7 @@ inline void linalg::tranu<ftn_double>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_do
 {
     switch (la_) {
         case linalg_t::scalapack: {
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             ia++; ja++;
             ic++; jc++;
 
@@ -895,7 +895,7 @@ inline void linalg::tranc<ftn_double>(ftn_int m, ftn_int n, sddk::dmatrix<ftn_do
 {
     switch (la_) {
         case linalg_t::scalapack: {
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
             ia++; ja++;
             ic++; jc++;
 
@@ -1112,7 +1112,7 @@ template <typename T>
 inline double check_hermitian(dmatrix<T>& mtrx__, int n__)
 {
     double max_diff{0};
-#ifdef __SCALAPACK
+#ifdef SIRIUS_SCALAPACK
     dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
     linalg(linalg_t::scalapack).tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
     for (int i = 0; i < tmp.num_cols_local(); i++) {

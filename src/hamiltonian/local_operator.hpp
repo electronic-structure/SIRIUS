@@ -46,7 +46,7 @@ namespace spfft {
 class Transform;
 }
 
-#ifdef __GPU
+#ifdef SIRIUS_GPU
 extern "C" void mul_by_veff_real_real_gpu(int nr__, double* buf__, double* veff__);
 
 extern "C" void mul_by_veff_complex_real_gpu(int nr__, double_complex* buf__, double* veff__);

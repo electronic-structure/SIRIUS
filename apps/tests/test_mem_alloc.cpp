@@ -13,7 +13,7 @@ void test(std::vector<int> sizes, memory_t M__)
         if (is_host_memory(M__)) {
             std::fill(ptr, ptr + s, 0);
         } else {
-#ifdef __GPU
+#ifdef SIRIUS_GPU
             acc::zero(ptr, s);
 #endif
         }
@@ -21,7 +21,7 @@ void test(std::vector<int> sizes, memory_t M__)
         if (is_host_memory(M__)) {
             std::fill(ptr, ptr + s, 0);
         } else {
-#ifdef __GPU
+#ifdef SIRIUS_GPU
             acc::zero(ptr, s);
 #endif
         }

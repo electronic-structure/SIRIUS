@@ -30,7 +30,7 @@
 #include "SDDK/omp.hpp"
 #include <spla/spla.hpp>
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
 #include "gpu/acc.hpp"
 #endif
 namespace sddk {

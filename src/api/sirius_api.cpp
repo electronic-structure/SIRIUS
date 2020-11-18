@@ -28,7 +28,7 @@
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
 #include "error_codes.hpp"
-#ifdef __NLCGLIB
+#ifdef SIRIUS_NLCGLIB
 #include "nlcglib/adaptor.hpp"
 #include "nlcglib/nlcglib.hpp"
 #endif
@@ -1370,7 +1370,7 @@ void sirius_find_ground_state_robust(void*  const* gs_handler__,
                                      double const* tol__
                                     )
 {
-#ifdef __NLCGLIB
+#ifdef SIRIUS_NLCGLIB
     auto& gs = get_gs(gs_handler__);
     auto& ctx = gs.ctx();
     auto& inp = ctx.parameters_input();
@@ -5980,7 +5980,7 @@ sirius_nlcg:
 void sirius_nlcg(void* const* handler__,
                  void* const* ks_handler__)
 {
-#ifdef __NLCGLIB
+#ifdef SIRIUS_NLCGLIB
     // call nlcg solver
     auto& gs = get_gs(handler__);
     auto& potential = gs.potential();
@@ -6091,7 +6091,7 @@ void sirius_nlcg_params(void* const* handler__,
                         int const* restart__,
                         char const* processing_unit__)
 {
-#ifdef __NLCGLIB
+#ifdef SIRIUS_NLCGLIB
     // call nlcg solver
     auto& gs = get_gs(handler__);
     auto& potential = gs.potential();

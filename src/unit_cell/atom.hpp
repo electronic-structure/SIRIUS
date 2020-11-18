@@ -207,7 +207,7 @@ class Atom
         mdarray<double, 1> result(idx_ri.size(1));
 
         if (pu__ == device_t::GPU) {
-#ifdef __GPU
+#ifdef SIRIUS_GPU
             auto& rgrid    = type().radial_grid();
             auto& rf_coef  = type().rf_coef();
             auto& vrf_coef = type().vrf_coef();

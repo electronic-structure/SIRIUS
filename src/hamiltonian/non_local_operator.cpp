@@ -211,7 +211,7 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ia__, int ispn_b
             break;
         }
         case device_t::GPU: {
-#ifdef __GPU
+#ifdef SIRIUS_GPU
             acc::sync_stream(stream_id(-1));
 #endif
             break;

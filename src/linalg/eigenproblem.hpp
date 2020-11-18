@@ -29,15 +29,15 @@
 #include "linalg.hpp"
 #include "SDDK/omp.hpp"
 
-#if defined(__ELPA)
+#if defined(SIRIUS_ELPA)
 #include "elpa.hpp"
 #endif
 
-#if defined(__GPU) && defined(__MAGMA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_MAGMA)
 #include "gpu/magma.hpp"
 #endif
 
-#if defined(__GPU) && defined(__CUDA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
 #include "gpu/cusolver.hpp"
 #endif
 
@@ -303,7 +303,7 @@ class Eigensolver_lapack : public Eigensolver
     }
 };
 
-#ifdef __ELPA
+#ifdef SIRIUS_ELPA
 class Eigensolver_elpa : public Eigensolver
 {
   private:
@@ -706,7 +706,7 @@ class Eigensolver_elpa : public Eigensolver
 };
 #endif
 
-#ifdef __SCALAPACK
+#ifdef SIRIUS_SCALAPACK
 class Eigensolver_scalapack : public Eigensolver
 {
   private:
@@ -1152,7 +1152,7 @@ class Eigensolver_scalapack : public Eigensolver
 };
 #endif
 
-#ifdef __MAGMA
+#ifdef SIRIUS_MAGMA
 class Eigensolver_magma: public Eigensolver
 {
   public:
@@ -1570,7 +1570,7 @@ class Eigensolver_magma_gpu: public Eigensolver
 };
 #endif
 
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
 class Eigensolver_cuda: public Eigensolver
 {
   public:

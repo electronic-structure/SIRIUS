@@ -56,7 +56,7 @@ double test_gemm(int M, int N, int K, int transa)
     return perf;
 }
 
-#ifdef __SCALAPACK
+#ifdef SIRIUS_SCALAPACK
 double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, int bs)
 {
     //== #ifdef _GPU_
@@ -204,7 +204,7 @@ int main(int argn, char **argv)
         printf("average performance: %12.6f GFlops / rank,  sigma: %12.6f\n", perf.average(), perf.sigma());
     }
     else {
-#ifdef __SCALAPACK
+#ifdef SIRIUS_SCALAPACK
         int n = args.value<int>("n", 0);
         int bs = args.value<int>("bs");
         double perf = 0;
