@@ -40,10 +40,13 @@ RUN apt-get -yqq update \
         make \
         parallel \
         python3 \
+        python3-pip \
+        python3-setuptools \
         tar \
         tcl \
         unzip \
  && locale-gen en_US.UTF-8 \
+ && pip3 install boto3 \
  && rm -rf /var/lib/apt/lists/*
 
 # Install libtree for packaging
@@ -73,17 +76,6 @@ RUN spack mirror add --scope site minio https://spack.dev:9000/spack && \
 
 # Copy over the environment file
 COPY $SPACK_ENVIRONMENT /spack_environment/spack.yaml
-
-# Install clingo and use the new concretizer by default (temporarily until this is the default in spack v0.17)
-RUN spack env create -d /clingo                                        && \
-    spack -e /clingo add clingo@spack build_type=Release target=x86_64 && \
-    spack -e /clingo add py-boto3 target=x86_64                        && \
-    spack -e /clingo install                                           && \
-    spack -e /clingo gc -y                                             && \
-    echo "config:"                        >> /opt/spack/etc/spack/config.yaml && \
-    echo "  concretizer: clingo"          >> /opt/spack/etc/spack/config.yaml
-
-ENV PATH="/clingo/.spack-env/view/bin:$PATH"
 
 # Build dependencies
 # 1. Create a spack environment named `ci` from the input spack.yaml file
