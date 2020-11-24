@@ -136,7 +136,7 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
 {
     auto global_size_func = [](Periodic_function<double> const& x) -> double
     {
-        return x.ctx().unit_cell().omega();
+        return 1.0 / x.ctx().unit_cell().omega();
     };
 
     auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x, Periodic_function<double> const& y) -> double {

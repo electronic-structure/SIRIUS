@@ -712,7 +712,7 @@ struct Settings_input
         ctx_.iterative_solver_tolerance(tol);
         \endcode
      */
-    std::array<double, 2> itsol_tol_scale_{{0.001, 0.5}};
+    std::array<double, 2> itsol_tol_scale_{{0.1, 0.5}};
 
     double auto_enu_tol_{0};
 
