@@ -61,18 +61,10 @@ RUN mkdir -p /opt/spack && \
 # "Install" compilers
 COPY "$COMPILER_CONFIG" /opt/spack/etc/spack/compilers.yaml
 
-# Add our custom spack repo from here
-COPY ./spack /user_repo
-
-RUN spack repo add --scope site /user_repo
-
 # Set up the binary cache and trust the public part of our signing key
 COPY ./ci/spack/public_key.asc ./public_key.asc
 RUN spack mirror add --scope site minio https://spack.dev:9000/spack && \
     spack gpg trust ./public_key.asc
-
-# Copy over the environment file
-COPY $SPACK_ENVIRONMENT /spack_environment/spack.yaml
 
 # Install clingo and use the new concretizer by default (temporarily until this is the default in spack v0.17)
 RUN spack env create -d /clingo                                        && \
@@ -84,6 +76,14 @@ RUN spack env create -d /clingo                                        && \
     echo "  concretizer: clingo"          >> /opt/spack/etc/spack/config.yaml
 
 ENV PATH="/clingo/.spack-env/view/bin:$PATH"
+
+# Add our custom spack repo from here
+COPY ./spack /user_repo
+
+RUN spack repo add --scope site /user_repo
+
+# Copy over the environment file
+COPY $SPACK_ENVIRONMENT /spack_environment/spack.yaml
 
 # Build dependencies
 # 1. Create a spack environment named `ci` from the input spack.yaml file
