@@ -170,10 +170,10 @@ K_point::initialize()
             hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(
                    new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
-            hubbard_atomic_wave_functions_ = std::unique_ptr<Wave_functions>(
+            atomic_wave_functions_hub_ = std::unique_ptr<Wave_functions>(
                    new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                        ctx_.preferred_memory_t(), ctx_.num_spins()));
-            hubbard_atomic_wave_functions_orig_ = std::unique_ptr<Wave_functions>(
+            atomic_wave_functions_S_hub_ = std::unique_ptr<Wave_functions>(
                 new Wave_functions(gkvec_partition(), r.first * ctx_.num_spinor_comp(),
                                    ctx_.preferred_memory_t(), ctx_.num_spins()));
         }
@@ -187,19 +187,19 @@ K_point::generate_hubbard_orbitals()
 {
     PROFILE("sirius::K_point::generate_hubbard_orbitals");
 
-    /* I do not like calling the original wave function orig !!! */
-    auto &phi = hubbard_atomic_wave_functions_orig();
+    /* phi and s_phi are aliases for the atomic wave functions. They are *not*
+     * the hubbard orbitals */
+
+    auto &phi = atomic_wave_functions_hub();
+    auto &s_phi = atomic_wave_functions_S_hub();
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         hubbard_wave_functions_->pw_coeffs(ispn).prime().zero();
-        hubbard_atomic_wave_functions_->pw_coeffs(ispn).prime().zero();
+        s_phi.pw_coeffs(ispn).prime().zero();
+        phi.pw_coeffs(ispn).prime().zero();
     }
     /* total number of Hubbard orbitals */
     auto r = unit_cell_.num_hubbard_wf();
-
-    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        phi.pw_coeffs(ispn).prime().zero();
-    }
 
     std::vector<int> atoms;
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -250,7 +250,7 @@ K_point::generate_hubbard_orbitals()
     //}
     phi.prepare(spin_range(ctx_.num_spins() == 2 ? 2 : 0), true);
     hubbard_wave_functions_->prepare(spin_range(ctx_.num_spins() == 2 ? 2 : 0), false);
-    hubbard_atomic_wave_functions_->prepare(spin_range(ctx_.num_spins() == 2 ? 2 : 0), false);
+    s_phi.prepare(spin_range(ctx_.num_spins() == 2 ? 2 : 0), false);
 
     /* compute S|phi> */
     beta_projectors().prepare();
@@ -261,16 +261,17 @@ K_point::generate_hubbard_orbitals()
         auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
 
         sirius::apply_S_operator<double_complex>(ctx_.processing_unit(), sr, 0, phi.num_wf(),
-            beta_projectors(), phi, q_op.get(), *hubbard_atomic_wave_functions_);
+            beta_projectors(), phi, q_op.get(), s_phi);
     }
     beta_projectors().dismiss();
 
     if (ctx_.control().print_checksum_) {
-        hubbard_atomic_wave_functions_->print_checksum(device_t::CPU, "sphi_hub_init", 0,
-            hubbard_atomic_wave_functions_->num_wf());
+        s_phi.print_checksum(device_t::CPU, "sphi_hub_init", 0,
+                              s_phi.num_wf());
     }
 
-    orthogonalize_hubbard_orbitals(phi, *hubbard_atomic_wave_functions_, *hubbard_wave_functions_);
+    /* now compute the hubbard wfc from the atomic orbitals */
+    orthogonalize_hubbard_orbitals(phi, s_phi, *hubbard_wave_functions_);
 
     ///* all calculations on GPU then we need to copy the final result back to the CPUs */
     //if (ctx_.processing_unit() == device_t::GPU) {
@@ -283,8 +284,8 @@ K_point::generate_hubbard_orbitals()
     //    }
     //}
     hubbard_wave_functions_->dismiss(spin_range(ctx_.num_spins() == 2 ? 2 : 0), true);
-    hubbard_atomic_wave_functions_->dismiss(spin_range(ctx_.num_spins() == 2 ? 2 : 0), true);
     phi.dismiss(spin_range(ctx_.num_spins() == 2 ? 2 : 0), true);
+    s_phi.dismiss(spin_range(ctx_.num_spins() == 2 ? 2 : 0), true);
 
     if (ctx_.control().print_checksum_) {
         hubbard_wave_functions_->print_checksum(device_t::CPU, "phi_hub", 0, hubbard_wave_functions_->num_wf());

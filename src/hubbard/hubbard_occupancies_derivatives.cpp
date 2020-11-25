@@ -41,22 +41,9 @@ Hubbard::compute_occupancies_derivatives(K_point& kp,
     PROFILE("sirius::Hubbard::compute_occupancies_derivatives");
 
     dn__.zero();
-    // check if we have a norm conserving pseudo potential only. OOnly
+    // check if we have a norm conserving pseudo potential only. Only
     // derivatives of the hubbard wave functions are needed.
     auto& phi = kp.hubbard_wave_functions();
-
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        auto& atom_type   = unit_cell_.atom(ia).type();
-        if (atom_type.hubbard_correction()) {
-            STOP(); // rethink it
-
-            //kp.generate_atomic_wave_functions(atom_type.hubbard_indexb_wfc(),
-            //                                  ia,
-            //                                  this->offset_[ia],
-            //                                  true,
-            //                                  phi);
-        }
-    }
 
     Beta_projectors_gradient bp_grad(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
     bp_grad.prepare();
@@ -219,8 +206,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator& q_op_
 {
     PROFILE("sirius::Hubbard::compute_occupancies_stress_derivatives");
 
-    /* this is the atomic wave functions used for the hubbard correction without the operator S applied */
-    auto& phi = kp__.hubbard_atomic_wave_functions_orig();
+    /* this is the original atomic wave functions without the operator S applied */
+    auto& phi = kp__.atomic_wave_functions_hub();
 
     /*
       dphi contains this
@@ -302,8 +289,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator& q_op_
         auto sr = ctx_.num_mag_dims() == 3 ? spin_range(2) : spin_range(is);
 
         inner(ctx_.spla_context(), sr, kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(is),
-            kp__.hubbard_atomic_wave_functions(), 0, kp__.hubbard_atomic_wave_functions().num_wf(),
-            phi_s_psi, 0, is * kp__.hubbard_atomic_wave_functions().num_wf());
+            kp__.atomic_wave_functions_S_hub(), 0, kp__.atomic_wave_functions_S_hub().num_wf(),
+            phi_s_psi, 0, is * kp__.atomic_wave_functions_S_hub().num_wf());
     }
 
     /* array of real spherical harmonics and derivatives for each G-vector */
@@ -337,10 +324,11 @@ Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator& q_op_
                 phitmp.copy_from(device_t::CPU, phitmp.num_wf(), phitmp, 0, 0, 1, (ctx_.num_mag_dims() == 3) ? phitmp.num_wf() : 0);
             }
 
-            /* MT : I think we should keep this comment. Just to keep in mind:
+            /* Just to keep in mind:
              *
-             * - kp.hubbard_wave_functions() are the (potentially) orthogonalized functions with S applied
-             * - kp.hubbard_atomic_wave_functions() are the non-orthofonal (initial) atomic Hubbard functions with S applied
+             * - kp.hubbard_wave_functions() are the hubbard functions with S applied
+             * - kp.atomic_wave_functions_S_hub() are the non-orthogonal (initial) atomic functions with S applied
+             * - kp.atomic_wave_functions_hub() are the non-orthogonal (initial) atomic functions
              * - both sets are spin-dependent, even if the orbitals have no spin label
              * - atom_type.indexr_hub() is the new index of Hubbard radial functions
              * - atom_type.indexb_hub() is the new index of Hubbard orbitals (radial function times a spherical harmonic)
