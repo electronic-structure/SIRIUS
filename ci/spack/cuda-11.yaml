@@ -12,7 +12,7 @@ spack:
     cuda:
       buildable: False
       externals:
-      - spec: 'cuda@:11'
+      - spec: 'cuda@11.1.0'
         prefix: /usr/local/cuda
     cmake:
       version: [':3.14']
