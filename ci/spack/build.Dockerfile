@@ -90,4 +90,4 @@ COPY $SPACK_ENVIRONMENT /spack_environment/spack.yaml
 # 2. Install only the dependencies of this (top level is our package)
 RUN spack --color=always env create --without-view ci /spack_environment/spack.yaml
 
-RUN spack --color=always -e ci install --only=dependencies --require-full-hash-match
+RUN spack --color=always -e ci install --only=dependencies
