@@ -87,11 +87,14 @@ class K_point
     /// Two-component (spinor) wave functions describing the bands.
     std::shared_ptr<Wave_functions> spinor_wave_functions_{nullptr};
 
-    /// Two-component (spinor) hubbard wave functions where the S matrix is applied (if ppus).
+    /// Two-component (spinor) wave functions used to compute the hubbard corrections. They can be different from the atomic wave functions.
     std::unique_ptr<Wave_functions> hubbard_wave_functions_{nullptr};
 
-    /// Two-component (spinor) hubbard wave functions constructed from atomic orbitals, where the S matrix is applied (if ppus).
-    std::unique_ptr<Wave_functions> hubbard_atomic_wave_functions_{nullptr};
+    /// Two-component (spinor) atomic orbitals used to compute the hubbard wave functions
+    std::unique_ptr<Wave_functions> atomic_wave_functions_hub_{nullptr};
+
+    /// Two-component (spinor) atomic orbitals (with the S operator applied for uspp) used to compute the hubbard wave functions
+    std::unique_ptr<Wave_functions> atomic_wave_functions_S_hub_{nullptr};
 
     /// Band occupation numbers.
     sddk::mdarray<double, 2> band_occupancies_;
@@ -476,16 +479,32 @@ class K_point
         return *hubbard_wave_functions_;
     }
 
-    inline Wave_functions& hubbard_atomic_wave_functions()
+    /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
+    inline Wave_functions& atomic_wave_functions_S_hub()
     {
-        assert(hubbard_atomic_wave_functions_ != nullptr);
-        return *hubbard_atomic_wave_functions_;
+        assert(atomic_wave_functions_S_hub_ != nullptr);
+        return *atomic_wave_functions_S_hub_;
     }
 
-    inline Wave_functions const& hubbard_atomic_wave_functions() const
+    /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
+    inline Wave_functions const& atomic_wave_functions_S_hub() const
     {
-        assert(hubbard_atomic_wave_functions_ != nullptr);
-        return *hubbard_atomic_wave_functions_;
+        assert(atomic_wave_functions_S_hub_ != nullptr);
+        return *atomic_wave_functions_S_hub_;
+    }
+
+    /// return the atomic wave functions used to compute the hubbard wave functions.
+    inline Wave_functions & atomic_wave_functions_hub()
+    {
+        assert(atomic_wave_functions_hub_ != nullptr);
+        return *atomic_wave_functions_hub_;
+    }
+
+    /// return the atomic wave functions used to compute the hubbard wave functions.
+    inline Wave_functions const& atomic_wave_functions_hub() const
+    {
+        assert(atomic_wave_functions_hub_ != nullptr);
+        return *atomic_wave_functions_hub_;
     }
 
     inline Wave_functions& singular_components()
