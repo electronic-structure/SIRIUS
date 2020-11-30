@@ -70,7 +70,7 @@ RUN spack mirror add --scope site minio https://spack.dev:9000/spack && \
 RUN spack env create -d /clingo                                        && \
     spack -e /clingo add clingo@spack build_type=Release target=x86_64 && \
     spack -e /clingo add py-boto3 target=x86_64                        && \
-    spack -e /clingo install                                           && \
+    spack -e /clingo install --require-full-hash-match                 && \
     spack -e /clingo gc -y                                             && \
     echo "config:"                        >> /opt/spack/etc/spack/config.yaml && \
     echo "  concretizer: clingo"          >> /opt/spack/etc/spack/config.yaml
