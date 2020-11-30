@@ -239,18 +239,10 @@ K_point::generate_hubbard_orbitals()
     /* check if we have a norm conserving pseudo potential only */
     auto q_op = (unit_cell_.augment()) ? std::unique_ptr<Q_operator>(new Q_operator(ctx_)) : nullptr;
 
-    //if (ctx_.processing_unit() == device_t::GPU) {
-    //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-    //        /* allocate GPU memory */
-    //        phi.pw_coeffs(ispn).prime().allocate(memory_t::device);
-    //        phi.pw_coeffs(ispn).copy_to(memory_t::device, 0, phi.num_wf());
-    //        hubbard_wave_functions_->pw_coeffs(ispn).prime().allocate(memory_t::device);
-    //        hubbard_atomic_wave_functions_->pw_coeffs(ispn).prime().allocate(memory_t::device);
-    //    }
-    //}
-    phi.prepare(spin_range(ctx_.num_spins() == 2 ? 2 : 0), true);
-    hubbard_wave_functions_->prepare(spin_range(ctx_.num_spins() == 2 ? 2 : 0), false);
-    s_phi.prepare(spin_range(ctx_.num_spins() == 2 ? 2 : 0), false);
+    auto sr = spin_range(ctx_.num_spins() == 2 ? 2 : 0);
+    phi.prepare(sr, true);
+    hubbard_wave_functions_->prepare(sr, false);
+    s_phi.prepare(sr, false);
 
     /* compute S|phi> */
     beta_projectors().prepare();
@@ -274,18 +266,9 @@ K_point::generate_hubbard_orbitals()
     orthogonalize_hubbard_orbitals(phi, s_phi, *hubbard_wave_functions_);
 
     ///* all calculations on GPU then we need to copy the final result back to the CPUs */
-    //if (ctx_.processing_unit() == device_t::GPU) {
-    //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-    //        /* copy the hubbard wave functions on the host and then deallocate on GPU */
-    //        hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, hubbard_wave_functions_->num_wf());
-    //        hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
-    //        hubbard_atomic_wave_functions().pw_coeffs(ispn).copy_to(memory_t::host, 0, hubbard_atomic_wave_functions_->num_wf());
-    //        hubbard_atomic_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
-    //    }
-    //}
-    hubbard_wave_functions_->dismiss(spin_range(ctx_.num_spins() == 2 ? 2 : 0), true);
-    phi.dismiss(spin_range(ctx_.num_spins() == 2 ? 2 : 0), true);
-    s_phi.dismiss(spin_range(ctx_.num_spins() == 2 ? 2 : 0), true);
+    hubbard_wave_functions_->dismiss(sr, true);
+    phi.dismiss(sr, true);
+    s_phi.dismiss(sr, true);
 
     if (ctx_.control().print_checksum_) {
         hubbard_wave_functions_->print_checksum(device_t::CPU, "phi_hub", 0, hubbard_wave_functions_->num_wf());
