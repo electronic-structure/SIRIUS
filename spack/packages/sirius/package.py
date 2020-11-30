@@ -76,7 +76,7 @@ class Sirius(CMakePackage, CudaPackage):
     depends_on('fftw-api@3')
     depends_on('libxc')
     depends_on('spglib')
-    depends_on('hdf5+hl')
+    depends_on('hdf5 +hl api=v18')
     depends_on('pkgconfig', type='build')
     depends_on('py-numpy', when='+python', type=('build', 'run'))
     depends_on('py-scipy', when='+python', type=('build', 'run'))
