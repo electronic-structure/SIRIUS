@@ -516,8 +516,8 @@ Hubbard::compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__
                          this->number_of_hubbard_orbitals(),
                          kp__.num_occupied_bands(ispn),
                          &alpha,
-                         dphi_s_psi__.at(mt),dphi_s_psi__.ld(),
-                         phi_s_psi__.at(mt), phi_s_psi__.ld(),
+                         dphi_s_psi__.at(mt, 0, ispn * this->number_of_hubbard_orbitals()),dphi_s_psi__.ld(),
+                         phi_s_psi__.at(mt, 0, ispn * this->number_of_hubbard_orbitals()), phi_s_psi__.ld(),
                          &linalg_const<double_complex>::zero(),
                          dm.at(mt), dm.ld());
 
@@ -526,8 +526,8 @@ Hubbard::compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__
                          this->number_of_hubbard_orbitals(),
                          kp__.num_occupied_bands(ispn),
                          &alpha,
-                         phi_s_psi__.at(mt), phi_s_psi__.ld(),
-                         dphi_s_psi__.at(mt), dphi_s_psi__.ld(),
+                         phi_s_psi__.at(mt, 0, ispn * this->number_of_hubbard_orbitals()), phi_s_psi__.ld(),
+                         dphi_s_psi__.at(mt, 0, ispn * this->number_of_hubbard_orbitals()), dphi_s_psi__.ld(),
                          &linalg_const<double_complex>::one(),
                          dm.at(mt), dm.ld());
 
