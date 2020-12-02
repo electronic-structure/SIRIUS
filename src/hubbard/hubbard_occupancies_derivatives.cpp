@@ -176,7 +176,6 @@ Hubbard::compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, sddk::md
 
             compute_occupancies(kp,
                                 phi_s_psi,
-                                dphi_s_psi,
                                 dphi,
                                 dn_tmp,
                                 dir);
@@ -227,11 +226,8 @@ Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator& q_op_
     sddk::mdarray<double, 2> rlm_g(lmmax, kp__.num_gkvec_loc());
     sddk::mdarray<double, 3> rlm_dg(lmmax, 3, kp__.num_gkvec_loc());
 
-    // overlap between dphi and psi_{nk}
-    dmatrix<double_complex> dphi_s_psi(nbnd, this->number_of_hubbard_orbitals() * ctx_.num_spins());
-
     /* overlap between psi_nk and phi_ik <psi|S|phi> */
-    dmatrix<double_complex> phi_s_psi(nbnd, phi.num_wf() * ctx_.num_spinors());
+    dmatrix<double_complex> psi_s_phi(nbnd, phi.num_wf() * ctx_.num_spinors());
 
     /* initialize the beta projectors and derivatives */
     bp_strain_deriv.prepare();
@@ -243,8 +239,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator& q_op_
 
 
     if (ctx_.processing_unit() == device_t::GPU) {
-        phi_s_psi.allocate(memory_t::device);
-        dphi_s_psi.allocate(memory_t::device);
+        psi_s_phi.allocate(memory_t::device);
 
         dphi.allocate(spin_range(0), memory_t::device);
 
@@ -259,7 +254,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator& q_op_
 
         inner(ctx_.spla_context(), sr, kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(is),
             kp__.atomic_wave_functions_S_hub(), 0, kp__.atomic_wave_functions_S_hub().num_wf(),
-            phi_s_psi, 0, is * kp__.atomic_wave_functions_S_hub().num_wf());
+            psi_s_phi, 0, is * kp__.atomic_wave_functions_S_hub().num_wf());
     }
 
     /* array of real spherical harmonics and derivatives for each G-vector */
@@ -378,12 +373,7 @@ Hubbard::compute_occupancies_stress_derivatives(K_point& kp__, Q_operator& q_op_
                    }
                }
             }
-            compute_occupancies(kp__,
-                               phi_s_psi,
-                               dphi_s_psi,
-                               dphi,
-                               dn__,
-                               3 * nu + mu);
+            compute_occupancies(kp__, psi_s_phi, dphi, dn__, 3 * nu + mu);
         }
     }
 
@@ -458,12 +448,10 @@ Hubbard::wavefunctions_strain_deriv(K_point& kp__, Wave_functions& dphi__, sddk:
 }
 
 void
-Hubbard::compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__, dmatrix<double_complex>& dphi_s_psi__,
-                             Wave_functions& dphi__, mdarray<double_complex, 5>& dn__, const int index)
+Hubbard::compute_occupancies(K_point& kp__, dmatrix<double_complex>& psi_s_phi__, Wave_functions& dphi__,
+    sddk::mdarray<double_complex, 5>& dn__, const int index__)
 {
-    // it is actually <psi | d(S|phi>)
-    //dphi_s_psi.zero(memory_t::host);
-    //dphi_s_psi.zero(memory_t::device);
+    PROFILE("sirius::Hubbard::compute_occupancies");
 
     /* maximum number of occupied bands */
     int nbnd = (ctx_.num_mag_dims() == 1) ? std::max(kp__.num_occupied_bands(0), kp__.num_occupied_bands(1))
@@ -492,30 +480,23 @@ Hubbard::compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__
         }
     }
 
-    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        inner(ctx_.spla_context(), spin_range(ispn), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn),
-              dphi__, //   S d |phi>
-              0, this->number_of_hubbard_orbitals(), dphi_s_psi__, 0, ispn * this->number_of_hubbard_orbitals());
-    }
-
-    if (ctx_.processing_unit() == device_t::GPU) {
-        dphi_s_psi__.copy_to(memory_t::host);
-        phi_s_psi__.copy_to(memory_t::host);
-    }
+    //if (ctx_.processing_unit() == device_t::GPU) {
+    //    phi_s_psi__.copy_to(memory_t::host);
+    //}
 
     /* include the occupancy directly in dphi_s_psi */
 
-    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        for (int n_orb = 0; n_orb < this->number_of_hubbard_orbitals(); n_orb++) {
-            for (int ibnd = 0; ibnd < kp__.num_occupied_bands(ispn); ibnd++) {
-                dphi_s_psi__(ibnd, ispn * this->number_of_hubbard_orbitals() + n_orb) *=
-                    kp__.band_occupancy(ibnd, ispn);
-            }
-        }
-    }
-    if (ctx_.processing_unit() == device_t::GPU) {
-        dphi_s_psi__.copy_to(memory_t::device);
-    }
+    //for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //    for (int n_orb = 0; n_orb < this->number_of_hubbard_orbitals(); n_orb++) {
+    //        for (int ibnd = 0; ibnd < kp__.num_occupied_bands(ispn); ibnd++) {
+    //            dphi_s_psi__(ibnd, ispn * this->number_of_hubbard_orbitals() + n_orb) *=
+    //                kp__.band_occupancy(ibnd, ispn);
+    //        }
+    //    }
+    //}
+    //if (ctx_.processing_unit() == device_t::GPU) {
+    //    dphi_s_psi__.copy_to(memory_t::device);
+    //}
 
     auto alpha = double_complex(kp__.weight(), 0.0);
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -540,7 +521,7 @@ Hubbard::compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__
                          kp__.num_occupied_bands(ispn),
                          &alpha,
                          psi_s_dphi.at(mt), psi_s_dphi.ld(),
-                         phi_s_psi__.at(mt, 0, ispn * this->number_of_hubbard_orbitals()), phi_s_psi__.ld(),
+                         psi_s_phi__.at(mt, 0, ispn * this->number_of_hubbard_orbitals()), psi_s_phi__.ld(),
                          &linalg_const<double_complex>::zero(),
                          dm.at(mt), dm.ld());
 
@@ -549,7 +530,7 @@ Hubbard::compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__
                          this->number_of_hubbard_orbitals(),
                          kp__.num_occupied_bands(ispn),
                          &alpha,
-                         phi_s_psi__.at(mt, 0, ispn * this->number_of_hubbard_orbitals()), phi_s_psi__.ld(),
+                         psi_s_phi__.at(mt, 0, ispn * this->number_of_hubbard_orbitals()), psi_s_phi__.ld(),
                          psi_s_dphi.at(mt), psi_s_dphi.ld(),
                          &linalg_const<double_complex>::one(),
                          dm.at(mt), dm.ld());
@@ -571,7 +552,7 @@ Hubbard::compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__
                 const int lmax_at = 2 * atom.type().lo_descriptor_hub(0).l + 1;
                 for (int m2 = 0; m2 < lmax_at; m2++) {
                     for (int m1 = 0; m1 < lmax_at; m1++) {
-                        dn__(m1, m2, ispn, ia1, index) = dm(this->offset_[ia1] + m1, this->offset_[ia1] + m2);
+                        dn__(m1, m2, ispn, ia1, index__) = dm(this->offset_[ia1] + m1, this->offset_[ia1] + m2);
                     }
                 }
             }

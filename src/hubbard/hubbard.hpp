@@ -85,9 +85,8 @@ class Hubbard
     /// file containing the hubbard wave functions
     std::string wave_function_file_;
 
-    void compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi,
-                             dmatrix<double_complex>& dphi_s_psi, Wave_functions& dphi,
-                             mdarray<double_complex, 5>& dn_, const int index);
+    void compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__, Wave_functions& dphi__,
+                             mdarray<double_complex, 5>& dn__, const int index__);
 
     void symmetrize_occupancy_matrix_noncolinear_case();
     void symmetrize_occupancy_matrix(sddk::mdarray<double_complex, 4>& om__);
