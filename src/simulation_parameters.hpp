@@ -281,23 +281,41 @@ class Simulation_parameters
     /// Number of spin components.
     /** This parameter can take only two values: 1 -- non-magnetic calcaulation and wave-functions,
      *  2 -- spin-polarized calculation and wave-functions. */
-    int num_spins() const
+    inline int num_spins() const
     {
         return (num_mag_dims() == 0) ? 1 : 2;
     }
 
     /// Number of components in the complex density matrix.
     /** In case of non-collinear magnetism only one out of two non-diagonal components is stored. */
-    int num_mag_comp() const // TODO: rename; current name does not reflect the meaning
+    inline int num_mag_comp() const // TODO: rename; current name does not reflect the meaning
     {
         return (num_mag_dims() == 3) ? 3 : num_spins();
     }
 
-    /// Number of independent spin dimensions of some arrays in case of magnetic calculation.
-    /** Returns 1 for non magnetic calculation, 2 for spin-collinear case and 1 for non colllinear case. */
-    int num_spin_dims()
+    /// Number of non-zero spinor components.
+    /** In non magnetic case this is equal to 1, in collinear magnetic case it is also equal to 1 (pure spinors),
+     *  in non-collinear case the number of components is 2 (general spinor case). */
+    inline int num_spinor_comp() const
     {
-        return (num_mag_dims() == 3) ? 1 : num_spins();
+        if (num_mag_dims() != 3) {
+            return 1;
+        } else {
+            return 2;
+        }
+    }
+
+    /// Number of spinor wave-functions labeled by a sinlge band index.
+    /** In magnetic collinear case the wave-functions have two spin components, but they describe different
+     *  states (pure spin-up, pure spin-dn), thus the number of spinors packed in a single band index is 2.
+     *  In non-collinear case we have full two-component spinors for each band index. */
+    inline int num_spinors() const
+    {
+        if (num_mag_dims() == 1) {
+            return 2;
+        } else {
+            return 1;
+        }
     }
 
     /// Set the number of first-variational states.
@@ -324,11 +342,7 @@ class Simulation_parameters
     int num_bands() const
     {
         if (num_fv_states() != -1) {
-            if (num_mag_dims() != 3) {
-                return num_fv_states();
-            } else {
-                return num_spins() * num_fv_states();
-            }
+            return num_fv_states() * num_spinor_comp();
         } else {
             return parameters_input_.num_bands_;
         }

@@ -386,7 +386,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     int niter{0};
 
     PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|iter");
-    for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
+    for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
 
         /* converged vectors */
         int num_locked = 0;

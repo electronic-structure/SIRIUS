@@ -167,7 +167,7 @@ void Energy::compute()
             for (int jj = 0; jj < num_bands; ++jj) {
                 dmatrix<std::complex<double>> dmat(1, 1, memory_t::host);
                 dmat.allocate(memory_t::device);
-                sddk::inner(ctx.spla_context(), ispn,
+                sddk::inner(ctx.spla_context(), spin_range(ispn),
                             /* bra */ kp.spinor_wave_functions(), jj, 1,
                             /* ket */ *hphis[i], jj, 1,
                             /* out */ dmat, 0, 0);
@@ -177,7 +177,7 @@ void Energy::compute()
             }
         }
     }
-    kset.sync_band_energies();
+    kset.sync_band("energy");
 
     // evaluate total energy
     double eewald = ewald_energy(ctx, ctx.gvec(), ctx.unit_cell());
@@ -255,7 +255,7 @@ void Energy::set_fn(const std::vector<std::pair<int, int>>& keys, const std::vec
             kp.band_occupancy(i, ispn, fn_loc[i]);
         }
     }
-    kset.sync_band_occupancies();
+    kset.sync_band("occupancy");
 }
 
 std::shared_ptr<nlcglib::VectorBaseZ> Energy::get_ek()

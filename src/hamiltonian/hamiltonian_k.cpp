@@ -815,7 +815,7 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
 
         // Apply the hubbard potential and deallocate the hubbard wave
         // functions on GPU (if needed)
-        H0().potential().U().apply_hubbard_potential(kp().hubbard_wave_functions(), spins__(), N__, n__, phi__, *hphi__);
+        H0().potential().U().apply_hubbard_potential(kp().hubbard_wave_functions(), spins__, N__, n__, phi__, *hphi__);
 
         //if (ctx_.processing_unit() == device_t::GPU) {
         //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {

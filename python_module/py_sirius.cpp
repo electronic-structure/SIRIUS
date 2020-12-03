@@ -191,7 +191,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("aw_cutoff", py::overload_cast<double>(&Simulation_context::aw_cutoff))
         .def("parameters_input", py::overload_cast<>(&Simulation_context::parameters_input, py::const_),
              py::return_value_policy::reference)
-        .def("num_spin_dims", &Simulation_context::num_spin_dims)
+        .def("num_spinors", &Simulation_context::num_spinors)
         .def("num_mag_dims", &Simulation_context::num_mag_dims)
         .def("gamma_point", py::overload_cast<bool>(&Simulation_context::gamma_point))
         .def("update", &Simulation_context::update)
@@ -515,8 +515,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("get_band_energies", &K_point_set::get_band_energies)
         .def("find_band_occupancies", &K_point_set::find_band_occupancies)
         .def("band_gap", &K_point_set::band_gap)
-        .def("sync_band_energies", &K_point_set::sync_band_energies)
-        .def("sync_band_occupancies", &K_point_set::sync_band_occupancies)
+        .def("sync_band", &K_point_set::sync_band)
         .def("valence_eval_sum", &K_point_set::valence_eval_sum)
         .def("__contains__", [](K_point_set& ks, int i) { return (i >= 0 && i < ks.spl_num_kpoints().local_size()); })
         .def("__getitem__",
@@ -788,7 +787,7 @@ void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wa
     /* apply H to all wave functions */
     int N = 0;
     int n = num_wf;
-    for (int ispn_step = 0; ispn_step < ctx.num_spin_dims(); ispn_step++) {
+    for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
         // sping_range: 2 for non-colinear magnetism, otherwise ispn_step
         auto spin_range = sddk::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
         H.apply_h_s<complex_double>(spin_range, N, n, wf, &wf_out, swf.get());

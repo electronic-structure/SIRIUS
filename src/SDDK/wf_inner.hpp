@@ -51,7 +51,7 @@ namespace sddk {
  *  \param [in]  jcol0    First column (in the global matix) of the inner product sub-matrix.
  */
 template <typename T>
-void inner(::spla::Context& spla_ctx__, int ispn__, Wave_functions& bra__, int i0__, int m__,
+void inner(::spla::Context& spla_ctx__, spin_range ispn__, Wave_functions& bra__, int i0__, int m__,
            Wave_functions& ket__, int j0__, int n__, dmatrix<T>& result__, int irow0__, int jcol0__);
 }
 #endif

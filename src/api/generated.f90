@@ -3895,6 +3895,117 @@ call sirius_get_gvec_arrays_aux(handler_ptr,gvec_ptr,gvec_cart_ptr,gvec_len_ptr,
 end subroutine sirius_get_gvec_arrays
 
 !
+!> @brief Get local number of FFT grid points.
+!> @param [in] handler Simulation context handler
+!> @param [out] num_fft_grid_points Local number of FFT grid points in the real-space mesh.
+!> @param [out] error_code Error code.
+subroutine sirius_get_num_fft_grid_points(handler,num_fft_grid_points,error_code)
+implicit none
+!
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(out) :: num_fft_grid_points
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: num_fft_grid_points_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_get_num_fft_grid_points_aux(handler,num_fft_grid_points,error_code)&
+&bind(C, name="sirius_get_num_fft_grid_points")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: num_fft_grid_points
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+num_fft_grid_points_ptr = C_NULL_PTR
+num_fft_grid_points_ptr = C_LOC(num_fft_grid_points)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_num_fft_grid_points_aux(handler_ptr,num_fft_grid_points_ptr,error_code_ptr)
+end subroutine sirius_get_num_fft_grid_points
+
+!
+!> @brief Get mapping between G-vector index and FFT index
+!> @param [in] handler Simulation context handler
+!> @param [out] fft_index Index inside FFT buffer
+!> @param [out] error_code Error code.
+subroutine sirius_get_fft_index(handler,fft_index,error_code)
+implicit none
+!
+type(C_PTR), target, intent(in) :: handler
+integer, target, intent(out) :: fft_index
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: handler_ptr
+type(C_PTR) :: fft_index_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_get_fft_index_aux(handler,fft_index,error_code)&
+&bind(C, name="sirius_get_fft_index")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: handler
+type(C_PTR), value :: fft_index
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+handler_ptr = C_NULL_PTR
+handler_ptr = C_LOC(handler)
+fft_index_ptr = C_NULL_PTR
+fft_index_ptr = C_LOC(fft_index)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_fft_index_aux(handler_ptr,fft_index_ptr,error_code_ptr)
+end subroutine sirius_get_fft_index
+
+!
+!> @brief Get maximum number of G+k vectors across all k-points in the set
+!> @param [in] ks_handler K-point set handler.
+!> @param [out] max_num_gkvec Maximum number of G+k vectors
+!> @param [out] error_code Error code.
+subroutine sirius_get_max_num_gkvec(ks_handler,max_num_gkvec,error_code)
+implicit none
+!
+type(C_PTR), target, intent(in) :: ks_handler
+integer, target, intent(out) :: max_num_gkvec
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: ks_handler_ptr
+type(C_PTR) :: max_num_gkvec_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_get_max_num_gkvec_aux(ks_handler,max_num_gkvec,error_code)&
+&bind(C, name="sirius_get_max_num_gkvec")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: ks_handler
+type(C_PTR), value :: max_num_gkvec
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+ks_handler_ptr = C_NULL_PTR
+ks_handler_ptr = C_LOC(ks_handler)
+max_num_gkvec_ptr = C_NULL_PTR
+max_num_gkvec_ptr = C_LOC(max_num_gkvec)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_max_num_gkvec_aux(ks_handler_ptr,max_num_gkvec_ptr,error_code_ptr)
+end subroutine sirius_get_max_num_gkvec
+
+!
 !> @brief Get all G+k vector related arrays
 !> @param [in] ks_handler K-point set handler.
 !> @param [in] ik Global index of k-point

@@ -863,7 +863,6 @@ class Simulation_context : public Simulation_parameters
     }
 };
 
-
 } // namespace sirius
 
 #endif

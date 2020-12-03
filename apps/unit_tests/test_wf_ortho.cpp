@@ -16,7 +16,7 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     BLACS_grid blacs_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    
+
     /* create G-vectors */
     Gvec gvec(M, cutoff__, Communicator::world(), false);
     Gvec_partition gvecp(gvec, Communicator::world(), Communicator::self());
@@ -47,7 +47,7 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     orthogonalize<double_complex>(spla_ctx, mem, la, 0, phi, hphi, 0, num_bands__, ovlp, tmp);
     orthogonalize<double_complex>(spla_ctx, mem, la, 0, phi, hphi, num_bands__, num_bands__, ovlp, tmp);
 
-    inner(spla_ctx, 0, phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
+    inner(spla_ctx, spin_range(0), phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
 
     for (int j = 0; j < ovlp.num_cols_local(); j++) {
         for (int i = 0; i < ovlp.num_rows_local(); i++) {

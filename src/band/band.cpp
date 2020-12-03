@@ -83,7 +83,7 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__,
     }
 
     /* <{phi,phi_new}|Op|phi_new> */
-    inner(ctx_.spla_context(), (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, num_locked, N__ + n__ - num_locked, op_phi__,
+    inner(ctx_.spla_context(), spin_range((ctx_.num_mag_dims() == 3) ? 2 : 0), phi__, num_locked, N__ + n__ - num_locked, op_phi__,
           N__, n__, mtrx__, 0, N__ - num_locked);
 
     /* restore lower part */
@@ -159,7 +159,7 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const
 
     /* reset the energies for the iterative solver to do at least two steps */
     for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
-        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int i = 0; i < ctx_.num_bands(); i++) {
                 kset__[ik]->band_energy(i, ispn, 0);
                 kset__[ik]->band_occupancy(i, ispn, ctx_.max_occupancy());
@@ -308,7 +308,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 
     Hk__.kp().copy_hubbard_orbitals_on_device();
 
-    for (int ispn_step = 0; ispn_step < ctx_.num_spin_dims(); ispn_step++) {
+    for (int ispn_step = 0; ispn_step < ctx_.num_spinors(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         Hk__.apply_h_s<T>(spin_range((ctx_.num_mag_dims() == 3) ? 2 : ispn_step), 0, num_phi_tot, phi, &hphi, &ophi);
 
@@ -450,7 +450,7 @@ void Band::check_residuals(Hamiltonian_k& Hk__) const
         kp.copy_hubbard_orbitals_on_device();
     }
     /* compute residuals */
-    for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
+    for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
         /* apply Hamiltonian and S operators to the wave-functions */
         Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, &hpsi, &spsi);
 
@@ -516,11 +516,11 @@ void Band::check_wave_functions(Hamiltonian_k& Hk__) const
         Hk__.kp().copy_hubbard_orbitals_on_device();
 
         /* compute residuals */
-        for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
+        for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
+            auto sr = spin_range(nc_mag ? 2 : ispin_step);
             /* apply Hamiltonian and S operators to the wave-functions */
-            Hk__.apply_h_s<T>(spin_range(nc_mag ? 2 : ispin_step), 0, ctx_.num_bands(), psi, nullptr, &spsi);
-            inner(ctx_.spla_context(), nc_mag ? 2 : ispin_step, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(),
-                  ovlp, 0, 0);
+            Hk__.apply_h_s<T>(sr, 0, ctx_.num_bands(), psi, nullptr, &spsi);
+            inner(ctx_.spla_context(), sr, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
 
             double diff = check_identity(ovlp, ctx_.num_bands());
 

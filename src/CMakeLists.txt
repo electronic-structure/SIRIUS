@@ -41,6 +41,7 @@ set(_SOURSES
   "potential/check_xc_potential.cpp"
   "unit_cell/unit_cell.cpp"
   "unit_cell/unit_cell_symmetry.cpp"
+  "unit_cell/atom_type.cpp"
   "simulation_context.cpp"
   "simulation_parameters.cpp"
   "geometry/force.cpp"

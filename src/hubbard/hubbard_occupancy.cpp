@@ -63,7 +63,7 @@ void Hubbard::symmetrize_occupancy_matrix(sddk::mdarray<double_complex, 4>& om__
                 auto& atom_type = unit_cell_.atom(ia).type();
                 int   ja        = sym.sym_table(ia, isym);
                 if (atom_type.hubbard_correction()) {
-                    sirius::symmetrize(om__, unit_cell_.atom(ia).type().hubbard_indexb_wfc(), ia, ja,
+                    sirius::symmetrize(om__, unit_cell_.atom(ia).type().indexb_hub(), ia, ja,
                                        ctx_.num_mag_comp(), rotm, spin_rot_su2, dm, true);
                 }
             }

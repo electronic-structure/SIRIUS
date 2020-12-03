@@ -85,13 +85,8 @@ class Hubbard
     /// file containing the hubbard wave functions
     std::string wave_function_file_;
 
-    void compute_occupancies(K_point&                    kp,
-                             dmatrix<double_complex>&    phi_s_psi,
-                             dmatrix<double_complex>&    dphi_s_psi,
-                             Wave_functions&             dphi,
-                             mdarray<double_complex, 5>& dn_,
-                             matrix<double_complex>&     dm,
-                             const int                   index);
+    void compute_occupancies(K_point& kp__, dmatrix<double_complex>& phi_s_psi__, Wave_functions& dphi__,
+                             mdarray<double_complex, 5>& dn__, const int index__);
 
     void symmetrize_occupancy_matrix_noncolinear_case();
     void symmetrize_occupancy_matrix(sddk::mdarray<double_complex, 4>& om__);
@@ -154,12 +149,8 @@ class Hubbard
     }
 
     /// Apply the hubbard potential on wave functions
-    void apply_hubbard_potential(Wave_functions& hub_wf,
-                                 const int       ispn,
-                                 const int       idx,
-                                 const int       n,
-                                 Wave_functions& phi,
-                                 Wave_functions& ophi);
+    void apply_hubbard_potential(Wave_functions& hub_wf, spin_range spins__, const int idx, const int n,
+                                 Wave_functions& phi, Wave_functions& ophi);
 
     void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 6>& dn);
 

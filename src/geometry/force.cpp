@@ -565,7 +565,7 @@ void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator&
             for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
                 auto const& atom = ctx_.unit_cell().atom(ia1);
                 if (atom.type().hubbard_correction()) {
-                    int const lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
+                    int const lmax_at = 2 * atom.type().lo_descriptor_hub(0).l + 1;
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                         for (int m1 = 0; m1 < lmax_at; m1++) {
                             for (int m2 = 0; m2 < lmax_at; m2++) {

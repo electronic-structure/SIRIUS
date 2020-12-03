@@ -25,28 +25,40 @@
 
 namespace sirius {
 
-void K_point_set::sync_band_energies()
+void K_point_set::sync_band(std::string const& what__)
 {
     PROFILE("sirius::K_point_set::sync_band_energies");
 
-    mdarray<double, 3> band_energies(ctx_.num_bands(), ctx_.num_spin_dims(), num_kpoints());
+    if (what__ != "energy" && what__ != "occupancy") {
+        TERMINATE("wrong label in K_point_set::sync_band");
+    }
+
+    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints());
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
-        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                band_energies(j, ispn, ik) = kpoints_[ik]->band_energy(j, ispn);
+                if (what__ == "energy" ){
+                    data(j, ispn, ik) = kpoints_[ik]->band_energy(j, ispn);
+                } else {
+                    data(j, ispn, ik) = kpoints_[ik]->band_occupancy(j, ispn);
+                }
             }
         }
     }
-    comm().allgather(band_energies.at(memory_t::host),
-                     ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.global_offset(),
-                     ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.local_size());
+    comm().allgather(data.at(memory_t::host),
+                     ctx_.num_bands() * ctx_.num_spinors() * spl_num_kpoints_.global_offset(),
+                     ctx_.num_bands() * ctx_.num_spinors() * spl_num_kpoints_.local_size());
 
     for (int ik = 0; ik < num_kpoints(); ik++) {
-        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                kpoints_[ik]->band_energy(j, ispn, band_energies(j, ispn, ik));
+                if (what__ == "energy") {
+                    kpoints_[ik]->band_energy(j, ispn, data(j, ispn, ik));
+                } else {
+                    kpoints_[ik]->band_occupancy(j, ispn, data(j, ispn, ik));
+                }
             }
         }
     }
@@ -120,51 +132,6 @@ void K_point_set::initialize(std::vector<int> const& counts)
     this->initialized_ = true;
 }
 
-void K_point_set::sync_band_occupancies()
-{
-    int nranks = comm().size();
-    int pid    = comm().rank();
-    std::vector<int> nk_per_rank(nranks);
-    for (int i = 0; i < nranks; ++i) {
-        nk_per_rank[i] = spl_num_kpoints_.local_size(i);
-    }
-    int ns        = 1;
-    int num_bands = ctx_.num_bands();
-    if (ctx_.num_spin_dims() > 1)
-        ns = 2;
-
-    std::vector<int> offsets(nranks);
-    std::vector<int> sizes(nranks);
-    int offset = 0;
-    for (int i = 0; i < nranks; ++i) {
-
-        offsets[i] = offset;
-        int lsize  = nk_per_rank[i] * num_bands * ns;
-        sizes[i]   = lsize;
-        offset += lsize;
-    }
-    int size = offset;
-
-    std::vector<double> tmp(sizes[pid]);
-    for (int i = 0; i < sizes[pid]; ++i) {
-        int gi   = offsets[pid] + i;
-        int k    = gi / (num_bands * ns);
-        int spin = (gi % (num_bands * ns)) / num_bands;
-        int n    = (gi % (num_bands * ns)) % num_bands;
-        tmp[i]   = kpoints_[k]->band_occupancy(n, spin);
-    }
-
-    std::vector<double> occupancies(size);
-    comm().allgather(tmp.data(), sizes[pid], occupancies.data(), sizes.data(), offsets.data());
-
-    for (int i = 0; i < size; ++i) {
-        int k    = i / (num_bands * ns);
-        int spin = (i % (num_bands * ns)) / num_bands;
-        int n    = (i % (num_bands * ns)) % num_bands;
-        kpoints_[k]->band_occupancy(n, spin, occupancies[i]);
-    }
-}
-
 void K_point_set::find_band_occupancies()
 {
     PROFILE("sirius::K_point_set::find_band_occupancies");
@@ -181,7 +148,7 @@ void K_point_set::find_band_occupancies()
     int s{1};
     int sp;
 
-    mdarray<double, 3> bnd_occ(ctx_.num_bands(), ctx_.num_spin_dims(), num_kpoints());
+    sddk::mdarray<double, 3> bnd_occ(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints());
 
     double ne{0};
 
@@ -195,7 +162,7 @@ void K_point_set::find_band_occupancies()
         // determine fermi energy as max occupied band energy.
         double efermi = std::numeric_limits<double>::min();
         for (int ik = 0; ik < num_kpoints(); ik++) {
-            for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+            for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
                     efermi = std::max(efermi, kpoints_[ik]->band_energy(j, ispn));
                 }
@@ -213,7 +180,7 @@ void K_point_set::find_band_occupancies()
         /* compute total number of electrons */
         ne = 0.0;
         for (int ik = 0; ik < num_kpoints(); ik++) {
-            for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+            for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
                     bnd_occ(j, ispn, ik) =
                         smearing::gaussian(kpoints_[ik]->band_energy(j, ispn) - ef, ctx_.smearing_width()) *
@@ -239,7 +206,7 @@ void K_point_set::find_band_occupancies()
     energy_fermi_ = ef;
 
     for (int ik = 0; ik < num_kpoints(); ik++) {
-        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 kpoints_[ik]->band_occupancy(j, ispn, bnd_occ(j, ispn, ik));
             }
@@ -254,7 +221,7 @@ void K_point_set::find_band_occupancies()
         std::vector<std::pair<double, double>> eband;
         std::pair<double, double> eminmax;
 
-        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 eminmax.first  = 1e10;
                 eminmax.second = -1e10;

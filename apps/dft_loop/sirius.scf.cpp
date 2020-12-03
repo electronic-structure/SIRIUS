@@ -343,7 +343,7 @@ void run_tasks(cmd_args const& args)
         }
         band.solve(ks, H0, true);
 
-        ks.sync_band_energies();
+        ks.sync_band("energy");
         if (Communicator::world().rank() == 0) {
             json dict;
             dict["header"] = {};
@@ -367,7 +367,7 @@ void run_tasks(cmd_args const& args)
                 }
                 std::vector<double> bnd_e;
 
-                for (int ispn = 0; ispn < ctx->num_spin_dims(); ispn++) {
+                for (int ispn = 0; ispn < ctx->num_spinors(); ispn++) {
                     for (int j = 0; j < ctx->num_bands(); j++) {
                         bnd_e.push_back(ks[ik]->band_energy(j, ispn));
                     }

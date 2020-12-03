@@ -36,15 +36,13 @@ Occupation_matrix::Occupation_matrix(Simulation_context& ctx__)
         // TODO: move detection of indexb_max to unit_cell
         // Don't forget that Hubbard class has the same code
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
-                if (ctx__.unit_cell().atom(ia).type().spin_orbit_coupling()) {
-                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size() / 2);
-                } else {
-                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size());
-                }
+            if (ctx_.unit_cell().atom(ia).type().hubbard_correction()) {
+                indexb_max = std::max(indexb_max, static_cast<int>(ctx_.unit_cell().atom(ia).type().indexb_hub().size()));
             }
         }
 
+        // TODO: work on the general definition of the occupation matrix with offsite terms
+        // store it as list of small matrices, thewn indexb_max is not needed
         data_ = sddk::mdarray<double_complex, 4>(indexb_max, indexb_max, 4, ctx_.unit_cell().num_atoms(),
                 memory_t::host, "Occupation_matrix.data_");
         data_.zero();
@@ -78,7 +76,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
         occ_mtrx.allocate(ctx_.mem_pool(mem));
     }
 
-    auto r = ctx_.unit_cell().num_wf_with_U();
+    auto r = ctx_.unit_cell().num_hubbard_wf();
 
     // TODO collnear and non-collinear cases have a lot of similar code; there should be a way to combine it
 
@@ -88,7 +86,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
         if (is_device_memory(mem)) {
             dm.allocate(ctx_.mem_pool(mem));
         }
-        sddk::inner(ctx_.spla_context(), 2, kp__.spinor_wave_functions(), 0,
+        sddk::inner(ctx_.spla_context(), spin_range(2), kp__.spinor_wave_functions(), 0,
             kp__.num_occupied_bands(), kp__.hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
 
         // TODO: check if inner() already moved data to CPU
@@ -126,24 +124,25 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                    relativistic wave functions have different total angular
                    momentum for the same n */
 
-                for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb += (atom.type().spin_orbit_coupling() ? 2 : 1)) {
+                //TODO: multi-orbital case
+                //for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb += (atom.type().spin_orbit_coupling() ? 2 : 1)) {
                     /*
                        I know that the index of the hubbard wave functions (indexb_....) is
                        consistent with the index of the hubbard orbitals
                     */
-                    const int lmmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
+                    const int lmmax_at = 2 * atom.type().indexr_hub()[0].l() + 1;
                     for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                         for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                             int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
                             for (int mp = 0; mp < lmmax_at; mp++) {
                                 for (int m = 0; m < lmmax_at; m++) {
                                     data_(m, mp, s, ia) +=
-                                        occ_mtrx(r.second[ia] + m + s1 * lmmax_at, r.second[ia] + mp + s2 * lmmax_at);
+                                        occ_mtrx(r.first * s1 + r.second[ia] + m, r.first * s2 + r.second[ia] + mp);
                                 }
                             }
                         }
                     }
-                }
+                //}
             }
         }
     } else {
@@ -157,7 +156,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
             if (is_device_memory(mem)) {
                 dm.allocate(ctx_.mem_pool(mem));
             }
-            sddk::inner(ctx_.spla_context(), ispn, kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn),
+            sddk::inner(ctx_.spla_context(), spin_range(ispn), kp__.spinor_wave_functions(), 0, kp__.num_occupied_bands(ispn),
                   kp__.hubbard_wave_functions(), 0, nwfu, dm, 0, 0);
             // TODO: check if inner() already moved data to CPU
 
@@ -196,8 +195,8 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 const auto& atom = ctx_.unit_cell().atom(ia);
                 if (atom.type().hubbard_correction()) {
-                    for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb++) {
-                        const int lmmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
+                    //for (int orb = 0; orb < atom.type().num_hubbard_orbitals(); orb++) {
+                        const int lmmax_at = 2 * atom.type().indexr_hub()[0].l() + 1;
                         for (int mp = 0; mp < lmmax_at; mp++) {
                             const int mmp = r.second[ia] + mp;
                             for (int m = 0; m < lmmax_at; m++) {
@@ -205,14 +204,12 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
                                 data_(m, mp, ispn, ia) += occ_mtrx(mm, mmp);
                             }
                         }
-                    }
+                    //}
                 }
             }
             PROFILE_STOP("sirius::Hubbard::compute_occupation_matrix|4");
         } // ispn
     }
-
-    //print_occupancies();
 }
 
 void Occupation_matrix::access(std::string const& what__, double_complex* occ__, int ld__) {
@@ -236,7 +233,7 @@ void Occupation_matrix::access(std::string const& what__, double_complex* occ__,
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         auto& atom = ctx_.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
-            const int l = ctx_.unit_cell().atom(ia).type().hubbard_orbital(0).l;
+            const int l = ctx_.unit_cell().atom(ia).type().indexr_hub()[0].l();
             for (int m1 = -l; m1 <= l; m1++) {
                 for (int m2 = -l; m2 <= l; m2++) {
                     if (what__ == "get") {
@@ -265,16 +262,16 @@ void Occupation_matrix::init()
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         const auto& atom = ctx_.unit_cell().atom(ia);
         if (atom.type().hubbard_correction()) {
-            const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
-            if (atom.type().hubbard_orbital(0).initial_occupancy.size()) {
+            const int lmax_at = 2 * atom.type().indexr_hub()[0].l() + 1;
+            if (atom.type().lo_descriptor_hub(0).initial_occupancy.size()) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     for (int m = 0; m < lmax_at; m++) {
-                        this->data_(m, m, ispn, ia) = atom.type().hubbard_orbital(0).initial_occupancy[m + ispn * lmax_at];
+                        this->data_(m, m, ispn, ia) = atom.type().lo_descriptor_hub(0).initial_occupancy[m + ispn * lmax_at];
                     }
                 }
             } else {
                 // compute the total charge for the hubbard orbitals
-                double charge = atom.type().hubbard_orbital(0).occupancy();
+                double charge = atom.type().lo_descriptor_hub(0).occupancy();
                 bool   nm     = true; // true if the atom is non magnetic
                 int    majs, mins;
                 if (ctx_.num_spins() != 1) {
@@ -364,7 +361,7 @@ void Occupation_matrix::print_occupancies() const
             const auto& atom = ctx_.unit_cell().atom(ia);
 
             if (atom.type().hubbard_correction()) {
-                const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
+                const int lmax_at = 2 * atom.type().lo_descriptor_hub(0).l + 1;
                 for (int m1 = 0; m1 < lmax_at; m1++) {
                     for (int m2 = 0; m2 < lmax_at; m2++) {
                         std::printf("%.3lf ", std::abs(this->data_(m1, m2, 0, ia)));

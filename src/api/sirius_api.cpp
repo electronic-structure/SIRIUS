@@ -1673,7 +1673,7 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
 
         int n = (n__) ? *n__ : -1;
         double occ = (occ__) ? *occ__ : 0.0;
-        type.add_ps_atomic_wf(n, *l__, std::vector<double>(rf__, rf__ + *num_points__), occ);
+        type.add_ps_atomic_wf(n, sirius::experimental::aqn(*l__), std::vector<double>(rf__, rf__ + *num_points__), occ);
     } else if (label == "ps_rho_core") {
         type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
     } else if (label == "ps_rho_total") {
@@ -3938,66 +3938,92 @@ void sirius_get_gvec_arrays(void* const* handler__,
     }
 }
 
-//==/*
-//==@apibegin
-//==sirius_get_num_fft_grid_points:
-//==  return: int
-//==  doc: Get local number of FFT grid points.
-//==  arguments:
-//==    handler:
-//==      type: void*
-//==      attr: in, required
-//==      doc: Simulation context handler
-//==@apiend
-//==*/
-//==int sirius_get_num_fft_grid_points(void* const* handler__)
-//=={
-//==    auto& sim_ctx = get_sim_ctx(handler__);
-//==    return sim_ctx.spfft().local_slice_size();
-//==}
+/*
+@api begin
+sirius_get_num_fft_grid_points:
+  doc: Get local number of FFT grid points.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    num_fft_grid_points:
+      type: int
+      attr: out, required
+      doc: Local number of FFT grid points in the real-space mesh.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_get_num_fft_grid_points(void* const* handler__, int* num_fft_grid_points__, int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        *num_fft_grid_points__ = sim_ctx.spfft().local_slice_size();
+    }, error_code__);
+}
 
-//==/*
-//==@apibegin
-//==sirius_get_fft_index:
-//==  doc: Get mapping between G-vector index and FFT index
-//==  arguments:
-//==    handler:
-//==      type: void*
-//==      attr: in, required
-//==      doc: Simulation context handler
-//==    fft_index:
-//==      type: int
-//==      attr: out, required
-//==      doc: Index inside FFT buffer
-//==@apiend
-//==*/
-//==void sirius_get_fft_index(void* const* handler__,
-//==                          int*         fft_index__)
-//=={
-//==    auto& sim_ctx = get_sim_ctx(handler__);
-//==    for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-//==        auto G = sim_ctx.gvec().gvec(ig);
-//==        fft_index__[ig] = sim_ctx.fft_grid().index_by_freq(G[0], G[1], G[2]) + 1;
-//==    }
-//==}
+/*
+@api begin
+sirius_get_fft_index:
+  doc: Get mapping between G-vector index and FFT index
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    fft_index:
+      type: int
+      attr: out, required
+      doc: Index inside FFT buffer
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_get_fft_index(void* const* handler__, int* fft_index__, int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+            auto G = sim_ctx.gvec().gvec(ig);
+            fft_index__[ig] = sim_ctx.fft_grid().index_by_freq(G[0], G[1], G[2]) + 1;
+        }
+    }, error_code__);
+}
 
-//==/*
-//==@apibegin
-//==sirius_get_max_num_gkvec:
-//==  return: int
-//==  doc: Get maximum number of G+k vectors across all k-points in the set
-//==  arguments:
-//==    ks_handler:
-//==      type: void*
-//==      attr: in, required
-//==      doc: K-point set handler.
-//==@apiend
-//==*/
-//==int sirius_get_max_num_gkvec(void* const* ks_handler__)
-//=={
-//==    auto& ks = get_ks(ks_handler__);
-//==    return ks.max_num_gkvec();
-//==}
+/*
+@api begin
+sirius_get_max_num_gkvec:
+  doc: Get maximum number of G+k vectors across all k-points in the set
+  arguments:
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+    max_num_gkvec:
+      type: int
+      attr: out, required
+      doc: Maximum number of G+k vectors
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_get_max_num_gkvec(void* const* ks_handler__, int* max_num_gkvec__, int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto& ks = get_ks(ks_handler__);
+        *max_num_gkvec__ = ks.max_num_gkvec();
+    }, error_code__);
+}
 
 /*
 @api begin

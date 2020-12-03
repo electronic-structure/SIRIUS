@@ -66,22 +66,22 @@ Density::Density(Simulation_context& ctx__)
                                                  ctx_.num_mag_comp(), unit_cell_.num_atoms());
     density_matrix_.zero();
 
-    if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
+    //if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
 
-        int indexb_max = -1;
+    //    int indexb_max = -1;
 
-        // TODO: move detection of indexb_max to unit_cell
-        // Don't forget that Hubbard class has the same code
-        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
-                if (ctx__.unit_cell().atom(ia).type().spin_orbit_coupling()) {
-                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size() / 2);
-                } else {
-                    indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size());
-                }
-            }
-        }
-    }
+    //    // TODO: move detection of indexb_max to unit_cell
+    //    // Don't forget that Hubbard class has the same code
+    //    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+    //        if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
+    //            if (ctx__.unit_cell().atom(ia).type().spin_orbit_coupling()) {
+    //                indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size() / 2);
+    //            } else {
+    //                indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size());
+    //            }
+    //        }
+    //    }
+    //}
 
     occupation_matrix_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
 
@@ -1134,7 +1134,7 @@ void Density::generate_valence(K_point_set const& ks__)
     double occ_val{0};
     for (int ik = 0; ik < ks__.num_kpoints(); ik++) {
         wt += ks__[ik]->weight();
-        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 occ_val += ks__[ik]->weight() * ks__[ik]->band_occupancy(j, ispn);
             }
