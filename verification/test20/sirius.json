@@ -52,12 +52,12 @@
             "n" : 3,
             "hubbard_orbital": "3d",
             "occupancy" : 5,
-            "initial_occupancy" : [0.8, 0.8, 0.8, 0.5, 0.5,  0.2, 0.2, 0.2, 0.5, 0.5]
+            "initial_occupancy" : [0.8, 0.8, 0.8, 0.35, 0.35,  0.2, 0.2, 0.2, 0.1, 0.1]
         }
     },
 
     "mixer" : {
-        "beta" : 0.85,
+        "beta" : 0.75,
         "type" : "anderson",
         "max_history" : 8
     }

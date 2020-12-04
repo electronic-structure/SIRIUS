@@ -217,13 +217,16 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         rms = density_.mix();
 
         /* set new tolerance of iterative solver */
-        ctx_.iterative_solver_tolerance(std::max(
-            ctx_.settings().itsol_tol_min_,
-            std::min(
-                ctx_.settings().itsol_tol_scale_[0] * rms * rms / std::max(1.0, unit_cell_.num_electrons()),
-                ctx_.settings().itsol_tol_scale_[1] * ctx_.iterative_solver_tolerance()
-            )
-        ));
+        double old_tol = ctx_.iterative_solver_tolerance();
+        /* estimate new tolerance of the iterative solver */
+        double tol = rms;
+        if (ctx_.mixer_input().use_hartree_) {
+            tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
+        }
+        tol = std::min(ctx_.settings().itsol_tol_scale_[0] * tol, ctx_.settings().itsol_tol_scale_[1] * old_tol);
+        tol = std::max(ctx_.settings().itsol_tol_min_, tol);
+        /* set new tolerance of iterative solver */
+        ctx_.iterative_solver_tolerance(tol);
 
         /* check number of electrons */
         density_.check_num_electrons();
