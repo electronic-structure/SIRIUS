@@ -1557,6 +1557,19 @@ std::ostream& operator<<(std::ostream& out, mdarray<T, N>& v)
     return out;
 }
 
+template <typename T, int N>
+inline void copy(mdarray<T, N> const& src__, mdarray<T, N>& dest__)
+{
+    for (int i = 0; i < N; i++) {
+        if (dest__.dim(i).begin() != src__.dim(i).begin() || dest__.dim(i).end() != src__.dim(i).end()) {
+            std::stringstream s;
+            s << "error at line " << __LINE__ << " of file " << __FILE__ << " : array dimensions don't match";
+            throw std::runtime_error(s.str());
+        }
+    }
+    std::copy(&src__[0], &src__[0] + src__.size(), &dest__[0]);
+}
+
 }
 
 #endif  // __MEMORY_HPP__

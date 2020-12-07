@@ -109,6 +109,11 @@ class Field4D
         return ctx_;
     }
 
+    Simulation_context const& ctx() const
+    {
+        return ctx_;
+    }
+
     /// Symmetrize the scalar and vector components of the filed with crystall symmetries.
     void symmetrize()
     {

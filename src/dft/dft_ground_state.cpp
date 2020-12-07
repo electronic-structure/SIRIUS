@@ -323,7 +323,7 @@ void DFT_ground_state::print_info()
     double one_elec_en = evalsum1 - (evxc + evha);
 
     if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
-        one_elec_en -= potential_.PAW_one_elec_energy();
+        one_elec_en -= potential_.PAW_one_elec_energy(density_);
     }
 
     auto result = density_.rho().integrate();
