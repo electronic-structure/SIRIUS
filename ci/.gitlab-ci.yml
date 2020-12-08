@@ -53,7 +53,6 @@ notify_github_start:
     GIT_STRATEGY: none
     MPICH_MAX_THREAD_SAFETY: multiple
     PULL_IMAGE: 'YES'
-    SLURM_EXCLUSIVE: ''
     SLURM_HINT: nomultithread
     SLURM_JOB_NUM_NODES: 1
     SLURM_UNBUFFEREDIO: ''
