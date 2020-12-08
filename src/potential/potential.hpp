@@ -695,7 +695,7 @@ class Potential : public Field4D
         }
 
         if (ctx_.hubbard_correction()) {
-            this->U().calculate_hubbard_potential_and_energy(density__.occupation_matrix().data());
+            this->U().generate_potential(density__.occupation_matrix().data());
         }
 
         if (ctx_.parameters_input().reduce_aux_bf_ > 0 && ctx_.parameters_input().reduce_aux_bf_ < 1) {

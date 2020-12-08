@@ -437,8 +437,8 @@ void DFT_ground_state::print_info()
             std::printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
         }
         if (ctx_.hubbard_correction()) {
-            std::printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", potential_.U().hubbard_energy(),
-                   potential_.U().hubbard_energy() * 2.0);
+            auto e = potential_.U().hubbard_energy(density_.occupation_matrix().data());
+            std::printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", e, e * 2.0);
         }
 
         std::printf("Total energy              : %18.8f (Ha), %18.8f (Ry)\n", etot, etot * 2);
