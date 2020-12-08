@@ -124,8 +124,9 @@ class Eigensolver_lapack : public Eigensolver
         ftn_int liwork = 10 * matrix_size__;
         auto iwork     = mp_h_.get_unique_ptr<ftn_int>(liwork);
 
-        int nb        = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, -1, -1, -1);
-        ftn_int lwork = (nb + 6) * matrix_size__;
+        int nb = std::max(linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, -1, -1, -1),
+                          linalg_base::ilaenv(1, "DORMTR", "U", matrix_size__, -1, -1, -1));
+        ftn_int lwork = std::max((nb + 6) * matrix_size__, 26 * matrix_size__);
         auto work     = mp_h_.get_unique_ptr<double>(lwork);
 
         FORTRAN(dsyevr)
@@ -137,7 +138,13 @@ class Eigensolver_lapack : public Eigensolver
             std::stringstream s;
             s << "not all eigen-values are found" << std::endl
               << "target number of eigen-values: " << nev__ << std::endl
-              << "number of eigen-values found: " << m;
+              << "number of eigen-values found: " << m << std::endl
+              << "matrix_size : " << matrix_size__ << std::endl
+              << "lda : " << lda << std::endl
+              << "lda : " << lda << std::endl
+              << "nb : " << nb << std::endl
+              << "liwork : " << liwork << std::endl
+              << "lwork : " << lwork << std::endl;
             WARNING(s);
             return 1;
         }

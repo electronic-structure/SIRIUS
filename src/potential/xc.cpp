@@ -72,7 +72,7 @@ void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid__, SHT const& sht__, std
         assert(rho_tp__.size() == vsigma_tp.size());
         if (use_lapl) {
             /* backward transform Laplacian from Rlm to (theta, phi) */
-            auto lapl_rho_tp = transform(sht__, laplacian(rho_lm__));
+            lapl_rho_tp = transform(sht__, laplacian(rho_lm__));
             assert(lapl_rho_tp.size() == rho_tp__.size());
         }
     }
