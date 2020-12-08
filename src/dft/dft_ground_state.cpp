@@ -196,6 +196,8 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
     ctx_.iterative_solver_tolerance(initial_tolerance);
 
+    Density rho1(ctx_);
+
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
 
@@ -212,6 +214,12 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
         density_.generate(kset_, ctx_.use_symmetry(), true, true);
+
+        double e1 = energy_potential(density_, potential_);
+        copy(density_, rho1);
+        double e2 = energy_potential(rho1, potential_);
+
+        std::cout << "e1-e2 = " << std::abs(e1 - e2) << std::endl;
 
         /* mix density */
         rms = density_.mix();
@@ -233,6 +241,10 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
         /* compute new potential */
         potential_.generate(density_);
+
+        double e3 = energy_potential(rho1, potential_);
+
+        std::cout << "descf=" << e3 - e1 << std::endl;
 
         if (!ctx_.full_potential() && ctx_.control().verification_ >= 2) {
             ctx_.message(1, __function_name__, "%s", "checking functional derivative of Exc\n");
