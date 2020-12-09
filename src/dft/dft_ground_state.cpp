@@ -180,7 +180,7 @@ json DFT_ground_state::check_scf_density()
     return dict;
 }
 
-json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state)
+json DFT_ground_state::find(double density_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state)
 {
     PROFILE("sirius::DFT_ground_state::scf_loop");
 
@@ -217,9 +217,6 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
         double e1 = energy_potential(density_, potential_);
         copy(density_, rho1);
-        double e2 = energy_potential(rho1, potential_);
-
-        std::cout << "e1-e2 = " << std::abs(e1 - e2) << std::endl;
 
         /* mix density */
         rms = density_.mix();
@@ -242,10 +239,6 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* compute new potential */
         potential_.generate(density_);
 
-        double e3 = energy_potential(rho1, potential_);
-
-        std::cout << "descf=" << e3 - e1 << std::endl;
-
         if (!ctx_.full_potential() && ctx_.control().verification_ >= 2) {
             ctx_.message(1, __function_name__, "%s", "checking functional derivative of Exc\n");
             sirius::check_xc_potential(density_);
@@ -259,8 +252,14 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* transform potential to real space after symmetrization */
         potential_.fft_transform(1);
 
+        double e2 = energy_potential(rho1, potential_);
+        this->scf_energy_ = e2 - e1;
+
         /* compute new total energy for a new density */
         double etot = total_energy();
+        if (!ctx_.full_potential()) {
+            etot += this->scf_energy_;
+        }
 
         etot_hist.push_back(etot);
 
@@ -271,7 +270,7 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         ctx_.message(1, __function_name__, "iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter,
                 rms, etot - eold);
         /* check if the calculation has converged */
-        if (std::abs(eold - etot) < energy_tol && rms < rms_tol) {
+        if (std::abs(eold - etot) < energy_tol && rms < density_tol) {
             ctx_.message(1, __function_name__,"\nconverged after %i SCF iterations!\n", iter + 1); 
             num_iter = iter;
             break;

@@ -831,6 +831,8 @@ inline void copy(Density const& src__, Density& dest__)
         copy(src__.component(j).f_rg(), dest__.component(j).f_rg());
     }
 
+    // TODO: copy density matrix, occupancy matrix, MT density
+
 
 }
 
