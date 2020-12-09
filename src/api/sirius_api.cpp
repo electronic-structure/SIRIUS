@@ -2831,7 +2831,8 @@ void sirius_get_energy(void* const* handler__,
         {"vha",     [&](){ return sirius::energy_vha(potential); }},
         {"enuc",    [&](){ return sirius::energy_enuc(ctx, potential); }},
         {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }},
-        {"one-el",  [&](){ return sirius::one_electron_energy(density, potential); }}};
+        {"one-el",  [&](){ return sirius::one_electron_energy(density, potential); }},
+        {"descf",   [&](){ return gs.scf_energy(); }}};
 
     try {
         *energy__ = func.at(label)();
