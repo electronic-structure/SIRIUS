@@ -735,11 +735,6 @@ class Density : public Field4D
      */
     void symmetrize_density_matrix();
 
-    Simulation_context const& ctx() const
-    {
-        return ctx_;
-    }
-
     void print_info() const
     {
         auto result = this->rho().integrate();
@@ -828,6 +823,18 @@ class Density : public Field4D
         return *occupation_matrix_;
     }
 };
+
+inline void copy(Density const& src__, Density& dest__)
+{
+    for (int j = 0; j < src__.ctx().num_mag_dims() + 1; j++) {
+        copy(src__.component(j).f_pw_local(), dest__.component(j).f_pw_local());
+        copy(src__.component(j).f_rg(), dest__.component(j).f_rg());
+    }
+
+    // TODO: copy density matrix, occupancy matrix, MT density
+
+
+}
 
 } // namespace sirius
 

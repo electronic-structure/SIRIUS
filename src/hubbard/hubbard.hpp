@@ -54,13 +54,13 @@ class Hubbard
 
     int number_of_hubbard_orbitals_{0};
 
-    double hubbard_energy_{0.0};
-    double hubbard_energy_u_{0.0};
-    double hubbard_energy_dc_contribution_{0.0};
-    double hubbard_energy_noflip_{0.0};
-    double hubbard_energy_flip_{0.0};
+    //double hubbard_energy_{0.0};
+    //double hubbard_energy_u_{0.0};
+    //double hubbard_energy_dc_contribution_{0.0};
+    //double hubbard_energy_noflip_{0.0};
+    //double hubbard_energy_flip_{0.0};
 
-    mdarray<double_complex, 4> hubbard_potential_;
+    sddk::mdarray<double_complex, 4> hubbard_potential_;
 
     /// Type of hubbard correction to be considered.
     /** True if we consider a simple hubbard correction. Not valid if spin orbit coupling is included */
@@ -101,7 +101,51 @@ class Hubbard
     /// Constructor.
     Hubbard(Simulation_context& ctx__);
 
-    std::vector<int> offset_;
+    std::vector<int> offset_; // TODO: make this quick fix into proper solution
+
+    /// Apply the hubbard potential on wave functions
+    void apply_hubbard_potential(Wave_functions& hub_wf, spin_range spins__, const int idx, const int n,
+                                 Wave_functions& phi, Wave_functions& ophi);
+
+    void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 6>& dn);
+
+    /// Compute derivatives of the occupancy matrix w.r.t.atomic displacement.
+    /** \param [in]  kp   K-point.
+     *  \param [in]  q_op Overlap operator.
+     *  \param [out] dn   Derivative of the occupation number compared to displacement of each atom.
+     */
+    void compute_occupancies_stress_derivatives(K_point& kp, Q_operator& q_op, sddk::mdarray<double_complex, 5>& dn);
+
+    //void calculate_hubbard_potential_and_energy_colinear_case(sddk::mdarray<double_complex, 4> const& om__);
+    //void calculate_hubbard_potential_and_energy_non_colinear_case(sddk::mdarray<double_complex, 4> const& om__);
+
+    double calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__) const;
+
+    void generate_potential_collinear(sddk::mdarray<double_complex, 4> const& om__);
+
+    double calculate_energy_non_collinear(sddk::mdarray<double_complex, 4> const& om__) const;
+
+    void generate_potential_non_collinear(sddk::mdarray<double_complex, 4> const& om__);
+
+    void generate_potential(sddk::mdarray<double_complex, 4> const& om__)
+    {
+        //this->hubbard_energy_                 = 0.0;
+        //this->hubbard_energy_u_               = 0.0;
+        //this->hubbard_energy_dc_contribution_ = 0.0;
+        //this->hubbard_energy_noflip_          = 0.0;
+        //this->hubbard_energy_flip_            = 0.0;
+        // the hubbard potential has the same structure than the occupation
+        // numbers
+        this->hubbard_potential_.zero();
+
+        if (ctx_.num_mag_dims() != 3) {
+            generate_potential_collinear(om__);
+        } else {
+            generate_potential_non_collinear(om__);
+        }
+    }
+
+    void access_hubbard_potential(std::string const& what, double_complex* occ, int ld);
 
     void set_hubbard_U_plus_V()
     {
@@ -148,43 +192,13 @@ class Hubbard
         return normalize_orbitals_only_;
     }
 
-    /// Apply the hubbard potential on wave functions
-    void apply_hubbard_potential(Wave_functions& hub_wf, spin_range spins__, const int idx, const int n,
-                                 Wave_functions& phi, Wave_functions& ophi);
-
-    void compute_occupancies_derivatives(K_point& kp, Q_operator& q_op, mdarray<double_complex, 6>& dn);
-
-    /// Compute derivatives of the occupancy matrix w.r.t.atomic displacement.
-    /** \param [in]  kp   K-point.
-     *  \param [in]  q_op Overlap operator.
-     *  \param [out] dn   Derivative of the occupation number compared to displacement of each atom.
-     */
-    void compute_occupancies_stress_derivatives(K_point& kp, Q_operator& q_op, sddk::mdarray<double_complex, 5>& dn);
-
-    void calculate_hubbard_potential_and_energy_colinear_case(sddk::mdarray<double_complex, 4> const& om__);
-    void calculate_hubbard_potential_and_energy_non_colinear_case(sddk::mdarray<double_complex, 4> const& om__);
-
-    void calculate_hubbard_potential_and_energy(sddk::mdarray<double_complex, 4> const& om__)
+    inline double hubbard_energy(sddk::mdarray<double_complex, 4> const& om__) const
     {
-        this->hubbard_energy_                 = 0.0;
-        this->hubbard_energy_u_               = 0.0;
-        this->hubbard_energy_dc_contribution_ = 0.0;
-        this->hubbard_energy_noflip_          = 0.0;
-        this->hubbard_energy_flip_            = 0.0;
-        // the hubbard potential has the same structure than the occupation
-        // numbers
-        this->hubbard_potential_.zero();
-
         if (ctx_.num_mag_dims() != 3) {
-            calculate_hubbard_potential_and_energy_colinear_case(om__);
+            return calculate_energy_collinear(om__);
         } else {
-            calculate_hubbard_potential_and_energy_non_colinear_case(om__);
+            return calculate_energy_non_collinear(om__);
         }
-    }
-
-    inline double hubbard_energy() const
-    {
-        return this->hubbard_energy_;
     }
 
     inline int number_of_hubbard_orbitals() const
@@ -192,12 +206,10 @@ class Hubbard
         return number_of_hubbard_orbitals_;
     }
 
-    mdarray<double_complex, 4>& potential_matrix()
+    sddk::mdarray<double_complex, 4>& potential_matrix()
     {
         return hubbard_potential_;
     }
-
-    void access_hubbard_potential(std::string const& what, double_complex* occ, int ld);
 };
 
 } // namespace sirius

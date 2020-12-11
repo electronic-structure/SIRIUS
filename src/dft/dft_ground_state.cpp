@@ -180,7 +180,7 @@ json DFT_ground_state::check_scf_density()
     return dict;
 }
 
-json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state)
+json DFT_ground_state::find(double density_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state)
 {
     PROFILE("sirius::DFT_ground_state::scf_loop");
 
@@ -195,6 +195,8 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
     std::vector<double> etot_hist;
 
     ctx_.iterative_solver_tolerance(initial_tolerance);
+
+    Density rho1(ctx_);
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
@@ -212,6 +214,9 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
         density_.generate(kset_, ctx_.use_symmetry(), true, true);
+
+        double e1 = energy_potential(density_, potential_);
+        copy(density_, rho1);
 
         /* mix density */
         rms = density_.mix();
@@ -247,8 +252,14 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* transform potential to real space after symmetrization */
         potential_.fft_transform(1);
 
+        double e2 = energy_potential(rho1, potential_);
+        this->scf_energy_ = e2 - e1;
+
         /* compute new total energy for a new density */
         double etot = total_energy();
+        if (!ctx_.full_potential()) {
+            etot += this->scf_energy_;
+        }
 
         etot_hist.push_back(etot);
 
@@ -259,7 +270,7 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         ctx_.message(1, __function_name__, "iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter,
                 rms, etot - eold);
         /* check if the calculation has converged */
-        if (std::abs(eold - etot) < energy_tol && rms < rms_tol) {
+        if (std::abs(eold - etot) < energy_tol && rms < density_tol) {
             ctx_.message(1, __function_name__,"\nconverged after %i SCF iterations!\n", iter + 1); 
             num_iter = iter;
             break;
@@ -323,7 +334,7 @@ void DFT_ground_state::print_info()
     double one_elec_en = evalsum1 - (evxc + evha);
 
     if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
-        one_elec_en -= potential_.PAW_one_elec_energy();
+        one_elec_en -= potential_.PAW_one_elec_energy(density_);
     }
 
     auto result = density_.rho().integrate();
@@ -437,8 +448,8 @@ void DFT_ground_state::print_info()
             std::printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
         }
         if (ctx_.hubbard_correction()) {
-            std::printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", potential_.U().hubbard_energy(),
-                   potential_.U().hubbard_energy() * 2.0);
+            auto e = potential_.U().hubbard_energy(density_.occupation_matrix().data());
+            std::printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", e, e * 2.0);
         }
 
         std::printf("Total energy              : %18.8f (Ha), %18.8f (Ry)\n", etot, etot * 2);

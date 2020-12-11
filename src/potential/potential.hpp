@@ -131,7 +131,7 @@ class Potential : public Field4D
         double hartree_energy_{0.0};
         double xc_energy_{0.0};
         double core_energy_{0.0};
-        double one_elec_energy_{0.0};
+        //double one_elec_energy_{0.0};
     };
 
     std::vector<double> paw_hartree_energies_;
@@ -142,7 +142,7 @@ class Potential : public Field4D
     double paw_hartree_total_energy_{0.0};
     double paw_xc_total_energy_{0.0};
     double paw_total_core_energy_{0.0};
-    double paw_one_elec_energy_{0.0};
+    //double paw_one_elec_energy_{0.0};
 
     std::vector<paw_potential_data_t> paw_potential_data_;
 
@@ -172,8 +172,8 @@ class Potential : public Field4D
 
     double calc_PAW_hartree_potential(Atom& atom, sf const& full_density, sf& full_potential);
 
-    double calc_PAW_one_elec_energy(paw_potential_data_t& pdd, mdarray<double_complex, 4> const& density_matrix,
-                                    mdarray<double, 4> const& paw_dij);
+    double calc_PAW_one_elec_energy(paw_potential_data_t const& pdd, mdarray<double_complex, 4> const& density_matrix,
+                                    mdarray<double, 4> const& paw_dij) const;
 
     void add_paw_Dij_to_atom_Dmtrx();
 
@@ -695,7 +695,7 @@ class Potential : public Field4D
         }
 
         if (ctx_.hubbard_correction()) {
-            this->U().calculate_hubbard_potential_and_energy(density__.occupation_matrix().data());
+            this->U().generate_potential(density__.occupation_matrix().data());
         }
 
         if (ctx_.parameters_input().reduce_aux_bf_ > 0 && ctx_.parameters_input().reduce_aux_bf_ < 1) {
@@ -824,26 +824,6 @@ class Potential : public Field4D
 
     void generate_PAW_effective_potential(Density const& density);
 
-    std::vector<double> const& PAW_hartree_energies() const
-    {
-        return paw_hartree_energies_;
-    }
-
-    std::vector<double> const& PAW_xc_energies() const
-    {
-        return paw_xc_energies_;
-    }
-
-    std::vector<double> const& PAW_core_energies() const
-    {
-        return paw_core_energies_;
-    }
-
-    std::vector<double> const& PAW_one_elec_energies() const
-    {
-        return paw_one_elec_energies_;
-    }
-
     double PAW_hartree_total_energy() const
     {
         return paw_hartree_total_energy_;
@@ -864,9 +844,15 @@ class Potential : public Field4D
         return paw_hartree_total_energy_ + paw_xc_total_energy_;
     }
 
-    double PAW_one_elec_energy() const
+    double PAW_one_elec_energy(Density const& density__) const
     {
-        return paw_one_elec_energy_;
+        double e{0};
+        #pragma omp parallel for reduction(+:e)
+        for (int i = 0; i < unit_cell_.spl_num_paw_atoms().local_size(); i++) {
+            e += calc_PAW_one_elec_energy(paw_potential_data_[i], density__.density_matrix(), paw_dij_);
+        }
+        comm_.allreduce(&e, 1);
+        return e;
     }
 
     void check_potential_continuity_at_mt();
