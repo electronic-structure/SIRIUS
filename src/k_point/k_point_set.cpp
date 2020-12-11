@@ -183,7 +183,7 @@ void K_point_set::find_band_occupancies()
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
                     bnd_occ(j, ispn, ik) =
-                        smearing::gaussian(kpoints_[ik]->band_energy(j, ispn) - ef, ctx_.smearing_width()) *
+                        smearing::gaussian(ef - kpoints_[ik]->band_energy(j, ispn), ctx_.smearing_width()) *
                         ctx_.max_occupancy();
                     ne += bnd_occ(j, ispn, ik) * kpoints_[ik]->weight();
                 }
