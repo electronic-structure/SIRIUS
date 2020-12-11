@@ -26,6 +26,7 @@
 #define __K_POINT_SET_HPP__
 
 #include "k_point.hpp"
+#include "dft/smearing.hpp"
 
 namespace sirius {
 
@@ -139,6 +140,24 @@ class K_point_set
         }
 
         return eval_sum;
+    }
+
+    double entropy_sum() const
+    {
+        double s_sum{0};
+
+        for (int ik = 0; ik < num_kpoints(); ik++) {
+            auto const& kp = kpoints_[ik];
+            double wk = kp->weight();
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+                    s_sum += wk * kp->band_occupancy(j, ispn) *
+                        smearing::gaussian_entropy(energy_fermi_ - kp->band_energy(j, ispn), ctx_.smearing_width());
+                }
+            }
+        }
+
+        return s_sum;
     }
 
     /// Return maximum number of G+k vectors among all k-points.

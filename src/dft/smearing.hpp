@@ -43,13 +43,19 @@ inline double fermi_dirac(double e)
 
 inline double gaussian(double e, double delta)
 {
-    return 0.5 * (1 - std::erf(e / delta));
+    return 0.5 * (1 + std::erf(e / delta));
+}
+
+inline double gaussian_entropy(double e, double delta)
+{
+    const double pi = 3.1415926535897932385;
+    return std::exp(-std::pow(e / delta, 2)) * delta / 2 / std::sqrt(pi);
 }
 
 inline double cold(double e)
 {
     const double pi = 3.1415926535897932385;
-    
+
     double a = -0.5634;
 
     if (e < -10.0) {
