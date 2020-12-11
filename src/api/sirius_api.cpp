@@ -2833,7 +2833,7 @@ void sirius_get_energy(void* const* handler__,
         {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }},
         {"one-el",  [&](){ return sirius::one_electron_energy(density, potential); }},
         {"descf",   [&](){ return gs.scf_energy(); }},
-        {"demet"    [&](){ return kset.entropy_sum(); }}};
+        {"demet",   [&](){ return kset.entropy_sum(); }}};
 
     try {
         *energy__ = func.at(label)();
