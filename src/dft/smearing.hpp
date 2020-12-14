@@ -26,47 +26,124 @@
 #define __SMEARING_HPP__
 
 #include <cmath>
+#include <functional>
+#include <string>
+#include <stdexcept>
 
 namespace smearing {
 
-inline double fermi_dirac(double e)
+const double pi = 3.1415926535897932385;
+
+namespace gaussian {
+
+inline double delta(double x__, double width__)
 {
-    double kT = 0.001;
-    if (e > 100 * kT) {
+    double t = std::pow(x__ / width__, 2);
+    return std::exp(-t) / std::sqrt(pi) / width__;
+}
+
+inline double occupancy(double x__, double width__)
+{
+    return 0.5 * (1 + std::erf(x__ / width__));
+}
+
+inline double entropy(double x__, double width__)
+{
+    double t = std::pow(x__ / width__, 2);
+    return -std::exp(-t) * width__ / 2.0 / std::sqrt(pi);
+
+}
+
+} // namespace "gaussian"
+
+namespace fermi_dirac {
+
+inline double delta(double x__, double width__)
+{
+    double t = x__ / 2.0 / width__;
+    return 1.0 / std::pow(std::exp(t) + std::exp(-t), 2) / width__;
+}
+
+inline double occupancy(double x__, double width__)
+{
+    return 1.0 - 1.0 / (1.0 + std::exp(x__ / width__));
+}
+
+inline double entropy(double x__, double width__)
+{
+    double t = x__ / width__;
+    if (std::abs(t) > 50) {
         return 0.0;
     }
-    if (e < -100 * kT) {
-        return 1.0;
-    }
-    return (1.0 / (std::exp(e / kT) + 1.0));
+    double f = 1.0 / (1.0 + std::exp(t));
+    return width__ * ((1 - f) * std::log(1 - f) + f * std::log(f));
 }
 
-inline double gaussian(double e, double delta)
+} // namespace "fermi_dirac"
+
+inline std::function<double(double)> occupancy(std::string type__, double width__)
 {
-    return 0.5 * (1 + std::erf(e / delta));
-}
-
-inline double gaussian_entropy(double e, double delta)
-{
-    const double pi = 3.1415926535897932385;
-    return std::exp(-std::pow(e / delta, 2)) * delta / 2 / std::sqrt(pi);
-}
-
-inline double cold(double e)
-{
-    const double pi = 3.1415926535897932385;
-
-    double a = -0.5634;
-
-    if (e < -10.0) {
-        return 1.0;
+    if (type__ == "gaussian") {
+        return [width__](double x__){return gaussian::occupancy(x__, width__);};
+    } else if (type__ == "fermi_dirac") {
+        return [width__](double x__){return fermi_dirac::occupancy(x__, width__);};
+    } else {
+        throw std::runtime_error("wrong type of smearing function");
     }
-    if (e > 10.0) {
-        return 0.0;
-    }
-
-    return 0.5 * (1 - std::erf(e)) - 1 - 0.25 * std::exp(-e * e) * (a + 2 * e - 2 * a * e * e) / std::sqrt(pi);
+    return [width__](double x__){return 0.0;}; // make compiler happy
 }
+
+inline std::function<double(double)> entropy(std::string type__, double width__)
+{
+    if (type__ == "gaussian") {
+        return [width__](double x__){return gaussian::entropy(x__, width__);};
+    } else if (type__ == "fermi_dirac") {
+        return [width__](double x__){return fermi_dirac::entropy(x__, width__);};
+    } else {
+        throw std::runtime_error("wrong type of smearing function");
+    }
+    return [width__](double x__){return 0.0;}; // make compiler happy
+}
+
+
+//inline double fermi_dirac(double e)
+//{
+//    double kT = 0.001;
+//    if (e > 100 * kT) {
+//        return 0.0;
+//    }
+//    if (e < -100 * kT) {
+//        return 1.0;
+//    }
+//    return (1.0 / (std::exp(e / kT) + 1.0));
+//}
+//
+//inline double gaussian(double e, double delta)
+//{
+//    return 0.5 * (1 + std::erf(e / delta));
+//}
+//
+//inline double gaussian_entropy(double e, double delta)
+//{
+//    const double pi = 3.1415926535897932385;
+//    return std::exp(-std::pow(e / delta, 2)) * delta / 2 / std::sqrt(pi);
+//}
+//
+//inline double cold(double e)
+//{
+//    const double pi = 3.1415926535897932385;
+//
+//    double a = -0.5634;
+//
+//    if (e < -10.0) {
+//        return 1.0;
+//    }
+//    if (e > 10.0) {
+//        return 0.0;
+//    }
+//
+//    return 0.5 * (1 - std::erf(e)) - 1 - 0.25 * std::exp(-e * e) * (a + 2 * e - 2 * a * e * e) / std::sqrt(pi);
+//}
 
 }
 

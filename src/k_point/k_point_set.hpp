@@ -146,19 +146,19 @@ class K_point_set
     {
         double s_sum{0};
 
+        auto f = smearing::entropy("gaussian", ctx_.smearing_width());
+
         for (int ik = 0; ik < num_kpoints(); ik++) {
             auto const& kp = kpoints_[ik];
             double wk = kp->weight();
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                    s_sum += wk * ctx_.max_occupancy() *
-                        smearing::gaussian_entropy(energy_fermi_ - kp->band_energy(j, ispn), ctx_.smearing_width());
+                    s_sum += wk * ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(j, ispn));
                 }
             }
         }
 
-        /* we computed TS, but the contribution to the total enery is -TS */
-        return -s_sum;
+        return s_sum;
     }
 
     /// Return maximum number of G+k vectors among all k-points.
