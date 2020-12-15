@@ -14,3 +14,5 @@ endforeach()
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/unit_tests.x" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 install(FILES "unit_tests.x" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+
+add_subdirectory(cg)
