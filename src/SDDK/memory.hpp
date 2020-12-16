@@ -1561,6 +1561,9 @@ std::ostream& operator<<(std::ostream& out, mdarray<T, N>& v)
 template <typename T, int N>
 inline void copy(mdarray<T, N> const& src__, mdarray<T, N>& dest__)
 {
+    if (src__.size() == 0) {
+        return;
+    }
     for (int i = 0; i < N; i++) {
         if (dest__.dim(i).begin() != src__.dim(i).begin() || dest__.dim(i).end() != src__.dim(i).end()) {
             std::stringstream s;
