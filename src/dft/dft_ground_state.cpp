@@ -83,7 +83,7 @@ double DFT_ground_state::energy_kin_sum_pw() const
 
 double DFT_ground_state::total_energy() const
 {
-    return sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_);
+    return sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_) + this->scf_energy_;
 }
 
 json DFT_ground_state::serialize()
@@ -257,9 +257,6 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
 
         /* compute new total energy for a new density */
         double etot = total_energy();
-        if (!ctx_.full_potential()) {
-            etot += this->scf_energy_;
-        }
 
         etot_hist.push_back(etot);
 

@@ -592,6 +592,7 @@ struct Parameters_input
 
             num_fv_states_  = section.value("num_fv_states", num_fv_states_);
             smearing_width_ = section.value("smearing_width", smearing_width_);
+            smearing_       = section.value("smearing", smearing_);
             pw_cutoff_      = section.value("pw_cutoff", pw_cutoff_);
             aw_cutoff_      = section.value("aw_cutoff", aw_cutoff_);
             gk_cutoff_      = section.value("gk_cutoff", gk_cutoff_);
