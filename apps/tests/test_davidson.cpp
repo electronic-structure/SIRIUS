@@ -40,7 +40,6 @@ void init_wf(K_point* kp__, Wave_functions& phi__, int num_bands__, int num_mag_
 
 void test_davidson(cmd_args const& args__)
 {
-    auto pu        = get_device_t(args__.value<std::string>("device", "CPU"));
     auto pw_cutoff = args__.value<double>("pw_cutoff", 30);
     auto gk_cutoff = args__.value<double>("gk_cutoff", 10);
     auto N         = args__.value<int>("N", 1);
@@ -143,7 +142,7 @@ void test_davidson(cmd_args const& args__)
     ctx.verbosity(2);
     ctx.pw_cutoff(pw_cutoff);
     ctx.gk_cutoff(gk_cutoff);
-    ctx.set_processing_unit(pu);
+    ctx.processing_unit(args__.value<std::string>("device", "CPU"));
     ctx.mpi_grid_dims(mpi_grid);
     ctx.gen_evp_solver_name(solver);
     ctx.std_evp_solver_name(solver);

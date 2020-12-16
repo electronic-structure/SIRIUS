@@ -86,22 +86,20 @@ inline bool is_device_memory(memory_t mem__)
 inline memory_t get_memory_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-
-    std::map<std::string, memory_t> const map_to_type = {
-        {"none",        memory_t::none},
-        {"host",        memory_t::host},
+    std::map<std::string, memory_t> const m = {
+        {"none", memory_t::none},
+        {"host", memory_t::host},
         {"host_pinned", memory_t::host_pinned},
-        {"managed",     memory_t::managed},
-        {"device",      memory_t::device}
+        {"managed", memory_t::managed},
+        {"device", memory_t::device}
     };
 
-    if (map_to_type.count(name__) == 0) {
+    if (m.count(name__) == 0) {
         std::stringstream s;
-        s << "wrong label of memory type: " << name__;
+        s << "get_memory_t(): wrong label of the memory_t enumerator: " << name__;
         throw std::runtime_error(s.str());
-    }
-
-    return map_to_type.at(name__);
+     }
+     return m.at(name__);
 }
 
 /// Type of the main processing unit.
@@ -137,14 +135,17 @@ inline device_t get_device_t(memory_t mem__)
 inline device_t get_device_t(std::string name__)
 {
     std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-    if (name__ == "cpu") {
-        return device_t::CPU;
-    } else if (name__ == "gpu") {
-        return device_t::GPU;
-    } else {
-        throw std::runtime_error("get_device_t(): wrong processing unit");
-    }
-    return device_t::CPU; // make compiler happy
+    std::map<std::string, device_t> const m = {
+        {"cpu", device_t::CPU},
+        {"gpu", device_t::GPU}
+    };
+
+    if (m.count(name__) == 0) {
+        std::stringstream s;
+        s << "get_device_t(): wrong label of the device_t enumerator: " << name__;
+        throw std::runtime_error(s.str());
+     }
+     return m.at(name__);
 }
 
 /// Allocate n elements in a specified memory.

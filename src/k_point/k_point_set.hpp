@@ -146,7 +146,7 @@ class K_point_set
     {
         double s_sum{0};
 
-        auto f = smearing::entropy("gaussian", ctx_.smearing_width());
+        auto f = smearing::entropy(ctx_.smearing(), ctx_.smearing_width());
 
         for (int ik = 0; ik < num_kpoints(); ik++) {
             auto const& kp = kpoints_[ik];

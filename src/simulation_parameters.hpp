@@ -31,6 +31,7 @@
 #include "utils/cmd_args.hpp"
 #include "utils/utils.hpp"
 #include "memory.hpp"
+#include "dft/smearing.hpp"
 
 using namespace sddk;
 
@@ -65,6 +66,9 @@ class Simulation_parameters
 
     /// Type of electronic structure method.
     electronic_structure_method_t electronic_structure_method_{electronic_structure_method_t::full_potential_lapwlo};
+
+    /// Type of occupation numbers smearing.
+    smearing::smearing_t smearing_{smearing::smearing_t::gaussian};
 
     /// Parameters of the iterative solver.
     Iterative_solver_input iterative_solver_input_;
@@ -182,13 +186,20 @@ class Simulation_parameters
         return electronic_structure_method_;
     }
 
-    void set_core_relativity(std::string name__);
+    /// Set core relativity for the LAPW method.
+    void core_relativity(std::string name__);
 
-    void set_valence_relativity(std::string name__);
+    /// Set valence relativity for the LAPW method.
+    void valence_relativity(std::string name__);
 
-    void set_processing_unit(std::string name__);
+    void processing_unit(std::string name__);
 
-    void set_processing_unit(device_t pu__);
+    void smearing(std::string name__);
+
+    smearing::smearing_t smearing() const
+    {
+        return smearing_;
+    }
 
     void set_molecule(bool molecule__)
     {
@@ -398,9 +409,10 @@ class Simulation_parameters
         return parameters_input_.smearing_width_;
     }
 
-    void set_smearing_width(double smearing_width__)
+    double smearing_width(double smearing_width__)
     {
         parameters_input_.smearing_width_ = smearing_width__;
+        return parameters_input_.smearing_width_;
     }
 
     void set_auto_rmt(int auto_rmt__)

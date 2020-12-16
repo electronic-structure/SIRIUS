@@ -172,7 +172,7 @@ void K_point_set::find_band_occupancies()
         return;
     }
 
-    auto f = smearing::occupancy("gaussian", ctx_.smearing_width());
+    auto f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
 
     int step{0};
     /* calculate occupations */

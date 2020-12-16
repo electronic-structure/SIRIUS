@@ -31,6 +31,8 @@
 #include <vector>
 #include <array>
 #include <limits>
+#include <map>
+#include <algorithm>
 
 using double_complex = std::complex<double>;
 
@@ -85,6 +87,25 @@ enum class relativity_t
 
     dirac
 };
+
+inline relativity_t get_relativity_t(std::string name__)
+{
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+    std::map<std::string, relativity_t> const m = {
+        {"none", relativity_t::none},
+        {"koelling_harmon", relativity_t::koelling_harmon},
+        {"zora", relativity_t::zora},
+        {"iora", relativity_t::iora},
+        {"dirac", relativity_t::dirac}
+    };
+
+    if (m.count(name__) == 0) {
+        std::stringstream s;
+        s << "get_relativity_t(): wrong label of the relativity_t enumerator: " << name__;
+        throw std::runtime_error(s.str());
+     }
+     return m.at(name__);
+}
 
 /// Describes radial solution.
 struct radial_solution_descriptor

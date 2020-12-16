@@ -29,10 +29,35 @@
 #include <functional>
 #include <string>
 #include <stdexcept>
+#include <map>
+#include <sstream>
+#include <algorithm>
 
 namespace smearing {
 
 const double pi = 3.1415926535897932385;
+
+enum class smearing_t
+{
+    gaussian,
+    fermi_dirac
+};
+
+inline smearing_t get_smearing_t(std::string name__)
+{
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+    std::map<std::string, smearing_t> const m = {
+        {"gaussian", smearing_t::gaussian},
+        {"fermi_dirac", smearing_t::fermi_dirac}
+    };
+
+    if (m.count(name__) == 0) {
+        std::stringstream s;
+        s << "get_smearing_t(): wrong label of the smearing_t enumerator: " << name__;
+        throw std::runtime_error(s.str());
+     }
+     return m.at(name__);
+}
 
 namespace gaussian {
 
@@ -81,28 +106,34 @@ inline double entropy(double x__, double width__)
 
 } // namespace "fermi_dirac"
 
-inline std::function<double(double)> occupancy(std::string type__, double width__)
+inline std::function<double(double)> occupancy(smearing_t type__, double width__)
 {
-    if (type__ == "gaussian") {
-        return [width__](double x__){return gaussian::occupancy(x__, width__);};
-    } else if (type__ == "fermi_dirac") {
-        return [width__](double x__){return fermi_dirac::occupancy(x__, width__);};
-    } else {
-        throw std::runtime_error("wrong type of smearing function");
+    switch (type__) {
+        case smearing_t::gaussian: {
+            return [width__](double x__){return gaussian::occupancy(x__, width__);};
+        }
+        case smearing_t::fermi_dirac: {
+            return [width__](double x__){return fermi_dirac::occupancy(x__, width__);};
+        }
+        default: {
+            throw std::runtime_error("wrong type of smearing");
+        }
     }
-    return [width__](double x__){return 0.0;}; // make compiler happy
 }
 
-inline std::function<double(double)> entropy(std::string type__, double width__)
+inline std::function<double(double)> entropy(smearing_t type__, double width__)
 {
-    if (type__ == "gaussian") {
-        return [width__](double x__){return gaussian::entropy(x__, width__);};
-    } else if (type__ == "fermi_dirac") {
-        return [width__](double x__){return fermi_dirac::entropy(x__, width__);};
-    } else {
-        throw std::runtime_error("wrong type of smearing function");
+    switch (type__) {
+        case smearing_t::gaussian: {
+            return [width__](double x__){return gaussian::entropy(x__, width__);};
+        }
+        case smearing_t::fermi_dirac: {
+            return [width__](double x__){return fermi_dirac::entropy(x__, width__);};
+        }
+        default: {
+            throw std::runtime_error("wrong type of smearing");
+        }
     }
-    return [width__](double x__){return 0.0;}; // make compiler happy
 }
 
 

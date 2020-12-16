@@ -484,6 +484,9 @@ struct Parameters_input
     /// Width of Gaussian smearing function in the units of [Ha].
     double smearing_width_{0.01};
 
+    /// Type of occupancy smearing.
+    std::string smearing_{"gaussian"};
+
     /// Cutoff for plane-waves (for density and potential expansion) in the units of [a.u.^-1].
     double pw_cutoff_{0.0};
 

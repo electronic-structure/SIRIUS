@@ -258,8 +258,8 @@ void Simulation_context::initialize()
         TERMINATE("Simulation parameters are already initialized.");
     }
     electronic_structure_method(parameters_input().electronic_structure_method_);
-    set_core_relativity(parameters_input().core_relativity_);
-    set_valence_relativity(parameters_input().valence_relativity_);
+    core_relativity(parameters_input().core_relativity_);
+    valence_relativity(parameters_input().valence_relativity_);
 
     /* can't run fp-lapw with Gamma point trick */
     if (full_potential()) {
@@ -272,7 +272,7 @@ void Simulation_context::initialize()
     }
 
     /* set processing unit type */
-    set_processing_unit(control().processing_unit_);
+    processing_unit(control().processing_unit_);
 
     /* check if we can use a GPU device */
     if (processing_unit() == device_t::GPU) {
@@ -591,6 +591,9 @@ void Simulation_context::initialize()
 
     this->print_memory_usage(__FILE__, __LINE__);
 
+    /* set the smearing */
+    smearing(parameters_input().smearing_);
+
     if (control().verbosity_ >= 1 && comm().rank() == 0) {
         print_info();
     }
@@ -675,6 +678,7 @@ void Simulation_context::print_info() const
     std::printf("lmax_rho                           : %i\n", lmax_rho());
     std::printf("lmax_pot                           : %i\n", lmax_pot());
     std::printf("lmax_rf                            : %i\n", unit_cell().lmax());
+    std::printf("smearing type                      : %s\n", parameters_input().smearing_.c_str());
     std::printf("smearing width                     : %f\n", smearing_width());
     std::printf("cyclic block size                  : %i\n", cyclic_block_size());
     std::printf("|G+k| cutoff                       : %f\n", gk_cutoff());

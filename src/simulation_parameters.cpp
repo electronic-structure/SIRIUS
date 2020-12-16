@@ -78,41 +78,20 @@ void Simulation_parameters::import(cmd_args const& args__)
     mixer_input_.type_ = args__.value("mixer.type", mixer_input_.type_);
 }
 
-void Simulation_parameters::set_core_relativity(std::string name__)
+void Simulation_parameters::core_relativity(std::string name__)
 {
     parameters_input_.core_relativity_ = name__;
-
-    std::map<std::string, relativity_t> const m = {{"none", relativity_t::none}, {"dirac", relativity_t::dirac}};
-
-    if (m.count(name__) == 0) {
-        std::stringstream s;
-        s << "wrong type of core relativity: " << name__;
-        TERMINATE(s);
-    }
-    core_relativity_ = m.at(name__);
+    core_relativity_ = get_relativity_t(name__);
 }
 
-void Simulation_parameters::set_valence_relativity(std::string name__)
+void Simulation_parameters::valence_relativity(std::string name__)
 {
     parameters_input_.valence_relativity_ = name__;
-
-    std::map<std::string, relativity_t> const m = {{"none", relativity_t::none},
-                                                   {"zora", relativity_t::zora},
-                                                   {"iora", relativity_t::iora},
-                                                   {"koelling_harmon", relativity_t::koelling_harmon}};
-
-    if (m.count(name__) == 0) {
-        std::stringstream s;
-        s << "wrong type of valence relativity: " << name__;
-        TERMINATE(s);
-    }
-    valence_relativity_ = m.at(name__);
+    valence_relativity_ = get_relativity_t(name__);
 }
 
-void Simulation_parameters::set_processing_unit(std::string name__)
+void Simulation_parameters::processing_unit(std::string name__)
 {
-    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
-
     /* set the default value */
     if (name__ == "") {
         if (acc::num_devices() > 0) {
@@ -122,34 +101,13 @@ void Simulation_parameters::set_processing_unit(std::string name__)
         }
     }
     control_input_.processing_unit_ = name__;
-    if (name__ == "cpu") {
-        this->set_processing_unit(device_t::CPU);
-    } else if (name__ == "gpu") {
-        this->set_processing_unit(device_t::GPU);
-    } else {
-        std::stringstream s;
-        s << "wrong processing unit name: " << name__;
-        TERMINATE(s);
-    }
+    processing_unit_ = get_device_t(name__);
 }
 
-void Simulation_parameters::set_processing_unit(device_t pu__)
+void Simulation_parameters::smearing(std::string name__)
 {
-    if (acc::num_devices() == 0) {
-        processing_unit_                = device_t::CPU;
-        control_input_.processing_unit_ = "cpu";
-    } else {
-        processing_unit_ = pu__;
-        if (pu__ == device_t::CPU) {
-            control_input_.processing_unit_ = "cpu";
-        } else if (pu__ == device_t::GPU) {
-            control_input_.processing_unit_ = "gpu";
-        } else {
-            std::stringstream s;
-            s << "wrong processing unit type";
-            TERMINATE(s);
-        }
-    }
+    parameters_input_.smearing_ = name__;
+    smearing_ = smearing::get_smearing_t(name__);
 }
 
 void Simulation_parameters::print_options() const
