@@ -147,7 +147,7 @@ class Sirius(CMakePackage, CudaPackage):
     # add support for CRAY_LIBSCI, testing
 
     # test dependencies
-    depends_on('eigen@3.8:', when='+tests')
+    depends_on('eigen@3.4.0:', when='+tests')
 
     patch("strip-spglib-include-subfolder.patch", when='@6.1.5')
     patch("link-libraries-fortran.patch", when='@6.1.5')

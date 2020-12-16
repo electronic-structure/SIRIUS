@@ -333,6 +333,26 @@ class Wave_functions
         zero_mt(pu__, ispn__, i0__, n__);
     }
 
+    // compute a dot, i.e. diag(this' * phi).
+    mdarray<std::complex<T>, 1> dot(device_t pu__, spin_range spins__, Wave_functions<T> const &phi, int n__) const;
+
+    // compute this[:, i] = alpha * phi[:, i] + beta * this[:, i]
+    template<class Ta>
+    void axpby(device_t pu__, spin_range spins__, Ta alpha, Wave_functions<T> const &phi, Ta beta, int n__);
+
+    // compute this[:, i] = phi[:, i] + beta[i] * this[:, i], kinda like an axpy
+    template<class Ta>
+    void xpby(device_t pu__, spin_range spins__, Wave_functions<T> const &phi, std::vector<Ta> const &betas, int n__);
+
+    // compute this[:, i] = alpha[i] * phi[:, i] + this[:, i]
+    template<class Ta>
+    void axpy(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions<T> const &phi, int n__);
+
+    // compute this[:, ids[i]] = alpha[i] * phi[:, i] + this[:, i]
+    template<class Ta>
+    void axpy_scatter(device_t pu__, spin_range spins__, std::vector<Ta> const &alphas, Wave_functions<T> const &phi, std::vector<size_t> const &ids);
+
+
     /// Copy values from another wave-function.
     /** \param [in] pu   Type of processging unit which copies data.
      *  \param [in] n    Number of wave-functions to copy.

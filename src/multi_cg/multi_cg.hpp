@@ -6,9 +6,6 @@
 #include <numeric>
 #include <cmath>
 
-#include <iostream>
-#include <iterator>
-
 namespace sirius {
 namespace cg {
 
@@ -20,17 +17,21 @@ void repack(std::vector<T> &data, std::vector<size_t> const&ids) {
 }
 
 template<class Matrix, class Prec, class StateVec>
-std::vector<std::vector<typename StateVec::value_type>> block_cg(
+std::vector<std::vector<typename StateVec::value_type>> multi_cg(
     Matrix &A, Prec &P, StateVec &X, StateVec &B, StateVec &U, StateVec &C, 
-    size_t maxiters = 10, double tol = 1e-3
+    size_t maxiters = 10, double tol = 1e-3, bool initial_guess_is_zero = false
 ) {
     auto n = X.cols();
 
     U.fill(0);
 
+    // Use R for residual, we modify the right-hand side B in-place.
+    auto &R = B;
+
     // Use B effectively as the residual block-vector
-    // B = B - A * X
-    A.multiply(-1.0, X, 1.0, B, n);
+    // R = B - A * X -- don't multiply when initial guess is zero.
+    if (!initial_guess_is_zero)
+        A.multiply(-1.0, X, 1.0, R, n);
 
     auto rhos = std::vector<typename StateVec::value_type>(n);
     auto rhos_old = rhos;
@@ -47,14 +48,19 @@ std::vector<std::vector<typename StateVec::value_type>> block_cg(
     auto residual_history = std::vector<std::vector<typename StateVec::value_type>>(n);
 
     for (size_t iter = 0; iter < maxiters; ++iter) {
-        // Check the residual norms
+        // Check the residual norms in the P-norm
+        // that means whenever P is approximately inv(A)
+        // since (r, Pr) = (Ae, PAe) ~= (e, Ae)
+        // we check the errors roughly in the A-norm.
+        // When P = I, we just check the residual norm.
 
-        // active = OneTo(num_unconverged)
-        P.apply(C, B);
+        // C = P * R.
+        P.apply(C, R);
 
         rhos_old = rhos;
 
-        C.block_dot(B, rhos, num_unconverged);
+        // rhos = dot(C, R)
+        C.block_dot(R, rhos, num_unconverged);
 
         for (size_t i = 0; i < num_unconverged; ++i) {
             residual_history[ids[i]].push_back(std::sqrt(rhos[i]));
@@ -62,7 +68,7 @@ std::vector<std::vector<typename StateVec::value_type>> block_cg(
 
         auto not_converged = std::vector<size_t>{};
         for (size_t i = 0; i < num_unconverged; ++i) {
-            if (rhos[i] > tol * tol) {
+            if (std::abs(rhos[i]) > tol * tol) {
                 not_converged.push_back(i);
             }
         }
@@ -81,12 +87,12 @@ std::vector<std::vector<typename StateVec::value_type>> block_cg(
 
         U.repack(not_converged);
         C.repack(not_converged);
-        B.repack(not_converged);
+        R.repack(not_converged);
 
         A.repack(not_converged);
         P.repack(not_converged);
 
-        // # In the first iteration we have U == 0, so no need for an axpy.
+        // In the first iteration we have U == 0, so no need for an axpy.
         if (iter == 0) {
             U.copy(C, num_unconverged);
         } else {
@@ -98,10 +104,11 @@ std::vector<std::vector<typename StateVec::value_type>> block_cg(
             U.block_xpby(C, alphas, num_unconverged);
         }
 
-        // do the next matrix-vector product
+        // C = A * U.
         A.multiply(1.0, U, 0.0, C, num_unconverged);
 
         // compute the optimal distance for the search direction
+        // sigmas = dot(U, C)
         U.block_dot(C, sigmas, num_unconverged);
 
         // Update the solution and the residual
@@ -109,13 +116,14 @@ std::vector<std::vector<typename StateVec::value_type>> block_cg(
             alphas[i] = rhos[i] / sigmas[i];
         }
 
+        // X[:, ids[i]] += alpha[i] * U[:, i]
         X.block_axpy_scatter(alphas, U, ids);
-        
+
         for (size_t i = 0; i < num_unconverged; ++i) {
             alphas[i] *= -1;
         }
 
-        B.block_axpy(alphas, C, num_unconverged);
+        R.block_axpy(alphas, C, num_unconverged);
     }
 
     return residual_history;
