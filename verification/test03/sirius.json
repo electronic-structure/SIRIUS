@@ -17,8 +17,8 @@
         "gk_cutoff":  8.00,
         "use_symmetry": true,
         "ngridk" : [4,4,4],
-        "potential_tol" : 1e-10,
-        "energy_tol" : 1e-10,
+        "density_tol" : 1e-5,
+        "energy_tol" : 1e-9,
         "num_dft_iter" : 100
     },
 
@@ -45,7 +45,7 @@
     },
 
     "mixer" : {
-        "beta" : 0.8,
+        "beta" : 0.9,
         "type" : "anderson",
         "max_history" : 8
     }

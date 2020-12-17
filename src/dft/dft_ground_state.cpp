@@ -323,7 +323,7 @@ void DFT_ground_state::print_info()
     double eexc     = energy_exc(density_, potential_);
     double ebxc     = energy_bxc(density_, potential_);
     double evha     = energy_vha(potential_);
-    double etot     = sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_);
+    double etot     = total_energy();
     double gap      = kset_.band_gap() * ha2ev;
     double ef       = kset_.energy_fermi();
     double enuc     = energy_enuc(ctx_, potential_);
@@ -444,6 +444,8 @@ void DFT_ground_state::print_info()
             std::printf("ewald contribution        : %18.8f\n", ewald_energy_);
             std::printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
         }
+        std::printf("smearing (-TS)            : %18.8f\n", kset_.entropy_sum());
+        std::printf("SCF correction            : %18.8f\n", this->scf_energy_);
         if (ctx_.hubbard_correction()) {
             auto e = potential_.U().hubbard_energy(density_.occupation_matrix().data());
             std::printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", e, e * 2.0);

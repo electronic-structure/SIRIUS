@@ -161,7 +161,7 @@ double total_energy(Simulation_context const& ctx, K_point_set const& kset, Dens
             tot_en = (kset.valence_eval_sum() - energy_vxc(density, potential) -
                       energy_bxc(density, potential) - potential.PAW_one_elec_energy(density)) -
                       0.5 * energy_vha(potential) + energy_exc(density, potential) + potential.PAW_total_energy() +
-                      ewald_energy;
+                      ewald_energy + kset.entropy_sum();
             break;
         }
     }
