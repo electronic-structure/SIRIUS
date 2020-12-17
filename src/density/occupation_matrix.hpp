@@ -87,4 +87,9 @@ class Occupation_matrix {
     }
 };
 
+inline void copy(Occupation_matrix const& src__, Occupation_matrix& dest__)
+{
+    copy(src__.data(), dest__.data());
+}
+
 } // namespace

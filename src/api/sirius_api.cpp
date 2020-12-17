@@ -577,10 +577,10 @@ void sirius_set_parameters(void*  const* handler__,
             sim_ctx.so_correction(*so_correction__);
         }
         if (valence_rel__ != nullptr) {
-            sim_ctx.set_valence_relativity(valence_rel__);
+            sim_ctx.valence_relativity(valence_rel__);
         }
         if (core_rel__ != nullptr) {
-            sim_ctx.set_core_relativity(core_rel__);
+            sim_ctx.core_relativity(core_rel__);
         }
         if (esm_bc__ != nullptr) {
             sim_ctx.esm_bc(std::string(esm_bc__));

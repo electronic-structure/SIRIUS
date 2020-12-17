@@ -829,11 +829,14 @@ inline void copy(Density const& src__, Density& dest__)
     for (int j = 0; j < src__.ctx().num_mag_dims() + 1; j++) {
         copy(src__.component(j).f_pw_local(), dest__.component(j).f_pw_local());
         copy(src__.component(j).f_rg(), dest__.component(j).f_rg());
+        if (src__.ctx().full_potential()) {
+            for (int ialoc = 0; ialoc < src__.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                copy(src__.component(j).f_mt(ialoc), dest__.component(j).f_mt(ialoc));
+            }
+        }
     }
-
-    // TODO: copy density matrix, occupancy matrix, MT density
-
-
+    copy(src__.density_matrix(), dest__.density_matrix());
+    copy(src__.occupation_matrix(), dest__.occupation_matrix());
 }
 
 } // namespace sirius

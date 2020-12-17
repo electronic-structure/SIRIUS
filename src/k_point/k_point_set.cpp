@@ -172,6 +172,8 @@ void K_point_set::find_band_occupancies()
         return;
     }
 
+    auto f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+
     int step{0};
     /* calculate occupations */
     while (std::abs(ne - ne_target) >= 1e-11) {
@@ -182,9 +184,7 @@ void K_point_set::find_band_occupancies()
         for (int ik = 0; ik < num_kpoints(); ik++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    bnd_occ(j, ispn, ik) =
-                        smearing::gaussian(ef - kpoints_[ik]->band_energy(j, ispn), ctx_.smearing_width()) *
-                        ctx_.max_occupancy();
+                    bnd_occ(j, ispn, ik) = f(ef - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
                     ne += bnd_occ(j, ispn, ik) * kpoints_[ik]->weight();
                 }
             }

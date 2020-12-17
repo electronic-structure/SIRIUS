@@ -4,7 +4,6 @@ using namespace sirius;
 
 void test_lapw_xc(cmd_args const& args__)
 {
-    auto pu        = get_device_t(args__.value<std::string>("device", "CPU"));
     auto pw_cutoff = args__.value<double>("pw_cutoff", 12);
     auto N         = args__.value<int>("N", 1);
 
@@ -68,7 +67,7 @@ void test_lapw_xc(cmd_args const& args__)
     /* initialize the context */
     ctx.verbosity(1);
     ctx.pw_cutoff(pw_cutoff);
-    ctx.set_processing_unit(pu);
+    ctx.processing_unit(args__.value<std::string>("device", "CPU"));
 
     ctx.initialize();
 
