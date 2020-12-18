@@ -503,6 +503,14 @@ sirius_set_parameters:
       type: double
       attr: in, optional
       doc: Minimum band occupancy to trat is as "occupied".
+    smearing:
+      type: string
+      attr: in, optional
+      doc: Type of occupancy smearing.
+    smearing_width:
+      type: double
+      attr: in, optional
+      doc: Smearing width
     error_code:
       type: int
       attr: out, optional
@@ -535,6 +543,8 @@ void sirius_set_parameters(void*  const* handler__,
                            char   const* hubbard_orbitals__,
                            int    const* sht_coverage__,
                            double const* min_occupancy__,
+                           char   const* smearing__,
+                           double const* smearing_width__,
                            int* error_code__)
 {
     call_sirius([&]()
@@ -622,6 +632,12 @@ void sirius_set_parameters(void*  const* handler__,
         }
         if (min_occupancy__ != nullptr) {
             sim_ctx.min_occupancy(*min_occupancy__);
+        }
+        if (smearing__ != nullptr) {
+            sim_ctx.smearing(smearing__);
+        }
+        if (smearing_width__ != nullptr) {
+            sim_ctx.smearing_width(*smearing_width__);
         }
     }, error_code__);
 }
