@@ -118,6 +118,8 @@ json DFT_ground_state::serialize()
     if (!ctx_.full_potential()) {
         dict["energy"]["vloc"]      = energy_vloc(density_, potential_);
     }
+    dict["energy"]["scf_correction"] = this->scf_energy_;
+    dict["energy"]["entropy_sum"]   = kset_.entropy_sum();
     dict["efermi"]                  = kset_.energy_fermi();
     dict["band_gap"]                = kset_.band_gap();
     dict["core_leakage"]            = density_.core_leakage();
