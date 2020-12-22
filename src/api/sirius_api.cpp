@@ -3311,6 +3311,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                     /* make a check of send-receive sizes */
                     if (true) {
                         int send_size;
+                        int send_size1;
                         if (my_rank == rank_with_jk[r]) {
                             auto kp = kset[this_jk];
                             int gkvec_count = kp->gkvec().count();
@@ -3319,11 +3320,11 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                         }
                         if (my_rank == r) {
                             int gkvec_count = gkvec.count();
-                            kset.comm().recv(&send_size, 1, rank_with_jk[r], tag);
-                            if (send_size != gkvec_count * sim_ctx.num_bands()) {
+                            kset.comm().recv(&send_size1, 1, rank_with_jk[r], tag);
+                            if (send_size1 != gkvec_count * sim_ctx.num_bands()) {
                                 std::stringstream s;
                                 s << "wrong send-receive buffer sizes\n"
-                                  << "     send size   : " << send_size << "\n"
+                                  << "     send size   : " << send_size1 << "\n"
                                   << "  receive size   : " << gkvec_count * sim_ctx.num_bands() << "\n"
                                   << " number of bands : " << sim_ctx.num_bands();
                                 TERMINATE(s);
