@@ -26,7 +26,7 @@
       "pw_cutoff" : 20.00,
 
       "energy_tol" : 1e-8,
-      "density_tol" : 1e-8,
+      "density_tol" : 1e-5,
 
       "num_dft_iter" : 100,
 

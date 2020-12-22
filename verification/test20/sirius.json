@@ -16,7 +16,7 @@
         "gk_cutoff":  8.00,
         "use_symmetry": true,
         "ngridk" : [4,4,4],
-        "potential_tol" : 1e-10,
+        "density_tol" : 1e-7,
         "energy_tol" : 1e-10,
         "num_dft_iter" : 100,
         "hubbard_correction" : true
