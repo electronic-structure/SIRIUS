@@ -25,7 +25,7 @@
 #include "typedefs.hpp"
 #include "memory.hpp"
 #include "linalg/linalg.hpp"
-#include "simulation_context.hpp"
+#include "context/simulation_context.hpp"
 
 namespace sddk {
 template <typename T>

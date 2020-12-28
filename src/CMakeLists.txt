@@ -42,8 +42,6 @@ set(_SOURSES
   "unit_cell/unit_cell.cpp"
   "unit_cell/unit_cell_symmetry.cpp"
   "unit_cell/atom_type.cpp"
-  "simulation_context.cpp"
-  "simulation_parameters.cpp"
   "geometry/force.cpp"
   "geometry/stress.cpp"
   "geometry/non_local_functor.cpp"
@@ -78,7 +76,9 @@ set(_SOURSES
   "linalg/eigensolver.cpp"
   "linalg/linalg_spla.cpp"
   "nlcglib/adaptor.cpp"
-  "input.cpp"
+  "context/simulation_context.cpp"
+  "context/simulation_parameters.cpp"
+  "context/input.cpp"
   )
 
 

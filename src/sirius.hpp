@@ -42,8 +42,8 @@
 #include "utils/profiler.hpp"
 using json = nlohmann::json;
 
-#include "input.hpp"
-#include "simulation_context.hpp"
+#include "context/input.hpp"
+#include "context/simulation_context.hpp"
 #include "hamiltonian/local_operator.hpp"
 #include "radial/radial_solver.hpp"
 #include "sht/sht.hpp"

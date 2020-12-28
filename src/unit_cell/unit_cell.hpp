@@ -29,7 +29,7 @@
 #include "atom.hpp"
 #include "mpi/mpi_grid.hpp"
 #include "unit_cell_symmetry.hpp"
-#include "simulation_parameters.hpp"
+#include "context/simulation_parameters.hpp"
 #include "utils/json.hpp"
 
 namespace sirius {

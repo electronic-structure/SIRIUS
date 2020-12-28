@@ -22,7 +22,7 @@
  *  \brief Contains definition of sirius::Hamiltonian_k class.
  */
 
-#include "simulation_context.hpp"
+#include "context/simulation_context.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "hamiltonian/local_operator.hpp"
 #include "hamiltonian/non_local_operator.hpp"

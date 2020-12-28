@@ -29,32 +29,32 @@ namespace sirius {
 
 int major_version()
 {
-    return ::major_version;
+    return version::major_version;
 };
 
 int minor_version()
 {
-    return ::minor_version;
+    return version::minor_version;
 }
 
 int revision()
 {
-    return ::revision;
+    return version::revision;
 }
 
 std::string git_hash()
 {
-    return std::string(::git_hash);
+    return std::string(version::git_hash);
 }
 
 std::string git_branchname()
 {
-    return std::string(::git_branchname);
+    return std::string(version::git_branchname);
 }
 
 std::string build_date()
 {
-    return std::string(::build_date);
+    return std::string(version::build_date);
 }
 
 }

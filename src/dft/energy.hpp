@@ -27,7 +27,7 @@
 
 #include "density/density.hpp"
 #include "potential/potential.hpp"
-#include "simulation_context.hpp"
+#include "context/simulation_context.hpp"
 
 namespace sirius {
 

@@ -25,7 +25,7 @@
 #ifndef __PERIODIC_FUNCTION_HPP__
 #define __PERIODIC_FUNCTION_HPP__
 
-#include "simulation_context.hpp"
+#include "context/simulation_context.hpp"
 #include "spheric_function.hpp"
 #include "smooth_periodic_function.hpp"
 #include "utils/profiler.hpp"
