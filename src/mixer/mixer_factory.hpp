@@ -30,7 +30,7 @@
 #include "mixer/anderson_stable_mixer.hpp"
 #include "mixer/broyden2_mixer.hpp"
 #include "mixer/linear_mixer.hpp"
-#include "input.hpp"
+#include "context/input.hpp"
 
 namespace sirius {
 namespace mixer {

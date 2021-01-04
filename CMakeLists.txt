@@ -234,10 +234,10 @@ configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in"
                @ONLY)
 
 # generate runtime options
-file(STRINGS "${PROJECT_SOURCE_DIR}/src/options.json"
+file(STRINGS "${PROJECT_SOURCE_DIR}/src/context/options.json"
               SIRIUS_RUNTIME_OPTIONS NEWLINE_CONSUME)
-configure_file("${PROJECT_SOURCE_DIR}/src/runtime_options_json.hpp.in"
-               "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
+configure_file("${PROJECT_SOURCE_DIR}/src/context/runtime_options_json.hpp.in"
+               "${PROJECT_BINARY_DIR}/src/context/runtime_options_json.hpp"
                @ONLY)
 
 # generate atomic configurations

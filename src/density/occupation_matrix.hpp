@@ -24,7 +24,7 @@
 
 #include "SDDK/memory.hpp"
 #include "SDDK/wf_inner.hpp"
-#include "simulation_context.hpp"
+#include "context/simulation_context.hpp"
 #include "k_point/k_point.hpp"
 
 namespace sirius {

@@ -40,7 +40,7 @@ using namespace sddk;
 namespace sirius {
 
 /// Json dictionary containing the options given by the interface.
-#include "runtime_options_json.hpp"
+#include "context/runtime_options_json.hpp"
 
 /// Get all possible options for initializing sirius. It is a json dictionary.
 inline const json& get_options_dictionary()

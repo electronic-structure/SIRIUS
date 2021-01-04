@@ -42,8 +42,6 @@ set(_SOURSES
   "unit_cell/unit_cell.cpp"
   "unit_cell/unit_cell_symmetry.cpp"
   "unit_cell/atom_type.cpp"
-  "simulation_context.cpp"
-  "simulation_parameters.cpp"
   "geometry/force.cpp"
   "geometry/stress.cpp"
   "geometry/non_local_functor.cpp"
@@ -78,7 +76,9 @@ set(_SOURSES
   "linalg/eigensolver.cpp"
   "linalg/linalg_spla.cpp"
   "nlcglib/adaptor.cpp"
-  "input.cpp"
+  "context/simulation_context.cpp"
+  "context/simulation_parameters.cpp"
+  "context/input.cpp"
   )
 
 
@@ -170,5 +170,5 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/src"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius"
         FILES_MATCHING REGEX ".*(hpp|h)$")
 install(FILES "${PROJECT_BINARY_DIR}/src/version.hpp"
-              "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
+              "${PROJECT_BINARY_DIR}/src/context/runtime_options_json.hpp"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")

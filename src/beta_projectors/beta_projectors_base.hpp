@@ -25,7 +25,7 @@
 #ifndef __BETA_PROJECTORS_BASE_HPP__
 #define __BETA_PROJECTORS_BASE_HPP__
 
-#include "simulation_context.hpp"
+#include "context/simulation_context.hpp"
 #include "SDDK/wave_functions.hpp"
 
 namespace sirius {

@@ -27,7 +27,7 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include "simulation_context.hpp"
+#include "context/simulation_context.hpp"
 #include "k_point/k_point.hpp"
 #include "k_point/k_point_set.hpp"
 #include "wave_functions.hpp"
