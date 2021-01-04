@@ -171,4 +171,5 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/src"
         FILES_MATCHING REGEX ".*(hpp|h)$")
 install(FILES "${PROJECT_BINARY_DIR}/src/version.hpp"
               "${PROJECT_BINARY_DIR}/src/context/runtime_options_json.hpp"
+              "${PROJECT_BINARY_DIR}/src/context/input_schema.hpp"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")

@@ -1,0 +1,48 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type" : "object",
+    "properties": {
+        "mixer" :{
+            "type" : "object",
+            "properties" : {
+                "type" : {
+                    "type" : "string",
+                    "enum" : ["linear", "anderson", "anderson_stable", "broyden2"],
+                    "default" : "anderson",
+                    "description" : "Type of the mixer."
+                },
+                "beta" : {
+                    "type" : "number",
+                    "default" : 0.7,
+                    "description": "Mixing parameter"
+                },
+                "beta0" : {
+                    "type" : "number",
+                    "default" : 0.15,
+                    "description": "Mixing ratio in case of initial linear mixing"
+                },
+                "linear_mix_rms_tol" : {
+                    "type" : "number",
+                    "default" : 1e6,
+                    "description": "RMS tolerance above which the linear mixing is triggered"
+                },
+                "max_history" : {
+                    "type" : "integer",
+                    "default" : 8,
+                    "description": "Number of history steps for Broyden-type mixers"
+                },
+                "beta_scaling_factor" : {
+                    "type" : "number",
+                     "default" : 1.0,
+                    "description": "Scaling factor for mixing parameter"
+                },
+                "use_hartree" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "description": "Use Hartree potential in the inner() product for residuals"
+                }
+            }
+        }
+    }
+}
+
