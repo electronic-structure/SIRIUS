@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -39,22 +39,17 @@ using namespace sddk;
 
 namespace sirius {
 
-/// Json dictionary containing the options given by the interface.
-#include "context/runtime_options_json.hpp"
-
 /// Get all possible options for initializing sirius. It is a json dictionary.
-inline const json& get_options_dictionary()
-{
-    if (all_options_dictionary_.size() == 0) {
-        throw std::runtime_error("Dictionary not initialized\n");
-    }
-    return all_options_dictionary_;
-}
+json const& get_options_dictionary();
 
 /// Set of basic parameters of a simulation.
 class Simulation_parameters
 {
   protected:
+
+    /// JSON dictionary with all parameters.
+    nlohmann::json dict_;
+
     /// Type of the processing unit.
     device_t processing_unit_{device_t::CPU};
 

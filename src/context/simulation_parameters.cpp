@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -25,7 +25,59 @@
 #include "simulation_parameters.hpp"
 #include "mpi/communicator.hpp"
 
+/// Json dictionary containing the options given by the interface.
+#include "context/runtime_options_json.hpp"
+#include "context/input_schema.hpp"
+
 namespace sirius {
+
+void compose_json(nlohmann::json const& schema__, nlohmann::json const& input__, nlohmann::json& output__)
+{
+    for (auto it: schema__.items()) {
+        auto key = it.key();
+        /* this is a final node with the description of the data type */
+        if (it.value().contains("type") && it.value()["type"] != "object") {
+            if (input__.contains(key)) {
+                /* copy the actual input */
+                output__[key] = input__[key];
+            } else {
+                /* check if default parameter is present */
+                if (!it.value().contains("default")) {
+                    throw std::runtime_error("default value is not defined for " + key);
+                }
+                /* copy the default value */
+                output__[key] = it.value()["default"];
+            }
+        } else { /* otherwise continue to traverse the shcema */
+            if (!output__.contains(key)) {
+                output__[key] = nlohmann::json{};
+            }
+            if (!it.value().contains("properties")) {
+                throw std::runtime_error("wrong JSON schema for " + key);
+            }
+            compose_json(it.value()["properties"], input__.contains(key) ? input__[key] : nlohmann::json{}, output__[key]);
+        }
+    }
+}
+
+nlohmann::json compose_json(nlohmann::json const& schema__, nlohmann::json const& input__)
+{
+    nlohmann::json jout;
+    if (!(schema__.contains("type") && schema__["type"] == "object" && schema__.contains("properties"))) {
+        throw std::runtime_error("wrong JSON schema");
+    }
+    compose_json(schema__["properties"], input__, jout);
+    return jout;
+}
+
+/// Get all possible options for initializing sirius. It is a json dictionary.
+json const& get_options_dictionary()
+{
+    if (all_options_dictionary_.size() == 0) {
+        throw std::runtime_error("Dictionary not initialized\n");
+    }
+    return all_options_dictionary_;
+}
 
 void Simulation_parameters::import(std::string const& str__)
 {
@@ -35,9 +87,10 @@ void Simulation_parameters::import(std::string const& str__)
 
 void Simulation_parameters::import(json const& dict)
 {
-    if (dict.size() == 0) {
-        return;
-    }
+    //if (dict.size() == 0) {
+    //    return;
+    //}
+    this->dict_ = compose_json(sirius::input_schema, dict);
     /* read unit cell */
     unit_cell_input_.read(dict);
     /* read parameters of mixer */
