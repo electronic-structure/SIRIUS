@@ -190,7 +190,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
 
     double eold{0}, rms{0};
 
-    density_.mixer_init(ctx_.mixer_input());
+    density_.mixer_init(ctx_.cfg().mixer());
 
     int num_iter{-1};
     std::vector<double> rms_hist;
@@ -227,7 +227,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         double old_tol = ctx_.iterative_solver_tolerance();
         /* estimate new tolerance of the iterative solver */
         double tol = rms;
-        if (ctx_.mixer_input().use_hartree_) {
+        if (ctx_.cfg().mixer().use_hartree()) {
             tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
         }
         tol = std::min(ctx_.settings().itsol_tol_scale_[0] * tol, ctx_.settings().itsol_tol_scale_[1] * old_tol);

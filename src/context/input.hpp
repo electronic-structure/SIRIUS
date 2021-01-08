@@ -188,60 +188,6 @@ struct Unit_cell_input
     }
 };
 
-/// Parse mixer input section.
-/** The following part of the input file is parsed:
-    \code{.json}
-    "mixer" : {
-      "beta" : (float) beta,
-      "beta0" : beta0,
-      "linear_mix_rms_tol" :
-    }
-    \endcode
- */
-struct Mixer_input
-{
-    /// Mixing parameter.
-    double beta_{0.7};
-
-    /// Mixing ratio in case of initial linear mixing.
-    double beta0_{0.15};
-
-    /// RMS tolerance above which the linear mixing is triggered.
-    double linear_mix_rms_tol_{1e6};
-
-    /// Type of the mixer.
-    /** Available types are: "anderson", "broyden2", "linear" */
-    std::string type_{"anderson"};
-
-    /// Number of history steps for Broyden-type mixers.
-    int max_history_{8};
-
-    /// Scaling factor for mixing parameter.
-    double beta_scaling_factor_{1};
-
-    /// Use Hartree potential in the inner() product for residuals.
-    bool use_hartree_{false};
-
-    /// True if this section exists in the input file.
-    bool exist_{false};
-
-    /// Read the \b mixer input section.
-    void read(json const& parser)
-    {
-        if (parser.count("mixer")) {
-            exist_               = true;
-            auto section         = parser["mixer"];
-            beta_                = section.value("beta", beta_);
-            beta0_               = section.value("beta0", beta0_);
-            linear_mix_rms_tol_  = section.value("linear_mix_rms_tol", linear_mix_rms_tol_);
-            max_history_         = section.value("max_history", max_history_);
-            type_                = section.value("type", type_);
-            beta_scaling_factor_ = section.value("beta_scaling_factor", beta_scaling_factor_);
-            use_hartree_         = section.value("use_hartree", use_hartree_);
-        }
-    }
-};
-
 /// Parse the parameters of iterative solver.
 struct Iterative_solver_input
 {

@@ -32,6 +32,7 @@
 #include "utils/utils.hpp"
 #include "memory.hpp"
 #include "dft/smearing.hpp"
+#include "context/config.hpp"
 
 using namespace sddk;
 
@@ -42,14 +43,32 @@ namespace sirius {
 /// Get all possible options for initializing sirius. It is a json dictionary.
 json const& get_options_dictionary();
 
+class Config : public config_t
+{
+  public:
+    Config();
+    void import(nlohmann::json const& in__);
+
+};
+
 /// Set of basic parameters of a simulation.
 class Simulation_parameters
 {
+  private:
+    /// All user-provided paramters are stored here.
+    Config cfg_;
+  public:
+    Config& cfg()
+    {
+        return cfg_;
+    }
+
+    Config const& cfg() const
+    {
+        return cfg_;
+    }
+
   protected:
-
-    /// JSON dictionary with all parameters.
-    nlohmann::json dict_;
-
     /// Type of the processing unit.
     device_t processing_unit_{device_t::CPU};
 
@@ -67,9 +86,6 @@ class Simulation_parameters
 
     /// Parameters of the iterative solver.
     Iterative_solver_input iterative_solver_input_;
-
-    /// Parameters of the mixer.
-    Mixer_input mixer_input_;
 
     /// Description of the unit cell.
     Unit_cell_input unit_cell_input_;
@@ -537,11 +553,6 @@ class Simulation_parameters
     Control_input const& control() const
     {
         return control_input_;
-    }
-
-    Mixer_input const& mixer_input() const
-    {
-        return mixer_input_;
     }
 
     Iterative_solver_input const& iterative_solver_input() const

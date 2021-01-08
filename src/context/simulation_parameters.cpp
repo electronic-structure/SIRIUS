@@ -31,21 +31,18 @@
 
 namespace sirius {
 
-void compose_json(nlohmann::json const& schema__, nlohmann::json const& input__, nlohmann::json& output__)
+/// Compose JSON dictionary with default parameters based on input schema.
+/** Traverse the JSON schema and add nodes with default parameters to the output dictionary. The nodes without
+ *  default parameters are ignored. Still, user has a possibility to add the missing nodes later by providing a
+ *  corresponding input JSON dictionary. See compose_json() function. */
+void compose_default_json(nlohmann::json const& schema__, nlohmann::json& output__)
 {
     for (auto it: schema__.items()) {
         auto key = it.key();
         /* this is a final node with the description of the data type */
         if (it.value().contains("type") && it.value()["type"] != "object") {
-            if (input__.contains(key)) {
-                /* copy the actual input */
-                output__[key] = input__[key];
-            } else {
-                /* check if default parameter is present */
-                if (!it.value().contains("default")) {
-                    throw std::runtime_error("default value is not defined for " + key);
-                }
-                /* copy the default value */
+            /* check if default parameter is present */
+            if (it.value().contains("default")) {
                 output__[key] = it.value()["default"];
             }
         } else { /* otherwise continue to traverse the shcema */
@@ -55,19 +52,43 @@ void compose_json(nlohmann::json const& schema__, nlohmann::json const& input__,
             if (!it.value().contains("properties")) {
                 throw std::runtime_error("wrong JSON schema for " + key);
             }
-            compose_json(it.value()["properties"], input__.contains(key) ? input__[key] : nlohmann::json{}, output__[key]);
+            compose_default_json(it.value()["properties"], output__[key]);
         }
     }
 }
 
-nlohmann::json compose_json(nlohmann::json const& schema__, nlohmann::json const& input__)
+/// Append the input dictionary to the existing dictionary.
+/** Use JSON schema to traverse the existing dictionary and add on top the values from the input dictionary. In this
+ *  way we can add missing nodes which were not defined in the existing dictionary. */
+void compose_json(nlohmann::json const& schema__, nlohmann::json const& in__, nlohmann::json& inout__)
 {
-    nlohmann::json jout;
-    if (!(schema__.contains("type") && schema__["type"] == "object" && schema__.contains("properties"))) {
-        throw std::runtime_error("wrong JSON schema");
+    for (auto it: schema__.items()) {
+        auto key = it.key();
+        /* this is a final node with the description of the data type */
+        if (it.value().contains("type") && it.value()["type"] != "object") {
+            if (in__.contains(key)) {
+                /* copy the new input */
+                inout__[key] = in__[key];
+            }
+        } else { /* otherwise continue to traverse the shcema */
+            if (!it.value().contains("properties")) {
+                throw std::runtime_error("wrong JSON schema for " + key);
+            }
+            compose_json(it.value()["properties"], in__.contains(key) ? in__[key] : nlohmann::json{}, inout__[key]);
+        }
     }
-    compose_json(schema__["properties"], input__, jout);
-    return jout;
+}
+
+Config::Config()
+{
+    /* initialize JSON dictionary with default parameters */
+    compose_default_json(sirius::input_schema["properties"], this->dict_);
+}
+
+void Config::import(nlohmann::json const& in__)
+{
+    /* overwrite the parameters by the values from the input dictionary */
+    compose_json(sirius::input_schema["properties"], in__, this->dict_);
 }
 
 /// Get all possible options for initializing sirius. It is a json dictionary.
@@ -85,31 +106,26 @@ void Simulation_parameters::import(std::string const& str__)
     import(json);
 }
 
-void Simulation_parameters::import(json const& dict)
+void Simulation_parameters::import(json const& dict__)
 {
-    //if (dict.size() == 0) {
-    //    return;
-    //}
-    this->dict_ = compose_json(sirius::input_schema, dict);
+    cfg_.import(dict__);
     /* read unit cell */
-    unit_cell_input_.read(dict);
-    /* read parameters of mixer */
-    mixer_input_.read(dict);
+    unit_cell_input_.read(dict__);
     /* read parameters of iterative solver */
-    iterative_solver_input_.read(dict);
+    iterative_solver_input_.read(dict__);
     /* read controls */
-    control_input_.read(dict);
+    control_input_.read(dict__);
     /* read parameters */
-    parameters_input_.read(dict);
+    parameters_input_.read(dict__);
     /* read settings */
-    settings_input_.read(dict);
+    settings_input_.read(dict__);
     /* read hubbard parameters */
-    hubbard_input_.read(dict);
+    hubbard_input_.read(dict__);
     /* read nlcg parameters */
-    nlcg_input_.read(dict);
+    nlcg_input_.read(dict__);
 }
 
-void Simulation_parameters::import(cmd_args const& args__)
+void Simulation_parameters::import(cmd_args const& args__) // TODO: somehow redesign to use json_pointer
 {
     control_input_.processing_unit_ = args__.value("control.processing_unit", control_input_.processing_unit_);
     control_input_.mpi_grid_dims_   = args__.value("control.mpi_grid_dims", control_input_.mpi_grid_dims_);
@@ -127,8 +143,8 @@ void Simulation_parameters::import(cmd_args const& args__)
     parameters_input_.pw_cutoff_   = args__.value("parameters.pw_cutoff", parameters_input_.pw_cutoff_);
 
     iterative_solver_input_.early_restart_ = args__.value("iterative_solver.early_restart", iterative_solver_input_.early_restart_);
-    mixer_input_.beta_ = args__.value("mixer.beta", mixer_input_.beta_);
-    mixer_input_.type_ = args__.value("mixer.type", mixer_input_.type_);
+    //mixer_input_.beta_ = args__.value("mixer.beta", mixer_input_.beta_);
+    //mixer_input_.type_ = args__.value("mixer.type", mixer_input_.type_);
 }
 
 void Simulation_parameters::core_relativity(std::string name__)

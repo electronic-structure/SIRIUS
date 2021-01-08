@@ -1788,7 +1788,7 @@ mdarray<double, 3> Density::density_matrix_aux(int iat__)
     return dm;
 }
 
-void Density::mixer_init(Mixer_input mixer_cfg__)
+void Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
 {
     auto func_prop    = mixer::periodic_function_property();
     auto func_prop1   = mixer::periodic_function_property_modified(true);
@@ -1804,7 +1804,7 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
     const bool init_mt = ctx_.full_potential();
 
     /* initialize functions */
-    if (mixer_cfg__.use_hartree_) {
+    if (mixer_cfg__.use_hartree()) {
         this->mixer_->initialize_function<0>(func_prop1, component(0), ctx_, lmmax_, init_mt);
     } else {
         this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_, init_mt);

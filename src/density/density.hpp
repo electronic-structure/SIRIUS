@@ -662,7 +662,7 @@ class Density : public Field4D
     void mixer_output();
 
     /// Initialize density mixer.
-    void mixer_init(Mixer_input mixer_cfg__);
+    void mixer_init(config_t::mixer_t const& mixer_cfg__);
 
     /// Mix new density.
     double mix();

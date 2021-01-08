@@ -107,24 +107,28 @@ int main(int argn, char** argv)
         }
     );
 
-    sirius::Mixer_input input{
-        beta,
-        0.15, //beta0
-        1e6, // linear mixing tolerance
-        "anderson",
-        max_history,
-        1, // beta scaling
-        false, // use hartree
-        false // exists
-    };
+    json mixer_dict = R"mixer(
+    {
+      "mixer" : {
+        "type" : "linear",
+        "beta0" : 0.15,
+        "linear_mix_rms_tol" : 1e6,
+        "beta_scaling_factor" : 1,
+        "use_hartree" : false
+      }
+    })mixer"_json;
+
+    config_t::mixer_t input(mixer_dict);
+    input.beta(beta);
+    input.max_history(max_history);
 
     for (auto const mixer_name : {"anderson", "anderson_stable", "broyden2", "linear"}) {
-        input.type_ = mixer_name;
+        input.type(mixer_name);
 
-        std::cout << "max history = " << input.max_history_
-              << ". beta = " << input.beta_
+        std::cout << "max history = " << input.max_history()
+              << ". beta = " << input.beta()
               << ". dim = " << n
-              << ". mixer = " << input.type_ << '\n';
+              << ". mixer = " << input.type() << '\n';
 
         auto mixer = mixer::Mixer_factory<std::vector<double>>(input);
 
