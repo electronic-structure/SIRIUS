@@ -1,5 +1,3 @@
-#include "json.hpp"
-
 class config_t
 {
   public:
