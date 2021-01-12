@@ -3,7 +3,7 @@
 #include <tuple>
 #include <sstream>
 #include "density/density.hpp"
-#include "simulation_context.hpp"
+#include "context/simulation_context.hpp"
 
 namespace sirius {
 
