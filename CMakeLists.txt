@@ -198,14 +198,15 @@ if(USE_CUDA)
 endif(USE_CUDA)
 
 if(USE_ROCM)
+  find_package(hip CONFIG REQUIRED)
+  find_package(rocblas CONFIG REQUIRED)
+
+  # FindHIP module provides compilation command for GPU code
   if(NOT HIP_HCC_FLAGS)
     message(STATUS "Using default AMD gpu targets: gfx803, gfx900, gfx906. Set HIP_HCC_FLAGS to override.")
     set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} --amdgpu-target=gfx803 --amdgpu-target=gfx900 --amdgpu-target=gfx906)
   endif()
-  find_package(HIP REQUIRED)
-  # rocblas and hip have cmake config files, but add incompatible flags for mixed compiler usage, so we use custom find modules
-  find_package(ROCBLAS REQUIRED)
-  find_package(HIPLIBS REQUIRED)
+  find_package(HIP MODULE REQUIRED)
 endif()
 
 # check if git command exists
