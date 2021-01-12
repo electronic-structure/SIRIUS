@@ -235,7 +235,8 @@ class Sirius(CMakePackage, CudaPackage):
             archs = ",".join(self.spec.variants['amdgpu_target'].value)
             args.extend([
                 '-DHIP_ROOT_DIR={0}'.format(spec['hip'].prefix),
-                '-DHIP_HCC_FLAGS=--amdgpu-target={0}'.format(archs)
+                '-DHIP_HCC_FLAGS=--amdgpu-target={0}'.format(archs),
+                '-DHIP_CXX_COMPILER={0}'.format(self.spec['hip'].hipcc)
             ])
 
         return args
