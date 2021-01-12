@@ -741,7 +741,7 @@ class Simulation_context : public Simulation_parameters
     /// Set the size of the fine-grained FFT grid.
     void fft_grid_size(std::array<int, 3> fft_grid_size__)
     {
-        settings_input_.fft_grid_size_ = fft_grid_size__;
+        cfg().settings().fft_grid_size(fft_grid_size__);
     }
 
     spfft::Grid& spfft_grid_coarse()

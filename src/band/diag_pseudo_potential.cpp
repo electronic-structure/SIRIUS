@@ -399,7 +399,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         auto is_converged = [&](int j__, int ispn__) -> bool
         {
             double tol = ctx_.iterative_solver_tolerance();
-            double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
+            double empy_tol = std::max(tol * ctx_.cfg().settings().itsol_tol_ratio(), itso.empty_states_tolerance_);
             /* if band is empty, decrease the tolerance */
             // note: j__ indexes the unconverged eigenpairs -- excluding locked ones.
             if (std::abs(kp.band_occupancy(j__ + num_locked, ispn__)) < ctx_.min_occupancy() * ctx_.max_occupancy()) {
@@ -537,7 +537,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
 
                 /* No need to recompute the wave functions when converged in the first iteration */
-                if (k != 0 || num_unconverged != 0 || ctx_.settings().always_update_wf_) {
+                if (k != 0 || num_unconverged != 0 || ctx_.cfg().settings().always_update_wf()) {
                     /* in case of non-collinear magnetism transform two components */
                     transform<T>(ctx_.spla_context(), nc_mag ? 2 : ispin_step, {&phi}, num_locked, N - num_locked, evec,
                                  0, 0, {&psi}, num_locked, num_ritz);

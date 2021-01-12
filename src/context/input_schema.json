@@ -4,43 +4,204 @@
     "properties": {
         "mixer" : {
             "type" : "object",
-            "description": "Parameters of the mixer",
+            "title": "Parameters of the mixer",
             "properties" : {
                 "type" : {
                     "type" : "string",
                     "enum" : ["linear", "anderson", "anderson_stable", "broyden2"],
                     "default" : "anderson",
-                    "description" : "Type of the mixer."
+                    "title" : "Type of the mixer."
                 },
                 "beta" : {
                     "type" : "number",
                     "default" : 0.7,
-                    "description": "Mixing parameter"
+                    "title": "Mixing parameter"
                 },
                 "beta0" : {
                     "type" : "number",
                     "default" : 0.15,
-                    "description": "Mixing ratio in case of initial linear mixing"
+                    "title": "Mixing ratio in case of initial linear mixing"
                 },
                 "linear_mix_rms_tol" : {
                     "type" : "number",
                     "default" : 1e6,
-                    "description": "RMS tolerance above which the linear mixing is triggered"
+                    "title": "RMS tolerance above which the linear mixing is triggered"
                 },
                 "max_history" : {
                     "type" : "integer",
                     "default" : 8,
-                    "description": "Number of history steps for Broyden-type mixers"
+                    "title": "Number of history steps for Broyden-type mixers"
                 },
                 "beta_scaling_factor" : {
                     "type" : "number",
                      "default" : 1.0,
-                    "description": "Scaling factor for mixing parameter"
+                    "title": "Scaling factor for mixing parameter"
                 },
                 "use_hartree" : {
                     "type" : "boolean",
                     "default" : false,
-                    "description": "Use Hartree potential in the inner() product for residuals"
+                    "title": "Use Hartree potential in the inner() product for residuals"
+                }
+            }
+        },
+        "settings" : {
+            "type" : "object",
+            "title": "Settings control the internal parameters related to the numerical implementation.",
+            "description": "Changing of setting parameters will have a small impact on the final result.",
+            "properties": {
+                "nprii_vloc" : {
+                    "type" : "integer",
+                    "default" : 200,
+                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the local part of pseudopotential"
+                },
+                "nprii_beta" : {
+                    "type" : "integer",
+                    "default" : 20,
+                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the beta projectors"
+                },
+                "nprii_aug" : {
+                    "type" : "integer",
+                    "default" : 20,
+                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the augmentation operator"
+                },
+                "nprii_rho_core" : {
+                    "type" : "integer",
+                    "default" : 20,
+                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the core charge density"
+                },
+                "always_update_wf" : {
+                    "type" : "boolean",
+                    "default" : true,
+                    "title": "Update wave-functions in the Davdison solver even if they immediately satisfy the convergence criterion",
+                    "$comment": "move to iterative solver section"
+                },
+                "mixer_rms_min" : {
+                    "type" : "number",
+                    "default" : 1e-16,
+                    "title": "Minimum value of allowed RMS for the mixer.",
+                    "description": "Mixer will not mix functions if the RMS between previous and current functions is below this tolerance."
+                },
+                "itsol_tol_min" : {
+                    "type" : "number",
+                    "default" : 1e-13,
+                    "title": "Minimum tolerance of the iterative solver."
+                },
+                "min_occupancy" : {
+                    "type" : "number",
+                    "default" : 1e-14,
+                    "title": "Minimum occupancy below which the band is treated as being 'empty'"
+                },
+                "itsol_tol_ratio" : {
+                    "type" : "number",
+                    "default" : 0,
+                    "title": "Fine control of the empty states tolerance.",
+                    "description": "This is the ratio between the tolerance of empty and occupied states. Used in the code like this:\n\\code{.cpp}\n// tolerance of occupied bands\ndouble tol = ctx_.iterative_solver_tolerance();\n// final tolerance of empty bands\ndouble empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);\n\\endcode"
+                },
+                "itsol_tol_scale" : {
+                    "type" : "array",
+                    "items" : {
+                        "type" : "number",
+                        "minItems" : 2,
+                        "maxItems" : 2
+                    },
+                    "default" : [0.1, 0.5],
+                    "title": "Scaling parameters of the iterative  solver tolerance.",
+                    "description": "First number is the scaling of density RMS, that gives the estimate of the new \ntolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum \nbetween the two. This is how it is done in the code: \n\\code{.cpp}\ndouble old_tol = ctx_.iterative_solver_tolerance();\n// estimate new tolerance of iterative solver\ndouble tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);\ntol = std::max(ctx_.settings().itsol_tol_min_, tol);\n// set new tolerance of iterative solver\nctx_.iterative_solver_tolerance(tol);\\endcode"
+                },
+                "auto_enu_tol" : {
+                    "type" : "number",
+                    "default" : 0,
+                    "title": "Tolerance to recompute the LAPW linearisation energies."
+                },
+                "fft_grid_size" : {
+                    "type" : "array",
+                    "items" : {
+                        "type" : "integer",
+                        "minItems" : 3,
+                        "maxItems": 3
+                    },
+                    "default" : [0, 0, 0],
+                    "title": "Initial dimenstions for the fine-grain FFT grid"
+                },
+                "radial_grid" : {
+                    "type" : "string",
+                    "default" : "exponential, 1.0",
+                    "title": "Default radial grid for LAPW species."
+                },
+                "sht_coverage" : {
+                    "type" : "integer",
+                    "default" : 0,
+                    "title" : "Coverage of sphere in case of spherical harmonics transformation",
+                    "description": "0 is Lebedev-Laikov coverage, 1 is unifrom coverage"
+                }
+
+            }
+        },
+        "unit_cell" : {
+            "type" : "object",
+            "title" : "Unit cell representation",
+            "cpp_interface" : false,
+            "properties": {
+                "lattice_vectors" : {
+                    "type" : "array",
+                    "title": "Three non-collinear vectors of the primitive unit cell.",
+                    "minItems" : 3,
+                    "maxItems": 3,
+                    "items" : {
+                        "type" : "array",
+                        "items" : {
+                            "type" : "number"
+                        },
+                        "minItems" : 3,
+                        "maxItems": 3
+                    }
+                },
+                "lattice_vectors_scale" : {
+                    "type" : "number",
+                    "default" : 1,
+                    "title": "Scaling factor for the lattice vectors",
+                    "description": "Lattice vectors are multiplied by this constant."
+                },
+                "atom_coordinate_units" : {
+                    "type" : "string",
+                    "default" : "lattice",
+                    "enum" : ["lattice", "au", "A"],
+                    "title" : "Type of atomic coordinates: lattice, atomic units or Angstroms"
+                },
+                "atom_types" : {
+                    "type" : "array",
+                    "titele" : "List of atom type labels",
+                    "items" : {
+                        "type" : "string"
+                    }
+                },
+                "atom_files" : {
+                    "type" : "object",
+                    "title": "Mapping between atom type labels and atomic files",
+                    "patternProperties" : {
+                        ".*" : {
+                            "type" : "string"
+                        }
+                    },
+                    "additionalProperties" : false
+                },
+                "atoms" : {
+                    "type" : "object",
+                    "title" : "Atomic coordinates",
+                    "patternProperties" : {
+                        ".*" : {
+                            "type" : "array",
+                            "items" : {
+                                "type" : "array",
+                                "items" : {
+                                    "type" : "number"
+                                },
+                                "minItems" : 3,
+                                "maxItems": 6
+                            }
+                        }
+                    },
+                    "additionalProperties":false
                 }
             }
         }

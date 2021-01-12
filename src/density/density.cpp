@@ -1886,7 +1886,7 @@ double Density::mix()
     PROFILE("sirius::Density::mix");
 
     mixer_input();
-    double rms = mixer_->mix(ctx_.settings().mixer_rms_min_);
+    double rms = mixer_->mix(ctx_.cfg().settings().mixer_rms_min());
     mixer_output();
 
     return rms;

@@ -41,7 +41,7 @@ Potential::Potential(Simulation_context& ctx__)
     lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
 
     if (lmax_ >= 0) {
-        sht_  = std::unique_ptr<SHT>(new SHT(ctx_.processing_unit(), lmax_, ctx_.settings().sht_coverage_));
+        sht_  = std::unique_ptr<SHT>(new SHT(ctx_.processing_unit(), lmax_, ctx_.cfg().settings().sht_coverage()));
         if (ctx_.control().verification_ >= 1)  {
             sht_->check();
         }

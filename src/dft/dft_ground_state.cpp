@@ -147,7 +147,7 @@ json DFT_ground_state::check_scf_density()
     /* create new Hamiltonian */
     Hamiltonian0 H0(pot);
     /* set the high tolerance */
-    ctx_.iterative_solver_tolerance(ctx_.settings().itsol_tol_min_);
+    ctx_.iterative_solver_tolerance(ctx_.cfg().settings().itsol_tol_min());
     /* initialize the subspace */
     Band(ctx_).initialize_subspace(kset_, H0);
     /* find new wave-functions */
@@ -230,8 +230,8 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         if (ctx_.cfg().mixer().use_hartree()) {
             tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
         }
-        tol = std::min(ctx_.settings().itsol_tol_scale_[0] * tol, ctx_.settings().itsol_tol_scale_[1] * old_tol);
-        tol = std::max(ctx_.settings().itsol_tol_min_, tol);
+        tol = std::min(ctx_.cfg().settings().itsol_tol_scale()[0] * tol, ctx_.cfg().settings().itsol_tol_scale()[1] * old_tol);
+        tol = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
         /* set new tolerance of iterative solver */
         ctx_.iterative_solver_tolerance(tol);
 

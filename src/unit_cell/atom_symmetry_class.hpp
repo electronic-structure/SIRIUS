@@ -714,7 +714,7 @@ inline void Atom_symmetry_class::find_enu(relativity_t rel__)
         auto   rsd     = rs_with_auto_enu[i];
         double new_enu = Enu_finder(rel__, atom_type_.zn(), rsd->n, rsd->l, atom_type_.radial_grid(), spherical_potential_, rsd->enu).enu();
         /* update linearization energy only if its change is above a threshold */
-        if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().settings().auto_enu_tol_) {
+        if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().cfg().settings().auto_enu_tol()) {
             rsd->enu           = new_enu;
             rsd->new_enu_found = true;
         } else {

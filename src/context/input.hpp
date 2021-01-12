@@ -616,87 +616,87 @@ struct NLCG_input
     }
 };
 
-/// Settings control the internal parameters related to the numerical implementation.
-/** Changing of setting parameters will have an impact on the final result. */
-struct Settings_input
-{
-    /// Point density (in a.u.^-1) for interpolating radial integrals of local part of pseudopotential.
-    int nprii_vloc_{200};
-    /// Point density (in a.u.^-1) for interpolating radial integrals of beta projectors.
-    int nprii_beta_{20};
-    int nprii_aug_{20};
-    int nprii_rho_core_{20};
-    bool always_update_wf_{true};
-
-    /// Minimum value of allowed RMS for the mixer.
-    /** Mixer will not mix functions if the RMS between previous and current functions is below this tolerance. */
-    double mixer_rms_min_{1e-16};
-
-    /// Minimum tolerance of the iterative solver.
-    double itsol_tol_min_{1e-13};
-
-    /// Minimum occupancy below which the band is treated as being "empty".
-    double min_occupancy_{1e-14};
-
-    /// Fine control of the empty states tolerance.
-    /** This is the ratio between the tolerance of empty and occupied states. Used in the code like this:
-        \code{.cpp}
-        // tolerance of occupied bands
-        double tol = ctx_.iterative_solver_tolerance();
-        // final tolerance of empty bands
-        double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
-        \endcode
-    */
-    double itsol_tol_ratio_{0};
-
-    /// Scaling parameters of the iterative  solver tolerance.
-    /** First number is the scaling of density RMS, that gives the estimate of the new tolerance. Second number is
-        the scaling of the old tolerance. New tolerance is then the minimum between the two. This is how it is
-        done in the code:
-        \code{.cpp}
-        double old_tol = ctx_.iterative_solver_tolerance();
-        // estimate new tolerance of iterative solver
-        double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
-        tol = std::max(ctx_.settings().itsol_tol_min_, tol);
-        // set new tolerance of iterative solver
-        ctx_.iterative_solver_tolerance(tol);
-        \endcode
-     */
-    std::array<double, 2> itsol_tol_scale_{{0.1, 0.5}};
-
-    double auto_enu_tol_{0};
-
-    /// Initial dimenstions for the fine-grain FFT grid.
-    std::array<int, 3> fft_grid_size_{{0, 0, 0}};
-
-    /// Default radial grid for LAPW species.
-    std::string radial_grid_{"exponential, 1.0"};
-
-    /// Coverage of sphere in case of spherical harmonics transformation.
-    /** 0 is Lebedev-Laikov coverage, 1 is unifrom coverage */
-    int sht_coverage_{0};
-
-    void read(json const& parser)
-    {
-        if (parser.count("settings")) {
-            auto section      = parser["settings"];
-            nprii_vloc_       = section.value("nprii_vloc", nprii_vloc_);
-            nprii_beta_       = section.value("nprii_beta", nprii_beta_);
-            nprii_aug_        = section.value("nprii_aug", nprii_aug_);
-            nprii_rho_core_   = section.value("nprii_rho_core", nprii_rho_core_);
-            always_update_wf_ = section.value("always_update_wf", always_update_wf_);
-            mixer_rms_min_    = section.value("mixer_rms_min", mixer_rms_min_);
-            itsol_tol_min_    = section.value("itsol_tol_min", itsol_tol_min_);
-            auto_enu_tol_     = section.value("auto_enu_tol", auto_enu_tol_);
-            radial_grid_      = section.value("radial_grid", radial_grid_);
-            fft_grid_size_    = section.value("fft_grid_size", fft_grid_size_);
-            itsol_tol_ratio_  = section.value("itsol_tol_ratio", itsol_tol_ratio_);
-            itsol_tol_scale_  = section.value("itsol_tol_scale", itsol_tol_scale_);
-            sht_coverage_     = section.value("sht_coverage", sht_coverage_);
-            min_occupancy_    = section.value("min_occupancy", min_occupancy_);
-        }
-    }
-};
+///// Settings control the internal parameters related to the numerical implementation.
+///** Changing of setting parameters will have an impact on the final result. */
+//struct Settings_input
+//{
+//    /// Point density (in a.u.^-1) for interpolating radial integrals of local part of pseudopotential.
+//    int nprii_vloc_{200};
+//    /// Point density (in a.u.^-1) for interpolating radial integrals of beta projectors.
+//    int nprii_beta_{20};
+//    int nprii_aug_{20};
+//    int nprii_rho_core_{20};
+//    bool always_update_wf_{true};
+//
+//    /// Minimum value of allowed RMS for the mixer.
+//    /** Mixer will not mix functions if the RMS between previous and current functions is below this tolerance. */
+//    double mixer_rms_min_{1e-16};
+//
+//    /// Minimum tolerance of the iterative solver.
+//    double itsol_tol_min_{1e-13};
+//
+//    /// Minimum occupancy below which the band is treated as being "empty".
+//    double min_occupancy_{1e-14};
+//
+//    /// Fine control of the empty states tolerance.
+//    /** This is the ratio between the tolerance of empty and occupied states. Used in the code like this:
+//        \code{.cpp}
+//        // tolerance of occupied bands
+//        double tol = ctx_.iterative_solver_tolerance();
+//        // final tolerance of empty bands
+//        double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
+//        \endcode
+//    */
+//    double itsol_tol_ratio_{0};
+//
+//    /// Scaling parameters of the iterative  solver tolerance.
+//    /** First number is the scaling of density RMS, that gives the estimate of the new tolerance. Second number is
+//        the scaling of the old tolerance. New tolerance is then the minimum between the two. This is how it is
+//        done in the code:
+//        \code{.cpp}
+//        double old_tol = ctx_.iterative_solver_tolerance();
+//        // estimate new tolerance of iterative solver
+//        double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
+//        tol = std::max(ctx_.settings().itsol_tol_min_, tol);
+//        // set new tolerance of iterative solver
+//        ctx_.iterative_solver_tolerance(tol);
+//        \endcode
+//     */
+//    std::array<double, 2> itsol_tol_scale_{{0.1, 0.5}};
+//
+//    double auto_enu_tol_{0};
+//
+//    /// Initial dimenstions for the fine-grain FFT grid.
+//    std::array<int, 3> fft_grid_size_{{0, 0, 0}};
+//
+//    /// Default radial grid for LAPW species.
+//    std::string radial_grid_{"exponential, 1.0"};
+//
+//    /// Coverage of sphere in case of spherical harmonics transformation.
+//    /** 0 is Lebedev-Laikov coverage, 1 is unifrom coverage */
+//    int sht_coverage_{0};
+//
+//    void read(json const& parser)
+//    {
+//        if (parser.count("settings")) {
+//            auto section      = parser["settings"];
+//            nprii_vloc_       = section.value("nprii_vloc", nprii_vloc_);
+//            nprii_beta_       = section.value("nprii_beta", nprii_beta_);
+//            nprii_aug_        = section.value("nprii_aug", nprii_aug_);
+//            nprii_rho_core_   = section.value("nprii_rho_core", nprii_rho_core_);
+//            always_update_wf_ = section.value("always_update_wf", always_update_wf_);
+//            mixer_rms_min_    = section.value("mixer_rms_min", mixer_rms_min_);
+//            itsol_tol_min_    = section.value("itsol_tol_min", itsol_tol_min_);
+//            auto_enu_tol_     = section.value("auto_enu_tol", auto_enu_tol_);
+//            radial_grid_      = section.value("radial_grid", radial_grid_);
+//            fft_grid_size_    = section.value("fft_grid_size", fft_grid_size_);
+//            itsol_tol_ratio_  = section.value("itsol_tol_ratio", itsol_tol_ratio_);
+//            itsol_tol_scale_  = section.value("itsol_tol_scale", itsol_tol_scale_);
+//            sht_coverage_     = section.value("sht_coverage", sht_coverage_);
+//            min_occupancy_    = section.value("min_occupancy", min_occupancy_);
+//        }
+//    }
+//};
 
 struct Hubbard_input
 {

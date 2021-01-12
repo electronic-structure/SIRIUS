@@ -81,8 +81,178 @@ class config_t
     };
     inline auto const& mixer() const {return mixer_;}
     inline auto& mixer() {return mixer_;}
+    /// Settings control the internal parameters related to the numerical implementation.
+    /**
+        Changing of setting parameters will have a small impact on the final result.
+    */
+    class settings_t
+    {
+      public:
+        settings_t(nlohmann::json& dict__)
+            : dict_(dict__)
+        {
+        }
+        /// Point density (in a.u.^-1) for interpolating radial integrals of the local part of pseudopotential
+        inline auto nprii_vloc() const
+        {
+            return dict_["/settings/nprii_vloc"_json_pointer].get<int>();
+        }
+        inline void nprii_vloc(int nprii_vloc__)
+        {
+            dict_["/settings/nprii_vloc"_json_pointer] = nprii_vloc__;
+        }
+        /// Point density (in a.u.^-1) for interpolating radial integrals of the beta projectors
+        inline auto nprii_beta() const
+        {
+            return dict_["/settings/nprii_beta"_json_pointer].get<int>();
+        }
+        inline void nprii_beta(int nprii_beta__)
+        {
+            dict_["/settings/nprii_beta"_json_pointer] = nprii_beta__;
+        }
+        /// Point density (in a.u.^-1) for interpolating radial integrals of the augmentation operator
+        inline auto nprii_aug() const
+        {
+            return dict_["/settings/nprii_aug"_json_pointer].get<int>();
+        }
+        inline void nprii_aug(int nprii_aug__)
+        {
+            dict_["/settings/nprii_aug"_json_pointer] = nprii_aug__;
+        }
+        /// Point density (in a.u.^-1) for interpolating radial integrals of the core charge density
+        inline auto nprii_rho_core() const
+        {
+            return dict_["/settings/nprii_rho_core"_json_pointer].get<int>();
+        }
+        inline void nprii_rho_core(int nprii_rho_core__)
+        {
+            dict_["/settings/nprii_rho_core"_json_pointer] = nprii_rho_core__;
+        }
+        /// Update wave-functions in the Davdison solver even if they immediately satisfy the convergence criterion
+        inline auto always_update_wf() const
+        {
+            return dict_["/settings/always_update_wf"_json_pointer].get<bool>();
+        }
+        inline void always_update_wf(bool always_update_wf__)
+        {
+            dict_["/settings/always_update_wf"_json_pointer] = always_update_wf__;
+        }
+        /// Minimum value of allowed RMS for the mixer.
+        /**
+            Mixer will not mix functions if the RMS between previous and current functions is below this tolerance.
+        */
+        inline auto mixer_rms_min() const
+        {
+            return dict_["/settings/mixer_rms_min"_json_pointer].get<double>();
+        }
+        inline void mixer_rms_min(double mixer_rms_min__)
+        {
+            dict_["/settings/mixer_rms_min"_json_pointer] = mixer_rms_min__;
+        }
+        /// Minimum tolerance of the iterative solver.
+        inline auto itsol_tol_min() const
+        {
+            return dict_["/settings/itsol_tol_min"_json_pointer].get<double>();
+        }
+        inline void itsol_tol_min(double itsol_tol_min__)
+        {
+            dict_["/settings/itsol_tol_min"_json_pointer] = itsol_tol_min__;
+        }
+        /// Minimum occupancy below which the band is treated as being 'empty'
+        inline auto min_occupancy() const
+        {
+            return dict_["/settings/min_occupancy"_json_pointer].get<double>();
+        }
+        inline void min_occupancy(double min_occupancy__)
+        {
+            dict_["/settings/min_occupancy"_json_pointer] = min_occupancy__;
+        }
+        /// Fine control of the empty states tolerance.
+        /**
+            This is the ratio between the tolerance of empty and occupied states. Used in the code like this:
+            \code{.cpp}
+            // tolerance of occupied bands
+            double tol = ctx_.iterative_solver_tolerance();
+            // final tolerance of empty bands
+            double empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);
+            \endcode
+        */
+        inline auto itsol_tol_ratio() const
+        {
+            return dict_["/settings/itsol_tol_ratio"_json_pointer].get<double>();
+        }
+        inline void itsol_tol_ratio(double itsol_tol_ratio__)
+        {
+            dict_["/settings/itsol_tol_ratio"_json_pointer] = itsol_tol_ratio__;
+        }
+        /// Scaling parameters of the iterative  solver tolerance.
+        /**
+            First number is the scaling of density RMS, that gives the estimate of the new 
+            tolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum 
+            between the two. This is how it is done in the code: 
+            \code{.cpp}
+            double old_tol = ctx_.iterative_solver_tolerance();
+            // estimate new tolerance of iterative solver
+            double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
+            tol = std::max(ctx_.settings().itsol_tol_min_, tol);
+            // set new tolerance of iterative solver
+            ctx_.iterative_solver_tolerance(tol);\endcode
+        */
+        inline auto itsol_tol_scale() const
+        {
+            return dict_["/settings/itsol_tol_scale"_json_pointer].get<std::array<double, 2>>();
+        }
+        inline void itsol_tol_scale(std::array<double, 2> itsol_tol_scale__)
+        {
+            dict_["/settings/itsol_tol_scale"_json_pointer] = itsol_tol_scale__;
+        }
+        /// Tolerance to recompute the LAPW linearisation energies.
+        inline auto auto_enu_tol() const
+        {
+            return dict_["/settings/auto_enu_tol"_json_pointer].get<double>();
+        }
+        inline void auto_enu_tol(double auto_enu_tol__)
+        {
+            dict_["/settings/auto_enu_tol"_json_pointer] = auto_enu_tol__;
+        }
+        /// Initial dimenstions for the fine-grain FFT grid
+        inline auto fft_grid_size() const
+        {
+            return dict_["/settings/fft_grid_size"_json_pointer].get<std::array<int, 3>>();
+        }
+        inline void fft_grid_size(std::array<int, 3> fft_grid_size__)
+        {
+            dict_["/settings/fft_grid_size"_json_pointer] = fft_grid_size__;
+        }
+        /// Default radial grid for LAPW species.
+        inline auto radial_grid() const
+        {
+            return dict_["/settings/radial_grid"_json_pointer].get<std::string>();
+        }
+        inline void radial_grid(std::string radial_grid__)
+        {
+            dict_["/settings/radial_grid"_json_pointer] = radial_grid__;
+        }
+        /// Coverage of sphere in case of spherical harmonics transformation
+        /**
+            0 is Lebedev-Laikov coverage, 1 is unifrom coverage
+        */
+        inline auto sht_coverage() const
+        {
+            return dict_["/settings/sht_coverage"_json_pointer].get<int>();
+        }
+        inline void sht_coverage(int sht_coverage__)
+        {
+            dict_["/settings/sht_coverage"_json_pointer] = sht_coverage__;
+        }
+      private:
+        nlohmann::json& dict_;
+    };
+    inline auto const& settings() const {return settings_;}
+    inline auto& settings() {return settings_;}
   private:
     mixer_t mixer_{dict_};
+    settings_t settings_{dict_};
   protected:
     nlohmann::json dict_;
 };

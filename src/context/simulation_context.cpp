@@ -71,7 +71,7 @@ void Simulation_context::init_fft_grid()
     auto rlv = unit_cell().reciprocal_lattice_vectors();
 
     /* create FFT driver for dense mesh (density and potential) */
-    auto fft_grid = settings().fft_grid_size_;
+    auto fft_grid = cfg().settings().fft_grid_size();
     if (fft_grid[0] * fft_grid[1] * fft_grid[2] == 0) {
         fft_grid_ = get_min_fft_grid(pw_cutoff(), rlv);
     } else {
@@ -932,23 +932,23 @@ void Simulation_context::update()
         /* radial integrals with pw_cutoff */
         if (!aug_ri_ || aug_ri_->qmax() < new_pw_cutoff) {
             aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(
-                new Radial_integrals_aug<false>(unit_cell(), new_pw_cutoff, settings().nprii_aug_, aug_ri_callback_));
+                new Radial_integrals_aug<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_aug(), aug_ri_callback_));
         }
 
         if (!aug_ri_djl_ || aug_ri_djl_->qmax() < new_pw_cutoff) {
             aug_ri_djl_ = std::unique_ptr<Radial_integrals_aug<true>>(
-                new Radial_integrals_aug<true>(unit_cell(), new_pw_cutoff, settings().nprii_aug_, aug_ri_djl_callback_));
+                new Radial_integrals_aug<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_aug(), aug_ri_djl_callback_));
         }
 
         if (!ps_core_ri_ || ps_core_ri_->qmax() < new_pw_cutoff) {
             ps_core_ri_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(
-                new Radial_integrals_rho_core_pseudo<false>(unit_cell(), new_pw_cutoff, settings().nprii_rho_core_,
+                new Radial_integrals_rho_core_pseudo<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_rho_core(),
                     rhoc_ri_callback_));
         }
 
         if (!ps_core_ri_djl_ || ps_core_ri_djl_->qmax() < new_pw_cutoff) {
             ps_core_ri_djl_ = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(
-                new Radial_integrals_rho_core_pseudo<true>(unit_cell(), new_pw_cutoff, settings().nprii_rho_core_,
+                new Radial_integrals_rho_core_pseudo<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_rho_core(),
                     rhoc_ri_djl_callback_));
         }
 
@@ -959,25 +959,25 @@ void Simulation_context::update()
 
         if (!vloc_ri_ || vloc_ri_->qmax() < new_pw_cutoff) {
             vloc_ri_ = std::unique_ptr<Radial_integrals_vloc<false>>(
-                new Radial_integrals_vloc<false>(unit_cell(), new_pw_cutoff, settings().nprii_vloc_,
+                new Radial_integrals_vloc<false>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_vloc(),
                     vloc_ri_callback_));
         }
 
         if (!vloc_ri_djl_ || vloc_ri_djl_->qmax() < new_pw_cutoff) {
             vloc_ri_djl_ = std::unique_ptr<Radial_integrals_vloc<true>>(
-                new Radial_integrals_vloc<true>(unit_cell(), new_pw_cutoff, settings().nprii_vloc_,
+                new Radial_integrals_vloc<true>(unit_cell(), new_pw_cutoff, cfg().settings().nprii_vloc(),
                     vloc_ri_djl_callback_));
         }
 
         /* radial integrals with pw_cutoff */
         if (!beta_ri_ || beta_ri_->qmax() < new_gk_cutoff) {
             beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(
-                new Radial_integrals_beta<false>(unit_cell(), new_gk_cutoff, settings().nprii_beta_, beta_ri_callback_));
+                new Radial_integrals_beta<false>(unit_cell(), new_gk_cutoff, cfg().settings().nprii_beta(), beta_ri_callback_));
         }
 
         if (!beta_ri_djl_ || beta_ri_djl_->qmax() < new_gk_cutoff) {
             beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(
-                new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, settings().nprii_beta_, beta_ri_djl_callback_));
+                new Radial_integrals_beta<true>(unit_cell(), new_gk_cutoff, cfg().settings().nprii_beta(), beta_ri_djl_callback_));
         }
 
         auto idxr_wf = [&](int iat)->sirius::experimental::radial_functions_index const&

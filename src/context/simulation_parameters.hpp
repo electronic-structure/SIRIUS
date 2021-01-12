@@ -97,7 +97,7 @@ class Simulation_parameters
     Parameters_input parameters_input_;
 
     /// Internal parameters that control the numerical implementation.
-    Settings_input settings_input_;
+    //Settings_input settings_input_;
 
     /// LDA+U input parameters.
     Hubbard_input hubbard_input_;
@@ -379,14 +379,14 @@ class Simulation_parameters
     /// Minimum occupancy to consider band to be occupied.
     inline double min_occupancy() const
     {
-        return settings_input_.min_occupancy_;
+        return cfg_.settings().min_occupancy();
     }
 
     /// Set minimum occupancy.
     inline double min_occupancy(double val__)
     {
-        settings_input_.min_occupancy_ = val__;
-        return this->min_occupancy();
+        cfg_.settings().min_occupancy(val__);
+        return cfg_.settings().min_occupancy();
     }
 
     bool so_correction() const
@@ -565,10 +565,10 @@ class Simulation_parameters
         return parameters_input_;
     }
 
-    Settings_input const& settings() const
-    {
-        return settings_input_;
-    }
+    //Settings_input const& settings() const
+    //{
+    //    return settings_input_;
+    //}
 
     Hubbard_input const& hubbard_input() const
     {
@@ -589,8 +589,8 @@ class Simulation_parameters
     /// Set the variable which controls the type of sperical coverage.
     inline int sht_coverage(int sht_coverage__)
     {
-        settings_input_.sht_coverage_ = sht_coverage__;
-        return settings_input_.sht_coverage_;
+        cfg_.settings().sht_coverage(sht_coverage__);
+        return cfg_.settings().sht_coverage();
     }
 
     inline std::string esm_bc(std::string const& esm_bc__)
