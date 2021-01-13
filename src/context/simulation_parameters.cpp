@@ -49,10 +49,9 @@ void compose_default_json(nlohmann::json const& schema__, nlohmann::json& output
             if (!output__.contains(key)) {
                 output__[key] = nlohmann::json{};
             }
-            if (!it.value().contains("properties")) {
-                throw std::runtime_error("wrong JSON schema for " + key);
+            if (it.value().contains("properties")) {
+                compose_default_json(it.value()["properties"], output__[key]);
             }
-            compose_default_json(it.value()["properties"], output__[key]);
         }
     }
 }
@@ -71,10 +70,13 @@ void compose_json(nlohmann::json const& schema__, nlohmann::json const& in__, nl
                 inout__[key] = in__[key];
             }
         } else { /* otherwise continue to traverse the shcema */
-            if (!it.value().contains("properties")) {
-                throw std::runtime_error("wrong JSON schema for " + key);
+            if (it.value().contains("properties")) {
+                compose_json(it.value()["properties"], in__.contains(key) ? in__[key] : nlohmann::json{}, inout__[key]);
+            } else if (in__.contains(key)) {
+                inout__[key] = in__[key];
+            } else {
+                inout__[key] = nlohmann::json();
             }
-            compose_json(it.value()["properties"], in__.contains(key) ? in__[key] : nlohmann::json{}, inout__[key]);
         }
     }
 }

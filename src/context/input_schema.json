@@ -118,7 +118,7 @@
                     "items" : {
                         "type" : "integer",
                         "minItems" : 3,
-                        "maxItems": 3
+                        "maxItems" : 3
                     },
                     "default" : [0, 0, 0],
                     "title": "Initial dimenstions for the fine-grain FFT grid"
@@ -146,15 +146,20 @@
                     "type" : "array",
                     "title": "Three non-collinear vectors of the primitive unit cell.",
                     "minItems" : 3,
-                    "maxItems": 3,
+                    "maxItems" : 3,
                     "items" : {
                         "type" : "array",
                         "items" : {
                             "type" : "number"
                         },
                         "minItems" : 3,
-                        "maxItems": 3
-                    }
+                        "maxItems" : 3
+                    },
+                    "default" : [
+                        [1,0,0],
+                        [0,1,0],
+                        [0,0,1]
+                    ]
                 },
                 "lattice_vectors_scale" : {
                     "type" : "number",
@@ -197,7 +202,7 @@
                                     "type" : "number"
                                 },
                                 "minItems" : 3,
-                                "maxItems": 6
+                                "maxItems" : 6
                             }
                         }
                     },
