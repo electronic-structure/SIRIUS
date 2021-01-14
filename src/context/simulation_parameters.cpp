@@ -112,7 +112,7 @@ void Simulation_parameters::import(json const& dict__)
 {
     cfg_.import(dict__);
     /* read unit cell */
-    unit_cell_input_.read(dict__);
+    //unit_cell_input_.read(dict__);
     /* read parameters of iterative solver */
     iterative_solver_input_.read(dict__);
     /* read controls */
@@ -127,7 +127,7 @@ void Simulation_parameters::import(json const& dict__)
     nlcg_input_.read(dict__);
 }
 
-void Simulation_parameters::import(cmd_args const& args__) // TODO: somehow redesign to use json_pointer
+void Simulation_parameters::import(cmd_args const& args__)
 {
     control_input_.processing_unit_ = args__.value("control.processing_unit", control_input_.processing_unit_);
     control_input_.mpi_grid_dims_   = args__.value("control.mpi_grid_dims", control_input_.mpi_grid_dims_);
@@ -145,8 +145,8 @@ void Simulation_parameters::import(cmd_args const& args__) // TODO: somehow rede
     parameters_input_.pw_cutoff_   = args__.value("parameters.pw_cutoff", parameters_input_.pw_cutoff_);
 
     iterative_solver_input_.early_restart_ = args__.value("iterative_solver.early_restart", iterative_solver_input_.early_restart_);
-    //mixer_input_.beta_ = args__.value("mixer.beta", mixer_input_.beta_);
-    //mixer_input_.type_ = args__.value("mixer.type", mixer_input_.type_);
+    cfg_.mixer().beta(args__.value("mixer.beta", cfg_.mixer().beta()));
+    cfg_.mixer().type(args__.value("mixer.type", cfg_.mixer().type()));
 }
 
 void Simulation_parameters::core_relativity(std::string name__)

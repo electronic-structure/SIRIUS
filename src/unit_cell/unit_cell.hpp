@@ -277,7 +277,11 @@ class Unit_cell
     void update();
 
     /// Import unit cell description from the input data structure.
-    void import(Unit_cell_input const& inp__);
+    /** Set lattice vectors, atom types and coordinates of atoms. The "atom_coordinate_units" parameter by default 
+     *  is assumed to be "lattice" which means that the atomic coordinates are provided in lattice (fractional) units.
+     *  It can also be specified in "A" or "au" which means that the input atomic coordinates are Cartesian and
+     *  provided in Angstroms or atomic units of length. This is useful in setting up the molecule calculation. */
+    void import(config_t::unit_cell_t const& inp__);
 
     /// Get atom ID (global index) by it's position in fractional coordinates.
     int atom_id_by_position(vector3d<double> position__);

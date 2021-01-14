@@ -656,28 +656,46 @@ void Unit_cell::get_symmetry()
     assert(num_atom_symmetry_classes() != 0);
 }
 
-void Unit_cell::import(Unit_cell_input const &inp__)
+void Unit_cell::import(config_t::unit_cell_t const &inp__)
 {
-    if (inp__.exist_) {
-        /* first, load all types */
-        for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
-            auto label = inp__.labels_[iat];
-            auto fname = inp__.atom_files_.at(label);
-            add_atom_type(label, fname);
-        }
-        /* then load atoms */
-        for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
-            auto label = inp__.labels_[iat];
-            auto fname = inp__.atom_files_.at(label);
-            for (size_t ia = 0; ia < inp__.coordinates_[iat].size(); ia++) {
-                auto v = inp__.coordinates_[iat][ia];
-                vector3d<double> p(v[0], v[1], v[2]);
-                vector3d<double> f(v[3], v[4], v[5]);
-                add_atom(label, p, f);
-            }
-        }
+    auto lv = matrix3d<double>(inp__.lattice_vectors());
+    lv *= inp__.lattice_vectors_scale();
+    set_lattice_vectors(vector3d<double>(lv(0, 0), lv(0, 1), lv(0, 2)),
+                        vector3d<double>(lv(1, 0), lv(1, 1), lv(1, 2)),
+                        vector3d<double>(lv(2, 0), lv(2, 1), lv(2, 2)));
 
-        set_lattice_vectors(inp__.a0_, inp__.a1_, inp__.a2_);
+    auto ilv = inverse(lv);
+
+    auto units = inp__.atom_coordinate_units();
+
+    /* first, load all types */
+    for (auto label: inp__.atom_types()) {
+        auto fname = inp__.atom_files(label);
+        add_atom_type(label, fname);
+    }
+    for (auto label : inp__.atom_types()) {
+        for (auto v : inp__.atoms(label)) {
+            vector3d<double> p(v[0], v[1], v[2]);
+            vector3d<double> f;
+            if (v.size() == 6) {
+                f = vector3d<double>(v[3], v[4], v[5]);
+            }
+            /* convert to atomic units */
+            if (units == "A") {
+                for (int x : {0, 1, 2}) {
+                    p[x] /= bohr_radius;
+                }
+            }
+            /* convert from Cartesian to lattice coordinates */
+            if (units == "au" || units == "A") {
+                p = ilv * p;
+                auto rc = reduce_coordinates(p);
+                for (int x : {0, 1, 2}) {
+                    p[x] = rc.first[x];
+                }
+            }
+            add_atom(label, p, f);
+        }
     }
 }
 

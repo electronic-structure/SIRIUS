@@ -2,6 +2,18 @@ import json
 
 json_to_cpp_type = {'string' : 'std::string', 'integer' : 'int', 'number' : 'double', 'boolean' : 'bool'}
 
+def get_type(schema):
+    t = schema['type']
+    if t != 'array':
+        return json_to_cpp_type[t]
+    else:
+        fstr = "std::vector<%s>"
+        if 'minItems' in schema and 'maxItems' in schema:
+            if schema['minItems'] == schema['maxItems']:
+                fstr = f"std::array<%s, {schema['minItems']}>"
+        return fstr%get_type(schema["items"])
+
+
 def gen_input(namespace, path, schema, level):
     # for this data srtucture: list of public and private members
     public_list = []
@@ -21,23 +33,49 @@ def gen_input(namespace, path, schema, level):
         public_list.append('}')
     for key in schema:
         if schema[key]['type'] == 'object':
+            #cpp_interface = True
+            #if 'cpp_interface' in schema[key]:
+            #    cpp_interface = schema[key]['cpp_interface']
+            #
+            #if cpp_interface == False: continue
+
+            if 'title' in schema[key]:
+                public_list.append(f'/// {schema[key]["title"]}')
             if 'description' in schema[key]:
-                public_list.append(f'/// {schema[key]["description"]}')
+                public_list.append('/**')
+                for s in schema[key]['description'].splitlines():
+                    public_list.append(f'    {s}')
+                public_list.append('*/')
             # traverse deeper into the data structure
-            data_t = gen_input(f'{key}', f'{path}/{key}', schema[key]['properties'], level + 1)
-            for e in data_t:
-                public_list.append(e)
+            if 'properties' in schema[key]:
+                data_t = gen_input(f'{key}', f'{path}/{key}', schema[key]['properties'], level + 1)
+                for e in data_t:
+                    public_list.append(e)
 
-            private_list.append(f'{key}_t {key}_{{dict_}};')
-            public_list.append(f'inline auto const& {key}() const {{return {key}_;}}')
-            public_list.append(f'inline auto& {key}() {{return {key}_;}}')
+                private_list.append(f'{key}_t {key}_{{dict_}};')
+                public_list.append(f'inline auto const& {key}() const {{return {key}_;}}')
+                public_list.append(f'inline auto& {key}() {{return {key}_;}}')
+            # this is not a generic case
+            if 'patternProperties' in schema[key]:
+                # only ".*" is handeled
+                # provide read-only access via label
+                ct = get_type(schema[key]['patternProperties']['.*'])
+                public_list.append(f'inline auto {key}(std::string label__) const')
+                public_list.append('{')
+                public_list.append(f'    nlohmann::json::json_pointer p("{path}/{key}");')
+                public_list.append(f'    return dict_[p / label__].get<{ct}>();')
+                public_list.append('}')
         else:
-            # this is a simple type
-            t = schema[key]['type']
-            ct = json_to_cpp_type[t]
+            # this is a simple type (not an object)
+            ct = get_type(schema[key])
 
+            if 'title' in schema[key]:
+                public_list.append(f'/// {schema[key]["title"]}')
             if 'description' in schema[key]:
-                public_list.append(f'/// {schema[key]["description"]}')
+                public_list.append('/**')
+                for s in schema[key]['description'].splitlines():
+                    public_list.append(f'    {s}')
+                public_list.append('*/')
             public_list.append(f'inline auto {key}() const')
             public_list.append('{')
             public_list.append(f'    return dict_["{path}/{key}"_json_pointer].get<{ct}>();')
@@ -46,6 +84,11 @@ def gen_input(namespace, path, schema, level):
             public_list.append('{')
             public_list.append(f'    dict_["{path}/{key}"_json_pointer] = {key}__;')
             public_list.append('}')
+            #if schema[key].get('extendable', False):
+            #    public_list.append(f'inline void {key}_append(val__)')
+            #    public_list.append('{')
+            #    public_list.append(f'    dict_["{path}/{key}"_json_pointer] += val__;')
+            #    public_list.append('}')
 
     # compose a data type definition
     data_t = []

@@ -327,7 +327,7 @@ class Simulation_context : public Simulation_parameters
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
         import(str__);
-        unit_cell_->import(unit_cell_input_);
+        unit_cell_->import(cfg().unit_cell());
     }
 
     // /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
@@ -337,7 +337,7 @@ class Simulation_context : public Simulation_parameters
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
         import(str__);
-        unit_cell_->import(unit_cell_input_);
+        unit_cell_->import(cfg().unit_cell());
     }
 
     /// Destructor.

@@ -100,10 +100,10 @@
                 "itsol_tol_scale" : {
                     "type" : "array",
                     "items" : {
-                        "type" : "number",
-                        "minItems" : 2,
-                        "maxItems" : 2
+                        "type" : "number"
                     },
+                    "minItems" : 2,
+                    "maxItems" : 2,
                     "default" : [0.1, 0.5],
                     "title": "Scaling parameters of the iterative  solver tolerance.",
                     "description": "First number is the scaling of density RMS, that gives the estimate of the new \ntolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum \nbetween the two. This is how it is done in the code: \n\\code{.cpp}\ndouble old_tol = ctx_.iterative_solver_tolerance();\n// estimate new tolerance of iterative solver\ndouble tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);\ntol = std::max(ctx_.settings().itsol_tol_min_, tol);\n// set new tolerance of iterative solver\nctx_.iterative_solver_tolerance(tol);\\endcode"
@@ -116,10 +116,10 @@
                 "fft_grid_size" : {
                     "type" : "array",
                     "items" : {
-                        "type" : "integer",
-                        "minItems" : 3,
-                        "maxItems" : 3
+                        "type" : "integer"
                     },
+                    "minItems" : 3,
+                    "maxItems" : 3,
                     "default" : [0, 0, 0],
                     "title": "Initial dimenstions for the fine-grain FFT grid"
                 },
@@ -140,7 +140,6 @@
         "unit_cell" : {
             "type" : "object",
             "title" : "Unit cell representation",
-            "cpp_interface" : false,
             "properties": {
                 "lattice_vectors" : {
                     "type" : "array",
@@ -176,6 +175,7 @@
                 "atom_types" : {
                     "type" : "array",
                     "titele" : "List of atom type labels",
+                    "default" : [],
                     "items" : {
                         "type" : "string"
                     }
@@ -183,6 +183,7 @@
                 "atom_files" : {
                     "type" : "object",
                     "title": "Mapping between atom type labels and atomic files",
+                    "default" : {},
                     "patternProperties" : {
                         ".*" : {
                             "type" : "string"
@@ -193,6 +194,7 @@
                 "atoms" : {
                     "type" : "object",
                     "title" : "Atomic coordinates",
+                    "default" : {},
                     "patternProperties" : {
                         ".*" : {
                             "type" : "array",

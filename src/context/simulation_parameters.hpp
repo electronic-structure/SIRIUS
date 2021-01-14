@@ -88,7 +88,7 @@ class Simulation_parameters
     Iterative_solver_input iterative_solver_input_;
 
     /// Description of the unit cell.
-    Unit_cell_input unit_cell_input_;
+    //Unit_cell_input unit_cell_input_;
 
     /// Parameters controlling the execution.
     Control_input control_input_;

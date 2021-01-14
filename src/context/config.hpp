@@ -250,9 +250,73 @@ class config_t
     };
     inline auto const& settings() const {return settings_;}
     inline auto& settings() {return settings_;}
+    /// Unit cell representation
+    class unit_cell_t
+    {
+      public:
+        unit_cell_t(nlohmann::json& dict__)
+            : dict_(dict__)
+        {
+        }
+        /// Three non-collinear vectors of the primitive unit cell.
+        inline auto lattice_vectors() const
+        {
+            return dict_["/unit_cell/lattice_vectors"_json_pointer].get<std::array<std::array<double, 3>, 3>>();
+        }
+        inline void lattice_vectors(std::array<std::array<double, 3>, 3> lattice_vectors__)
+        {
+            dict_["/unit_cell/lattice_vectors"_json_pointer] = lattice_vectors__;
+        }
+        /// Scaling factor for the lattice vectors
+        /**
+            Lattice vectors are multiplied by this constant.
+        */
+        inline auto lattice_vectors_scale() const
+        {
+            return dict_["/unit_cell/lattice_vectors_scale"_json_pointer].get<double>();
+        }
+        inline void lattice_vectors_scale(double lattice_vectors_scale__)
+        {
+            dict_["/unit_cell/lattice_vectors_scale"_json_pointer] = lattice_vectors_scale__;
+        }
+        /// Type of atomic coordinates: lattice, atomic units or Angstroms
+        inline auto atom_coordinate_units() const
+        {
+            return dict_["/unit_cell/atom_coordinate_units"_json_pointer].get<std::string>();
+        }
+        inline void atom_coordinate_units(std::string atom_coordinate_units__)
+        {
+            dict_["/unit_cell/atom_coordinate_units"_json_pointer] = atom_coordinate_units__;
+        }
+        inline auto atom_types() const
+        {
+            return dict_["/unit_cell/atom_types"_json_pointer].get<std::vector<std::string>>();
+        }
+        inline void atom_types(std::vector<std::string> atom_types__)
+        {
+            dict_["/unit_cell/atom_types"_json_pointer] = atom_types__;
+        }
+        /// Mapping between atom type labels and atomic files
+        inline auto atom_files(std::string label__) const
+        {
+            nlohmann::json::json_pointer p("/unit_cell/atom_files");
+            return dict_[p / label__].get<std::string>();
+        }
+        /// Atomic coordinates
+        inline auto atoms(std::string label__) const
+        {
+            nlohmann::json::json_pointer p("/unit_cell/atoms");
+            return dict_[p / label__].get<std::vector<std::vector<double>>>();
+        }
+      private:
+        nlohmann::json& dict_;
+    };
+    inline auto const& unit_cell() const {return unit_cell_;}
+    inline auto& unit_cell() {return unit_cell_;}
   private:
     mixer_t mixer_{dict_};
     settings_t settings_{dict_};
+    unit_cell_t unit_cell_{dict_};
   protected:
     nlohmann::json dict_;
 };

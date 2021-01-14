@@ -252,6 +252,15 @@ class matrix3d
         }
     }
 
+    matrix3d(std::array<std::array<T, 3>, 3> src__)
+    {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                mtrx_[i][j] = src__[i][j];
+            }
+        }
+    }
+
     /// Copy constructor.
     template <typename U>
     matrix3d(const matrix3d<U>& src__)
