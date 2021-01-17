@@ -373,11 +373,11 @@ void Simulation_context::initialize()
         control_input_.reduce_gvec_ = false;
     }
 
-    if (!iterative_solver_input_.type_.size()) {
+    if (!cfg().iterative_solver().type().size()) {
         if (full_potential()) {
-            iterative_solver_input_.type_ = "exact";
+            cfg().iterative_solver().type("exact");
         } else {
-            iterative_solver_input_.type_ = "davidson";
+            cfg().iterative_solver().type("davidson");
         }
     }
     /* set default values for the G-vector cutoff */
@@ -778,10 +778,10 @@ void Simulation_context::print_info() const
         }
     }
     std::printf("\n");
-    std::printf("iterative solver                   : %s\n", iterative_solver_input_.type_.c_str());
-    std::printf("number of steps                    : %i\n", iterative_solver_input_.num_steps_);
-    std::printf("subspace size                      : %i\n", iterative_solver_input_.subspace_size_);
-    std::printf("early restart ratio                : %.2f\n", iterative_solver_input_.early_restart_);
+    std::printf("iterative solver                   : %s\n", cfg().iterative_solver().type().c_str());
+    std::printf("number of steps                    : %i\n", cfg().iterative_solver().num_steps());
+    std::printf("subspace size                      : %i\n", cfg().iterative_solver().subspace_size());
+    std::printf("early restart ratio                : %.2f\n", cfg().iterative_solver().early_restart());
 
     std::printf("\n");
     std::printf("spglib version: %d.%d.%d\n", spg_get_major_version(), spg_get_minor_version(), spg_get_micro_version());
@@ -851,7 +851,7 @@ void Simulation_context::print_info() const
         /* number of simultaneously treated spin components */
         int num_sc = (num_mag_dims() == 3) ? 2 : 1;
         /* number of auxiliary basis functions */
-        int num_phi = iterative_solver_input().subspace_size_ * num_bands();
+        int num_phi = cfg().iterative_solver().subspace_size() * num_bands();
         /* memory consumption for Davidson:
            - wave-functions psi (num_bands x num_spin)
            - Hpsi and Spsi (num_bands * num_sc)

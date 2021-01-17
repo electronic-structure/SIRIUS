@@ -798,7 +798,7 @@ void sirius_get_parameters(void* const* handler__,
             *iter_solver_tol__ = sim_ctx.iterative_solver_tolerance();
         }
         if (iter_solver_tol_empty__ != nullptr) {
-            *iter_solver_tol_empty__ = sim_ctx.iterative_solver_input().empty_states_tolerance_;
+            *iter_solver_tol_empty__ = sim_ctx.cfg().iterative_solver().empty_states_tolerance();
         }
         if (verbosity__ != nullptr) {
             *verbosity__ = sim_ctx.control().verbosity_;

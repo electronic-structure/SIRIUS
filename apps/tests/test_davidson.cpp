@@ -152,7 +152,7 @@ void test_davidson(cmd_args const& args__)
     ctx.iterative_solver_tolerance(1e-12);
     //ctx.set_iterative_solver_type("exact");
 
-    const_cast<Iterative_solver_input&>(ctx.iterative_solver_input()).num_steps_ = 40;
+    ctx.cfg().iterative_solver().num_steps(40);
 
     /* initialize simulation context */
     ctx.initialize();

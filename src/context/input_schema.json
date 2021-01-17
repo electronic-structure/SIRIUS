@@ -52,50 +52,50 @@
                 "nprii_vloc" : {
                     "type" : "integer",
                     "default" : 200,
-                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the local part of pseudopotential"
+                    "title" : "Point density (in a.u.^-1) for interpolating radial integrals of the local part of pseudopotential"
                 },
                 "nprii_beta" : {
                     "type" : "integer",
                     "default" : 20,
-                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the beta projectors"
+                    "title" : "Point density (in a.u.^-1) for interpolating radial integrals of the beta projectors"
                 },
                 "nprii_aug" : {
                     "type" : "integer",
                     "default" : 20,
-                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the augmentation operator"
+                    "title" : "Point density (in a.u.^-1) for interpolating radial integrals of the augmentation operator"
                 },
                 "nprii_rho_core" : {
                     "type" : "integer",
                     "default" : 20,
-                    "title": "Point density (in a.u.^-1) for interpolating radial integrals of the core charge density"
+                    "title" : "Point density (in a.u.^-1) for interpolating radial integrals of the core charge density"
                 },
                 "always_update_wf" : {
                     "type" : "boolean",
                     "default" : true,
-                    "title": "Update wave-functions in the Davdison solver even if they immediately satisfy the convergence criterion",
-                    "$comment": "move to iterative solver section"
+                    "title" : "Update wave-functions in the Davdison solver even if they immediately satisfy the convergence criterion",
+                    "$comment" : "move to iterative solver section"
                 },
                 "mixer_rms_min" : {
                     "type" : "number",
                     "default" : 1e-16,
-                    "title": "Minimum value of allowed RMS for the mixer.",
-                    "description": "Mixer will not mix functions if the RMS between previous and current functions is below this tolerance."
+                    "title" : "Minimum value of allowed RMS for the mixer.",
+                    "description" : "Mixer will not mix functions if the RMS between previous and current functions is below this tolerance."
                 },
                 "itsol_tol_min" : {
                     "type" : "number",
                     "default" : 1e-13,
-                    "title": "Minimum tolerance of the iterative solver."
+                    "title" : "Minimum tolerance of the iterative solver."
                 },
                 "min_occupancy" : {
                     "type" : "number",
                     "default" : 1e-14,
-                    "title": "Minimum occupancy below which the band is treated as being 'empty'"
+                    "title" : "Minimum occupancy below which the band is treated as being 'empty'"
                 },
                 "itsol_tol_ratio" : {
                     "type" : "number",
                     "default" : 0,
-                    "title": "Fine control of the empty states tolerance.",
-                    "description": "This is the ratio between the tolerance of empty and occupied states. Used in the code like this:\n\\code{.cpp}\n// tolerance of occupied bands\ndouble tol = ctx_.iterative_solver_tolerance();\n// final tolerance of empty bands\ndouble empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);\n\\endcode"
+                    "title" : "Fine control of the empty states tolerance.",
+                    "description" : "This is the ratio between the tolerance of empty and occupied states. Used in the code like this:\n\\code{.cpp}\n// tolerance of occupied bands\ndouble tol = ctx_.iterative_solver_tolerance();\n// final tolerance of empty bands\ndouble empy_tol = std::max(tol * ctx_.settings().itsol_tol_ratio_, itso.empty_states_tolerance_);\n\\endcode"
                 },
                 "itsol_tol_scale" : {
                     "type" : "array",
@@ -105,13 +105,13 @@
                     "minItems" : 2,
                     "maxItems" : 2,
                     "default" : [0.1, 0.5],
-                    "title": "Scaling parameters of the iterative  solver tolerance.",
-                    "description": "First number is the scaling of density RMS, that gives the estimate of the new \ntolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum \nbetween the two. This is how it is done in the code: \n\\code{.cpp}\ndouble old_tol = ctx_.iterative_solver_tolerance();\n// estimate new tolerance of iterative solver\ndouble tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);\ntol = std::max(ctx_.settings().itsol_tol_min_, tol);\n// set new tolerance of iterative solver\nctx_.iterative_solver_tolerance(tol);\\endcode"
+                    "title" : "Scaling parameters of the iterative  solver tolerance.",
+                    "description" : "First number is the scaling of density RMS, that gives the estimate of the new \ntolerance. Second number is the scaling of the old tolerance. New tolerance is then the minimum \nbetween the two. This is how it is done in the code: \n\\code{.cpp}\ndouble old_tol = ctx_.iterative_solver_tolerance();\n// estimate new tolerance of iterative solver\ndouble tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);\ntol = std::max(ctx_.settings().itsol_tol_min_, tol);\n// set new tolerance of iterative solver\nctx_.iterative_solver_tolerance(tol);\\endcode"
                 },
                 "auto_enu_tol" : {
                     "type" : "number",
                     "default" : 0,
-                    "title": "Tolerance to recompute the LAPW linearisation energies."
+                    "title" : "Tolerance to recompute the LAPW linearisation energies."
                 },
                 "fft_grid_size" : {
                     "type" : "array",
@@ -121,18 +121,18 @@
                     "minItems" : 3,
                     "maxItems" : 3,
                     "default" : [0, 0, 0],
-                    "title": "Initial dimenstions for the fine-grain FFT grid"
+                    "title" : "Initial dimenstions for the fine-grain FFT grid"
                 },
                 "radial_grid" : {
                     "type" : "string",
                     "default" : "exponential, 1.0",
-                    "title": "Default radial grid for LAPW species."
+                    "title" : "Default radial grid for LAPW species."
                 },
                 "sht_coverage" : {
                     "type" : "integer",
                     "default" : 0,
                     "title" : "Coverage of sphere in case of spherical harmonics transformation",
-                    "description": "0 is Lebedev-Laikov coverage, 1 is unifrom coverage"
+                    "description" : "0 is Lebedev-Laikov coverage, 1 is unifrom coverage"
                 }
 
             }
@@ -209,6 +209,91 @@
                         }
                     },
                     "additionalProperties":false
+                }
+            }
+        },
+        "iterative_solver" : {
+            "type" : "object",
+            "title": "Parameters of the iterative solver.",
+            "properties": {
+                "type" : {
+                    "type" : "string",
+                    "default" : "",
+                    "enum" : ["", "exact", "davidson"],
+                    "title" : "Type of the iterative solver."
+                },
+                "num_steps" : {
+                    "type" : "integer",
+                    "default" : 20,
+                    "title" : "Number of steps (iterations) of the solver."
+                },
+                "subspace_size" : {
+                    "type" : "integer",
+                    "default" : 2,
+                    "title" : "Size of the variational subspace is this number times the number of bands."
+                },
+                "locking" : {
+                    "type" : "boolean",
+                    "default" : true,
+                    "title" : "Lock eigenvectors of the smallest eigenvalues when they have converged at restart."
+                },
+                "early_restart" : {
+                    "type" : "number",
+                    "default" : 0.5,
+                    "title" : "Restart early when the ratio unconverged vs lockable vectors drops below this threshold.",
+                    "description" : "When there's just a few vectors left unconverged, it can be more efficient to lock the converged ones,\nsuch that the dense eigenproblem solved in each Davidson iteration has lower dimension.\nRestarting has some overhead in that it requires updating wave functions."
+                },
+                "energy_tolerance" : {
+                    "type" : "number",
+                    "default" : 1e-2,
+                    "title" : "Tolerance for the eigen-energy difference \\f$ |\\epsilon_i^{old} - \\epsilon_i^{new} | \\f$",
+                    "description" : "This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions."
+                },
+                "residual_tolerance" : {
+                    "type" : "number",
+                    "default" : 1e-6,
+                    "title" : "Tolerance for the residual L2 norm."
+                },
+                "relative_tolerance" : {
+                    "type" : "number",
+                    "default" : 0,
+                    "title" : "Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used."
+                },
+                "empty_states_tolerance" : {
+                    "type" : "number",
+                    "default" : 0,
+                    "title" : "Additional tolerance for empty states.",
+                    "description" : "Setting this variable to 0 will treat empty states with the same tolerance as occupied states."
+                },
+                "converge_by_energy" : {
+                    "type" : "integer",
+                    "default" : 1,
+                    "title" : "Defines the flavour of the iterative solver.",
+                    "description" : "If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy\nis set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the\nunconverged residuals and then compute only the unconverged ones.",
+                    "$comment" : "rename, this is meaningless; or remove completely and always converge by energy"
+                },
+                "min_num_res" : {
+                    "type" : "integer",
+                    "default" : 0,
+                    "title" : "Minimum number of residuals to continue iterative diagonalization process."
+                },
+                "num_singular" : {
+                    "type" : "integer",
+                    "default" : -1,
+                    "title" : "Number of singular components for the LAPW Davidson solver.",
+                    "description" : "Singular components are the eigen-vectors of the APW-APW block of overlap matrix"
+                },
+                "init_eval_old" : {
+                    "type" : "boolean",
+                    "default" : true,
+                    "title" : "Initialize eigen-values with previous (old) values."
+                },
+                "init_subspace" : {
+                    "type" : "string",
+                    "default" : "lcao",
+                    "enum" : ["lcao", "random"],
+                    "title" : "Tell how to initialize the subspace.",
+                    "description" : "It can be either 'lcao', i.e. start from the linear combination of atomic orbitals or\n'random' – start from the randomized wave functions."
                 }
             }
         }

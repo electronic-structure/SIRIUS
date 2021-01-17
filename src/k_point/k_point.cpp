@@ -111,7 +111,7 @@ K_point::initialize()
                     }
                 }
             }
-            if (ctx_.iterative_solver_input().type_ == "exact") {
+            if (ctx_.cfg().iterative_solver().type() == "exact") {
                 /* ELPA needs a full matrix of eigen-vectors as it uses it as a work space */
                 if (ctx_.gen_evp_solver().type() == ev_solver_t::elpa) {
                     fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), gklo_basis_size(),
@@ -121,7 +121,7 @@ K_point::initialize()
                                                                 ctx_.blacs_grid(), bs, bs, mem_type_gevp);
                 }
             } else {
-                int ncomp = ctx_.iterative_solver_input().num_singular_;
+                int ncomp = ctx_.cfg().iterative_solver().num_singular();
                 if (ncomp < 0) {
                     ncomp = ctx_.num_fv_states() / 2;
                 }
@@ -398,7 +398,7 @@ void K_point::update()
     gkvec_->lattice_vectors(ctx_.unit_cell().reciprocal_lattice_vectors());
 
     if (ctx_.full_potential()) {
-        if (ctx_.iterative_solver_input().type_ == "exact") {
+        if (ctx_.cfg().iterative_solver().type() == "exact") {
             alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
                     new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec()));
             alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
@@ -412,7 +412,7 @@ void K_point::update()
         /* compute |beta> projectors for atom types */
         beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_loc_));
 
-        if (ctx_.iterative_solver_input().type_ == "exact") {
+        if (ctx_.cfg().iterative_solver().type() == "exact") {
             beta_projectors_row_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_row_));
             beta_projectors_col_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_col_));
 

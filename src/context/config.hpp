@@ -313,10 +313,173 @@ class config_t
     };
     inline auto const& unit_cell() const {return unit_cell_;}
     inline auto& unit_cell() {return unit_cell_;}
+    /// Parameters of the iterative solver.
+    class iterative_solver_t
+    {
+      public:
+        iterative_solver_t(nlohmann::json& dict__)
+            : dict_(dict__)
+        {
+        }
+        /// Type of the iterative solver.
+        inline auto type() const
+        {
+            return dict_["/iterative_solver/type"_json_pointer].get<std::string>();
+        }
+        inline void type(std::string type__)
+        {
+            dict_["/iterative_solver/type"_json_pointer] = type__;
+        }
+        /// Number of steps (iterations) of the solver.
+        inline auto num_steps() const
+        {
+            return dict_["/iterative_solver/num_steps"_json_pointer].get<int>();
+        }
+        inline void num_steps(int num_steps__)
+        {
+            dict_["/iterative_solver/num_steps"_json_pointer] = num_steps__;
+        }
+        /// Size of the variational subspace is this number times the number of bands.
+        inline auto subspace_size() const
+        {
+            return dict_["/iterative_solver/subspace_size"_json_pointer].get<int>();
+        }
+        inline void subspace_size(int subspace_size__)
+        {
+            dict_["/iterative_solver/subspace_size"_json_pointer] = subspace_size__;
+        }
+        /// Lock eigenvectors of the smallest eigenvalues when they have converged at restart.
+        inline auto locking() const
+        {
+            return dict_["/iterative_solver/locking"_json_pointer].get<bool>();
+        }
+        inline void locking(bool locking__)
+        {
+            dict_["/iterative_solver/locking"_json_pointer] = locking__;
+        }
+        /// Restart early when the ratio unconverged vs lockable vectors drops below this threshold.
+        /**
+            When there's just a few vectors left unconverged, it can be more efficient to lock the converged ones,
+            such that the dense eigenproblem solved in each Davidson iteration has lower dimension.
+            Restarting has some overhead in that it requires updating wave functions.
+        */
+        inline auto early_restart() const
+        {
+            return dict_["/iterative_solver/early_restart"_json_pointer].get<double>();
+        }
+        inline void early_restart(double early_restart__)
+        {
+            dict_["/iterative_solver/early_restart"_json_pointer] = early_restart__;
+        }
+        /// Tolerance for the eigen-energy difference \f$ |\epsilon_i^{old} - \epsilon_i^{new} | \f$
+        /**
+            This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions.
+        */
+        inline auto energy_tolerance() const
+        {
+            return dict_["/iterative_solver/energy_tolerance"_json_pointer].get<double>();
+        }
+        inline void energy_tolerance(double energy_tolerance__)
+        {
+            dict_["/iterative_solver/energy_tolerance"_json_pointer] = energy_tolerance__;
+        }
+        /// Tolerance for the residual L2 norm.
+        inline auto residual_tolerance() const
+        {
+            return dict_["/iterative_solver/residual_tolerance"_json_pointer].get<double>();
+        }
+        inline void residual_tolerance(double residual_tolerance__)
+        {
+            dict_["/iterative_solver/residual_tolerance"_json_pointer] = residual_tolerance__;
+        }
+        /// Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used.
+        inline auto relative_tolerance() const
+        {
+            return dict_["/iterative_solver/relative_tolerance"_json_pointer].get<double>();
+        }
+        inline void relative_tolerance(double relative_tolerance__)
+        {
+            dict_["/iterative_solver/relative_tolerance"_json_pointer] = relative_tolerance__;
+        }
+        /// Additional tolerance for empty states.
+        /**
+            Setting this variable to 0 will treat empty states with the same tolerance as occupied states.
+        */
+        inline auto empty_states_tolerance() const
+        {
+            return dict_["/iterative_solver/empty_states_tolerance"_json_pointer].get<double>();
+        }
+        inline void empty_states_tolerance(double empty_states_tolerance__)
+        {
+            dict_["/iterative_solver/empty_states_tolerance"_json_pointer] = empty_states_tolerance__;
+        }
+        /// Defines the flavour of the iterative solver.
+        /**
+            If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
+            is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
+            unconverged residuals and then compute only the unconverged ones.
+        */
+        inline auto converge_by_energy() const
+        {
+            return dict_["/iterative_solver/converge_by_energy"_json_pointer].get<int>();
+        }
+        inline void converge_by_energy(int converge_by_energy__)
+        {
+            dict_["/iterative_solver/converge_by_energy"_json_pointer] = converge_by_energy__;
+        }
+        /// Minimum number of residuals to continue iterative diagonalization process.
+        inline auto min_num_res() const
+        {
+            return dict_["/iterative_solver/min_num_res"_json_pointer].get<int>();
+        }
+        inline void min_num_res(int min_num_res__)
+        {
+            dict_["/iterative_solver/min_num_res"_json_pointer] = min_num_res__;
+        }
+        /// Number of singular components for the LAPW Davidson solver.
+        /**
+            Singular components are the eigen-vectors of the APW-APW block of overlap matrix
+        */
+        inline auto num_singular() const
+        {
+            return dict_["/iterative_solver/num_singular"_json_pointer].get<int>();
+        }
+        inline void num_singular(int num_singular__)
+        {
+            dict_["/iterative_solver/num_singular"_json_pointer] = num_singular__;
+        }
+        /// Initialize eigen-values with previous (old) values.
+        inline auto init_eval_old() const
+        {
+            return dict_["/iterative_solver/init_eval_old"_json_pointer].get<bool>();
+        }
+        inline void init_eval_old(bool init_eval_old__)
+        {
+            dict_["/iterative_solver/init_eval_old"_json_pointer] = init_eval_old__;
+        }
+        /// Tell how to initialize the subspace.
+        /**
+            It can be either 'lcao', i.e. start from the linear combination of atomic orbitals or
+            'random' – start from the randomized wave functions.
+        */
+        inline auto init_subspace() const
+        {
+            return dict_["/iterative_solver/init_subspace"_json_pointer].get<std::string>();
+        }
+        inline void init_subspace(std::string init_subspace__)
+        {
+            dict_["/iterative_solver/init_subspace"_json_pointer] = init_subspace__;
+        }
+      private:
+        nlohmann::json& dict_;
+    };
+    inline auto const& iterative_solver() const {return iterative_solver_;}
+    inline auto& iterative_solver() {return iterative_solver_;}
   private:
     mixer_t mixer_{dict_};
     settings_t settings_{dict_};
     unit_cell_t unit_cell_{dict_};
+    iterative_solver_t iterative_solver_{dict_};
   protected:
     nlohmann::json dict_;
 };

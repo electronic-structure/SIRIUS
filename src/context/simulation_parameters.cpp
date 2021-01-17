@@ -114,7 +114,7 @@ void Simulation_parameters::import(json const& dict__)
     /* read unit cell */
     //unit_cell_input_.read(dict__);
     /* read parameters of iterative solver */
-    iterative_solver_input_.read(dict__);
+    //iterative_solver_input_.read(dict__);
     /* read controls */
     control_input_.read(dict__);
     /* read parameters */
@@ -144,7 +144,8 @@ void Simulation_parameters::import(cmd_args const& args__)
     parameters_input_.gamma_point_ = args__.value("parameters.gamma_point", parameters_input_.gamma_point_);
     parameters_input_.pw_cutoff_   = args__.value("parameters.pw_cutoff", parameters_input_.pw_cutoff_);
 
-    iterative_solver_input_.early_restart_ = args__.value("iterative_solver.early_restart", iterative_solver_input_.early_restart_);
+    cfg_.iterative_solver().early_restart(args__.value("iterative_solver.early_restart",
+        cfg_.iterative_solver().early_restart()));
     cfg_.mixer().beta(args__.value("mixer.beta", cfg_.mixer().beta()));
     cfg_.mixer().type(args__.value("mixer.type", cfg_.mixer().type()));
 }

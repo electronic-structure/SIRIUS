@@ -141,7 +141,7 @@ Band::initialize_subspace(K_point_set& kset__, Hamiltonian0& H0__) const
 
     int N{0};
 
-    if (ctx_.iterative_solver_input().init_subspace_ == "lcao") {
+    if (ctx_.cfg().iterative_solver().init_subspace() == "lcao") {
         /* get the total number of atomic-centered orbitals */
         N = unit_cell_.num_ps_atomic_wf();
     }

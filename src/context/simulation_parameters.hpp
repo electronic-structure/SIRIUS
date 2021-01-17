@@ -85,19 +85,13 @@ class Simulation_parameters
     smearing::smearing_t smearing_{smearing::smearing_t::gaussian};
 
     /// Parameters of the iterative solver.
-    Iterative_solver_input iterative_solver_input_;
-
-    /// Description of the unit cell.
-    //Unit_cell_input unit_cell_input_;
+    //Iterative_solver_input iterative_solver_input_;
 
     /// Parameters controlling the execution.
     Control_input control_input_;
 
     /// Basic input parameters of PP-PW and FP-LAPW methods.
     Parameters_input parameters_input_;
-
-    /// Internal parameters that control the numerical implementation.
-    //Settings_input settings_input_;
 
     /// LDA+U input parameters.
     Hubbard_input hubbard_input_;
@@ -527,27 +521,27 @@ class Simulation_parameters
     /// Get tolerance of the iterative solver.
     double iterative_solver_tolerance() const
     {
-        return iterative_solver_input_.energy_tolerance_;
+        return cfg().iterative_solver().energy_tolerance();
     }
 
     /// Set the tolerance of the iterative solver.
     double iterative_solver_tolerance(double tolerance__)
     {
-        iterative_solver_input_.energy_tolerance_ = tolerance__;
-        return iterative_solver_input_.energy_tolerance_;
+        cfg().iterative_solver().energy_tolerance(tolerance__);
+        return tolerance__;
     }
 
-    std::string const& iterative_solver_type(std::string type__)
+    std::string iterative_solver_type(std::string type__)
     {
-        iterative_solver_input_.type_ = type__;
-        return iterative_solver_input_.type_;
+        cfg().iterative_solver().type(type__);
+        return type__;
     }
 
     /// Set the tolerance for empty states.
     double empty_states_tolerance(double tolerance__)
     {
-        iterative_solver_input_.empty_states_tolerance_ = tolerance__;
-        return iterative_solver_input_.empty_states_tolerance_;
+        cfg().iterative_solver().empty_states_tolerance(tolerance__);
+        return tolerance__;
     }
 
     Control_input const& control() const
@@ -555,20 +549,15 @@ class Simulation_parameters
         return control_input_;
     }
 
-    Iterative_solver_input const& iterative_solver_input() const
-    {
-        return iterative_solver_input_;
-    }
+    //Iterative_solver_input const& iterative_solver_input() const
+    //{
+    //    return iterative_solver_input_;
+    //}
 
     Parameters_input const& parameters_input() const
     {
         return parameters_input_;
     }
-
-    //Settings_input const& settings() const
-    //{
-    //    return settings_input_;
-    //}
 
     Hubbard_input const& hubbard_input() const
     {

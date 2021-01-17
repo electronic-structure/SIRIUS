@@ -39,83 +39,83 @@ using namespace nlohmann;
 
 namespace sirius {
 
-/// Parse the parameters of iterative solver.
-struct Iterative_solver_input
-{
-    /// Type of the iterative solver.
-    std::string type_{""};
-
-    /// Number of steps (iterations) of the solver.
-    int num_steps_{20};
-
-    /// Size of the variational subspace is this number times the number of bands.
-    int subspace_size_{2};
-
-    /// Lock eigenvectors of the smallest eigenvalues when they have converged at restart
-    bool locking_{true};
-
-    /// Restart early when the ratio unconverged vs lockable vectors drops below this threshold
-    /** When there's just a few vectors left unconverged, it can be more efficient to lock the converged
-        ones, such that the dense eigenproblem solved in each Davidson iteration has lower dimension.
-        Restarting has some overhead in that it requires updating wave functions **/
-    double early_restart_{0.5};
-
-    /// Tolerance for the eigen-energy difference \f$ |\epsilon_i^{old} - \epsilon_i^{new} | \f$.
-    /** This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions. */
-    double energy_tolerance_{1e-2};
-
-    /// Tolerance for the residual L2 norm.
-    double residual_tolerance_{1e-6};
-
-    /// Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used)
-    double relative_tolerance_{0};
-
-    /// Additional tolerance for empty states.
-    /** Setting this variable to 0 will treat empty states with the same tolerance as occupied states. */
-    double empty_states_tolerance_{0};
-
-    /// Defines the flavour of the iterative solver.
-    /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
-        is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
-        unconverged residuals and then compute only the unconverged ones. */
-    int converge_by_energy_{1}; // TODO: rename, this is meaningless
-
-    /// Minimum number of residuals to continue iterative diagonalization process.
-    int min_num_res_{0};
-
-    /// Number of singular components for the LAPW Davidson solver.
-    int num_singular_{-1};
-
-    /// Initialize eigen-values with previous (old) values.
-    bool init_eval_old_{true};
-
-    /// Tell how to initialize the subspace.
-    /** It can be either "lcao", i.e. start from the linear combination of atomic orbitals or "random" –- start from
-        the randomized wave functions. */
-    std::string init_subspace_{"lcao"};
-
-    void read(json const& parser)
-    {
-        if (parser.count("iterative_solver")) {
-            auto section            = parser["iterative_solver"];
-            type_                   = section.value("type", type_);
-            num_steps_              = section.value("num_steps", num_steps_);
-            subspace_size_          = section.value("subspace_size", subspace_size_);
-            locking_                = section.value("locking", locking_);
-            energy_tolerance_       = section.value("energy_tolerance", energy_tolerance_);
-            residual_tolerance_     = section.value("residual_tolerance", residual_tolerance_);
-            relative_tolerance_     = section.value("relative_tolerance", relative_tolerance_);
-            empty_states_tolerance_ = section.value("empty_states_tolerance", empty_states_tolerance_);
-            converge_by_energy_     = section.value("converge_by_energy", converge_by_energy_);
-            min_num_res_            = section.value("min_num_res", min_num_res_);
-            num_singular_           = section.value("num_singular", num_singular_);
-            init_eval_old_          = section.value("init_eval_old", init_eval_old_);
-            init_subspace_          = section.value("init_subspace", init_subspace_);
-            early_restart_          = section.value("early_restart", early_restart_);
-            std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
-        }
-    }
-};
+///// Parse the parameters of iterative solver.
+//struct Iterative_solver_input
+//{
+//    /// Type of the iterative solver.
+//    std::string type_{""};
+//
+//    /// Number of steps (iterations) of the solver.
+//    int num_steps_{20};
+//
+//    /// Size of the variational subspace is this number times the number of bands.
+//    int subspace_size_{2};
+//
+//    /// Lock eigenvectors of the smallest eigenvalues when they have converged at restart
+//    bool locking_{true};
+//
+//    /// Restart early when the ratio unconverged vs lockable vectors drops below this threshold
+//    /** When there's just a few vectors left unconverged, it can be more efficient to lock the converged
+//        ones, such that the dense eigenproblem solved in each Davidson iteration has lower dimension.
+//        Restarting has some overhead in that it requires updating wave functions **/
+//    double early_restart_{0.5};
+//
+//    /// Tolerance for the eigen-energy difference \f$ |\epsilon_i^{old} - \epsilon_i^{new} | \f$.
+//    /** This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions. */
+//    double energy_tolerance_{1e-2};
+//
+//    /// Tolerance for the residual L2 norm.
+//    double residual_tolerance_{1e-6};
+//
+//    /// Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used)
+//    double relative_tolerance_{0};
+//
+//    /// Additional tolerance for empty states.
+//    /** Setting this variable to 0 will treat empty states with the same tolerance as occupied states. */
+//    double empty_states_tolerance_{0};
+//
+//    /// Defines the flavour of the iterative solver.
+//    /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
+//        is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
+//        unconverged residuals and then compute only the unconverged ones. */
+//    int converge_by_energy_{1}; // TODO: rename, this is meaningless
+//
+//    /// Minimum number of residuals to continue iterative diagonalization process.
+//    int min_num_res_{0};
+//
+//    /// Number of singular components for the LAPW Davidson solver.
+//    int num_singular_{-1};
+//
+//    /// Initialize eigen-values with previous (old) values.
+//    bool init_eval_old_{true};
+//
+//    /// Tell how to initialize the subspace.
+//    /** It can be either "lcao", i.e. start from the linear combination of atomic orbitals or "random" –- start from
+//        the randomized wave functions. */
+//    std::string init_subspace_{"lcao"};
+//
+//    void read(json const& parser)
+//    {
+//        if (parser.count("iterative_solver")) {
+//            auto section            = parser["iterative_solver"];
+//            type_                   = section.value("type", type_);
+//            num_steps_              = section.value("num_steps", num_steps_);
+//            subspace_size_          = section.value("subspace_size", subspace_size_);
+//            locking_                = section.value("locking", locking_);
+//            energy_tolerance_       = section.value("energy_tolerance", energy_tolerance_);
+//            residual_tolerance_     = section.value("residual_tolerance", residual_tolerance_);
+//            relative_tolerance_     = section.value("relative_tolerance", relative_tolerance_);
+//            empty_states_tolerance_ = section.value("empty_states_tolerance", empty_states_tolerance_);
+//            converge_by_energy_     = section.value("converge_by_energy", converge_by_energy_);
+//            min_num_res_            = section.value("min_num_res", min_num_res_);
+//            num_singular_           = section.value("num_singular", num_singular_);
+//            init_eval_old_          = section.value("init_eval_old", init_eval_old_);
+//            init_subspace_          = section.value("init_subspace", init_subspace_);
+//            early_restart_          = section.value("early_restart", early_restart_);
+//            std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
+//        }
+//    }
+//};
 
 /// Parse control input section.
 /** The following part of the input file is parsed:
