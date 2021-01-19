@@ -360,7 +360,7 @@ class Simulation_context : public Simulation_parameters
     template <typename... Args>
     inline void message(int level__, char const* label__, Args... args) const
     {
-        if (this->comm().rank() == 0 && this->control().verbosity_ >= level__) {
+        if (this->comm().rank() == 0 && this->cfg().control().verbosity() >= level__) {
             if (label__) {
                 std::printf("[%s] ", label__);
             }
@@ -456,7 +456,7 @@ class Simulation_context : public Simulation_parameters
     /** This communicator is passed to the spfft::Transform constructor. */
     Communicator const& comm_fft_coarse() const
     {
-        if (control().fft_mode_ == "serial") {
+        if (cfg().control().fft_mode() == "serial") {
             return Communicator::self();
         } else {
             return comm_band();

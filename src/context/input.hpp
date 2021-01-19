@@ -39,83 +39,6 @@ using namespace nlohmann;
 
 namespace sirius {
 
-///// Parse the parameters of iterative solver.
-//struct Iterative_solver_input
-//{
-//    /// Type of the iterative solver.
-//    std::string type_{""};
-//
-//    /// Number of steps (iterations) of the solver.
-//    int num_steps_{20};
-//
-//    /// Size of the variational subspace is this number times the number of bands.
-//    int subspace_size_{2};
-//
-//    /// Lock eigenvectors of the smallest eigenvalues when they have converged at restart
-//    bool locking_{true};
-//
-//    /// Restart early when the ratio unconverged vs lockable vectors drops below this threshold
-//    /** When there's just a few vectors left unconverged, it can be more efficient to lock the converged
-//        ones, such that the dense eigenproblem solved in each Davidson iteration has lower dimension.
-//        Restarting has some overhead in that it requires updating wave functions **/
-//    double early_restart_{0.5};
-//
-//    /// Tolerance for the eigen-energy difference \f$ |\epsilon_i^{old} - \epsilon_i^{new} | \f$.
-//    /** This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions. */
-//    double energy_tolerance_{1e-2};
-//
-//    /// Tolerance for the residual L2 norm.
-//    double residual_tolerance_{1e-6};
-//
-//    /// Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used)
-//    double relative_tolerance_{0};
-//
-//    /// Additional tolerance for empty states.
-//    /** Setting this variable to 0 will treat empty states with the same tolerance as occupied states. */
-//    double empty_states_tolerance_{0};
-//
-//    /// Defines the flavour of the iterative solver.
-//    /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
-//        is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
-//        unconverged residuals and then compute only the unconverged ones. */
-//    int converge_by_energy_{1}; // TODO: rename, this is meaningless
-//
-//    /// Minimum number of residuals to continue iterative diagonalization process.
-//    int min_num_res_{0};
-//
-//    /// Number of singular components for the LAPW Davidson solver.
-//    int num_singular_{-1};
-//
-//    /// Initialize eigen-values with previous (old) values.
-//    bool init_eval_old_{true};
-//
-//    /// Tell how to initialize the subspace.
-//    /** It can be either "lcao", i.e. start from the linear combination of atomic orbitals or "random" –- start from
-//        the randomized wave functions. */
-//    std::string init_subspace_{"lcao"};
-//
-//    void read(json const& parser)
-//    {
-//        if (parser.count("iterative_solver")) {
-//            auto section            = parser["iterative_solver"];
-//            type_                   = section.value("type", type_);
-//            num_steps_              = section.value("num_steps", num_steps_);
-//            subspace_size_          = section.value("subspace_size", subspace_size_);
-//            locking_                = section.value("locking", locking_);
-//            energy_tolerance_       = section.value("energy_tolerance", energy_tolerance_);
-//            residual_tolerance_     = section.value("residual_tolerance", residual_tolerance_);
-//            relative_tolerance_     = section.value("relative_tolerance", relative_tolerance_);
-//            empty_states_tolerance_ = section.value("empty_states_tolerance", empty_states_tolerance_);
-//            converge_by_energy_     = section.value("converge_by_energy", converge_by_energy_);
-//            min_num_res_            = section.value("min_num_res", min_num_res_);
-//            num_singular_           = section.value("num_singular", num_singular_);
-//            init_eval_old_          = section.value("init_eval_old", init_eval_old_);
-//            init_subspace_          = section.value("init_subspace", init_subspace_);
-//            early_restart_          = section.value("early_restart", early_restart_);
-//            std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
-//        }
-//    }
-//};
 
 /// Parse control input section.
 /** The following part of the input file is parsed:
@@ -134,126 +57,126 @@ namespace sirius {
     results are obtained. Changing parameters in control section should not change the significant digits in final
     results.
  */
-struct Control_input
-{
-    /// Dimensions of the MPI grid (if used).
-    std::vector<int> mpi_grid_dims_;
-
-    /// Block size for ScaLAPACK and ELPA.
-    int cyclic_block_size_{-1};
-
-    /// Reduce G-vectors by inversion symmetry.
-    /** For real-valued functions like density and potential it is sufficient to store only half of the G-vectors
-     *  and use the relation f(G) = f^{*}(-G) to recover second half of the plane-wave expansion coefficients. */
-    bool reduce_gvec_{true};
-
-    /// Standard eigen-value solver to use.
-    std::string std_evp_solver_name_{""};
-
-    /// Generalized eigen-value solver to use.
-    std::string gen_evp_solver_name_{""};
-
-    /// Coarse grid FFT mode ("serial" or "parallel").
-    std::string fft_mode_{"serial"};
-
-    /// Main processing unit to run on.
-    std::string processing_unit_{""};
-
-    /// Maximum allowed muffin-tin radius in case of LAPW.
-    double rmt_max_{2.2};
-
-    /// Tolerance of the spglib in finding crystal symmetries.
-    double spglib_tolerance_{1e-4};
-
-    /// Level of verbosity.
-    /** The following convention in proposed:
-     *    - 0: silent mode (no output is printed) \n
-     *    - 1: basic output (low level of output) \n
-     *    - 2: extended output (medium level of output) \n
-     *    - 3: extensive output (high level of output) */
-    int verbosity_{0};
-
-    /// Level of internal verification.
-    int verification_{0};
-
-    /// Number of eigen-values that are printed to the standard output.
-    int num_bands_to_print_{10};
-
-    /// If true then performance of some compute-intensive kernels will be printed to the standard output.
-    bool print_performance_{false};
-
-    /// If true then memory usage will be printed to the standard output.
-    bool print_memory_usage_{false};
-
-    /// If true then the checksums of some arrays will be printed (useful during debug).
-    bool print_checksum_{false};
-
-    /// If true then the hashsums of some arrays will be printed.
-    bool print_hash_{false};
-
-    /// If true then the stress tensor components are printed at the end of SCF run.
-    bool print_stress_{false};
-
-    /// If true then the atomic forces are printed at the end of SCF run.
-    bool print_forces_{false};
-
-    /// If true then the timer statistics is printed at the end of SCF run.
-    bool print_timers_{true};
-
-    /// If true then the list of nearest neighbours for each atom is printed to the standard output.
-    bool print_neighbors_{false};
-
-    /// True if second-variational diagonalization is used in LAPW method.
-    bool use_second_variation_{true};
-
-    /// Control the usage of the GPU memory.
-    /** Possible values are: "low", "medium" and "high". */
-    std::string memory_usage_{"high"};
-
-    /// Number of atoms in the beta-projectors chunk.
-    int beta_chunk_size_{256};
-
-    void read(json const& parser)
-    {
-        if (parser.count("control")) {
-            auto section         = parser["control"];
-            mpi_grid_dims_       = section.value("mpi_grid_dims", mpi_grid_dims_);
-            cyclic_block_size_   = section.value("cyclic_block_size", cyclic_block_size_);
-            std_evp_solver_name_ = section.value("std_evp_solver_type", std_evp_solver_name_);
-            gen_evp_solver_name_ = section.value("gen_evp_solver_type", gen_evp_solver_name_);
-            processing_unit_     = section.value("processing_unit", processing_unit_);
-            fft_mode_            = section.value("fft_mode", fft_mode_);
-            reduce_gvec_         = section.value("reduce_gvec", reduce_gvec_);
-            rmt_max_             = section.value("rmt_max", rmt_max_);
-            spglib_tolerance_    = section.value("spglib_tolerance", spglib_tolerance_);
-            verbosity_           = section.value("verbosity", verbosity_);
-            verification_        = section.value("verification", verification_);
-            num_bands_to_print_  = section.value("num_bands_to_print", num_bands_to_print_);
-            print_performance_   = section.value("print_performance", print_performance_);
-            print_memory_usage_  = section.value("print_memory_usage", print_memory_usage_);
-            print_checksum_      = section.value("print_checksum", print_checksum_);
-            print_hash_          = section.value("print_hash", print_hash_);
-            print_stress_        = section.value("print_stress", print_stress_);
-            print_forces_        = section.value("print_forces", print_forces_);
-            print_timers_        = section.value("print_timers", print_timers_);
-            print_neighbors_     = section.value("print_neighbors", print_neighbors_);
-            memory_usage_        = section.value("memory_usage", memory_usage_);
-            beta_chunk_size_     = section.value("beta_chunk_size", beta_chunk_size_);
-
-            auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_,
-                            &memory_usage_};
-            for (auto s : strings) {
-                std::transform(s->begin(), s->end(), s->begin(), ::tolower);
-            }
-
-            std::list<std::string> kw;
-            kw = {"low", "medium", "high"};
-            if (std::find(kw.begin(), kw.end(), memory_usage_) == kw.end()) {
-                throw std::runtime_error("wrong memory_usage input");
-            }
-        }
-    }
-};
+//struct Control_input
+//{
+//    /// Dimensions of the MPI grid (if used).
+//    std::vector<int> mpi_grid_dims_;
+//
+//    /// Block size for ScaLAPACK and ELPA.
+//    int cyclic_block_size_{-1};
+//
+//    /// Reduce G-vectors by inversion symmetry.
+//    /** For real-valued functions like density and potential it is sufficient to store only half of the G-vectors
+//     *  and use the relation f(G) = f^{*}(-G) to recover second half of the plane-wave expansion coefficients. */
+//    bool reduce_gvec_{true};
+//
+//    /// Standard eigen-value solver to use.
+//    std::string std_evp_solver_name_{""};
+//
+//    /// Generalized eigen-value solver to use.
+//    std::string gen_evp_solver_name_{""};
+//
+//    /// Coarse grid FFT mode ("serial" or "parallel").
+//    std::string fft_mode_{"serial"};
+//
+//    /// Main processing unit to run on.
+//    std::string processing_unit_{""};
+//
+//    /// Maximum allowed muffin-tin radius in case of LAPW.
+//    double rmt_max_{2.2};
+//
+//    /// Tolerance of the spglib in finding crystal symmetries.
+//    double spglib_tolerance_{1e-4};
+//
+//    /// Level of verbosity.
+//    /** The following convention in proposed:
+//     *    - 0: silent mode (no output is printed) \n
+//     *    - 1: basic output (low level of output) \n
+//     *    - 2: extended output (medium level of output) \n
+//     *    - 3: extensive output (high level of output) */
+//    int verbosity_{0};
+//
+//    /// Level of internal verification.
+//    int verification_{0};
+//
+//    /// Number of eigen-values that are printed to the standard output.
+//    int num_bands_to_print_{10};
+//
+//    /// If true then performance of some compute-intensive kernels will be printed to the standard output.
+//    bool print_performance_{false};
+//
+//    /// If true then memory usage will be printed to the standard output.
+//    bool print_memory_usage_{false};
+//
+//    /// If true then the checksums of some arrays will be printed (useful during debug).
+//    bool print_checksum_{false};
+//
+//    /// If true then the hashsums of some arrays will be printed.
+//    bool print_hash_{false};
+//
+//    /// If true then the stress tensor components are printed at the end of SCF run.
+//    bool print_stress_{false};
+//
+//    /// If true then the atomic forces are printed at the end of SCF run.
+//    bool print_forces_{false};
+//
+//    /// If true then the timer statistics is printed at the end of SCF run.
+//    bool print_timers_{true};
+//
+//    /// If true then the list of nearest neighbours for each atom is printed to the standard output.
+//    bool print_neighbors_{false};
+//
+//    /// True if second-variational diagonalization is used in LAPW method.
+//    bool use_second_variation_{true};
+//
+//    /// Control the usage of the GPU memory.
+//    /** Possible values are: "low", "medium" and "high". */
+//    std::string memory_usage_{"high"};
+//
+//    /// Number of atoms in the beta-projectors chunk.
+//    int beta_chunk_size_{256};
+//
+//    void read(json const& parser)
+//    {
+//        if (parser.count("control")) {
+//            auto section         = parser["control"];
+//            mpi_grid_dims_       = section.value("mpi_grid_dims", mpi_grid_dims_);
+//            cyclic_block_size_   = section.value("cyclic_block_size", cyclic_block_size_);
+//            std_evp_solver_name_ = section.value("std_evp_solver_type", std_evp_solver_name_);
+//            gen_evp_solver_name_ = section.value("gen_evp_solver_type", gen_evp_solver_name_);
+//            processing_unit_     = section.value("processing_unit", processing_unit_);
+//            fft_mode_            = section.value("fft_mode", fft_mode_);
+//            reduce_gvec_         = section.value("reduce_gvec", reduce_gvec_);
+//            rmt_max_             = section.value("rmt_max", rmt_max_);
+//            spglib_tolerance_    = section.value("spglib_tolerance", spglib_tolerance_);
+//            verbosity_           = section.value("verbosity", verbosity_);
+//            verification_        = section.value("verification", verification_);
+//            num_bands_to_print_  = section.value("num_bands_to_print", num_bands_to_print_);
+//            print_performance_   = section.value("print_performance", print_performance_);
+//            print_memory_usage_  = section.value("print_memory_usage", print_memory_usage_);
+//            print_checksum_      = section.value("print_checksum", print_checksum_);
+//            print_hash_          = section.value("print_hash", print_hash_);
+//            print_stress_        = section.value("print_stress", print_stress_);
+//            print_forces_        = section.value("print_forces", print_forces_);
+//            print_timers_        = section.value("print_timers", print_timers_);
+//            print_neighbors_     = section.value("print_neighbors", print_neighbors_);
+//            memory_usage_        = section.value("memory_usage", memory_usage_);
+//            beta_chunk_size_     = section.value("beta_chunk_size", beta_chunk_size_);
+//
+//            auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_,
+//                            &memory_usage_};
+//            for (auto s : strings) {
+//                std::transform(s->begin(), s->end(), s->begin(), ::tolower);
+//            }
+//
+//            std::list<std::string> kw;
+//            kw = {"low", "medium", "high"};
+//            if (std::find(kw.begin(), kw.end(), memory_usage_) == kw.end()) {
+//                throw std::runtime_error("wrong memory_usage input");
+//            }
+//        }
+//    }
+//};
 
 /// Parse parameters input section.
 /** Most of this parameters control the behavior of sirius::DFT_ground_state class. */

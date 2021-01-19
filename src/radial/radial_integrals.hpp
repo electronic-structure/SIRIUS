@@ -214,7 +214,7 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
         values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
 
-        if (unit_cell_.parameters().control().print_checksum_ && unit_cell_.comm().rank() == 0) {
+        if (unit_cell_.parameters().cfg().control().print_checksum() && unit_cell_.comm().rank() == 0) {
             double cs{0};
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
                 for (int iq = 0; iq < grid_q_.num_points(); iq++) {

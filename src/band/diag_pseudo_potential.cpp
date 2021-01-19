@@ -80,7 +80,7 @@ int Band::diag_pseudo_potential(Hamiltonian_k& Hk__) const
     }
 
     /* check residuals */
-    if (ctx_.control().verification_ >= 2) {
+    if (ctx_.cfg().control().verification() >= 2) {
         check_residuals<T>(Hk__);
     }
 
@@ -204,7 +204,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const
     kp.beta_projectors_row().dismiss();
     kp.beta_projectors_col().dismiss();
 
-    if (ctx_.control().verification_ >= 1) {
+    if (ctx_.cfg().control().verification() >= 1) {
         double max_diff = check_hermitian(ovlp, kp.num_gkvec());
         if (max_diff > 1e-12) {
             std::stringstream s;
@@ -218,7 +218,7 @@ Band::diag_pseudo_potential_exact(int ispn__, Hamiltonian_k& Hk__) const
             TERMINATE(s);
         }
     }
-    if (ctx_.control().verification_ >= 2) {
+    if (ctx_.cfg().control().verification() >= 2) {
         ctx_.message(1, __function_name__, "%s", "checking eigen-values of S-matrix\n");
 
         dmatrix<T> ovlp1(kp.num_gkvec(), kp.num_gkvec(), ctx_.blacs_grid(), bs, bs);
@@ -359,7 +359,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     /* get diagonal elements for preconditioning */
     auto h_o_diag = Hk__.get_h_o_diag_pw<T, 3>();
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         auto cs1 = h_o_diag.first.checksum();
         auto cs2 = h_o_diag.second.checksum();
         kp.comm().allreduce(&cs1, 1);
@@ -372,7 +372,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
     auto& std_solver = ctx_.std_evp_solver();
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             auto cs = psi.checksum_pw(get_device_t(psi.preferred_memory_t()), ispn, 0, num_bands);
             std::stringstream s;
@@ -416,7 +416,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         for (int ispn = 0; ispn < num_sc; ispn++) {
             phi.copy_from(psi, num_bands, nc_mag ? ispn : ispin_step, 0, ispn, 0);
         }
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.print_checksum()) {
             for (int ispn = 0; ispn < num_sc; ispn++) {
                 auto cs = phi.checksum_pw(get_device_t(phi.preferred_memory_t()), ispn, 0, num_bands);
                 std::stringstream s;
@@ -439,7 +439,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
         /* setup eigen-value problem */
         set_subspace_mtrx(0, num_bands, 0, phi, hphi, hmlt, &hmlt_old);
 
-        if (ctx_.control().verification_ >= 1) {
+        if (ctx_.cfg().control().verification() >= 1) {
             double max_diff = check_hermitian(hmlt, num_bands);
             if (max_diff > 1e-12) {
                 std::stringstream s;
@@ -622,7 +622,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
              * expand_with is the number of new basis functions */
             set_subspace_mtrx(N, expand_with, num_locked, phi, hphi, hmlt, &hmlt_old);
 
-            if (ctx_.control().verification_ >= 1) {
+            if (ctx_.cfg().control().verification() >= 1) {
                 double max_diff = check_hermitian(hmlt, N + expand_with);
                 if (max_diff > 1e-12) {
                     std::stringstream s;
@@ -657,7 +657,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     } /* loop over ispin_step */
     PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|iter");
 
-    //if (ctx_.control().print_checksum_) {
+    //if (ctx_.print_checksum()) {
     //    auto cs = psi.checksum(0, ctx_.num_fv_states());
     //    if (kp__->comm().rank() == 0) {
     //        DUMP("checksum(psi): %18.10f %18.10f", cs.real(), cs.imag());
@@ -856,7 +856,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
          * N is the number of previous basis functions
          * n is the number of new basis functions */
         set_subspace_mtrx(N, n, 0, phi, sphi, ovlp, &ovlp_old);
-        if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
+        if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
             ovlp.serialize("<i|S|j> subspace matrix", N + n);
         }
 

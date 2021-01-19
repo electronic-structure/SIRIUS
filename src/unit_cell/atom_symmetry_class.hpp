@@ -536,7 +536,7 @@ inline void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__
         }
     }
 
-    if (atom_type_.parameters().control().verification_ > 0 && num_lo_descriptors() > 0) {
+    if (atom_type_.parameters().cfg().control().verification() > 0 && num_lo_descriptors() > 0) {
         check_lo_linear_independence(0.0001);
     }
 }

@@ -203,7 +203,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
 
-        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+        if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
             std::printf("\n");
             std::printf("+------------------------------+\n");
             std::printf("| SCF iteration %3i out of %3i |\n", iter, num_dft_iter);
@@ -241,7 +241,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         /* compute new potential */
         potential_.generate(density_);
 
-        if (!ctx_.full_potential() && ctx_.control().verification_ >= 2) {
+        if (!ctx_.full_potential() && ctx_.cfg().control().verification() >= 2) {
             ctx_.message(1, __function_name__, "%s", "checking functional derivative of Exc\n");
             sirius::check_xc_potential(density_);
         }
@@ -358,7 +358,7 @@ void DFT_ground_state::print_info()
     //    mt_mag[j]    = std::get<2>(result);
     //}
 
-    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+    if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
         std::printf("\n");
         std::printf("Charges and magnetic moments\n");
         for (int i = 0; i < 80; i++) {

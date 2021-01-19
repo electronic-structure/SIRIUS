@@ -64,7 +64,7 @@ double unit_step_function_form_factors(double R__, double g__)
 
 void Simulation_context::init_fft_grid()
 {
-    if (!(control().fft_mode_ == "serial" || control().fft_mode_ == "parallel")) {
+    if (!(cfg().control().fft_mode() == "serial" || cfg().control().fft_mode() == "parallel")) {
         TERMINATE("wrong FFT mode");
     }
 
@@ -272,7 +272,7 @@ void Simulation_context::initialize()
     }
 
     /* set processing unit type */
-    processing_unit(control().processing_unit_);
+    processing_unit(cfg().control().processing_unit());
 
     /* check if we can use a GPU device */
     if (processing_unit() == device_t::GPU) {
@@ -286,7 +286,7 @@ void Simulation_context::initialize()
 
     auto print_mpi_layout = utils::get_env<int>("SIRIUS_PRINT_MPI_LAYOUT");
 
-    if (control().verbosity_ >= 3 || (print_mpi_layout && *print_mpi_layout)) {
+    if (verbosity() >= 3 || (print_mpi_layout && *print_mpi_layout)) {
         pstdout pout(comm());
         if (comm().rank() == 0) {
             pout.printf("MPI rank placement\n");
@@ -314,10 +314,10 @@ void Simulation_context::initialize()
             break;
         }
         case device_t::GPU: {
-            if (control_input_.memory_usage_ == "high") {
+            if (cfg().control().memory_usage() == "high") {
                 preferred_memory_t_ = memory_t::device;
             }
-            if (control_input_.memory_usage_ == "low" || control_input_.memory_usage_ == "medium") {
+            if (cfg().control().memory_usage() == "low" || cfg().control().memory_usage() == "medium") {
                 preferred_memory_t_ = memory_t::host_pinned;
             }
             break;
@@ -330,10 +330,10 @@ void Simulation_context::initialize()
             break;
         }
         case device_t::GPU: {
-            if (control_input_.memory_usage_ == "high" || control_input_.memory_usage_ == "medium") {
+            if (cfg().control().memory_usage() == "high" || cfg().control().memory_usage() == "medium") {
                 aux_preferred_memory_t_ = memory_t::device;
             }
-            if (control_input_.memory_usage_ == "low") {
+            if (cfg().control().memory_usage() == "low") {
                 aux_preferred_memory_t_ = memory_t::host_pinned;
             }
             break;
@@ -346,10 +346,10 @@ void Simulation_context::initialize()
             break;
         }
         case device_t::GPU: {
-            if (control_input_.memory_usage_ == "high") {
+            if (cfg().control().memory_usage() == "high") {
                 blas_linalg_t_ = linalg_t::gpublas;
             }
-            if (control_input_.memory_usage_ == "low" || control_input_.memory_usage_ == "medium") {
+            if (cfg().control().memory_usage() == "low" || cfg().control().memory_usage() == "medium") {
 #ifdef SIRIUS_ROCM
                 blas_linalg_t_ = linalg_t::gpublas;
 #else
@@ -370,7 +370,7 @@ void Simulation_context::initialize()
 
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {
-        control_input_.reduce_gvec_ = false;
+        cfg().control().reduce_gvec(false);
     }
 
     if (!cfg().iterative_solver().type().size()) {
@@ -508,8 +508,8 @@ void Simulation_context::initialize()
         is_magma = false;
     }
 
-    int npr = control_input_.mpi_grid_dims_[0];
-    int npc = control_input_.mpi_grid_dims_[1];
+    int npr = cfg().control().mpi_grid_dims()[0];
+    int npc = cfg().control().mpi_grid_dims()[1];
 
     /* deduce the default eigen-value solver */
     for (int i : {0, 1}) {
@@ -576,10 +576,10 @@ void Simulation_context::initialize()
         double a = std::min(std::log2(double(num_bands()) / blacs_grid_->num_ranks_col()),
                             std::log2(double(num_bands()) / blacs_grid_->num_ranks_row()));
         if (a < 1) {
-            control_input_.cyclic_block_size_ = 2;
+            cfg().control().cyclic_block_size(2);
         } else {
-            control_input_.cyclic_block_size_ =
-                static_cast<int>(std::min(128.0, std::pow(2.0, static_cast<int>(a))) + 1e-12);
+            cfg().control().cyclic_block_size(
+                static_cast<int>(std::min(128.0, std::pow(2.0, static_cast<int>(a))) + 1e-12));
         }
     }
 
@@ -594,11 +594,12 @@ void Simulation_context::initialize()
     /* set the smearing */
     smearing(parameters_input().smearing_);
 
-    if (control().verbosity_ >= 1 && comm().rank() == 0) {
+    if (verbosity() >= 1 && comm().rank() == 0) {
         print_info();
     }
 
     initialized_ = true;
+    cfg().lock();
 }
 
 void Simulation_context::print_info() const
@@ -652,7 +653,7 @@ void Simulation_context::print_info() const
     }
     std::printf("number of local G-vector blocks: %i\n", split_gvec_local().num_ranks());
 
-    unit_cell().print_info(control().verbosity_);
+    unit_cell().print_info(verbosity());
     for (int i = 0; i < unit_cell().num_atom_types(); i++) {
         unit_cell().atom_type(i).print_info();
     }
@@ -833,12 +834,12 @@ void Simulation_context::print_info() const
         }
         /* approximate number of G vectors */
         auto ng = static_cast<size_t>(v2 / v0);
-        if (control().reduce_gvec_) {
+        if (cfg().control().reduce_gvec()) {
             ng /= 2;
         }
         /* approximate number of coarse G vectors */
         auto ngc = static_cast<size_t>(v3 / v0);
-        if (control().reduce_gvec_) {
+        if (cfg().control().reduce_gvec()) {
             ngc /= 2;
         }
         std::printf("approximate number of G+k vectors        : %li\n", ngk);
@@ -1030,7 +1031,7 @@ void Simulation_context::update()
        the next time only reciprocal lattice of the G-vectors is updated */
     if (!gvec_coarse_) {
         /* create list of coarse G-vectors */
-        gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), control().reduce_gvec_));
+        gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, 2 * gk_cutoff(), comm(), cfg().control().reduce_gvec()));
         /* create FFT friendly partiton */
         gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(
             new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
@@ -1107,7 +1108,7 @@ void Simulation_context::update()
     }
 
     /* check symmetry of G-vectors */
-    if (unit_cell().num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
+    if (unit_cell().num_atoms() != 0 && use_symmetry() && cfg().control().verification() >= 1) {
         check_gvec(gvec(), unit_cell().symmetry());
         if (!full_potential()) {
             check_gvec(gvec_coarse(), unit_cell().symmetry());
@@ -1116,7 +1117,7 @@ void Simulation_context::update()
     }
 
     /* check if FFT grid is OK; this check is especially needed if the grid is set as external parameter */
-    if (control().verification_ >= 0) {
+    if (cfg().control().verification() >= 0) {
         #pragma omp parallel for
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             int ig = gvec().offset() + igloc;
@@ -1141,7 +1142,7 @@ void Simulation_context::update()
         }
     }
 
-    init_atoms_to_grid_idx(control().rmt_max_);
+    init_atoms_to_grid_idx(cfg().control().rmt_max());
 
     std::pair<int, int> limits(0, 0);
     for (int x : {0, 1, 2}) {
@@ -1308,7 +1309,7 @@ void Simulation_context::generate_phase_factors(int iat__, mdarray<double_comple
 void Simulation_context::print_memory_usage(const char *file__, int line__)
 {
     auto pmu = utils::get_env<int>("SIRIUS_PRINT_MEMORY_USAGE");
-    if (comm().rank() == 0 && ((control().print_memory_usage_ && control().verbosity_ >= 1) || (pmu && *pmu))) {
+    if (comm().rank() == 0 && ((cfg().control().print_memory_usage() && verbosity() >= 1) || (pmu && *pmu))) {
         sirius::print_memory_usage(file__, line__);
 
         std::vector<std::string> labels = {"host"};
@@ -1437,7 +1438,7 @@ void Simulation_context::init_step_function()
             WARNING(s);
         }
     }
-    if (control().print_checksum_) {
+    if (cfg().control().print_checksum()) {
         double_complex z1 = theta_pw_.checksum();
         double d1         = theta_.checksum();
         Communicator(spfft().communicator()).allreduce(&d1, 1);
@@ -1453,15 +1454,15 @@ void Simulation_context::init_comm()
     PROFILE("sirius::Simulation_context::init_comm");
 
     /* check MPI grid dimensions and set a default grid if needed */
-    if (!control().mpi_grid_dims_.size()) {
+    if (!cfg().control().mpi_grid_dims().size()) {
         mpi_grid_dims({1, 1});
     }
-    if (control().mpi_grid_dims_.size() != 2) {
+    if (cfg().control().mpi_grid_dims().size() != 2) {
         TERMINATE("wrong MPI grid");
     }
 
-    int npr = control_input_.mpi_grid_dims_[0];
-    int npc = control_input_.mpi_grid_dims_[1];
+    int npr = cfg().control().mpi_grid_dims()[0];
+    int npc = cfg().control().mpi_grid_dims()[1];
     int npb = npr * npc;
     int npk = comm_.size() / npb;
     if (npk * npb != comm_.size()) {
@@ -1477,7 +1478,7 @@ void Simulation_context::init_comm()
 
     /* if we have multiple ranks per node and band parallelization, switch to parallel FFT for coarse mesh */
     if (num_ranks_per_node() > 1 && comm_band().size() > 1) {
-        control_input_.fft_mode_ = "parallel";
+        cfg().control().fft_mode("parallel");
     }
 
     /* create communicator, orthogonal to comm_fft_coarse */

@@ -117,7 +117,7 @@ double ground_state(Simulation_context& ctx,
     /* launch the calculation */
     auto result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
 
-    if (ctx.control().verification_ >= 1) {
+    if (ctx.cfg().control().verification() >= 1) {
         dft.check_scf_density();
     }
 
@@ -131,7 +131,7 @@ double ground_state(Simulation_context& ctx,
 
     //dft.print_magnetic_moment();
 
-    if (ctx.control().print_stress_ && !ctx.full_potential()) {
+    if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
         Stress& s       = dft.stress();
         auto stress_tot = s.calc_stress_total();
         s.print_info();
@@ -142,7 +142,7 @@ double ground_state(Simulation_context& ctx,
             }
         }
     }
-    if (ctx.control().print_forces_) {
+    if (ctx.cfg().control().print_forces()) {
         Force& f         = dft.forces();
         auto& forces_tot = f.calc_forces_total();
         f.print_info();
@@ -269,6 +269,7 @@ void run_tasks(cmd_args const& args)
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
+        ctx->cfg().mixer().beta(0.5);
         //if (ctx->full_potential()) {
         //    ctx->gk_cutoff(ctx->aw_cutoff() / ctx->unit_cell().min_mt_radius());
         //}

@@ -42,7 +42,7 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
 
     auto& remap_gvec = ctx_.remap_gvec();
 
-    if (ctx_.control().print_hash_) {
+    if (ctx_.cfg().control().print_hash()) {
         auto h = f__->hash_f_pw();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("f_unsymmetrized(G)", h);
@@ -51,7 +51,7 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
 
     symmetrize_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(), &f__->f_pw_local(0));
 
-    if (ctx_.control().print_hash_) {
+    if (ctx_.cfg().control().print_hash()) {
         auto h = f__->hash_f_pw();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("f_symmetrized(G)", h);
@@ -66,7 +66,7 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
             break;
         }
         case 3: {
-            if (ctx_.control().print_hash_) {
+            if (ctx_.cfg().control().print_hash()) {
                 auto h1 = gx__->hash_f_pw();
                 auto h2 = gy__->hash_f_pw();
                 auto h3 = gz__->hash_f_pw();
@@ -80,7 +80,7 @@ void Field4D::symmetrize(Periodic_function<double>* f__, Periodic_function<doubl
             symmetrize_vector_function(ctx_.unit_cell().symmetry(), remap_gvec, ctx_.sym_phase_factors(),
                                        &gx__->f_pw_local(0), &gy__->f_pw_local(0), &gz__->f_pw_local(0));
 
-            if (ctx_.control().print_hash_) {
+            if (ctx_.cfg().control().print_hash()) {
                 auto h1 = gx__->hash_f_pw();
                 auto h2 = gy__->hash_f_pw();
                 auto h3 = gz__->hash_f_pw();

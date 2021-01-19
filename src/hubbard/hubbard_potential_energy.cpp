@@ -312,7 +312,7 @@ Hubbard::calculate_energy_collinear(sddk::mdarray<double_complex, 4> const& om__
         hubbard_energy = hubbard_energy_u - hubbard_energy_dc_contribution;
     }
 
-    if ((ctx_.control().verbosity_ >= 1) && (ctx_.comm().rank() == 0)) {
+    if ((ctx_.verbosity() >= 1) && (ctx_.comm().rank() == 0)) {
         std::printf("\n hub Energy (total) %.5lf  (dc) %.5lf\n", hubbard_energy, hubbard_energy_dc_contribution);
     }
     return hubbard_energy;
@@ -700,7 +700,7 @@ Hubbard::calculate_energy_non_collinear(sddk::mdarray<double_complex, 4> const& 
 
     hubbard_energy = hubbard_energy_noflip + hubbard_energy_flip - hubbard_energy_dc_contribution;
 
-    if ((ctx_.control().verbosity_ >= 1) && (ctx_.comm().rank() == 0)) {
+    if ((ctx_.verbosity() >= 1) && (ctx_.comm().rank() == 0)) {
         std::printf("\n hub Energy (total) %.5lf (no-flip) %.5lf (flip) %.5lf (dc) %.5lf\n",
             hubbard_energy, hubbard_energy_noflip, hubbard_energy_flip, hubbard_energy_dc_contribution);
     }

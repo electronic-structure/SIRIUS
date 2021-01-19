@@ -216,7 +216,7 @@ void Augmentation_operator::generate_pw_coeffs(Radial_integrals_aug<false> const
     /* broadcast from rank#0 */
     gvec_.comm().bcast(&q_mtrx_(0, 0), nbf * nbf, 0);
 
-    if (atom_type_.parameters().control().print_checksum_) {
+    if (atom_type_.parameters().cfg().control().print_checksum()) {
         auto cs = q_pw_.checksum();
         auto cs1 = q_mtrx_.checksum();
         gvec_.comm().allreduce(&cs, 1);

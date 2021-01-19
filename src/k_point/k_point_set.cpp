@@ -125,7 +125,7 @@ void K_point_set::initialize(std::vector<int> const& counts)
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
     }
 
-    if (ctx_.control().verbosity_ > 0) {
+    if (ctx_.verbosity() > 0) {
         print_info();
     }
     ctx_.print_memory_usage(__FILE__, __LINE__);

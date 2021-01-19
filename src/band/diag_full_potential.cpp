@@ -63,7 +63,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
-    if (ctx_.control().verification_ >= 1) {
+    if (ctx_.cfg().control().verification() >= 1) {
         double max_diff = check_hermitian(h, ngklo);
         if (max_diff > 1e-12) {
             std::stringstream s;
@@ -80,7 +80,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
         }
     }
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         auto z1 = h.checksum();
         auto z2 = o.checksum();
         kp.comm().allreduce(&z1, 1);
@@ -110,7 +110,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
         kp.message(4, __function_name__, "eval[%i]=%20.16f\n", i, eval[i]);
     }
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         auto z1 = kp.fv_eigen_vectors().checksum();
         kp.comm().allreduce(&z1, 1);
         if (kp.comm().rank() == 0) {
@@ -179,7 +179,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
             }
         }
         kp.comm().allreduce(norm);
-        if (ctx_.control().verbosity_ >= 2) {
+        if (ctx_.verbosity() >= 2) {
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
                 kp.message(2, __function_name__, "norm(%i)=%18.12f\n", i, norm[i]);
             }
@@ -196,7 +196,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
         }
     }
 
-    if (ctx_.control().verification_ >= 2) {
+    if (ctx_.cfg().control().verification() >= 2) {
         kp.message(1, __function_name__, "%s", "checking application of H and O\n");
         /* check application of H and O */
         Wave_functions hphi(kp.gkvec_partition(), unit_cell_.num_atoms(),
@@ -318,7 +318,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
 
     phi.copy_from(ctx_.processing_unit(), ncomp, psi, 0, 0, 0, 0);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         phi.print_checksum(ctx_.processing_unit(), "phi", 0, ncomp);
     }
 
@@ -348,10 +348,10 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
             ophi.copy_to(spin_range(0), memory_t::device, N, n);
         }
 
-        if (ctx_.control().verification_ >= 1) {
+        if (ctx_.cfg().control().verification() >= 1) {
             set_subspace_mtrx(0, N + n, 0, phi, ophi, ovlp);
 
-            if (ctx_.control().verification_ >= 2) {
+            if (ctx_.cfg().control().verification() >= 2) {
                 ovlp.serialize("overlap", N + n);
             }
 
@@ -370,8 +370,8 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
          * n is the number of new basis functions */
         set_subspace_mtrx(N, n, 0, phi, ophi, ovlp, &ovlp_old);
 
-        if (ctx_.control().verification_ >= 1) {
-            if (ctx_.control().verification_ >= 2) {
+        if (ctx_.cfg().control().verification() >= 1) {
+            if (ctx_.cfg().control().verification() >= 2) {
                 ovlp.serialize("overlap_ortho", N + n);
             }
 
@@ -426,7 +426,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
             }
 
             kp.message(3, __function_name__, "number of added residuals: %i\n", n);
-            if (ctx_.control().print_checksum_) {
+            if (ctx_.print_checksum()) {
                 res.print_checksum(ctx_.processing_unit(), "res", 0, n);
             }
         }
@@ -486,7 +486,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
 
     auto h_o_diag = Hk__.get_h_o_diag_lapw<3>();
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         auto cs1 = h_o_diag.first.checksum();
         auto cs2 = h_o_diag.second.checksum();
         if (kp.comm().rank() == 0) {
@@ -608,7 +608,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     /* trial basis functions */
     phi.copy_from(ctx_.processing_unit(), num_bands, psi, 0, 0, 0, nlo + ncomp);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         kp.message(1, __function_name__, "%s", "checksum of initial wave-functions\n");
         psi.print_checksum(ctx_.processing_unit(), "psi", 0, num_bands);
         phi.print_checksum(ctx_.processing_unit(), "phi", 0,  nlo + ncomp + num_bands);

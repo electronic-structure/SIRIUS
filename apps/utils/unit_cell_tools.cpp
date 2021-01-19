@@ -124,7 +124,7 @@ void find_primitive()
     std::printf("original number of atoms: %i\n", ctx.unit_cell().num_atoms());
 
     int nat_new = spg_standardize_cell(lattice, (double(*)[3])&positions(0, 0), &types[0], ctx.unit_cell().num_atoms(),
-                                       1, 0, ctx.control().spglib_tolerance_);
+                                       1, 0, ctx.cfg().control().spglib_tolerance());
     std::printf("new number of atoms: %i\n", nat_new);
 
     Simulation_context ctx_new(Communicator::self());

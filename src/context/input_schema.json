@@ -296,6 +296,141 @@
                     "description" : "It can be either 'lcao', i.e. start from the linear combination of atomic orbitals or\n'random' – start from the randomized wave functions."
                 }
             }
+        },
+        "control" : {
+            "type" : "object",
+            "title" : "Control parameters",
+            "description" : "Parameters of the control input sections do not in general change the numerics,\nbut instead control how the results are obtained. Changing parameters in control section should\nnot change the significant digits in final results.",
+            "properties" : {
+                "mpi_grid_dims" : {
+                    "type" : "array",
+                    "items" : {
+                        "type" : "integer"
+                    },
+                    "title" : "Dimensions of the MPI grid (if used).",
+                    "default" : []
+                },
+                "cyclic_block_size" : {
+                    "type" : "integer",
+                    "default" : -1,
+                    "title" : "Block size for ScaLAPACK and ELPA."
+                },
+                "reduce_gvec" : {
+                    "type" : "boolean",
+                    "default" : true,
+                    "title" : "Reduce G-vectors by inversion symmetry.",
+                    "description" : "For real-valued functions like density and potential it is sufficient to store only\nhalf of the G-vectors and use the relation f(G) = f^{*}(-G) to recover second half\nof the plane-wave expansion coefficients."
+                },
+                "std_evp_solver_name" : {
+                    "type" : "string",
+                    "default" : "",
+                    "enum" : ["", "lapack", "scalapack", "elpa1", "elpa2", "magma", "magma_gpu", "plasma", "cusolver"],
+                    "title" : "Standard eigen-value solver to use."
+                },
+                "gen_evp_solver_name" : {
+                    "type" : "string",
+                    "default" : "",
+                    "enum" : ["", "lapack", "scalapack", "elpa1", "elpa2", "magma", "magma_gpu", "plasma", "cusolver"],
+                    "title" : "Generalized eigen-value solver to use."
+                },
+                "fft_mode" : {
+                    "type" : "string",
+                    "default" : "serial",
+                    "enum" : ["serial", "parallel"],
+                    "title" : "Coarse grid FFT mode (`serial` or `parallel`).",
+                    "description": "Coarse FFT grid is used in application of the Hamiltonian to the wave-functions\nand also in the construction of the charge density from the wave-functions squared."
+                },
+                "processing_unit" : {
+                    "type" : "string",
+                    "default" : "",
+                    "enum" : ["", "cpu", "gpu"],
+                    "titel" : "Main processing unit to use during the execution."
+                },
+                "rmt_max" : {
+                    "type" : "number",
+                    "default" : 2.2,
+                    "title" : "Maximum allowed muffin-tin radius in case of LAPW."
+                },
+                "spglib_tolerance" : {
+                    "type" : "number",
+                    "default" : 1e-4,
+                    "title" : "Tolerance of the spglib in finding crystal symmetries"
+                },
+                "verbosity" : {
+                    "type" : "integer",
+                    "default" : 0,
+                    "title" : "Level of verbosity.",
+                    "description" : "The following convention in proposed:\n  -0: silent mode (no output is printed)\n  - 1: basic output (low level of output)\n  - 2: extended output (medium level of output)\n  - 3: extensive output (high level of output)"
+                },
+                "verification" : {
+                    "type" : "integer",
+                    "default" : 0,
+                    "title" : "Level of internal verification.",
+                    "description" : "Depending on the level, more expensive self-checks will be performed."
+                },
+                "num_bands_to_print" : {
+                    "type" : "integer",
+                    "default" : 10,
+                    "titel" : "Number of eigen-values that are printed to the standard output."
+                },
+                "print_performance" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : " If true then performance of some compute-intensive kernels will be printed to the standard output."
+                },
+                "print_memory_usage" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "If true then memory usage will be printed to the standard output."
+                },
+                "print_checksum" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "If true then the checksums of some arrays will be printed (useful during debug)."
+                },
+                "print_hash" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "If true then the hash sums of some arrays will be printed."
+                },
+                "print_stress" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "If true then the stress tensor components are printed at the end of SCF run."
+                },
+                "print_forces" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "If true then the atomic forces are printed at the end of SCF run."
+                 },
+                 "print_timers" : {
+                     "type" : "boolean",
+                     "default" : true,
+                     "title" : "If true then the timer statistics is printed at the end of SCF run."
+                 },
+                 "print_neighbors" : {
+                     "type" : "boolean",
+                     "default" : false,
+                     "title" : "If true then the list of nearest neighbours for each atom is printed to the standard output."
+                 },
+                 "use_second_variation" : {
+                     "type" : "boolean",
+                     "default" : true,
+                     "title" : "True if second-variational diagonalization is used in LAPW method."
+                 },
+                 "memory_usage" : {
+                     "type" : "string",
+                     "default" : "high",
+                     "enum" : ["high", "medium", "low"],
+                     "title" : "Control the usage of the GPU memory.",
+                     "$comment" : "subject to removal"
+                 },
+                 "beta_chunk_size" : {
+                     "type" : "integer",
+                     "default" : 256,
+                     "title" : "Number of atoms in a chunk of beta-projectors."
+                 }
+            }
         }
     }
 }

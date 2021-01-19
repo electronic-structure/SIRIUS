@@ -116,7 +116,7 @@ void Simulation_parameters::import(json const& dict__)
     /* read parameters of iterative solver */
     //iterative_solver_input_.read(dict__);
     /* read controls */
-    control_input_.read(dict__);
+    //control_input_.read(dict__);
     /* read parameters */
     parameters_input_.read(dict__);
     /* read settings */
@@ -129,16 +129,17 @@ void Simulation_parameters::import(json const& dict__)
 
 void Simulation_parameters::import(cmd_args const& args__)
 {
-    control_input_.processing_unit_ = args__.value("control.processing_unit", control_input_.processing_unit_);
-    control_input_.mpi_grid_dims_   = args__.value("control.mpi_grid_dims", control_input_.mpi_grid_dims_);
-    control_input_.std_evp_solver_name_ =
-        args__.value("control.std_evp_solver_name", control_input_.std_evp_solver_name_);
-    control_input_.gen_evp_solver_name_ =
-        args__.value("control.gen_evp_solver_name", control_input_.gen_evp_solver_name_);
-    control_input_.fft_mode_     = args__.value("control.fft_mode", control_input_.fft_mode_);
-    control_input_.memory_usage_ = args__.value("control.memory_usage", control_input_.memory_usage_);
-    control_input_.verbosity_    = args__.value("control.verbosity", control_input_.verbosity_);
-    control_input_.verification_ = args__.value("control.verification", control_input_.verification_);
+    std::cout << cfg().dict() << std::endl;
+    cfg_.control().processing_unit(args__.value("control.processing_unit", cfg_.control().processing_unit()));
+    cfg_.control().mpi_grid_dims(args__.value("control.mpi_grid_dims", cfg_.control().mpi_grid_dims()));
+    cfg_.control().std_evp_solver_name(args__.value("control.std_evp_solver_name",
+                                                    cfg_.control().std_evp_solver_name()));
+    cfg_.control().gen_evp_solver_name(args__.value("control.gen_evp_solver_name",
+                                                    cfg_.control().gen_evp_solver_name()));
+    cfg_.control().fft_mode(args__.value("control.fft_mode", cfg_.control().fft_mode()));
+    cfg_.control().memory_usage(args__.value("control.memory_usage", cfg_.control().memory_usage()));
+    cfg_.control().verbosity(args__.value("control.verbosity", cfg_.control().verbosity()));
+    cfg_.control().verification(args__.value("control.verification", cfg_.control().verification()));
 
     parameters_input_.ngridk_      = args__.value("parameters.ngridk", parameters_input_.ngridk_);
     parameters_input_.gamma_point_ = args__.value("parameters.gamma_point", parameters_input_.gamma_point_);
@@ -172,7 +173,7 @@ void Simulation_parameters::processing_unit(std::string name__)
             name__ = "cpu";
         }
     }
-    control_input_.processing_unit_ = name__;
+    cfg_.control().processing_unit(name__);
     processing_unit_ = get_device_t(name__);
 }
 

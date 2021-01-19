@@ -68,7 +68,7 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__,
             }
         }
 
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.print_checksum()) {
             double_complex cs(0, 0);
             for (int i = 0; i < spl_col.local_size(); i++) {
                 for (int j = 0; j < spl_row.local_size(); j++) {
@@ -100,7 +100,7 @@ Band::set_subspace_mtrx(int N__, int n__, int num_locked, Wave_functions& phi__,
         }
     }
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         splindex<splindex_t::block_cyclic> spl_row(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_row(),
                                                    mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
         splindex<splindex_t::block_cyclic> spl_col(N__ + n__ - num_locked, mtrx__.blacs_grid().num_ranks_col(),
@@ -173,7 +173,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
-    if (ctx_.control().verification_ >= 1) {
+    if (ctx_.cfg().control().verification() >= 1) {
         auto eval = diag_S_davidson<T>(Hk__);
         if (eval[0] <= 0) {
             std::stringstream s;
@@ -295,7 +295,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
             auto cs = phi.checksum_pw(get_device_t(ctx_.preferred_memory_t()), ispn, 0, num_phi_tot);
             if (Hk__.kp().comm().rank() == 0) {
@@ -313,10 +313,10 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         Hk__.apply_h_s<T>(spin_range((ctx_.num_mag_dims() == 3) ? 2 : ispn_step), 0, num_phi_tot, phi, &hphi, &ophi);
 
         /* do some checks */
-        if (ctx_.control().verification_ >= 1) {
+        if (ctx_.cfg().control().verification() >= 1) {
 
             set_subspace_mtrx<T>(0, num_phi_tot, 0, phi, ophi, ovlp);
-            if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
+            if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
                 ovlp.serialize("overlap", num_phi_tot);
             }
 
@@ -343,7 +343,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         set_subspace_mtrx<T>(0, num_phi_tot, 0, phi, hphi, hmlt);
         set_subspace_mtrx<T>(0, num_phi_tot, 0, phi, ophi, ovlp);
 
-        if (ctx_.control().verification_ >= 2 && ctx_.control().verbosity_ >= 2) {
+        if (ctx_.cfg().control().verification() >= 2 && ctx_.verbosity() >= 2) {
             hmlt.serialize("hmlt", num_phi_tot);
             ovlp.serialize("ovlp", num_phi_tot);
         }
@@ -355,7 +355,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
             TERMINATE(s);
         }
 
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.print_checksum()) {
             auto cs = evec.checksum();
             evec.blacs_grid().comm().allreduce(&cs, 1);
             double cs1{0};
@@ -381,7 +381,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
         }
     }
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             auto cs = Hk__.kp().spinor_wave_functions().checksum_pw(get_device_t(ctx_.preferred_memory_t()), ispn, 0, num_bands);
             std::stringstream s;
@@ -401,7 +401,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
 
     Hk__.kp().release_hubbard_orbitals_on_device();
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             auto cs = Hk__.kp().spinor_wave_functions().checksum_pw(device_t::CPU, ispn, 0, num_bands);
             std::stringstream s;
@@ -413,7 +413,7 @@ void Band::initialize_subspace(Hamiltonian_k& Hk__, int num_ao__) const
     }
 
     /* check residuals */
-    if (ctx_.control().verification_ >= 2) {
+    if (ctx_.cfg().control().verification() >= 2) {
         check_residuals<T>(Hk__);
         check_wave_functions<T>(Hk__);
     }

@@ -778,7 +778,7 @@ class K_point
     template <typename... Args>
     inline void message(int level__, char const* label__, Args... args) const
     {
-        if (this->comm().rank() == 0 && this->ctx().control().verbosity_ >= level__) {
+        if (this->comm().rank() == 0 && this->ctx().cfg().control().verbosity() >= level__) {
             if (label__) {
                 std::printf("[%s] ", label__);
             }

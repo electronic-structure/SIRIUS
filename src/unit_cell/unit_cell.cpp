@@ -340,7 +340,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
         }
     }
 
-    if (parameters_.control().print_neighbors_ && comm_.rank() == 0) {
+    if (parameters_.cfg().control().print_neighbors() && comm_.rank() == 0) {
         std::printf("Nearest neighbors\n");
         std::printf("=================\n");
         for (int ia = 0; ia < num_atoms(); ia++) {
@@ -427,7 +427,7 @@ void Unit_cell::generate_radial_functions()
         atom_symmetry_class(ic).sync_radial_functions(comm_, rank);
     }
 
-    if (parameters_.control().verbosity_ >= 1) {
+    if (parameters_.verbosity() >= 1) {
         pstdout pout(comm_);
 
         for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
@@ -440,7 +440,7 @@ void Unit_cell::generate_radial_functions()
             std::printf("Linearization energies\n");
         }
     }
-    if (parameters_.control().verbosity_ >= 4 && comm_.rank() == 0) {
+    if (parameters_.verbosity() >= 4 && comm_.rank() == 0) {
         for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
             atom_symmetry_class(ic).dump_lo();
         }

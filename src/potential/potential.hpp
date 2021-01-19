@@ -283,7 +283,7 @@ class Potential : public Field4D
 
         local_potential_->fft_transform(1);
 
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.cfg().control().print_checksum()) {
             auto cs = local_potential_->checksum_pw();
             auto cs1 = local_potential_->checksum_rg();
             if (ctx_.comm().rank() == 0) {
@@ -643,7 +643,7 @@ class Potential : public Field4D
         /* add Hartree potential to the total potential */
         effective_potential().add(hartree_potential());
 
-        if (ctx_.control().print_hash_) {
+        if (ctx_.cfg().control().print_hash()) {
             auto h = effective_potential().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("Vha", h);
@@ -661,7 +661,7 @@ class Potential : public Field4D
         /* add XC potential to the effective potential */
         effective_potential().add(xc_potential());
 
-        if (ctx_.control().print_hash_) {
+        if (ctx_.cfg().control().print_hash()) {
             auto h = effective_potential().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("Vha+Vxc", h);
@@ -682,7 +682,7 @@ class Potential : public Field4D
          *  3) symmetrize effective potential */
         fft_transform(-1);
 
-        if (ctx_.control().print_hash_) {
+        if (ctx_.cfg().control().print_hash()) {
             auto h = effective_potential().hash_f_pw();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("V(G)", h);

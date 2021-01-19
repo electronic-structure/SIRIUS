@@ -36,8 +36,6 @@
 
 using namespace sddk;
 
-// TODO: put initialized_ flag here; do not allow to set parameters when initialised_ flag is set to true.
-
 namespace sirius {
 
 /// Get all possible options for initializing sirius. It is a json dictionary.
@@ -48,7 +46,10 @@ class Config : public config_t
   public:
     Config();
     void import(nlohmann::json const& in__);
-
+    void lock()
+    {
+        dict_["locked"] = true;
+    }
 };
 
 /// Set of basic parameters of a simulation.
@@ -88,7 +89,7 @@ class Simulation_parameters
     //Iterative_solver_input iterative_solver_input_;
 
     /// Parameters controlling the execution.
-    Control_input control_input_;
+    //Control_input control_input_;
 
     /// Basic input parameters of PP-PW and FP-LAPW methods.
     Parameters_input parameters_input_;
@@ -173,10 +174,10 @@ class Simulation_parameters
     }
 
     /// Set dimensions of MPI grid for band diagonalization problem.
-    std::vector<int> const& mpi_grid_dims(std::vector<int> mpi_grid_dims__)
+    std::vector<int> mpi_grid_dims(std::vector<int> mpi_grid_dims__)
     {
-        control_input_.mpi_grid_dims_ = mpi_grid_dims__;
-        return control_input_.mpi_grid_dims_;
+        cfg().control().mpi_grid_dims(mpi_grid_dims__);
+        return mpi_grid_dims__;
     }
 
     void add_xc_functional(std::string name__)
@@ -206,16 +207,26 @@ class Simulation_parameters
         return smearing_;
     }
 
-    void set_molecule(bool molecule__)
+    void molecule(bool molecule__)
     {
         parameters_input_.molecule_ = molecule__;
+    }
+
+    auto verbosity() const
+    {
+        return cfg().control().verbosity();
     }
 
     /// Set verbosity level.
     int verbosity(int level__)
     {
-        control_input_.verbosity_ = level__;
-        return control_input_.verbosity_;
+        cfg().control().verbosity(level__);
+        return level__;
+    }
+
+    auto print_checksum() const
+    {
+        return cfg().control().print_checksum();
     }
 
     inline int lmax_apw() const
@@ -435,14 +446,14 @@ class Simulation_parameters
         return (num_spins() == 2 || hubbard_correction() || so_correction());
     }
 
-    std::vector<int> const& mpi_grid_dims() const
+    std::vector<int> mpi_grid_dims() const
     {
-        return control_input_.mpi_grid_dims_;
+        return cfg().control().mpi_grid_dims();
     }
 
     int cyclic_block_size() const
     {
-        return control_input_.cyclic_block_size_;
+        return cfg().control().cyclic_block_size();
     }
 
     bool full_potential() const
@@ -456,29 +467,29 @@ class Simulation_parameters
     }
 
     /// Get the name of the standard eigen-value solver to use.
-    std::string const& std_evp_solver_name() const
+    std::string std_evp_solver_name() const
     {
-        return control_input_.std_evp_solver_name_;
+        return cfg().control().std_evp_solver_name();
     }
 
     /// Set the name of the standard eigen-value solver to use.
-    std::string& std_evp_solver_name(std::string name__)
+    std::string std_evp_solver_name(std::string name__)
     {
-        control_input_.std_evp_solver_name_ = name__;
-        return control_input_.std_evp_solver_name_;
+        cfg().control().std_evp_solver_name(name__);
+        return name__;
     }
 
     /// Get the name of the generalized eigen-value solver to use.
-    std::string const& gen_evp_solver_name() const
+    std::string gen_evp_solver_name() const
     {
-        return control_input_.gen_evp_solver_name_;
+        return cfg().control().gen_evp_solver_name();
     }
 
     /// Set the name of the generalized eigen-value solver to use.
-    std::string& gen_evp_solver_name(std::string name__)
+    std::string gen_evp_solver_name(std::string name__)
     {
-        control_input_.gen_evp_solver_name_ = name__;
-        return control_input_.gen_evp_solver_name_;
+        cfg().control().gen_evp_solver_name(name__);
+        return name__;
     }
 
     relativity_t valence_relativity() const
@@ -493,12 +504,12 @@ class Simulation_parameters
 
     double rmt_max() const
     {
-        return control_input_.rmt_max_;
+        return cfg().control().rmt_max();
     }
 
     double spglib_tolerance() const
     {
-        return control_input_.spglib_tolerance_;
+        return cfg().control().spglib_tolerance();
     }
 
     bool molecule() const
@@ -544,14 +555,9 @@ class Simulation_parameters
         return tolerance__;
     }
 
-    Control_input const& control() const
-    {
-        return control_input_;
-    }
-
-    //Iterative_solver_input const& iterative_solver_input() const
+    //Control_input const& control() const
     //{
-    //    return iterative_solver_input_;
+    //    return control_input_;
     //}
 
     Parameters_input const& parameters_input() const

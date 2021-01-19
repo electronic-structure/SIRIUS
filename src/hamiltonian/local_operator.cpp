@@ -65,7 +65,7 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
         if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
             veff_vec_[4]->f_rg().allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
         }
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.print_checksum()) {
             auto cs1 = veff_vec_[4]->checksum_pw();
             auto cs2 = veff_vec_[4]->checksum_rg();
             if (ctx_.comm().rank() == 0) {
@@ -152,7 +152,7 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
             }
         }
 
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.print_checksum()) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 auto cs1 = veff_vec_[j]->checksum_pw();
                 auto cs2 = veff_vec_[j]->checksum_rg();

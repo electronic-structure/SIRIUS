@@ -31,7 +31,7 @@ void K_point::generate_spinor_wave_functions()
 {
     PROFILE("sirius::K_point::generate_spinor_wave_functions");
 
-    if (ctx_.control().use_second_variation_) {
+    if (ctx_.cfg().control().use_second_variation()) {
         int nfv = ctx_.num_fv_states();
 
         if (!ctx_.need_sv()) {

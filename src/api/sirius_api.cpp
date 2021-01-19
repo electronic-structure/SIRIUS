@@ -801,7 +801,7 @@ void sirius_get_parameters(void* const* handler__,
             *iter_solver_tol_empty__ = sim_ctx.cfg().iterative_solver().empty_states_tolerance();
         }
         if (verbosity__ != nullptr) {
-            *verbosity__ = sim_ctx.control().verbosity_;
+            *verbosity__ = sim_ctx.verbosity();
         }
         if (hubbard_correction__ != nullptr) {
             *hubbard_correction__ = sim_ctx.hubbard_correction();
