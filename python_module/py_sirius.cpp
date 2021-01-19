@@ -159,7 +159,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def_readonly("shiftk", &Parameters_input::shiftk_)
         .def_readonly("ngridk", &Parameters_input::ngridk_);
 
-    py::class_<Mixer_input>(m, "Mixer_input");
+    //py::class_<Mixer_input>(m, "Mixer_input");
 
     py::class_<Communicator>(m, "Communicator");
 
@@ -172,7 +172,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("max_occupancy", &Simulation_context::max_occupancy)
         .def("num_fv_states", py::overload_cast<>(&Simulation_context::num_fv_states, py::const_))
         .def("num_spins", &Simulation_context::num_spins)
-        .def("verbosity", &Simulation_context::verbosity)
+        .def("verbosity", py::overload_cast<>(&Simulation_context::verbosity, py::const_))
         .def("create_storage_file", &Simulation_context::create_storage_file)
         .def("processing_unit", py::overload_cast<>(&Simulation_context::processing_unit, py::const_))
         .def("processing_unit", py::overload_cast<std::string>(&Simulation_context::processing_unit))
@@ -197,7 +197,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("update", &Simulation_context::update)
         .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
         .def("preferred_memory_t", &Simulation_context::preferred_memory_t)
-        .def("mixer_input", &Simulation_context::mixer_input)
+        //.def("mixer_input", &Simulation_context::mixer_input)
         .def("comm", [](Simulation_context& obj) { return make_pycomm(obj.comm()); },
              py::return_value_policy::reference_internal)
         .def("comm_k", [](Simulation_context& obj) { return make_pycomm(obj.comm_k()); },

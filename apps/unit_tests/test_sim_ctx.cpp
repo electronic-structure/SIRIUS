@@ -6,7 +6,7 @@ int run_test(cmd_args& args)
 {
     Simulation_context ctx;
     ctx.import(args);
-    std::cout << ctx.control().verbosity_ << "\n";
+    std::cout << ctx.verbosity() << "\n";
     return 0;
 }
 
