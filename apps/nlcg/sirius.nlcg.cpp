@@ -116,7 +116,7 @@ double ground_state(Simulation_context& ctx,
          }
     }
 
-    if (ctx.control().verification_ >= 1) {
+    if (ctx.cfg().control().verification() >= 1) {
         dft.check_scf_density();
     }
 

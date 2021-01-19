@@ -242,6 +242,8 @@ class Simulation_context : public Simulation_parameters
     /// Total number of iterative solver steps.
     mutable int num_itsol_steps_{0};
 
+    double iterative_solver_tolerance_;
+
     /// True if the context is already initialized.
     bool initialized_{false};
 
@@ -302,15 +304,6 @@ class Simulation_context : public Simulation_parameters
     Simulation_context(Simulation_context const&) = delete;
 
   public:
-    // /// Create a simulation context with an explicit communicator and load parameters from JSON.
-    // Simulation_context(nlohmann::json const &json, Communicator const &comm__)
-    //     : comm_(comm__)
-    // {
-    //     unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
-    //     start();
-    //     import(json);
-    //     unit_cell_->import(unit_cell_input_);
-    // }
 
     /// Create an empty simulation context with an explicit communicator.
     Simulation_context(Communicator const& comm__ = Communicator::world())
@@ -861,6 +854,20 @@ class Simulation_context : public Simulation_parameters
     {
         return band_occ_callback_;
     }
+
+    /// Get tolerance of the iterative solver.
+    double iterative_solver_tolerance() const
+    {
+        return iterative_solver_tolerance_;
+    }
+
+    /// Set the tolerance of the iterative solver.
+    double iterative_solver_tolerance(double tolerance__)
+    {
+        iterative_solver_tolerance_ = tolerance__;
+        return tolerance__;
+    }
+
 };
 
 } // namespace sirius

@@ -85,12 +85,6 @@ class Simulation_parameters
     /// Type of occupation numbers smearing.
     smearing::smearing_t smearing_{smearing::smearing_t::gaussian};
 
-    /// Parameters of the iterative solver.
-    //Iterative_solver_input iterative_solver_input_;
-
-    /// Parameters controlling the execution.
-    //Control_input control_input_;
-
     /// Basic input parameters of PP-PW and FP-LAPW methods.
     Parameters_input parameters_input_;
 
@@ -115,10 +109,10 @@ class Simulation_parameters
     }
 
     /// Import parameters from a file or a serialized json string.
-    void import(std::string const &str);
+    void import(std::string const& str__);
 
     /// Import parameters from a json dictionary.
-    void import(json const& dict);
+    void import(json const& dict__);
 
     /// Import from command line arguments.
     void import(cmd_args const& args__);
@@ -554,11 +548,6 @@ class Simulation_parameters
         cfg().iterative_solver().empty_states_tolerance(tolerance__);
         return tolerance__;
     }
-
-    //Control_input const& control() const
-    //{
-    //    return control_input_;
-    //}
 
     Parameters_input const& parameters_input() const
     {

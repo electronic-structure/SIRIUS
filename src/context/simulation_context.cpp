@@ -598,6 +598,8 @@ void Simulation_context::initialize()
         print_info();
     }
 
+    iterative_solver_tolerance_ = cfg().iterative_solver().energy_tolerance();
+
     initialized_ = true;
     cfg().lock();
 }
