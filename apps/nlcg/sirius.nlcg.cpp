@@ -122,7 +122,7 @@ double ground_state(Simulation_context& ctx,
 
     //dft.print_magnetic_moment();
 
-    if (ctx.control().print_stress_ && !ctx.full_potential()) {
+    if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
         Stress& s       = dft.stress();
         auto stress_tot = s.calc_stress_total();
         s.print_info();
@@ -133,7 +133,7 @@ double ground_state(Simulation_context& ctx,
             }
         }
     }
-    if (ctx.control().print_forces_) {
+    if (ctx.cfg().control().print_forces()) {
         Force& f         = dft.forces();
         auto& forces_tot = f.calc_forces_total();
         f.print_info();
