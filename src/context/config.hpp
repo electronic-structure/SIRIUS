@@ -475,9 +475,6 @@ class config_t
         }
         inline void energy_tolerance(double energy_tolerance__)
         {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
             dict_["/iterative_solver/energy_tolerance"_json_pointer] = energy_tolerance__;
         }
         /// Tolerance for the residual L2 norm.
