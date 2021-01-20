@@ -20,7 +20,6 @@ enum class task_t : int
 void json_output_common(json& dict__)
 {
     dict__["git_hash"] = sirius::git_hash();
-    //dict__["build_date"] = build_date;
     dict__["comm_world_size"] = Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
@@ -204,6 +203,7 @@ double ground_state(Simulation_context& ctx,
         json_output_common(dict);
 
         dict["task"] = static_cast<int>(task);
+        dict["config"] = ctx.serialize();
         dict["ground_state"] = result;
         //dict["timers"] = utils::timer::serialize();
         dict["counters"] = json::object();

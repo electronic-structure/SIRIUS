@@ -88,21 +88,8 @@ double DFT_ground_state::total_energy() const
 
 json DFT_ground_state::serialize()
 {
-    json dict;
+    nlohmann::json dict;
 
-    dict["mpi_grid"] = ctx_.mpi_grid_dims();
-
-    std::vector<int> fftgrid = {ctx_.spfft().dim_x(),ctx_.spfft().dim_y(), ctx_.spfft().dim_z()};
-    dict["fft_grid"] = fftgrid;
-    fftgrid = {ctx_.spfft_coarse().dim_x(),ctx_.spfft_coarse().dim_y(), ctx_.spfft_coarse().dim_z()};
-    dict["fft_coarse_grid"]         = fftgrid;
-    dict["num_fv_states"]           = ctx_.num_fv_states();
-    dict["num_bands"]               = ctx_.num_bands();
-    dict["aw_cutoff"]               = ctx_.aw_cutoff();
-    dict["pw_cutoff"]               = ctx_.pw_cutoff();
-    dict["omega"]                   = ctx_.unit_cell().omega();
-    dict["chemical_formula"]        = ctx_.unit_cell().chemical_formula();
-    dict["num_atoms"]               = ctx_.unit_cell().num_atoms();
     dict["energy"]                  = json::object();
     dict["energy"]["total"]         = total_energy();
     dict["energy"]["enuc"]          = energy_enuc(ctx_, potential_);
@@ -346,17 +333,6 @@ void DFT_ground_state::print_info()
     auto total_mag  = std::get<0>(result_mag);
     auto it_mag     = std::get<1>(result_mag);
     auto mt_mag     = std::get<2>(result_mag);
-
-    //double total_mag[3];
-    //std::vector<double> mt_mag[3];
-    //double it_mag[3];
-    //for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-    //    auto result = density_.magnetization(j).integrate();
-
-    //    total_mag[j] = std::get<0>(result);
-    //    it_mag[j]    = std::get<1>(result);
-    //    mt_mag[j]    = std::get<2>(result);
-    //}
 
     if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
         std::printf("\n");

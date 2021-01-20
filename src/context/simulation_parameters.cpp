@@ -129,7 +129,6 @@ void Simulation_parameters::import(json const& dict__)
 
 void Simulation_parameters::import(cmd_args const& args__)
 {
-    std::cout << cfg().dict() << std::endl;
     cfg_.control().processing_unit(args__.value("control.processing_unit", cfg_.control().processing_unit()));
     cfg_.control().mpi_grid_dims(args__.value("control.mpi_grid_dims", cfg_.control().mpi_grid_dims()));
     cfg_.control().std_evp_solver_name(args__.value("control.std_evp_solver_name",

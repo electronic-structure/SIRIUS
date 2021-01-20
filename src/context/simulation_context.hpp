@@ -868,6 +868,20 @@ class Simulation_context : public Simulation_parameters
         return tolerance__;
     }
 
+    /// Export parameters of simulation context as a JSON dictionary.
+    nlohmann::json serialize()
+    {
+        nlohmann::json dict;
+        dict["config"] = cfg().dict();
+        dict["config"]["unit_cell"] = unit_cell().serialize(false);
+        auto fftgrid = {spfft_coarse().dim_x(), spfft_coarse().dim_y(), spfft_coarse().dim_z()};
+        dict["fft_coarse_grid"] = fftgrid;
+        dict["mpi_grid"] = mpi_grid_dims();
+        dict["omega"] = unit_cell().omega();
+        dict["chemical_formula"] = unit_cell().chemical_formula();
+        dict["num_atoms"] = unit_cell().num_atoms();
+        return dict;
+    }
 };
 
 } // namespace sirius

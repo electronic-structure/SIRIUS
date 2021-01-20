@@ -74,6 +74,7 @@ void Simulation_context::init_fft_grid()
     auto fft_grid = cfg().settings().fft_grid_size();
     if (fft_grid[0] * fft_grid[1] * fft_grid[2] == 0) {
         fft_grid_ = get_min_fft_grid(pw_cutoff(), rlv);
+        cfg().settings().fft_grid_size(fft_grid_);
     } else {
         /* else create a grid with user-specified dimensions */
         fft_grid_ = sddk::FFT3D_grid(fft_grid);

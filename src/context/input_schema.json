@@ -431,6 +431,47 @@
                      "title" : "Number of atoms in a chunk of beta-projectors."
                  }
             }
+        },
+        "parameters" : {
+            "type" : "object",
+            "title" : "Parameters of the simulation.",
+            "description" : "Most of this parameters control the behavior of high-level classes\nlike sirius::DFT_ground_state.",
+            "properties" : {
+                "electronic_structure_method" : {
+                    "type" : "string",
+                    "default" : "",
+                    "enum" : ["", "full_potential_lapwlo", "pseudopotential"],
+                    "title" : "Type of electronic structure method."
+                },
+                "xc_functionals" : {
+                    "type" : "array",
+                    "items" : {
+                        "type" : "string"
+                    },
+                    "default" : [""],
+                    "title" : "List of XC functionals (typically contains exchange term and correlation term).",
+                    "description" : "Naming convention of LibXC is used, names should be provided in capital letters.",
+                    "example" : ["XC_LDA_X", "XC_LDA_C_PZ"] 
+                },
+                "core_relativity" : {
+                    "type" : "string",
+                    "default" : "dirac",
+                    "enum" : ["none", "dirac"],
+                    "title" : "Type of core-states relativity in full-potential LAPW case."
+                },
+                "valence_relativity" : {
+                    "type" : "string",
+                    "default" : "zora",
+                    "enum" : ["none", "koelling_harmon", "zora", "iora"],
+                    "title" : "Type of valence states relativity in full-potential LAPW case."
+                },
+                "num_bands" : {
+                    "type" : "integer",
+                    "default" : -1,
+                    "title" : "Number of bands.",
+                    "description" : "In spin-collinear case this is the number of bands for each spin channel."
+                }
+            }
         }
     }
 }
