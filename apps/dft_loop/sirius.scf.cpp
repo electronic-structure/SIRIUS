@@ -203,7 +203,7 @@ double ground_state(Simulation_context& ctx,
         json_output_common(dict);
 
         dict["task"] = static_cast<int>(task);
-        dict["config"] = ctx.serialize();
+        dict["context"] = ctx.serialize();
         dict["ground_state"] = result;
         //dict["timers"] = utils::timer::serialize();
         dict["counters"] = json::object();
