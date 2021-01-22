@@ -74,7 +74,7 @@ int main(int argn, char** argv)
         args.print_help();
         return 0;
     }
-    auto mpi_grid_dims = args.value< std::vector<int> >("mpi_grid_dims", {1, 1});
+    auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
     auto cutoff = args.value<double>("cutoff", 8.0);
     auto use_gpu = args.value<int>("use_gpu", 0);
     //auto bs = args.value<int>("bs", 16);

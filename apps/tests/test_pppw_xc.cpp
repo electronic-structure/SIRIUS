@@ -7,7 +7,7 @@ void test_davidson(cmd_args const& args__)
     auto pw_cutoff    = args__.value<double>("pw_cutoff", 30);
     auto gk_cutoff    = args__.value<double>("gk_cutoff", 10);
     auto N            = args__.value<int>("N", 1);
-    auto mpi_grid     = args__.value<std::vector<int>>("mpi_grid", {1, 1});
+    auto mpi_grid     = args__.value("mpi_grid", std::vector<int>({1, 1}));
     auto solver       = args__.value<std::string>("solver", "lapack");
     auto xc_name      = args__.value<std::string>("xc_name", "XC_LDA_X");
     auto num_mag_dims = args__.value<int>("num_mag_dims", 0);

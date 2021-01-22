@@ -51,7 +51,7 @@ int main(int argn, char** argv)
     }
 
     sirius::initialize(1);
-    auto sizes = args.value<std::vector<int>>("sizes", std::vector<int>({1024}));
+    auto sizes = args.value("sizes", std::vector<int>({1024}));
     test(sizes, get_memory_t(args.value<std::string>("memory_t", "host")));
     sirius::finalize();
 }

@@ -151,13 +151,13 @@ PYBIND11_MODULE(py_sirius, m)
     //m.def("timer_print", &utils::timer::print);
     m.def("num_devices", &acc::num_devices);
 
-    py::class_<Parameters_input>(m, "Parameters_input")
-        .def(py::init<>())
-        .def_readonly("density_tol", &Parameters_input::density_tol_)
-        .def_readonly("energy_tol", &Parameters_input::energy_tol_)
-        .def_readonly("num_dft_iter", &Parameters_input::num_dft_iter_)
-        .def_readonly("shiftk", &Parameters_input::shiftk_)
-        .def_readonly("ngridk", &Parameters_input::ngridk_);
+    //py::class_<Parameters_input>(m, "Parameters_input")
+    //    .def(py::init<>())
+    //    .def_readonly("density_tol", &Parameters_input::density_tol_)
+    //    .def_readonly("energy_tol", &Parameters_input::energy_tol_)
+    //    .def_readonly("num_dft_iter", &Parameters_input::num_dft_iter_)
+    //    .def_readonly("shiftk", &Parameters_input::shiftk_)
+    //    .def_readonly("ngridk", &Parameters_input::ngridk_);
 
     //py::class_<Mixer_input>(m, "Mixer_input");
 
@@ -189,8 +189,8 @@ PYBIND11_MODULE(py_sirius, m)
         .def("gk_cutoff", py::overload_cast<double>(&Simulation_context::gk_cutoff))
         .def("aw_cutoff", py::overload_cast<>(&Simulation_context::aw_cutoff, py::const_))
         .def("aw_cutoff", py::overload_cast<double>(&Simulation_context::aw_cutoff))
-        .def("parameters_input", py::overload_cast<>(&Simulation_context::parameters_input, py::const_),
-             py::return_value_policy::reference)
+        //.def("parameters_input", py::overload_cast<>(&Simulation_context::parameters_input, py::const_),
+        //     py::return_value_policy::reference)
         .def("num_spinors", &Simulation_context::num_spinors)
         .def("num_mag_dims", &Simulation_context::num_mag_dims)
         .def("gamma_point", py::overload_cast<bool>(&Simulation_context::gamma_point))
