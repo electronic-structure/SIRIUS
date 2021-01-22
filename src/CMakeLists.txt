@@ -123,8 +123,8 @@ target_link_libraries(sirius PUBLIC SpFFT::spfft
                                     $<TARGET_NAME_IF_EXISTS:nlcglib::nlcglib>
                                     $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
                                     $<$<BOOL:${USE_NVTX}>:nvToolsExt>
-                                    $<$<BOOL:${USE_ROCM}>:ROCBLAS::rocblas>
-                                    $<$<BOOL:${USE_ROCM}>:HIPLIBS::hiplibs>
+                                    $<$<BOOL:${USE_ROCM}>:roc::rocblas>
+                                    $<$<BOOL:${USE_ROCM}>:hip::host>
                                     )
 
 target_include_directories(sirius PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
@@ -139,7 +139,6 @@ target_compile_definitions(sirius PUBLIC
   $<$<BOOL:${USE_ELPA}>:SIRIUS_ELPA>
   $<$<BOOL:${USE_NLCGLIB}>:SIRIUS_NLCGLIB>
   $<$<BOOL:${USE_CUDA}>:SIRIUS_GPU SIRIUS_CUDA>
-  $<$<BOOL:${USE_ROCM}>:__HIP_PLATFORM_HCC__>
   $<$<BOOL:${USE_NVTX}>:SIRIUS_CUDA_NVTX>
   $<$<BOOL:${USE_MAGMA}>:SIRIUS_MAGMA>
   $<$<BOOL:${USE_ROCM}>:SIRIUS_GPU SIRIUS_ROCM>

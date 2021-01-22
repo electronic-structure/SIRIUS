@@ -16,7 +16,8 @@ COPY . /sources
 SHELL ["/bin/bash", "-c"]
 
 # Setup spack and install SIRIUS
-RUN spack --color always repo add /sources/spack && \
+RUN spack --color always repo rm --scope site user && \
+    spack --color always repo add /sources/spack && \
     spack --color always env create --without-view ci_run "/sources/$ENVIRONMENT" && \
     spack --color always -e ci_run spec $SPEC && \
     spack --color always -e ci_run dev-build --source-path /sources $SPEC
