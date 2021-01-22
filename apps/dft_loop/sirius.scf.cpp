@@ -69,8 +69,8 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string fname__,
     auto ctx_ptr = std::make_unique<Simulation_context>(json.dump(), Communicator::world());
     Simulation_context& ctx = *ctx_ptr;
 
-    auto& inp = ctx.parameters_input();
-    if (inp.gamma_point_ && !(inp.ngridk_[0] * inp.ngridk_[1] * inp.ngridk_[2] == 1)) {
+    auto& inp = ctx.cfg().parameters();
+    if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
         TERMINATE("this is not a Gamma-point calculation")
     }
 
@@ -87,13 +87,13 @@ double ground_state(Simulation_context& ctx,
 {
     ctx.print_memory_usage(__FILE__, __LINE__);
 
-    auto& inp = ctx.parameters_input();
+    auto& inp = ctx.cfg().parameters();
 
     std::string ref_file = args.value<std::string>("test_against", "");
     /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
 
-    K_point_set kset(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
+    K_point_set kset(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), ctx.use_symmetry());
     DFT_ground_state dft(kset);
 
     ctx.print_memory_usage(__FILE__, __LINE__);
@@ -114,7 +114,7 @@ double ground_state(Simulation_context& ctx,
     double initial_tol = ctx.iterative_solver_tolerance();
 
     /* launch the calculation */
-    auto result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
+    auto result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
 
     if (ctx.cfg().control().verification() >= 1) {
         dft.check_scf_density();
@@ -124,7 +124,7 @@ double ground_state(Simulation_context& ctx,
     if (repeat_update) {
         for (int i = 0; i < repeat_update; i++) {
             dft.update();
-            result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
+            result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
         }
     }
 

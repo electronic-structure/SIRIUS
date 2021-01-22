@@ -46,7 +46,36 @@ class cmd_args
     std::map<std::string, std::string> keys_;
 
     template <typename T>
-    std::vector<T> get_vector(std::string const key__) const;
+    std::vector<T> get_vector(std::string const key__) const
+    {
+        auto s = keys_.at(key__);
+        std::replace(s.begin(), s.end(), ':', ' ');
+        std::istringstream iss(s);
+        std::vector<T> v;
+        while (!iss.eof()) {
+            T k;
+            iss >> k;
+            v.push_back(k);
+        }
+        return v;
+    }
+
+    template <typename T, std::size_t N>
+    std::array<T, N> get_array(std::string const key__) const
+    {
+        auto v = this->get_vector<T>(key__);
+        if (v.size() != N) {
+            std::stringstream s;
+            s << "[cmd_args::get_array] wrong size of array for the command-line argument " << key__ << std::endl
+              << "[cmd_args::get_array] expected size : " << N << ", provided size : " << v.size();
+            throw std::runtime_error(s.str());
+        } else {
+            std::array<T, N> out;
+            out.fill(T{}); // prevent compiler warning about uninitialized array
+            std::copy(v.begin(), v.end(), out.begin());
+            return out;
+        }
+    }
 
     void check_for_key(std::string const key__) const;
 
@@ -87,6 +116,22 @@ class cmd_args
         return v;
     }
 
+    ///// Get a vector of values or terminate if key is not found.
+    //template <typename T>
+    //inline std::vector<T> value(std::string const key__) const
+    //{
+    //    check_for_key(key__);
+    //    return get_vector<T>(key__);
+    //}
+
+    //template <typename T, std::size_t N>
+    //inline std::array<T, N> value(std::string const key__) const
+    //{
+    //    check_for_key(key__);
+    //    return get_array<T, N>(key__);
+    //}
+
+
     /// Get a value if key exists or return a default value.
     template <typename T>
     inline T value(std::string const key__, T default_val__) const
@@ -97,6 +142,24 @@ class cmd_args
         T v;
         std::istringstream(keys_.at(key__)) >> v;
         return v;
+    }
+
+    template <typename T>
+    inline std::vector<T> value(std::string const key__, std::vector<T> default_val__) const
+    {
+        if (!exist(key__)) {
+            return default_val__;
+        }
+        return get_vector<T>(key__);
+    }
+
+    template <typename T, std::size_t N>
+    inline std::array<T, N> value(std::string const key__, std::array<T, N> default_val__) const
+    {
+        if (!exist(key__)) {
+            return default_val__;
+        }
+        return get_array<T, N>(key__);
     }
 
     std::string operator[](const std::string key__) const
@@ -110,19 +173,7 @@ class cmd_args
     }
 };
 
-template<typename T>
-std::vector<T> cmd_args::get_vector(std::string const key__) const {
-    auto s = keys_.at(key__);
-    std::replace(s.begin(), s.end(), ':', ' ');
-    std::istringstream iss(s);
-    std::vector<T> v;
-    while (!iss.eof()) {
-        T k;
-        iss >> k;
-        v.push_back(k);
-    }
-    return v;
-}
+
 
 template <>
 inline std::string cmd_args::value<std::string>(const std::string key__) const
@@ -153,14 +204,29 @@ inline std::vector<int> cmd_args::value<std::vector<int>>(const std::string key_
     return get_vector<int>(key__);
 }
 
-template <>
-inline std::vector<int> cmd_args::value<std::vector<int>>(std::string const key__,
-                                                          std::vector<int> const default_val__) const
-{
-    if (!exist(key__)) {
-        return default_val__;
-    }
-    return get_vector<int>(key__);
-}
+//template <std::size_t N>
+//inline std::array<double, N> cmd_args::value<std::array<double, N>>(const std::string key__) const
+//{
+//    check_for_key(key__);
+//    return get_array<double, N>(key__);
+//}
+//
+//template <std::size_t N>
+//inline std::array<int, N> cmd_args::value<std::array<int, N>>(const std::string key__) const
+//{
+//    check_for_key(key__);
+//    return get_array<int, N>(key__);
+//}
+
+
+//template <>
+//inline std::vector<int> cmd_args::value<std::vector<int>>(std::string const key__,
+//                                                          std::vector<int> const default_val__) const
+//{
+//    if (!exist(key__)) {
+//        return default_val__;
+//    }
+//    return get_vector<int>(key__);
+//}
 
 #endif // __CMD_ARGS_HPP__

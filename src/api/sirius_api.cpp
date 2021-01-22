@@ -1284,20 +1284,20 @@ void sirius_find_ground_state(void*  const* gs_handler__,
 {
     auto& gs = get_gs(gs_handler__);
     auto& ctx = gs.ctx();
-    auto& inp = ctx.parameters_input();
+    auto& inp = ctx.cfg().parameters();
     gs.initial_state();
 
-    double rho_tol = inp.density_tol_;
+    double rho_tol = inp.density_tol();
     if (density_tol__) {
         rho_tol = *density_tol__;
     }
 
-    double etol = inp.energy_tol_;
+    double etol = inp.energy_tol();
     if (energy_tol__) {
         etol = *energy_tol__;
     }
 
-    int niter = inp.num_dft_iter_;
+    int niter = inp.num_dft_iter();
     if (niter__) {
         niter = *niter__;
     }

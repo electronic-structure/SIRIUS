@@ -368,16 +368,16 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
 
             auto q2 = std::pow(q__, 2);
             if (jl_deriv) {
-                if (!unit_cell_.parameters().parameters_input().enable_esm_ ||
-                    unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
+                if (!unit_cell_.parameters().cfg().parameters().enable_esm() ||
+                    unit_cell_.parameters().cfg().parameters().esm_bc() == "pbc") {
                     return values_(iat__)(idx.first, idx.second) / q2 / q__ -
                            atom_type.zn() * std::exp(-q2 / 4) * (4 + q2) / 2 / q2 / q2;
                 } else {
                     return values_(iat__)(idx.first, idx.second) / q2 / q__;
                 }
             } else {
-                if (!unit_cell_.parameters().parameters_input().enable_esm_ ||
-                    unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
+                if (!unit_cell_.parameters().cfg().parameters().enable_esm() ||
+                    unit_cell_.parameters().cfg().parameters().esm_bc() == "pbc") {
                     return values_(iat__)(idx.first, idx.second) / q__ - atom_type.zn() * std::exp(-q2 / 4) / q2;
                 } else {
                     return values_(iat__)(idx.first, idx.second) / q__;

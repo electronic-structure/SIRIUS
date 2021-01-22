@@ -907,12 +907,435 @@ class config_t
     };
     inline auto const& control() const {return control_;}
     inline auto& control() {return control_;}
+    /// Parameters of the simulation.
+    /**
+        Most of this parameters control the behavior of high-level classes
+        like sirius::DFT_ground_state.
+    */
+    class parameters_t
+    {
+      public:
+        parameters_t(nlohmann::json& dict__)
+            : dict_(dict__)
+        {
+        }
+        /// Type of electronic structure method.
+        inline auto electronic_structure_method() const
+        {
+            return dict_["/parameters/electronic_structure_method"_json_pointer].get<std::string>();
+        }
+        inline void electronic_structure_method(std::string electronic_structure_method__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/electronic_structure_method"_json_pointer] = electronic_structure_method__;
+        }
+        /// List of XC functionals (typically contains exchange term and correlation term).
+        /**
+            Naming convention of LibXC is used, names should be provided in capital letters.
+        */
+        inline auto xc_functionals() const
+        {
+            return dict_["/parameters/xc_functionals"_json_pointer].get<std::vector<std::string>>();
+        }
+        inline void xc_functionals(std::vector<std::string> xc_functionals__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/xc_functionals"_json_pointer] = xc_functionals__;
+        }
+        /// Type of core-states relativity in full-potential LAPW case.
+        inline auto core_relativity() const
+        {
+            return dict_["/parameters/core_relativity"_json_pointer].get<std::string>();
+        }
+        inline void core_relativity(std::string core_relativity__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/core_relativity"_json_pointer] = core_relativity__;
+        }
+        /// Type of valence states relativity in full-potential LAPW case.
+        inline auto valence_relativity() const
+        {
+            return dict_["/parameters/valence_relativity"_json_pointer].get<std::string>();
+        }
+        inline void valence_relativity(std::string valence_relativity__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/valence_relativity"_json_pointer] = valence_relativity__;
+        }
+        /// Number of bands.
+        /**
+            In spin-collinear case this is the number of bands for each spin channel.
+        */
+        inline auto num_bands() const
+        {
+            return dict_["/parameters/num_bands"_json_pointer].get<int>();
+        }
+        inline void num_bands(int num_bands__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/num_bands"_json_pointer] = num_bands__;
+        }
+        /// Number of first-variational states.
+        inline auto num_fv_states() const
+        {
+            return dict_["/parameters/num_fv_states"_json_pointer].get<int>();
+        }
+        inline void num_fv_states(int num_fv_states__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/num_fv_states"_json_pointer] = num_fv_states__;
+        }
+        /// Width of the smearing delta-function in the units of [Ha].
+        inline auto smearing_width() const
+        {
+            return dict_["/parameters/smearing_width"_json_pointer].get<double>();
+        }
+        inline void smearing_width(double smearing_width__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/smearing_width"_json_pointer] = smearing_width__;
+        }
+        /// Type of occupancy smearing.
+        inline auto smearing() const
+        {
+            return dict_["/parameters/smearing"_json_pointer].get<std::string>();
+        }
+        inline void smearing(std::string smearing__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/smearing"_json_pointer] = smearing__;
+        }
+        /// Cutoff for plane-waves (for density and potential expansion) in the units of [a.u.^-1]
+        inline auto pw_cutoff() const
+        {
+            return dict_["/parameters/pw_cutoff"_json_pointer].get<double>();
+        }
+        inline void pw_cutoff(double pw_cutoff__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/pw_cutoff"_json_pointer] = pw_cutoff__;
+        }
+        /// Cutoff for augmented-wave functions.
+        /**
+            This value is equal to R_{MT} * |G+k|_{max}
+        */
+        inline auto aw_cutoff() const
+        {
+            return dict_["/parameters/aw_cutoff"_json_pointer].get<double>();
+        }
+        inline void aw_cutoff(double aw_cutoff__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/aw_cutoff"_json_pointer] = aw_cutoff__;
+        }
+        /// Cutoff for |G+k| plane-waves in the units of [a.u.^-1].
+        inline auto gk_cutoff() const
+        {
+            return dict_["/parameters/gk_cutoff"_json_pointer].get<double>();
+        }
+        inline void gk_cutoff(double gk_cutoff__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/gk_cutoff"_json_pointer] = gk_cutoff__;
+        }
+        /// Maximum l for APW functions.
+        inline auto lmax_apw() const
+        {
+            return dict_["/parameters/lmax_apw"_json_pointer].get<int>();
+        }
+        inline void lmax_apw(int lmax_apw__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/lmax_apw"_json_pointer] = lmax_apw__;
+        }
+        /// Maximum l for density expansion in real spherical harmonics.
+        inline auto lmax_rho() const
+        {
+            return dict_["/parameters/lmax_rho"_json_pointer].get<int>();
+        }
+        inline void lmax_rho(int lmax_rho__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/lmax_rho"_json_pointer] = lmax_rho__;
+        }
+        /// Maximum l for potential expansion in real spherical harmonics.
+        inline auto lmax_pot() const
+        {
+            return dict_["/parameters/lmax_pot"_json_pointer].get<int>();
+        }
+        inline void lmax_pot(int lmax_pot__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/lmax_pot"_json_pointer] = lmax_pot__;
+        }
+        /// Number of dimensions of the magnetization and effective magnetic field vector.
+        inline auto num_mag_dims() const
+        {
+            return dict_["/parameters/num_mag_dims"_json_pointer].get<int>();
+        }
+        inline void num_mag_dims(int num_mag_dims__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/num_mag_dims"_json_pointer] = num_mag_dims__;
+        }
+        /// A choice of scaleing muffin-tin radii automatically.
+        inline auto auto_rmt() const
+        {
+            return dict_["/parameters/auto_rmt"_json_pointer].get<int>();
+        }
+        inline void auto_rmt(int auto_rmt__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/auto_rmt"_json_pointer] = auto_rmt__;
+        }
+        /// Regular k-point grid for the SCF ground state.
+        inline auto ngridk() const
+        {
+            return dict_["/parameters/ngridk"_json_pointer].get<std::array<int, 3>>();
+        }
+        inline void ngridk(std::array<int, 3> ngridk__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/ngridk"_json_pointer] = ngridk__;
+        }
+        /// Shift in the k-point grid.
+        inline auto shiftk() const
+        {
+            return dict_["/parameters/shiftk"_json_pointer].get<std::array<int, 3>>();
+        }
+        inline void shiftk(std::array<int, 3> shiftk__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/shiftk"_json_pointer] = shiftk__;
+        }
+        /// Specific list of k-point coordinates.
+        inline auto vk() const
+        {
+            return dict_["/parameters/vk"_json_pointer].get<std::vector<std::array<double, 3>>>();
+        }
+        inline void vk(std::vector<std::array<double, 3>> vk__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/vk"_json_pointer] = vk__;
+        }
+        /// Number of SCF iterations.
+        inline auto num_dft_iter() const
+        {
+            return dict_["/parameters/num_dft_iter"_json_pointer].get<int>();
+        }
+        inline void num_dft_iter(int num_dft_iter__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/num_dft_iter"_json_pointer] = num_dft_iter__;
+        }
+        /// Tolerance in total energy change (in units of [Ha]).
+        inline auto energy_tol() const
+        {
+            return dict_["/parameters/energy_tol"_json_pointer].get<double>();
+        }
+        inline void energy_tol(double energy_tol__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/energy_tol"_json_pointer] = energy_tol__;
+        }
+        /// Tolerance for the density mixing.
+        inline auto density_tol() const
+        {
+            return dict_["/parameters/density_tol"_json_pointer].get<double>();
+        }
+        inline void density_tol(double density_tol__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/density_tol"_json_pointer] = density_tol__;
+        }
+        ///  True if this is a molecule calculation.
+        inline auto molecule() const
+        {
+            return dict_["/parameters/molecule"_json_pointer].get<bool>();
+        }
+        inline void molecule(bool molecule__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/molecule"_json_pointer] = molecule__;
+        }
+        /// True if gamma-point (real) version of the PW code is used.
+        inline auto gamma_point() const
+        {
+            return dict_["/parameters/gamma_point"_json_pointer].get<bool>();
+        }
+        inline void gamma_point(bool gamma_point__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/gamma_point"_json_pointer] = gamma_point__;
+        }
+        /// True if spin-orbit correction is applied.
+        inline auto so_correction() const
+        {
+            return dict_["/parameters/so_correction"_json_pointer].get<bool>();
+        }
+        inline void so_correction(bool so_correction__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/so_correction"_json_pointer] = so_correction__;
+        }
+        /// True if Hubbard U correction is applied.
+        inline auto hubbard_correction() const
+        {
+            return dict_["/parameters/hubbard_correction"_json_pointer].get<bool>();
+        }
+        inline void hubbard_correction(bool hubbard_correction__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/hubbard_correction"_json_pointer] = hubbard_correction__;
+        }
+        /// True if symmetry is used.
+        inline auto use_symmetry() const
+        {
+            return dict_["/parameters/use_symmetry"_json_pointer].get<bool>();
+        }
+        inline void use_symmetry(bool use_symmetry__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/use_symmetry"_json_pointer] = use_symmetry__;
+        }
+        /// Radius of atom nearest-neighbour cluster.
+        inline auto nn_radius() const
+        {
+            return dict_["/parameters/nn_radius"_json_pointer].get<double>();
+        }
+        inline void nn_radius(double nn_radius__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/nn_radius"_json_pointer] = nn_radius__;
+        }
+        /// Effective screening medium (in conjugation with QE only).
+        inline auto enable_esm() const
+        {
+            return dict_["/parameters/enable_esm"_json_pointer].get<bool>();
+        }
+        inline void enable_esm(bool enable_esm__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/enable_esm"_json_pointer] = enable_esm__;
+        }
+        /// Type of periodic boundary conditions.
+        inline auto esm_bc() const
+        {
+            return dict_["/parameters/esm_bc"_json_pointer].get<std::string>();
+        }
+        inline void esm_bc(std::string esm_bc__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/esm_bc"_json_pointer] = esm_bc__;
+        }
+        /// Reduction of the auxiliary magnetic field at each SCF step.
+        inline auto reduce_aux_bf() const
+        {
+            return dict_["/parameters/reduce_aux_bf"_json_pointer].get<double>();
+        }
+        inline void reduce_aux_bf(double reduce_aux_bf__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/reduce_aux_bf"_json_pointer] = reduce_aux_bf__;
+        }
+        /// Introduce extra charge to the system. Positive charge means extra holes, negative charge - extra electrons.
+        inline auto extra_charge() const
+        {
+            return dict_["/parameters/extra_charge"_json_pointer].get<double>();
+        }
+        inline void extra_charge(double extra_charge__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/extra_charge"_json_pointer] = extra_charge__;
+        }
+        /// XC density threshold (debug purposes).
+        inline auto xc_dens_tre() const
+        {
+            return dict_["/parameters/xc_dens_tre"_json_pointer].get<double>();
+        }
+        inline void xc_dens_tre(double xc_dens_tre__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/xc_dens_tre"_json_pointer] = xc_dens_tre__;
+        }
+      private:
+        nlohmann::json& dict_;
+    };
+    inline auto const& parameters() const {return parameters_;}
+    inline auto& parameters() {return parameters_;}
   private:
     mixer_t mixer_{dict_};
     settings_t settings_{dict_};
     unit_cell_t unit_cell_{dict_};
     iterative_solver_t iterative_solver_{dict_};
     control_t control_{dict_};
+    parameters_t parameters_{dict_};
   protected:
     nlohmann::json dict_;
 };

@@ -1147,14 +1147,14 @@ void Density::generate_valence(K_point_set const& ks__)
         TERMINATE(s);
     }
 
-    if (std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.parameters_input().extra_charge_) > 1e-8 &&
+    if (std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.cfg().parameters().extra_charge()) > 1e-8 &&
         ctx_.comm().rank() == 0) {
         std::stringstream s;
         s << "wrong band occupancies" << std::endl
           << "  computed : " << occ_val << std::endl
-          << "  required : " << unit_cell_.num_valence_electrons() - ctx_.parameters_input().extra_charge_ << std::endl
+          << "  required : " << unit_cell_.num_valence_electrons() - ctx_.cfg().parameters().extra_charge() << std::endl
           << "  difference : "
-          << std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.parameters_input().extra_charge_);
+          << std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.cfg().parameters().extra_charge());
         WARNING(s);
     }
 
@@ -1272,7 +1272,7 @@ void Density::generate_valence(K_point_set const& ks__)
 
         /* remove extra chanrge */
         if (ctx_.gvec().comm().rank() == 0) {
-            rho().f_pw_local(0) += ctx_.parameters_input().extra_charge_ / ctx_.unit_cell().omega();
+            rho().f_pw_local(0) += ctx_.cfg().parameters().extra_charge() / ctx_.unit_cell().omega();
         }
 
         if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {

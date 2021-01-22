@@ -153,7 +153,7 @@ void K_point_set::find_band_occupancies()
     double ne{0};
 
     /* target number of electrons */
-    double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.parameters_input().extra_charge_;
+    double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
 
     if (std::abs(ctx_.num_fv_states() * double(ctx_.max_occupancy()) - ne_target) < 1e-10) {
         // this is an insulator, skip search for band occupancies

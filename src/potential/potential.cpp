@@ -64,8 +64,8 @@ Potential::Potential(Simulation_context& ctx__)
     /* create list of XC functionals */
     for (auto& xc_label : ctx_.xc_functionals()) {
         xc_func_.push_back(new XC_functional(ctx_.spfft(), ctx_.unit_cell().lattice_vectors(), xc_label, ctx_.num_spins()));
-        if (ctx_.parameters_input().xc_dens_tre_ > 0) {
-            xc_func_.back()->set_dens_threshold(ctx_.parameters_input().xc_dens_tre_);
+        if (ctx_.cfg().parameters().xc_dens_tre() > 0) {
+            xc_func_.back()->set_dens_threshold(ctx_.cfg().parameters().xc_dens_tre());
         }
     }
 
@@ -112,7 +112,7 @@ Potential::Potential(Simulation_context& ctx__)
     aux_bf_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     aux_bf_.zero();
 
-    if (ctx_.parameters_input().reduce_aux_bf_ > 0 && ctx_.parameters_input().reduce_aux_bf_ < 1) {
+    if (ctx_.cfg().parameters().reduce_aux_bf() > 0 && ctx_.cfg().parameters().reduce_aux_bf() < 1) {
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             for (int x : {0, 1, 2}) {
                 aux_bf_(x, ia) = 1;

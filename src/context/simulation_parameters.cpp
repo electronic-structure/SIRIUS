@@ -118,7 +118,7 @@ void Simulation_parameters::import(json const& dict__)
     /* read controls */
     //control_input_.read(dict__);
     /* read parameters */
-    parameters_input_.read(dict__);
+    //parameters_input_.read(dict__);
     /* read settings */
     //settings_input_.read(dict__);
     /* read hubbard parameters */
@@ -140,9 +140,9 @@ void Simulation_parameters::import(cmd_args const& args__)
     cfg_.control().verbosity(args__.value("control.verbosity", cfg_.control().verbosity()));
     cfg_.control().verification(args__.value("control.verification", cfg_.control().verification()));
 
-    parameters_input_.ngridk_      = args__.value("parameters.ngridk", parameters_input_.ngridk_);
-    parameters_input_.gamma_point_ = args__.value("parameters.gamma_point", parameters_input_.gamma_point_);
-    parameters_input_.pw_cutoff_   = args__.value("parameters.pw_cutoff", parameters_input_.pw_cutoff_);
+    cfg_.parameters().ngridk(args__.value("parameters.ngridk", cfg_.parameters().ngridk()));
+    cfg_.parameters().gamma_point(args__.value("parameters.gamma_point", cfg_.parameters().gamma_point()));
+    cfg_.parameters().pw_cutoff(args__.value("parameters.pw_cutoff", cfg_.parameters().pw_cutoff()));
 
     cfg_.iterative_solver().early_restart(args__.value("iterative_solver.early_restart",
         cfg_.iterative_solver().early_restart()));
@@ -152,13 +152,13 @@ void Simulation_parameters::import(cmd_args const& args__)
 
 void Simulation_parameters::core_relativity(std::string name__)
 {
-    parameters_input_.core_relativity_ = name__;
+    cfg_.parameters().core_relativity(name__);
     core_relativity_ = get_relativity_t(name__);
 }
 
 void Simulation_parameters::valence_relativity(std::string name__)
 {
-    parameters_input_.valence_relativity_ = name__;
+    cfg_.parameters().valence_relativity(name__);
     valence_relativity_ = get_relativity_t(name__);
 }
 
@@ -178,7 +178,7 @@ void Simulation_parameters::processing_unit(std::string name__)
 
 void Simulation_parameters::smearing(std::string name__)
 {
-    parameters_input_.smearing_ = name__;
+    cfg_.parameters().smearing(name__);
     smearing_ = smearing::get_smearing_t(name__);
 }
 
@@ -217,7 +217,7 @@ void Simulation_parameters::print_options() const
 
 void Simulation_parameters::electronic_structure_method(std::string name__)
 {
-    parameters_input_.electronic_structure_method_ = name__;
+    cfg_.parameters().electronic_structure_method(name__);
 
     std::map<std::string, electronic_structure_method_t> m = {
         {"full_potential_lapwlo", electronic_structure_method_t::full_potential_lapwlo},

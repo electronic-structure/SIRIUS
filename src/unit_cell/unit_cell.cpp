@@ -714,7 +714,7 @@ void Unit_cell::update()
     auto v2 = lattice_vector(2);
 
     double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())),
-                        parameters_.parameters_input().nn_radius_);
+                        parameters_.cfg().parameters().nn_radius());
 
     find_nearest_neighbours(r);
 

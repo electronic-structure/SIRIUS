@@ -698,10 +698,10 @@ class Potential : public Field4D
             this->U().generate_potential(density__.occupation_matrix().data());
         }
 
-        if (ctx_.parameters_input().reduce_aux_bf_ > 0 && ctx_.parameters_input().reduce_aux_bf_ < 1) {
+        if (ctx_.cfg().parameters().reduce_aux_bf() > 0 && ctx_.cfg().parameters().reduce_aux_bf() < 1) {
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 for (int x : {0, 1, 2}) {
-                    aux_bf_(x, ia) *= ctx_.parameters_input().reduce_aux_bf_;
+                    aux_bf_(x, ia) *= ctx_.cfg().parameters().reduce_aux_bf();
                 }
             }
         }

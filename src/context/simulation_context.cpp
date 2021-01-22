@@ -258,9 +258,9 @@ void Simulation_context::initialize()
     if (initialized_) {
         TERMINATE("Simulation parameters are already initialized.");
     }
-    electronic_structure_method(parameters_input().electronic_structure_method_);
-    core_relativity(parameters_input().core_relativity_);
-    valence_relativity(parameters_input().valence_relativity_);
+    electronic_structure_method(cfg().parameters().electronic_structure_method());
+    core_relativity(cfg().parameters().core_relativity());
+    valence_relativity(cfg().parameters().valence_relativity());
 
     /* can't run fp-lapw with Gamma point trick */
     if (full_potential()) {
@@ -593,7 +593,7 @@ void Simulation_context::initialize()
     this->print_memory_usage(__FILE__, __LINE__);
 
     /* set the smearing */
-    smearing(parameters_input().smearing_);
+    smearing(cfg().parameters().smearing());
 
     if (verbosity() >= 1 && comm().rank() == 0) {
         print_info();
@@ -669,7 +669,7 @@ void Simulation_context::print_info() const
     std::printf("number of core electrons           : %f\n", unit_cell().num_core_electrons());
     std::printf("number of valence electrons        : %f\n", unit_cell().num_valence_electrons());
     std::printf("total number of electrons          : %f\n", unit_cell().num_electrons());
-    std::printf("extra charge                       : %f\n", parameters_input().extra_charge_);
+    std::printf("extra charge                       : %f\n", cfg().parameters().extra_charge());
     std::printf("total number of aw basis functions : %i\n", unit_cell().mt_aw_basis_size());
     std::printf("total number of lo basis functions : %i\n", unit_cell().mt_lo_basis_size());
     std::printf("number of first-variational states : %i\n", num_fv_states());
@@ -682,7 +682,7 @@ void Simulation_context::print_info() const
     std::printf("lmax_rho                           : %i\n", lmax_rho());
     std::printf("lmax_pot                           : %i\n", lmax_pot());
     std::printf("lmax_rf                            : %i\n", unit_cell().lmax());
-    std::printf("smearing type                      : %s\n", parameters_input().smearing_.c_str());
+    std::printf("smearing type                      : %s\n", cfg().parameters().smearing().c_str());
     std::printf("smearing width                     : %f\n", smearing_width());
     std::printf("cyclic block size                  : %i\n", cyclic_block_size());
     std::printf("|G+k| cutoff                       : %f\n", gk_cutoff());

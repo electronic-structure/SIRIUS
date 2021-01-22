@@ -86,7 +86,7 @@ class Simulation_parameters
     smearing::smearing_t smearing_{smearing::smearing_t::gaussian};
 
     /// Basic input parameters of PP-PW and FP-LAPW methods.
-    Parameters_input parameters_input_;
+    //Parameters_input parameters_input_;
 
     /// LDA+U input parameters.
     Hubbard_input hubbard_input_;
@@ -119,29 +119,29 @@ class Simulation_parameters
 
     void set_lmax_apw(int lmax_apw__)
     {
-        parameters_input_.lmax_apw_ = lmax_apw__;
+        cfg().parameters().lmax_apw(lmax_apw__);
     }
 
     void set_lmax_rho(int lmax_rho__)
     {
-        parameters_input_.lmax_rho_ = lmax_rho__;
+        cfg().parameters().lmax_rho(lmax_rho__);
     }
 
     void set_lmax_pot(int lmax_pot__)
     {
-        parameters_input_.lmax_pot_ = lmax_pot__;
+        cfg().parameters().lmax_pot(lmax_pot__);
     }
 
     void set_num_mag_dims(int num_mag_dims__)
     {
         assert(num_mag_dims__ == 0 || num_mag_dims__ == 1 || num_mag_dims__ == 3);
 
-        parameters_input_.num_mag_dims_ = num_mag_dims__;
+        cfg().parameters().num_mag_dims(num_mag_dims__);
     }
 
     void set_hubbard_correction(bool hubbard_correction__)
     {
-        parameters_input_.hubbard_correction_         = hubbard_correction__;
+        cfg().parameters().hubbard_correction(hubbard_correction__);
         hubbard_input_.simplified_hubbard_correction_ = false;
     }
 
@@ -163,8 +163,8 @@ class Simulation_parameters
     /// Set flag for Gamma-point calculation.
     bool gamma_point(bool gamma_point__)
     {
-        parameters_input_.gamma_point_ = gamma_point__;
-        return parameters_input_.gamma_point_;
+        cfg().parameters().gamma_point(gamma_point__);
+        return gamma_point__;
     }
 
     /// Set dimensions of MPI grid for band diagonalization problem.
@@ -176,7 +176,9 @@ class Simulation_parameters
 
     void add_xc_functional(std::string name__)
     {
-        parameters_input_.xc_functionals_.push_back(name__);
+        auto xcfunc = cfg().parameters().xc_functionals();
+        xcfunc.push_back(name__);
+        cfg().parameters().xc_functionals(xcfunc);
     }
 
     void electronic_structure_method(std::string name__);
@@ -203,7 +205,7 @@ class Simulation_parameters
 
     void molecule(bool molecule__)
     {
-        parameters_input_.molecule_ = molecule__;
+        cfg().parameters().molecule(molecule__);
     }
 
     auto verbosity() const
@@ -225,78 +227,77 @@ class Simulation_parameters
 
     inline int lmax_apw() const
     {
-        return parameters_input_.lmax_apw_;
+        return cfg().parameters().lmax_apw();
     }
 
     inline int lmmax_apw() const
     {
-        return utils::lmmax(parameters_input_.lmax_apw_);
+        return utils::lmmax(this->lmax_apw());
     }
 
     inline int lmax_rho() const
     {
-        return parameters_input_.lmax_rho_;
+        return cfg().parameters().lmax_rho();
     }
 
     inline int lmmax_rho() const
     {
-        return utils::lmmax(parameters_input_.lmax_rho_);
+        return utils::lmmax(lmax_rho());
     }
 
     inline int lmax_pot() const
     {
-        return parameters_input_.lmax_pot_;
+        return cfg().parameters().lmax_pot();
     }
 
     inline int lmmax_pot() const
     {
-        return utils::lmmax(parameters_input_.lmax_pot_);
+        return utils::lmmax(this->lmax_pot());
     }
 
     inline double aw_cutoff() const
     {
-        return parameters_input_.aw_cutoff_;
+        return cfg().parameters().aw_cutoff();
     }
 
     inline double aw_cutoff(double aw_cutoff__)
     {
-        parameters_input_.aw_cutoff_ = aw_cutoff__;
-        return parameters_input_.aw_cutoff_;
+        cfg().parameters().aw_cutoff(aw_cutoff__);
+        return aw_cutoff__;
     }
 
     /// Plane-wave cutoff for G-vectors (in 1/[a.u.]).
     inline double pw_cutoff() const
     {
-        return parameters_input_.pw_cutoff_;
+        return cfg().parameters().pw_cutoff();
     }
 
     /// Set plane-wave cutoff.
     inline double pw_cutoff(double pw_cutoff__)
     {
-        parameters_input_.pw_cutoff_ = pw_cutoff__;
-        return parameters_input_.pw_cutoff_;
+        cfg().parameters().pw_cutoff(pw_cutoff__);
+        return pw_cutoff__;
     }
 
     /// Cutoff for G+k vectors (in 1/[a.u.]).
     inline double gk_cutoff() const
     {
-        return parameters_input_.gk_cutoff_;
+        return cfg().parameters().gk_cutoff();
     }
 
     /// Set the cutoff for G+k vectors.
     inline double gk_cutoff(double gk_cutoff__)
     {
-        parameters_input_.gk_cutoff_ = gk_cutoff__;
-        return parameters_input_.gk_cutoff_;
+        cfg().parameters().gk_cutoff(gk_cutoff__);
+        return gk_cutoff__;
     }
 
     /// Number of dimensions in the magnetization vector.
     inline int num_mag_dims() const
     {
-        assert(parameters_input_.num_mag_dims_ == 0 || parameters_input_.num_mag_dims_ == 1 ||
-               parameters_input_.num_mag_dims_ == 3);
-
-        return parameters_input_.num_mag_dims_;
+        auto nmd = cfg().parameters().num_mag_dims();
+        assert(nmd == 0 || nmd == 1 || nmd == 3);
+        return nmd;
     }
 
     /// Number of spin components.
@@ -342,37 +343,37 @@ class Simulation_parameters
     /// Set the number of first-variational states.
     inline int num_fv_states(int num_fv_states__)
     {
-        parameters_input_.num_fv_states_ = num_fv_states__;
-        return parameters_input_.num_fv_states_;
+        cfg().parameters().num_fv_states(num_fv_states__);
+        return num_fv_states__;
     }
 
     /// Number of first-variational states.
     inline int num_fv_states() const
     {
-        return parameters_input_.num_fv_states_;
+        return cfg().parameters().num_fv_states();
     }
 
     /// Set the number of bands.
     inline int num_bands(int num_bands__)
     {
-        parameters_input_.num_bands_ = num_bands__;
-        return parameters_input_.num_bands_;
+        cfg().parameters().num_bands(num_bands__);
+        return num_bands__;
     }
 
     /// Total number of bands.
     int num_bands() const
     {
-        if (num_fv_states() != -1) {
-            return num_fv_states() * num_spinor_comp();
+        if (this->num_fv_states() != -1) {
+            return this->num_fv_states() * this->num_spinor_comp();
         } else {
-            return parameters_input_.num_bands_;
+            return cfg().parameters().num_bands();
         }
     }
 
     /// Maximum band occupancy.
     inline int max_occupancy() const
     {
-        return (num_mag_dims() == 0) ? 2 : 1;
+        return (this->num_mag_dims() == 0) ? 2 : 1;
     }
 
     /// Minimum occupancy to consider band to be occupied.
@@ -384,29 +385,29 @@ class Simulation_parameters
     /// Set minimum occupancy.
     inline double min_occupancy(double val__)
     {
-        cfg_.settings().min_occupancy(val__);
-        return cfg_.settings().min_occupancy();
+        cfg().settings().min_occupancy(val__);
+        return cfg().settings().min_occupancy();
     }
 
     bool so_correction() const
     {
-        return parameters_input_.so_correction_;
+        return cfg().parameters().so_correction();
     }
 
     bool so_correction(bool so_correction__)
     {
-        parameters_input_.so_correction_ = so_correction__;
-        return parameters_input_.so_correction_;
+        cfg().parameters().so_correction(so_correction__);
+        return so_correction__;
     }
 
     bool hubbard_correction() const
     {
-        return parameters_input_.hubbard_correction_;
+        return cfg().parameters().hubbard_correction();
     }
 
     bool gamma_point() const
     {
-        return parameters_input_.gamma_point_;
+        return cfg().parameters().gamma_point();
     }
 
     device_t processing_unit() const
@@ -416,23 +417,23 @@ class Simulation_parameters
 
     double smearing_width() const
     {
-        return parameters_input_.smearing_width_;
+        return cfg().parameters().smearing_width();
     }
 
     double smearing_width(double smearing_width__)
     {
-        parameters_input_.smearing_width_ = smearing_width__;
-        return parameters_input_.smearing_width_;
+        cfg().parameters().smearing_width(smearing_width__);
+        return smearing_width__;
     }
 
     void set_auto_rmt(int auto_rmt__)
     {
-        parameters_input_.auto_rmt_ = auto_rmt__;
+        cfg().parameters().auto_rmt(auto_rmt__);
     }
 
     int auto_rmt() const
     {
-        return parameters_input_.auto_rmt_;
+        return cfg().parameters().auto_rmt();
     }
 
     bool need_sv() const
@@ -455,9 +456,9 @@ class Simulation_parameters
         return (electronic_structure_method_ == electronic_structure_method_t::full_potential_lapwlo);
     }
 
-    std::vector<std::string> const& xc_functionals() const
+    std::vector<std::string> xc_functionals() const
     {
-        return parameters_input_.xc_functionals_;
+        return cfg().parameters().xc_functionals();
     }
 
     /// Get the name of the standard eigen-value solver to use.
@@ -508,18 +509,18 @@ class Simulation_parameters
 
     bool molecule() const
     {
-        return parameters_input_.molecule_;
+        return cfg().parameters().molecule();
     }
 
     /// Get a `using symmetry` flag.
     bool use_symmetry() const
     {
-        return parameters_input_.use_symmetry_;
+        return cfg().parameters().use_symmetry();
     }
 
     bool use_symmetry(bool use_symmetry__)
     {
-        parameters_input_.use_symmetry_ = use_symmetry__;
+        cfg().parameters().use_symmetry(use_symmetry__);
         return use_symmetry__;
     }
 
@@ -549,11 +550,6 @@ class Simulation_parameters
         return tolerance__;
     }
 
-    Parameters_input const& parameters_input() const
-    {
-        return parameters_input_;
-    }
-
     Hubbard_input const& hubbard_input() const
     {
         return hubbard_input_;
@@ -579,9 +575,9 @@ class Simulation_parameters
 
     inline std::string esm_bc(std::string const& esm_bc__)
     {
-        parameters_input_.esm_bc_ = esm_bc__;
-        parameters_input_.enable_esm_ = true;
-        return parameters_input_.esm_bc_;
+        cfg().parameters().esm_bc(esm_bc__);
+        cfg().parameters().enable_esm(true);
+        return esm_bc__;
     }
 
     /// Print all options in the terminal.

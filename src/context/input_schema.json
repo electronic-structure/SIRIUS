@@ -470,6 +470,170 @@
                     "default" : -1,
                     "title" : "Number of bands.",
                     "description" : "In spin-collinear case this is the number of bands for each spin channel."
+                },
+                "num_fv_states" : {
+                    "type" : "integer",
+                    "default" : -1,
+                    "title" : "Number of first-variational states."
+                },
+                "smearing_width" : {
+                    "type" : "number",
+                    "default" : 0.01,
+                    "title": "Width of the smearing delta-function in the units of [Ha]."
+                },
+                "smearing" : {
+                    "type" : "string",
+                    "default" : "gaussian",
+                    "enum" : ["gaussian", "cold", "fermi_dirac"],
+                    "title" : "Type of occupancy smearing."
+                },
+                "pw_cutoff" : {
+                    "type" : "number",
+                    "default" : 0.0,
+                    "title" : "Cutoff for plane-waves (for density and potential expansion) in the units of [a.u.^-1]"
+                },
+                "aw_cutoff" : {
+                    "type" : "number",
+                    "default" : 0.0,
+                    "title" : "Cutoff for augmented-wave functions.",
+                    "description" : "This value is equal to R_{MT} * |G+k|_{max}"
+                },
+                "gk_cutoff" : {
+                    "type" : "number",
+                    "default" : 0.0,
+                    "title" : "Cutoff for |G+k| plane-waves in the units of [a.u.^-1]."
+                },
+                "lmax_apw" : {
+                    "type" : "integer",
+                    "default" : 8,
+                    "title" : "Maximum l for APW functions."
+                },
+                "lmax_rho" : {
+                    "type" : "integer",
+                    "default" : 8,
+                    "title": "Maximum l for density expansion in real spherical harmonics."
+                },
+                "lmax_pot" : {
+                    "type" : "integer",
+                    "default" : 8,
+                    "title": "Maximum l for potential expansion in real spherical harmonics."
+                },
+                "num_mag_dims" : {
+                    "type" : "integer",
+                    "default" : 0,
+                    "enum" : [0, 1, 3],
+                    "title" : "Number of dimensions of the magnetization and effective magnetic field vector."
+                },
+                "auto_rmt" : {
+                    "type" : "integer",
+                    "default" : 1,
+                    "title" : "A choice of scaleing muffin-tin radii automatically."
+                },
+                "ngridk" : {
+                    "type" : "array",
+                    "items" : {
+                        "type" : "integer"
+                    },
+                    "minItems" : 3,
+                    "maxItems" : 3,
+                    "default" : [1, 1, 1],
+                    "title" : "Regular k-point grid for the SCF ground state."
+                },
+                "shiftk" : {
+                    "type" : "array",
+                    "items" : {
+                        "type" : "integer"
+                    },
+                    "minItems" : 3,
+                    "maxItems" : 3,
+                    "default" : [0, 0, 0],
+                    "title" : "Shift in the k-point grid."
+                },
+                "vk" : {
+                    "type" : "array",
+                    "items" : {
+                        "type" : "array",
+                        "items" : {
+                            "type" : "number"
+                        },
+                        "minItems" : 3,
+                        "maxItems" : 3
+                    },
+                    "default" : [],
+                    "title" : "Specific list of k-point coordinates."
+                },
+                "num_dft_iter" : {
+                    "type" : "integer",
+                    "default" : 100,
+                    "title" : "Number of SCF iterations."
+                },
+                "energy_tol" : {
+                    "type" : "number",
+                    "default" : 1e-6,
+                    "title" : "Tolerance in total energy change (in units of [Ha])."
+                },
+                "density_tol" : {
+                    "type" : "number",
+                    "default" : 1e-6,
+                    "title" : "Tolerance for the density mixing."
+                },
+                "molecule" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : " True if this is a molecule calculation."
+                },
+                "gamma_point" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "True if gamma-point (real) version of the PW code is used."
+                },
+                "so_correction" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "True if spin-orbit correction is applied."
+                },
+                "hubbard_correction" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "True if Hubbard U correction is applied."
+                },
+                "use_symmetry" : {
+                    "type" : "boolean",
+                    "default" : true,
+                    "title" : "True if symmetry is used."
+                },
+                "nn_radius" : {
+                    "type" : "number",
+                    "default" : -1,
+                    "title" : "Radius of atom nearest-neighbour cluster."
+                },
+                "enable_esm" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "Effective screening medium (in conjugation with QE only).",
+                    "$comment" : "subject to removal"
+                },
+                "esm_bc" : {
+                    "type" : "string",
+                    "default" : "pbc",
+                    "title" : "Type of periodic boundary conditions.",
+                    "$comment" : "subject to removal"
+                },
+                "reduce_aux_bf" : {
+                    "type" : "number",
+                    "default" : 0,
+                    "title" : "Reduction of the auxiliary magnetic field at each SCF step."
+                },
+                "extra_charge" : {
+                    "type" : "number",
+                    "default" : 0,
+                    "title" : "Introduce extra charge to the system. Positive charge means extra holes, negative charge - extra electrons."
+                },
+                "xc_dens_tre" : {
+                    "type" : "number",
+                    "default" : -1,
+                    "title": "XC density threshold (debug purposes).",
+                    "$comment" : "subject to removal or moving to `settings` section."
                 }
             }
         }
