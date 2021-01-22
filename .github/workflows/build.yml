@@ -137,6 +137,7 @@ jobs:
 
   trigger_gitlab_pipeline:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' }}
     needs:
     - build_rocm
     - build_cuda_10
