@@ -28,7 +28,7 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, Communicator::world()));
     Simulation_context& ctx = *ctx_ptr;
 
-    auto& inp = ctx.parameters();
+    auto& inp = ctx.cfg().parameters();
     if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
         TERMINATE("this is not a Gamma-point calculation")
     }
@@ -46,7 +46,7 @@ double ground_state(Simulation_context& ctx,
 {
     ctx.print_memory_usage(__FILE__, __LINE__);
 
-    auto& inp = ctx.parameters();
+    auto& inp = ctx.cfg().parameters();
 
     std::string ref_file = args.value<std::string>("test_against", "");
     /* don't write output if we compare against the reference calculation */
