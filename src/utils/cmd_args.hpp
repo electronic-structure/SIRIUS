@@ -173,8 +173,6 @@ class cmd_args
     }
 };
 
-
-
 template <>
 inline std::string cmd_args::value<std::string>(const std::string key__) const
 {

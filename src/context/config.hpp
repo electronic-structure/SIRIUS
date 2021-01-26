@@ -1324,6 +1324,18 @@ class config_t
             }
             dict_["/parameters/xc_dens_tre"_json_pointer] = xc_dens_tre__;
         }
+        /// True if SCF correction to total energy should be computed.
+        inline auto use_scf_correction() const
+        {
+            return dict_["/parameters/use_scf_correction"_json_pointer].get<bool>();
+        }
+        inline void use_scf_correction(bool use_scf_correction__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/parameters/use_scf_correction"_json_pointer] = use_scf_correction__;
+        }
       private:
         nlohmann::json& dict_;
     };

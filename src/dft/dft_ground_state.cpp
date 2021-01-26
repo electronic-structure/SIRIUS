@@ -241,8 +241,10 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         /* transform potential to real space after symmetrization */
         potential_.fft_transform(1);
 
-        double e2 = energy_potential(rho1, potential_);
-        this->scf_energy_ = e2 - e1;
+        if (ctx_.cfg().parameters().use_scf_correction()) {
+            double e2 = energy_potential(rho1, potential_);
+            this->scf_energy_ = e2 - e1;
+        }
 
         /* compute new total energy for a new density */
         double etot = total_energy();

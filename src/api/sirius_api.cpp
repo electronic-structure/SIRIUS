@@ -60,6 +60,8 @@ static inline void sirius_exit(int error_code__, std::string msg__ = "")
     if (!Communicator::is_finalized()) {
         Communicator::world().abort(error_code__);
     }
+    fflush(stdout);
+    std::cout << std::flush;
     std::exit(error_code__);
 }
 
@@ -1325,7 +1327,7 @@ sirius_check_scf_density:
       doc: Error code
 @api end
 */
-void sirius_check_scf_density(void*  const* gs_handler__, int* error_code__)
+void sirius_check_scf_density(void* const* gs_handler__, int* error_code__)
 {
     call_sirius([&]()
     {

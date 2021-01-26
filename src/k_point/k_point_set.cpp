@@ -33,7 +33,8 @@ void K_point_set::sync_band(std::string const& what__)
         TERMINATE("wrong label in K_point_set::sync_band");
     }
 
-    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints());
+    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(), memory_t::host,
+                                  "K_point_set::sync_band.data");
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];

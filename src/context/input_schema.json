@@ -448,7 +448,7 @@
                     "items" : {
                         "type" : "string"
                     },
-                    "default" : [""],
+                    "default" : [],
                     "title" : "List of XC functionals (typically contains exchange term and correlation term).",
                     "description" : "Naming convention of LibXC is used, names should be provided in capital letters.",
                     "example" : ["XC_LDA_X", "XC_LDA_C_PZ"] 
@@ -634,6 +634,11 @@
                     "default" : -1,
                     "title": "XC density threshold (debug purposes).",
                     "$comment" : "subject to removal or moving to `settings` section."
+                },
+                "use_scf_correction" : {
+                    "type" : "boolean",
+                    "default" : true,
+                    "title" : "True if SCF correction to total energy should be computed."
                 }
             }
         }
