@@ -53,11 +53,11 @@ double ground_state(Simulation_context& ctx,
     bool write_state = (ref_file.size() == 0);
 
     std::shared_ptr<K_point_set> kset;
-    if (ctx.parameters().vk().size() == 0) {
-        kset = std::make_shared<K_point_set>(ctx, ctx.parameters().ngridk(), ctx.parameters().shiftk(), ctx.use_symmetry());
+    if (ctx.cfg().parameters().vk().size() == 0) {
+        kset = std::make_shared<K_point_set>(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), ctx.use_symmetry());
     } else {
         // setting
-        kset = std::make_shared<K_point_set>(ctx, ctx.parameters().vk());
+        kset = std::make_shared<K_point_set>(ctx, ctx.cfg().parameters().vk());
     }
     DFT_ground_state dft(*kset);
 
