@@ -134,3 +134,27 @@ jobs:
         run: spack --color always -e ci_run spec -I $SPEC
       - name: Build SIRIUS
         run: spack --color always -e ci_run dev-build --source-path ${GITHUB_WORKSPACE} $SPEC
+
+  trigger_gitlab_pipeline:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' }}
+    needs:
+    - build_rocm
+    - build_cuda_10
+    - build_cuda_11
+    - build_elpa_mpich
+    - build_elpa_openmpi
+    - build_basic_clang
+    steps:
+    - uses: actions/checkout@v1
+    - name: mirror
+      run: |
+          mkdir ~/.ssh
+          echo "${GIT_SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
+          git remote add mirror "${REMOTE}"
+          git push --tags --force --prune mirror 'refs/remotes/origin/*:refs/heads/*'
+      env:
+        REMOTE: git@gitlab.com:cscs-ci/electronic-structure/SIRIUS.git
+        GIT_SSH_PRIVATE_KEY: ${{ secrets.GIT_SSH_KEY }}
