@@ -568,6 +568,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
         //comm.allgather(&vsigma_tmp[0], &vsigma_[0]->f_rg(0), spl_np.global_offset(), spl_np.local_size());
         #pragma omp parallel for
         for (int ir = 0; ir < num_points; ir++) {
+            /* save for future reuse in XC stress calculation */
             vsigma_[0]->f_rg(ir) = vsigma_tmp[ir];
             vsigma.f_rg(ir) = vsigma_tmp[ir];
         }
@@ -620,7 +621,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
     }
 
     /* forward transform vsigma to plane-wave domain */
-    vsigma_[0]->fft_transform(-1);
+    //vsigma_[0]->fft_transform(-1);
 
     if (ctx_.cfg().control().print_checksum()) {
         auto cs = xc_potential_->checksum_rg();
