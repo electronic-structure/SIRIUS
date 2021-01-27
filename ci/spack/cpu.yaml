@@ -1,8 +1,8 @@
 spack:
   specs:
-    - sirius@develop %gcc@:7 +tests +apps build_type=RelWithDebInfo +elpa ^openblas %gcc ^mpich ^spla
-    - sirius@develop %gcc@:7 +tests +apps build_type=RelWithDebInfo +elpa ^openblas %gcc ^openmpi ^spla
-    - sirius@develop %clang@:6 +tests +apps build_type=RelWithDebInfo ^openblas ^mpich ~fortran ^spla
+    - sirius@develop %gcc@:7 +tests +apps build_type=RelWithDebInfo +elpa ^openblas %gcc ^mpich
+    - sirius@develop %gcc@:7 +tests +apps build_type=RelWithDebInfo +elpa ^openblas %gcc ^openmpi
+    - sirius@develop %clang@:6 +tests +apps build_type=RelWithDebInfo ^openblas ^mpich@:3.3 ~fortran
   view: false
 
   packages:
