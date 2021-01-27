@@ -85,9 +85,6 @@ class Simulation_parameters
     /// Type of occupation numbers smearing.
     smearing::smearing_t smearing_{smearing::smearing_t::gaussian};
 
-    /// Basic input parameters of PP-PW and FP-LAPW methods.
-    //Parameters_input parameters_input_;
-
     /// LDA+U input parameters.
     Hubbard_input hubbard_input_;
 

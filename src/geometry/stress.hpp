@@ -450,7 +450,7 @@ class Stress
      *  \f[
      *  \frac{\partial E_{xc}}{\partial \varepsilon_{\mu \nu}} = \delta_{\mu \nu} \int \Big( \epsilon_{xc}({\bf r}) -
      *  v_{xc}({\bf r}) \Big) \rho({\bf r})d{\bf r} - \int \frac{\partial \epsilon_{xc} \big( \rho({\bf r}), \nabla
-     *  \rho({\bf r})\big) }{\nabla_{\beta} \rho({\bf r})} \nabla_{\alpha}\rho({\bf r}) d{\bf r}
+     *  \rho({\bf r})\big) }{\nabla_{\mu} \rho({\bf r})} \nabla_{\nu}\rho({\bf r}) d{\bf r}
      *  \f]
      */
     matrix3d<double> calc_stress_xc();

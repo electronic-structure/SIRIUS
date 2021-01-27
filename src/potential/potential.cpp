@@ -81,9 +81,11 @@ Potential::Potential(Simulation_context& ctx__)
     xc_energy_density_ = std::unique_ptr<pf>(new pf(ctx_, ctx_.lmmax_pot()));
     xc_energy_density_->allocate_mt(false);
 
-    int nsigma = (ctx_.num_spins() == 1) ? 1 : 3;
-    for (int i = 0; i < nsigma ; i++) {
-        vsigma_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
+    if (this->is_gradient_correction()) {
+        int nsigma = (ctx_.num_spins() == 1) ? 1 : 3;
+        for (int i = 0; i < nsigma ; i++) {
+            vsigma_[i] = std::unique_ptr<spf>(new spf(ctx_.spfft(), ctx_.gvec_partition()));
+        }
     }
 
     if (!ctx_.full_potential()) {
