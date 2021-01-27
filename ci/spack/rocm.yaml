@@ -1,6 +1,6 @@
 spack:
   specs:
-    - sirius@develop %gcc@:9 +tests +apps +rocm ^spfft +rocm ^openmpi ^openblas ^spla
+    - sirius@develop %gcc@:9 +tests +apps +rocm ^spfft +rocm ^openmpi ^openblas
   view: false
 
   packages:
