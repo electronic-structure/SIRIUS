@@ -46,7 +46,6 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
     int num_points = ctx_.spfft().local_slice_size();
 
     Smooth_periodic_function<double> rho(ctx_.spfft(), gvp);
-    //Smooth_periodic_function<double> vsigma(ctx_.spfft(), gvp);
 
     /* we can use this comm for parallelization */
     //auto& comm = ctx_.gvec().comm_ortho_fft();
@@ -192,7 +191,7 @@ void Potential::xc_rg_nonmagnetic(Density const& density__)
             } // num_points != 0
         }
         PROFILE_STOP("sirius::Potential::xc_rg_nonmagnetic|libxc");
-        if (is_gga) { /* generic for gga and vdw */
+        if (ixc->is_gga()) { /* generic for gga and vdw */
             #pragma omp parallel for
             for (int ir = 0; ir < num_points; ir++) {
                 /* save for future reuse in XC stress calculation */
@@ -261,39 +260,10 @@ void Potential::xc_rg_magnetic(Density const& density__)
 
     int num_points = ctx_.spfft().local_slice_size();
 
-    Smooth_periodic_function<double> rho_up(ctx_.spfft(), ctx_.gvec_partition());
-    Smooth_periodic_function<double> rho_dn(ctx_.spfft(), ctx_.gvec_partition());
+    auto result = get_rho_up_dn<add_pseudo_core__>(density__, add_delta_rho_xc_, add_delta_mag_xc_);
 
-    PROFILE_START("sirius::Potential::xc_rg_magnetic|up_dn");
-    /* compute "up" and "dn" components and also check for negative values of density */
-    double rhomin{0};
-    #pragma omp parallel for reduction(min:rhomin)
-    for (int ir = 0; ir < num_points; ir++) {
-        vector3d<double> m;
-        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            m[j] = density__.magnetization(j).f_rg(ir) * (1 + add_delta_mag_xc_);
-        }
-
-        double rho = density__.rho().f_rg(ir);
-        if (add_pseudo_core__) {
-            rho += density__.rho_pseudo_core().f_rg(ir);
-        }
-        rho *= (1 + add_delta_rho_xc_);
-        rhomin = std::min(rhomin, rho);
-        auto rud = get_rho_up_dn(ctx_.num_mag_dims(), rho, m);
-
-        rho_up.f_rg(ir) = rud.first;
-        rho_dn.f_rg(ir) = rud.second;
-    }
-    PROFILE_STOP("sirius::Potential::xc_rg_magnetic|up_dn");
-
-    Communicator(ctx_.spfft().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
-    if (rhomin < 0.0 && ctx_.comm().rank() == 0) {
-        std::stringstream s;
-        s << "Interstitial charge density has negative values" << std::endl
-          << "most negatve value : " << rhomin;
-        WARNING(s);
-    }
+    auto& rho_up = *result[0];
+    auto& rho_dn = *result[1];
 
     if (ctx_.cfg().control().print_hash()) {
         auto h1 = rho_up.hash_f_rg();
@@ -412,7 +382,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
             } // num_points != 0
         }
         PROFILE_STOP("sirius::Potential::xc_rg_magnetic|libxc");
-        if (is_gga) {
+        if (ixc->is_gga()) {
             #pragma omp parallel for
             for (int ir = 0; ir < num_points; ir++) {
                 /* save for future reuse in XC stress calculation */
@@ -420,6 +390,7 @@ void Potential::xc_rg_magnetic(Density const& density__)
                 vsigma_[1]->f_rg(ir) += vsigma_ud.f_rg(ir);
                 vsigma_[2]->f_rg(ir) += vsigma_dd.f_rg(ir);
             }
+
             Smooth_periodic_vector_function<double> up_gradrho_vsigma(ctx_.spfft(), ctx_.gvec_partition());
             Smooth_periodic_vector_function<double> dn_gradrho_vsigma(ctx_.spfft(), ctx_.gvec_partition());
             for (int x: {0, 1, 2}) {

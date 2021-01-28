@@ -839,6 +839,54 @@ inline void copy(Density const& src__, Density& dest__)
     copy(src__.occupation_matrix(), dest__.occupation_matrix());
 }
 
+template <bool add_pseudo_core__>
+inline std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2>
+get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double add_delta_mag_xc__ = 0.0)
+{
+    PROFILE("sirius::get_rho_up_dn");
+
+    auto& ctx = const_cast<Simulation_context&>(density__.ctx());
+    int num_points = ctx.spfft().local_slice_size();
+
+    auto rho_up = std::unique_ptr<Smooth_periodic_function<double>>(new 
+            Smooth_periodic_function<double>(ctx.spfft(), ctx.gvec_partition()));
+    auto rho_dn = std::unique_ptr<Smooth_periodic_function<double>>(new 
+            Smooth_periodic_function<double>(ctx.spfft(), ctx.gvec_partition()));
+
+    /* compute "up" and "dn" components and also check for negative values of density */
+    double rhomin{0};
+    #pragma omp parallel for reduction(min:rhomin)
+    for (int ir = 0; ir < num_points; ir++) {
+        vector3d<double> m;
+        for (int j = 0; j < ctx.num_mag_dims(); j++) {
+            m[j] = density__.magnetization(j).f_rg(ir) * (1 + add_delta_mag_xc__);
+        }
+
+        double rho = density__.rho().f_rg(ir);
+        if (add_pseudo_core__) {
+            rho += density__.rho_pseudo_core().f_rg(ir);
+        }
+        rho *= (1 + add_delta_rho_xc__);
+        rhomin = std::min(rhomin, rho);
+        auto rud = get_rho_up_dn(ctx.num_mag_dims(), rho, m);
+
+        rho_up->f_rg(ir) = rud.first;
+        rho_dn->f_rg(ir) = rud.second;
+    }
+
+    Communicator(ctx.spfft().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
+    if (rhomin< 0.0 && ctx.comm().rank() == 0) {
+        std::stringstream s;
+        s << "Interstitial charge density has negative values" << std::endl
+          << "most negatve value : " << rhomin;
+        WARNING(s);
+    }
+    std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2> result;
+    result[0] = std::move(rho_up);
+    result[1] = std::move(rho_dn);
+    return result;
+}
+
 } // namespace sirius
 
 #endif // __DENSITY_HPP__

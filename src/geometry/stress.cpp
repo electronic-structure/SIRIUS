@@ -27,6 +27,7 @@
 #include "stress.hpp"
 #include "non_local_functor.hpp"
 #include "utils/profiler.hpp"
+#include "dft/energy.hpp"
 
 namespace sirius {
 
@@ -259,7 +260,8 @@ matrix3d<double> Stress::calc_stress_xc()
 {
     stress_xc_.zero();
 
-    double e = potential_.energy_exc(density_) - potential_.energy_vxc(density_);
+    double e = sirius::energy_exc(density_, potential_) - sirius::energy_vxc(density_, potential_) -
+        sirius::energy_bxc(density_, potential_);
 
     for (int l = 0; l < 3; l++) {
         stress_xc_(l, l) = e / ctx_.unit_cell().omega();
@@ -267,33 +269,73 @@ matrix3d<double> Stress::calc_stress_xc()
 
     if (potential_.is_gradient_correction()) {
 
-        Smooth_periodic_function<double> rhovc(ctx_.spfft(), ctx_.gvec_partition());
-        rhovc.zero();
-        rhovc.add(density_.rho());
-        rhovc.add(density_.rho_pseudo_core());
-
-        /* transform to PW domain */
-        rhovc.fft_transform(-1);
-
-        /* generate pw coeffs of the gradient */
-        auto grad_rho = gradient(rhovc);
-
-        /* gradient in real space */
-        for (int x : {0, 1, 2}) {
-            grad_rho[x].fft_transform(1);
-        }
-
         matrix3d<double> t;
-        for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
-            for (int mu = 0; mu < 3; mu++) {
-                for (int nu = 0; nu < 3; nu++) {
-                    t(mu, nu) += grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) * potential_.vsigma(0).f_rg(irloc);
+
+        /* factor 2 in the expression for gradient correction comes from the
+           derivative of sigm (which is grad(rho) * grad(rho)) */
+
+        if (ctx_.num_spins() == 1) {
+            Smooth_periodic_function<double> rhovc(ctx_.spfft(), ctx_.gvec_partition());
+            rhovc.zero();
+            rhovc.add(density_.rho());
+            rhovc.add(density_.rho_pseudo_core());
+
+            /* transform to PW domain */
+            rhovc.fft_transform(-1);
+
+            /* generate pw coeffs of the gradient */
+            auto grad_rho = gradient(rhovc);
+
+            /* gradient in real space */
+            for (int x : {0, 1, 2}) {
+                grad_rho[x].fft_transform(1);
+            }
+
+            matrix3d<double> t;
+            for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
+                for (int mu = 0; mu < 3; mu++) {
+                    for (int nu = 0; nu < 3; nu++) {
+                        t(mu, nu) += 2 * grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) *
+                            potential_.vsigma(0).f_rg(irloc);
+                    }
+                }
+            }
+        } else {
+            auto result = get_rho_up_dn<true>(density_);
+            auto& rho_up = *result[0];
+            auto& rho_dn = *result[1];
+
+            /* transform to PW domain */
+            rho_up.fft_transform(-1);
+            rho_dn.fft_transform(-1);
+
+            /* generate pw coeffs of the gradient */
+            auto grad_rho_up = gradient(rho_up);
+            auto grad_rho_dn = gradient(rho_dn);
+
+            /* gradient in real space */
+            for (int x : {0, 1, 2}) {
+                grad_rho_up[x].fft_transform(1);
+                grad_rho_dn[x].fft_transform(1);
+            }
+
+            matrix3d<double> t;
+            for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
+                for (int mu = 0; mu < 3; mu++) {
+                    for (int nu = 0; nu < 3; nu++) {
+                        t(mu, nu) += grad_rho_up[mu].f_rg(irloc) * grad_rho_up[nu].f_rg(irloc) * 2 *
+                                     potential_.vsigma(0).f_rg(irloc) +
+                                    (grad_rho_up[mu].f_rg(irloc) * grad_rho_dn[nu].f_rg(irloc) +
+                                     grad_rho_dn[mu].f_rg(irloc) * grad_rho_up[nu].f_rg(irloc)) *
+                                     potential_.vsigma(1).f_rg(irloc) +
+                                     grad_rho_dn[mu].f_rg(irloc) * grad_rho_dn[nu].f_rg(irloc) * 2 *
+                                     potential_.vsigma(2).f_rg(irloc);
+                    }
                 }
             }
         }
         Communicator(ctx_.spfft().communicator()).allreduce(&t(0, 0), 9);
-        t *= (-2.0 / ctx_.fft_grid().num_points()); // factor 2 comes from the derivative of sigma (which is grad(rho) * grad(rho))
-        // with respect to grad(rho) components
+        t *= (-1.0 / ctx_.fft_grid().num_points()); 
         stress_xc_ += t;
     }
 
@@ -519,6 +561,7 @@ void Stress::print_info() const
         auto stress_har      = stress_har_ * au2kbar;
         auto stress_ewald    = stress_ewald_ * au2kbar;
         auto stress_vloc     = stress_vloc_ * au2kbar;
+        auto stress_xc       = stress_xc_ * au2kbar;
         auto stress_nonloc   = stress_nonloc_ * au2kbar;
         auto stress_us       = stress_us_ * au2kbar;
         auto stress_hubbard  = stress_hubbard_ * au2kbar;
@@ -536,6 +579,9 @@ void Stress::print_info() const
 
         std::printf("== stress_vloc ==\n");
         print_stress(stress_vloc);
+
+        std::printf("== stress_xc ==\n");
+        print_stress(stress_xc);
 
         std::printf("== stress_nonloc ==\n");
         print_stress(stress_nonloc);
