@@ -2,13 +2,9 @@ name: Check formatting of modified files
 
 on:
   push:
-    branches:
-    - master
-    - develop
+    branches: ['master', 'develop', '!trying', '!staging']
   pull_request:
-    branches:
-    - master
-    - develop
+    branches: ['master', 'develop']
 
 jobs:
   check:
