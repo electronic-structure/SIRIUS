@@ -689,7 +689,7 @@ class Potential : public Field4D
 
         /* this is needed later to compute scf correction to forces */
         for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
-            dveff_->f_pw_local(ig) -= effective_potential().f_pw_local(ig);
+            dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig) - dveff_->f_pw_local(ig);
         }
 
         if (ctx_.cfg().control().print_hash()) {
