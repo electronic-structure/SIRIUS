@@ -205,24 +205,49 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
 class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
 {
   private:
+    std::function<void(int, int, double*, double*)> ri_callback_{nullptr};
     void generate();
 
   public:
-    Radial_integrals_rho_pseudo(Unit_cell const& unit_cell__, double qmax__, int np__)
+    Radial_integrals_rho_pseudo(Unit_cell const& unit_cell__, double qmax__, int np__,
+        std::function<void(int, int, double*, double*)> ri_callback__)
         : Radial_integrals_base<1>(unit_cell__, qmax__, np__)
+        , ri_callback_(ri_callback__)
     {
-        values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
-        generate();
+        if (ri_callback__ == nullptr) {
+            values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
+            generate();
 
-        if (unit_cell_.parameters().cfg().control().print_checksum() && unit_cell_.comm().rank() == 0) {
-            double cs{0};
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                for (int iq = 0; iq < grid_q_.num_points(); iq++) {
-                    cs += values_(iat)(iq);
+            if (unit_cell_.parameters().cfg().control().print_checksum() && unit_cell_.comm().rank() == 0) {
+                double cs{0};
+                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                    for (int iq = 0; iq < grid_q_.num_points(); iq++) {
+                        cs += values_(iat)(iq);
+                    }
+                }
+                utils::print_checksum("Radial_integrals_rho_pseudo", cs);
+            }
+        }
+    }
+
+    /// Compute all values of the raial integrals.
+    inline sddk::mdarray<double, 2> values(std::vector<double>& q__) const
+    {
+        int nq = static_cast<int>(q__.size());
+        sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
+        result.zero();
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            if (!unit_cell_.atom_type(iat).local_potential().empty()) {
+                if (ri_callback_) {
+                    ri_callback_(iat + 1, nq, &q__[0], &result(0, iat));
+                } else {
+                    for (int iq = 0; iq < nq; iq++) {
+                        result(iq, iat) = this->value<int>(iat, q__[iq]);
+                    }
                 }
             }
-            utils::print_checksum("Radial_integrals_rho_pseudo", cs);
         }
+        return result;
     }
 };
 

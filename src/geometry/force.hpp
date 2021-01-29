@@ -124,6 +124,8 @@ class Force
         return forces_core_;
     }
 
+    /// Calculate SCF correction to the forces.
+    /** Based on the following paper: PhysRevB.47.4771 */
     sddk::mdarray<double, 2> const& calc_forces_scf_corr();
 
     inline sddk::mdarray<double, 2> const& forces_scf_corr() const

@@ -446,6 +446,10 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
 {
     PROFILE("sirius::Force::calc_forces_scf_corr");
 
+    auto q = ctx_.gvec().shells_len();
+    /* get form-factors for all G shells */
+    auto ff = ctx_.ps_rho_ri().values(q);
+
     forces_scf_corr_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_scf_corr_.zero();
 
@@ -461,9 +465,9 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
 
     double fact = gvec.reduced() ? 2.0 : 1.0;
 
-    int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+    int ig0 = ctx_.gvec().skip_g0();
 
-    auto& ri = ctx_.ps_rho_ri();
+    //auto& ri = ctx_.ps_rho_ri();
 
     #pragma omp parallel for
     for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
@@ -473,12 +477,13 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
 
         for (int igloc = ig0; igloc < gvec_count; igloc++) {
             int ig = gvec_offset + igloc;
+            int igsh = ctx_.gvec().shell(ig);
 
             /* cartesian form for getting cartesian force components */
-            vector3d<double> gvec_cart = gvec.gvec_cart<index_domain_t::local>(igloc);
+            auto gvec_cart = gvec.gvec_cart<index_domain_t::local>(igloc);
 
             /* scalar part of a force without multipying by G-vector */
-            double_complex z = fact * fourpi * ri.value<int>(iat, gvec.gvec_len(ig)) *
+            double_complex z = fact * fourpi * ff(igsh, iat) *
                                std::conj(dveff.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector */
@@ -495,6 +500,10 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
 mdarray<double, 2> const& Force::calc_forces_core()
 {
     PROFILE("sirius::Force::calc_forces_core");
+
+    auto q = ctx_.gvec().shells_len();
+    /* get form-factors for all G shells */
+    auto ff = ctx_.ps_core_ri().values(q);
 
     forces_core_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_core_.zero();
@@ -514,7 +523,7 @@ mdarray<double, 2> const& Force::calc_forces_core()
 
     double fact = gvecs.reduced() ? 2.0 : 1.0;
 
-    auto& ri = ctx_.ps_core_ri();
+    //auto& ri = ctx_.ps_core_ri();
 
     /* here the calculations are in lattice vectors space */
     #pragma omp parallel for
@@ -527,16 +536,17 @@ mdarray<double, 2> const& Force::calc_forces_core()
 
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             int ig = gvec_offset + igloc;
+            auto igsh = ctx_.gvec().shell(ig);
 
             if (ig == 0) {
                 continue;
             }
 
             /* cartesian form for getting cartesian force components */
-            vector3d<double> gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
+            auto gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
 
             /* scalar part of a force without multipying by G-vector */
-            double_complex z = fact * fourpi * ri.value<int>(iat, gvecs.gvec_len(ig)) *
+            double_complex z = fact * fourpi * ff(igsh, iat) *
                                std::conj(xc_pot.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector */
@@ -584,12 +594,16 @@ mdarray<double, 2> const& Force::calc_forces_vloc()
 {
     PROFILE("sirius::Force::calc_forces_vloc");
 
+    auto q = ctx_.gvec().shells_len();
+    /* get form-factors for all G shells */
+    auto ff = ctx_.vloc_ri().values(q);
+
     forces_vloc_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_vloc_.zero();
 
     auto& valence_rho = density_.rho();
 
-    auto& ri = ctx_.vloc_ri();
+    //auto& ri = ctx_.vloc_ri();
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -609,12 +623,13 @@ mdarray<double, 2> const& Force::calc_forces_vloc()
 
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             int ig = gvec_offset + igloc;
+            int igsh = ctx_.gvec().shell(ig);
 
             /* cartesian form for getting cartesian force components */
-            vector3d<double> gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
+            auto gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
 
             /* scalar part of a force without multiplying by G-vector */
-            double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
+            double_complex z = fact * fourpi * ff(igsh, iat) *
                                std::conj(valence_rho.f_pw_local(igloc)) * std::conj(ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector  */

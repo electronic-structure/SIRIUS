@@ -6000,6 +6000,8 @@ void sirius_set_callback_function(void* const* handler__, char const* label__, v
             sim_ctx.rhoc_ri_djl_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
         } else if (label == "band_occ") {
             sim_ctx.band_occ_callback(reinterpret_cast<void(*)(void)>(fptr__));
+        } else if (label == "ps_rho_ri") {
+            sim_ctx.ps_rho_ri_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
         } else {
             std::stringstream s;
             s << "Wrong label of the callback function: " << label;

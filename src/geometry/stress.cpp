@@ -219,7 +219,7 @@ matrix3d<double> Stress::calc_stress_core()
     //auto drhoc = ctx_.make_periodic_function<index_domain_t::local>(
     //    [&ri_dg](int iat, double g) { return ri_dg.value<int>(iat, g); });
     double sdiag{0};
-    int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+    int ig0 = ctx_.gvec().skip_g0();
 
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
         auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
@@ -478,7 +478,7 @@ matrix3d<double> Stress::calc_stress_ewald()
 
     auto& uc = ctx_.unit_cell();
 
-    int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+    int ig0 = ctx_.gvec().skip_g0();
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
         int ig = ctx_.gvec().offset() + igloc;
 
@@ -610,7 +610,7 @@ matrix3d<double> Stress::calc_stress_har()
 
     stress_har_.zero();
 
-    int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+    int ig0 = ctx_.gvec().skip_g0();
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
         auto G    = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
         double g2 = std::pow(G.length(), 2);
@@ -732,7 +732,7 @@ matrix3d<double> Stress::calc_stress_vloc()
 
     double sdiag{0};
 
-    int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+    int ig0 = ctx_.gvec().skip_g0();
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
 
         auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);

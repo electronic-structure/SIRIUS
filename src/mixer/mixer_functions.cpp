@@ -141,7 +141,7 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
 
     auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x, Periodic_function<double> const& y) -> double {
         double result{0};
-        int ig0 = (x.ctx().comm().rank() == 0) ? 1 : 0;
+        int ig0 = x.ctx().gvec().skip_g0();
         if (use_coarse_gvec__) {
             for (int igloc = ig0; igloc < x.ctx().gvec_coarse().count(); igloc++) {
                 /* local index in fine G-vector list */

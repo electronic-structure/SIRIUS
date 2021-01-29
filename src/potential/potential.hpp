@@ -634,6 +634,11 @@ class Potential : public Field4D
     {
         PROFILE("sirius::Potential::generate");
 
+        /* save current effective potential */
+        for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
+            dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig);
+        }
+
         /* zero effective potential and magnetic field */
         zero();
 
@@ -681,6 +686,11 @@ class Potential : public Field4D
          *  2) establish a mapping between fine and coarse FFT grid for the Hloc operator
          *  3) symmetrize effective potential */
         fft_transform(-1);
+
+        /* this is needed later to compute scf correction to forces */
+        for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
+            dveff_->f_pw_local(ig) -= effective_potential().f_pw_local(ig);
+        }
 
         if (ctx_.cfg().control().print_hash()) {
             auto h = effective_potential().hash_f_pw();
