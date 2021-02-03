@@ -634,9 +634,11 @@ class Potential : public Field4D
     {
         PROFILE("sirius::Potential::generate");
 
-        /* save current effective potential */
-        for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
-            dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig);
+        if (!ctx_.full_potential()) {
+            /* save current effective potential */
+            for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
+                dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig);
+            }
         }
 
         /* zero effective potential and magnetic field */
@@ -687,9 +689,11 @@ class Potential : public Field4D
          *  3) symmetrize effective potential */
         fft_transform(-1);
 
-        /* this is needed later to compute scf correction to forces */
-        for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
-            dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig) - dveff_->f_pw_local(ig);
+        if (!ctx_.full_potential()) {
+            /* this is needed later to compute scf correction to forces */
+            for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
+                dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig) - dveff_->f_pw_local(ig);
+            }
         }
 
         if (ctx_.cfg().control().print_hash()) {
