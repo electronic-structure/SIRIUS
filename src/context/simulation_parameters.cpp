@@ -124,7 +124,7 @@ void Simulation_parameters::import(json const& dict__)
     /* read hubbard parameters */
     hubbard_input_.read(dict__);
     /* read nlcg parameters */
-    nlcg_input_.read(dict__);
+    //nlcg_input_.read(dict__);
 }
 
 void Simulation_parameters::import(cmd_args const& args__)

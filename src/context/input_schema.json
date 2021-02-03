@@ -641,6 +641,126 @@
                     "title" : "True if SCF correction to total energy should be computed."
                 }
             }
+        },
+        "nlcg" : {
+            "type" : "object",
+            "title" : "Non-linear conjugate gradient minimisation",
+            "properties": {
+                "maxiter" : {
+                    "type" : "integer",
+                    "default" : 300,
+                    "title" : "Maximum number of CG iterations"
+                },
+                "restart" : {
+                    "type" : "integer",
+                    "default" : 10,
+                    "title" : " CG restart"
+                },
+                "tau" : {
+                    "type" : "number",
+                    "default" : 0.1,
+                    "title" : "Backtracking search, step parameter"
+                },
+                "T" : {
+                    "type" : "number",
+                    "default" : 300,
+                    "title" : "Temperature in Kelvin"
+                },
+                "kappa" : {
+                    "type" : "number",
+                    "default" : 0.3,
+                    "title" : "Scalar preconditioning of pseudo Hamiltonian"
+                },
+                "tol" : {
+                    "type" : "number",
+                    "default" : 1e-9,
+                    "title" : "CG tolerance"
+                }
+            }
+        },
+        "hubbard" : {
+            "type" : "object",
+            "title" : "Hubbard U correction",
+            "properties": {
+                "orthogonalize" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "If true, orthogonalization is applied to Hubbard orbitals."
+                },
+                "normalize" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "If true, normalization is applied to Hubbard orbitals."
+                },
+                "simplified" : {
+                    "type" : "boolean",
+                    "default" : false,
+                    "title" : "If true, simplified version of Hubbard correction is used."
+                },
+                "local" : {
+                    "type" : "array",
+                    "items": {
+                        "type" : "object",
+                        "properties": {
+                            "atom_type" : {
+                                "type" : "string"
+                            },
+                            "n" : {
+                                "type" : "integer"
+                            },
+                            "l" : {
+                                "type" : "integer"
+                            },
+                            "U" : {
+                                "type" : "number"
+                            },
+                            "J" : {
+                                "type" : "number"
+                            },
+                            "coeff" : {
+                                "type" : "array",
+                                "items" : {
+                                    "type" : "number"
+                                },
+                                "minItems" : 6,
+                                "maxItems" : 6
+                            }
+                        }
+                    },
+                    "default" : [],
+                    "title" : "Description of the on-site (local) Hubbard interaction"
+                },
+                "nonlocal" : {
+                    "type" : "array",
+                    "default" : [],
+                    "title" : "Description of the off-site (nonlocal) Hubbard interaction",
+                    "items" : {
+                        "type" : "object",
+                        "properties": {
+                            "atom_pair" : {
+                                "type" : "array",
+                                "items" : {
+                                    "type" : "integer"
+                                },
+                                "minItems" : 2,
+                                "maxItems" : 2
+                            },
+                            "l" : {
+                                "type" : "array",
+                                "items" : {
+                                    "type" : "integer"
+                                },
+                                "minItems" : 2,
+                                "maxItems" : 2 
+                            },
+                            "V" : {
+                                "type" : "number",
+                                "default" : 0
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -20,7 +20,7 @@ class config_t
         /// Type of the mixer.
         inline auto type() const
         {
-            return dict_["/mixer/type"_json_pointer].get<std::string>();
+            return dict_.at("/mixer/type"_json_pointer).get<std::string>();
         }
         inline void type(std::string type__)
         {
@@ -32,7 +32,7 @@ class config_t
         /// Mixing parameter
         inline auto beta() const
         {
-            return dict_["/mixer/beta"_json_pointer].get<double>();
+            return dict_.at("/mixer/beta"_json_pointer).get<double>();
         }
         inline void beta(double beta__)
         {
@@ -44,7 +44,7 @@ class config_t
         /// Mixing ratio in case of initial linear mixing
         inline auto beta0() const
         {
-            return dict_["/mixer/beta0"_json_pointer].get<double>();
+            return dict_.at("/mixer/beta0"_json_pointer).get<double>();
         }
         inline void beta0(double beta0__)
         {
@@ -56,7 +56,7 @@ class config_t
         /// RMS tolerance above which the linear mixing is triggered
         inline auto linear_mix_rms_tol() const
         {
-            return dict_["/mixer/linear_mix_rms_tol"_json_pointer].get<double>();
+            return dict_.at("/mixer/linear_mix_rms_tol"_json_pointer).get<double>();
         }
         inline void linear_mix_rms_tol(double linear_mix_rms_tol__)
         {
@@ -68,7 +68,7 @@ class config_t
         /// Number of history steps for Broyden-type mixers
         inline auto max_history() const
         {
-            return dict_["/mixer/max_history"_json_pointer].get<int>();
+            return dict_.at("/mixer/max_history"_json_pointer).get<int>();
         }
         inline void max_history(int max_history__)
         {
@@ -80,7 +80,7 @@ class config_t
         /// Scaling factor for mixing parameter
         inline auto beta_scaling_factor() const
         {
-            return dict_["/mixer/beta_scaling_factor"_json_pointer].get<double>();
+            return dict_.at("/mixer/beta_scaling_factor"_json_pointer).get<double>();
         }
         inline void beta_scaling_factor(double beta_scaling_factor__)
         {
@@ -92,7 +92,7 @@ class config_t
         /// Use Hartree potential in the inner() product for residuals
         inline auto use_hartree() const
         {
-            return dict_["/mixer/use_hartree"_json_pointer].get<bool>();
+            return dict_.at("/mixer/use_hartree"_json_pointer).get<bool>();
         }
         inline void use_hartree(bool use_hartree__)
         {
@@ -120,7 +120,7 @@ class config_t
         /// Point density (in a.u.^-1) for interpolating radial integrals of the local part of pseudopotential
         inline auto nprii_vloc() const
         {
-            return dict_["/settings/nprii_vloc"_json_pointer].get<int>();
+            return dict_.at("/settings/nprii_vloc"_json_pointer).get<int>();
         }
         inline void nprii_vloc(int nprii_vloc__)
         {
@@ -132,7 +132,7 @@ class config_t
         /// Point density (in a.u.^-1) for interpolating radial integrals of the beta projectors
         inline auto nprii_beta() const
         {
-            return dict_["/settings/nprii_beta"_json_pointer].get<int>();
+            return dict_.at("/settings/nprii_beta"_json_pointer).get<int>();
         }
         inline void nprii_beta(int nprii_beta__)
         {
@@ -144,7 +144,7 @@ class config_t
         /// Point density (in a.u.^-1) for interpolating radial integrals of the augmentation operator
         inline auto nprii_aug() const
         {
-            return dict_["/settings/nprii_aug"_json_pointer].get<int>();
+            return dict_.at("/settings/nprii_aug"_json_pointer).get<int>();
         }
         inline void nprii_aug(int nprii_aug__)
         {
@@ -156,7 +156,7 @@ class config_t
         /// Point density (in a.u.^-1) for interpolating radial integrals of the core charge density
         inline auto nprii_rho_core() const
         {
-            return dict_["/settings/nprii_rho_core"_json_pointer].get<int>();
+            return dict_.at("/settings/nprii_rho_core"_json_pointer).get<int>();
         }
         inline void nprii_rho_core(int nprii_rho_core__)
         {
@@ -168,7 +168,7 @@ class config_t
         /// Update wave-functions in the Davdison solver even if they immediately satisfy the convergence criterion
         inline auto always_update_wf() const
         {
-            return dict_["/settings/always_update_wf"_json_pointer].get<bool>();
+            return dict_.at("/settings/always_update_wf"_json_pointer).get<bool>();
         }
         inline void always_update_wf(bool always_update_wf__)
         {
@@ -183,7 +183,7 @@ class config_t
         */
         inline auto mixer_rms_min() const
         {
-            return dict_["/settings/mixer_rms_min"_json_pointer].get<double>();
+            return dict_.at("/settings/mixer_rms_min"_json_pointer).get<double>();
         }
         inline void mixer_rms_min(double mixer_rms_min__)
         {
@@ -195,7 +195,7 @@ class config_t
         /// Minimum tolerance of the iterative solver.
         inline auto itsol_tol_min() const
         {
-            return dict_["/settings/itsol_tol_min"_json_pointer].get<double>();
+            return dict_.at("/settings/itsol_tol_min"_json_pointer).get<double>();
         }
         inline void itsol_tol_min(double itsol_tol_min__)
         {
@@ -207,7 +207,7 @@ class config_t
         /// Minimum occupancy below which the band is treated as being 'empty'
         inline auto min_occupancy() const
         {
-            return dict_["/settings/min_occupancy"_json_pointer].get<double>();
+            return dict_.at("/settings/min_occupancy"_json_pointer).get<double>();
         }
         inline void min_occupancy(double min_occupancy__)
         {
@@ -228,7 +228,7 @@ class config_t
         */
         inline auto itsol_tol_ratio() const
         {
-            return dict_["/settings/itsol_tol_ratio"_json_pointer].get<double>();
+            return dict_.at("/settings/itsol_tol_ratio"_json_pointer).get<double>();
         }
         inline void itsol_tol_ratio(double itsol_tol_ratio__)
         {
@@ -252,7 +252,7 @@ class config_t
         */
         inline auto itsol_tol_scale() const
         {
-            return dict_["/settings/itsol_tol_scale"_json_pointer].get<std::array<double, 2>>();
+            return dict_.at("/settings/itsol_tol_scale"_json_pointer).get<std::array<double, 2>>();
         }
         inline void itsol_tol_scale(std::array<double, 2> itsol_tol_scale__)
         {
@@ -264,7 +264,7 @@ class config_t
         /// Tolerance to recompute the LAPW linearisation energies.
         inline auto auto_enu_tol() const
         {
-            return dict_["/settings/auto_enu_tol"_json_pointer].get<double>();
+            return dict_.at("/settings/auto_enu_tol"_json_pointer).get<double>();
         }
         inline void auto_enu_tol(double auto_enu_tol__)
         {
@@ -276,7 +276,7 @@ class config_t
         /// Initial dimenstions for the fine-grain FFT grid
         inline auto fft_grid_size() const
         {
-            return dict_["/settings/fft_grid_size"_json_pointer].get<std::array<int, 3>>();
+            return dict_.at("/settings/fft_grid_size"_json_pointer).get<std::array<int, 3>>();
         }
         inline void fft_grid_size(std::array<int, 3> fft_grid_size__)
         {
@@ -288,7 +288,7 @@ class config_t
         /// Default radial grid for LAPW species.
         inline auto radial_grid() const
         {
-            return dict_["/settings/radial_grid"_json_pointer].get<std::string>();
+            return dict_.at("/settings/radial_grid"_json_pointer).get<std::string>();
         }
         inline void radial_grid(std::string radial_grid__)
         {
@@ -303,7 +303,7 @@ class config_t
         */
         inline auto sht_coverage() const
         {
-            return dict_["/settings/sht_coverage"_json_pointer].get<int>();
+            return dict_.at("/settings/sht_coverage"_json_pointer).get<int>();
         }
         inline void sht_coverage(int sht_coverage__)
         {
@@ -328,7 +328,7 @@ class config_t
         /// Three non-collinear vectors of the primitive unit cell.
         inline auto lattice_vectors() const
         {
-            return dict_["/unit_cell/lattice_vectors"_json_pointer].get<std::array<std::array<double, 3>, 3>>();
+            return dict_.at("/unit_cell/lattice_vectors"_json_pointer).get<std::array<std::array<double, 3>, 3>>();
         }
         inline void lattice_vectors(std::array<std::array<double, 3>, 3> lattice_vectors__)
         {
@@ -343,7 +343,7 @@ class config_t
         */
         inline auto lattice_vectors_scale() const
         {
-            return dict_["/unit_cell/lattice_vectors_scale"_json_pointer].get<double>();
+            return dict_.at("/unit_cell/lattice_vectors_scale"_json_pointer).get<double>();
         }
         inline void lattice_vectors_scale(double lattice_vectors_scale__)
         {
@@ -355,7 +355,7 @@ class config_t
         /// Type of atomic coordinates: lattice, atomic units or Angstroms
         inline auto atom_coordinate_units() const
         {
-            return dict_["/unit_cell/atom_coordinate_units"_json_pointer].get<std::string>();
+            return dict_.at("/unit_cell/atom_coordinate_units"_json_pointer).get<std::string>();
         }
         inline void atom_coordinate_units(std::string atom_coordinate_units__)
         {
@@ -366,7 +366,7 @@ class config_t
         }
         inline auto atom_types() const
         {
-            return dict_["/unit_cell/atom_types"_json_pointer].get<std::vector<std::string>>();
+            return dict_.at("/unit_cell/atom_types"_json_pointer).get<std::vector<std::string>>();
         }
         inline void atom_types(std::vector<std::string> atom_types__)
         {
@@ -379,13 +379,13 @@ class config_t
         inline auto atom_files(std::string label__) const
         {
             nlohmann::json::json_pointer p("/unit_cell/atom_files");
-            return dict_[p / label__].get<std::string>();
+            return dict_.at(p / label__).get<std::string>();
         }
         /// Atomic coordinates
         inline auto atoms(std::string label__) const
         {
             nlohmann::json::json_pointer p("/unit_cell/atoms");
-            return dict_[p / label__].get<std::vector<std::vector<double>>>();
+            return dict_.at(p / label__).get<std::vector<std::vector<double>>>();
         }
       private:
         nlohmann::json& dict_;
@@ -403,7 +403,7 @@ class config_t
         /// Type of the iterative solver.
         inline auto type() const
         {
-            return dict_["/iterative_solver/type"_json_pointer].get<std::string>();
+            return dict_.at("/iterative_solver/type"_json_pointer).get<std::string>();
         }
         inline void type(std::string type__)
         {
@@ -415,7 +415,7 @@ class config_t
         /// Number of steps (iterations) of the solver.
         inline auto num_steps() const
         {
-            return dict_["/iterative_solver/num_steps"_json_pointer].get<int>();
+            return dict_.at("/iterative_solver/num_steps"_json_pointer).get<int>();
         }
         inline void num_steps(int num_steps__)
         {
@@ -427,7 +427,7 @@ class config_t
         /// Size of the variational subspace is this number times the number of bands.
         inline auto subspace_size() const
         {
-            return dict_["/iterative_solver/subspace_size"_json_pointer].get<int>();
+            return dict_.at("/iterative_solver/subspace_size"_json_pointer).get<int>();
         }
         inline void subspace_size(int subspace_size__)
         {
@@ -439,7 +439,7 @@ class config_t
         /// Lock eigenvectors of the smallest eigenvalues when they have converged at restart.
         inline auto locking() const
         {
-            return dict_["/iterative_solver/locking"_json_pointer].get<bool>();
+            return dict_.at("/iterative_solver/locking"_json_pointer).get<bool>();
         }
         inline void locking(bool locking__)
         {
@@ -456,7 +456,7 @@ class config_t
         */
         inline auto early_restart() const
         {
-            return dict_["/iterative_solver/early_restart"_json_pointer].get<double>();
+            return dict_.at("/iterative_solver/early_restart"_json_pointer).get<double>();
         }
         inline void early_restart(double early_restart__)
         {
@@ -471,7 +471,7 @@ class config_t
         */
         inline auto energy_tolerance() const
         {
-            return dict_["/iterative_solver/energy_tolerance"_json_pointer].get<double>();
+            return dict_.at("/iterative_solver/energy_tolerance"_json_pointer).get<double>();
         }
         inline void energy_tolerance(double energy_tolerance__)
         {
@@ -483,7 +483,7 @@ class config_t
         /// Tolerance for the residual L2 norm.
         inline auto residual_tolerance() const
         {
-            return dict_["/iterative_solver/residual_tolerance"_json_pointer].get<double>();
+            return dict_.at("/iterative_solver/residual_tolerance"_json_pointer).get<double>();
         }
         inline void residual_tolerance(double residual_tolerance__)
         {
@@ -495,7 +495,7 @@ class config_t
         /// Relative tolerance for the residual L2 norm. (0 means this criterion is effectively not used.
         inline auto relative_tolerance() const
         {
-            return dict_["/iterative_solver/relative_tolerance"_json_pointer].get<double>();
+            return dict_.at("/iterative_solver/relative_tolerance"_json_pointer).get<double>();
         }
         inline void relative_tolerance(double relative_tolerance__)
         {
@@ -510,7 +510,7 @@ class config_t
         */
         inline auto empty_states_tolerance() const
         {
-            return dict_["/iterative_solver/empty_states_tolerance"_json_pointer].get<double>();
+            return dict_.at("/iterative_solver/empty_states_tolerance"_json_pointer).get<double>();
         }
         inline void empty_states_tolerance(double empty_states_tolerance__)
         {
@@ -527,7 +527,7 @@ class config_t
         */
         inline auto converge_by_energy() const
         {
-            return dict_["/iterative_solver/converge_by_energy"_json_pointer].get<int>();
+            return dict_.at("/iterative_solver/converge_by_energy"_json_pointer).get<int>();
         }
         inline void converge_by_energy(int converge_by_energy__)
         {
@@ -539,7 +539,7 @@ class config_t
         /// Minimum number of residuals to continue iterative diagonalization process.
         inline auto min_num_res() const
         {
-            return dict_["/iterative_solver/min_num_res"_json_pointer].get<int>();
+            return dict_.at("/iterative_solver/min_num_res"_json_pointer).get<int>();
         }
         inline void min_num_res(int min_num_res__)
         {
@@ -554,7 +554,7 @@ class config_t
         */
         inline auto num_singular() const
         {
-            return dict_["/iterative_solver/num_singular"_json_pointer].get<int>();
+            return dict_.at("/iterative_solver/num_singular"_json_pointer).get<int>();
         }
         inline void num_singular(int num_singular__)
         {
@@ -566,7 +566,7 @@ class config_t
         /// Initialize eigen-values with previous (old) values.
         inline auto init_eval_old() const
         {
-            return dict_["/iterative_solver/init_eval_old"_json_pointer].get<bool>();
+            return dict_.at("/iterative_solver/init_eval_old"_json_pointer).get<bool>();
         }
         inline void init_eval_old(bool init_eval_old__)
         {
@@ -582,7 +582,7 @@ class config_t
         */
         inline auto init_subspace() const
         {
-            return dict_["/iterative_solver/init_subspace"_json_pointer].get<std::string>();
+            return dict_.at("/iterative_solver/init_subspace"_json_pointer).get<std::string>();
         }
         inline void init_subspace(std::string init_subspace__)
         {
@@ -612,7 +612,7 @@ class config_t
         /// Dimensions of the MPI grid (if used).
         inline auto mpi_grid_dims() const
         {
-            return dict_["/control/mpi_grid_dims"_json_pointer].get<std::vector<int>>();
+            return dict_.at("/control/mpi_grid_dims"_json_pointer).get<std::vector<int>>();
         }
         inline void mpi_grid_dims(std::vector<int> mpi_grid_dims__)
         {
@@ -624,7 +624,7 @@ class config_t
         /// Block size for ScaLAPACK and ELPA.
         inline auto cyclic_block_size() const
         {
-            return dict_["/control/cyclic_block_size"_json_pointer].get<int>();
+            return dict_.at("/control/cyclic_block_size"_json_pointer).get<int>();
         }
         inline void cyclic_block_size(int cyclic_block_size__)
         {
@@ -641,7 +641,7 @@ class config_t
         */
         inline auto reduce_gvec() const
         {
-            return dict_["/control/reduce_gvec"_json_pointer].get<bool>();
+            return dict_.at("/control/reduce_gvec"_json_pointer).get<bool>();
         }
         inline void reduce_gvec(bool reduce_gvec__)
         {
@@ -653,7 +653,7 @@ class config_t
         /// Standard eigen-value solver to use.
         inline auto std_evp_solver_name() const
         {
-            return dict_["/control/std_evp_solver_name"_json_pointer].get<std::string>();
+            return dict_.at("/control/std_evp_solver_name"_json_pointer).get<std::string>();
         }
         inline void std_evp_solver_name(std::string std_evp_solver_name__)
         {
@@ -665,7 +665,7 @@ class config_t
         /// Generalized eigen-value solver to use.
         inline auto gen_evp_solver_name() const
         {
-            return dict_["/control/gen_evp_solver_name"_json_pointer].get<std::string>();
+            return dict_.at("/control/gen_evp_solver_name"_json_pointer).get<std::string>();
         }
         inline void gen_evp_solver_name(std::string gen_evp_solver_name__)
         {
@@ -681,7 +681,7 @@ class config_t
         */
         inline auto fft_mode() const
         {
-            return dict_["/control/fft_mode"_json_pointer].get<std::string>();
+            return dict_.at("/control/fft_mode"_json_pointer).get<std::string>();
         }
         inline void fft_mode(std::string fft_mode__)
         {
@@ -692,7 +692,7 @@ class config_t
         }
         inline auto processing_unit() const
         {
-            return dict_["/control/processing_unit"_json_pointer].get<std::string>();
+            return dict_.at("/control/processing_unit"_json_pointer).get<std::string>();
         }
         inline void processing_unit(std::string processing_unit__)
         {
@@ -704,7 +704,7 @@ class config_t
         /// Maximum allowed muffin-tin radius in case of LAPW.
         inline auto rmt_max() const
         {
-            return dict_["/control/rmt_max"_json_pointer].get<double>();
+            return dict_.at("/control/rmt_max"_json_pointer).get<double>();
         }
         inline void rmt_max(double rmt_max__)
         {
@@ -716,7 +716,7 @@ class config_t
         /// Tolerance of the spglib in finding crystal symmetries
         inline auto spglib_tolerance() const
         {
-            return dict_["/control/spglib_tolerance"_json_pointer].get<double>();
+            return dict_.at("/control/spglib_tolerance"_json_pointer).get<double>();
         }
         inline void spglib_tolerance(double spglib_tolerance__)
         {
@@ -735,7 +735,7 @@ class config_t
         */
         inline auto verbosity() const
         {
-            return dict_["/control/verbosity"_json_pointer].get<int>();
+            return dict_.at("/control/verbosity"_json_pointer).get<int>();
         }
         inline void verbosity(int verbosity__)
         {
@@ -750,7 +750,7 @@ class config_t
         */
         inline auto verification() const
         {
-            return dict_["/control/verification"_json_pointer].get<int>();
+            return dict_.at("/control/verification"_json_pointer).get<int>();
         }
         inline void verification(int verification__)
         {
@@ -761,7 +761,7 @@ class config_t
         }
         inline auto num_bands_to_print() const
         {
-            return dict_["/control/num_bands_to_print"_json_pointer].get<int>();
+            return dict_.at("/control/num_bands_to_print"_json_pointer).get<int>();
         }
         inline void num_bands_to_print(int num_bands_to_print__)
         {
@@ -773,7 +773,7 @@ class config_t
         ///  If true then performance of some compute-intensive kernels will be printed to the standard output.
         inline auto print_performance() const
         {
-            return dict_["/control/print_performance"_json_pointer].get<bool>();
+            return dict_.at("/control/print_performance"_json_pointer).get<bool>();
         }
         inline void print_performance(bool print_performance__)
         {
@@ -785,7 +785,7 @@ class config_t
         /// If true then memory usage will be printed to the standard output.
         inline auto print_memory_usage() const
         {
-            return dict_["/control/print_memory_usage"_json_pointer].get<bool>();
+            return dict_.at("/control/print_memory_usage"_json_pointer).get<bool>();
         }
         inline void print_memory_usage(bool print_memory_usage__)
         {
@@ -797,7 +797,7 @@ class config_t
         /// If true then the checksums of some arrays will be printed (useful during debug).
         inline auto print_checksum() const
         {
-            return dict_["/control/print_checksum"_json_pointer].get<bool>();
+            return dict_.at("/control/print_checksum"_json_pointer).get<bool>();
         }
         inline void print_checksum(bool print_checksum__)
         {
@@ -809,7 +809,7 @@ class config_t
         /// If true then the hash sums of some arrays will be printed.
         inline auto print_hash() const
         {
-            return dict_["/control/print_hash"_json_pointer].get<bool>();
+            return dict_.at("/control/print_hash"_json_pointer).get<bool>();
         }
         inline void print_hash(bool print_hash__)
         {
@@ -821,7 +821,7 @@ class config_t
         /// If true then the stress tensor components are printed at the end of SCF run.
         inline auto print_stress() const
         {
-            return dict_["/control/print_stress"_json_pointer].get<bool>();
+            return dict_.at("/control/print_stress"_json_pointer).get<bool>();
         }
         inline void print_stress(bool print_stress__)
         {
@@ -833,7 +833,7 @@ class config_t
         /// If true then the atomic forces are printed at the end of SCF run.
         inline auto print_forces() const
         {
-            return dict_["/control/print_forces"_json_pointer].get<bool>();
+            return dict_.at("/control/print_forces"_json_pointer).get<bool>();
         }
         inline void print_forces(bool print_forces__)
         {
@@ -845,7 +845,7 @@ class config_t
         /// If true then the timer statistics is printed at the end of SCF run.
         inline auto print_timers() const
         {
-            return dict_["/control/print_timers"_json_pointer].get<bool>();
+            return dict_.at("/control/print_timers"_json_pointer).get<bool>();
         }
         inline void print_timers(bool print_timers__)
         {
@@ -857,7 +857,7 @@ class config_t
         /// If true then the list of nearest neighbours for each atom is printed to the standard output.
         inline auto print_neighbors() const
         {
-            return dict_["/control/print_neighbors"_json_pointer].get<bool>();
+            return dict_.at("/control/print_neighbors"_json_pointer).get<bool>();
         }
         inline void print_neighbors(bool print_neighbors__)
         {
@@ -869,7 +869,7 @@ class config_t
         /// True if second-variational diagonalization is used in LAPW method.
         inline auto use_second_variation() const
         {
-            return dict_["/control/use_second_variation"_json_pointer].get<bool>();
+            return dict_.at("/control/use_second_variation"_json_pointer).get<bool>();
         }
         inline void use_second_variation(bool use_second_variation__)
         {
@@ -881,7 +881,7 @@ class config_t
         /// Control the usage of the GPU memory.
         inline auto memory_usage() const
         {
-            return dict_["/control/memory_usage"_json_pointer].get<std::string>();
+            return dict_.at("/control/memory_usage"_json_pointer).get<std::string>();
         }
         inline void memory_usage(std::string memory_usage__)
         {
@@ -893,7 +893,7 @@ class config_t
         /// Number of atoms in a chunk of beta-projectors.
         inline auto beta_chunk_size() const
         {
-            return dict_["/control/beta_chunk_size"_json_pointer].get<int>();
+            return dict_.at("/control/beta_chunk_size"_json_pointer).get<int>();
         }
         inline void beta_chunk_size(int beta_chunk_size__)
         {
@@ -922,7 +922,7 @@ class config_t
         /// Type of electronic structure method.
         inline auto electronic_structure_method() const
         {
-            return dict_["/parameters/electronic_structure_method"_json_pointer].get<std::string>();
+            return dict_.at("/parameters/electronic_structure_method"_json_pointer).get<std::string>();
         }
         inline void electronic_structure_method(std::string electronic_structure_method__)
         {
@@ -937,7 +937,7 @@ class config_t
         */
         inline auto xc_functionals() const
         {
-            return dict_["/parameters/xc_functionals"_json_pointer].get<std::vector<std::string>>();
+            return dict_.at("/parameters/xc_functionals"_json_pointer).get<std::vector<std::string>>();
         }
         inline void xc_functionals(std::vector<std::string> xc_functionals__)
         {
@@ -949,7 +949,7 @@ class config_t
         /// Type of core-states relativity in full-potential LAPW case.
         inline auto core_relativity() const
         {
-            return dict_["/parameters/core_relativity"_json_pointer].get<std::string>();
+            return dict_.at("/parameters/core_relativity"_json_pointer).get<std::string>();
         }
         inline void core_relativity(std::string core_relativity__)
         {
@@ -961,7 +961,7 @@ class config_t
         /// Type of valence states relativity in full-potential LAPW case.
         inline auto valence_relativity() const
         {
-            return dict_["/parameters/valence_relativity"_json_pointer].get<std::string>();
+            return dict_.at("/parameters/valence_relativity"_json_pointer).get<std::string>();
         }
         inline void valence_relativity(std::string valence_relativity__)
         {
@@ -976,7 +976,7 @@ class config_t
         */
         inline auto num_bands() const
         {
-            return dict_["/parameters/num_bands"_json_pointer].get<int>();
+            return dict_.at("/parameters/num_bands"_json_pointer).get<int>();
         }
         inline void num_bands(int num_bands__)
         {
@@ -988,7 +988,7 @@ class config_t
         /// Number of first-variational states.
         inline auto num_fv_states() const
         {
-            return dict_["/parameters/num_fv_states"_json_pointer].get<int>();
+            return dict_.at("/parameters/num_fv_states"_json_pointer).get<int>();
         }
         inline void num_fv_states(int num_fv_states__)
         {
@@ -1000,7 +1000,7 @@ class config_t
         /// Width of the smearing delta-function in the units of [Ha].
         inline auto smearing_width() const
         {
-            return dict_["/parameters/smearing_width"_json_pointer].get<double>();
+            return dict_.at("/parameters/smearing_width"_json_pointer).get<double>();
         }
         inline void smearing_width(double smearing_width__)
         {
@@ -1012,7 +1012,7 @@ class config_t
         /// Type of occupancy smearing.
         inline auto smearing() const
         {
-            return dict_["/parameters/smearing"_json_pointer].get<std::string>();
+            return dict_.at("/parameters/smearing"_json_pointer).get<std::string>();
         }
         inline void smearing(std::string smearing__)
         {
@@ -1024,7 +1024,7 @@ class config_t
         /// Cutoff for plane-waves (for density and potential expansion) in the units of [a.u.^-1]
         inline auto pw_cutoff() const
         {
-            return dict_["/parameters/pw_cutoff"_json_pointer].get<double>();
+            return dict_.at("/parameters/pw_cutoff"_json_pointer).get<double>();
         }
         inline void pw_cutoff(double pw_cutoff__)
         {
@@ -1039,7 +1039,7 @@ class config_t
         */
         inline auto aw_cutoff() const
         {
-            return dict_["/parameters/aw_cutoff"_json_pointer].get<double>();
+            return dict_.at("/parameters/aw_cutoff"_json_pointer).get<double>();
         }
         inline void aw_cutoff(double aw_cutoff__)
         {
@@ -1051,7 +1051,7 @@ class config_t
         /// Cutoff for |G+k| plane-waves in the units of [a.u.^-1].
         inline auto gk_cutoff() const
         {
-            return dict_["/parameters/gk_cutoff"_json_pointer].get<double>();
+            return dict_.at("/parameters/gk_cutoff"_json_pointer).get<double>();
         }
         inline void gk_cutoff(double gk_cutoff__)
         {
@@ -1063,7 +1063,7 @@ class config_t
         /// Maximum l for APW functions.
         inline auto lmax_apw() const
         {
-            return dict_["/parameters/lmax_apw"_json_pointer].get<int>();
+            return dict_.at("/parameters/lmax_apw"_json_pointer).get<int>();
         }
         inline void lmax_apw(int lmax_apw__)
         {
@@ -1075,7 +1075,7 @@ class config_t
         /// Maximum l for density expansion in real spherical harmonics.
         inline auto lmax_rho() const
         {
-            return dict_["/parameters/lmax_rho"_json_pointer].get<int>();
+            return dict_.at("/parameters/lmax_rho"_json_pointer).get<int>();
         }
         inline void lmax_rho(int lmax_rho__)
         {
@@ -1087,7 +1087,7 @@ class config_t
         /// Maximum l for potential expansion in real spherical harmonics.
         inline auto lmax_pot() const
         {
-            return dict_["/parameters/lmax_pot"_json_pointer].get<int>();
+            return dict_.at("/parameters/lmax_pot"_json_pointer).get<int>();
         }
         inline void lmax_pot(int lmax_pot__)
         {
@@ -1099,7 +1099,7 @@ class config_t
         /// Number of dimensions of the magnetization and effective magnetic field vector.
         inline auto num_mag_dims() const
         {
-            return dict_["/parameters/num_mag_dims"_json_pointer].get<int>();
+            return dict_.at("/parameters/num_mag_dims"_json_pointer).get<int>();
         }
         inline void num_mag_dims(int num_mag_dims__)
         {
@@ -1111,7 +1111,7 @@ class config_t
         /// A choice of scaleing muffin-tin radii automatically.
         inline auto auto_rmt() const
         {
-            return dict_["/parameters/auto_rmt"_json_pointer].get<int>();
+            return dict_.at("/parameters/auto_rmt"_json_pointer).get<int>();
         }
         inline void auto_rmt(int auto_rmt__)
         {
@@ -1123,7 +1123,7 @@ class config_t
         /// Regular k-point grid for the SCF ground state.
         inline auto ngridk() const
         {
-            return dict_["/parameters/ngridk"_json_pointer].get<std::array<int, 3>>();
+            return dict_.at("/parameters/ngridk"_json_pointer).get<std::array<int, 3>>();
         }
         inline void ngridk(std::array<int, 3> ngridk__)
         {
@@ -1135,7 +1135,7 @@ class config_t
         /// Shift in the k-point grid.
         inline auto shiftk() const
         {
-            return dict_["/parameters/shiftk"_json_pointer].get<std::array<int, 3>>();
+            return dict_.at("/parameters/shiftk"_json_pointer).get<std::array<int, 3>>();
         }
         inline void shiftk(std::array<int, 3> shiftk__)
         {
@@ -1147,7 +1147,7 @@ class config_t
         /// Specific list of k-point coordinates.
         inline auto vk() const
         {
-            return dict_["/parameters/vk"_json_pointer].get<std::vector<std::array<double, 3>>>();
+            return dict_.at("/parameters/vk"_json_pointer).get<std::vector<std::array<double, 3>>>();
         }
         inline void vk(std::vector<std::array<double, 3>> vk__)
         {
@@ -1159,7 +1159,7 @@ class config_t
         /// Number of SCF iterations.
         inline auto num_dft_iter() const
         {
-            return dict_["/parameters/num_dft_iter"_json_pointer].get<int>();
+            return dict_.at("/parameters/num_dft_iter"_json_pointer).get<int>();
         }
         inline void num_dft_iter(int num_dft_iter__)
         {
@@ -1171,7 +1171,7 @@ class config_t
         /// Tolerance in total energy change (in units of [Ha]).
         inline auto energy_tol() const
         {
-            return dict_["/parameters/energy_tol"_json_pointer].get<double>();
+            return dict_.at("/parameters/energy_tol"_json_pointer).get<double>();
         }
         inline void energy_tol(double energy_tol__)
         {
@@ -1183,7 +1183,7 @@ class config_t
         /// Tolerance for the density mixing.
         inline auto density_tol() const
         {
-            return dict_["/parameters/density_tol"_json_pointer].get<double>();
+            return dict_.at("/parameters/density_tol"_json_pointer).get<double>();
         }
         inline void density_tol(double density_tol__)
         {
@@ -1195,7 +1195,7 @@ class config_t
         ///  True if this is a molecule calculation.
         inline auto molecule() const
         {
-            return dict_["/parameters/molecule"_json_pointer].get<bool>();
+            return dict_.at("/parameters/molecule"_json_pointer).get<bool>();
         }
         inline void molecule(bool molecule__)
         {
@@ -1207,7 +1207,7 @@ class config_t
         /// True if gamma-point (real) version of the PW code is used.
         inline auto gamma_point() const
         {
-            return dict_["/parameters/gamma_point"_json_pointer].get<bool>();
+            return dict_.at("/parameters/gamma_point"_json_pointer).get<bool>();
         }
         inline void gamma_point(bool gamma_point__)
         {
@@ -1219,7 +1219,7 @@ class config_t
         /// True if spin-orbit correction is applied.
         inline auto so_correction() const
         {
-            return dict_["/parameters/so_correction"_json_pointer].get<bool>();
+            return dict_.at("/parameters/so_correction"_json_pointer).get<bool>();
         }
         inline void so_correction(bool so_correction__)
         {
@@ -1231,7 +1231,7 @@ class config_t
         /// True if Hubbard U correction is applied.
         inline auto hubbard_correction() const
         {
-            return dict_["/parameters/hubbard_correction"_json_pointer].get<bool>();
+            return dict_.at("/parameters/hubbard_correction"_json_pointer).get<bool>();
         }
         inline void hubbard_correction(bool hubbard_correction__)
         {
@@ -1243,7 +1243,7 @@ class config_t
         /// True if symmetry is used.
         inline auto use_symmetry() const
         {
-            return dict_["/parameters/use_symmetry"_json_pointer].get<bool>();
+            return dict_.at("/parameters/use_symmetry"_json_pointer).get<bool>();
         }
         inline void use_symmetry(bool use_symmetry__)
         {
@@ -1255,7 +1255,7 @@ class config_t
         /// Radius of atom nearest-neighbour cluster.
         inline auto nn_radius() const
         {
-            return dict_["/parameters/nn_radius"_json_pointer].get<double>();
+            return dict_.at("/parameters/nn_radius"_json_pointer).get<double>();
         }
         inline void nn_radius(double nn_radius__)
         {
@@ -1267,7 +1267,7 @@ class config_t
         /// Effective screening medium (in conjugation with QE only).
         inline auto enable_esm() const
         {
-            return dict_["/parameters/enable_esm"_json_pointer].get<bool>();
+            return dict_.at("/parameters/enable_esm"_json_pointer).get<bool>();
         }
         inline void enable_esm(bool enable_esm__)
         {
@@ -1279,7 +1279,7 @@ class config_t
         /// Type of periodic boundary conditions.
         inline auto esm_bc() const
         {
-            return dict_["/parameters/esm_bc"_json_pointer].get<std::string>();
+            return dict_.at("/parameters/esm_bc"_json_pointer).get<std::string>();
         }
         inline void esm_bc(std::string esm_bc__)
         {
@@ -1291,7 +1291,7 @@ class config_t
         /// Reduction of the auxiliary magnetic field at each SCF step.
         inline auto reduce_aux_bf() const
         {
-            return dict_["/parameters/reduce_aux_bf"_json_pointer].get<double>();
+            return dict_.at("/parameters/reduce_aux_bf"_json_pointer).get<double>();
         }
         inline void reduce_aux_bf(double reduce_aux_bf__)
         {
@@ -1303,7 +1303,7 @@ class config_t
         /// Introduce extra charge to the system. Positive charge means extra holes, negative charge - extra electrons.
         inline auto extra_charge() const
         {
-            return dict_["/parameters/extra_charge"_json_pointer].get<double>();
+            return dict_.at("/parameters/extra_charge"_json_pointer).get<double>();
         }
         inline void extra_charge(double extra_charge__)
         {
@@ -1315,7 +1315,7 @@ class config_t
         /// XC density threshold (debug purposes).
         inline auto xc_dens_tre() const
         {
-            return dict_["/parameters/xc_dens_tre"_json_pointer].get<double>();
+            return dict_.at("/parameters/xc_dens_tre"_json_pointer).get<double>();
         }
         inline void xc_dens_tre(double xc_dens_tre__)
         {
@@ -1327,7 +1327,7 @@ class config_t
         /// True if SCF correction to total energy should be computed.
         inline auto use_scf_correction() const
         {
-            return dict_["/parameters/use_scf_correction"_json_pointer].get<bool>();
+            return dict_.at("/parameters/use_scf_correction"_json_pointer).get<bool>();
         }
         inline void use_scf_correction(bool use_scf_correction__)
         {
@@ -1341,6 +1341,262 @@ class config_t
     };
     inline auto const& parameters() const {return parameters_;}
     inline auto& parameters() {return parameters_;}
+    /// Non-linear conjugate gradient minimisation
+    class nlcg_t
+    {
+      public:
+        nlcg_t(nlohmann::json& dict__)
+            : dict_(dict__)
+        {
+        }
+        /// Maximum number of CG iterations
+        inline auto maxiter() const
+        {
+            return dict_.at("/nlcg/maxiter"_json_pointer).get<int>();
+        }
+        inline void maxiter(int maxiter__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/nlcg/maxiter"_json_pointer] = maxiter__;
+        }
+        ///  CG restart
+        inline auto restart() const
+        {
+            return dict_.at("/nlcg/restart"_json_pointer).get<int>();
+        }
+        inline void restart(int restart__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/nlcg/restart"_json_pointer] = restart__;
+        }
+        /// Backtracking search, step parameter
+        inline auto tau() const
+        {
+            return dict_.at("/nlcg/tau"_json_pointer).get<double>();
+        }
+        inline void tau(double tau__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/nlcg/tau"_json_pointer] = tau__;
+        }
+        /// Temperature in Kelvin
+        inline auto T() const
+        {
+            return dict_.at("/nlcg/T"_json_pointer).get<double>();
+        }
+        inline void T(double T__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/nlcg/T"_json_pointer] = T__;
+        }
+        /// Scalar preconditioning of pseudo Hamiltonian
+        inline auto kappa() const
+        {
+            return dict_.at("/nlcg/kappa"_json_pointer).get<double>();
+        }
+        inline void kappa(double kappa__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/nlcg/kappa"_json_pointer] = kappa__;
+        }
+        /// CG tolerance
+        inline auto tol() const
+        {
+            return dict_.at("/nlcg/tol"_json_pointer).get<double>();
+        }
+        inline void tol(double tol__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/nlcg/tol"_json_pointer] = tol__;
+        }
+      private:
+        nlohmann::json& dict_;
+    };
+    inline auto const& nlcg() const {return nlcg_;}
+    inline auto& nlcg() {return nlcg_;}
+    /// Hubbard U correction
+    class hubbard_t
+    {
+      public:
+        hubbard_t(nlohmann::json& dict__)
+            : dict_(dict__)
+        {
+        }
+        /// If true, orthogonalization is applied to Hubbard orbitals.
+        inline auto orthogonalize() const
+        {
+            return dict_.at("/hubbard/orthogonalize"_json_pointer).get<bool>();
+        }
+        inline void orthogonalize(bool orthogonalize__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/hubbard/orthogonalize"_json_pointer] = orthogonalize__;
+        }
+        /// If true, normalization is applied to Hubbard orbitals.
+        inline auto normalize() const
+        {
+            return dict_.at("/hubbard/normalize"_json_pointer).get<bool>();
+        }
+        inline void normalize(bool normalize__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/hubbard/normalize"_json_pointer] = normalize__;
+        }
+        /// If true, simplified version of Hubbard correction is used.
+        inline auto simplified() const
+        {
+            return dict_.at("/hubbard/simplified"_json_pointer).get<bool>();
+        }
+        inline void simplified(bool simplified__)
+        {
+            if (dict_.contains("locked")) {
+                throw std::runtime_error(locked_msg);
+            }
+            dict_["/hubbard/simplified"_json_pointer] = simplified__;
+        }
+        /// Description of the on-site (local) Hubbard interaction
+        class local_t
+        {
+          private:
+            nlohmann::json& dict_;
+          public:
+            local_t(nlohmann::json& dict__)
+                : dict_(dict__)
+            {
+            }
+            auto atom_type() const
+            {
+                return dict_.at("atom_type").get<std::string>();
+            }
+            auto n() const
+            {
+                return dict_.at("n").get<int>();
+            }
+            auto l() const
+            {
+                return dict_.at("l").get<int>();
+            }
+            auto U() const
+            {
+                return dict_.at("U").get<double>();
+            }
+            auto J() const
+            {
+                return dict_.at("J").get<double>();
+            }
+            auto coeff() const
+            {
+                return dict_.at("coeff").get<std::array<double, 6>>();
+            }
+            bool contains(std::string key__) const
+            {
+                return dict_.contains(key__);
+            }
+        };
+        class local_list_t
+        {
+          private:
+            nlohmann::json& dict_;
+          public:
+            local_list_t(nlohmann::json& dict__)
+                : dict_(dict__)
+            {
+            }
+            int size() const
+            {
+                return dict_.size();
+            }
+            void append(nlohmann::json& node__)
+            {
+                dict_.push_back(node__);
+            }
+        };
+        local_t local(int idx__)
+        {
+            nlohmann::json::json_pointer ptr("/hubbard/local");
+            return local_t(dict_.at(ptr / idx__));
+        }
+        local_list_t local()
+        {
+            nlohmann::json::json_pointer ptr("/hubbard/local");
+            return local_list_t(dict_.at(ptr));
+        }
+        /// Description of the off-site (nonlocal) Hubbard interaction
+        class nonlocal_t
+        {
+          private:
+            nlohmann::json& dict_;
+          public:
+            nonlocal_t(nlohmann::json& dict__)
+                : dict_(dict__)
+            {
+            }
+            auto atom_pair() const
+            {
+                return dict_.at("atom_pair").get<std::array<int, 2>>();
+            }
+            auto l() const
+            {
+                return dict_.at("l").get<std::array<int, 2>>();
+            }
+            auto V() const
+            {
+                return dict_.at("V").get<double>();
+            }
+            bool contains(std::string key__) const
+            {
+                return dict_.contains(key__);
+            }
+        };
+        class nonlocal_list_t
+        {
+          private:
+            nlohmann::json& dict_;
+          public:
+            nonlocal_list_t(nlohmann::json& dict__)
+                : dict_(dict__)
+            {
+            }
+            int size() const
+            {
+                return dict_.size();
+            }
+            void append(nlohmann::json& node__)
+            {
+                dict_.push_back(node__);
+            }
+        };
+        nonlocal_t nonlocal(int idx__)
+        {
+            nlohmann::json::json_pointer ptr("/hubbard/nonlocal");
+            return nonlocal_t(dict_.at(ptr / idx__));
+        }
+        nonlocal_list_t nonlocal()
+        {
+            nlohmann::json::json_pointer ptr("/hubbard/nonlocal");
+            return nonlocal_list_t(dict_.at(ptr));
+        }
+      private:
+        nlohmann::json& dict_;
+    };
+    inline auto const& hubbard() const {return hubbard_;}
+    inline auto& hubbard() {return hubbard_;}
   private:
     mixer_t mixer_{dict_};
     settings_t settings_{dict_};
@@ -1348,6 +1604,8 @@ class config_t
     iterative_solver_t iterative_solver_{dict_};
     control_t control_{dict_};
     parameters_t parameters_{dict_};
+    nlcg_t nlcg_{dict_};
+    hubbard_t hubbard_{dict_};
   protected:
     nlohmann::json dict_;
 };

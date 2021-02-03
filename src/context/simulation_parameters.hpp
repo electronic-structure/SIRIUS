@@ -92,7 +92,7 @@ class Simulation_parameters
     Hubbard_input hubbard_input_;
 
     /// NLCG input parameters
-    NLCG_input nlcg_input_;
+    //NLCG_input nlcg_input_;
 
     /// json dictionary containing all runtime options set up through the interface
     json runtime_options_dictionary_;
@@ -555,10 +555,10 @@ class Simulation_parameters
         return hubbard_input_;
     }
 
-    NLCG_input const& nlcg_input() const
-    {
-        return nlcg_input_;
-    }
+    //NLCG_input const& nlcg_input() const
+    //{
+    //    return nlcg_input_;
+    //}
 
     /// Get the options set at runtime.
     json& get_runtime_options_dictionary()
