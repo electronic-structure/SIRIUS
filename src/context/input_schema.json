@@ -484,7 +484,7 @@
                 "smearing" : {
                     "type" : "string",
                     "default" : "gaussian",
-                    "enum" : ["gaussian", "cold", "fermi_dirac"],
+                    "enum" : ["gaussian", "cold", "fermi_dirac", "gaussian_spline"],
                     "title" : "Type of occupancy smearing."
                 },
                 "pw_cutoff" : {

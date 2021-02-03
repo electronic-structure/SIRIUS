@@ -73,41 +73,42 @@ double ground_state(Simulation_context& ctx,
     /* launch the calculation */
     auto result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
 
-    auto nlcg_params  = ctx.nlcg_input();
-    double temp       = nlcg_params.T_;
-    double tol        = nlcg_params.tol_;
-    double kappa      = nlcg_params.kappa_;
-    double tau        = nlcg_params.tau_;
-    int maxiter       = nlcg_params.maxiter_;
-    int restart       = nlcg_params.restart_;
-    std::string smear = nlcg_params.smearing_;
-    std::string pu = nlcg_params.processing_unit_;
+    auto& nlcg_params  = ctx.cfg().nlcg();
+    double temp       = nlcg_params.T();
+    double tol        = nlcg_params.tol();
+    double kappa      = nlcg_params.kappa();
+    double tau        = nlcg_params.tau();
+    int maxiter       = nlcg_params.maxiter();
+    int restart       = nlcg_params.restart();
+
+    std::string smear = ctx.cfg().parameters().smearing();
+    auto pu = ctx.processing_unit();
     Energy energy(*kset, density, potential);
 
     nlcglib::smearing_type smearing;
-    if (smear.compare("FD") == 0) {
+    if (smear.compare("fermi_dirac") == 0) {
         smearing = nlcglib::smearing_type::FERMI_DIRAC;
-    } else if (smear.compare("GS") == 0) {
+    } else if (smear.compare("gaussian_spline") == 0) {
         smearing = nlcglib::smearing_type::GAUSSIAN_SPLINE;
     } else {
         throw std::runtime_error("invalid smearing type given");
     }
 
     if(is_device_memory(ctx.preferred_memory_t())) {
-        if(pu.empty() || pu.compare("gpu") == 0) {
+        if(pu == device_t::GPU) {
             std::cout << "nlcg executing on gpu-gpu" << "\n";
             nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else if (pu.compare("cpu") == 0){
+        } else if (pu == device_t::CPU){
             std::cout << "nlcg executing on gpu-cpu" << "\n";
             nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
         } else {
             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
         }
     } else {
-         if (pu.empty() || pu.compare("cpu") == 0){
+         if (pu == device_t::CPU) {
             std::cout << "nlcg executing on cpu-cpu" << "\n";
             nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-         } else if (pu.compare("gpu") == 0) {
+         } else if (pu == device_t::GPU) {
              std::cout << "nlcg executing on cpu-gpu"
                        << "\n";
              nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
