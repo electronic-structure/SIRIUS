@@ -360,7 +360,7 @@
                     "type" : "integer",
                     "default" : 0,
                     "title" : "Level of verbosity.",
-                    "description" : "The following convention in proposed:\n  -0: silent mode (no output is printed)\n  - 1: basic output (low level of output)\n  - 2: extended output (medium level of output)\n  - 3: extensive output (high level of output)"
+                    "description" : "The following convention in proposed:\n  - 0: silent mode (no output is printed)\n  - 1: basic output (low level of output)\n  - 2: extended output (medium level of output)\n  - 3: extensive output (high level of output)"
                 },
                 "verification" : {
                     "type" : "integer",
