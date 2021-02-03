@@ -94,27 +94,32 @@ double ground_state(Simulation_context& ctx,
         throw std::runtime_error("invalid smearing type given");
     }
 
-    if(is_device_memory(ctx.preferred_memory_t())) {
-        if(pu == device_t::GPU) {
-            std::cout << "nlcg executing on gpu-gpu" << "\n";
-            nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else if (pu == device_t::CPU){
-            std::cout << "nlcg executing on gpu-cpu" << "\n";
-            nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else {
-            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+    if (is_device_memory(ctx.preferred_memory_t())) {
+        switch (pu) {
+            case device_t::GPU: {
+                std::cout << "nlcg executing on gpu-gpu" << "\n";
+                nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                break;
+            }
+            case device_t::CPU: {
+                std::cout << "nlcg executing on gpu-cpu" << "\n";
+                nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                break;
+            }
         }
     } else {
-         if (pu == device_t::CPU) {
-            std::cout << "nlcg executing on cpu-cpu" << "\n";
-            nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-         } else if (pu == device_t::GPU) {
-             std::cout << "nlcg executing on cpu-gpu"
-                       << "\n";
-             nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-         } else {
-             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
-         }
+        switch (pu) {
+            case device_t::CPU: {
+                std::cout << "nlcg executing on cpu-cpu" << "\n";
+                nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                break;
+            }
+            case device_t::GPU: {
+                std::cout << "nlcg executing on cpu-gpu" << "\n";
+                nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                break;
+            }
+        }
     }
 
     if (ctx.cfg().control().verification() >= 1) {
