@@ -32,11 +32,12 @@
 #include "SDDK/dmatrix.hpp"
 #include "utils/profiler.hpp"
 #include "linalg/linalg.hpp"
+#include "utils/cmd_args.hpp"
 
 namespace sirius {
 
 template <typename F>
-int call_test(std::string label__, F&& f__)
+inline int call_test(std::string label__, F&& f__)
 {
     int err{0};
     std::string msg;
@@ -61,6 +62,19 @@ int call_test(std::string label__, F&& f__)
         std::cout << label__ << " : OK" << std::endl;
     }
     return err;
+}
+
+template <typename F>
+inline int call_test(std::string label__, F&& f__, cmd_args const& args__)
+{
+    printf("running %-30s : ", label__.c_str());
+    int result = f__(args__);
+    if (result) {
+        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+    } else {
+        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+    }
+    return result;
 }
 
 class Measurement: public std::vector<double>
