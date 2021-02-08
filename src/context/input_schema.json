@@ -724,6 +724,16 @@
                                 },
                                 "minItems" : 6,
                                 "maxItems" : 6
+                            },
+                            "initial_occupancy" : {
+                                "type" : "array",
+                                "items" : {
+                                    "type" : "number"
+                                }
+                            },
+                            "total_initial_occupancy" : {
+                                "type" : "number",
+                                "default" : 0
                             }
                         }
                     },

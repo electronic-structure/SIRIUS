@@ -728,7 +728,7 @@ class config_t
         /// Level of verbosity.
         /**
             The following convention in proposed:
-              -0: silent mode (no output is printed)
+              - 0: silent mode (no output is printed)
               - 1: basic output (low level of output)
               - 2: extended output (medium level of output)
               - 3: extensive output (high level of output)
@@ -1503,6 +1503,14 @@ class config_t
             auto coeff() const
             {
                 return dict_.at("coeff").get<std::array<double, 6>>();
+            }
+            auto initial_occupancy() const
+            {
+                return dict_.at("initial_occupancy").get<std::vector<double>>();
+            }
+            auto total_initial_occupancy() const
+            {
+                return dict_.at("total_initial_occupancy").get<double>();
             }
             bool contains(std::string key__) const
             {
