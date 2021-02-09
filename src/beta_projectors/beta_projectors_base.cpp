@@ -41,7 +41,7 @@ void Beta_projectors_base::split_in_chunks()
     }
 
     /* initial chunk size */
-    int chunk_size = std::min(uc.num_atoms(), ctx_.control().beta_chunk_size_);
+    int chunk_size = std::min(uc.num_atoms(), ctx_.cfg().control().beta_chunk_size());
     /* maximum number of chunks */
     int num_chunks = uc.num_atoms() / chunk_size + std::min(1, uc.num_atoms() % chunk_size);
     /* final maximum chunk size */

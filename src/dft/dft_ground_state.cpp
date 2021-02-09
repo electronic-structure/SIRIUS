@@ -88,21 +88,8 @@ double DFT_ground_state::total_energy() const
 
 json DFT_ground_state::serialize()
 {
-    json dict;
+    nlohmann::json dict;
 
-    dict["mpi_grid"] = ctx_.mpi_grid_dims();
-
-    std::vector<int> fftgrid = {ctx_.spfft().dim_x(),ctx_.spfft().dim_y(), ctx_.spfft().dim_z()};
-    dict["fft_grid"] = fftgrid;
-    fftgrid = {ctx_.spfft_coarse().dim_x(),ctx_.spfft_coarse().dim_y(), ctx_.spfft_coarse().dim_z()};
-    dict["fft_coarse_grid"]         = fftgrid;
-    dict["num_fv_states"]           = ctx_.num_fv_states();
-    dict["num_bands"]               = ctx_.num_bands();
-    dict["aw_cutoff"]               = ctx_.aw_cutoff();
-    dict["pw_cutoff"]               = ctx_.pw_cutoff();
-    dict["omega"]                   = ctx_.unit_cell().omega();
-    dict["chemical_formula"]        = ctx_.unit_cell().chemical_formula();
-    dict["num_atoms"]               = ctx_.unit_cell().num_atoms();
     dict["energy"]                  = json::object();
     dict["energy"]["total"]         = total_energy();
     dict["energy"]["enuc"]          = energy_enuc(ctx_, potential_);
@@ -147,7 +134,7 @@ json DFT_ground_state::check_scf_density()
     /* create new Hamiltonian */
     Hamiltonian0 H0(pot);
     /* set the high tolerance */
-    ctx_.iterative_solver_tolerance(ctx_.settings().itsol_tol_min_);
+    ctx_.iterative_solver_tolerance(ctx_.cfg().settings().itsol_tol_min());
     /* initialize the subspace */
     Band(ctx_).initialize_subspace(kset_, H0);
     /* find new wave-functions */
@@ -190,7 +177,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
 
     double eold{0}, rms{0};
 
-    density_.mixer_init(ctx_.mixer_input());
+    density_.mixer_init(ctx_.cfg().mixer());
 
     int num_iter{-1};
     std::vector<double> rms_hist;
@@ -203,7 +190,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
 
-        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+        if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
             std::printf("\n");
             std::printf("+------------------------------+\n");
             std::printf("| SCF iteration %3i out of %3i |\n", iter, num_dft_iter);
@@ -227,11 +214,11 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         double old_tol = ctx_.iterative_solver_tolerance();
         /* estimate new tolerance of the iterative solver */
         double tol = rms;
-        if (ctx_.mixer_input().use_hartree_) {
+        if (ctx_.cfg().mixer().use_hartree()) {
             tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
         }
-        tol = std::min(ctx_.settings().itsol_tol_scale_[0] * tol, ctx_.settings().itsol_tol_scale_[1] * old_tol);
-        tol = std::max(ctx_.settings().itsol_tol_min_, tol);
+        tol = std::min(ctx_.cfg().settings().itsol_tol_scale()[0] * tol, ctx_.cfg().settings().itsol_tol_scale()[1] * old_tol);
+        tol = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
         /* set new tolerance of iterative solver */
         ctx_.iterative_solver_tolerance(tol);
 
@@ -241,7 +228,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         /* compute new potential */
         potential_.generate(density_);
 
-        if (!ctx_.full_potential() && ctx_.control().verification_ >= 2) {
+        if (!ctx_.full_potential() && ctx_.cfg().control().verification() >= 2) {
             ctx_.message(1, __function_name__, "%s", "checking functional derivative of Exc\n");
             sirius::check_xc_potential(density_);
         }
@@ -254,8 +241,10 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
         /* transform potential to real space after symmetrization */
         potential_.fft_transform(1);
 
-        double e2 = energy_potential(rho1, potential_);
-        this->scf_energy_ = e2 - e1;
+        if (ctx_.cfg().parameters().use_scf_correction()) {
+            double e2 = energy_potential(rho1, potential_);
+            this->scf_energy_ = e2 - e1;
+        }
 
         /* compute new total energy for a new density */
         double etot = total_energy();
@@ -347,18 +336,7 @@ void DFT_ground_state::print_info()
     auto it_mag     = std::get<1>(result_mag);
     auto mt_mag     = std::get<2>(result_mag);
 
-    //double total_mag[3];
-    //std::vector<double> mt_mag[3];
-    //double it_mag[3];
-    //for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-    //    auto result = density_.magnetization(j).integrate();
-
-    //    total_mag[j] = std::get<0>(result);
-    //    it_mag[j]    = std::get<1>(result);
-    //    mt_mag[j]    = std::get<2>(result);
-    //}
-
-    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+    if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
         std::printf("\n");
         std::printf("Charges and magnetic moments\n");
         for (int i = 0; i < 80; i++) {

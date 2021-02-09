@@ -43,7 +43,7 @@ K_point::initialize()
 
     int bs = ctx_.cyclic_block_size();
 
-    if (ctx_.control().use_second_variation_ && ctx_.full_potential()) {
+    if (ctx_.cfg().control().use_second_variation() && ctx_.full_potential()) {
         assert(ctx_.num_fv_states() > 0);
         fv_eigen_values_.resize(ctx_.num_fv_states());
     }
@@ -80,7 +80,7 @@ K_point::initialize()
     generate_gklo_basis();
 
     if (ctx_.full_potential()) {
-        if (ctx_.control().use_second_variation_) {
+        if (ctx_.cfg().control().use_second_variation()) {
             if (ctx_.need_sv()) {
                 /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix
                  */
@@ -111,7 +111,7 @@ K_point::initialize()
                     }
                 }
             }
-            if (ctx_.iterative_solver_input().type_ == "exact") {
+            if (ctx_.cfg().iterative_solver().type() == "exact") {
                 /* ELPA needs a full matrix of eigen-vectors as it uses it as a work space */
                 if (ctx_.gen_evp_solver().type() == ev_solver_t::elpa) {
                     fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), gklo_basis_size(),
@@ -121,7 +121,7 @@ K_point::initialize()
                                                                 ctx_.blacs_grid(), bs, bs, mem_type_gevp);
                 }
             } else {
-                int ncomp = ctx_.iterative_solver_input().num_singular_;
+                int ncomp = ctx_.cfg().iterative_solver().num_singular();
                 if (ncomp < 0) {
                     ncomp = ctx_.num_fv_states() / 2;
                 }
@@ -144,7 +144,7 @@ K_point::initialize()
                         }
                     }
                 }
-                if (ctx_.control().print_checksum_) {
+                if (ctx_.cfg().control().print_checksum()) {
                     singular_components_->print_checksum(device_t::CPU, "singular_components", 0, ncomp);
                 }
             }
@@ -213,7 +213,7 @@ K_point::generate_hubbard_orbitals()
     this->generate_atomic_wave_functions(atoms, [&](int iat){return &ctx_.unit_cell().atom_type(iat).indexb_hub();},
                                          ctx_.hubbard_wf_ri(), phi);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         phi.print_checksum(device_t::CPU, "phi_hub_init", 0, phi.num_wf());
     }
 
@@ -257,7 +257,7 @@ K_point::generate_hubbard_orbitals()
     }
     beta_projectors().dismiss();
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         s_phi.print_checksum(device_t::CPU, "sphi_hub_init", 0,
                               s_phi.num_wf());
     }
@@ -270,7 +270,7 @@ K_point::generate_hubbard_orbitals()
     phi.dismiss(sr, true);
     s_phi.dismiss(sr, true);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         hubbard_wave_functions_->print_checksum(device_t::CPU, "phi_hub", 0, hubbard_wave_functions_->num_wf());
     }
 }
@@ -355,7 +355,7 @@ void K_point::generate_gkvec(double gk_cutoff__)
     PROFILE("sirius::K_point::generate_gkvec");
 
     if (ctx_.full_potential() && (gk_cutoff__ * unit_cell_.max_mt_radius() > ctx_.lmax_apw()) &&
-        comm_.rank() == 0 && ctx_.control().verbosity_ >= 0) {
+        comm_.rank() == 0 && ctx_.verbosity() >= 0) {
         std::stringstream s;
         s << "G+k cutoff (" << gk_cutoff__ << ") is too large for a given lmax ("
           << ctx_.lmax_apw() << ") and a maximum MT radius (" << unit_cell_.max_mt_radius() << ")" << std::endl
@@ -398,7 +398,7 @@ void K_point::update()
     gkvec_->lattice_vectors(ctx_.unit_cell().reciprocal_lattice_vectors());
 
     if (ctx_.full_potential()) {
-        if (ctx_.iterative_solver_input().type_ == "exact") {
+        if (ctx_.cfg().iterative_solver().type() == "exact") {
             alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
                     new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec()));
             alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
@@ -412,7 +412,7 @@ void K_point::update()
         /* compute |beta> projectors for atom types */
         beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_loc_));
 
-        if (ctx_.iterative_solver_input().type_ == "exact") {
+        if (ctx_.cfg().iterative_solver().type() == "exact") {
             beta_projectors_row_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_row_));
             beta_projectors_col_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_col_));
 

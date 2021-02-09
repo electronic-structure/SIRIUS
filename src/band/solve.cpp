@@ -29,12 +29,12 @@ namespace sirius {
 void
 Band::solve_full_potential(Hamiltonian_k& Hk__) const
 {
-    if (ctx_.control().use_second_variation_) {
+    if (ctx_.cfg().control().use_second_variation()) {
         /* solve non-magnetic Hamiltonian (so-called first variation) */
-        auto& itso = ctx_.iterative_solver_input();
-        if (itso.type_ == "exact") {
+        auto& itso = ctx_.cfg().iterative_solver();
+        if (itso.type() == "exact") {
             diag_full_potential_first_variation_exact(Hk__);
-        } else if (itso.type_ == "davidson") {
+        } else if (itso.type() == "davidson") {
             diag_full_potential_first_variation_davidson(Hk__);
         }
         /* generate first-variational states */
@@ -57,8 +57,8 @@ Band::solve_pseudo_potential(Hamiltonian_k& Hk__) const
 
     int niter{0};
 
-    auto& itso = ctx_.iterative_solver_input();
-    if (itso.type_ == "exact") {
+    auto& itso = ctx_.cfg().iterative_solver();
+    if (itso.type() == "exact") {
         if (ctx_.num_mag_dims() != 3) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 diag_pseudo_potential_exact<double_complex>(ispn, Hk__);
@@ -66,7 +66,7 @@ Band::solve_pseudo_potential(Hamiltonian_k& Hk__) const
         } else {
             STOP();
         }
-    } else if (itso.type_ == "davidson") {
+    } else if (itso.type() == "davidson") {
         niter = diag_pseudo_potential_davidson<T>(Hk__);
     //} else if (itso.type_ == "rmm-diis") {
     //    if (ctx_.num_mag_dims() != 3) {
@@ -90,7 +90,7 @@ Band::solve_pseudo_potential(Hamiltonian_k& Hk__) const
     }
 
     /* check residuals */
-    if (ctx_.control().verification_ >= 1) {
+    if (ctx_.cfg().control().verification() >= 1) {
         check_residuals<T>(Hk__);
         check_wave_functions<T>(Hk__);
     }
@@ -146,15 +146,15 @@ Band::solve(K_point_set& kset__, Hamiltonian0& H0__, bool precompute__) const
     kset__.sync_band("energy");
 
     ctx_.message(2, __function_name__, "%s", "Lowest band energies\n");
-    if (ctx_.control().verbosity_ >= 2 && ctx_.comm().rank() == 0) {
+    if (ctx_.verbosity() >= 2 && ctx_.comm().rank() == 0) {
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             std::printf("ik : %2i, ", ik);
-            for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
+            for (int j = 0; j < std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands()); j++) {
                 std::printf("%12.6f", kset__[ik]->band_energy(j, 0));
             }
             if (ctx_.num_mag_dims() == 1) {
                 std::printf("\n         ");
-                for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
+                for (int j = 0; j < std::min(ctx_.cfg().control().num_bands_to_print(), ctx_.num_bands()); j++) {
                     std::printf("%12.6f", kset__[ik]->band_energy(j, 1));
                 }
             }

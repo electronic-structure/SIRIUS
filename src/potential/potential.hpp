@@ -283,7 +283,7 @@ class Potential : public Field4D
 
         local_potential_->fft_transform(1);
 
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.cfg().control().print_checksum()) {
             auto cs = local_potential_->checksum_pw();
             auto cs1 = local_potential_->checksum_rg();
             if (ctx_.comm().rank() == 0) {
@@ -643,7 +643,7 @@ class Potential : public Field4D
         /* add Hartree potential to the total potential */
         effective_potential().add(hartree_potential());
 
-        if (ctx_.control().print_hash_) {
+        if (ctx_.cfg().control().print_hash()) {
             auto h = effective_potential().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("Vha", h);
@@ -661,7 +661,7 @@ class Potential : public Field4D
         /* add XC potential to the effective potential */
         effective_potential().add(xc_potential());
 
-        if (ctx_.control().print_hash_) {
+        if (ctx_.cfg().control().print_hash()) {
             auto h = effective_potential().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("Vha+Vxc", h);
@@ -682,7 +682,7 @@ class Potential : public Field4D
          *  3) symmetrize effective potential */
         fft_transform(-1);
 
-        if (ctx_.control().print_hash_) {
+        if (ctx_.cfg().control().print_hash()) {
             auto h = effective_potential().hash_f_pw();
             if (ctx_.comm().rank() == 0) {
                 utils::print_hash("V(G)", h);
@@ -698,10 +698,10 @@ class Potential : public Field4D
             this->U().generate_potential(density__.occupation_matrix().data());
         }
 
-        if (ctx_.parameters_input().reduce_aux_bf_ > 0 && ctx_.parameters_input().reduce_aux_bf_ < 1) {
+        if (ctx_.cfg().parameters().reduce_aux_bf() > 0 && ctx_.cfg().parameters().reduce_aux_bf() < 1) {
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 for (int x : {0, 1, 2}) {
-                    aux_bf_(x, ia) *= ctx_.parameters_input().reduce_aux_bf_;
+                    aux_bf_(x, ia) *= ctx_.cfg().parameters().reduce_aux_bf();
                 }
             }
         }

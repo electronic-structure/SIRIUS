@@ -72,7 +72,7 @@ class K_point_set
     }
 
     /// Create k-point set from a list of vectors.
-    K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> const& vec__)
+    K_point_set(Simulation_context& ctx__, std::vector<std::array<double, 3>> vec__)
         : ctx_(ctx__)
     {
         for (auto& v : vec__) {
@@ -82,8 +82,8 @@ class K_point_set
     }
 
     /// Create k-point set from a list of vectors.
-    K_point_set(Simulation_context& ctx__, std::initializer_list<std::initializer_list<double>> vec__)
-        : K_point_set(ctx__, std::vector<vector3d<double>>(vec__.begin(), vec__.end()))
+    K_point_set(Simulation_context& ctx__, std::initializer_list<std::array<double, 3>> vec__)
+        : K_point_set(ctx__, std::vector<std::array<double, 3>>(vec__.begin(), vec__.end()))
     {
     }
 

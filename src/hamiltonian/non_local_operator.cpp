@@ -462,7 +462,7 @@ void D_operator::initialize()
         }
     }
 
-    if (this->ctx_.control().print_checksum_ && this->ctx_.comm().rank() == 0) {
+    if (this->ctx_.print_checksum() && this->ctx_.comm().rank() == 0) {
         auto cs = this->op_.checksum();
         utils::print_checksum("D_operator", cs);
     }
@@ -578,7 +578,7 @@ void Q_operator::initialize()
             }
         }
     }
-    if (this->ctx_.control().print_checksum_ && this->ctx_.comm().rank() == 0) {
+    if (this->ctx_.print_checksum() && this->ctx_.comm().rank() == 0) {
         auto cs = this->op_.checksum();
         utils::print_checksum("Q_operator", cs);
     }

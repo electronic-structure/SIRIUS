@@ -634,7 +634,7 @@ void Atom_type::read_input(std::string const& str__)
         double R  = parser["rmt"].get<double>();
         int nmtp  = parser["nrmt"].get<int>();
 
-        auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
+        auto rg = get_radial_grid_t(parameters_.cfg().settings().radial_grid());
 
         set_radial_grid(rg.first, nmtp, r0, R, rg.second);
 

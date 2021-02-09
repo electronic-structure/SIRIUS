@@ -662,7 +662,7 @@ class Density : public Field4D
     void mixer_output();
 
     /// Initialize density mixer.
-    void mixer_init(Mixer_input mixer_cfg__);
+    void mixer_init(config_t::mixer_t const& mixer_cfg__);
 
     /// Mix new density.
     double mix();
@@ -748,7 +748,7 @@ class Density : public Field4D
         auto it_mag     = std::get<1>(result_mag);
         auto mt_mag     = std::get<2>(result_mag);
 
-        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+        if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
             std::printf("\n");
             std::printf("Charges and magnetic moments\n");
             for (int i = 0; i < 80; i++) {

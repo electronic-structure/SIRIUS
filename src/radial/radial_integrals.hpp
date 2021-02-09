@@ -214,7 +214,7 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
         values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
 
-        if (unit_cell_.parameters().control().print_checksum_ && unit_cell_.comm().rank() == 0) {
+        if (unit_cell_.parameters().cfg().control().print_checksum() && unit_cell_.comm().rank() == 0) {
             double cs{0};
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
                 for (int iq = 0; iq < grid_q_.num_points(); iq++) {
@@ -368,16 +368,16 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
 
             auto q2 = std::pow(q__, 2);
             if (jl_deriv) {
-                if (!unit_cell_.parameters().parameters_input().enable_esm_ ||
-                    unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
+                if (!unit_cell_.parameters().cfg().parameters().enable_esm() ||
+                    unit_cell_.parameters().cfg().parameters().esm_bc() == "pbc") {
                     return values_(iat__)(idx.first, idx.second) / q2 / q__ -
                            atom_type.zn() * std::exp(-q2 / 4) * (4 + q2) / 2 / q2 / q2;
                 } else {
                     return values_(iat__)(idx.first, idx.second) / q2 / q__;
                 }
             } else {
-                if (!unit_cell_.parameters().parameters_input().enable_esm_ ||
-                    unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
+                if (!unit_cell_.parameters().cfg().parameters().enable_esm() ||
+                    unit_cell_.parameters().cfg().parameters().esm_bc() == "pbc") {
                     return values_(iat__)(idx.first, idx.second) / q__ - atom_type.zn() * std::exp(-q2 / 4) / q2;
                 } else {
                     return values_(iat__)(idx.first, idx.second) / q__;

@@ -33,7 +33,8 @@ void K_point_set::sync_band(std::string const& what__)
         TERMINATE("wrong label in K_point_set::sync_band");
     }
 
-    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints());
+    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(), memory_t::host,
+                                  "K_point_set::sync_band.data");
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
@@ -125,7 +126,7 @@ void K_point_set::initialize(std::vector<int> const& counts)
         kpoints_[spl_num_kpoints_[ikloc]]->initialize();
     }
 
-    if (ctx_.control().verbosity_ > 0) {
+    if (ctx_.verbosity() > 0) {
         print_info();
     }
     ctx_.print_memory_usage(__FILE__, __LINE__);
@@ -153,7 +154,7 @@ void K_point_set::find_band_occupancies()
     double ne{0};
 
     /* target number of electrons */
-    double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.parameters_input().extra_charge_;
+    double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
 
     if (std::abs(ctx_.num_fv_states() * double(ctx_.max_occupancy()) - ne_target) < 1e-10) {
         // this is an insulator, skip search for band occupancies

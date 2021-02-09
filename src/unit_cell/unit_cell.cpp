@@ -263,7 +263,13 @@ json Unit_cell::serialize(bool cart_pos__) const
     dict["lattice_vectors"] = {{lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0)},
                                {lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1)},
                                {lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2)}};
-    dict["atom_types"]      = json::array();
+    dict["lattice_vectors_scale"] = 1.0;
+    if (cart_pos__) {
+        dict["atom_coordinate_units"] = "au";
+    } else {
+        dict["atom_coordinate_units"] = "lattice";
+    }
+    dict["atom_types"] = json::array();
     for (int iat = 0; iat < num_atom_types(); iat++) {
         dict["atom_types"].push_back(atom_type(iat).label());
     }
@@ -340,7 +346,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
         }
     }
 
-    if (parameters_.control().print_neighbors_ && comm_.rank() == 0) {
+    if (parameters_.cfg().control().print_neighbors() && comm_.rank() == 0) {
         std::printf("Nearest neighbors\n");
         std::printf("=================\n");
         for (int ia = 0; ia < num_atoms(); ia++) {
@@ -427,7 +433,7 @@ void Unit_cell::generate_radial_functions()
         atom_symmetry_class(ic).sync_radial_functions(comm_, rank);
     }
 
-    if (parameters_.control().verbosity_ >= 1) {
+    if (parameters_.verbosity() >= 1) {
         pstdout pout(comm_);
 
         for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
@@ -440,7 +446,7 @@ void Unit_cell::generate_radial_functions()
             std::printf("Linearization energies\n");
         }
     }
-    if (parameters_.control().verbosity_ >= 4 && comm_.rank() == 0) {
+    if (parameters_.verbosity() >= 4 && comm_.rank() == 0) {
         for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
             atom_symmetry_class(ic).dump_lo();
         }
@@ -656,28 +662,46 @@ void Unit_cell::get_symmetry()
     assert(num_atom_symmetry_classes() != 0);
 }
 
-void Unit_cell::import(Unit_cell_input const &inp__)
+void Unit_cell::import(config_t::unit_cell_t const &inp__)
 {
-    if (inp__.exist_) {
-        /* first, load all types */
-        for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
-            auto label = inp__.labels_[iat];
-            auto fname = inp__.atom_files_.at(label);
-            add_atom_type(label, fname);
-        }
-        /* then load atoms */
-        for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
-            auto label = inp__.labels_[iat];
-            auto fname = inp__.atom_files_.at(label);
-            for (size_t ia = 0; ia < inp__.coordinates_[iat].size(); ia++) {
-                auto v = inp__.coordinates_[iat][ia];
-                vector3d<double> p(v[0], v[1], v[2]);
-                vector3d<double> f(v[3], v[4], v[5]);
-                add_atom(label, p, f);
-            }
-        }
+    auto lv = matrix3d<double>(inp__.lattice_vectors());
+    lv *= inp__.lattice_vectors_scale();
+    set_lattice_vectors(vector3d<double>(lv(0, 0), lv(0, 1), lv(0, 2)),
+                        vector3d<double>(lv(1, 0), lv(1, 1), lv(1, 2)),
+                        vector3d<double>(lv(2, 0), lv(2, 1), lv(2, 2)));
 
-        set_lattice_vectors(inp__.a0_, inp__.a1_, inp__.a2_);
+    auto ilv = inverse(lv);
+
+    auto units = inp__.atom_coordinate_units();
+
+    /* first, load all types */
+    for (auto label: inp__.atom_types()) {
+        auto fname = inp__.atom_files(label);
+        add_atom_type(label, fname);
+    }
+    for (auto label : inp__.atom_types()) {
+        for (auto v : inp__.atoms(label)) {
+            vector3d<double> p(v[0], v[1], v[2]);
+            vector3d<double> f;
+            if (v.size() == 6) {
+                f = vector3d<double>(v[3], v[4], v[5]);
+            }
+            /* convert to atomic units */
+            if (units == "A") {
+                for (int x : {0, 1, 2}) {
+                    p[x] /= bohr_radius;
+                }
+            }
+            /* convert from Cartesian to lattice coordinates */
+            if (units == "au" || units == "A") {
+                p = ilv * p;
+                auto rc = reduce_coordinates(p);
+                for (int x : {0, 1, 2}) {
+                    p[x] = rc.first[x];
+                }
+            }
+            add_atom(label, p, f);
+        }
     }
 }
 
@@ -690,14 +714,14 @@ void Unit_cell::update()
     auto v2 = lattice_vector(2);
 
     double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())),
-                        parameters_.parameters_input().nn_radius_);
+                        parameters_.cfg().parameters().nn_radius());
 
     find_nearest_neighbours(r);
 
     if (parameters_.full_potential()) {
         /* find new MT radii and initialize radial grid */
         if (parameters_.auto_rmt()) {
-            auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
+            auto rg = get_radial_grid_t(parameters_.cfg().settings().radial_grid());
             std::vector<double> Rmt = find_mt_radii();
             for (int iat = 0; iat < num_atom_types(); iat++) {
                 double r0 = atom_type(iat).radial_grid().first();

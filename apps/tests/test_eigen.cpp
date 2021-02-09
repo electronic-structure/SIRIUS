@@ -228,7 +228,7 @@ int main(int argn, char** argv)
         {"type=", "{int} data type: 0-real, 1-complex"}
     });
 
-    auto mpi_grid_dims = args.value<std::vector<int>>("mpi_grid_dims", {1, 1});
+    auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
     auto N        = args.value<int>("N", 200);
     auto n        = args.value<int>("n", 100);
     auto nev      = args.value<int>("nev", 50);

@@ -142,7 +142,7 @@ void Density::initial_density_pseudo()
     auto v = ctx_.make_periodic_function<index_domain_t::local>(
         [&](int iat, double g) { return ctx_.ps_rho_ri().value<int>(iat, g); });
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z1, 1);
         if (ctx_.comm().rank() == 0) {
@@ -151,7 +151,7 @@ void Density::initial_density_pseudo()
     }
     std::copy(v.begin(), v.end(), &rho().f_pw_local(0));
 
-    if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+    if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
         auto h = sddk::mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).hash();
         utils::print_hash("rho_pw_init", h);
     }
@@ -168,7 +168,7 @@ void Density::initial_density_pseudo()
         }
     }
     rho().fft_transform(1);
-    if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+    if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
         auto h = rho().f_rg().hash();
         utils::print_hash("rho_rg_init", h);
     }
@@ -180,7 +180,7 @@ void Density::initial_density_pseudo()
     /* renormalize charge */
     normalize();
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         auto cs = rho().checksum_rg();
         if (ctx_.comm().rank() == 0) {
             utils::print_checksum("rho_rg_init", cs);
@@ -189,7 +189,7 @@ void Density::initial_density_pseudo()
 
     /* initialize the magnetization */
     if (ctx_.num_mag_dims()) {
-        double R = ctx_.control().rmt_max_;
+        double R = ctx_.cfg().control().rmt_max();
 
         auto w = [R](double x) {
             /* the constants are picked in such a way that the volume integral of the
@@ -225,7 +225,7 @@ void Density::initial_density_pseudo()
     }
     this->fft_transform(-1);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
             auto cs  = component(i).checksum_rg();
             auto cs1 = component(i).checksum_pw();
@@ -259,7 +259,7 @@ void Density::initial_density_full_pot()
         unit_cell_.atom_type(iat).init_free_atom_density(false);
     }
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         auto z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z, 1);
         if (ctx_.comm().rank() == 0) {
@@ -272,7 +272,7 @@ void Density::initial_density_full_pot()
     /* convert charge density to real space mesh */
     rho().fft_transform(1);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         auto cs = rho().checksum_rg();
         if (ctx_.comm().rank() == 0) {
             utils::print_checksum("rho_rg", cs);
@@ -1147,14 +1147,14 @@ void Density::generate_valence(K_point_set const& ks__)
         TERMINATE(s);
     }
 
-    if (std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.parameters_input().extra_charge_) > 1e-8 &&
+    if (std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.cfg().parameters().extra_charge()) > 1e-8 &&
         ctx_.comm().rank() == 0) {
         std::stringstream s;
         s << "wrong band occupancies" << std::endl
           << "  computed : " << occ_val << std::endl
-          << "  required : " << unit_cell_.num_valence_electrons() - ctx_.parameters_input().extra_charge_ << std::endl
+          << "  required : " << unit_cell_.num_valence_electrons() - ctx_.cfg().parameters().extra_charge() << std::endl
           << "  difference : "
-          << std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.parameters_input().extra_charge_);
+          << std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.cfg().parameters().extra_charge());
         WARNING(s);
     }
 
@@ -1252,7 +1252,7 @@ void Density::generate_valence(K_point_set const& ks__)
         /* comm_ortho_fft is identical to a product of column communicator inside k-point with k-point communicator */
         comm.allreduce(ptr, ctx_.spfft_coarse().local_slice_size());
         /* print checksum if needed */
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.cfg().control().print_checksum()) {
             auto cs = mdarray<double, 1>(ptr, ctx_.spfft_coarse().local_slice_size()).checksum();
             Communicator(ctx_.spfft_coarse().communicator()).allreduce(&cs, 1);
             if (ctx_.comm().rank() == 0) {
@@ -1272,10 +1272,10 @@ void Density::generate_valence(K_point_set const& ks__)
 
         /* remove extra chanrge */
         if (ctx_.gvec().comm().rank() == 0) {
-            rho().f_pw_local(0) += ctx_.parameters_input().extra_charge_ / ctx_.unit_cell().omega();
+            rho().f_pw_local(0) += ctx_.cfg().parameters().extra_charge() / ctx_.unit_cell().omega();
         }
 
-        if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+        if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
             auto h = mdarray<double_complex, 1>(&rho().f_pw_local(0), ctx_.gvec().count()).hash();
             utils::print_hash("rho", h);
         }
@@ -1342,7 +1342,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         /* convert to real matrix */
         auto dm = density_matrix_aux(iat);
 
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.cfg().control().print_checksum()) {
             auto cs = dm.checksum();
             if (ctx_.comm().rank() == 0) {
                 utils::print_checksum("density_matrix_aux", cs);
@@ -1442,7 +1442,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         rho_aug.copy_to(memory_t::host);
     }
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         auto cs = rho_aug.checksum();
         ctx_.comm().allreduce(&cs, 1);
         if (ctx_.comm().rank() == 0) {
@@ -1450,7 +1450,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         }
     }
 
-    if (ctx_.control().print_hash_) {
+    if (ctx_.cfg().control().print_hash()) {
         auto h = rho_aug.hash();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("rho_aug", h);
@@ -1675,7 +1675,7 @@ void Density::symmetrize_density_matrix()
 
     dm >> density_matrix_;
 
-    if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
+    if (ctx_.cfg().control().print_checksum() && ctx_.comm().rank() == 0) {
         auto cs = dm.checksum();
         utils::print_checksum("density_matrix", cs);
         // for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -1684,7 +1684,7 @@ void Density::symmetrize_density_matrix()
         //}
     }
 
-    if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+    if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
         auto h = dm.hash();
         utils::print_hash("density_matrix", h);
     }
@@ -1788,7 +1788,7 @@ mdarray<double, 3> Density::density_matrix_aux(int iat__)
     return dm;
 }
 
-void Density::mixer_init(Mixer_input mixer_cfg__)
+void Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
 {
     auto func_prop    = mixer::periodic_function_property();
     auto func_prop1   = mixer::periodic_function_property_modified(true);
@@ -1804,7 +1804,7 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
     const bool init_mt = ctx_.full_potential();
 
     /* initialize functions */
-    if (mixer_cfg__.use_hartree_) {
+    if (mixer_cfg__.use_hartree()) {
         this->mixer_->initialize_function<0>(func_prop1, component(0), ctx_, lmmax_, init_mt);
     } else {
         this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_, init_mt);
@@ -1886,7 +1886,7 @@ double Density::mix()
     PROFILE("sirius::Density::mix");
 
     mixer_input();
-    double rms = mixer_->mix(ctx_.settings().mixer_rms_min_);
+    double rms = mixer_->mix(ctx_.cfg().settings().mixer_rms_min());
     mixer_output();
 
     return rms;

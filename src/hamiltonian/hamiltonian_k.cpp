@@ -42,7 +42,7 @@ Hamiltonian_k::Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__) // TODO: move ki
     PROFILE("sirius::Hamiltonian_k");
     H0_.local_op().prepare_k(kp_.gkvec_partition());
     if (!H0_.ctx().full_potential()) {
-        if (H0_.ctx().iterative_solver_input().type_ != "exact") {
+        if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
             kp_.beta_projectors().prepare();
         }
     }
@@ -51,7 +51,7 @@ Hamiltonian_k::Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__) // TODO: move ki
 Hamiltonian_k::~Hamiltonian_k()
 {
     if (!H0_.ctx().full_potential()) {
-        if (H0_.ctx().iterative_solver_input().type_ != "exact") {
+        if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
             kp_.beta_projectors().dismiss();
         }
     }
@@ -370,7 +370,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
         int s = (pu == device_t::GPU) ? (iblk % 2) : 0;
         s = 0;
 
-        if (H0_.ctx().control().print_checksum_) {
+        if (H0_.ctx().cfg().control().print_checksum()) {
             alm_row.zero();
             alm_col.zero();
             halm_col.zero();
@@ -455,7 +455,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
         }
         //acc::sync_stream(stream_id(omp_get_max_threads()));
 
-        if (H0_.ctx().control().print_checksum_) {
+        if (H0_.ctx().cfg().control().print_checksum()) {
             double_complex z1 = alm_row.checksum();
             double_complex z2 = alm_col.checksum();
             double_complex z3 = halm_col.checksum();
@@ -494,7 +494,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
     std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;
     auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
 
-    if (kp.comm().rank() == 0 && (H0_.ctx().control().print_performance_ || (pp && *pp))) {
+    if (kp.comm().rank() == 0 && (H0_.ctx().cfg().control().print_performance() || (pp && *pp))) {
         kp.message((pp && *pp) ? 0 : 1, __function_name__, "effective zgemm performance: %12.6f GFlops\n",
                2 * 8e-9 * kp.num_gkvec() * kp.num_gkvec() * uc.mt_aw_basis_size() / tval.count());
     }
@@ -773,11 +773,11 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
 
     t1 += omp_get_wtime();
 
-    if (H0().ctx().control().print_performance_) {
+    if (H0().ctx().cfg().control().print_performance()) {
         kp().message(1, __function_name__, "hloc performance: %12.6f bands/sec", n__ / t1);
     }
 
-    if (H0().ctx().control().print_checksum_ && hphi__) {
+    if (H0().ctx().cfg().control().print_checksum() && hphi__) {
         for (int ispn: spins__) {
             auto cs1 = phi__.checksum(get_device_t(phi__.preferred_memory_t()), ispn, N__, n__);
             auto cs2 = hphi__->checksum(get_device_t(hphi__->preferred_memory_t()), ispn, N__, n__);

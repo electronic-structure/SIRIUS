@@ -179,7 +179,7 @@ mdarray<double, 2> const& Force::calc_forces_ibs()
     ctx_.comm().allreduce(&forces_ibs_(0, 0), (int)forces_ibs_.size());
     symmetrize(forces_ibs_);
 
-    if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
+    if (ctx_.verbosity() > 2 && ctx_.comm().rank() == 0) {
         std::printf("ibs force\n");
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             std::printf("ia : %i, IBS : %12.6f %12.6f %12.6f\n", ia, forces_ibs_(0, ia), forces_ibs_(1, ia),
@@ -205,7 +205,7 @@ mdarray<double, 2> const& Force::calc_forces_rho()
     ctx_.comm().allreduce(&forces_rho_(0, 0), (int)forces_rho_.size());
     symmetrize(forces_rho_);
 
-    if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
+    if (ctx_.verbosity() > 2 && ctx_.comm().rank() == 0) {
         std::printf("rho force\n");
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             std::printf("ia : %i, density contribution : %12.6f %12.6f %12.6f\n", ia, forces_rho_(0, ia), forces_rho_(1, ia),
@@ -230,7 +230,7 @@ mdarray<double, 2> const& Force::calc_forces_hf()
     ctx_.comm().allreduce(&forces_hf_(0, 0), (int)forces_hf_.size());
     symmetrize(forces_hf_);
 
-    if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
+    if (ctx_.cfg().control().verbosity() > 2 && ctx_.comm().rank() == 0) {
         std::printf("H-F force\n");
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             std::printf("ia : %i, Hellmann–Feynman : %12.6f %12.6f %12.6f\n", ia, forces_hf_(0, ia), forces_hf_(1, ia),

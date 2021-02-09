@@ -242,6 +242,8 @@ class Simulation_context : public Simulation_parameters
     /// Total number of iterative solver steps.
     mutable int num_itsol_steps_{0};
 
+    double iterative_solver_tolerance_;
+
     /// True if the context is already initialized.
     bool initialized_{false};
 
@@ -302,15 +304,6 @@ class Simulation_context : public Simulation_parameters
     Simulation_context(Simulation_context const&) = delete;
 
   public:
-    // /// Create a simulation context with an explicit communicator and load parameters from JSON.
-    // Simulation_context(nlohmann::json const &json, Communicator const &comm__)
-    //     : comm_(comm__)
-    // {
-    //     unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
-    //     start();
-    //     import(json);
-    //     unit_cell_->import(unit_cell_input_);
-    // }
 
     /// Create an empty simulation context with an explicit communicator.
     Simulation_context(Communicator const& comm__ = Communicator::world())
@@ -327,7 +320,7 @@ class Simulation_context : public Simulation_parameters
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
         import(str__);
-        unit_cell_->import(unit_cell_input_);
+        unit_cell_->import(cfg().unit_cell());
     }
 
     // /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
@@ -337,7 +330,7 @@ class Simulation_context : public Simulation_parameters
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
         start();
         import(str__);
-        unit_cell_->import(unit_cell_input_);
+        unit_cell_->import(cfg().unit_cell());
     }
 
     /// Destructor.
@@ -360,7 +353,7 @@ class Simulation_context : public Simulation_parameters
     template <typename... Args>
     inline void message(int level__, char const* label__, Args... args) const
     {
-        if (this->comm().rank() == 0 && this->control().verbosity_ >= level__) {
+        if (this->comm().rank() == 0 && this->cfg().control().verbosity() >= level__) {
             if (label__) {
                 std::printf("[%s] ", label__);
             }
@@ -456,7 +449,7 @@ class Simulation_context : public Simulation_parameters
     /** This communicator is passed to the spfft::Transform constructor. */
     Communicator const& comm_fft_coarse() const
     {
-        if (control().fft_mode_ == "serial") {
+        if (cfg().control().fft_mode() == "serial") {
             return Communicator::self();
         } else {
             return comm_band();
@@ -741,7 +734,7 @@ class Simulation_context : public Simulation_parameters
     /// Set the size of the fine-grained FFT grid.
     void fft_grid_size(std::array<int, 3> fft_grid_size__)
     {
-        settings_input_.fft_grid_size_ = fft_grid_size__;
+        cfg().settings().fft_grid_size(fft_grid_size__);
     }
 
     spfft::Grid& spfft_grid_coarse()
@@ -860,6 +853,34 @@ class Simulation_context : public Simulation_parameters
     inline std::function<void(void)> band_occ_callback() const
     {
         return band_occ_callback_;
+    }
+
+    /// Get tolerance of the iterative solver.
+    double iterative_solver_tolerance() const
+    {
+        return iterative_solver_tolerance_;
+    }
+
+    /// Set the tolerance of the iterative solver.
+    double iterative_solver_tolerance(double tolerance__)
+    {
+        iterative_solver_tolerance_ = tolerance__;
+        return tolerance__;
+    }
+
+    /// Export parameters of simulation context as a JSON dictionary.
+    nlohmann::json serialize()
+    {
+        nlohmann::json dict;
+        dict["config"] = cfg().dict();
+        dict["config"]["unit_cell"] = unit_cell().serialize(false);
+        auto fftgrid = {spfft_coarse().dim_x(), spfft_coarse().dim_y(), spfft_coarse().dim_z()};
+        dict["fft_coarse_grid"] = fftgrid;
+        dict["mpi_grid"] = mpi_grid_dims();
+        dict["omega"] = unit_cell().omega();
+        dict["chemical_formula"] = unit_cell().chemical_formula();
+        dict["num_atoms"] = unit_cell().num_atoms();
+        return dict;
     }
 };
 

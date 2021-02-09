@@ -60,6 +60,8 @@ static inline void sirius_exit(int error_code__, std::string msg__ = "")
     if (!Communicator::is_finalized()) {
         Communicator::world().abort(error_code__);
     }
+    fflush(stdout);
+    std::cout << std::flush;
     std::exit(error_code__);
 }
 
@@ -798,10 +800,10 @@ void sirius_get_parameters(void* const* handler__,
             *iter_solver_tol__ = sim_ctx.iterative_solver_tolerance();
         }
         if (iter_solver_tol_empty__ != nullptr) {
-            *iter_solver_tol_empty__ = sim_ctx.iterative_solver_input().empty_states_tolerance_;
+            *iter_solver_tol_empty__ = sim_ctx.cfg().iterative_solver().empty_states_tolerance();
         }
         if (verbosity__ != nullptr) {
-            *verbosity__ = sim_ctx.control().verbosity_;
+            *verbosity__ = sim_ctx.verbosity();
         }
         if (hubbard_correction__ != nullptr) {
             *hubbard_correction__ = sim_ctx.hubbard_correction();
@@ -1284,20 +1286,20 @@ void sirius_find_ground_state(void*  const* gs_handler__,
 {
     auto& gs = get_gs(gs_handler__);
     auto& ctx = gs.ctx();
-    auto& inp = ctx.parameters_input();
+    auto& inp = ctx.cfg().parameters();
     gs.initial_state();
 
-    double rho_tol = inp.density_tol_;
+    double rho_tol = inp.density_tol();
     if (density_tol__) {
         rho_tol = *density_tol__;
     }
 
-    double etol = inp.energy_tol_;
+    double etol = inp.energy_tol();
     if (energy_tol__) {
         etol = *energy_tol__;
     }
 
-    int niter = inp.num_dft_iter_;
+    int niter = inp.num_dft_iter();
     if (niter__) {
         niter = *niter__;
     }
@@ -1325,7 +1327,7 @@ sirius_check_scf_density:
       doc: Error code
 @api end
 */
-void sirius_check_scf_density(void*  const* gs_handler__, int* error_code__)
+void sirius_check_scf_density(void* const* gs_handler__, int* error_code__)
 {
     call_sirius([&]()
     {

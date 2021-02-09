@@ -28,8 +28,8 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, Communicator::world()));
     Simulation_context& ctx = *ctx_ptr;
 
-    auto& inp = ctx.parameters_input();
-    if (inp.gamma_point_ && !(inp.ngridk_[0] * inp.ngridk_[1] * inp.ngridk_[2] == 1)) {
+    auto& inp = ctx.cfg().parameters();
+    if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
         TERMINATE("this is not a Gamma-point calculation")
     }
 
@@ -46,18 +46,18 @@ double ground_state(Simulation_context& ctx,
 {
     ctx.print_memory_usage(__FILE__, __LINE__);
 
-    auto& inp = ctx.parameters_input();
+    auto& inp = ctx.cfg().parameters();
 
     std::string ref_file = args.value<std::string>("test_against", "");
     /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
 
     std::shared_ptr<K_point_set> kset;
-    if (ctx.parameters_input().vk_.size() == 0) {
-        kset = std::make_shared<K_point_set>(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
+    if (ctx.cfg().parameters().vk().size() == 0) {
+        kset = std::make_shared<K_point_set>(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), ctx.use_symmetry());
     } else {
         // setting
-        kset = std::make_shared<K_point_set>(ctx, ctx.parameters_input().vk_);
+        kset = std::make_shared<K_point_set>(ctx, ctx.cfg().parameters().vk());
     }
     DFT_ground_state dft(*kset);
 
@@ -71,58 +71,64 @@ double ground_state(Simulation_context& ctx,
     double initial_tol = ctx.iterative_solver_tolerance();
 
     /* launch the calculation */
-    auto result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
+    auto result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
 
-    auto nlcg_params  = ctx.nlcg_input();
-    double temp       = nlcg_params.T_;
-    double tol        = nlcg_params.tol_;
-    double kappa      = nlcg_params.kappa_;
-    double tau        = nlcg_params.tau_;
-    int maxiter       = nlcg_params.maxiter_;
-    int restart       = nlcg_params.restart_;
-    std::string smear = nlcg_params.smearing_;
-    std::string pu = nlcg_params.processing_unit_;
+    auto& nlcg_params  = ctx.cfg().nlcg();
+    double temp       = nlcg_params.T();
+    double tol        = nlcg_params.tol();
+    double kappa      = nlcg_params.kappa();
+    double tau        = nlcg_params.tau();
+    int maxiter       = nlcg_params.maxiter();
+    int restart       = nlcg_params.restart();
+
+    std::string smear = ctx.cfg().parameters().smearing();
+    auto pu = ctx.processing_unit();
     Energy energy(*kset, density, potential);
 
     nlcglib::smearing_type smearing;
-    if (smear.compare("FD") == 0) {
+    if (smear.compare("fermi_dirac") == 0) {
         smearing = nlcglib::smearing_type::FERMI_DIRAC;
-    } else if (smear.compare("GS") == 0) {
+    } else if (smear.compare("gaussian_spline") == 0) {
         smearing = nlcglib::smearing_type::GAUSSIAN_SPLINE;
     } else {
         throw std::runtime_error("invalid smearing type given");
     }
 
-    if(is_device_memory(ctx.preferred_memory_t())) {
-        if(pu.empty() || pu.compare("gpu") == 0) {
-            std::cout << "nlcg executing on gpu-gpu" << "\n";
-            nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else if (pu.compare("cpu") == 0){
-            std::cout << "nlcg executing on gpu-cpu" << "\n";
-            nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-        } else {
-            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+    if (is_device_memory(ctx.preferred_memory_t())) {
+        switch (pu) {
+            case device_t::GPU: {
+                std::cout << "nlcg executing on gpu-gpu" << "\n";
+                nlcglib::nlcg_mvp2_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                break;
+            }
+            case device_t::CPU: {
+                std::cout << "nlcg executing on gpu-cpu" << "\n";
+                nlcglib::nlcg_mvp2_device_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                break;
+            }
         }
     } else {
-         if (pu.empty() || pu.compare("cpu") == 0){
-            std::cout << "nlcg executing on cpu-cpu" << "\n";
-            nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-         } else if (pu.compare("gpu") == 0) {
-             std::cout << "nlcg executing on cpu-gpu"
-                       << "\n";
-             nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
-         } else {
-             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
-         }
+        switch (pu) {
+            case device_t::CPU: {
+                std::cout << "nlcg executing on cpu-cpu" << "\n";
+                nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                break;
+            }
+            case device_t::GPU: {
+                std::cout << "nlcg executing on cpu-gpu" << "\n";
+                nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+                break;
+            }
+        }
     }
 
-    if (ctx.control().verification_ >= 1) {
+    if (ctx.cfg().control().verification() >= 1) {
         dft.check_scf_density();
     }
 
     //dft.print_magnetic_moment();
 
-    if (ctx.control().print_stress_ && !ctx.full_potential()) {
+    if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
         Stress& s       = dft.stress();
         auto stress_tot = s.calc_stress_total();
         s.print_info();
@@ -133,7 +139,7 @@ double ground_state(Simulation_context& ctx,
             }
         }
     }
-    if (ctx.control().print_forces_) {
+    if (ctx.cfg().control().print_forces()) {
         Force& f         = dft.forces();
         auto& forces_tot = f.calc_forces_total();
         f.print_info();

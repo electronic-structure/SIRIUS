@@ -348,7 +348,7 @@ void Occupation_matrix::init()
 
 void Occupation_matrix::print_occupancies() const
 {
-    if (ctx_.control().verbosity_ >= 2 && ctx_.comm().rank() == 0 && data_.size()) {
+    if (ctx_.verbosity() >= 2 && ctx_.comm().rank() == 0 && data_.size()) {
         std::printf("\n");
         for (int ci = 0; ci < 10; ci++) {
             std::printf("--------");

@@ -136,7 +136,7 @@ void Potential::generate_D_operator_matrix()
                         break;
                     }
                 }
-                if (ctx_.control().print_checksum_) {
+                if (ctx_.cfg().control().print_checksum()) {
                     if (ctx_.processing_unit() == device_t::GPU) {
                         veff_a.copy_to(memory_t::host);
                     }
@@ -179,7 +179,7 @@ void Potential::generate_D_operator_matrix()
             /* sum from all ranks */
             comm_.allreduce(d_tmp.at(memory_t::host), static_cast<int>(d_tmp.size()));
 
-            if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
+            if (ctx_.cfg().control().print_checksum() && ctx_.comm().rank() == 0) {
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     std::stringstream s;
                     s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";

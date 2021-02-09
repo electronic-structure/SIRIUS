@@ -43,7 +43,7 @@ void test_davidson(cmd_args const& args__)
     auto pw_cutoff = args__.value<double>("pw_cutoff", 30);
     auto gk_cutoff = args__.value<double>("gk_cutoff", 10);
     auto N         = args__.value<int>("N", 1);
-    auto mpi_grid  = args__.value<std::vector<int>>("mpi_grid", {1, 1});
+    auto mpi_grid  = args__.value("mpi_grid", std::vector<int>({1, 1}));
     auto solver    = args__.value<std::string>("solver", "lapack");
 
     bool add_dion{false};
@@ -152,7 +152,7 @@ void test_davidson(cmd_args const& args__)
     ctx.iterative_solver_tolerance(1e-12);
     //ctx.set_iterative_solver_type("exact");
 
-    const_cast<Iterative_solver_input&>(ctx.iterative_solver_input()).num_steps_ = 40;
+    ctx.cfg().iterative_solver().num_steps(40);
 
     /* initialize simulation context */
     ctx.initialize();

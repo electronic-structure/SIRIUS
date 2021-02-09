@@ -235,15 +235,19 @@ configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in"
                @ONLY)
 
 # generate runtime options
-file(STRINGS "${PROJECT_SOURCE_DIR}/src/context/options.json"
-              SIRIUS_RUNTIME_OPTIONS NEWLINE_CONSUME)
+file(READ "${PROJECT_SOURCE_DIR}/src/context/options.json" SIRIUS_RUNTIME_OPTIONS NEWLINE_CONSUME)
 configure_file("${PROJECT_SOURCE_DIR}/src/context/runtime_options_json.hpp.in"
                "${PROJECT_BINARY_DIR}/src/context/runtime_options_json.hpp"
                @ONLY)
 
+# generate schema
+file(READ "${PROJECT_SOURCE_DIR}/src/context/input_schema.json" SIRIUS_INPUT_SCHEMA NEWLINE_CONSUME)
+configure_file("${PROJECT_SOURCE_DIR}/src/context/input_schema.hpp.in"
+               "${PROJECT_BINARY_DIR}/src/context/input_schema.hpp"
+               @ONLY)
+
 # generate atomic configurations
-file(STRINGS "${PROJECT_SOURCE_DIR}/apps/atoms/atoms.json"
-              SIRIUS_ATOMIC_CONF NEWLINE_CONSUME)
+file(READ "${PROJECT_SOURCE_DIR}/apps/atoms/atoms.json" SIRIUS_ATOMIC_CONF NEWLINE_CONSUME)
 configure_file("${PROJECT_SOURCE_DIR}/apps/atoms/atomic_conf.hpp.in"
                "${PROJECT_BINARY_DIR}/src/unit_cell/atomic_conf.hpp"
                @ONLY)

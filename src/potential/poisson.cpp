@@ -148,7 +148,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
         /* true multipole moments */
         auto qmt = poisson_vmt(rho);
 
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.cfg().control().print_checksum()) {
             if (ctx_.comm().rank() == 0) {
                 utils::print_checksum("qmt", qmt.checksum());
             }
@@ -157,7 +157,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
         /* compute multipoles of interstitial density in MT region */
         auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.f_pw_local(0), sbessel_mom_, gvec_ylm_);
 
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.cfg().control().print_checksum()) {
             if (ctx_.comm().rank() == 0) {
                 utils::print_checksum("qit", qit.checksum());
             }
@@ -166,7 +166,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
         /* add contribution from the pseudo-charge */
         poisson_add_pseudo_pw(qmt, qit, const_cast<double_complex*>(&rho.f_pw_local(0)));
 
-        if (ctx_.control().verification_ >= 2) {
+        if (ctx_.cfg().control().verification() >= 2) {
             auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.f_pw_local(0), sbessel_mom_, gvec_ylm_);
 
             double d = 0.0;
@@ -265,7 +265,7 @@ void Potential::poisson(Periodic_function<double> const& rho)
     /* transform Hartree potential to real space */
     hartree_potential_->fft_transform(1);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         auto cs = hartree_potential_->checksum_rg();
         auto cs1 = hartree_potential_->checksum_pw();
         if (ctx_.comm().rank() == 0) {

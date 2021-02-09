@@ -7,7 +7,7 @@ using namespace sirius;
 
 int run_test(cmd_args& args)
 {
-    std::vector<int> vd = args.value< std::vector<int> >("dims", {132, 132, 132});
+    std::vector<int> vd = args.value("dims", std::vector<int>({132, 132, 132}));
     vector3d<int> dims(vd[0], vd[1], vd[2]); 
     double cutoff = args.value<double>("cutoff", 50);
 
