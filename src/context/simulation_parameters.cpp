@@ -29,6 +29,9 @@
 #include "context/runtime_options_json.hpp"
 #include "context/input_schema.hpp"
 
+#include <unordered_set>
+#include <iterator>
+
 namespace sirius {
 
 /// Compose JSON dictionary with default parameters based on input schema.
@@ -61,8 +64,21 @@ void compose_default_json(nlohmann::json const& schema__, nlohmann::json& output
  *  way we can add missing nodes which were not defined in the existing dictionary. */
 void compose_json(nlohmann::json const& schema__, nlohmann::json const& in__, nlohmann::json& inout__)
 {
+    std::unordered_set<std::string> visited;
+
+    for (auto it: in__.items()) {
+        visited.insert(it.key());
+    }
+
     for (auto it: schema__.items()) {
         auto key = it.key();
+
+        // Remove visited items.
+        auto found = visited.find(key);
+        if (found != visited.end()) {
+            visited.erase(found);
+        }
+
         /* this is a final node with the description of the data type */
         if (it.value().contains("type") && it.value()["type"] != "object") {
             if (in__.contains(key)) {
@@ -78,6 +94,14 @@ void compose_json(nlohmann::json const& schema__, nlohmann::json const& in__, nl
                 inout__[key] = nlohmann::json();
             }
         }
+    }
+
+    // Emit warnings about keys that were set but unused.
+    if (!visited.empty()) {
+        std::stringstream ss;
+        ss << "The following configuration parameters were not recognized and ignored: ";
+        std::copy(visited.begin(), visited.end(), std::ostream_iterator<std::string>(ss, " "));
+        WARNING(ss)
     }
 }
 
