@@ -1,6 +1,6 @@
 {
     "control" : {
-        "processing_unit" : "gpu",
+        "processing_unit" : "cpu",
         "std_evp_solver_name" : "cusolver",
         "gen_evp_solver_name" : "cusolver",
         "verbosity" : 1,
