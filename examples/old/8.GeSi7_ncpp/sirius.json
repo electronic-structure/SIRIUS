@@ -2,8 +2,8 @@
     "control" : {
         "cyclic_block_size" : 16,
         "processing_unit" : "cpu",
-        "std_evp_solver_type" : "lapack",
-        "gen_evp_solver_type" : "lapack",
+        "std_evp_solver_name" : "lapack",
+        "gen_evp_solver_name" : "lapack",
         "fft_mode" : "serial",
         "reduce_gvec" : true
     },

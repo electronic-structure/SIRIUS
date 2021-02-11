@@ -2,8 +2,8 @@
     "control" : {
         "cyclic_block_size" : 128,
         "processing_unit" : "cpu",
-        "std_evp_solver_type" : "scalapack",
-        "gen_evp_solver_type" : "scalapack",
+        "std_evp_solver_name" : "scalapack",
+        "gen_evp_solver_name" : "scalapack",
         "verbosity" : 2
     },
 

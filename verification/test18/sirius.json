@@ -1,8 +1,8 @@
 {
   "control": {
     "processing_unit": "cpu",
-    "gen_evp_solver_type": "lapack",
-    "std_evp_solver_type": "lapack",
+    "gen_evp_solver_name": "lapack",
+    "std_evp_solver_name": "lapack",
     "cyclic_block_size": 16,
     "rmt_max": 2.2,
     "verbosity" : 1

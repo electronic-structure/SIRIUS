@@ -2,8 +2,8 @@
   "control" : {
       "cyclic_block_size" : 32,
       "processing_unit" : "cpu",
-      "std_evp_solver_type" : "elpa1",
-      "gen_evp_solver_type" : "elpa1",
+      "std_evp_solver_name" : "elpa1",
+      "gen_evp_solver_name" : "elpa1",
       "verbosity" : 1
   },
 

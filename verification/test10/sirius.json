@@ -1,8 +1,8 @@
 {
     "control" : {
         "processing_unit" : "cpu",
-        "!std_evp_solver_type" : "lapack",
-        "!gen_evp_solver_type" : "lapack",
+        "!std_evp_solver_name" : "lapack",
+        "!gen_evp_solver_name" : "lapack",
         "verbosity" : 1,
         "print_checksum" : false,
         "verification" : 0,
