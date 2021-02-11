@@ -32,10 +32,12 @@
         "ngridk" : [2,2,2]
     },
 
+    "settings" : {
+        "min_occupancy" : 1e-5
+    },
 
     "iterative_solver" : {
-        "type" : "davidson",
-        "min_occupancy" : 1e-5
+        "type" : "davidson"
     },
 
 

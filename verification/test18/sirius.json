@@ -83,6 +83,5 @@
     "lmax_apw" : 6,
     "lmax_rho" : 6,
     "lmax_pot" : 6
-  },
-  "title": "input file created with AiiDA"
+  }
 }

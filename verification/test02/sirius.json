@@ -30,14 +30,17 @@
         "molecule"     : true
     },
 
+    "settings" : {
+        "min_occupancy" : 0
+    },
+
     "iterative_solver" : {
         "energy_tolerance" : 1e-4,
         "residual_tolerance" : 1e-5,
         "num_steps" : 8,
         "subspace_size" : 8,
         "type" : "davidson",
-        "converge_by_energy" : 0,
-        "min_occupancy" : 0
+        "converge_by_energy" : 0
     },
 
     "unit_cell" : {
