@@ -111,16 +111,6 @@ void Simulation_parameters::import(std::string const& str__)
 void Simulation_parameters::import(json const& dict__)
 {
     cfg_.import(dict__);
-    /* read unit cell */
-    //unit_cell_input_.read(dict__);
-    /* read parameters of iterative solver */
-    //iterative_solver_input_.read(dict__);
-    /* read controls */
-    //control_input_.read(dict__);
-    /* read parameters */
-    //parameters_input_.read(dict__);
-    /* read settings */
-    //settings_input_.read(dict__);
     /* read hubbard parameters */
     hubbard_input_.read(dict__);
     /* read nlcg parameters */

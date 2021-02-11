@@ -74,7 +74,7 @@ class Potential : public Field4D
      *  \f$ \nabla \rho_{\downarrow} \nabla \rho_{\downarrow} \f$. This quantity is required to compute the GGA
      *  contribution to the XC stress tensor.
      */
-    std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2> vsigma_;
+    std::array<std::unique_ptr<Smooth_periodic_function<double>>, 3> vsigma_;
 
     /// Used to compute SCF correction to forces.
     /** This function is set by PW code and is not computed here. */
@@ -991,9 +991,10 @@ class Potential : public Field4D
 
     bool is_gradient_correction() const;
 
-    Smooth_periodic_function<double>& vsigma(int ispn__)
+    Smooth_periodic_function<double>& vsigma(int idx__)
     {
-        return (*vsigma_[ispn__].get());
+        assert(idx__ >= 0 && idx__ < 3);
+        return (*vsigma_[idx__].get());
     }
 
     inline double vha_el(int ia__) const

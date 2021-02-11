@@ -1,116 +1,265 @@
 {
     "comm_world_size": 1,
-    "counters": {
-        "band_evp_work_count": 4750.311561452106,
-        "local_operator_num_applied": 12093
-    },
-    "git_hash": "2fef8d388ab621b138d31cc62675903e8da2a227",
-    "ground_state": {
-        "aw_cutoff": 0.0,
-        "band_gap": 0.0,
+    "context": {
         "chemical_formula": "Ni",
-        "converged": true,
-        "core_leakage": 0.0,
-        "efermi": 0.6570043365890493,
-        "energy": {
-            "bxc": -0.001608225586567184,
-            "core_eval_sum": 0.0,
-            "entropy_sum": -0.008452987582960887,
-            "enuc": 0.0,
-            "eval_sum": -10.646401992746638,
-            "ewald": -111.755795560964,
-            "exc": -17.777744425205793,
-            "kin": 48.80589092985898,
-            "scf_correction": -2.3792694747726273e-07,
-            "total": -171.64482090036066,
-            "veff": -59.45068469701906,
-            "vha": 107.46787422185757,
-            "vloc": -144.64265572948472,
-            "vxc": -22.275903189407884
+        "config": {
+            "control": {
+                "beta_chunk_size": 256,
+                "cyclic_block_size": 16,
+                "fft_mode": "serial",
+                "gen_evp_solver_name": "lapack",
+                "memory_usage": "high",
+                "mpi_grid_dims": [
+                    1,
+                    1
+                ],
+                "num_bands_to_print": 10,
+                "print_checksum": false,
+                "print_forces": true,
+                "print_hash": false,
+                "print_memory_usage": false,
+                "print_neighbors": false,
+                "print_performance": false,
+                "print_stress": true,
+                "print_timers": true,
+                "processing_unit": "cpu",
+                "reduce_gvec": true,
+                "rmt_max": 2.2,
+                "spglib_tolerance": 0.0001,
+                "std_evp_solver_name": "lapack",
+                "use_second_variation": true,
+                "verbosity": 1,
+                "verification": 0
+            },
+            "iterative_solver": {
+                "converge_by_energy": 1,
+                "early_restart": 0.5,
+                "empty_states_tolerance": 0,
+                "energy_tolerance": 0.01,
+                "init_eval_old": true,
+                "init_subspace": "lcao",
+                "locking": true,
+                "min_num_res": 0,
+                "num_singular": -1,
+                "num_steps": 20,
+                "relative_tolerance": 0,
+                "residual_tolerance": 1e-06,
+                "subspace_size": 4,
+                "type": "davidson"
+            },
+            "locked": true,
+            "mixer": {
+                "beta": 0.5,
+                "beta0": 0.15,
+                "beta_scaling_factor": 1.0,
+                "linear_mix_rms_tol": 1000000.0,
+                "max_history": 8,
+                "type": "anderson",
+                "use_hartree": false
+            },
+            "parameters": {
+                "auto_rmt": 1,
+                "aw_cutoff": 0.0,
+                "core_relativity": "dirac",
+                "density_tol": 1e-05,
+                "electronic_structure_method": "pseudopotential",
+                "enable_esm": false,
+                "energy_tol": 1e-07,
+                "esm_bc": "pbc",
+                "extra_charge": 0,
+                "gamma_point": false,
+                "gk_cutoff": 8.0,
+                "hubbard_correction": false,
+                "lmax_apw": -1,
+                "lmax_pot": 4,
+                "lmax_rho": 4,
+                "molecule": false,
+                "ngridk": [
+                    4,
+                    4,
+                    4
+                ],
+                "nn_radius": -1,
+                "num_bands": 19,
+                "num_dft_iter": 100,
+                "num_fv_states": -1,
+                "num_mag_dims": 1,
+                "pw_cutoff": 30.0,
+                "reduce_aux_bf": 0,
+                "shiftk": [
+                    0,
+                    0,
+                    0
+                ],
+                "smearing": "gaussian",
+                "smearing_width": 0.02,
+                "so_correction": false,
+                "use_scf_correction": true,
+                "use_symmetry": true,
+                "valence_relativity": "zora",
+                "vk": [],
+                "xc_dens_tre": -1,
+                "xc_functionals": [
+                    "XC_GGA_X_PBE",
+                    "XC_GGA_C_PBE"
+                ]
+            },
+            "settings": {
+                "always_update_wf": true,
+                "auto_enu_tol": 0,
+                "fft_grid_size": [
+                    48,
+                    48,
+                    48
+                ],
+                "itsol_tol_min": 1e-13,
+                "itsol_tol_ratio": 0,
+                "itsol_tol_scale": [
+                    0.1,
+                    0.5
+                ],
+                "min_occupancy": 1e-14,
+                "mixer_rms_min": 1e-16,
+                "nprii_aug": 20,
+                "nprii_beta": 20,
+                "nprii_rho_core": 20,
+                "nprii_vloc": 200,
+                "radial_grid": "exponential, 1.0",
+                "sht_coverage": 0
+            },
+            "unit_cell": {
+                "atom_coordinate_units": "lattice",
+                "atom_files": {
+                    "Ni": "ni_pbe_v1.4.uspp.F.UPF.json"
+                },
+                "atom_types": [
+                    "Ni"
+                ],
+                "atoms": {
+                    "Ni": [
+                        [
+                            0.0,
+                            0.0,
+                            0.0
+                        ]
+                    ]
+                },
+                "lattice_vectors": [
+                    [
+                        0.0,
+                        3.32308339004766,
+                        3.32308339004766
+                    ],
+                    [
+                        3.32308339004766,
+                        0.0,
+                        3.32308339004766
+                    ],
+                    [
+                        3.32308339004766,
+                        3.32308339004766,
+                        0.0
+                    ]
+                ],
+                "lattice_vectors_scale": 1.0
+            }
         },
-        "etot_history": [
-            -164.94037598068496,
-            -170.77416554241069,
-            -171.57675271804874,
-            -171.63954854697732,
-            -171.6358348988643,
-            -171.64487906992,
-            -171.64475955511134,
-            -171.64482119141428,
-            -171.64482074545745,
-            -171.6448204011611,
-            -171.64482073965783,
-            -171.64482069834278,
-            -171.64482027564034,
-            -171.6448208974096,
-            -171.64482089991898,
-            -171.64482090006223,
-            -171.64482090031152,
-            -171.64482090036066
-        ],
         "fft_coarse_grid": [
             27,
             27,
             27
-        ],
-        "fft_grid": [
-            48,
-            48,
-            48
-        ],
-        "forces": [
-            [
-                7.664721294084006e-14,
-                7.853742709236159e-14,
-                7.911730971726219e-14
-            ]
         ],
         "mpi_grid": [
             1,
             1
         ],
         "num_atoms": 1,
-        "num_bands": 19,
-        "num_fv_states": -1,
-        "num_scf_iterations": 17,
-        "omega": 73.39284359469754,
-        "pw_cutoff": 30.0,
+        "omega": 73.39284359469754
+    },
+    "counters": {
+        "band_evp_work_count": 4412.110949117949,
+        "local_operator_num_applied": 10456
+    },
+    "git_hash": "9ca6392c71c115c2dcebf72e002ed55ce56a7d95",
+    "ground_state": {
+        "band_gap": 0.0,
+        "converged": true,
+        "core_leakage": 0.0,
+        "efermi": 0.6570049816607617,
+        "energy": {
+            "bxc": -0.001607003357900388,
+            "core_eval_sum": 0.0,
+            "entropy_sum": -0.008452628907332402,
+            "enuc": 0.0,
+            "eval_sum": -10.646399024157745,
+            "ewald": -111.75579556096395,
+            "exc": -17.777743050528102,
+            "kin": 48.80589326061494,
+            "scf_correction": -6.427271991071848e-06,
+            "total": -171.64482089991634,
+            "veff": -59.450685281414785,
+            "vha": 107.46786783183813,
+            "vloc": -144.642650408764,
+            "vxc": -22.275902704473918
+        },
+        "etot_history": [
+            -164.9403759806849,
+            -170.7741655424106,
+            -171.57675271804857,
+            -171.63954854697835,
+            -171.63583489886304,
+            -171.64487906992667,
+            -171.64475955511202,
+            -171.6448211914149,
+            -171.64482074546368,
+            -171.64482040116053,
+            -171.6448207396598,
+            -171.6448206983472,
+            -171.64482027563994,
+            -171.64482089740002,
+            -171.64482089991634
+        ],
+        "forces": [
+            [
+                4.669901608582778e-13,
+                4.69900773446954e-13,
+                4.712322343899972e-13
+            ]
+        ],
+        "num_scf_iterations": 14,
         "rms_history": [
             0.3975541816426674,
-            0.3486841712284566,
-            0.059742385545886775,
-            0.014657043346541464,
-            0.02463858406581422,
-            0.0011116961907716109,
-            0.0017984003136039366,
-            0.0001774464305983265,
-            0.00015052643917775864,
-            9.501893509157888e-05,
-            0.00017171489435333627,
-            9.41419390220091e-05,
-            3.730605345206686e-05,
-            3.7388537118302767e-06,
-            2.591671721512296e-06,
-            6.787590067877411e-07,
-            3.57321118098139e-07,
-            3.4828825002635266e-08
+            0.34868417122845646,
+            0.059742385545882716,
+            0.01465704334656352,
+            0.024638584065886093,
+            0.001111696190932155,
+            0.0017984003132700945,
+            0.00017744643046836486,
+            0.0001505264383669125,
+            9.501893779841696e-05,
+            0.0001717148960797662,
+            9.414194005831467e-05,
+            3.730607107208602e-05,
+            3.7388524149800572e-06,
+            2.591671738148492e-06
         ],
-        "scf_time": 13.082314,
+        "scf_time": 14.978402,
         "stress": [
             [
-                -0.003031868539747379,
-                1.2122282292971637e-19,
-                2.590051156030611e-34
+                -0.0030092339622585923,
+                1.2292030745029386e-19,
+                2.1688749614424434e-33
             ],
             [
-                1.2122282292971637e-19,
-                -0.003031868539746921,
-                -1.4381036818982707e-19
+                1.2292030745029386e-19,
+                -0.0030092339622583703,
+                -2.1327048849073742e-19
             ],
             [
-                2.590051156030611e-34,
-                -1.4381036818982707e-19,
-                -0.003031868539747351
+                2.1688749614424434e-33,
+                -2.1327048849073742e-19,
+                -0.0030092339622585576
             ]
         ]
     },
