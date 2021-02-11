@@ -44,7 +44,7 @@
     },
 
     "hubbard" : {
-        "orthogonalize": true,
+        "orthogonalize_hubbard_wave_functions": true,
         "Fe" : {
             "U": 4.4,
             "J": 0.0,
