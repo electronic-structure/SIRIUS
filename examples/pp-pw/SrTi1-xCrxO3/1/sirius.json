@@ -1,8 +1,8 @@
 {
     "control" : {
         "!processing_unit" : "gpu",
-        "!std_evp_solver_type" : "scalapack",
-        "!gen_evp_solver_type" : "scalapack",
+        "!std_evp_solver_name" : "scalapack",
+        "!gen_evp_solver_name" : "scalapack",
         "verbosity" : 2,
         "verification" : 0,
         "print_memory_usage" : false,

@@ -1,7 +1,7 @@
 {
     "control" : {
         "processing_unit" : "cpu",
-        "std_evp_solver_type" : "lapack",
+        "std_evp_solver_name" : "lapack",
         "en_evp_solver_type" : "lapack",
         "verbosity" : 2
     },
