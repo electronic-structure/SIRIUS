@@ -2851,7 +2851,9 @@ void sirius_get_energy(void* const* handler__,
         {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }},
         {"one-el",  [&](){ return sirius::one_electron_energy(density, potential); }},
         {"descf",   [&](){ return gs.scf_energy(); }},
-        {"demet",   [&](){ return kset.entropy_sum(); }}};
+        {"demet",   [&](){ return kset.entropy_sum(); }},
+        {"paw",     [&](){ return potential.PAW_total_energy(); }}
+    };
 
     try {
         *energy__ = func.at(label)();
@@ -6000,6 +6002,8 @@ void sirius_set_callback_function(void* const* handler__, char const* label__, v
             sim_ctx.rhoc_ri_djl_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
         } else if (label == "band_occ") {
             sim_ctx.band_occ_callback(reinterpret_cast<void(*)(void)>(fptr__));
+        } else if (label == "ps_rho_ri") {
+            sim_ctx.ps_rho_ri_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
         } else {
             std::stringstream s;
             s << "Wrong label of the callback function: " << label;

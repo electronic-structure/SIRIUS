@@ -186,6 +186,8 @@ class Simulation_context : public Simulation_parameters
     std::function<void(int, int, double*, double*)> rhoc_ri_callback_{nullptr};
     std::function<void(int, int, double*, double*)> rhoc_ri_djl_callback_{nullptr};
 
+    std::function<void(int, int, double*, double*)> ps_rho_ri_callback_{nullptr};
+
     /// Radial integrals of total pseudo-charge density.
     std::unique_ptr<Radial_integrals_rho_pseudo> ps_rho_ri_;
 
@@ -598,67 +600,67 @@ class Simulation_context : public Simulation_parameters
     mdarray<double_complex, 2> sum_fg_fl_yg(int lmax__, double_complex const* fpw__, mdarray<double, 3>& fl__,
                                             matrix<double_complex>& gvec_ylm__);
 
-    inline Radial_integrals_beta<false> const& beta_ri() const
+    inline auto const& beta_ri() const
     {
         return *beta_ri_;
     }
 
-    inline Radial_integrals_beta<true> const& beta_ri_djl() const
+    inline auto const& beta_ri_djl() const
     {
         return *beta_ri_djl_;
     }
 
-    inline Radial_integrals_aug<false> const& aug_ri() const
+    inline auto const& aug_ri() const
     {
         return *aug_ri_;
     }
 
-    inline Radial_integrals_aug<true> const& aug_ri_djl() const
+    inline auto const& aug_ri_djl() const
     {
         return *aug_ri_djl_;
     }
 
-    inline Radial_integrals_atomic_wf<false> const& atomic_wf_ri() const
+    inline auto const& atomic_wf_ri() const
     {
         return *atomic_wf_ri_;
     }
 
-    inline Radial_integrals_atomic_wf<true> const& atomic_wf_djl() const
+    inline auto const& atomic_wf_djl() const
     {
         return *atomic_wf_ri_djl_;
     }
 
-    inline Radial_integrals_atomic_wf<false> const& hubbard_wf_ri() const
+    inline auto const& hubbard_wf_ri() const
     {
         return *hubbard_wf_ri_;
     }
 
-    inline Radial_integrals_atomic_wf<true> const& hubbard_wf_djl() const
+    inline auto const& hubbard_wf_djl() const
     {
         return *hubbard_wf_ri_djl_;
     }
 
-    inline Radial_integrals_rho_core_pseudo<false> const& ps_core_ri() const
+    inline auto const& ps_core_ri() const
     {
         return *ps_core_ri_;
     }
 
-    inline Radial_integrals_rho_core_pseudo<true> const& ps_core_ri_djl() const
+    inline auto const& ps_core_ri_djl() const
     {
         return *ps_core_ri_djl_;
     }
 
-    inline Radial_integrals_rho_pseudo const& ps_rho_ri() const
+    inline auto const& ps_rho_ri() const
     {
         return *ps_rho_ri_;
     }
 
-    inline Radial_integrals_vloc<false> const& vloc_ri() const
+    inline auto const& vloc_ri() const
     {
         return *vloc_ri_;
     }
 
-    inline Radial_integrals_vloc<true> const& vloc_ri_djl() const
+    inline auto const& vloc_ri_djl() const
     {
         return *vloc_ri_djl_;
     }
@@ -827,6 +829,11 @@ class Simulation_context : public Simulation_parameters
     inline void vloc_ri_callback(void (*fptr__)(int, int, double*, double*))
     {
         vloc_ri_callback_ = fptr__;
+    }
+
+    inline void ps_rho_ri_callback(void (*fptr__)(int, int, double*, double*))
+    {
+        ps_rho_ri_callback_ = fptr__;
     }
 
     inline void vloc_ri_djl_callback(void (*fptr__)(int, int, double*, double*))

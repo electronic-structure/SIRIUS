@@ -139,8 +139,13 @@ void Density::initial_density()
 
 void Density::initial_density_pseudo()
 {
-    auto v = ctx_.make_periodic_function<index_domain_t::local>(
-        [&](int iat, double g) { return ctx_.ps_rho_ri().value<int>(iat, g); });
+    /* get lenghts of all G shells */
+    auto q = ctx_.gvec().shells_len();
+    /* get form-factors for all G shells */
+    // TODO: MPI parallelise over G-shells 
+    auto ff = ctx_.ps_rho_ri().values(q);
+    /* make Vloc(G) */
+    auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
 
     if (ctx_.cfg().control().print_checksum()) {
         auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();

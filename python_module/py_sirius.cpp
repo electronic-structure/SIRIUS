@@ -501,8 +501,8 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
-        .def(py::init<Simulation_context&, std::vector<vector3d<double>>>(), py::keep_alive<1, 2>())
-        .def(py::init<Simulation_context&, std::initializer_list<std::initializer_list<double>>>(),
+        .def(py::init<Simulation_context&, std::vector<std::array<double, 3>>>(), py::keep_alive<1, 2>())
+        .def(py::init<Simulation_context&, std::initializer_list<std::array<double, 3>>>(),
              py::keep_alive<1, 2>())
         .def(py::init<Simulation_context&, vector3d<int>, vector3d<int>, bool>(), py::keep_alive<1, 2>())
         .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>(), py::keep_alive<1, 2>())

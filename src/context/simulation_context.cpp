@@ -958,7 +958,7 @@ void Simulation_context::update()
 
         if (!ps_rho_ri_ || ps_rho_ri_->qmax() < new_pw_cutoff) {
             ps_rho_ri_ = std::unique_ptr<Radial_integrals_rho_pseudo>(
-                new Radial_integrals_rho_pseudo(unit_cell(), new_pw_cutoff, 20));
+                new Radial_integrals_rho_pseudo(unit_cell(), new_pw_cutoff, 20, ps_rho_ri_callback_));
         }
 
         if (!vloc_ri_ || vloc_ri_->qmax() < new_pw_cutoff) {
