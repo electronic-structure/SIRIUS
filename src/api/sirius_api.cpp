@@ -2839,20 +2839,21 @@ void sirius_get_energy(void* const* handler__,
     std::string label(label__);
 
     std::map<std::string, std::function<double()>> func = {
-        {"total",   [&](){ return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
-        {"evalsum", [&](){ return sirius::eval_sum(unit_cell, kset); }},
-        {"exc",     [&](){ return sirius::energy_exc(density, potential); }},
-        {"vxc",     [&](){ return sirius::energy_vxc(density, potential); }},
-        {"bxc",     [&](){ return sirius::energy_bxc(density, potential); }},
-        {"veff",    [&](){ return sirius::energy_veff(density, potential); }},
-        {"vloc",    [&](){ return sirius::energy_vloc(density, potential); }},
-        {"vha",     [&](){ return sirius::energy_vha(potential); }},
-        {"enuc",    [&](){ return sirius::energy_enuc(ctx, potential); }},
-        {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }},
-        {"one-el",  [&](){ return sirius::one_electron_energy(density, potential); }},
-        {"descf",   [&](){ return gs.scf_energy(); }},
-        {"demet",   [&](){ return kset.entropy_sum(); }},
-        {"paw",     [&](){ return potential.PAW_total_energy(); }}
+        {"total",      [&](){ return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
+        {"evalsum",    [&](){ return sirius::eval_sum(unit_cell, kset); }},
+        {"exc",        [&](){ return sirius::energy_exc(density, potential); }},
+        {"vxc",        [&](){ return sirius::energy_vxc(density, potential); }},
+        {"bxc",        [&](){ return sirius::energy_bxc(density, potential); }},
+        {"veff",       [&](){ return sirius::energy_veff(density, potential); }},
+        {"vloc",       [&](){ return sirius::energy_vloc(density, potential); }},
+        {"vha",        [&](){ return sirius::energy_vha(potential); }},
+        {"enuc",       [&](){ return sirius::energy_enuc(ctx, potential); }},
+        {"kin",        [&](){ return sirius::energy_kin(ctx, kset, density, potential); }},
+        {"one-el",     [&](){ return sirius::one_electron_energy(density, potential); }},
+        {"descf",      [&](){ return gs.scf_energy(); }},
+        {"demet",      [&](){ return kset.entropy_sum(); }},
+        {"paw-one-el", [&](){ return potential.PAW_one_elec_energy(density); }},
+        {"paw",        [&](){ return potential.PAW_total_energy(); }}
     };
 
     try {
@@ -6002,6 +6003,8 @@ void sirius_set_callback_function(void* const* handler__, char const* label__, v
             sim_ctx.rhoc_ri_djl_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
         } else if (label == "band_occ") {
             sim_ctx.band_occ_callback(reinterpret_cast<void(*)(void)>(fptr__));
+        } else if (label == "veff") {
+            sim_ctx.veff_callback(reinterpret_cast<void(*)(void)>(fptr__));
         } else if (label == "ps_rho_ri") {
             sim_ctx.ps_rho_ri_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
         } else {
