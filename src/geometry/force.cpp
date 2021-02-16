@@ -523,8 +523,6 @@ mdarray<double, 2> const& Force::calc_forces_core()
 
     double fact = gvecs.reduced() ? 2.0 : 1.0;
 
-    //auto& ri = ctx_.ps_core_ri();
-
     /* here the calculations are in lattice vectors space */
     #pragma omp parallel for
     for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {

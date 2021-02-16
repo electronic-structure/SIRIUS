@@ -535,7 +535,6 @@ void sirius_set_parameters(void*  const* handler__,
                            bool   const* so_correction__,
                            char   const* valence_rel__,
                            char   const* core_rel__,
-                           char   const* esm_bc__,
                            double const* iter_solver_tol__,
                            double const* iter_solver_tol_empty__,
                            char   const* iter_solver_type__,
@@ -593,9 +592,6 @@ void sirius_set_parameters(void*  const* handler__,
         }
         if (core_rel__ != nullptr) {
             sim_ctx.core_relativity(core_rel__);
-        }
-        if (esm_bc__ != nullptr) {
-            sim_ctx.esm_bc(std::string(esm_bc__));
         }
         if (iter_solver_tol__ != nullptr) {
             sim_ctx.iterative_solver_tolerance(*iter_solver_tol__);

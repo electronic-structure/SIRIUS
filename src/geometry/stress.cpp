@@ -214,10 +214,6 @@ matrix3d<double> Stress::calc_stress_core()
     auto ff = ctx_.ps_core_ri_djl().values(q);
     auto drhoc = ctx_.make_periodic_function<index_domain_t::local>(ff);
 
-    //auto& ri_dg = ctx_.ps_core_ri_djl();
-
-    //auto drhoc = ctx_.make_periodic_function<index_domain_t::local>(
-    //    [&ri_dg](int iat, double g) { return ri_dg.value<int>(iat, g); });
     double sdiag{0};
     int ig0 = ctx_.gvec().skip_g0();
 
@@ -718,15 +714,6 @@ matrix3d<double> Stress::calc_stress_vloc()
     auto ri_vloc = ctx_.vloc_ri().values(q);
     auto ri_vloc_dg = ctx_.vloc_ri_djl().values(q);
 
-    //auto& ri_vloc    = ctx_.vloc_ri();
-    //auto& ri_vloc_dg = ctx_.vloc_ri_djl();
-
-    //auto v =
-    //    ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g) { return ri_vloc.value(iat, g); });
-
-    //auto dv =
-    //    ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g) { return ri_vloc_dg.value(iat, g); });
-    
     auto v = ctx_.make_periodic_function<index_domain_t::local>(ri_vloc);
     auto dv = ctx_.make_periodic_function<index_domain_t::local>(ri_vloc_dg);
 

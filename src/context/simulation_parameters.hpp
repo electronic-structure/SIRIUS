@@ -552,11 +552,6 @@ class Simulation_parameters
         return hubbard_input_;
     }
 
-    //NLCG_input const& nlcg_input() const
-    //{
-    //    return nlcg_input_;
-    //}
-
     /// Get the options set at runtime.
     json& get_runtime_options_dictionary()
     {
@@ -568,13 +563,6 @@ class Simulation_parameters
     {
         cfg_.settings().sht_coverage(sht_coverage__);
         return cfg_.settings().sht_coverage();
-    }
-
-    inline std::string esm_bc(std::string const& esm_bc__)
-    {
-        cfg().parameters().esm_bc(esm_bc__);
-        cfg().parameters().enable_esm(true);
-        return esm_bc__;
     }
 
     /// Print all options in the terminal.
