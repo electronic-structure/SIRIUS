@@ -465,10 +465,6 @@ sirius_set_parameters:
       type: string
       attr: in, optional
       doc: Core relativity treatment.
-    esm_bc:
-      type: string
-      attr: in, optional
-      doc: Type of boundary condition for effective screened medium.
     iter_solver_tol:
       type: double
       attr: in, optional
