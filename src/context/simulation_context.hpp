@@ -236,6 +236,9 @@ class Simulation_context : public Simulation_parameters
     /// Callback function to compute band occupancies.
     std::function<void(void)> band_occ_callback_{nullptr};
 
+    /// Callback function to compute effective potential.
+    std::function<void(void)> veff_callback_{nullptr};
+
     // Spla context
     std::shared_ptr<::spla::Context> spla_ctx_{new ::spla::Context{SPLA_PU_HOST}};
 
@@ -860,6 +863,16 @@ class Simulation_context : public Simulation_parameters
     inline std::function<void(void)> band_occ_callback() const
     {
         return band_occ_callback_;
+    }
+
+    inline void veff_callback(void (*fptr__)(void))
+    {
+        veff_callback_ = fptr__;
+    }
+
+    inline std::function<void(void)> veff_callback() const
+    {
+        return veff_callback_;
     }
 
     /// Get tolerance of the iterative solver.
