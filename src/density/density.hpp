@@ -695,32 +695,38 @@ class Density : public Field4D
     /** Initially, density matrix is obtained with summation over irreducible BZ:
      *  \f[
      *      \tilde n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha}  =
-     *          \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+     *          \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| 
+     *          \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
      *          \langle \Psi_{j{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle
      *  \f]
      *  In order to symmetrize it, the following operation is performed:
      *  \f[
      *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}}
-     *          \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+     *          \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}|
+     *          \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
      *          \langle \Psi_{j{\bf P}{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle
      *  \f]
      *  where \f$ {\bf P} \f$ is the space-group symmetry operation. The inner product between wave-function and
      *  local orbital is transformed as:
      *  \f[
      *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle =
-     *          \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
-     *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
-     *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r) Y_{\ell m}({\bf P} \hat{\bf r}) dr
+     *          \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r)
+     *          Y_{\ell m}(\hat {\bf r}) dr = \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r})
+     *          u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
+     *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r)
+     *          Y_{\ell m}({\bf P} \hat{\bf r}) dr
      *  \f]
      *  Under rotation the spherical harmonic is transformed as:
      *  \f[
-     *        Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) = \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) =
-     *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
+     *    Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) =
+     *       \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) =
+     *       \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
      *  \f]
      *  The inner-product integral is then rewritten as:
      *  \f[
      *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle  =
-     *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} | u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle
+     *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} |
+     *          u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle
      *  \f]
      *  and the final expression for density matrix gets the following form:
      *  \f[
@@ -732,6 +738,38 @@ class Density : public Field4D
      *          \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P})
      *          \tilde n_{\ell \lambda m_1 \sigma, \ell' \lambda' m_2 \sigma'}^{{\bf P}\alpha}
      *  \f]
+     *
+     *  The LDA+U case (will be moved to the correct location).
+     *
+     *  We start from the spectral represntation of the occupany operator:
+     *  \f[
+     *    \hat N =  \sum_{j} \sum_{{\bf k}}^{IBZ} | \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+     *          \langle \Psi_{j{\bf k}}^{\sigma'} |
+     *  \f]
+     *  and a set of localized orbitals for which the Hubbard correction is defined:
+     *  \f[
+     *    |\phi_{\ell m}^{\alpha {\bf T}}\rangle
+     *  \f]
+     *  The orbitals are labeled by the angular and azimuthal quantum numbers (\f$ \ell m \f$), atom index
+     *  (\f$ \alpha \f$) and a lattice translation vector (\f$ {\bf T} \f$).
+     *  There might be several localized orbitals per atom. We wish to compute the occupation matrix:
+     *  \f[
+     *    n_{\ell m \alpha {\bf T} \sigma, \ell' m' \alpha' {\bf T}' \sigma'} =
+     *      \langle \phi_{\ell m}^{\alpha {\bf T}} | \hat N | \phi_{\ell' m'}^{\alpha' {\bf T'}} \rangle
+     *  \f]
+     *
+     *  Let's focus on the "on-site" case for which \f$ {\bf T=T'} \f$ and \f$ \alpha = \alpha'\f$:
+     *  \f[
+     *    n_{\ell m \sigma, \ell' m' \sigma'}^{\alpha} = \langle \phi_{\ell m}^{\alpha} | \hat N |
+     *      \phi_{\ell' m'}^{\alpha} \rangle
+     *  \f]
+     *  To compute the overlap integrals between KS wave-functions and localized Hubbard orbitals we insert 
+     *  resolution of identity (in \f$ {\bf G+k} \f$ planve-waves) between bra and ket:
+     *  \f[
+     *    \langle  \phi_{\ell m}^{\alpha} | \Psi_{j{\bf k}}^{\sigma} \rangle = \sum_{\bf G}
+     *      \phi_{\ell m}^{\alpha *}({\bf G+k}) \Psi_{j}^{\sigma}({\bf G+k})
+     *  \f]
+     *
      */
     void symmetrize_density_matrix();
 

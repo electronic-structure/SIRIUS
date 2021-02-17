@@ -259,7 +259,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
                 rms, etot - eold);
         /* check if the calculation has converged */
         if (std::abs(eold - etot) < energy_tol && rms < density_tol) {
-            ctx_.message(1, __function_name__,"\nconverged after %i SCF iterations!\n", iter + 1); 
+            ctx_.message(1, __function_name__,"converged after %i SCF iterations!\n", iter + 1); 
             num_iter = iter;
             break;
         }
