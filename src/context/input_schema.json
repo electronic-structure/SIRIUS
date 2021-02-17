@@ -607,18 +607,6 @@
                     "default" : -1,
                     "title" : "Radius of atom nearest-neighbour cluster."
                 },
-                "enable_esm" : {
-                    "type" : "boolean",
-                    "default" : false,
-                    "title" : "Effective screening medium (in conjugation with QE only).",
-                    "$comment" : "subject to removal"
-                },
-                "esm_bc" : {
-                    "type" : "string",
-                    "default" : "pbc",
-                    "title" : "Type of periodic boundary conditions.",
-                    "$comment" : "subject to removal"
-                },
                 "reduce_aux_bf" : {
                     "type" : "number",
                     "default" : 0,

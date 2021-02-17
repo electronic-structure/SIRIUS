@@ -100,7 +100,7 @@ class Potential : public Field4D
 
     mdarray<double_complex, 2> gvec_ylm_;
 
-    double energy_vha_;
+    double energy_vha_{0};
 
     /// Electronic part of Hartree potential.
     /** Used to compute electron-nuclear contribution to the total energy */

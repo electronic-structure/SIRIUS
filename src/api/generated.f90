@@ -366,7 +366,6 @@ end subroutine sirius_import_parameters
 !> @param [in] so_correction True if spin-orbit correnctio is enabled.
 !> @param [in] valence_rel Valence relativity treatment.
 !> @param [in] core_rel Core relativity treatment.
-!> @param [in] esm_bc Type of boundary condition for effective screened medium.
 !> @param [in] iter_solver_tol Tolerance of the iterative solver.
 !> @param [in] iter_solver_tol_empty Tolerance for the empty states.
 !> @param [in] iter_solver_type Type of iterative solver.
@@ -381,9 +380,9 @@ end subroutine sirius_import_parameters
 !> @param [out] error_code Error code.
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
-&so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,&
-&iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,&
-&sht_coverage,min_occupancy,smearing,smearing_width,error_code)
+&so_correction,valence_rel,core_rel,iter_solver_tol,iter_solver_tol_empty,iter_solver_type,&
+&verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,sht_coverage,&
+&min_occupancy,smearing,smearing_width,error_code)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
@@ -402,7 +401,6 @@ logical, optional, target, intent(in) :: use_symmetry
 logical, optional, target, intent(in) :: so_correction
 character(*), optional, target, intent(in) :: valence_rel
 character(*), optional, target, intent(in) :: core_rel
-character(*), optional, target, intent(in) :: esm_bc
 real(8), optional, target, intent(in) :: iter_solver_tol
 real(8), optional, target, intent(in) :: iter_solver_tol_empty
 character(*), optional, target, intent(in) :: iter_solver_type
@@ -437,8 +435,6 @@ type(C_PTR) :: valence_rel_ptr
 character(C_CHAR), target, allocatable :: valence_rel_c_type(:)
 type(C_PTR) :: core_rel_ptr
 character(C_CHAR), target, allocatable :: core_rel_c_type(:)
-type(C_PTR) :: esm_bc_ptr
-character(C_CHAR), target, allocatable :: esm_bc_c_type(:)
 type(C_PTR) :: iter_solver_tol_ptr
 type(C_PTR) :: iter_solver_tol_empty_ptr
 type(C_PTR) :: iter_solver_type_ptr
@@ -459,9 +455,9 @@ type(C_PTR) :: error_code_ptr
 interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_states,&
 &num_bands,num_mag_dims,pw_cutoff,gk_cutoff,fft_grid_size,auto_rmt,gamma_point,use_symmetry,&
-&so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,&
-&iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,&
-&sht_coverage,min_occupancy,smearing,smearing_width,error_code)&
+&so_correction,valence_rel,core_rel,iter_solver_tol,iter_solver_tol_empty,iter_solver_type,&
+&verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals,sht_coverage,&
+&min_occupancy,smearing,smearing_width,error_code)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
@@ -480,7 +476,6 @@ type(C_PTR), value :: use_symmetry
 type(C_PTR), value :: so_correction
 type(C_PTR), value :: valence_rel
 type(C_PTR), value :: core_rel
-type(C_PTR), value :: esm_bc
 type(C_PTR), value :: iter_solver_tol
 type(C_PTR), value :: iter_solver_tol_empty
 type(C_PTR), value :: iter_solver_type
@@ -565,12 +560,6 @@ allocate(core_rel_c_type(len(core_rel)+1))
 core_rel_c_type = string_f2c(core_rel)
 core_rel_ptr = C_LOC(core_rel_c_type)
 endif
-esm_bc_ptr = C_NULL_PTR
-if (present(esm_bc)) then
-allocate(esm_bc_c_type(len(esm_bc)+1))
-esm_bc_c_type = string_f2c(esm_bc)
-esm_bc_ptr = C_LOC(esm_bc_c_type)
-endif
 iter_solver_tol_ptr = C_NULL_PTR
 if (present(iter_solver_tol)) then
 iter_solver_tol_ptr = C_LOC(iter_solver_tol)
@@ -629,7 +618,7 @@ endif
 call sirius_set_parameters_aux(handler_ptr,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,&
 &num_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,fft_grid_size_ptr,&
 &auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,&
-&core_rel_ptr,esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,&
+&core_rel_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,iter_solver_type_ptr,&
 &verbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals_ptr,&
 &sht_coverage_ptr,min_occupancy_ptr,smearing_ptr,smearing_width_ptr,error_code_ptr)
 if (present(gamma_point)) then
@@ -643,9 +632,6 @@ deallocate(valence_rel_c_type)
 endif
 if (present(core_rel)) then
 deallocate(core_rel_c_type)
-endif
-if (present(esm_bc)) then
-deallocate(esm_bc_c_type)
 endif
 if (present(iter_solver_type)) then
 deallocate(iter_solver_type_c_type)

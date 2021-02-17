@@ -104,7 +104,9 @@ class SHT // TODO: better name
                 break;
             }
             default: {
-                throw std::runtime_error("Wrong spherical coverage parameter");
+                std::stringstream s;
+                s << "[SHT] wrong spherical coverage parameter : " << mesh_type_;
+                throw std::runtime_error(s.str());
             }
         }
 

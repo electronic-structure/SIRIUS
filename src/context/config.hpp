@@ -1266,30 +1266,6 @@ class config_t
             }
             dict_["/parameters/nn_radius"_json_pointer] = nn_radius__;
         }
-        /// Effective screening medium (in conjugation with QE only).
-        inline auto enable_esm() const
-        {
-            return dict_.at("/parameters/enable_esm"_json_pointer).get<bool>();
-        }
-        inline void enable_esm(bool enable_esm__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/parameters/enable_esm"_json_pointer] = enable_esm__;
-        }
-        /// Type of periodic boundary conditions.
-        inline auto esm_bc() const
-        {
-            return dict_.at("/parameters/esm_bc"_json_pointer).get<std::string>();
-        }
-        inline void esm_bc(std::string esm_bc__)
-        {
-            if (dict_.contains("locked")) {
-                throw std::runtime_error(locked_msg);
-            }
-            dict_["/parameters/esm_bc"_json_pointer] = esm_bc__;
-        }
         /// Reduction of the auxiliary magnetic field at each SCF step.
         inline auto reduce_aux_bf() const
         {
