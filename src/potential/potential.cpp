@@ -235,5 +235,107 @@ void Potential::insert_xc_functionals(const std::vector<std::string>& labels__)
     }
 }
 
+void Potential::generate(Density const& density__)
+{
+    PROFILE("sirius::Potential::generate");
+
+    if (!ctx_.full_potential()) {
+        /* save current effective potential */
+        for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
+            dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig);
+        }
+    }
+
+    /* zero effective potential and magnetic field */
+    zero();
+
+    auto veff_callback = ctx_.veff_callback();
+    if (veff_callback) {
+        veff_callback();
+        //if (!ctx_.full_potential()) {
+        //    /* add local ionic potential to the effective potential */
+        //    effective_potential().add(local_potential());
+        //}
+        /* transform to real space */
+        //fft_transform(1);
+    } else {
+        /* solve Poisson equation */
+        poisson(density__.rho());
+
+        /* add Hartree potential to the total potential */
+        effective_potential().add(hartree_potential());
+
+        if (ctx_.cfg().control().print_hash()) {
+            auto h = effective_potential().hash_f_rg();
+            if (ctx_.comm().rank() == 0) {
+                utils::print_hash("Vha", h);
+            }
+        }
+
+        if (ctx_.full_potential()) {
+            xc(density__);
+        } else {
+            /* add local ionic potential to the effective potential */
+            effective_potential().add(local_potential());
+            /* construct XC potentials from rho + rho_core */
+            xc<true>(density__);
+        }
+        /* add XC potential to the effective potential */
+        effective_potential().add(xc_potential());
+
+        if (ctx_.cfg().control().print_hash()) {
+            auto h = effective_potential().hash_f_rg();
+            if (ctx_.comm().rank() == 0) {
+                utils::print_hash("Vha+Vxc", h);
+            }
+        }
+
+        if (ctx_.full_potential()) {
+            effective_potential().sync_mt();
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                effective_magnetic_field(j).sync_mt();
+            }
+        }
+
+        /* get plane-wave coefficients of effective potential;
+         * they will be used in three places:
+         *  1) compute D-matrix
+         *  2) establish a mapping between fine and coarse FFT grid for the Hloc operator
+         *  3) symmetrize effective potential */
+        fft_transform(-1);
+    }
+
+    if (!ctx_.full_potential()) {
+        /* this is needed later to compute scf correction to forces */
+        for (size_t ig = 0; ig < effective_potential().f_pw_local().size(); ig++) {
+            dveff_->f_pw_local(ig) = effective_potential().f_pw_local(ig) - dveff_->f_pw_local(ig);
+        }
+    }
+
+    if (ctx_.cfg().control().print_hash()) {
+        auto h = effective_potential().hash_f_pw();
+        if (ctx_.comm().rank() == 0) {
+            utils::print_hash("V(G)", h);
+        }
+    }
+
+    if (!ctx_.full_potential()) {
+        generate_D_operator_matrix();
+        generate_PAW_effective_potential(density__);
+    }
+
+    if (ctx_.hubbard_correction()) {
+        this->U().generate_potential(density__.occupation_matrix().data());
+    }
+
+    if (ctx_.cfg().parameters().reduce_aux_bf() > 0 && ctx_.cfg().parameters().reduce_aux_bf() < 1) {
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            for (int x : {0, 1, 2}) {
+                aux_bf_(x, ia) *= ctx_.cfg().parameters().reduce_aux_bf();
+            }
+        }
+    }
+}
+
 }
 
