@@ -325,22 +325,16 @@ void Radial_integrals_vloc<jl_deriv>::generate()
                 }
             } else {           /* integral with j0(q*r) */
                 if (iq == 0) { /* q=0 case */
-                    if (unit_cell_.parameters().cfg().parameters().enable_esm() &&
-                        unit_cell_.parameters().cfg().parameters().esm_bc() != "pbc") {
-                        for (int ir = 0; ir < rg.num_points(); ir++) {
-                            double x = rg[ir];
-                            s(ir)    = (x * vloc[ir] + atom_type.zn() * std::erf(x)) * x;
-                        }
-                    } else {
-                        for (int ir = 0; ir < rg.num_points(); ir++) {
-                            double x = rg[ir];
-                            s(ir)    = (x * vloc[ir] + atom_type.zn()) * x;
-                        }
+                    for (int ir = 0; ir < rg.num_points(); ir++) {
+                        double x = rg[ir];
+
+                        s(ir) = (x * vloc[ir] + atom_type.zn()) * x;
                     }
                 } else {
                     for (int ir = 0; ir < rg.num_points(); ir++) {
                         double x = rg[ir];
-                        s(ir)    = (x * vloc[ir] + atom_type.zn() * std::erf(x)) * std::sin(g * x);
+
+                        s(ir) = (x * vloc[ir] + atom_type.zn() * std::erf(x)) * std::sin(g * x);
                     }
                 }
             }
