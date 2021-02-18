@@ -193,12 +193,20 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     apex::finalize();
 #endif
 #if defined(SIRIUS_USE_POWER_COUNTER)
-    energy() += utils::power::energy();
-    energy_acc() += utils::power::device_energy();
+    double e = energy() + utils::power::energy();
+    double e_acc = energy_acc() + utils::power::device_energy();
     if (Communicator::world().rank() == 0) {
-        printf("=== Energy consumption ===\n");
-        printf("energy     : %18.12f Joules\n", energy());
-        printf("energy_acc : %18.12f Joules\n", energy_acc());
+        printf("=== Energy consumption (root MPI rank) ===\n");
+        printf("energy     : %9.2f Joules\n", e);
+        printf("energy_acc : %9.2f Joules\n", e_acc);
+    }
+    Communicator::world().allreduce(&e, 1);
+    Communicator::world().allreduce(&e_acc, 1);
+    int nn = utils::power::num_nodes();
+    if (Communicator::world().rank() == 0 && nn > 0) {
+        printf("=== Energy consumption (all nodes) ===\n");
+        printf("energy     : %9.2f Joules\n", e * nn / Communicator::world().size());
+        printf("energy_acc : %9.2f Joules\n", e_acc * nn / Communicator::world().size());
     }
 #endif
     if (call_mpi_fin__) {
