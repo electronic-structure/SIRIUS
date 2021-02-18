@@ -41,6 +41,9 @@
 #include "utils/json.hpp"
 #include "utils/profiler.hpp"
 using json = nlohmann::json;
+#if defined(SIRIUS_USE_POWER_COUNTER)
+#include "utils/power.hpp"
+#endif
 
 #include "context/input.hpp"
 #include "context/simulation_context.hpp"
@@ -74,6 +77,20 @@ inline static bool& is_initialized()
     return b;
 }
 
+#if defined(SIRIUS_USE_POWER_COUNTER)
+inline static double& energy()
+{
+    static double e__{0};
+    return e__;
+}
+
+inline static double& energy_acc()
+{
+    static double e__{0};
+    return e__;
+}
+#endif
+
 /// Initialize the library.
 inline void initialize(bool call_mpi_init__ = true)
 {
@@ -82,13 +99,16 @@ inline void initialize(bool call_mpi_init__ = true)
     if (is_initialized()) {
         TERMINATE("SIRIUS library is already initialized");
     }
+#if defined(SIRIUS_USE_POWER_COUNTER)
+    energy() = -utils::power::energy();
+    energy_acc() = -utils::power::device_energy();
+#endif
     if (call_mpi_init__) {
         Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
 #if defined(__APEX)
     apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
 #endif
-    //utils::start_global_timer();
 
     if (Communicator::world().rank() == 0) {
         std::printf("SIRIUS %i.%i.%i, git hash: %s\n", sirius::major_version(), sirius::minor_version(),
@@ -171,6 +191,15 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     //utils::stop_global_timer();
 #if defined(__APEX)
     apex::finalize();
+#endif
+#if defined(SIRIUS_USE_POWER_COUNTER)
+    energy() += utils::power::energy();
+    energy_acc() += utils::power::device_energy();
+    if (Communicator::world().rank() == 0) {
+        printf("=== Energy consumption ===\n");
+        printf("energy     : %18.12f Joules\n", energy());
+        printf("energy_acc : %18.12f Joules\n", energy_acc());
+    }
 #endif
     if (call_mpi_fin__) {
         Communicator::finalize();
