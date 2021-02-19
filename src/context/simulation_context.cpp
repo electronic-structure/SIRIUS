@@ -1106,9 +1106,10 @@ void Simulation_context::update()
         gvec_->lattice_vectors(rlv);
     }
 
-    if (!remap_gvec_) {
-        remap_gvec_ = std::unique_ptr<Gvec_shells>(new Gvec_shells(gvec()));
-    }
+    /* After each update of the lattice vectors we might get a different set of G-vector shells.
+     * Always update the mapping between the canonical FFT distribution and "local G-shells"
+     * distribution which is used in symmetriezation of lattice periodic functions. */
+    remap_gvec_ = std::unique_ptr<Gvec_shells>(new Gvec_shells(gvec()));
 
     /* check symmetry of G-vectors */
     if (unit_cell().num_atoms() != 0 && use_symmetry() && cfg().control().verification() >= 1) {
