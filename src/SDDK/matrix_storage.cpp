@@ -92,7 +92,7 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_from(const dmatrix<T>& mtr
 
     block_data_descriptor rd(comm.size());
     rd.counts[comm.rank()] = num_rows_loc();
-    comm.allgather(rd.counts.data(), comm.rank(), 1);
+    comm.allgather(rd.counts.data(), 1, comm.rank());
     rd.calc_offsets();
 
     block_data_descriptor sd(comm.size());
@@ -138,7 +138,7 @@ void matrix_storage<T, matrix_storage_t::slab>::remap_from(const dmatrix<T>& mtr
         }
 
         sd.counts[comm.rank()] = local_size_row * local_size_col;
-        comm.allgather(sd.counts.data(), comm.rank(), 1);
+        comm.allgather(sd.counts.data(), 1, comm.rank());
         sd.calc_offsets();
 
         /* collect buffers submatrix */

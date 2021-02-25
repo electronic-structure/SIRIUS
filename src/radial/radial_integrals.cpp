@@ -125,7 +125,7 @@ void Radial_integrals_aug<jl_deriv>::generate()
         }
         for (int l = 0; l <= 2 * lmax_beta; l++) {
             for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
-                unit_cell_.comm().allgather(&values_(idx, l, iat)(0), spl_q_.global_offset(), spl_q_.local_size());
+                unit_cell_.comm().allgather(&values_(idx, l, iat)(0), spl_q_.local_size(), spl_q_.global_offset());
             }
         }
 
@@ -160,7 +160,7 @@ void Radial_integrals_rho_pseudo::generate()
 
             values_(iat)(iq) = sirius::inner(jl[0], rho, 0, atom_type.num_mt_points()) / fourpi;
         }
-        unit_cell_.comm().allgather(&values_(iat)(0), spl_q_.global_offset(), spl_q_.local_size());
+        unit_cell_.comm().allgather(&values_(iat)(0), spl_q_.local_size(), spl_q_.global_offset());
         values_(iat).interpolate();
     }
 }
@@ -193,7 +193,7 @@ void Radial_integrals_rho_core_pseudo<jl_deriv>::generate()
                 values_(iat)(iq) = sirius::inner(jl[0], ps_core, 2, atom_type.num_mt_points());
             }
         }
-        unit_cell_.comm().allgather(&values_(iat)(0), spl_q_.global_offset(), spl_q_.local_size());
+        unit_cell_.comm().allgather(&values_(iat)(0), spl_q_.local_size(), spl_q_.global_offset());
         values_(iat).interpolate();
     }
 }
@@ -233,7 +233,7 @@ void Radial_integrals_beta<jl_deriv>::generate()
         }
 
         for (int idxrf = 0; idxrf < nrb; idxrf++) {
-            unit_cell_.comm().allgather(&values_(idxrf, iat)(0), spl_q_.global_offset(), spl_q_.local_size());
+            unit_cell_.comm().allgather(&values_(idxrf, iat)(0), spl_q_.local_size(), spl_q_.global_offset());
             values_(idxrf, iat).interpolate();
         }
     }
@@ -340,7 +340,7 @@ void Radial_integrals_vloc<jl_deriv>::generate()
             }
             values_(iat)(iq) = s.interpolate().integrate(0);
         }
-        unit_cell_.comm().allgather(&values_(iat)(0), spl_q_.global_offset(), spl_q_.local_size());
+        unit_cell_.comm().allgather(&values_(iat)(0), spl_q_.local_size(), spl_q_.global_offset());
         values_(iat).interpolate();
     }
 }

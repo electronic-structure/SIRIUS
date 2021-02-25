@@ -3094,7 +3094,7 @@ void sirius_get_q_operator(void*          const* handler__,
         double y = sim_ctx.augmentation_op(type.id())->q_pw(idx, 2 * ig + 1);
         q_pw[sim_ctx.gvec().offset() + ig] = double_complex(x, y) * static_cast<double>(p1 * p2);
     }
-    sim_ctx.comm().allgather(q_pw.data(), sim_ctx.gvec().offset(), sim_ctx.gvec().count());
+    sim_ctx.comm().allgather(q_pw.data(), sim_ctx.gvec().count(), sim_ctx.gvec().offset());
 
     for (int i = 0; i < *ngv__; i++) {
         vector3d<int> G(gvl(0, i), gvl(1, i), gvl(2, i));
@@ -3192,13 +3192,13 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
     }
 
     std::vector<int> rank_with_jk(kset.comm().size());
-    kset.comm().allgather(&jrank, rank_with_jk.data(), kset.comm().rank(), 1);
+    kset.comm().allgather(&jrank, rank_with_jk.data(), 1, kset.comm().rank());
 
     std::vector<int> jk_of_rank(kset.comm().size());
-    kset.comm().allgather(&jk, jk_of_rank.data(), kset.comm().rank(), 1);
+    kset.comm().allgather(&jk, jk_of_rank.data(), 1, kset.comm().rank());
 
     std::vector<int> jspn_of_rank(kset.comm().size());
-    kset.comm().allgather(&jspn, jspn_of_rank.data(), kset.comm().rank(), 1);
+    kset.comm().allgather(&jspn, jspn_of_rank.data(), 1, kset.comm().rank());
 
     int my_rank = kset.comm().rank();
 
@@ -3336,18 +3336,21 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                         auto kp = kset[this_jk];
                         int gkvec_count = kp->gkvec().count();
                         /* send wave-functions */
-                        req = kset.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0), gkvec_count * sim_ctx.num_bands(), r, tag);
+                        req = kset.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0),
+                                gkvec_count * sim_ctx.num_bands(), r, tag);
                     }
                     if (my_rank == r) {
                         int gkvec_count = gkvec.count();
                         int gkvec_offset = gkvec.offset();
                         /* receive the array with wave-functions */
-                        kset.comm().recv(&wf->pw_coeffs(0).prime(0, 0), gkvec_count * sim_ctx.num_bands(), rank_with_jk[r], tag);
+                        kset.comm().recv(&wf->pw_coeffs(0).prime(0, 0), gkvec_count * sim_ctx.num_bands(),
+                                rank_with_jk[r], tag);
                         std::vector<double_complex> wf_tmp(gkvec.num_gvec());
                         /* store wave-functions */
                         for (int i = 0; i < sim_ctx.num_bands(); i++) {
                             /* gather full column of PW coefficients */
-                            sim_ctx.comm_band().allgather(&wf->pw_coeffs(0).prime(0, i), wf_tmp.data(), gkvec_offset, gkvec_count);
+                            sim_ctx.comm_band().allgather(&wf->pw_coeffs(0).prime(0, i), wf_tmp.data(),
+                                    gkvec_count, gkvec_offset);
                             store_wf(wf_tmp, i, s, evc);
                         }
                     }
@@ -3359,71 +3362,6 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
         }
     }
 }
-
-//==/*
-//==@apibegin
-//==sirius_get_radial_integral:
-//==  return: double
-//==  doc: Get value of the radial integral.
-//==  arguments:
-//==    handler:
-//==      type: void*
-//==      attr: in, required
-//==      doc: Simulation context handler.
-//==    atom_type:
-//==      type: string
-//==      attr: in, required
-//==      doc: Label of the atom type.
-//==    label:
-//==      type: string
-//==      attr: in, required
-//==      doc: Label of the radial integral.
-//==    q:
-//==      type: double
-//==      attr: in, required
-//==      doc: Length of the reciprocal wave-vector.
-//==    idx:
-//==      type: int
-//==      attr: in, required
-//==      doc: Index of the radial integral.
-//==    l:
-//==      type: int
-//==      attr: in, optional
-//==      doc: Orbital quantum number (for Q-radial integrals).
-//==@apiend
-//==*/
-//==double sirius_get_radial_integral(void*  const* handler__,
-//==                                  char   const* atom_type__,
-//==                                  char   const* label__,
-//==                                  double const* q__,
-//==                                  int    const* idx__,
-//==                                  int    const* l__)
-//=={
-//==    auto& sim_ctx = get_sim_ctx(handler__);
-//==
-//==    auto& type = sim_ctx.unit_cell().atom_type(std::string(atom_type__));
-//==
-//==    std::string label(label__);
-//==
-//==    if (label == "aug") {
-//==        if (l__ == nullptr) {
-//==            TERMINATE("orbital quantum number must be provided for augmentation operator radial integrals");
-//==        }
-//==        return sim_ctx.aug_ri().value<int, int, int>(*idx__ - 1, *l__, type.id(), *q__);
-//==    } else if (label == "aug_dj") {
-//==        if (l__ == nullptr) {
-//==            TERMINATE("orbital quantum number must be provided for augmentation operator radial integrals");
-//==        }
-//==        return sim_ctx.aug_ri_djl().value<int, int, int>(*idx__ - 1, *l__, type.id(), *q__);
-//==    } else if (label == "beta") {
-//==        return sim_ctx.beta_ri().value<int, int>(*idx__ - 1, type.id(), *q__);
-//==    } else if (label == "beta_dj") {
-//==        return sim_ctx.beta_ri_djl().value<int, int>(*idx__ - 1, type.id(), *q__);
-//==    } else {
-//==        TERMINATE("wrong label of radial integral");
-//==        return 0.0; // make compiler happy
-//==    }
-//==}
 
 /*
 @api begin

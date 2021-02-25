@@ -665,7 +665,7 @@ void Gvec_partition::gather_pw_global(std::complex<double>* f_pw_fft__, std::com
         int ig1                             = gvec_fft_slab().offsets[comm_ortho_fft().rank()] + ig;
         f_pw_global__[gvec().offset() + ig] = f_pw_fft__[ig1];
     }
-    gvec().comm().allgather(&f_pw_global__[0], gvec().offset(), gvec().count());
+    gvec().comm().allgather(&f_pw_global__[0], gvec().count(), gvec().offset());
 }
 
 Gvec_shells::Gvec_shells(Gvec const& gvec__)

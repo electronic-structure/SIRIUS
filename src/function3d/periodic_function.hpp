@@ -115,7 +115,8 @@ class Periodic_function : public Smooth_periodic_function<T>
             } else {
                 for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                     int ia             = unit_cell_.spl_num_atoms(ialoc);
-                    f_mt_local_(ialoc) = Spheric_function<function_domain_t::spectral, T>(angular_domain_size_, unit_cell_.atom(ia).radial_grid());
+                    f_mt_local_(ialoc) = Spheric_function<function_domain_t::spectral, T>(angular_domain_size_,
+                                             unit_cell_.atom(ia).radial_grid());
                 }
             }
         }
@@ -128,9 +129,8 @@ class Periodic_function : public Smooth_periodic_function<T>
         assert(f_mt_.size() != 0);
 
         int ld = angular_domain_size_ * unit_cell_.max_num_mt_points();
-        comm_.allgather(&f_mt_(0, 0, 0),
-                        ld * unit_cell_.spl_num_atoms().global_offset(),
-                        ld * unit_cell_.spl_num_atoms().local_size());
+        comm_.allgather(&f_mt_(0, 0, 0), ld * unit_cell_.spl_num_atoms().local_size(),
+                ld * unit_cell_.spl_num_atoms().global_offset());
     }
 
     /// Zero the function.
@@ -153,7 +153,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         std::copy(this->f_rg_.at(memory_t::host), this->f_rg_.at(memory_t::host) + this->spfft_->local_slice_size(),
                   f_rg__ + offs);
         if (!is_local_rg__) {
-            sddk::Communicator(this->spfft_->communicator()).allgather(f_rg__, offs, this->spfft_->local_slice_size());
+            sddk::Communicator(this->spfft_->communicator()).allgather(f_rg__, this->spfft_->local_slice_size(), offs);
         }
 
         if (ctx_.full_potential()) {
@@ -163,9 +163,8 @@ class Periodic_function : public Smooth_periodic_function<T>
                 std::memcpy(&f_mt(0, 0, ia), &f_mt_local_(ialoc)(0, 0), f_mt_local_(ialoc).size() * sizeof(T));
             }
             int ld = angular_domain_size_ * unit_cell_.max_num_mt_points();
-            comm_.allgather(f_mt__,
-                            ld * unit_cell_.spl_num_atoms().global_offset(),
-                            ld * unit_cell_.spl_num_atoms().local_size());
+            comm_.allgather(f_mt__, ld * unit_cell_.spl_num_atoms().local_size(),
+                ld * unit_cell_.spl_num_atoms().global_offset());
         }
     }
 

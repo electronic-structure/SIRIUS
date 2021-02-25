@@ -552,7 +552,8 @@ class Communicator
 
     /// In-place MPI_Allgatherv.
     template <typename T>
-    void allgather(T* buffer__, int const* recvcounts__, int const* displs__) const
+    void
+    allgather(T* buffer__, int const* recvcounts__, int const* displs__) const
     {
 #if defined(__PROFILE_MPI)
         PROFILE("MPI_Allgatherv");
@@ -574,46 +575,48 @@ class Communicator
     }
 
     template <typename T>
-    void allgather(T const* sendbuf__, T* recvbuf__, int offset__, int count__) const
+    void
+    allgather(T const* sendbuf__, T* recvbuf__, int count__, int displs__) const
     {
         std::vector<int> v(size() * 2);
         v[2 * rank()]     = count__;
-        v[2 * rank() + 1] = offset__;
+        v[2 * rank() + 1] = displs__;
 
         CALL_MPI(MPI_Allgather,
                  (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, mpi_type_wrapper<int>::kind(), mpi_comm()));
 
         std::vector<int> counts(size());
-        std::vector<int> offsets(size());
+        std::vector<int> displs(size());
 
         for (int i = 0; i < size(); i++) {
-            counts[i]  = v[2 * i];
-            offsets[i] = v[2 * i + 1];
+            counts[i] = v[2 * i];
+            displs[i] = v[2 * i + 1];
         }
 
         CALL_MPI(MPI_Allgatherv, (sendbuf__, count__, mpi_type_wrapper<T>::kind(), recvbuf__, counts.data(),
-                                  offsets.data(), mpi_type_wrapper<T>::kind(), mpi_comm()));
+                                  displs.data(), mpi_type_wrapper<T>::kind(), mpi_comm()));
     }
 
     /// In-place MPI_Allgatherv.
     template <typename T>
-    void allgather(T* buffer__, int offset__, int count__) const
+    void
+    allgather(T* buffer__, int count__, int displs__) const
     {
         std::vector<int> v(size() * 2);
         v[2 * rank()]     = count__;
-        v[2 * rank() + 1] = offset__;
+        v[2 * rank() + 1] = displs__;
 
         CALL_MPI(MPI_Allgather,
                  (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, mpi_type_wrapper<int>::kind(), mpi_comm()));
 
         std::vector<int> counts(size());
-        std::vector<int> offsets(size());
+        std::vector<int> displs(size());
 
         for (int i = 0; i < size(); i++) {
-            counts[i]  = v[2 * i];
-            offsets[i] = v[2 * i + 1];
+            counts[i] = v[2 * i];
+            displs[i] = v[2 * i + 1];
         }
-        allgather(buffer__, counts.data(), offsets.data());
+        allgather(buffer__, counts.data(), displs.data());
     }
 
     template <typename T>

@@ -741,17 +741,23 @@ class Density : public Field4D
      *
      *  The LDA+U case (will be moved to the correct location).
      *
-     *  We start from the spectral represntation of the occupany operator:
+     *  We start from the spectral represntation of the occupany operator defined for the irreducible Brillouin
+     *  zone:
      *  \f[
-     *    \hat N =  \sum_{j} \sum_{{\bf k}}^{IBZ} | \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+     *    \hat N_{IBZ} = \sum_{j} \sum_{{\bf k}}^{IBZ} | \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
      *          \langle \Psi_{j{\bf k}}^{\sigma'} |
      *  \f]
-     *  and a set of localized orbitals for which the Hubbard correction is defined:
+     *  and a set of localized orbitals with the pure angular character (this can be LAPW functions,
+     *  beta-projectors or localized Hubbard orbitals) :
      *  \f[
      *    |\phi_{\ell m}^{\alpha {\bf T}}\rangle
      *  \f]
-     *  The orbitals are labeled by the angular and azimuthal quantum numbers (\f$ \ell m \f$), atom index
-     *  (\f$ \alpha \f$) and a lattice translation vector (\f$ {\bf T} \f$).
+     *  The orbitals are labeled by the angular and azimuthal quantum numbers (\f$ \ell m \f$),
+     *  atom index (\f$ \alpha \f$) and a lattice translation vector (\f$ {\bf T} \f$) such that:
+     *  \f[
+     *    \langle {\bf r} | \phi_{\ell m}^{\alpha {\bf T}} \rangle = \phi_{\ell m}({\bf r - r_{\alpha} - T})
+     *  \f]
+     *
      *  There might be several localized orbitals per atom. We wish to compute the occupation matrix:
      *  \f[
      *    n_{\ell m \alpha {\bf T} \sigma, \ell' m' \alpha' {\bf T}' \sigma'} =
@@ -760,9 +766,19 @@ class Density : public Field4D
      *
      *  Let's focus on the "on-site" case for which \f$ {\bf T=T'} \f$ and \f$ \alpha = \alpha'\f$:
      *  \f[
-     *    n_{\ell m \sigma, \ell' m' \sigma'}^{\alpha} = \langle \phi_{\ell m}^{\alpha} | \hat N |
-     *      \phi_{\ell' m'}^{\alpha} \rangle
+     *    \tilde n_{\ell m \sigma, \ell' m' \sigma'}^{\alpha} = \langle \phi_{\ell m}^{\alpha} | \hat N_{IBZ} |
+     *      \phi_{\ell' m'}^{\alpha} \rangle = \sum_{j} \sum_{{\bf k}}^{IBZ} \langle \phi_{\ell m}^{\alpha} |
+     *      \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} |
+     *       \phi_{\ell' m'}^{\alpha} \rangle
      *  \f]
+     *  The \f$ \tilde n \f$ is unsymmetrized because we used irreducible Brillouin zone for k-point summation.
+     *  Let's now label the overlap integrals between localized orbitals and KS wave-functions:
+     *  \f[
+     *    A_{\ell m j{\bf k}}^{\alpha \sigma} = \langle \Psi_{j{\bf k}}^{\sigma} | \phi_{\ell m}^{\alpha}  \rangle
+     *  \f]
+     *  and check how it transforms under the symmetry operation \f$ \hat {\bf P} \f$ applied to \f$ {\bf k} \f$.
+     *
+     *
      *  To compute the overlap integrals between KS wave-functions and localized Hubbard orbitals we insert 
      *  resolution of identity (in \f$ {\bf G+k} \f$ planve-waves) between bra and ket:
      *  \f[

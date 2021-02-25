@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -48,9 +48,8 @@ void K_point_set::sync_band(std::string const& what__)
             }
         }
     }
-    comm().allgather(data.at(memory_t::host),
-                     ctx_.num_bands() * ctx_.num_spinors() * spl_num_kpoints_.global_offset(),
-                     ctx_.num_bands() * ctx_.num_spinors() * spl_num_kpoints_.local_size());
+    comm().allgather(data.at(memory_t::host), ctx_.num_bands() * ctx_.num_spinors() * spl_num_kpoints_.local_size(),
+        ctx_.num_bands() * ctx_.num_spinors() * spl_num_kpoints_.global_offset());
 
     for (int ik = 0; ik < num_kpoints(); ik++) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
@@ -143,24 +142,16 @@ void K_point_set::find_band_occupancies()
         return;
     }
 
-    double ef{0};
-    double de{0.1};
-
-    int s{1};
-    int sp;
-
-    sddk::mdarray<double, 3> bnd_occ(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints());
-
-    double ne{0};
-
     /* target number of electrons */
     double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
 
+    /* this is a special case when there are no empty states and the
+     * system is non-magnetic */
     if (std::abs(ctx_.num_fv_states() * double(ctx_.max_occupancy()) - ne_target) < 1e-10) {
-        // this is an insulator, skip search for band occupancies
+        /* this is an insulator, skip search for band occupancies */
         this->band_gap_ = -1;
 
-        // determine fermi energy as max occupied band energy.
+        /* determine fermi energy as max occupied band energy. */
         double efermi = std::numeric_limits<double>::min();
         for (int ik = 0; ik < num_kpoints(); ik++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
@@ -173,28 +164,52 @@ void K_point_set::find_band_occupancies()
         return;
     }
 
+    splindex<splindex_t::block> splk(num_kpoints(), ctx_.comm().size(), ctx_.comm().rank());
+
     auto f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+
+    double emin = std::numeric_limits<double>::max();
+    double emax = std::numeric_limits<double>::min();
+    for (int ik = 0; ik < num_kpoints(); ik++) {
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                emin = std::min(emin, kpoints_[ik]->band_energy(j, ispn));
+                emax = std::max(emax, kpoints_[ik]->band_energy(j, ispn));
+            }
+        }
+    }
+
+    double ef = (emin + emax) / 2.0;
+    double ne{0};
+
+    sddk::mdarray<double, 3> bnd_occ(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints());
+    bnd_occ.zero();
 
     int step{0};
     /* calculate occupations */
     while (std::abs(ne - ne_target) >= 1e-11) {
-        /* update Efermi */
-        ef += de;
         /* compute total number of electrons */
         ne = 0.0;
-        for (int ik = 0; ik < num_kpoints(); ik++) {
-            for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                for (int j = 0; j < ctx_.num_bands(); j++) {
-                    bnd_occ(j, ispn, ik) = f(ef - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
-                    ne += bnd_occ(j, ispn, ik) * kpoints_[ik]->weight();
+        #pragma omp parallel reduction(+:ne)
+        {
+            for (int ikloc = 0; ikloc < splk.local_size(); ikloc++) {
+                int ik = splk[ikloc];
+                for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+                    #pragma omp for
+                    for (int j = 0; j < ctx_.num_bands(); j++) {
+                        bnd_occ(j, ispn, ik) = f(ef - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
+                        ne += bnd_occ(j, ispn, ik) * kpoints_[ik]->weight();
+                    }
                 }
             }
         }
-
-        sp = s;
-        s  = (ne > ne_target) ? -1 : 1;
-        /* reduce de step if we change the direction, otherwise increase the step */
-        de = (s != sp) ? (-de * 0.5) : (de * 1.25);
+        ctx_.comm().allreduce(&ne, 1);
+        if (ne > ne_target) {
+            emax = ef;
+        } else {
+            emin = ef;
+        }
+        ef = (emin + emax) / 2.0;
 
         if (step > 10000) {
             std::stringstream s;
@@ -203,6 +218,9 @@ void K_point_set::find_band_occupancies()
         }
         step++;
     }
+
+    ctx_.comm().allgather(bnd_occ.at(memory_t::host), ctx_.num_bands() * ctx_.num_spinors() * splk.local_size(),
+            ctx_.num_bands() * ctx_.num_spinors() * splk.global_offset());
 
     energy_fermi_ = ef;
 

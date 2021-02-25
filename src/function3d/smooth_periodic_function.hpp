@@ -243,7 +243,7 @@ class Smooth_periodic_function
         PROFILE("sirius::Smooth_periodic_function::gather_f_pw");
 
         std::vector<double_complex> fpw(gvecp_->gvec().num_gvec());
-        gvec().comm().allgather(&f_pw_local_[0], fpw.data(), gvec().offset(), gvec().count());
+        gvec().comm().allgather(&f_pw_local_[0], fpw.data(), gvec().count(), gvec().offset());
 
         return fpw;
     }
