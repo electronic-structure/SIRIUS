@@ -136,17 +136,27 @@ end subroutine sirius_stop_timer
 
 !
 !> @brief Print all timers.
-subroutine sirius_print_timers()
+!> @param [in] flatten If true, flat list of timers is printed.
+subroutine sirius_print_timers(flatten)
 implicit none
 !
+logical, target, intent(in) :: flatten
+!
+type(C_PTR) :: flatten_ptr
+logical(C_BOOL), target :: flatten_c_type
+!
 interface
-subroutine sirius_print_timers_aux()&
+subroutine sirius_print_timers_aux(flatten)&
 &bind(C, name="sirius_print_timers")
 use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: flatten
 end subroutine
 end interface
 !
-call sirius_print_timers_aux()
+flatten_ptr = C_NULL_PTR
+flatten_c_type = flatten
+flatten_ptr = C_LOC(flatten_c_type)
+call sirius_print_timers_aux(flatten_ptr)
 end subroutine sirius_print_timers
 
 !

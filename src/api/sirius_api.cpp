@@ -245,11 +245,18 @@ void sirius_stop_timer(char const* name__)
 sirius_print_timers:
   doc: Print all timers.
   arguments:
+    flatten:
+      type: bool
+      attr: in, required
+      doc: If true, flat list of timers is printed.
 @api end
 */
-void sirius_print_timers(void)
+void sirius_print_timers(bool* flatten__)
 {
     auto timing_result = ::utils::global_rtgraph_timer.process();
+    if (*flatten__) {
+        timing_result = timing_result.flatten(1).sort_nodes();
+    }
     std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
                                       rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
                                       rt_graph::Stat::Max});

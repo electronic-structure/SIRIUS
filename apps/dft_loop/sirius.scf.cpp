@@ -431,7 +431,7 @@ int main(int argn, char** argv)
     sirius::finalize(1);
 
     if (my_rank == 0)  {
-        auto timing_result = ::utils::global_rtgraph_timer.process();
+        auto timing_result = ::utils::global_rtgraph_timer.process().flatten(1).sort_nodes();
         std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
                                           rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
                                           rt_graph::Stat::Max});
