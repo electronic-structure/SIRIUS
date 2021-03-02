@@ -14,7 +14,7 @@ for f in ./*; do
         echo "running '${f}'"
         (
             cd ${f}
-            ${exe} --test_against=output_ref.json
+            ${MPIRUN} ${exe} --test_against=output_ref.json
             err=$?
 
             if [ ${err} == 0 ]; then

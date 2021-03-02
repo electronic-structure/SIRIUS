@@ -14,7 +14,7 @@ for f in ./*; do
         echo "running '${f}'"
         (
             cd ${f}
-            ${exe} \
+            ${MPIRUN} ${exe} \
                 --test_against=output_ref.json \
                 --control.std_evp_solver_name=scalapack \
                 --control.gen_evp_solver_name=scalapack \

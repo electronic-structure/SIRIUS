@@ -1,3 +1,10 @@
+
+To submit the tests:
+salloc -N4 -C gpu --time=60:00 -A csstaff
+export MPIRUN="srun -N4 -n4 -c12 --unbuffered --hint=nomultithread"
+
+
+
 ## test01: SrVO3
 - ultrasoft pseudopotential
 - non-magnetic
