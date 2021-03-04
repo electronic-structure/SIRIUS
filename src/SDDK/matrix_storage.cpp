@@ -30,8 +30,6 @@ namespace sddk {
 template <typename T>
 void matrix_storage<T, matrix_storage_t::slab>::set_num_extra(int n__, int idx0__, memory_pool* mp__)
 {
-    PROFILE("sddk::matrix_storage::set_num_extra");
-
     auto& comm_col = gvp_->comm_ortho_fft();
 
     /* this is how n columns of the matrix will be distributed between columns of the MPI grid */
@@ -56,7 +54,6 @@ void matrix_storage<T, matrix_storage_t::slab>::set_num_extra(int n__, int idx0_
         size_t sz = gvp_->gvec_count_fft() * ncol;
         /* reallocate buffers if necessary */
         if (extra_buf_.size() < sz) {
-            PROFILE("sddk::matrix_storage::set_num_extra|alloc");
             if (mp__) {
                 send_recv_buf_ = mdarray<T, 1>(sz, *mp__, "matrix_storage.send_recv_buf_");
                 extra_buf_     = mdarray<T, 1>(sz, *mp__, "matrix_storage.extra_buf_");
