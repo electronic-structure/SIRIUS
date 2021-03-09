@@ -287,7 +287,6 @@ matrix3d<double> Stress::calc_stress_xc()
                 grad_rho[x].fft_transform(1);
             }
 
-            matrix3d<double> t;
             for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
@@ -315,7 +314,6 @@ matrix3d<double> Stress::calc_stress_xc()
                 grad_rho_dn[x].fft_transform(1);
             }
 
-            matrix3d<double> t;
             for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
@@ -331,7 +329,7 @@ matrix3d<double> Stress::calc_stress_xc()
             }
         }
         Communicator(ctx_.spfft().communicator()).allreduce(&t(0, 0), 9);
-        t *= (-1.0 / ctx_.fft_grid().num_points()); 
+        t *= (-1.0 / ctx_.fft_grid().num_points());
         stress_xc_ += t;
     }
 
