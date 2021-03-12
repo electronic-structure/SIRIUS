@@ -30,6 +30,12 @@
 
 namespace sirius {
 
+enum class sync_band_t
+{
+    energy,
+    occupancy
+};
+
 /// Set of k-points.
 class K_point_set
 {
@@ -91,7 +97,8 @@ class K_point_set
     void initialize(std::vector<int> const& counts = {});
 
     /// Sync band energies or occupancies between all MPI ranks.
-    void sync_band(std::string const& what__);
+    template <sync_band_t what>
+    void sync_band();
 
     /// Find Fermi energy and band occupation numbers.
     void find_band_occupancies();
