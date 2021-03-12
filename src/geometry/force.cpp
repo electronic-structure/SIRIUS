@@ -448,7 +448,7 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
 
     auto q = ctx_.gvec().shells_len();
     /* get form-factors for all G shells */
-    auto ff = ctx_.ps_rho_ri().values(q);
+    auto ff = ctx_.ps_rho_ri().values(q, ctx_.comm());
 
     forces_scf_corr_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_scf_corr_.zero();
@@ -466,8 +466,6 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
     double fact = gvec.reduced() ? 2.0 : 1.0;
 
     int ig0 = ctx_.gvec().skip_g0();
-
-    //auto& ri = ctx_.ps_rho_ri();
 
     #pragma omp parallel for
     for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
@@ -503,7 +501,7 @@ mdarray<double, 2> const& Force::calc_forces_core()
 
     auto q = ctx_.gvec().shells_len();
     /* get form-factors for all G shells */
-    auto ff = ctx_.ps_core_ri().values(q);
+    auto ff = ctx_.ps_core_ri().values(q, ctx_.comm());
 
     forces_core_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_core_.zero();
@@ -532,13 +530,9 @@ mdarray<double, 2> const& Force::calc_forces_core()
         }
         int iat = atom.type_id();
 
-        for (int igloc = 0; igloc < gvec_count; igloc++) {
+        for (int igloc = ctx_.gvec().skip_g0(); igloc < gvec_count; igloc++) {
             int ig = gvec_offset + igloc;
             auto igsh = ctx_.gvec().shell(ig);
-
-            if (ig == 0) {
-                continue;
-            }
 
             /* cartesian form for getting cartesian force components */
             auto gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
@@ -594,14 +588,12 @@ mdarray<double, 2> const& Force::calc_forces_vloc()
 
     auto q = ctx_.gvec().shells_len();
     /* get form-factors for all G shells */
-    auto ff = ctx_.vloc_ri().values(q);
+    auto ff = ctx_.vloc_ri().values(q, ctx_.comm());
 
     forces_vloc_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_vloc_.zero();
 
     auto& valence_rho = density_.rho();
-
-    //auto& ri = ctx_.vloc_ri();
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 

@@ -295,6 +295,9 @@ void Atom_type::print_info() const
         std::printf("lmax of beta-projectors          : %i\n", this->lmax_beta());
         std::printf("number of ps wavefunctions       : %i\n", static_cast<int>(this->indexr_wfs().size()));
         std::printf("charge augmentation              : %s\n", utils::boolstr(this->augment()).c_str());
+        std::printf("vloc is set                      : %s\n", utils::boolstr(!this->local_potential().empty()).c_str());
+        std::printf("ps_rho_core is set               : %s\n", utils::boolstr(!this->ps_core_charge_density().empty()).c_str());
+        std::printf("ps_rho_total is set              : %s\n", utils::boolstr(!this->ps_total_charge_density().empty()).c_str());
     }
     std::printf("Hubbard correction               : %s\n", utils::boolstr(this->hubbard_correction()).c_str());
     if (parameters_.hubbard_correction() && this->hubbard_correction_) {

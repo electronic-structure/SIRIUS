@@ -188,8 +188,6 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
     Density rho1(ctx_);
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
-        PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
-
         if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
             std::printf("\n");
             std::printf("+------------------------------+\n");
@@ -309,6 +307,7 @@ void DFT_ground_state::print_info()
 {
     double evalsum1 = kset_.valence_eval_sum();
     double evalsum2 = core_eval_sum(ctx_.unit_cell());
+    double s_sum    = kset_.entropy_sum();
     double ekin     = energy_kin(ctx_, kset_, density_, potential_);
     double evxc     = energy_vxc(density_, potential_);
     double eexc     = energy_exc(density_, potential_);
@@ -424,7 +423,7 @@ void DFT_ground_state::print_info()
             std::printf("ewald contribution        : %18.8f\n", ewald_energy_);
             std::printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
         }
-        std::printf("smearing (-TS)            : %18.8f\n", kset_.entropy_sum());
+        std::printf("smearing (-TS)            : %18.8f\n", s_sum);
         std::printf("SCF correction            : %18.8f\n", this->scf_energy_);
         if (ctx_.hubbard_correction()) {
             auto e = potential_.U().hubbard_energy(density_.occupation_matrix().data());

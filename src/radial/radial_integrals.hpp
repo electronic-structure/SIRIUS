@@ -116,6 +116,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     void generate(std::function<Spline<double> const&(int, int)> fl__);
 
   public:
+    /// Constructor.
     Radial_integrals_atomic_wf(Unit_cell const& unit_cell__, double qmax__, int np__,
         std::function<sirius::experimental::radial_functions_index const&(int)> indexr__,
         std::function<Spline<double> const&(int, int)> fl__)
@@ -132,7 +133,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
         generate(fl__);
     }
 
-    /// retrieve a given orbital from an atom type
+    /// Retrieve a value for a given orbital of an atom type.
     inline Spline<double> const& values(int iwf__, int iat__) const
     {
         return values_(iwf__, iat__);
@@ -231,20 +232,24 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline sddk::mdarray<double, 2> values(std::vector<double>& q__) const
+    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, sddk::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
+        splindex<splindex_t::block> splq(nq, comm__.size(), comm__.rank());
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
         result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            if (!unit_cell_.atom_type(iat).local_potential().empty()) {
-                if (ri_callback_) {
-                    ri_callback_(iat + 1, nq, &q__[0], &result(0, iat));
-                } else {
-                    for (int iq = 0; iq < nq; iq++) {
+            if (!unit_cell_.atom_type(iat).ps_total_charge_density().empty()) {
+                #pragma omp parallel for
+                for (int iqloc = 0; iqloc < splq.local_size(); iqloc++) {
+                    int iq = splq[iqloc];
+                    if (ri_callback_) {
+                        ri_callback_(iat + 1, 1, &q__[iq], &result(iq, iat));
+                    } else {
                         result(iq, iat) = this->value<int>(iat, q__[iq]);
                     }
                 }
+                comm__.allgather(&result(0, iat), splq.local_size(), splq.global_offset());
             }
         }
         return result;
@@ -272,22 +277,24 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline sddk::mdarray<double, 2> values(std::vector<double>& q__) const
+    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, sddk::Communicator const& comm__) const
     {
-        PROFILE("sirius::rho_core_ri_pseudo|values");
-
         int nq = static_cast<int>(q__.size());
+        splindex<splindex_t::block> splq(nq, comm__.size(), comm__.rank());
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
         result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             if (!unit_cell_.atom_type(iat).ps_core_charge_density().empty()) {
-                if (ri_callback_) {
-                    ri_callback_(iat + 1, nq, &q__[0], &result(0, iat));
-                } else {
-                    for (int iq = 0; iq < nq; iq++) {
+                #pragma omp parallel for
+                for (int iqloc = 0; iqloc < splq.local_size(); iqloc++) {
+                    int iq = splq[iqloc];
+                    if (ri_callback_) {
+                        ri_callback_(iat + 1, 1, &q__[iq], &result(iq, iat));
+                    } else {
                         result(iq, iat) = this->value<int>(iat, q__[iq]);
                     }
                 }
+                comm__.allgather(&result(0, iat), splq.local_size(), splq.global_offset());
             }
         }
         return result;
@@ -335,27 +342,6 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
     }
 };
 
-
-//class Radial_integrals_beta_jl : public Radial_integrals_base<3>
-//{
-//  private:
-//    int lmax_;
-//
-//    void generate();
-//
-//  public:
-//    Radial_integrals_beta_jl(Unit_cell const& unit_cell__, double qmax__, int np__)
-//        : Radial_integrals_base<3>(unit_cell__, qmax__, np__)
-//    {
-//        lmax_ = unit_cell__.lmax() + 2;
-//        /* create space for <j_l(qr)|beta> radial integrals */
-//        values_ = mdarray<Spline<double>, 3>(unit_cell_.max_mt_radial_basis_size(), lmax_ + 1,
-//                                             unit_cell_.num_atom_types());
-//        generate();
-//    }
-//};
-
-
 template <bool jl_deriv>
 class Radial_integrals_vloc : public Radial_integrals_base<1>
 {
@@ -402,20 +388,24 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
     }
 
     /// Compute all values of the raial integrals.
-    inline sddk::mdarray<double, 2> values(std::vector<double>& q__) const
+    inline sddk::mdarray<double, 2> values(std::vector<double>& q__, sddk::Communicator const& comm__) const
     {
         int nq = static_cast<int>(q__.size());
+        splindex<splindex_t::block> splq(nq, comm__.size(), comm__.rank());
         sddk::mdarray<double, 2> result(nq, unit_cell_.num_atom_types());
         result.zero();
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             if (!unit_cell_.atom_type(iat).local_potential().empty()) {
-                if (ri_callback_) {
-                    ri_callback_(iat + 1, nq, &q__[0], &result(0, iat));
-                } else {
-                    for (int iq = 0; iq < nq; iq++) {
+                #pragma omp parallel for
+                for (int iqloc = 0; iqloc < splq.local_size(); iqloc++) {
+                    int iq = splq[iqloc];
+                    if (ri_callback_) {
+                        ri_callback_(iat + 1, 1, &q__[iq], &result(iq, iat));
+                    } else {
                         result(iq, iat) = this->value(iat, q__[iq]);
                     }
                 }
+                comm__.allgather(&result(0, iat), splq.local_size(), splq.global_offset());
             }
         }
         return result;

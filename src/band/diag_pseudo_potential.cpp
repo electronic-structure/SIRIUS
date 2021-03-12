@@ -292,7 +292,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     auto& mp = ctx_.mem_pool(ctx_.host_memory_t());
 
     /* allocate wave-functions */
-    PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|alloc");
 
     /* auxiliary wave-functions */
     Wave_functions phi(mp, kp.gkvec_partition(), num_phi, ctx_.aux_preferred_memory_t(), num_sc);
@@ -354,7 +353,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
     kp.copy_hubbard_orbitals_on_device();
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
-    PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|alloc");
 
     /* get diagonal elements for preconditioning */
     auto h_o_diag = Hk__.get_h_o_diag_pw<T, 3>();
@@ -385,7 +383,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
     int niter{0};
 
-    PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
 
         /* converged vectors */
@@ -655,7 +652,6 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             niter++;
         }
     } /* loop over ispin_step */
-    PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|iter");
 
     //if (ctx_.print_checksum()) {
     //    auto cs = psi.checksum(0, ctx_.num_fv_states());

@@ -135,11 +135,12 @@ class K_point_set
     double valence_eval_sum() const
     {
         double eval_sum{0};
+
         splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+
         for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
             auto ik = spl_num_kpoints_[ikloc];
             auto const& kp = kpoints_[ik];
-            double wk = kp->weight();
             double tmp{0};
             #pragma omp parallel for reduction(+:tmp)
             for (int j = 0; j < splb.local_size(); j++) {
@@ -147,7 +148,7 @@ class K_point_set
                     tmp += kp->band_energy(splb[j], ispn) * kp->band_occupancy(splb[j], ispn);
                 }
             }
-            eval_sum += wk * tmp;
+            eval_sum += kp->weight() * tmp;
         }
         ctx_.comm().allreduce(&eval_sum, 1);
 
@@ -162,10 +163,10 @@ class K_point_set
         auto f = smearing::entropy(ctx_.smearing(), ctx_.smearing_width());
 
         splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+
         for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
             auto ik = spl_num_kpoints_[ikloc];
             auto const& kp = kpoints_[ik];
-            double wk = kp->weight();
             double tmp{0};
             #pragma omp parallel for reduction(+:tmp)
             for (int j = 0; j < splb.local_size(); j++) {
@@ -173,7 +174,7 @@ class K_point_set
                     tmp += ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(splb[j], ispn));
                 }
             }
-            s_sum += wk * tmp;
+            s_sum += kp->weight() * tmp;
         }
         ctx_.comm().allreduce(&s_sum, 1);
 

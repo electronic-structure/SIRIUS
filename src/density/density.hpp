@@ -296,19 +296,10 @@ class Density : public Field4D
         /* get lenghts of all G shells */
         auto q = ctx_.gvec().shells_len();
         /* get form-factors for all G shells */
-        // TODO: MPI parallelise over G-shells 
-        auto ff = ctx_.ps_core_ri().values(q);
+        auto ff = ctx_.ps_core_ri().values(q, ctx_.comm());
         /* make rho_core(G) */
         auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
 
-        //auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
-        //{
-        //    if (this->ctx_.unit_cell().atom_type(iat).ps_core_charge_density().empty()) {
-        //        return 0.0;
-        //    } else {
-        //        return ctx_.ps_core_ri().value<int>(iat, g);
-        //    }
-        //});
         std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
         rho_pseudo_core_->fft_transform(1);
     }

@@ -363,8 +363,6 @@ class Periodic_function : public Smooth_periodic_function<T>
 template <typename T>
 inline T inner_local(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
 {
-    PROFILE("sirius::Periodic_function|inner_local");
-
     assert(&f__.ctx() == &g__.ctx());
 
     T result_rg{0};
@@ -392,7 +390,7 @@ inline T inner_local(Periodic_function<T> const& f__, Periodic_function<T> const
 template <typename T>
 inline T inner(Periodic_function<T> const& f__, Periodic_function<T> const& g__)
 {
-    PROFILE("sirius::Periodic_function|inner");
+    PROFILE("sirius::inner");
 
     T result = inner_local(f__, g__);
     f__.ctx().comm().allreduce(&result, 1);
