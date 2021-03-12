@@ -9,7 +9,7 @@ exe=${SIRIUS_BINARIES}/sirius.scf
 # check if path is correct
 type -f ${exe} || exit 1
 
-for f in ./*; do
+for f in ./test*; do
     if [ -d "$f" ]; then
         echo "running '${f}'"
         cd ${f}
