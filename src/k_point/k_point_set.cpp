@@ -193,38 +193,37 @@ void K_point_set::find_band_occupancies()
     comm().allreduce<double, sddk::mpi_op_t::max>(&emax, 1);
 
     /* starting guess for the Fermi energy */
-    auto ef = (emin + emax) / 2.0;
+    energy_fermi_ = (emin + emax) / 2.0;
     double ne{0};
 
     /* smearing function */
     auto f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
 
-    // TODO: parallelise over bands, compute occupancy later without band parallelsiation
+    splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
 
     int step{0};
     /* calculate occupations */
     while (std::abs(ne - ne_target) >= 1e-11) {
         /* compute total number of electrons */
         ne = 0.0;
-        #pragma omp parallel reduction(+:ne)
         for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
             int ik = spl_num_kpoints_[ikloc];
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                #pragma omp for
-                for (int j = 0; j < ctx_.num_bands(); j++) {
-                    double o = f(ef - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
-                    kpoints_[ik]->band_occupancy(j, ispn, o);
-                    ne += o * kpoints_[ik]->weight();
+                double tmp{0};
+                #pragma omp parallel for reduction(+:tmp)
+                for (int j = 0; j < splb.local_size(); j++) {
+                    tmp += f(energy_fermi_ - kpoints_[ik]->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
                 }
+                ne += tmp * kpoints_[ik]->weight();
             }
         }
         comm().allreduce(&ne, 1);
         if (ne > ne_target) {
-            emax = ef;
+            emax = energy_fermi_;
         } else {
-            emin = ef;
+            emin = energy_fermi_;
         }
-        ef = (emin + emax) / 2.0;
+        energy_fermi_ = (emin + emax) / 2.0;
 
         if (step > 10000) {
             std::stringstream s;
@@ -234,7 +233,17 @@ void K_point_set::find_band_occupancies()
         step++;
     }
 
-    energy_fermi_ = ef;
+    #pragma omp parallel reduction(+:ne)
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+        int ik = spl_num_kpoints_[ikloc];
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+            #pragma omp for
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                kpoints_[ik]->band_occupancy(j, ispn,
+                    f(energy_fermi_ - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy());
+            }
+        }
+    }
 
     this->sync_band<sync_band_t::occupancy>();
 
