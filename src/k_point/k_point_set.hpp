@@ -128,35 +128,47 @@ class K_point_set
     double valence_eval_sum() const
     {
         double eval_sum{0};
-
-        for (int ik = 0; ik < num_kpoints(); ik++) {
+        splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+            auto ik = spl_num_kpoints_[ikloc];
             auto const& kp = kpoints_[ik];
             double wk = kp->weight();
-            for (int j = 0; j < ctx_.num_bands(); j++) {
+            double tmp{0};
+            #pragma omp parallel for reduction(+:tmp)
+            for (int j = 0; j < splb.local_size(); j++) {
                 for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                    eval_sum += wk * kp->band_energy(j, ispn) * kp->band_occupancy(j, ispn);
+                    tmp += kp->band_energy(splb[j], ispn) * kp->band_occupancy(splb[j], ispn);
                 }
             }
+            eval_sum += wk * tmp;
         }
+        ctx_.comm().allreduce(&eval_sum, 1);
 
         return eval_sum;
     }
 
+    /// Return entropy contribution from smearing.
     double entropy_sum() const
     {
         double s_sum{0};
 
         auto f = smearing::entropy(ctx_.smearing(), ctx_.smearing_width());
 
-        for (int ik = 0; ik < num_kpoints(); ik++) {
+        splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+            auto ik = spl_num_kpoints_[ikloc];
             auto const& kp = kpoints_[ik];
             double wk = kp->weight();
-            for (int j = 0; j < ctx_.num_bands(); j++) {
+            double tmp{0};
+            #pragma omp parallel for reduction(+:tmp)
+            for (int j = 0; j < splb.local_size(); j++) {
                 for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                    s_sum += wk * ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(j, ispn));
+                    tmp += ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(splb[j], ispn));
                 }
             }
+            s_sum += wk * tmp;
         }
+        ctx_.comm().allreduce(&s_sum, 1);
 
         return s_sum;
     }
