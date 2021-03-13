@@ -343,7 +343,7 @@ void run_tasks(cmd_args const& args)
         }
         band.solve(ks, H0, true);
 
-        ks.sync_band("energy");
+        ks.sync_band<sync_band_t::energy>();
         if (Communicator::world().rank() == 0) {
             json dict;
             dict["header"] = {};

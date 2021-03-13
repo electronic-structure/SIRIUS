@@ -199,6 +199,14 @@ class K_point
     /// Find G+k vectors within the cutoff.
     void generate_gkvec(double gk_cutoff__);
 
+    inline void assert_ispn(int ispn__) const
+    {
+        assert((ctx_.num_mag_dims() == 3 && ispn__ == 0) ||
+               (ctx_.num_mag_dims() != 3 && (ispn__ == 0 || ispn__ == 1)));
+    }
+
+    friend class K_point_set;
+
   public:
     /// Constructor
     K_point(Simulation_context& ctx__, double const* vk__, double weight__, int id__)
@@ -401,36 +409,28 @@ class K_point
     /// Get band energy.
     inline double band_energy(int j__, int ispn__) const
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
+        assert_ispn(ispn__);
         return band_energies_(j__, ispn__);
     }
 
     /// Set band energy.
     inline void band_energy(int j__, int ispn__, double e__)
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
+        assert_ispn(ispn__);
         band_energies_(j__, ispn__) = e__;
     }
 
     /// Get band occupancy.
     inline double band_occupancy(int j__, int ispn__ = -1) const
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
+        assert_ispn(ispn__);
         return band_occupancies_(j__, ispn__);
     }
 
     /// Set band occupancy.
     inline void band_occupancy(int j__, int ispn__, double occ__)
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
+        assert_ispn(ispn__);
         band_occupancies_(j__, ispn__) = occ__;
     }
 

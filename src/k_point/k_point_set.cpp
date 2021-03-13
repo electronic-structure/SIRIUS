@@ -25,45 +25,55 @@
 
 namespace sirius {
 
-void K_point_set::sync_band(std::string const& what__)
+template <sync_band_t what>
+void K_point_set::sync_band()
 {
-    PROFILE("sirius::K_point_set::sync_band_energies");
+    PROFILE("sirius::K_point_set::sync_band");
 
-    if (what__ != "energy" && what__ != "occupancy") {
-        TERMINATE("wrong label in K_point_set::sync_band");
-    }
-
-    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(), memory_t::host,
+    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(), ctx_.mem_pool(memory_t::host),
                                   "K_point_set::sync_band.data");
 
+    int nb = ctx_.num_bands() * ctx_.num_spinors();
+    #pragma omp parallel
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
-        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            for (int j = 0; j < ctx_.num_bands(); j++) {
-                if (what__ == "energy" ){
-                    data(j, ispn, ik) = kpoints_[ik]->band_energy(j, ispn);
-                } else {
-                    data(j, ispn, ik) = kpoints_[ik]->band_occupancy(j, ispn);
-                }
+        switch (what) {
+            case sync_band_t::energy: {
+                std::copy(&kpoints_[ik]->band_energies_(0, 0), &kpoints_[ik]->band_energies_(0, 0) + nb,
+                    &data(0, 0, ik));
+                break;
+            }
+            case sync_band_t::occupancy: {
+                std::copy(&kpoints_[ik]->band_occupancies_(0, 0), &kpoints_[ik]->band_occupancies_(0, 0) + nb,
+                    &data(0, 0, ik));
+                break;
             }
         }
     }
-    comm().allgather(data.at(memory_t::host),
-                     ctx_.num_bands() * ctx_.num_spinors() * spl_num_kpoints_.global_offset(),
-                     ctx_.num_bands() * ctx_.num_spinors() * spl_num_kpoints_.local_size());
 
+    comm().allgather(data.at(memory_t::host), nb * spl_num_kpoints_.local_size(),
+        nb * spl_num_kpoints_.global_offset());
+
+    #pragma omp parallel for
     for (int ik = 0; ik < num_kpoints(); ik++) {
-        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            for (int j = 0; j < ctx_.num_bands(); j++) {
-                if (what__ == "energy") {
-                    kpoints_[ik]->band_energy(j, ispn, data(j, ispn, ik));
-                } else {
-                    kpoints_[ik]->band_occupancy(j, ispn, data(j, ispn, ik));
-                }
+        switch (what) {
+            case sync_band_t::energy: {
+                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kpoints_[ik]->band_energies_(0, 0));
+                break;
+            }
+            case sync_band_t::occupancy: {
+                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kpoints_[ik]->band_occupancies_(0, 0));
+                break;
             }
         }
     }
 }
+
+template
+void K_point_set::sync_band<sync_band_t::energy>();
+
+template
+void K_point_set::sync_band<sync_band_t::occupancy>();
 
 void K_point_set::create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__)
 {
