@@ -9,12 +9,12 @@ exe=${SIRIUS_BINARIES}/sirius.scf
 # check if path is correct
 type -f ${exe} || exit 1
 
-for f in ./*; do
+for f in ./test*; do
     if [ -d "$f" ]; then
         echo "running '${f}'"
         (
             cd ${f}
-            ${exe} --test_against=output_ref.json
+            ${MPIRUN} ${exe} --test_against=output_ref.json
             err=$?
 
             if [ ${err} == 0 ]; then
