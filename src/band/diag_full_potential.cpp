@@ -414,7 +414,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
         if (!last_iteration) {
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
             auto result = sirius::residuals(
-                ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, N, ncomp, 0, eval, evec, ophi, phi, opsi, psi,
+                ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), N, ncomp, 0, eval, evec, ophi, phi, opsi, psi,
                 res, o_diag__, diag1, itso.converge_by_energy(), itso.residual_tolerance(),
                 [&](int i, int ispn) { return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance(); });
             n = result.unconverged_residuals;
@@ -670,7 +670,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
         if (!last_iteration) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
             auto result = sirius::residuals(
-                ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, N, num_bands, 0, eval, evec, hphi, ophi, hpsi,
+                ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), N, num_bands, 0, eval, evec, hphi, ophi, hpsi,
                 opsi, res, h_o_diag.first, h_o_diag.second, itso.converge_by_energy(), itso.residual_tolerance(),
                 [&](int i, int ispn) { return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance(); });
             n = result.unconverged_residuals;

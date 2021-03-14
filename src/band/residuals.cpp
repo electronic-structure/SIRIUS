@@ -146,7 +146,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
     res__.normalize(pu, spins__, num_bands__);
 
     int num_unconverged{0};
-   
+
     for (int i = 0; i < num_bands__; i++) {
         /* take the residual if it's norm is above the threshold */
         if (residual_norms__[i] > norm_tolerance__) {
@@ -181,7 +181,7 @@ normalized_preconditioned_residuals(sddk::memory_t mem_type__, sddk::spin_range 
 /// Compute residuals from eigen-vectors.
 template <typename T>
 residual_result
-residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N__,
+residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__, sddk::spin_range ispn__, int N__,
           int num_bands__, int num_locked, sddk::mdarray<double, 1>& eval__, sddk::dmatrix<T>& evec__,
           sddk::Wave_functions& hphi__, sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__,
           sddk::Wave_functions& opsi__, sddk::Wave_functions& res__, sddk::mdarray<double, 2> const& h_diag__,
@@ -208,20 +208,22 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
     // Number of residuals that do not meet any convergence criterion
     int num_unconverged{0};
 
+    int ispn = (ispn__() == 2) ? 0 : ispn__();
+
     // When estimate_eval__ is set we only compute true residuals of unconverged eigenpairs
     // where convergence is determined just on the change in the eigenvalues.
     if (estimate_eval__) {
         // Locking is only based on the is_converged__ criterion, not on the actual
         // residual norms. We could lock more by considering the residual norm criterion
         // later, but since we're reordering eigenvectors too, this becomes messy.
-        while (num_consecutive_converged < num_bands__ && is_converged__(num_consecutive_converged, ispn__)) {
+        while (num_consecutive_converged < num_bands__ && is_converged__(num_consecutive_converged, ispn)) {
             ++num_consecutive_converged;
         }
 
         // Collect indices of unconverged eigenpairs.
         std::vector<int> ev_idx;
         for (int j = 0; j < num_bands__; j++) {
-            if (!is_converged__(j, ispn__)) {
+            if (!is_converged__(j, ispn)) {
                 ev_idx.push_back(j);
             }
         }
@@ -273,10 +275,10 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
     }
 
     /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-    sddk::transform<T>(ctx__.spla_context(), ispn__, {&hphi__, &ophi__}, num_locked, N__ - num_locked, *evec_ptr, 0, 0,
+    sddk::transform<T>(ctx__.spla_context(), ispn__(), {&hphi__, &ophi__}, num_locked, N__ - num_locked, *evec_ptr, 0, 0,
                        {&hpsi__, &opsi__}, 0, num_residuals);
 
-    num_unconverged = normalized_preconditioned_residuals<T>(mem_type__, sddk::spin_range(ispn__), num_residuals, *eval_ptr, hpsi__, opsi__, res__,
+    num_unconverged = normalized_preconditioned_residuals<T>(mem_type__, ispn__, num_residuals, *eval_ptr, hpsi__, opsi__, res__,
                                                                 h_diag__, o_diag__, norm_tolerance__, res_norm);
 
     // In case we're not using the delta in eigenvalues as a convergence criterion,
@@ -299,7 +301,8 @@ residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t l
 }
 
 template residual_result
-residuals<double>(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N__,
+residuals<double>(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__,
+                  sddk::spin_range ispn__, int N__,
                   int num_bands__, int num_locked, sddk::mdarray<double, 1>& eval__, sddk::dmatrix<double>& evec__,
                   sddk::Wave_functions& hphi__, sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__,
                   sddk::Wave_functions& opsi__, sddk::Wave_functions& res__, sddk::mdarray<double, 2> const& h_diag__,
@@ -307,7 +310,8 @@ residuals<double>(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::li
                   std::function<bool(int, int)> is_converged__);
 
 template residual_result
-residuals<double_complex>(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__,
+residuals<double_complex>(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__,
+                          sddk::spin_range ispn__,
                           int N__, int num_bands__, int num_locked, sddk::mdarray<double, 1>& eval__,
                           sddk::dmatrix<double_complex>& evec__, sddk::Wave_functions& hphi__,
                           sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__, sddk::Wave_functions& opsi__,

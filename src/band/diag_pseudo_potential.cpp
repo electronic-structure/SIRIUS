@@ -497,7 +497,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             if (!last_iteration) {
                 /* get new preconditioned residuals, and also hpsi and opsi as a by-product */
                 auto result = sirius::residuals<T>(ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(),
-                                                   nc_mag ? 2 : ispin_step, N, num_ritz, num_locked, eval, evec, hphi,
+                                                   spin_range(nc_mag ? 2 : ispin_step), N, num_ritz, num_locked, eval, evec, hphi,
                                                    sphi, hpsi, spsi, res, h_o_diag.first, h_o_diag.second,
                                                    itso.converge_by_energy(), itso.residual_tolerance(), is_converged);
 
@@ -881,7 +881,7 @@ Band::diag_S_davidson(Hamiltonian_k& Hk__) const
             }
 
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
-            auto result = sirius::residuals<T>(ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), nc_mag ? 2 : 0,
+            auto result = sirius::residuals<T>(ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(nc_mag ? 2 : 0),
                                      N, nevec, 0, eval, evec, sphi, phi, spsi, psi, res, o_diag, o_diag1,
                                      itso.converge_by_energy(), itso.residual_tolerance(),
                                      [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < iterative_solver_tolerance;});

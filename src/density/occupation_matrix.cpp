@@ -98,7 +98,7 @@ void Occupation_matrix::add_k_point_contribution(K_point& kp__)
         #pragma omp parallel for
         for (int m = 0; m < nwfu; m++) {
             for (int j = 0; j < kp__.num_occupied_bands(); j++) {
-                dm1(j, m) = dm(j, m) * kp__.band_occupancy(j);
+                dm1(j, m) = dm(j, m) * kp__.band_occupancy(j, 0);
             }
         }
         if (is_device_memory(mem)) {
