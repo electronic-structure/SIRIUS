@@ -4544,7 +4544,7 @@ subroutine sirius_set_equivalent_atoms(handler,equivalent_atoms)
 implicit none
 !
 type(C_PTR), target, intent(in) :: handler
-integer, target, intent(in) :: equivalent_atoms
+integer, target, dimension(*), intent(in) :: equivalent_atoms
 !
 type(C_PTR) :: handler_ptr
 type(C_PTR) :: equivalent_atoms_ptr

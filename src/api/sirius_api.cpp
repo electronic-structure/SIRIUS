@@ -4539,7 +4539,7 @@ sirius_set_equivalent_atoms:
       doc: Simulation context handler.
     equivalent_atoms:
       type: int
-      attr: in, required
+      attr: in, required, dimension(*)
       doc: Array with equivalent atom IDs.
 @api end
 */
