@@ -1,7 +1,7 @@
 #ifndef NVTX_PROFILER_H
 #define NVTX_PROFILER_H
 
-#if defined(__CUDA_NVTX)
+#if defined(SIRIUS_CUDA_NVTX)
 
 #include "nvToolsExt.h"
 #include <unordered_map>

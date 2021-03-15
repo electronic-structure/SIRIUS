@@ -1,5 +1,6 @@
 #include "utils/profiler.hpp"
 #include <sirius.hpp>
+#include "filesystem.hpp"
 #include <utils/json.hpp>
 #include <cfenv>
 #include <fenv.h>
@@ -19,19 +20,57 @@ enum class task_t : int
 void json_output_common(json& dict__)
 {
     dict__["git_hash"] = sirius::git_hash();
-    //dict__["build_date"] = build_date;
     dict__["comm_world_size"] = Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
-std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
+void rewrite_relative_paths(json& dict__, fs::path const &working_directory = fs::current_path())
+{
+    // the json.unit_cell.atom_files[] dict might contain relative paths,
+    // which should be relative to the json file. So better make them
+    // absolute such that the simulation context does not have to be
+    // aware of paths.
+    if (!dict__.count("unit_cell"))
+        return;
+
+    auto &section = dict__["unit_cell"];
+
+    if (!section.count("atom_files"))
+        return;
+
+    auto &atom_files = section["atom_files"];
+
+    for (auto& label : atom_files.items()) {
+        label.value() = working_directory / std::string(label.value());
+    }
+}
+
+nlohmann::json preprocess_json_input(std::string fname__)
+{
+    if (fname__.find("{") == std::string::npos) {
+        // If it's a file, set the working directory to that file.
+        auto json = utils::read_json_from_file(fname__);
+        rewrite_relative_paths(json, fs::path{fname__}.parent_path());
+        return json;
+    } else {
+        // Raw JSON input
+        auto json = utils::read_json_from_string(fname__);
+        rewrite_relative_paths(json);
+        return json;
+    }
+}
+
+std::unique_ptr<Simulation_context> create_sim_ctx(std::string fname__,
                                                    cmd_args const& args__)
 {
-    auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, Communicator::world()));
+
+    auto json = preprocess_json_input(fname__);
+
+    auto ctx_ptr = std::make_unique<Simulation_context>(json.dump(), Communicator::world());
     Simulation_context& ctx = *ctx_ptr;
 
-    auto& inp = ctx.parameters_input();
-    if (inp.gamma_point_ && !(inp.ngridk_[0] * inp.ngridk_[1] * inp.ngridk_[2] == 1)) {
+    auto& inp = ctx.cfg().parameters();
+    if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
         TERMINATE("this is not a Gamma-point calculation")
     }
 
@@ -48,13 +87,13 @@ double ground_state(Simulation_context& ctx,
 {
     ctx.print_memory_usage(__FILE__, __LINE__);
 
-    auto& inp = ctx.parameters_input();
+    auto& inp = ctx.cfg().parameters();
 
     std::string ref_file = args.value<std::string>("test_against", "");
     /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
 
-    K_point_set kset(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
+    K_point_set kset(ctx, ctx.cfg().parameters().ngridk(), ctx.cfg().parameters().shiftk(), ctx.use_symmetry());
     DFT_ground_state dft(kset);
 
     ctx.print_memory_usage(__FILE__, __LINE__);
@@ -75,9 +114,9 @@ double ground_state(Simulation_context& ctx,
     double initial_tol = ctx.iterative_solver_tolerance();
 
     /* launch the calculation */
-    auto result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
+    auto result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
 
-    if (ctx.control().verification_ >= 1) {
+    if (ctx.cfg().control().verification() >= 1) {
         dft.check_scf_density();
     }
 
@@ -85,13 +124,13 @@ double ground_state(Simulation_context& ctx,
     if (repeat_update) {
         for (int i = 0; i < repeat_update; i++) {
             dft.update();
-            result = dft.find(inp.density_tol_, inp.energy_tol_, initial_tol, inp.num_dft_iter_, write_state);
+            result = dft.find(inp.density_tol(), inp.energy_tol(), initial_tol, inp.num_dft_iter(), write_state);
         }
     }
 
     //dft.print_magnetic_moment();
 
-    if (ctx.control().print_stress_ && !ctx.full_potential()) {
+    if (ctx.cfg().control().print_stress() && !ctx.full_potential()) {
         Stress& s       = dft.stress();
         auto stress_tot = s.calc_stress_total();
         s.print_info();
@@ -102,7 +141,7 @@ double ground_state(Simulation_context& ctx,
             }
         }
     }
-    if (ctx.control().print_forces_) {
+    if (ctx.cfg().control().print_forces()) {
         Force& f         = dft.forces();
         auto& forces_tot = f.calc_forces_total();
         f.print_info();
@@ -118,8 +157,8 @@ double ground_state(Simulation_context& ctx,
         json dict_ref;
         std::ifstream(ref_file) >> dict_ref;
 
-        double e1 = result["energy"]["total"];
-        double e2 = dict_ref["ground_state"]["energy"]["total"];
+        double e1 = result["energy"]["total"].get<double>();
+        double e2 = dict_ref["ground_state"]["energy"]["total"].get<double>();
 
         if (std::abs(e1 - e2) > 1e-5) {
             std::printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
@@ -164,6 +203,7 @@ double ground_state(Simulation_context& ctx,
         json_output_common(dict);
 
         dict["task"] = static_cast<int>(task);
+        dict["context"] = ctx.serialize();
         dict["ground_state"] = result;
         //dict["timers"] = utils::timer::serialize();
         dict["counters"] = json::object();
@@ -209,14 +249,22 @@ void run_tasks(cmd_args const& args)
 {
     /* get the task id */
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
+
     /* get the input file name */
-    std::string fname = args.value<std::string>("input", "sirius.json");
-    if (!utils::file_exists(fname)) {
+    auto fpath = args.value<fs::path>("input", "sirius.json");
+
+    if (fs::is_directory(fpath)) {
+        fpath /= "sirius.json";
+    }
+
+    if (!fs::exists(fpath)) {
         if (Communicator::world().rank() == 0) {
             std::printf("input file does not exist\n");
         }
         return;
     }
+
+    auto fname = fpath.string();
 
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
         auto ctx = create_sim_ctx(fname, args);
@@ -289,13 +337,13 @@ void run_tasks(cmd_args const& args)
             band.initialize_subspace(ks, H0);
             if (ctx->hubbard_correction()) {
                 TERMINATE("fix me");
-                potential.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
-                potential.U().calculate_hubbard_potential_and_energy();
+                //potential.U().compute_occupation_matrix(ks); // TODO: this is wrong; U matrix should come form the saved file
+                //potential.U().calculate_hubbard_potential_and_energy(potential.U().occupation_matrix());
             }
         }
         band.solve(ks, H0, true);
 
-        ks.sync_band_energies();
+        ks.sync_band<sync_band_t::energy>();
         if (Communicator::world().rank() == 0) {
             json dict;
             dict["header"] = {};
@@ -319,7 +367,7 @@ void run_tasks(cmd_args const& args)
                 }
                 std::vector<double> bnd_e;
 
-                for (int ispn = 0; ispn < ctx->num_spin_dims(); ispn++) {
+                for (int ispn = 0; ispn < ctx->num_spinors(); ispn++) {
                     for (int j = 0; j < ctx->num_bands(); j++) {
                         bnd_e.push_back(ks[ik]->band_energy(j, ispn));
                     }
@@ -357,6 +405,9 @@ int main(int argn, char** argv)
     args.register_key("--parameters.gamma_point=", "");
     args.register_key("--parameters.pw_cutoff=", "");
     args.register_key("--iterative_solver.orthogonalize=", "");
+    args.register_key("--iterative_solver.early_restart=", "{double} value between 0 and 1 to control the early restart ratio in Davidson");
+    args.register_key("--mixer.type=", "{string} mixer name (anderson, anderson_stable, broyden2, linear)");
+    args.register_key("--mixer.beta=", "{double} mixing parameter");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -380,8 +431,11 @@ int main(int argn, char** argv)
     sirius::finalize(1);
 
     if (my_rank == 0)  {
-        const auto timing_result = ::utils::global_rtgraph_timer.process();
-        std::cout << timing_result.print();
+        //auto timing_result = ::utils::global_rtgraph_timer.process().flatten(1).sort_nodes();
+        auto timing_result = ::utils::global_rtgraph_timer.process();
+        std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
+                                          rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
+                                          rt_graph::Stat::Max});
         std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
         ofs << timing_result.json();
     }

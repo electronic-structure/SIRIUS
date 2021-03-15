@@ -14,14 +14,12 @@ from ..helpers import save_state
 from ..logger import Logger
 from .smearing import Smearing
 from .preconditioner import IdentityPreconditioner
-from ..utils.exceptions import NotEnoughBands
-from .helpers import has_enough_bands
 
 kb = (physical_constants['Boltzmann constant in eV/K'][0] /
       physical_constants['Hartree energy in eV'][0])
 
-
 logger = Logger()
+
 
 def _solve(A, X):
     """
@@ -34,15 +32,23 @@ def _solve(A, X):
 
 
 class StepError(Exception):
-    pass
+    """Step failed."""
 
 
 class SlopeError(Exception):
-    pass
+    """Signaling an increasing slope."""
 
 
-class Converged(Exception):
-    pass
+class ConvergedX(Exception):
+    def __init__(self, slope, *args, **kwargs):
+        super(ConvergedX, self).__init__(*args, **kwargs)
+        self.slope = slope
+
+
+class Convergedfn(Exception):
+    def __init__(self, slope, *args, **kwargs):
+        super(Convergedfn, self).__init__(*args, **kwargs)
+        self.slope = slope
 
 
 def btsearch(f, b, f0=None, maxiter=20, tau=0.5):
@@ -172,7 +178,6 @@ class CG:
         tau        --
         """
 
-
         kset = self.free_energy.energy.kpointset
         kw = kset.w
         F, Hx = self.free_energy(X, fn)
@@ -190,23 +195,22 @@ class CG:
         for i in range(maxiter):
             try:
                 X, fn, F, Hx, slope_X = self.stepX(X, fn, F, G_X, g_X, tol=tol)
-            except (StepError, SlopeError):
+            except (StepError, SlopeError) as e:
                 fline = LineEvaluator(X=X, fn=fn, M=self.free_energy, G_X=G_X)
                 res = fline(0)
                 F = res.F
 
-                logger('--- CG RESTART ---')
+                logger('--- CG RESTART ---: ' + str(type(e)))
                 G_X = dX  # un-conjugated search direction
                 try:
                     X, fn, F, Hx, slope_X = self.stepX(X, fn, F, G_X, g_X,
-                                                    tol=tol, tau=tau)
-                except Converged:
-                    pass
-            except Converged:
-                pass
+                                                       tol=tol, tau=tau)
+                except ConvergedX as msg:
+                    slope_X = msg.slope
+            except ConvergedX as msg:
+                slope_X = msg.slope
 
             logger("  stepX %4d: %.10f" % (i, F))
-            # inner loop (optimize fn)
             try:
                 X, fn, F, Hx, U, slope_fn = self.step_fn(X, fn, tol=tol, num_iter=ninner)
             except SlopeError:
@@ -215,7 +219,7 @@ class CG:
             callback(X=X, fn=fn, F=F, dX=dX, G_X=G_X, g_X=g_X, it=i)
             logger("step %5d F: %.11f res: X,fn %+10.5e %+10.5e" % (i, F, slope_X, slope_fn))
 
-            if np.abs(slope_fn) + np.abs(slope_X) < tol:
+            if np.abs(slope_fn) < tol and np.abs(slope_X) < tol:
                 return F, X, fn, True
             else:
                 logger('not converged')
@@ -253,6 +257,7 @@ class CG:
 
         # previous search directions (including subspace rotation)
         gXp = g_X @ U
+        GXp = G_X @ U
         dXp = dX @ U
 
         g_X = HX * fn - X @ LL
@@ -263,25 +268,22 @@ class CG:
             G_X = dX
         else:
             beta_cg = max(0, np.real(inner(g_X, dX)) / np.real(inner(gXp, dXp)))
-            G_X = dX + beta_cg * (gXp - X @ (X.H @ gXp))
+            G_X = dX + beta_cg * (GXp - X @ (X.H @ GXp))
 
         logger('beta_cg: %.6f' % beta_cg)
-        # beta_cg = 0
         return dX, G_X, g_X
 
     def stepX(self, X, fn, F0, G_X, g_X, tol, tau=0.3):
         slope = 2*np.real(inner(G_X, g_X))
 
         if np.abs(slope) < tol:
-            raise Converged
+            raise ConvergedX(slope=slope)
         if slope > 0:
-            print('slope: %.4e' % slope)
+            logger('slope_X: %.4e' % slope)
             raise SlopeError
 
         line_eval = LineEvaluator(X, fn, self.free_energy, G_X)
 
-        # if np.abs(slope) < tol:
-        #     return X, fn, F0, None, slope
         try:
             X, fn, F, Hx = self.stepX_quadratic(F0, line_eval, slope)
         except StepError:
@@ -331,6 +333,7 @@ class CG:
         # logger('step_X::     F=%.10f' % F)
         # logger('step_X::    F0=%.10f' % F0)
         if not F < F0:
+            logger('quadratic line-search failed')
             raise StepError
 
         return X, fn, F, Hx

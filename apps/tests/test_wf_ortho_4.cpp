@@ -35,7 +35,7 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
 
     dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
 
-#ifdef __GPU
+#ifdef SIRIUS_GPU
     if (pu == GPU) {
         for (int is = 0; is < 2; is++) {
             phi.component(is).pw_coeffs().allocate_on_device();

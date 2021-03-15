@@ -28,7 +28,7 @@
 #include "gvec.hpp"
 #include "dmatrix.hpp"
 
-#ifdef __GPU
+#ifdef SIRIUS_GPU
 extern "C" void add_checksum_gpu(std::complex<double> const* wf__,
                                  int                   num_rows_loc__,
                                  int                   nwf__,
@@ -86,16 +86,15 @@ class matrix_storage<T, matrix_storage_t::slab>
         , num_rows_loc_(gvp__.gvec().count())
         , num_cols_(num_cols__)
     {
-        PROFILE("sddk::matrix_storage::matrix_storage");
         /* primary storage of PW wave functions: slabs */
         prime_ = mdarray<T, 2>(num_rows_loc_, num_cols_, memory_t::host, "matrix_storage.prime_");
     }
 
+    /// Constructor.
     matrix_storage(int num_rows_loc__, int num_cols__)
         : num_rows_loc_(num_rows_loc__)
         , num_cols_(num_cols__)
     {
-        PROFILE("sddk::matrix_storage::matrix_storage");
         /* primary storage of PW wave functions: slabs */
         prime_ = mdarray<T, 2>(num_rows_loc_, num_cols_, memory_t::host, "matrix_storage.prime_");
     }
@@ -107,7 +106,6 @@ class matrix_storage<T, matrix_storage_t::slab>
         , num_rows_loc_(gvp__.gvec().count())
         , num_cols_(num_cols__)
     {
-        PROFILE("sddk::matrix_storage::matrix_storage");
         /* primary storage of PW wave functions: slabs */
         prime_ = mdarray<T, 2>(num_rows_loc_, num_cols_, mp__, "matrix_storage.prime_");
     }

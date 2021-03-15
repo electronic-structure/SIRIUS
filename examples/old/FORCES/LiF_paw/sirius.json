@@ -3,8 +3,8 @@
   "control" : {
       "cyclic_block_size" : 16,
       "processing_unit" : "cpu",
-      "!std_evp_solver_type" : "lapack",
-      "!gen_evp_solver_type" : "lapack",
+      "!std_evp_solver_name" : "lapack",
+      "!gen_evp_solver_name" : "lapack",
       "reduce_gvec": true,
 	  "verbosity": 2
   },
@@ -69,7 +69,7 @@
 
     "mixer" : {
         "beta" : 0.7,
-        "type" : "broyden1",
+        "type" : "anderson",
         "max_history" : 8
     }
 

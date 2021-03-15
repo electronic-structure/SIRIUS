@@ -385,9 +385,9 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator co
         }
     }
     double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
-    comm__.allgather(sbuf, frlm__.at(memory_t::host),
-                     lmmax * nrmax * spl_atoms.global_offset(),
-                     lmmax * nrmax * spl_atoms.local_size());
+    comm__.allgather(sbuf, frlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
+            lmmax * nrmax * spl_atoms.global_offset());
+
 }
 
 inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communicator const& comm__,
@@ -434,9 +434,8 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
     }
 
     double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
-    comm__.allgather(sbuf, vz_rlm__.at(memory_t::host),
-                     lmmax * nrmax * spl_atoms.global_offset(),
-                     lmmax * nrmax * spl_atoms.local_size());
+    comm__.allgather(sbuf, vz_rlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
+            lmmax * nrmax * spl_atoms.global_offset());
 }
 
 inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communicator const& comm__,
@@ -497,9 +496,8 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
 
     for (int k: {0, 1, 2}) {
         double* sbuf = spl_atoms.local_size() ? v_sym.at(memory_t::host, 0, 0, 0, k) : nullptr;
-        comm__.allgather(sbuf, vrlm[k]->at(memory_t::host),
-                         lmmax * nrmax * spl_atoms.global_offset(),
-                         lmmax * nrmax * spl_atoms.local_size());
+        comm__.allgather(sbuf, vrlm[k]->at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
+                lmmax * nrmax * spl_atoms.global_offset());
     }
 }
 
@@ -642,6 +640,78 @@ inline void symmetrize(const mdarray<double_complex, 4> &ns_,
     }
 }
 
+inline void
+symmetrize(sddk::mdarray<double_complex, 4> const& ns__, sirius::experimental::basis_functions_index const& indexb__,
+           int const ia__, int const ja__, int const ndm__, sddk::mdarray<double, 2> const& rotm__,
+           sddk::mdarray<double_complex, 2> const& spin_rot_su2__, sddk::mdarray<double_complex, 4>& dm__,
+           bool const hubbard__) // TODO: revisit the implementation, also thnik about off-site occupation matrix 
+{
+    for (int xi1 = 0; xi1 < static_cast<int>(indexb__.size()); xi1++) {
+        int l1  = indexb__.l(xi1);
+        int lm1 = indexb__.lm(xi1);
+        int o1  = indexb__.order(xi1);
+
+        if (hubbard__ && (xi1 >= (2 * l1 + 1))) {
+            break;
+        }
+
+        for (int xi2 = 0; xi2 < static_cast<int>(indexb__.size()); xi2++) {
+            int l2  = indexb__.l(xi2);
+            int lm2 = indexb__.lm(xi2);
+            int o2  = indexb__.order(xi2);
+            std::array<double_complex, 3> dm_rot_spatial = {0, 0, 0};
+
+            //} the hubbard treatment when spin orbit coupling is present is
+            // foundamentally wrong since we consider the full hubbard
+            // correction with a averaged wave function (meaning we neglect the
+            // L.S correction within hubbard). A better option (although still
+            // wrong from physics pov) would be to consider a multi orbital case.
+
+            if (hubbard__ && (xi2 >= (2 * l2 + 1))) {
+                break;
+            }
+
+            //      if (l1 == l2) {
+            // the rotation matrix of the angular momentum is block
+            // diagonal and does not couple different l.
+            for (int j = 0; j < ndm__; j++) {
+                for (int m3 = -l1; m3 <= l1; m3++) {
+                    int lm3 = utils::lm(l1, m3);
+                    int xi3 = indexb__.index_by_lm_order(lm3, o1);
+                    for (int m4 = -l2; m4 <= l2; m4++) {
+                        int lm4 = utils::lm(l2, m4);
+                        int xi4 = indexb__.index_by_lm_order(lm4, o2);
+                        dm_rot_spatial[j] += ns__(xi3, xi4, j, ja__) *
+                            rotm__(lm1, lm3) * rotm__(lm2, lm4);
+                    }
+                }
+            }
+
+            /* magnetic symmetrization */
+            if (ndm__ == 1) {
+                dm__(xi1, xi2, 0, ia__) += dm_rot_spatial[0];
+            } else {
+                double_complex spin_dm[2][2] = {
+                    {dm_rot_spatial[0], dm_rot_spatial[2]},
+                    {std::conj(dm_rot_spatial[2]), dm_rot_spatial[1]}};
+
+                /* spin blocks of density matrix are: uu, dd, ud
+                   the mapping from linear index (0, 1, 2) of density matrix components is:
+                   for the first spin index: k & 1, i.e. (0, 1, 2) -> (0, 1, 0)
+                   for the second spin index: min(k, 1), i.e. (0, 1, 2) -> (0, 1, 1)
+                */
+                for (int k = 0; k < ndm__; k++) {
+                    for (int is = 0; is < 2; is++) {
+                        for (int js = 0; js < 2; js++) {
+                            dm__(xi1, xi2, k, ia__) += spin_rot_su2__(k & 1, is) * spin_dm[is][js] *
+                                std::conj(spin_rot_su2__(std::min(k, 1), js));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 } // namespace
 
 #endif // __SYMMETRIZE_HPP__

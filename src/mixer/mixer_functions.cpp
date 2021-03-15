@@ -102,20 +102,46 @@ FunctionProperties<Periodic_function<double>> periodic_function_property()
         }
     };
 
+    auto rotate_function = [](double c, double s, Periodic_function<double>& x, Periodic_function<double>& y) -> void {
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(static) nowait
+            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
+                auto xi = x.f_rg(i);
+                auto yi = y.f_rg(i);
+                x.f_rg(i) = xi * c  + yi * s;
+                y.f_rg(i) = xi * -s + yi * c;
+            }
+            if (x.ctx().full_potential()) {
+                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                    auto& x_f_mt = x.f_mt(ialoc);
+                    auto& y_f_mt = y.f_mt(ialoc);
+                    #pragma omp for schedule(static) nowait
+                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
+                        auto xi = x_f_mt[i];
+                        auto yi = y_f_mt[i];
+                        x_f_mt[i] = xi * c  + yi * s;
+                        y_f_mt[i] = xi * -s + yi * c;
+                    }
+                }
+            }
+        }
+    };
+
     return FunctionProperties<Periodic_function<double>>(global_size_func, inner_prod_func, scal_function, copy_function,
-                                                         axpy_function);
+                                                         axpy_function, rotate_function);
 }
 
 FunctionProperties<Periodic_function<double>> periodic_function_property_modified(bool use_coarse_gvec__)
 {
     auto global_size_func = [](Periodic_function<double> const& x) -> double
     {
-        return x.ctx().unit_cell().omega();
+        return 1.0 / x.ctx().unit_cell().omega();
     };
 
     auto inner_prod_func = [use_coarse_gvec__](Periodic_function<double> const& x, Periodic_function<double> const& y) -> double {
         double result{0};
-        int ig0 = (x.ctx().comm().rank() == 0) ? 1 : 0;
+        int ig0 = x.ctx().gvec().skip_g0();
         if (use_coarse_gvec__) {
             for (int igloc = ig0; igloc < x.ctx().gvec_coarse().count(); igloc++) {
                 /* local index in fine G-vector list */
@@ -214,8 +240,34 @@ FunctionProperties<Periodic_function<double>> periodic_function_property_modifie
         }
     };
 
+    auto rotate_function = [](double c, double s, Periodic_function<double>& x, Periodic_function<double>& y) -> void {
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(static) nowait
+            for (std::size_t i = 0; i < x.f_rg().size(); ++i) {
+                auto xi = x.f_rg(i);
+                auto yi = y.f_rg(i);
+                x.f_rg(i) = xi * c  + yi * s;
+                y.f_rg(i) = xi * -s + yi * c;
+            }
+            if (x.ctx().full_potential()) {
+                for (int ialoc = 0; ialoc < x.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                    auto& x_f_mt = x.f_mt(ialoc);
+                    auto& y_f_mt = y.f_mt(ialoc);
+                    #pragma omp for schedule(static) nowait
+                    for (int i = 0; i < static_cast<int>(x.f_mt(ialoc).size()); i++) {
+                        auto xi = x_f_mt[i];
+                        auto yi = y_f_mt[i];
+                        x_f_mt[i] = xi * c  + yi * s;
+                        y_f_mt[i] = xi * -s + yi * c;
+                    }
+                }
+            }
+        }
+    };
+
     return FunctionProperties<Periodic_function<double>>(global_size_func, inner_prod_func, scal_function, copy_function,
-                                                         axpy_function);
+                                                         axpy_function, rotate_function);
 }
 
 FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
@@ -250,8 +302,19 @@ FunctionProperties<sddk::mdarray<double_complex, 4>> density_function_property()
         }
     };
 
+    auto rotate_function = [](double c, double s, mdarray<double_complex, 4>& x, mdarray<double_complex, 4>& y) -> void {
+        assert(x.size() == y.size());
+        #pragma omp parallel for schedule(static)
+        for (std::size_t i = 0; i < x.size(); ++i) {
+            auto xi = x[i];
+            auto yi = y[i];
+            x[i] = xi * c  + yi * s;
+            y[i] = xi * -s + yi * c;
+        }
+    };
+
     return FunctionProperties<sddk::mdarray<double_complex, 4>>(global_size_func, inner_prod_func, scal_function,
-                                                                copy_function, axpy_function);
+                                                                copy_function, axpy_function, rotate_function);
 }
 
 FunctionProperties<paw_density> paw_density_function_property()
@@ -290,8 +353,27 @@ FunctionProperties<paw_density> paw_density_function_property()
         }
     };
 
+    auto rotate_function = [](double c, double s, paw_density& x, paw_density& y) -> void {
+        for (int i = 0; i < x.ctx().unit_cell().spl_num_paw_atoms().local_size(); i++) {
+            for (int j = 0; j < x.ctx().num_mag_dims() + 1; j++) {
+                {
+                    auto tmp1 = x.ae_density(j, i) * c + y.ae_density(j, i) * s;
+                    auto tmp2 = x.ae_density(j, i) * -s + y.ae_density(j, i) * c;
+                    x.ae_density(j, i) = std::move(tmp1);
+                    y.ae_density(j, i) = std::move(tmp2);
+                }
+                {
+                    auto tmp1 = x.ps_density(j, i) * c + y.ps_density(j, i) * s;
+                    auto tmp2 = x.ps_density(j, i) * -s + y.ps_density(j, i) * c;
+                    x.ps_density(j, i) = std::move(tmp1);
+                    y.ps_density(j, i) = std::move(tmp2);
+                }
+            }
+        }
+    };
+
     return FunctionProperties<paw_density>(global_size_func, inner_prod_func, scal_function, copy_function,
-                                           axpy_function);
+                                           axpy_function, rotate_function);
 }
 
 } // namespace mixer

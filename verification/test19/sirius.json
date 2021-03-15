@@ -1,0 +1,53 @@
+{
+    "control" : {
+        "processing_unit" : "cpu",
+        "std_evp_solver_name" : "lapack",
+        "gen_evp_solver_name" : "lapack",
+        "verbosity" : 1,
+        "verification" : 0,
+        "rmt_max": 2.0
+    },
+    "parameters" : {
+        "electronic_structure_method" : "full_potential_lapwlo",
+        "smearing_width" : 0.001,
+        "xc_functionals": ["XC_LDA_X", "XC_LDA_C_PW"],
+        "num_fv_states" : 10,
+        "num_mag_dims": 1,
+        "pw_cutoff" : 12.00,
+        "aw_cutoff":  7.00,
+        "use_symmetry": true,
+        "ngridk" : [4,4,4],
+        "density_tol" : 1e-7,
+        "energy_tol" : 1e-10,
+        "num_dft_iter" : 100
+    },
+
+
+    "unit_cell" : {
+
+        "lattice_vectors" : [ [-1, 1, 1],
+                              [1, -1, 1],
+                              [1, 1, -1]
+                            ],
+        "lattice_vectors_scale" : 2.708,
+
+        "atom_types" : ["Fe"],
+
+        "atom_files" : {
+            "Fe" : "Fe.json"
+        },
+
+        "atoms" : {
+            "Fe" : [
+                [0, 0, 0, 0, 0, 1]
+            ]
+        }
+    },
+
+    "mixer" : {
+        "beta" : 0.5,
+        "type" : "anderson",
+        "max_history" : 8
+    }
+
+}

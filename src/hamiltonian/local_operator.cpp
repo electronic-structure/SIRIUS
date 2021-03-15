@@ -65,7 +65,7 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
         if (fft_coarse_.processing_unit() == SPFFT_PU_GPU) {
             veff_vec_[4]->f_rg().allocate(ctx_.mem_pool(memory_t::device)).copy_to(memory_t::device);
         }
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.print_checksum()) {
             auto cs1 = veff_vec_[4]->checksum_pw();
             auto cs2 = veff_vec_[4]->checksum_rg();
             if (ctx_.comm().rank() == 0) {
@@ -152,7 +152,7 @@ Local_operator::Local_operator(Simulation_context const& ctx__, spfft::Transform
             }
         }
 
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.print_checksum()) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                 auto cs1 = veff_vec_[j]->checksum_pw();
                 auto cs2 = veff_vec_[j]->checksum_rg();
@@ -246,7 +246,7 @@ static inline void mul_by_veff(spfft::Transform& spfftk__, double* buff__,
             break;
         }
         case SPFFT_PU_GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             if (idx_veff__ <= 1 || idx_veff__ >= 4) { /* up-up or dn-dn block or Theta(r) */
                 switch (spfftk__.type()) {
                     case SPFFT_TRANS_R2C: {
@@ -292,7 +292,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& g
     /* this memory pool will be used to allocate extra storage in the host memory */
     auto& mp = const_cast<Simulation_context&>(ctx_).mem_pool(ctx_.host_memory_t());
     /* this memory pool will be used to allocate extra storage in the device memory */
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
     memory_pool* mpd = &const_cast<Simulation_context&>(ctx_).mem_pool(memory_t::device);
 #else
     memory_pool* mpd{nullptr};
@@ -461,7 +461,7 @@ void Local_operator::apply_h(spfft::Transform& spfftk__, Gvec_partition const& g
                 break;
             }
             case SPFFT_PU_GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
                 double alpha = static_cast<double>(ekin);
                 add_pw_ekin_gpu(gkvec_p__.gvec_count_fft(), alpha, pw_ekin_.at(memory_t::device),
                                 phi1[ispn].at(memory_t::device), vphi_.at(memory_t::device),

@@ -16,7 +16,12 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     }
 
     Simulation_context params;
-    params.set_processing_unit(pu);
+    if (use_gpu__) {
+        params.processing_unit("GPU");
+    } else {
+        params.processing_unit("CPU");
+    }
+
     params.unit_cell().set_lattice_vectors(M);
     params.mpi_grid_dims(mpi_grid_dims__);
     params.pw_cutoff(cutoff__ + 1);
@@ -100,7 +105,7 @@ int main(int argn, char** argv)
         args.print_help();
         return 0;
     }
-    auto mpi_grid_dims = args.value< std::vector<int> >("mpi_grid_dims", {1, 1});
+    auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
     auto cutoff = args.value<double>("cutoff", 10.0);
     auto reduce_gvec = args.value<int>("reduce_gvec", 0);
     auto num_bands = args.value<int>("num_bands", 10);

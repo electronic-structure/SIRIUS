@@ -30,19 +30,23 @@
 #endif
 
 #include "SDDK/omp.hpp"
-#if defined(__GPU) && defined(__CUDA)
+#if defined(SIRIUS_GPU) && defined(SIRIUS_CUDA)
 #include "gpu/cusolver.hpp"
 #endif
-#if defined(__ELPA)
+#include "linalg/linalg_spla.hpp"
+#if defined(SIRIUS_ELPA)
 #include "linalg/elpa.hpp"
 #endif
 #include "utils/cmd_args.hpp"
 #include "utils/json.hpp"
 #include "utils/profiler.hpp"
 using json = nlohmann::json;
+#if defined(SIRIUS_USE_POWER_COUNTER)
+#include "utils/power.hpp"
+#endif
 
-#include "input.hpp"
-#include "simulation_context.hpp"
+#include "context/input.hpp"
+#include "context/simulation_context.hpp"
 #include "hamiltonian/local_operator.hpp"
 #include "radial/radial_solver.hpp"
 #include "sht/sht.hpp"
@@ -73,6 +77,20 @@ inline static bool& is_initialized()
     return b;
 }
 
+#if defined(SIRIUS_USE_POWER_COUNTER)
+inline static double& energy()
+{
+    static double e__{0};
+    return e__;
+}
+
+inline static double& energy_acc()
+{
+    static double e__{0};
+    return e__;
+}
+#endif
+
 /// Initialize the library.
 inline void initialize(bool call_mpi_init__ = true)
 {
@@ -81,13 +99,16 @@ inline void initialize(bool call_mpi_init__ = true)
     if (is_initialized()) {
         TERMINATE("SIRIUS library is already initialized");
     }
+#if defined(SIRIUS_USE_POWER_COUNTER)
+    energy() = -utils::power::energy();
+    energy_acc() = -utils::power::device_energy();
+#endif
     if (call_mpi_init__) {
         Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
 #if defined(__APEX)
     apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
 #endif
-    //utils::start_global_timer();
 
     if (Communicator::world().rank() == 0) {
         std::printf("SIRIUS %i.%i.%i, git hash: %s\n", sirius::major_version(), sirius::minor_version(),
@@ -105,15 +126,17 @@ inline void initialize(bool call_mpi_init__ = true)
         /* some parts of the code rely on the number of streams not related to the
            number of OMP threads */
         acc::create_streams(std::max(omp_get_max_threads(), 6));
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
         accblas::create_stream_handles();
 #endif
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
         accblas::xt::create_handle();
         cusolver::create_handle();
 #endif
     }
-#if defined(__MAGMA)
+    splablas::reset_handle();
+
+#if defined(SIRIUS_MAGMA)
     magma::init();
 #endif
 #if defined(__PLASMA)
@@ -122,7 +145,7 @@ inline void initialize(bool call_mpi_init__ = true)
 #if defined(__LIBSCI_ACC)
     libsci_acc_init();
 #endif
-#if defined(__ELPA)
+#if defined(SIRIUS_ELPA)
     if (elpa_init(20170403) != ELPA_OK) {
         TERMINATE("ELPA API version not supported");
     }
@@ -141,18 +164,21 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     if (!is_initialized()) {
         TERMINATE("SIRIUS library was not initialized");
     }
-#if defined(__MAGMA)
+#if defined(SIRIUS_MAGMA)
     magma::finalize();
 #endif
 #if defined(__LIBSCI_ACC)
     libsci_acc_finalize();
 #endif
 
+    // must be called before device is reset
+    splablas::reset_handle();
+
     if (acc::num_devices()) {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
         accblas::destroy_stream_handles();
 #endif
-#if defined(__CUDA)
+#if defined(SIRIUS_CUDA)
         cusolver::destroy_handle();
         accblas::xt::destroy_handle();
 #endif
@@ -166,10 +192,27 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
 #if defined(__APEX)
     apex::finalize();
 #endif
+#if defined(SIRIUS_USE_POWER_COUNTER)
+    double e = energy() + utils::power::energy();
+    double e_acc = energy_acc() + utils::power::device_energy();
+    if (Communicator::world().rank() == 0) {
+        printf("=== Energy consumption (root MPI rank) ===\n");
+        printf("energy     : %9.2f Joules\n", e);
+        printf("energy_acc : %9.2f Joules\n", e_acc);
+    }
+    Communicator::world().allreduce(&e, 1);
+    Communicator::world().allreduce(&e_acc, 1);
+    int nn = utils::power::num_nodes();
+    if (Communicator::world().rank() == 0 && nn > 0) {
+        printf("=== Energy consumption (all nodes) ===\n");
+        printf("energy     : %9.2f Joules\n", e * nn / Communicator::world().size());
+        printf("energy_acc : %9.2f Joules\n", e_acc * nn / Communicator::world().size());
+    }
+#endif
     if (call_mpi_fin__) {
         Communicator::finalize();
     }
-#if defined(__ELPA)
+#if defined(SIRIUS_ELPA)
     int ierr;
     elpa_uninit(&ierr);
 #endif
@@ -224,7 +267,6 @@ inline void finalize(bool call_mpi_fin__ = true, bool reset_device__ = true, boo
     - CMakeLists.txt - CMake file of the project
     - check_format.py, check_format.x - scripts to check source code formatting
     - clang_format.x - script to apply Clang format to a file
-    - prerequisite.py - script to install missing dependencies
 
 */
 

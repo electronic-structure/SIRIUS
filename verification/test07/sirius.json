@@ -2,8 +2,8 @@
   "control" : {
       "cyclic_block_size" : 16,
       "processing_unit" : "cpu",
-      "std_evp_solver_type" : "lapack",
-      "gen_evp_solver_type" : "lapack",
+      "std_evp_solver_name" : "lapack",
+      "gen_evp_solver_name" : "lapack",
       "verbosity" : 1,
       "print_forces" : true,
       "print_stress" : true
@@ -13,7 +13,7 @@
 
     "electronic_structure_method" : "pseudopotential",
 
-    "xc_functionals" : ["XC_GGA_X_PBE_SOL", "XC_GGA_C_PBE_SOL"],
+    "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
 
     "smearing_width" : 0.02,
 
@@ -25,7 +25,7 @@
     "pw_cutoff" : 30.00,
 
     "energy_tol" : 1e-7,
-    "density_tol" : 1e-7,
+    "density_tol" : 1e-5,
 
     "num_dft_iter" : 100,
 
@@ -58,7 +58,7 @@
         ]
     },
     "mixer" : {
-        "beta" : 0.9,
-        "max_history" : 10
+        "beta" : 0.5,
+        "max_history" : 8
     }
 }

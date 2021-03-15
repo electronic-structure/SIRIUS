@@ -13,7 +13,7 @@ void test(std::vector<int> sizes, memory_t M__)
         if (is_host_memory(M__)) {
             std::fill(ptr, ptr + s, 0);
         } else {
-#ifdef __GPU
+#ifdef SIRIUS_GPU
             acc::zero(ptr, s);
 #endif
         }
@@ -21,7 +21,7 @@ void test(std::vector<int> sizes, memory_t M__)
         if (is_host_memory(M__)) {
             std::fill(ptr, ptr + s, 0);
         } else {
-#ifdef __GPU
+#ifdef SIRIUS_GPU
             acc::zero(ptr, s);
 #endif
         }
@@ -51,7 +51,7 @@ int main(int argn, char** argv)
     }
 
     sirius::initialize(1);
-    auto sizes = args.value<std::vector<int>>("sizes", std::vector<int>({1024}));
+    auto sizes = args.value("sizes", std::vector<int>({1024}));
     test(sizes, get_memory_t(args.value<std::string>("memory_t", "host")));
     sirius::finalize();
 }

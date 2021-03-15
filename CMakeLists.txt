@@ -1,45 +1,59 @@
-cmake_minimum_required(VERSION 3.12)
+# We could be fine with 3.12, but 3.14 has ctest --show-only=json-v1 used in CI.
+cmake_minimum_required(VERSION 3.14)
 
-project(SIRIUS VERSION 6.5.7)
-
-# set language and standard
-enable_language(CXX Fortran)
-set(CMAKE_CXX_STANDARD 14)
+project(SIRIUS VERSION 7.2.0)
 
 # user variables
-set(CREATE_PYTHON_MODULE OFF CACHE BOOL "create sirius python module")
-set(CREATE_FORTRAN_BINDINGS ON CACHE BOOL "build Fortran bindings")
-set(BUILD_DOCS OFF CACHE BOOL "build doxygen doc")
-set(USE_ELPA OFF CACHE BOOL "use scalapack")
-set(USE_MAGMA OFF CACHE BOOL "use MAGMA")
-set(USE_NLCGLIB OFF CACHE BOOL "enable nlcglib")
-set(USE_CUDA OFF CACHE BOOL "use CUDA")
-set(USE_ROCM OFF CACHE BOOL "use ROCM AMD GPU code")
-set(USE_NVTX OFF CACHE BOOL "use Nvidia profiling tools library")
-set(USE_VDWXC OFF CACHE BOOL "use libvdwxc for van der Walls corrections")
-set(USE_MKL OFF CACHE BOOL "use Intel MKL")
-set(USE_CRAY_LIBSCI OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
-set(USE_SCALAPACK OFF CACHE BOOL "use scalapack")
-set(BUILD_TESTS OFF CACHE BOOL "build tests")
-set(GPU_MODEL "none" CACHE STRING "The target GPU architecture; one of {none,P100,V100,G10x0}")
-set(DEBUG_MEMORY_POOL OFF CACHE BOOL "explicit debugging of memory pool")
-set(USE_OPENMP ON CACHE BOOL "use OpenMP")
-set(PYTHON2 OFF CACHE STRING "Use Python 2.7")
-set(USE_PROFILER ON CACHE BOOL "measure execution of functions with timer")
-set(USE_MEMORY_POOL ON CACHE BOOL "use memory pool")
-set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory aligment of the GPU") 
+set(CREATE_PYTHON_MODULE    OFF CACHE BOOL "create sirius Python module")
+set(CREATE_FORTRAN_BINDINGS ON  CACHE BOOL "build Fortran bindings")
+set(BUILD_DOCS              OFF CACHE BOOL "build doxygen doc")
+set(USE_ELPA                OFF CACHE BOOL "use scalapack")
+set(USE_MAGMA               OFF CACHE BOOL "use MAGMA")
+set(USE_NLCGLIB             OFF CACHE BOOL "enable nlcglib")
+set(USE_CUDA                OFF CACHE BOOL "use CUDA")
+set(USE_ROCM                OFF CACHE BOOL "use ROCM AMD GPU code")
+set(USE_NVTX                OFF CACHE BOOL "use Nvidia profiling tools library")
+set(USE_VDWXC               OFF CACHE BOOL "use libvdwxc for van der Walls corrections")
+set(USE_MKL                 OFF CACHE BOOL "use Intel MKL")
+set(USE_CRAY_LIBSCI         OFF CACHE BOOL "use LAPACK/SCALAPACK from Cray LIBSCI")
+set(USE_SCALAPACK           OFF CACHE BOOL "use scalapack")
+set(BUILD_APPS              ON  CACHE BOOL "build apps")
+set(DEBUG_MEMORY_POOL       OFF CACHE BOOL "explicit debugging of memory pool")
+set(USE_OPENMP              ON  CACHE BOOL "use OpenMP")
+set(USE_PROFILER            ON  CACHE BOOL "measure execution of functions with timer")
+set(USE_MEMORY_POOL         ON  CACHE BOOL "use memory pool")
+set(USE_POWER_COUNTER       OFF CACHE BOOL "measure energy consumption with power counters")
+set(BUILD_TESTING           OFF CACHE BOOL "build test executables") # override default setting in CTest module
+set(PYTHON2                 OFF CACHE STRING "use Python 2.7")
+set(CUDA_ARCH "none"        CACHE STRING "the target GPU architectures; 60 (Pascal), 70 (Volta), etc. Multiple archs are supported too.")
+set(GPU_MEMORY_ALIGMENT "512" CACHE STRING "memory alignment of the GPU")
+
+# set language and standard
+
+if(CREATE_FORTRAN_BINDINGS)
+  enable_language(CXX Fortran)
+else()
+  enable_language(CXX)
+endif()
+
+set(CMAKE_CXX_STANDARD 14)
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    include(CTest)
+endif()
 
 if(USE_CUDA AND USE_ROCM)
   message(FATAL_ERROR "USE_CUDA and USE_ROCM must not be enabled at the same time!")
 endif()
 
-add_compile_definitions(__GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
+add_compile_definitions(SIRIUS_GPU_MEMORY_ALIGMENT=${GPU_MEMORY_ALIGMENT})
 
 # if(USE_MKL AND NOT (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Intel"))
 #   message(FATAL_ERROR "Unsupported compiler")
 # endif()
 
-set_property(CACHE GPU_MODEL PROPERTY STRINGS "none" "P100" "V100" "G10x0")
+set_property(CACHE CUDA_ARCH PROPERTY STRINGS "none" "30" "32" "35" "37"
+  "50" "52" "53" "60" "61" "62" "70" "72" "75" "80")
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 list(APPEND CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
@@ -55,7 +69,7 @@ if (CREATE_PYTHON_MODULE)
     find_package(Python2 REQUIRED)
     set(PYTHON_EXECUTABLE ${Python2_EXECUTABLE})
   else()
-    find_package(Python3 REQUIRED)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
     set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
   endif()
 endif()
@@ -113,11 +127,28 @@ endif()
 
 find_package(MPI REQUIRED)
 find_package(GSL REQUIRED)
-find_package(LibXC 3.0.0 REQUIRED)
+find_package(LibXC 4.0.0 REQUIRED)
 find_package(LibSPG REQUIRED)
 find_package(HDF5 REQUIRED C)
 include(cmake/hdf5_target.cmake)
-find_package(SpFFT 0.9.6 CONFIG REQUIRED)
+find_package(SpFFT 0.9.13 CONFIG REQUIRED)
+find_package(SPLA 1.1.0 CONFIG REQUIRED)
+
+# Either find std::filesystem or boost::filesystem
+find_package(Filesystem COMPONENTS Final Experimental)
+
+add_library(sirius::filesystem INTERFACE IMPORTED)
+if(TARGET std::filesystem)
+  target_link_libraries(sirius::filesystem INTERFACE std::filesystem)
+  target_compile_definitions(sirius::filesystem INTERFACE
+    $<$<BOOL:${Filesystem_FOUND}>:SIRIUS_STD_FILESYSTEM>
+    $<$<BOOL:${CXX_FILESYSTEM_IS_EXPERIMENTAL}>:SIRIUS_STD_FILESYSTEM_EXPERIMENTAL>
+  )
+else()
+  find_package(Boost 1.65 REQUIRED COMPONENTS filesystem)
+  target_link_libraries(sirius::filesystem INTERFACE Boost::filesystem)
+  target_compile_definitions(sirius::filesystem INTERFACE SIRIUS_BOOST_FILESYSTEM)
+endif()
 
 if (USE_OPENMP)
   find_package(OpenMP REQUIRED)
@@ -156,29 +187,27 @@ if(USE_CUDA)
   enable_language(CUDA)
   find_package(CUDA)
   include(cmake/cudalibs_target.cmake)
-
-  if(GPU_MODEL MATCHES "P100")
-    message("set nvcc flags for P100")
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_60")
-  elseif(GPU_MODEL MATCHES "V100")
-    message("set nvcc flags for V100")
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_70")
-  elseif(GPU_MODEL MATCHES "G10x0")
-    message("set nvcc flags for geforce 1000")
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_61")
+  # In CMake 3.18+ we should be using the CUDA_ARCHITECTURES target property
+  # instead of setting compiler by hand
+  if(${CMAKE_VERSION} VERSION_LESS "3.18.0")
+    foreach(arch ${CUDA_ARCH})
+      if (NOT ${arch} STREQUAL "none")
+        set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_${arch},code=compute_${arch}")
+      endif()
+    endforeach()
   endif()
-
 endif(USE_CUDA)
 
 if(USE_ROCM)
+  find_package(hip CONFIG REQUIRED)
+  find_package(rocblas CONFIG REQUIRED)
+
+  # FindHIP module provides compilation command for GPU code
   if(NOT HIP_HCC_FLAGS)
     message(STATUS "Using default AMD gpu targets: gfx803, gfx900, gfx906. Set HIP_HCC_FLAGS to override.")
     set(HIP_HCC_FLAGS ${HIP_HCC_FLAGS} --amdgpu-target=gfx803 --amdgpu-target=gfx900 --amdgpu-target=gfx906)
   endif()
-  find_package(HIP REQUIRED)
-  # rocblas and hip have cmake config files, but add incompatible flags for mixed compiler usage, so we use custom find modules
-  find_package(ROCBLAS REQUIRED)
-  find_package(HIPLIBS REQUIRED)
+  find_package(HIP MODULE REQUIRED)
 endif()
 
 # check if git command exists
@@ -207,10 +236,21 @@ configure_file("${PROJECT_SOURCE_DIR}/src/version.hpp.in"
                @ONLY)
 
 # generate runtime options
-file(STRINGS "${PROJECT_SOURCE_DIR}/src/options.json"
-              SIRIUS_RUNTIME_OPTIONS NEWLINE_CONSUME)
-configure_file("${PROJECT_SOURCE_DIR}/src/runtime_options_json.hpp.in"
-               "${PROJECT_BINARY_DIR}/src/runtime_options_json.hpp"
+file(READ "${PROJECT_SOURCE_DIR}/src/context/options.json" SIRIUS_RUNTIME_OPTIONS NEWLINE_CONSUME)
+configure_file("${PROJECT_SOURCE_DIR}/src/context/runtime_options_json.hpp.in"
+               "${PROJECT_BINARY_DIR}/src/context/runtime_options_json.hpp"
+               @ONLY)
+
+# generate schema
+file(READ "${PROJECT_SOURCE_DIR}/src/context/input_schema.json" SIRIUS_INPUT_SCHEMA NEWLINE_CONSUME)
+configure_file("${PROJECT_SOURCE_DIR}/src/context/input_schema.hpp.in"
+               "${PROJECT_BINARY_DIR}/src/context/input_schema.hpp"
+               @ONLY)
+
+# generate atomic configurations
+file(READ "${PROJECT_SOURCE_DIR}/apps/atoms/atoms.json" SIRIUS_ATOMIC_CONF NEWLINE_CONSUME)
+configure_file("${PROJECT_SOURCE_DIR}/apps/atoms/atomic_conf.hpp.in"
+               "${PROJECT_BINARY_DIR}/src/unit_cell/atomic_conf.hpp"
                @ONLY)
 
 # install targets and modules
@@ -229,19 +269,23 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/cmake/modules"
 # sirius library
 add_subdirectory(src)
 
+# Python module
+add_subdirectory(python_module)
+
 # applications
-if(BUILD_TESTS)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
   add_subdirectory(apps/tests)
   add_subdirectory(apps/unit_tests)
-endif(BUILD_TESTS)
+endif(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
 
-add_subdirectory(apps/atoms)
-add_subdirectory(apps/hydrogen)
-add_subdirectory(apps/dft_loop)
-if(USE_NLCGLIB)
-add_subdirectory(apps/nlcg)
-endif()
-add_subdirectory(apps/upf)
-add_subdirectory(apps/utils)
-add_subdirectory(python_module)
+if(BUILD_APPS)
+  add_subdirectory(apps/atoms)
+  add_subdirectory(apps/hydrogen)
+  add_subdirectory(apps/dft_loop)
+  if(USE_NLCGLIB)
+    add_subdirectory(apps/nlcg)
+  endif()
+  add_subdirectory(apps/upf)
+  add_subdirectory(apps/utils)
+endif(BUILD_APPS)
 add_subdirectory(doc)

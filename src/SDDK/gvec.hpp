@@ -28,6 +28,7 @@
 #include <numeric>
 #include <map>
 #include <iostream>
+#include <type_traits>
 #include <assert.h>
 #include "memory.hpp"
 #include "fft3d_grid.hpp"
@@ -452,16 +453,29 @@ class Gvec
         return lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
     }
 
+    /// Return index of the G-vector shell by the G-vector index.
     inline int shell(int ig__) const
     {
         return gvec_shell_(ig__);
     }
 
+    /// Return length of the G-vector shell.
     inline double shell_len(int igs__) const
     {
         return gvec_shell_len_(igs__);
     }
 
+    /// Get lengths of all G-vector shells.
+    std::vector<double> shells_len() const
+    {
+        std::vector<double> q(this->num_shells());
+        for (int i = 0; i < this->num_shells(); i++) {
+            q[i] = this->shell_len(i);
+        }
+        return q;
+    }
+
+    /// Return length of the G-vector.
     inline double gvec_len(int ig__) const
     {
         return gvec_shell_len_(gvec_shell_(ig__));
@@ -544,6 +558,7 @@ class Gvec
     void unpack(serializer& s__, Gvec& gv__) const;
 
     void send_recv(Communicator const& comm__, int source__, int dest__, Gvec& gv__) const;
+
 
     //friend std::unique_ptr<Gvec> send_recv(Gvec const& gv__, Communicator const& comm__, int source__, int dest__);
 };

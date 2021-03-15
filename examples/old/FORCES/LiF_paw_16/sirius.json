@@ -2,8 +2,8 @@
   "control" : {
       "cyclic_block_size" : 16,
       "processing_unit" : "cpu",
-      "!std_evp_solver_type" : "scalapack",
-      "!gen_evp_solver_type" : "scalapack",
+      "!std_evp_solver_name" : "scalapack",
+      "!gen_evp_solver_name" : "scalapack",
       "verbosity": 1,
       "num_bands_to_print": 100,
       "verification" : 0,
@@ -165,7 +165,7 @@
 
     "mixer" : {
         "beta" : 0.7,
-        "type" : "broyden1",
+        "type" : "anderson",
         "max_history" : 8
     }
 

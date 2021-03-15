@@ -1,4 +1,5 @@
 #include <sirius.hpp>
+#include "potential/xc_functional.hpp"
 
 using namespace sirius;
 

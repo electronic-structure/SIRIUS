@@ -26,8 +26,15 @@
 #define __K_POINT_SET_HPP__
 
 #include "k_point.hpp"
+#include "dft/smearing.hpp"
 
 namespace sirius {
+
+enum class sync_band_t
+{
+    energy,
+    occupancy
+};
 
 /// Set of k-points.
 class K_point_set
@@ -54,6 +61,8 @@ class K_point_set
     /// Create regular grid of k-points.
     void create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__);
 
+    bool initialized_{false};
+
   public:
     /// Create empty k-point set.
     K_point_set(Simulation_context& ctx__)
@@ -69,7 +78,7 @@ class K_point_set
     }
 
     /// Create k-point set from a list of vectors.
-    K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> const& vec__)
+    K_point_set(Simulation_context& ctx__, std::vector<std::array<double, 3>> vec__)
         : ctx_(ctx__)
     {
         for (auto& v : vec__) {
@@ -79,19 +88,17 @@ class K_point_set
     }
 
     /// Create k-point set from a list of vectors.
-    K_point_set(Simulation_context& ctx__, std::initializer_list<std::initializer_list<double>> vec__)
-        : K_point_set(ctx__, std::vector<vector3d<double>>(vec__.begin(), vec__.end()))
+    K_point_set(Simulation_context& ctx__, std::initializer_list<std::array<double, 3>> vec__)
+        : K_point_set(ctx__, std::vector<std::array<double, 3>>(vec__.begin(), vec__.end()))
     {
     }
 
     /// Initialize the k-point set
     void initialize(std::vector<int> const& counts = {});
 
-    /// Sync band occupations numbers between all MPI ranks.
-    void sync_band_occupancies();
-
-    /// Sync band energies between all MPI ranks.
-    void sync_band_energies();
+    /// Sync band energies or occupancies between all MPI ranks.
+    template <sync_band_t what>
+    void sync_band();
 
     /// Find Fermi energy and band occupation numbers.
     void find_band_occupancies();
@@ -129,17 +136,49 @@ class K_point_set
     {
         double eval_sum{0};
 
-        for (int ik = 0; ik < num_kpoints(); ik++) {
+        splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+
+        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+            auto ik = spl_num_kpoints_[ikloc];
             auto const& kp = kpoints_[ik];
-            double wk = kp->weight();
-            for (int j = 0; j < ctx_.num_bands(); j++) {
-                for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
-                    eval_sum += wk * kp->band_energy(j, ispn) * kp->band_occupancy(j, ispn);
+            double tmp{0};
+            #pragma omp parallel for reduction(+:tmp)
+            for (int j = 0; j < splb.local_size(); j++) {
+                for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+                    tmp += kp->band_energy(splb[j], ispn) * kp->band_occupancy(splb[j], ispn);
                 }
             }
+            eval_sum += kp->weight() * tmp;
         }
+        ctx_.comm().allreduce(&eval_sum, 1);
 
         return eval_sum;
+    }
+
+    /// Return entropy contribution from smearing.
+    double entropy_sum() const
+    {
+        double s_sum{0};
+
+        auto f = smearing::entropy(ctx_.smearing(), ctx_.smearing_width());
+
+        splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
+
+        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+            auto ik = spl_num_kpoints_[ikloc];
+            auto const& kp = kpoints_[ik];
+            double tmp{0};
+            #pragma omp parallel for reduction(+:tmp)
+            for (int j = 0; j < splb.local_size(); j++) {
+                for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+                    tmp += ctx_.max_occupancy() * f(energy_fermi_ - kp->band_energy(splb[j], ispn));
+                }
+            }
+            s_sum += kp->weight() * tmp;
+        }
+        ctx_.comm().allreduce(&s_sum, 1);
+
+        return s_sum;
     }
 
     /// Return maximum number of G+k vectors among all k-points.

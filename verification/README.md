@@ -1,3 +1,13 @@
+
+To submit the tests:
+export MKL_NUM_THREADS=12
+export OMP_NUM_THREADS=12
+export CRAY_CUDA_MPS=0
+export MPIRUN="srun -N4 -n4 -c12 --unbuffered --hint=nomultithread"
+salloc -N4 -C gpu --time=60:00 -A csstaff
+
+
+
 ## test01: SrVO3
 - ultrasoft pseudopotential
 - non-magnetic
@@ -9,17 +19,17 @@
 - LDA (VWN)
 - iterative Davidson solver
 
-## test03: LiF
+## test03: Fe
 - PAW pseudopotential
-- non-magnetic
-- LDA (PZ)
+- magnetic
+- GGA (PBE)
 - 4x4x4 k-point mesh
 
 ## test04: LiF
 - PAW pseudopotential
 - non-magnetic
 - LDA (PZ)
-- Gamma-point case
+- 4x4x4 k-point mesh
 
 ## test05: NiO
 - ultrasoft pseudopotential

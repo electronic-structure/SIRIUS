@@ -22,7 +22,7 @@
  *  \brief Contains definition of sirius::Hamiltonian_k class.
  */
 
-#include "simulation_context.hpp"
+#include "context/simulation_context.hpp"
 #include "hamiltonian/hamiltonian.hpp"
 #include "hamiltonian/local_operator.hpp"
 #include "hamiltonian/non_local_operator.hpp"
@@ -42,7 +42,7 @@ Hamiltonian_k::Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__) // TODO: move ki
     PROFILE("sirius::Hamiltonian_k");
     H0_.local_op().prepare_k(kp_.gkvec_partition());
     if (!H0_.ctx().full_potential()) {
-        if (H0_.ctx().iterative_solver_input().type_ != "exact") {
+        if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
             kp_.beta_projectors().prepare();
         }
     }
@@ -51,7 +51,7 @@ Hamiltonian_k::Hamiltonian_k(Hamiltonian0& H0__, K_point& kp__) // TODO: move ki
 Hamiltonian_k::~Hamiltonian_k()
 {
     if (!H0_.ctx().full_potential()) {
-        if (H0_.ctx().iterative_solver_input().type_ != "exact") {
+        if (H0_.ctx().cfg().iterative_solver().type() != "exact") {
             kp_.beta_projectors().dismiss();
         }
     }
@@ -85,7 +85,6 @@ Hamiltonian_k::get_h_o_diag_pw() const
             }
         }
 
-        PROFILE_START("sirius::Hamiltonian_k::get_h_o_diag|1");
         /* non-local H contribution */
         auto beta_gk_t = kp_.beta_projectors().pw_coeffs_t(0);
         matrix<double_complex> beta_gk_tmp(kp_.num_gkvec_loc(), uc.max_mt_basis_size());
@@ -120,11 +119,9 @@ Hamiltonian_k::get_h_o_diag_pw() const
                     }
                 }
             }
-            PROFILE_STOP("sirius::Hamiltonian_k::get_h_o_diag|1");
 
             int offs = uc.atom_type(iat).offset_lo();
 
-            PROFILE_START("sirius::Hamiltonian_k::get_h_o_diag|3");
             if (what & 1) {
                 sddk::linalg(linalg_t::blas).gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf,
                     &sddk::linalg_const<double_complex>::one(), &beta_gk_t(0, offs), beta_gk_t.ld(),
@@ -156,7 +153,6 @@ Hamiltonian_k::get_h_o_diag_pw() const
                     }
                 }
             }
-            PROFILE_STOP("sirius::Hamiltonian_k::get_h_o_diag|3");
         }
     }
     if (H0_.ctx().processing_unit() == device_t::GPU) {
@@ -315,7 +311,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
             break;
         }
         case device_t::GPU: {
-            la = linalg_t::cublasxt;
+            la = linalg_t::spla;
             mt = memory_t::host_pinned;
             mt1 = memory_t::device;
             nb = 1;
@@ -370,7 +366,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
         int s = (pu == device_t::GPU) ? (iblk % 2) : 0;
         s = 0;
 
-        if (H0_.ctx().control().print_checksum_) {
+        if (H0_.ctx().cfg().control().print_checksum()) {
             alm_row.zero();
             alm_col.zero();
             halm_col.zero();
@@ -455,7 +451,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
         }
         //acc::sync_stream(stream_id(omp_get_max_threads()));
 
-        if (H0_.ctx().control().print_checksum_) {
+        if (H0_.ctx().cfg().control().print_checksum()) {
             double_complex z1 = alm_row.checksum();
             double_complex z2 = alm_col.checksum();
             double_complex z3 = halm_col.checksum();
@@ -494,7 +490,7 @@ Hamiltonian_k::set_fv_h_o(sddk::dmatrix<double_complex>& h__, sddk::dmatrix<doub
     std::chrono::duration<double> tval = std::chrono::high_resolution_clock::now() - t1;
     auto pp = utils::get_env<int>("SIRIUS_PRINT_PERFORMANCE");
 
-    if (kp.comm().rank() == 0 && (H0_.ctx().control().print_performance_ || (pp && *pp))) {
+    if (kp.comm().rank() == 0 && (H0_.ctx().cfg().control().print_performance() || (pp && *pp))) {
         kp.message((pp && *pp) ? 0 : 1, __function_name__, "effective zgemm performance: %12.6f GFlops\n",
                2 * 8e-9 * kp.num_gkvec() * kp.num_gkvec() * uc.mt_aw_basis_size() / tval.count());
     }
@@ -773,11 +769,11 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
 
     t1 += omp_get_wtime();
 
-    if (H0().ctx().control().print_performance_) {
+    if (H0().ctx().cfg().control().print_performance()) {
         kp().message(1, __function_name__, "hloc performance: %12.6f bands/sec", n__ / t1);
     }
 
-    if (H0().ctx().control().print_checksum_ && hphi__) {
+    if (H0().ctx().cfg().control().print_checksum() && hphi__) {
         for (int ispn: spins__) {
             auto cs1 = phi__.checksum(get_device_t(phi__.preferred_memory_t()), ispn, N__, n__);
             auto cs2 = hphi__->checksum(get_device_t(hphi__->preferred_memory_t()), ispn, N__, n__);
@@ -815,7 +811,7 @@ void Hamiltonian_k::apply_h_s(spin_range spins__, int N__, int n__, Wave_functio
 
         // Apply the hubbard potential and deallocate the hubbard wave
         // functions on GPU (if needed)
-        H0().potential().U().apply_hubbard_potential(kp().hubbard_wave_functions(), spins__(), N__, n__, phi__, *hphi__);
+        H0().potential().U().apply_hubbard_potential(kp().hubbard_wave_functions(), spins__, N__, n__, phi__, *hphi__);
 
         //if (ctx_.processing_unit() == device_t::GPU) {
         //    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {

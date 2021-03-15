@@ -25,12 +25,12 @@
 #ifndef __BETA_PROJECTORS_BASE_HPP__
 #define __BETA_PROJECTORS_BASE_HPP__
 
-#include "simulation_context.hpp"
+#include "context/simulation_context.hpp"
 #include "SDDK/wave_functions.hpp"
 
 namespace sirius {
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
 extern "C" void create_beta_gk_gpu(int                   num_atoms,
                                    int                   num_gkvec,
                                    int const*            beta_desc,

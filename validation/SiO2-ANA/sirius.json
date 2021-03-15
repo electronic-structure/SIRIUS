@@ -1,7 +1,7 @@
 {
     "control" : {
         "processing_unit" : "cpu",
-        "std_evp_solver_type" : "lapack",
+        "std_evp_solver_name" : "lapack",
         "en_evp_solver_type" : "lapack",
         "verbosity" : 2
     },
@@ -30,8 +30,8 @@
             "O"
         ],
         "atom_files" : {
-            "Si" : "si_lda_v1.uspp.F.UPF.json",
-            "O" : "o_lda_v1.2.uspp.F.UPF.json"
+            "Si" : "Si.json",
+            "O" : "O.json"
         },
         "atoms" : {
             "Si" : [

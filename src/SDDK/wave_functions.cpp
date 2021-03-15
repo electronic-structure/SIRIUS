@@ -55,6 +55,9 @@ Wave_functions::Wave_functions(memory_pool& mp__, const Gvec_partition& gkvecp__
     if (!(num_sc__ == 1 || num_sc__ == 2)) {
         TERMINATE("wrong number of spin components");
     }
+    if (!is_host_memory(mp__.memory_type())) {
+        TERMINATE("this is not a host memory pool");
+    }
 
     for (int ispn = 0; ispn < num_sc_; ispn++) {
         pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
@@ -281,7 +284,7 @@ void Wave_functions::normalize(device_t pu__, spin_range spins__, int n__)
                 break;
             }
             case device_t::GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
                 scale_matrix_columns_gpu(this->pw_coeffs(ispn).num_rows_loc(), n__,
                                          (acc_complex_double_t*)this->pw_coeffs(ispn).prime().at(memory_t::device),
                                          norm.at(memory_t::device));
@@ -372,7 +375,7 @@ Wave_functions::sumsqr(device_t pu__, spin_range spins__, int n__) const
                 break;
             }
             case device_t::GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
                 add_square_sum_gpu(pw_coeffs(is).prime().at(memory_t::device), pw_coeffs(is).num_rows_loc(), n__,
                                    gkvecp_.gvec().reduced(), comm_.rank(), s.at(memory_t::device));
                 if (has_mt()) {

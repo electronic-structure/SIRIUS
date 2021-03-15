@@ -95,7 +95,7 @@ int test_fft(cmd_args& args, device_t pu__)
 int run_test(cmd_args& args)
 {
     int result = test_fft(args, device_t::CPU);
-#ifdef __GPU
+#ifdef SIRIUS_GPU
     result += test_fft(args, device_t::GPU);
 #endif
     return result;

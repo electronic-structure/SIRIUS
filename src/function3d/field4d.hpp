@@ -34,15 +34,12 @@
 
 namespace sirius {
 
-/// Four-component function consisting of scalar and vector parts.
-/** This class is used to represents density/magnetisation and potential/magentic filed of the system.
- */
-
-// forward declarations
+/* forward declarations */
 class Simulation_context;
 template<class> class Periodic_function;
-//class Mixer_input;
 
+/// Four-component function consisting of scalar and vector parts.
+/** This class is used to represents density/magnetisation and potential/magentic filed of the system. */
 class Field4D
 {
   private:
@@ -110,6 +107,17 @@ class Field4D
     Simulation_context& ctx()
     {
         return ctx_;
+    }
+
+    Simulation_context const& ctx() const
+    {
+        return ctx_;
+    }
+
+    /// Symmetrize the scalar and vector components of the filed with crystall symmetries.
+    void symmetrize()
+    {
+        this->symmetrize(&this->scalar(), &this->vector(0), &this->vector(1), &this->vector(2));
     }
 };
 

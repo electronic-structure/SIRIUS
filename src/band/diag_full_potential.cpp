@@ -27,7 +27,7 @@
 #include "wf_inner.hpp"
 #include "wf_ortho.hpp"
 #include "wf_trans.hpp"
-#include "simulation_context.hpp"
+#include "context/simulation_context.hpp"
 #include "k_point/k_point.hpp"
 #include "utils/profiler.hpp"
 
@@ -54,16 +54,16 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     /* setup Hamiltonian and overlap */
     Hk__.set_fv_h_o(h, o);
 
-    //if (ctx_.gen_evp_solver_type() == ev_solver_t::cusolver || ctx_.processing_unit() == device_t::GPU) {
-    //    //h.allocate(ctx_.mem_pool(memory_t::device));
-    //    //o.allocate(ctx_.mem_pool(memory_t::device));
-    //    h.deallocate(memory_t::device);
-    //    o.deallocate(memory_t::device);
-    //}
+    if (ctx_.gen_evp_solver().type() == ev_solver_t::cusolver) {
+        auto& mpd = ctx_.mem_pool(memory_t::device);
+        h.allocate(mpd);
+        o.allocate(mpd);
+        kp.fv_eigen_vectors().allocate(mpd);
+    }
 
     ctx_.print_memory_usage(__FILE__, __LINE__);
 
-    if (ctx_.control().verification_ >= 1) {
+    if (ctx_.cfg().control().verification() >= 1) {
         double max_diff = check_hermitian(h, ngklo);
         if (max_diff > 1e-12) {
             std::stringstream s;
@@ -80,7 +80,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
         }
     }
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         auto z1 = h.checksum();
         auto z2 = o.checksum();
         kp.comm().allreduce(&z1, 1);
@@ -98,13 +98,19 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
     if (solver.solve(kp.gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp.fv_eigen_vectors())) {
         TERMINATE("error in generalized eigen-value problem");
     }
+
+    if (ctx_.gen_evp_solver().type() == ev_solver_t::cusolver) {
+        h.deallocate(memory_t::device);
+        o.deallocate(memory_t::device);
+        kp.fv_eigen_vectors().deallocate(memory_t::device);
+    }
     kp.set_fv_eigen_values(&eval[0]);
 
     for (int i = 0; i < ctx_.num_fv_states(); i++) {
         kp.message(4, __function_name__, "eval[%i]=%20.16f\n", i, eval[i]);
     }
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         auto z1 = kp.fv_eigen_vectors().checksum();
         kp.comm().allreduce(&z1, 1);
         if (kp.comm().rank() == 0) {
@@ -173,7 +179,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
             }
         }
         kp.comm().allreduce(norm);
-        if (ctx_.control().verbosity_ >= 2) {
+        if (ctx_.verbosity() >= 2) {
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
                 kp.message(2, __function_name__, "norm(%i)=%18.12f\n", i, norm[i]);
             }
@@ -190,7 +196,7 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
         }
     }
 
-    if (ctx_.control().verification_ >= 2) {
+    if (ctx_.cfg().control().verification() >= 2) {
         kp.message(1, __function_name__, "%s", "checking application of H and O\n");
         /* check application of H and O */
         Wave_functions hphi(kp.gkvec_partition(), unit_cell_.num_atoms(),
@@ -214,9 +220,9 @@ Band::diag_full_potential_first_variation_exact(Hamiltonian_k& Hk__) const
         dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(),
                                      ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
 
-        inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
+        inner(ctx_.spla_context(), spin_range(0), kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
               hphi, 0, ctx_.num_fv_states(), hmlt, 0, 0);
-        inner(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
+        inner(ctx_.spla_context(), spin_range(0), kp.fv_eigen_vectors_slab(), 0, ctx_.num_fv_states(),
               ophi, 0, ctx_.num_fv_states(), ovlp, 0, 0);
 
         double max_diff{0};
@@ -278,9 +284,9 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
 
     ctx_.message(3, __function_name__, "number of singular components: %i\n", ncomp);
 
-    auto& itso = ctx_.iterative_solver_input();
+    auto& itso = ctx_.cfg().iterative_solver();
 
-    int num_phi = itso.subspace_size_ * ncomp;
+    int num_phi = itso.subspace_size() * ncomp;
 
     Wave_functions phi(kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t());
     Wave_functions ophi(kp.gkvec_partition(), num_phi, ctx_.preferred_memory_t());
@@ -312,7 +318,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
 
     phi.copy_from(ctx_.processing_unit(), ncomp, psi, 0, 0, 0, 0);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         phi.print_checksum(ctx_.processing_unit(), "phi", 0, ncomp);
     }
 
@@ -335,17 +341,17 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
     double current_frobenius_norm{0};
 
     /* start iterative diagonalization */
-    for (int k = 0; k < itso.num_steps_; k++) {
+    for (int k = 0; k < itso.num_steps(); k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         Hk__.apply_fv_h_o(true, false, N, n, phi, nullptr, &ophi);
         if (ctx_.processing_unit() == device_t::GPU) {
             ophi.copy_to(spin_range(0), memory_t::device, N, n);
         }
 
-        if (ctx_.control().verification_ >= 1) {
-            set_subspace_mtrx(0, N + n, phi, ophi, ovlp);
+        if (ctx_.cfg().control().verification() >= 1) {
+            set_subspace_mtrx(0, N + n, 0, phi, ophi, ovlp);
 
-            if (ctx_.control().verification_ >= 2) {
+            if (ctx_.cfg().control().verification() >= 2) {
                 ovlp.serialize("overlap", N + n);
             }
 
@@ -357,15 +363,15 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
             }
         }
 
-        orthogonalize(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, ophi, N, n, ovlp, res);
+        orthogonalize(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, ophi, N, n, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, phi, ophi, ovlp, &ovlp_old);
+        set_subspace_mtrx(N, n, 0, phi, ophi, ovlp, &ovlp_old);
 
-        if (ctx_.control().verification_ >= 1) {
-            if (ctx_.control().verification_ >= 2) {
+        if (ctx_.cfg().control().verification() >= 1) {
+            if (ctx_.cfg().control().verification() >= 2) {
                 ovlp.serialize("overlap_ortho", N + n);
             }
 
@@ -402,31 +408,31 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
             kp.message(4, __function_name__, "eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
         }
 
-        bool last_iteration = k == (itso.num_steps_ - 1);
+        bool last_iteration = k == (itso.num_steps() - 1);
 
         /* don't compute residuals on last iteration */
         if (!last_iteration) {
             /* get new preconditionined residuals, and also opsi and psi as a by-product */
-            auto result = sirius::residuals(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0,
-                                  N, ncomp, eval, evec, ophi, phi, opsi, psi, res, o_diag__, diag1,
-                                  itso.converge_by_energy_, itso.residual_tolerance_,
-                                  [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
-            n = result.first;
-            current_frobenius_norm = result.second;
+            auto result = sirius::residuals(
+                ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), N, ncomp, 0, eval, evec, ophi, phi, opsi, psi,
+                res, o_diag__, diag1, itso.converge_by_energy(), itso.residual_tolerance(),
+                [&](int i, int ispn) { return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance(); });
+            n = result.unconverged_residuals;
+            current_frobenius_norm = result.frobenius_norm;
 
             /* set the relative tolerance convergence criterion */
             if (k == 0) {
-                relative_frobenius_tolerance = current_frobenius_norm * itso.relative_tolerance_;
+                relative_frobenius_tolerance = current_frobenius_norm * itso.relative_tolerance();
             }
 
             kp.message(3, __function_name__, "number of added residuals: %i\n", n);
-            if (ctx_.control().print_checksum_) {
+            if (ctx_.print_checksum()) {
                 res.print_checksum(ctx_.processing_unit(), "res", 0, n);
             }
         }
         /* verify convergence criteria */
         bool converged_by_relative_tol = k > 0 && current_frobenius_norm < relative_frobenius_tolerance ;
-        bool converged_by_absolute_tol = n <= itso.min_num_res_;
+        bool converged_by_absolute_tol = n <= itso.min_num_res();
         bool converged = converged_by_absolute_tol || converged_by_relative_tol;
 
         /* check if running out of space */
@@ -437,7 +443,7 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
             PROFILE("sirius::Band::get_singular_components|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
+            transform(ctx_.spla_context(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (converged || last_iteration) {
@@ -445,8 +451,8 @@ void Band::get_singular_components(Hamiltonian_k& Hk__, mdarray<double, 2>& o_di
             } else { /* otherwise, set Psi as a new trial basis */
                 kp.message(3, __function_name__, "%s", "subspace size limit reached\n");
 
-                if (itso.converge_by_energy_) {
-                    transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
+                if (itso.converge_by_energy()) {
+                    transform(ctx_.spla_context(), 0, ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
                 }
 
                 ovlp_old.zero();
@@ -480,7 +486,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
 
     auto h_o_diag = Hk__.get_h_o_diag_lapw<3>();
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         auto cs1 = h_o_diag.first.checksum();
         auto cs2 = h_o_diag.second.checksum();
         if (kp.comm().rank() == 0) {
@@ -494,7 +500,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
 
-    auto& itso = ctx_.iterative_solver_input();
+    auto& itso = ctx_.cfg().iterative_solver();
 
     /* short notation for target wave-functions */
     auto& psi = kp.fv_eigen_vectors_slab();
@@ -506,7 +512,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     int ncomp = kp.singular_components().num_wf();
 
     /* number of auxiliary basis functions */
-    int num_phi = nlo + ncomp + itso.subspace_size_ * num_bands;
+    int num_phi = nlo + ncomp + itso.subspace_size() * num_bands;
     /* sanity check */
     if (num_phi >= kp.num_gkvec()) {
         TERMINATE("subspace is too big");
@@ -602,7 +608,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     /* trial basis functions */
     phi.copy_from(ctx_.processing_unit(), num_bands, psi, 0, 0, 0, nlo + ncomp);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.print_checksum()) {
         kp.message(1, __function_name__, "%s", "checksum of initial wave-functions\n");
         psi.print_checksum(ctx_.processing_unit(), "psi", 0, num_bands);
         phi.print_checksum(ctx_.processing_unit(), "phi", 0,  nlo + ncomp + num_bands);
@@ -625,9 +631,9 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
     double current_frobenius_norm{0};
 
     /* start iterative diagonalization */
-    for (int k = 0; k < itso.num_steps_; k++) {
+    for (int k = 0; k < itso.num_steps(); k++) {
 
-        bool last_iteration = k == (itso.num_steps_ - 1);
+        bool last_iteration = k == (itso.num_steps() - 1);
 
         /* apply Hamiltonian and overlap operators to the new basis functions */
         if (k == 0) {
@@ -637,12 +643,12 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
             Hk__.apply_fv_h_o(false, false, N, n, phi, &hphi, &ophi);
         }
 
-        orthogonalize(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, hphi, ophi, N, n, ovlp, res);
+        orthogonalize(ctx_.spla_context(), ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, hphi, ophi, N, n, ovlp, res);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, phi, hphi, hmlt, &hmlt_old);
+        set_subspace_mtrx(N, n, 0, phi, hphi, hmlt, &hmlt_old);
 
         /* increase size of the variation space */
         N += n;
@@ -663,22 +669,22 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
         /* don't compute residuals on last iteration */
         if (!last_iteration) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-            auto result = sirius::residuals(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0,
-                                  N, num_bands, eval, evec, hphi, ophi, hpsi, opsi, res, h_o_diag.first, h_o_diag.second,
-                                  itso.converge_by_energy_, itso.residual_tolerance_,
-                                  [&](int i, int ispn){return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance_;});
-            n = result.first;
-            current_frobenius_norm = result.second;
+            auto result = sirius::residuals(
+                ctx_, ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), spin_range(0), N, num_bands, 0, eval, evec, hphi, ophi, hpsi,
+                opsi, res, h_o_diag.first, h_o_diag.second, itso.converge_by_energy(), itso.residual_tolerance(),
+                [&](int i, int ispn) { return std::abs(eval[i] - eval_old[i]) < itso.energy_tolerance(); });
+            n = result.unconverged_residuals;
+            current_frobenius_norm = result.frobenius_norm;
 
             /* set the relative tolerance convergence criterion */
             if (k == 0) {
-                relative_frobenius_tolerance = current_frobenius_norm * itso.relative_tolerance_;
+                relative_frobenius_tolerance = current_frobenius_norm * itso.relative_tolerance();
             }
         }
 
         /* verify convergence criteria */
         bool converged_by_relative_tol = k > 0 && current_frobenius_norm < relative_frobenius_tolerance ;
-        bool converged_by_absolute_tol = n <= itso.min_num_res_;
+        bool converged_by_absolute_tol = n <= itso.min_num_res();
         bool converged = converged_by_absolute_tol || converged_by_relative_tol;
 
         /* check if running out of space */
@@ -693,7 +699,7 @@ void Band::diag_full_potential_first_variation_davidson(Hamiltonian_k& Hk__) con
             PROFILE("sirius::Band::diag_fv_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), 0, phi, 0, N, evec, 0, 0, psi, 0, num_bands);
+            transform(ctx_.spla_context(), 0, phi, 0, N, evec, 0, 0, psi, 0, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (converged || last_iteration) {
@@ -733,7 +739,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
         return;
     }
 
-    mdarray<double, 2> band_energies(ctx_.num_bands(), ctx_.num_spin_dims());
+    sddk::mdarray<double, 2> band_energies(ctx_.num_bands(), ctx_.num_spinors());
 
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<Wave_functions> hpsi;
@@ -793,13 +799,6 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
 
     auto& std_solver = ctx_.std_evp_solver();
 
-    memory_t mem{memory_t::host};
-    linalg_t la{linalg_t::blas};
-    if (ctx_.processing_unit() == device_t::GPU) {
-        mem = memory_t::device;
-        la = linalg_t::gpublas;
-    }
-
     if (ctx_.num_mag_dims() != 3) {
         dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
         if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == device_t::GPU) {
@@ -809,7 +808,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
 
             /* compute <wf_i | h * wf_j> */
-            inner(mem, la, 0, kp.fv_states(), 0, nfv, hpsi[ispn], 0, nfv, h, 0, 0);
+            inner(ctx_.spla_context(), spin_range(0), kp.fv_states(), 0, nfv, hpsi[ispn], 0, nfv, h, 0, 0);
 
             for (int i = 0; i < nfv; i++) {
                 h.add(i, i, kp.fv_eigen_value(i));
@@ -828,11 +827,11 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
             h.allocate(ctx_.mem_pool(memory_t::device));
         }
         /* compute <wf_i | h * wf_j> for up-up block */
-        inner(mem, la, 0, kp.fv_states(), 0, nfv, hpsi[0], 0, nfv, h, 0, 0);
+        inner(ctx_.spla_context(), spin_range(0), kp.fv_states(), 0, nfv, hpsi[0], 0, nfv, h, 0, 0);
         /* compute <wf_i | h * wf_j> for dn-dn block */
-        inner(mem, la, 0, kp.fv_states(), 0, nfv, hpsi[1], 0, nfv, h, nfv, nfv);
+        inner(ctx_.spla_context(), spin_range(0), kp.fv_states(), 0, nfv, hpsi[1], 0, nfv, h, nfv, nfv);
         /* compute <wf_i | h * wf_j> for up-dn block */
-        inner(mem, la, 0, kp.fv_states(), 0, nfv, hpsi[2], 0, nfv, h, 0, nfv);
+        inner(ctx_.spla_context(), spin_range(0), kp.fv_states(), 0, nfv, hpsi[2], 0, nfv, h, 0, nfv);
 
         if (kp.comm().size() == 1) {
             for (int i = 0; i < nfv; i++) {
@@ -862,7 +861,7 @@ void Band::diag_full_potential_second_variation(Hamiltonian_k& Hk__) const
             hpsi[i].deallocate(spin_range(0), memory_t::device);
         }
     }
-    for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+    for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
         for (int j = 0; j < ctx_.num_bands(); j++) {
             kp.band_energy(j, ispn, band_energies(j, ispn));
         }

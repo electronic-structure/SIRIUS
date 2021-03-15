@@ -29,7 +29,7 @@ int main(int argn, char** argv)
         args.print_help();
         exit(0);
     }
-    std::vector<int> mpi_grid_dims = args.value<std::vector<int>>("mpi_grid", {1, 1, 1});
+    std::vector<int> mpi_grid_dims = args.value("mpi_grid", std::vector<int>({1, 1, 1}));
 
     sirius::initialize(1);
     test_grid(mpi_grid_dims);

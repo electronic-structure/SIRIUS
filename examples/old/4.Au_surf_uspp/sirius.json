@@ -1,8 +1,8 @@
 {
     "cyclic_block_size" : 32,
     "processing_unit" : "cpu",
-    "std_evp_solver_type" : "lapack",
-    "gen_evp_solver_type" : "lapack",
+    "std_evp_solver_name" : "lapack",
+    "gen_evp_solver_name" : "lapack",
     "num_fv_states" : 800,
     "electronic_structure_method" : "ultrasoft_pseudopotential",
     
@@ -36,7 +36,7 @@
 
     "mixer" : {
         "beta" : 0.5,
-        "type" : "broyden1",
+        "type" : "anderson",
         "max_history" : 8
     },
 

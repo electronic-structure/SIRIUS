@@ -75,7 +75,7 @@ class Beta_projectors : public Beta_projectors_base
             }
         }
 
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.cfg().control().print_checksum()) {
             auto c1 = pw_coeffs_t_.checksum();
             comm.allreduce(&c1, 1);
             if (comm.rank() == 0) {
@@ -157,6 +157,11 @@ class Beta_projectors : public Beta_projectors_base
                 break;
             }
         }
+    }
+
+    inline bool prepared() const
+    {
+        return prepared_;
     }
 };
 

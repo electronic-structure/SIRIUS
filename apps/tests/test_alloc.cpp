@@ -8,7 +8,7 @@ void test_alloc(int size__)
     runtime::Timer t("alloc");
     if (pu == CPU) {
         mdarray<char, 1> a(1024 * 1024 * size__);
-        #ifdef __GPU
+        #ifdef SIRIUS_GPU
         if (pin) {
             a.pin_memory();
         }
@@ -17,7 +17,7 @@ void test_alloc(int size__)
             a.zero();
         }
     }
-    #ifdef __GPU
+    #ifdef SIRIUS_GPU
     if (pu == GPU) {
         mdarray<char, 1> a(nullptr, 1024 * 1024 * size__);
         a.allocate_on_device();
@@ -51,7 +51,7 @@ int main(int argn, char** argv)
     test_alloc<0, 1, CPU>(1024);
     printf("--- allocate on host, pin, touch\n");
     test_alloc<1, 1, CPU>(1024);
-    #ifdef __GPU
+    #ifdef SIRIUS_GPU
     printf("--- allocate on device, don't touch\n");
     test_alloc<0, 0, GPU>(512);
     printf("--- allocate on device, touch\n");

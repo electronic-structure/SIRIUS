@@ -39,6 +39,11 @@ def trace(x):
     return np.trace(x)
 
 
+@threaded
+def identity_like(x):
+    return np.eye(*x.shape)
+
+
 def diag(x):
     """
     TODO: make a check not to flatten a 2d matrix
@@ -161,7 +166,6 @@ class CoefficientArray:
     def sum(self, **kwargs):
         """
         """
-        from mpi4py import MPI
         loc_sum = np.array(
             sum([np.sum(v) for _, v in self.items()]), dtype=self.dtype)
         reduced = MPI.COMM_WORLD.allreduce(loc_sum, op=MPI.SUM)

@@ -179,7 +179,7 @@ mdarray<double, 2> const& Force::calc_forces_ibs()
     ctx_.comm().allreduce(&forces_ibs_(0, 0), (int)forces_ibs_.size());
     symmetrize(forces_ibs_);
 
-    if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
+    if (ctx_.verbosity() > 2 && ctx_.comm().rank() == 0) {
         std::printf("ibs force\n");
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             std::printf("ia : %i, IBS : %12.6f %12.6f %12.6f\n", ia, forces_ibs_(0, ia), forces_ibs_(1, ia),
@@ -205,7 +205,7 @@ mdarray<double, 2> const& Force::calc_forces_rho()
     ctx_.comm().allreduce(&forces_rho_(0, 0), (int)forces_rho_.size());
     symmetrize(forces_rho_);
 
-    if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
+    if (ctx_.verbosity() > 2 && ctx_.comm().rank() == 0) {
         std::printf("rho force\n");
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             std::printf("ia : %i, density contribution : %12.6f %12.6f %12.6f\n", ia, forces_rho_(0, ia), forces_rho_(1, ia),
@@ -230,7 +230,7 @@ mdarray<double, 2> const& Force::calc_forces_hf()
     ctx_.comm().allreduce(&forces_hf_(0, 0), (int)forces_hf_.size());
     symmetrize(forces_hf_);
 
-    if (ctx_.control().verbosity_ > 2 && ctx_.comm().rank() == 0) {
+    if (ctx_.cfg().control().verbosity() > 2 && ctx_.comm().rank() == 0) {
         std::printf("H-F force\n");
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             std::printf("ia : %i, Hellmann–Feynman : %12.6f %12.6f %12.6f\n", ia, forces_hf_(0, ia), forces_hf_(1, ia),
@@ -255,10 +255,12 @@ mdarray<double, 2> const& Force::calc_forces_hubbard()
 
             int ik  = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
-            if (ctx_.num_mag_dims() == 3)
+            kp->beta_projectors().prepare();
+            if (ctx_.num_mag_dims() == 3) {
                 TERMINATE("Hubbard forces are only implemented for the simple hubbard correction.");
-
+            }
             hubbard_force_add_k_contribution_colinear(*kp, q_op, forces_hubbard_);
+            kp->beta_projectors().dismiss();
         }
 
         /* global reduction */
@@ -371,14 +373,8 @@ mdarray<double, 2> const& Force::calc_forces_us()
             break;
         }
         case device_t::GPU: {
-#ifdef __ROCM
-            // ROCm does not support cubblasxt functionality
-            mp = &ctx_.mem_pool(memory_t::host);
-            la = linalg_t::blas;
-#else
             mp = &ctx_.mem_pool(memory_t::host_pinned);
-            la = linalg_t::cublasxt;
-#endif
+            la = linalg_t::spla;
             break;
         }
     }
@@ -450,6 +446,10 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
 {
     PROFILE("sirius::Force::calc_forces_scf_corr");
 
+    auto q = ctx_.gvec().shells_len();
+    /* get form-factors for all G shells */
+    auto ff = ctx_.ps_rho_ri().values(q, ctx_.comm());
+
     forces_scf_corr_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_scf_corr_.zero();
 
@@ -465,9 +465,7 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
 
     double fact = gvec.reduced() ? 2.0 : 1.0;
 
-    int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
-
-    auto& ri = ctx_.ps_rho_ri();
+    int ig0 = ctx_.gvec().skip_g0();
 
     #pragma omp parallel for
     for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
@@ -477,12 +475,13 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
 
         for (int igloc = ig0; igloc < gvec_count; igloc++) {
             int ig = gvec_offset + igloc;
+            int igsh = ctx_.gvec().shell(ig);
 
             /* cartesian form for getting cartesian force components */
-            vector3d<double> gvec_cart = gvec.gvec_cart<index_domain_t::local>(igloc);
+            auto gvec_cart = gvec.gvec_cart<index_domain_t::local>(igloc);
 
             /* scalar part of a force without multipying by G-vector */
-            double_complex z = fact * fourpi * ri.value<int>(iat, gvec.gvec_len(ig)) *
+            double_complex z = fact * fourpi * ff(igsh, iat) *
                                std::conj(dveff.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector */
@@ -499,6 +498,10 @@ mdarray<double, 2> const& Force::calc_forces_scf_corr()
 mdarray<double, 2> const& Force::calc_forces_core()
 {
     PROFILE("sirius::Force::calc_forces_core");
+
+    auto q = ctx_.gvec().shells_len();
+    /* get form-factors for all G shells */
+    auto ff = ctx_.ps_core_ri().values(q, ctx_.comm());
 
     forces_core_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_core_.zero();
@@ -518,8 +521,6 @@ mdarray<double, 2> const& Force::calc_forces_core()
 
     double fact = gvecs.reduced() ? 2.0 : 1.0;
 
-    auto& ri = ctx_.ps_core_ri();
-
     /* here the calculations are in lattice vectors space */
     #pragma omp parallel for
     for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
@@ -529,18 +530,15 @@ mdarray<double, 2> const& Force::calc_forces_core()
         }
         int iat = atom.type_id();
 
-        for (int igloc = 0; igloc < gvec_count; igloc++) {
+        for (int igloc = ctx_.gvec().skip_g0(); igloc < gvec_count; igloc++) {
             int ig = gvec_offset + igloc;
-
-            if (ig == 0) {
-                continue;
-            }
+            auto igsh = ctx_.gvec().shell(ig);
 
             /* cartesian form for getting cartesian force components */
-            vector3d<double> gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
+            auto gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
 
             /* scalar part of a force without multipying by G-vector */
-            double_complex z = fact * fourpi * ri.value<int>(iat, gvecs.gvec_len(ig)) *
+            double_complex z = fact * fourpi * ff(igsh, iat) *
                                std::conj(xc_pot.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector */
@@ -569,7 +567,7 @@ void Force::hubbard_force_add_k_contribution_colinear(K_point& kp__, Q_operator&
             for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
                 auto const& atom = ctx_.unit_cell().atom(ia1);
                 if (atom.type().hubbard_correction()) {
-                    int const lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
+                    int const lmax_at = 2 * atom.type().lo_descriptor_hub(0).l + 1;
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                         for (int m1 = 0; m1 < lmax_at; m1++) {
                             for (int m2 = 0; m2 < lmax_at; m2++) {
@@ -588,12 +586,14 @@ mdarray<double, 2> const& Force::calc_forces_vloc()
 {
     PROFILE("sirius::Force::calc_forces_vloc");
 
+    auto q = ctx_.gvec().shells_len();
+    /* get form-factors for all G shells */
+    auto ff = ctx_.vloc_ri().values(q, ctx_.comm());
+
     forces_vloc_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     forces_vloc_.zero();
 
     auto& valence_rho = density_.rho();
-
-    auto& ri = ctx_.vloc_ri();
 
     Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -613,12 +613,13 @@ mdarray<double, 2> const& Force::calc_forces_vloc()
 
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             int ig = gvec_offset + igloc;
+            int igsh = ctx_.gvec().shell(ig);
 
             /* cartesian form for getting cartesian force components */
-            vector3d<double> gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
+            auto gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
 
             /* scalar part of a force without multiplying by G-vector */
-            double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
+            double_complex z = fact * fourpi * ff(igsh, iat) *
                                std::conj(valence_rho.f_pw_local(igloc)) * std::conj(ctx_.gvec_phase_factor(ig, ia));
 
             /* get force components multiplying by cartesian G-vector  */

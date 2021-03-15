@@ -31,8 +31,9 @@
 #include "k_point/k_point_set.hpp"
 #include "mixer/mixer.hpp"
 #include "paw_density.hpp"
+#include "occupation_matrix.hpp"
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
 extern "C" void update_density_rg_1_real_gpu(int size__,
                                              double const* psi_rg__,
                                              double wt__,
@@ -72,6 +73,28 @@ extern "C" void sum_q_pw_dm_pw_gpu(int             num_gvec_loc__,
 #endif
 
 namespace sirius {
+
+/// Use Kuebler's trick to get rho_up and rho_dn from density and magnetisation.
+inline std::pair<double, double> get_rho_up_dn(int num_mag_dims__, double rho__, vector3d<double> mag__)
+{
+    if (rho__ < 0.0) {
+        return std::make_pair<double, double>(0, 0);
+    }
+
+    double mag{0};
+    if (num_mag_dims__ == 1) { /* collinear case */
+        mag = mag__[0];
+        /* fix numerical noise at high values of magnetization */
+        if (std::abs(mag) > rho__) {
+            mag = utils::sign(mag) * rho__;
+        }
+    } else { /* non-collinear case */
+        /* fix numerical noise at high values of magnetization */
+        mag = std::min(mag__.length(), rho__);
+    }
+
+    return std::make_pair<double, double>(0.5 * (rho__ + mag), 0.5 * (rho__ - mag));
+}
 
 /// Generate charge density and magnetization from occupied spinor wave-functions.
 /** Let's start from the definition of the complex density matrix:
@@ -166,6 +189,9 @@ class Density : public Field4D
     /// Local fraction of atoms with PAW correction.
     paw_density paw_density_;
 
+    /// Occupation matrix of the LDA+U method.
+    std::unique_ptr<Occupation_matrix> occupation_matrix_;
+
     /// Density and magnetization on the coarse FFT mesh.
     /** Coarse FFT grid is enough to generate density and magnetization from the wave-functions. The components
         of the <tt>rho_mag_coarse</tt> vector have the following order:
@@ -187,12 +213,12 @@ class Density : public Field4D
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
     std::vector<int> l_by_lm_;
 
-    // TODO: add mixing of LDA+U occupancy matrix.
     /// Density mixer.
     /** Mix the following objects: density, x-,y-,z-components of magnetisation, density matrix and
         PAW density of atoms. */
     std::unique_ptr<mixer::Mixer<Periodic_function<double>, Periodic_function<double>, Periodic_function<double>,
-                                 Periodic_function<double>, sddk::mdarray<double_complex, 4>, paw_density>> mixer_;
+                                 Periodic_function<double>, sddk::mdarray<double_complex, 4>, paw_density,
+                                 sddk::mdarray<double_complex, 4>>> mixer_;
 
     /// Generate atomic densities in the case of PAW.
     void generate_paw_atom_density(int iapaw__);
@@ -209,11 +235,9 @@ class Density : public Field4D
         \f]
      */
     template <int num_mag_dims>
-    void reduce_density_matrix(Atom_type const&                          atom_type__,
-                               int                                       ia__,
-                               mdarray<double_complex, 4> const&         zdens__,
+    void reduce_density_matrix(Atom_type const& atom_type__, int ia__, sddk::mdarray<double_complex, 4> const& zdens__,
                                Gaunt_coefficients<double_complex> const& gaunt_coeffs__,
-                               mdarray<double, 3>&                       mt_density_matrix__);
+                               sddk::mdarray<double, 3>& mt_density_matrix__);
 
     /// Add k-point contribution to the density matrix in the canonical form.
     /** In case of full-potential LAPW complex density matrix has the following expression:
@@ -241,7 +265,7 @@ class Density : public Field4D
         the occupancy operator written in spectral representation.
      */
     template <typename T>
-    void add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex, 4>& density_matrix__);
+    void add_k_point_contribution_dm(K_point* kp__, sddk::mdarray<double_complex, 4>& density_matrix__);
 
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     void add_k_point_contribution_rg(K_point* kp__);
@@ -269,14 +293,13 @@ class Density : public Field4D
     {
         PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
-        auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
-        {
-            if (this->ctx_.unit_cell().atom_type(iat).ps_core_charge_density().empty()) {
-                return 0.0;
-            } else {
-                return ctx_.ps_core_ri().value<int>(iat, g);
-            }
-        });
+        /* get lenghts of all G shells */
+        auto q = ctx_.gvec().shells_len();
+        /* get form-factors for all G shells */
+        auto ff = ctx_.ps_core_ri().values(q, ctx_.comm());
+        /* make rho_core(G) */
+        auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
+
         std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
         rho_pseudo_core_->fft_transform(1);
     }
@@ -630,26 +653,26 @@ class Density : public Field4D
     void mixer_output();
 
     /// Initialize density mixer.
-    void mixer_init(Mixer_input mixer_cfg__);
+    void mixer_init(config_t::mixer_t const& mixer_cfg__);
 
     /// Mix new density.
     double mix();
 
-    mdarray<double_complex, 4> const& density_matrix() const
+    sddk::mdarray<double_complex, 4> const& density_matrix() const
     {
         return density_matrix_;
     }
 
-    mdarray<double_complex, 4>& density_matrix()
+    sddk::mdarray<double_complex, 4>& density_matrix()
     {
         return density_matrix_;
     }
 
     /// Return density matrix in auxiliary form.
-    mdarray<double, 3> density_matrix_aux(int iat__);
+    sddk::mdarray<double, 3> density_matrix_aux(int iat__);
 
     /// Calculate approximate atomic magnetic moments in case of PP-PW.
-    mdarray<double, 2>
+    sddk::mdarray<double, 2>
     compute_atomic_mag_mom() const;
 
     /// Get total magnetization and also contributions from interstitial and muffin-tin parts.
@@ -663,32 +686,38 @@ class Density : public Field4D
     /** Initially, density matrix is obtained with summation over irreducible BZ:
      *  \f[
      *      \tilde n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha}  =
-     *          \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+     *          \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| 
+     *          \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
      *          \langle \Psi_{j{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle
      *  \f]
      *  In order to symmetrize it, the following operation is performed:
      *  \f[
      *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}}
-     *          \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+     *          \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}|
+     *          \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
      *          \langle \Psi_{j{\bf P}{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle
      *  \f]
      *  where \f$ {\bf P} \f$ is the space-group symmetry operation. The inner product between wave-function and
      *  local orbital is transformed as:
      *  \f[
      *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle =
-     *          \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
-     *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
-     *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r) Y_{\ell m}({\bf P} \hat{\bf r}) dr
+     *          \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r)
+     *          Y_{\ell m}(\hat {\bf r}) dr = \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r})
+     *          u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
+     *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r)
+     *          Y_{\ell m}({\bf P} \hat{\bf r}) dr
      *  \f]
      *  Under rotation the spherical harmonic is transformed as:
      *  \f[
-     *        Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) = \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) =
-     *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
+     *    Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) =
+     *       \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) =
+     *       \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
      *  \f]
      *  The inner-product integral is then rewritten as:
      *  \f[
      *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle  =
-     *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} | u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle
+     *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} |
+     *          u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle
      *  \f]
      *  and the final expression for density matrix gets the following form:
      *  \f[
@@ -700,14 +729,208 @@ class Density : public Field4D
      *          \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P})
      *          \tilde n_{\ell \lambda m_1 \sigma, \ell' \lambda' m_2 \sigma'}^{{\bf P}\alpha}
      *  \f]
+     *
+     *  The LDA+U case (will be moved to the correct location).
+     *
+     *  We start from the spectral represntation of the occupany operator defined for the irreducible Brillouin
+     *  zone:
+     *  \f[
+     *    \hat N_{IBZ} = \sum_{j} \sum_{{\bf k}}^{IBZ} | \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+     *          \langle \Psi_{j{\bf k}}^{\sigma'} |
+     *  \f]
+     *  and a set of localized orbitals with the pure angular character (this can be LAPW functions,
+     *  beta-projectors or localized Hubbard orbitals) :
+     *  \f[
+     *    |\phi_{\ell m}^{\alpha {\bf T}}\rangle
+     *  \f]
+     *  The orbitals are labeled by the angular and azimuthal quantum numbers (\f$ \ell m \f$),
+     *  atom index (\f$ \alpha \f$) and a lattice translation vector (\f$ {\bf T} \f$) such that:
+     *  \f[
+     *    \langle {\bf r} | \phi_{\ell m}^{\alpha {\bf T}} \rangle = \phi_{\ell m}({\bf r - r_{\alpha} - T})
+     *  \f]
+     *
+     *  There might be several localized orbitals per atom. We wish to compute the occupation matrix:
+     *  \f[
+     *    n_{\ell m \alpha {\bf T} \sigma, \ell' m' \alpha' {\bf T}' \sigma'} =
+     *      \langle \phi_{\ell m}^{\alpha {\bf T}} | \hat N | \phi_{\ell' m'}^{\alpha' {\bf T'}} \rangle
+     *  \f]
+     *
+     *  Let's focus on the "on-site" case for which \f$ {\bf T=T'} \f$ and \f$ \alpha = \alpha'\f$:
+     *  \f[
+     *    \tilde n_{\ell m \sigma, \ell' m' \sigma'}^{\alpha} = \langle \phi_{\ell m}^{\alpha} | \hat N_{IBZ} |
+     *      \phi_{\ell' m'}^{\alpha} \rangle = \sum_{j} \sum_{{\bf k}}^{IBZ} \langle \phi_{\ell m}^{\alpha} |
+     *      \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} |
+     *       \phi_{\ell' m'}^{\alpha} \rangle
+     *  \f]
+     *  The \f$ \tilde n \f$ is unsymmetrized because we used irreducible Brillouin zone for k-point summation.
+     *  Let's now label the overlap integrals between localized orbitals and KS wave-functions:
+     *  \f[
+     *    A_{\ell m j{\bf k}}^{\alpha \sigma} = \langle \Psi_{j{\bf k}}^{\sigma} | \phi_{\ell m}^{\alpha}  \rangle
+     *  \f]
+     *  and check how it transforms under the symmetry operation \f$ \hat {\bf P} \f$ applied to \f$ {\bf k} \f$.
+     *
+     *
+     *  To compute the overlap integrals between KS wave-functions and localized Hubbard orbitals we insert 
+     *  resolution of identity (in \f$ {\bf G+k} \f$ planve-waves) between bra and ket:
+     *  \f[
+     *    \langle  \phi_{\ell m}^{\alpha} | \Psi_{j{\bf k}}^{\sigma} \rangle = \sum_{\bf G}
+     *      \phi_{\ell m}^{\alpha *}({\bf G+k}) \Psi_{j}^{\sigma}({\bf G+k})
+     *  \f]
+     *
      */
     void symmetrize_density_matrix();
 
-    void symmetrize()
+    void print_info() const
     {
-        Field4D::symmetrize(&rho(), &magnetization(0), &magnetization(1), &magnetization(2));
+        auto result = this->rho().integrate();
+
+        auto total_charge = std::get<0>(result);
+        auto it_charge    = std::get<1>(result);
+        auto mt_charge    = std::get<2>(result);
+
+        auto result_mag = this->get_magnetisation();
+        auto total_mag  = std::get<0>(result_mag);
+        auto it_mag     = std::get<1>(result_mag);
+        auto mt_mag     = std::get<2>(result_mag);
+
+        if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
+            std::printf("\n");
+            std::printf("Charges and magnetic moments\n");
+            for (int i = 0; i < 80; i++) {
+                std::printf("-");
+            }
+            std::printf("\n");
+            if (ctx_.full_potential()) {
+                double total_core_leakage{0.0};
+                std::printf("atom      charge    core leakage");
+                if (ctx_.num_mag_dims()) {
+                    std::printf("              moment                |moment|");
+                }
+                std::printf("\n");
+                for (int i = 0; i < 80; i++) {
+                    std::printf("-");
+                }
+                std::printf("\n");
+
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                    double core_leakage = unit_cell_.atom(ia).symmetry_class().core_leakage();
+                    total_core_leakage += core_leakage;
+                    std::printf("%4i  %10.6f  %10.8e", ia, mt_charge[ia], core_leakage);
+                    if (ctx_.num_mag_dims()) {
+                        vector3d<double> v(mt_mag[ia]);
+                        std::printf("  [%8.4f, %8.4f, %8.4f]  %10.6f", v[0], v[1], v[2], v.length());
+                    }
+                    std::printf("\n");
+                }
+
+                std::printf("\n");
+                std::printf("total core leakage    : %10.8e\n", total_core_leakage);
+                std::printf("interstitial charge   : %10.6f\n", it_charge);
+                if (ctx_.num_mag_dims()) {
+                    vector3d<double> v(it_mag);
+                    std::printf("interstitial moment   : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", v[0], v[1], v[2],
+                           v.length());
+                }
+            } else {
+                if (ctx_.num_mag_dims()) {
+                    std::printf("atom              moment                |moment|");
+                    std::printf("\n");
+                    for (int i = 0; i < 80; i++) {
+                        std::printf("-");
+                    }
+                    std::printf("\n");
+
+                    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                        vector3d<double> v(mt_mag[ia]);
+                        std::printf("%4i  [%8.4f, %8.4f, %8.4f]  %10.6f", ia, v[0], v[1], v[2], v.length());
+                        std::printf("\n");
+                    }
+
+                    std::printf("\n");
+                }
+            }
+            std::printf("total charge          : %10.6f\n", total_charge);
+
+            if (ctx_.num_mag_dims()) {
+                vector3d<double> v(total_mag);
+                std::printf("total moment          : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", v[0], v[1], v[2], v.length());
+            }
+        }
+    }
+
+    Occupation_matrix const& occupation_matrix() const
+    {
+        return *occupation_matrix_;
+    }
+
+    Occupation_matrix& occupation_matrix()
+    {
+        return *occupation_matrix_;
     }
 };
+
+inline void copy(Density const& src__, Density& dest__)
+{
+    for (int j = 0; j < src__.ctx().num_mag_dims() + 1; j++) {
+        copy(src__.component(j).f_pw_local(), dest__.component(j).f_pw_local());
+        copy(src__.component(j).f_rg(), dest__.component(j).f_rg());
+        if (src__.ctx().full_potential()) {
+            for (int ialoc = 0; ialoc < src__.ctx().unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                copy(src__.component(j).f_mt(ialoc), dest__.component(j).f_mt(ialoc));
+            }
+        }
+    }
+    copy(src__.density_matrix(), dest__.density_matrix());
+    copy(src__.occupation_matrix(), dest__.occupation_matrix());
+}
+
+template <bool add_pseudo_core__>
+inline std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2>
+get_rho_up_dn(Density const& density__, double add_delta_rho_xc__ = 0.0, double add_delta_mag_xc__ = 0.0)
+{
+    PROFILE("sirius::get_rho_up_dn");
+
+    auto& ctx = const_cast<Simulation_context&>(density__.ctx());
+    int num_points = ctx.spfft().local_slice_size();
+
+    auto rho_up = std::unique_ptr<Smooth_periodic_function<double>>(new 
+            Smooth_periodic_function<double>(ctx.spfft(), ctx.gvec_partition()));
+    auto rho_dn = std::unique_ptr<Smooth_periodic_function<double>>(new 
+            Smooth_periodic_function<double>(ctx.spfft(), ctx.gvec_partition()));
+
+    /* compute "up" and "dn" components and also check for negative values of density */
+    double rhomin{0};
+    #pragma omp parallel for reduction(min:rhomin)
+    for (int ir = 0; ir < num_points; ir++) {
+        vector3d<double> m;
+        for (int j = 0; j < ctx.num_mag_dims(); j++) {
+            m[j] = density__.magnetization(j).f_rg(ir) * (1 + add_delta_mag_xc__);
+        }
+
+        double rho = density__.rho().f_rg(ir);
+        if (add_pseudo_core__) {
+            rho += density__.rho_pseudo_core().f_rg(ir);
+        }
+        rho *= (1 + add_delta_rho_xc__);
+        rhomin = std::min(rhomin, rho);
+        auto rud = get_rho_up_dn(ctx.num_mag_dims(), rho, m);
+
+        rho_up->f_rg(ir) = rud.first;
+        rho_dn->f_rg(ir) = rud.second;
+    }
+
+    Communicator(ctx.spfft().communicator()).allreduce<double, mpi_op_t::min>(&rhomin, 1);
+    if (rhomin< 0.0 && ctx.comm().rank() == 0) {
+        std::stringstream s;
+        s << "Interstitial charge density has negative values" << std::endl
+          << "most negatve value : " << rhomin;
+        WARNING(s);
+    }
+    std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2> result;
+    result[0] = std::move(rho_up);
+    result[1] = std::move(rho_dn);
+    return result;
+}
 
 } // namespace sirius
 

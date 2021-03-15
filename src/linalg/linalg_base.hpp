@@ -74,7 +74,9 @@ enum class linalg_t
     /// cuBlasXt (cuBlas with CPU pointers and large matrices support)
     cublasxt,
     /// MAGMA with CPU pointers
-    magma
+    magma,
+    /// SPLA library. Can take CPU and device pointers
+    spla
 };
 
 inline linalg_t get_linalg_t(std::string name__)
@@ -131,6 +133,10 @@ inline std::string to_string(linalg_t la__)
             return "magma";
             break;
         }
+        case linalg_t::spla: {
+            return "spla";
+            break;
+        }
     }
     return ""; // make compiler happy
 }
@@ -142,7 +148,7 @@ ftn_int FORTRAN(ilaenv)(ftn_int* ispec, ftn_char name, ftn_char opts, ftn_int* n
 
 ftn_double FORTRAN(dlamch)(ftn_char cmach, ftn_len cmach_len);
 
-#ifdef __SCALAPACK
+#ifdef SIRIUS_SCALAPACK
 int Csys2blacs_handle(MPI_Comm SysCtxt);
 
 MPI_Comm Cblacs2sys_handle(int BlacsCtxt);
@@ -211,7 +217,7 @@ class linalg_base
         return FORTRAN(dlamch)(&cmach, (ftn_len)1);
     }
 
-#ifdef __SCALAPACK
+#ifdef SIRIUS_SCALAPACK
     static ftn_int numroc(ftn_int n, ftn_int nb, ftn_int iproc, ftn_int isrcproc, ftn_int nprocs)
     {
         return FORTRAN(numroc)(&n, &nb, &iproc, &isrcproc, &nprocs);

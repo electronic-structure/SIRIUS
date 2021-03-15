@@ -40,6 +40,9 @@ dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid
     , blacs_grid_(&blacs_grid__)
     , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
     , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
+    , spla_distri_(spla::MatrixDistribution::create_blacs_block_cyclic_from_mapping(
+          blacs_grid__.comm().mpi_comm(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(), blacs_grid__.num_ranks_col(), bs_row__,
+          bs_col__))
 {
     init();
 }
@@ -59,6 +62,9 @@ dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& 
     , blacs_grid_(&blacs_grid__)
     , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
     , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
+    , spla_distri_(spla::MatrixDistribution::create_blacs_block_cyclic_from_mapping(
+          blacs_grid__.comm().mpi_comm(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(), blacs_grid__.num_ranks_col(), bs_row__,
+          bs_col__))
 {
     init();
 }
@@ -74,6 +80,19 @@ dmatrix<T>::dmatrix(int num_rows__, int num_cols__, memory_t mem_type__)
     , spl_col_(num_cols_, 1, 0, bs_col_)
 {
 }
+
+template <typename T>
+dmatrix<T>::dmatrix(int num_rows__, int num_cols__, memory_pool& mp__, std::string const& label__)
+    : matrix<T>(num_rows__, num_cols__, mp__, label__)
+    , num_rows_(num_rows__)
+    , num_cols_(num_cols__)
+    , bs_row_(1)
+    , bs_col_(1)
+    , spl_row_(num_rows_, 1, 0, bs_row_)
+    , spl_col_(num_cols_, 1, 0, bs_col_)
+{
+}
+
 
 template <typename T>
 dmatrix<T>::dmatrix(T* ptr__, int num_rows__, int num_cols__)
@@ -102,6 +121,9 @@ dmatrix<T>::dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid
     , blacs_grid_(&blacs_grid__)
     , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
     , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
+    , spla_distri_(spla::MatrixDistribution::create_blacs_block_cyclic_from_mapping(
+          blacs_grid__.comm().mpi_comm(), blacs_grid__.rank_map().data(), blacs_grid__.num_ranks_row(), blacs_grid__.num_ranks_col(), bs_row__,
+          bs_col__))
 {
     init();
 }
@@ -243,7 +265,9 @@ void dmatrix<double_complex>::serialize(std::string name__, int n__) const
             full_mtrx(irow(i), icol(j)) = (*this)(i, j);
         }
     }
-    blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
+    if (blacs_grid_) {
+        blacs_grid_->comm().allreduce(full_mtrx.at(memory_t::host), static_cast<int>(full_mtrx.size()));
+    }
 
     // json dict;
     // dict["mtrx_re"] = json::array();
@@ -254,7 +278,7 @@ void dmatrix<double_complex>::serialize(std::string name__, int n__) const
     //    }
     //}
 
-    if (blacs_grid_->comm().rank() == 0) {
+    if (!blacs_grid_ || blacs_grid_->comm().rank() == 0) {
         // std::cout << "mtrx: " << name__ << std::endl;
         // std::cout << dict.dump(4);
 

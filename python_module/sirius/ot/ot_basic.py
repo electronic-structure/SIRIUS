@@ -20,8 +20,7 @@ def pp_total_energy(potential, density, k_point_set, ctx):
     # TODO: Ewald energy is constant...
     return (k_point_set.valence_eval_sum() - potential.energy_vxc(density) -
             potential.PAW_one_elec_energy() - 0.5 * potential.energy_vha() -
-            energy_bxc(density, potential,
-                       ctx.num_mag_dims()) + potential.energy_exc(density) +
+            energy_bxc(density, potential) + potential.energy_exc(density) +
             potential.PAW_total_energy() + ewald_energy(ctx, gvec, unit_cell))
 
 

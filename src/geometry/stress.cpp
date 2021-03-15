@@ -27,6 +27,7 @@
 #include "stress.hpp"
 #include "non_local_functor.hpp"
 #include "utils/profiler.hpp"
+#include "dft/energy.hpp"
 
 namespace sirius {
 
@@ -147,19 +148,23 @@ matrix3d<double> Stress::calc_stress_hubbard()
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         dn.zero();
-        int ik    = kset_.spl_num_kpoints(ikloc);
-        auto kp__ = kset_[ik];
-        if (ctx_.num_mag_dims() == 3)
+        int ik = kset_.spl_num_kpoints(ikloc);
+        auto kp = kset_[ik];
+
+        kp->beta_projectors().prepare();
+
+        if (ctx_.num_mag_dims() == 3) {
             TERMINATE("Hubbard stress correction is only implemented for the simple hubbard correction.");
+        }
 
         /* compute the derivative of the occupancies numbers */
-        potential_.U().compute_occupancies_stress_derivatives(*kp__, q_op, dn);
+        potential_.U().compute_occupancies_stress_derivatives(*kp, q_op, dn);
         for (int dir1 = 0; dir1 < 3; dir1++) {
             for (int dir2 = 0; dir2 < 3; dir2++) {
                 for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
                     const auto& atom = ctx_.unit_cell().atom(ia1);
                     if (atom.type().hubbard_correction()) {
-                        const int lmax_at = 2 * atom.type().hubbard_orbital(0).l + 1;
+                        const int lmax_at = 2 * atom.type().lo_descriptor_hub(0).l + 1;
                         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                             for (int m1 = 0; m1 < lmax_at; m1++) {
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
@@ -173,10 +178,11 @@ matrix3d<double> Stress::calc_stress_hubbard()
                 }
             }
         }
+        kp->beta_projectors().dismiss();
     }
 
     /* global reduction */
-    kset_.comm().allreduce<double, mpi_op_t::sum>(&stress_hubbard_(0, 0), 9);
+    kset_.comm().allreduce(&stress_hubbard_(0, 0), 9);
     symmetrize(stress_hubbard_);
 
     return stress_hubbard_;
@@ -204,12 +210,12 @@ matrix3d<double> Stress::calc_stress_core()
 
     potential_.xc_potential().fft_transform(-1);
 
-    auto& ri_dg = ctx_.ps_core_ri_djl();
+    auto q = ctx_.gvec().shells_len();
+    auto ff = ctx_.ps_core_ri_djl().values(q, ctx_.comm());
+    auto drhoc = ctx_.make_periodic_function<index_domain_t::local>(ff);
 
-    auto drhoc = ctx_.make_periodic_function<index_domain_t::local>(
-        [&ri_dg](int iat, double g) { return ri_dg.value<int>(iat, g); });
     double sdiag{0};
-    int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+    int ig0 = ctx_.gvec().skip_g0();
 
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
         auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
@@ -250,7 +256,8 @@ matrix3d<double> Stress::calc_stress_xc()
 {
     stress_xc_.zero();
 
-    double e = potential_.energy_exc(density_) - potential_.energy_vxc(density_);
+    double e = sirius::energy_exc(density_, potential_) - sirius::energy_vxc(density_, potential_) -
+        sirius::energy_bxc(density_, potential_);
 
     for (int l = 0; l < 3; l++) {
         stress_xc_(l, l) = e / ctx_.unit_cell().omega();
@@ -258,33 +265,71 @@ matrix3d<double> Stress::calc_stress_xc()
 
     if (potential_.is_gradient_correction()) {
 
-        Smooth_periodic_function<double> rhovc(ctx_.spfft(), ctx_.gvec_partition());
-        rhovc.zero();
-        rhovc.add(density_.rho());
-        rhovc.add(density_.rho_pseudo_core());
-
-        /* transform to PW domain */
-        rhovc.fft_transform(-1);
-
-        /* generate pw coeffs of the gradient */
-        auto grad_rho = gradient(rhovc);
-
-        /* gradient in real space */
-        for (int x : {0, 1, 2}) {
-            grad_rho[x].fft_transform(1);
-        }
-
         matrix3d<double> t;
-        for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
-            for (int mu = 0; mu < 3; mu++) {
-                for (int nu = 0; nu < 3; nu++) {
-                    t(mu, nu) += grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) * potential_.vsigma(0).f_rg(irloc);
+
+        /* factor 2 in the expression for gradient correction comes from the
+           derivative of sigm (which is grad(rho) * grad(rho)) */
+
+        if (ctx_.num_spins() == 1) {
+            Smooth_periodic_function<double> rhovc(ctx_.spfft(), ctx_.gvec_partition());
+            rhovc.zero();
+            rhovc.add(density_.rho());
+            rhovc.add(density_.rho_pseudo_core());
+
+            /* transform to PW domain */
+            rhovc.fft_transform(-1);
+
+            /* generate pw coeffs of the gradient */
+            auto grad_rho = gradient(rhovc);
+
+            /* gradient in real space */
+            for (int x : {0, 1, 2}) {
+                grad_rho[x].fft_transform(1);
+            }
+
+            for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
+                for (int mu = 0; mu < 3; mu++) {
+                    for (int nu = 0; nu < 3; nu++) {
+                        t(mu, nu) += 2 * grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) *
+                            potential_.vsigma(0).f_rg(irloc);
+                    }
+                }
+            }
+        } else {
+            auto result = get_rho_up_dn<true>(density_);
+            auto& rho_up = *result[0];
+            auto& rho_dn = *result[1];
+
+            /* transform to PW domain */
+            rho_up.fft_transform(-1);
+            rho_dn.fft_transform(-1);
+
+            /* generate pw coeffs of the gradient */
+            auto grad_rho_up = gradient(rho_up);
+            auto grad_rho_dn = gradient(rho_dn);
+
+            /* gradient in real space */
+            for (int x : {0, 1, 2}) {
+                grad_rho_up[x].fft_transform(1);
+                grad_rho_dn[x].fft_transform(1);
+            }
+
+            for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
+                for (int mu = 0; mu < 3; mu++) {
+                    for (int nu = 0; nu < 3; nu++) {
+                        t(mu, nu) += grad_rho_up[mu].f_rg(irloc) * grad_rho_up[nu].f_rg(irloc) * 2 *
+                                     potential_.vsigma(0).f_rg(irloc) +
+                                    (grad_rho_up[mu].f_rg(irloc) * grad_rho_dn[nu].f_rg(irloc) +
+                                     grad_rho_dn[mu].f_rg(irloc) * grad_rho_up[nu].f_rg(irloc)) *
+                                     potential_.vsigma(1).f_rg(irloc) +
+                                     grad_rho_dn[mu].f_rg(irloc) * grad_rho_dn[nu].f_rg(irloc) * 2 *
+                                     potential_.vsigma(2).f_rg(irloc);
+                    }
                 }
             }
         }
         Communicator(ctx_.spfft().communicator()).allreduce(&t(0, 0), 9);
-        t *= (-2.0 / ctx_.fft_grid().num_points()); // factor 2 comes from the derivative of sigma (which is grad(rho) * grad(rho))
-        // with respect to grad(rho) components
+        t *= (-1.0 / ctx_.fft_grid().num_points());
         stress_xc_ += t;
     }
 
@@ -323,16 +368,9 @@ matrix3d<double> Stress::calc_stress_us()
             break;
         }
         case device_t::GPU: {
-#ifdef __ROCM
-            // ROCm does not support cubblasxt functionality
             mp = &ctx_.mem_pool(memory_t::host_pinned);
-            la = linalg_t::blas;
-            qmem = memory_t::host;
-#else
-            mp = &ctx_.mem_pool(memory_t::host_pinned);
-            la = linalg_t::cublasxt;
+            la = linalg_t::spla;
             qmem = memory_t::device;
-#endif
             break;
         }
     }
@@ -344,11 +382,6 @@ matrix3d<double> Stress::calc_stress_us()
         }
 
         q_deriv.prepare(atom_type, ri, ri_dq);
-#ifdef __ROCM
-        // ROCm does not support cubblasxt functionality - data required on host
-        q_deriv.q_pw().allocate(memory_t::host);
-#endif
-
 
         int nbf = atom_type.mt_basis_size();
 
@@ -374,10 +407,6 @@ matrix3d<double> Stress::calc_stress_us()
         for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++) {
             for (int nu = 0; nu < 3; nu++) {
                 q_deriv.generate_pw_coeffs(atom_type, nu);
-#ifdef __ROCM
-                // ROCm does not support cubblasxt functionality - data required on host
-                q_deriv.q_pw().copy_to(memory_t::host);
-#endif
 
                 for (int mu = 0; mu < 3; mu++) {
                     PROFILE_START("sirius::Stress|us|prepare");
@@ -443,7 +472,7 @@ matrix3d<double> Stress::calc_stress_ewald()
 
     auto& uc = ctx_.unit_cell();
 
-    int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+    int ig0 = ctx_.gvec().skip_g0();
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
         int ig = ctx_.gvec().offset() + igloc;
 
@@ -526,6 +555,7 @@ void Stress::print_info() const
         auto stress_har      = stress_har_ * au2kbar;
         auto stress_ewald    = stress_ewald_ * au2kbar;
         auto stress_vloc     = stress_vloc_ * au2kbar;
+        auto stress_xc       = stress_xc_ * au2kbar;
         auto stress_nonloc   = stress_nonloc_ * au2kbar;
         auto stress_us       = stress_us_ * au2kbar;
         auto stress_hubbard  = stress_hubbard_ * au2kbar;
@@ -543,6 +573,9 @@ void Stress::print_info() const
 
         std::printf("== stress_vloc ==\n");
         print_stress(stress_vloc);
+
+        std::printf("== stress_xc ==\n");
+        print_stress(stress_xc);
 
         std::printf("== stress_nonloc ==\n");
         print_stress(stress_nonloc);
@@ -571,7 +604,7 @@ matrix3d<double> Stress::calc_stress_har()
 
     stress_har_.zero();
 
-    int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+    int ig0 = ctx_.gvec().skip_g0();
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
         auto G    = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
         double g2 = std::pow(G.length(), 2);
@@ -609,31 +642,29 @@ matrix3d<double> Stress::calc_stress_kin()
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
 
+        double fact = kp->gkvec().reduced() ? 2.0 : 1.0;
+        fact *=  kp->weight();
+
         #pragma omp parallel
         {
             matrix3d<double> tmp;
-            #pragma omp for schedule(static)
-            for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-                auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
+            for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
+                #pragma omp for
+                for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
+                    for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
+                        auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
 
-                double d{0};
-                for (int ispin = 0; ispin < ctx_.num_spins(); ispin++) {
-                    for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
                         double f = kp->band_occupancy(i, ispin);
-                        auto z   = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
-                        d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                        auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
+                        double d = fact * f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                        for (int mu : {0, 1, 2}) {
+                            for (int nu : {0, 1, 2}) {
+                                tmp(mu, nu) += Gk[mu] * Gk[nu] * d;
+                            }
+                        }
                     }
                 }
-                d *= kp->weight();
-                if (kp->gkvec().reduced()) {
-                    d *= 2;
-                }
-                for (int mu : {0, 1, 2}) {
-                    for (int nu : {0, 1, 2}) {
-                        tmp(mu, nu) += Gk[mu] * Gk[nu] * d;
-                    }
-                }
-            } // igloc
+            }
             #pragma omp critical
             stress_kin_ += tmp;
         }
@@ -675,18 +706,16 @@ matrix3d<double> Stress::calc_stress_vloc()
 
     stress_vloc_.zero();
 
-    auto& ri_vloc    = ctx_.vloc_ri();
-    auto& ri_vloc_dg = ctx_.vloc_ri_djl();
+    auto q = ctx_.gvec().shells_len();
+    auto ri_vloc = ctx_.vloc_ri().values(q, ctx_.comm());
+    auto ri_vloc_dg = ctx_.vloc_ri_djl().values(q, ctx_.comm());
 
-    auto v =
-        ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g) { return ri_vloc.value(iat, g); });
-
-    auto dv =
-        ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g) { return ri_vloc_dg.value(iat, g); });
+    auto v = ctx_.make_periodic_function<index_domain_t::local>(ri_vloc);
+    auto dv = ctx_.make_periodic_function<index_domain_t::local>(ri_vloc_dg);
 
     double sdiag{0};
 
-    int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+    int ig0 = ctx_.gvec().skip_g0();
     for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
 
         auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);

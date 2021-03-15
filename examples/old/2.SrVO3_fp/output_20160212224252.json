@@ -35,7 +35,7 @@
         "sirius::Band::set_fv_h_o_lo_lo" : [0.0059250, 0.0000530, 0.0001340, 0.00008229167],
         "sirius::Band::set_fv_h_o|zgemm" : [28.815746, 0.352750, 0.4377360, 0.4002187],
         "sirius::Band::solve_sv" : [0.0000740, 0.0, 0.0000110, 0.000001027778],
-        "sirius::Broyden1::mix" : [1.744589, 0.0034910, 0.1582420, 0.09692161],
+        "sirius::Anderson::mix" : [1.744589, 0.0034910, 0.1582420, 0.09692161],
         "sirius::DFT_ground_state::scf_loop" : [141.032821, 141.032821, 141.032821, 141.032821],
         "sirius::DFT_ground_state::scf_loop|iteration" : [140.177936, 7.623869, 8.078268, 7.787663],
         "sirius::Density::add_k_point_contribution" : [0.3135910, 0.0038120, 0.006320, 0.004355431],

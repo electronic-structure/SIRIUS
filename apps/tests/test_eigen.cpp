@@ -90,7 +90,7 @@ double test_diag(BLACS_grid const& blacs_grid__,
     }
     if (test_gen__) {
         /* lambda * B * Z */
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
         linalg(linalg_t::scalapack).gemm('N', 'N', n__, nev__, n__, &linalg_const<T>::one(), B_ref, 0, 0, A, 0, 0,
             &linalg_const<T>::zero(), B, 0, 0);
 #else
@@ -101,7 +101,7 @@ double test_diag(BLACS_grid const& blacs_grid__,
     }
 
     /* A * Z - lambda * B * Z */
-#if defined(__SCALAPACK)
+#if defined(SIRIUS_SCALAPACK)
     linalg(linalg_t::scalapack).gemm('N', 'N', n__, nev__, n__, &linalg_const<T>::one(), A_ref, 0, 0, Z, 0, 0,
         &linalg_const<T>::m_one(), A, 0, 0);
 #else
@@ -228,7 +228,7 @@ int main(int argn, char** argv)
         {"type=", "{int} data type: 0-real, 1-complex"}
     });
 
-    auto mpi_grid_dims = args.value<std::vector<int>>("mpi_grid_dims", {1, 1});
+    auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
     auto N        = args.value<int>("N", 200);
     auto n        = args.value<int>("n", 100);
     auto nev      = args.value<int>("nev", 50);

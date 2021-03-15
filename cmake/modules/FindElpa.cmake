@@ -6,10 +6,12 @@ find_package(PkgConfig)
 pkg_search_module(_ELPA
   elpa
   elpa_openmp
+  elpa-openmp-2019.05.001
   elpa_openmp-2019.11.001
+  elpa_openmp-2020.05.001
   elpa-2019.05.001
   elpa-2019.11.001
-  elpa-2019.05.001)
+  elpa-2020.05.001)
 
 find_library(ELPA_LIBRARIES
   NAMES elpa elpa_openmp
@@ -22,7 +24,7 @@ find_library(ELPA_LIBRARIES
 
 find_path(ELPA_INCLUDE_DIR
   NAMES elpa/elpa.h elpa/elpa_constants.h
-  PATH_SUFFIXES include/elpa_openmp-$ENV{EBVERSIONELPA}
+  PATH_SUFFIXES include/elpa_openmp-$ENV{EBVERSIONELPA} include/elpa-$ENV{EBVERSIONELPA}
   HINTS
   ${_ELPA_INCLUDE_DIRS}
   ENV ELPAROOT

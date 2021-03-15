@@ -43,6 +43,8 @@ class BLACS_grid
 
     int blacs_context_{-1};
 
+    std::vector<int> rank_map_;
+
     /* forbid copy constructor */
     BLACS_grid(BLACS_grid const& src) = delete;
     /* forbid assignment operator */
@@ -53,21 +55,21 @@ class BLACS_grid
         : comm_(comm__)
     {
         mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({num_ranks_row__, num_ranks_col__}, comm_));
+        rank_map_.resize(num_ranks_row__ * num_ranks_col__);
 
-#ifdef __SCALAPACK
+#ifdef SIRIUS_SCALAPACK
         /* create handler first */
         blacs_handler_ = linalg_base::create_blacs_handler(mpi_grid_->communicator().mpi_comm());
 
-        std::vector<int> map_ranks(num_ranks_row__ * num_ranks_col__);
         for (int j = 0; j < num_ranks_col__; j++) {
             for (int i = 0; i < num_ranks_row__; i++) {
-                map_ranks[i + j * num_ranks_row__] = mpi_grid_->communicator().cart_rank({i, j});
+                rank_map_[i + j * num_ranks_row__] = mpi_grid_->communicator().cart_rank({i, j});
             }
         }
 
         /* create context */
         blacs_context_ = blacs_handler_;
-        linalg_base::gridmap(&blacs_context_, &map_ranks[0], num_ranks_row__, num_ranks_row__, num_ranks_col__);
+        linalg_base::gridmap(&blacs_context_, &rank_map_[0], num_ranks_row__, num_ranks_row__, num_ranks_col__);
 
         /* check the grid */
         int nrow1, ncol1, irow1, icol1;
@@ -82,6 +84,11 @@ class BLACS_grid
               << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
             TERMINATE(s);
         }
+#else
+        for (int i = 0; i < static_cast<int>(rank_map_.size()); i++) {
+          rank_map_[i] = i;
+        }
+
 #endif
     }
 
@@ -90,7 +97,7 @@ class BLACS_grid
         int mpi_finalized;
         MPI_Finalized(&mpi_finalized);
         if (mpi_finalized == 0) {
-#ifdef __SCALAPACK
+#ifdef SIRIUS_SCALAPACK
             linalg_base::gridexit(blacs_context_);
             linalg_base::free_blacs_handler(blacs_handler_);
 #endif
@@ -145,6 +152,11 @@ class BLACS_grid
     MPI_grid const& mpi_grid() const
     {
         return *mpi_grid_;
+    }
+
+    std::vector<int> const& rank_map() const
+    {
+        return rank_map_;
     }
 };
 

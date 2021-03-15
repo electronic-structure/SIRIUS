@@ -29,7 +29,7 @@
 #include "atom.hpp"
 #include "mpi/mpi_grid.hpp"
 #include "unit_cell_symmetry.hpp"
-#include "simulation_parameters.hpp"
+#include "context/simulation_parameters.hpp"
 #include "utils/json.hpp"
 
 namespace sirius {
@@ -277,7 +277,11 @@ class Unit_cell
     void update();
 
     /// Import unit cell description from the input data structure.
-    void import(Unit_cell_input const& inp__);
+    /** Set lattice vectors, atom types and coordinates of atoms. The "atom_coordinate_units" parameter by default 
+     *  is assumed to be "lattice" which means that the atomic coordinates are provided in lattice (fractional) units.
+     *  It can also be specified in "A" or "au" which means that the input atomic coordinates are Cartesian and
+     *  provided in Angstroms or atomic units of length. This is useful in setting up the molecule calculation. */
+    void import(config_t::unit_cell_t const& inp__);
 
     /// Get atom ID (global index) by it's position in fractional coordinates.
     int atom_id_by_position(vector3d<double> position__);
@@ -285,9 +289,6 @@ class Unit_cell
     /// Find the minimum bond length.
     /** This is useful to check the sanity of the crystal structure. */
     double min_bond_length() const;
-
-    /// Calculate total number of Hubbard wave-functions and offset for each atom in the global index.
-    std::pair<int, std::vector<int>> num_wf_with_U() const;
 
     /// Return number of Hubbard wave-functions.
     std::pair<int, std::vector<int>> num_hubbard_wf() const;

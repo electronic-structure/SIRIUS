@@ -639,7 +639,7 @@ inline Spline<T, U> operator*(Spline<T, U> const& a__, Spline<T, U> const& b__)
     return s12;
 }
 
-#ifdef __GPU
+#ifdef SIRIUS_GPU
 // extern "C" double spline_inner_product_gpu_v2(int           size__,
 //                                              double const* x__,
 //                                              double const* dx__,

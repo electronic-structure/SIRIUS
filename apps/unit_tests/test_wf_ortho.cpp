@@ -1,4 +1,6 @@
+#include "spla/context.hpp"
 #include <sirius.hpp>
+#include <spla/spla.hpp>
 
 using namespace sirius;
 
@@ -9,11 +11,12 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
                    int bs__)
 {
     device_t pu = static_cast<device_t>(use_gpu__);
+    spla::Context spla_ctx(pu == device_t::GPU ? SPLA_PU_GPU : SPLA_PU_HOST);
 
     BLACS_grid blacs_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    
+
     /* create G-vectors */
     Gvec gvec(M, cutoff__, Communicator::world(), false);
     Gvec_partition gvecp(gvec, Communicator::world(), Communicator::self());
@@ -41,10 +44,10 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
         mem = memory_t::device;
     }
 
-    orthogonalize<double_complex>(mem, la, 0, phi, hphi, 0, num_bands__, ovlp, tmp);
-    orthogonalize<double_complex>(mem, la, 0, phi, hphi, num_bands__, num_bands__, ovlp, tmp);
+    orthogonalize<double_complex>(spla_ctx, mem, la, 0, phi, hphi, 0, num_bands__, ovlp, tmp);
+    orthogonalize<double_complex>(spla_ctx, mem, la, 0, phi, hphi, num_bands__, num_bands__, ovlp, tmp);
 
-    inner(mem, la, 0, phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
+    inner(spla_ctx, spin_range(0), phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
 
     for (int j = 0; j < ovlp.num_cols_local(); j++) {
         for (int i = 0; i < ovlp.num_rows_local(); i++) {
@@ -71,7 +74,7 @@ int main(int argn, char** argv)
         args.print_help();
         return 0;
     }
-    auto mpi_grid_dims = args.value< std::vector<int> >("mpi_grid_dims", {1, 1});
+    auto mpi_grid_dims = args.value("mpi_grid_dims", std::vector<int>({1, 1}));
     auto cutoff = args.value<double>("cutoff", 8.0);
     auto use_gpu = args.value<int>("use_gpu", 0);
     //auto bs = args.value<int>("bs", 16);

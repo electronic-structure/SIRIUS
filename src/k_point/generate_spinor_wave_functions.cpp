@@ -31,7 +31,7 @@ void K_point::generate_spinor_wave_functions()
 {
     PROFILE("sirius::K_point::generate_spinor_wave_functions");
 
-    if (ctx_.control().use_second_variation_) {
+    if (ctx_.cfg().control().use_second_variation()) {
         int nfv = ctx_.num_fv_states();
 
         if (!ctx_.need_sv()) {
@@ -70,8 +70,8 @@ void K_point::generate_spinor_wave_functions()
                 o = 0;
             }
             /* multiply consecutively up and dn blocks */
-            transform(ctx_.preferred_memory_t(), ctx_.blas_linalg_t(), ispn, fv_states(), 0, nfv, sv_eigen_vectors_[s],
-                      o, 0, spinor_wave_functions(), 0, nbnd);
+            transform(ctx_.spla_context(), ispn, fv_states(), 0, nfv, sv_eigen_vectors_[s], o, 0,
+                      spinor_wave_functions(), 0, nbnd);
         }
 
         if (ctx_.processing_unit() == device_t::GPU) {

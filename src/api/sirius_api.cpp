@@ -28,7 +28,7 @@
 #include "utils/any_ptr.hpp"
 #include "utils/profiler.hpp"
 #include "error_codes.hpp"
-#ifdef __NLCGLIB
+#ifdef SIRIUS_NLCGLIB
 #include "nlcglib/adaptor.hpp"
 #include "nlcglib/nlcglib.hpp"
 #endif
@@ -37,15 +37,19 @@ static inline void sirius_exit(int error_code__, std::string msg__ = "")
 {
     switch (error_code__) {
         case SIRIUS_ERROR_UNKNOWN: {
-            printf("Unknown error\n");
+            printf("SIRIUS: unknown error\n");
             break;
         }
         case SIRIUS_ERROR_RUNTIME: {
-            printf("Run-time error\n");
+            printf("SIRIUS: run-time error\n");
+            break;
+        }
+        case SIRIUS_ERROR_EXCEPTION: {
+            printf("SIRIUS: exception\n");
             break;
         }
         default: {
-            printf("Unknown error code: %i\n", error_code__);
+            printf("SIRIUS: unknown error code: %i\n", error_code__);
             break;
         }
     }
@@ -56,6 +60,8 @@ static inline void sirius_exit(int error_code__, std::string msg__ = "")
     if (!Communicator::is_finalized()) {
         Communicator::world().abort(error_code__);
     }
+    fflush(stdout);
+    std::cout << std::flush;
     std::exit(error_code__);
 }
 
@@ -77,6 +83,14 @@ static void call_sirius(F&& f__, int* error_code__)
            sirius_exit(SIRIUS_ERROR_RUNTIME, e.what());
        }
     }
+    catch (std::exception const&  e) {
+        if (error_code__) {
+            *error_code__ = SIRIUS_ERROR_EXCEPTION;
+            return;
+       } else {
+           sirius_exit(SIRIUS_ERROR_EXCEPTION, e.what());
+       }
+    }
     catch (...) {
         if (error_code__) {
             *error_code__ = SIRIUS_ERROR_UNKNOWN;
@@ -87,22 +101,27 @@ static void call_sirius(F&& f__, int* error_code__)
     }
 }
 
-// TODO: try..catch in all calls to SIRIUS, return error codes to fortran as last optional argument
-
 sirius::Simulation_context& get_sim_ctx(void* const* h)
 {
-    assert(h != nullptr);
+    if (h == nullptr || *h == nullptr) {
+        throw std::runtime_error("Non-existing simulation context handler");
+    }
     return static_cast<utils::any_ptr*>(*h)->get<sirius::Simulation_context>();
 }
 
 sirius::DFT_ground_state& get_gs(void* const* h)
 {
-    assert(h != nullptr);
+    if (h == nullptr || *h == nullptr) {
+        throw std::runtime_error("Non-existing DFT ground state handler");
+    }
     return static_cast<utils::any_ptr*>(*h)->get<sirius::DFT_ground_state>();
 }
 
 sirius::K_point_set& get_ks(void* const* h)
 {
+    if (h == nullptr || *h == nullptr) {
+        throw std::runtime_error("Non-existing K-point set handler");
+    }
     return static_cast<utils::any_ptr*>(*h)->get<sirius::K_point_set>();
 }
 
@@ -133,23 +152,43 @@ static inline int phase_Rlm_QE(::sirius::Atom_type const& type__, int xi__)
 
 extern "C" {
 
-/* @fortran begin function void sirius_initialize       Initialize the SIRIUS library.
-   @fortran argument in required bool call_mpi_init     If .true. then MPI_Init must be called prior to initialization.
-   @fortran end */
+/*
+@api begin
+sirius_initialize:
+  doc: Initialize the SIRIUS library.
+  arguments:
+    call_mpi_init:
+      type: bool
+      attr: in, required
+      doc: If .true. then MPI_Init must be called prior to initialization.
+@api end
+*/
 void sirius_initialize(bool const* call_mpi_init__)
 {
     sirius::initialize(*call_mpi_init__);
 }
 
-/* @fortran begin function void sirius_finalize          Shut down the SIRIUS library
-   @fortran argument in optional bool call_mpi_fin       If .true. then MPI_Finalize must be called after the shutdown.
-   @fortran argument in optional bool call_device_reset  If .true. then cuda device is reset after shutdown.
-   @fortran argument in optional bool call_fftw_fin      If .true. then fft_cleanup must be called after the shutdown.
-   @fortran end */
-
+/*
+@api begin
+sirius_finalize:
+  doc: Shut down the SIRIUS library
+  arguments:
+    call_mpi_fin:
+      type: bool
+      attr: in, optional
+      doc: If .true. then MPI_Finalize must be called after the shutdown.
+    call_device_reset:
+      type: bool
+      attr: in, optional
+      doc: If .true. then cuda device is reset after shutdown.
+    call_fftw_fin:
+      type: bool
+      attr: in, optional
+      doc: If .true. then fft_cleanup must be called after the shutdown.
+@api end
+*/
 void sirius_finalize(bool const* call_mpi_fin__, bool const *call_device_reset__, bool const* call_fftw_fin__)
 {
-
     bool mpi_fin{true};
     bool device_reset{true};
     bool fftw_fin{true};
@@ -169,124 +208,320 @@ void sirius_finalize(bool const* call_mpi_fin__, bool const *call_device_reset__
     sirius::finalize(mpi_fin, device_reset, fftw_fin);
 }
 
-/* @fortran begin function void sirius_start_timer      Start the timer.
-   @fortran argument in required string name            Timer label.
-   @fortran end */
+/*
+@api begin
+sirius_start_timer:
+  doc: Start the timer.
+  arguments:
+    name:
+      type: string
+      attr: in, required
+      doc: Timer label.
+@api end
+*/
 void sirius_start_timer(char const* name__)
 {
     ::utils::global_rtgraph_timer.start(name__);
 }
 
-/* @fortran begin function void sirius_stop_timer       Stop the running timer.
-   @fortran argument in required string name            Timer label.
-   @fortran end */
+/*
+@api begin
+sirius_stop_timer:
+  doc: Stop the running timer.
+  arguments:
+    name:
+      type: string
+      attr: in, required
+      doc: Timer label.
+@api end
+*/
 void sirius_stop_timer(char const* name__)
 {
     ::utils::global_rtgraph_timer.stop(name__);
 }
 
-/* @fortran begin function void sirius_print_timers      Print all timers.
-   @fortran end */
-void sirius_print_timers(void)
+/*
+@api begin
+sirius_print_timers:
+  doc: Print all timers.
+  arguments:
+    flatten:
+      type: bool
+      attr: in, required
+      doc: If true, flat list of timers is printed.
+@api end
+*/
+void sirius_print_timers(bool* flatten__)
 {
-    std::cout << ::utils::global_rtgraph_timer.process().print();
+    auto timing_result = ::utils::global_rtgraph_timer.process();
+    if (*flatten__) {
+        timing_result = timing_result.flatten(1).sort_nodes();
+    }
+    std::cout << timing_result.print({rt_graph::Stat::Count, rt_graph::Stat::Total, rt_graph::Stat::Percentage,
+                                      rt_graph::Stat::SelfPercentage, rt_graph::Stat::Median, rt_graph::Stat::Min,
+                                      rt_graph::Stat::Max});
 }
 
-/* @fortran begin function void sirius_serialize_timers    Save all timers to JSON file.
-   @fortran argument in required string fname              Name of the output JSON file.
-   @fortran end */
+/*
+@api begin
+sirius_serialize_timers:
+  doc: Save all timers to JSON file.
+  arguments:
+    fname:
+      type: string
+      attr: in, required
+      doc: Name of the output JSON file.
+@api end
+*/
 void sirius_serialize_timers(char const* fname__)
 {
+    auto timing_result = ::utils::global_rtgraph_timer.process();
     std::ofstream ofs(fname__, std::ofstream::out | std::ofstream::trunc);
-    ofs << ::utils::global_rtgraph_timer.process().json();
+    ofs << timing_result.json();
 }
 
-/* @fortran begin function void sirius_integrate        Spline integration of f(x)*x^m.
-   @fortran argument in  required int    m              Defines the x^{m} factor.
-   @fortran argument in  required int    np             Number of x-points.
-   @fortran argument in  required double x              List of x-points.
-   @fortran argument in  required double f              List of function values.
-   @fortran argument out required double result         Resulting value.
-   @fortran end */
-void sirius_integrate(int    const* m__,
-                      int    const* np__,
-                      double const* x__,
-                      double const* f__,
-                      double*       result__)
+/*
+@api begin
+sirius_integrate:
+  doc: Spline integration of f(x)*x^m.
+  arguments:
+    m:
+      type: int
+      attr: in, required
+      doc: Defines the x^{m} factor.
+    np:
+      type: int
+      attr: in, required
+      doc: Number of x-points.
+    x:
+      type: double
+      attr: in, required
+      doc: List of x-points.
+    f:
+      type: double
+      attr: in, required
+      doc: List of function values.
+    result:
+      type: double
+      attr: out, required
+      doc: Resulting value.
+@api end
+*/
+void sirius_integrate(int const* m__, int const* np__, double const* x__, double const* f__, double* result__)
 {
     sirius::Radial_grid_ext<double> rgrid(*np__, x__);
     sirius::Spline<double> s(rgrid, std::vector<double>(f__, f__ + *np__));
     *result__ = s.integrate(*m__);
 }
 
-/* @fortran begin function bool sirius_context_initialized      Check if the simulation context is initialized.
-   @fortran argument in required void* handler                  Simulation context handler.
-   @fortran end */
-bool sirius_context_initialized(void* const* handler__)
+/*
+@api begin
+sirius_context_initialized:
+  doc: Check if the simulation context is initialized.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    status:
+      type: bool
+      attr: out, required
+      doc: Status of the library (true if initialized)
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_context_initialized(void* const* handler__, bool* status__, int* error_code__)
 {
-    if (*handler__ == nullptr) {
-        return false;
-    }
-    auto& sim_ctx = get_sim_ctx(handler__);
-    return sim_ctx.initialized();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        *status__ = sim_ctx.initialized();
+    }, error_code__);
 }
 
-/* @fortran begin function void* sirius_create_context        Create context of the simulation.
-   @fortran argument in  required int   fcomm                 Entire communicator of the simulation.
-   @fortran details
-   Simulation context is the complex data structure that holds all the parameters of the individual simulation.
-   The context must be created, populated with the correct parameters and initialized before using all subsequent
-   SIRIUS functions.
-   @fortran end */
-void* sirius_create_context(int const* fcomm__)
+/*
+@api begin
+sirius_create_context:
+  doc: Create context of the simulation.
+  full_doc: ['Simulation context is the complex data structure that holds all the parameters of the individual simulation.', 'The context must be created, populated with the correct parameters and initialized before using all subsequent', 'SIRIUS functions.']
+  arguments:
+    fcomm:
+      type: int
+      attr: in, required
+      doc: Entire communicator of the simulation.
+    handler:
+      type: void*
+      attr: out, required
+      doc: New empty simulation context.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_create_context(int const* fcomm__, void** handler__, int* error_code__)
 {
-    auto& comm = Communicator::map_fcomm(*fcomm__);
-    return new utils::any_ptr(new sirius::Simulation_context(comm));
+    call_sirius([&]()
+    {
+        auto& comm = Communicator::map_fcomm(*fcomm__);
+        *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm));
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_import_parameters        Import parameters of simulation from a JSON string
-   @fortran argument in required void* handler                  Simulation context handler.
-   @fortran argument in optional string str                     JSON string with parameters or a JSON file.
-   @fortran end */
-void sirius_import_parameters(void* const* handler__,
-                              char  const* str__)
+/*
+@api begin
+sirius_import_parameters:
+  doc: Import parameters of simulation from a JSON string
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    str:
+      type: string
+      attr: in, optional
+      doc: JSON string with parameters or a JSON file.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void sirius_import_parameters(void* const* handler__, char const* str__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    if (str__) {
-        sim_ctx.import(std::string(str__));
-    } else {
-        sim_ctx.import(sim_ctx.get_runtime_options_dictionary());
-    }
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        if (str__) {
+            sim_ctx.import(std::string(str__));
+        } else {
+            sim_ctx.import(sim_ctx.get_runtime_options_dictionary());
+        }
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_set_parameters            Set parameters of the simulation.
-   @fortran argument in required void* handler                   Simulation context handler
-   @fortran argument in optional int lmax_apw                    Maximum orbital quantum number for APW functions.
-   @fortran argument in optional int lmax_rho                    Maximum orbital quantum number for density.
-   @fortran argument in optional int lmax_pot                    Maximum orbital quantum number for potential.
-   @fortran argument in optional int num_fv_states               Number of first-variational states.
-   @fortran argument in optional int num_bands                   Number of bands.
-   @fortran argument in optional int num_mag_dims                Number of magnetic dimensions.
-   @fortran argument in optional double pw_cutoff                Cutoff for G-vectors.
-   @fortran argument in optional double gk_cutoff                Cutoff for G+k-vectors.
-   @fortran argument in optional int fft_grid_size               Size of the fine-grain FFT grid.
-   @fortran argument in optional int auto_rmt                    Set the automatic search of muffin-tin radii.
-   @fortran argument in optional bool gamma_point                True if this is a Gamma-point calculation.
-   @fortran argument in optional bool use_symmetry               True if crystal symmetry is taken into account.
-   @fortran argument in optional bool so_correction              True if spin-orbit correnctio is enabled.
-   @fortran argument in optional string valence_rel              Valence relativity treatment.
-   @fortran argument in optional string core_rel                 Core relativity treatment.
-   @fortran argument in optional string esm_bc                   Type of boundary condition for effective screened medium.
-   @fortran argument in optional double iter_solver_tol          Tolerance of the iterative solver.
-   @fortran argument in optional double iter_solver_tol_empty    Tolerance for the empty states.
-   @fortran argument in optional string iter_solver_type         Type of iterative solver.
-   @fortran argument in optional int    verbosity                Verbosity level.
-   @fortran argument in optional bool   hubbard_correction       True if LDA+U correction is enabled.
-   @fortran argument in optional int    hubbard_correction_kind  Type of LDA+U implementation (simplified or full).
-   @fortran argument in optional string hubbard_orbitals         Type of localized orbitals.
-   @fortran argument in optional int    sht_coverage             Type of spherical coverage (0: Lebedev-Laikov, 1: uniform).
-   @fortran argument in optional double min_occupancy            Minimum band occupancy to trat is as "occupied".
-   @fortran end */
+/*
+@api begin
+sirius_set_parameters:
+  doc: Set parameters of the simulation.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    lmax_apw:
+      type: int
+      attr: in, optional
+      doc: Maximum orbital quantum number for APW functions.
+    lmax_rho:
+      type: int
+      attr: in, optional
+      doc: Maximum orbital quantum number for density.
+    lmax_pot:
+      type: int
+      attr: in, optional
+      doc: Maximum orbital quantum number for potential.
+    num_fv_states:
+      type: int
+      attr: in, optional
+      doc: Number of first-variational states.
+    num_bands:
+      type: int
+      attr: in, optional
+      doc: Number of bands.
+    num_mag_dims:
+      type: int
+      attr: in, optional
+      doc: Number of magnetic dimensions.
+    pw_cutoff:
+      type: double
+      attr: in, optional
+      doc: Cutoff for G-vectors.
+    gk_cutoff:
+      type: double
+      attr: in, optional
+      doc: Cutoff for G+k-vectors.
+    fft_grid_size:
+      type: int
+      attr: in, optional, dimension(3)
+      doc: Size of the fine-grain FFT grid.
+    auto_rmt:
+      type: int
+      attr: in, optional
+      doc: Set the automatic search of muffin-tin radii.
+    gamma_point:
+      type: bool
+      attr: in, optional
+      doc: True if this is a Gamma-point calculation.
+    use_symmetry:
+      type: bool
+      attr: in, optional
+      doc: True if crystal symmetry is taken into account.
+    so_correction:
+      type: bool
+      attr: in, optional
+      doc: True if spin-orbit correnctio is enabled.
+    valence_rel:
+      type: string
+      attr: in, optional
+      doc: Valence relativity treatment.
+    core_rel:
+      type: string
+      attr: in, optional
+      doc: Core relativity treatment.
+    iter_solver_tol:
+      type: double
+      attr: in, optional
+      doc: Tolerance of the iterative solver.
+    iter_solver_tol_empty:
+      type: double
+      attr: in, optional
+      doc: Tolerance for the empty states.
+    iter_solver_type:
+      type: string
+      attr: in, optional
+      doc: Type of iterative solver.
+    verbosity:
+      type: int
+      attr: in, optional
+      doc: Verbosity level.
+    hubbard_correction:
+      type: bool
+      attr: in, optional
+      doc: True if LDA+U correction is enabled.
+    hubbard_correction_kind:
+      type: int
+      attr: in, optional
+      doc: Type of LDA+U implementation (simplified or full).
+    hubbard_orbitals:
+      type: string
+      attr: in, optional
+      doc: Type of localized orbitals.
+    sht_coverage:
+      type: int
+      attr: in, optional
+      doc: Type of spherical coverage (0 for Lebedev-Laikov, 1 for uniform).
+    min_occupancy:
+      type: double
+      attr: in, optional
+      doc: Minimum band occupancy to trat is as "occupied".
+    smearing:
+      type: string
+      attr: in, optional
+      doc: Type of occupancy smearing.
+    smearing_width:
+      type: double
+      attr: in, optional
+      doc: Smearing width
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 void sirius_set_parameters(void*  const* handler__,
                            int    const* lmax_apw__,
                            int    const* lmax_rho__,
@@ -303,7 +538,6 @@ void sirius_set_parameters(void*  const* handler__,
                            bool   const* so_correction__,
                            char   const* valence_rel__,
                            char   const* core_rel__,
-                           char   const* esm_bc__,
                            double const* iter_solver_tol__,
                            double const* iter_solver_tol_empty__,
                            char   const* iter_solver_type__,
@@ -312,117 +546,194 @@ void sirius_set_parameters(void*  const* handler__,
                            int    const* hubbard_correction_kind__,
                            char   const* hubbard_orbitals__,
                            int    const* sht_coverage__,
-                           double const* min_occupancy__)
+                           double const* min_occupancy__,
+                           char   const* smearing__,
+                           double const* smearing_width__,
+                           int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    if (lmax_apw__ != nullptr) {
-        sim_ctx.set_lmax_apw(*lmax_apw__);
-    }
-    if (lmax_rho__ != nullptr) {
-        sim_ctx.set_lmax_rho(*lmax_rho__);
-    }
-    if (lmax_pot__ != nullptr) {
-        sim_ctx.set_lmax_pot(*lmax_pot__);
-    }
-    if (num_fv_states__ != nullptr) {
-        sim_ctx.num_fv_states(*num_fv_states__);
-    }
-    if (num_bands__ != nullptr) {
-        sim_ctx.num_bands(*num_bands__);
-    }
-    if (num_mag_dims__ != nullptr) {
-        sim_ctx.set_num_mag_dims(*num_mag_dims__);
-    }
-    if (pw_cutoff__ != nullptr) {
-        sim_ctx.pw_cutoff(*pw_cutoff__);
-    }
-    if (gk_cutoff__ != nullptr) {
-        sim_ctx.gk_cutoff(*gk_cutoff__);
-    }
-    if (auto_rmt__ != nullptr) {
-        sim_ctx.set_auto_rmt(*auto_rmt__);
-    }
-    if (gamma_point__ != nullptr) {
-        sim_ctx.gamma_point(*gamma_point__);
-    }
-    if (use_symmetry__ != nullptr) {
-        sim_ctx.use_symmetry(*use_symmetry__);
-    }
-    if (so_correction__ != nullptr) {
-        sim_ctx.so_correction(*so_correction__);
-    }
-    if (valence_rel__ != nullptr) {
-        sim_ctx.set_valence_relativity(valence_rel__);
-    }
-    if (core_rel__ != nullptr) {
-        sim_ctx.set_core_relativity(core_rel__);
-    }
-    if (esm_bc__ != nullptr) {
-        sim_ctx.esm_bc(std::string(esm_bc__));
-    }
-    if (iter_solver_tol__ != nullptr) {
-        sim_ctx.iterative_solver_tolerance(*iter_solver_tol__);
-    }
-    if (iter_solver_tol_empty__ != nullptr) {
-        sim_ctx.empty_states_tolerance(*iter_solver_tol_empty__);
-    }
-    if (iter_solver_type__ != nullptr) {
-        sim_ctx.iterative_solver_type(std::string(iter_solver_type__));
-    }
-    if (verbosity__ != nullptr) {
-        sim_ctx.verbosity(*verbosity__);
-    }
-    if (hubbard_correction__ != nullptr) {
-        sim_ctx.set_hubbard_correction(*hubbard_correction__);
-    }
-    if (hubbard_correction_kind__ != nullptr) {
-        if (*hubbard_correction_kind__ == 0) {
-            sim_ctx.set_hubbard_simplified_version();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        if (lmax_apw__ != nullptr) {
+            sim_ctx.set_lmax_apw(*lmax_apw__);
         }
-    }
-    if (hubbard_orbitals__ != nullptr) {
-        std::string s(hubbard_orbitals__);
-        if (s == "ortho-atomic") {
-            sim_ctx.set_orthogonalize_hubbard_orbitals(true);
+        if (lmax_rho__ != nullptr) {
+            sim_ctx.set_lmax_rho(*lmax_rho__);
         }
-        if (s == "norm-atomic") {
-            sim_ctx.set_normalize_hubbard_orbitals(true);
+        if (lmax_pot__ != nullptr) {
+            sim_ctx.set_lmax_pot(*lmax_pot__);
         }
-    }
-    if (fft_grid_size__ != nullptr) {
-        sim_ctx.fft_grid_size({fft_grid_size__[0], fft_grid_size__[1], fft_grid_size__[2]});
-    }
-    if (sht_coverage__ != nullptr) {
-        sim_ctx.sht_coverage(*sht_coverage__);
-    }
-    if (min_occupancy__ != nullptr) {
-        sim_ctx.min_occupancy(*min_occupancy__);
-    }
+        if (num_fv_states__ != nullptr) {
+            sim_ctx.num_fv_states(*num_fv_states__);
+        }
+        if (num_bands__ != nullptr) {
+            sim_ctx.num_bands(*num_bands__);
+        }
+        if (num_mag_dims__ != nullptr) {
+            sim_ctx.set_num_mag_dims(*num_mag_dims__);
+        }
+        if (pw_cutoff__ != nullptr) {
+            sim_ctx.pw_cutoff(*pw_cutoff__);
+        }
+        if (gk_cutoff__ != nullptr) {
+            sim_ctx.gk_cutoff(*gk_cutoff__);
+        }
+        if (auto_rmt__ != nullptr) {
+            sim_ctx.set_auto_rmt(*auto_rmt__);
+        }
+        if (gamma_point__ != nullptr) {
+            sim_ctx.gamma_point(*gamma_point__);
+        }
+        if (use_symmetry__ != nullptr) {
+            sim_ctx.use_symmetry(*use_symmetry__);
+        }
+        if (so_correction__ != nullptr) {
+            sim_ctx.so_correction(*so_correction__);
+        }
+        if (valence_rel__ != nullptr) {
+            sim_ctx.valence_relativity(valence_rel__);
+        }
+        if (core_rel__ != nullptr) {
+            sim_ctx.core_relativity(core_rel__);
+        }
+        if (iter_solver_tol__ != nullptr) {
+            sim_ctx.iterative_solver_tolerance(*iter_solver_tol__);
+        }
+        if (iter_solver_tol_empty__ != nullptr) {
+            sim_ctx.empty_states_tolerance(*iter_solver_tol_empty__);
+        }
+        if (iter_solver_type__ != nullptr) {
+            sim_ctx.iterative_solver_type(std::string(iter_solver_type__));
+        }
+        if (verbosity__ != nullptr) {
+            sim_ctx.verbosity(*verbosity__);
+        }
+        if (hubbard_correction__ != nullptr) {
+            sim_ctx.set_hubbard_correction(*hubbard_correction__);
+        }
+        if (hubbard_correction_kind__ != nullptr) {
+            if (*hubbard_correction_kind__ == 0) {
+                sim_ctx.set_hubbard_simplified_version();
+            }
+        }
+        if (hubbard_orbitals__ != nullptr) {
+            std::string s(hubbard_orbitals__);
+            if (s == "ortho-atomic") {
+                sim_ctx.set_orthogonalize_hubbard_orbitals(true);
+            }
+            if (s == "norm-atomic") {
+                sim_ctx.set_normalize_hubbard_orbitals(true);
+            }
+        }
+        if (fft_grid_size__ != nullptr) {
+            sim_ctx.fft_grid_size({fft_grid_size__[0], fft_grid_size__[1], fft_grid_size__[2]});
+        }
+        if (sht_coverage__ != nullptr) {
+            sim_ctx.sht_coverage(*sht_coverage__);
+        }
+        if (min_occupancy__ != nullptr) {
+            sim_ctx.min_occupancy(*min_occupancy__);
+        }
+        if (smearing__ != nullptr) {
+            sim_ctx.smearing(smearing__);
+        }
+        if (smearing_width__ != nullptr) {
+            sim_ctx.smearing_width(*smearing_width__);
+        }
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_parameters             Get parameters of the simulation.
-   @fortran argument in  required void* handler                   Simulation context handler
-   @fortran argument out optional int lmax_apw                    Maximum orbital quantum number for APW functions.
-   @fortran argument out optional int lmax_rho                    Maximum orbital quantum number for density.
-   @fortran argument out optional int lmax_pot                    Maximum orbital quantum number for potential.
-   @fortran argument out optional int num_fv_states               Number of first-variational states.
-   @fortran argument out optional int num_bands                   Number of bands.
-   @fortran argument out optional int num_mag_dims                Number of magnetic dimensions.
-   @fortran argument out optional double pw_cutoff                Cutoff for G-vectors.
-   @fortran argument out optional double gk_cutoff                Cutoff for G+k-vectors.
-   @fortran argument out optional int fft_grid_size               Size of the fine-grain FFT grid.
-   @fortran argument out optional int auto_rmt                    Set the automatic search of muffin-tin radii.
-   @fortran argument out optional bool gamma_point                True if this is a Gamma-point calculation.
-   @fortran argument out optional bool use_symmetry               True if crystal symmetry is taken into account.
-   @fortran argument out optional bool so_correction              True if spin-orbit correnctio is enabled.
-   @fortran argument out optional double iter_solver_tol          Tolerance of the iterative solver.
-   @fortran argument out optional double iter_solver_tol_empty    Tolerance for the empty states.
-   @fortran argument out optional int    verbosity                Verbosity level.
-   @fortran argument out optional bool   hubbard_correction       True if LDA+U correction is enabled.
-   @fortran argument out optional double evp_work_count           Internal counter of total eigen-value problem work.
-   @fortran argument out optional int    num_loc_op_applied       Internal counter of the number of wave-functions to which Hamiltonian was applied.
-   @fortran argument out optional int    error_code               Error code.
-   @fortran end */
+/*
+@api begin
+sirius_get_parameters:
+  doc: Get parameters of the simulation.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    lmax_apw:
+      type: int
+      attr: out, optional
+      doc: Maximum orbital quantum number for APW functions.
+    lmax_rho:
+      type: int
+      attr: out, optional
+      doc: Maximum orbital quantum number for density.
+    lmax_pot:
+      type: int
+      attr: out, optional
+      doc: Maximum orbital quantum number for potential.
+    num_fv_states:
+      type: int
+      attr: out, optional
+      doc: Number of first-variational states.
+    num_bands:
+      type: int
+      attr: out, optional
+      doc: Number of bands.
+    num_mag_dims:
+      type: int
+      attr: out, optional
+      doc: Number of magnetic dimensions.
+    pw_cutoff:
+      type: double
+      attr: out, optional
+      doc: Cutoff for G-vectors.
+    gk_cutoff:
+      type: double
+      attr: out, optional
+      doc: Cutoff for G+k-vectors.
+    fft_grid_size:
+      type: int
+      attr: out, optional, dimension(3)
+      doc: Size of the fine-grain FFT grid.
+    auto_rmt:
+      type: int
+      attr: out, optional
+      doc: Set the automatic search of muffin-tin radii.
+    gamma_point:
+      type: bool
+      attr: out, optional
+      doc: True if this is a Gamma-point calculation.
+    use_symmetry:
+      type: bool
+      attr: out, optional
+      doc: True if crystal symmetry is taken into account.
+    so_correction:
+      type: bool
+      attr: out, optional
+      doc: True if spin-orbit correnctio is enabled.
+    iter_solver_tol:
+      type: double
+      attr: out, optional
+      doc: Tolerance of the iterative solver.
+    iter_solver_tol_empty:
+      type: double
+      attr: out, optional
+      doc: Tolerance for the empty states.
+    verbosity:
+      type: int
+      attr: out, optional
+      doc: Verbosity level.
+    hubbard_correction:
+      type: bool
+      attr: out, optional
+      doc: True if LDA+U correction is enabled.
+    evp_work_count:
+      type: double
+      attr: out, optional
+      doc: Internal counter of total eigen-value problem work.
+    num_loc_op_applied:
+      type: int
+      attr: out, optional
+      doc: Internal counter of the number of wave-functions to which Hamiltonian was applied.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 void sirius_get_parameters(void* const* handler__,
                            int*         lmax_apw__,
                            int*         lmax_rho__,
@@ -488,10 +799,10 @@ void sirius_get_parameters(void* const* handler__,
             *iter_solver_tol__ = sim_ctx.iterative_solver_tolerance();
         }
         if (iter_solver_tol_empty__ != nullptr) {
-            *iter_solver_tol_empty__ = sim_ctx.iterative_solver_input().empty_states_tolerance_;
+            *iter_solver_tol_empty__ = sim_ctx.cfg().iterative_solver().empty_states_tolerance();
         }
         if (verbosity__ != nullptr) {
-            *verbosity__ = sim_ctx.control().verbosity_;
+            *verbosity__ = sim_ctx.verbosity();
         }
         if (hubbard_correction__ != nullptr) {
             *hubbard_correction__ = sim_ctx.hubbard_correction();
@@ -511,51 +822,111 @@ void sirius_get_parameters(void* const* handler__,
 }
 
 
-/* @fortran begin function void sirius_add_xc_functional         Add one of the XC functionals.
-   @fortran argument in required void* handler                   Simulation context handler
-   @fortran argument in required string name                     LibXC label of the functional.
-   @fortran end */
-void sirius_add_xc_functional(void* const* handler__,
-                              char  const* name__)
+/*
+@api begin
+sirius_add_xc_functional:
+  doc: Add one of the XC functionals.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    name:
+      type: string
+      attr: in, required
+      doc: LibXC label of the functional.
+@api end
+*/
+void sirius_add_xc_functional(void* const* handler__, char const* name__)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     sim_ctx.add_xc_functional(std::string(name__));
 }
 
-/* @fortran begin function void sirius_insert_xc_functional         Add one of the XC functionals.
-   @fortran argument in required void* gs_handler                Handler of the ground state
-   @fortran argument in required string name                     LibXC label of the functional.
-   @fortran end */
-void
-sirius_insert_xc_functional(void* const* gs_handler__,
-                            char const* name__)
+/*
+@api begin
+sirius_insert_xc_functional:
+  doc: Add one of the XC functionals.
+  arguments:
+    gs_handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the ground state
+    name:
+      type: string
+      attr: in, required
+      doc: LibXC label of the functional.
+@api end
+*/
+void sirius_insert_xc_functional(void* const* gs_handler__,
+                                 char const* name__)
 {
     auto& gs = get_gs(gs_handler__);
     auto& potential = gs.potential();
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank==0)
+        std::cout << "insert functional: " << name__ << "\n";
     potential.insert_xc_functionals({name__});
 }
 
-/* @fortran begin function void sirius_set_mpi_grid_dims      Set dimensions of the MPI grid.
-   @fortran argument in required void*  handler               Simulation context handler
-   @fortran argument in required int    ndims                 Number of dimensions.
-   @fortran argument in required int    dims                  Size of each dimension.
-   @fortran end */
-void sirius_set_mpi_grid_dims(void* const* handler__,
-                              int   const* ndims__,
-                              int   const* dims__)
+/*
+@api begin
+sirius_set_mpi_grid_dims:
+  doc: Set dimensions of the MPI grid.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    ndims:
+      type: int
+      attr: in, required
+      doc: Number of dimensions.
+    dims:
+      type: int
+      attr: in, required, dimension(ndims)
+      doc: Size of each dimension.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_set_mpi_grid_dims(void* const* handler__, int const* ndims__, int const* dims__, int* error_code__)
 {
-    assert(*ndims__ > 0);
-    auto& sim_ctx = get_sim_ctx(handler__);
-    std::vector<int> dims(dims__, dims__ + *ndims__);
-    sim_ctx.mpi_grid_dims(dims);
+    call_sirius([&]()
+    {
+        assert(*ndims__ > 0);
+        auto& sim_ctx = get_sim_ctx(handler__);
+        std::vector<int> dims(dims__, dims__ + *ndims__);
+        sim_ctx.mpi_grid_dims(dims);
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_set_lattice_vectors   Set vectors of the unit cell.
-   @fortran argument in required void* handler               Simulation context handler
-   @fortran argument in required double a1                   1st vector
-   @fortran argument in required double a2                   2nd vector
-   @fortran argument in required double a3                   3rd vector
-   @fortran end */
+/*
+@api begin
+sirius_set_lattice_vectors:
+  doc: Set vectors of the unit cell.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    a1:
+      type: double
+      attr: in, required, dimension(3)
+      doc: 1st vector
+    a2:
+      type: double
+      attr: in, required, dimension(3)
+      doc: 2nd vector
+    a3:
+      type: double
+      attr: in, required, dimension(3)
+      doc: 3rd vector
+@api end
+*/
 void sirius_set_lattice_vectors(void*  const* handler__,
                                 double const* a1__,
                                 double const* a2__,
@@ -565,50 +936,122 @@ void sirius_set_lattice_vectors(void*  const* handler__,
     sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__), vector3d<double>(a3__));
 }
 
-/* @fortran begin function void sirius_initialize_context     Initialize simulation context.
-   @fortran argument in required void* handler                Simulation context handler.
-   @fortran end */
-void sirius_initialize_context(void* const* handler__)
+/*
+@api begin
+sirius_initialize_context:
+  doc: Initialize simulation context.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_initialize_context(void* const* handler__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.initialize();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        sim_ctx.initialize();
+        return 0;
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_update_context     Update simulation context after changing lattice or atomic positions.
-   @fortran argument in required void* handler            Simulation context handler.
-   @fortran end */
-void sirius_update_context(void* const* handler__)
+/*
+@api begin
+sirius_update_context:
+  doc: Update simulation context after changing lattice or atomic positions.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_update_context(void* const* handler__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    sim_ctx.update();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        sim_ctx.update();
+        return 0;
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_print_info      Print basic info
-   @fortran argument in required void* handler         Simulation context handler.
-   @fortran end */
+/*
+@api begin
+sirius_print_info:
+  doc: Print basic info
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+@api end
+*/
 void sirius_print_info(void* const* handler__)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
     sim_ctx.print_info();
 }
 
-/* @fortran begin function void sirius_free_handler     Free any handler of object created by SIRIUS.
-   @fortran argument inout required void* handler       Handler of the object.
-   @fortran end */
-void sirius_free_handler(void** handler__)
+/*
+@api begin
+sirius_free_handler:
+  doc: Free any handler of object created by SIRIUS.
+  arguments:
+    handler:
+      type: void*
+      attr: inout, required
+      doc: Handler of the object.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void sirius_free_handler(void** handler__, int* error_code__)
 {
-    if (*handler__ != nullptr) {
-        delete static_cast<utils::any_ptr*>(*handler__);
-    }
-    *handler__ = nullptr;
+    call_sirius([&]()
+    {
+        if (*handler__ != nullptr) {
+            delete static_cast<utils::any_ptr*>(*handler__);
+        }
+        *handler__ = nullptr;
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_set_periodic_function_ptr   Set pointer to density or megnetization.
-   @fortran argument in required void* handler                     Handler of the DFT ground state object.
-   @fortran argument in required string label                      Label of the function.
-   @fortran argument in optional double f_mt                       Pointer to the muffin-tin part of the function.
-   @fortran argument in optional double f_rg                       Pointer to the regualr-grid part of the function.
-   @fortran end */
+/*
+@api begin
+sirius_set_periodic_function_ptr:
+  doc: Set pointer to density or megnetization.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the DFT ground state object.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the function.
+    f_mt:
+      type: double
+      attr: in, optional
+      doc: Pointer to the muffin-tin part of the function.
+    f_rg:
+      type: double
+      attr: in, optional
+      doc: Pointer to the regualr-grid part of the function.
+@api end
+*/
 void sirius_set_periodic_function_ptr(void*  const* handler__,
                                       char   const* label__,
                                       double*       f_mt__,
@@ -646,75 +1089,158 @@ void sirius_set_periodic_function_ptr(void*  const* handler__,
     }
 }
 
-/* @fortran begin function void* sirius_create_kset        Create k-point set from the list of k-points.
-   @fortran argument in  required void*  handler           Simulation context handler.
-   @fortran argument in  required int    num_kpoints       Total number of k-points in the set.
-   @fortran argument in  required double kpoints           List of k-points in lattice coordinates.
-   @fortran argument in  required double kpoint_weights    Weights of k-points.
-   @fortran argument in  required bool   init_kset         If .true. k-set will be initialized.
-   @fortran end */
-void* sirius_create_kset(void*  const* handler__,
-                         int    const* num_kpoints__,
-                         double*       kpoints__,
-                         double const* kpoint_weights__,
-                         bool   const* init_kset__)
+/*
+@api begin
+sirius_create_kset:
+  doc: Create k-point set from the list of k-points.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    num_kpoints:
+      type: int
+      attr: in, required
+      doc: Total number of k-points in the set.
+    kpoints:
+      type: double
+      attr: in, required, dimension(3,num_kpoints)
+      doc: List of k-points in lattice coordinates.
+    kpoint_weights:
+      type: double
+      attr: in, required, dimension(num_kpoints)
+      doc: Weights of k-points.
+    init_kset:
+      type: bool
+      attr: in, required
+      doc: If .true. k-set will be initialized.
+    kset_handler:
+      type: void*
+      attr: out, required
+      doc: Handler of the newly created k-point set.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_create_kset(void* const* handler__, int const* num_kpoints__, double* kpoints__,
+                        double const* kpoint_weights__, bool const* init_kset__, void** kset_handler__,
+                        int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
 
-    mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
+        mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
 
-    sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx);
-    new_kset->add_kpoints(kpoints, kpoint_weights__);
-    if (*init_kset__) {
-        new_kset->initialize();
-    }
-
-    return new utils::any_ptr(new_kset);
+        sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx);
+        new_kset->add_kpoints(kpoints, kpoint_weights__);
+        if (*init_kset__) {
+            new_kset->initialize();
+        }
+        *kset_handler__ = new utils::any_ptr(new_kset);
+    }, error_code__);
 }
 
-/* @fortran begin function void* sirius_create_kset_from_grid        Create k-point set from a grid.
-   @fortran argument in  required void*  handler                     Simulation context handler.
-   @fortran argument in  required int    k_grid                      dimensions of the k points grid.
-   @fortran argument in  required int k_shift                        k point shifts.
-   @fortran argument in  required bool   use_symmetry                If .true. k-set will be generated using symmetries.
-   @fortran end */
-
-void *sirius_create_kset_from_grid(void* const* handler__,
-                                   int   const* k_grid__,
-                                   int   const* k_shift__,
-                                   bool  const* use_symmetry)
+/*
+@api begin
+sirius_create_kset_from_grid:
+  doc: Create k-point set from a grid.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    k_grid:
+      type: int
+      attr: in, required, dimension(3)
+      doc: dimensions of the k points grid.
+    k_shift:
+      type: int
+      attr: in, required, dimension(3)
+      doc: k point shifts.
+    use_symmetry:
+      type: bool
+      attr: in, required
+      doc: If .true. k-set will be generated using symmetries.
+    kset_handler:
+      type: void*
+      attr: out, required
+      doc: Handler of the newly created k-point set.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_create_kset_from_grid(void* const* handler__, int const* k_grid__, int const* k_shift__,
+                                  bool const* use_symmetry, void** kset_handler__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    std::vector<int> k_grid(3);
-    std::vector<int> k_shift(3);
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        std::vector<int> k_grid(3);
+        std::vector<int> k_shift(3);
 
-    k_grid[0] = k_grid__[0];
-    k_grid[1] = k_grid__[1];
-    k_grid[2] = k_grid__[2];
+        k_grid[0] = k_grid__[0];
+        k_grid[1] = k_grid__[1];
+        k_grid[2] = k_grid__[2];
 
-    k_shift[0] = k_shift__[0];
-    k_shift[1] = k_shift__[1];
-    k_shift[2] = k_shift__[2];
+        k_shift[0] = k_shift__[0];
+        k_shift[1] = k_shift__[1];
+        k_shift[2] = k_shift__[2];
 
-    sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx, k_grid, k_shift, *use_symmetry);
+        sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx, k_grid, k_shift, *use_symmetry);
 
-    return new utils::any_ptr(new_kset);
+        *kset_handler__ = new utils::any_ptr(new_kset);
+    }, error_code__);
 }
 
-/* @fortran begin function void* sirius_create_ground_state    Create a ground state object.
-   @fortran argument in  required void*  ks_handler            Handler of the k-point set.
-   @fortran end */
-void* sirius_create_ground_state(void* const* ks_handler__)
+/*
+@api begin
+sirius_create_ground_state:
+  doc: Create a ground state object.
+  arguments:
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the k-point set.
+    gs_handler:
+      type: void*
+      attr: out, required
+      doc: Handler of the newly created ground state object.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_create_ground_state(void* const* ks_handler__, void** gs_handler__, int* error_code__)
 {
-    auto& ks = get_ks(ks_handler__);
+    call_sirius([&]()
+    {
+        auto& ks = get_ks(ks_handler__);
 
-    return new utils::any_ptr(new sirius::DFT_ground_state(ks));
+        *gs_handler__ = new utils::any_ptr(new sirius::DFT_ground_state(ks));
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_initialize_kset    Initialize k-point set.
-   @fortran argument in required void* ks_handler         K-point set handler.
-   @fortran argument out optional int error_code          Error code.
-   @fortran end */
+/*
+@api begin
+sirius_initialize_kset:
+  doc: Initialize k-point set.
+  arguments:
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 void sirius_initialize_kset(void* const* ks_handler__, int* error_code__)
 {
     call_sirius([&]()
@@ -724,13 +1250,33 @@ void sirius_initialize_kset(void* const* ks_handler__, int* error_code__)
     }, error_code__);
 }
 
-/* @fortran begin function void sirius_find_ground_state        Find the ground state.
-   @fortran argument in required void*  gs_handler              Handler of the ground state.
-   @fortran argument in optional double density_tol             Tolerance on RMS in density.
-   @fortran argument in optional double energy_tol              Tolerance in total energy difference.
-   @fortran argument in optional int    niter                   Maximum number of SCF iterations.
-   @fortran argument in optional bool   save_state              boolean variable indicating if we want to save the ground state.
-   @fortran end */
+/*
+@api begin
+sirius_find_ground_state:
+  doc: Find the ground state.
+  arguments:
+    gs_handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the ground state.
+    density_tol:
+      type: double
+      attr: in, optional
+      doc: Tolerance on RMS in density.
+    energy_tol:
+      type: double
+      attr: in, optional
+      doc: Tolerance in total energy difference.
+    niter:
+      type: int
+      attr: in, optional
+      doc: Maximum number of SCF iterations.
+    save_state:
+      type: bool
+      attr: in, optional
+      doc: boolean variable indicating if we want to save the ground state.
+@api end
+*/
 void sirius_find_ground_state(void*  const* gs_handler__,
                               double const* density_tol__,
                               double const* energy_tol__,
@@ -739,20 +1285,20 @@ void sirius_find_ground_state(void*  const* gs_handler__,
 {
     auto& gs = get_gs(gs_handler__);
     auto& ctx = gs.ctx();
-    auto& inp = ctx.parameters_input();
+    auto& inp = ctx.cfg().parameters();
     gs.initial_state();
 
-    double rho_tol = inp.density_tol_;
+    double rho_tol = inp.density_tol();
     if (density_tol__) {
         rho_tol = *density_tol__;
     }
 
-    double etol = inp.energy_tol_;
+    double etol = inp.energy_tol();
     if (energy_tol__) {
         etol = *energy_tol__;
     }
 
-    int niter = inp.num_dft_iter_;
+    int niter = inp.num_dft_iter();
     if (niter__) {
         niter = *niter__;
     }
@@ -765,20 +1311,73 @@ void sirius_find_ground_state(void*  const* gs_handler__,
     auto result = gs.find(rho_tol, etol, ctx.iterative_solver_tolerance(), niter, save);
 }
 
-/* @fortran begin function void sirius_find_ground_state_robust     Find the ground state using the robust
-   wave-function optimization.
-   @fortran argument in required void*  gs_handler                  Handler of the ground state.
-   @fortran argument in required void*  ks_handler                  Handler of the k-point set.
-   @fortran argument in optional double scf_density_tol             Tolerance on RMS in density.
-   @fortran argument in optional double scf_energy_tol              Tolerance in total energy difference.
-   @fortran argument in optional int    scf_ninit__                 Number of SCF iterations.
-   @fortran argument in optional double temp__                      Temperature.
-   @fortran argument in optional double tol__                       Tolerance.
-   @fortran argument in optional int    cg_restart__                CG restart.
-   @fortran argument in optional char[] smearing__                  Smearing "FD" for Fermi-Dirac or "GS" for Gaussian-Spline.
-   @fortran argument in optional double kappa__                     Scalar preconditioner for pseudo Hamiltonian
-   ground state.
-   @fortran end */
+/*
+@api begin
+sirius_check_scf_density:
+  doc: Check the self-consistent density
+  arguments:
+    gs_handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the ground state.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void sirius_check_scf_density(void* const* gs_handler__, int* error_code__)
+{
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(gs_handler__);
+        gs.check_scf_density();
+    }, error_code__);
+}
+
+/*
+@api begin
+sirius_find_ground_state_robust:
+  doc: Find the ground state using the robust
+  arguments:
+    gs_handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the ground state.
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: Handler of the k-point set.
+    scf_density_tol:
+      type: double
+      attr: in, optional
+      doc: Tolerance on RMS in density.
+    scf_energy_tol:
+      type: double
+      attr: in, optional
+      doc: Tolerance in total energy difference.
+    scf_ninit__:
+      type: int
+      attr: in, optional
+      doc: Number of SCF iterations.
+    temp__:
+      type: double
+      attr: in, optional
+      doc: Temperature.
+    tol__:
+      type: double
+      attr: in, optional
+      doc: Tolerance.
+    cg_restart__:
+      type: int
+      attr: in, optional
+      doc: CG restart.
+    kappa__:
+      type: double
+      attr: in, optional
+      doc: Scalar preconditioner for pseudo Hamiltonian
+@api end
+*/
 void sirius_find_ground_state_robust(void*  const* gs_handler__,
                                      void*  const* ks_handler__,
                                      double const* scf_density_tol__,
@@ -788,7 +1387,7 @@ void sirius_find_ground_state_robust(void*  const* gs_handler__,
                                      double const* tol__
                                     )
 {
-#ifdef __NLCGLIB
+#ifdef SIRIUS_NLCGLIB
     auto& gs = get_gs(gs_handler__);
     auto& ctx = gs.ctx();
     auto& inp = ctx.parameters_input();
@@ -864,59 +1463,113 @@ void sirius_find_ground_state_robust(void*  const* gs_handler__,
 }
 
 
-/* @fortran begin function void sirius_update_ground_state   Update a ground state object after change of atomic coordinates or lattice vectors.
-   @fortran argument in  required void*  gs_handler          Ground-state handler.
-   @fortran end */
+/*
+@api begin
+sirius_update_ground_state:
+  doc: Update a ground state object after change of atomic coordinates or lattice vectors.
+  arguments:
+    gs_handler:
+      type: void*
+      attr: in, required
+      doc: Ground-state handler.
+@api end
+*/
 void sirius_update_ground_state(void** handler__)
 {
     auto& gs = get_gs(handler__);
     gs.update();
 }
 
-/* @fortran begin function void sirius_add_atom_type     Add new atom type to the unit cell.
-   @fortran argument in  required void*  handler         Simulation context handler.
-   @fortran argument in  required string label           Atom type unique label.
-   @fortran argument in  optional string fname           Species file name (in JSON format).
-   @fortran argument in  optional int    zn              Nucleus charge.
-   @fortran argument in  optional string symbol          Atomic symbol.
-   @fortran argument in  optional double mass            Atomic mass.
-   @fortran argument in  optional bool   spin_orbit      True if spin-orbit correction is enabled for this atom type.
-   @fortran end */
-void sirius_add_atom_type(void*  const* handler__,
-                          char   const* label__,
-                          char   const* fname__,
-                          int    const* zn__,
-                          char   const* symbol__,
-                          double const* mass__,
-                          bool   const* spin_orbit__)
+/*
+@api begin
+sirius_add_atom_type:
+  doc: Add new atom type to the unit cell.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type unique label.
+    fname:
+      type: string
+      attr: in, optional
+      doc: Species file name (in JSON format).
+    zn:
+      type: int
+      attr: in, optional
+      doc: Nucleus charge.
+    symbol:
+      type: string
+      attr: in, optional
+      doc: Atomic symbol.
+    mass:
+      type: double
+      attr: in, optional
+      doc: Atomic mass.
+    spin_orbit:
+      type: bool
+      attr: in, optional
+      doc: True if spin-orbit correction is enabled for this atom type.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_add_atom_type(void* const* handler__, char const* label__, char const* fname__, int const* zn__,
+                          char const* symbol__, double const* mass__, bool const* spin_orbit__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
 
-    std::string label = std::string(label__);
-    std::string fname = (fname__ == nullptr) ? std::string("") : std::string(fname__);
-    sim_ctx.unit_cell().add_atom_type(label, fname);
+        std::string label = std::string(label__);
+        std::string fname = (fname__ == nullptr) ? std::string("") : std::string(fname__);
+        sim_ctx.unit_cell().add_atom_type(label, fname);
 
-    auto& type = sim_ctx.unit_cell().atom_type(label);
-    if (zn__ != nullptr) {
-        type.set_zn(*zn__);
-    }
-    if (symbol__ != nullptr) {
-        type.set_symbol(std::string(symbol__));
-    }
-    if (mass__ != nullptr) {
-        type.set_mass(*mass__);
-    }
-    if (spin_orbit__ != nullptr) {
-        type.spin_orbit_coupling(*spin_orbit__);
-    }
+        auto& type = sim_ctx.unit_cell().atom_type(label);
+        if (zn__ != nullptr) {
+            type.set_zn(*zn__);
+        }
+        if (symbol__ != nullptr) {
+            type.set_symbol(std::string(symbol__));
+        }
+        if (mass__ != nullptr) {
+            type.set_mass(*mass__);
+        }
+        if (spin_orbit__ != nullptr) {
+            type.spin_orbit_coupling(*spin_orbit__);
+        }
+        return 0;
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_set_atom_type_radial_grid        Set radial grid of the atom type.
-   @fortran argument in  required void*  handler                        Simulation context handler.
-   @fortran argument in  required string label                          Atom type label.
-   @fortran argument in  required int    num_radial_points              Number of radial grid points.
-   @fortran argument in  required double radial_points                  List of radial grid points.
-   @fortran end */
+/*
+@api begin
+sirius_set_atom_type_radial_grid:
+  doc: Set radial grid of the atom type.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    num_radial_points:
+      type: int
+      attr: in, required
+      doc: Number of radial grid points.
+    radial_points:
+      type: double
+      attr: in, required, dimension(num_radial_points)
+      doc: List of radial grid points.
+@api end
+*/
 void sirius_set_atom_type_radial_grid(void*  const* handler__,
                                       char   const* label__,
                                       int    const* num_radial_points__,
@@ -928,12 +1581,29 @@ void sirius_set_atom_type_radial_grid(void*  const* handler__,
     type.set_radial_grid(*num_radial_points__, radial_points__);
 }
 
-/* @fortran begin function void sirius_set_atom_type_radial_grid_inf    Set radial grid of the free atom (up to effectice infinity).
-   @fortran argument in  required void*  handler                        Simulation context handler.
-   @fortran argument in  required string label                          Atom type label.
-   @fortran argument in  required int    num_radial_points              Number of radial grid points.
-   @fortran argument in  required double radial_points                  List of radial grid points.
-   @fortran end */
+/*
+@api begin
+sirius_set_atom_type_radial_grid_inf:
+  doc: Set radial grid of the free atom (up to effectice infinity).
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    num_radial_points:
+      type: int
+      attr: in, required
+      doc: Number of radial grid points.
+    radial_points:
+      type: double
+      attr: in, required, dimension(num_radial_points)
+      doc: List of radial grid points.
+@api end
+*/
 void sirius_set_atom_type_radial_grid_inf(void*  const* handler__,
                                           char   const* label__,
                                           int    const* num_radial_points__,
@@ -945,18 +1615,53 @@ void sirius_set_atom_type_radial_grid_inf(void*  const* handler__,
     type.set_free_atom_radial_grid(*num_radial_points__, radial_points__);
 }
 
-/* @fortran begin function void sirius_add_atom_type_radial_function    Add one of the radial functions.
-   @fortran argument in  required void*  handler                        Simulation context handler.
-   @fortran argument in  required string atom_type                      Label of the atom type.
-   @fortran argument in  required string label                          Label of the radial function.
-   @fortran argument in  required double rf                             Array with radial function values.
-   @fortran argument in  required int    num_points                     Length of radial function array.
-   @fortran argument in  optional int    n                              Orbital quantum number.
-   @fortran argument in  optional int    l                              angular momentum.
-   @fortran argument in  optional int    idxrf1                         First index of radial function (for Q-operator).
-   @fortran argument in  optional int    idxrf2                         Second index of radial function (for Q-operator).
-   @fortran argument in  optional double occ                            Occupancy of the wave-function.
-   @fortran end */
+/*
+@api begin
+sirius_add_atom_type_radial_function:
+  doc: Add one of the radial functions.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    atom_type:
+      type: string
+      attr: in, required
+      doc: Label of the atom type.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the radial function.
+    rf:
+      type: double
+      attr: in, required, dimension(num_points)
+      doc: Array with radial function values.
+    num_points:
+      type: int
+      attr: in, required
+      doc: Length of radial function array.
+    n:
+      type: int
+      attr: in, optional
+      doc: Orbital quantum number.
+    l:
+      type: int
+      attr: in, optional
+      doc: angular momentum.
+    idxrf1:
+      type: int
+      attr: in, optional
+      doc: First index of radial function (for Q-operator).
+    idxrf2:
+      type: int
+      attr: in, optional
+      doc: Second index of radial function (for Q-operator).
+    occ:
+      type: double
+      attr: in, optional
+      doc: Occupancy of the wave-function.
+@api end
+*/
 void sirius_add_atom_type_radial_function(void*  const* handler__,
                                           char   const* atom_type__,
                                           char   const* label__,
@@ -985,7 +1690,7 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
 
         int n = (n__) ? *n__ : -1;
         double occ = (occ__) ? *occ__ : 0.0;
-        type.add_ps_atomic_wf(n, *l__, std::vector<double>(rf__, rf__ + *num_points__), occ);
+        type.add_ps_atomic_wf(n, sirius::experimental::aqn(*l__), std::vector<double>(rf__, rf__ + *num_points__), occ);
     } else if (label == "ps_rho_core") {
         type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
     } else if (label == "ps_rho_total") {
@@ -1015,18 +1720,53 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_set_atom_type_hubbard    Set the hubbard correction for the atomic type.
-   @fortran argument in  required void*   handler               Simulation context handler.
-   @fortran argument in  required string  label                 Atom type label.
-   @fortran argument in  required int     l                     Orbital quantum number.
-   @fortran argument in  required int     n                     principal quantum number (s, p, d, f)
-   @fortran argument in  required double  occ                   Atomic shell occupancy.
-   @fortran argument in  required double  U                     Hubbard U parameter.
-   @fortran argument in  required double  J                     Exchange J parameter for the full interaction treatment.
-   @fortran argument in  required double  alpha                 J_alpha for the simple interaction treatment.
-   @fortran argument in  required double  beta                  J_beta for the simple interaction treatment.
-   @fortran argument in  required double  J0                    J0 for the simple interaction treatment.
-   @fortran end */
+/*
+@api begin
+sirius_set_atom_type_hubbard:
+  doc: Set the hubbard correction for the atomic type.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    l:
+      type: int
+      attr: in, required
+      doc: Orbital quantum number.
+    n:
+      type: int
+      attr: in, required
+      doc: principal quantum number (s, p, d, f)
+    occ:
+      type: double
+      attr: in, required
+      doc: Atomic shell occupancy.
+    U:
+      type: double
+      attr: in, required
+      doc: Hubbard U parameter.
+    J:
+      type: double
+      attr: in, required
+      doc: Exchange J parameter for the full interaction treatment.
+    alpha:
+      type: double
+      attr: in, required
+      doc: J_alpha for the simple interaction treatment.
+    beta:
+      type: double
+      attr: in, required
+      doc: J_beta for the simple interaction treatment.
+    J0:
+      type: double
+      attr: in, required
+      doc: J0 for the simple interaction treatment.
+@api end
+*/
 void sirius_set_atom_type_hubbard(void*  const* handler__,
                                   char   const* label__,
                                   int    const* l__,
@@ -1041,15 +1781,32 @@ void sirius_set_atom_type_hubbard(void*  const* handler__,
     auto& sim_ctx = get_sim_ctx(handler__);
     auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
     type.hubbard_correction(true);
-    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__);
+    type.add_hubbard_orbital(*n__, *l__, *occ__, *U__, J__[1], J__, *alpha__, *beta__, *J0__, std::vector<double>());
 }
 
-/* @fortran begin function void sirius_set_atom_type_dion     Set ionic part of D-operator matrix.
-   @fortran argument in  required void*   handler             Simulation context handler.
-   @fortran argument in  required string  label               Atom type label.
-   @fortran argument in  required int     num_beta            Number of beta-projectors.
-   @fortran argument in  required double  dion                Ionic part of D-operator matrix.
-   @fortran end */
+/*
+@api begin
+sirius_set_atom_type_dion:
+  doc: Set ionic part of D-operator matrix.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    num_beta:
+      type: int
+      attr: in, required
+      doc: Number of beta-projectors.
+    dion:
+      type: double
+      attr: in, required, dimension(num_beta, num_beta)
+      doc: Ionic part of D-operator matrix.
+@api end
+*/
 void sirius_set_atom_type_dion(void*  const* handler__,
                                char   const* label__,
                                int    const* num_beta__,
@@ -1061,13 +1818,33 @@ void sirius_set_atom_type_dion(void*  const* handler__,
     type.d_mtrx_ion(dion);
 }
 
-/* @fortran begin function void sirius_set_atom_type_paw   Set PAW related data.
-   @fortran argument in  required void*   handler          Simulation context handler.
-   @fortran argument in  required string  label            Atom type label.
-   @fortran argument in  required double  core_energy      Core-electrons energy contribution.
-   @fortran argument in  required double  occupations      ?
-   @fortran argument in  required int     num_occ          ?
-   @fortran end */
+/*
+@api begin
+sirius_set_atom_type_paw:
+  doc: Set PAW related data.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    core_energy:
+      type: double
+      attr: in, required
+      doc: Core-electrons energy contribution.
+    occupations:
+      type: double
+      attr: in, required, dimension(num_occ)
+      doc: array of orbital occupancies
+    num_occ:
+      type: int
+      attr: in, required
+      doc: size of the occupations array
+@api end
+*/
 void sirius_set_atom_type_paw(void*  const* handler__,
                               char   const* label__,
                               double const* core_energy__,
@@ -1090,12 +1867,29 @@ void sirius_set_atom_type_paw(void*  const* handler__,
     type.paw_wf_occ(std::vector<double>(occupations__, occupations__ + type.num_beta_radial_functions()));
 }
 
-/* @fortran begin function void sirius_add_atom         Add atom to the unit cell.
-   @fortran argument in  required void*   handler       Simulation context handler.
-   @fortran argument in  required string  label         Atom type label.
-   @fortran argument in  required double  position      Atom position in lattice coordinates.
-   @fortran argument in  optional double  vector_field  Starting magnetization.
-   @fortran end */
+/*
+@api begin
+sirius_add_atom:
+  doc: Add atom to the unit cell.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    position:
+      type: double
+      attr: in, required, dimension(3)
+      doc: Atom position in lattice coordinates.
+    vector_field:
+      type: double
+      attr: in, optional, dimension(3)
+      doc: Starting magnetization.
+@api end
+*/
 void sirius_add_atom(void*  const* handler__,
                      char   const* label__,
                      double const* position__,
@@ -1109,11 +1903,25 @@ void sirius_add_atom(void*  const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_set_atom_position  Set new atomic position.
-   @fortran argument in  required void*   handler       Simulation context handler.
-   @fortran argument in  required int     ia            Index of atom.
-   @fortran argument in  required double  position      Atom position in lattice coordinates.
-   @fortran end */
+/*
+@api begin
+sirius_set_atom_position:
+  doc: Set new atomic position.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Index of atom; index starts form 1
+    position:
+      type: double
+      attr: in, required, dimension(3)
+      doc: Atom position in lattice coordinates.
+@api end
+*/
 void sirius_set_atom_position(void*  const* handler__,
                               int    const* ia__,
                               double const* position__)
@@ -1122,15 +1930,41 @@ void sirius_set_atom_position(void*  const* handler__,
     sim_ctx.unit_cell().atom(*ia__ - 1).set_position(std::vector<double>(position__, position__ + 3));
 }
 
-/* @fortran begin function void sirius_set_pw_coeffs         Set plane-wave coefficients of a periodic function.
-   @fortran argument in  required void*   handler            Ground state handler.
-   @fortran argument in  required string  label              Label of the function.
-   @fortran argument in  required complex pw_coeffs          Local array of plane-wave coefficients.
-   @fortran argument in  optional bool    transform_to_rg    True if function has to be transformed to real-space grid.
-   @fortran argument in  optional int     ngv                Local number of G-vectors.
-   @fortran argument in  optional int     gvl                List of G-vectors in lattice coordinates (Miller indices).
-   @fortran argument in  optional int     comm               MPI communicator used in distribution of G-vectors
-   @fortran end */
+/*
+@api begin
+sirius_set_pw_coeffs:
+  doc: Set plane-wave coefficients of a periodic function.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the function.
+    pw_coeffs:
+      type: complex
+      attr: in, required, dimension(*)
+      doc: Local array of plane-wave coefficients.
+    transform_to_rg:
+      type: bool
+      attr: in, optional
+      doc: True if function has to be transformed to real-space grid.
+    ngv:
+      type: int
+      attr: in, optional
+      doc: Local number of G-vectors.
+    gvl:
+      type: int
+      attr: in, optional, dimension(3, *)
+      doc: List of G-vectors in lattice coordinates (Miller indices).
+    comm:
+      type: int
+      attr: in, optional
+      doc: MPI communicator used in distribution of G-vectors
+@api end
+*/
 void sirius_set_pw_coeffs(void*                const* handler__,
                           char                 const* label__,
                           std::complex<double> const* pw_coeffs__,
@@ -1217,14 +2051,37 @@ void sirius_set_pw_coeffs(void*                const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_pw_coeffs      Get plane-wave coefficients of a periodic function.
-   @fortran argument in  required void*   handler         Ground state handler.
-   @fortran argument in  required string  label           Label of the function.
-   @fortran argument in  required complex pw_coeffs       Local array of plane-wave coefficients.
-   @fortran argument in  optional int     ngv             Local number of G-vectors.
-   @fortran argument in  optional int     gvl             List of G-vectors in lattice coordinates (Miller indices).
-   @fortran argument in  optional int     comm            MPI communicator used in distribution of G-vectors
-   @fortran end */
+/*
+@api begin
+sirius_get_pw_coeffs:
+  doc: Get plane-wave coefficients of a periodic function.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the function.
+    pw_coeffs:
+      type: complex
+      attr: in, required, dimension(*)
+      doc: Local array of plane-wave coefficients.
+    ngv:
+      type: int
+      attr: in, optional
+      doc: Local number of G-vectors.
+    gvl:
+      type: int
+      attr: in, optional, dimension(3, *)
+      doc: List of G-vectors in lattice coordinates (Miller indices).
+    comm:
+      type: int
+      attr: in, optional
+      doc: MPI communicator used in distribution of G-vectors
+@api end
+*/
 void sirius_get_pw_coeffs(void*                const* handler__,
                           char                 const* label__,
                           std::complex<double>*       pw_coeffs__,
@@ -1295,15 +2152,41 @@ void sirius_get_pw_coeffs(void*                const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_pw_coeffs_real   Get atom type contribution to plane-wave coefficients of a periodic function.
-   @fortran argument in  required void*   handler           Simulation context handler.
-   @fortran argument in  required string  atom_type         Label of the atom type.
-   @fortran argument in  required string  label             Label of the function.
-   @fortran argument in  required double  pw_coeffs         Local array of plane-wave coefficients.
-   @fortran argument in  optional int     ngv               Local number of G-vectors.
-   @fortran argument in  optional int     gvl               List of G-vectors in lattice coordinates (Miller indices).
-   @fortran argument in  optional int     comm              MPI communicator used in distribution of G-vectors
-   @fortran end */
+/*
+@api begin
+sirius_get_pw_coeffs_real:
+  doc: Get atom type contribution to plane-wave coefficients of a periodic function.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    atom_type:
+      type: string
+      attr: in, required
+      doc: Label of the atom type.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the function.
+    pw_coeffs:
+      type: double
+      attr: out, required, dimension(*)
+      doc: Local array of plane-wave coefficients.
+    ngv:
+      type: int
+      attr: in, optional
+      doc: Local number of G-vectors.
+    gvl:
+      type: int
+      attr: in, optional, dimension(3, *)
+      doc: List of G-vectors in lattice coordinates (Miller indices).
+    comm:
+      type: int
+      attr: in, optional
+      doc: MPI communicator used in distribution of G-vectors
+@api end
+*/
 void sirius_get_pw_coeffs_real(void* const* handler__,
                                char  const* atom_type__,
                                char  const* label__,
@@ -1360,10 +2243,21 @@ void sirius_get_pw_coeffs_real(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_initialize_subspace    Initialize the subspace of wave-functions.
-   @fortran argument in  required void*   gs_handler          Ground state handler.
-   @fortran argument in  required void*   ks_handler          K-point set handler.
-   @fortran end */
+/*
+@api begin
+sirius_initialize_subspace:
+  doc: Initialize the subspace of wave-functions.
+  arguments:
+    gs_handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+@api end
+*/
 void sirius_initialize_subspace(void* const* gs_handler__,
                                 void* const* ks_handler__)
 {
@@ -1373,58 +2267,121 @@ void sirius_initialize_subspace(void* const* gs_handler__,
     sirius::Band(ks.ctx()).initialize_subspace(ks, H0);
 }
 
-/* @fortran begin function void sirius_find_eigen_states     Find eigen-states of the Hamiltonian/
-   @fortran argument in  required void*   gs_handler         Ground state handler.
-   @fortran argument in  required void*   ks_handler         K-point set handler.
-   @fortran argument in  required bool    precompute         True if necessary data to setup eigen-value problem must be automatically precomputed.
-   @fortran argument in  optional double  iter_solver_tol    Iterative solver tolerance.
-   @fortran end */
+/*
+@api begin
+sirius_find_eigen_states:
+  doc: Find eigen-states of the Hamiltonian
+  arguments:
+    gs_handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+    precompute:
+      type: bool
+      attr: in, required
+      doc: True if neccessary data to setup eigen-value problem must be automatically precomputed.
+    iter_solver_tol:
+      type: double
+      attr: in, optional
+      doc: Iterative solver tolerance.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 void sirius_find_eigen_states(void* const* gs_handler__,
                               void* const* ks_handler__,
                               bool  const* precompute__,
-                              double const* iter_solver_tol__)
+                              double const* iter_solver_tol__,
+                              int* error_code__)
 {
-    auto& gs = get_gs(gs_handler__);
-    auto& ks = get_ks(ks_handler__);
-    if (iter_solver_tol__ != nullptr) {
-        ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
-    }
-    sirius::Hamiltonian0 H0(gs.potential());
-    sirius::Band(ks.ctx()).solve(ks, H0, *precompute__);
+    call_sirius([&]()
+    {
+        auto& gs = get_gs(gs_handler__);
+        auto& ks = get_ks(ks_handler__);
+        if (iter_solver_tol__ != nullptr) {
+            ks.ctx().iterative_solver_tolerance(*iter_solver_tol__);
+        }
+        sirius::Hamiltonian0 H0(gs.potential());
+        sirius::Band(ks.ctx()).solve(ks, H0, *precompute__);
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_generate_d_operator_matrix     Generate D-operator matrix.
-   @fortran argument in  required void*   handler                     Ground state handler.
-   @fortran end */
+/*
+@api begin
+sirius_generate_d_operator_matrix:
+  doc: Generate D-operator matrix.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+@api end
+*/
 void sirius_generate_d_operator_matrix(void* const* handler__)
 {
     auto& gs = get_gs(handler__);
     gs.potential().generate_D_operator_matrix();
 }
 
-/* @fortran begin function void sirius_generate_initial_density     Generate initial density.
-   @fortran argument in  required void*   handler                   Ground state handler.
-   @fortran end */
+/*
+@api begin
+sirius_generate_initial_density:
+  doc: Generate initial density.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+@api end
+*/
 void sirius_generate_initial_density(void* const* handler__)
 {
     auto& gs = get_gs(handler__);
     gs.density().initial_density();
 }
 
-/* @fortran begin function void sirius_generate_effective_potential     Generate effective potential and magnetic field.
-   @fortran argument in  required void*   handler                       Ground state handler.
-   @fortran end */
+/*
+@api begin
+sirius_generate_effective_potential:
+  doc: Generate effective potential and magnetic field.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+@api end
+*/
 void sirius_generate_effective_potential(void* const* handler__)
 {
     auto& gs = get_gs(handler__);
     gs.potential().generate(gs.density());
 }
 
-/* @fortran begin function void sirius_generate_density    Generate charge density and magnetization.
-   @fortran argument in  required void*   gs_handler       Ground state handler.
-   @fortran argument in  optional bool    add_core         Add core charge density in the muffin-tins.
-   @fortran argument in  optional bool    transform_to_rg  If true, density and magnetization are transformed to real-space grid.
-   @fortran end */
+/*
+@api begin
+sirius_generate_density:
+  doc: Generate charge density and magnetization.
+  arguments:
+    gs_handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+    add_core:
+      type: bool
+      attr: in, optional
+      doc: Add core charge density in the muffin-tins.
+    transform_to_rg:
+      type: bool
+      attr: in, optional
+      doc: If true, density and magnetization are transformed to real-space grid.
+@api end
+*/
 void sirius_generate_density(void* const* gs_handler__,
                              bool const*  add_core__,
                              bool const*  transform_to_rg__)
@@ -1442,12 +2399,29 @@ void sirius_generate_density(void* const* gs_handler__,
     gs.density().generate(gs.k_point_set(), add_core, transform_to_rg);
 }
 
-/* @fortran begin function void sirius_set_band_occupancies   Set band occupancies.
-   @fortran argument in  required void*   ks_handler          K-point set handler.
-   @fortran argument in  required int     ik                  Global index of k-point.
-   @fortran argument in  required int     ispn                Spin component.
-   @fortran argument in  required double  band_occupancies    Array of band occupancies.
-   @fortran end */
+/*
+@api begin
+sirius_set_band_occupancies:
+  doc: Set band occupancies.
+  arguments:
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+    ik:
+      type: int
+      attr: in, required
+      doc: Global index of k-point.
+    ispn:
+      type: int
+      attr: in, required
+      doc: Spin component.
+    band_occupancies:
+      type: double
+      attr: in, required
+      doc: Array of band occupancies.
+@api end
+*/
 void sirius_set_band_occupancies(void*  const* ks_handler__,
                                  int    const* ik__,
                                  int    const* ispn__,
@@ -1460,12 +2434,29 @@ void sirius_set_band_occupancies(void*  const* ks_handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_band_occupancies   Set band occupancies.
-   @fortran argument in  required void*   ks_handler          K-point set handler.
-   @fortran argument in  required int     ik                  Global index of k-point.
-   @fortran argument in  required int     ispn                Spin component.
-   @fortran argument out  required double  band_occupancies    Array of band occupancies.
-   @fortran end */
+/*
+@api begin
+sirius_get_band_occupancies:
+  doc: Set band occupancies.
+  arguments:
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+    ik:
+      type: int
+      attr: in, required
+      doc: Global index of k-point.
+    ispn:
+      type: int
+      attr: in, required
+      doc: Spin component.
+    band_occupancies:
+      type: double
+      attr: out, required
+      doc: Array of band occupancies.
+@api end
+*/
 void
 sirius_get_band_occupancies(void* const* ks_handler__, int const* ik__, int const* ispn__,
                             double* band_occupancies__)
@@ -1477,12 +2468,29 @@ sirius_get_band_occupancies(void* const* ks_handler__, int const* ik__, int cons
     }
 }
 
-/* @fortran begin function void sirius_get_band_energies         Get band energies.
-   @fortran argument in  required void*   ks_handler             K-point set handler.
-   @fortran argument in  required int     ik                     Global index of k-point.
-   @fortran argument in  required int     ispn                   Spin component.
-   @fortran argument out required double  band_energies          Array of band energies.
-   @fortran end */
+/*
+@api begin
+sirius_get_band_energies:
+  doc: Get band energies.
+  arguments:
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+    ik:
+      type: int
+      attr: in, required
+      doc: Global index of k-point.
+    ispn:
+      type: int
+      attr: in, required
+      doc: Spin component.
+    band_energies:
+      type: double
+      attr: out, required
+      doc: Array of band energies.
+@api end
+*/
 void sirius_get_band_energies(void*  const* ks_handler__,
                               int    const* ik__,
                               int    const* ispn__,
@@ -1495,13 +2503,33 @@ void sirius_get_band_energies(void*  const* ks_handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_d_operator_matrix       Get D-operator matrix
-   @fortran argument in  required void*   handler                  Simulation context handler.
-   @fortran argument in  required int     ia                       Global index of atom.
-   @fortran argument in  required int     ispn                     Spin component.
-   @fortran argument out required double  d_mtrx                   D-matrix.
-   @fortran argument in  required int     ld                       Leading dimension of D-matrix.
-   @fortran end */
+/*
+@api begin
+sirius_get_d_operator_matrix:
+  doc: Get D-operator matrix
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Global index of atom.
+    ispn:
+      type: int
+      attr: in, required
+      doc: Spin component.
+    d_mtrx:
+      type: double
+      attr: out, required, dimension(ld, ld)
+      doc: D-matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of D-matrix.
+@api end
+*/
 void sirius_get_d_operator_matrix(void* const* handler__,
                                   int   const* ia__,
                                   int   const* ispn__,
@@ -1527,13 +2555,33 @@ void sirius_get_d_operator_matrix(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_set_d_operator_matrix       Set D-operator matrix
-   @fortran argument in  required void*   handler                  Simulation context handler.
-   @fortran argument in  required int     ia                       Global index of atom.
-   @fortran argument in  required int     ispn                     Spin component.
-   @fortran argument out required double  d_mtrx                   D-matrix.
-   @fortran argument in  required int     ld                       Leading dimension of D-matrix.
-   @fortran end */
+/*
+@api begin
+sirius_set_d_operator_matrix:
+  doc: Set D-operator matrix
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Global index of atom.
+    ispn:
+      type: int
+      attr: in, required
+      doc: Spin component.
+    d_mtrx:
+      type: double
+      attr: out, required
+      doc: D-matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of D-matrix.
+@api end
+*/
 void sirius_set_d_operator_matrix(void* const* handler__,
                                   int   const* ia__,
                                   int   const* ispn__,
@@ -1557,12 +2605,29 @@ void sirius_set_d_operator_matrix(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_set_q_operator_matrix    Set Q-operator matrix
-   @fortran argument in  required void*   handler               Simulation context handler.
-   @fortran argument in  required string  label                 Atom type label.
-   @fortran argument out required double  q_mtrx                Q-matrix.
-   @fortran argument in  required int     ld                    Leading dimension of Q-matrix.
-   @fortran end */
+/*
+@api begin
+sirius_set_q_operator_matrix:
+  doc: Set Q-operator matrix
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    q_mtrx:
+      type: double
+      attr: out, required, dimension(ld,ld)
+      doc: Q-matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of Q-matrix.
+@api end
+*/
 void sirius_set_q_operator_matrix(void* const* handler__,
                                   char  const* label__,
                                   double*      q_mtrx__,
@@ -1587,12 +2652,29 @@ void sirius_set_q_operator_matrix(void* const* handler__,
     sim_ctx.augmentation_op(type.id())->q_mtrx(qm);
 }
 
-/* @fortran begin function void sirius_get_q_operator_matrix    Get Q-operator matrix
-   @fortran argument in  required void*   handler               Simulation context handler.
-   @fortran argument in  required string  label                 Atom type label.
-   @fortran argument out required double  q_mtrx                Q-matrix.
-   @fortran argument in  required int     ld                    Leading dimension of Q-matrix.
-   @fortran end */
+/*
+@api begin
+sirius_get_q_operator_matrix:
+  doc: Get Q-operator matrix
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    q_mtrx:
+      type: double
+      attr: out, required, dimension(ld, ld)
+      doc: Q-matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of Q-matrix.
+@api end
+*/
 void sirius_get_q_operator_matrix(void* const* handler__,
                                   char  const* label__,
                                   double*      q_mtrx__,
@@ -1615,12 +2697,29 @@ void sirius_get_q_operator_matrix(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_density_matrix       Get all components of complex density matrix.
-   @fortran argument in  required void*   handler               DFT ground state handler.
-   @fortran argument in  required int     ia                    Global index of atom.
-   @fortran argument out required complex dm                    Complex density matrix.
-   @fortran argument in  required int     ld                    Leading dimension of the density matrix.
-   @fortran end */
+/*
+@api begin
+sirius_get_density_matrix:
+  doc: Get all components of complex density matrix.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: DFT ground state handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Global index of atom.
+    dm:
+      type: complex
+      attr: out, required
+      doc: Complex density matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of the density matrix.
+@api end
+*/
 void sirius_get_density_matrix(void*          const* handler__,
                                int            const* ia__,
                                std::complex<double>* dm__,
@@ -1657,12 +2756,29 @@ void sirius_get_density_matrix(void*          const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_set_density_matrix       Set all components of complex density matrix.
-   @fortran argument in  required void*   handler               DFT ground state handler.
-   @fortran argument in  required int     ia                    Global index of atom.
-   @fortran argument out required complex dm                    Complex density matrix.
-   @fortran argument in  required int     ld                    Leading dimension of the density matrix.
-   @fortran end */
+/*
+@api begin
+sirius_set_density_matrix:
+  doc: Set all components of complex density matrix.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: DFT ground state handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Global index of atom.
+    dm:
+      type: complex
+      attr: out, required
+      doc: Complex density matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of the density matrix.
+@api end
+*/
 void sirius_set_density_matrix(void*          const* handler__,
                                int            const* ia__,
                                std::complex<double>* dm__,
@@ -1688,11 +2804,25 @@ void sirius_set_density_matrix(void*          const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_energy    Get one of the total energy components.
-   @fortran argument in  required void*   handler    DFT ground state handler.
-   @fortran argument in  required string  label      Label of the energy component to get.
-   @fortran argument out required double  energy     Total energy component.
-   @fortran end */
+/*
+@api begin
+sirius_get_energy:
+  doc: Get one of the total energy components.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: DFT ground state handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the energy component to get.
+    energy:
+      type: double
+      attr: out, required
+      doc: Total energy component.
+@api end
+*/
 void sirius_get_energy(void* const* handler__,
                        char  const* label__,
                        double*      energy__)
@@ -1708,16 +2838,22 @@ void sirius_get_energy(void* const* handler__,
     std::string label(label__);
 
     std::map<std::string, std::function<double()>> func = {
-        {"total",   [&](){ return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
-        {"evalsum", [&](){ return sirius::eval_sum(unit_cell, kset); }},
-        {"exc",     [&](){ return sirius::energy_exc(density, potential); }},
-        {"vxc",     [&](){ return sirius::energy_vxc(density, potential); }},
-        {"bxc",     [&](){ return sirius::energy_bxc(density, potential, ctx.num_mag_dims()); }},
-        {"veff",    [&](){ return sirius::energy_veff(density, potential); }},
-        {"vloc",    [&](){ return sirius::energy_vloc(density, potential); }},
-        {"vha",     [&](){ return sirius::energy_vha(potential); }},
-        {"enuc",    [&](){ return sirius::energy_enuc(ctx, potential); }},
-        {"kin",     [&](){ return sirius::energy_kin(ctx, kset, density, potential); }}};
+        {"total",      [&](){ return sirius::total_energy(ctx, kset, density, potential, gs.ewald_energy()); }},
+        {"evalsum",    [&](){ return sirius::eval_sum(unit_cell, kset); }},
+        {"exc",        [&](){ return sirius::energy_exc(density, potential); }},
+        {"vxc",        [&](){ return sirius::energy_vxc(density, potential); }},
+        {"bxc",        [&](){ return sirius::energy_bxc(density, potential); }},
+        {"veff",       [&](){ return sirius::energy_veff(density, potential); }},
+        {"vloc",       [&](){ return sirius::energy_vloc(density, potential); }},
+        {"vha",        [&](){ return sirius::energy_vha(potential); }},
+        {"enuc",       [&](){ return sirius::energy_enuc(ctx, potential); }},
+        {"kin",        [&](){ return sirius::energy_kin(ctx, kset, density, potential); }},
+        {"one-el",     [&](){ return sirius::one_electron_energy(density, potential); }},
+        {"descf",      [&](){ return gs.scf_energy(); }},
+        {"demet",      [&](){ return kset.entropy_sum(); }},
+        {"paw-one-el", [&](){ return potential.PAW_one_elec_energy(density); }},
+        {"paw",        [&](){ return potential.PAW_total_energy(); }}
+    };
 
     try {
         *energy__ = func.at(label)();
@@ -1728,119 +2864,201 @@ void sirius_get_energy(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_forces     Get one of the total force components.
-   @fortran argument in  required void*   handler     DFT ground state handler.
-   @fortran argument in  required string  label       Label of the force component to get.
-   @fortran argument out required double  forces      Total force component for each atom.
-   @fortran end */
-void sirius_get_forces(void* const* handler__,
-                       char  const* label__,
-                       double*      forces__)
+/*
+@api begin
+sirius_get_forces:
+  doc: Get one of the total force components.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: DFT ground state handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the force component to get.
+    forces:
+      type: double
+      attr: out, required, dimension(3, *)
+      doc: Total force component for each atom.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_get_forces(void* const* handler__, char const* label__, double* forces__, int* error_code__)
 {
-    std::string label(label__);
-
-    auto& gs = get_gs(handler__);
-
-    auto get_forces = [&](mdarray<double, 2> const& sirius_forces__)
+    call_sirius([&]()
     {
-        for (size_t i = 0; i < sirius_forces__.size(); i++){
-            forces__[i] = sirius_forces__[i];
+        std::string label(label__);
+
+        auto& gs = get_gs(handler__);
+
+        auto get_forces = [&](mdarray<double, 2> const& sirius_forces__)
+        {
+            for (size_t i = 0; i < sirius_forces__.size(); i++){
+                forces__[i] = sirius_forces__[i];
+            }
+        };
+
+        auto& forces = gs.forces();
+
+        std::map<std::string, mdarray<double, 2> const& (sirius::Force::*)(void)> func = {
+            {"total",    &sirius::Force::calc_forces_total},
+            {"vloc",     &sirius::Force::calc_forces_vloc},
+            {"core",     &sirius::Force::calc_forces_core},
+            {"ewald",    &sirius::Force::calc_forces_ewald},
+            {"nonloc",   &sirius::Force::calc_forces_nonloc},
+            {"us",       &sirius::Force::calc_forces_us},
+            {"usnl",     &sirius::Force::calc_forces_usnl},
+            {"scf_corr", &sirius::Force::calc_forces_scf_corr},
+            {"hubbard",  &sirius::Force::calc_forces_hubbard},
+            {"ibs",      &sirius::Force::calc_forces_ibs},
+            {"hf",       &sirius::Force::calc_forces_hf},
+            {"rho",      &sirius::Force::calc_forces_rho}
+        };
+
+        if (func.count(label) == 0) {
+            throw std::runtime_error("wrong label (" + label + ") for the component of forces");
         }
-    };
 
-    auto& forces = gs.forces();
-
-    std::map<std::string, mdarray<double, 2> const& (sirius::Force::*)(void)> func = {
-        {"total",    &sirius::Force::calc_forces_total},
-        {"vloc",     &sirius::Force::calc_forces_vloc},
-        {"core",     &sirius::Force::calc_forces_core},
-        {"ewald",    &sirius::Force::calc_forces_ewald},
-        {"nonloc",   &sirius::Force::calc_forces_nonloc},
-        {"us",       &sirius::Force::calc_forces_us},
-        {"usnl",     &sirius::Force::calc_forces_usnl},
-        {"scf_corr", &sirius::Force::calc_forces_scf_corr},
-        {"hubbard",  &sirius::Force::calc_forces_hubbard},
-        {"ibs",      &sirius::Force::calc_forces_ibs},
-        {"hf",       &sirius::Force::calc_forces_hf},
-        {"rho",      &sirius::Force::calc_forces_rho}
-    };
-
-    try {
         get_forces((forces.*func.at(label))());
-    } catch(...) {
-        std::stringstream s;
-        s << "wrong label (" << label <<") for the component of forces";
-        TERMINATE(s);
-    }
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_stress_tensor     Get one of the stress tensor components.
-   @fortran argument in  required void*   handler            DFT ground state handler.
-   @fortran argument in  required string  label              Label of the stress tensor component to get.
-   @fortran argument out required double  stress_tensor      Component of the total stress tensor.
-   @fortran end */
-void sirius_get_stress_tensor(void* const* handler__,
-                              char  const* label__,
-                              double*      stress_tensor__)
+/*
+@api begin
+sirius_get_stress_tensor:
+  doc: Get one of the stress tensor components.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: DFT ground state handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the stress tensor component to get.
+    stress_tensor:
+      type: double
+      attr: out, required, dimension(3, 3)
+      doc: Component of the total stress tensor.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code..
+@api end
+*/
+void sirius_get_stress_tensor(void* const* handler__, char const* label__, double* stress_tensor__, int* error_code__)
 {
-    std::string label(label__);
+    call_sirius([&]()
+    {
+        std::string label(label__);
 
-    auto& gs = get_gs(handler__);
+        auto& gs = get_gs(handler__);
 
-    auto& stress_tensor = gs.stress();
+        auto& stress_tensor = gs.stress();
 
-    std::map<std::string, matrix3d<double> (sirius::Stress::*)(void)> func = {
-        {"total",   &sirius::Stress::calc_stress_total},
-        {"vloc",    &sirius::Stress::calc_stress_vloc},
-        {"har",     &sirius::Stress::calc_stress_har},
-        {"ewald",   &sirius::Stress::calc_stress_ewald},
-        {"kin",     &sirius::Stress::calc_stress_kin},
-        {"nonloc",  &sirius::Stress::calc_stress_nonloc},
-        {"us",      &sirius::Stress::calc_stress_us},
-        {"xc",      &sirius::Stress::calc_stress_xc},
-        {"core",    &sirius::Stress::calc_stress_core},
-        {"hubbard", &sirius::Stress::calc_stress_hubbard},
-    };
+        std::map<std::string, matrix3d<double> (sirius::Stress::*)(void)> func = {
+            {"total",   &sirius::Stress::calc_stress_total},
+            {"vloc",    &sirius::Stress::calc_stress_vloc},
+            {"har",     &sirius::Stress::calc_stress_har},
+            {"ewald",   &sirius::Stress::calc_stress_ewald},
+            {"kin",     &sirius::Stress::calc_stress_kin},
+            {"nonloc",  &sirius::Stress::calc_stress_nonloc},
+            {"us",      &sirius::Stress::calc_stress_us},
+            {"xc",      &sirius::Stress::calc_stress_xc},
+            {"core",    &sirius::Stress::calc_stress_core},
+            {"hubbard", &sirius::Stress::calc_stress_hubbard},
+        };
 
-    matrix3d<double> s;
-
-    try {
-        s = ((stress_tensor.*func.at(label))());
-    } catch(...) {
-        std::stringstream s;
-        s << "wrong label (" << label <<") for the component of stress tensor";
-        TERMINATE(s);
-    }
-
-    for (int mu = 0; mu < 3; mu++) {
-        for (int nu = 0; nu < 3; nu++) {
-            stress_tensor__[nu + mu * 3] = s(mu, nu);
+        if (func.count(label) == 0) {
+            throw std::runtime_error("wrong label (" + label + ") for the component of stress tensor");
         }
-    }
+
+        matrix3d<double> s;
+
+        s = ((stress_tensor.*func.at(label))());
+
+        for (int mu = 0; mu < 3; mu++) {
+            for (int nu = 0; nu < 3; nu++) {
+                stress_tensor__[nu + mu * 3] = s(mu, nu);
+            }
+        }
+    }, error_code__);
 }
 
-/* @fortran begin function int sirius_get_num_beta_projectors     Get the number of beta-projectors for an atom type.
-   @fortran argument in  required void*   handler                  Simulation context handler.
-   @fortran argument in  required string  label                    Atom type label.
-   @fortran end */
-int sirius_get_num_beta_projectors(void* const* handler__,
-                                   char  const* label__)
+/*
+@api begin
+sirius_get_num_beta_projectors:
+  doc: Get the number of beta-projectors for an atom type.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    num_bp:
+      type: int
+      attr: out, required
+      doc: Number of beta projectors for each atom type.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_get_num_beta_projectors(void* const* handler__, char  const* label__, int* num_bp__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
 
-    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
-    return type.mt_basis_size();
+        auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
+
+        *num_bp__ = type.mt_basis_size();
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_q_operator Get plane-wave coefficients of Q-operator
-   @fortran argument in   required void*   handler    Simulation context handler.
-   @fortran argument in   required string  label      Label of the atom type.
-   @fortran argument in   required int     xi1        First index of beta-projector atomic function.
-   @fortran argument in   required int     xi2        Second index of beta-projector atomic function.
-   @fortran argument in   required int     ngv        Number of G-vectors.
-   @fortran argument in   required int     gvl        G-vectors in lattice coordinats.
-   @fortran argument out  required complex q_pw       Plane-wave coefficients of Q augmentation operator.
-   @fortran end */
+/*
+@api begin
+sirius_get_q_operator:
+  doc: Get plane-wave coefficients of Q-operator
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the atom type.
+    xi1:
+      type: int
+      attr: in, required
+      doc: First index of beta-projector atomic function.
+    xi2:
+      type: int
+      attr: in, required
+      doc: Second index of beta-projector atomic function.
+    ngv:
+      type: int
+      attr: in, required
+      doc: Number of G-vectors.
+    gvl:
+      type: int
+      attr: in, required, dimension(3, ngv)
+      doc: G-vectors in lattice coordinats.
+    q_pw:
+      type: complex
+      attr: out, required, dimension(ngv)
+      doc: Plane-wave coefficients of Q augmentation operator.
+@api end
+*/
 void sirius_get_q_operator(void*          const* handler__,
                            char           const* label__,
                            int            const* xi1__,
@@ -1883,7 +3101,7 @@ void sirius_get_q_operator(void*          const* handler__,
         double y = sim_ctx.augmentation_op(type.id())->q_pw(idx, 2 * ig + 1);
         q_pw[sim_ctx.gvec().offset() + ig] = double_complex(x, y) * static_cast<double>(p1 * p2);
     }
-    sim_ctx.comm().allgather(q_pw.data(), sim_ctx.gvec().offset(), sim_ctx.gvec().count());
+    sim_ctx.comm().allgather(q_pw.data(), sim_ctx.gvec().count(), sim_ctx.gvec().offset());
 
     for (int i = 0; i < *ngv__; i++) {
         vector3d<int> G(gvl(0, i), gvl(1, i), gvl(2, i));
@@ -1916,16 +3134,45 @@ void sirius_get_q_operator(void*          const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_wave_functions     Get wave-functions.
-   @fortran argument in   required void*   ks_handler         K-point set handler.
-   @fortran argument in   required int     ik                 Global index of k-point
-   @fortran argument in   required int     ispn               Spin index.
-   @fortran argument in   required int     npw                Local number of G+k vectors.
-   @fortran argument in   required int     gvec_k             List of G-vectors.
-   @fortran argument out  required complex evc                Wave-functions.
-   @fortran argument in   required int     ld1                Leading dimension of evc array.
-   @fortran argument in   required int     ld2                Second dimension of evc array.
-   @fortran end */
+/*
+@api begin
+sirius_get_wave_functions:
+  doc: Get wave-functions.
+  arguments:
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+    ik:
+      type: int
+      attr: in, required
+      doc: Global index of k-point
+    ispn:
+      type: int
+      attr: in, required
+      doc: Spin index.
+    npw:
+      type: int
+      attr: in, required
+      doc: Local number of G+k vectors.
+    gvec_k:
+      type: int
+      attr: in, required
+      doc: List of G-vectors.
+    evc:
+      type: complex
+      attr: out, required
+      doc: Wave-functions.
+    ld1:
+      type: int
+      attr: in, required
+      doc: Leading dimension of evc array.
+    ld2:
+      type: int
+      attr: in, required
+      doc: Second dimension of evc array.
+@api end
+*/
 void sirius_get_wave_functions(void*          const* ks_handler__,
                                int            const* ik__,
                                int            const* ispn__,
@@ -1952,13 +3199,13 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
     }
 
     std::vector<int> rank_with_jk(kset.comm().size());
-    kset.comm().allgather(&jrank, rank_with_jk.data(), kset.comm().rank(), 1);
+    kset.comm().allgather(&jrank, rank_with_jk.data(), 1, kset.comm().rank());
 
     std::vector<int> jk_of_rank(kset.comm().size());
-    kset.comm().allgather(&jk, jk_of_rank.data(), kset.comm().rank(), 1);
+    kset.comm().allgather(&jk, jk_of_rank.data(), 1, kset.comm().rank());
 
     std::vector<int> jspn_of_rank(kset.comm().size());
-    kset.comm().allgather(&jspn, jspn_of_rank.data(), kset.comm().rank(), 1);
+    kset.comm().allgather(&jspn, jspn_of_rank.data(), 1, kset.comm().rank());
 
     int my_rank = kset.comm().rank();
 
@@ -2068,6 +3315,7 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                     /* make a check of send-receive sizes */
                     if (true) {
                         int send_size;
+                        int send_size1;
                         if (my_rank == rank_with_jk[r]) {
                             auto kp = kset[this_jk];
                             int gkvec_count = kp->gkvec().count();
@@ -2076,11 +3324,11 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                         }
                         if (my_rank == r) {
                             int gkvec_count = gkvec.count();
-                            kset.comm().recv(&send_size, 1, rank_with_jk[r], tag);
-                            if (send_size != gkvec_count * sim_ctx.num_bands()) {
+                            kset.comm().recv(&send_size1, 1, rank_with_jk[r], tag);
+                            if (send_size1 != gkvec_count * sim_ctx.num_bands()) {
                                 std::stringstream s;
                                 s << "wrong send-receive buffer sizes\n"
-                                  << "     send size   : " << send_size << "\n"
+                                  << "     send size   : " << send_size1 << "\n"
                                   << "  receive size   : " << gkvec_count * sim_ctx.num_bands() << "\n"
                                   << " number of bands : " << sim_ctx.num_bands();
                                 TERMINATE(s);
@@ -2095,18 +3343,21 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
                         auto kp = kset[this_jk];
                         int gkvec_count = kp->gkvec().count();
                         /* send wave-functions */
-                        req = kset.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0), gkvec_count * sim_ctx.num_bands(), r, tag);
+                        req = kset.comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0),
+                                gkvec_count * sim_ctx.num_bands(), r, tag);
                     }
                     if (my_rank == r) {
                         int gkvec_count = gkvec.count();
                         int gkvec_offset = gkvec.offset();
                         /* receive the array with wave-functions */
-                        kset.comm().recv(&wf->pw_coeffs(0).prime(0, 0), gkvec_count * sim_ctx.num_bands(), rank_with_jk[r], tag);
+                        kset.comm().recv(&wf->pw_coeffs(0).prime(0, 0), gkvec_count * sim_ctx.num_bands(),
+                                rank_with_jk[r], tag);
                         std::vector<double_complex> wf_tmp(gkvec.num_gvec());
                         /* store wave-functions */
                         for (int i = 0; i < sim_ctx.num_bands(); i++) {
                             /* gather full column of PW coefficients */
-                            sim_ctx.comm_band().allgather(&wf->pw_coeffs(0).prime(0, i), wf_tmp.data(), gkvec_offset, gkvec_count);
+                            sim_ctx.comm_band().allgather(&wf->pw_coeffs(0).prime(0, i), wf_tmp.data(),
+                                    gkvec_count, gkvec_offset);
                             store_wf(wf_tmp, i, s, evc);
                         }
                     }
@@ -2119,119 +3370,142 @@ void sirius_get_wave_functions(void*          const* ks_handler__,
     }
 }
 
-/* @fortran begin function double sirius_get_radial_integral     Get value of the radial integral.
-   @fortran argument in   required void*   handler               Simulation context handler.
-   @fortran argument in   required string  atom_type             Label of the atom type.
-   @fortran argument in   required string  label                 Label of the radial integral.
-   @fortran argument in   required double  q                     Length of the reciprocal wave-vector.
-   @fortran argument in   required int     idx                   Index of the radial integral.
-   @fortran argument in   optional int     l                     Orbital quantum number (for Q-radial integrals).
-   @fortran end */
-double sirius_get_radial_integral(void*  const* handler__,
-                                  char   const* atom_type__,
-                                  char   const* label__,
-                                  double const* q__,
-                                  int    const* idx__,
-                                  int    const* l__)
-{
-    auto& sim_ctx = get_sim_ctx(handler__);
-
-    auto& type = sim_ctx.unit_cell().atom_type(std::string(atom_type__));
-
-    std::string label(label__);
-
-    if (label == "aug") {
-        if (l__ == nullptr) {
-            TERMINATE("orbital quantum number must be provided for augmentation operator radial integrals");
-        }
-        return sim_ctx.aug_ri().value<int, int, int>(*idx__ - 1, *l__, type.id(), *q__);
-    } else if (label == "aug_dj") {
-        if (l__ == nullptr) {
-            TERMINATE("orbital quantum number must be provided for augmentation operator radial integrals");
-        }
-        return sim_ctx.aug_ri_djl().value<int, int, int>(*idx__ - 1, *l__, type.id(), *q__);
-    } else if (label == "beta") {
-        return sim_ctx.beta_ri().value<int, int>(*idx__ - 1, type.id(), *q__);
-    } else if (label == "beta_dj") {
-        return sim_ctx.beta_ri_djl().value<int, int>(*idx__ - 1, type.id(), *q__);
-    } else {
-        TERMINATE("wrong label of radial integral");
-        return 0.0; // make compiler happy
-    }
-}
-
-/* @fortran begin function void sirius_calculate_hubbard_occupancies  Compute occupation matrix.
-   @fortran argument in required void* handler                        Ground state handler.
-   @fortran end */
-void sirius_calculate_hubbard_occupancies(void* const* handler__)
+/*
+@api begin
+sirius_set_hubbard_occupancies:
+  doc: Set occupation matrix for LDA+U.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+    occ:
+      type: complex
+      attr: inout, required
+      doc: Occupation matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimensions of the occupation matrix.
+@api end
+*/
+void sirius_set_hubbard_occupancies(void* const* handler__, std::complex<double>* occ__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().hubbard_compute_occupation_numbers(gs.k_point_set());
+    gs.density().occupation_matrix().access("set", occ__, *ld__);
 }
 
-
-/* @fortran begin function void sirius_set_hubbard_occupancies          Set occupation matrix for LDA+U.
-   @fortran argument in    required void* handler                       Ground state handler.
-   @fortran argument inout required complex occ                         Occupation matrix.
-   @fortran argument in    required int     ld                          Leading dimensions of the occupation matrix.
-   @fortran end */
-void sirius_set_hubbard_occupancies(void* const* handler__,
-                                    std::complex<double>*      occ__,
-                                    int   const *ld__)
+/*
+@api begin
+sirius_get_hubbard_occupancies:
+  doc: Get occupation matrix for LDA+U.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+    occ:
+      type: complex
+      attr: inout, required
+      doc: Occupation matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimensions of the occupation matrix.
+@api end
+*/
+void sirius_get_hubbard_occupancies(void* const* handler__, std::complex<double>* occ__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_occupancies("set", occ__, ld__);
+    gs.density().occupation_matrix().access("get", occ__, *ld__);
 }
 
-/* @fortran begin function void sirius_get_hubbard_occupancies          Get occupation matrix for LDA+U.
-   @fortran argument in    required void* handler                       Ground state handler.
-   @fortran argument inout required complex occ                         Occupation matrix.
-   @fortran argument in    required int     ld                          Leading dimensions of the occupation matrix.
-   @fortran end */
-void sirius_get_hubbard_occupancies(void* const* handler__,
-                                    std::complex<double>*      occ__,
-                                    int   const *ld__)
+/*
+@api begin
+sirius_set_hubbard_potential:
+  doc: Set LDA+U potential matrix.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+    pot:
+      type: complex
+      attr: inout, required
+      doc: Potential correction matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimensions of the matrix.
+@api end
+*/
+void sirius_set_hubbard_potential(void* const* handler__, std::complex<double>* pot__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_occupancies("get", occ__, ld__);
+    gs.potential().U().access_hubbard_potential("set", pot__, *ld__);
 }
 
-/* @fortran begin function void sirius_set_hubbard_potential              Set LDA+U potential matrix.
-   @fortran argument in    required void* handler                         Ground state handler.
-   @fortran argument inout required complex pot                           Potential correction matrix.
-   @fortran argument in    required int    ld                             Leading dimensions of the matrix.
-   @fortran end */
-void sirius_set_hubbard_potential(void* const* handler__,
-                                  std::complex<double>*      pot__,
-                                  int   const *ld__)
+
+/*
+@api begin
+sirius_get_hubbard_potential:
+  doc: Set LDA+U potential matrix.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+    pot:
+      type: complex
+      attr: inout, required
+      doc: Potential correction matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimensions of the matrix.
+@api end
+*/
+void sirius_get_hubbard_potential(void* const* handler__, std::complex<double>* pot__, int const *ld__)
 {
     auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_potential("set", pot__, ld__);
+    gs.potential().U().access_hubbard_potential("get", pot__, *ld__);
 }
 
-
-/* @fortran begin function void sirius_get_hubbard_potential              Set LDA+U potential matrix.
-   @fortran argument in    required void* handler                         Ground state handler.
-   @fortran argument inout required complex pot                           Potential correction matrix.
-   @fortran argument in    required int    ld                             Leading dimensions of the matrix.
-   @fortran end */
-void sirius_get_hubbard_potential(void* const* handler__,
-                                  std::complex<double>*      pot__,
-                                  int   const *ld__)
-{
-    auto& gs = get_gs(handler__);
-    gs.potential().U().access_hubbard_potential("get", pot__, ld__);
-}
-
-/* @fortran begin function void sirius_add_atom_type_aw_descriptor    Add descriptor of the augmented wave radial function.
-   @fortran argument in    required void*  handler                    Simulation context handler.
-   @fortran argument in    required string label                      Atom type label.
-   @fortran argument in    required int    n                          Principal quantum number.
-   @fortran argument in    required int    l                          Orbital quantum number.
-   @fortran argument in    required double enu                        Linearization energy.
-   @fortran argument in    required int    dme                        Order of energy derivative.
-   @fortran argument in    required bool   auto_enu                   True if automatic search of linearization energy is allowed for this radial solution.
-   @fortran end */
+/*
+@api begin
+sirius_add_atom_type_aw_descriptor:
+  doc: Add descriptor of the augmented wave radial function.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    n:
+      type: int
+      attr: in, required
+      doc: Principal quantum number.
+    l:
+      type: int
+      attr: in, required
+      doc: Orbital quantum number.
+    enu:
+      type: double
+      attr: in, required
+      doc: Linearization energy.
+    dme:
+      type: int
+      attr: in, required
+      doc: Order of energy derivative.
+    auto_enu:
+      type: bool
+      attr: in, required
+      doc: True if automatic search of linearization energy is allowed for this radial solution.
+@api end
+*/
 void sirius_add_atom_type_aw_descriptor(void*  const* handler__,
                                         char   const* label__,
                                         int    const* n__,
@@ -2245,16 +3519,45 @@ void sirius_add_atom_type_aw_descriptor(void*  const* handler__,
     type.add_aw_descriptor(*n__, *l__, *enu__, *dme__, *auto_enu__);
 }
 
-/* @fortran begin function void sirius_add_atom_type_lo_descriptor    Add descriptor of the local orbital radial function.
-   @fortran argument in    required void*  handler                    Simulation context handler.
-   @fortran argument in    required string label                      Atom type label.
-   @fortran argument in    required int    ilo                        Index of the local orbital to which the descriptro is added.
-   @fortran argument in    required int    n                          Principal quantum number.
-   @fortran argument in    required int    l                          Orbital quantum number.
-   @fortran argument in    required double enu                        Linearization energy.
-   @fortran argument in    required int    dme                        Order of energy derivative.
-   @fortran argument in    required bool   auto_enu                   True if automatic search of linearization energy is allowed for this radial solution.
-   @fortran end */
+/*
+@api begin
+sirius_add_atom_type_lo_descriptor:
+  doc: Add descriptor of the local orbital radial function.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    ilo:
+      type: int
+      attr: in, required
+      doc: Index of the local orbital to which the descriptro is added.
+    n:
+      type: int
+      attr: in, required
+      doc: Principal quantum number.
+    l:
+      type: int
+      attr: in, required
+      doc: Orbital quantum number.
+    enu:
+      type: double
+      attr: in, required
+      doc: Linearization energy.
+    dme:
+      type: int
+      attr: in, required
+      doc: Order of energy derivative.
+    auto_enu:
+      type: bool
+      attr: in, required
+      doc: True if automatic search of linearization energy is allowed for this radial solution.
+@api end
+*/
 void sirius_add_atom_type_lo_descriptor(void*  const* handler__,
                                         char   const* label__,
                                         int    const* ilo__,
@@ -2269,15 +3572,41 @@ void sirius_add_atom_type_lo_descriptor(void*  const* handler__,
     type.add_lo_descriptor(*ilo__ - 1, *n__, *l__, *enu__, *dme__, *auto_enu__);
 }
 
-/* @fortran begin function void sirius_set_atom_type_configuration   Set configuration of atomic levels.
-   @fortran argument in required void*  handler    Simulation context handler.
-   @fortran argument in required string label      Atom type label.
-   @fortran argument in required int    n          Principal quantum number.
-   @fortran argument in required int    l          Orbital quantum number.
-   @fortran argument in required int    k          kappa (used in relativistic solver).
-   @fortran argument in required double occupancy  Level occupancy.
-   @fortran argument in required bool   core       Tru if this is a core state.
-   @fortran end */
+/*
+@api begin
+sirius_set_atom_type_configuration:
+  doc: Set configuration of atomic levels.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Atom type label.
+    n:
+      type: int
+      attr: in, required
+      doc: Principal quantum number.
+    l:
+      type: int
+      attr: in, required
+      doc: Orbital quantum number.
+    k:
+      type: int
+      attr: in, required
+      doc: kappa (used in relativistic solver).
+    occupancy:
+      type: double
+      attr: in, required
+      doc: Level occupancy.
+    core:
+      type: bool
+      attr: in, required
+      doc: Tru if this is a core state.
+@api end
+*/
 void sirius_set_atom_type_configuration(void*  const* handler__,
                                         char   const* label__,
                                         int    const* n__,
@@ -2291,12 +3620,29 @@ void sirius_set_atom_type_configuration(void*  const* handler__,
     type.set_configuration(*n__, *l__, *k__, *occupancy__, *core__);
 }
 
-/* @fortran begin function void sirius_generate_coulomb_potential    Generate Coulomb potential by solving Poisson equation
-   @fortran argument in required void*   handler      Ground state handler
-   @fortran argument in required bool    is_local_rg  true if regular grid pointer is local
-   @fortran argument out required double vclmt        Muffin-tin part of potential
-   @fortran argument out required double vclrg        Regular-grid part of potential
-   @fortran end */
+/*
+@api begin
+sirius_generate_coulomb_potential:
+  doc: Generate Coulomb potential by solving Poisson equation
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler
+    is_local_rg:
+      type: bool
+      attr: in, required
+      doc: true if regular grid pointer is local
+    vclmt:
+      type: double
+      attr: out, required
+      doc: Muffin-tin part of potential
+    vclrg:
+      type: double
+      attr: out, required
+      doc: Regular-grid part of potential
+@api end
+*/
 void sirius_generate_coulomb_potential(void* const* handler__,
                                        bool  const* is_local_rg__,
                                        double*      vclmt__,
@@ -2309,18 +3655,53 @@ void sirius_generate_coulomb_potential(void* const* handler__,
     gs.potential().hartree_potential().copy_to(vclmt__, vclrg__, *is_local_rg__);
 }
 
-/* @fortran begin function void sirius_generate_xc_potential    Generate XC potential using LibXC
-   @fortran argument in required void*   handler     Ground state handler
-   @fortran argument in required bool    is_local_rg true if regular grid pointer is local
-   @fortran argument out required double vxcmt       Muffin-tin part of potential
-   @fortran argument out required double vxcrg       Regular-grid part of potential
-   @fortran argument out optional double bxcmt_x     Muffin-tin part of effective magentic field (x-component)
-   @fortran argument out optional double bxcmt_y     Muffin-tin part of effective magentic field (y-component)
-   @fortran argument out optional double bxcmt_z     Muffin-tin part of effective magentic field (z-component)
-   @fortran argument out optional double bxcrg_x     Regular-grid part of effective magnetic field (x-component)
-   @fortran argument out optional double bxcrg_y     Regular-grid part of effective magnetic field (y-component)
-   @fortran argument out optional double bxcrg_z     Regular-grid part of effective magnetic field (z-component)
-   @fortran end */
+/*
+@api begin
+sirius_generate_xc_potential:
+  doc: Generate XC potential using LibXC
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler
+    is_local_rg:
+      type: bool
+      attr: in, required
+      doc: true if regular grid pointer is local
+    vxcmt:
+      type: double
+      attr: out, required
+      doc: Muffin-tin part of potential
+    vxcrg:
+      type: double
+      attr: out, required
+      doc: Regular-grid part of potential
+    bxcmt_x:
+      type: double
+      attr: out, optional
+      doc: Muffin-tin part of effective magentic field (x-component)
+    bxcmt_y:
+      type: double
+      attr: out, optional
+      doc: Muffin-tin part of effective magentic field (y-component)
+    bxcmt_z:
+      type: double
+      attr: out, optional
+      doc: Muffin-tin part of effective magentic field (z-component)
+    bxcrg_x:
+      type: double
+      attr: out, optional
+      doc: Regular-grid part of effective magnetic field (x-component)
+    bxcrg_y:
+      type: double
+      attr: out, optional
+      doc: Regular-grid part of effective magnetic field (y-component)
+    bxcrg_z:
+      type: double
+      attr: out, optional
+      doc: Regular-grid part of effective magnetic field (z-component)
+@api end
+*/
 void sirius_generate_xc_potential(void* const* handler__,
                                   bool  const* is_local_rg__,
                                   double*      vxcmt__,
@@ -2351,10 +3732,21 @@ void sirius_generate_xc_potential(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_kpoint_inter_comm  Get communicator which is used to split k-points
-   @fortran argument in required void* handler   Simulation context handler
-   @fortran argument out required int fcomm      Fortran communicator
-   @fortran end */
+/*
+@api begin
+sirius_get_kpoint_inter_comm:
+  doc: Get communicator which is used to split k-points
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    fcomm:
+      type: int
+      attr: out, required
+      doc: Fortran communicator
+@api end
+*/
 void sirius_get_kpoint_inter_comm(void * const* handler__,
                                   int*          fcomm__)
 {
@@ -2362,10 +3754,21 @@ void sirius_get_kpoint_inter_comm(void * const* handler__,
     *fcomm__ = MPI_Comm_c2f(sim_ctx.comm_k().mpi_comm());
 }
 
-/* @fortran begin function void sirius_get_kpoint_inner_comm  Get communicator which is used to parallise band problem
-   @fortran argument in required void* handler   Simulation context handler
-   @fortran argument out required int fcomm      Fortran communicator
-   @fortran end */
+/*
+@api begin
+sirius_get_kpoint_inner_comm:
+  doc: Get communicator which is used to parallise band problem
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    fcomm:
+      type: int
+      attr: out, required
+      doc: Fortran communicator
+@api end
+*/
 void sirius_get_kpoint_inner_comm(void * const* handler__,
                                   int*          fcomm__)
 {
@@ -2373,10 +3776,21 @@ void sirius_get_kpoint_inner_comm(void * const* handler__,
     *fcomm__ = MPI_Comm_c2f(sim_ctx.comm_band().mpi_comm());
 }
 
-/* @fortran begin function void sirius_get_fft_comm  Get communicator which is used to parallise FFT
-   @fortran argument in required void* handler   Simulation context handler
-   @fortran argument out required int fcomm      Fortran communicator
-   @fortran end */
+/*
+@api begin
+sirius_get_fft_comm:
+  doc: Get communicator which is used to parallise FFT
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    fcomm:
+      type: int
+      attr: out, required
+      doc: Fortran communicator
+@api end
+*/
 void sirius_get_fft_comm(void * const* handler__,
                          int*          fcomm__)
 {
@@ -2384,22 +3798,61 @@ void sirius_get_fft_comm(void * const* handler__,
     *fcomm__ = MPI_Comm_c2f(sim_ctx.comm_fft().mpi_comm());
 }
 
-/* @fortran begin function int sirius_get_num_gvec  Get total number of G-vectors
-   @fortran argument in required void* handler      Simulation context handler
-   @fortran end */
-int sirius_get_num_gvec(void* const* handler__)
+/*
+@api begin
+sirius_get_num_gvec:
+  doc: Get total number of G-vectors
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    num_gvec:
+      type: int
+      attr: out, required
+      doc: Total number of G-vectors
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code
+@api end
+*/
+void sirius_get_num_gvec(void* const* handler__, int* num_gvec__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    return sim_ctx.gvec().num_gvec();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        *num_gvec__ = sim_ctx.gvec().num_gvec();
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_gvec_arrays   Get G-vector arrays.
-   @fortran argument in required void*  handler          Simulation context handler
-   @fortran argument in optional int    gvec             G-vectors in lattice coordinates.
-   @fortran argument in optional double gvec_cart        G-vectors in Cartesian coordinates.
-   @fortran argument in optional double gvec_len         Length of G-vectors.
-   @fortran argument in optional int    index_by_gvec    G-vector index by lattice coordinates.
-   @fortran end */
+/*
+@api begin
+sirius_get_gvec_arrays:
+  doc: Get G-vector arrays.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    gvec:
+      type: int
+      attr: in, optional
+      doc: G-vectors in lattice coordinates.
+    gvec_cart:
+      type: double
+      attr: in, optional
+      doc: G-vectors in Cartesian coordinates.
+    gvec_len:
+      type: double
+      attr: in, optional
+      doc: Length of G-vectors.
+    index_by_gvec:
+      type: int
+      attr: in, optional
+      doc: G-vector index by lattice coordinates.
+@api end
+*/
 void sirius_get_gvec_arrays(void* const* handler__,
                             int*         gvec__,
                             double*      gvec_cart__,
@@ -2446,48 +3899,132 @@ void sirius_get_gvec_arrays(void* const* handler__,
     }
 }
 
-/* @fortran begin function int sirius_get_num_fft_grid_points Get local number of FFT grid points.
-   @fortran argument in required void* handler                Simulation context handler
-   @fortran end */
-int sirius_get_num_fft_grid_points(void* const* handler__)
+/*
+@api begin
+sirius_get_num_fft_grid_points:
+  doc: Get local number of FFT grid points.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    num_fft_grid_points:
+      type: int
+      attr: out, required
+      doc: Local number of FFT grid points in the real-space mesh.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_get_num_fft_grid_points(void* const* handler__, int* num_fft_grid_points__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    return sim_ctx.spfft().local_slice_size();
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        *num_fft_grid_points__ = sim_ctx.spfft().local_slice_size();
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_fft_index   Get mapping between G-vector index and FFT index
-   @fortran argument in  required void* handler        Simulation context handler
-   @fortran argument out required int   fft_index      Index inside FFT buffer
-   @fortran end */
-void sirius_get_fft_index(void* const* handler__,
-                          int*         fft_index__)
+/*
+@api begin
+sirius_get_fft_index:
+  doc: Get mapping between G-vector index and FFT index
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    fft_index:
+      type: int
+      attr: out, required
+      doc: Index inside FFT buffer
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_get_fft_index(void* const* handler__, int* fft_index__, int* error_code__)
 {
-    auto& sim_ctx = get_sim_ctx(handler__);
-    for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
-        auto G = sim_ctx.gvec().gvec(ig);
-        fft_index__[ig] = sim_ctx.fft_grid().index_by_freq(G[0], G[1], G[2]) + 1;
-    }
+    call_sirius([&]()
+    {
+        auto& sim_ctx = get_sim_ctx(handler__);
+        for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+            auto G = sim_ctx.gvec().gvec(ig);
+            fft_index__[ig] = sim_ctx.fft_grid().index_by_freq(G[0], G[1], G[2]) + 1;
+        }
+    }, error_code__);
 }
 
-/* @fortran begin function int sirius_get_max_num_gkvec    Get maximum number of G+k vectors across all k-points in the set
-   @fortran argument in required void*       ks_handler    K-point set handler.
-   @fortran end */
-int sirius_get_max_num_gkvec(void* const* ks_handler__)
+/*
+@api begin
+sirius_get_max_num_gkvec:
+  doc: Get maximum number of G+k vectors across all k-points in the set
+  arguments:
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+    max_num_gkvec:
+      type: int
+      attr: out, required
+      doc: Maximum number of G+k vectors
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void sirius_get_max_num_gkvec(void* const* ks_handler__, int* max_num_gkvec__, int* error_code__)
 {
-    auto& ks = get_ks(ks_handler__);
-    return ks.max_num_gkvec();
+    call_sirius([&]()
+    {
+        auto& ks = get_ks(ks_handler__);
+        *max_num_gkvec__ = ks.max_num_gkvec();
+    }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_gkvec_arrays  Get all G+k vector related arrays
-   @fortran argument in required void*   ks_handler    K-point set handler.
-   @fortran argument in required int     ik            Global index of k-point
-   @fortran argument out required int    num_gkvec     Number of G+k vectors.
-   @fortran argument out required int    gvec_index    Index of the G-vector part of G+k vector.
-   @fortran argument out required double gkvec         G+k vectors in fractional coordinates.
-   @fortran argument out required double gkvec_cart    G+k vectors in Cartesian coordinates.
-   @fortran argument out required double gkvec_len     Length of G+k vectors.
-   @fortran argument out required double gkvec_tp      Theta and Phi angles of G+k vectors.
-   @fortran end */
+/*
+@api begin
+sirius_get_gkvec_arrays:
+  doc: Get all G+k vector related arrays
+  arguments:
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+    ik:
+      type: int
+      attr: in, required
+      doc: Global index of k-point
+    num_gkvec:
+      type: int
+      attr: out, required
+      doc: Number of G+k vectors.
+    gvec_index:
+      type: int
+      attr: out, required
+      doc: Index of the G-vector part of G+k vector.
+    gkvec:
+      type: double
+      attr: out, required
+      doc: G+k vectors in fractional coordinates.
+    gkvec_cart:
+      type: double
+      attr: out, required
+      doc: G+k vectors in Cartesian coordinates.
+    gkvec_len:
+      type: double
+      attr: out, required
+      doc: Length of G+k vectors.
+    gkvec_tp:
+      type: double
+      attr: out, required
+      doc: Theta and Phi angles of G+k vectors.
+@api end
+*/
 void sirius_get_gkvec_arrays(void* const* ks_handler__,
                              int*         ik__,
                              int*         num_gkvec__,
@@ -2536,11 +4073,25 @@ void sirius_get_gkvec_arrays(void* const* ks_handler__,
     comm_k.bcast(gkvec_tp__,   *num_gkvec__ * 2, rank);
 }
 
-/* @fortran begin function void sirius_get_step_function  Get the unit-step function.
-   @fortran argument in  required void* handler        Simulation context handler
-   @fortran argument out required complex cfunig       Plane-wave coefficients of step function.
-   @fortran argument out required double  cfunrg       Values of the step function on the regular grid.
-   @fortran end */
+/*
+@api begin
+sirius_get_step_function:
+  doc: Get the unit-step function.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    cfunig:
+      type: complex
+      attr: out, required
+      doc: Plane-wave coefficients of step function.
+    cfunrg:
+      type: double
+      attr: out, required
+      doc: Values of the step function on the regular grid.
+@api end
+*/
 void sirius_get_step_function(void* const*          handler__,
                               std::complex<double>* cfunig__,
                               double*               cfunrg__)
@@ -2554,10 +4105,21 @@ void sirius_get_step_function(void* const*          handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_vha_el   Get electronic part of Hartree potential at atom origins.
-   @fortran argument in required void* handler      DFT ground state handler.
-   @fortran argument out required double vha_el     Electronic part of Hartree potential at each atom's origin.
-   @fortran end */
+/*
+@api begin
+sirius_get_vha_el:
+  doc: Get electronic part of Hartree potential at atom origins.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: DFT ground state handler.
+    vha_el:
+      type: double
+      attr: out, required
+      doc: Electronic part of Hartree potential at each atom's origin.
+@api end
+*/
 void sirius_get_vha_el(void* const* handler__,
                        double*      vha_el__)
 {
@@ -2567,18 +4129,53 @@ void sirius_get_vha_el(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_set_h_radial_integrals   Set LAPW Hamiltonian radial integrals.
-   @fortran argument in required void*  handler    Simulation context handler.
-   @fortran argument in required int    ia         Index of atom.
-   @fortran argument in required int    lmmax      Number of lm-component of the potential.
-   @fortran argument in required double val        Values of the radial integrals.
-   @fortran argument in optional int    l1         1st index of orbital quantum number.
-   @fortran argument in optional int    o1         1st index of radial function order for l1.
-   @fortran argument in optional int    ilo1       1st index or local orbital.
-   @fortran argument in optional int    l2         2nd index of orbital quantum number.
-   @fortran argument in optional int    o2         2nd index of radial function order for l2.
-   @fortran argument in optional int    ilo2       2nd index or local orbital.
-   @fortran end */
+/*
+@api begin
+sirius_set_h_radial_integrals:
+  doc: Set LAPW Hamiltonian radial integrals.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Index of atom.
+    lmmax:
+      type: int
+      attr: in, required
+      doc: Number of lm-component of the potential.
+    val:
+      type: double
+      attr: in, required
+      doc: Values of the radial integrals.
+    l1:
+      type: int
+      attr: in, optional
+      doc: 1st index of orbital quantum number.
+    o1:
+      type: int
+      attr: in, optional
+      doc: 1st index of radial function order for l1.
+    ilo1:
+      type: int
+      attr: in, optional
+      doc: 1st index or local orbital.
+    l2:
+      type: int
+      attr: in, optional
+      doc: 2nd index of orbital quantum number.
+    o2:
+      type: int
+      attr: in, optional
+      doc: 2nd index of radial function order for l2.
+    ilo2:
+      type: int
+      attr: in, optional
+      doc: 2nd index or local orbital.
+@api end
+*/
 void sirius_set_h_radial_integrals(void* const* handler__,
                                    int*         ia__,
                                    int*         lmmax__,
@@ -2619,16 +4216,45 @@ void sirius_set_h_radial_integrals(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_set_o_radial_integral   Set LAPW overlap radial integral.
-   @fortran argument in required void*  handler    Simulation context handler.
-   @fortran argument in required int    ia         Index of atom.
-   @fortran argument in required double val        Value of the radial integral.
-   @fortran argument in required int    l          Orbital quantum number.
-   @fortran argument in optional int    o1         1st index of radial function order.
-   @fortran argument in optional int    ilo1       1st index or local orbital.
-   @fortran argument in optional int    o2         2nd index of radial function order.
-   @fortran argument in optional int    ilo2       2nd index or local orbital.
-   @fortran end */
+/*
+@api begin
+sirius_set_o_radial_integral:
+  doc: Set LAPW overlap radial integral.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Index of atom.
+    val:
+      type: double
+      attr: in, required
+      doc: Value of the radial integral.
+    l:
+      type: int
+      attr: in, required
+      doc: Orbital quantum number.
+    o1:
+      type: int
+      attr: in, optional
+      doc: 1st index of radial function order.
+    ilo1:
+      type: int
+      attr: in, optional
+      doc: 1st index or local orbital.
+    o2:
+      type: int
+      attr: in, optional
+      doc: 2nd index of radial function order.
+    ilo2:
+      type: int
+      attr: in, optional
+      doc: 2nd index or local orbital.
+@api end
+*/
 void sirius_set_o_radial_integral(void* const* handler__,
                                   int*         ia__,
                                   double*      val__,
@@ -2667,17 +4293,49 @@ void sirius_set_o_radial_integral(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_set_o1_radial_integral   Set a correction to LAPW overlap radial integral.
-   @fortran argument in required void*  handler    Simulation context handler.
-   @fortran argument in required int    ia         Index of atom.
-   @fortran argument in required double val        Value of the radial integral.
-   @fortran argument in optional int    l1         1st index of orbital quantum number.
-   @fortran argument in optional int    o1         1st index of radial function order for l1.
-   @fortran argument in optional int    ilo1       1st index or local orbital.
-   @fortran argument in optional int    l2         2nd index of orbital quantum number.
-   @fortran argument in optional int    o2         2nd index of radial function order for l2.
-   @fortran argument in optional int    ilo2       2nd index or local orbital.
-   @fortran end */
+/*
+@api begin
+sirius_set_o1_radial_integral:
+  doc: Set a correction to LAPW overlap radial integral.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Index of atom.
+    val:
+      type: double
+      attr: in, required
+      doc: Value of the radial integral.
+    l1:
+      type: int
+      attr: in, optional
+      doc: 1st index of orbital quantum number.
+    o1:
+      type: int
+      attr: in, optional
+      doc: 1st index of radial function order for l1.
+    ilo1:
+      type: int
+      attr: in, optional
+      doc: 1st index or local orbital.
+    l2:
+      type: int
+      attr: in, optional
+      doc: 2nd index of orbital quantum number.
+    o2:
+      type: int
+      attr: in, optional
+      doc: 2nd index of radial function order for l2.
+    ilo2:
+      type: int
+      attr: in, optional
+      doc: 2nd index or local orbital.
+@api end
+*/
 void sirius_set_o1_radial_integral(void* const* handler__,
                                    int*         ia__,
                                    double*      val__,
@@ -2714,15 +4372,41 @@ void sirius_set_o1_radial_integral(void* const* handler__,
     sim_ctx.unit_cell().atom(ia).symmetry_class().set_o1_radial_integral(idxrf1, idxrf2, *val__);
 }
 
-/* @fortran begin function void sirius_set_radial_function   Set LAPW radial functions
-   @fortran argument in required void*  handler              Simulation context handler.
-   @fortran argument in required int    ia                   Index of atom.
-   @fortran argument in required int    deriv_order          Radial derivative order.
-   @fortran argument in required double f                    Values of the radial function.
-   @fortran argument in optional int    l                    Orbital quantum number.
-   @fortran argument in optional int    o                    Order of radial function for l.
-   @fortran argument in optional int    ilo                  Local orbital index.
-   @fortran end */
+/*
+@api begin
+sirius_set_radial_function:
+  doc: Set LAPW radial functions
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Index of atom.
+    deriv_order:
+      type: int
+      attr: in, required
+      doc: Radial derivative order.
+    f:
+      type: double
+      attr: in, required
+      doc: Values of the radial function.
+    l:
+      type: int
+      attr: in, optional
+      doc: Orbital quantum number.
+    o:
+      type: int
+      attr: in, optional
+      doc: Order of radial function for l.
+    ilo:
+      type: int
+      attr: in, optional
+      doc: Local orbital index.
+@api end
+*/
 void sirius_set_radial_function(void*  const* handler__,
                                 int    const* ia__,
                                 int    const* deriv_order__,
@@ -2768,15 +4452,41 @@ void sirius_set_radial_function(void*  const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_radial_function   Get LAPW radial functions
-   @fortran argument in required void*  handler              Simulation context handler.
-   @fortran argument in required int    ia                   Index of atom.
-   @fortran argument in required int    deriv_order          Radial derivative order.
-   @fortran argument out required double f                   Values of the radial function.
-   @fortran argument in optional int    l                    Orbital quantum number.
-   @fortran argument in optional int    o                    Order of radial function for l.
-   @fortran argument in optional int    ilo                  Local orbital index.
-   @fortran end */
+/*
+@api begin
+sirius_get_radial_function:
+  doc: Get LAPW radial functions
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Index of atom.
+    deriv_order:
+      type: int
+      attr: in, required
+      doc: Radial derivative order.
+    f:
+      type: double
+      attr: out, required
+      doc: Values of the radial function.
+    l:
+      type: int
+      attr: in, optional
+      doc: Orbital quantum number.
+    o:
+      type: int
+      attr: in, optional
+      doc: Order of radial function for l.
+    ilo:
+      type: int
+      attr: in, optional
+      doc: Local orbital index.
+@api end
+*/
 void sirius_get_radial_function(void* const* handler__,
                                 int   const* ia__,
                                 int   const* deriv_order__,
@@ -2818,10 +4528,21 @@ void sirius_get_radial_function(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_set_equivalent_atoms   Set equivalent atoms.
-   @fortran argument in required void*  handler               Simulation context handler.
-   @fortran argument in required int    equivalent_atoms      Array with equivalent atom IDs.
-   @fortran end */
+/*
+@api begin
+sirius_set_equivalent_atoms:
+  doc: Set equivalent atoms.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    equivalent_atoms:
+      type: int
+      attr: in, required, dimension(*)
+      doc: Array with equivalent atom IDs.
+@api end
+*/
 void sirius_set_equivalent_atoms(void* const* handler__,
                                  int*         equivalent_atoms__)
 {
@@ -2829,9 +4550,17 @@ void sirius_set_equivalent_atoms(void* const* handler__,
     sim_ctx.unit_cell().set_equivalent_atoms(equivalent_atoms__);
 }
 
-/* @fortran begin function void sirius_update_atomic_potential   Set the new spherical potential.
-   @fortran argument in required void*  handler                  Ground state handler.
-   @fortran end */
+/*
+@api begin
+sirius_update_atomic_potential:
+  doc: Set the new spherical potential.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler.
+@api end
+*/
 void sirius_update_atomic_potential(void* const* handler__)
 {
     auto& gs = get_gs(handler__);
@@ -2839,11 +4568,21 @@ void sirius_update_atomic_potential(void* const* handler__)
 }
 
 
-/* @fortran begin function void sirius_option_get_length     return the number of options in a given section
-   @fortran argument in  required string  section            name of the section
-   @fortran argument out required int     length             number of options contained in  the section
-   @fortran end */
-
+/*
+@api begin
+sirius_option_get_length:
+  doc: return the number of options in a given section
+  arguments:
+    section:
+      type: string
+      attr: in, required
+      doc: name of the seciton
+    length:
+      type: int
+      attr: out, required
+      doc: number of options contained in  the section
+@api end
+*/
 void sirius_option_get_length(char const* section__, int *length__)
 {
     auto const& parser = sirius::get_options_dictionary();
@@ -2854,12 +4593,29 @@ void sirius_option_get_length(char const* section__, int *length__)
     *length__ = parser[section].size();
 }
 
-/* @fortran begin function void sirius_option_get_name_and_type    Return the name and a type of an option from its index.
-   @fortran argument in  required string  section                  Name of the section.
-   @fortran argument in  required int     elem                     Index of the option.
-   @fortran argument out required string  key_name                 Name of the option.
-   @fortran argument out required int     type                     Type of the option (real, integer, boolean, string).
-   @fortran end */
+/*
+@api begin
+sirius_option_get_name_and_type:
+  doc: Return the name and a type of an option from its index.
+  arguments:
+    section:
+      type: string
+      attr: in, required
+      doc: Name of the section.
+    elem:
+      type: int
+      attr: in, required
+      doc: Index of the option.
+    key_name:
+      type: string
+      attr: out, required
+      doc: Name of the option.
+    type:
+      type: int
+      attr: out, required
+      doc: Type of the option (real, integer, boolean, string).
+@api end
+*/
 
 void sirius_option_get_name_and_type(char const* section__, int const* elem__, char* key_name__, int* type__)
 {
@@ -2904,18 +4660,35 @@ void sirius_option_get_name_and_type(char const* section__, int const* elem__, c
                     *type__ = 4;
                 }
             }
-            std::memcpy(key_name__, el.key().c_str(), el.key().size());
+            std::memcpy(key_name__, el.key().c_str(), el.key().size() + 1);
         }
         elem++;
     }
 }
 
-/* @fortran begin function void sirius_option_get_description_usage  return the description and usage of a given option
-   @fortran argument in  required string  section                    name of the section
-   @fortran argument in  required string  name                       name of the option
-   @fortran argument out required string  desc                       description of the option
-   @fortran argument out required string  usage                      how to use the option
-   @fortran end */
+/*
+@api begin
+sirius_option_get_description_usage:
+  doc: return the description and usage of a given option
+  arguments:
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section
+    name:
+      type: string
+      attr: in, required
+      doc: name of the option
+    desc:
+      type: string
+      attr: out, required
+      doc: description of the option
+    usage:
+      type: string
+      attr: out, required
+      doc: how to use the option
+@api end
+*/
 void sirius_option_get_description_usage(char const* section__, char const* name__, char* desc__, char* usage__)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2935,12 +4708,29 @@ void sirius_option_get_description_usage(char const* section__, char const* name
     }
 }
 
-/* @fortran begin function void sirius_option_get_int                return the default value of the option
-   @fortran argument in  required string  section                    name of the section of interest
-   @fortran argument in  required string  name                       name of the element
-   @fortran argument out required int     default_value              table containing the default values (if vector)
-   @fortran argument out required int     length                     length of the table containing the default values
-   @fortran end */
+/*
+@api begin
+sirius_option_get_int:
+  doc: return the default value of the option
+  arguments:
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section of interest
+    name:
+      type: string
+      attr: in, required
+      doc: name of the element
+    default_value:
+      type: int
+      attr: out, required
+      doc: table containing the default values (if vector)
+    length:
+      type: int
+      attr: out, required
+      doc: length of the table containing the default values
+@api end
+*/
 
 void sirius_option_get_int(char const* section__, char const* name__, int *default_value__, int *length__)
 {
@@ -2963,12 +4753,29 @@ void sirius_option_get_int(char const* section__, char const* name__, int *defau
     }
 }
 
-/* @fortran begin function void sirius_option_get_double                     return the default value of the option
-   @fortran argument in  required string  section                            name of the section of interest
-   @fortran argument in  required string  name                               name of the element
-   @fortran argument out required double default_value                       table containing the default values (if vector)
-   @fortran argument out required int    length                              length of the table containing the default values
-   @fortran end */
+/*
+@api begin
+sirius_option_get_double:
+  doc: return the default value of the option
+  arguments:
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section of interest
+    name:
+      type: string
+      attr: in, required
+      doc: name of the element
+    default_value:
+      type: double
+      attr: out, required
+      doc: table containing the default values (if vector)
+    length:
+      type: int
+      attr: out, required
+      doc: length of the table containing the default values
+@api end
+*/
 void sirius_option_get_double(char * section, char * name, double *default_value, int *length)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -2989,12 +4796,29 @@ void sirius_option_get_double(char * section, char * name, double *default_value
     }
 }
 
-/* @fortran begin function void sirius_option_get_logical                    return the default value of the option
-   @fortran argument in  required string  section                            name of the section
-   @fortran argument in  required string  name                               name of the element
-   @fortran argument out required bool   default_value                       table containing the default values
-   @fortran argument out required int    length                              length of the table containing the default values
-   @fortran end */
+/*
+@api begin
+sirius_option_get_logical:
+  doc: return the default value of the option
+  arguments:
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section
+    name:
+      type: string
+      attr: in, required
+      doc: name of the element
+    default_value:
+      type: bool
+      attr: out, required
+      doc: table containing the default values
+    length:
+      type: int
+      attr: out, required
+      doc: length of the table containing the default values
+@api end
+*/
 void sirius_option_get_logical(char * section, char * name, bool *default_value, int *length)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -3014,11 +4838,25 @@ void sirius_option_get_logical(char * section, char * name, bool *default_value,
     }
 }
 
-/* @fortran begin function void sirius_option_get_string                     return the default value of the option
-   @fortran argument in  required string  section                            name of the section
-   @fortran argument in  required string  name                               name of the option
-   @fortran argument out required string  default_value                      table containing the string
-   @fortran end */
+/*
+@api begin
+sirius_option_get_string:
+  doc: return the default value of the option
+  arguments:
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section
+    name:
+      type: string
+      attr: in, required
+      doc: name of the option
+    default_value:
+      type: string
+      attr: out, required
+      doc: table containing the string
+@api end
+*/
 void sirius_option_get_string(char* section, char * name, char *default_value)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -3033,11 +4871,25 @@ void sirius_option_get_string(char* section, char * name, char *default_value)
     std::copy(value.begin(), value.end() - 1, default_value);
 }
 
-/* @fortran begin function void sirius_option_get_number_of_possible_values  return the number of possible values for a string option
-   @fortran argument in  required string  section                            name of the section
-   @fortran argument in  required string  name                               name of the option
-   @fortran argument out required int   num_                                 number of elements
-   @fortran end */
+/*
+@api begin
+sirius_option_get_number_of_possible_values:
+  doc: return the number of possible values for a string option
+  arguments:
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section
+    name:
+      type: string
+      attr: in, required
+      doc: name of the option
+    num_:
+      type: int
+      attr: out, required
+      doc: number of elements
+@api end
+*/
 void sirius_option_get_number_of_possible_values(char* section, char * name, int *num_)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -3054,15 +4906,32 @@ void sirius_option_get_number_of_possible_values(char* section, char * name, int
     *num_ = -1;
 }
 
-/* @fortran begin function void sirius_option_string_get_value               return the possible values for a string parameter
-   @fortran argument in  required string  section                            name of the section
-   @fortran argument in  required string  name                               name of the option
-   @fortran argument in  required int    elem_                               index of the value
-   @fortran argument out required string  value_n                            string containing the value
-   @fortran end */
+/*
+@api begin
+sirius_option_string_get_value:
+  doc: return the possible values for a string parameter
+  arguments:
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section
+    name:
+      type: string
+      attr: in, required
+      doc: name of the option
+    elem_:
+      type: int
+      attr: in, required
+      doc: index of the value
+    value_n:
+      type: string
+      attr: out, required
+      doc: string containing the value
+@api end
+*/
 void sirius_option_string_get_value(char* section, char * name, int *elem_, char *value_n)
 {
-    const json &parser =  sirius::get_options_dictionary();
+    const json &parser = sirius::get_options_dictionary();
 
     // ugly as hell but fortran is a piece of ....
     for ( char *p = section; *p; p++) *p = tolower(*p);
@@ -3072,17 +4941,25 @@ void sirius_option_string_get_value(char* section, char * name, int *elem_, char
     // need to specialize however the possible values that the string can have
     if (parser[section][name].count("possible_values")) {
         auto tmp = parser[section][name]["possible_values"].get<std::vector<std::string>>();
-        // BIG BIG BIG WARNINNG. THE STRING IS NOT null terminated because
-        // fortran does not understand the concept of null terminated string
-
-        std::memcpy(value_n, tmp[*elem_].c_str(), tmp[*elem_].size());
+        std::memcpy(value_n, tmp[*elem_].c_str(), tmp[*elem_].size() + 1);
     }
 }
 
-/* @fortran begin function void sirius_option_get_section_name               return the name of a given section
-   @fortran argument in  required int     elem_                              index of the section
-   @fortran argument out  required string  section_name                      name of the section
-   @fortran end */
+/*
+@api begin
+sirius_option_get_section_name:
+  doc: return the name of a given section
+  arguments:
+    elem:
+      type: int
+      attr: in, required
+      doc: index of the section
+    section_name:
+      type: string
+      attr: out, required
+      doc: name of the section
+@api end
+*/
 void sirius_option_get_section_name(int *elem, char *section_name)
 {
     const json &dict = sirius::get_options_dictionary();
@@ -3091,16 +4968,24 @@ void sirius_option_get_section_name(int *elem, char *section_name)
     for (auto& el : dict.items())
     {
         if (elem_ == *elem) {
-            std::memcpy(section_name, el.key().c_str(), el.key().size());
+            std::memcpy(section_name, el.key().c_str(), el.key().size() + 1);
             break;
         }
         elem_++;
     }
 }
 
-/* @fortran begin function void sirius_option_get_number_of_sections         return the number of sections
-   @fortran argument out  required int     length                            number of sections
-   @fortran end */
+/*
+@api begin
+sirius_option_get_number_of_sections:
+  doc: return the number of sections
+  arguments:
+    length:
+      type: int
+      attr: out, required
+      doc: number of sections
+@api end
+*/
 void sirius_option_get_number_of_sections(int *length)
 {
     const json &parser =  sirius::get_options_dictionary();
@@ -3108,13 +4993,33 @@ void sirius_option_get_number_of_sections(int *length)
 }
 
 
-/* @fortran begin function void sirius_option_set_int                        set the value of the option name in a  (internal) json dictionary
-   @fortran argument in  required void*  handler                             Simulation context handler.
-   @fortran argument in  required string  section                            string containing the options in json format
-   @fortran argument in  required string  name                               name of the element to pick
-   @fortran argument in required int    default_values                       table containing the values
-   @fortran argument in required int    length                               length of the table containing the values
-   @fortran end */
+/*
+@api begin
+sirius_option_set_int:
+  doc: set the value of the option name in a  (internal) json dictionary
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    section:
+      type: string
+      attr: in, required
+      doc: string containing the options in json format
+    name:
+      type: string
+      attr: in, required
+      doc: name of the element to pick
+    default_values:
+      type: int
+      attr: in, required
+      doc: table containing the values
+    length:
+      type: int
+      attr: in, required
+      doc: length of the table containing the values
+@api end
+*/
 void sirius_option_set_int(void* const* handler__, char*section, char *name, int *default_values, int *length)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
@@ -3142,13 +5047,33 @@ void sirius_option_set_int(void* const* handler__, char*section, char *name, int
     }
 }
 
-/* @fortran begin function void sirius_option_set_double                     set the value of the option name in a (internal) json dictionary
-   @fortran argument in  required void*  handler                             Simulation context handler.
-   @fortran argument in  required string  section                            name of the section
-   @fortran argument in  required string  name                               name of the element to pick
-   @fortran argument in required double default_values                       table containing the values
-   @fortran argument in required int    length                               length of the table containing the values
-   @fortran end */
+/*
+@api begin
+sirius_option_set_double:
+  doc: set the value of the option name in a (internal) json dictionary
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section
+    name:
+      type: string
+      attr: in, required
+      doc: name of the element to pick
+    default_values:
+      type: double
+      attr: in, required
+      doc: table containing the values
+    length:
+      type: int
+      attr: in, required
+      doc: length of the table containing the values
+@api end
+*/
 void sirius_option_set_double(void* const* handler__, char*section, char *name, double *default_values, int *length)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
@@ -3173,13 +5098,33 @@ void sirius_option_set_double(void* const* handler__, char*section, char *name, 
     }
 }
 
-/* @fortran begin function void sirius_option_set_logical                    set the value of the option name in a  (internal) json dictionary
-   @fortran argument in  required void*  handler                             Simulation context handler.
-   @fortran argument in  required string  section                            name of the section
-   @fortran argument in  required string  name                               name of the element to pick
-   @fortran argument in required int   default_values                        table containing the values
-   @fortran argument in required int    length                               length of the table containing the values
-   @fortran end */
+/*
+@api begin
+sirius_option_set_logical:
+  doc: set the value of the option name in a  (internal) json dictionary
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section
+    name:
+      type: string
+      attr: in, required
+      doc: name of the element to pick
+    default_values:
+      type: int
+      attr: in, required
+      doc: table containing the values
+    length:
+      type: int
+      attr: in, required
+      doc: length of the table containing the values
+@api end
+*/
 void sirius_option_set_logical(void* const* handler__, char*section, char *name, int *default_values, int *length)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
@@ -3197,8 +5142,9 @@ void sirius_option_set_logical(void* const* handler__, char*section, char *name,
         if (*length > 1) {
             // we are dealing with a vector
             std::vector<bool> v(*length);
-            for (int s = 0; s < *length; s++)
+            for (int s = 0; s < *length; s++) {
                 v[s] = (default_values[s] == 1);
+            }
             conf_dict[section][name] = v;
         } else {
             conf_dict[section][name] = (*default_values == 1);
@@ -3206,12 +5152,29 @@ void sirius_option_set_logical(void* const* handler__, char*section, char *name,
     }
 }
 
-/* @fortran begin function void sirius_option_set_string                     set the value of the option name in a  (internal) json dictionary
-   @fortran argument in  required void*  handler                             Simulation context handler.
-   @fortran argument in  required string  section                            name of the section
-   @fortran argument in  required string  name                               name of the element to pick
-   @fortran argument in required string   default_values                     table containing the values
-   @fortran end */
+/*
+@api begin
+sirius_option_set_string:
+  doc: set the value of the option name in a  (internal) json dictionary
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section
+    name:
+      type: string
+      attr: in, required
+      doc: name of the element to pick
+    default_values:
+      type: string
+      attr: in, required
+      doc: table containing the values
+@api end
+*/
 void sirius_option_set_string(void* const* handler__, char * section, char * name, char *default_values)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
@@ -3228,18 +5191,37 @@ void sirius_option_set_string(void* const* handler__, char * section, char * nam
             return;
         }
         // ugly as hell but fortran is a piece of ....
-        for ( char *p = default_values; *p; p++) *p = tolower(*p);
+        for ( char *p = default_values; *p; p++) {
+            *p = tolower(*p);
+        }
         std::string st = default_values;
         conf_dict[section][name] = st;
     }
 }
 
-/* @fortran begin function void sirius_option_add_string_to                  add a string value to the option in the json dictionary
-   @fortran argument in  required void*  handler                             Simulation context handler.
-   @fortran argument in  required string  section                            name of the section
-   @fortran argument in  required string  name                               name of the element to pick
-   @fortran argument in required string   default_values                     string to be added
-   @fortran end */
+/*
+@api begin
+sirius_option_add_string_to:
+  doc: add a string value to the option in the json dictionary
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    section:
+      type: string
+      attr: in, required
+      doc: name of the section
+    name:
+      type: string
+      attr: in, required
+      doc: name of the element to pick
+    default_values:
+      type: string
+      attr: in, required
+      doc: string to be added
+@api end
+*/
 void sirius_option_add_string_to(void* const* handler__, char * section, char * name, char *default_values)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
@@ -3268,10 +5250,21 @@ void sirius_option_add_string_to(void* const* handler__, char * section, char * 
     }
 }
 
-/* @fortran begin function void sirius_dump_runtime_setup                    Dump the runtime setup in a file.
-   @fortran argument in  required void*  handler                             Simulation context handler.
-   @fortran argument in  required string filename                            String containing the name of the file.
-   @fortran end */
+/*
+@api begin
+sirius_dump_runtime_setup:
+  doc: Dump the runtime setup in a file.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    filename:
+      type: string
+      attr: in, required
+      doc: String containing the name of the file.
+@api end
+*/
 void sirius_dump_runtime_setup(void* const* handler__, char *filename)
 {
     auto& sim_ctx = get_sim_ctx(handler__);
@@ -3281,13 +5274,33 @@ void sirius_dump_runtime_setup(void* const* handler__, char *filename)
     fi.close();
 }
 
-/* @fortran begin function void sirius_get_fv_eigen_vectors         Get the first-variational eigen vectors
-   @fortran argument in  required void* handler                     K-point set handler
-   @fortran argument in  required int   ik                          Global index of the k-point
-   @fortran argument out required complex fv_evec                   Output first-variational eigenvector array
-   @fortran argument in  required int    ld                         Leading dimension of fv_evec
-   @fortran argument in  required int    num_fv_states              Number of first-variational states
-   @fortran end */
+/*
+@api begin
+sirius_get_fv_eigen_vectors:
+  doc: Get the first-variational eigen vectors
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler
+    ik:
+      type: int
+      attr: in, required
+      doc: Global index of the k-point
+    fv_evec:
+      type: complex
+      attr: out, required
+      doc: Output first-variational eigenvector array
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of fv_evec
+    num_fv_states:
+      type: int
+      attr: in, required
+      doc: Number of first-variational states
+@api end
+*/
 void sirius_get_fv_eigen_vectors(void*          const* handler__,
                                  int            const* ik__,
                                  std::complex<double>* fv_evec__,
@@ -3300,12 +5313,29 @@ void sirius_get_fv_eigen_vectors(void*          const* handler__,
     ks[ik]->get_fv_eigen_vectors(fv_evec);
 }
 
-/* @fortran begin function void sirius_get_fv_eigen_values          Get the first-variational eigen values
-   @fortran argument in  required void*  handler                    K-point set handler
-   @fortran argument in  required int    ik                         Global index of the k-point
-   @fortran argument out required double fv_eval                    Output first-variational eigenvector array
-   @fortran argument in  required int    num_fv_states              Number of first-variational states
-   @fortran end */
+/*
+@api begin
+sirius_get_fv_eigen_values:
+  doc: Get the first-variational eigen values
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler
+    ik:
+      type: int
+      attr: in, required
+      doc: Global index of the k-point
+    fv_eval:
+      type: double
+      attr: out, required
+      doc: Output first-variational eigenvector array
+    num_fv_states:
+      type: int
+      attr: in, required
+      doc: Number of first-variational states
+@api end
+*/
 void sirius_get_fv_eigen_values(void*          const* handler__,
                                 int            const* ik__,
                                 double              * fv_eval__,
@@ -3321,12 +5351,29 @@ void sirius_get_fv_eigen_values(void*          const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_sv_eigen_vectors         Get the second-variational eigen vectors
-   @fortran argument in  required void*   handler                   K-point set handler
-   @fortran argument in  required int     ik                        Global index of the k-point
-   @fortran argument out required complex sv_evec                   Output second-variational eigenvector array
-   @fortran argument in  required int     num_bands                 Number of second-variational bands.
-   @fortran end */
+/*
+@api begin
+sirius_get_sv_eigen_vectors:
+  doc: Get the second-variational eigen vectors
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler
+    ik:
+      type: int
+      attr: in, required
+      doc: Global index of the k-point
+    sv_evec:
+      type: complex
+      attr: out, required
+      doc: Output second-variational eigenvector array
+    num_bands:
+      type: int
+      attr: in, required
+      doc: Number of second-variational bands.
+@api end
+*/
 void sirius_get_sv_eigen_vectors(void*          const* handler__,
                                  int            const* ik__,
                                  std::complex<double>* sv_evec__,
@@ -3338,16 +5385,45 @@ void sirius_get_sv_eigen_vectors(void*          const* handler__,
     ks[ik]->get_sv_eigen_vectors(sv_evec);
 }
 
-/* @fortran begin function void sirius_set_rg_values          Set the values of the function on the regular grid.
-   @fortran argument in  required void*  handler              DFT ground state handler.
-   @fortran argument in  required string label                Label of the function.
-   @fortran argument in  required int    grid_dims            Dimensions of the FFT grid.
-   @fortran argument in  required int    local_box_origin     Coordinates of the local box origin for each MPI rank
-   @fortran argument in  required int    local_box_size       Dimensions of the local box for each MPI rank.
-   @fortran argument in  required int    fcomm                Fortran communicator used to partition FFT grid into local boxes.
-   @fortran argument in  required double values               Values of the function (local buffer for each MPI rank).
-   @fortran argument in  optional bool   transform_to_pw      If true, transform function to PW domain.
-   @fortran end */
+/*
+@api begin
+sirius_set_rg_values:
+  doc: Set the values of the function on the regular grid.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: DFT ground state handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the function.
+    grid_dims:
+      type: int
+      attr: in, required
+      doc: Dimensions of the FFT grid.
+    local_box_origin:
+      type: int
+      attr: in, required
+      doc: Coordinates of the local box origin for each MPI rank
+    local_box_size:
+      type: int
+      attr: in, required
+      doc: Dimensions of the local box for each MPI rank.
+    fcomm:
+      type: int
+      attr: in, required
+      doc: Fortran communicator used to partition FFT grid into local boxes.
+    values:
+      type: double
+      attr: in, required
+      doc: Values of the function (local buffer for each MPI rank).
+    transform_to_pw:
+      type: bool
+      attr: in, optional
+      doc: If true, transform function to PW domain.
+@api end
+*/
 void sirius_set_rg_values(void*  const* handler__,
                           char   const* label__,
                           int    const* grid_dims__,
@@ -3436,16 +5512,45 @@ void sirius_set_rg_values(void*  const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_rg_values          Get the values of the function on the regular grid.
-   @fortran argument in  required void*  handler              DFT ground state handler.
-   @fortran argument in  required string label                Label of the function.
-   @fortran argument in  required int    grid_dims            Dimensions of the FFT grid.
-   @fortran argument in  required int    local_box_origin     Coordinates of the local box origin for each MPI rank
-   @fortran argument in  required int    local_box_size       Dimensions of the local box for each MPI rank.
-   @fortran argument in  required int    fcomm                Fortran communicator used to partition FFT grid into local boxes.
-   @fortran argument out required double values               Values of the function (local buffer for each MPI rank).
-   @fortran argument in  optional bool   transform_to_rg      If true, transform function to regular grid before fetching the values.
-   @fortran end */
+/*
+@api begin
+sirius_get_rg_values:
+  doc: Get the values of the function on the regular grid.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: DFT ground state handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Label of the function.
+    grid_dims:
+      type: int
+      attr: in, required
+      doc: Dimensions of the FFT grid.
+    local_box_origin:
+      type: int
+      attr: in, required
+      doc: Coordinates of the local box origin for each MPI rank
+    local_box_size:
+      type: int
+      attr: in, required
+      doc: Dimensions of the local box for each MPI rank.
+    fcomm:
+      type: int
+      attr: in, required
+      doc: Fortran communicator used to partition FFT grid into local boxes.
+    values:
+      type: double
+      attr: out, required
+      doc: Values of the function (local buffer for each MPI rank).
+    transform_to_rg:
+      type: bool
+      attr: in, optional
+      doc: If true, transform function to regular grid before fetching the values.
+@api end
+*/
 void sirius_get_rg_values(void*  const* handler__,
                           char   const* label__,
                           int    const* grid_dims__,
@@ -3535,10 +5640,21 @@ void sirius_get_rg_values(void*  const* handler__,
 }
 
 
-/* @fortran begin function void sirius_get_total_magnetization  Get the total magnetization of the system.
-   @fortran argument in  required void*  handler                DFT ground state handler.
-   @fortran argument out required double mag                    3D magnetization vector (x,y,z components).
-   @fortran end */
+/*
+@api begin
+sirius_get_total_magnetization:
+  doc: Get the total magnetization of the system.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: DFT ground state handler.
+    mag:
+      type: double
+      attr: out, required
+      doc: 3D magnetization vector (x,y,z components).
+@api end
+*/
 void sirius_get_total_magnetization(void* const* handler__,
                                     double*      mag__)
 {
@@ -3558,11 +5674,25 @@ void sirius_get_total_magnetization(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_num_kpoints         Get the total number of kpoints
-   @fortran argument in   required void* handler               Kpoint set handler
-   @fortran argument out  required int   num_kpoints           number of kpoints in the set
-   @fortran argument out  optional int   error_code            Error code.
-   @fortran end */
+/*
+@api begin
+sirius_get_num_kpoints:
+  doc: Get the total number of kpoints
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Kpoint set handler
+    num_kpoints:
+      type: int
+      attr: out, required
+      doc: number of kpoints in the set
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 
 void sirius_get_num_kpoints(void* const* handler__,
                             int *num_kpoints__,
@@ -3575,11 +5705,25 @@ void sirius_get_num_kpoints(void* const* handler__,
     }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_num_bands         Get the number of computed bands
-   @fortran argument in   required void* handler             Simulation context handler.
-   @fortran argument out  required int   num_kpoints         Number of kpoints in the set
-   @fortran argument out  optional int   error_code          Error code.
-   @fortran end */
+/*
+@api begin
+sirius_get_num_bands:
+  doc: Get the number of computed bands
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    num_kpoints:
+      type: int
+      attr: out, required
+      doc: Number of kpoints in the set
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 void sirius_get_num_bands(void* const* handler__,
                           int *num_bands__,
                           int *error_code__)
@@ -3591,11 +5735,25 @@ void sirius_get_num_bands(void* const* handler__,
     }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_num_spin_components        Get the number of spin components
-   @fortran argument in   required void* handler                      Simulation context handler
-   @fortran argument out  required int   num_spin_components          Number of spin components.
-   @fortran argument out  optional int   error_code                   Error code.
-   @fortran end */
+/*
+@api begin
+sirius_get_num_spin_components:
+  doc: Get the number of spin components
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler
+    num_spin_components:
+      type: int
+      attr: out, required
+      doc: Number of spin components.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 void sirius_get_num_spin_components(void* const* handler__,
                                     int *num_spin_components__,
                                     int *error_code__)
@@ -3611,13 +5769,33 @@ void sirius_get_num_spin_components(void* const* handler__,
     }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_kpoint_properties      Get the kpoint properties
-   @fortran argument in  required void*    handler                Kpoint set handler
-   @fortran argument in  required int      ik                     Index of the kpoint
-   @fortran argument out required double   weight                 Weight of the kpoint
-   @fortran argument out optional double   coordinates            Coordinates of the kpoint
-   @fortran argument out optional int      error_code             Error code.
-   @fortran end */
+/*
+@api begin
+sirius_get_kpoint_properties:
+  doc: Get the kpoint properties
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Kpoint set handler
+    ik:
+      type: int
+      attr: in, required
+      doc: Index of the kpoint
+    weight:
+      type: double
+      attr: out, required
+      doc: Weight of the kpoint
+    coordinates:
+      type: double
+      attr: out, optional
+      doc: Coordinates of the kpoint
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 void sirius_get_kpoint_properties(void* const* handler__,
                                   int const* ik__,  // TODO assume Fortran index (starting from 1)
                                   double *weight__,
@@ -3638,11 +5816,25 @@ void sirius_get_kpoint_properties(void* const* handler__,
     }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_max_mt_aw_basis_size   Get maximum APW basis size across all atoms.
-   @fortran argument in  required void*    handler                Simulation context handler.
-   @fortran argument out required int      max_mt_aw_basis_size   Maximum APW basis size.
-   @fortran argument out optional int      error_code             Error code.
-   @fortran end */
+/*
+@api begin
+sirius_get_max_mt_aw_basis_size:
+  doc: Get maximum APW basis size across all atoms.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    max_mt_aw_basis_size:
+      type: int
+      attr: out, required
+      doc: Maximum APW basis size.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 void sirius_get_max_mt_aw_basis_size(void* const* handler__, int* max_mt_aw_basis_size__, int* error_code__)
 { // TODO: merge into sirius_get_parameters
     call_sirius([&]()
@@ -3652,14 +5844,30 @@ void sirius_get_max_mt_aw_basis_size(void* const* handler__, int* max_mt_aw_basi
     }, error_code__);
 }
 
-/* @fortran begin function void sirius_get_matching_coefficients  Get matching coefficients for all atoms.
-   @fortran argument in  required void*    handler                K-point set handler.
-   @fortran argument in  required int      ik                     Index of k-point.
-   @fortran argument out required complex  alm                    Matching coefficients.
-   @fortran argument out optional int      error_code             Error code.
-   @fortran details
-   Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution.
-   @fortran end */
+/*
+@api begin
+sirius_get_matching_coefficients:
+  doc: Get matching coefficients for all atoms.
+  full_doc: ['Warning! Generation of matching coefficients for all atoms has a large memory footprint. Use it with caution.']
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: K-point set handler.
+    ik:
+      type: int
+      attr: in, required
+      doc: Index of k-point.
+    alm:
+      type: complex
+      attr: out, required
+      doc: Matching coefficients.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 void sirius_get_matching_coefficients(void* const* handler__, int const* ik__, std::complex<double>* alm__,
                                       int* error_code__)
 {
@@ -3684,12 +5892,29 @@ void sirius_get_matching_coefficients(void* const* handler__, int const* ik__, s
     }, error_code__);
 }
 
-/* @fortran begin function void sirius_set_callback_function    Set callback function to compute various radial integrals.
-   @fortran argument in  required void*    handler              Simulation context handler.
-   @fortran argument in  required string   label                Lable of the callback function.
-   @fortran argument in  required func     fptr                 Pointer to callback function.
-   @fortran argument out optional int      error_code           Error code.
-   @fortran end */
+/*
+@api begin
+sirius_set_callback_function:
+  doc: Set callback function to compute various radial integrals.
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Simulation context handler.
+    label:
+      type: string
+      attr: in, required
+      doc: Lable of the callback function.
+    fptr:
+      type: func
+      attr: in, required
+      doc: Pointer to callback function.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
 void sirius_set_callback_function(void* const* handler__, char const* label__, void(*fptr__)(), int* error_code__)
 {
     call_sirius([&]()
@@ -3705,21 +5930,48 @@ void sirius_set_callback_function(void* const* handler__, char const* label__, v
             sim_ctx.aug_ri_callback(reinterpret_cast<void(*)(int, double, double*, int, int)>(fptr__));
         } else if (label == "aug_ri_djl") {
             sim_ctx.aug_ri_djl_callback(reinterpret_cast<void(*)(int, double, double*, int, int)>(fptr__));
+        } else if (label == "vloc_ri") {
+            sim_ctx.vloc_ri_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
+        } else if (label == "vloc_ri_djl") {
+            sim_ctx.vloc_ri_djl_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
+        } else if (label == "rhoc_ri") {
+            sim_ctx.rhoc_ri_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
+        } else if (label == "rhoc_ri_djl") {
+            sim_ctx.rhoc_ri_djl_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
+        } else if (label == "band_occ") {
+            sim_ctx.band_occ_callback(reinterpret_cast<void(*)(void)>(fptr__));
+        } else if (label == "veff") {
+            sim_ctx.veff_callback(reinterpret_cast<void(*)(void)>(fptr__));
+        } else if (label == "ps_rho_ri") {
+            sim_ctx.ps_rho_ri_callback(reinterpret_cast<void(*)(int, int, double*, double*)>(fptr__));
         } else {
-            throw std::runtime_error("wrong label of callback function");
+            std::stringstream s;
+            s << "Wrong label of the callback function: " << label;
+            throw std::runtime_error(s.str());
         }
     }, error_code__);
 }
 
-/* @fortran begin function void sirius_nlcg                       Robust wave function optimizer
-   @fortran argument in  required void*    handler                Ground state handler
-   @fortran argument in  required void*    ks_handler             point set handler
-   @fortran end */
+/*
+@api begin
+sirius_nlcg:
+  doc: Robust wave function optimizer
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: point set handler
+@api end
+*/
 
 void sirius_nlcg(void* const* handler__,
                  void* const* ks_handler__)
 {
-#ifdef __NLCGLIB
+#ifdef SIRIUS_NLCGLIB
     // call nlcg solver
     auto& gs = get_gs(handler__);
     auto& potential = gs.potential();
@@ -3761,6 +6013,124 @@ void sirius_nlcg(void* const* handler__,
             nlcglib::nlcg_mvp2_cpu(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
         } else if (pu.compare("cpu") == 0) {
             nlcglib::nlcg_mvp2_cpu_device(energy, smearing, temp, tol, kappa, tau, maxiter, restart);
+        } else {
+            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+        }
+    }
+
+#else
+    throw std::runtime_error("SIRIUS was not compiled with NLCG option.");
+#endif
+}
+
+/*
+@api begin
+sirius_nlcg_params:
+  doc: Robust wave function optimizer
+  arguments:
+    handler:
+      type: void*
+      attr: in, required
+      doc: Ground state handler
+    ks_handler:
+      type: void*
+      attr: in, required
+      doc: point set handler
+    temp:
+      type: double
+      attr: in, required
+      doc: Temperature in Kelvin
+    smearing:
+      type: string
+      attr: in, required
+      doc: smearing label
+    kappa:
+      type: double
+      attr: in, required
+      doc: pseudo-Hamiltonian scalar preconditioner
+    tau:
+      type: double
+      attr: in, required
+      doc: backtracking search reduction parameter
+    tol:
+      type: double
+      attr: in, required
+      doc: CG tolerance
+    maxiter:
+      type: int
+      attr: in, required
+      doc: CG maxiter
+    restart:
+      type: int
+      attr: in, required
+      doc: CG restart
+    processing_unit:
+      type: string
+      attr: in, required
+      doc: processing_unit = ["cpu"|"gpu"|"none"]
+@api end
+*/
+
+void sirius_nlcg_params(void* const* handler__,
+                        void* const* ks_handler__,
+                        double const* temp__,
+                        char const* smearing__,
+                        double const* kappa__,
+                        double const* tau__,
+                        double const* tol__,
+                        int const* maxiter__,
+                        int const* restart__,
+                        char const* processing_unit__)
+{
+#ifdef SIRIUS_NLCGLIB
+    // call nlcg solver
+    auto& gs = get_gs(handler__);
+    auto& potential = gs.potential();
+    auto& density = gs.density();
+
+    auto& kset = get_ks(ks_handler__);
+    auto& ctx = kset.ctx();
+
+    double temp = *temp__;
+    double kappa = *kappa__;
+    double tau = *tau__;
+    double tol = *tol__;
+    int maxiter = *maxiter__;
+    int restart = *restart__;
+
+    std::string smear(smearing__);
+    std::string pu(processing_unit__);
+
+    nlcglib::smearing_type smearing_t;
+    if (smear.compare("FD") == 0) {
+        smearing_t = nlcglib::smearing_type::FERMI_DIRAC;
+    } else if (smear.compare("GS") == 0) {
+        smearing_t = nlcglib::smearing_type::GAUSSIAN_SPLINE;
+    } else {
+        throw std::runtime_error("invalid smearing type given");
+    }
+
+    if(pu.compare("none") == 0) {
+      // use same processing unit as SIRIUS
+      pu = ctx.control().processing_unit_;
+    }
+
+    nlcglib::nlcg_info info;
+
+    sirius::Energy energy(kset, density, potential);
+    if (is_device_memory(ctx.preferred_memory_t())) {
+        if (pu.empty() || pu.compare("gpu") == 0) {
+            info = nlcglib::nlcg_mvp2_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+        } else if (pu.compare("cpu") == 0) {
+            info = nlcglib::nlcg_mvp2_device_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+        } else {
+            throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
+        }
+    } else {
+        if (pu.empty() || pu.compare("cpu") == 0) {
+            info = nlcglib::nlcg_mvp2_cpu(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
+        } else if (pu.compare("gpu") == 0) {
+            info = nlcglib::nlcg_mvp2_cpu_device(energy, smearing_t, temp, tol, kappa, tau, maxiter, restart);
         } else {
             throw std::runtime_error("invalid processing unit for nlcg given: " + pu);
         }

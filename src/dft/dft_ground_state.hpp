@@ -69,6 +69,9 @@ class DFT_ground_state
     /// Store Ewald energy which is computed once and which doesn't change during the run.
     double ewald_energy_{0};
 
+    /// Correction to total energy from the SCF density minimisation.
+    double scf_energy_{0};
+
   public:
     /// Constructor.
     DFT_ground_state(K_point_set& kset__)
@@ -126,6 +129,11 @@ class DFT_ground_state
     inline double ewald_energy() const
     {
         return ewald_energy_;
+    }
+
+    inline double scf_energy() const
+    {
+        return scf_energy_;
     }
 
     double total_energy() const;

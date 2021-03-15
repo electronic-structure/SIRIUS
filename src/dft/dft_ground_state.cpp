@@ -83,26 +83,13 @@ double DFT_ground_state::energy_kin_sum_pw() const
 
 double DFT_ground_state::total_energy() const
 {
-    return sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_);
+    return sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_) + this->scf_energy_;
 }
 
 json DFT_ground_state::serialize()
 {
-    json dict;
+    nlohmann::json dict;
 
-    dict["mpi_grid"] = ctx_.mpi_grid_dims();
-
-    std::vector<int> fftgrid = {ctx_.spfft().dim_x(),ctx_.spfft().dim_y(), ctx_.spfft().dim_z()};
-    dict["fft_grid"] = fftgrid;
-    fftgrid = {ctx_.spfft_coarse().dim_x(),ctx_.spfft_coarse().dim_y(), ctx_.spfft_coarse().dim_z()};
-    dict["fft_coarse_grid"]         = fftgrid;
-    dict["num_fv_states"]           = ctx_.num_fv_states();
-    dict["num_bands"]               = ctx_.num_bands();
-    dict["aw_cutoff"]               = ctx_.aw_cutoff();
-    dict["pw_cutoff"]               = ctx_.pw_cutoff();
-    dict["omega"]                   = ctx_.unit_cell().omega();
-    dict["chemical_formula"]        = ctx_.unit_cell().chemical_formula();
-    dict["num_atoms"]               = ctx_.unit_cell().num_atoms();
     dict["energy"]                  = json::object();
     dict["energy"]["total"]         = total_energy();
     dict["energy"]["enuc"]          = energy_enuc(ctx_, potential_);
@@ -110,7 +97,7 @@ json DFT_ground_state::serialize()
     dict["energy"]["vha"]           = energy_vha(potential_);
     dict["energy"]["vxc"]           = energy_vxc(density_, potential_);
     dict["energy"]["exc"]           = energy_exc(density_, potential_);
-    dict["energy"]["bxc"]           = energy_bxc(density_, potential_, ctx_.num_mag_dims());
+    dict["energy"]["bxc"]           = energy_bxc(density_, potential_);
     dict["energy"]["veff"]          = energy_veff(density_, potential_);
     dict["energy"]["eval_sum"]      = eval_sum(ctx_.unit_cell(), kset_);
     dict["energy"]["kin"]           = energy_kin(ctx_, kset_, density_, potential_);
@@ -118,6 +105,8 @@ json DFT_ground_state::serialize()
     if (!ctx_.full_potential()) {
         dict["energy"]["vloc"]      = energy_vloc(density_, potential_);
     }
+    dict["energy"]["scf_correction"] = this->scf_energy_;
+    dict["energy"]["entropy_sum"]   = kset_.entropy_sum();
     dict["efermi"]                  = kset_.energy_fermi();
     dict["band_gap"]                = kset_.band_gap();
     dict["core_leakage"]            = density_.core_leakage();
@@ -145,7 +134,7 @@ json DFT_ground_state::check_scf_density()
     /* create new Hamiltonian */
     Hamiltonian0 H0(pot);
     /* set the high tolerance */
-    ctx_.iterative_solver_tolerance(ctx_.settings().itsol_tol_min_);
+    ctx_.iterative_solver_tolerance(ctx_.cfg().settings().itsol_tol_min());
     /* initialize the subspace */
     Band(ctx_).initialize_subspace(kset_, H0);
     /* find new wave-functions */
@@ -172,17 +161,15 @@ json DFT_ground_state::check_scf_density()
     dict["rms"]   = std::sqrt(rms / ctx_.gvec().num_gvec());
     dict["detot"] = total_energy() - etot;
 
-    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-        std::printf("[sirius::DFT_ground_state::check_scf_density] RSS: %18.12E\n", dict["rss"].get<double>());
-        std::printf("[sirius::DFT_ground_state::check_scf_density] RMS: %18.12E\n", dict["rms"].get<double>());
-        std::printf("[sirius::DFT_ground_state::check_scf_density] dEtot: %18.12E\n", dict["detot"].get<double>());
-        std::printf("[sirius::DFT_ground_state::check_scf_density] Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
-    }
+    ctx_.message(1, __function_name__, "RSS: %18.12E\n", dict["rss"].get<double>());
+    ctx_.message(1, __function_name__, "RMS: %18.12E\n", dict["rms"].get<double>());
+    ctx_.message(1, __function_name__, "dEtot: %18.12E\n", dict["detot"].get<double>());
+    ctx_.message(1, __function_name__, "Eold: %18.12E  Enew: %18.12E\n", etot, total_energy());
 
     return dict;
 }
 
-json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state)
+json DFT_ground_state::find(double density_tol, double energy_tol, double initial_tolerance, int num_dft_iter, bool write_state)
 {
     PROFILE("sirius::DFT_ground_state::scf_loop");
 
@@ -190,23 +177,19 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
     double eold{0}, rms{0};
 
-    density_.mixer_init(ctx_.mixer_input());
+    density_.mixer_init(ctx_.cfg().mixer());
 
     int num_iter{-1};
     std::vector<double> rms_hist;
     std::vector<double> etot_hist;
 
-    if (ctx_.hubbard_correction()) { // TODO: move to inititialization functions
-        potential_.U().hubbard_compute_occupation_numbers(kset_);
-        potential_.U().calculate_hubbard_potential_and_energy();
-    }
-
     ctx_.iterative_solver_tolerance(initial_tolerance);
+
+    Density rho1(ctx_);
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
-
-        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+        if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
             std::printf("\n");
             std::printf("+------------------------------+\n");
             std::printf("| SCF iteration %3i out of %3i |\n", iter, num_dft_iter);
@@ -220,39 +203,33 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* generate new density from the occupied wave-functions */
         density_.generate(kset_, ctx_.use_symmetry(), true, true);
 
+        double e1 = energy_potential(density_, potential_);
+        copy(density_, rho1);
+
         /* mix density */
         rms = density_.mix();
 
+        /* set new tolerance of iterative solver */
         double old_tol = ctx_.iterative_solver_tolerance();
-        /* estimate new tolerance of iterative solver */
-        double tol = std::min(ctx_.settings().itsol_tol_scale_[0] * rms, ctx_.settings().itsol_tol_scale_[1] * old_tol);
-        tol = std::max(ctx_.settings().itsol_tol_min_, tol);
+        /* estimate new tolerance of the iterative solver */
+        double tol = rms;
+        if (ctx_.cfg().mixer().use_hartree()) {
+            tol = rms * rms / std::max(1.0, unit_cell_.num_electrons());
+        }
+        tol = std::min(ctx_.cfg().settings().itsol_tol_scale()[0] * tol, ctx_.cfg().settings().itsol_tol_scale()[1] * old_tol);
+        tol = std::max(ctx_.cfg().settings().itsol_tol_min(), tol);
         /* set new tolerance of iterative solver */
         ctx_.iterative_solver_tolerance(tol);
 
-        /* check number of elctrons */
+        /* check number of electrons */
         density_.check_num_electrons();
 
         /* compute new potential */
         potential_.generate(density_);
 
-        if (!ctx_.full_potential() && ctx_.control().verification_ >= 2) {
+        if (!ctx_.full_potential() && ctx_.cfg().control().verification() >= 2) {
             ctx_.message(1, __function_name__, "%s", "checking functional derivative of Exc\n");
-            double eps{0.1};
-            for (int i = 0; i < 10; i++) {
-                Potential p1(ctx_);
-                p1.scale_rho_xc(1 + eps);
-                p1.generate(density_);
-
-                double evxc = potential_.energy_vxc(density_) + potential_.energy_vxc_core(density_) + energy_bxc(density_, potential_, ctx_.num_mag_dims());
-                double deriv = (p1.energy_exc(density_) - potential_.energy_exc(density_)) / eps;
-
-                std::printf("eps              : %18.12f\n", eps);
-                std::printf("Energy Vxc       : %18.12f\n", evxc);
-                std::printf("numerical deriv  : %18.12f\n", deriv);
-                std::printf("difference       : %18.12f\n", std::abs(evxc - deriv));
-                eps /= 10;
-            }
+            sirius::check_xc_potential(density_);
         }
 
         /* symmetrize potential and effective magnetic field */
@@ -263,6 +240,11 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
         /* transform potential to real space after symmetrization */
         potential_.fft_transform(1);
 
+        if (ctx_.cfg().parameters().use_scf_correction()) {
+            double e2 = energy_potential(rho1, potential_);
+            this->scf_energy_ = e2 - e1;
+        }
+
         /* compute new total energy for a new density */
         double etot = total_energy();
 
@@ -272,23 +254,13 @@ json DFT_ground_state::find(double rms_tol, double energy_tol, double initial_to
 
         /* write some information */
         print_info();
-        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-            std::printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
-        }
+        ctx_.message(1, __function_name__, "iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter,
+                rms, etot - eold);
         /* check if the calculation has converged */
-        if (std::abs(eold - etot) < energy_tol && rms < rms_tol) {
-            if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-                std::printf("\n");
-                std::printf("converged after %i SCF iterations!\n", iter + 1);
-            }
+        if (std::abs(eold - etot) < energy_tol && rms < density_tol) {
+            ctx_.message(1, __function_name__,"converged after %i SCF iterations!\n", iter + 1); 
             num_iter = iter;
             break;
-        }
-
-        /* Compute the hubbard correction */
-        if (ctx_.hubbard_correction()) {
-            potential_.U().hubbard_compute_occupation_numbers(kset_);
-            potential_.U().calculate_hubbard_potential_and_energy();
         }
 
         eold = etot;
@@ -336,12 +308,13 @@ void DFT_ground_state::print_info()
 {
     double evalsum1 = kset_.valence_eval_sum();
     double evalsum2 = core_eval_sum(ctx_.unit_cell());
+    double s_sum    = kset_.entropy_sum();
     double ekin     = energy_kin(ctx_, kset_, density_, potential_);
     double evxc     = energy_vxc(density_, potential_);
     double eexc     = energy_exc(density_, potential_);
-    double ebxc     = energy_bxc(density_, potential_, ctx_.num_mag_dims());
+    double ebxc     = energy_bxc(density_, potential_);
     double evha     = energy_vha(potential_);
-    double etot     = sirius::total_energy(ctx_, kset_, density_, potential_, ewald_energy_);
+    double etot     = total_energy();
     double gap      = kset_.band_gap() * ha2ev;
     double ef       = kset_.energy_fermi();
     double enuc     = energy_enuc(ctx_, potential_);
@@ -349,7 +322,7 @@ void DFT_ground_state::print_info()
     double one_elec_en = evalsum1 - (evxc + evha);
 
     if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
-        one_elec_en -= potential_.PAW_one_elec_energy();
+        one_elec_en -= potential_.PAW_one_elec_energy(density_);
     }
 
     auto result = density_.rho().integrate();
@@ -363,18 +336,7 @@ void DFT_ground_state::print_info()
     auto it_mag     = std::get<1>(result_mag);
     auto mt_mag     = std::get<2>(result_mag);
 
-    //double total_mag[3];
-    //std::vector<double> mt_mag[3];
-    //double it_mag[3];
-    //for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-    //    auto result = density_.magnetization(j).integrate();
-
-    //    total_mag[j] = std::get<0>(result);
-    //    it_mag[j]    = std::get<1>(result);
-    //    mt_mag[j]    = std::get<2>(result);
-    //}
-
-    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+    if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
         std::printf("\n");
         std::printf("Charges and magnetic moments\n");
         for (int i = 0; i < 80; i++) {
@@ -462,9 +424,11 @@ void DFT_ground_state::print_info()
             std::printf("ewald contribution        : %18.8f\n", ewald_energy_);
             std::printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
         }
+        std::printf("smearing (-TS)            : %18.8f\n", s_sum);
+        std::printf("SCF correction            : %18.8f\n", this->scf_energy_);
         if (ctx_.hubbard_correction()) {
-            std::printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", potential_.U().hubbard_energy(),
-                   potential_.U().hubbard_energy() * 2.0);
+            auto e = potential_.U().hubbard_energy(density_.occupation_matrix().data());
+            std::printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", e, e * 2.0);
         }
 
         std::printf("Total energy              : %18.8f (Ha), %18.8f (Ry)\n", etot, etot * 2);

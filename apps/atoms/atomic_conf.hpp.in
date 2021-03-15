@@ -1,0 +1,6 @@
+#pragma once
+
+const json atomic_conf_dictionary_ = R"atomic(
+@SIRIUS_ATOMIC_CONF@
+)atomic"_json;
+

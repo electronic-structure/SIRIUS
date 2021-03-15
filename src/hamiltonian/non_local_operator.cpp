@@ -211,7 +211,7 @@ void Non_local_operator::apply<double_complex>(int chunk__, int ia__, int ispn_b
             break;
         }
         case device_t::GPU: {
-#ifdef __GPU
+#ifdef SIRIUS_GPU
             acc::sync_stream(stream_id(-1));
 #endif
             break;
@@ -462,7 +462,7 @@ void D_operator::initialize()
         }
     }
 
-    if (this->ctx_.control().print_checksum_ && this->ctx_.comm().rank() == 0) {
+    if (this->ctx_.print_checksum() && this->ctx_.comm().rank() == 0) {
         auto cs = this->op_.checksum();
         utils::print_checksum("D_operator", cs);
     }
@@ -578,7 +578,7 @@ void Q_operator::initialize()
             }
         }
     }
-    if (this->ctx_.control().print_checksum_ && this->ctx_.comm().rank() == 0) {
+    if (this->ctx_.print_checksum() && this->ctx_.comm().rank() == 0) {
         auto cs = this->op_.checksum();
         utils::print_checksum("Q_operator", cs);
     }
@@ -644,9 +644,7 @@ apply_S_operator(device_t pu__, spin_range spins__, int N__, int n__, Beta_proje
     }
 
     if (q_op__) {
-        beta__.prepare();
         apply_non_local_d_q<T>(spins__, N__, n__, beta__, phi__, nullptr, nullptr, q_op__, &sphi__);
-        beta__.dismiss();
     }
 }
 

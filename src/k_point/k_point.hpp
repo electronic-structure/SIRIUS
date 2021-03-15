@@ -87,17 +87,20 @@ class K_point
     /// Two-component (spinor) wave functions describing the bands.
     std::shared_ptr<Wave_functions> spinor_wave_functions_{nullptr};
 
-    /// Two-component (spinor) hubbard wave functions where the S matrix is applied (if ppus).
-    std::unique_ptr<Wave_functions> hubbard_wave_functions_{nullptr}; // TODO: remove in future
+    /// Two-component (spinor) wave functions used to compute the hubbard corrections. They can be different from the atomic wave functions.
+    std::unique_ptr<Wave_functions> hubbard_wave_functions_{nullptr};
 
-    /// Scalar hubbard wave-functions.
-    std::unique_ptr<Wave_functions> hubbard_wf_{nullptr};
+    /// Two-component (spinor) atomic orbitals used to compute the hubbard wave functions
+    std::unique_ptr<Wave_functions> atomic_wave_functions_hub_{nullptr};
+
+    /// Two-component (spinor) atomic orbitals (with the S operator applied for uspp) used to compute the hubbard wave functions
+    std::unique_ptr<Wave_functions> atomic_wave_functions_S_hub_{nullptr};
 
     /// Band occupation numbers.
-    mdarray<double, 2> band_occupancies_;
+    sddk::mdarray<double, 2> band_occupancies_;
 
     /// Band energies.
-    mdarray<double, 2> band_energies_;
+    sddk::mdarray<double, 2> band_energies_;
 
     /// LAPW matching coefficients for the row G+k vectors.
     /** Used to setup the distributed LAPW Hamiltonian and overlap matrices. */
@@ -187,6 +190,8 @@ class K_point
     /// Communicator between(!!) columns.
     Communicator const& comm_col_;
 
+    std::array<int, 2> ispn_map_;
+
     /// Generate G+k and local orbital basis sets.
     void generate_gklo_basis();
 
@@ -195,6 +200,14 @@ class K_point
 
     /// Find G+k vectors within the cutoff.
     void generate_gkvec(double gk_cutoff__);
+
+    inline int get_ispn(int ispn__) const
+    {
+        assert(ispn__ == 0 || ispn__ == 1);
+        return ispn_map_[ispn__];
+    }
+
+    friend class K_point_set;
 
   public:
     /// Constructor
@@ -213,9 +226,9 @@ class K_point
             vk_[x] = vk__[x];
         }
 
-        band_occupancies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spin_dims());
+        band_occupancies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors());
         band_occupancies_.zero();
-        band_energies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spin_dims());
+        band_energies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spinors());
         band_energies_.zero();
 
         num_ranks_row_ = comm_row_.size();
@@ -223,6 +236,14 @@ class K_point
 
         rank_row_ = comm_row_.rank();
         rank_col_ = comm_col_.rank();
+
+        ispn_map_[0] = 0;
+        ispn_map_[1] = -1;
+        if (ctx_.num_mag_dims() == 1) {
+            ispn_map_[1] = 1;
+        } else if (ctx_.num_mag_dims() == 3) {
+            ispn_map_[1] = 0;
+        }
     }
 
     /// Initialize the k-point related arrays and data.
@@ -267,8 +288,8 @@ class K_point
         states and second-variational eigen-vectors. */
     void generate_spinor_wave_functions();
 
-    void generate_atomic_wave_functions(const basis_functions_index& index, const int atom, const int offset,
-                                        const bool hubbard, Wave_functions& phi);
+    //void generate_atomic_wave_functions(const basis_functions_index& index, const int atom, const int offset,
+    //                                    const bool hubbard, Wave_functions& phi);
 
     /// Generate plane-wave coefficients of the atomic wave-functions.
     /** Plane-wave coefficients of the atom-centered wave-functions
@@ -301,7 +322,7 @@ class K_point
                             sufficient storage space.
      */
     void generate_atomic_wave_functions(std::vector<int> atoms__,
-                                        std::function<sirius::basis_functions_index const*(int)> indexb__,
+                                        std::function<sirius::experimental::basis_functions_index const*(int)> indexb__,
                                         Radial_integrals_atomic_wf<false> const& ri__, sddk::Wave_functions& wf__);
 
     void compute_gradient_wave_functions(Wave_functions& phi, const int starting_position_i, const int num_wf,
@@ -310,28 +331,27 @@ class K_point
     void generate_hubbard_orbitals();
 
     void copy_hubbard_orbitals_on_device()
-        {
-            if (ctx_.hubbard_correction() && is_device_memory(ctx_.preferred_memory_t()))
-            {
-                auto& mpd = ctx_.mem_pool(memory_t::device);
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    this->hubbard_wave_functions().pw_coeffs(ispn).allocate(mpd);
-                    this->hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, unit_cell_.num_wf_with_U().first);
-                }
+    {
+        if (ctx_.hubbard_correction() && is_device_memory(ctx_.preferred_memory_t())) {
+            auto& mpd = ctx_.mem_pool(memory_t::device);
+            for (int ispn = 0; ispn < this->hubbard_wave_functions().num_sc(); ispn++) {
+                this->hubbard_wave_functions().pw_coeffs(ispn).allocate(mpd);
+                this->hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0,
+                        this->hubbard_wave_functions().num_wf());
             }
         }
+    }
 
     void release_hubbard_orbitals_on_device()
     {
-        if (ctx_.hubbard_correction() && is_device_memory(ctx_.preferred_memory_t()))
-        {
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+        if (ctx_.hubbard_correction() && is_device_memory(ctx_.preferred_memory_t())) {
+            for (int ispn = 0; ispn < this->hubbard_wave_functions().num_sc(); ispn++) {
                 this->hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
             }
         }
     }
 
-    void orthogonalize_hubbard_orbitals(Wave_functions& phi__);
+    void orthogonalize_hubbard_orbitals(Wave_functions& phi__, Wave_functions& sphi__, Wave_functions& sphi_hub__);
 
     /// Save data to HDF5 file.
     void save(std::string const& name__, int id__) const;
@@ -382,6 +402,9 @@ class K_point
     /// Get the number of occupied bands for each spin channel.
     inline int num_occupied_bands(int ispn__ = -1) const
     {
+        if (ctx_.num_mag_dims() == 3) {
+            ispn__ = 0;
+        }
         for (int j = ctx_.num_bands() - 1; j >= 0; j--) {
             if (std::abs(band_occupancy(j, ispn__)) > ctx_.min_occupancy() * ctx_.max_occupancy()) {
                 return j + 1;
@@ -399,37 +422,25 @@ class K_point
     /// Get band energy.
     inline double band_energy(int j__, int ispn__) const
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
-        return band_energies_(j__, ispn__);
+        return band_energies_(j__, get_ispn(ispn__));
     }
 
     /// Set band energy.
     inline void band_energy(int j__, int ispn__, double e__)
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
-        band_energies_(j__, ispn__) = e__;
+        band_energies_(j__, get_ispn(ispn__)) = e__;
     }
 
     /// Get band occupancy.
     inline double band_occupancy(int j__, int ispn__) const
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
-        return band_occupancies_(j__, ispn__);
+        return band_occupancies_(j__, get_ispn(ispn__));
     }
 
     /// Set band occupancy.
     inline void band_occupancy(int j__, int ispn__, double occ__)
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
-        band_occupancies_(j__, ispn__) = occ__;
+        band_occupancies_(j__, get_ispn(ispn__)) = occ__;
     }
 
     inline double fv_eigen_value(int i) const
@@ -475,6 +486,34 @@ class K_point
     {
         assert(hubbard_wave_functions_ != nullptr);
         return *hubbard_wave_functions_;
+    }
+
+    /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
+    inline Wave_functions& atomic_wave_functions_S_hub()
+    {
+        assert(atomic_wave_functions_S_hub_ != nullptr);
+        return *atomic_wave_functions_S_hub_;
+    }
+
+    /// return the atomic wave functions used to compute the hubbard wave functions. The S operator is applied when uspp are used.
+    inline Wave_functions const& atomic_wave_functions_S_hub() const
+    {
+        assert(atomic_wave_functions_S_hub_ != nullptr);
+        return *atomic_wave_functions_S_hub_;
+    }
+
+    /// return the atomic wave functions used to compute the hubbard wave functions.
+    inline Wave_functions & atomic_wave_functions_hub()
+    {
+        assert(atomic_wave_functions_hub_ != nullptr);
+        return *atomic_wave_functions_hub_;
+    }
+
+    /// return the atomic wave functions used to compute the hubbard wave functions.
+    inline Wave_functions const& atomic_wave_functions_hub() const
+    {
+        assert(atomic_wave_functions_hub_ != nullptr);
+        return *atomic_wave_functions_hub_;
     }
 
     inline Wave_functions& singular_components()
@@ -748,7 +787,7 @@ class K_point
     template <typename... Args>
     inline void message(int level__, char const* label__, Args... args) const
     {
-        if (this->comm().rank() == 0 && this->ctx().control().verbosity_ >= level__) {
+        if (this->comm().rank() == 0 && this->ctx().cfg().control().verbosity() >= level__) {
             if (label__) {
                 std::printf("[%s] ", label__);
             }

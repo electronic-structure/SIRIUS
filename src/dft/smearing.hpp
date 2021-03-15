@@ -26,40 +26,147 @@
 #define __SMEARING_HPP__
 
 #include <cmath>
+#include <functional>
+#include <string>
+#include <stdexcept>
+#include <map>
+#include <sstream>
+#include <algorithm>
 
 namespace smearing {
 
-inline double fermi_dirac(double e)
+const double pi = 3.1415926535897932385;
+
+const double sqrt2 = std::sqrt(2.0);
+
+enum class smearing_t
 {
-    double kT = 0.001;
-    if (e > 100 * kT) {
-        return 0.0;
-    }
-    if (e < -100 * kT) {
-        return 1.0;
-    }
-    return (1.0 / (std::exp(e / kT) + 1.0));
+    gaussian,
+    fermi_dirac,
+    cold
+};
+
+inline smearing_t get_smearing_t(std::string name__)
+{
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+    std::map<std::string, smearing_t> const m = {
+        {"gaussian", smearing_t::gaussian},
+        {"fermi_dirac", smearing_t::fermi_dirac},
+        {"cold", smearing_t::cold}
+    };
+
+    if (m.count(name__) == 0) {
+        std::stringstream s;
+        s << "get_smearing_t(): wrong label of the smearing_t enumerator: " << name__;
+        throw std::runtime_error(s.str());
+     }
+     return m.at(name__);
 }
 
-inline double gaussian(double e, double delta)
+namespace gaussian {
+
+inline double delta(double x__, double width__)
 {
-    return 0.5 * (1 - std::erf(e / delta));
+    double t = std::pow(x__ / width__, 2);
+    return std::exp(-t) / std::sqrt(pi) / width__;
 }
 
-inline double cold(double e)
+inline double occupancy(double x__, double width__)
 {
-    const double pi = 3.1415926535897932385;
-    
-    double a = -0.5634;
+    return 0.5 * (1 + std::erf(x__ / width__));
+}
 
-    if (e < -10.0) {
-        return 1.0;
-    }
-    if (e > 10.0) {
+inline double entropy(double x__, double width__)
+{
+    double t = std::pow(x__ / width__, 2);
+    return -std::exp(-t) * width__ / 2.0 / std::sqrt(pi);
+
+}
+
+} // namespace "gaussian"
+
+namespace fermi_dirac {
+
+inline double delta(double x__, double width__)
+{
+    double t = x__ / 2.0 / width__;
+    return 1.0 / std::pow(std::exp(t) + std::exp(-t), 2) / width__;
+}
+
+inline double occupancy(double x__, double width__)
+{
+    return 1.0 - 1.0 / (1.0 + std::exp(x__ / width__));
+}
+
+inline double entropy(double x__, double width__)
+{
+    double t = x__ / width__;
+    if (std::abs(t) > 50) {
         return 0.0;
     }
+    double f = 1.0 / (1.0 + std::exp(t));
+    return width__ * ((1 - f) * std::log(1 - f) + f * std::log(f));
+}
 
-    return 0.5 * (1 - std::erf(e)) - 1 - 0.25 * std::exp(-e * e) * (a + 2 * e - 2 * a * e * e) / std::sqrt(pi);
+} // namespace "fermi_dirac"
+
+namespace cold
+{
+
+inline double delta(double x__, double width__)
+{
+    double x = x__ / width__ - 1.0 / sqrt2;
+    return std::exp(-std::pow(x, 2)) * (2 * width__ - sqrt2 * x__) / std::sqrt(pi) / width__ / width__;
+}
+
+inline double occupancy(double x__, double width__)
+{
+    double x = x__ / width__ - 1.0 / sqrt2;
+    return std::erf(x) / 2.0 + std::exp(-std::pow(x, 2)) / std::sqrt(2 * pi) + 0.5;
+}
+
+inline double entropy(double x__, double width__)
+{
+    double x = x__ / width__ - 1.0 / sqrt2;
+    return - std::exp(-std::pow(x, 2)) * (width__ - sqrt2 * x__) / 2 / std::sqrt(pi);
+}
+
+} // namespace "cold"
+
+inline std::function<double(double)> occupancy(smearing_t type__, double width__)
+{
+    switch (type__) {
+        case smearing_t::gaussian: {
+            return [width__](double x__){return gaussian::occupancy(x__, width__);};
+        }
+        case smearing_t::fermi_dirac: {
+            return [width__](double x__){return fermi_dirac::occupancy(x__, width__);};
+        }
+        case smearing_t::cold: {
+            return [width__](double x__){return cold::occupancy(x__, width__);};
+        }
+        default: {
+            throw std::runtime_error("wrong type of smearing");
+        }
+    }
+}
+
+inline std::function<double(double)> entropy(smearing_t type__, double width__)
+{
+    switch (type__) {
+        case smearing_t::gaussian: {
+            return [width__](double x__){return gaussian::entropy(x__, width__);};
+        }
+        case smearing_t::fermi_dirac: {
+            return [width__](double x__){return fermi_dirac::entropy(x__, width__);};
+        }
+        case smearing_t::cold: {
+            return [width__](double x__){return cold::entropy(x__, width__);};
+        }
+        default: {
+            throw std::runtime_error("wrong type of smearing");
+        }
+    }
 }
 
 }

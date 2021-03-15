@@ -24,12 +24,14 @@
 #ifndef __WF_ORTHO_HPP__
 #define __WF_ORTHO_HPP__
 #include "wave_functions.hpp"
+#include <spla/spla.hpp>
 
 namespace sddk {
 
 /// Orthogonalize n new wave-functions to the N old wave-functions
 template <typename T, int idx_bra__, int idx_ket__>
-void orthogonalize(memory_t                     mem__,
+void orthogonalize(::spla::Context& spla_ctx__,
+                   memory_t                     mem__,
                    linalg_t                     la__,
                    int                          ispn__,
                    std::vector<Wave_functions*> wfs__,
@@ -39,7 +41,8 @@ void orthogonalize(memory_t                     mem__,
                    Wave_functions&              tmp__);
 
 template <typename T>
-inline void orthogonalize(memory_t        mem__,
+inline void orthogonalize(::spla::Context& spla_ctx__,
+                          memory_t        mem__,
                           linalg_t        la__,
                           int             ispn__,
                           Wave_functions& phi__,
@@ -53,11 +56,12 @@ inline void orthogonalize(memory_t        mem__,
 
     auto wfs = {&phi__, &hphi__};
 
-    orthogonalize<T, 0, 0>(mem__, la__, ispn__, wfs, N__, n__, o__, tmp__);
+    orthogonalize<T, 0, 0>(spla_ctx__, mem__, la__, ispn__, wfs, N__, n__, o__, tmp__);
 }
 
 template <typename T>
-inline void orthogonalize(memory_t        mem__,
+inline void orthogonalize(::spla::Context& spla_ctx__,
+                          memory_t        mem__,
                           linalg_t        la__,
                           int             ispn__,
                           Wave_functions& phi__,
@@ -72,7 +76,7 @@ inline void orthogonalize(memory_t        mem__,
 
     auto wfs = {&phi__, &hphi__, &ophi__};
 
-    orthogonalize<T, 0, 2>(mem__, la__, ispn__, wfs, N__, n__, o__, tmp__);
+    orthogonalize<T, 0, 2>(spla_ctx__, mem__, la__, ispn__, wfs, N__, n__, o__, tmp__);
 }
 
 

@@ -11,11 +11,10 @@ from ..coefficient_array import diag, einsum, inner
 
 from ..helpers import save_state
 from ..logger import Logger
-from ..py_sirius import magnetization
+from ..py_sirius import magnetization, sprint_magnetization
 from .ortho import loewdin
 from .preconditioner import IdentityPreconditioner
-# from .helpers import has_enough_bands
-# from ..utils.exceptions import NotEnoughBands
+import time
 
 logger = Logger()
 
@@ -81,16 +80,20 @@ def grad_eta(Hij, ek, fn, T, kw, mo):
     return g_eta
 
 
-def btsearch(f, b, f0, maxiter=20, tau=0.5):
+def btsearch(f, b, f0, maxiter=20, tau=0.5, error_callback=None):
     """
     Backtracking search
     """
 
     x = b
 
+    error_callback(G_X=f.G_X, G_eta=f.G_eta, eta=f.eta, it=1000)
+
     for i in range(maxiter):
         fx = f(x)
-        if fx[0] > f0:
+        if x < 1e-8:
+            raise StepError('backtracking search could not find a new minimum')
+        if fx[0] >= f0:
             x *= tau
             logger('btsearch::F %.10f, x=%.4e' % (fx[0], x))
         else:
@@ -308,9 +311,9 @@ class CG:
         if not FE < F0:
             logger('==== failed step ====')
             logger('F0:', F0)
-            logger('Fpred:', Fpred, ' xi_min: ', xi_min, 'xi_trial: ', xi_trial)
-            logger('F1: ', F1, ' a: ', a)
-            logger('slope: ', slope)
+            logger('Fpred:', Fpred, ' xi_min: ', format(xi_min, '.4g'), 'xi_trial: ', format(xi_trial, '.4g'))
+            logger('F1: ', F1, ' a: ', format(a, '.4g'))
+            logger('slope: ', format(slope, '.5f'))
             # save_state({'X': X, 'f': f,
             #             'F0': F0, 'F1': F1,
             #             'a': a, 'b': b, 'c': c,
@@ -356,8 +359,8 @@ class CG:
             raise StepError('GSS didn\'t find a new minimum')
         return Xn, fn, ek, F, Hx, Ul
 
-    def backtracking_search(self, X, f, eta, Fline, F0, tau=0.5):
-        t1, res = btsearch(Fline, 5, F0, tau=tau)
+    def backtracking_search(self, X, f, eta, Fline, F0, tau=0.5, error_callback=None):
+        t1, res = btsearch(Fline, 5, F0, tau=tau, error_callback=error_callback)
         F1, Hx1, X1, f1, ek1, Ul1 = res
 
         return X1, f1, ek1, F1, Hx1, Ul1, t1
@@ -370,7 +373,8 @@ class CG:
             tau=0.5,
             cgtype='FR',
             K=IdentityPreconditioner(),
-            callback=lambda *args, **kwargs: None):
+            callback=lambda *args, **kwargs: None,
+            error_callback=lambda *args, **kwargs: None):
         """
         Returns:
         X            -- pw coefficients
@@ -419,13 +423,14 @@ class CG:
         delta_X = -K * (HX - X @ LL) / kw
 
         g_X = (HX*fn - X@LL)
-
         G_X = delta_X
-        G_eta = -g_eta
+
+        G_eta = -kappa*g_eta
         delta_eta = G_eta
 
         cg_restart_inprogress = False
         for ii in range(1, 1+maxiter):
+            tcgstart = time.time()
             slope = np.real(2*inner(g_X, G_X) + inner(g_eta, G_eta))
 
             if np.abs(slope) < tol and ii > 1:
@@ -447,21 +452,26 @@ class CG:
                 except StepError:
                     # side effects
                     try:
+                        error_callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, FE=FE, prefix='nlcg_dump%04d_' % ii)
                         Fline = F(X, eta, M, G_X, G_eta)
                         logger('btsearch')
-                        X, fn, ek, FE, Hx, U, tmin = self.backtracking_search(X, fn, eta, Fline, FE, tau=tau)
+                        X, fn, ek, FE, Hx, U, tmin = self.backtracking_search(X, fn, eta, Fline, FE, tau=tau,
+                                                                              error_callback=error_callback)
                     except StepError:
-                        # not even golden section search works
-                        # restart CG and reduce kappa
-                        cg_restart_inprogress = True
-                        kappa = kappa/3
+                        # backtracking search also failed
+                        # set kappa = 0 and retry, if cg restart already in progress -> abort
+                        error_callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, FE=FE, prefix='nlcg_dump%04d_' % ii)
+                        if cg_restart_inprogress and kappa > 0:
+                            raise Exception('giving up, invalid search direction after restart')
+                        kappa = 0
                         logger('kappa: ', kappa)
-                        tmin = 0
+
             callback(g_X=g_X, G_X=G_X, g_eta=g_eta, G_eta=G_eta, fn=fn, X=X, eta=eta, FE=FE, it=ii)
             logger('step %5d' % ii, 'F: %.11f res: X,eta %+10.5e, %+10.5e' %
                    (FE, np.real(inner(g_X, G_X)), np.real(inner(g_eta, G_eta))))
-            mag = magnetization(self.M.energy.density)
-            logger('magnetization: %.5f %.5f %.5f, total: %.5f' % (mag[0], mag[1], mag[2], np.linalg.norm(mag)))
+            mag_str = sprint_magnetization(self.M.energy.kpointset, self.M.energy.density)
+            logger(mag_str)
+            # logger('magnetization: %.5f %.5f %.5f, total: %.5f' % (mag[0], mag[1], mag[2], np.linalg.norm(mag)))
             eta = diag(ek)
             # keep previous search directions
             GP_X = G_X@U
@@ -484,13 +494,13 @@ class CG:
             # assert l2norm(X.H @ delta_X) < 1e-11
             delta_eta = kappa * (Hij - kw*diag(ek)) / kw
             # update kappa
-            dFdk = inner(g_eta, deltaP_eta) * tmin / kappa
-            dFdt = slope
-            # if |dFdk| >> |dFdt| => reduce kappa
-            # if |dFdk| << |dFdt| => increase kappa
-            logger('dFdk: %.4e + %.4e 1j' % (np.real(dFdk), np.imag(dFdk)))
-            logger('dFdt: %.4e + %4.e 1j' % (np.real(dFdt), np.imag(dFdk)))
-            logger('|dFdk|/|dFdt|: %.4e' % (np.abs(dFdk) / np.abs(dFdt)))
+            # dFdk = inner(g_eta, deltaP_eta) * tmin / kappa
+            # dFdt = slope
+            # # if |dFdk| >> |dFdt| => reduce kappa
+            # # if |dFdk| << |dFdt| => increase kappa
+            # logger('dFdk: %.4e + %.4e 1j' % (np.real(dFdk), np.imag(dFdk)))
+            # logger('dFdt: %.4e + %4.e 1j' % (np.real(dFdt), np.imag(dFdk)))
+            # logger('|dFdk|/|dFdt|: %.4e' % (np.abs(dFdk) / np.abs(dFdt)))
 
             # conjugated search directions
             if not ii % restart == 0 and not cg_restart_inprogress:
@@ -503,12 +513,7 @@ class CG:
             logger('gamma: ', gamma)
             G_X = delta_X + gamma * (GP_X - X@(X.H@GP_X))
             G_eta = delta_eta + gamma * GP_eta
-            # ready for the next iteration ...
-            # save_state({'G_X': G_X, 'gx': g_X, 'G_eta': G_eta,
-            #             'f': fn,
-            #             'g_eta': g_eta,
-            #             'gamma': gamma,
-            #             'slope': slope,
-            #             'X': X, 'eta': eta}, M.energy.kpointset, prefix='iter%04d_' % ii)
+            tcgstop = time.time()
+            logger('\tcg step took: ', format(tcgstop-tcgstart, '.3f'), ' seconds')
 
         return X, fn, FE, False

@@ -37,25 +37,19 @@ py::object pj_convert(json& node)
             return py::reinterpret_borrow<py::object>(Py_None);
         }
         case json::value_t::boolean: {
-            bool b(node);
-            return py::bool_(b);
+            return py::bool_(node.get<bool>());
         }
         case json::value_t::string: {
-            std::string s;
-            s = static_cast<std::string const&>(node);
-            return py::str(s);
+            return py::str(node.get<std::string>());
         }
         case json::value_t::number_integer: {
-            int i(node);
-            return py::int_(i);
+            return py::int_(node.get<int>());
         }
         case json::value_t::number_unsigned: {
-            unsigned int u(node);
-            return py::int_(u);
+            return py::int_(node.get<unsigned int>());
         }
         case json::value_t::number_float: {
-            double f(node);
-            return py::float_(f);
+            return py::float_(node.get<double>());
         }
         case json::value_t::object: {
             py::dict result;
@@ -157,15 +151,15 @@ PYBIND11_MODULE(py_sirius, m)
     //m.def("timer_print", &utils::timer::print);
     m.def("num_devices", &acc::num_devices);
 
-    py::class_<Parameters_input>(m, "Parameters_input")
-        .def(py::init<>())
-        .def_readonly("density_tol", &Parameters_input::density_tol_)
-        .def_readonly("energy_tol", &Parameters_input::energy_tol_)
-        .def_readonly("num_dft_iter", &Parameters_input::num_dft_iter_)
-        .def_readonly("shiftk", &Parameters_input::shiftk_)
-        .def_readonly("ngridk", &Parameters_input::ngridk_);
+    //py::class_<Parameters_input>(m, "Parameters_input")
+    //    .def(py::init<>())
+    //    .def_readonly("density_tol", &Parameters_input::density_tol_)
+    //    .def_readonly("energy_tol", &Parameters_input::energy_tol_)
+    //    .def_readonly("num_dft_iter", &Parameters_input::num_dft_iter_)
+    //    .def_readonly("shiftk", &Parameters_input::shiftk_)
+    //    .def_readonly("ngridk", &Parameters_input::ngridk_);
 
-    py::class_<Mixer_input>(m, "Mixer_input");
+    //py::class_<Mixer_input>(m, "Mixer_input");
 
     py::class_<Communicator>(m, "Communicator");
 
@@ -178,10 +172,10 @@ PYBIND11_MODULE(py_sirius, m)
         .def("max_occupancy", &Simulation_context::max_occupancy)
         .def("num_fv_states", py::overload_cast<>(&Simulation_context::num_fv_states, py::const_))
         .def("num_spins", &Simulation_context::num_spins)
-        .def("verbosity", &Simulation_context::verbosity)
+        .def("verbosity", py::overload_cast<>(&Simulation_context::verbosity, py::const_))
         .def("create_storage_file", &Simulation_context::create_storage_file)
-        .def("processing_unit", &Simulation_context::processing_unit)
-        .def("set_processing_unit", py::overload_cast<device_t>(&Simulation_context::set_processing_unit))
+        .def("processing_unit", py::overload_cast<>(&Simulation_context::processing_unit, py::const_))
+        .def("processing_unit", py::overload_cast<std::string>(&Simulation_context::processing_unit))
         .def("gvec", &Simulation_context::gvec, py::return_value_policy::reference_internal)
         .def("full_potential", &Simulation_context::full_potential)
         .def("hubbard_correction", &Simulation_context::hubbard_correction)
@@ -195,15 +189,15 @@ PYBIND11_MODULE(py_sirius, m)
         .def("gk_cutoff", py::overload_cast<double>(&Simulation_context::gk_cutoff))
         .def("aw_cutoff", py::overload_cast<>(&Simulation_context::aw_cutoff, py::const_))
         .def("aw_cutoff", py::overload_cast<double>(&Simulation_context::aw_cutoff))
-        .def("parameters_input", py::overload_cast<>(&Simulation_context::parameters_input, py::const_),
-             py::return_value_policy::reference)
-        .def("num_spin_dims", &Simulation_context::num_spin_dims)
+        //.def("parameters_input", py::overload_cast<>(&Simulation_context::parameters_input, py::const_),
+        //     py::return_value_policy::reference)
+        .def("num_spinors", &Simulation_context::num_spinors)
         .def("num_mag_dims", &Simulation_context::num_mag_dims)
         .def("gamma_point", py::overload_cast<bool>(&Simulation_context::gamma_point))
         .def("update", &Simulation_context::update)
         .def("use_symmetry", py::overload_cast<>(&Simulation_context::use_symmetry, py::const_))
         .def("preferred_memory_t", &Simulation_context::preferred_memory_t)
-        .def("mixer_input", &Simulation_context::mixer_input)
+        //.def("mixer_input", &Simulation_context::mixer_input)
         .def("comm", [](Simulation_context& obj) { return make_pycomm(obj.comm()); },
              py::return_value_policy::reference_internal)
         .def("comm_k", [](Simulation_context& obj) { return make_pycomm(obj.comm_k()); },
@@ -291,7 +285,9 @@ PYBIND11_MODULE(py_sirius, m)
              })
         .def("index_by_gvec", &Gvec::index_by_gvec);
 
-    py::class_<Gvec_partition>(m, "Gvec_partition");
+    py::class_<Gvec_partition>(m, "Gvec_partition")
+        .def_property_readonly("gvec", &Gvec_partition::gvec)
+        .def_property_readonly("gvec_array", &Gvec_partition::get_gvec);
 
     py::class_<vector3d<int>>(m, "vector3d_int")
         .def(py::init<std::vector<int>>())
@@ -346,31 +342,51 @@ PYBIND11_MODULE(py_sirius, m)
         .def(py::init<matrix3d<double>>())
         .def("det", &matrix3d<double>::det);
 
-    py::class_<Potential>(m, "Potential")
-        .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>(), "ctx"_a)
-        .def("generate", &Potential::generate)
-        .def("symmetrize", &Potential::symmetrize)
-        .def("fft_transform", &Potential::fft_transform)
-        .def("save", &Potential::save)
-        .def("load", &Potential::load)
-        .def("energy_vha", &Potential::energy_vha)
-        .def("energy_vxc", &Potential::energy_vxc)
-        .def("energy_exc", &Potential::energy_exc)
-        .def("PAW_total_energy", &Potential::PAW_total_energy)
-        .def("PAW_one_elec_energy", &Potential::PAW_one_elec_energy);
-
     py::class_<Field4D>(m, "Field4D")
-        .def("f_pw_local",
+        .def(
+            "f_pw_local",
             [](py::object& obj, int i) -> py::array_t<complex_double> {
-                Density& density     = obj.cast<Density&>();
-                auto& matrix_storage = density.component_raise(i).f_pw_local();
+                Field4D& field     = obj.cast<Field4D&>();
+                auto& matrix_storage = field.component_raise(i).f_pw_local();
                 int nrows            = matrix_storage.size(0);
                 /* return underlying data as numpy.ndarray view */
                 return py::array_t<complex_double>({nrows}, {1 * sizeof(complex_double)},
                                                    matrix_storage.at(memory_t::host), obj);
             },
             py::keep_alive<0, 1>())
-        .def("component", py::overload_cast<int>(&Field4D::component), py::return_value_policy::reference_internal);
+        .def("f_rg",
+             [](py::object& obj, int i) -> py::array_t<double> {
+                 Field4D& field       = obj.cast<Field4D&>();
+                 auto& matrix_storage = field.component_raise(i).f_rg();
+                 int nrows            = matrix_storage.size(0);
+                 /* return underlying data as numpy.ndarray view */
+                 return py::array_t<double>({nrows}, {1 * sizeof(double)},
+                                            matrix_storage.at(memory_t::host), obj);
+             })
+        .def("component", py::overload_cast<int>(&Field4D::component), py::return_value_policy::reference_internal)
+        .def(py::init<Simulation_context&, int>())
+        .def("symmetrize", py::overload_cast<>(&Field4D::symmetrize));
+
+    py::class_<Potential, Field4D>(m, "Potential")
+        .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>(), "ctx"_a)
+        .def("generate", &Potential::generate)
+        .def("symmetrize", py::overload_cast<>(&Potential::symmetrize))
+        .def("fft_transform", &Potential::fft_transform)
+        .def("save", &Potential::save)
+        .def("load", &Potential::load)
+        .def_property("vxc", py::overload_cast<>(&Potential::xc_potential),
+                      py::overload_cast<>(&Potential::xc_potential), py::return_value_policy::reference_internal)
+        .def_property("exc", py::overload_cast<>(&Potential::xc_energy_density),
+                      py::overload_cast<>(&Potential::xc_energy_density), py::return_value_policy::reference_internal)
+        .def_property("vha", py::overload_cast<>(&Potential::hartree_potential),
+                      py::overload_cast<>(&Potential::hartree_potential), py::return_value_policy::reference_internal)
+        .def_property("vloc", py::overload_cast<>(&Potential::local_potential),
+                      py::overload_cast<>(&Potential::local_potential), py::return_value_policy::reference_internal)
+        .def("energy_vha", &Potential::energy_vha)
+        .def("energy_vxc", &Potential::energy_vxc)
+        .def("energy_exc", &Potential::energy_exc)
+        .def("PAW_total_energy", &Potential::PAW_total_energy)
+        .def("PAW_one_elec_energy", &Potential::PAW_one_elec_energy);
 
     py::class_<Density, Field4D>(m, "Density")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>(), "ctx"_a)
@@ -379,24 +395,35 @@ PYBIND11_MODULE(py_sirius, m)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("fft_transform", &Density::fft_transform)
         .def("mix", &Density::mix)
-        .def("symmetrize", &Density::symmetrize)
+        .def("symmetrize", py::overload_cast<>(&Density::symmetrize))
         .def("symmetrize_density_matrix", &Density::symmetrize_density_matrix)
-        .def("generate", py::overload_cast<K_point_set const&, bool, bool>(&Density::generate), "kpointset"_a, "add_core"_a = true, "transform_to_rg"_a = false)
+        .def("generate", py::overload_cast<K_point_set const&, bool, bool>(&Density::generate), "kpointset"_a,
+             "add_core"_a = true, "transform_to_rg"_a = false)
         .def("generate_paw_loc_density", &Density::generate_paw_loc_density)
         .def("compute_atomic_mag_mom", &Density::compute_atomic_mag_mom)
         .def("save", &Density::save)
         .def("check_num_electrons", &Density::check_num_electrons)
         .def("get_magnetisation", &Density::get_magnetisation)
-        .def("density_matrix",
-             [](py::object& obj) -> py::array_t<complex_double> {
-                 Density& density = obj.cast<Density&>();
-                 auto& dm         = density.density_matrix();
-                 if (dm.at(memory_t::host) == nullptr) {
-                     throw std::runtime_error("trying to access null pointer");
-                 }
-                 return py::array_t<complex_double, py::array::f_style>(
-                     {dm.size(0), dm.size(1), dm.size(2), dm.size(3)}, dm.at(memory_t::host), obj);
-             })
+        .def_property(
+            "density_matrix",
+            [](py::object& obj) -> py::array_t<complex_double> {
+                Density& density = obj.cast<Density&>();
+                auto& dm         = density.density_matrix();
+                if (dm.at(memory_t::host) == nullptr) {
+                    throw std::runtime_error("trying to access null pointer");
+                }
+                return py::array_t<complex_double, py::array::f_style>({dm.size(0), dm.size(1), dm.size(2), dm.size(3)},
+                                                                       dm.at(memory_t::host), obj);
+            },
+            [](py::object& obj) -> py::array_t<complex_double> {
+                Density& density = obj.cast<Density&>();
+                auto& dm         = density.density_matrix();
+                if (dm.at(memory_t::host) == nullptr) {
+                    throw std::runtime_error("trying to access null pointer");
+                }
+                return py::array_t<complex_double, py::array::f_style>({dm.size(0), dm.size(1), dm.size(2), dm.size(3)},
+                                                                       dm.at(memory_t::host), obj);
+            }, py::return_value_policy::reference_internal)
         .def("load", &Density::load);
 
     py::class_<Band>(m, "Band")
@@ -474,8 +501,8 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
-        .def(py::init<Simulation_context&, std::vector<vector3d<double>>>(), py::keep_alive<1, 2>())
-        .def(py::init<Simulation_context&, std::initializer_list<std::initializer_list<double>>>(),
+        .def(py::init<Simulation_context&, std::vector<std::array<double, 3>>>(), py::keep_alive<1, 2>())
+        .def(py::init<Simulation_context&, std::initializer_list<std::array<double, 3>>>(),
              py::keep_alive<1, 2>())
         .def(py::init<Simulation_context&, vector3d<int>, vector3d<int>, bool>(), py::keep_alive<1, 2>())
         .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>(), py::keep_alive<1, 2>())
@@ -488,8 +515,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("get_band_energies", &K_point_set::get_band_energies)
         .def("find_band_occupancies", &K_point_set::find_band_occupancies)
         .def("band_gap", &K_point_set::band_gap)
-        .def("sync_band_energies", &K_point_set::sync_band_energies)
-        .def("sync_band_occupancies", &K_point_set::sync_band_occupancies)
+        //.def("sync_band", &K_point_set::sync_band)
         .def("valence_eval_sum", &K_point_set::valence_eval_sum)
         .def("__contains__", [](K_point_set& ks, int i) { return (i >= 0 && i < ks.spl_num_kpoints().local_size()); })
         .def("__getitem__",
@@ -695,12 +721,28 @@ PYBIND11_MODULE(py_sirius, m)
              py::return_value_policy::reference_internal);
 
     py::class_<Smooth_periodic_function<complex_double>>(m, "CSmooth_periodic_function")
-        .def("pw", py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_pw_local), py::return_value_policy::reference_internal)
-        .def("rg", py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_rg), py::return_value_policy::reference_internal);
+        .def("fft", [](Smooth_periodic_function<complex_double>& obj) { return obj.fft_transform(-1); })
+        .def("ifft", [](Smooth_periodic_function<complex_double>& obj) { return obj.fft_transform(1); })
+        .def_property("pw", py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_pw_local),
+                      py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_pw_local),
+                      py::return_value_policy::reference_internal)
+        .def_property("rg", py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_rg),
+                      py::overload_cast<>(&Smooth_periodic_function<complex_double>::f_rg),
+                      py::return_value_policy::reference_internal)
+        .def_property_readonly("gvec_partition", &Smooth_periodic_function<complex_double>::gvec_partition,
+                               py::return_value_policy::reference_internal);
 
-    py::class_<Smooth_periodic_function<double>>(m, "RSmooth_periodic_function")
-        .def("pw", py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local), py::return_value_policy::reference_internal)
-        .def("rg", py::overload_cast<>(&Smooth_periodic_function<double>::f_rg), py::return_value_policy::reference_internal);
+    py::class_<Smooth_periodic_function<double>>(m, "Smooth_periodic_function")
+        .def("fft", [](Smooth_periodic_function<double>& obj) { return obj.fft_transform(-1); })
+        .def("ifft", [](Smooth_periodic_function<double>& obj) { return obj.fft_transform(1); })
+        .def_property("pw", py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local),
+                      py::overload_cast<>(&Smooth_periodic_function<double>::f_pw_local),
+                      py::return_value_policy::reference_internal)
+        .def_property("rg", py::overload_cast<>(&Smooth_periodic_function<double>::f_rg),
+                      py::overload_cast<>(&Smooth_periodic_function<double>::f_rg),
+                      py::return_value_policy::reference_internal)
+        .def_property_readonly("gvec_partition", &Smooth_periodic_function<double>::gvec_partition,
+                               py::return_value_policy::reference_internal);
 
     py::class_<Periodic_function<double>, Smooth_periodic_function<double>>(m, "RPeriodic_function");
 
@@ -713,6 +755,7 @@ PYBIND11_MODULE(py_sirius, m)
     m.def("make_sirius_comm", &make_sirius_comm);
     m.def("make_pycomm", &make_pycomm);
     m.def("magnetization", &magnetization);
+    m.def("sprint_magnetization", &sprint_magnetization);
     m.def("apply_hamiltonian", &apply_hamiltonian, "Hamiltonian0"_a, "kpoint"_a, "wf_out"_a,
           "wf_in"_a, py::arg("swf_out") = nullptr);
     m.def("initialize_subspace", &initialize_subspace);
@@ -731,7 +774,7 @@ void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wa
     }
     auto H    = H0(kp);
     auto& ctx = H0.ctx();
-#ifdef __GPU
+#ifdef SIRIUS_GPU
     if (is_device_memory(ctx.preferred_memory_t())) {
         auto& mpd = ctx.mem_pool(memory_t::device);
         for (int ispn = 0; ispn < num_sc; ++ispn) {
@@ -744,12 +787,12 @@ void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wa
     /* apply H to all wave functions */
     int N = 0;
     int n = num_wf;
-    for (int ispn_step = 0; ispn_step < ctx.num_spin_dims(); ispn_step++) {
+    for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
         // sping_range: 2 for non-colinear magnetism, otherwise ispn_step
         auto spin_range = sddk::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
         H.apply_h_s<complex_double>(spin_range, N, n, wf, &wf_out, swf.get());
     }
-#ifdef __GPU
+#ifdef SIRIUS_GPU
     if (is_device_memory(ctx.preferred_memory_t())) {
         for (int ispn = 0; ispn < num_sc; ++ispn) {
             wf_out.pw_coeffs(ispn).copy_to(memory_t::host, 0, n);
@@ -758,7 +801,7 @@ void apply_hamiltonian(Hamiltonian0& H0, K_point& kp, Wave_functions& wf_out, Wa
             }
         }
     }
-#endif // __GPU
+#endif // SIRIUS_GPU
 }
 
 

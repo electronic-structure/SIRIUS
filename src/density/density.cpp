@@ -28,6 +28,7 @@
 #include "mixer/mixer_functions.hpp"
 #include "mixer/mixer_factory.hpp"
 #include "utils/profiler.hpp"
+#include "SDDK/wf_inner.hpp"
 
 namespace sirius {
 
@@ -64,6 +65,25 @@ Density::Density(Simulation_context& ctx__)
     density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
                                                  ctx_.num_mag_comp(), unit_cell_.num_atoms());
     density_matrix_.zero();
+
+    //if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
+
+    //    int indexb_max = -1;
+
+    //    // TODO: move detection of indexb_max to unit_cell
+    //    // Don't forget that Hubbard class has the same code
+    //    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+    //        if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
+    //            if (ctx__.unit_cell().atom(ia).type().spin_orbit_coupling()) {
+    //                indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size() / 2);
+    //            } else {
+    //                indexb_max = std::max(indexb_max, ctx__.unit_cell().atom(ia).type().hubbard_indexb_wfc().size());
+    //            }
+    //        }
+    //    }
+    //}
+
+    occupation_matrix_ = std::unique_ptr<Occupation_matrix>(new Occupation_matrix(ctx_));
 
     update();
 }
@@ -112,15 +132,22 @@ void Density::initial_density()
         init_density_matrix_for_paw();
 
         generate_paw_loc_density();
+
+        occupation_matrix_->init();
     }
 }
 
 void Density::initial_density_pseudo()
 {
-    auto v = ctx_.make_periodic_function<index_domain_t::local>(
-        [&](int iat, double g) { return ctx_.ps_rho_ri().value<int>(iat, g); });
+    /* get lenghts of all G shells */
+    auto q = ctx_.gvec().shells_len();
+    /* get form-factors for all G shells */
+    // TODO: MPI parallelise over G-shells 
+    auto ff = ctx_.ps_rho_ri().values(q, ctx_.comm());
+    /* make Vloc(G) */
+    auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z1, 1);
         if (ctx_.comm().rank() == 0) {
@@ -129,7 +156,7 @@ void Density::initial_density_pseudo()
     }
     std::copy(v.begin(), v.end(), &rho().f_pw_local(0));
 
-    if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+    if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
         auto h = sddk::mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).hash();
         utils::print_hash("rho_pw_init", h);
     }
@@ -146,7 +173,7 @@ void Density::initial_density_pseudo()
         }
     }
     rho().fft_transform(1);
-    if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+    if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
         auto h = rho().f_rg().hash();
         utils::print_hash("rho_rg_init", h);
     }
@@ -158,7 +185,7 @@ void Density::initial_density_pseudo()
     /* renormalize charge */
     normalize();
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         auto cs = rho().checksum_rg();
         if (ctx_.comm().rank() == 0) {
             utils::print_checksum("rho_rg_init", cs);
@@ -167,7 +194,7 @@ void Density::initial_density_pseudo()
 
     /* initialize the magnetization */
     if (ctx_.num_mag_dims()) {
-        double R = ctx_.control().rmt_max_;
+        double R = ctx_.cfg().control().rmt_max();
 
         auto w = [R](double x) {
             /* the constants are picked in such a way that the volume integral of the
@@ -203,7 +230,7 @@ void Density::initial_density_pseudo()
     }
     this->fft_transform(-1);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
             auto cs  = component(i).checksum_rg();
             auto cs1 = component(i).checksum_pw();
@@ -237,7 +264,7 @@ void Density::initial_density_full_pot()
         unit_cell_.atom_type(iat).init_free_atom_density(false);
     }
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         auto z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z, 1);
         if (ctx_.comm().rank() == 0) {
@@ -250,7 +277,7 @@ void Density::initial_density_full_pot()
     /* convert charge density to real space mesh */
     rho().fft_transform(1);
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         auto cs = rho().checksum_rg();
         if (ctx_.comm().rank() == 0) {
             utils::print_checksum("rho_rg", cs);
@@ -588,7 +615,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
                         break;
                     }
                     case SPFFT_PU_GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
                         if (ctx_.gamma_point()) {
                             update_density_rg_1_real_gpu(nr, data_ptr, w, density_rg.at(memory_t::device, 0, ispn));
                         } else {
@@ -659,7 +686,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
                     break;
                 }
                 case SPFFT_PU_GPU: {
-#ifdef __GPU
+#ifdef SIRIUS_GPU
                     /* add up-up contribution */
                     update_density_rg_1_complex_gpu(nr, psi_r_up.at(memory_t::device), w,
                                                     density_rg.at(memory_t::device, 0, 0));
@@ -707,7 +734,7 @@ void Density::add_k_point_contribution_rg(K_point* kp__)
 }
 
 template <typename T>
-void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex, 4>& density_matrix__)
+void Density::add_k_point_contribution_dm(K_point* kp__, sddk::mdarray<double_complex, 4>& density_matrix__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_dm");
 
@@ -716,64 +743,66 @@ void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_complex,
         if (ctx_.num_mag_dims() != 3) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 int nbnd = kp__->num_occupied_bands(ispn);
+                if (nbnd) {
+                    sddk::mdarray<double_complex, 2> wf1(unit_cell_.max_mt_basis_size(), nbnd);
+                    sddk::mdarray<double_complex, 2> wf2(unit_cell_.max_mt_basis_size(), nbnd);
 
-                mdarray<double_complex, 2> wf1(unit_cell_.max_mt_basis_size(), nbnd);
-                mdarray<double_complex, 2> wf2(unit_cell_.max_mt_basis_size(), nbnd);
-
-                for (int ialoc = 0; ialoc < kp__->spinor_wave_functions().spl_num_atoms().local_size(); ialoc++) {
-                    int ia            = kp__->spinor_wave_functions().spl_num_atoms()[ialoc];
-                    int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
-                    int offset_wf     = kp__->spinor_wave_functions().offset_mt_coeffs(ialoc);
-                    if (mt_basis_size != 0) {
-                        for (int i = 0; i < nbnd; i++) {
-                            for (int xi = 0; xi < mt_basis_size; xi++) {
-                                auto c     = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
-                                wf1(xi, i) = std::conj(c);
-                                wf2(xi, i) = c * kp__->band_occupancy(i, ispn) * kp__->weight();
+                    for (int ialoc = 0; ialoc < kp__->spinor_wave_functions().spl_num_atoms().local_size(); ialoc++) {
+                        int ia            = kp__->spinor_wave_functions().spl_num_atoms()[ialoc];
+                        int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
+                        int offset_wf     = kp__->spinor_wave_functions().offset_mt_coeffs(ialoc);
+                        if (mt_basis_size != 0) {
+                            for (int i = 0; i < nbnd; i++) {
+                                for (int xi = 0; xi < mt_basis_size; xi++) {
+                                    auto c     = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
+                                    wf1(xi, i) = std::conj(c);
+                                    wf2(xi, i) = c * kp__->band_occupancy(i, ispn) * kp__->weight();
+                                }
                             }
+                            /* add |psi_j> n_j <psi_j| to density matrix */
+                            linalg(linalg_t::blas).gemm(
+                                'N', 'T', mt_basis_size, mt_basis_size, nbnd, &linalg_const<double_complex>::one(), &wf1(0, 0),
+                                wf1.ld(), &wf2(0, 0), wf2.ld(), &linalg_const<double_complex>::one(),
+                                density_matrix__.at(memory_t::host, 0, 0, ispn, ia), density_matrix__.ld());
                         }
-                        /* add |psi_j> n_j <psi_j| to density matrix */
-                        linalg(linalg_t::blas).gemm(
-                            'N', 'T', mt_basis_size, mt_basis_size, nbnd, &linalg_const<double_complex>::one(), &wf1(0, 0),
-                            wf1.ld(), &wf2(0, 0), wf2.ld(), &linalg_const<double_complex>::one(),
-                            density_matrix__.at(memory_t::host, 0, 0, ispn, ia), density_matrix__.ld());
                     }
                 }
             }
         } else {
             int nbnd = kp__->num_occupied_bands();
+            if (nbnd) {
+                sddk::mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
+                sddk::mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
 
-            mdarray<double_complex, 3> wf1(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
-            mdarray<double_complex, 3> wf2(unit_cell_.max_mt_basis_size(), nbnd, ctx_.num_spins());
+                for (int ialoc = 0; ialoc < kp__->spinor_wave_functions().spl_num_atoms().local_size(); ialoc++) {
+                    int ia            = kp__->spinor_wave_functions().spl_num_atoms()[ialoc];
+                    int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
+                    int offset_wf     = kp__->spinor_wave_functions().offset_mt_coeffs(ialoc);
 
-            for (int ialoc = 0; ialoc < kp__->spinor_wave_functions().spl_num_atoms().local_size(); ialoc++) {
-                int ia            = kp__->spinor_wave_functions().spl_num_atoms()[ialoc];
-                int mt_basis_size = unit_cell_.atom(ia).type().mt_basis_size();
-                int offset_wf     = kp__->spinor_wave_functions().offset_mt_coeffs(ialoc);
+                    if (mt_basis_size != 0) {
+                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                            for (int i = 0; i < nbnd; i++) {
 
-                if (mt_basis_size != 0) {
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        for (int i = 0; i < nbnd; i++) {
-
-                            for (int xi = 0; xi < mt_basis_size; xi++) {
-                                auto c = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
-                                wf1(xi, i, ispn) = std::conj(c);
-                                wf2(xi, i, ispn) = c * kp__->band_occupancy(i, 0) * kp__->weight();
+                                for (int xi = 0; xi < mt_basis_size; xi++) {
+                                    auto c = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
+                                    wf1(xi, i, ispn) = std::conj(c);
+                                    wf2(xi, i, ispn) = c * kp__->band_occupancy(i, 0) * kp__->weight();
+                                }
                             }
                         }
-                    }
-                    /* compute diagonal terms */
-                    for (int ispn = 0; ispn < 2; ispn++) {
+                        /* compute diagonal terms */
+                        for (int ispn = 0; ispn < 2; ispn++) {
+                            linalg(linalg_t::blas).gemm(
+                                'N', 'T', mt_basis_size, mt_basis_size, nbnd, &linalg_const<double_complex>::one(),
+                                &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(), &linalg_const<double_complex>::one(),
+                                density_matrix__.at(memory_t::host, 0, 0, ispn, ia), density_matrix__.ld());
+                        }
+                        /* offdiagonal term */
                         linalg(linalg_t::blas).gemm(
-                            'N', 'T', mt_basis_size, mt_basis_size, nbnd, &linalg_const<double_complex>::one(),
-                            &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(), &linalg_const<double_complex>::one(),
-                            density_matrix__.at(memory_t::host, 0, 0, ispn, ia), density_matrix__.ld());
+                            'N', 'T', mt_basis_size, mt_basis_size, nbnd, &linalg_const<double_complex>::one(), &wf1(0, 0, 1),
+                            wf1.ld(), &wf2(0, 0, 0), wf2.ld(), &linalg_const<double_complex>::one(),
+                            density_matrix__.at(memory_t::host, 0, 0, 2, ia), density_matrix__.ld());
                     }
-                    /* offdiagonal term */
-                    linalg(linalg_t::blas).gemm(
-                        'N', 'T', mt_basis_size, mt_basis_size, nbnd, &linalg_const<double_complex>::one(), &wf1(0, 0, 1),
-                        wf1.ld(), &wf2(0, 0, 0), wf2.ld(), &linalg_const<double_complex>::one(),
-                        density_matrix__.at(memory_t::host, 0, 0, 2, ia), density_matrix__.ld());
                 }
             }
         }
@@ -1110,7 +1139,7 @@ void Density::generate_valence(K_point_set const& ks__)
     double occ_val{0};
     for (int ik = 0; ik < ks__.num_kpoints(); ik++) {
         wt += ks__[ik]->weight();
-        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 occ_val += ks__[ik]->weight() * ks__[ik]->band_occupancy(j, ispn);
             }
@@ -1123,18 +1152,22 @@ void Density::generate_valence(K_point_set const& ks__)
         TERMINATE(s);
     }
 
-    if (std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.parameters_input().extra_charge_) > 1e-8 &&
+    if (std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.cfg().parameters().extra_charge()) > 1e-8 &&
         ctx_.comm().rank() == 0) {
         std::stringstream s;
         s << "wrong band occupancies" << std::endl
           << "  computed : " << occ_val << std::endl
-          << "  required : " << unit_cell_.num_valence_electrons() - ctx_.parameters_input().extra_charge_ << std::endl
+          << "  required : " << unit_cell_.num_valence_electrons() - ctx_.cfg().parameters().extra_charge() << std::endl
           << "  difference : "
-          << std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.parameters_input().extra_charge_);
+          << std::abs(occ_val - unit_cell_.num_valence_electrons() + ctx_.cfg().parameters().extra_charge());
         WARNING(s);
     }
 
     density_matrix_.zero();
+
+    if (!ctx_.full_potential() && ctx_.hubbard_correction()) {
+        occupation_matrix_->zero();
+    }
 
     /* zero density and magnetization */
     zero();
@@ -1149,14 +1182,31 @@ void Density::generate_valence(K_point_set const& ks__)
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
-            if (is_device_memory(ctx_.preferred_memory_t())) {
-                /* allocate GPU memory */
-                kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
-                // TODO: copy for next k-point
-                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
-            }
             /* swap wave functions for the FFT transformation */
             kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(nbnd, 0, &ctx_.mem_pool(memory_t::host));
+        }
+
+        /*
+         * GPU memory allocation
+         */
+        if (is_device_memory(ctx_.preferred_memory_t())) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                int nbnd = kp->num_occupied_bands(ispn);
+                /* allocate GPU memory */
+                kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
+                /* copy to GPU */
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nbnd);
+            }
+        }
+        if (!ctx_.full_potential() && ctx_.hubbard_correction() &&
+            is_device_memory(kp->hubbard_wave_functions().preferred_memory_t())) {
+            int nwfu = kp->hubbard_wave_functions().num_wf();
+            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
+                /* allocate GPU memory */
+                kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(ctx_.mem_pool(memory_t::device));
+                /* copy to GPU */
+                kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to(memory_t::device, 0, nwfu);
+            }
         }
 
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::full_potential_lapwlo) {
@@ -1169,32 +1219,46 @@ void Density::generate_valence(K_point_set const& ks__)
             } else {
                 add_k_point_contribution_dm<double_complex>(kp, density_matrix_);
             }
+            if (ctx_.hubbard_correction()) {
+                occupation_matrix_->add_k_point_contribution(*kp);
+            }
         }
 
         /* add contribution from regular space grid */
         add_k_point_contribution_rg(kp);
 
+        /*
+         * GPU memory deallocation
+         */
         if (is_device_memory(ctx_.preferred_memory_t())) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
             }
         }
+        if (!ctx_.full_potential() && ctx_.hubbard_correction() &&
+            is_device_memory(kp->hubbard_wave_functions().preferred_memory_t())) {
+            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
+                kp->hubbard_wave_functions().pw_coeffs(ispn).deallocate(memory_t::device);
+            }
+        }
     }
 
     if (density_matrix_.size()) {
         ctx_.comm().allreduce(density_matrix_.at(memory_t::host), static_cast<int>(density_matrix_.size()));
+        occupation_matrix_->reduce();
+        occupation_matrix_->print_occupancies();
     }
 
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+        auto ptr = (ctx_.spfft_coarse().local_slice_size() == 0) ? nullptr : &rho_mag_coarse_[j]->f_rg(0);
         /* reduce arrays; assume that each rank did its own fraction of the density */
         /* comm_ortho_fft is identical to a product of column communicator inside k-point with k-point communicator */
-        comm.allreduce(&rho_mag_coarse_[j]->f_rg(0), ctx_.spfft_coarse().local_slice_size());
+        comm.allreduce(ptr, ctx_.spfft_coarse().local_slice_size());
         /* print checksum if needed */
-        if (ctx_.control().print_checksum_) {
-            auto cs =
-                mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.spfft_coarse().local_slice_size()).checksum();
+        if (ctx_.cfg().control().print_checksum()) {
+            auto cs = mdarray<double, 1>(ptr, ctx_.spfft_coarse().local_slice_size()).checksum();
             Communicator(ctx_.spfft_coarse().communicator()).allreduce(&cs, 1);
             if (ctx_.comm().rank() == 0) {
                 utils::print_checksum("rho_mag_coarse_rg", cs);
@@ -1213,10 +1277,10 @@ void Density::generate_valence(K_point_set const& ks__)
 
         /* remove extra chanrge */
         if (ctx_.gvec().comm().rank() == 0) {
-            rho().f_pw_local(0) += ctx_.parameters_input().extra_charge_ / ctx_.unit_cell().omega();
+            rho().f_pw_local(0) += ctx_.cfg().parameters().extra_charge() / ctx_.unit_cell().omega();
         }
 
-        if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+        if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
             auto h = mdarray<double_complex, 1>(&rho().f_pw_local(0), ctx_.gvec().count()).hash();
             utils::print_hash("rho", h);
         }
@@ -1283,7 +1347,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         /* convert to real matrix */
         auto dm = density_matrix_aux(iat);
 
-        if (ctx_.control().print_checksum_) {
+        if (ctx_.cfg().control().print_checksum()) {
             auto cs = dm.checksum();
             if (ctx_.comm().rank() == 0) {
                 utils::print_checksum("density_matrix_aux", cs);
@@ -1352,7 +1416,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
                     break;
                 }
                 case device_t::GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
                     for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                         generate_dm_pw_gpu(atom_type.num_atoms(), spl_ngv_loc.local_size(ib), nbf,
                                            ctx_.unit_cell().atom_coord(iat).at(memory_t::device),
@@ -1383,7 +1447,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         rho_aug.copy_to(memory_t::host);
     }
 
-    if (ctx_.control().print_checksum_) {
+    if (ctx_.cfg().control().print_checksum()) {
         auto cs = rho_aug.checksum();
         ctx_.comm().allreduce(&cs, 1);
         if (ctx_.comm().rank() == 0) {
@@ -1391,7 +1455,7 @@ mdarray<double_complex, 2> Density::generate_rho_aug()
         }
     }
 
-    if (ctx_.control().print_hash_) {
+    if (ctx_.cfg().control().print_hash()) {
         auto h = rho_aug.hash();
         if (ctx_.comm().rank() == 0) {
             utils::print_hash("rho_aug", h);
@@ -1616,7 +1680,7 @@ void Density::symmetrize_density_matrix()
 
     dm >> density_matrix_;
 
-    if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
+    if (ctx_.cfg().control().print_checksum() && ctx_.comm().rank() == 0) {
         auto cs = dm.checksum();
         utils::print_checksum("density_matrix", cs);
         // for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -1625,7 +1689,7 @@ void Density::symmetrize_density_matrix()
         //}
     }
 
-    if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+    if (ctx_.cfg().control().print_hash() && ctx_.comm().rank() == 0) {
         auto h = dm.hash();
         utils::print_hash("density_matrix", h);
     }
@@ -1729,7 +1793,7 @@ mdarray<double, 3> Density::density_matrix_aux(int iat__)
     return dm;
 }
 
-void Density::mixer_init(Mixer_input mixer_cfg__)
+void Density::mixer_init(config_t::mixer_t const& mixer_cfg__)
 {
     auto func_prop    = mixer::periodic_function_property();
     auto func_prop1   = mixer::periodic_function_property_modified(true);
@@ -1739,12 +1803,13 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
     /* create mixer */
     this->mixer_ = mixer::Mixer_factory<Periodic_function<double>, Periodic_function<double>,
                                         Periodic_function<double>, Periodic_function<double>,
-                                        mdarray<double_complex, 4>, paw_density>(mixer_cfg__);
+                                        mdarray<double_complex, 4>, paw_density,
+                                        mdarray<double_complex, 4>>(mixer_cfg__);
 
     const bool init_mt = ctx_.full_potential();
 
     /* initialize functions */
-    if (mixer_cfg__.use_hartree_) {
+    if (mixer_cfg__.use_hartree()) {
         this->mixer_->initialize_function<0>(func_prop1, component(0), ctx_, lmmax_, init_mt);
     } else {
         this->mixer_->initialize_function<0>(func_prop, component(0), ctx_, lmmax_, init_mt);
@@ -1762,6 +1827,11 @@ void Density::mixer_init(Mixer_input mixer_cfg__)
 
     if (ctx_.unit_cell().num_paw_atoms()) {
         this->mixer_->initialize_function<5>(paw_prop, paw_density_, ctx_);
+    }
+    if (occupation_matrix_->data().size()) {
+        this->mixer_->initialize_function<6>(density_prop, occupation_matrix_->data(),
+            static_cast<int>(occupation_matrix_->data().size(0)),
+            static_cast<int>(occupation_matrix_->data().size(1)), 4, unit_cell_.num_atoms());
     }
 }
 
@@ -1782,6 +1852,10 @@ void Density::mixer_input()
 
     if (ctx_.unit_cell().num_paw_atoms()) {
         mixer_->set_input<5>(paw_density_);
+    }
+
+    if (occupation_matrix_->data().size()) {
+        mixer_->set_input<6>(occupation_matrix_->data());
     }
 }
 
@@ -1804,6 +1878,10 @@ void Density::mixer_output()
         mixer_->get_output<5>(paw_density_);
     }
 
+    if (occupation_matrix_->data().size()) {
+        mixer_->get_output<6>(occupation_matrix_->data());
+    }
+
     /* transform mixed density to plane-wave domain */
     this->fft_transform(-1);
 }
@@ -1813,7 +1891,7 @@ double Density::mix()
     PROFILE("sirius::Density::mix");
 
     mixer_input();
-    double rms = mixer_->mix(ctx_.settings().mixer_rms_min_);
+    double rms = mixer_->mix(ctx_.cfg().settings().mixer_rms_min());
     mixer_output();
 
     return rms;

@@ -25,9 +25,10 @@
 #ifndef __FREE_ATOM_HPP__
 #define __FREE_ATOM_HPP__
 
-#include "mixer/broyden1_mixer.hpp"
+#include "mixer/anderson_mixer.hpp"
 #include "atom_type_base.hpp"
 #include "radial/radial_solver.hpp"
+#include "potential/xc_functional.hpp"
 
 namespace sirius {
 
@@ -141,7 +142,7 @@ class Free_atom : public Atom_type_base
             vrho[i] = 0;
         }
 
-        auto mixer = std::make_shared<sirius::mixer::Broyden1<std::vector<double>>>(12,  // max history
+        auto mixer = std::make_shared<sirius::mixer::Anderson<std::vector<double>>>(12,  // max history
                                                                                     0.8, // beta
                                                                                     0.1, // beta0
                                                                                     1.0  // beta scaling factor
@@ -166,6 +167,14 @@ class Free_atom : public Atom_type_base
             [](double alpha, const std::vector<double>& x, std::vector<double>& y) -> void {
                 for (std::size_t i = 0; i < x.size(); ++i)
                     y[i] += alpha * x[i];
+            },
+            [](double c, double s, std::vector<double>& x, std::vector<double>& y) -> void {
+                for (std::size_t i = 0; i < x.size(); ++i) {
+                    auto xi = x[i];
+                    auto yi = y[i];
+                    x[i] = xi * c + yi * s;
+                    y[i] = xi * -s + yi * c;
+                }
             });
 
         // initialize with value of vrho

@@ -32,11 +32,12 @@
 #include "SDDK/dmatrix.hpp"
 #include "utils/profiler.hpp"
 #include "linalg/linalg.hpp"
+#include "utils/cmd_args.hpp"
 
 namespace sirius {
 
 template <typename F>
-int call_test(std::string label__, F&& f__)
+inline int call_test(std::string label__, F&& f__)
 {
     int err{0};
     std::string msg;
@@ -61,6 +62,19 @@ int call_test(std::string label__, F&& f__)
         std::cout << label__ << " : OK" << std::endl;
     }
     return err;
+}
+
+template <typename F>
+inline int call_test(std::string label__, F&& f__, cmd_args const& args__)
+{
+    printf("running %-30s : ", label__.c_str());
+    int result = f__(args__);
+    if (result) {
+        printf("\x1b[31m" "Failed" "\x1b[0m" "\n");
+    } else {
+        printf("\x1b[32m" "OK" "\x1b[0m" "\n");
+    }
+    return result;
 }
 
 class Measurement: public std::vector<double>
@@ -102,7 +116,7 @@ sddk::dmatrix<T> random_symmetric(int N__, int bs__, sddk::BLACS_grid const& bla
         }
     }
 
-#ifdef __SCALAPACK
+#ifdef SIRIUS_SCALAPACK
     sddk::linalg(sddk::linalg_t::scalapack).tranc(N__, N__, A, 0, 0, B, 0, 0);
 #else
     for (int i = 0; i < N__; i++) {
@@ -139,7 +153,7 @@ sddk::dmatrix<T> random_positive_definite(int N__, int bs__, sddk::BLACS_grid co
         }
     }
 
-#ifdef __SCALAPACK
+#ifdef SIRIUS_SCALAPACK
     sddk::linalg(sddk::linalg_t::scalapack).gemm('C', 'N', N__, N__, N__, &sddk::linalg_const<T>::one(), A, 0, 0, A, 0, 0,
         &sddk::linalg_const<T>::zero(), B, 0, 0);
 #else

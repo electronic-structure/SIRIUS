@@ -25,15 +25,23 @@
 #include "typedefs.hpp"
 #include "memory.hpp"
 #include "linalg/linalg.hpp"
+#include "context/simulation_context.hpp"
 
 namespace sddk {
 template <typename T>
 class dmatrix;
 class Wave_functions;
+class spin_range;
+};
+
+struct residual_result {
+  int num_consecutive_smallest_converged;
+  int unconverged_residuals;
+  double frobenius_norm;
 };
 
 
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
 extern "C" void residuals_aux_gpu(int num_gvec_loc__,
                                   int num_res_local__,
                                   int* res_idx__,
@@ -76,12 +84,11 @@ namespace sirius {
     \f]
  */
 template <typename T>
-std::pair<int, double>
-residuals(sddk::memory_t mem_type__, sddk::linalg_t la_type__, int ispn__, int N__, int num_bands__,
-          sddk::mdarray<double, 1>& eval__, sddk::dmatrix<T>& evec__, sddk::Wave_functions& hphi__,
-          sddk::Wave_functions& ophi__, sddk::Wave_functions& hpsi__,
-          sddk::Wave_functions& opsi__, sddk::Wave_functions& res__, sddk::mdarray<double, 2> const& h_diag__,
-          sddk::mdarray<double, 2> const& o_diag__, bool estimate_eval__, double norm_tolerance__,
-          std::function<bool(int, int)> is_converged__);
-
+residual_result
+residuals(Simulation_context& ctx__, sddk::memory_t mem_type__, sddk::linalg_t la_type__, sddk::spin_range ispn__,
+          int N__, int num_bands__, int num_locked, sddk::mdarray<double, 1>& eval__,
+          sddk::dmatrix<T>& evec__, sddk::Wave_functions& hphi__, sddk::Wave_functions& ophi__,
+          sddk::Wave_functions& hpsi__, sddk::Wave_functions& opsi__, sddk::Wave_functions& res__,
+          sddk::mdarray<double, 2> const& h_diag__, sddk::mdarray<double, 2> const& o_diag__,
+          bool estimate_eval__, double norm_tolerance__, std::function<bool(int, int)> is_converged__);
 }

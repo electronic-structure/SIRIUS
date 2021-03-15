@@ -41,7 +41,7 @@ void Beta_projectors_base::split_in_chunks()
     }
 
     /* initial chunk size */
-    int chunk_size = std::min(uc.num_atoms(), ctx_.control().beta_chunk_size_);
+    int chunk_size = std::min(uc.num_atoms(), ctx_.cfg().control().beta_chunk_size());
     /* maximum number of chunks */
     int num_chunks = uc.num_atoms() / chunk_size + std::min(1, uc.num_atoms() % chunk_size);
     /* final maximum chunk size */
@@ -213,7 +213,7 @@ void Beta_projectors_base::generate(int ichunk__, int j__)
             break;
         }
         case device_t::GPU: {
-#if defined(__GPU)
+#if defined(SIRIUS_GPU)
             auto& desc = chunk(ichunk__).desc_;
             create_beta_gk_gpu(chunk(ichunk__).num_atoms_,
                                num_gkvec_loc(),
@@ -249,13 +249,17 @@ void Beta_projectors_base::prepare()
 
     switch (ctx_.processing_unit()) {
         case device_t::CPU: {
-            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(ctx_.host_memory_t()));
-            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host));
+            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(ctx_.host_memory_t()),
+                "pw_coeffs_a_");
+            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host),
+                "pw_coeffs_a_g0_");
             break;
         }
         case device_t::GPU: {
-            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(memory_t::device));
-            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host));
+            pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), max_num_beta(), ctx_.mem_pool(memory_t::device),
+                "pw_coeffs_a_");
+            pw_coeffs_a_g0_ = mdarray<double_complex, 1>(max_num_beta(), ctx_.mem_pool(memory_t::host),
+                "pw_coeffs_a_g0_");
             pw_coeffs_a_g0_.allocate(ctx_.mem_pool(memory_t::device));
             break;
         }
@@ -298,7 +302,7 @@ void Beta_projectors_base::local_inner_aux<double_complex>(double_complex* beta_
                                        beta_phi__.at(ctx_.preferred_memory_t()), beta_phi__.ld());
 
     if (pp && gkvec_.comm().rank() == 0) {
-#ifdef __GPU
+#ifdef SIRIUS_GPU
         if (ctx_.blas_linalg_t() == linalg_t::gpublas) {
             acc::sync_stream(stream_id(-1));
         }

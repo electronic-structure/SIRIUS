@@ -1,6 +1,31 @@
+// Copyright (c) 2013-2020 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file energy.cpp
+ *
+ *  \brief Total energy terms.
+ */
+
 #include "energy.hpp"
 
 namespace sirius {
+
 double ewald_energy(const Simulation_context& ctx, const Gvec& gvec, const Unit_cell& unit_cell)
 {
     double alpha{ctx.ewald_lambda()};
@@ -65,10 +90,10 @@ double energy_vha(Potential const& potential)
     return potential.energy_vha();
 }
 
-double energy_bxc(const Density& density, const Potential& potential, int num_mag_dims)
+double energy_bxc(const Density& density, const Potential& potential)
 {
     double ebxc{0};
-    for (int j = 0; j < num_mag_dims; j++) {
+    for (int j = 0; j < density.ctx().num_mag_dims(); j++) {
         ebxc += sirius::inner(density.magnetization(j), potential.effective_magnetic_field(j));
     }
     return ebxc;
@@ -117,7 +142,7 @@ double energy_kin(Simulation_context const& ctx, K_point_set const& kset, Densit
                   Potential const& potential)
 {
     return eval_sum(ctx.unit_cell(), kset) - energy_veff(density, potential) -
-           energy_bxc(density, potential, ctx.num_mag_dims());
+           energy_bxc(density, potential);
 }
 
 double total_energy(Simulation_context const& ctx, K_point_set const& kset, Density const& density,
@@ -134,18 +159,33 @@ double total_energy(Simulation_context const& ctx, K_point_set const& kset, Dens
 
         case electronic_structure_method_t::pseudopotential: {
             tot_en = (kset.valence_eval_sum() - energy_vxc(density, potential) -
-                      energy_bxc(density, potential, ctx.num_mag_dims()) - potential.PAW_one_elec_energy()) -
+                      energy_bxc(density, potential) - potential.PAW_one_elec_energy(density)) -
                       0.5 * energy_vha(potential) + energy_exc(density, potential) + potential.PAW_total_energy() +
-                      ewald_energy;
+                      ewald_energy + kset.entropy_sum();
             break;
         }
     }
 
     if (ctx.hubbard_correction()) {
-        tot_en += potential.U().hubbard_energy();
+        tot_en += potential.U().hubbard_energy(density.occupation_matrix().data());
     }
 
     return tot_en;
+}
+
+double one_electron_energy(Density const& density, Potential const& potential)
+{
+    return energy_vha(potential) + energy_vxc(density, potential) + energy_bxc(density, potential) +
+        potential.PAW_one_elec_energy(density);
+}
+
+double energy_potential(Density const& density, Potential const& potential)
+{
+    double e = energy_veff(density, potential) + energy_bxc(density, potential) + potential.PAW_one_elec_energy(density);
+    if (potential.ctx().hubbard_correction()) {
+        e += potential.U().hubbard_energy(density.occupation_matrix().data());
+    }
+    return e;
 }
 
 } // namespace sirius

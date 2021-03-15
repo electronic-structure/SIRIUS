@@ -339,6 +339,17 @@ void FORTRAN(dsytrf)(ftn_char            UPLO,
                      ftn_int*            INFO,
                      ftn_len             UPLO_len);
 
+void FORTRAN(dsytrs)(ftn_char            UPLO,
+                     ftn_int*            N,
+                     ftn_int*            NRHS,
+                     ftn_double*         A,
+                     ftn_int*            LDA,
+                     ftn_int*            IPIV,
+                     ftn_double*         B,
+                     ftn_int*            LDB,
+                     ftn_int*            INFO,
+                     ftn_len             UPLO_len);
+
 void FORTRAN(chetrf)(ftn_char            UPLO,
                      ftn_int*            N,
                      ftn_complex*        A,
@@ -1049,6 +1060,15 @@ void FORTRAN(zgeqrf)(ftn_int*            M,
                      ftn_int*            LWORK,
                      ftn_int*            INFO);
 
+void FORTRAN(sscal)(const ftn_int* N, const ftn_single* ALPHA, ftn_single* X, const ftn_int* INCX);
+
+void FORTRAN(dscal)(const ftn_int* N, const ftn_double* ALPHA, ftn_double* X, const ftn_int* INCX);
+
+void FORTRAN(cscal)(const ftn_int* N, const ftn_complex* ALPHA, ftn_complex* X, const ftn_int* INCX);
+
+void FORTRAN(zscal)(const ftn_int* N, const ftn_double_complex* ALPHA, ftn_double_complex* X, const ftn_int* INCX);
+
+void FORTRAN(dlartg)(ftn_double * f, ftn_double * g, ftn_double * cs, ftn_double * sn, ftn_double * r);
 }
 
 #endif

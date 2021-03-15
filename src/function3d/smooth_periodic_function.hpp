@@ -83,8 +83,6 @@ class Smooth_periodic_function
         : spfft_(&spfft__)
         , gvecp_(&gvecp__)
     {
-        PROFILE("sirius::Smooth_periodic_function");
-
         if (mp__) {
             f_rg_ = sddk::mdarray<T, 1>(spfft_->local_slice_size(), *mp__, "Smooth_periodic_function.f_rg_");
         } else {
@@ -209,17 +207,19 @@ class Smooth_periodic_function
 
         assert(gvecp_ != nullptr);
 
+        auto frg_ptr = (spfft_->local_slice_size() == 0) ? nullptr : &f_rg_[0];
+
         switch (direction__) {
             case 1: {
                 if (gvecp_->comm_ortho_fft().size() != 1) {
                     gather_f_pw_fft();
                 }
                 spfft_->backward(reinterpret_cast<double const*>(f_pw_fft_.at(sddk::memory_t::host)), SPFFT_PU_HOST);
-                spfft_output(*spfft_, &f_rg_[0]);
+                spfft_output(*spfft_, frg_ptr);
                 break;
             }
             case -1: {
-                spfft_input(*spfft_, &f_rg_[0]);
+                spfft_input(*spfft_, frg_ptr);
                 spfft_->forward(SPFFT_PU_HOST, reinterpret_cast<double*>(f_pw_fft_.at(sddk::memory_t::host)),
                                 SPFFT_FULL_SCALING);
                 if (gvecp_->comm_ortho_fft().size() != 1) {
@@ -241,7 +241,7 @@ class Smooth_periodic_function
         PROFILE("sirius::Smooth_periodic_function::gather_f_pw");
 
         std::vector<double_complex> fpw(gvecp_->gvec().num_gvec());
-        gvec().comm().allgather(&f_pw_local_[0], fpw.data(), gvec().offset(), gvec().count());
+        gvec().comm().allgather(&f_pw_local_[0], fpw.data(), gvec().count(), gvec().offset());
 
         return fpw;
     }
@@ -427,8 +427,6 @@ template <typename T, typename F>
 inline T
 inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
 {
-    PROFILE("sirius::Smooth_periodic_function|inner_local");
-
     assert(&f__.spfft() == &g__.spfft());
 
     T result_rg{0};
@@ -446,8 +444,7 @@ template <typename T, typename F>
 inline T
 inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__, F&& theta__)
 {
-    PROFILE("sirius::Smooth_periodic_function|inner");
-
+    PROFILE("sirius::inner");
 
     T result_rg = inner_local(f__, g__, std::forward<F>(theta__));
     sddk::Communicator(f__.spfft().communicator()).allreduce(&result_rg, 1);
@@ -462,6 +459,7 @@ inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const&
 {
     return inner(f__, g__, [](int ir){return 1;});
 }
+
 template <typename T>
 inline T
 inner_local(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
