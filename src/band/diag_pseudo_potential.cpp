@@ -383,6 +383,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
 
     int niter{0};
 
+    PROFILE_START("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < ctx_.num_spinors(); ispin_step++) {
 
         /* converged vectors */
@@ -652,6 +653,7 @@ Band::diag_pseudo_potential_davidson(Hamiltonian_k& Hk__) const
             niter++;
         }
     } /* loop over ispin_step */
+    PROFILE_STOP("sirius::Band::diag_pseudo_potential_davidson|iter");
 
     //if (ctx_.print_checksum()) {
     //    auto cs = psi.checksum(0, ctx_.num_fv_states());
