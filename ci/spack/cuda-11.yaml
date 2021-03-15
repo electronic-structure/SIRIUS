@@ -1,6 +1,6 @@
 spack:
   specs:
-    - sirius@develop %gcc@:9 +tests +apps build_type=RelWithDebInfo +cuda ^cuda@:11 ^openblas ^mpich
+    - sirius@develop %gcc@:9 +tests +apps build_type=RelWithDebInfo +cuda ^cuda@11.2.1 ^openblas ^mpich
   view: false
 
   packages:
@@ -12,10 +12,8 @@ spack:
     cuda:
       buildable: False
       externals:
-      - spec: 'cuda@11.1.0'
+      - spec: 'cuda@11.2.1'
         prefix: /usr/local/cuda
-    cmake:
-      version: [':3.14']
     openblas:
       variants:
         - threads=openmp

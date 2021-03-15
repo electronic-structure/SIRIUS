@@ -10,8 +10,6 @@ spack:
         - 'build_type=Release'
         - '+release'
         - 'amdgpu_target=gfx906'
-    cmake:
-      version: [':3.14']
     openblas:
       variants:
         - threads=openmp
