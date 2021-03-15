@@ -188,6 +188,7 @@ json DFT_ground_state::find(double density_tol, double energy_tol, double initia
     Density rho1(ctx_);
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
+        PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
         if (ctx_.comm().rank() == 0 && ctx_.verbosity() >= 1) {
             std::printf("\n");
             std::printf("+------------------------------+\n");
