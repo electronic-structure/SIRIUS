@@ -14,8 +14,6 @@ spack:
       externals:
       - spec: 'cuda@11.2.1'
         prefix: /usr/local/cuda
-    cmake:
-      version: [':3.14']
     openblas:
       variants:
         - threads=openmp
