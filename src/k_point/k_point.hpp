@@ -190,6 +190,8 @@ class K_point
     /// Communicator between(!!) columns.
     Communicator const& comm_col_;
 
+    std::array<int, 2> ispn_map_;
+
     /// Generate G+k and local orbital basis sets.
     void generate_gklo_basis();
 
@@ -198,6 +200,14 @@ class K_point
 
     /// Find G+k vectors within the cutoff.
     void generate_gkvec(double gk_cutoff__);
+
+    inline int get_ispn(int ispn__) const
+    {
+        assert(ispn__ == 0 || ispn__ == 1);
+        return ispn_map_[ispn__];
+    }
+
+    friend class K_point_set;
 
   public:
     /// Constructor
@@ -226,6 +236,14 @@ class K_point
 
         rank_row_ = comm_row_.rank();
         rank_col_ = comm_col_.rank();
+
+        ispn_map_[0] = 0;
+        ispn_map_[1] = -1;
+        if (ctx_.num_mag_dims() == 1) {
+            ispn_map_[1] = 1;
+        } else if (ctx_.num_mag_dims() == 3) {
+            ispn_map_[1] = 0;
+        }
     }
 
     /// Initialize the k-point related arrays and data.
@@ -384,6 +402,9 @@ class K_point
     /// Get the number of occupied bands for each spin channel.
     inline int num_occupied_bands(int ispn__ = -1) const
     {
+        if (ctx_.num_mag_dims() == 3) {
+            ispn__ = 0;
+        }
         for (int j = ctx_.num_bands() - 1; j >= 0; j--) {
             if (std::abs(band_occupancy(j, ispn__)) > ctx_.min_occupancy() * ctx_.max_occupancy()) {
                 return j + 1;
@@ -401,37 +422,25 @@ class K_point
     /// Get band energy.
     inline double band_energy(int j__, int ispn__) const
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
-        return band_energies_(j__, ispn__);
+        return band_energies_(j__, get_ispn(ispn__));
     }
 
     /// Set band energy.
     inline void band_energy(int j__, int ispn__, double e__)
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
-        band_energies_(j__, ispn__) = e__;
+        band_energies_(j__, get_ispn(ispn__)) = e__;
     }
 
     /// Get band occupancy.
-    inline double band_occupancy(int j__, int ispn__ = -1) const
+    inline double band_occupancy(int j__, int ispn__) const
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
-        return band_occupancies_(j__, ispn__);
+        return band_occupancies_(j__, get_ispn(ispn__));
     }
 
     /// Set band occupancy.
     inline void band_occupancy(int j__, int ispn__, double occ__)
     {
-        if (ctx_.num_mag_dims() == 3) {
-            ispn__ = 0;
-        }
-        band_occupancies_(j__, ispn__) = occ__;
+        band_occupancies_(j__, get_ispn(ispn__)) = occ__;
     }
 
     inline double fv_eigen_value(int i) const

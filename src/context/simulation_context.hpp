@@ -549,7 +549,7 @@ class Simulation_context : public Simulation_parameters
         }
 
         if (index_domain == index_domain_t::global) {
-            comm_.allgather(&f_pw[0], gvec().offset(), gvec().count());
+            comm_.allgather(&f_pw[0], gvec().count(), gvec().offset());
         }
 
         return f_pw;
@@ -580,7 +580,7 @@ class Simulation_context : public Simulation_parameters
         }
 
         if (index_domain == index_domain_t::global) {
-            comm_.allgather(&f_pw[0], gvec().offset(), gvec().count());
+            comm_.allgather(&f_pw[0], gvec().count(), gvec().offset());
         }
 
         return f_pw;

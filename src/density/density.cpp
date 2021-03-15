@@ -143,7 +143,7 @@ void Density::initial_density_pseudo()
     auto q = ctx_.gvec().shells_len();
     /* get form-factors for all G shells */
     // TODO: MPI parallelise over G-shells 
-    auto ff = ctx_.ps_rho_ri().values(q);
+    auto ff = ctx_.ps_rho_ri().values(q, ctx_.comm());
     /* make Vloc(G) */
     auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
 

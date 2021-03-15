@@ -211,7 +211,7 @@ matrix3d<double> Stress::calc_stress_core()
     potential_.xc_potential().fft_transform(-1);
 
     auto q = ctx_.gvec().shells_len();
-    auto ff = ctx_.ps_core_ri_djl().values(q);
+    auto ff = ctx_.ps_core_ri_djl().values(q, ctx_.comm());
     auto drhoc = ctx_.make_periodic_function<index_domain_t::local>(ff);
 
     double sdiag{0};
@@ -287,7 +287,6 @@ matrix3d<double> Stress::calc_stress_xc()
                 grad_rho[x].fft_transform(1);
             }
 
-            matrix3d<double> t;
             for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
@@ -315,7 +314,6 @@ matrix3d<double> Stress::calc_stress_xc()
                 grad_rho_dn[x].fft_transform(1);
             }
 
-            matrix3d<double> t;
             for (int irloc = 0; irloc < ctx_.spfft().local_slice_size(); irloc++) {
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
@@ -331,7 +329,7 @@ matrix3d<double> Stress::calc_stress_xc()
             }
         }
         Communicator(ctx_.spfft().communicator()).allreduce(&t(0, 0), 9);
-        t *= (-1.0 / ctx_.fft_grid().num_points()); 
+        t *= (-1.0 / ctx_.fft_grid().num_points());
         stress_xc_ += t;
     }
 
@@ -709,8 +707,8 @@ matrix3d<double> Stress::calc_stress_vloc()
     stress_vloc_.zero();
 
     auto q = ctx_.gvec().shells_len();
-    auto ri_vloc = ctx_.vloc_ri().values(q);
-    auto ri_vloc_dg = ctx_.vloc_ri_djl().values(q);
+    auto ri_vloc = ctx_.vloc_ri().values(q, ctx_.comm());
+    auto ri_vloc_dg = ctx_.vloc_ri_djl().values(q, ctx_.comm());
 
     auto v = ctx_.make_periodic_function<index_domain_t::local>(ri_vloc);
     auto dv = ctx_.make_periodic_function<index_domain_t::local>(ri_vloc_dg);

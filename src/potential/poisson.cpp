@@ -258,8 +258,8 @@ void Potential::poisson(Periodic_function<double> const& rho)
             vh_el_(ia) = y00 * hartree_potential_->f_mt<index_domain_t::local>(0, 0, ialoc);
 #endif
         }
-        ctx_.comm().allgather(vh_el_.at(memory_t::host), unit_cell_.spl_num_atoms().global_offset(),
-                              unit_cell_.spl_num_atoms().local_size());
+        ctx_.comm().allgather(vh_el_.at(memory_t::host), unit_cell_.spl_num_atoms().local_size(),
+                unit_cell_.spl_num_atoms().global_offset());
     }
 
     /* transform Hartree potential to real space */

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2021 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -25,45 +25,56 @@
 
 namespace sirius {
 
-void K_point_set::sync_band(std::string const& what__)
+template <sync_band_t what>
+void K_point_set::sync_band()
 {
-    PROFILE("sirius::K_point_set::sync_band_energies");
+    PROFILE("sirius::K_point_set::sync_band");
 
-    if (what__ != "energy" && what__ != "occupancy") {
-        TERMINATE("wrong label in K_point_set::sync_band");
-    }
-
-    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(), memory_t::host,
+    sddk::mdarray<double, 3> data(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints(), ctx_.mem_pool(memory_t::host),
                                   "K_point_set::sync_band.data");
 
+    int nb = ctx_.num_bands() * ctx_.num_spinors();
+    #pragma omp parallel
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
-        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            for (int j = 0; j < ctx_.num_bands(); j++) {
-                if (what__ == "energy" ){
-                    data(j, ispn, ik) = kpoints_[ik]->band_energy(j, ispn);
-                } else {
-                    data(j, ispn, ik) = kpoints_[ik]->band_occupancy(j, ispn);
-                }
+        switch (what) {
+            case sync_band_t::energy: {
+                std::copy(&kpoints_[ik]->band_energies_(0, 0), &kpoints_[ik]->band_energies_(0, 0) + nb,
+                    &data(0, 0, ik));
+                break;
+            }
+            case sync_band_t::occupancy: {
+                std::copy(&kpoints_[ik]->band_occupancies_(0, 0), &kpoints_[ik]->band_occupancies_(0, 0) + nb,
+                    &data(0, 0, ik));
+                break;
             }
         }
     }
-    comm().allgather(data.at(memory_t::host),
-                     ctx_.num_bands() * ctx_.num_spinors() * spl_num_kpoints_.global_offset(),
-                     ctx_.num_bands() * ctx_.num_spinors() * spl_num_kpoints_.local_size());
 
+    comm().allgather(data.at(memory_t::host), nb * spl_num_kpoints_.local_size(),
+        nb * spl_num_kpoints_.global_offset());
+
+    #pragma omp parallel for
     for (int ik = 0; ik < num_kpoints(); ik++) {
-        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-            for (int j = 0; j < ctx_.num_bands(); j++) {
-                if (what__ == "energy") {
-                    kpoints_[ik]->band_energy(j, ispn, data(j, ispn, ik));
-                } else {
-                    kpoints_[ik]->band_occupancy(j, ispn, data(j, ispn, ik));
-                }
+        switch (what) {
+            case sync_band_t::energy: {
+                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kpoints_[ik]->band_energies_(0, 0));
+                break;
+            }
+            case sync_band_t::occupancy: {
+                std::copy(&data(0, 0, ik), &data(0, 0, ik) + nb, &kpoints_[ik]->band_occupancies_(0, 0));
+                break;
             }
         }
     }
 }
+
+template
+void K_point_set::sync_band<sync_band_t::energy>();
+
+template
+void K_point_set::sync_band<sync_band_t::occupancy>();
+
 
 void K_point_set::create_k_mesh(vector3d<int> k_grid__, vector3d<int> k_shift__, int use_symmetry__)
 {
@@ -143,58 +154,74 @@ void K_point_set::find_band_occupancies()
         return;
     }
 
-    double ef{0};
-    double de{0.1};
-
-    int s{1};
-    int sp;
-
-    sddk::mdarray<double, 3> bnd_occ(ctx_.num_bands(), ctx_.num_spinors(), num_kpoints());
-
-    double ne{0};
-
     /* target number of electrons */
     double ne_target = ctx_.unit_cell().num_valence_electrons() - ctx_.cfg().parameters().extra_charge();
 
+    /* this is a special case when there are no empty states and the
+     * system is non-magnetic */
     if (std::abs(ctx_.num_fv_states() * double(ctx_.max_occupancy()) - ne_target) < 1e-10) {
-        // this is an insulator, skip search for band occupancies
+        /* this is an insulator, skip search for band occupancies */
         this->band_gap_ = -1;
 
-        // determine fermi energy as max occupied band energy.
-        double efermi = std::numeric_limits<double>::min();
+        /* determine fermi energy as max occupied band energy. */
+        energy_fermi_ = std::numeric_limits<double>::lowest();
         for (int ik = 0; ik < num_kpoints(); ik++) {
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    efermi = std::max(efermi, kpoints_[ik]->band_energy(j, ispn));
+                    energy_fermi_ = std::max(energy_fermi_, kpoints_[ik]->band_energy(j, ispn));
                 }
             }
         }
-        energy_fermi_ = efermi;
         return;
     }
 
+    /* get minimum and maximum band energies */
+
+    auto emin = std::numeric_limits<double>::max();
+    auto emax = std::numeric_limits<double>::lowest();
+
+    #pragma omp parallel for reduction(min:emin) reduction(max:emax)
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+        int ik = spl_num_kpoints_[ikloc];
+        for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+            emin = std::min(emin, kpoints_[ik]->band_energy(0, ispn));
+            emax = std::max(emax, kpoints_[ik]->band_energy(ctx_.num_bands() - 1, ispn));
+        }
+    }
+    comm().allreduce<double, sddk::mpi_op_t::min>(&emin, 1);
+    comm().allreduce<double, sddk::mpi_op_t::max>(&emax, 1);
+
+    double ne{0};
+
+    /* smearing function */
     auto f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+
+    splindex<splindex_t::block> splb(ctx_.num_bands(), ctx_.comm_band().size(), ctx_.comm_band().rank());
 
     int step{0};
     /* calculate occupations */
     while (std::abs(ne - ne_target) >= 1e-11) {
-        /* update Efermi */
-        ef += de;
+        energy_fermi_ = (emin + emax) / 2.0;
         /* compute total number of electrons */
         ne = 0.0;
-        for (int ik = 0; ik < num_kpoints(); ik++) {
+        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+            int ik = spl_num_kpoints_[ikloc];
+            double tmp{0};
+            #pragma omp parallel reduction(+:tmp)
             for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
-                for (int j = 0; j < ctx_.num_bands(); j++) {
-                    bnd_occ(j, ispn, ik) = f(ef - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy();
-                    ne += bnd_occ(j, ispn, ik) * kpoints_[ik]->weight();
+                #pragma omp for
+                for (int j = 0; j < splb.local_size(); j++) {
+                    tmp += f(energy_fermi_ - kpoints_[ik]->band_energy(splb[j], ispn)) * ctx_.max_occupancy();
                 }
             }
+            ne += tmp * kpoints_[ik]->weight();
         }
-
-        sp = s;
-        s  = (ne > ne_target) ? -1 : 1;
-        /* reduce de step if we change the direction, otherwise increase the step */
-        de = (s != sp) ? (-de * 0.5) : (de * 1.25);
+        ctx_.comm().allreduce(&ne, 1);
+        if (ne > ne_target) {
+            emax = energy_fermi_;
+        } else {
+            emin = energy_fermi_;
+        }
 
         if (step > 10000) {
             std::stringstream s;
@@ -204,35 +231,39 @@ void K_point_set::find_band_occupancies()
         step++;
     }
 
-    energy_fermi_ = ef;
-
-    for (int ik = 0; ik < num_kpoints(); ik++) {
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+        int ik = spl_num_kpoints_[ikloc];
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+            #pragma omp parallel for
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                kpoints_[ik]->band_occupancy(j, ispn, bnd_occ(j, ispn, ik));
+                kpoints_[ik]->band_occupancy(j, ispn,
+                    f(energy_fermi_ - kpoints_[ik]->band_energy(j, ispn)) * ctx_.max_occupancy());
             }
         }
     }
+
+    this->sync_band<sync_band_t::occupancy>();
 
     band_gap_ = 0.0;
 
     int nve = static_cast<int>(ne_target + 1e-12);
     if (ctx_.num_spins() == 2 || (std::abs(nve - ne_target) < 1e-12 && nve % 2 == 0)) {
         /* find band gap */
-        std::vector<std::pair<double, double>> eband;
+        std::vector<std::pair<double, double>> eband(ctx_.num_bands());
         std::pair<double, double> eminmax;
 
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
+            #pragma omp for
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                eminmax.first  = 1e10;
-                eminmax.second = -1e10;
+                eminmax.first  = std::numeric_limits<double>::max();
+                eminmax.second = std::numeric_limits<double>::lowest();
 
                 for (int ik = 0; ik < num_kpoints(); ik++) {
                     eminmax.first  = std::min(eminmax.first, kpoints_[ik]->band_energy(j, ispn));
                     eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j, ispn));
                 }
 
-                eband.push_back(eminmax);
+                eband[j] = eminmax;
             }
         }
 

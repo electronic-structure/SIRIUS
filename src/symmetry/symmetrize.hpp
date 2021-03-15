@@ -385,9 +385,9 @@ inline void symmetrize_function(Unit_cell_symmetry const& sym__, Communicator co
         }
     }
     double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
-    comm__.allgather(sbuf, frlm__.at(memory_t::host),
-                     lmmax * nrmax * spl_atoms.global_offset(),
-                     lmmax * nrmax * spl_atoms.local_size());
+    comm__.allgather(sbuf, frlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
+            lmmax * nrmax * spl_atoms.global_offset());
+
 }
 
 inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communicator const& comm__,
@@ -434,9 +434,8 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
     }
 
     double* sbuf = spl_atoms.local_size() ? fsym.at(memory_t::host) : nullptr;
-    comm__.allgather(sbuf, vz_rlm__.at(memory_t::host),
-                     lmmax * nrmax * spl_atoms.global_offset(),
-                     lmmax * nrmax * spl_atoms.local_size());
+    comm__.allgather(sbuf, vz_rlm__.at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
+            lmmax * nrmax * spl_atoms.global_offset());
 }
 
 inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communicator const& comm__,
@@ -497,9 +496,8 @@ inline void symmetrize_vector_function(Unit_cell_symmetry const& sym__, Communic
 
     for (int k: {0, 1, 2}) {
         double* sbuf = spl_atoms.local_size() ? v_sym.at(memory_t::host, 0, 0, 0, k) : nullptr;
-        comm__.allgather(sbuf, vrlm[k]->at(memory_t::host),
-                         lmmax * nrmax * spl_atoms.global_offset(),
-                         lmmax * nrmax * spl_atoms.local_size());
+        comm__.allgather(sbuf, vrlm[k]->at(memory_t::host), lmmax * nrmax * spl_atoms.local_size(),
+                lmmax * nrmax * spl_atoms.global_offset());
     }
 }
 

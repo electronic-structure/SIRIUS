@@ -36,7 +36,7 @@ int num_ranks_per_node()
         CALL_MPI(MPI_Get_processor_name, (name, &len));
         std::vector<size_t> hash(Communicator::world().size());
         hash[Communicator::world().rank()] = std::hash<std::string>{}(std::string(name, len));
-        Communicator::world().allgather(hash.data(), Communicator::world().rank(), 1);
+        Communicator::world().allgather(hash.data(), 1, Communicator::world().rank());
         std::sort(hash.begin(), hash.end());
 
         int n{1};
@@ -76,7 +76,7 @@ int get_device_id(int num_devices__)
             CALL_MPI(MPI_Get_processor_name, (name, &len));
             std::vector<size_t> hash(Communicator::world().size());
             hash[r] = std::hash<std::string>{}(std::string(name, len));
-            Communicator::world().allgather(hash.data(), r, 1);
+            Communicator::world().allgather(hash.data(), 1, r);
             std::map<size_t, std::vector<int>> rank_map;
             for (int i = 0; i < Communicator::world().size(); i++) {
                 rank_map[hash[i]].push_back(i);
@@ -114,7 +114,7 @@ void sddk::pstdout::printf(const char* fmt, ...)
 void sddk::pstdout::flush()
 {
     std::vector<int> counts(comm_.size());
-    comm_.allgather(&count_, counts.data(), comm_.rank(), 1);
+    comm_.allgather(&count_, counts.data(), 1, comm_.rank());
 
     int offset{0};
     for (int i = 0; i < comm_.rank(); i++) {
@@ -127,7 +127,7 @@ void sddk::pstdout::flush()
 
     if (sz != 0) {
         std::vector<char> outb(sz + 1);
-        comm_.allgather(&buffer_[0], &outb[0], offset, count_);
+        comm_.allgather(&buffer_[0], &outb[0], count_, offset);
         outb[sz] = 0;
 
         if (comm_.rank() == 0) {

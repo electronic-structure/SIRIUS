@@ -177,7 +177,7 @@ void Energy::compute()
             }
         }
     }
-    kset.sync_band("energy");
+    kset.sync_band<sync_band_t::energy>();
 
     // evaluate total energy
     double eewald = ewald_energy(ctx, ctx.gvec(), ctx.unit_cell());
@@ -255,7 +255,7 @@ void Energy::set_fn(const std::vector<std::pair<int, int>>& keys, const std::vec
             kp.band_occupancy(i, ispn, fn_loc[i]);
         }
     }
-    kset.sync_band("occupancy");
+    kset.sync_band<sync_band_t::occupancy>();
 }
 
 std::shared_ptr<nlcglib::VectorBaseZ> Energy::get_ek()

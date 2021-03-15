@@ -1,3 +1,13 @@
+
+To submit the tests:
+export MKL_NUM_THREADS=12
+export OMP_NUM_THREADS=12
+export CRAY_CUDA_MPS=0
+export MPIRUN="srun -N4 -n4 -c12 --unbuffered --hint=nomultithread"
+salloc -N4 -C gpu --time=60:00 -A csstaff
+
+
+
 ## test01: SrVO3
 - ultrasoft pseudopotential
 - non-magnetic

@@ -263,19 +263,10 @@ class Potential : public Field4D
     {
         PROFILE("sirius::Potential::generate_local_potential");
 
-        // bool is_empty{true};
-        // for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        //     is_empty &= unit_cell_.atom_type(iat).local_potential().empty();
-        // }
-        // if (!is_empty) {
-        //     generate_local_potential();
-        // }
-
         /* get lenghts of all G shells */
         auto q = ctx_.gvec().shells_len();
         /* get form-factors for all G shells */
-        // TODO: MPI parallelise over G-shells 
-        auto ff = ctx_.vloc_ri().values(q);
+        auto ff = ctx_.vloc_ri().values(q, ctx_.comm());
         /* make Vloc(G) */
         auto v = ctx_.make_periodic_function<index_domain_t::local>(ff);
 

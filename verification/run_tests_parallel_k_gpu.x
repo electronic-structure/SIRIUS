@@ -14,12 +14,10 @@ for f in ./test*; do
         echo "running '${f}'"
         (
             cd ${f}
-            ${MPIRUN} ${exe} \
-                --test_against=output_ref.json \
-                --control.std_evp_solver_name=scalapack \
-                --control.gen_evp_solver_name=scalapack \
-                --control.mpi_grid_dims=2:2 \
-                --control.processing_unit=gpu
+            ${MPIRUN} ${exe} --test_against=output_ref.json \
+                             --control.processing_unit=gpu \
+                             --control.std_evp_solver_name=cusolver \
+                             --control.gen_evp_solver_name=cusolver
             err=$?
 
             if [ ${err} == 0 ]; then
@@ -28,7 +26,7 @@ for f in ./test*; do
                 echo "'${f}' failed"
                 exit ${err}
             fi
-        ) || exit ${err}
+        )
     fi
 done
 

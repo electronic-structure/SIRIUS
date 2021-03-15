@@ -85,7 +85,6 @@ Hamiltonian_k::get_h_o_diag_pw() const
             }
         }
 
-        PROFILE_START("sirius::Hamiltonian_k::get_h_o_diag|1");
         /* non-local H contribution */
         auto beta_gk_t = kp_.beta_projectors().pw_coeffs_t(0);
         matrix<double_complex> beta_gk_tmp(kp_.num_gkvec_loc(), uc.max_mt_basis_size());
@@ -120,11 +119,9 @@ Hamiltonian_k::get_h_o_diag_pw() const
                     }
                 }
             }
-            PROFILE_STOP("sirius::Hamiltonian_k::get_h_o_diag|1");
 
             int offs = uc.atom_type(iat).offset_lo();
 
-            PROFILE_START("sirius::Hamiltonian_k::get_h_o_diag|3");
             if (what & 1) {
                 sddk::linalg(linalg_t::blas).gemm('N', 'N', kp_.num_gkvec_loc(), nbf, nbf,
                     &sddk::linalg_const<double_complex>::one(), &beta_gk_t(0, offs), beta_gk_t.ld(),
@@ -156,7 +153,6 @@ Hamiltonian_k::get_h_o_diag_pw() const
                     }
                 }
             }
-            PROFILE_STOP("sirius::Hamiltonian_k::get_h_o_diag|3");
         }
     }
     if (H0_.ctx().processing_unit() == device_t::GPU) {
