@@ -3826,6 +3826,7 @@ void sirius_get_num_gvec(void* const* handler__, int* num_gvec__, int* error_cod
     }, error_code__);
 }
 
+// TODO: add dimensions keyword to the argument properties
 /*
 @api begin
 sirius_get_gvec_arrays:
@@ -5385,6 +5386,8 @@ void sirius_get_sv_eigen_vectors(void*          const* handler__,
     ks[ik]->get_sv_eigen_vectors(sv_evec);
 }
 
+// TODO: check if this two functions below are needed
+
 /*
 @api begin
 sirius_set_rg_values:
@@ -5727,7 +5730,7 @@ sirius_get_num_bands:
 void sirius_get_num_bands(void* const* handler__,
                           int *num_bands__,
                           int *error_code__)
-{ // TODO: already exists in sirius_get_parameters
+{ // TODO: already exists in sirius_get_parameters; deprecate
     call_sirius([&]()
     {
         auto& sim_ctx = get_sim_ctx(handler__);
@@ -5757,7 +5760,7 @@ sirius_get_num_spin_components:
 void sirius_get_num_spin_components(void* const* handler__,
                                     int *num_spin_components__,
                                     int *error_code__)
-{ // TODO: merge into sirius_get_parameters
+{ // TODO: merge into sirius_get_parameters and deprecate
     call_sirius([&]()
     {
         auto& sim_ctx = get_sim_ctx(handler__);
