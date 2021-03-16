@@ -47,13 +47,13 @@ class Unit_cell
     std::map<std::string, int> atom_type_id_map_;
 
     /// List of atom types.
-    std::vector<Atom_type> atom_types_;
+    std::vector<std::shared_ptr<Atom_type>> atom_types_;
 
     /// List of atom classes.
-    std::vector<Atom_symmetry_class> atom_symmetry_classes_;
+    std::vector<std::shared_ptr<Atom_symmetry_class>> atom_symmetry_classes_;
 
     /// List of atoms.
-    std::vector<Atom> atoms_;
+    std::vector<std::shared_ptr<Atom>> atoms_;
 
     /// Split index of atoms.
     splindex<splindex_t::block> spl_num_atoms_;
@@ -326,14 +326,14 @@ class Unit_cell
     inline Atom_type& atom_type(int id__)
     {
         assert(id__ >= 0 && id__ < (int)atom_types_.size());
-        return atom_types_[id__];
+        return *atom_types_[id__];
     }
 
     /// Return const atom type instance by id.
     inline Atom_type const& atom_type(int id__) const
     {
         assert(id__ >= 0 && id__ < (int)atom_types_.size());
-        return atom_types_[id__];
+        return *atom_types_[id__];
     }
 
     /// Return atom type instance by label.
@@ -369,13 +369,13 @@ class Unit_cell
     /// Return const symmetry class instance by class id.
     inline Atom_symmetry_class const& atom_symmetry_class(int id__) const
     {
-        return atom_symmetry_classes_[id__];
+        return *atom_symmetry_classes_[id__];
     }
 
     /// Return symmetry class instance by class id.
     inline Atom_symmetry_class& atom_symmetry_class(int id__)
     {
-        return atom_symmetry_classes_[id__];
+        return *atom_symmetry_classes_[id__];
     }
 
     /// Number of atoms in the unit cell.
@@ -388,14 +388,14 @@ class Unit_cell
     inline Atom const& atom(int id__) const
     {
         assert(id__ >= 0 && id__ < (int)atoms_.size());
-        return atoms_[id__];
+        return *atoms_[id__];
     }
 
     /// Return atom instance by id.
     inline Atom& atom(int id__)
     {
         assert(id__ >= 0 && id__ < (int)atoms_.size());
-        return atoms_[id__];
+        return *atoms_[id__];
     }
 
     inline int total_nuclear_charge() const
